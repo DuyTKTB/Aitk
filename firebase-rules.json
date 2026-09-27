@@ -1,0 +1,57 @@
+{
+  "rules": {
+    "chat": {
+      "messages": {
+        ".read": true,
+        "$id": {
+          ".write": "!data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['name','text','t','uid'])",
+          "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "text": { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "uid": { ".validate": "newData.isString() && newData.val().length <= 32" },
+          "t": { ".validate": "newData.isNumber() && newData.val() <= now + 600000 && newData.val() >= now - 600000" },
+          "img": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/jpeg;base64,') && newData.val().length < 300000" },
+          "$other": { ".validate": false }
+        }
+      }
+    }
+  }
+}
+{
+  "rules": {
+    "chat": {
+      "messages": {
+        ".read": true,
+        "$id": {
+          ".write": "!data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['name','text','t','uid'])",
+          "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "text": { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "uid": { ".validate": "newData.isString() && newData.val().length <= 32" },
+          "t": { ".validate": "newData.isNumber() && newData.val() <= now + 600000 && newData.val() >= now - 600000" },
+          "img": { ".validate": "newData.isString() && newData.val().beginsWith('data:image/jpeg;base64,') && newData.val().length < 300000" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+    "notes": {
+      ".read": true,
+      "$id": {
+        ".write": "!data.exists() || (data.child('uid').val() === newData.child('uid').val()) || newData.hasChild('votes')",
+        ".validate": "newData.hasChildren(['name','body','t','uid','subject'])",
+        "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "body": { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "title": { ".validate": "!newData.exists() || newData.val().length <= 80" },
+        "subject": { ".validate": "newData.isString() && newData.val().length <= 10" },
+        "uid": { ".validate": "newData.isString() && newData.val().length <= 32" },
+        "t": { ".validate": "newData.isNumber()" },
+        "votes": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "$other": { ".validate": false }
+      }
+    },
+    "votes": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

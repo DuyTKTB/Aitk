@@ -1,0 +1,9 @@
+﻿node_modules/
+dist/
+.env
+.env.local
+*.log
+*.bak
+*.bak2
+*.bak3
+.vscode/
