@@ -159,6 +159,14 @@ function CountUp({ to }) {
   return <span ref={ref}>{v}</span>;
 }
 
+/* ---------- Vệt sáng chạy theo con trỏ trên hàng công cụ ---------- */
+function trackPointer(e) {
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--mx', e.clientX - r.left + 'px');
+  el.style.setProperty('--my', e.clientY - r.top + 'px');
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [grade, setGrade] = useState('Lớp 11');
@@ -290,7 +298,7 @@ export default function Home() {
               </span>
             </div>
 
-            <AIMark size={520} look mode={typing ? 'think' : 'idle'} title="Trợ lý AI Hóa học" />
+           <AIMark look mode={typing ? 'think' : 'idle'} title="Trợ lý AI Hóa học" />
 
             {CHIPS.map((c) => (
               <span
@@ -365,7 +373,7 @@ export default function Home() {
 
         <div className="tools">
           {TOOLS.map(([id, title, desc]) => (
-            <a key={id} href={'#' + id} className="card tool">
+            <a key={id} href={'#' + id} className="card tool" onMouseMove={trackPointer}>
               <h3>{title}</h3>
               <p>{desc}</p>
             </a>
@@ -410,9 +418,9 @@ export default function Home() {
 
       {/* ================= CTA ================= */}
       <Reveal className="wrap narrow cta-final">
-        <div className="cta-mark">
-          <AIMark size={200} look mode="talk" title="Trợ lý AI" />
-        </div>
+<div className="cta-mark">
+  <AIMark look mode="talk" title="Trợ lý AI" />
+</div>
         <p className="slogan center" style={{ justifyContent: 'center' }}>
           Bắt đầu ngay — miễn phí, không cần tài khoản
         </p>

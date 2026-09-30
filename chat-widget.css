@@ -1,0 +1,290 @@
+/* ============================================================
+   ChatWidget v3 — toàn bộ class dùng prefix `cw-`
+   Không đụng tới CSS cũ trong index.css (có thể xóa dần các khối
+   .chatfab / .chatpane-v2 / .msg* / .chat-* cũ sau khi kiểm tra).
+   ============================================================ */
+
+/* ---------- FAB ---------- */
+.cw-fab {
+  position: fixed; right: 16px; bottom: 16px; z-index: 210;
+  width: 56px; height: 56px; padding: 0;
+  display: grid; place-items: center;
+  border: 2px solid var(--ink); border-radius: 50%;
+  background: var(--acc); color: var(--acc-ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  cursor: pointer;
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.cw-fab:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.cw-fab:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.cw-fab:focus-visible, .cw-ib:focus-visible, .cw-send:focus-visible,
+.cw-tool:focus-visible, .cw-st-btn:focus-visible, .cw-chip:focus-visible {
+  outline: 2px solid var(--ink); outline-offset: 2px;
+}
+.cw-fab svg { grid-area: 1 / 1; transition: transform .3s var(--ease), opacity .2s; }
+.cw-fab .cw-i-close { opacity: 0; transform: rotate(-90deg) scale(.6); }
+.cw-fab.is-open .cw-i-chat { opacity: 0; transform: rotate(90deg) scale(.6); }
+.cw-fab.is-open .cw-i-close { opacity: 1; transform: none; }
+
+/* ---------- PANE ---------- */
+.cw-pane {
+  position: fixed; right: 16px; bottom: 84px; z-index: 200;
+  width: min(400px, calc(100vw - 32px));
+  height: min(600px, calc(100dvh - 110px));
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--ink);
+  border: 2px solid var(--ink); box-shadow: 8px 8px 0 var(--ink);
+  overflow: hidden;
+  animation: cw-in .28s var(--ease);
+}
+@keyframes cw-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+/* ---------- HEADER ---------- */
+.cw-head {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .65rem .8rem; border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.cw-head-main { flex: 1; min-width: 0; }
+.cw-title { display: block; font-size: .95rem; letter-spacing: -.01em; }
+.cw-status {
+  display: flex; align-items: center; gap: .35rem;
+  font: 500 .72rem var(--mono); color: var(--mut);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cw-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut); flex-shrink: 0; }
+.cw-dot.on { background: #22a559; box-shadow: 0 0 0 3px rgba(34, 165, 89, .22); }
+
+/* ---------- Nút icon ---------- */
+.cw-ib {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  width: 36px; height: 36px; padding: 0; margin: 0;
+  border: 1px solid var(--line); background: transparent; color: var(--ink);
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.cw-ib:hover { background: var(--soft); }
+.cw-ib.on { background: var(--acc); color: var(--acc-ink); }
+.cw-ib.ghost { border-color: transparent; }
+.cw-ib.ghost:hover { border-color: var(--line); }
+
+/* ---------- SEARCH ---------- */
+.cw-search {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem .8rem; background: var(--soft);
+  border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+.cw-search svg { flex-shrink: 0; opacity: .7; }
+.cw-search input {
+  flex: 1; min-width: 0; border: 0; background: transparent; outline: 0;
+  font: inherit; font-size: .88rem; color: inherit; padding: .2rem 0;
+}
+.cw-search small { font: 600 .72rem var(--mono); color: var(--mut); }
+
+/* ---------- LIST ---------- */
+.cw-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cw-list {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: 1rem .75rem .6rem;
+  display: flex; flex-direction: column; gap: .15rem;
+}
+.cw-more {
+  align-self: center; display: inline-flex; align-items: center; gap: .3rem;
+  margin-bottom: .5rem; padding: .3rem .7rem;
+  border: 1px solid var(--line); background: transparent; color: inherit;
+  font: 500 .78rem var(--mono); cursor: pointer;
+}
+.cw-more:hover:not(:disabled) { background: var(--soft); }
+.cw-more:disabled { opacity: .55; cursor: default; }
+.cw-empty { margin: auto; text-align: center; color: var(--mut); font-size: .88rem; padding: 1rem; max-width: 26ch; line-height: 1.5; }
+.cw-empty svg { display: block; margin: 0 auto .5rem; opacity: .6; }
+
+.cw-day {
+  align-self: center; margin: .6rem 0 .4rem; padding: .12rem .65rem;
+  border: 1px solid var(--soft); color: var(--mut); font: 500 .72rem var(--mono);
+}
+
+/* ---------- MESSAGE ---------- */
+.cw-msg {
+  position: relative; max-width: 84%; align-self: flex-start;
+  display: flex; flex-direction: column; gap: .15rem; margin-top: 2px;
+}
+.cw-msg.head { margin-top: .55rem; }
+.cw-msg.me { align-self: flex-end; align-items: flex-end; }
+.cw-meta { font: 500 .7rem var(--mono); color: var(--mut); padding: 0 .1rem; }
+
+.cw-bubble {
+  padding: .45rem .7rem; border: 1px solid var(--line); background: var(--bg);
+  font-size: .9rem; line-height: 1.45;
+  white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer;
+  transition: box-shadow .15s;
+}
+.cw-msg.me .cw-bubble { background: var(--acc); color: var(--acc-ink); border-color: var(--ink); }
+.cw-bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.cw-msg.active .cw-bubble { box-shadow: 3px 3px 0 var(--ink); }
+.cw-msg.flash .cw-bubble { animation: cw-flash 1.3s; }
+@keyframes cw-flash { 0%, 55% { box-shadow: 0 0 0 3px var(--acc); } }
+
+.cw-bubble.big { background: transparent; border-color: transparent; padding: .1rem; }
+.cw-msg.me .cw-bubble.big { background: transparent; }
+.cw-bubble.big .cw-st { width: 2.6rem; height: 2.6rem; }
+
+.cw-st { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: -.3em; line-height: 0; }
+.cw-st svg { width: 100%; height: 100%; }
+
+.cw-quote {
+  display: flex; flex-direction: column; gap: .05rem; min-width: 0; max-width: 100%;
+  padding: .25rem .55rem; border: 0; border-left: 3px solid var(--acc);
+  background: var(--soft); color: inherit; text-align: left; cursor: pointer;
+  font: inherit; font-size: .76rem;
+}
+.cw-quote b { font-size: .72rem; }
+.cw-quote span { color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cw-img {
+  display: block; max-width: 100%; max-height: 260px; object-fit: cover;
+  border: 1px solid var(--line); cursor: zoom-in; transition: transform .2s var(--ease);
+}
+.cw-img:hover { transform: scale(1.02); }
+
+/* Reactions đã có */
+.cw-chips { display: flex; flex-wrap: wrap; gap: .25rem; }
+.cw-msg.me .cw-chips { justify-content: flex-end; }
+.cw-chip {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .1rem .45rem; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  font: 600 .72rem var(--mono); cursor: pointer;
+}
+.cw-chip svg { width: 14px; height: 14px; }
+.cw-chip.mine { background: var(--acc); color: var(--acc-ink); border-color: var(--ink); }
+
+/* Thanh công cụ tin nhắn */
+.cw-tools {
+  position: absolute; top: -15px; left: 0; z-index: 3;
+  display: none; background: var(--bg); border: 1px solid var(--line);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.cw-msg.me .cw-tools { left: auto; right: 0; }
+.cw-msg.active .cw-tools { display: flex; }
+@media (hover: hover) { .cw-msg:hover .cw-tools { display: flex; } }
+.cw-tool {
+  display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 .3rem;
+  border: 0; border-right: 1px solid var(--soft); background: none; color: var(--ink);
+  cursor: pointer; font: 600 .72rem var(--mono);
+}
+.cw-tool:last-child { border-right: 0; }
+.cw-tool:hover { background: var(--soft); }
+.cw-tool svg { width: 16px; height: 16px; }
+.cw-tool.mine { background: var(--acc); color: var(--acc-ink); }
+.cw-tool.danger { color: #d1281c; }
+.cw-tool.armed { background: #d1281c; color: #fff; }
+
+/* Nút cuộn xuống */
+.cw-jump {
+  position: absolute; left: 50%; bottom: .6rem; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .3rem .75rem; border: 2px solid var(--ink); background: var(--acc); color: var(--acc-ink);
+  font: 600 .76rem var(--mono); cursor: pointer; box-shadow: 2px 2px 0 var(--ink);
+  animation: cw-in .2s var(--ease);
+}
+
+/* ---------- Thông báo / trả lời / ảnh xem trước ---------- */
+.cw-err {
+  margin: 0; padding: .35rem .8rem; flex-shrink: 0;
+  font-size: .8rem; color: #d1281c; border-top: 1px solid var(--soft);
+}
+.cw-attach {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .4rem .8rem; border-top: 1px solid var(--line); background: var(--soft); flex-shrink: 0;
+}
+.cw-attach > div { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: .78rem; }
+.cw-attach b { font-size: .74rem; }
+.cw-attach span { color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-attach img { height: 44px; width: 44px; object-fit: cover; border: 1px solid var(--line); }
+
+/* ---------- Sticker picker ---------- */
+.cw-picker {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: .25rem;
+  padding: .5rem; border-top: 1px solid var(--line); background: var(--soft); flex-shrink: 0;
+}
+.cw-st-btn {
+  display: grid; place-items: center; aspect-ratio: 1; padding: 0;
+  border: 1px solid transparent; background: var(--bg); color: var(--ink); cursor: pointer;
+  transition: transform .12s var(--ease), border-color .12s;
+}
+.cw-st-btn:hover { transform: translateY(-2px); border-color: var(--line); }
+.cw-st-btn svg { width: 55%; height: 55%; }
+
+/* ---------- Composer ---------- */
+.cw-form {
+  display: flex; flex-direction: column; gap: .4rem;
+  padding: .55rem .75rem .7rem; border-top: 1px solid var(--line); flex-shrink: 0;
+}
+.cw-name { display: flex; align-items: center; gap: .35rem; color: var(--mut); }
+.cw-name svg { width: 14px; height: 14px; flex-shrink: 0; }
+.cw-name input {
+  flex: 1; min-width: 0; border: 0; background: transparent; outline: 0;
+  font: 500 .76rem var(--mono); color: var(--ink); padding: .1rem 0;
+}
+.cw-name input:focus { border-bottom: 1px solid var(--ink); }
+.cw-count { font: 500 .7rem var(--mono); color: var(--mut); }
+.cw-count.warn { color: #d1281c; }
+
+.cw-row { display: flex; gap: .35rem; align-items: flex-end; }
+.cw-row textarea {
+  flex: 1; min-width: 0; resize: none; max-height: 110px;
+  padding: .5rem .6rem; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  font: inherit; font-size: .9rem; line-height: 1.35; outline: 0;
+}
+.cw-row textarea:focus { box-shadow: 2px 2px 0 var(--ink); }
+.cw-send {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; padding: 0;
+  border: 2px solid var(--ink); background: var(--acc); color: var(--acc-ink); cursor: pointer;
+  transition: transform .15s var(--ease), box-shadow .15s var(--ease);
+}
+.cw-send:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--ink); }
+.cw-send:disabled { opacity: .45; cursor: default; }
+
+/* ---------- Kéo thả ảnh ---------- */
+.cw-drop {
+  position: absolute; inset: 0; z-index: 5; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  border: 2px dashed var(--ink); font-weight: 600; pointer-events: none;
+}
+.cw-drop span { display: flex; align-items: center; gap: .5rem; }
+
+/* ---------- Cấu hình thiếu ---------- */
+.cw-setup { padding: 1rem; font-size: .88rem; line-height: 1.5; }
+.cw-setup code { display: block; margin-top: .4rem; padding: .4rem .5rem; background: var(--soft); font-size: .8rem; overflow-x: auto; }
+
+/* ---------- Lightbox ---------- */
+.cw-lightbox {
+  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center;
+  padding: 2rem; background: rgba(13, 13, 12, .93); cursor: zoom-out; animation: cw-fade .2s;
+}
+@keyframes cw-fade { from { opacity: 0; } }
+.cw-lightbox img {
+  max-width: 100%; max-height: 100%; border: 3px solid var(--bg);
+  box-shadow: 12px 12px 0 var(--acc); cursor: default; animation: cw-in .3s var(--ease);
+}
+.cw-lightbox button {
+  position: absolute; top: 1rem; right: 1rem; width: 44px; height: 44px;
+  display: grid; place-items: center; padding: 0;
+  border: 2px solid #f1eee6; background: transparent; color: #f1eee6; cursor: pointer;
+}
+.cw-lightbox button:hover { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 480px) {
+  .cw-pane {
+    right: 8px; bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 16px);
+    height: min(640px, calc(100dvh - 96px - env(safe-area-inset-bottom, 0px)));
+  }
+  .cw-fab { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .cw-msg { max-width: 90%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cw-pane, .cw-jump, .cw-lightbox, .cw-lightbox img, .cw-msg.flash .cw-bubble { animation: none; }
+  .cw-fab, .cw-fab svg, .cw-img, .cw-st-btn, .cw-send { transition: none; }
+}

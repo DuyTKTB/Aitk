@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef } from 'react';
 
 /*
-  AIMark — logo AI sống động (v2)
-  - Thân: vòng tròn giữa + 4 xúc tu lò xo vật lý.
+  AIMark — logo AI sống động (v2.1)
+  - Thân: vòng tròn giữa + 4 xúc tu lò xo vật lý, đã cân đối lại.
+  - viewBox vuông vức hơn (620x500) → hiển thị đẹp trên mọi kích thước.
   - Đồng tử: nhìn theo chuột, chớp mắt, co giãn theo cảm xúc, glow nhẹ.
   - Mí mắt: hạ xuống khi chớp, tạo biểu cảm.
   - mode: 'idle' | 'think' (xoay tròn, vung nhanh) | 'talk' (đập nhịp, rung).
@@ -10,23 +11,28 @@ import { useEffect, useId, useRef } from 'react';
   - animate={false}: tĩnh (dùng cho avatar nhỏ).
 */
 
-const [CX, CY] = [315, 265];
+const [CX, CY] = [330, 270];
+
 const ARMS = [
-  { b: [208, 175], t: [25, 22],   w0: 110, w1: 15, ro: 30, ri: 13, bend: -28, ph: 0.0 },
-  { b: [429, 184], t: [557, 93],  w0: 90,  w1: 28, ro: 48, ri: 24, bend: 10,  ph: 1.7 },
-  { b: [454, 253], t: [717, 230], w0: 120, w1: 14, ro: 30, ri: 13, bend: 26,  ph: 3.1 },
-  { b: [208, 356], t: [97, 450],  w0: 100, w1: 15, ro: 30, ri: 13, bend: -22, ph: 4.4 },
+  { b: [220, 185], t: [75, 75],    w0: 110, w1: 15, ro: 30, ri: 13, bend: -28, ph: 0.0 },
+  { b: [440, 185], t: [600, 90],   w0: 90,  w1: 26, ro: 44, ri: 22, bend: 10,  ph: 1.7 },
+  { b: [470, 270], t: [640, 270],  w0: 115, w1: 15, ro: 30, ri: 13, bend: 22,  ph: 3.1 },
+  { b: [220, 360], t: [90, 455],   w0: 100, w1: 15, ro: 30, ri: 13, bend: -22, ph: 4.4 },
 ];
+
 const BODY =
-  'M143 265a172 172 0 1 0 344 0a172 172 0 1 0-344 0ZM203 265a112 112 0 1 0 224 0a112 112 0 1 0-224 0Z';
+  'M158 270a172 172 0 1 0 344 0a172 172 0 1 0-344 0ZM218 270a112 112 0 1 0 224 0a112 112 0 1 0-224 0Z';
+
 const MODES = {
-  idle:  { sp: 1.0, amp: 12, breath: 1.6,  breathAmp: 0.016, pupil: 46 },
-  talk:  { sp: 2.4, amp: 22, breath: 6.0,  breathAmp: 0.024, pupil: 48 },
-  think: { sp: 3.4, amp: 30, breath: 5.0,  breathAmp: 0.032, pupil: 32 },
+  idle:  { sp: 1.0, amp: 12, breath: 1.6, breathAmp: 0.016, pupil: 46 },
+  talk:  { sp: 2.4, amp: 22, breath: 6.0, breathAmp: 0.024, pupil: 48 },
+  think: { sp: 3.4, amp: 30, breath: 5.0, breathAmp: 0.032, pupil: 32 },
 };
-const VB = [-40, -40, 824, 560];
+
+const VB = [20, 20, 620, 500];
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
 // Nhiễu mượt không lặp (dùng sin tổng hợp — rẻ và đủ tự nhiên)
 const noise = (t, seed) =>
   Math.sin(t * 0.9 + seed) * 0.5 +
@@ -191,7 +197,7 @@ export default function AIMark({
       );
       pupilRef.current?.setAttribute('r', pr);
 
-      // Mí mắt: hai cung mảnh phía trên & dưới đồng tử, hạ xuống khi chớp
+      // Mí mắt
       const lidOpen = 1 - (1 - sy) * 0.9;
       lidRef.current?.setAttribute(
         'transform',
@@ -224,7 +230,7 @@ export default function AIMark({
         const n = pokeRef.current;
         pokeRef.current = 0;
         for (let i = 0; i < n; i++) {
-          st.forEach((s, idx) => {
+          st.forEach((s) => {
             const ang = Math.random() * Math.PI * 2;
             const mag = 900 + Math.random() * 700;
             s.vx += Math.cos(ang) * mag;
@@ -302,15 +308,15 @@ export default function AIMark({
 
   return (
     <svg
-      ref={svgRef}
-      className={'ai-mark' + (look ? ' look' : '') + (className ? ' ' + className : '')}
-      width={size}
-      height={(size * VB[3]) / VB[2]}
-      viewBox={VB.join(' ')}
-      role="img"
-      aria-label={title}
-      onClick={look ? () => { pokeRef.current += 1; } : undefined}
-    >
+  ref={svgRef}
+  className={'ai-mark' + (look ? ' look' : '') + (className ? ' ' + className : '')}
+  viewBox={VB.join(' ')}
+  style={{ width: size }}
+  preserveAspectRatio="xMidYMid meet"
+  role="img"
+  aria-label={title}
+  onClick={look ? () => { pokeRef.current += 1; } : undefined}
+>
       <defs>
         {goo && (
           <filter
@@ -353,10 +359,14 @@ export default function AIMark({
         <g fill="currentColor" filter={goo ? `url(#${filterId})` : undefined}>
           <g ref={bodyRef}>
             <path d={BODY} fillRule="evenodd" />
-            <rect x="416" y="330" width="52" height="100" />
+            <rect x="430" y="335" width="52" height="100" />
           </g>
           {ARMS.map((a, i) => (
-            <path key={'a' + i} ref={(el) => (armRefs.current[i] = el)} d={armPath(a, 0, 0, 0, 0, 0)} />
+            <path
+              key={'a' + i}
+              ref={(el) => (armRefs.current[i] = el)}
+              d={armPath(a, 0, 0, 0, 0, 0)}
+            />
           ))}
           {ARMS.map((a, i) => (
             <circle

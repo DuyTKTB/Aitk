@@ -115,6 +115,7 @@ export default function App() {
     const onDocClick = (e) => {
       if (navRef.current && !navRef.current.contains(e.target)) {
         setToolOpen(false);
+        setMenu(false);
       }
     };
 
@@ -218,13 +219,53 @@ export default function App() {
 
             <button
               className="nav-icon-btn nav-burger"
-              onClick={() => setMenu(!menu)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setToolOpen(false);
+                setMenu((m) => !m);
+              }}
               aria-expanded={menu}
               type="button"
               aria-label="Mở menu"
             >
               {menu ? <IconClose /> : <IconMenu />}
             </button>
+          </div>
+        </div>
+
+        {/* ============ MENU MOBILE (nút ☰) ============ */}
+        <div className={'nav-sheet' + (menu ? ' open' : '')} role="menu" aria-hidden={!menu}>
+          <p className="nav-sheet-label">Điều hướng</p>
+          <div className="nav-sheet-grid">
+            {NAV_MAIN.map(([id, label, Icon]) => (
+              <a
+                key={id}
+                href={'#' + id}
+                role="menuitem"
+                tabIndex={menu ? 0 : -1}
+                className={page === id ? 'active' : undefined}
+                onClick={() => setMenu(false)}
+              >
+                <span aria-hidden="true"><Icon /></span>
+                {label}
+              </a>
+            ))}
+          </div>
+          <p className="nav-sheet-label">Công cụ</p>
+          <div className="nav-sheet-grid">
+            {NAV_TOOLS.map(([id, label, Icon]) => (
+              <a
+                key={id}
+                href={'#' + id}
+                role="menuitem"
+                tabIndex={menu ? 0 : -1}
+                className={page === id || (id === 'games' && page.startsWith('games/')) ? 'active' : undefined}
+                onClick={() => setMenu(false)}
+              >
+                <span aria-hidden="true"><Icon /></span>
+                {label}
+              </a>
+            ))}
           </div>
         </div>
       </header>
