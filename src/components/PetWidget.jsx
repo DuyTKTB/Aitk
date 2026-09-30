@@ -76,7 +76,7 @@ function matchResponse(input, mood) {
 }
 
 export default function PetWidget() {
-  const [name, setName] = useLocalStorage('cs-petname', 'Crystal');
+  const [name, setName] = useLocalStorage('cs-petname', 'Ember');
   const [pos, setPos] = useLocalStorage('cs-petpos', null);
   const [s, setS] = useLocalStorage('cs-streak', { last: '', n: 0, total: 0 });
   const [food, setFood] = useLocalStorage('cs-pet-food', 0);
@@ -223,7 +223,7 @@ export default function PetWidget() {
           <div className="pet-head">
             <div className="pet-head-left">
               <span className="pet-head-icon">
-                <IconGem size={18} />
+                <IconFire size={18} />
               </span>
               <h3 className="pet-head-name">{name}</h3>
             </div>
@@ -277,8 +277,8 @@ export default function PetWidget() {
                   value={name}
                   maxLength={16}
                   onChange={(e) => setName(e.target.value)}
-                  onBlur={() => !name.trim() && setName('Crystal')}
-                  placeholder="Crystal"
+                  onBlur={() => !name.trim() && setName('Ember')}
+                  placeholder="Ember"
                 />
               </div>
 

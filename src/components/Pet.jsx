@@ -2,24 +2,27 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import { useLocalStorage, liveStreak, dayKey } from '../hooks.js';
 
 export const STAGES = [
-  [0, 'Hạt mầm'],
-  [1, 'Tinh thể nhỏ'],
-  [3, 'Cụm thạch anh'],
-  [7, 'Pha lê'],
-  [14, 'Cụm pha lê lớn'],
-  [30, 'Kim cương'],
+  [0, 'Tia lửa'],
+  [1, 'Đốm lửa'],
+  [3, 'Ngọn lửa nhỏ'],
+  [7, 'Lửa trại'],
+  [14, 'Lửa bập bùng'],
+  [30, 'Lửa thiêng'],
 ];
 
-const B = 172;      // baseline (chân)
+const B = 172;      // đáy ngọn lửa
 const CX = 100;     // tâm ngang
 const CY = 100;     // tâm thân
+const FACE_Y = 124; // cao độ khuôn mặt
 
+/* Màu ngọn lửa theo cấp */
 const SKINS = [
-  { from: '#c7f9f0', mid: '#5eead4', to: '#818cf8', glow: '#5eead4', accent: '#a5f3fc' }, // bạc hà
-  { from: '#fbcfe8', mid: '#f472b6', to: '#a855f7', glow: '#f9a8d4', accent: '#fde68a' }, // hồng tím
-  { from: '#fef3c7', mid: '#fbbf24', to: '#fb7185', glow: '#fbbf24', accent: '#fda4af' }, // vàng san hô
+  { from: '#fef08a', mid: '#fdba74', to: '#f97316', edge: '#c2410c', glow: '#fdba74', accent: '#fde68a', atomN: '#3b82f6' }, // tia lửa
+  { from: '#fef3c7', mid: '#fdba74', to: '#f97316', edge: '#b45309', glow: '#fb923c', accent: '#fde68a', atomN: '#3b82f6' }, // rực cam
+  { from: '#fefce8', mid: '#fde047', to: '#f97316', edge: '#b45309', glow: '#fbbf24', accent: '#fef08a', atomN: '#2563eb' }, // vàng rực
 ];
 const getSkin = (stage) => (stage >= 4 ? SKINS[2] : stage >= 2 ? SKINS[1] : SKINS[0]);
+const getScale = (stage) => 0.78 + stage * 0.05; // 0.78 → 1.03
 
 const MOODS = {
   happy: '😊',
@@ -38,189 +41,122 @@ function getMood(streak, fedToday) {
 }
 
 /* ============================================================
-   XÚC TU — vẽ bằng path bezier mềm, uốn éo theo thời gian
+   PHÂN TỬ trên ngọn lửa — O (đỏ) và N (xanh), nối bằng liên kết
    ============================================================ */
-const TENTACLES = [
-  // [gốcX, gốcY, đỉnhX, đỉnhY, độ cong, pha, độ dày]
-  { bx: 60,  by: 100, tx: 18,  ty: 62,  bend: -18, ph: 0.0, w: 9 },
-  { bx: 140, by: 100, tx: 182, ty: 58,  bend: 18,  ph: 1.7, w: 9 },
-  { bx: 62,  by: 128, tx: 20,  ty: 158, bend: -16, ph: 3.1, w: 8 },
-  { bx: 138, by: 128, tx: 180, ty: 160, bend: 16,  ph: 4.4, w: 8 },
+const ATOMS = [
+  { x: 58,  y: 128, t: 'O' }, { x: 66,  y: 106, t: 'N' }, { x: 60,  y: 84,  t: 'O' },
+  { x: 80,  y: 66,  t: 'N' }, { x: 92,  y: 46,  t: 'O' }, { x: 114, y: 58,  t: 'N' },
+  { x: 128, y: 78,  t: 'O' }, { x: 134, y: 104, t: 'N' }, { x: 146, y: 126, t: 'O' },
+  { x: 140, y: 148, t: 'N' }, { x: 60,  y: 150, t: 'N' }, { x: 100, y: 84,  t: 'O' },
+  { x: 84,  y: 100, t: 'O' }, { x: 118, y: 102, t: 'N' },
 ];
-
-function tentaclePath(t, time, mood) {
-  const speed = mood === 'happy' ? 2.6 : mood === 'sleepy' || mood === 'hibernating' ? 0.7 : 1.6;
-  const amp = mood === 'happy' ? 8 : mood === 'sleepy' || mood === 'hibernating' ? 3 : 5;
-  const wobbleX = Math.sin(time * speed + t.ph) * amp;
-  const wobbleY = Math.cos(time * speed * 0.8 + t.ph) * amp * 0.6;
-  const tx = t.tx + wobbleX;
-  const ty = t.ty + wobbleY;
-
-  const mx = (t.bx + tx) / 2;
-  const my = (t.by + ty) / 2;
-  const dx = tx - t.bx;
-  const dy = ty - t.by;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  const cx = mx + nx * t.bend;
-  const cy = my + ny * t.bend;
-
-  const w = t.w;
-  // tạo hình dạng xúc tu mềm: 2 mép song song
-  const l1x = t.bx - nx * w;
-  const l1y = t.by - ny * w;
-  const l2x = tx - nx * (w * 0.6);
-  const l2y = ty - ny * (w * 0.6);
-  const r1x = t.bx + nx * w;
-  const r1y = t.by + ny * w;
-  const r2x = tx + nx * (w * 0.6);
-  const r2y = ty + ny * (w * 0.6);
-
-  return `
-    M ${l1x} ${l1y}
-    Q ${cx - nx * w} ${cy - ny * w} ${l2x} ${l2y}
-    A ${w * 0.6} ${w * 0.6} 0 0 0 ${r2x} ${r2y}
-    Q ${cx + nx * w} ${cy + ny * w} ${r1x} ${r1y}
-    Z
-  `;
-}
+const BONDS = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[0,10],[3,11],[5,11],[1,12],[12,11],[11,13],[7,13]];
+const ATOM_COUNT = [0, 4, 8, 11, 13, 14]; // số nguyên tử hiện theo cấp
 
 /* ============================================================
-   MẶT — mắt to tròn long lanh, tự chớp, có highlight
+   MẶT — mắt to tròn long lanh, má hồng, tự chớp
    ============================================================ */
-function Face({ mood, blink, lookX = 0, lookY = 0 }) {
-  const cy = CY - 6;
-  const eyeGap = 14;
+const INK = '#2b1408';
 
-  // Mắt nhắm (chớp / ngủ)
+function Face({ mood, blink, lookX = 0, lookY = 0 }) {
+  const cy = FACE_Y;
+  const eyeGap = 18;
+  const stroke = { stroke: INK, fill: 'none', strokeLinecap: 'round' };
+  const blush = (
+    <>
+      <ellipse cx={CX - 30} cy={cy + 8} rx="7" ry="4.5" fill="#f9739b" opacity=".55" />
+      <ellipse cx={CX + 30} cy={cy + 8} rx="7" ry="4.5" fill="#f9739b" opacity=".55" />
+    </>
+  );
+
   if (blink || mood === 'hibernating') {
     return (
       <>
-        <path
-          d={`M${CX - eyeGap - 5} ${cy} q5 4 10 0`}
-          stroke="#0f172a"
-          strokeWidth="2.4"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d={`M${CX + eyeGap - 5} ${cy} q5 4 10 0`}
-          stroke="#0f172a"
-          strokeWidth="2.4"
-          fill="none"
-          strokeLinecap="round"
-        />
-        {mood !== 'hibernating' && (
-          <path
-            d={`M${CX - 6} ${cy + 12} q6 5 12 0`}
-            stroke="#0f172a"
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-          />
-        )}
+        <path d={`M${CX - eyeGap - 6} ${cy} q6 5 12 0`} strokeWidth="2.6" {...stroke} />
+        <path d={`M${CX + eyeGap - 6} ${cy} q6 5 12 0`} strokeWidth="2.6" {...stroke} />
+        {mood !== 'hibernating' && <path d={`M${CX - 6} ${cy + 10} q6 5 12 0`} strokeWidth="2.2" {...stroke} />}
+        {blush}
       </>
     );
   }
 
-  // Mắt buồn ngủ (mí nặng)
   if (mood === 'sleepy') {
     return (
       <>
-        <ellipse cx={CX - eyeGap} cy={cy + 1} rx="4.5" ry="2.4" fill="#0f172a" />
-        <ellipse cx={CX + eyeGap} cy={cy + 1} rx="4.5" ry="2.4" fill="#0f172a" />
-        <path
-          d={`M${CX - 5} ${cy + 12} q5 2 10 0`}
-          stroke="#0f172a"
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-        />
+        <ellipse cx={CX - eyeGap} cy={cy + 1} rx="5.5" ry="2.6" fill={INK} />
+        <ellipse cx={CX + eyeGap} cy={cy + 1} rx="5.5" ry="2.6" fill={INK} />
+        <path d={`M${CX - 4} ${cy + 11} q4 2 8 0`} strokeWidth="2" {...stroke} />
+        {blush}
       </>
     );
   }
 
-  // Mắt buồn
   if (mood === 'sad') {
     return (
       <>
-        <circle cx={CX - eyeGap} cy={cy} r="4" fill="#0f172a" />
-        <circle cx={CX + eyeGap} cy={cy} r="4" fill="#0f172a" />
-        {/* long lanh */}
-        <circle cx={CX - eyeGap + 1.4} cy={cy - 1.4} r="1.3" fill="#fff" />
-        <circle cx={CX + eyeGap + 1.4} cy={cy - 1.4} r="1.3" fill="#fff" />
-        {/* giọt nước mắt */}
-        <path
-          d={`M${CX + eyeGap + 6} ${cy + 2} q-2 5 0 7 q2 -2 0 -7`}
-          fill="#60a5fa"
-          opacity=".85"
-        />
-        {/* miệng buồn */}
-        <path
-          d={`M${CX - 6} ${cy + 14} q6 -5 12 0`}
-          stroke="#0f172a"
-          strokeWidth="2.2"
-          fill="none"
-          strokeLinecap="round"
-        />
+        <circle cx={CX - eyeGap} cy={cy} r="5.5" fill={INK} />
+        <circle cx={CX + eyeGap} cy={cy} r="5.5" fill={INK} />
+        <circle cx={CX - eyeGap + 1.8} cy={cy - 1.8} r="1.9" fill="#fff" />
+        <circle cx={CX + eyeGap + 1.8} cy={cy - 1.8} r="1.9" fill="#fff" />
+        <path d={`M${CX + eyeGap + 5} ${cy + 4} q-3 6 0 9 q3 -3 0 -9`} fill="#60a5fa" opacity=".9" />
+        <path d={`M${CX - 6} ${cy + 14} q6 -6 12 0`} strokeWidth="2.4" {...stroke} />
+        {blush}
       </>
     );
   }
 
-  // Mắt vui (cười cong)
   if (mood === 'happy') {
     return (
       <>
-        <path
-          d={`M${CX - eyeGap - 5} ${cy + 2} q5 -6 10 0`}
-          stroke="#0f172a"
-          strokeWidth="2.6"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d={`M${CX + eyeGap - 5} ${cy + 2} q5 -6 10 0`}
-          stroke="#0f172a"
-          strokeWidth="2.6"
-          fill="none"
-          strokeLinecap="round"
-        />
-        {/* miệng cười to */}
-        <path
-          d={`M${CX - 8} ${cy + 10} q8 10 16 0`}
-          stroke="#0f172a"
-          strokeWidth="2.6"
-          fill="none"
-          strokeLinecap="round"
-        />
-        {/* má hồng */}
-        <circle cx={CX - 20} cy={cy + 8} r="3.5" fill="#f9a8d4" opacity=".75" />
-        <circle cx={CX + 20} cy={cy + 8} r="3.5" fill="#f9a8d4" opacity=".75" />
+        <path d={`M${CX - eyeGap - 6} ${cy + 2} q6 -8 12 0`} strokeWidth="3" {...stroke} />
+        <path d={`M${CX + eyeGap - 6} ${cy + 2} q6 -8 12 0`} strokeWidth="3" {...stroke} />
+        <path d={`M${CX - 9} ${cy + 9} q9 11 18 0 z`} fill="#7c2d12" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+        <path d={`M${CX - 4} ${cy + 15} q4 -3 8 0`} stroke="#f87171" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        {blush}
       </>
     );
   }
 
-  // Mắt normal — to tròn, nhìn theo lookX/lookY
+  // normal — mắt tròn nhìn theo chuột
   return (
     <>
-      <circle cx={CX - eyeGap} cy={cy} r="5" fill="#0f172a" />
-      <circle cx={CX + eyeGap} cy={cy} r="5" fill="#0f172a" />
-      {/* con ngươi sáng nhìn theo hướng */}
-      <circle cx={CX - eyeGap + lookX} cy={cy + lookY} r="1.8" fill="#fff" />
-      <circle cx={CX + eyeGap + lookX} cy={cy + lookY} r="1.8" fill="#fff" />
-      {/* long lanh phụ */}
-      <circle cx={CX - eyeGap + 1.5} cy={cy - 1.5} r="1" fill="#fff" opacity=".85" />
-      <circle cx={CX + eyeGap + 1.5} cy={cy - 1.5} r="1" fill="#fff" opacity=".85" />
-      <path
-        d={`M${CX - 5} ${cy + 11} q5 5 10 0`}
-        stroke="#0f172a"
-        strokeWidth="2.2"
-        fill="none"
-        strokeLinecap="round"
-      />
+      <circle cx={CX - eyeGap} cy={cy} r="6" fill={INK} />
+      <circle cx={CX + eyeGap} cy={cy} r="6" fill={INK} />
+      <circle cx={CX - eyeGap + 1.8 + lookX} cy={cy - 2 + lookY} r="2.1" fill="#fff" />
+      <circle cx={CX + eyeGap + 1.8 + lookX} cy={cy - 2 + lookY} r="2.1" fill="#fff" />
+      <circle cx={CX - eyeGap - 1.6} cy={cy + 2} r="1" fill="#fff" opacity=".8" />
+      <circle cx={CX + eyeGap - 1.6} cy={cy + 2} r="1" fill="#fff" opacity=".8" />
+      <path d={`M${CX - 6} ${cy + 10} q6 6 12 0`} strokeWidth="2.4" {...stroke} />
+      {blush}
     </>
   );
+}
+
+/* ============================================================
+   THÂN LỬA — đường viền bập bùng theo thời gian
+   ============================================================ */
+function flamePath(time, mood) {
+  const calm = mood === 'sleepy' || mood === 'hibernating';
+  const speed = mood === 'happy' ? 4.2 : calm ? 1.2 : 2.6;
+  const amp = mood === 'happy' ? 1.5 : calm ? 0.5 : 1;
+  const tipX = CX + Math.sin(time * speed) * 4 * amp;
+  const tipY = 26 + Math.sin(time * speed * 1.3) * 3 * amp;
+  const lt = Math.sin(time * speed * 1.7 + 1) * 3 * amp; // lưỡi trái
+  const rt = Math.sin(time * speed * 1.5 + 2) * 3 * amp; // lưỡi phải
+
+  return `
+    M ${CX} ${B}
+    C 64 ${B}, 42 150, 42 122
+    C 42 110, 46 102, 50 ${96 + lt}
+    C 54 ${102 + lt}, 58 108, 62 110
+    C 58 84, 74 62, 90 46
+    C 96 40, ${tipX - 2} ${tipY + 8}, ${tipX} ${tipY}
+    C ${tipX + 4} ${tipY + 10}, 116 44, 122 54
+    C 134 70, 140 88, 138 104
+    C 142 102, 148 ${94 + rt}, 152 ${88 + rt}
+    C 160 108, 160 136, 148 152
+    C 138 166, 120 ${B}, ${CX} ${B} Z
+  `;
 }
 
 /* ============================================================
@@ -326,7 +262,7 @@ function Particles({ mood }) {
               <path
                 d={`M${p.x} ${p.y - 4} L${p.x + 1} ${p.y - 1} L${p.x + 4} ${p.y} L${p.x + 1} ${p.y + 1}
                     L${p.x} ${p.y + 4} L${p.x - 1} ${p.y + 1} L${p.x - 4} ${p.y} L${p.x - 1} ${p.y - 1} Z`}
-                fill="#fef3c7"
+                fill="#fbbf24"
               />
             </g>
           );
@@ -375,13 +311,51 @@ function Particles({ mood }) {
           >
             <path
               d={`M${p.x} 40 q5 -7 10 0 q-5 7 -10 0z`}
-              fill="#b7dc9a"
+              fill="#a8a29e"
               opacity=".65"
             />
           </g>
         );
       })}
     </>
+  );
+}
+
+/* ============================================================
+   KHÚC GỖ — chỗ ngọn lửa ngồi
+   ============================================================ */
+function Log({ id }) {
+  return (
+    <g>
+      <rect x="42" y="158" width="118" height="28" rx="13" fill={`url(#${id}-wood)`} stroke="#6b3f1d" strokeWidth="1.6" />
+      <path d="M70 166 q10 -3 22 0 M108 176 q14 3 28 -1 M120 164 q8 -2 18 0" stroke="#7a4a22" strokeWidth="1.2" fill="none" strokeLinecap="round" opacity=".6" />
+      {/* mặt cắt có vân tròn */}
+      <ellipse cx="46" cy="172" rx="12" ry="15" fill="#f0c58a" stroke="#6b3f1d" strokeWidth="1.6" />
+      <path d="M46 172 m0 0 a2 2 0 1 1 3 2 a5 5 0 1 1 -7 -4 a8 8 0 1 1 10 8" fill="none" stroke="#a5672f" strokeWidth="1.3" strokeLinecap="round" />
+    </g>
+  );
+}
+
+/* ============================================================
+   PHÂN TỬ GLUCOSE — ngọn lửa ôm trước ngực
+   ============================================================ */
+function Molecule({ x, y }) {
+  const r = 9;
+  const pts = Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    return [x + Math.cos(a) * r, y + Math.sin(a) * r];
+  });
+  const colors = ['#ef4444', '#5b8fa8', '#5b8fa8', '#5b8fa8', '#5b8fa8', '#5b8fa8'];
+  return (
+    <g>
+      <circle cx={x} cy={y} r="15" fill="#fff" opacity=".35" />
+      <polygon points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke="#5b8fa8" strokeWidth="1.6" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p[0]} cy={p[1]} r={i === 0 ? 2.6 : 2.2} fill={colors[i]} stroke="#fff" strokeWidth=".6" />
+      ))}
+      <line x1={pts[3][0]} y1={pts[3][1]} x2={pts[3][0] - 3} y2={pts[3][1] + 6} stroke="#5b8fa8" strokeWidth="1.2" />
+      <line x1={pts[5][0]} y1={pts[5][1]} x2={pts[5][0] + 3} y2={pts[5][1] - 7} stroke="#5b8fa8" strokeWidth="1.2" />
+    </g>
   );
 }
 
@@ -411,10 +385,15 @@ export default function Pet({ mini = false }) {
   const skin = getSkin(st);
   const mood = getMood(live, fed);
 
-  /* Animation frame — chạy liên tục để xúc tu uốn éo */
+  // ngủ đông → lửa thu nhỏ chỉ còn than hồng
+  const moodK = mood === 'hibernating' ? 0.72 : mood === 'sleepy' ? 0.88 : mood === 'sad' ? 0.94 : 1;
+  const scale = getScale(st) * moodK;
+  const atomN = mood === 'hibernating' ? Math.min(ATOM_COUNT[st], 4) : ATOM_COUNT[st];
+
+  /* Animation frame — ngọn lửa bập bùng */
   useEffect(() => {
     let raf;
-    let start = performance.now();
+    const start = performance.now();
     const tick = (now) => {
       setTime((now - start) / 1000);
       raf = requestAnimationFrame(tick);
@@ -448,7 +427,7 @@ export default function Pet({ mini = false }) {
       const dy = e.clientY - (r.top + r.height / 2);
       const d = Math.hypot(dx, dy) || 1;
       const k = Math.min(1, d / 300);
-      setLook({ x: (dx / d) * k * 1.2, y: (dy / d) * k * 1.2 });
+      setLook({ x: (dx / d) * k * 1.4, y: (dy / d) * k * 1.4 });
     };
     window.addEventListener('pointermove', onMove);
     return () => window.removeEventListener('pointermove', onMove);
@@ -463,98 +442,127 @@ export default function Pet({ mini = false }) {
     prevStageRef.current = st;
   }, [st]);
 
-  const gradientId = `cg-${mini ? 'mini' : 'full'}`;
+  const gid = `fl-${mini ? 'mini' : 'full'}`;
+  const dropY = Math.sin(time * 2.2) * 3;
+  const flameTf = `translate(${CX} ${B}) scale(${scale}) translate(${-CX} ${-B})`;
+  const glowing = mood !== 'hibernating';
 
   return (
     <div className={mini ? 'petmini' : 'card pet'} ref={wrapRef}>
       <svg
         viewBox="0 0 200 190"
-        className={
-          'crystal crystal-' + mood + (justLeveledUp ? ' crystal-levelup' : '')
-        }
+        className={'crystal crystal-' + mood + (justLeveledUp ? ' crystal-levelup' : '')}
         role="img"
-        aria-label={`Crystal: ${STAGES[st][1]} — ${MOODS[mood]}`}
+        aria-label={`Ember: ${STAGES[st][1]} — ${MOODS[mood]}`}
       >
         <defs>
-          <radialGradient id={gradientId + '-body'} cx="0.35" cy="0.3" r="0.85">
+          <radialGradient id={gid + '-body'} cx="0.5" cy="0.62" r="0.62">
             <stop offset="0" stopColor={skin.from} />
-            <stop offset="0.55" stopColor={skin.mid} />
+            <stop offset="0.5" stopColor={skin.mid} />
             <stop offset="1" stopColor={skin.to} />
           </radialGradient>
-          <radialGradient id={gradientId + '-glow'}>
-            <stop offset="0" stopColor={skin.glow} stopOpacity=".65" />
-            <stop offset="1" stopColor={skin.glow} stopOpacity="0" />
+          <radialGradient id={gid + '-core'}>
+            <stop offset="0" stopColor="#fffbeb" stopOpacity=".9" />
+            <stop offset="1" stopColor="#fde68a" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id={gradientId + '-aura'}>
-            <stop offset="0" stopColor={skin.accent} stopOpacity=".5" />
-            <stop offset="0.7" stopColor={skin.accent} stopOpacity=".08" />
+          <radialGradient id={gid + '-aura'}>
+            <stop offset="0" stopColor={skin.glow} stopOpacity=".55" />
+            <stop offset="0.65" stopColor={skin.accent} stopOpacity=".12" />
             <stop offset="1" stopColor={skin.accent} stopOpacity="0" />
           </radialGradient>
+          <linearGradient id={gid + '-wood'} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#c98a4b" />
+            <stop offset="1" stopColor="#8a552a" />
+          </linearGradient>
         </defs>
 
-        {/* Aura glow phía sau */}
-        <circle cx={CX} cy={CY} r="92" fill={`url(#${gradientId}-aura)`} className="crystal-aura" />
-
-        {/* Vòng sáng khi happy */}
-        {mood === 'happy' && (
-          <circle cx={CX} cy={CY} r="80" fill={`url(#${gradientId}-glow)`} />
+        {/* Hào quang */}
+        {glowing && (
+          <circle cx={CX} cy={CY + 14} r="94" fill={`url(#${gid}-aura)`} className="crystal-aura" />
         )}
 
-        {/* Bóng đổ dưới */}
-        <ellipse cx={CX} cy={B + 6} rx="56" ry="7" fill="rgba(15,23,42,.16)" />
+        {/* Bóng đổ */}
+        <ellipse cx={CX} cy={188} rx="66" ry="5" fill="rgba(15,23,42,.18)" />
 
-        {/* Particles phía sau thân */}
+        {/* Particles */}
         <Particles mood={mood} />
 
-        {/* ==== 4 XÚC TU ==== */}
-        <g className="crystal-tentacles">
-          {TENTACLES.map((t, i) => (
+        {/* ==== NGỌN LỬA ==== */}
+        <g className={'crystal-body' + (mood === 'happy' ? ' crystal-body-bounce' : '') + (justLeveledUp ? ' crystal-body-levelup' : '')}
+           style={{ transformOrigin: `${CX}px ${B}px` }}>
+          <g transform={flameTf}>
+            {/* giọt lửa nhỏ bay bên cạnh */}
+            {mood !== 'hibernating' && st >= 1 && (
+              <path
+                d={`M62 ${58 + dropY} q-9 -12 2 -26 q1 10 7 14 q4 6 -9 12 z`}
+                fill={skin.to}
+                stroke={skin.edge}
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            )}
+
+            {/* thân */}
             <path
-              key={i}
-              d={tentaclePath(t, time, mood)}
-              fill={`url(#${gradientId}-body)`}
-              stroke="rgba(255,255,255,.55)"
-              strokeWidth="0.9"
-              opacity="0.92"
+              d={flamePath(time, mood)}
+              fill={`url(#${gid}-body)`}
+              stroke={skin.edge}
+              strokeWidth="3.2"
+              strokeLinejoin="round"
             />
-          ))}
+            {/* lõi sáng */}
+            <ellipse cx={CX} cy={128} rx="44" ry="38" fill={`url(#${gid}-core)`} />
+            {/* highlight */}
+            <path d="M74 78 C 80 66, 88 60, 92 58 C 90 68, 84 76, 74 78 Z" fill="#fff" opacity=".45" />
+
+            {/* mạng phân tử */}
+            {atomN > 0 && (
+              <g>
+                {BONDS.map(([a, b], i) =>
+                  a < atomN && b < atomN ? (
+                    <line key={i} x1={ATOMS[a].x} y1={ATOMS[a].y} x2={ATOMS[b].x} y2={ATOMS[b].y}
+                      stroke="#7c4a2a" strokeWidth="1.3" opacity=".7" />
+                  ) : null
+                )}
+                {ATOMS.slice(0, atomN).map((a, i) =>
+                  a.t === 'O' ? (
+                    <circle key={i} cx={a.x} cy={a.y} r="5.2" fill="#ef4444" stroke="#991b1b" strokeWidth="1.6" />
+                  ) : (
+                    <g key={i}>
+                      <circle cx={a.x} cy={a.y} r="4.6" fill={skin.atomN} stroke="#1e3a8a" strokeWidth="1.4" />
+                      <text x={a.x} y={a.y + 2} textAnchor="middle" style={{ font: '700 5.5px system-ui, sans-serif', fill: '#fff' }}>N</text>
+                    </g>
+                  )
+                )}
+                {st >= 3 && mood !== 'hibernating' && (
+                  <>
+                    <text x="74" y="96" style={{ font: '600 7px system-ui, sans-serif', fill: '#7c2d12', opacity: .75 }}>CO₂</text>
+                    <text x="106" y="108" style={{ font: '600 7px system-ui, sans-serif', fill: '#7c2d12', opacity: .75 }}>H₂O</text>
+                  </>
+                )}
+              </g>
+            )}
+
+            {/* mặt */}
+            <Face mood={mood} blink={blink} lookX={look.x} lookY={look.y} />
+          </g>
         </g>
 
-        {/* ==== THÂN PHA LÊ ==== */}
-        <g
-          className={
-            'crystal-body' +
-            (mood === 'happy' ? ' crystal-body-bounce' : '') +
-            (justLeveledUp ? ' crystal-body-levelup' : '')
-          }
-          style={{ transformOrigin: `${CX}px ${B}px` }}
-        >
-          {/* Thân ngoài — hình giọt nước / oval hơi nhọn trên */}
-          <path
-            d={`M${CX} 38
-                C ${CX + 40} 40, ${CX + 56} 78, ${CX + 56} 118
-                C ${CX + 56} 152, ${CX + 32} ${B}, ${CX} ${B}
-                C ${CX - 32} ${B}, ${CX - 56} 152, ${CX - 56} 118
-                C ${CX - 56} 78, ${CX - 40} 40, ${CX} 38 Z`}
-            fill={`url(#${gradientId}-body)`}
-            stroke="rgba(255,255,255,.75)"
-            strokeWidth="1.4"
-          />
+        {/* ==== KHÚC GỖ ==== */}
+        <Log id={gid} />
 
-          {/* Highlight chéo trên trái */}
-          <path
-            d={`M${CX - 30} 62 C ${CX - 18} 54, ${CX - 6} 58, ${CX - 2} 72
-                C ${CX - 12} 70, ${CX - 24} 70, ${CX - 30} 62 Z`}
-            fill="rgba(255,255,255,.55)"
-          />
-          {/* Highlight nhỏ */}
-          <ellipse cx={CX + 22} cy={80} rx="4" ry="6" fill="rgba(255,255,255,.45)" />
+        {/* ==== TAY ÔM PHÂN TỬ ==== */}
+        {st >= 1 && mood !== 'hibernating' && (
+          <g>
+            <path d="M74 146 Q 84 158 92 156" stroke={skin.edge} strokeWidth="7" fill="none" strokeLinecap="round" />
+            <path d="M126 146 Q 116 158 108 156" stroke={skin.edge} strokeWidth="7" fill="none" strokeLinecap="round" />
+            <path d="M74 146 Q 84 158 92 156" stroke={skin.to} strokeWidth="4" fill="none" strokeLinecap="round" />
+            <path d="M126 146 Q 116 158 108 156" stroke={skin.to} strokeWidth="4" fill="none" strokeLinecap="round" />
+            <Molecule x={CX} y={156} />
+          </g>
+        )}
 
-          {/* Mặt */}
-          <Face mood={mood} blink={blink} lookX={look.x} lookY={look.y} />
-        </g>
-
-        {/* ==== HIỆU ỨNG LEVEL UP ==== */}
+        {/* ==== LEVEL UP ==== */}
         {justLeveledUp && (
           <g className="crystal-levelup-ring">
             <circle cx={CX} cy={CY} r="60" fill="none" stroke={skin.glow} strokeWidth="3" opacity=".9" />
@@ -562,7 +570,7 @@ export default function Pet({ mini = false }) {
           </g>
         )}
 
-        {/* Zzz to khi ngủ đông */}
+        {/* Zzz khi ngủ đông */}
         {mood === 'hibernating' && (
           <>
             <text x="152" y="52" className="pet-zzz" style={{ animationDelay: '0s' }}>Z</text>
@@ -575,7 +583,7 @@ export default function Pet({ mini = false }) {
       {!mini && (
         <div className="petinfo">
           <h3>
-            💎 Crystal — {STAGES[st][1]}{' '}
+            🔥 Ember — {STAGES[st][1]}{' '}
             <span className="pet-mood-badge" title={`Tâm trạng: ${mood}`}>
               {MOODS[mood]}
             </span>
@@ -583,10 +591,10 @@ export default function Pet({ mini = false }) {
 
           <p className="hint">
             {fed
-              ? 'Hôm nay Crystal đã được nuôi 💖'
+              ? 'Hôm nay Ember đã được nuôi 💖'
               : live
               ? 'Làm 1 quiz hoặc 1 phiên Pomodoro để giữ chuỗi!'
-              : 'Crystal đang ngủ đông. Học hôm nay để đánh thức nó.'}
+              : 'Ember đang ngủ đông. Học hôm nay để thắp lại ngọn lửa.'}
           </p>
 
           <div className="row" style={{ flexWrap: 'wrap', gap: '.4rem' }}>
