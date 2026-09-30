@@ -20,6 +20,9 @@ import AIChat from './components/AIChat.jsx';
 import VirtualLab from './components/games/VirtualLab.jsx';
 import ElementBattle from './components/games/ElementBattle.jsx';
 import ChemSudoku from './components/games/ChemSudoku.jsx';
+import { useAuth } from './hooks/useAuth.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import ProfilePage from './components/ProfilePage.jsx';
 import {
   IconHome, IconAtom, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
@@ -42,6 +45,7 @@ const NAV_TOOLS = [
   ['grade', 'Tính điểm', IconTarget],
   ['quiz', 'Ôn tập', IconQuiz],
   ['games', 'Trò chơi', IconGamepad],
+  ['profile', 'Trang cá nhân', IconHome],
 ];
 
 const PAGES = [...NAV_MAIN, ...NAV_TOOLS];
@@ -53,13 +57,17 @@ const readPage = () => {
   if (h === 'games/slingshot') return 'games/slingshot';
   if (h === 'games/jeopardy') return 'games/jeopardy';
   if (h === 'games/lab') return 'games/lab';
-if (h === 'games/battle') return 'games/battle';
-if (h === 'games/sudoku') return 'games/sudoku';
+  if (h === 'games/battle') return 'games/battle';
+  if (h === 'games/sudoku') return 'games/sudoku';
 
   return PAGES.some((p) => p[0] === h) ? h : 'home';
 };
 
 export default function App() {
+  // ===== AUTH =====
+  const { ready, isLoggedIn, user, logout } = useAuth();
+
+  // ===== STATE =====
   const [page, setPage] = useState(readPage);
   const [menu, setMenu] = useState(false);
   const [toolOpen, setToolOpen] = useState(false);
@@ -75,21 +83,26 @@ export default function App() {
       : 'light'
   );
 
+  // ===== THEME =====
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  // ===== SCROLL PROGRESS =====
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 12);
       const h = document.documentElement.scrollHeight - window.innerHeight;
-      if (progRef.current) progRef.current.style.transform = `scaleX(${h > 0 ? Math.min(1, window.scrollY / h) : 0})`;
+      if (progRef.current) {
+        progRef.current.style.transform = `scaleX(${h > 0 ? Math.min(1, window.scrollY / h) : 0})`;
+      }
     };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // ===== HASH ROUTING + KEYBOARD =====
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 700);
 
@@ -133,6 +146,20 @@ export default function App() {
 
   const isToolPage = NAV_TOOLS.some(([id]) => id === page);
 
+  // ===== AUTH GATE =====
+  if (!ready) {
+    return (
+      <div className="loader">
+        <span>A7 K60 DTA</span>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return <LoginPage />;
+  }
+
+  // ===== ĐÃ ĐĂNG NHẬP → RENDER APP =====
   return (
     <>
       <a className="skip-link" href="#main">Bỏ qua điều hướng</a>
@@ -207,6 +234,26 @@ export default function App() {
 
           {/* Nút phải */}
           <div className="nav-actions">
+            {/* Nút đăng xuất */}
+            <button
+              className="nav-icon-btn"
+              onClick={() => {
+                if (confirm(`Đăng xuất khỏi tài khoản ${user?.displayName || user?.email || ''}?`)) {
+                  logout();
+                }
+              }}
+              type="button"
+              aria-label="Đăng xuất"
+              title={`Đăng xuất (${user?.displayName || user?.email || ''})`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+
+            {/* Nút theme */}
             <button
               className="nav-icon-btn"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -217,6 +264,7 @@ export default function App() {
               {theme === 'dark' ? <IconSun /> : <IconMoon />}
             </button>
 
+            {/* Nút burger */}
             <button
               className="nav-icon-btn nav-burger"
               onClick={(e) => {
@@ -233,7 +281,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ============ MENU MOBILE (nút ☰) ============ */}
+        {/* ============ MENU MOBILE ============ */}
         <div className={'nav-sheet' + (menu ? ' open' : '')} role="menu" aria-hidden={!menu}>
           <p className="nav-sheet-label">Điều hướng</p>
           <div className="nav-sheet-grid">
@@ -287,14 +335,15 @@ export default function App() {
         {page === 'notes' && <Notes />}
         {page === 'grade' && <GradeCalculator />}
         {page === 'quiz' && <Quiz />}
+        {page === 'profile' && <ProfilePage />}
 
         {page === 'games' && <GameHub />}
         {page === 'games/chicken' && <Chicken2D />}
         {page === 'games/slingshot' && <SlingshotGame />}
         {page === 'games/jeopardy' && <JeopardyGame />}
         {page === 'games/lab' && <VirtualLab />}
-{page === 'games/battle' && <ElementBattle />}
-{page === 'games/sudoku' && <ChemSudoku />}
+        {page === 'games/battle' && <ElementBattle />}
+        {page === 'games/sudoku' && <ChemSudoku />}
       </main>
 
       <footer className="foot">

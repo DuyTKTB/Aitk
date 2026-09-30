@@ -1,6 +1,8 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from '../hooks.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 import './chat-widget.css';
+import VerifiedBadge from './VerifiedBadge.jsx';
 
 /* ============ CẤU HÌNH ============ */
 const DB = (import.meta.env.VITE_FIREBASE_DB_URL || '').replace(/\/$/, '');
@@ -46,7 +48,7 @@ const thumb = 'M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1
 const IcLike = mk(<path d={thumb} />);
 const IcDislike = mk(<g transform="rotate(180 12 12)"><path d={thumb} /></g>);
 
-/* Sticker (thay emoji) — gõ vào tin nhắn dạng :smile: */
+/* Sticker */
 const S = {
   smile: ['Cười', mk(<>{ring}{eyes}<path d="M8 14.2c1 1.6 2.4 2.4 4 2.4s3-.8 4-2.4" /></>)],
   grin: ['Cười tươi', mk(<>{ring}{eyes}{openMouth}</>)],
@@ -118,7 +120,7 @@ async function shrink(file) {
   c.width = Math.round(b.width * k);
   c.height = Math.round(b.height * k);
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#fff'; // PNG trong suốt không bị nền đen
+  ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.drawImage(b, 0, 0, c.width, c.height);
   b.close?.();
@@ -127,6 +129,18 @@ async function shrink(file) {
     if (d.length <= MAX_IMG) return d;
   }
   return null;
+}
+
+/* ============================================================
+   AuthorName — Tên tác giả kèm tick xanh nếu VIP
+   ============================================================ */
+function AuthorName({ name, uid, className = '' }) {
+  return (
+    <span className={'cw-author ' + className}>
+      {String(name || '').slice(0, 20)}
+      <VerifiedBadge uid={uid} size={12} />
+    </span>
+  );
 }
 
 /* ============ LIGHTBOX ============ */
@@ -167,13 +181,21 @@ function Message({ m, prev, uid, active, armed, onToggle, onReact, onReply, onDe
       <div id={'cw-m-' + m.id} className={'cw-msg' + (isMe ? ' me' : '') + (head ? ' head' : '') + (active ? ' active' : '')}>
         {head && (
           <small className="cw-meta">
-            {isMe ? 'Bạn' : String(m.name || 'Ẩn danh').slice(0, 20)} · {fmtTime(t)}
+            {isMe ? (
+              <span className="cw-author">Bạn</span>
+            ) : (
+              <AuthorName name={m.name} uid={m.uid} />
+            )}
+            {' · '}{fmtTime(t)}
           </small>
         )}
 
         {m.reply && (
           <button type="button" className="cw-quote" onClick={() => onJump(m.reply.id)}>
-            <b>{String(m.reply.name || '').slice(0, 20)}</b>
+            <b>
+              {String(m.reply.name || '').slice(0, 20)}
+              {m.reply.uid && <VerifiedBadge uid={m.reply.uid} size={11} />}
+            </b>
             <span>{String(m.reply.text || '') || (m.reply.img ? 'Ảnh' : '')}</span>
           </button>
         )}
@@ -240,6 +262,8 @@ function Message({ m, prev, uid, active, armed, onToggle, onReact, onReply, onDe
 
 /* ============ WIDGET ============ */
 export default function ChatWidget() {
+  const { user } = useAuth();
+
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState({});
@@ -260,8 +284,11 @@ export default function ChatWidget() {
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const [name, setName] = useLocalStorage('cs-chatname', 'Bạn ' + Math.floor(1000 + Math.random() * 9000));
-  const [uid] = useLocalStorage('cs-uid', rid());
+  const [name, setName] = useLocalStorage(
+    'cs-chatname',
+    user?.displayName || 'Bạn ' + Math.floor(1000 + Math.random() * 9000)
+  );
+  const uid = user?.uid || 'anonymous';
 
   const listRef = useRef(null);
   const inputRef = useRef(null);
@@ -274,14 +301,12 @@ export default function ChatWidget() {
   const nameRef = useRef(name);
   nameRef.current = name;
 
-  /* ---- Tự xóa thông báo lỗi ---- */
   useEffect(() => {
     if (!err) return undefined;
     const t = setTimeout(() => setErr(''), 4000);
     return () => clearTimeout(t);
   }, [err]);
 
-  /* ---- STREAM tin nhắn (chỉ khi mở) ---- */
   useEffect(() => {
     if (!DB || !open) return undefined;
 
@@ -297,7 +322,6 @@ export default function ChatWidget() {
       setMsgs((m) => {
         if (path === '/') {
           const fresh = data ? sortById(Object.entries(data).map(([id, v]) => ({ id, ...v }))) : [];
-          // giữ lại tin cũ đã tải thêm (id nhỏ hơn tin đầu của luồng)
           const first = fresh[0]?.id;
           return first ? [...m.filter((x) => x.id < first), ...fresh] : [];
         }
@@ -317,7 +341,6 @@ export default function ChatWidget() {
     return () => es.close();
   }, [open]);
 
-  /* ---- ONLINE: ping + đọc danh sách (không phụ thuộc name nữa) ---- */
   useEffect(() => {
     if (!DB || !open) return undefined;
 
@@ -353,7 +376,6 @@ export default function ChatWidget() {
     };
   }, [open, uid]);
 
-  /* ---- Lọc + tính toán ---- */
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return msgs;
@@ -362,7 +384,6 @@ export default function ChatWidget() {
   const lastMsg = filtered[filtered.length - 1];
   const lastId = lastMsg?.id;
 
-  /* ---- Cuộn ---- */
   const toBottom = (smooth) => {
     const el = listRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
@@ -372,7 +393,6 @@ export default function ChatWidget() {
     if (open) { stick.current = true; prevLast.current = null; toBottom(false); }
   }, [open]);
 
-  // Chỉ cuộn khi có tin MỚI (đổi reaction/xóa tin cũ không làm nhảy)
   useEffect(() => {
     if (!lastId) return;
     if (stick.current || lastMsg?.uid === uid) {
@@ -385,7 +405,6 @@ export default function ChatWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastId]);
 
-  // Giữ nguyên vị trí khi tải tin cũ chèn lên đầu
   useLayoutEffect(() => {
     const el = listRef.current;
     if (el && keep.current !== null) {
@@ -402,7 +421,6 @@ export default function ChatWidget() {
     if (near) setNewBelow(0);
   };
 
-  /* ---- Tải tin cũ (endAt) ---- */
   const loadOlder = async () => {
     const first = msgs[0];
     if (!first || loadingOld) return;
@@ -422,7 +440,6 @@ export default function ChatWidget() {
     }
   };
 
-  /* ---- Ảnh ---- */
   const pickFile = async (f) => {
     if (!f) return;
     if (!f.type.startsWith('image/')) { setErr('Chỉ gửi được file ảnh.'); return; }
@@ -441,7 +458,6 @@ export default function ChatWidget() {
   };
   const onDrop = (e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files[0]); };
 
-  /* ---- Gửi ---- */
   const send = async (e) => {
     e?.preventDefault();
     const t = text.trim().slice(0, MAX_TEXT);
@@ -458,7 +474,13 @@ export default function ChatWidget() {
         t: Date.now(),
       };
       if (replyTo) {
-        payload.reply = { id: replyTo.id, name: replyTo.name, text: (replyTo.text || '').slice(0, 60), img: !!replyTo.img };
+        payload.reply = {
+          id: replyTo.id,
+          name: replyTo.name,
+          uid: replyTo.uid,
+          text: (replyTo.text || '').slice(0, 60),
+          img: !!replyTo.img,
+        };
       }
       const r = await fetch(URL_MSG, { method: 'POST', body: JSON.stringify(payload) });
       if (!r.ok) throw new Error();
@@ -472,14 +494,12 @@ export default function ChatWidget() {
   };
 
   const onKeyDown = (e) => {
-    // Không gửi khi đang gõ tiếng Việt bằng bộ gõ (Telex/VNI)
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
       e.preventDefault();
       send();
     }
   };
 
-  // Tự giãn ô nhập
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -489,7 +509,6 @@ export default function ChatWidget() {
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
 
-  /* ---- Xóa (bấm 2 lần) ---- */
   const removeMsg = async (id) => {
     try {
       const r = await fetch(`${DB}/chat/messages/${id}.json`, { method: 'DELETE' });
@@ -509,7 +528,6 @@ export default function ChatWidget() {
     removeMsg(id);
   };
 
-  /* ---- Reaction (rollback nếu lỗi) ---- */
   const toggleReaction = async (msg, key) => {
     const before = msg.reactions || {};
     const reactions = { ...before };
@@ -578,7 +596,6 @@ export default function ChatWidget() {
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
           onDrop={onDrop}
         >
-          {/* HEADER */}
           <div className="cw-head">
             <div className="cw-head-main">
               <b className="cw-title">Chat cộng đồng</b>
@@ -605,7 +622,6 @@ export default function ChatWidget() {
             </button>
           </div>
 
-          {/* SEARCH */}
           {showSearch && (
             <div className="cw-search">
               <IcSearch width="16" height="16" />
