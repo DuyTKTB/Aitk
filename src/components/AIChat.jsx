@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { askAI, compressImage, AI_READY } from '../lib/ai.js';
 import AIMark from './AIMark.jsx';
@@ -83,7 +83,10 @@ export default function AIChat() {
 
   // Auto scroll
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    end.current?.scrollIntoView({
+      behavior: streaming || reasoning ? 'auto' : 'smooth',
+      block: 'end',
+    });
   }, [messages.length, streaming, reasoning]);
 
   // Auto chọn chat đầu nếu chưa có active
@@ -288,21 +291,76 @@ export default function AIChat() {
     setImage(null);
 
     try {
-      const apiHistory = baseMessages.map((m) => ({ role: m.role, parts: m.parts }));
+      // Chỉ gửi 8 tin gần nhất và bỏ ảnh của các lượt cũ → API phản hồi nhanh hơn
+      const recent = baseMessages.slice(-8);
+      const trimmed = recent[0]?.role === 'model' ? recent.slice(1) : recent;
+      const apiHistory = trimmed.map((m, i) => ({
+        role: m.role,
+        parts:
+          i === trimmed.length - 1
+            ? m.parts
+            : m.parts.filter((part) => !part.inlineData),
+      }));
       let finalText = '';
       let finalReasoning = '';
 
-      await askAI(
-        apiHistory,
-        (partial) => {
-          setStreaming(partial);
-          finalText = partial;
-        },
-        (reasoningPart) => {
-          setReasoning(reasoningPart);
-          finalReasoning = reasoningPart;
-        }
-      );
+      // Bộ đếm giờ: nếu AI im lặng quá lâu thì dừng và báo lỗi, không treo mãi
+      const IDLE_MS = 80000;
+
+      // Gom cập nhật: tối đa 1 lần render mỗi khung hình thay vì mỗi chunk
+      let raf = 0;
+      let pendText = null;
+      let pendReason = null;
+      const flush = () => {
+        raf = 0;
+        if (pendText !== null) { setStreaming(pendText); pendText = null; }
+        if (pendReason !== null) { setReasoning(pendReason); pendReason = null; }
+      };
+      const schedule = () => { if (!raf) raf = requestAnimationFrame(flush); };
+
+      let timer;
+      let timedOut = false;
+      let arm = () => {};
+      const watchdog = new Promise((_, reject) => {
+        arm = () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            timedOut = true;
+            reject(new Error('AI không phản hồi (quá 80 giây). Kiểm tra mạng hoặc API rồi thử lại.'));
+          }, IDLE_MS);
+        };
+        arm();
+      });
+
+      try {
+        await Promise.race([
+          askAI(
+            apiHistory,
+            (partial) => {
+              if (timedOut) return;
+              arm();
+              pendText = partial;
+              schedule();
+              finalText = partial;
+            },
+            (reasoningPart) => {
+              if (timedOut) return;
+              arm();
+              pendReason = reasoningPart;
+              schedule();
+              finalReasoning = reasoningPart;
+            }
+          ),
+          watchdog,
+        ]);
+      } finally {
+        clearTimeout(timer);
+        cancelAnimationFrame(raf);
+      }
+
+      if (!finalText && !finalReasoning) {
+        throw new Error('AI trả về rỗng. Thử gửi lại câu hỏi.');
+      }
 
       updateChat(chatId, (c) => ({
         ...c,
@@ -320,6 +378,8 @@ export default function AIChat() {
       setReasoning('');
     } catch (e) {
       setErr(e.message || 'Lỗi gọi AI.');
+      setStreaming('');
+      setReasoning('');
     } finally {
       setLoading(false);
     }
@@ -707,7 +767,7 @@ export default function AIChat() {
   );
 }
 
-function MarkdownLike({ text }) {
+function MarkdownLikeBase({ text }) {
   if (!text) return null;
 
   text = text
@@ -773,6 +833,9 @@ function MarkdownLike({ text }) {
   flushCode();
   return <>{blocks}</>;
 }
+
+// memo: tin nhắn cũ không bị phân tích lại mỗi lần có chữ mới
+const MarkdownLike = memo(MarkdownLikeBase);
 
 function inlineFormat(text) {
   return text

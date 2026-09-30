@@ -7882,3 +7882,20 @@ svg.ai-mark.look {
 @media (prefers-reduced-motion: reduce) {
   .nav-sheet { transition: none; }
 }
+
+/* ============================================================
+   AI CHAT MƯỢT HƠN — dán CUỐI index.css
+   Khi đang phân tích: chỉ hiện vài dòng mới nhất, không đẩy trang xuống
+   ============================================================ */
+.ds-reasoning-box.streaming .ds-reasoning-content {
+  max-height: 8.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;          /* luôn thấy dòng mới nhất */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.8rem);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 1.8rem);
+}
+.ds-reasoning-box.streaming .ds-reasoning-content > * { flex-shrink: 0; }
+.ds-reasoning-box.streaming { transition: none; }
+.ds-msg-content, .ds-reasoning-content { contain: layout paint; }
