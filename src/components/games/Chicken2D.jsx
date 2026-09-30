@@ -15,6 +15,10 @@ const DEFAULT_CONFIG = {
   chickenCount: 5,
   timeLimit: 30,
   playerName: '',
+  twoPlayer: false,
+  p2Name: '',
+  powerups: true,
+  difficultyRamp: false,
 };
 
 const SPEED_PRESETS = [
@@ -24,10 +28,21 @@ const SPEED_PRESETS = [
   { key: 'insane', label: 'Điên',  mult: 2.4 },
 ];
 
-/* ===== SVG CHICKEN ===== */
-function ChickenSVG({ dead, highlight, theme }) {
+const POWER_TYPES = [
+  { key: 'freeze', icon: '❄', label: 'Đóng băng cả sân', duration: 3, msg: (p) => `❄ Đóng băng ${p.duration}s!` },
+  { key: 'slow',   icon: '🐌', label: 'Làm chậm cả sân', duration: 4, msg: (p) => `🐌 Làm chậm ${p.duration}s!` },
+  { key: 'shield', icon: '🛡', label: 'Thêm 1 mạng',     msg: () => '🛡 +1 mạng!' },
+  { key: 'bonus',  icon: '★', label: 'Điểm thưởng',      points: 80, msg: (p) => `★ +${p.points} điểm!` },
+];
+
+// Mỗi gà có một tông màu lông hơi khác nhau cho sân thêm sống động
+const BODY_TINTS_LIGHT = ['#f5f0e0', '#efe6c9', '#e9d9b0', '#f2eadb', '#e3d5ad'];
+const BODY_TINTS_DARK  = ['#e8e3d5', '#ded4b8', '#cfc19a', '#e2d9c6', '#d6c9a4'];
+
+/* ===== SVG CHICKEN (nâng cấp: đuôi lông, cánh chi tiết, chớp mắt, bóng đổ) ===== */
+function ChickenSVG({ dead, highlight, frozen, theme, tint, eyeSeed = 0 }) {
   const ink = theme === 'dark' ? '#f1eee6' : '#111';
-  const body = theme === 'dark' ? '#e8e3d5' : '#f5f0e0';
+  const body = tint || (theme === 'dark' ? '#e8e3d5' : '#f5f0e0');
   const acc = theme === 'dark' ? '#d4ff3a' : '#ff4d1a';
   const beak = theme === 'dark' ? '#7a4a12' : '#ffc46b';
 
@@ -38,13 +53,25 @@ function ChickenSVG({ dead, highlight, theme }) {
       height={CHICKEN_H}
       style={{
         transform: dead ? 'rotate(90deg) translateY(-10px)' : 'none',
-        transition: 'transform .4s ease, opacity .3s',
+        transition: 'transform .4s ease, opacity .3s, filter .3s',
         opacity: dead ? 0.4 : 1,
         animation: highlight ? 'chicken-shake .2s infinite' : 'none',
+        filter: frozen ? 'grayscale(.5) brightness(1.15) saturate(.6)' : 'none',
       }}
     >
+      {/* Đuôi lông */}
+      <path d="M20 62 Q4 50 8 34 Q18 46 26 58Z" fill={acc} stroke={ink} strokeWidth="2.5" />
+      <path d="M22 68 Q6 62 6 48 Q16 58 27 65Z" fill={body} stroke={ink} strokeWidth="2" opacity=".9" />
+
+      {/* Thân */}
       <rect x="20" y="55" width="70" height="50" fill={body} stroke={ink} strokeWidth="3" />
+      {/* Cánh (có vân lông) */}
+      <path d="M26 62 L46 62 L42 96 L26 92Z" fill={body} stroke={ink} strokeWidth="2.5" />
+      <path d="M30 68 L30 88 M35 66 L35 90 M40 65 L40 92" stroke={ink} strokeWidth="1.2" opacity=".5" />
+
+      {/* Đầu */}
       <circle cx="55" cy="42" r="22" fill={body} stroke={ink} strokeWidth="3" />
+      {/* Mào */}
       <path
         d="M45 22 L48 12 L52 22 L58 12 L62 22 L68 12 L70 22"
         fill={acc}
@@ -52,8 +79,18 @@ function ChickenSVG({ dead, highlight, theme }) {
         strokeWidth="2.5"
         strokeLinejoin="round"
       />
+      {/* Mỏ */}
       <polygon points="75,42 92,47 75,52" fill={beak} stroke={ink} strokeWidth="2.5" />
-      <circle cx="62" cy="38" r="3" fill={ink} />
+      {/* Yếm */}
+      <path d="M60 50 Q64 58 58 62 Q54 56 56 50Z" fill={acc} stroke={ink} strokeWidth="2" />
+      {/* Mắt — chớp theo chu kỳ riêng */}
+      <ellipse
+        cx="62" cy="38" rx="3" ry={dead ? 0.5 : 3}
+        fill={ink}
+        style={{ animation: dead ? 'none' : `chicken-blink ${2.6 + eyeSeed}s ease-in-out infinite` }}
+      />
+
+      {/* Chân */}
       <rect x="18" y="65" width="15" height="30" fill={body} stroke={ink} strokeWidth="2.5" />
       <rect x="77" y="65" width="15" height="30" fill={body} stroke={ink} strokeWidth="2.5" />
       <line x1="40" y1="105" x2="40" y2="125" stroke={beak} strokeWidth="4" strokeLinecap="round" />
@@ -64,16 +101,37 @@ function ChickenSVG({ dead, highlight, theme }) {
   );
 }
 
-/* ===== CHICKEN WRAPPER ===== */
-function Chicken({ data, theme, speedMult, onHit }) {
+/* ===== NGÔI SAO VẬT PHẨM (gà vàng mang power-up) ===== */
+function PowerBadge({ power }) {
+  return <div className="power-badge" title={power.label}>{power.icon}</div>;
+}
+
+/* ===== TRANG TRÍ SÂN: mây trôi + bụi cỏ ===== */
+function FieldDecor() {
+  return (
+    <>
+      <svg className="field-cloud c1" viewBox="0 0 100 40" width="90"><ellipse cx="30" cy="24" rx="28" ry="14" /><ellipse cx="60" cy="18" rx="22" ry="16" /></svg>
+      <svg className="field-cloud c2" viewBox="0 0 100 40" width="70"><ellipse cx="30" cy="24" rx="24" ry="12" /><ellipse cx="58" cy="20" rx="18" ry="14" /></svg>
+      <svg className="field-grass" viewBox="0 0 900 24" preserveAspectRatio="none">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <path key={i} d={`M${i * 30 + 6} 24 Q${i * 30 + 10} 4 ${i * 30 + 14} 24`} />
+        ))}
+      </svg>
+    </>
+  );
+}
+
+/* ===== CHICKEN WRAPPER (di chuyển + đông cứng/làm chậm theo buff) ===== */
+function Chicken({ data, theme, speedMult, buffsRef, onHit }) {
   const ref = useRef();
   const posRef = useRef({ x: data.x, y: data.y });
   const velRef = useRef({ x: 0, y: 0 });
   const turnTimerRef = useRef(0);
   const rafRef = useRef();
+  const eyeSeed = useRef(Math.random() * 2).current;
 
   useEffect(() => {
-    if (data.answered) return;
+    if (data.answered || data.collected) return;
 
     let lastTime = performance.now();
 
@@ -81,27 +139,34 @@ function Chicken({ data, theme, speedMult, onHit }) {
       const dt = Math.min(0.05, (now - lastTime) / 1000);
       lastTime = now;
 
-      turnTimerRef.current -= dt;
-      if (turnTimerRef.current <= 0) {
-        turnTimerRef.current = 0.8 + Math.random() * 0.7;
-        const a = Math.random() * Math.PI * 2;
-        const speed = (140 + Math.random() * 80) * speedMult;
-        velRef.current.x = Math.cos(a) * speed;
-        velRef.current.y = Math.sin(a) * speed;
-      }
+      const buffs = buffsRef.current;
+      const frozen = now < buffs.freezeUntil;
+      const slowed = now < buffs.slowUntil;
 
-      const p = posRef.current;
-      const v = velRef.current;
-      p.x += v.x * dt;
-      p.y += v.y * dt;
+      if (!frozen) {
+        const localMult = speedMult * (slowed ? 0.4 : 1);
+        turnTimerRef.current -= dt;
+        if (turnTimerRef.current <= 0) {
+          turnTimerRef.current = 0.8 + Math.random() * 0.7;
+          const a = Math.random() * Math.PI * 2;
+          const speed = (140 + Math.random() * 80) * localMult;
+          velRef.current.x = Math.cos(a) * speed;
+          velRef.current.y = Math.sin(a) * speed;
+        }
 
-      if (p.x < PADDING) { p.x = PADDING; v.x *= -1; }
-      if (p.x > FIELD_W - CHICKEN_W - PADDING) { p.x = FIELD_W - CHICKEN_W - PADDING; v.x *= -1; }
-      if (p.y < PADDING) { p.y = PADDING; v.y *= -1; }
-      if (p.y > FIELD_H - CHICKEN_H - PADDING) { p.y = FIELD_H - CHICKEN_H - PADDING; v.y *= -1; }
+        const p = posRef.current;
+        const v = velRef.current;
+        p.x += v.x * dt;
+        p.y += v.y * dt;
 
-      if (ref.current) {
-        ref.current.style.transform = `translate(${p.x}px, ${p.y}px) scaleX(${v.x < 0 ? -1 : 1})`;
+        if (p.x < PADDING) { p.x = PADDING; v.x *= -1; }
+        if (p.x > FIELD_W - CHICKEN_W - PADDING) { p.x = FIELD_W - CHICKEN_W - PADDING; v.x *= -1; }
+        if (p.y < PADDING) { p.y = PADDING; v.y *= -1; }
+        if (p.y > FIELD_H - CHICKEN_H - PADDING) { p.y = FIELD_H - CHICKEN_H - PADDING; v.y *= -1; }
+
+        if (ref.current) {
+          ref.current.style.transform = `translate(${posRef.current.x}px, ${posRef.current.y}px) scaleX(${v.x < 0 ? -1 : 1})`;
+        }
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -111,29 +176,44 @@ function Chicken({ data, theme, speedMult, onHit }) {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [data.answered, speedMult]);
+  }, [data.answered, data.collected, speedMult, buffsRef]);
 
   const handleClick = () => {
-    if (data.answered) return;
+    if (data.answered || data.collected) return;
     onHit(data);
   };
+
+  const now = performance.now();
+  const frozen = now < buffsRef.current.freezeUntil;
 
   return (
     <div
       ref={ref}
-      className="chicken-2d"
+      className={'chicken-2d' + (data.isBonus ? ' is-bonus' : '') + (data.collected ? ' collected' : '')}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
-        cursor: data.answered ? 'default' : 'pointer',
+        cursor: data.answered || data.collected ? 'default' : 'pointer',
         zIndex: data.highlight ? 10 : 1,
-        pointerEvents: data.answered ? 'none' : 'auto',
+        pointerEvents: data.answered || data.collected ? 'none' : 'auto',
       }}
       onClick={handleClick}
     >
-      <ChickenSVG dead={data.dead} highlight={data.highlight} theme={theme} />
-      <div className="chicken-sign">{data.text}</div>
+      <div className="chicken-shadow" />
+      <ChickenSVG
+        dead={data.dead}
+        highlight={data.highlight}
+        frozen={frozen && !data.isBonus}
+        theme={theme}
+        tint={data.tint}
+        eyeSeed={eyeSeed}
+      />
+      {data.isBonus ? (
+        <div className="chicken-sign bonus"><PowerBadge power={data.power} /></div>
+      ) : (
+        <div className="chicken-sign">{data.text}</div>
+      )}
     </div>
   );
 }
@@ -164,11 +244,23 @@ export default function Chicken2D() {
   const [phase, setPhase] = useState('setup');
   const [qIndex, setQIndex] = useState(0);
   const [chickens, setChickens] = useState([]);
-  const [score, setScore] = useState(0);
+  const [scores, setScores] = useState([0, 0]);        // [p1, p2] — p2 chỉ dùng khi twoPlayer
+  const [turn, setTurn] = useState(0);
   const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
   const [lives, setLives] = useState(3);
   const [theme, setTheme] = useState('light');
   const [timeLeft, setTimeLeft] = useState(0);
+  const [flash, setFlash] = useState(null);        // 'correct' | 'wrong' | null
+  const [shake, setShake] = useState(false);
+  const [comboBanner, setComboBanner] = useState(null);
+  const [powerBanner, setPowerBanner] = useState(null);
+  const [floats, setFloats] = useState([]);         // điểm bay lên
+
+  const buffsRef = useRef({ freezeUntil: 0, slowUntil: 0 });
+  const bannerTimer = useRef();
+  const powerBannerTimer = useRef();
 
   useEffect(() => {
     const read = () => setTheme(document.documentElement.dataset.theme || 'light');
@@ -194,8 +286,9 @@ export default function Chicken2D() {
     if (phase !== 'playing') return;
     if (!config.timeLimit) return;
     if (timeLeft <= 0) {
-      setChickens((cs) => cs.map((c) => ({ ...c, answered: true, highlight: c.correct })));
+      setChickens((cs) => cs.map((c) => (c.isBonus ? c : { ...c, answered: true, highlight: c.correct })));
       sound.wrong();
+      triggerWrong();
       setCombo(0);
       const newLives = lives - 1;
       setLives(newLives);
@@ -209,6 +302,16 @@ export default function Chicken2D() {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, phase]);
+
+  const rampMultiplier = (idx) => {
+    if (!config.difficultyRamp || !questions.length) return 1;
+    return 1 + (idx / questions.length) * 0.7; // tăng dần tới +70% tốc độ ở câu cuối
+  };
+
+  const pickTint = () => {
+    const pool = theme === 'dark' ? BODY_TINTS_DARK : BODY_TINTS_LIGHT;
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
 
   const buildQuestion = (idx) => {
     const q = questions[idx];
@@ -225,21 +328,43 @@ export default function Chicken2D() {
       ...wrongPool.slice(0, totalAnswers - 1).map((t) => ({ text: t, correct: false })),
     ].sort(() => Math.random() - 0.5);
 
-    return answers.map((a, i) => ({
+    const list = answers.map((a, i) => ({
       id: `${idx}-${i}-${Date.now()}`,
       text: a.text,
       correct: a.correct,
       dead: false,
       answered: false,
       highlight: false,
+      collected: false,
+      isBonus: false,
+      tint: pickTint(),
       x: PADDING + Math.random() * (FIELD_W - CHICKEN_W - PADDING * 2),
       y: PADDING + Math.random() * (FIELD_H - CHICKEN_H - PADDING * 2),
     }));
+
+    // Gà vàng vật phẩm — chỉ từ câu 2 trở đi, xác suất 40%
+    if (config.powerups && idx > 0 && Math.random() < 0.4) {
+      const power = POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)];
+      list.push({
+        id: `${idx}-bonus-${Date.now()}`,
+        isBonus: true,
+        power,
+        dead: false,
+        answered: false,
+        collected: false,
+        highlight: false,
+        x: PADDING + Math.random() * (FIELD_W - CHICKEN_W - PADDING * 2),
+        y: PADDING + Math.random() * (FIELD_H - CHICKEN_H - PADDING * 2),
+      });
+    }
+
+    return list;
   };
 
   const startGame = () => {
     if (!questions.length) return;
-    setScore(0); setCombo(0); setLives(3); setQIndex(0);
+    setScores([0, 0]); setCombo(0); setMaxCombo(0); setMistakes(0); setLives(3); setQIndex(0); setTurn(0);
+    buffsRef.current = { freezeUntil: 0, slowUntil: 0 };
     setTimeLeft(config.timeLimit || 0);
     setPhase('playing');
     setChickens(buildQuestion(0));
@@ -249,25 +374,85 @@ export default function Chicken2D() {
     const next = currentIdx + 1;
     if (next >= questions.length) { endGame(true); return; }
     setQIndex(next);
+    if (config.twoPlayer) setTurn((t) => 1 - t);
     setChickens(buildQuestion(next));
     setTimeLeft(config.timeLimit || 0);
   };
 
+  const spawnFloat = (x, y, text, color) => {
+    const id = Math.random().toString(36).slice(2);
+    setFloats((f) => [...f, { id, x, y, text, color }]);
+    setTimeout(() => setFloats((f) => f.filter((it) => it.id !== id)), 900);
+  };
+
+  const triggerWrong = () => {
+    setFlash('wrong');
+    setShake(true);
+    setTimeout(() => setFlash(null), 400);
+    setTimeout(() => setShake(false), 420);
+  };
+
+  const triggerCorrectFlash = () => {
+    setFlash('correct');
+    setTimeout(() => setFlash(null), 350);
+  };
+
+  const showComboBanner = (n) => {
+    clearTimeout(bannerTimer.current);
+    setComboBanner(`COMBO ×${n}!`);
+    bannerTimer.current = setTimeout(() => setComboBanner(null), 1300);
+  };
+
+  const showPowerBanner = (text) => {
+    clearTimeout(powerBannerTimer.current);
+    setPowerBanner(text);
+    powerBannerTimer.current = setTimeout(() => setPowerBanner(null), 1600);
+  };
+
+  const collectPower = (chicken) => {
+    setChickens((cs) => cs.map((c) => (c.id === chicken.id ? { ...c, collected: true } : c)));
+    spawnFloat(chicken.x + CHICKEN_W / 2, chicken.y, chicken.power.icon, 'gold');
+    const p = chicken.power;
+    if (p.key === 'freeze') buffsRef.current.freezeUntil = performance.now() + p.duration * 1000;
+    else if (p.key === 'slow') buffsRef.current.slowUntil = performance.now() + p.duration * 1000;
+    else if (p.key === 'shield') setLives((l) => Math.min(5, l + 1));
+    else if (p.key === 'bonus') {
+      if (config.twoPlayer) setScores((s) => { const n = [...s]; n[turn] += p.points; return n; });
+      else setScores((s) => { const n = [...s]; n[0] += p.points; return n; });
+    }
+    showPowerBanner(p.msg(p));
+    sound.correct?.();
+    setTimeout(() => setChickens((cs) => cs.filter((c) => c.id !== chicken.id)), 350);
+  };
+
   const onHit = (chicken) => {
-    if (chicken.answered) return;
+    if (chicken.answered || chicken.collected) return;
+
+    if (chicken.isBonus) { collectPower(chicken); return; }
+
     if (chicken.correct) {
       sound.correct();
+      triggerCorrectFlash();
       setChickens((cs) =>
-        cs.map((c) => c.id === chicken.id ? { ...c, dead: true, answered: true } : { ...c, answered: true })
+        cs.map((c) => (c.id === chicken.id ? { ...c, dead: true, answered: true } : c.isBonus ? c : { ...c, answered: true }))
       );
       const bonus = Math.round(100 * (1 + combo * 0.1));
-      setScore((s) => s + bonus);
-      setCombo((c) => c + 1);
+      const who = config.twoPlayer ? turn : 0;
+      setScores((s) => { const n = [...s]; n[who] += bonus; return n; });
+      spawnFloat(chicken.x + CHICKEN_W / 2, chicken.y, `+${bonus}`, 'var(--acc)');
+      setCombo((c) => {
+        const nc = c + 1;
+        setMaxCombo((m) => Math.max(m, nc));
+        if (nc > 0 && nc % 5 === 0) showComboBanner(nc);
+        return nc;
+      });
       setTimeout(() => nextQuestion(qIndex), 900);
     } else {
       sound.wrong();
-      setChickens((cs) => cs.map((c) => ({ ...c, answered: true, highlight: c.correct })));
+      triggerWrong();
+      setChickens((cs) => cs.map((c) => (c.isBonus ? c : { ...c, answered: true, highlight: c.correct })));
       setCombo(0);
+      setMistakes((m) => m + 1);
       const newLives = lives - 1;
       setLives(newLives);
       setTimeout(() => {
@@ -280,8 +465,9 @@ export default function Chicken2D() {
   const endGame = (won) => {
     setPhase('over');
     if (won) sound.win(); else sound.lose();
-    if (config.playerName.trim() && score > 0) {
-      const entry = { name: config.playerName.trim(), score, date: Date.now() };
+    const finalScore = config.twoPlayer ? Math.max(scores[0], scores[1]) : scores[0];
+    if (!config.twoPlayer && config.playerName.trim() && finalScore > 0) {
+      const entry = { name: config.playerName.trim(), score: finalScore, date: Date.now() };
       const next = [...leaderboard, entry].sort((a, b) => b.score - a.score).slice(0, 10);
       setLeaderboard(next);
     }
@@ -289,21 +475,33 @@ export default function Chicken2D() {
 
   useEffect(() => {
     if (phase !== 'playing') return;
+    const answerChickens = chickens.filter((c) => !c.isBonus);
     const onKey = (e) => {
       const idx = parseInt(e.key, 10) - 1;
-      if (idx >= 0 && idx < chickens.length) {
-        const c = chickens[idx];
+      if (idx >= 0 && idx < answerChickens.length) {
+        const c = answerChickens[idx];
         if (c && !c.answered) onHit(c);
       }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, chickens, combo, lives, qIndex]);
+  }, [phase, chickens, combo, lives, qIndex, turn]);
 
   const q = questions[qIndex];
   const activePreset = SPEED_PRESETS.find((p) => Math.abs(p.mult - config.speed) < 0.05);
   const update = (key, val) => setConfig({ ...config, [key]: val });
+  const effectiveSpeed = config.speed * rampMultiplier(qIndex);
+
+  // Huy hiệu cuối game
+  const buildBadges = () => {
+    const badges = [];
+    if (mistakes === 0) badges.push({ icon: '💯', label: 'Hoàn hảo — không sai câu nào' });
+    if (maxCombo >= 10) badges.push({ icon: '🔥', label: `Chuỗi combo khủng ×${maxCombo}` });
+    else if (maxCombo >= 5) badges.push({ icon: '⚡', label: `Chuỗi combo tốt ×${maxCombo}` });
+    if (config.timeLimit > 0 && config.timeLimit <= 15) badges.push({ icon: '⏱', label: 'Hoàn thành ở tốc độ cao' });
+    return badges;
+  };
 
   /* SETUP */
   if (phase === 'setup') {
@@ -319,8 +517,23 @@ export default function Chicken2D() {
             <h3 className="setup-title">Người chơi</h3>
             <label>
               Tên (dùng để lưu bảng xếp hạng)
-              <input value={config.playerName} onChange={(e) => update('playerName', e.target.value)} maxLength={20} placeholder="Vd: Minh Anh" />
+              <input value={config.playerName} onChange={(e) => update('playerName', e.target.value)} maxLength={20} placeholder="Vd: Minh Anh" disabled={config.twoPlayer} />
             </label>
+
+            <div className="setup-sub">
+              <label className="row" style={{ cursor: 'pointer', gap: '.5rem' }}>
+                <input type="checkbox" checked={config.twoPlayer} onChange={(e) => update('twoPlayer', e.target.checked)} />
+                <span style={{ textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--sans)', fontSize: '.9rem', color: 'var(--ink)' }}>
+                  Chế độ 2 người chơi luân phiên (chung mạng, riêng điểm)
+                </span>
+              </label>
+              {config.twoPlayer && (
+                <label style={{ marginTop: '.6rem' }}>
+                  Tên người chơi 2
+                  <input value={config.p2Name} onChange={(e) => update('p2Name', e.target.value)} maxLength={20} placeholder="Vd: Gia Bảo" />
+                </label>
+              )}
+            </div>
           </div>
         </div>
 
@@ -372,8 +585,26 @@ export default function Chicken2D() {
               </div>
             </div>
 
+            <div className="setup-sub">
+              <label className="row" style={{ cursor: 'pointer', gap: '.5rem' }}>
+                <input type="checkbox" checked={config.difficultyRamp} onChange={(e) => update('difficultyRamp', e.target.checked)} />
+                <span style={{ textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--sans)', fontSize: '.9rem', color: 'var(--ink)' }}>
+                  Độ khó tăng dần — gà chạy nhanh hơn qua từng câu
+                </span>
+              </label>
+            </div>
+
+            <div className="setup-sub">
+              <label className="row" style={{ cursor: 'pointer', gap: '.5rem' }}>
+                <input type="checkbox" checked={config.powerups} onChange={(e) => update('powerups', e.target.checked)} />
+                <span style={{ textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--sans)', fontSize: '.9rem', color: 'var(--ink)' }}>
+                  Gà vàng vật phẩm (❄ đóng băng · 🐌 làm chậm · 🛡 +mạng · ★ điểm thưởng)
+                </span>
+              </label>
+            </div>
+
             <div className="setup-sub" style={{ marginTop: '.6rem' }}>
-              <button className="btn sm" type="button" onClick={() => setConfig({ ...config, speed: 1, chickenCount: 5, timeLimit: 30 })}>Khôi phục cài đặt</button>
+              <button className="btn sm" type="button" onClick={() => setConfig({ ...config, speed: 1, chickenCount: 5, timeLimit: 30, difficultyRamp: false, powerups: true })}>Khôi phục cài đặt</button>
             </div>
           </div>
         </div>
@@ -407,17 +638,28 @@ export default function Chicken2D() {
 
   /* PLAYING */
   if (phase === 'playing') {
+    const scoreLabel = config.twoPlayer
+      ? `${config.playerName.trim() || 'P1'} ${scores[0]} · ${config.p2Name.trim() || 'P2'} ${scores[1]}`
+      : `Điểm ${scores[0]}`;
+
     return (
       <section className="wrap">
         <div className="game-hud">
           <span className="hud-item">Câu <b>{qIndex + 1}</b>/{questions.length}</span>
           <span className="hud-item">Combo <b>×{combo}</b></span>
-          <span className="hud-item hud-lives">{'●'.repeat(Math.max(0, lives))}</span>
+          <span className="hud-item hud-lives">
+            {Array.from({ length: Math.max(lives, 0) }).map((_, i) => <span key={i} className="life-heart">♥</span>)}
+            {Array.from({ length: Math.max(3 - lives, 0) }).map((_, i) => <span key={'e' + i} className="life-heart empty">♡</span>)}
+          </span>
           {config.timeLimit > 0 && (
             <span className="hud-item" style={{ color: timeLeft <= 5 ? 'var(--acc)' : 'var(--ink)', fontWeight: 700 }}>⏱ {timeLeft}s</span>
           )}
-          <span className="hud-item hud-score">Điểm {score}</span>
+          <span className="hud-item hud-score">{scoreLabel}</span>
         </div>
+
+        {config.twoPlayer && (
+          <div className="turn-badge">Lượt của <b>{turn === 0 ? (config.playerName.trim() || 'Người chơi 1') : (config.p2Name.trim() || 'Người chơi 2')}</b></div>
+        )}
 
         <div className="game-question">{q?.question}</div>
 
@@ -427,8 +669,19 @@ export default function Chicken2D() {
           </div>
         )}
 
-        <div className="chicken-field" style={{ width: FIELD_W, height: FIELD_H }}>
-          {chickens.map((c) => (<Chicken key={c.id} data={c} theme={theme} speedMult={config.speed} onHit={onHit} />))}
+        <div className={'chicken-field' + (shake ? ' shake' : '')} style={{ width: FIELD_W, height: FIELD_H }}>
+          <FieldDecor />
+          {chickens.map((c) => (
+            <Chicken key={c.id} data={c} theme={theme} speedMult={effectiveSpeed} buffsRef={buffsRef} onHit={onHit} />
+          ))}
+
+          {floats.map((f) => (
+            <div key={f.id} className="float-score" style={{ left: f.x, top: f.y, color: f.color }}>{f.text}</div>
+          ))}
+
+          {flash && <div className={'field-flash ' + flash} />}
+          {comboBanner && <div className="combo-banner">{comboBanner}</div>}
+          {powerBanner && <div className="power-toast">{powerBanner}</div>}
         </div>
 
         <div className="row center" style={{ marginTop: '1rem' }}>
@@ -439,13 +692,39 @@ export default function Chicken2D() {
   }
 
   /* OVER */
+  const badges = buildBadges();
+  const winnerLine = config.twoPlayer
+    ? scores[0] === scores[1]
+      ? 'Hòa!'
+      : `${scores[0] > scores[1] ? (config.playerName.trim() || 'Người chơi 1') : (config.p2Name.trim() || 'Người chơi 2')} thắng!`
+    : null;
+
   return (
     <section className="wrap">
       <GameOverModal
         title={lives <= 0 ? 'Hết mạng' : 'Hoàn thành'}
-        score={score}
+        score={config.twoPlayer ? Math.max(scores[0], scores[1]) : scores[0]}
         onRestart={() => setPhase('setup')}
-        extra={<p className="hint center">Bạn đã hoàn thành <b>{qIndex + (lives > 0 ? 1 : 0)}/{questions.length}</b> câu.</p>}
+        extra={
+          <>
+            {config.twoPlayer ? (
+              <div className="twoplayer-result">
+                <div className={scores[0] >= scores[1] ? 'tp-row winner' : 'tp-row'}><span>{config.playerName.trim() || 'Người chơi 1'}</span><b>{scores[0]}</b></div>
+                <div className={scores[1] > scores[0] ? 'tp-row winner' : 'tp-row'}><span>{config.p2Name.trim() || 'Người chơi 2'}</span><b>{scores[1]}</b></div>
+                <p className="hint center" style={{ marginTop: '.4rem' }}>{winnerLine}</p>
+              </div>
+            ) : (
+              <p className="hint center">Bạn đã hoàn thành <b>{qIndex + (lives > 0 ? 1 : 0)}/{questions.length}</b> câu.</p>
+            )}
+            {badges.length > 0 && (
+              <ul className="achv-list">
+                {badges.map((b, i) => (
+                  <li key={i} className="achv-item"><span className="achv-icon">{b.icon}</span>{b.label}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        }
       />
     </section>
   );

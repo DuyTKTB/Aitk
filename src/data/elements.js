@@ -135,3 +135,41 @@ export const ELEMENTS = RAW.replace(/\n/g, '').split(';').map((row, i) => {
     s: { symbol: norm(symbol), name: norm(name), vn: norm(vietnameseName) },
   };
 });
+// ====== BỔ SUNG CHO TREND MODE ======
+// Bán kính nguyên tử (pm), nhiệt độ nóng chảy (K) — nguồn: bảng tuần hoàn IUPAC
+const RADIUS = {
+  H: 53, He: 31, Li: 167, Be: 112, B: 87, C: 67, N: 56, O: 48, F: 42, Ne: 38,
+  Na: 190, Mg: 145, Al: 118, Si: 111, P: 98, S: 88, Cl: 79, Ar: 71,
+  K: 243, Ca: 194, Sc: 184, Ti: 176, V: 171, Cr: 166, Mn: 161, Fe: 156, Co: 152,
+  Ni: 149, Cu: 145, Zn: 142, Ga: 136, Ge: 125, As: 114, Se: 103, Br: 94, Kr: 88,
+  Rb: 265, Sr: 219, Y: 212, Zr: 206, Nb: 198, Mo: 190, Tc: 183, Ru: 178, Rh: 173,
+  Pd: 169, Ag: 165, Cd: 161, In: 156, Sn: 145, Sb: 133, Te: 123, I: 115, Xe: 108,
+  Cs: 298, Ba: 253, La: 226, Ce: 210, Pr: 247, Nd: 206, Pm: 205, Sm: 238, Eu: 231,
+  Gd: 233, Tb: 225, Dy: 228, Ho: 226, Er: 226, Tm: 222, Yb: 222, Lu: 217,
+  Hf: 208, Ta: 200, W: 193, Re: 188, Os: 185, Ir: 180, Pt: 177, Au: 174, Hg: 171,
+  Tl: 156, Pb: 154, Bi: 143, Po: 135, At: 127, Rn: 120,
+  Fr: 348, Ra: 215, Ac: 195, Th: 180, Pa: 180, U: 175, Np: 175, Pu: 175, Am: 175,
+};
+const MELTING = {
+  H: 14, He: 0.95, Li: 454, Be: 1560, B: 2349, C: 3800, N: 63, O: 54, F: 53, Ne: 24,
+  Na: 371, Mg: 923, Al: 933, Si: 1687, P: 317, S: 388, Cl: 172, Ar: 84,
+  K: 336, Ca: 1115, Sc: 1814, Ti: 1941, V: 2183, Cr: 2180, Mn: 1519, Fe: 1811,
+  Co: 1768, Ni: 1728, Cu: 1358, Zn: 693, Ga: 303, Ge: 1211, As: 1090, Se: 494,
+  Br: 266, Kr: 116, Rb: 312, Sr: 1050, Y: 1799, Zr: 2128, Nb: 2750, Mo: 2896,
+  Ag: 1235, Cd: 594, In: 430, Sn: 505, Sb: 904, Te: 723, I: 387, Xe: 161,
+  Cs: 302, Ba: 1000, W: 3695, Pt: 2041, Au: 1337, Hg: 234, Pb: 601, U: 1405,
+};
+// patch vào ELEMENTS — thêm SAU khi ELEMENTS đã tạo
+for (const el of ELEMENTS) {
+  el.atomicRadius = RADIUS[el.symbol] ?? null;
+  el.meltingPoint = MELTING[el.symbol] ?? null;
+}
+
+// Metadata cho dropdown Trend
+export const TRENDS = [
+  { key: 'atomicMass', label: 'Khối lượng nguyên tử', unit: 'u', fmt: (v) => v.toFixed(2) },
+  { key: 'electronegativity', label: 'Độ âm điện (Pauling)', unit: '', fmt: (v) => v.toFixed(2) },
+  { key: 'atomicRadius', label: 'Bán kính nguyên tử', unit: 'pm', fmt: (v) => v.toFixed(0) },
+  { key: 'meltingPoint', label: 'Nhiệt độ nóng chảy', unit: 'K', fmt: (v) => v.toFixed(0) },
+  { key: 'valenceElectrons', label: 'Electron hóa trị', unit: 'e', fmt: (v) => String(v) },
+];

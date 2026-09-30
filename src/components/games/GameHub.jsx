@@ -38,7 +38,6 @@ const GAMES = [
     route: '#games/slingshot',
     tag: 'Vật lý · 10–15 phút',
     color: 'var(--nonmetal)',
-    comingSoon: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9"/>
@@ -64,7 +63,6 @@ const GAMES = [
     route: '#games/jeopardy',
     tag: 'Đội nhóm · 15–25 phút',
     color: 'var(--alkaline)',
-    comingSoon: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -81,6 +79,81 @@ const GAMES = [
       'Hết ô = tổng kết, đội nào nhiều điểm thắng.',
     ],
   },
+
+  // ============ 3 GAME MỚI — PHẢI NẰM TRONG MẢNG NÀY ============
+  {
+    id: 'lab',
+    num: '04',
+    title: 'Phòng thí nghiệm',
+    titleEm: 'ảo',
+    desc: 'Kéo hóa chất vào bàn, bấm "Trộn" để xem phản ứng. Khám phá 12+ phản ứng, hoàn thành nhiệm vụ.',
+    route: '#games/lab',
+    tag: 'Thí nghiệm · 10–15 phút',
+    color: 'var(--metalloid)',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/>
+        <circle cx="12" cy="15" r="1" fill="currentColor"/>
+        <circle cx="10" cy="17" r="1" fill="currentColor"/>
+      </svg>
+    ),
+    steps: [
+      'Chọn nhiệm vụ hoặc thí nghiệm tự do.',
+      'Click hóa chất trong kho để thêm vào bàn.',
+      'Bấm "TRỘN" để xem phản ứng.',
+      'Phản ứng đúng = +điểm +khám phá.',
+      'Hoàn thành 8 nhiệm vụ để đạt điểm tối đa.',
+    ],
+  },
+  {
+    id: 'battle',
+    num: '05',
+    title: 'Đấu trường',
+    titleEm: 'nguyên tố',
+    desc: 'Chọn nguyên tố, trả lời câu hỏi hóa học để tấn công. Type advantage ảnh hưởng sát thương.',
+    route: '#games/battle',
+    tag: 'Chiến thuật · 10–15 phút',
+    color: 'var(--alkali)',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.5 3.5l6 6-11 11-6-6z"/>
+        <path d="M3 21l3-3M14 7l3 3"/>
+      </svg>
+    ),
+    steps: [
+      'Chọn nguyên tố đại diện (P1).',
+      'AI hoặc P2 chọn nguyên tố đối thủ.',
+      'Mỗi lượt chọn đòn tấn công.',
+      'Trả lời câu hỏi đúng để đòn đánh có hiệu lực.',
+      'Type advantage: 1.5x rất mạnh, 0.5x yếu.',
+      'HP về 0 = thua.',
+    ],
+  },
+  {
+    id: 'sudoku',
+    num: '06',
+    title: 'Sudoku',
+    titleEm: 'hóa học',
+    desc: 'Điền 9 nguyên tố vào lưới 9×9. Không trùng hàng, cột, ô 3×3. Có 3 độ khó và gợi ý.',
+    route: '#games/sudoku',
+    tag: 'Logic · 5–20 phút',
+    color: 'var(--transition)',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="1"/>
+        <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+      </svg>
+    ),
+    steps: [
+      'Mỗi hàng ngang có đủ 9 nguyên tố.',
+      'Mỗi cột dọc có đủ 9 nguyên tố.',
+      'Mỗi ô 3×3 có đủ 9 nguyên tố.',
+      'Dùng phím 1-9 hoặc click pad để điền.',
+      'Bật "Ghi chú" để đánh dấu các số có thể.',
+      'Dùng "Gợi ý" khi bí (bị trừ điểm).',
+    ],
+  },
+  // ============ HẾT 3 GAME MỚI ============
 ];
 
 export default function GameHub() {
@@ -95,14 +168,14 @@ export default function GameHub() {
       <header className="games-hub-head">
         <p className="slogan">Trò chơi cho lớp học</p>
         <h1 className="games-hub-title">
-          Ba trò chơi <em>tương tác</em>
+          Sáu trò chơi <em>tương tác</em>
         </h1>
         <p className="lead games-hub-lead">
           Giáo viên tự nhập câu hỏi theo bài giảng. Không tài khoản, không cài đặt — chỉ cần máy chiếu.
         </p>
       </header>
 
-      {/* Grid 3 game */}
+      {/* Grid games */}
       <div className="games-grid">
         {GAMES.map((g) => {
           let qCount = 0;
@@ -119,21 +192,17 @@ export default function GameHub() {
               className={'game-card-v2' + (isComing ? ' coming' : '')}
               style={{ '--gc': g.color }}
             >
-              {/* Header: số + icon */}
               <div className="gc-head">
                 <span className="gc-num">{g.num}</span>
                 <span className="gc-icon">{g.icon}</span>
               </div>
 
-              {/* Title */}
               <h3 className="gc-title">
                 {g.title} <em>{g.titleEm}</em>
               </h3>
 
-              {/* Desc */}
               <p className="gc-desc">{g.desc}</p>
 
-              {/* Meta */}
               <div className="gc-meta">
                 <span className="gc-tag">{g.tag}</span>
                 {!isComing && qCount > 0 && (
@@ -142,7 +211,6 @@ export default function GameHub() {
                 {isComing && <span className="gc-badge gc-badge-soon">Sắp ra mắt</span>}
               </div>
 
-              {/* Actions */}
               <div className="gc-actions">
                 {!isComing ? (
                   <>
@@ -167,7 +235,6 @@ export default function GameHub() {
                 )}
               </div>
 
-              {/* Hướng dẫn mở rộng */}
               {!isComing && guideOpen === g.id && (
                 <div className="gc-guide">
                   <h4 className="gc-guide-title">Cách chơi</h4>
@@ -226,4 +293,4 @@ export default function GameHub() {
       </section>
     </section>
   );
-} 
+}

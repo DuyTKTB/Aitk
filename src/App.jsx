@@ -14,24 +14,34 @@ import CompoundAnalyzer from './components/CompoundAnalyzer.jsx';
 import EquationBalancer from './components/EquationBalancer.jsx';
 import GameHub from './components/games/GameHub.jsx';
 import Chicken2D from './components/games/Chicken2D.jsx';
+import SlingshotGame from './components/games/SlingshotGame.jsx';
+import JeopardyGame from './components/games/JeopardyGame.jsx';
 import AIChat from './components/AIChat.jsx';
+import VirtualLab from './components/games/VirtualLab.jsx';
+import ElementBattle from './components/games/ElementBattle.jsx';
+import ChemSudoku from './components/games/ChemSudoku.jsx';
+import {
+  IconHome, IconAtom, IconCalc, IconRobot, IconMicroscope, IconScale,
+  IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
+  IconTools, IconSun, IconMoon, IconMenu, IconClose,
+} from './components/Icons.jsx';
 
 const NAV_MAIN = [
-  ['home', 'Trang chủ'],
-  ['table', 'Bảng tuần hoàn'],
-  ['formulas', 'Công thức nhanh'],
+  ['home', 'Trang chủ', IconHome],
+  ['table', 'Bảng tuần hoàn', IconAtom],
+  ['formulas', 'Công thức nhanh', IconCalc],
 ];
 
 const NAV_TOOLS = [
-  ['ai', 'Trợ lý AI'],              // ← ĐỔI DÒNG NÀY
-  ['analyze', 'Phân tích'],
-  ['balance', 'Cân bằng PTHH'],
-  ['pomodoro', 'Pomodoro'],
-  ['exam', 'Kỳ thi'],
-  ['notes', 'Ghi chú'],
-  ['grade', 'Tính điểm'],
-  ['quiz', 'Ôn tập'],
-  ['games', 'Trò chơi'],
+  ['ai', 'Trợ lý AI', IconRobot],
+  ['analyze', 'Phân tích', IconMicroscope],
+  ['balance', 'Cân bằng PTHH', IconScale],
+  ['pomodoro', 'Pomodoro', IconTimer],
+  ['exam', 'Kỳ thi', IconCalendar],
+  ['notes', 'Ghi chú', IconNote],
+  ['grade', 'Tính điểm', IconTarget],
+  ['quiz', 'Ôn tập', IconQuiz],
+  ['games', 'Trò chơi', IconGamepad],
 ];
 
 const PAGES = [...NAV_MAIN, ...NAV_TOOLS];
@@ -42,6 +52,9 @@ const readPage = () => {
   if (h === 'games/chicken') return 'games/chicken';
   if (h === 'games/slingshot') return 'games/slingshot';
   if (h === 'games/jeopardy') return 'games/jeopardy';
+  if (h === 'games/lab') return 'games/lab';
+if (h === 'games/battle') return 'games/battle';
+if (h === 'games/sudoku') return 'games/sudoku';
 
   return PAGES.some((p) => p[0] === h) ? h : 'home';
 };
@@ -51,7 +64,9 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [toolOpen, setToolOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
   const navRef = useRef(null);
+  const progRef = useRef(null);
 
   const [theme, setTheme] = useLocalStorage(
     'cs-theme',
@@ -63,6 +78,17 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12);
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      if (progRef.current) progRef.current.style.transform = `scaleX(${h > 0 ? Math.min(1, window.scrollY / h) : 0})`;
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 700);
@@ -106,13 +132,10 @@ export default function App() {
 
   const isToolPage = NAV_TOOLS.some(([id]) => id === page);
 
-  // LOG để debug — mở Console xem page đang là gì
-  useEffect(() => {
-    console.log('[App] page =', page);
-  }, [page]);
-
   return (
     <>
+      <a className="skip-link" href="#main">Bỏ qua điều hướng</a>
+      <div className="scroll-progress" ref={progRef} aria-hidden="true" />
       <PetWidget />
       <ChatWidget />
 
@@ -120,73 +143,93 @@ export default function App() {
         <span>A7 K60 DTA</span>
       </div>
 
-      <header className="nav" ref={navRef}>
-        <a className="brand" href="#home">A7 K60 DTA</a>
+      {/* ============ NAV KIỂU APPLE ============ */}
+      <header className={'nav-wrap' + (scrolled ? ' scrolled' : '')} ref={navRef}>
+        <div className="nav-apple">
+          {/* Logo */}
+          <a className="nav-logo" href="#home" aria-label="Trang chủ">
+            <span className="logo-text">A7 K60 DTA</span>
+          </a>
 
-        <nav className={'links' + (menu ? ' open' : '')} aria-label="Điều hướng chính">
-          {NAV_MAIN.map(([id, label]) => (
-            <a key={id} href={'#' + id} aria-current={page === id ? 'page' : undefined}>
-              {label}
-            </a>
-          ))}
+          {/* Links giữa */}
+          <nav className="nav-links" aria-label="Điều hướng chính">
+            {NAV_MAIN.map(([id, label, Icon]) => (
+              <a
+                key={id}
+                href={'#' + id}
+                className={'nav-item' + (page === id ? ' active' : '')}
+                aria-current={page === id ? 'page' : undefined}
+                title={label}
+              >
+                <span className="nav-ico" aria-hidden="true"><Icon /></span>
+                <span className="nav-label">{label}</span>
+              </a>
+            ))}
 
-          <div className="navdrop">
-            <button
-              type="button"
-              className="navdrop-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setToolOpen((o) => !o);
-              }}
-              aria-expanded={toolOpen}
-              aria-haspopup="menu"
-              aria-current={isToolPage ? 'page' : undefined}
-            >
-              Công cụ
-            </button>
+            <div className="nav-drop">
+              <button
+                type="button"
+                className={'nav-item has-drop' + (isToolPage ? ' active' : '')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToolOpen((o) => !o);
+                }}
+                aria-expanded={toolOpen}
+                aria-haspopup="menu"
+                aria-current={isToolPage ? 'page' : undefined}
+                title="Công cụ"
+              >
+                <span className="nav-ico" aria-hidden="true"><IconTools /></span>
+                <span className="nav-label">Công cụ</span>
+              </button>
 
-            {toolOpen && (
-              <div className="navdrop-menu" role="menu">
-                {NAV_TOOLS.map(([id, label]) => (
+              <div className={'nav-drop-menu' + (toolOpen ? ' open' : '')} role="menu">
+                {NAV_TOOLS.map(([id, label, Icon]) => (
                   <a
                     key={id}
                     href={'#' + id}
                     role="menuitem"
+                    className={page === id ? 'active' : undefined}
                     aria-current={page === id ? 'page' : undefined}
                     onClick={() => {
                       setToolOpen(false);
                       setMenu(false);
                     }}
                   >
-                    {label}
+                    <span className="drop-ico" aria-hidden="true"><Icon /></span>
+                    <span>{label}</span>
                   </a>
                 ))}
               </div>
-            )}
+            </div>
+          </nav>
+
+          {/* Nút phải */}
+          <div className="nav-actions">
+            <button
+              className="nav-icon-btn"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              type="button"
+              aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'}
+              title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+            >
+              {theme === 'dark' ? <IconSun /> : <IconMoon />}
+            </button>
+
+            <button
+              className="nav-icon-btn nav-burger"
+              onClick={() => setMenu(!menu)}
+              aria-expanded={menu}
+              type="button"
+              aria-label="Mở menu"
+            >
+              {menu ? <IconClose /> : <IconMenu />}
+            </button>
           </div>
-        </nav>
-
-        <button
-          className="btn icon"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          type="button"
-          style={{ fontSize: '1.1rem', lineHeight: 1 }}
-        >
-          {theme === 'dark' ? '○' : '●'}
-        </button>
-
-        <button
-          className="btn icon burger"
-          onClick={() => setMenu(!menu)}
-          aria-expanded={menu}
-          type="button"
-          style={{ fontSize: '1.4rem', lineHeight: 1 }}
-        >
-          ≡
-        </button>
+        </div>
       </header>
 
-      <main>
+      <main id="main">
         {page === 'home' && <Home />}
         {page === 'table' && (
           <section className="wrap">
@@ -194,7 +237,7 @@ export default function App() {
             <PeriodicTable />
           </section>
         )}
-        {page === 'ai' && <AIChat />}         {/* ← ĐỔI 'ai-chat' thành 'ai' */}
+        {page === 'ai' && <AIChat />}
         {page === 'formulas' && <FormulaCalculator />}
         {page === 'analyze' && <CompoundAnalyzer />}
         {page === 'balance' && <EquationBalancer />}
@@ -206,6 +249,11 @@ export default function App() {
 
         {page === 'games' && <GameHub />}
         {page === 'games/chicken' && <Chicken2D />}
+        {page === 'games/slingshot' && <SlingshotGame />}
+        {page === 'games/jeopardy' && <JeopardyGame />}
+        {page === 'games/lab' && <VirtualLab />}
+{page === 'games/battle' && <ElementBattle />}
+{page === 'games/sudoku' && <ChemSudoku />}
       </main>
 
       <footer className="foot">

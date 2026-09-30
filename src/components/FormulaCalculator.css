@@ -1,0 +1,137 @@
+/* ============================================================
+   FORMULA CALCULATOR — giao diện thẻ mềm, bo tròn, hợp với nav kiểu Apple
+   ============================================================ */
+.fc { --fc-r: 22px; --fc-r-sm: 12px; padding-bottom: 5rem; }
+.fc h1 { margin-bottom: .8rem; }
+.fc-lead { max-width: 640px; margin: 0 0 1.6rem; color: var(--mut); line-height: 1.6; }
+
+/* ---- Tìm kiếm ---- */
+.fc-search {
+  position: relative; display: flex; align-items: center; gap: .7rem; margin-bottom: 1.2rem;
+  padding: .35rem 1rem; border: 1px solid var(--soft); border-radius: 999px; background: var(--panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .05); transition: border-color .2s, box-shadow .2s;
+}
+.fc-search:focus-within { border-color: var(--ink); box-shadow: 0 10px 32px rgba(0, 0, 0, .1); }
+.fc-search svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--mut); }
+.fc-search input { border: 0; padding: .7rem 0; font-size: 1.02rem; box-shadow: none !important; }
+.fc-search kbd { margin: 0; border-radius: 6px; color: var(--mut); border-color: var(--soft); }
+
+/* ---- Bảng công cụ (máy tính, hằng số, đổi đơn vị) ---- */
+.fc-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.6rem; }
+.fc-panel { padding: 1.1rem 1.2rem; border: 1px solid var(--soft); border-radius: var(--fc-r); background: var(--panel); }
+.fc-sub { margin: 0 0 .7rem; font: 600 .78rem var(--sans); color: var(--mut); letter-spacing: .01em; }
+.fc-qc { display: flex; gap: .5rem; align-items: center; }
+.fc-qc input { flex: 1; min-width: 0; padding: .6rem .8rem; border: 1px solid var(--soft); border-radius: var(--fc-r-sm); font: 500 .95rem var(--mono); }
+.fc-qc input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
+.fc-qc-res {
+  flex-shrink: 0; min-width: 4.5rem; padding: .6rem .9rem; border: 0; border-radius: var(--fc-r-sm); cursor: pointer;
+  background: var(--acc); color: var(--acc-ink); font: 700 .95rem var(--mono); transition: transform .15s, opacity .2s;
+}
+.fc-qc-res:hover:not(:disabled) { transform: translateY(-1px); }
+.fc-qc-res.off { background: var(--soft); color: var(--mut); cursor: default; }
+.fc-hint { margin: .5rem 0 0; font: 400 .78rem/1.5 var(--mono); color: var(--mut); }
+.fc-consts, .fc-hist, .fc-ex { display: flex; flex-wrap: wrap; gap: .4rem; }
+.fc-hist { margin-top: .7rem; padding-top: .7rem; border-top: 1px dashed var(--soft); }
+.fc-const {
+  padding: .3rem .7rem; border: 1px solid var(--soft); border-radius: 999px; background: transparent; cursor: pointer;
+  font: 500 .74rem var(--mono); color: var(--mut); transition: border-color .15s, color .15s, background .15s;
+}
+.fc-const b { color: var(--ink); }
+.fc-const:hover { border-color: var(--ink); color: var(--ink); background: var(--soft); }
+.fc-uc { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; align-items: center; }
+.fc-uc > :first-child, .fc-uc > input { grid-column: span 1; }
+.fc-uc select, .fc-uc input { padding: .55rem .7rem; border: 1px solid var(--soft); border-radius: var(--fc-r-sm); background: transparent; }
+.fc-uc > span { display: none; }
+.fc-uc-res { width: 100%; margin-top: .7rem; text-align: left; }
+
+/* ---- Tab ---- */
+.fc-tabs { display: flex; gap: .4rem; overflow-x: auto; padding: .2rem 0 .8rem; margin-bottom: .6rem; scrollbar-width: none; }
+.fc-tabs::-webkit-scrollbar { display: none; }
+.fc-tabs .chip { flex-shrink: 0; padding: .5rem 1rem; border-radius: 999px; border-color: var(--soft); font-size: .74rem; }
+.fc-tabs .chip.on { border-color: var(--ink); }
+.fc-n { margin-left: .2rem; padding: .05rem .45rem; border-radius: 999px; background: var(--soft); font: 600 .66rem var(--mono); }
+.chip.on .fc-n { background: color-mix(in srgb, var(--bg) 25%, transparent); }
+.fc-count { margin: 0 0 1rem; font: 500 .8rem var(--mono); color: var(--mut); }
+.fc-empty { margin: .8rem 0 0; color: var(--mut); font: 400 .82rem var(--mono); }
+.fc-empty.big { padding: 3rem 1rem; text-align: center; border: 1px dashed var(--soft); border-radius: var(--fc-r); font-size: .9rem; }
+
+/* ---- Lưới thẻ ---- */
+.fc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.1rem; align-items: start; }
+.fc-card {
+  display: flex; flex-direction: column; gap: .7rem; padding: 1.25rem 1.3rem; border: 1px solid var(--soft); border-radius: var(--fc-r);
+  background: var(--panel); transition: border-color .25s, box-shadow .25s, transform .25s var(--ease);
+}
+.fc-card:hover, .fc-card:focus-within { border-color: color-mix(in srgb, var(--ink) 55%, transparent); box-shadow: 0 14px 36px rgba(0, 0, 0, .09); }
+.fc-card:focus-within { transform: translateY(-2px); }
+.fc-wide { grid-column: 1 / -1; }
+.fc-card-h { display: flex; justify-content: space-between; gap: .6rem; align-items: flex-start; }
+.fc-card-h h3 { margin: 0; font-size: 1.05rem; line-height: 1.25; letter-spacing: -.02em; }
+.fc-tag { display: block; margin-bottom: .3rem; font: 600 .64rem var(--mono); color: var(--mut); letter-spacing: .04em; }
+.fc-star { flex-shrink: 0; width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; font-size: 1.15rem; color: var(--mut); transition: background .15s, color .15s, transform .2s var(--ease); }
+.fc-star:hover { background: var(--soft); color: var(--ink); }
+.fc-star[aria-pressed='true'] { color: #f5a300; transform: scale(1.1); }
+.fc-formula { margin: 0; padding: .55rem .8rem; border-left: 3px solid var(--acc); border-radius: 0 var(--fc-r-sm) var(--fc-r-sm) 0; background: var(--soft); font: 500 .82rem/1.55 var(--mono); overflow-x: auto; }
+.fc-body { display: flex; flex-direction: column; gap: .8rem; }
+
+/* ---- Ô nhập ---- */
+.fc-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .7rem; }
+.fc-field { display: grid; gap: .3rem; font: 600 .7rem var(--sans); text-transform: none; letter-spacing: 0; color: var(--mut); }
+.fc-inp { display: flex; align-items: center; border: 1px solid var(--soft); border-radius: var(--fc-r-sm); background: var(--bg); transition: border-color .15s, box-shadow .15s; }
+.fc-inp:focus-within { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent); }
+.fc-inp input, .fc-inp select { border: 0; box-shadow: none !important; padding: .6rem .7rem; font: 500 .95rem var(--mono); min-width: 0; }
+.fc-inp select { font-family: var(--sans); cursor: pointer; }
+.fc-inp em { padding-right: .7rem; font: 500 .7rem var(--mono); font-style: normal; color: var(--mut); white-space: nowrap; }
+
+/* ---- Kết quả ---- */
+.fc-outs { display: grid; gap: .4rem; }
+.fc-out { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin: 0; padding: .55rem .8rem; border-radius: var(--fc-r-sm); background: var(--soft); font-size: .86rem; animation: fc-in .25s var(--ease); }
+.fc-out span { color: var(--mut); }
+.fc-out b { text-align: right; font: 700 .95rem var(--mono); word-break: break-word; }
+.fc-out b small { margin-left: .3rem; font: 500 .7rem var(--mono); color: var(--mut); }
+.fc-out.main { background: var(--acc); color: var(--acc-ink); }
+.fc-out.main span, .fc-out.main small { color: inherit; opacity: .75; }
+.fc-out.main b { font-size: 1.15rem; }
+.fc-out.bad { outline: 1.5px solid #e5484d; }
+.fc-out.bad b { color: #e5484d; }
+.fc-out.main.bad b { color: inherit; }
+.fc-out.warn b { color: #c77d00; }
+@keyframes fc-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* ---- Chân thẻ ---- */
+.fc-foot { display: flex; gap: .4rem; flex-wrap: wrap; padding-top: .7rem; border-top: 1px solid var(--soft); }
+.fc-mini { padding: .35rem .8rem; border: 1px solid var(--soft); border-radius: 999px; background: transparent; cursor: pointer; font: 500 .72rem var(--sans); color: var(--mut); transition: all .15s; }
+.fc-mini:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); background: var(--soft); }
+.fc-mini:disabled { opacity: .4; cursor: default; }
+
+/* ---- Thẻ khối lượng mol ---- */
+.fc-mol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.6rem; }
+.fc-mol-in { padding: .8rem 1rem; border: 1px solid var(--soft); border-radius: var(--fc-r-sm); font: 700 1.3rem var(--mono); margin-bottom: .6rem; }
+.fc-mol-in:focus { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent); }
+.fc-hero { display: flex; align-items: baseline; gap: .5rem; margin: 1rem 0 .6rem; }
+.fc-hero b { font-size: clamp(2.4rem, 7vw, 3.6rem); line-height: 1; letter-spacing: -.05em; color: var(--acc); }
+.fc-hero span { font: 500 .85rem var(--mono); color: var(--mut); }
+.fc-check { display: flex; grid-template-columns: none; gap: .5rem; align-items: center; text-transform: none; letter-spacing: 0; font: 400 .82rem var(--sans); cursor: pointer; }
+.fc-bar { display: flex; height: 16px; overflow: hidden; border-radius: 999px; border: 1px solid var(--soft); }
+.fc-bar i { display: block; min-width: 3px; }
+.fc-legend { margin-top: .8rem; display: grid; gap: .3rem; }
+.fc-legend p { display: grid; grid-template-columns: 14px 4rem 1fr auto; gap: .6rem; align-items: center; margin: 0; font-size: .82rem; }
+.fc-legend i { width: 12px; height: 12px; border-radius: 4px; }
+.fc-legend span { color: var(--mut); font: 400 .74rem var(--mono); }
+.fc-legend em { font: 700 .82rem var(--mono); font-style: normal; }
+.fc-mol dl { margin: 1rem 0 0; }
+
+/* ---- Toast ---- */
+.fc-toast {
+  position: fixed; left: 50%; bottom: 28px; z-index: 9000; padding: .6rem 1.2rem; border-radius: 999px; pointer-events: none;
+  background: var(--ink); color: var(--bg); font: 600 .82rem var(--sans); box-shadow: 0 12px 32px rgba(0, 0, 0, .25);
+  opacity: 0; transform: translate(-50%, 12px); transition: opacity .2s, transform .25s var(--ease);
+}
+.fc-toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 720px) {
+  .fc-mol { grid-template-columns: 1fr; gap: 1rem; }
+  .fc-grid { grid-template-columns: 1fr; }
+  .fc-search kbd { display: none; }
+  .fc-inp input, .fc-inp select, .fc-qc input, .fc-mol-in { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .fc-out { animation: none; } .fc-card, .fc-toast { transition: none; } }

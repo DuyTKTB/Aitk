@@ -51,4 +51,47 @@ export const GAME_PRESETS = {
       wrong: ['O2', 'N2', 'H2'],
     },
   ],
+
+  slingshot: [
+    {
+      question: 'Kim loại nào tác dụng với HCl sinh ra khí H2?',
+      correct: 'Zn',
+      wrong: ['Cu', 'Ag', 'Au'],
+    },
+    {
+      question: 'Oxit nào là oxit axit?',
+      correct: 'SO2',
+      wrong: ['Na2O', 'CaO', 'MgO'],
+    },
+    {
+      question: 'Chất nào làm quỳ tím hóa đỏ?',
+      correct: 'HCl',
+      wrong: ['NaOH', 'NaCl', 'H2O'],
+    },
+    {
+      question: 'Dung dịch nào có pH > 7?',
+      correct: 'NaOH',
+      wrong: ['HCl', 'H2SO4', 'HNO3'],
+    },
+    {
+      question: 'Kim loại nào đứng trước H trong dãy hoạt động?',
+      correct: 'Fe',
+      wrong: ['Cu', 'Ag', 'Hg'],
+    },
+    {
+      question: 'Muối nào tan trong nước?',
+      correct: 'NaCl',
+      wrong: ['AgCl', 'BaSO4', 'CaCO3'],
+    },
+    {
+      question: 'Chất nào là bazơ tan?',
+      correct: 'KOH',
+      wrong: ['Cu(OH)2', 'Fe(OH)3', 'Mg(OH)2'],
+    },
+    {
+      question: 'Hiđroxit nào có tính lưỡng tính?',
+      correct: 'Al(OH)3',
+      wrong: ['NaOH', 'Ca(OH)2', 'KOH'],
+    },
+  ],
 };

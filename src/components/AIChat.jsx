@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { askAI, compressImage, AI_READY } from '../lib/ai.js';
+import AIMark from './AIMark.jsx';
 
 const CLASSES = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
 
 const SUGGESTIONS = [
-  { icon: '⚖️', text: 'Giải thích định luật bảo toàn khối lượng' },
-  { icon: '🧪', text: 'Sinh 5 câu hỏi về bảng tuần hoàn' },
-  { icon: '📊', text: 'Cách cân bằng phương trình Fe + O2' },
-  { icon: '📐', text: 'Giải thích công thức tính pH' },
+  { tag: 'Định luật', text: 'Giải thích định luật bảo toàn khối lượng' },
+  { tag: 'Bảng tuần hoàn', text: 'Sinh 5 câu hỏi về bảng tuần hoàn' },
+  { tag: 'Cân bằng PTHH', text: 'Cách cân bằng phương trình Fe + O2' },
+  { tag: 'Dung dịch', text: 'Giải thích công thức tính pH' },
 ];
 
 const MAX_CHATS = 50;
@@ -61,9 +62,12 @@ export default function AIChat() {
   const [grade, setGrade] = useState('Lớp 11');
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState('');
+  const [reasoning, setReasoning] = useState('');
+  const [showReasoning, setShowReasoning] = useState(true);
   const [err, setErr] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [copied, setCopied] = useState(null);
 
   const end = useRef(null);
   const inputRef = useRef(null);
@@ -80,7 +84,7 @@ export default function AIChat() {
   // Auto scroll
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, streaming]);
+  }, [messages.length, streaming, reasoning]);
 
   // Auto chọn chat đầu nếu chưa có active
   useEffect(() => {
@@ -89,7 +93,7 @@ export default function AIChat() {
     }
   }, [chats.length, activeId, setActiveId]);
 
-  // Nhận câu hỏi từ trang chủ (chạy SAU khi mount + có sendRef)
+  // Nhận câu hỏi từ trang chủ
   useEffect(() => {
     if (handledPendingRef.current) return;
     handledPendingRef.current = true;
@@ -100,13 +104,11 @@ export default function AIChat() {
       const pending = JSON.parse(raw);
       localStorage.removeItem('cs-ai-pending');
 
-      // Chỉ nhận nếu trong vòng 5 giây
       if (Date.now() - pending.t > 5000) return;
 
       if (pending.grade) setGrade(pending.grade);
 
       if (pending.text) {
-        // Delay 300ms để state + sendRef đã sẵn sàng
         setTimeout(() => {
           if (sendRef.current) {
             sendRef.current(pending.text);
@@ -117,6 +119,14 @@ export default function AIChat() {
       console.error('Pending load error:', e);
     }
   }, []);
+
+  // Ô nhập tự giãn
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  }, [input]);
 
   const newChat = () => {
     const id = rid();
@@ -135,6 +145,7 @@ export default function AIChat() {
     setImage(null);
     setErr('');
     setStreaming('');
+    setReasoning('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
@@ -164,6 +175,7 @@ export default function AIChat() {
     setActiveId(chatId);
     setSidebarOpen(false);
     setStreaming('');
+    setReasoning('');
     setErr('');
   };
 
@@ -244,6 +256,7 @@ export default function AIChat() {
     setErr('');
     setLoading(true);
     setStreaming('');
+    setReasoning('');
 
     const parts = [];
     if (image) {
@@ -277,19 +290,34 @@ export default function AIChat() {
     try {
       const apiHistory = baseMessages.map((m) => ({ role: m.role, parts: m.parts }));
       let finalText = '';
-      await askAI(apiHistory, (partial) => {
-        setStreaming(partial);
-        finalText = partial;
-      });
+      let finalReasoning = '';
+
+      await askAI(
+        apiHistory,
+        (partial) => {
+          setStreaming(partial);
+          finalText = partial;
+        },
+        (reasoningPart) => {
+          setReasoning(reasoningPart);
+          finalReasoning = reasoningPart;
+        }
+      );
 
       updateChat(chatId, (c) => ({
         ...c,
         messages: [
           ...baseMessages,
-          { role: 'model', parts: [{ text: finalText }], text: finalText },
+          {
+            role: 'model',
+            parts: [{ text: finalText }],
+            text: finalText,
+            reasoning: finalReasoning,
+          },
         ],
       }));
       setStreaming('');
+      setReasoning('');
     } catch (e) {
       setErr(e.message || 'Lỗi gọi AI.');
     } finally {
@@ -297,11 +325,12 @@ export default function AIChat() {
     }
   };
 
-  // QUAN TRỌNG: cập nhật sendRef mỗi lần render để effect dùng send mới nhất
   sendRef.current = send;
 
-  const copyMsg = (text) => {
+  const copyMsg = (text, key) => {
     navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(key);
+    setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
   };
 
   const onKeyDown = (e) => {
@@ -429,8 +458,19 @@ export default function AIChat() {
             </button>
 
             <div className="ds-title-block">
-              <span className="ds-eyebrow">Trợ lý hóa học</span>
-              <h2 className="ds-page-title">Hỏi <em>AI</em></h2>
+              <AIMark size={48} mode={loading ? 'think' : 'idle'} look />
+              <div>
+                <h2 className="ds-page-title">Trợ lý Hóa học</h2>
+                <span className="ds-status">
+                  {loading
+                    ? reasoning
+                      ? 'đang phân tích…'
+                      : streaming
+                      ? 'đang trả lời…'
+                      : 'đang suy nghĩ…'
+                    : 'sẵn sàng'}
+                </span>
+              </div>
             </div>
 
             <div className="ds-grade">
@@ -451,7 +491,7 @@ export default function AIChat() {
         <main className="ds-main">
           {!AI_READY && (
             <div className="ds-warning">
-              <b>⚠️ Chưa cấu hình API</b>
+              <b>Chưa cấu hình API</b>
               <p>
                 Thêm vào file <code>.env</code> dòng:{' '}
                 <code className="ds-code-inline">VITE_OPENROUTER_KEY=sk-or-v1-...</code>{' '}
@@ -460,17 +500,12 @@ export default function AIChat() {
             </div>
           )}
 
-          {messages.length === 0 && !streaming ? (
+          {messages.length === 0 && !streaming && !reasoning ? (
             <div className="ds-empty">
-              <div className="ds-hero-tile" aria-hidden="true">
-                <span className="ds-tile-n">01</span>
-                <span className="ds-tile-sym">Ai</span>
-                <span className="ds-tile-lbl">Trợ lý</span>
-              </div>
-              <span className="ds-empty-eyebrow">Phòng thí nghiệm AI</span>
-              <h1 className="ds-empty-title">Hỏi AI <em>bất cứ điều gì</em></h1>
+              <AIMark size={220} look mode={loading ? 'think' : 'idle'} />
+              <h1 className="ds-empty-title">Hôm nay bạn muốn hỏi gì về Hóa?</h1>
               <p className="ds-empty-sub">
-                Chụp đề bài, quét trang sách, hoặc gõ câu hỏi Hóa học
+                Gõ câu hỏi, dán ảnh đề bài hoặc chụp trang sách. Chọn đúng lớp ở góc trên để câu trả lời vừa sức.
               </p>
 
               <div className="ds-suggestions">
@@ -481,7 +516,7 @@ export default function AIChat() {
                     onClick={() => send(s.text)}
                     type="button"
                   >
-                    <span className="ds-suggestion-icon">{s.icon}</span>
+                    <span className="ds-suggestion-tag">{s.tag}</span>
                     <span className="ds-suggestion-text">{s.text}</span>
                   </button>
                 ))}
@@ -505,34 +540,68 @@ export default function AIChat() {
                       )}
                     </>
                   ) : (
-                    <div className="ds-msg-model">
-                      <div className="ds-msg-head">
-                        <span className="ds-msg-tile" aria-hidden="true">Ai</span>
-                        <span className="ds-msg-label">Trợ lý AI</span>
+                    <>
+                      <AIMark size={40} animate={false} className="ds-avatar" />
+                      <div className="ds-msg-body">
+
+                        {/* ===== KHỐI PHÂN TÍCH (REASONING) ===== */}
+                        {m.reasoning && (
+                          <div className="ds-reasoning-box">
+                            <button
+                              className="ds-reasoning-toggle"
+                              onClick={() => setShowReasoning((v) => !v)}
+                              type="button"
+                            >
+                              <span className="ds-reasoning-icon">🧠</span>
+                              <span>Phân tích của AI</span>
+                              <span className="ds-reasoning-arrow">
+                                {showReasoning ? '▼' : '▶'}
+                              </span>
+                            </button>
+                            {showReasoning && (
+                              <div className="ds-reasoning-content">
+                                <MarkdownLike text={m.reasoning} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {/* ===================================== */}
+
+                        <div className="ds-msg-content">
+                          <MarkdownLike text={m.text || ''} />
+                        </div>
+                        <button
+                          className="ds-msg-copy"
+                          onClick={() => copyMsg(m.text || '', 'm' + i)}
+                          type="button"
+                        >
+                          {copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
+                        </button>
                       </div>
-                      <div className="ds-msg-content">
-                        <MarkdownLike text={m.text || ''} />
-                      </div>
-                      <button
-                        className="ds-msg-copy"
-                        onClick={() => copyMsg(m.text || '')}
-                        title="Sao chép"
-                        type="button"
-                      >
-                        📋 Sao chép
-                      </button>
-                    </div>
+                    </>
                   )}
                 </div>
               ))}
 
+              {/* Đang stream */}
               {streaming && (
                 <div className="ds-msg ds-msg-model">
-                  <div className="ds-msg-model">
-                    <div className="ds-msg-head">
-                      <span className="ds-msg-tile" aria-hidden="true">Ai</span>
-                      <span className="ds-msg-label">Trợ lý AI</span>
-                    </div>
+                  <AIMark size={40} mode="talk" className="ds-avatar" />
+                  <div className="ds-msg-body">
+
+                    {reasoning && (
+                      <div className="ds-reasoning-box streaming">
+                        <div className="ds-reasoning-toggle">
+                          <span className="ds-reasoning-icon">🧠</span>
+                          <span>Đang phân tích…</span>
+                          <span className="ds-typing"><i /><i /><i /></span>
+                        </div>
+                        <div className="ds-reasoning-content">
+                          <MarkdownLike text={reasoning} />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="ds-msg-content">
                       <MarkdownLike text={streaming} />
                     </div>
@@ -540,14 +609,26 @@ export default function AIChat() {
                 </div>
               )}
 
+              {/* Đang loading, chưa có gì */}
               {loading && !streaming && (
                 <div className="ds-msg ds-msg-model">
-                  <div className="ds-msg-head">
-                    <span className="ds-msg-tile" aria-hidden="true">Ai</span>
-                    <span className="ds-msg-label">Đang soạn câu trả lời…</span>
-                  </div>
-                  <div className="ds-typing">
-                    <span /><span /><span />
+                  <AIMark size={40} mode="think" className="ds-avatar" />
+                  <div className="ds-msg-body">
+
+                    {reasoning ? (
+                      <div className="ds-reasoning-box streaming">
+                        <div className="ds-reasoning-toggle">
+                          <span className="ds-reasoning-icon">🧠</span>
+                          <span>Đang phân tích…</span>
+                          <span className="ds-typing"><i /><i /><i /></span>
+                        </div>
+                        <div className="ds-reasoning-content">
+                          <MarkdownLike text={reasoning} />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="ds-thinking">Đang suy nghĩ…</span>
+                    )}
                   </div>
                 </div>
               )}
@@ -594,7 +675,7 @@ export default function AIChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Hỏi về Hóa học, hoặc dán ảnh đề bài…"
               rows={1}
             />
 
@@ -616,7 +697,7 @@ export default function AIChat() {
             </button>
           </div>
 
-          {err && <p className="ds-error">⚠️ {err}</p>}
+          {err && <p className="ds-error">{err}</p>}
           <p className="ds-disclaimer">
             AI có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.
           </p>
@@ -642,6 +723,7 @@ function MarkdownLike({ text }) {
   let listBuf = [];
   let codeBuf = [];
   let inCode = false;
+  let codeLang = '';
 
   const flushList = () => {
     if (listBuf.length) {
@@ -658,9 +740,7 @@ function MarkdownLike({ text }) {
   const flushCode = () => {
     if (codeBuf.length) {
       blocks.push(
-        <pre key={blocks.length} className="ds-code">
-          <code>{codeBuf.join('\n')}</code>
-        </pre>
+        <CodeBlock key={blocks.length} lang={codeLang} code={codeBuf.join('\n')} />
       );
       codeBuf = [];
     }
@@ -669,7 +749,7 @@ function MarkdownLike({ text }) {
   for (const line of lines) {
     if (/^```/.test(line.trim())) {
       if (inCode) { flushCode(); inCode = false; }
-      else { flushList(); inCode = true; }
+      else { flushList(); inCode = true; codeLang = line.trim().slice(3).trim(); }
       continue;
     }
     if (inCode) { codeBuf.push(line); continue; }
@@ -702,4 +782,26 @@ function inlineFormat(text) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code class="ds-inline-code">$1</code>');
+}
+
+function CodeBlock({ lang, code }) {
+  const [ok, setOk] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setOk(true);
+    setTimeout(() => setOk(false), 1500);
+  };
+  return (
+    <div className="ds-codeblock">
+      <div className="ds-code-head">
+        <span>{lang || 'code'}</span>
+        <button className="ds-code-copy" onClick={copy} type="button">
+          {ok ? 'Đã chép' : 'Sao chép'}
+        </button>
+      </div>
+      <pre className="ds-code">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
 }
