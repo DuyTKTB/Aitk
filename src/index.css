@@ -8330,3 +8330,9 @@ svg.ai-mark.look {
   .gc-del { display: grid; }
 }
 @media (prefers-reduced-motion: reduce) { .gc-toast { animation-duration: 1ms; opacity: 1; } }
+.ds-msg-content.quota-error {
+  background: rgba(255, 77, 26, 0.1);
+  border-left: 4px solid var(--acc);
+  color: var(--acc);
+  font-weight: 600;
+}

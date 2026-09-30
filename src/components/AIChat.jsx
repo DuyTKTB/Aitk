@@ -376,13 +376,27 @@ export default function AIChat() {
       }));
       setStreaming('');
       setReasoning('');
-    } catch (e) {
-      setErr(e.message || 'Lỗi gọi AI.');
-      setStreaming('');
-      setReasoning('');
-    } finally {
-      setLoading(false);
-    }
+} catch (e) {
+  // Nếu là lỗi hết quota → hiển thị như tin nhắn AI luôn
+  if (e?.isQuota) {
+    updateChat(chatId, (c) => ({
+      ...c,
+      messages: [
+        ...baseMessages,
+        {
+          role: 'model',
+          parts: [{ text: e.message }],
+          text: e.message,
+          isQuotaError: true,
+        },
+      ],
+    }));
+  } else {
+    setErr(e.message || 'Lỗi gọi AI.');
+  }
+} finally {
+  setLoading(false);
+}
   };
 
   sendRef.current = send;
