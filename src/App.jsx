@@ -23,10 +23,12 @@ import ChemSudoku from './components/games/ChemSudoku.jsx';
 import { useAuth } from './hooks/useAuth.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
+import MobileHeader from './components/MobileHeader.jsx';
+import AIMark from './components/AIMark.jsx';
 import {
   IconHome, IconAtom, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
-  IconTools, IconSun, IconMoon, IconMenu, IconClose,
+  IconTools, IconSun, IconMoon, IconMenu, IconClose, IconUser,
 } from './components/Icons.jsx';
 
 const NAV_MAIN = [
@@ -46,6 +48,15 @@ const NAV_TOOLS = [
   ['quiz', 'Ôn tập', IconQuiz],
   ['games', 'Trò chơi', IconGamepad],
   ['profile', 'Trang cá nhân', IconHome],
+];
+
+/* ============ BOTTOM NAV (MOBILE) ============ */
+const NAV_BOTTOM = [
+  ['home', 'Trang chủ', IconHome],
+  ['table', 'Bảng TH', IconAtom],
+  ['ai', 'AI', 'aimark'],           // ← đánh dấu đặc biệt
+  ['games', 'Trò chơi', IconGamepad],
+  ['profile', 'Cá nhân', IconUser],
 ];
 
 const PAGES = [...NAV_MAIN, ...NAV_TOOLS];
@@ -171,7 +182,19 @@ export default function App() {
         <span>A7 K60 DTA</span>
       </div>
 
-      {/* ============ NAV KIỂU APPLE ============ */}
+      {/* ============ MOBILE HEADER ============ */}
+<MobileHeader
+  page={page}
+  theme={theme}
+  onSearch={() => {
+    if (location.hash !== '#table') location.hash = 'table';
+    setTimeout(() => document.getElementById('search')?.focus(), 100);
+  }}
+  onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+  onMenu={() => setMenu(true)}
+/>
+
+      {/* ============ NAV KIỂU APPLE (DESKTOP) ============ */}
       <header className={'nav-wrap' + (scrolled ? ' scrolled' : '')} ref={navRef}>
         <div className="nav-apple">
           {/* Logo */}
@@ -315,6 +338,58 @@ export default function App() {
               </a>
             ))}
           </div>
+
+          {/* Nút theme + logout trong menu mobile */}
+          <p className="nav-sheet-label">Tài khoản</p>
+          <div className="nav-sheet-grid">
+            <button
+              type="button"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                minHeight: 46,
+                padding: '0 12px',
+                borderRadius: 14,
+                font: '500 .84rem var(--sans)',
+                color: 'var(--ink)',
+                background: 'color-mix(in srgb, var(--soft) 50%, transparent)',
+                border: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ display: 'inline-flex', fontSize: '1.05rem' }}>
+                {theme === 'dark' ? <IconSun /> : <IconMoon />}
+              </span>
+              {theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(false);
+                if (confirm(`Đăng xuất khỏi tài khoản ${user?.displayName || user?.email || ''}?`)) {
+                  logout();
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                minHeight: 46,
+                padding: '0 12px',
+                borderRadius: 14,
+                font: '500 .84rem var(--sans)',
+                color: 'var(--acc)',
+                background: 'color-mix(in srgb, var(--soft) 50%, transparent)',
+                border: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ display: 'inline-flex', fontSize: '1.05rem' }}>↪</span>
+              Đăng xuất
+            </button>
+          </div>
         </div>
       </header>
 
@@ -326,7 +401,9 @@ export default function App() {
             <PeriodicTable />
           </section>
         )}
-        {page === 'ai' && <AIChat />}
+        <div style={{ display: page === 'ai' ? 'block' : 'none' }}>
+          <AIChat />
+        </div>
         {page === 'formulas' && <FormulaCalculator />}
         {page === 'analyze' && <CompoundAnalyzer />}
         {page === 'balance' && <EquationBalancer />}
@@ -362,6 +439,28 @@ export default function App() {
         </nav>
         <small>© 2026 A7 K60 DTA — bycode Duy TK</small>
       </footer>
+
+      {/* ============ BOTTOM NAV (MOBILE) ============ */}
+      <nav className="bottom-nav" aria-label="Điều hướng di động">
+        {NAV_BOTTOM.map(([id, label, Icon]) => {
+          const isActive =
+            page === id ||
+            (id === 'games' && page.startsWith('games/'));
+          return (
+            <a
+              key={id}
+              href={'#' + id}
+              className={'bnav-item' + (isActive ? ' active' : '')}
+              aria-current={isActive ? 'page' : undefined}
+            >
+   <span className="bnav-icon">
+  {Icon === 'aimark' ? <AIMark size={24} animate={false} /> : <Icon />}
+</span>
+              <span className="bnav-label">{label}</span>
+            </a>
+          );
+        })}
+      </nav>
     </>
   );
 }

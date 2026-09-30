@@ -9665,3 +9665,1153 @@ svg.ai-mark.look {
   align-items: center;
   gap: .15rem;
 }
+/* ============================================================
+   BOTTOM NAV — Material 3 kiểu notch (chỉ mobile)
+   Dán vào CUỐI index.css
+   ============================================================ */
+
+.bottom-nav {
+  display: none;  /* ẩn mặc định trên desktop */
+}
+
+/* ============================================================
+   BOTTOM NAV — PILL NỔI + NOTCH (Material 3)
+   ============================================================ */
+.bottom-nav { display: none; }
+
+@media (max-width: 720px) {
+  /* Ẩn nav trên cùng */
+  .nav-wrap { display: none !important; }
+
+  /* Chừa chỗ cho bottom nav */
+  main {
+    padding-top: 1rem !important;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+  }
+  .foot {
+    padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* ============ PILL NỔI ============ */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: min(440px, calc(100vw - 24px));
+    height: 68px;
+    padding: 0 6px;
+
+    align-items: center;
+    justify-content: space-around;
+    gap: 0;
+
+    background: var(--ink);
+    border-radius: 999px;
+    border: none;
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.22),
+      0 4px 12px rgba(0, 0, 0, 0.12);
+
+    z-index: 9999;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  [data-theme='dark'] .bottom-nav {
+    background: #1a1a18;
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.6),
+      0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ============ TỪNG MỤC ============ */
+  .bnav-item {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+    color: rgba(241, 238, 230, 0.55);  /* xám sáng trên nền đen */
+    transition: color .25s var(--ease);
+  }
+
+  [data-theme='dark'] .bnav-item {
+    color: rgba(241, 238, 230, 0.5);
+  }
+
+  .bnav-label {
+    display: none;   /* ẩn chữ, chỉ icon */
+  }
+
+  .bnav-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    z-index: 2;
+
+    transition:
+      background .35s var(--ease),
+      color .35s var(--ease),
+      transform .45s cubic-bezier(.34, 1.56, .64, 1),
+      box-shadow .35s var(--ease);
+  }
+
+  .bnav-icon svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+    transition: transform .3s var(--ease);
+  }
+
+  /* ============ ACTIVE: NÚT TRÒN NỔI ============ */
+  .bnav-item.active {
+    color: var(--acc-ink);
+  }
+
+  .bnav-item.active .bnav-icon {
+    background: var(--acc);                /* vòng tròn cam/xanh neon */
+    color: var(--acc-ink);
+    transform: translateY(-26px) scale(1.35);
+    box-shadow:
+      0 8px 24px color-mix(in srgb, var(--acc) 55%, transparent),
+      0 4px 12px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Vòng sáng nhấp nháy quanh nút active */
+  .bnav-item.active .bnav-icon::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--acc) 40%, transparent) 0%,
+      transparent 70%
+    );
+    z-index: -1;
+    animation: bnav-glow 2.4s ease-out infinite;
+  }
+
+  @keyframes bnav-glow {
+    0%   { transform: scale(.8); opacity: .9; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* ============ NOTCH: KHOÉT TRÒN Ở VIỀN TRÊN ============ */
+  .bnav-item.active::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 62px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--ink);              /* cùng màu nền nav → tạo cảm giác khoét */
+    box-shadow:
+      /* Viền cong 2 bên notch */
+      -10px -4px 0 -2px var(--ink),
+      10px -4px 0 -2px var(--ink),
+      /* Bóng nhẹ vào trong */
+      inset 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1;
+  }
+
+  [data-theme='dark'] .bnav-item.active::before {
+    background: #1a1a18;
+    box-shadow:
+      -10px -4px 0 -2px #1a1a18,
+      10px -4px 0 -2px #1a1a18,
+      inset 0 4px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Tap feedback */
+  .bnav-item:not(.active):active .bnav-icon {
+    transform: scale(.88);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* ============ NÚT ACTIVE LUÔN Ở TRÊN ============ */
+  .bnav-item.active {
+    z-index: 3;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav *, .bnav-icon, .bnav-icon::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+/* ============================================================
+   FIX: Thanh nhập chat AI nằm TRÊN bottom nav pill nổi
+   ============================================================ */
+@media (max-width: 720px) {
+  /* Bottom nav pill nổi: bottom 16px + height 68px = đỉnh ở 84px
+     Thanh nhập đặt bottom 92px để có 8px khe hở */
+  .ds-input-wrap {
+    bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+    padding: .8rem 1rem .9rem !important;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, .08);
+  }
+
+  /* Nội dung chat chừa chỗ cho cả input (bottom 92px) + nav pill (84px) */
+  .ds-main {
+    padding-bottom: calc(200px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Page chat co lại theo chiều cao thực */
+  .ds-page {
+    min-height: calc(100dvh - 92px) !important;
+  }
+
+  /* Ô nhập ≥ 16px để iOS không auto-zoom */
+  .ds-input {
+    font-size: 16px !important;
+  }
+
+  /* Khung chat (bong bóng) cách đáy 1 chút để không chạm input */
+  .ds-chat {
+    padding-bottom: .5rem;
+  }
+}
+/* Fix position: fixed khi tab ẩn/hiện (display: none → block) */
+.ds-input-wrap {
+  /* Tạo stacking context riêng, buộc browser tính lại vị trí */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Nếu vẫn lỗi, thêm: */
+@supports (-webkit-touch-callout: none) {
+  /* Chỉ áp dụng cho iOS Safari */
+  .ds-input-wrap {
+    position: fixed;
+    -webkit-transform: translateZ(0);
+  }
+}
+/* ============================================================
+   FIX: Nút chat FAB trên mobile — đẩy lên trên bottom nav
+   ============================================================ */
+@media (max-width: 720px) {
+
+  /* Nút chat nổi */
+  .chatfab {
+    right: 16px !important;
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    width: 54px !important;
+    height: 54px !important;
+    z-index: 9998 !important;   /* dưới bottom nav nhưng trên nội dung */
+  }
+
+  /* Nếu FAB có ring nhấp nháy, giữ nguyên */
+  .chatfab-ring {
+    display: none;   /* ẩn ring cho đỡ rối trên mobile */
+  }
+
+  /* Khung chat mở ra cũng phải nằm trên bottom nav */
+  .chatpane-v2 {
+    right: 12px !important;
+    bottom: calc(160px + env(safe-area-inset-bottom)) !important;
+    width: calc(100vw - 24px) !important;
+    max-width: 400px;
+    height: min(60dvh, 520px) !important;
+  }
+}
+/* ============================================================
+   FIX MOBILE: Nút chat cộng đồng (.cw-fab) không đè bottom nav
+   ============================================================ */
+@media (max-width: 720px) {
+
+  /* Nút chat cộng đồng — đẩy lên trên bottom nav */
+  .cw-fab {
+    right: 14px !important;
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    width: 52px !important;
+    height: 52px !important;
+    z-index: 9998 !important;
+  }
+
+  /* Khung chat mở ra — đẩy lên, không bị đè */
+  .cw-pane {
+    right: 8px !important;
+    left: 8px !important;
+    bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: min(65dvh, 560px) !important;
+    border-radius: 20px !important;
+  }
+}
+/* ============================================================
+   MOBILE HEADER — chỉ hiện trên mobile
+   ============================================================ */
+.mhead-bar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* ---- Header ---- */
+  .mhead-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
+
+    padding: 12px 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--soft);
+
+    /* Chống tràn */
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* ---- Bên trái: logo + text ---- */
+  .mhead-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .mhead-logo {
+    flex-shrink: 0;
+  }
+
+  .mhead-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .mhead-sub {
+    font: 500 .68rem var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--mut);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mhead-main {
+    font: 700 1.05rem var(--sans);
+    letter-spacing: -.02em;
+    color: var(--ink);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- Bên phải: 2 nút ---- */
+  .mhead-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .mhead-btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mhead-btn:hover { background: var(--soft); }
+  .mhead-btn:active { transform: scale(.92); }
+
+  .mhead-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* ---- Đẩy nội dung xuống dưới header ---- */
+  main {
+    padding-top: .5rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mhead-btn { transition: none; }
+}
+@media (max-width: 720px) {
+  /* Nút active to hơn */
+  .bnav-item.active .bnav-icon {
+    width: 42px !important;
+    height: 42px !important;
+    transform: translateY(-30px) scale(1.25) !important;
+  }
+
+  .bnav-item.active .bnav-icon svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  /* Notch to hơn cho khớp */
+  .bnav-item.active::before {
+    width: 76px !important;
+    height: 38px !important;
+    top: -3px !important;
+  }
+}
+/* ============================================================
+   CHAT WIDGET — MOBILE REDESIGN (full-screen, gọn, dễ dùng)
+   ============================================================ */
+@media (max-width: 720px) {
+
+  /* ---- Khung chat: full màn hình ---- */
+  .cw-pane {
+    position: fixed !important;
+    inset: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    z-index: 100000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--bg) !important;
+  }
+
+  /* ---- HEADER ---- */
+  .cw-head {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    padding-top: calc(10px + env(safe-area-inset-top)) !important;
+    background: var(--bg) !important;
+    border-bottom: 1px solid var(--soft) !important;
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+  }
+
+  .cw-head-main {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .cw-title {
+    font: 700 1.05rem var(--sans) !important;
+    letter-spacing: -.02em !important;
+    display: block !important;
+    line-height: 1.2 !important;
+  }
+
+  .cw-status {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font: 500 .72rem var(--mono) !important;
+    color: var(--mut) !important;
+    margin-top: 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Ẩn danh sách tên online dài trên mobile */
+  .cw-status span:last-child {
+    display: none !important;
+  }
+
+  /* Nút trong header */
+  .cw-ib {
+    width: 38px !important;
+    height: 38px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    color: var(--ink) !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+  }
+  .cw-ib:active { background: var(--soft) !important; }
+
+  /* ---- SEARCH ---- */
+  .cw-search {
+    padding: 8px 12px !important;
+    background: var(--soft) !important;
+    border-bottom: 1px solid var(--soft) !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ---- DANH SÁCH TIN NHẮN ---- */
+  .cw-body {
+    flex: 1 !important;
+    overflow: hidden !important;
+    position: relative !important;
+    min-height: 0 !important;
+  }
+
+  .cw-list {
+    height: 100% !important;
+    overflow-y: auto !important;
+    padding: 12px 10px 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* ---- BONG BÓNG TIN NHẮN ---- */
+  .cw-msg {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    max-width: 88% !important;
+    position: relative !important;
+    padding: 2px 0 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .cw-msg.me {
+    align-self: flex-end !important;
+    align-items: flex-end !important;
+  }
+
+  /* Tên + giờ */
+  .cw-meta {
+    font: 500 .68rem var(--mono) !important;
+    color: var(--mut) !important;
+    padding: 0 8px 2px !important;
+    display: block !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Bong bóng chữ */
+  .cw-bubble {
+    padding: 8px 12px !important;
+    border-radius: 18px 18px 18px 4px !important;
+    background: var(--soft) !important;
+    color: var(--ink) !important;
+    font: 500 .9rem/1.4 var(--sans) !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+    border: 0 !important;
+  }
+
+  .cw-msg.me .cw-bubble {
+    background: var(--acc) !important;
+    color: var(--acc-ink) !important;
+    border-radius: 18px 18px 4px 18px !important;
+  }
+
+  /* Bong bóng sticker to */
+  .cw-bubble.big {
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  .cw-bubble.big .cw-st {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  /* Ảnh gửi kèm */
+  .cw-img {
+    max-width: 200px !important;
+    max-height: 240px !important;
+    border-radius: 14px !important;
+    margin-top: 2px !important;
+  }
+
+  /* Trích dẫn (reply) */
+  .cw-quote {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    padding: 5px 10px !important;
+    background: color-mix(in srgb, var(--soft) 70%, transparent) !important;
+    border-left: 3px solid var(--acc) !important;
+    border-radius: 10px !important;
+    font-size: .74rem !important;
+    max-width: 100% !important;
+    margin-bottom: 2px !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    border: 0 !important;
+    border-left: 3px solid var(--acc) !important;
+  }
+  .cw-quote b { font: 700 .68rem var(--sans) !important; }
+  .cw-quote span {
+    color: var(--mut) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Reaction chips */
+  .cw-chips {
+    display: flex !important;
+    gap: 4px !important;
+    margin-top: 3px !important;
+    flex-wrap: wrap !important;
+  }
+  .cw-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    background: var(--soft) !important;
+    border: 1px solid transparent !important;
+    font: 600 .72rem var(--mono) !important;
+    cursor: pointer !important;
+    color: var(--ink) !important;
+  }
+  .cw-chip svg { width: 13px !important; height: 13px !important; }
+  .cw-chip.mine {
+    background: color-mix(in srgb, var(--acc) 20%, var(--bg)) !important;
+    border-color: var(--acc) !important;
+  }
+
+  /* Dẹp bộ tool reaction hover — vì mobile không hover */
+  .cw-tools {
+    display: none !important;
+  }
+
+  /* Khi bấm vào tin nhắn → hiện tools dạng ngang dưới bong bóng */
+  .cw-msg.active .cw-tools {
+    display: flex !important;
+    gap: 2px !important;
+    margin-top: 4px !important;
+    padding: 3px !important;
+    background: var(--bg) !important;
+    border: 1px solid var(--soft) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08) !important;
+    position: static !important;
+    animation: cw-tools-in .18s var(--ease) !important;
+  }
+
+  @keyframes cw-tools-in {
+    from { opacity: 0; transform: translateY(-4px); }
+  }
+
+  .cw-tool {
+    width: 34px !important;
+    height: 34px !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    color: var(--ink) !important;
+    display: grid !important;
+    place-items: center !important;
+    cursor: pointer !important;
+  }
+  .cw-tool svg { width: 18px !important; height: 18px !important; }
+  .cw-tool:active { background: var(--soft) !important; }
+  .cw-tool.danger { color: var(--acc) !important; }
+  .cw-tool.armed {
+    background: var(--acc) !important;
+    color: var(--acc-ink) !important;
+    width: auto !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font: 700 .74rem var(--sans) !important;
+  }
+
+  /* Ngày chia cách */
+  .cw-day {
+    align-self: center !important;
+    margin: 12px 0 6px !important;
+    padding: 3px 10px !important;
+    background: var(--soft) !important;
+    border-radius: 999px !important;
+    font: 500 .68rem var(--mono) !important;
+    color: var(--mut) !important;
+  }
+
+  /* Nút tải tin cũ */
+  .cw-more {
+    align-self: center !important;
+    padding: 6px 14px !important;
+    background: transparent !important;
+    border: 1px solid var(--soft) !important;
+    border-radius: 999px !important;
+    font: 500 .74rem var(--mono) !important;
+    color: var(--mut) !important;
+    cursor: pointer !important;
+  }
+
+  /* Nút "có tin mới" */
+  .cw-jump {
+    position: absolute !important;
+    bottom: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 6px 14px !important;
+    background: var(--ink) !important;
+    color: var(--bg) !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    font: 600 .74rem var(--sans) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .2) !important;
+    cursor: pointer !important;
+    z-index: 3 !important;
+  }
+
+  /* Empty state */
+  .cw-empty {
+    text-align: center !important;
+    color: var(--mut) !important;
+    padding: 40px 20px !important;
+    font-size: .85rem !important;
+  }
+
+  /* ---- LỖI ---- */
+  .cw-err {
+    margin: 0 !important;
+    padding: 8px 12px !important;
+    background: color-mix(in srgb, var(--acc) 12%, var(--bg)) !important;
+    color: var(--acc) !important;
+    font: 600 .78rem var(--sans) !important;
+    text-align: center !important;
+    border-top: 1px solid var(--soft) !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ---- ĐÍNH KÈM (reply / ảnh) ---- */
+  .cw-attach {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    background: var(--soft) !important;
+    border-top: 1px solid var(--soft) !important;
+    border-left: 3px solid var(--acc) !important;
+    flex-shrink: 0 !important;
+    font-size: .78rem !important;
+  }
+  .cw-attach img {
+    width: 40px !important;
+    height: 40px !important;
+    object-fit: cover !important;
+    border-radius: 6px !important;
+  }
+  .cw-attach > div {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+  }
+  .cw-attach b {
+    font: 700 .72rem var(--sans) !important;
+    color: var(--ink) !important;
+  }
+  .cw-attach span {
+    color: var(--mut) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: .74rem !important;
+  }
+
+  /* ---- STICKER PICKER ---- */
+  .cw-picker {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 4px !important;
+    padding: 10px !important;
+    background: var(--bg) !important;
+    border-top: 1px solid var(--soft) !important;
+    max-height: 180px !important;
+    overflow-y: auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cw-st-btn {
+    aspect-ratio: 1 !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    padding: 6px !important;
+    cursor: pointer !important;
+  }
+  .cw-st-btn:active { background: var(--soft) !important; }
+
+  /* ---- FORM NHẬP ---- */
+  .cw-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 8px 10px !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    background: var(--bg) !important;
+    border-top: 1px solid var(--soft) !important;
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 5 !important;
+  }
+
+  /* Ô tên */
+  .cw-name {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 4px 8px !important;
+    background: var(--soft) !important;
+    border-radius: 999px !important;
+    font-size: .78rem !important;
+  }
+  .cw-name input {
+    flex: 1 !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 2px 0 !important;
+    color: var(--ink) !important;
+    font: 500 .8rem var(--sans) !important;
+  }
+  .cw-name input:focus { outline: 0 !important; }
+
+  /* Hàng nhập tin */
+  .cw-row {
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 4px !important;
+  }
+
+  .cw-row .cw-ib {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: var(--soft) !important;
+    display: grid !important;
+    place-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cw-row textarea {
+    flex: 1 !important;
+    min-height: 40px !important;
+    max-height: 120px !important;
+    padding: 10px 14px !important;
+    border-radius: 20px !important;
+    border: 1.5px solid var(--soft) !important;
+    background: var(--bg) !important;
+    font: 500 .92rem/1.4 var(--sans) !important;
+    color: var(--ink) !important;
+    resize: none !important;
+    outline: 0 !important;
+    font-family: inherit !important;
+  }
+  .cw-row textarea:focus {
+    border-color: var(--acc) !important;
+  }
+
+  .cw-send {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    border: 0 !important;
+    background: var(--acc) !important;
+    color: var(--acc-ink) !important;
+    display: grid !important;
+    place-items: center !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+  }
+  .cw-send:disabled {
+    opacity: .4 !important;
+    cursor: not-allowed !important;
+  }
+
+  /* ---- Ẩn FAB khi chat đang mở ---- */
+  .cw-fab.is-open {
+    display: none !important;
+  }
+
+  /* ---- Nút FAB chat: đẩy lên trên bottom nav ---- */
+  .cw-fab {
+    right: 14px !important;
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    width: 52px !important;
+    height: 52px !important;
+    z-index: 9998 !important;
+  }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cw-pane *, .cw-fab, .cw-tools {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+/* ============================================================
+   AI CHAT — MOBILE: GIỮ NÚT MỞ LỊCH SỬ CHAT
+   ============================================================ */
+@media (max-width: 720px) {
+
+  /* Ẩn header AI nhưng GIỮ nút menu mở sidebar */
+  .ds-header {
+    display: block !important;    /* ← đổi thành block */
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background: var(--bg) !important;
+    border-bottom: 1px solid var(--soft) !important;
+  }
+
+  /* Container header gọn */
+  .ds-header-inner {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    min-height: 48px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Nút ☰ mở sidebar — hiện rõ */
+  .ds-menu-btn {
+    display: flex !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    background: var(--soft) !important;
+    color: var(--ink) !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 0 !important;
+    cursor: pointer !important;
+  }
+  .ds-menu-btn:active {
+    background: var(--acc) !important;
+    color: var(--acc-ink) !important;
+  }
+
+  /* Tiêu đề */
+  .ds-title-block {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  /* Logo AI nhỏ lại */
+  .ds-title-block > svg.ai-mark {
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .ds-title-block > div {
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+  }
+
+  .ds-page-title {
+    font: 700 .88rem var(--sans) !important;
+    letter-spacing: -.02em !important;
+    line-height: 1.15 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Ẩn dòng "sẵn sàng" — chiếm chỗ vô ích */
+  .ds-status {
+    display: none !important;
+  }
+
+  /* Quota VIP / lượt */
+  .ds-quota {
+    display: flex !important;
+    gap: 4px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  .ds-quota-item {
+    padding: 3px 8px !important;
+    font-size: .65rem !important;
+  }
+  .ds-quota-upgrade {
+    display: none !important;   /* ẩn nút nâng cấp trên mobile cho gọn */
+  }
+
+  /* Ẩn dãy nút Lớp 10/11/12/Đại học */
+  .ds-grade {
+    display: none !important;
+  }
+
+  /* ---- SIDEBAR LỊCH SỬ CHAT ---- */
+  .ds-sidebar {
+    width: min(300px, 82vw) !important;
+    z-index: 100000 !important;
+  }
+
+  /* Overlay làm tối nền khi mở sidebar */
+  .ds-sidebar-overlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, .45) !important;
+    z-index: 99999 !important;
+    animation: ds-overlay-in .2s ease !important;
+  }
+
+  @keyframes ds-overlay-in {
+    from { opacity: 0; }
+  }
+}
+
+/* Ngoài mobile — ẩn overlay */
+@media (min-width: 721px) {
+  .ds-sidebar-overlay {
+    display: none !important;
+  }
+}
+/* ============================================================
+   AI CHAT — THU GỌN CÂU TRẢ LỜI DÀI + NÚT "XEM THÊM"
+   ============================================================ */
+
+/* Container của nội dung tin nhắn — dùng để đo chiều cao */
+.ds-msg-collapsible {
+  position: relative;
+  overflow: hidden;
+  transition: max-height .35s var(--ease);
+}
+
+/* Khi thu gọn: chỉ hiện ~3 dòng đầu, mờ dần ở cuối */
+.ds-msg-collapsible.collapsed {
+  max-height: 6.5rem;   /* ~3-4 dòng, tùy font */
+}
+
+.ds-msg-collapsible.collapsed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3rem;
+  background: linear-gradient(to bottom, transparent, var(--soft));
+  pointer-events: none;
+}
+
+/* Nút "Xem thêm" / "Thu gọn" */
+.ds-msg-more {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .5rem;
+  padding: .35rem .85rem;
+  background: var(--bg);
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  cursor: pointer;
+  font: 600 .74rem var(--sans);
+  color: var(--mut);
+  transition: all .15s;
+}
+
+.ds-msg-more:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--soft);
+}
+
+.ds-msg-more svg {
+  width: 13px;
+  height: 13px;
+  transition: transform .25s var(--ease);
+}
+
+.ds-msg-more.open svg {
+  transform: rotate(180deg);
+}
+
+/* Mobile: thu gọn ngắn hơn chút */
+@media (max-width: 720px) {
+  .ds-msg-collapsible.collapsed {
+    max-height: 5.5rem;
+  }
+  .ds-msg-more {
+    font-size: .72rem;
+    padding: .3rem .75rem;
+  }
+}
+/* ============================================================
+   AI CHAT INPUT — Nút chụp ảnh trên mobile
+   ============================================================ */
+
+/* Desktop: ẩn nút camera */
+.ds-icon-camera {
+  display: none !important;
+}
+
+@media (max-width: 720px) {
+  /* Mobile: hiện nút camera */
+  .ds-icon-camera {
+    display: flex !important;
+  }
+
+  /* Nút gallery vẫn hiện trên mobile (tùy chọn) */
+  /* Nếu muốn ẩn gallery, đổi display: none */
+  .ds-icon-gallery {
+    display: flex !important;
+  }
+
+  /* Cả 2 nút nhỏ gọn */
+  .ds-input-icon {
+    width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0;
+  }
+
+  /* Thu hẹp gap cho đủ chỗ 2 nút */
+  .ds-input-bar {
+    gap: .25rem !important;
+    padding: .35rem .4rem !important;
+  }
+}

@@ -159,3 +159,15 @@ export const IconClose = (p) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 );
+export const IconSearch = (p) => (
+  <svg {...base} {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-4.3-4.3" />
+  </svg>
+);
+export const IconUser = (p) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+  </svg>
+);

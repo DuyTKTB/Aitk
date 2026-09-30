@@ -9,8 +9,8 @@ import {
   IcoPlus, IcoChat, IcoTrash, IcoChevron, IcoClose,
   IcoImage, IcoSend, IcoBrain, IcoCopy, IcoCheck,
   IcoUser, IcoCrown, IcoLogout, IcoSettings, IcoSparkle,
+  IcoCamera,
 } from './Icons2.jsx';
-
 const CLASSES = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
 
 const SUGGESTIONS = [
@@ -83,11 +83,13 @@ export default function AIChat() {
   const [quota, setQuota] = useState(() => getQuota(uid, tier));
   const [quotaError, setQuotaError] = useState('');
 
-  const end = useRef(null);
-  const inputRef = useRef(null);
-  const fileRef = useRef(null);
-  const sendRef = useRef(null);
-  const handledPendingRef = useRef(false);
+ const end = useRef(null);
+const inputRef = useRef(null);
+const fileRef = useRef(null);
+const cameraRef = useRef(null);
+const sendRef = useRef(null);
+const handledPendingRef = useRef(false);
+  
 
   const activeChat = useMemo(
     () => chats.find((c) => c.id === activeId) || null,
@@ -821,12 +823,18 @@ export default function AIChat() {
                         )}
 
                         <div
-                          className={
-                            'ds-msg-content' + (m.isQuotaError ? ' quota-error' : '')
-                          }
-                        >
-                          <MarkdownLike text={m.text || ''} />
-                        </div>
+  className={
+    'ds-msg-content' + (m.isQuotaError ? ' quota-error' : '')
+  }
+>
+  {m.isQuotaError ? (
+    <MarkdownLike text={m.text || ''} />
+  ) : (
+    <CollapsibleText collapsedHeight={100}>
+      <MarkdownLike text={m.text || ''} />
+    </CollapsibleText>
+  )}
+</div>
                         <button
                           className="ds-msg-copy"
                           onClick={() => copyMsg(m.text || '', 'm' + i)}
@@ -917,52 +925,70 @@ export default function AIChat() {
             </div>
           )}
 
-          <div className="ds-input-bar">
-            <button
-              className="ds-input-icon"
-              onClick={() => fileRef.current?.click()}
-              title="Đính kèm ảnh"
-              type="button"
-            >
-              <IcoImage size={18} />
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={pickImage}
-            />
+<div className="ds-input-bar">
+  {/* Nút thư viện ảnh — ẩn trên mobile */}
+  <button
+    className="ds-input-icon ds-icon-gallery"
+    onClick={() => fileRef.current?.click()}
+    title="Chọn ảnh từ thư viện"
+    type="button"
+  >
+    <IcoImage size={18} />
+  </button>
+  <input
+    ref={fileRef}
+    type="file"
+    accept="image/*"
+    hidden
+    onChange={pickImage}
+  />
 
-            <textarea
-              ref={inputRef}
-              className="ds-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Hỏi về Hóa học, hoặc dán ảnh đề bài…"
-              rows={1}
-            />
+  {/* Nút chụp ảnh — chỉ hiện trên mobile */}
+  <button
+    className="ds-input-icon ds-icon-camera"
+    onClick={() => cameraRef.current?.click()}
+    title="Chụp ảnh"
+    type="button"
+  >
+    <IcoCamera size={18} />
+  </button>
+  <input
+    ref={cameraRef}
+    type="file"
+    accept="image/*"
+    capture="environment"
+    hidden
+    onChange={pickImage}
+  />
 
-            <button
-              className="ds-send"
-              onClick={() => send()}
-              disabled={loading || (!input.trim() && !image)}
-              type="button"
-              aria-label="Gửi"
-            >
-              {loading ? (
-                <span className="ds-send-loading">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-              ) : (
-                <IcoSend size={18} />
-              )}
-            </button>
-          </div>
+  <textarea
+    ref={inputRef}
+    className="ds-input"
+    value={input}
+    onChange={(e) => setInput(e.target.value)}
+    onKeyDown={onKeyDown}
+    placeholder="Hỏi về Hóa học, hoặc dán ảnh đề bài…"
+    rows={1}
+  />
+
+  <button
+    className="ds-send"
+    onClick={() => send()}
+    disabled={loading || (!input.trim() && !image)}
+    type="button"
+    aria-label="Gửi"
+  >
+    {loading ? (
+      <span className="ds-send-loading">
+        <i />
+        <i />
+        <i />
+      </span>
+    ) : (
+      <IcoSend size={18} />
+    )}
+  </button>
+</div>
 
           {quotaError && <p className="ds-quota-error">{quotaError}</p>}
           {err && <p className="ds-error">{err}</p>}
@@ -1092,5 +1118,48 @@ function CodeBlock({ lang, code }) {
         <code>{code}</code>
       </pre>
     </div>
+  );
+}
+/* ============================================================
+   CollapsibleText — Thu gọn câu trả lời dài
+   ============================================================ */
+function CollapsibleText({ children, collapsedHeight = 100 }) {
+  const [open, setOpen] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+  const contentRef = useRef(null);
+
+  // Đo chiều cao thật sau khi render xong
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    // Đo scrollHeight luôn là chiều cao thật bất kể max-height
+    const h = el.scrollHeight;
+    setNeedsCollapse(h > collapsedHeight + 40);
+  }, [children]);
+
+  // Nếu không cần thu gọn thì render thẳng
+  if (!needsCollapse) {
+    return <div ref={contentRef}>{children}</div>;
+  }
+
+  return (
+    <>
+      <div
+        ref={contentRef}
+        className={'ds-msg-collapsible' + (open ? '' : ' collapsed')}
+      >
+        {children}
+      </div>
+      <button
+        type="button"
+        className={'ds-msg-more' + (open ? ' open' : '')}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? 'Thu gọn' : 'Xem thêm'}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+    </>
   );
 }
