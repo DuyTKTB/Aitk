@@ -26,8 +26,7 @@ import ProfilePage from './components/ProfilePage.jsx';
 import './app-extra.css';
 import MobileHeader from './components/MobileHeader.jsx';
 import AIMark from './components/AIMark.jsx';
-
-
+import ToolsPage from './components/ToolsPage.jsx';
 import {
   IconHome, IconAtom, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
@@ -36,12 +35,12 @@ import {
 
 const NAV_MAIN = [
   ['home', 'Trang chủ', IconHome],
+  ['ai', 'CU AI', IconRobot],
   ['table', 'Bảng tuần hoàn', IconAtom],
-  ['formulas', 'Công thức nhanh', IconCalc],
+  ['tools', 'Công cụ', IconTools],
 ];
 
 const NAV_TOOLS = [
-  ['ai', 'Trợ lý AI', IconRobot],
   ['analyze', 'Phân tích', IconMicroscope],
   ['balance', 'Cân bằng PTHH', IconScale],
   ['pomodoro', 'Pomodoro', IconTimer],
@@ -77,12 +76,8 @@ const pageTitle = (page) => {
 };
 
 export default function App() {
-  // ===== SCROLL EFFECTS (MỚI) =====
-
-  // ===== AUTH =====
   const { ready, isLoggedIn, user, logout } = useAuth();
 
-  // ===== STATE =====
   const [page, setPage] = useState(readPage);
   const [menu, setMenu] = useState(false);
   const [toolOpen, setToolOpen] = useState(false);
@@ -95,18 +90,15 @@ export default function App() {
 
   const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
 
-  // ===== THEME =====
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // ===== TIÊU ĐỀ TAB =====
   useEffect(() => {
     document.title = pageTitle(page);
     document.getElementById('main')?.focus({ preventScroll: true });
   }, [page]);
 
-  // ===== HỘP THOẠI ĐĂNG XUẤT =====
   useEffect(() => {
     const d = dlgRef.current;
     if (!d) return;
@@ -114,7 +106,6 @@ export default function App() {
     if (!askLogout && d.open) d.close();
   }, [askLogout]);
 
-  // ===== SCROLL PROGRESS =====
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 12);
@@ -128,7 +119,6 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // ===== HASH ROUTING + KEYBOARD =====
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 700);
 
@@ -172,7 +162,6 @@ export default function App() {
 
   const isToolPage = NAV_TOOLS.some(([id]) => id === page);
 
-  // ===== AUTH GATE =====
   if (!ready) {
     return (
       <div className="loader">
@@ -185,14 +174,10 @@ export default function App() {
     return <LoginPage />;
   }
 
-  // ===== ĐÃ ĐĂNG NHẬP → RENDER APP =====
   return (
     <>
       <a className="skip-link" href="#main">Bỏ qua điều hướng</a>
       <div className="scroll-progress" ref={progRef} aria-hidden="true" />
-
-      {/* ===== MOUSE GLOW (MỚI) ===== */}
-
       <PetWidget />
       <ChatWidget />
 
@@ -200,7 +185,6 @@ export default function App() {
         <span>A7 K60 DTA</span>
       </div>
 
-      {/* ============ MOBILE HEADER ============ */}
       <MobileHeader
         page={page}
         theme={theme}
@@ -212,7 +196,6 @@ export default function App() {
         onMenu={() => setMenu(true)}
       />
 
-      {/* ============ NAV KIỂU APPLE (DESKTOP) ============ */}
       <header className={'nav-wrap' + (scrolled ? ' scrolled' : '')} ref={navRef}>
         <div className="nav-apple">
           <a className="nav-logo" href="#home" aria-label="Trang chủ">
@@ -232,43 +215,7 @@ export default function App() {
                 <span className="nav-label">{label}</span>
               </a>
             ))}
-
-            <div className="nav-drop">
-              <button
-                type="button"
-                className={'nav-item has-drop' + (isToolPage ? ' active' : '')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setToolOpen((o) => !o);
-                }}
-                aria-expanded={toolOpen}
-                aria-haspopup="menu"
-                aria-current={isToolPage ? 'page' : undefined}
-                title="Công cụ"
-              >
-                <span className="nav-ico" aria-hidden="true"><IconTools /></span>
-                <span className="nav-label">Công cụ</span>
-              </button>
-
-              <div className={'nav-drop-menu' + (toolOpen ? ' open' : '')} role="menu">
-                {NAV_TOOLS.map(([id, label, Icon]) => (
-                  <a
-                    key={id}
-                    href={'#' + id}
-                    role="menuitem"
-                    className={page === id ? 'active' : undefined}
-                    aria-current={page === id ? 'page' : undefined}
-                    onClick={() => {
-                      setToolOpen(false);
-                      setMenu(false);
-                    }}
-                  >
-                    <span className="drop-ico" aria-hidden="true"><Icon /></span>
-                    <span>{label}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
+            {/* ĐÃ XÓA DROPDOWN "CÔNG CỤ" — vì đã có mục riêng trong NAV_MAIN */}
           </nav>
 
           <div className="nav-actions">
@@ -312,7 +259,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* ============ MENU MOBILE ============ */}
         <div className={'nav-sheet' + (menu ? ' open' : '')} role="menu" aria-hidden={!menu}>
           <p className="nav-sheet-label">Điều hướng</p>
           <div className="nav-sheet-grid">
@@ -371,6 +317,7 @@ export default function App() {
             <PeriodicTable />
           </section>
         )}
+        {page === 'tools' && <ToolsPage />}
         <div style={{ display: page === 'ai' ? 'block' : 'none' }}>
           <AIChat />
         </div>

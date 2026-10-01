@@ -9,6 +9,7 @@ import './theme-sandra.css';    // 2. Theme xanh navy (KHÔNG còn @import font)
 import './home-fx.css';         // 3. Hiệu ứng trang chủ (marquee, split text, bento)
 import './home-stack.css';
 import './home-polish.css'; // 5. Sửa lỗi + nâng cấp trang chủ (PHẢI nằm cuối)
+import './tools-page.css';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
