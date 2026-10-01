@@ -437,7 +437,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ================= MOCKUP CHAT LINDY (nổi giữa hero và marquee) ================= */}
+      {/* ================= MOCKUP CHAT LINDY ================= */}
       <HeroLindy />
 
       {/* ================= MARQUEE 2 HÀNG ================= */}
@@ -550,27 +550,66 @@ export default function Home() {
         <QuoteStage />
       </section>
 
-      {/* ================= CTA ================= */}
-      <section className="wrap narrow cta-final cta-card">
-        <div className="cta-mark">
-          <AIMark look mode="talk" title="Trợ lý AI" />
+      {/* ================= CTA — 3 CARD: VIP | CHÍNH | QR ================= */}
+      <section className="cta-grid">
+
+        {/* CARD TRÁI: NÂNG CẤP VIP */}
+        <aside className="cta-side vip-card">
+          <div className="cta-side-head">
+            <span className="cta-side-badge">VIP</span>
+            <h3>Nâng cấp VIP</h3>
+          </div>
+          <p className="cta-side-desc">
+            Mở khóa toàn bộ tính năng cao cấp: không giới hạn câu hỏi AI, bảng tuần hoàn nâng cao, quiz chuyên sâu.
+          </p>
+          <ul className="vip-list">
+            <li>✓ Không giới hạn hỏi AI</li>
+            <li>✓ Ưu tiên xử lý nhanh</li>
+            <li>✓ Bộ đề VIP theo lớp</li>
+            <li>✓ Không quảng cáo</li>
+          </ul>
+          <a className="btn primary cta-side-btn" href="#vip">Nâng cấp ngay →</a>
+          <span className="cta-side-note">Từ 49.000đ/tháng</span>
+        </aside>
+
+        {/* CARD GIỮA: CTA chính */}
+        <div className="cta-card">
+          <div className="cta-mark">
+            <AIMark look mode="talk" title="Trợ lý AI" />
+          </div>
+          <p className="slogan center" style={{ justifyContent: 'center' }}>
+            Bắt đầu ngay — miễn phí, không cần tài khoản
+          </p>
+          <h2 className="cta-title fx-title fx-cta">
+            <Split text="Sẵn sàng *chinh *phục" />
+            <br />
+            <Split text="Hóa học?" start={3} />
+          </h2>
+          <p className="lead center" style={{ margin: '0 auto 2rem', textAlign: 'center' }}>
+            Hỏi AI, mở bảng tuần hoàn, chơi game, hoặc bắt đầu ôn tập thông minh.
+          </p>
+          <div className="row center cta-actions">
+            <a className="btn primary" href="#ai">Hỏi AI ngay →</a>
+            <a className="btn" href="#table">Bảng tuần hoàn</a>
+            <a className="btn" href="#games">Chơi game</a>
+          </div>
         </div>
-        <p className="slogan center" style={{ justifyContent: 'center' }}>
-          Bắt đầu ngay — miễn phí, không cần tài khoản
-        </p>
-        <h2 className="cta-title fx-title fx-cta">
-          <Split text="Sẵn sàng *chinh *phục" />
-          <br />
-          <Split text="Hóa học?" start={3} />
-        </h2>
-        <p className="lead center" style={{ margin: '0 auto 2rem', textAlign: 'center' }}>
-          Hỏi AI, mở bảng tuần hoàn, chơi game, hoặc bắt đầu ôn tập thông minh.
-        </p>
-        <div className="row center cta-actions">
-          <a className="btn primary" href="#ai">Hỏi AI ngay →</a>
-          <a className="btn" href="#table">Bảng tuần hoàn</a>
-          <a className="btn" href="#games">Chơi game</a>
-        </div>
+
+        {/* CARD PHẢI: ỦNG HỘ QUA QR */}
+        <aside className="cta-side qr-card">
+          <div className="cta-side-head">
+            <span className="cta-side-badge heart">♥</span>
+            <h3>Ủng hộ dự án</h3>
+          </div>
+          <p className="cta-side-desc">
+            Quét mã QR để ủng hộ mình duy trì server và phát triển thêm tính năng mới.
+          </p>
+          <div className="qr-box">
+            <img src="/img/qr.png" alt="Mã QR ủng hộ dự án" loading="lazy" />
+          </div>
+          <p className="cta-side-note">Cảm ơn bạn rất nhiều 💙</p>
+        </aside>
+
       </section>
     </>
   );

@@ -11047,3 +11047,165 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 @media (prefers-reduced-motion: reduce) {
   .hero-home-blob { animation: none; }
 }
+/* ============================================================
+   CTA GRID — 3 cột: VIP | CTA chính | QR
+   ============================================================ */
+
+.cta-grid {
+  position: relative;
+  width: 100%;
+  max-width: 1240px;
+  margin: 5rem auto;
+  padding: 0 1.25rem;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+/* ---- 2 card bên ---- */
+.cta-side {
+  display: flex;
+  flex-direction: column;
+  padding: 1.6rem 1.4rem;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow:
+    0 20px 50px -25px rgba(15, 23, 42, 0.15),
+    0 6px 18px -10px rgba(15, 23, 42, 0.06);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.25s;
+  text-align: left;
+}
+.cta-side:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 30px 60px -25px rgba(15, 23, 42, 0.2),
+    0 10px 25px -12px rgba(15, 23, 42, 0.08);
+}
+
+.cta-side-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.cta-side-head h3 {
+  font: 700 1.05rem system-ui, sans-serif;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.cta-side-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 24px;
+  padding: 0 0.5rem;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
+  font: 800 0.7rem system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.4);
+}
+.cta-side-badge.heart {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+  font-size: 0.9rem;
+}
+
+.cta-side-desc {
+  font: 400 0.88rem/1.5 system-ui, sans-serif;
+  color: #64748b;
+  margin: 0 0 1.1rem;
+}
+
+/* VIP: list ưu đãi */
+.vip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.vip-list li {
+  font: 500 0.85rem system-ui, sans-serif;
+  color: #334155;
+  padding-left: 0.2rem;
+}
+
+.cta-side-btn {
+  margin-top: auto;
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+}
+
+.cta-side-note {
+  font: 400 0.78rem system-ui, sans-serif;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0.7rem 0 0;
+}
+
+/* QR */
+.qr-card { align-items: stretch; }
+.qr-box {
+  display: grid;
+  place-items: center;
+  padding: 0.8rem;
+  background: #f8fafc;
+  border: 1px dashed rgba(15, 23, 42, 0.15);
+  border-radius: 14px;
+  margin: 0 0 0.9rem;
+  aspect-ratio: 1 / 1;
+}
+.qr-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* Card giữa */
+.cta-grid .cta-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 30px 70px -30px rgba(15, 23, 42, 0.18),
+    0 10px 25px -12px rgba(15, 23, 42, 0.06);
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 1024px) {
+  .cta-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .cta-grid .cta-card {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .cta-grid {
+    grid-template-columns: 1fr;
+    margin: 3rem auto;
+  }
+  .cta-side { padding: 1.4rem 1.2rem; }
+  .cta-grid .cta-card { padding: 2rem 1.4rem; }
+  .qr-box { max-width: 260px; margin: 0 auto 0.9rem; }
+}
