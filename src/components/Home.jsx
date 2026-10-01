@@ -2,6 +2,7 @@
 import PeriodicTable from './PeriodicTable.jsx';
 import AIMark from './AIMark.jsx';
 import DotOrb from './DotOrb.jsx';
+import HeroLindy from './HeroLindy.jsx';
 import {
   IconRobot, IconAtom, IconScale, IconTimer, IconCalendar,
   IconCalc, IconQuiz, IconFlask, IconGamepad,
@@ -252,8 +253,6 @@ function QuoteStage() {
   );
 }
 
-/* Card xếp chồng: tự tính vị trí dính (card cao hơn màn hình vẫn đọc hết đáy)
-   và đo mức bị card sau đè lên (--p: 0 → 1) để CSS làm tối/thu nhỏ nhẹ. */
 function useCardStack(ref) {
   useEffect(() => {
     const root = ref.current;
@@ -348,7 +347,7 @@ export default function Home() {
 
   return (
     <>
-      {/* ================= HERO ================= */}
+      {/* ================= HERO CŨ ================= */}
       <section className="hero-home split" onPointerMove={trackHero}>
         <div className="hero-home-inner">
           <div className="hero-copy">
@@ -438,13 +437,16 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ================= MOCKUP CHAT LINDY (nổi giữa hero và marquee) ================= */}
+      <HeroLindy />
+
       {/* ================= MARQUEE 2 HÀNG ================= */}
       <div className="fx-marqs" aria-hidden="true">
         <div className="fx-marq"><div>{loop.map((w, i) => <span key={i}>{w}</span>)}</div></div>
         <div className="fx-marq rev"><div>{[...loop].reverse().map((w, i) => <span key={i}>{w}</span>)}</div></div>
       </div>
 
-      {/* ================= STACK CARDS (CHỈ 3 CARD ĐẦU) ================= */}
+      {/* ================= STACK CARDS ================= */}
       <div className="stack-cards" ref={stackRef}>
 
         {/* CARD 1: MANIFESTO */}
@@ -491,7 +493,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CARD 3: TOOLS — CARD CUỐI CÙNG CỦA STACK */}
+        {/* CARD 3: TOOLS */}
         <section className="stack-card" id="tools">
           <div className="fx-head solo">
             <div>
@@ -520,7 +522,6 @@ export default function Home() {
         </section>
 
       </div>
-      {/* ============ HẾT STACK ============ */}
 
       {/* ================= STATS ================= */}
       <section className="wrap stats-section">
