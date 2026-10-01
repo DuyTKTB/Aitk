@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿﻿import { useState, useEffect, useRef } from 'react';
 import { useLocalStorage } from './hooks.js';
 import Home from './components/Home.jsx';
 import PeriodicTable from './components/PeriodicTable.jsx';
@@ -26,6 +26,8 @@ import ProfilePage from './components/ProfilePage.jsx';
 import './app-extra.css';
 import MobileHeader from './components/MobileHeader.jsx';
 import AIMark from './components/AIMark.jsx';
+
+
 import {
   IconHome, IconAtom, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
@@ -51,11 +53,10 @@ const NAV_TOOLS = [
   ['profile', 'Trang cá nhân', IconUser],
 ];
 
-/* ============ BOTTOM NAV (MOBILE) ============ */
 const NAV_BOTTOM = [
   ['home', 'Trang chủ', IconHome],
   ['table', 'Bảng TH', IconAtom],
-  ['ai', 'AI', 'aimark'],           // ← đánh dấu đặc biệt
+  ['ai', 'AI', 'aimark'],
   ['games', 'Trò chơi', IconGamepad],
   ['profile', 'Cá nhân', IconUser],
 ];
@@ -76,6 +77,8 @@ const pageTitle = (page) => {
 };
 
 export default function App() {
+  // ===== SCROLL EFFECTS (MỚI) =====
+
   // ===== AUTH =====
   const { ready, isLoggedIn, user, logout } = useAuth();
 
@@ -90,19 +93,14 @@ export default function App() {
   const navRef = useRef(null);
   const progRef = useRef(null);
 
-  const [theme, setTheme] = useLocalStorage(
-    'cs-theme',
-    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-  );
+  const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
 
   // ===== THEME =====
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // ===== TIÊU ĐỀ TAB + CHUYỂN FOCUS (screen reader / bàn phím) =====
+  // ===== TIÊU ĐỀ TAB =====
   useEffect(() => {
     document.title = pageTitle(page);
     document.getElementById('main')?.focus({ preventScroll: true });
@@ -192,6 +190,9 @@ export default function App() {
     <>
       <a className="skip-link" href="#main">Bỏ qua điều hướng</a>
       <div className="scroll-progress" ref={progRef} aria-hidden="true" />
+
+      {/* ===== MOUSE GLOW (MỚI) ===== */}
+
       <PetWidget />
       <ChatWidget />
 
@@ -200,26 +201,24 @@ export default function App() {
       </div>
 
       {/* ============ MOBILE HEADER ============ */}
-<MobileHeader
-  page={page}
-  theme={theme}
-  onSearch={() => {
-    if (location.hash !== '#table') location.hash = 'table';
-    setTimeout(() => document.getElementById('search')?.focus(), 100);
-  }}
-  onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-  onMenu={() => setMenu(true)}
-/>
+      <MobileHeader
+        page={page}
+        theme={theme}
+        onSearch={() => {
+          if (location.hash !== '#table') location.hash = 'table';
+          setTimeout(() => document.getElementById('search')?.focus(), 100);
+        }}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onMenu={() => setMenu(true)}
+      />
 
       {/* ============ NAV KIỂU APPLE (DESKTOP) ============ */}
       <header className={'nav-wrap' + (scrolled ? ' scrolled' : '')} ref={navRef}>
         <div className="nav-apple">
-          {/* Logo */}
           <a className="nav-logo" href="#home" aria-label="Trang chủ">
             <span className="logo-text">A7 K60 DTA</span>
           </a>
 
-          {/* Links giữa */}
           <nav className="nav-links" aria-label="Điều hướng chính">
             {NAV_MAIN.map(([id, label, Icon]) => (
               <a
@@ -272,9 +271,7 @@ export default function App() {
             </div>
           </nav>
 
-          {/* Nút phải */}
           <div className="nav-actions">
-            {/* Nút đăng xuất */}
             <button
               className="nav-icon-btn"
               onClick={() => setAskLogout(true)}
@@ -289,7 +286,6 @@ export default function App() {
               </svg>
             </button>
 
-            {/* Nút theme */}
             <button
               className="nav-icon-btn"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -300,7 +296,6 @@ export default function App() {
               {theme === 'dark' ? <IconSun /> : <IconMoon />}
             </button>
 
-            {/* Nút burger */}
             <button
               className="nav-icon-btn nav-burger"
               onClick={(e) => {
@@ -352,7 +347,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Nút theme + logout trong menu mobile */}
           <p className="nav-sheet-label">Tài khoản</p>
           <div className="nav-sheet-grid">
             <button type="button" className="sheet-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
@@ -430,7 +424,6 @@ export default function App() {
         <small>© 2026 A7 K60 DTA — bycode Duy TK</small>
       </footer>
 
-      {/* ============ BOTTOM NAV (MOBILE) ============ */}
       <nav className="bottom-nav" aria-label="Điều hướng di động">
         {NAV_BOTTOM.map(([id, label, Icon]) => {
           const isActive =
@@ -443,9 +436,9 @@ export default function App() {
               className={'bnav-item' + (isActive ? ' active' : '')}
               aria-current={isActive ? 'page' : undefined}
             >
-   <span className="bnav-icon">
-  {Icon === 'aimark' ? <AIMark size={24} animate={false} /> : <Icon />}
-</span>
+              <span className="bnav-icon">
+                {Icon === 'aimark' ? <AIMark size={24} animate={false} /> : <Icon />}
+              </span>
               <span className="bnav-label">{label}</span>
             </a>
           );

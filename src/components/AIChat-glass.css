@@ -1,0 +1,290 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================================
+   AIChat-glass.css — Futuristic Glassmorphism · Dark Cosmic
+   Nạp SAU AIChat.css (trong AIChat.jsx). Chỉ ghi đè màu / kính / phát sáng,
+   không đổi vị trí hay kích thước nên bố cục desktop + mobile giữ nguyên.
+   Chỉ áp dụng khi app ở chế độ tối ([data-theme="dark"]) để không bị lệch với phần còn lại.
+   ============================================================ */
+
+/* ---------- 1. Token cục bộ (chỉ khi app ở chế độ tối) ---------- */
+[data-theme='dark'] .ds-page {
+  --bg: #0a0b10; --panel: #0d0f18; --ink: #eef1ff; --mut: rgba(255, 255, 255, .5);
+  --soft: rgba(255, 255, 255, .06); --line: rgba(255, 255, 255, .1);
+  --acc: #3b82f6; --acc-ink: #fff;
+  --g1: #3b82f6; --g2: #8b5cf6;
+  --glass: rgba(20, 25, 45, .6);
+  --edge: rgba(255, 255, 255, .1);
+  --ds-line: rgba(255, 255, 255, .08);
+  --ds-wash: rgba(255, 255, 255, .05);
+  --ds-wash-2: rgba(255, 255, 255, .09);
+
+  font-family: 'Inter', var(--sans);
+  color-scheme: dark;
+  background:
+    radial-gradient(60% 42% at 50% 100%, rgba(59, 130, 246, .22), transparent 70%),
+    radial-gradient(40% 30% at 88% 0%, rgba(139, 92, 246, .14), transparent 70%),
+    #0a0b10;
+  background-attachment: fixed;
+}
+[data-theme='dark'] .ds-page button, [data-theme='dark'] .ds-page input, [data-theme='dark'] .ds-page textarea { font-family: inherit; }
+
+/* ---------- 2. Khung trang: sidebar + header là kính ---------- */
+[data-theme='dark'] .ds-page .ds-sidebar {
+  background: rgba(13, 15, 24, .72);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border-right-color: var(--ds-line);
+}
+[data-theme='dark'] .ds-page .ds-header {
+  background: rgba(10, 11, 16, .6);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-bottom-color: var(--ds-line);
+}
+[data-theme='dark'] .ds-page .ds-new-btn {
+  border: 1px solid var(--edge); border-radius: 14px; background: rgba(255, 255, 255, .06); color: var(--ink);
+  transition: background .2s, border-color .2s, box-shadow .2s;
+}
+[data-theme='dark'] .ds-page .ds-new-btn:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, .35), rgba(139, 92, 246, .35));
+  border-color: rgba(130, 160, 255, .5); color: #fff; box-shadow: 0 0 24px rgba(91, 110, 255, .35);
+}
+[data-theme='dark'] .ds-page .ds-chat-item.active { box-shadow: inset 2px 0 0 var(--g1); background: rgba(59, 130, 246, .12); }
+[data-theme='dark'] .ds-page .ds-grade-btn.on { background: linear-gradient(135deg, var(--g1), var(--g2)); color: #fff; }
+[data-theme='dark'] .ds-page .ds-group-label { text-transform: none; letter-spacing: 0; font-family: inherit; font-weight: 600; }
+
+/* ---------- 3. Trạng thái trống ---------- */
+[data-theme='dark'] .ds-page .ds-empty-title {
+  font-weight: 600; letter-spacing: -.04em;
+  background: linear-gradient(180deg, #fff 25%, rgba(170, 188, 255, .55));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+[data-theme='dark'] .ds-page .ds-suggestion {
+  position: relative; overflow: hidden; padding: 1rem 1.1rem; border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .015));
+  border: 1px solid var(--edge);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+[data-theme='dark'] .ds-page .ds-suggestion::before {
+  content: ''; position: absolute; left: 10%; right: 10%; bottom: -70%; height: 100%;
+  background: radial-gradient(closest-side, rgba(59, 130, 246, .65), rgba(139, 92, 246, .25) 60%, transparent);
+  opacity: .45; transition: opacity .3s; pointer-events: none;
+}
+[data-theme='dark'] .ds-page .ds-suggestion > * { position: relative; z-index: 1; }
+[data-theme='dark'] .ds-page .ds-suggestion:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02));
+  border-color: rgba(130, 160, 255, .5); transform: translateY(-2px);
+}
+[data-theme='dark'] .ds-page .ds-suggestion:hover::before { opacity: .9; }
+[data-theme='dark'] .ds-page .ds-suggestion-tag { text-transform: none; letter-spacing: 0; font: 600 .74rem 'Inter', var(--sans); color: #8fb2ff; }
+[data-theme='dark'] .ds-page .ds-suggestion::after { z-index: 1; }
+
+/* ---------- 4. Tin nhắn ---------- */
+[data-theme='dark'] .ds-page .ds-msg-user-text {
+  color: #fff; border-radius: 20px 20px 6px 20px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1 60%, #8b5cf6);
+  box-shadow: 0 10px 30px -12px rgba(99, 102, 241, .8), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+[data-theme='dark'] .ds-page .ds-avatar { width: 40px !important; color: #dfe7ff; filter: drop-shadow(0 0 10px rgba(91, 130, 255, .5)); }
+[data-theme='light'] .ds-page .ds-avatar { width: 40px !important; color: var(--ink); filter: drop-shadow(0 2px 8px rgba(47, 107, 255, .25)); }
+[data-theme='dark'] .ds-page .ds-msg-content blockquote { border-left-color: var(--g1); }
+[data-theme='dark'] .ds-page .ds-list li::marker { color: #8fb2ff; }
+[data-theme='dark'] .ds-page .ds-table-wrap, [data-theme='dark'] .ds-page .ds-codeblock { background: rgba(20, 25, 45, .45); border-color: var(--edge); }
+[data-theme='dark'] .ds-page .ds-reasoning-box.streaming { border-color: rgba(96, 165, 250, .6); box-shadow: 0 0 20px -6px rgba(59, 130, 246, .6); }
+
+/* ---------- 5. KHUNG NHẬP ---------- */
+[data-theme='dark'] .ds-page .ds-input-wrap {
+  background: rgba(10, 11, 16, .55);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  box-shadow: none;
+}
+
+[data-theme='dark'] .ds-page .ds-input-bar {
+  position: relative; isolation: isolate; align-items: flex-end; gap: .25rem;
+  padding: .5rem .5rem .5rem .7rem; border-radius: 28px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid var(--edge);
+  box-shadow: 0 18px 50px -20px rgba(59, 130, 246, .5), inset 0 1px 0 rgba(255, 255, 255, .08);
+  transition: border-color .3s, box-shadow .3s;
+}
+
+[data-theme='dark'] .ds-page .ds-input-bar::before {
+  content: ''; position: absolute; top: -1px; left: 12%; right: 12%; height: 1px; z-index: 2;
+  background: linear-gradient(90deg, transparent, #60a5fa 30%, #a78bfa 70%, transparent);
+  opacity: .65; transition: opacity .3s, left .3s, right .3s, box-shadow .3s; pointer-events: none;
+}
+[data-theme='dark'] .ds-page .ds-input-bar::after {
+  content: ''; position: absolute; left: 8%; right: 8%; top: -28px; height: 56px; z-index: -1;
+  background: radial-gradient(60% 100% at 50% 100%, rgba(59, 130, 246, .6), rgba(139, 92, 246, .28) 55%, transparent 78%);
+  filter: blur(14px); opacity: .5; pointer-events: none;
+  animation: ds-glow-breathe 5s ease-in-out infinite;
+}
+@keyframes ds-glow-breathe { 50% { opacity: .8; transform: scaleX(1.06); } }
+
+[data-theme='dark'] .ds-page .ds-input-bar:focus-within {
+  border-color: rgba(120, 150, 255, .45);
+  box-shadow: 0 0 0 1px rgba(99, 132, 255, .22), 0 22px 60px -16px rgba(91, 110, 255, .75), inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+[data-theme='dark'] .ds-page .ds-input-bar:focus-within::before { opacity: 1; left: 4%; right: 4%; box-shadow: 0 0 14px 1px rgba(96, 165, 250, .85); }
+[data-theme='dark'] .ds-page .ds-input-bar:focus-within::after { opacity: 1; animation: none; }
+
+[data-theme='dark'] .ds-page .ds-input-icon { width: 36px; height: 36px; border-radius: 50%; color: rgba(255, 255, 255, .55); }
+[data-theme='dark'] .ds-page .ds-input-icon:hover { background: rgba(255, 255, 255, .09); color: #fff; }
+
+[data-theme='dark'] .ds-page .ds-input { color: #f4f6ff; caret-color: #60a5fa; font-size: .98rem; padding: .5rem .2rem; }
+[data-theme='dark'] .ds-page .ds-input::placeholder { color: rgba(255, 255, 255, .5); }
+
+[data-theme='dark'] .ds-page .ds-send {
+  width: 40px; height: 40px; border: 0; border-radius: 50%; opacity: 1; color: #fff;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2), 0 6px 22px -4px rgba(99, 102, 241, .85);
+  transition: transform .15s, filter .15s, box-shadow .2s, background .2s;
+}
+[data-theme='dark'] .ds-page .ds-send:hover:not(:disabled) { background: linear-gradient(135deg, #3b82f6, #8b5cf6); filter: brightness(1.12); transform: scale(1.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28), 0 8px 28px -2px rgba(124, 108, 255, .95); }
+[data-theme='dark'] .ds-page .ds-send:active:not(:disabled) { transform: scale(.94); }
+[data-theme='dark'] .ds-page .ds-send:disabled {
+  opacity: 1; cursor: default; color: #9db7ff;
+  background: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 0 0 1px rgba(130, 160, 255, .3);
+}
+[data-theme='dark'] .ds-page .ds-send.stop { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+
+.ds-sparkle .s2 { transform-box: fill-box; transform-origin: center; animation: ds-twinkle 2.6s ease-in-out infinite; }
+@keyframes ds-twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(.7); } }
+
+[data-theme='dark'] .ds-page .ds-img-chip { background: var(--glass); border: 1px solid var(--edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+[data-theme='dark'] .ds-page .ds-disclaimer { color: rgba(255, 255, 255, .35); }
+
+/* ---------- 6. Hộp thoại ---------- */
+[data-theme='dark'] .ds-confirm {
+  background: rgba(13, 15, 24, .9); border: 1px solid var(--edge); border-radius: 22px;
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  box-shadow: 0 30px 80px -20px rgba(59, 130, 246, .45);
+}
+[data-theme='dark'] .ds-confirm-actions button { border: 1px solid var(--edge); border-radius: 999px; background: rgba(255, 255, 255, .06); }
+[data-theme='dark'] .ds-confirm-actions .danger { background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-color: transparent; color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='dark'] .ds-page .ds-input-bar::after, .ds-sparkle .s2 { animation: none; }
+}
+
+
+/* ============================================================
+   BẢN SÁNG — cùng phong cách kính mờ + phát sáng xanh
+   ============================================================ */
+[data-theme='light'] .ds-page {
+  --bg: #f3f6ff; --panel: #ffffff; --ink: #0a1230; --mut: #5d6a94;
+  --soft: rgba(47, 107, 255, .10); --line: rgba(30, 50, 120, .14);
+  --acc: #2f6bff; --acc-ink: #ffffff;
+  color-scheme: light;
+  --g1: #3b82f6; --g2: #8b5cf6;
+  --glass: rgba(255, 255, 255, .72);
+  --edge: rgba(30, 50, 120, .14);
+  --ds-line: rgba(30, 50, 120, .10);
+  --ds-wash: rgba(47, 107, 255, .06);
+  --ds-wash-2: rgba(47, 107, 255, .11);
+  font-family: 'Inter', var(--sans);
+  background:
+    radial-gradient(60% 42% at 50% 100%, rgba(59, 130, 246, .20), transparent 70%),
+    radial-gradient(40% 30% at 88% 0%, rgba(139, 92, 246, .10), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+[data-theme='light'] .ds-page button,
+[data-theme='light'] .ds-page input,
+[data-theme='light'] .ds-page textarea { font-family: inherit; }
+
+[data-theme='light'] .ds-page .ds-sidebar { background: rgba(255, 255, 255, .6); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+[data-theme='light'] .ds-page .ds-header { background: rgba(243, 246, 255, .65); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-theme='light'] .ds-page .ds-new-btn { border: 1px solid var(--edge); border-radius: 14px; background: rgba(255, 255, 255, .8); color: var(--ink); }
+[data-theme='light'] .ds-page .ds-new-btn:hover { background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-color: transparent; color: #fff; box-shadow: 0 6px 22px -4px rgba(99, 102, 241, .6); }
+[data-theme='light'] .ds-page .ds-chat-item.active { box-shadow: inset 2px 0 0 var(--g1); background: rgba(59, 130, 246, .10); }
+[data-theme='light'] .ds-page .ds-grade-btn.on { background: linear-gradient(135deg, var(--g1), var(--g2)); color: #fff; }
+[data-theme='light'] .ds-page .ds-group-label { text-transform: none; letter-spacing: 0; font-family: inherit; font-weight: 600; }
+
+[data-theme='light'] .ds-page .ds-empty-title {
+  font-weight: 600; letter-spacing: -.04em;
+  background: linear-gradient(180deg, #0a1230 30%, #3b5bd6);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+[data-theme='light'] .ds-page .ds-suggestion {
+  position: relative; overflow: hidden; padding: 1rem 1.1rem; border-radius: 18px;
+  background: var(--glass); border: 1px solid var(--edge);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+[data-theme='light'] .ds-page .ds-suggestion::before {
+  content: ''; position: absolute; left: 10%; right: 10%; bottom: -80%; height: 100%;
+  background: radial-gradient(closest-side, rgba(59, 130, 246, .35), rgba(139, 92, 246, .14) 60%, transparent);
+  opacity: .6; transition: opacity .3s; pointer-events: none;
+}
+[data-theme='light'] .ds-page .ds-suggestion > * { position: relative; z-index: 1; }
+[data-theme='light'] .ds-page .ds-suggestion:hover { background: #fff; border-color: rgba(59, 130, 246, .55); transform: translateY(-2px); box-shadow: 0 12px 30px -14px rgba(59, 130, 246, .5); }
+[data-theme='light'] .ds-page .ds-suggestion:hover::before { opacity: 1; }
+[data-theme='light'] .ds-page .ds-suggestion-tag { text-transform: none; letter-spacing: 0; font: 600 .74rem 'Inter', var(--sans); color: #2f6bff; }
+[data-theme='light'] .ds-page .ds-suggestion::after { z-index: 1; }
+
+[data-theme='light'] .ds-page .ds-msg-user-text {
+  color: #fff; border-radius: 20px 20px 6px 20px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1 60%, #8b5cf6);
+  box-shadow: 0 10px 26px -12px rgba(99, 102, 241, .7), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+[data-theme='light'] .ds-page .ds-msg-content blockquote { border-left-color: var(--g1); }
+[data-theme='light'] .ds-page .ds-list li::marker { color: #2f6bff; }
+[data-theme='light'] .ds-page .ds-table-wrap,
+[data-theme='light'] .ds-page .ds-codeblock { background: rgba(255, 255, 255, .6); border-color: var(--edge); }
+
+[data-theme='light'] .ds-page .ds-input-wrap {
+  background: rgba(243, 246, 255, .6);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border-top: 1px solid rgba(30, 50, 120, .06); box-shadow: none;
+}
+[data-theme='light'] .ds-page .ds-input-bar {
+  position: relative; isolation: isolate; align-items: flex-end; gap: .25rem;
+  padding: .5rem .5rem .5rem .7rem; border-radius: 28px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid var(--edge);
+  box-shadow: 0 18px 44px -22px rgba(59, 130, 246, .55), inset 0 1px 0 rgba(255, 255, 255, .9);
+  transition: border-color .3s, box-shadow .3s;
+}
+[data-theme='light'] .ds-page .ds-input-bar::before {
+  content: ''; position: absolute; top: -1px; left: 12%; right: 12%; height: 1px; z-index: 2;
+  background: linear-gradient(90deg, transparent, #3b82f6 30%, #8b5cf6 70%, transparent);
+  opacity: .7; transition: opacity .3s, left .3s, right .3s; pointer-events: none;
+}
+[data-theme='light'] .ds-page .ds-input-bar::after {
+  content: ''; position: absolute; left: 8%; right: 8%; top: -26px; height: 52px; z-index: -1;
+  background: radial-gradient(60% 100% at 50% 100%, rgba(59, 130, 246, .38), rgba(139, 92, 246, .16) 55%, transparent 78%);
+  filter: blur(14px); opacity: .6; pointer-events: none;
+  animation: ds-glow-breathe 5s ease-in-out infinite;
+}
+[data-theme='light'] .ds-page .ds-input-bar:focus-within {
+  border-color: rgba(59, 130, 246, .55);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .18), 0 20px 50px -18px rgba(91, 110, 255, .6);
+}
+[data-theme='light'] .ds-page .ds-input-bar:focus-within::before { opacity: 1; left: 4%; right: 4%; }
+[data-theme='light'] .ds-page .ds-input-bar:focus-within::after { opacity: 1; animation: none; }
+[data-theme='light'] .ds-page .ds-input-icon { width: 36px; height: 36px; border-radius: 50%; color: var(--mut); }
+[data-theme='light'] .ds-page .ds-input-icon:hover { background: rgba(47, 107, 255, .10); color: var(--ink); }
+[data-theme='light'] .ds-page .ds-input { color: var(--ink); caret-color: #2f6bff; padding: .5rem .2rem; }
+[data-theme='light'] .ds-page .ds-input::placeholder { color: rgba(10, 18, 48, .45); }
+[data-theme='light'] .ds-page .ds-send {
+  width: 40px; height: 40px; border: 0; border-radius: 50%; opacity: 1; color: #fff;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 6px 20px -4px rgba(99, 102, 241, .7);
+}
+[data-theme='light'] .ds-page .ds-send:hover:not(:disabled) { background: linear-gradient(135deg, #3b82f6, #8b5cf6); filter: brightness(1.08); transform: scale(1.05); }
+[data-theme='light'] .ds-page .ds-send:disabled { opacity: 1; cursor: default; color: #3b6fe0; background: rgba(47, 107, 255, .08); box-shadow: inset 0 0 0 1px rgba(47, 107, 255, .28); }
+[data-theme='light'] .ds-page .ds-send.stop { background: var(--ink); color: var(--bg); box-shadow: none; }
+[data-theme='light'] .ds-page .ds-img-chip { background: var(--glass); border: 1px solid var(--edge); }
+[data-theme='light'] .ds-page .ds-disclaimer { color: var(--mut); }
+[data-theme='light'] .ds-confirm { background: rgba(255, 255, 255, .95); border: 1px solid var(--edge); border-radius: 22px; box-shadow: 0 30px 80px -24px rgba(59, 130, 246, .4); }
+[data-theme='light'] .ds-confirm-actions button { border: 1px solid var(--edge); border-radius: 999px; }
+[data-theme='light'] .ds-confirm-actions .danger { background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-color: transparent; color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='light'] .ds-page .ds-input-bar::after { animation: none; }
+}

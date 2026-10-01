@@ -1,0 +1,141 @@
+/* ============================================================
+   home-stack.css — Card Stack blur NHẸ, vẫn đọc rõ
+   ============================================================ */
+
+.stack-cards {
+  position: relative;
+  background: var(--bg);
+  padding: 0;
+  margin: 0;
+}
+
+.stack-cards > .stack-card {
+  position: sticky;
+  top: var(--nav-h, 52px);
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 4rem 1.5rem 5rem;
+  background: var(--bg);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform-origin: 50% 0%;
+  will-change: transform, filter, opacity;
+  isolation: isolate;
+}
+
+[data-theme='dark'] .stack-cards > .stack-card {
+  background: var(--bg);
+}
+
+.stack-cards > .stack-card:first-child {
+  padding-top: 2rem;
+}
+
+.stack-cards > .stack-card > * {
+  max-width: 1240px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   HIỆU ỨNG — BLUR NHẸ, VẪN ĐỌC RÕ
+   ============================================================ */
+@supports (animation-timeline: view()) {
+  .stack-cards > .stack-card {
+    animation: card-stack-effect linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 60%;
+  }
+
+  @keyframes card-stack-effect {
+    0% {
+      transform: scale(1) translateY(0);
+      filter: blur(0);
+      opacity: 1;
+    }
+    60% {
+      /* Bắt đầu mờ nhẹ khi card chuẩn bị bị đè */
+      transform: scale(.99) translateY(0);
+      filter: blur(0.8px);
+      opacity: 1;
+    }
+    100% {
+      /* Bị đè — chỉ blur nhẹ 2px, vẫn đọc rõ */
+      transform: scale(.96) translateY(-20px);
+      filter: blur(2px);
+      opacity: .95;
+    }
+  }
+}
+
+/* Fallback trình duyệt cũ */
+@supports not (animation-timeline: view()) {
+  .stack-cards > .stack-card {
+    position: relative;
+    top: auto;
+  }
+}
+
+/* ============================================================
+   Mép dưới gradient nhẹ để card sau hoà vào
+   ============================================================ */
+.stack-cards > .stack-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 80px;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--bg) 60%, transparent) 50%,
+    var(--bg) 100%
+  );
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 70%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 70%);
+}
+
+[data-theme='dark'] .stack-cards > .stack-card::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--bg) 70%, transparent) 50%,
+    var(--bg) 100%
+  );
+}
+
+/* ============================================================
+   Mobile — tắt hoàn toàn
+   ============================================================ */
+@media (max-width: 720px) {
+  .stack-cards > .stack-card {
+    position: relative;
+    top: auto;
+    padding: 2.5rem 1rem;
+    animation: none;
+    filter: none;
+    transform: none;
+    opacity: 1;
+  }
+  .stack-cards > .stack-card::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stack-cards > .stack-card {
+    animation: none !important;
+    position: relative;
+    top: auto;
+    filter: none;
+    transform: none;
+    opacity: 1;
+  }
+}

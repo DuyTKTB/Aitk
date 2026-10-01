@@ -12,6 +12,15 @@ import {
   IcoCamera, IcoStop, IcoRefresh, IcoSearch,
 } from './Icons2.jsx';
 import './AIChat.css';
+import "../AIChat-glass.css";
+
+/* Ngôi sao AI lấp lánh — hiện khi ô nhập đang trống */
+const IcoAIStar = ({ size = 18 }) => (
+  <svg className="ds-sparkle" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M10 3.2c.5 3.9 2.4 6.1 6.3 6.8-3.9.7-5.8 2.9-6.3 6.8-.5-3.9-2.4-6.1-6.3-6.8C7.6 9.3 9.5 7.1 10 3.2Z" />
+    <path className="s2" d="M18.4 13.6c.25 1.9 1.2 3 3.1 3.4-1.9.35-2.85 1.45-3.1 3.4-.25-1.95-1.2-3.05-3.1-3.4 1.9-.4 2.85-1.5 3.1-3.4Z" />
+  </svg>
+);
 
 const CLASSES = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
 
@@ -779,7 +788,7 @@ export default function AIChat() {
                       </>
                     ) : (
                       <>
-                        <AIMark size={40} animate={false} className="ds-avatar" />
+                        <AIMark size={56} animate={false} className="ds-avatar" />
                         <div className="ds-msg-body">
                           {m.reasoning && (
                             <div className="ds-reasoning-box">
@@ -827,7 +836,7 @@ export default function AIChat() {
 
               {showLive && streaming && (
                 <div className="ds-msg ds-msg-model">
-                  <AIMark size={40} mode="talk" animate={visible} className="ds-avatar" />
+                  <AIMark size={56} mode="talk" animate={visible} className="ds-avatar" />
                   <div className="ds-msg-body">
                     {reasoning && (
                       <div className="ds-reasoning-box streaming">
@@ -846,7 +855,7 @@ export default function AIChat() {
 
               {showLive && !streaming && (
                 <div className="ds-msg ds-msg-model">
-                  <AIMark size={40} mode="think" animate={visible} className="ds-avatar" />
+                  <AIMark size={56} mode="think" animate={visible} className="ds-avatar" />
                   <div className="ds-msg-body">
                     {reasoning ? (
                       <div className="ds-reasoning-box streaming">
@@ -909,7 +918,7 @@ export default function AIChat() {
               </button>
             ) : (
               <button className="ds-send" onClick={() => send()} disabled={!input.trim() && !image} type="button" aria-label="Gửi">
-                <IcoSend size={18} />
+                {input.trim() || image ? <IcoSend size={18} /> : <IcoAIStar size={18} />}
               </button>
             )}
           </div>
