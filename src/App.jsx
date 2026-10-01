@@ -23,6 +23,7 @@ import ChemSudoku from './components/games/ChemSudoku.jsx';
 import { useAuth } from './hooks/useAuth.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
+import './app-extra.css';
 import MobileHeader from './components/MobileHeader.jsx';
 import AIMark from './components/AIMark.jsx';
 import {
@@ -47,7 +48,7 @@ const NAV_TOOLS = [
   ['grade', 'Tính điểm', IconTarget],
   ['quiz', 'Ôn tập', IconQuiz],
   ['games', 'Trò chơi', IconGamepad],
-  ['profile', 'Trang cá nhân', IconHome],
+  ['profile', 'Trang cá nhân', IconUser],
 ];
 
 /* ============ BOTTOM NAV (MOBILE) ============ */
@@ -61,17 +62,17 @@ const NAV_BOTTOM = [
 
 const PAGES = [...NAV_MAIN, ...NAV_TOOLS];
 
+const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
+
 const readPage = () => {
   const h = location.hash.slice(1);
-
-  if (h === 'games/chicken') return 'games/chicken';
-  if (h === 'games/slingshot') return 'games/slingshot';
-  if (h === 'games/jeopardy') return 'games/jeopardy';
-  if (h === 'games/lab') return 'games/lab';
-  if (h === 'games/battle') return 'games/battle';
-  if (h === 'games/sudoku') return 'games/sudoku';
-
+  if (GAME_ROUTES.includes(h)) return h;
   return PAGES.some((p) => p[0] === h) ? h : 'home';
+};
+
+const pageTitle = (page) => {
+  const hit = PAGES.find((p) => p[0] === page);
+  return (hit ? hit[1] : page.startsWith('games/') ? 'Trò chơi' : 'Trang chủ') + ' · A7 K60 DTA';
 };
 
 export default function App() {
@@ -84,6 +85,8 @@ export default function App() {
   const [toolOpen, setToolOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
+  const [askLogout, setAskLogout] = useState(false);
+  const dlgRef = useRef(null);
   const navRef = useRef(null);
   const progRef = useRef(null);
 
@@ -98,6 +101,20 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  // ===== TIÊU ĐỀ TAB + CHUYỂN FOCUS (screen reader / bàn phím) =====
+  useEffect(() => {
+    document.title = pageTitle(page);
+    document.getElementById('main')?.focus({ preventScroll: true });
+  }, [page]);
+
+  // ===== HỘP THOẠI ĐĂNG XUẤT =====
+  useEffect(() => {
+    const d = dlgRef.current;
+    if (!d) return;
+    if (askLogout && !d.open) d.showModal();
+    if (!askLogout && d.open) d.close();
+  }, [askLogout]);
 
   // ===== SCROLL PROGRESS =====
   useEffect(() => {
@@ -260,11 +277,7 @@ export default function App() {
             {/* Nút đăng xuất */}
             <button
               className="nav-icon-btn"
-              onClick={() => {
-                if (confirm(`Đăng xuất khỏi tài khoản ${user?.displayName || user?.email || ''}?`)) {
-                  logout();
-                }
-              }}
+              onClick={() => setAskLogout(true)}
               type="button"
               aria-label="Đăng xuất"
               title={`Đăng xuất (${user?.displayName || user?.email || ''})`}
@@ -342,58 +355,21 @@ export default function App() {
           {/* Nút theme + logout trong menu mobile */}
           <p className="nav-sheet-label">Tài khoản</p>
           <div className="nav-sheet-grid">
-            <button
-              type="button"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                minHeight: 46,
-                padding: '0 12px',
-                borderRadius: 14,
-                font: '500 .84rem var(--sans)',
-                color: 'var(--ink)',
-                background: 'color-mix(in srgb, var(--soft) 50%, transparent)',
-                border: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ display: 'inline-flex', fontSize: '1.05rem' }}>
+            <button type="button" className="sheet-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              <span>
                 {theme === 'dark' ? <IconSun /> : <IconMoon />}
               </span>
               {theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMenu(false);
-                if (confirm(`Đăng xuất khỏi tài khoản ${user?.displayName || user?.email || ''}?`)) {
-                  logout();
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                minHeight: 46,
-                padding: '0 12px',
-                borderRadius: 14,
-                font: '500 .84rem var(--sans)',
-                color: 'var(--acc)',
-                background: 'color-mix(in srgb, var(--soft) 50%, transparent)',
-                border: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ display: 'inline-flex', fontSize: '1.05rem' }}>↪</span>
+            <button type="button" className="sheet-btn danger" onClick={() => { setMenu(false); setAskLogout(true); }}>
+              <span aria-hidden="true">↪</span>
               Đăng xuất
             </button>
           </div>
         </div>
       </header>
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {page === 'home' && <Home />}
         {page === 'table' && (
           <section className="wrap">
@@ -422,6 +398,20 @@ export default function App() {
         {page === 'games/battle' && <ElementBattle />}
         {page === 'games/sudoku' && <ChemSudoku />}
       </main>
+
+      <dialog
+        ref={dlgRef}
+        className="app-dialog"
+        onClose={() => setAskLogout(false)}
+        onClick={(e) => e.target === dlgRef.current && setAskLogout(false)}
+      >
+        <h3>Đăng xuất?</h3>
+        <p>Tài khoản <b>{user?.displayName || user?.email}</b> sẽ thoát khỏi thiết bị này.</p>
+        <div className="app-dialog-actions">
+          <button type="button" onClick={() => setAskLogout(false)}>Ở lại</button>
+          <button type="button" className="danger" onClick={logout}>Đăng xuất</button>
+        </div>
+      </dialog>
 
       <footer className="foot">
         <div>

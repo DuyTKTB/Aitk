@@ -115,6 +115,9 @@ export default function AIMark({
     let blinkPhase = -1;       // -1 = không chớp
     let startle = 0;           // 0..1, giảm dần
     let doubleBlink = 0;       // số lần chớp liên tiếp
+    let frameDt = 1 / 60;      // dt của frame hiện tại (giây)
+    let io;                    // theo dõi có đang hiển thị không
+    const vis = { on: true };
 
     const paint = () => {
       const m = modeRef.current;
@@ -183,7 +186,7 @@ export default function AIMark({
             blinkAt = t + 2.2 + Math.random() * 3.5;
           }
         } else {
-          blinkPhase = b + 1 / 60;
+          blinkPhase = b + frameDt;
         }
       } else if (t >= blinkAt) {
         blinkPhase = 0;
@@ -215,6 +218,9 @@ export default function AIMark({
     const frame = (now) => {
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
+      // ẩn (display:none / ngoài màn hình) → không mô phỏng, đỡ tốn CPU
+      if (!vis.on) { raf = requestAnimationFrame(frame); return; }
+      frameDt = dt;
       t += dt;
       const cfg = MODES[modeRef.current] || MODES.idle;
 
@@ -290,6 +296,10 @@ export default function AIMark({
     if (!animate || reduce) return undefined;
 
     raf = requestAnimationFrame(frame);
+    if (svgRef.current && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(([e]) => { vis.on = e.isIntersecting; });
+      io.observe(svgRef.current);
+    }
     if (look && svgRef.current) {
       window.addEventListener('pointermove', onMove);
       svgRef.current.addEventListener('pointerenter', onEnter);
@@ -297,6 +307,7 @@ export default function AIMark({
     }
     return () => {
       cancelAnimationFrame(raf);
+      io?.disconnect();
       window.removeEventListener('pointermove', onMove);
       svgRef.current?.removeEventListener('pointerenter', onEnter);
       svgRef.current?.removeEventListener('pointerleave', onLeave);
@@ -308,15 +319,15 @@ export default function AIMark({
 
   return (
     <svg
-  ref={svgRef}
-  className={'ai-mark' + (look ? ' look' : '') + (className ? ' ' + className : '')}
-  viewBox={VB.join(' ')}
-  style={{ width: size }}
-  preserveAspectRatio="xMidYMid meet"
-  role="img"
-  aria-label={title}
-  onClick={look ? () => { pokeRef.current += 1; } : undefined}
->
+      ref={svgRef}
+      className={'ai-mark' + (look ? ' look' : '') + (className ? ' ' + className : '')}
+      viewBox={VB.join(' ')}
+      style={{ width: size }}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={title}
+      onClick={look ? () => { pokeRef.current += 1; } : undefined}
+    >
       <defs>
         {goo && (
           <filter
@@ -364,14 +375,14 @@ export default function AIMark({
           {ARMS.map((a, i) => (
             <path
               key={'a' + i}
-              ref={(el) => (armRefs.current[i] = el)}
+              ref={(el) => { armRefs.current[i] = el; }}
               d={armPath(a, 0, 0, 0, 0, 0)}
             />
           ))}
           {ARMS.map((a, i) => (
             <circle
               key={'r' + i}
-              ref={(el) => (ringRefs.current[i] = el)}
+              ref={(el) => { ringRefs.current[i] = el; }}
               cx={a.t[0]}
               cy={a.t[1]}
               r={(a.ro + a.ri) / 2}

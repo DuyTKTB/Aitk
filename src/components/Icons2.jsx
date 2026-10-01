@@ -1,127 +1,114 @@
-/* ============================================================
-   Icons2 — SVG icon cho Chat AI (kiểu ChatGPT)
-   ============================================================ */
+/* Icons2 — icon cho Chat AI & hồ sơ. Cùng ngôn ngữ nét với Icons.jsx (dùng chung <Svg>). */
+import { Svg } from './Icons.jsx';
 
-export const IcoPlus = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-);
+const duo = { fill: 'currentColor', fillOpacity: 0.14 };
+const w = (size, strokeWidth = 1.9) => ({ size, strokeWidth });
+
+export const IcoPlus = ({ size = 16 }) => (<Svg {...w(size, 2.1)}><path d="M12 5v14M5 12h14" /></Svg>);
+export const IcoChevron = ({ size = 12 }) => (<Svg {...w(size, 2.3)}><path d="m9 6 6 6-6 6" /></Svg>);
+export const IcoMenu = ({ size = 18 }) => (<Svg {...w(size, 2)}><path d="M4 7h16M4 12h11M4 17h16" /></Svg>);
+export const IcoClose = ({ size = 18 }) => (<Svg {...w(size, 2.1)}><path d="M6 6l12 12M18 6 6 18" /></Svg>);
+export const IcoCheck = ({ size = 14 }) => (<Svg {...w(size, 2.4)}><path d="m5 12.5 4.5 4.5L19 7.5" /></Svg>);
+export const IcoSend = ({ size = 18 }) => (<Svg {...w(size, 2.3)}><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></Svg>);
 
 export const IcoChat = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
+  <Svg {...w(size)}>
+    <path d="M20 15.5a2 2 0 0 1-2 2H8l-4.5 3.5V6a2 2 0 0 1 2-2H18a2 2 0 0 1 2 2z" {...duo} />
+  </Svg>
 );
 
 export const IcoTrash = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-  </svg>
-);
-
-export const IcoChevron = ({ size = 12 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 6 15 12 9 18" />
-  </svg>
-);
-
-export const IcoMenu = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <line x1="3" y1="6" x2="21" y2="6" />
-    <line x1="3" y1="12" x2="21" y2="12" />
-    <line x1="3" y1="18" x2="21" y2="18" />
-  </svg>
-);
-
-export const IcoClose = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-    <line x1="6" y1="6" x2="18" y2="18" />
-    <line x1="18" y1="6" x2="6" y2="18" />
-  </svg>
+  <Svg {...w(size)}>
+    <path d="m6 7 .8 12a2 2 0 0 0 2 1.9h6.4a2 2 0 0 0 2-1.9L18 7z" {...duo} />
+    <path d="M4 7h16M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7M10 11v6M14 11v6" />
+  </Svg>
 );
 
 export const IcoImage = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-    <circle cx="8.5" cy="8.5" r="1.5" />
-    <polyline points="21 15 16 10 5 21" />
-  </svg>
-);
-
-export const IcoSend = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="19" x2="12" y2="5" />
-    <polyline points="5 12 12 5 19 12" />
-  </svg>
+  <Svg {...w(size)}>
+    <rect x="3.5" y="4" width="17" height="16" rx="3" {...duo} />
+    <circle cx="9" cy="9.5" r="1.6" />
+    <path d="M20.5 15.5 15.5 10.5 6 20" />
+  </Svg>
 );
 
 export const IcoBrain = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9.5 2a3.5 3.5 0 0 0-3.5 3.5v.5a3 3 0 0 0-2 5.2A3 3 0 0 0 6 17v.5a3.5 3.5 0 0 0 6.5 1.8V2.5A3.5 3.5 0 0 0 9.5 2z" />
-    <path d="M14.5 2a3.5 3.5 0 0 1 3.5 3.5v.5a3 3 0 0 1 2 5.2A3 3 0 0 1 18 17v.5a3.5 3.5 0 0 1-6.5 1.8V2.5A3.5 3.5 0 0 1 14.5 2z" />
-  </svg>
+  <Svg {...w(size)}>
+    <path d="M9.5 2A3.5 3.5 0 0 0 6 5.5V6a3 3 0 0 0-2 5.2A3 3 0 0 0 6 17v.5a3.5 3.5 0 0 0 6 2.3V2.7A3.5 3.5 0 0 0 9.5 2z" {...duo} />
+    <path d="M14.5 2A3.5 3.5 0 0 1 18 5.5V6a3 3 0 0 1 2 5.2A3 3 0 0 1 18 17v.5a3.5 3.5 0 0 1-6 2.3V2.7A3.5 3.5 0 0 1 14.5 2z" {...duo} />
+  </Svg>
 );
 
 export const IcoCopy = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
-
-export const IcoCheck = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
+  <Svg {...w(size)}>
+    <rect x="9" y="9" width="11" height="11" rx="2.5" {...duo} />
+    <path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9" />
+  </Svg>
 );
 
 export const IcoUser = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
+  <Svg {...w(size)}>
+    <circle cx="12" cy="8" r="4" {...duo} />
+    <path d="M4.5 20.5c.4-3.8 3.4-6 7.5-6s7.1 2.2 7.5 6" />
+  </Svg>
 );
 
 export const IcoCrown = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2l2.5 6.5L21 5l-2 12H5L3 5l6.5 3.5L12 2zm0 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" opacity=".15"/>
-    <path d="M3 5l4 2 5-4 5 4 4-2-2 14H5L3 5zm9 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-  </svg>
+  <Svg {...w(size)}>
+    <path d="M3.5 8.5 8 12l4-6.5 4 6.5 4.5-3.5L18.8 18H5.2Z" {...duo} />
+    <path d="M5.5 20.5h13" />
+  </Svg>
 );
 
 export const IcoLogout = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
+  <Svg {...w(size)}>
+    <path d="M9 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3H9" />
+    <path d="m16 16.5 4.5-4.5L16 7.5M20.5 12H9" />
+  </Svg>
 );
 
 export const IcoSettings = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" />
+  <Svg {...w(size)}>
+    <circle cx="12" cy="12" r="3" {...duo} />
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
+  </Svg>
 );
 
 export const IcoSparkle = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z" />
-  </svg>
+  <Svg {...w(size, 1.2)} fill="currentColor">
+    <path d="M12 3.3c.8 5.4 3.3 7.9 8.7 8.7-5.4.8-7.9 3.3-8.7 8.7-.8-5.4-3.3-7.9-8.7-8.7 5.4-.8 7.9-3.3 8.7-8.7Z" />
+  </Svg>
 );
 
 export const IcoMail = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-    <polyline points="22,6 12,13 2,6" />
-  </svg>
+  <Svg {...w(size)}>
+    <rect x="3" y="5" width="18" height="14" rx="3" {...duo} />
+    <path d="m3.5 7.5 7.4 5.4a2 2 0 0 0 2.2 0l7.4-5.4" />
+  </Svg>
 );
+
 export const IcoCamera = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-    <circle cx="12" cy="13" r="4" />
-  </svg>
+  <Svg {...w(size)}>
+    <path d="M21 18.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2.5l1.7-2.5h5.6L16.5 7H19a2 2 0 0 1 2 2z" {...duo} />
+    <circle cx="12" cy="13" r="3.6" />
+  </Svg>
+);
+export const IcoRefresh = ({ size = 14 }) => (
+  <Svg {...w(size)}>
+    <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" />
+    <path d="M21 4v5h-5" />
+  </Svg>
+);
+
+export const IcoStop = ({ size = 18 }) => (
+  <Svg {...w(size, 2)} fill="currentColor">
+    <rect x="6.5" y="6.5" width="11" height="11" rx="2.5" />
+  </Svg>
+);
+
+export const IcoSearch = ({ size = 14 }) => (
+  <Svg {...w(size)}>
+    <circle cx="11" cy="11" r="6.5" {...duo} />
+    <path d="m20 20-3.6-3.6" />
+  </Svg>
 );

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { translateAuthError } from '../lib/firebase.js';
 import { TIERS } from '../lib/tier.js';
@@ -6,141 +6,65 @@ import VerifiedBadge from './VerifiedBadge.jsx';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
 import './ProfileFB.css';
 
-/* ---------- Bảng màu avatar ---------- */
-const AVATAR_COLORS = [
-  '#ff4d1a', '#a7c4f2', '#b7dc9a', '#ffc46b',
-  '#f2b6c6', '#c1b4f0', '#8fd6c4', '#ff9b85',
+/* ---------- Màu avatar: tự động theo tên, cho phép chọn lại (lưu máy) ---------- */
+const AVATAR_COLORS = ['#ff4d1a', '#a7c4f2', '#b7dc9a', '#ffc46b', '#f2b6c6', '#c1b4f0', '#8fd6c4', '#ff9b85'];
+const hashStr = (s = '') => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
+const autoColor = (name) => AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
+const rankFor = (tier) => (tier?.key === 'vip' ? 'Nhà Hóa học cấp cao' : 'Nhà Hóa học tập sự');
+const ls = {
+  get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* bỏ qua */ } },
+};
+
+/* ---------- Quy tắc mật khẩu (hiển thị checklist thật, không chỉ thanh màu) ---------- */
+const PW_RULES = [
+  ['Từ 6 ký tự', (p) => p.length >= 6],
+  ['Có chữ hoa và chữ thường', (p) => /[a-z]/.test(p) && /[A-Z]/.test(p)],
+  ['Có chữ số', (p) => /\d/.test(p)],
+  ['Có ký tự đặc biệt', (p) => /[^A-Za-z0-9]/.test(p)],
 ];
-function colorFromName(name = '') {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
 
-/* Chức danh tự động theo tier */
-function rankFor(tier) {
-  if (tier?.key === 'vip') return 'Nhà Hóa học cấp cao';
-  return 'Nhà Hóa học tập sự';
-}
-
-/* ============================================================
-   AVATAR — vòng tròn, có viền con dấu VIP chạy quanh
-   ============================================================ */
-function AvatarRing({ photoURL, initial, color, isVip, size = 168 }) {
+function Avatar({ photoURL, initial, color, isVip }) {
   return (
-    <div
-      className={'fb-avatar-wrap' + (isVip ? ' vip' : '')}
-      style={{ '--av-color': color, '--av-size': `${size}px` }}
-    >
-      {isVip && (
-        <svg className="fb-avatar-ring" viewBox="0 0 200 200" aria-hidden="true">
-          <defs>
-            <path
-              id="fb-avatar-circle"
-              d="M100,100 m-88,0 a88,88 0 1,1 176,0 a88,88 0 1,1 -176,0"
-            />
-          </defs>
-          <text
-            fontFamily="var(--mono)"
-            fontSize="11"
-            fontWeight="700"
-            fill="#ffb020"
-            letterSpacing="2"
-          >
-            <textPath href="#fb-avatar-circle" startOffset="0">
-              VIP · CUAI · VIP · CUAI · VIP · CUAI · VIP · CUAI · VIP · CUAI ·
-            </textPath>
-          </text>
-        </svg>
-      )}
-
-      <div className="fb-avatar-inner">
-        {photoURL ? (
-          <img src={photoURL} alt="Avatar" />
-        ) : (
-          <span className="fb-avatar-initial" style={{ background: color }}>
-            {initial}
-          </span>
-        )}
-      </div>
+    <div className={'pf-avatar' + (isVip ? ' vip' : '')} style={{ '--av': color }}>
+      {photoURL ? <img src={photoURL} alt="" /> : <span>{initial}</span>}
     </div>
   );
 }
 
-/* ============================================================
-   COVER — gradient theo tier + hoa văn hóa học mờ
-   ============================================================ */
-function TierCover({ tier }) {
-  const color = tier?.color || '#6b675e';
+function Field({ id, label, hint, locked, right, children }) {
   return (
-    <div
-      className="fb-cover"
-      style={{
-        '--tier-color': color,
-      }}
-    >
-      <svg className="fb-cover-mol" viewBox="0 0 800 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <defs>
-          <pattern id="fb-hex" width="56" height="97" patternUnits="userSpaceOnUse">
-            <path d="M28 0v16M28 16L0 32M28 16l28 16M0 32v32M56 32v32M0 64l28 16M56 64L28 80M28 80v17"
-              fill="none" stroke="currentColor" strokeWidth="1.4" />
-          </pattern>
-        </defs>
-        <rect width="800" height="300" fill="url(#fb-hex)" />
-        <circle className="node pulse" cx="140" cy="80" r="4" />
-        <circle className="node pulse" cx="364" cy="128" r="4" />
-        <circle className="node pulse" cx="588" cy="64" r="4" />
-        <circle className="node pulse" cx="672" cy="176" r="4" />
-      </svg>
-      <div className="fb-cover-symbols" aria-hidden="true">
-        <span style={{ top: '12%', left: '8%' }}>H₂O</span>
-        <span style={{ top: '68%', left: '22%' }}>NaCl</span>
-        <span style={{ top: '22%', right: '18%' }}>C₆H₁₂O₆</span>
-        <span style={{ bottom: '14%', right: '8%' }}>CO₂</span>
-        <span style={{ top: '34%', left: '44%' }}><Glyph name="atom" size={56} strokeWidth={1.4} /></span>
-      </div>
-      <div className="fb-cover-fallback">
-        <span>{tier?.name || 'Free'}</span>
-        <small>{rankFor(tier)}</small>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   FIELD — input đơn giản kiểu FB
-   ============================================================ */
-function FBField({ id, label, hint, right, locked, children }) {
-  return (
-    <div className="fb-field">
-      {label && <label htmlFor={id}>{label}</label>}
-      <div className={'fb-field-input' + (locked ? ' locked' : '')}>
+    <div className="pf-field">
+      <label htmlFor={id}>{label}</label>
+      <div className={'pf-input' + (locked ? ' locked' : '')}>
         {children}
-        {right && <div className="fb-field-right">{right}</div>}
+        {right}
       </div>
-      {hint && <span className="fb-field-hint">{hint}</span>}
+      {hint && <span className="pf-hint">{hint}</span>}
     </div>
   );
 }
 
-/* ============================================================
-   PROFILE PAGE
-   ============================================================ */
+function PwInput({ id, label, value, onChange, show, onToggle, hint, ...rest }) {
+  return (
+    <Field
+      id={id} label={label} hint={hint}
+      right={
+        <button type="button" className="pf-eye" onClick={onToggle} aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+          <Glyph name={show ? 'eyeOff' : 'eye'} size={17} />
+        </button>
+      }
+    >
+      <input id={id} type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder="••••••••" {...rest} />
+    </Field>
+  );
+}
+
 export default function ProfilePage() {
-  const {
-    user,
-    tier,
-    logout,
-    updateDisplayName,
-    changePassword,
-    sendVerifyEmail,
-    refreshUser,
-    refreshTier,
-  } = useAuth();
+  const { user, tier, logout, updateDisplayName, changePassword, sendVerifyEmail, refreshUser, refreshTier } = useAuth();
 
-  const [tab, setTab] = useState('info');
-  const [secTab, setSecTab] = useState('password'); // password | devices | verify
-
+  const [tab, setTab] = useState(() => ls.get('cs-profile-tab', 'info'));
+  const [secTab, setSecTab] = useState('password');
   const [name, setName] = useState(user?.displayName || '');
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -148,73 +72,77 @@ export default function ProfilePage() {
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [caps, setCaps] = useState(false);
-
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
+  const [toast, setToast] = useState(null); // {type, text}
+  const [copied, setCopied] = useState(false);
+  const [askLogout, setAskLogout] = useState(false);
+  const [pickedColor, setPickedColor] = useState(() => ls.get('cs-avatar-color', ''));
+  const toastTimer = useRef(null);
+  const dlg = useRef(null);
 
   const email = user?.email || '';
-  const initial = useMemo(
-    () => (user?.displayName || email || '?').trim().charAt(0).toUpperCase(),
-    [user?.displayName, email]
-  );
-  const avatarColor = useMemo(
-    () => colorFromName(user?.displayName || email),
-    [user?.displayName, email]
-  );
-  const createdAt = user?.metadata?.creationTime
-    ? new Date(user.metadata.creationTime).toLocaleDateString('vi-VN')
-    : '—';
-  const lastLogin = user?.metadata?.lastSignInTime
-    ? new Date(user.metadata.lastSignInTime).toLocaleString('vi-VN')
-    : '—';
-  const daysJoined = user?.metadata?.creationTime
-    ? Math.max(1, Math.ceil((Date.now() - new Date(user.metadata.creationTime).getTime()) / 864e5))
-    : 0;
+  const display = user?.displayName || '';
+  const initial = (display || email || '?').trim().charAt(0).toUpperCase();
+  const color = pickedColor || autoColor(display || email);
   const isGoogle = user?.providerData?.some((p) => p.providerId === 'google.com');
   const isVip = tier?.key === 'vip';
+  const dirty = name.trim() !== display;
 
-  const identCode = useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < email.length; i++) h = (h * 31 + email.charCodeAt(i)) >>> 0;
-    return 'A7-' + h.toString(16).slice(0, 6).toUpperCase();
-  }, [email]);
+  const created = user?.metadata?.creationTime ? new Date(user.metadata.creationTime) : null;
+  const createdAt = created ? created.toLocaleDateString('vi-VN') : '—';
+  const lastLogin = user?.metadata?.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleString('vi-VN') : '—';
+  const daysJoined = created ? Math.max(1, Math.ceil((Date.now() - created.getTime()) / 864e5)) : 0;
+  const identCode = useMemo(() => 'A7-' + hashStr(email).toString(16).slice(0, 6).toUpperCase(), [email]);
+  const pwScore = pwStrength(newPw);
 
-  const symbol = useMemo(() => {
-    const n = (user?.displayName || email || '?').trim();
-    return n.charAt(0).toUpperCase() + (n.charAt(1) || '').toLowerCase();
-  }, [user?.displayName, email]);
+  /* ---------- Toast tự tắt ---------- */
+  const say = useCallback((type, text) => {
+    clearTimeout(toastTimer.current);
+    setToast({ type, text });
+    toastTimer.current = setTimeout(() => setToast(null), type === 'error' ? 7000 : 4000);
+  }, []);
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  const ok = (t) => say('ok', t);
+  const fail = (t) => say('error', t);
+  const err = (e) => fail(e.code ? translateAuthError(e.code) : e.message);
 
-  const newPwStrength = pwStrength(newPw);
+  /* ---------- Lưu tab đang xem; cảnh báo khi rời trang với tên chưa lưu ---------- */
+  useEffect(() => { ls.set('cs-profile-tab', tab); }, [tab]);
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const h = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
 
-  const clearMessages = () => { setMsg(''); setErr(''); };
-  const fail = (m) => { setMsg(''); setErr(m); };
-  const ok = (m) => { setErr(''); setMsg(m); };
+  /* ---------- Hộp thoại đăng xuất (thay cho confirm()) ---------- */
+  useEffect(() => {
+    const d = dlg.current; if (!d) return;
+    if (askLogout && !d.open) d.showModal();
+    if (!askLogout && d.open) d.close();
+  }, [askLogout]);
 
-  const handleSaveName = async (e) => {
-    e.preventDefault();
-    clearMessages();
-    const trimmed = name.trim();
-    if (!trimmed) return fail('Vui lòng nhập tên hiển thị.');
-    if (trimmed.length < 2) return fail('Tên phải từ 2 ký tự.');
-    if (trimmed === user?.displayName) return fail('Tên chưa thay đổi.');
-    setLoading(true);
-    try {
-      await updateDisplayName(trimmed);
-      await refreshUser();
-      ok('Đã cập nhật tên hiển thị.');
-    } catch (e) {
-      fail(e.code ? translateAuthError(e.code) : e.message);
-    } finally {
-      setLoading(false);
-    }
+  const pickColor = (c) => { setPickedColor(c); ls.set('cs-avatar-color', c); };
+
+  const copyId = async () => {
+    try { await navigator.clipboard.writeText(identCode); setCopied(true); setTimeout(() => setCopied(false), 1600); }
+    catch { fail('Trình duyệt không cho phép sao chép.'); }
   };
 
-  const handleChangePassword = async (e) => {
+  /* ---------- Handlers ---------- */
+  const saveName = async (e) => {
     e.preventDefault();
-    clearMessages();
+    const t = name.trim();
+    if (t.length < 2) return fail('Tên phải từ 2 ký tự.');
+    if (!dirty) return fail('Tên chưa thay đổi.');
+    setLoading(true);
+    try { await updateDisplayName(t); await refreshUser(); ok('Đã cập nhật tên hiển thị.'); }
+    catch (x) { err(x); } finally { setLoading(false); }
+  };
+
+  const savePassword = async (e) => {
+    e.preventDefault();
     if (isGoogle) return fail('Tài khoản Google không cần đổi mật khẩu.');
-    if (!oldPw) return fail('Vui lòng nhập mật khẩu hiện tại.');
     if (newPw.length < 6) return fail('Mật khẩu mới phải từ 6 ký tự.');
     if (newPw !== confirmPw) return fail('Mật khẩu xác nhận không khớp.');
     if (newPw === oldPw) return fail('Mật khẩu mới phải khác mật khẩu cũ.');
@@ -222,487 +150,213 @@ export default function ProfilePage() {
     try {
       await changePassword(oldPw, newPw);
       setOldPw(''); setNewPw(''); setConfirmPw('');
-      ok('Đã đổi mật khẩu thành công.');
-    } catch (e) {
-      const code = e.code;
-      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        fail('Mật khẩu hiện tại không đúng.');
-      } else {
-        fail(code ? translateAuthError(code) : e.message);
-      }
-    } finally {
-      setLoading(false);
-    }
+      ok('Đã đổi mật khẩu.');
+    } catch (x) {
+      if (x.code === 'auth/wrong-password' || x.code === 'auth/invalid-credential') fail('Mật khẩu hiện tại không đúng.');
+      else err(x);
+    } finally { setLoading(false); }
   };
 
-  const handleSendVerify = async () => {
-    clearMessages();
+  const run = (fn, good) => async () => {
     setLoading(true);
-    try {
-      await sendVerifyEmail();
-      ok('Đã gửi email xác thực. Kiểm tra hộp thư của bạn.');
-    } catch (e) {
-      fail(e.code ? translateAuthError(e.code) : e.message);
-    } finally {
-      setLoading(false);
-    }
+    try { const r = await fn(); good(r); } catch (x) { err(x); } finally { setLoading(false); }
   };
+  const sendVerify = run(sendVerifyEmail, () => ok('Đã gửi email xác thực. Kiểm tra hộp thư (cả mục Spam).'));
+  const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
+  const syncTier = run(refreshTier, (t) => ok(`Gói hiện tại: ${t.name}`));
 
-  const handleRefreshVerify = async () => {
-    clearMessages();
-    setLoading(true);
-    try {
-      const u = await refreshUser();
-      if (u?.emailVerified) ok('Email đã được xác thực.');
-      else fail('Email vẫn chưa được xác thực. Hãy kiểm tra hộp thư.');
-    } catch (e) {
-      fail(e.message);
-    } finally {
-      setLoading(false);
-    }
+  const TABS = [['info', 'Hồ sơ', 'user'], ['security', 'Bảo mật', 'shield'], ['upgrade', 'Gói dùng', 'crown']];
+  const SEC = [['password', 'Mật khẩu'], ['verify', 'Xác thực email'], ['devices', 'Phiên đăng nhập']];
+
+  /* mũi tên trái/phải chuyển tab (đúng chuẩn tablist) */
+  const onTabKey = (e) => {
+    const i = TABS.findIndex(([id]) => id === tab);
+    if (e.key === 'ArrowRight') setTab(TABS[(i + 1) % TABS.length][0]);
+    if (e.key === 'ArrowLeft') setTab(TABS[(i + TABS.length - 1) % TABS.length][0]);
   };
-
-  const handleRefreshTier = async () => {
-    clearMessages();
-    setLoading(true);
-    try {
-      const t = await refreshTier();
-      ok(`Đã cập nhật gói: ${t.name}`);
-    } catch (e) {
-      fail(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const capsCheck = (e) => setCaps(!!e.getModifierState?.('CapsLock'));
-
-  const TABS = [
-    { id: 'info', label: 'Hồ sơ', icon: 'user' },
-    { id: 'security', label: 'Bảo mật', icon: 'shield' },
-    { id: 'upgrade', label: 'Nâng cấp', icon: 'crown' },
-  ];
-
-  const SEC_TABS = [
-    { id: 'password', label: 'Đổi mật khẩu', icon: 'lock' },
-    { id: 'devices', label: 'Thiết bị', icon: 'fingerprint' },
-    { id: 'verify', label: 'Xác thực', icon: 'mail' },
-  ];
 
   return (
-    <section className="fb-page">
-      {/* ============ COVER ============ */}
-      <TierCover tier={tier} />
-
-      {/* ============ AVATAR + INFO ============ */}
-      <div className="fb-avatar-row">
-        <AvatarRing
-          photoURL={user?.photoURL}
-          initial={initial}
-          color={avatarColor}
-          isVip={isVip}
-          size={168}
-        />
-
-        <div className="fb-info">
-          <h1 className="fb-name">
-            {user?.displayName || 'Ẩn danh'}
-            {isVip && <VerifiedBadge isVip size={22} />}
-          </h1>
-
-          <span className="fb-title">
-            <Glyph name="sparkles" size={13} />
-            {rankFor(tier)}
-          </span>
-
-          <ul className="fb-meta">
-            <li>
-              <Glyph name="mail" size={14} />
-              <b>{email}</b>
-              {user?.emailVerified && (
-                <span className="fb-verified" title="Email đã xác thực"><Glyph name="check" size={10} strokeWidth={3.5} /></span>
-              )}
-            </li>
-            <li>
-              <Glyph name="target" size={14} />
-              <b>{identCode}</b>
-            </li>
-            <li>
-              <Glyph name="calendar" size={14} />
-              Tham gia <b>{createdAt}</b>
-            </li>
-            <li>
-              <Glyph name="clock" size={14} />
-              Lần cuối <b>{lastLogin}</b>
-            </li>
-          </ul>
-        </div>
-
-        <div className="fb-element" style={{ '--tier-color': tier?.color || '#6b675e' }} aria-hidden="true">
-          <span className="z">{daysJoined}</span>
-          <Glyph name={isVip ? 'crown' : 'flask'} size={16} className="ic" />
-          <b className="sym">{symbol}</b>
-          <span className="nm">{(user?.displayName || 'Ẩn danh').split(' ').pop()}</span>
-          <span className="wt">{identCode}</span>
-        </div>
+    <section className="pf">
+      <div className={'pf-toast' + (toast ? ' show ' + toast.type : '')} role="status" aria-live="polite">
+        {toast && (<><Glyph name={toast.type === 'ok' ? 'check' : 'alert'} size={15} /><span>{toast.text}</span>
+          <button type="button" onClick={() => setToast(null)} aria-label="Đóng">×</button></>)}
       </div>
 
-      {/* ============ THỐNG KÊ NHANH ============ */}
-      <div className="fb-stats">
-        <div className="fb-stat">
-          <small>Gói hiện tại</small>
-          <strong style={{ color: tier?.color }}>{tier?.name || 'Free'}</strong>
-        </div>
-        <div className="fb-stat">
-          <small>Đã đồng hành</small>
-          <strong>{daysJoined}<i>ngày</i></strong>
-        </div>
-        <div className="fb-stat">
-          <small>Email</small>
-          <strong>{user?.emailVerified ? 'Đã xác thực' : 'Chưa xác thực'}</strong>
-        </div>
-      </div>
+      <div className="pf-grid">
+        {/* ============ THẺ ĐỊNH DANH ============ */}
+        <aside className="pf-card" style={{ '--tier': tier?.color || '#6b675e' }}>
+          <div className="pf-card-band"><span>{tier?.name || 'Free'}</span><span>№ {identCode}</span></div>
+          <div className="pf-card-body">
+            <Avatar photoURL={user?.photoURL} initial={initial} color={color} isVip={isVip} />
+            <h1 className="pf-name">{display || 'Ẩn danh'}{isVip && <VerifiedBadge isVip size={20} />}</h1>
+            <p className="pf-rank">{rankFor(tier)}</p>
 
-      {/* ============ TABS NGANG ============ */}
-      <nav className="fb-tabs" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={'fb-tab' + (tab === t.id ? ' on' : '')}
-            onClick={() => { setTab(t.id); clearMessages(); }}
-          >
-            <Glyph name={t.icon} size={15} />
-            {t.label}
-          </button>
-        ))}
-      </nav>
+            {!user?.photoURL && (
+              <div className="pf-swatches" role="radiogroup" aria-label="Màu avatar">
+                {AVATAR_COLORS.map((c) => (
+                  <button key={c} type="button" role="radio" aria-checked={c === color} aria-label={c}
+                    className={c === color ? 'on' : ''} style={{ background: c }} onClick={() => pickColor(c)} />
+                ))}
+              </div>
+            )}
 
-      {/* ============ PANEL ============ */}
-      <div className="fb-panel">
-        {msg && (
-          <div className="fb-msg success">
-            <Glyph name="check" size={15} /> {msg}
+            <dl className="pf-facts">
+              <div><dt>Email</dt><dd title={email}>{email}{user?.emailVerified && <i className="pf-ok" title="Đã xác thực"><Glyph name="check" size={9} strokeWidth={3.5} /></i>}</dd></div>
+              <div><dt>Mã định danh</dt><dd>{identCode}<button type="button" className="pf-copy" onClick={copyId}>{copied ? 'Đã chép' : 'Sao chép'}</button></dd></div>
+              <div><dt>Tham gia</dt><dd>{createdAt} · {daysJoined} ngày</dd></div>
+              <div><dt>Lần cuối</dt><dd>{lastLogin}</dd></div>
+            </dl>
           </div>
-        )}
-        {err && (
-          <div className="fb-msg error">
-            <Glyph name="alert" size={15} /> {err}
-          </div>
-        )}
+        </aside>
 
-        {/* ---------- TAB HỒ SƠ ---------- */}
-        {tab === 'info' && (
-          <form onSubmit={handleSaveName}>
-            <div className="fb-section">
-              <h2 className="fb-section-title">Thông tin cá nhân</h2>
-              <p className="fb-section-sub">Chỉnh sửa tên hiển thị của bạn. Các thông tin khác không thể thay đổi.</p>
-
-              <FBField
-                id="fb-name"
-                label="Tên hiển thị"
-                hint="Tên này hiển thị trong app và chat cộng đồng."
-                right={name.trim().length >= 2 ? <Glyph name="check" size={16} /> : null}
-              >
-                <input
-                  id="fb-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nguyễn Văn A"
-                  maxLength={30}
-                  autoComplete="name"
-                />
-              </FBField>
-
-              <FBField
-                id="fb-email"
-                label="Email"
-                hint="Email không thể thay đổi."
-                locked
-              >
-                <input id="fb-email" type="email" value={email} disabled readOnly />
-              </FBField>
-            </div>
-
-            <div className="fb-actions">
-              <button
-                type="submit"
-                className="fb-btn primary"
-                disabled={loading || name.trim() === (user?.displayName || '')}
-              >
-                <Glyph name={loading ? 'spinner' : 'check'} size={15} className={loading ? 'spin' : ''} />
-                {loading ? 'Đang lưu…' : 'Lưu thay đổi'}
+        {/* ============ NỘI DUNG ============ */}
+        <div className="pf-main">
+          <nav className="pf-tabs" role="tablist" onKeyDown={onTabKey}>
+            {TABS.map(([id, label, icon]) => (
+              <button key={id} type="button" role="tab" id={'pf-t-' + id} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1}
+                className={tab === id ? 'on' : ''} onClick={() => { setTab(id); setToast(null); }}>
+                <Glyph name={icon} size={15} />{label}
               </button>
-              <button
-                type="button"
-                className="fb-btn"
-                onClick={() => { setName(user?.displayName || ''); clearMessages(); }}
-              >
-                <Glyph name="refresh" size={15} />
-                Hoàn tác
-              </button>
-            </div>
-          </form>
-        )}
+            ))}
+          </nav>
 
-        {/* ---------- TAB BẢO MẬT (sub-tabs) ---------- */}
-        {tab === 'security' && (
-          <>
-            <nav className="fb-subtabs" role="tablist">
-              {SEC_TABS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={secTab === s.id}
-                  className={'fb-subtab' + (secTab === s.id ? ' on' : '')}
-                  onClick={() => { setSecTab(s.id); clearMessages(); }}
-                >
-                  <Glyph name={s.icon} size={14} />
-                  {s.label}
-                </button>
-              ))}
-            </nav>
-
-            {/* Sub-tab: Đổi mật khẩu */}
-            {secTab === 'password' && (
-              <form onSubmit={handleChangePassword}>
-                <div className="fb-section">
-                  <h2 className="fb-section-title">Đổi mật khẩu</h2>
-                  {isGoogle ? (
-                    <div className="fb-notice">
-                      <Glyph name="info" size={20} />
-                      <div>
-                        <b>Tài khoản Google</b>
-                        <p>Bạn đăng nhập bằng Google nên không cần đổi mật khẩu tại đây.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <FBField id="fb-old" label="Mật khẩu hiện tại">
-                        <input
-                          id="fb-old"
-                          type={showOld ? 'text' : 'password'}
-                          value={oldPw}
-                          onChange={(e) => setOldPw(e.target.value)}
-                          autoComplete="current-password"
-                          placeholder="••••••••"
-                        />
-                        <div className="fb-field-right">
-                          <button type="button" className="fb-eye" aria-label={showOld ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowOld((s) => !s)}>
-                            <Glyph name={showOld ? 'eyeOff' : 'eye'} size={18} />
-                          </button>
-                        </div>
-                      </FBField>
-
-                      <FBField id="fb-new" label="Mật khẩu mới" hint="Tối thiểu 6 ký tự.">
-                        <input
-                          id="fb-new"
-                          type={showNew ? 'text' : 'password'}
-                          value={newPw}
-                          onChange={(e) => setNewPw(e.target.value)}
-                          onKeyUp={capsCheck}
-                          onKeyDown={capsCheck}
-                          onBlur={() => setCaps(false)}
-                          autoComplete="new-password"
-                          placeholder="••••••••"
-                        />
-                        <div className="fb-field-right">
-                          <button type="button" className="fb-eye" aria-label={showNew ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowNew((s) => !s)}>
-                            <Glyph name={showNew ? 'eyeOff' : 'eye'} size={18} />
-                          </button>
-                        </div>
-                      </FBField>
-
-                      {caps && (
-                        <p className="fb-hint">
-                          <Glyph name="alert" size={14} /> Caps Lock đang bật
-                        </p>
-                      )}
-
-                      {newPw && (
-                        <div className="fb-strength" data-s={newPwStrength}>
-                          <div className="fb-strength-bar">
-                            {[0, 1, 2, 3].map((i) => (
-                              <i key={i} className={i < newPwStrength ? 'on' : ''} />
-                            ))}
-                          </div>
-                          <span>{STRENGTH_LABELS[newPwStrength]}</span>
-                        </div>
-                      )}
-
-                      <FBField id="fb-confirm" label="Xác nhận mật khẩu">
-                        <input
-                          id="fb-confirm"
-                          type="password"
-                          value={confirmPw}
-                          onChange={(e) => setConfirmPw(e.target.value)}
-                          autoComplete="new-password"
-                          placeholder="••••••••"
-                        />
-                      </FBField>
-                    </>
-                  )}
+          <div className="pf-panel" role="tabpanel" aria-labelledby={'pf-t-' + tab}>
+            {tab === 'info' && (
+              <form onSubmit={saveName} noValidate>
+                <h2>Thông tin cá nhân</h2>
+                <Field id="pf-name" label="Tên hiển thị" hint={`${name.trim().length}/30 — hiện trong app và chat cộng đồng`}>
+                  <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} autoComplete="name" placeholder="Nguyễn Văn A" />
+                </Field>
+                <Field id="pf-email" label="Email" hint="Email gắn với tài khoản nên không đổi được." locked>
+                  <input id="pf-email" value={email} disabled readOnly />
+                </Field>
+                <div className="pf-actions">
+                  <button type="submit" className="pf-btn primary" disabled={loading || !dirty}>
+                    <Glyph name={loading ? 'spinner' : 'check'} size={15} className={loading ? 'spin' : ''} />
+                    {loading ? 'Đang lưu…' : 'Lưu thay đổi'}
+                  </button>
+                  <button type="button" className="pf-btn" disabled={!dirty} onClick={() => setName(display)}>Hoàn tác</button>
+                  {dirty && <span className="pf-dirty">Chưa lưu</span>}
                 </div>
-
-                {!isGoogle && (
-                  <div className="fb-actions">
-                    <button
-                      type="submit"
-                      className="fb-btn primary"
-                      disabled={loading || !oldPw || !newPw || !confirmPw}
-                    >
-                      <Glyph name={loading ? 'spinner' : 'key'} size={15} className={loading ? 'spin' : ''} />
-                      {loading ? 'Đang đổi…' : 'Đổi mật khẩu'}
-                    </button>
-                  </div>
-                )}
               </form>
             )}
 
-            {/* Sub-tab: Thiết bị */}
-            {secTab === 'devices' && (
-              <div className="fb-section">
-                <h2 className="fb-section-title">Thiết bị & đăng nhập</h2>
-                <div className="fb-notice">
-                  <Glyph name="fingerprint" size={20} />
-                  <div>
-                    <b>Phương thức đăng nhập</b>
-                    <p>{isGoogle ? 'Google — an toàn, không cần mật khẩu.' : 'Email + Mật khẩu.'}</p>
-                  </div>
-                </div>
-                <div className="fb-notice danger">
-                  <Glyph name="logout" size={20} />
-                  <div>
-                    <b>Đăng xuất khỏi thiết bị này</b>
-                    <p>Bạn sẽ được đưa về trang đăng nhập và cần đăng nhập lại.</p>
-                    <button
-                      type="button"
-                      className="fb-btn danger"
-                      onClick={() => { if (confirm('Đăng xuất?')) logout(); }}
-                      style={{ marginTop: '.6rem' }}
-                    >
-                      <Glyph name="logout" size={15} /> Đăng xuất ngay
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {tab === 'security' && (
+              <>
+                <nav className="pf-sub" role="tablist">
+                  {SEC.map(([id, label]) => (
+                    <button key={id} type="button" role="tab" aria-selected={secTab === id} className={secTab === id ? 'on' : ''}
+                      onClick={() => { setSecTab(id); setToast(null); }}>{label}</button>
+                  ))}
+                </nav>
 
-            {/* Sub-tab: Xác thực */}
-            {secTab === 'verify' && (
-              <div className="fb-section">
-                <h2 className="fb-section-title">Xác thực email</h2>
-                <div className={'fb-notice' + (user?.emailVerified ? '' : ' warn')}>
-                  <Glyph name={user?.emailVerified ? 'check' : 'alert'} size={20} />
-                  <div>
-                    <b>{user?.emailVerified ? 'Email đã xác thực' : 'Email chưa xác thực'}</b>
-                    <p>
-                      {user?.emailVerified
-                        ? 'Tài khoản của bạn đã được bảo vệ bằng xác thực email.'
-                        : 'Xác thực email để bảo vệ tài khoản và có thể khôi phục mật khẩu khi quên.'}
-                    </p>
-                    {!user?.emailVerified && (
-                      <div className="fb-actions" style={{ marginTop: '.6rem' }}>
-                        <button
-                          type="button"
-                          className="fb-btn primary"
-                          onClick={handleSendVerify}
-                          disabled={loading}
-                        >
-                          <Glyph name="mail" size={15} /> Gửi email xác thực
-                        </button>
-                        <button
-                          type="button"
-                          className="fb-btn"
-                          onClick={handleRefreshVerify}
-                          disabled={loading}
-                        >
-                          <Glyph name="refresh" size={15} /> Đã xác thực?
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ---------- TAB NÂNG CẤP ---------- */}
-        {tab === 'upgrade' && (
-          <div className="fb-section">
-            <h2 className="fb-section-title">Gói sử dụng</h2>
-            <p className="fb-section-sub">
-              Gói hiện tại: <b style={{ color: tier?.color }}>{tier?.name}</b> — {tier?.desc}
-            </p>
-
-            <div className="fb-tier-grid">
-              {Object.values(TIERS).map((t) => {
-                const isCurrent = t.key === tier.key;
-                return (
-                  <div
-                    key={t.key}
-                    className={'fb-tier' + (isCurrent ? ' current' : '')}
-                    style={{ '--tier-color': t.color }}
-                  >
-                    <div className="fb-tier-head">
-                      <span className="fb-tier-icon" style={{ background: t.color }}><Glyph name={t.key === 'vip' ? 'crown' : 'flask'} size={24} strokeWidth={1.8} /></span>
-                      <div>
-                        <h3 className="fb-tier-name">{t.name}</h3>
-                        <p className="fb-tier-desc">{t.desc}</p>
-                      </div>
-                    </div>
-                    <ul className="fb-tier-feats">
-                      <li><Glyph name="sparkles" size={13} /> {t.unlimitedText ? 'Chat không giới hạn' : `${t.quotaText} tin nhắn / ngày`}</li>
-                      <li><Glyph name="camera" size={13} /> {t.quotaImage} ảnh / ngày</li>
-                      <li><Glyph name="robot" size={13} /> Trợ lý AI Hóa học</li>
-                      <li><Glyph name="beaker" size={13} /> Phân tích bài tập</li>
-                      {t.key === 'vip' && <li><Glyph name="bolt" size={13} /> Ưu tiên phản hồi</li>}
-                    </ul>
-                    <div className="fb-tier-action">
-                      {isCurrent ? (
-                        <button className="fb-btn current" disabled type="button">Đang sử dụng</button>
-                      ) : t.key === 'free' ? (
-                        <button className="fb-btn" disabled type="button">Miễn phí</button>
-                      ) : (
-                        <a
-                          className="fb-btn primary"
-                          href="https://www.facebook.com/nguyentheduytk"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Glyph name="facebook" size={15} /> Liên hệ nâng cấp
-                        </a>
+                {secTab === 'password' && (
+                  isGoogle ? (
+                    <div className="pf-note"><Glyph name="info" size={18} /><div><b>Đăng nhập bằng Google</b><p>Mật khẩu do Google quản lý, không đổi tại đây.</p></div></div>
+                  ) : (
+                    <form onSubmit={savePassword} noValidate>
+                      <h2>Đổi mật khẩu</h2>
+                      <PwInput id="pf-old" label="Mật khẩu hiện tại" value={oldPw} onChange={setOldPw} show={showOld} onToggle={() => setShowOld((s) => !s)} autoComplete="current-password" />
+                      <PwInput id="pf-new" label="Mật khẩu mới" value={newPw} onChange={setNewPw} show={showNew} onToggle={() => setShowNew((s) => !s)}
+                        autoComplete="new-password" onKeyUp={(e) => setCaps(!!e.getModifierState?.('CapsLock'))} onBlur={() => setCaps(false)} />
+                      {caps && <p className="pf-caps"><Glyph name="alert" size={13} /> Caps Lock đang bật</p>}
+                      {newPw && (
+                        <div className="pf-meter" data-s={pwScore}>
+                          <div>{[0, 1, 2, 3].map((i) => <i key={i} className={i < pwScore ? 'on' : ''} />)}</div>
+                          <span>{STRENGTH_LABELS[pwScore]}</span>
+                        </div>
                       )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      <ul className="pf-rules">
+                        {PW_RULES.map(([t, f]) => <li key={t} className={f(newPw) ? 'ok' : ''}>{t}</li>)}
+                      </ul>
+                      <PwInput id="pf-conf" label="Nhập lại mật khẩu mới" value={confirmPw} onChange={setConfirmPw} show={showNew} onToggle={() => setShowNew((s) => !s)}
+                        autoComplete="new-password" hint={confirmPw && confirmPw !== newPw ? 'Chưa khớp với mật khẩu mới.' : undefined} />
+                      <div className="pf-actions">
+                        <button type="submit" className="pf-btn primary" disabled={loading || !oldPw || !newPw || !confirmPw}>
+                          <Glyph name={loading ? 'spinner' : 'key'} size={15} className={loading ? 'spin' : ''} />{loading ? 'Đang đổi…' : 'Đổi mật khẩu'}
+                        </button>
+                      </div>
+                    </form>
+                  )
+                )}
 
-            <div className="fb-notice" style={{ marginTop: '1.5rem' }}>
-              <Glyph name="info" size={20} />
-              <div>
-                <b>Cách nâng cấp lên CUAI VIP</b>
-                <p>Bấm nút <b>Liên hệ nâng cấp</b> để nhắn tin qua Facebook Admin. Sau khi xác nhận thanh toán, tài khoản sẽ được nâng lên VIP trong 24 giờ.</p>
-                <button
-                  type="button"
-                  className="fb-btn"
-                  onClick={handleRefreshTier}
-                  disabled={loading}
-                  style={{ marginTop: '.6rem' }}
-                >
-                  <Glyph name="refresh" size={15} /> Làm mới trạng thái gói
-                </button>
-              </div>
-            </div>
+                {secTab === 'verify' && (
+                  <>
+                    <h2>Xác thực email</h2>
+                    <div className={'pf-note' + (user?.emailVerified ? '' : ' warn')}>
+                      <Glyph name={user?.emailVerified ? 'check' : 'alert'} size={18} />
+                      <div>
+                        <b>{user?.emailVerified ? 'Email đã xác thực' : 'Email chưa xác thực'}</b>
+                        <p>{user?.emailVerified ? 'Bạn có thể khôi phục mật khẩu qua email này.' : 'Cần xác thực để khôi phục mật khẩu khi quên.'}</p>
+                        {!user?.emailVerified && (
+                          <div className="pf-actions flat">
+                            <button type="button" className="pf-btn primary" onClick={sendVerify} disabled={loading}><Glyph name="mail" size={15} />Gửi email xác thực</button>
+                            <button type="button" className="pf-btn" onClick={checkVerify} disabled={loading}><Glyph name="refresh" size={15} />Tôi đã bấm link</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {secTab === 'devices' && (
+                  <>
+                    <h2>Phiên đăng nhập</h2>
+                    <div className="pf-note"><Glyph name="fingerprint" size={18} /><div><b>Cách đăng nhập</b><p>{isGoogle ? 'Google' : 'Email + mật khẩu'} · lần cuối {lastLogin}</p></div></div>
+                    <div className="pf-note danger"><Glyph name="logout" size={18} /><div><b>Đăng xuất khỏi thiết bị này</b><p>Bạn sẽ quay về trang đăng nhập.</p>
+                      <div className="pf-actions flat"><button type="button" className="pf-btn danger" onClick={() => setAskLogout(true)}>Đăng xuất</button></div></div></div>
+                  </>
+                )}
+              </>
+            )}
+
+            {tab === 'upgrade' && (
+              <>
+                <h2>Gói sử dụng</h2>
+                <p className="pf-sub-text">Đang dùng <b style={{ color: tier?.color }}>{tier?.name}</b> — {tier?.desc}</p>
+                <div className="pf-tiers">
+                  {Object.values(TIERS).map((t) => {
+                    const cur = t.key === tier.key;
+                    return (
+                      <article key={t.key} className={'pf-tier' + (cur ? ' current' : '') + (t.key === 'vip' ? ' vip' : '')} style={{ '--tier': t.color }}>
+                        <header>
+                          <span><Glyph name={t.key === 'vip' ? 'crown' : 'flask'} size={20} /></span>
+                          <div><h3>{t.name}</h3><p>{t.desc}</p></div>
+                          {cur && <em>Đang dùng</em>}
+                        </header>
+                        <ul>
+                          <li>{t.unlimitedText ? 'Chat không giới hạn' : `${t.quotaText} tin nhắn / ngày`}</li>
+                          <li>{t.quotaImage} ảnh / ngày</li>
+                          <li>Trợ lý AI Hóa học</li>
+                          <li>Phân tích bài tập</li>
+                          {t.key === 'vip' && <li>Ưu tiên phản hồi</li>}
+                        </ul>
+                        {cur ? <button className="pf-btn" disabled type="button">Gói hiện tại</button>
+                          : t.key === 'free' ? <button className="pf-btn" disabled type="button">Miễn phí</button>
+                          : <a className="pf-btn primary" href="https://www.facebook.com/nguyentheduytk" target="_blank" rel="noopener noreferrer">Liên hệ nâng cấp</a>}
+                      </article>
+                    );
+                  })}
+                </div>
+                <div className="pf-note">
+                  <Glyph name="info" size={18} />
+                  <div><b>Nâng cấp lên CUAI VIP</b><p>Nhắn Admin qua Facebook, sau khi xác nhận thanh toán tài khoản được nâng trong 24 giờ.</p>
+                    <div className="pf-actions flat"><button type="button" className="pf-btn" onClick={syncTier} disabled={loading}><Glyph name="refresh" size={15} />Làm mới trạng thái gói</button></div></div>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      <dialog ref={dlg} className="pf-dialog" onClose={() => setAskLogout(false)} onClick={(e) => e.target === dlg.current && setAskLogout(false)}>
+        <h3>Đăng xuất?</h3>
+        <p>Tài khoản <b>{display || email}</b> sẽ thoát khỏi thiết bị này.</p>
+        <div className="pf-actions flat">
+          <button type="button" className="pf-btn" onClick={() => setAskLogout(false)}>Ở lại</button>
+          <button type="button" className="pf-btn danger" onClick={logout}>Đăng xuất</button>
+        </div>
+      </dialog>
     </section>
   );
 }
