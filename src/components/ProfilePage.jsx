@@ -9,14 +9,13 @@ import ProfileAchievements from './ProfileAchievements.jsx';
 import { IcoCamera, IcoSpinner } from './ProfileIcons.jsx';
 import './ProfileFB.css';
 
-/* ---------- Màu avatar: tự động theo tên, cho phép chọn lại (lưu máy) ---------- */
 const AVATAR_COLORS = ['#ff4d1a', '#a7c4f2', '#b7dc9a', '#ffc46b', '#f2b6c6', '#c1b4f0', '#8fd6c4', '#ff9b85'];
 const hashStr = (s = '') => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
 const autoColor = (name) => AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
 const rankFor = (tier) => (tier?.key === 'vip' ? 'Nhà Hóa học cấp cao' : 'Nhà Hóa học tập sự');
 const ls = {
   get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* bỏ qua */ } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
 };
 
 const PW_RULES = [
@@ -230,6 +229,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="pf-grid">
+        {/* ============ THẺ ĐỊNH DANH ============ */}
         <aside className="pf-card" style={{ '--tier': tier?.color || '#6b675e' }}>
           <div className="pf-card-band"><span>{tier?.name || 'Free'}</span><span>№ {identCode}</span></div>
           <div className="pf-card-body">
@@ -262,6 +262,7 @@ export default function ProfilePage() {
           </div>
         </aside>
 
+        {/* ============ NỘI DUNG ============ */}
         <div className="pf-main">
           <nav className="pf-tabs" role="tablist" onKeyDown={onTabKey}>
             {TABS.map(([id, label, icon]) => (
@@ -273,6 +274,7 @@ export default function ProfilePage() {
           </nav>
 
           <div className="pf-panel" role="tabpanel" aria-labelledby={'pf-t-' + tab}>
+            {/* ============ TAB: HỒ SƠ ============ */}
             {tab === 'info' && (
               <>
                 <ProfileStats />
@@ -299,6 +301,7 @@ export default function ProfilePage() {
               </>
             )}
 
+            {/* ============ TAB: BẢO MẬT ============ */}
             {tab === 'security' && (
               <>
                 <nav className="pf-sub" role="tablist">
@@ -368,6 +371,7 @@ export default function ProfilePage() {
               </>
             )}
 
+            {/* ============ TAB: GÓI DÙNG ============ */}
             {tab === 'upgrade' && (
               <>
                 <h2>Gói sử dụng</h2>

@@ -265,10 +265,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   /* ============ ĐĂNG XUẤT ============ */
-  const logout = useCallback(async () => {
-    try { localStorage.removeItem('cs-user-tier'); } catch { /* ignore */ }
+const logout = useCallback(async () => {
+  try {
     await signOut(auth);
-  }, []);
+    // 👇 THÊM DÒNG NÀY — reset hash về home sau khi đăng xuất
+    location.hash = 'home';
+  } catch (e) {
+    console.error('Logout error:', e);
+  }
+}, []);
 
   const value = {
     user,

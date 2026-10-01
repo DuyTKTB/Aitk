@@ -1,22 +1,8 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { translateAuthError } from '../lib/firebase.js';
-import { TIERS } from '../lib/tier.js';
-import VerifiedBadge from './VerifiedBadge.jsx';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
-import ProfileStats from './ProfileStats.jsx';
-import ProfileAchievements from './ProfileAchievements.jsx';
-import { IcoCamera, IcoUpload, IcoSpinner } from './ProfileIcons.jsx';
-import './ProfileFB.css';
-
-const AVATAR_COLORS = ['#ff4d1a', '#a7c4f2', '#b7dc9a', '#ffc46b', '#f2b6c6', '#c1b4f0', '#8fd6c4', '#ff9b85'];
-const hashStr = (s = '') => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
-const autoColor = (name) => AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
-const rankFor = (tier) => (tier?.key === 'vip' ? 'Nhà Hóa học cấp cao' : 'Nhà Hóa học tập sự');
-const ls = {
-  get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
-};
+import './AuthProfile.css';
 
 const PW_RULES = [
   ['Từ 6 ký tự', (p) => p.length >= 6],
@@ -25,402 +11,375 @@ const PW_RULES = [
   ['Có ký tự đặc biệt', (p) => /[^A-Za-z0-9]/.test(p)],
 ];
 
-function Avatar({ photoURL, initial, color, isVip, onUpload, uploading }) {
-  const fileRef = useRef(null);
+const FACTS = [
+  'Nước là hợp chất phổ biến nhất trên Trái Đất.',
+  'Vàng là kim loại có thể kéo thành sợi mỏng hơn tóc người.',
+  'Heli là nguyên tố duy nhất không đông đặc ở 0K.',
+  'Kim cương và than chì đều làm từ Cacbon.',
+];
 
-  const handleChange = async (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (f && onUpload) await onUpload(f);
-  };
+export default function LoginPage() {
+  const { login, register, loginWithGoogle, loginFacebook, resetPassword } = useAuth();
 
-  return (
-    <div className="pf-avatar-wrap">
-      <div className={'pf-avatar' + (isVip ? ' vip' : '')} style={{ '--av': color }}>
-        {photoURL ? <img src={photoURL} alt="" /> : <span>{initial}</span>}
-        {uploading && (
-          <div className="pf-avatar-loading">
-            <IcoSpinner size={28} className="pf-spin" />
-          </div>
-        )}
-      </div>
-
-      <button
-        type="button"
-        className="pf-avatar-edit"
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        aria-label="Đổi ảnh đại diện"
-        title="Đổi ảnh đại diện"
-      >
-        <IcoCamera size={16} />
-      </button>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={handleChange}
-      />
-    </div>
-  );
-}
-
-function Field({ id, label, hint, locked, right, children }) {
-  return (
-    <div className="pf-field">
-      <label htmlFor={id}>{label}</label>
-      <div className={'pf-input' + (locked ? ' locked' : '')}>
-        {children}
-        {right}
-      </div>
-      {hint && <span className="pf-hint">{hint}</span>}
-    </div>
-  );
-}
-
-function PwInput({ id, label, value, onChange, show, onToggle, hint, ...rest }) {
-  return (
-    <Field
-      id={id} label={label} hint={hint}
-      right={
-        <button type="button" className="pf-eye" onClick={onToggle} aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
-          <Glyph name={show ? 'eyeOff' : 'eye'} size={17} />
-        </button>
-      }
-    >
-      <input id={id} type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder="••••••••" {...rest} />
-    </Field>
-  );
-}
-
-export default function ProfilePage() {
-  const {
-    user, tier, logout,
-    updateDisplayName, changePassword, sendVerifyEmail,
-    refreshUser, refreshTier, uploadAvatar,
-  } = useAuth();
-
-  const [tab, setTab] = useState(() => ls.get('cs-profile-tab', 'info'));
-  const [secTab, setSecTab] = useState('password');
-  const [name, setName] = useState(user?.displayName || '');
-  const [oldPw, setOldPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [caps, setCaps] = useState(false);
+  const [mode, setMode] = useState('login');           // 'login' | 'register'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [askLogout, setAskLogout] = useState(false);
-  const [pickedColor, setPickedColor] = useState(() => ls.get('cs-avatar-color', ''));
-  const toastTimer = useRef(null);
-  const dlg = useRef(null);
+  const [err, setErr] = useState('');
+  const [info, setInfo] = useState('');
+  const [caps, setCaps] = useState(false);
+  const [fact, setFact] = useState(0);
+  const [shake, setShake] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const forgotRef = useRef(null);
 
-  const email = user?.email || '';
-  const display = user?.displayName || '';
-  const initial = (display || email || '?').trim().charAt(0).toUpperCase();
-  const color = pickedColor || autoColor(display || email);
-  const isGoogle = user?.providerData?.some((p) => p.providerId === 'google.com');
-  const isVip = tier?.key === 'vip';
-  const dirty = name.trim() !== display;
+  const isRegister = mode === 'register';
+  const pwScore = pwStrength(password);
 
-  const created = user?.metadata?.creationTime ? new Date(user.metadata.creationTime) : null;
-  const createdAt = created ? created.toLocaleDateString('vi-VN') : '—';
-  const lastLogin = user?.metadata?.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleString('vi-VN') : '—';
-  const daysJoined = created ? Math.max(1, Math.ceil((Date.now() - created.getTime()) / 864e5)) : 0;
-  const identCode = useMemo(() => 'A7-' + hashStr(email).toString(16).slice(0, 6).toUpperCase(), [email]);
-  const pwScore = pwStrength(newPw);
-
-  const say = useCallback((type, text) => {
-    clearTimeout(toastTimer.current);
-    setToast({ type, text });
-    toastTimer.current = setTimeout(() => setToast(null), type === 'error' ? 7000 : 4000);
+  useEffect(() => {
+    const t = setInterval(() => setFact((f) => (f + 1) % FACTS.length), 5000);
+    return () => clearInterval(t);
   }, []);
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
-  const ok = (t) => say('ok', t);
-  const fail = (t) => say('error', t);
-  const err = (e) => fail(e.code ? translateAuthError(e.code) : e.message);
-
-  useEffect(() => { ls.set('cs-profile-tab', tab); }, [tab]);
-  useEffect(() => {
-    if (!dirty) return undefined;
-    const h = (e) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', h);
-    return () => window.removeEventListener('beforeunload', h);
-  }, [dirty]);
 
   useEffect(() => {
-    const d = dlg.current; if (!d) return;
-    if (askLogout && !d.open) d.showModal();
-    if (!askLogout && d.open) d.close();
-  }, [askLogout]);
+    const d = forgotRef.current;
+    if (!d) return;
+    if (forgotOpen && !d.open) d.showModal();
+    if (!forgotOpen && d.open) d.close();
+  }, [forgotOpen]);
 
-  const pickColor = (c) => { setPickedColor(c); ls.set('cs-avatar-color', c); };
-
-  const copyId = async () => {
-    try { await navigator.clipboard.writeText(identCode); setCopied(true); setTimeout(() => setCopied(false), 1600); }
-    catch { fail('Trình duyệt không cho phép sao chép.'); }
+  const fail = (msg) => {
+    setErr(msg);
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
   };
 
-  /* ---------- Upload avatar ---------- */
-  const handleUpload = async (file) => {
-    setUploading(true);
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    setInfo('');
+
+    if (isRegister) {
+      if (!firstName.trim() || !lastName.trim()) return fail('Vui lòng nhập họ và tên.');
+      if (password.length < 6) return fail('Mật khẩu phải từ 6 ký tự.');
+      if (password !== confirm) return fail('Mật khẩu xác nhận không khớp.');
+      if (!agree) return fail('Bạn cần đồng ý với điều khoản sử dụng.');
+    }
+
+    setLoading(true);
     try {
-      await uploadAvatar(file);
-      ok('Đã cập nhật ảnh đại diện!');
+      if (isRegister) {
+        await register(email.trim(), password, firstName.trim(), lastName.trim(), remember);
+        setInfo('Đăng ký thành công! Kiểm tra email để xác thực tài khoản.');
+      } else {
+        await login(email.trim(), password, remember);
+      }
     } catch (x) {
-      err(x);
+      fail(x.code ? translateAuthError(x.code) : (x.message || 'Có lỗi xảy ra.'));
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   };
 
-  /* ---------- Handlers ---------- */
-  const saveName = async (e) => {
-    e.preventDefault();
-    const t = name.trim();
-    if (t.length < 2) return fail('Tên phải từ 2 ký tự.');
-    if (!dirty) return fail('Tên chưa thay đổi.');
-    setLoading(true);
-    try { await updateDisplayName(t); await refreshUser(); ok('Đã cập nhật tên hiển thị.'); }
-    catch (x) { err(x); } finally { setLoading(false); }
-  };
-
-  const savePassword = async (e) => {
-    e.preventDefault();
-    if (isGoogle) return fail('Tài khoản Google không cần đổi mật khẩu.');
-    if (newPw.length < 6) return fail('Mật khẩu mới phải từ 6 ký tự.');
-    if (newPw !== confirmPw) return fail('Mật khẩu xác nhận không khớp.');
-    if (newPw === oldPw) return fail('Mật khẩu mới phải khác mật khẩu cũ.');
+  const onGoogle = async () => {
+    setErr('');
     setLoading(true);
     try {
-      await changePassword(oldPw, newPw);
-      setOldPw(''); setNewPw(''); setConfirmPw('');
-      ok('Đã đổi mật khẩu.');
+      await loginWithGoogle();
     } catch (x) {
-      if (x.code === 'auth/wrong-password' || x.code === 'auth/invalid-credential') fail('Mật khẩu hiện tại không đúng.');
-      else err(x);
-    } finally { setLoading(false); }
+      fail(x.code ? translateAuthError(x.code) : (x.message || 'Đăng nhập Google thất bại.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const run = (fn, good) => async () => {
+  const onFacebook = async () => {
+    setErr('');
     setLoading(true);
-    try { const r = await fn(); good(r); } catch (x) { err(x); } finally { setLoading(false); }
+    try {
+      await loginFacebook();
+    } catch (x) {
+      fail(x.code ? translateAuthError(x.code) : (x.message || 'Đăng nhập Facebook thất bại.'));
+    } finally {
+      setLoading(false);
+    }
   };
-  const sendVerify = run(sendVerifyEmail, () => ok('Đã gửi email xác thực. Kiểm tra hộp thư (cả mục Spam).'));
-  const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
-  const syncTier = run(refreshTier, (t) => ok(`Gói hiện tại: ${t?.name || tier?.name || 'Miễn phí'}`));
 
-  const TABS = [['info', 'Hồ sơ', 'user'], ['security', 'Bảo mật', 'shield'], ['upgrade', 'Gói dùng', 'crown']];
-  const SEC = [['password', 'Mật khẩu'], ['verify', 'Xác thực email'], ['devices', 'Phiên đăng nhập']];
+  const onForgot = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setLoading(true);
+    try {
+      await resetPassword(forgotEmail.trim());
+      setInfo('Đã gửi link khôi phục. Kiểm tra hộp thư (cả Spam).');
+      setForgotOpen(false);
+      setForgotEmail('');
+    } catch (x) {
+      fail(x.code ? translateAuthError(x.code) : (x.message || 'Không gửi được email.'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const onTabKey = (e) => {
-    const i = TABS.findIndex(([id]) => id === tab);
-    if (e.key === 'ArrowRight') setTab(TABS[(i + 1) % TABS.length][0]);
-    if (e.key === 'ArrowLeft') setTab(TABS[(i + TABS.length - 1) % TABS.length][0]);
+  const toggleMode = () => {
+    setMode(isRegister ? 'login' : 'register');
+    setErr('');
+    setInfo('');
   };
 
   return (
-    <section className="pf">
-      <div className={'pf-toast' + (toast ? ' show ' + toast.type : '')} role="status" aria-live="polite">
-        {toast && (<><Glyph name={toast.type === 'ok' ? 'check' : 'alert'} size={15} /><span>{toast.text}</span>
-          <button type="button" onClick={() => setToast(null)} aria-label="Đóng">×</button></>)}
-      </div>
+    <div className="lx-page">
+      <div className="lx-shell">
+        {/* ==== PANEL TRÁI ==== */}
+        <div className="lx-hero">
+          <div className="lx-hero-glow" aria-hidden="true" />
 
-      <div className="pf-grid">
-        {/* ============ THẺ ĐỊNH DANH ============ */}
-        <aside className="pf-card" style={{ '--tier': tier?.color || '#6b675e' }}>
-          <div className="pf-card-band"><span>{tier?.name || 'Free'}</span><span>№ {identCode}</span></div>
-          <div className="pf-card-body">
-            <Avatar
-              photoURL={user?.photoURL}
-              initial={initial}
-              color={color}
-              isVip={isVip}
-              onUpload={handleUpload}
-              uploading={uploading}
-            />
-            <h1 className="pf-name">{display || 'Ẩn danh'}{isVip && <VerifiedBadge isVip size={20} />}</h1>
-            <p className="pf-rank">{rankFor(tier)}</p>
+          <header className="lx-hero-head">
+            <span className="lx-hero-dot" />
+            <span className="lx-hero-brand">A7 K60 DTA</span>
+          </header>
 
-            {!user?.photoURL && (
-              <div className="pf-swatches" role="radiogroup" aria-label="Màu avatar">
-                {AVATAR_COLORS.map((c) => (
-                  <button key={c} type="button" role="radio" aria-checked={c === color} aria-label={c}
-                    className={c === color ? 'on' : ''} style={{ background: c }} onClick={() => pickColor(c)} />
-                ))}
-              </div>
-            )}
-
-            <dl className="pf-facts">
-              <div><dt>Email</dt><dd title={email}>{email}{user?.emailVerified && <i className="pf-ok" title="Đã xác thực"><Glyph name="check" size={9} strokeWidth={3.5} /></i>}</dd></div>
-              <div><dt>Mã định danh</dt><dd>{identCode}<button type="button" className="pf-copy" onClick={copyId}>{copied ? 'Đã chép' : 'Sao chép'}</button></dd></div>
-              <div><dt>Tham gia</dt><dd>{createdAt} · {daysJoined} ngày</dd></div>
-              <div><dt>Lần cuối</dt><dd>{lastLogin}</dd></div>
-            </dl>
+          <div className="lx-hero-body">
+            <h1 className="lx-hero-title">
+              Học Hóa học
+              <em>thông minh hơn.</em>
+            </h1>
+            <p className="lx-hero-sub">
+              Trợ lý AI, bảng tuần hoàn tương tác, quiz thông minh — tất cả trong một.
+            </p>
           </div>
-        </aside>
 
-        {/* ============ NỘI DUNG ============ */}
-        <div className="pf-main">
-          <nav className="pf-tabs" role="tablist" onKeyDown={onTabKey}>
-            {TABS.map(([id, label, icon]) => (
-              <button key={id} type="button" role="tab" id={'pf-t-' + id} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1}
-                className={tab === id ? 'on' : ''} onClick={() => { setTab(id); setToast(null); }}>
-                <Glyph name={icon} size={15} />{label}
+          <footer className="lx-hero-foot">
+            <div className="lx-fact-wrap">
+              <small>Bạn có biết?</small>
+              <p className="lx-fact" key={fact}>{FACTS[fact]}</p>
+            </div>
+            <div className="lx-dots" aria-hidden="true">
+              {FACTS.map((_, i) => <span key={i} className={i === fact ? 'on' : ''} />)}
+            </div>
+          </footer>
+        </div>
+
+        {/* ==== PANEL PHẢI ==== */}
+        <div className="lx-card">
+          <div className={'lx-inner' + (shake ? ' shake' : '')}>
+            <div className="lx-topbar">
+              <span className="lx-lang">VI</span>
+            </div>
+
+            <div className="lx-welcome">
+              <h2>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}</h2>
+              <p>{isRegister ? 'Miễn phí, không cần thẻ tín dụng.' : 'Chào mừng trở lại!'}</p>
+            </div>
+
+            <div className="lx-social">
+              <button type="button" className="lx-social-btn" onClick={onGoogle} disabled={loading}>
+                <Glyph name="google" size={16} />
+                Google
               </button>
-            ))}
-          </nav>
+              <button type="button" className="lx-social-btn" onClick={onFacebook} disabled={loading}>
+                <Glyph name="facebook" size={16} />
+                Facebook
+              </button>
+            </div>
 
-          <div className="pf-panel" role="tabpanel" aria-labelledby={'pf-t-' + tab}>
-            {/* ============ TAB: HỒ SƠ ============ */}
-            {tab === 'info' && (
-              <>
-                <ProfileStats />
+            <div className="lx-divider"><span>hoặc</span></div>
 
-                <form onSubmit={saveName} noValidate style={{ marginTop: '1.6rem' }}>
-                  <h2>Thông tin cá nhân</h2>
-                  <Field id="pf-name" label="Tên hiển thị" hint={`${name.trim().length}/30 — hiện trong app và chat cộng đồng`}>
-                    <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} autoComplete="name" placeholder="Nguyễn Văn A" />
-                  </Field>
-                  <Field id="pf-email" label="Email" hint="Email gắn với tài khoản nên không đổi được." locked>
-                    <input id="pf-email" value={email} disabled readOnly />
-                  </Field>
-                  <div className="pf-actions">
-                    <button type="submit" className="pf-btn primary" disabled={loading || !dirty}>
-                      <Glyph name={loading ? 'spinner' : 'check'} size={15} className={loading ? 'spin' : ''} />
-                      {loading ? 'Đang lưu…' : 'Lưu thay đổi'}
-                    </button>
-                    <button type="button" className="pf-btn" disabled={!dirty} onClick={() => setName(display)}>Hoàn tác</button>
-                    {dirty && <span className="pf-dirty">Chưa lưu</span>}
+            <form className="lx-form" onSubmit={onSubmit} noValidate>
+              {isRegister && (
+                <div className="lx-name-row">
+                  <div className="lx-field">
+                    <input
+                      id="lx-last"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder=" "
+                      autoComplete="family-name"
+                    />
+                    <label htmlFor="lx-last">Họ</label>
                   </div>
-                </form>
+                  <div className="lx-field">
+                    <input
+                      id="lx-first"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder=" "
+                      autoComplete="given-name"
+                    />
+                    <label htmlFor="lx-first">Tên</label>
+                  </div>
+                </div>
+              )}
 
-                <ProfileAchievements />
-              </>
-            )}
+              <div className="lx-field">
+                <input
+                  id="lx-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder=" "
+                  autoComplete="email"
+                  required
+                />
+                <label htmlFor="lx-email">Email</label>
+              </div>
 
-            {/* ============ TAB: BẢO MẬT ============ */}
-            {tab === 'security' && (
-              <>
-                <nav className="pf-sub" role="tablist">
-                  {SEC.map(([id, label]) => (
-                    <button key={id} type="button" role="tab" aria-selected={secTab === id} className={secTab === id ? 'on' : ''}
-                      onClick={() => { setSecTab(id); setToast(null); }}>{label}</button>
-                  ))}
-                </nav>
+              <div className="lx-field">
+                <input
+                  id="lx-pw"
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyUp={(e) => setCaps(!!e.getModifierState?.('CapsLock'))}
+                  onBlur={() => setCaps(false)}
+                  placeholder=" "
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  required
+                />
+                <label htmlFor="lx-pw">Mật khẩu</label>
+                <div className="lx-right">
+                  <button
+                    type="button"
+                    className="lx-eye"
+                    onClick={() => setShowPw((s) => !s)}
+                    aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    <Glyph name={showPw ? 'eyeOff' : 'eye'} size={17} />
+                  </button>
+                </div>
+              </div>
 
-                {secTab === 'password' && (
-                  isGoogle ? (
-                    <div className="pf-note"><Glyph name="info" size={18} /><div><b>Đăng nhập bằng Google</b><p>Mật khẩu do Google quản lý, không đổi tại đây.</p></div></div>
-                  ) : (
-                    <form onSubmit={savePassword} noValidate>
-                      <h2>Đổi mật khẩu</h2>
-                      <PwInput id="pf-old" label="Mật khẩu hiện tại" value={oldPw} onChange={setOldPw} show={showOld} onToggle={() => setShowOld((s) => !s)} autoComplete="current-password" />
-                      <PwInput id="pf-new" label="Mật khẩu mới" value={newPw} onChange={setNewPw} show={showNew} onToggle={() => setShowNew((s) => !s)}
-                        autoComplete="new-password" onKeyUp={(e) => setCaps(!!e.getModifierState?.('CapsLock'))} onBlur={() => setCaps(false)} />
-                      {caps && <p className="pf-caps"><Glyph name="alert" size={13} /> Caps Lock đang bật</p>}
-                      {newPw && (
-                        <div className="pf-meter" data-s={pwScore}>
-                          <div>{[0, 1, 2, 3].map((i) => <i key={i} className={i < pwScore ? 'on' : ''} />)}</div>
-                          <span>{STRENGTH_LABELS[pwScore]}</span>
-                        </div>
-                      )}
-                      <ul className="pf-rules">
-                        {PW_RULES.map(([t, f]) => <li key={t} className={f(newPw) ? 'ok' : ''}>{t}</li>)}
-                      </ul>
-                      <PwInput id="pf-conf" label="Nhập lại mật khẩu mới" value={confirmPw} onChange={setConfirmPw} show={showNew} onToggle={() => setShowNew((s) => !s)}
-                        autoComplete="new-password" hint={confirmPw && confirmPw !== newPw ? 'Chưa khớp với mật khẩu mới.' : undefined} />
-                      <div className="pf-actions">
-                        <button type="submit" className="pf-btn primary" disabled={loading || !oldPw || !newPw || !confirmPw}>
-                          <Glyph name={loading ? 'spinner' : 'key'} size={15} className={loading ? 'spin' : ''} />{loading ? 'Đang đổi…' : 'Đổi mật khẩu'}
-                        </button>
-                      </div>
-                    </form>
-                  )
-                )}
+              {caps && (
+                <p className="lx-hint"><Glyph name="alert" size={12} /> Caps Lock đang bật</p>
+              )}
 
-                {secTab === 'verify' && (
-                  <>
-                    <h2>Xác thực email</h2>
-                    <div className={'pf-note' + (user?.emailVerified ? '' : ' warn')}>
-                      <Glyph name={user?.emailVerified ? 'check' : 'alert'} size={18} />
-                      <div>
-                        <b>{user?.emailVerified ? 'Email đã xác thực' : 'Email chưa xác thực'}</b>
-                        <p>{user?.emailVerified ? 'Bạn có thể khôi phục mật khẩu qua email này.' : 'Cần xác thực để khôi phục mật khẩu khi quên.'}</p>
-                        {!user?.emailVerified && (
-                          <div className="pf-actions flat">
-                            <button type="button" className="pf-btn primary" onClick={sendVerify} disabled={loading}><Glyph name="mail" size={15} />Gửi email xác thực</button>
-                            <button type="button" className="pf-btn" onClick={checkVerify} disabled={loading}><Glyph name="refresh" size={15} />Tôi đã bấm link</button>
-                          </div>
-                        )}
-                      </div>
+              {isRegister && (
+                <div className="lx-collapse open">
+                  <div>
+                    <div className="lx-field">
+                      <input
+                        id="lx-confirm"
+                        type={showPw ? 'text' : 'password'}
+                        value={confirm}
+                        onChange={(e) => setConfirm(e.target.value)}
+                        placeholder=" "
+                        autoComplete="new-password"
+                      />
+                      <label htmlFor="lx-confirm">Nhập lại mật khẩu</label>
                     </div>
-                  </>
-                )}
 
-                {secTab === 'devices' && (
-                  <>
-                    <h2>Phiên đăng nhập</h2>
-                    <div className="pf-note"><Glyph name="fingerprint" size={18} /><div><b>Cách đăng nhập</b><p>{isGoogle ? 'Google' : 'Email + mật khẩu'} · lần cuối {lastLogin}</p></div></div>
-                    <div className="pf-note danger"><Glyph name="logout" size={18} /><div><b>Đăng xuất khỏi thiết bị này</b><p>Bạn sẽ quay về trang đăng nhập.</p>
-                      <div className="pf-actions flat"><button type="button" className="pf-btn danger" onClick={() => setAskLogout(true)}>Đăng xuất</button></div></div></div>
-                  </>
-                )}
-              </>
-            )}
+                    {password && (
+                      <div className="lx-strength">
+                        <div className="lx-meter" data-s={pwScore}>
+                          <i /><i /><i /><i />
+                        </div>
+                        <span className="lx-meter-label">{STRENGTH_LABELS[pwScore]}</span>
+                      </div>
+                    )}
 
-            {/* ============ TAB: GÓI DÙNG ============ */}
-            {tab === 'upgrade' && (
-              <>
-                <h2>Gói sử dụng</h2>
-                <p className="pf-sub-text">Đang dùng <b style={{ color: tier?.color }}>{tier?.name}</b> — {tier?.desc}</p>
-                <div className="pf-tiers">
-                  {Object.values(TIERS).map((t) => {
-                    const cur = t.key === tier?.key;
-                    return (
-                      <article key={t.key} className={'pf-tier' + (cur ? ' current' : '') + (t.key === 'vip' ? ' vip' : '')} style={{ '--tier': t.color }}>
-                        <header>
-                          <span><Glyph name={t.key === 'vip' ? 'crown' : 'flask'} size={20} /></span>
-                          <div><h3>{t.name}</h3><p>{t.desc}</p></div>
-                          {cur && <em>Đang dùng</em>}
-                        </header>
-                        <ul>
-                          <li>{t.unlimitedText ? 'Chat không giới hạn' : `${t.quotaText} tin nhắn / ngày`}</li>
-                          <li>{t.quotaImage} ảnh / ngày</li>
-                          <li>Trợ lý AI Hóa học</li>
-                          <li>Phân tích bài tập</li>
-                          {t.key === 'vip' && <li>Ưu tiên phản hồi</li>}
-                        </ul>
-                        {cur ? <button className="pf-btn" disabled type="button">Gói hiện tại</button>
-                          : t.key === 'free' ? <button className="pf-btn" disabled type="button">Miễn phí</button>
-                          : <a className="pf-btn primary" href="https://www.facebook.com/nguyentheduytk" target="_blank" rel="noopener noreferrer">Liên hệ nâng cấp</a>}
-                      </article>
-                    );
-                  })}
+                    <ul className="pf-rules" style={{ marginTop: '.6rem' }}>
+                      {PW_RULES.map(([t, f]) => (
+                        <li key={t} className={f(password) ? 'ok' : ''}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div className="pf-note">
-                  <Glyph name="info" size={18} />
-                  <div><b>Nâng cấp lên CUAI VIP</b><p>Nhắn Admin qua Facebook, sau khi xác nhận thanh toán tài khoản được nâng trong 24 giờ.</p>
-                    <div className="pf-actions flat"><button type="button" className="pf-btn" onClick={syncTier} disabled={loading}><Glyph name="refresh" size={15} />Làm mới trạng thái gói</button></div></div>
+              )}
+
+              {!isRegister && (
+                <div className="lx-row-between">
+                  <label className="lx-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                    />
+                    Ghi nhớ đăng nhập
+                  </label>
+                  <button
+                    type="button"
+                    className="lx-link"
+                    onClick={() => setForgotOpen(true)}
+                  >
+                    Quên mật khẩu?
+                  </button>
                 </div>
-              </>
-            )}
+              )}
+
+              {isRegister && (
+                <label className="lx-checkbox lx-checkbox-terms">
+                  <input
+                    type="checkbox"
+                    checked={agree}
+                    onChange={(e) => setAgree(e.target.checked)}
+                  />
+                  <span>
+                    Tôi đồng ý với <a href="#terms">Điều khoản</a> và <a href="#privacy">Chính sách bảo mật</a>.
+                  </span>
+                </label>
+              )}
+
+              {err && (
+                <p className="lx-err"><Glyph name="alert" size={15} />{err}</p>
+              )}
+              {info && (
+                <p className="lx-info"><Glyph name="check" size={15} />{info}</p>
+              )}
+
+              <button type="submit" className="lx-submit" disabled={loading}>
+                {loading ? (
+                  <><Glyph name="spinner" size={16} className="spin" /> Đang xử lý…</>
+                ) : (
+                  <>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'} <span className="lx-arrow">→</span></>
+                )}
+              </button>
+            </form>
+
+            <p className="lx-switch">
+              {isRegister ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}
+              <button type="button" onClick={toggleMode}>
+                {isRegister ? 'Đăng nhập' : 'Đăng ký ngay'}
+              </button>
+            </p>
+
+            <p className="lx-note">
+              Bằng cách tiếp tục, bạn đồng ý với Điều khoản & Chính sách của A7 K60 DTA.
+            </p>
           </div>
         </div>
       </div>
 
-      <dialog ref={dlg} className="pf-dialog" onClose={() => setAskLogout(false)} onClick={(e) => e.target === dlg.current && setAskLogout(false)}>
-        <h3>Đăng xuất?</h3>
-        <p>Tài khoản <b>{display || email}</b> sẽ thoát khỏi thiết bị này.</p>
-        <div className="pf-actions flat">
-          <button type="button" className="pf-btn" onClick={() => setAskLogout(false)}>Ở lại</button>
-          <button type="button" className="pf-btn danger" onClick={logout}>Đăng xuất</button>
-        </div>
+      {/* ==== DIALOG QUÊN MẬT KHẨU ==== */}
+      <dialog
+        ref={forgotRef}
+        className="pf-dialog"
+        onClose={() => setForgotOpen(false)}
+        onClick={(e) => e.target === forgotRef.current && setForgotOpen(false)}
+      >
+        <h3>Quên mật khẩu?</h3>
+        <p>Nhập email đã đăng ký — chúng mình sẽ gửi link khôi phục.</p>
+        <form onSubmit={onForgot}>
+          <input
+            type="email"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            placeholder="Email của bạn"
+            autoFocus
+            required
+          />
+          <div className="pf-actions flat" style={{ marginTop: '.8rem' }}>
+            <button type="button" className="pf-btn" onClick={() => setForgotOpen(false)}>Hủy</button>
+            <button type="submit" className="pf-btn primary" disabled={loading}>Gửi link</button>
+          </div>
+        </form>
       </dialog>
-    </section>
+    </div>
   );
 }

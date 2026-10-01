@@ -37,11 +37,11 @@ const NAV_MAIN = [
   ['home', 'Trang chủ', IconHome],
   ['ai', 'CU AI', IconRobot],
   ['table', 'Bảng tuần hoàn', IconAtom],
-  ['tools', 'Công cụ', IconTools], // ← THÊM DÒNG NÀY
+  ['tools', 'Công cụ', IconTools],
 ];
 
 const NAV_TOOLS = [
-  ['formulas', 'Công thức nhanh', IconCalc],   // ← THÊM VÀO ĐẦU
+  ['formulas', 'Công thức nhanh', IconCalc],
   ['analyze', 'Phân tích', IconMicroscope],
   ['balance', 'Cân bằng PTHH', IconScale],
   ['pomodoro', 'Pomodoro', IconTimer],
@@ -52,6 +52,7 @@ const NAV_TOOLS = [
   ['games', 'Trò chơi', IconGamepad],
   ['profile', 'Trang cá nhân', IconUser],
 ];
+
 const NAV_BOTTOM = [
   ['home', 'Trang chủ', IconHome],
   ['table', 'Bảng TH', IconAtom],
@@ -65,7 +66,8 @@ const PAGES = [...NAV_MAIN, ...NAV_TOOLS];
 const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
 
 const readPage = () => {
-  const h = location.hash.slice(1);
+  if (typeof window === 'undefined') return 'home';
+  const h = window.location.hash.slice(1);
   if (GAME_ROUTES.includes(h)) return h;
   return PAGES.some((p) => p[0] === h) ? h : 'home';
 };
@@ -78,7 +80,50 @@ const pageTitle = (page) => {
 export default function App() {
   const { ready, isLoggedIn, user, logout } = useAuth();
 
-  const [page, setPage] = useState(readPage);
+  // ============================================================
+  // QUẢN LÝ PAGE — ĐỌC TRỰC TIẾP TỪ HASH MỖI RENDER
+  // Không dùng state để tránh lệch giữa URL và UI.
+  // ============================================================
+  const [hashTick, setHashTick] = useState(0);
+  const page = readPage();
+
+  // Đồng bộ khi hash đổi (bất kỳ nguồn nào: click, back/forward, code)
+  useEffect(() => {
+    const bump = () => setHashTick((t) => t + 1);
+
+    window.addEventListener('hashchange', bump);
+    window.addEventListener('popstate', bump);
+
+    // Poll nhẹ — bắt trường hợp hash bị đổi qua history.pushState / replaceState
+    const poll = setInterval(() => {
+      setHashTick((t) => {
+        // Chỉ bump khi hash thực sự khác lần đọc trước
+        const cur = readPage();
+        return t === 0 ? t : t; // giữ nguyên, nhưng so sánh bằng biến ngoài
+      });
+    }, 250);
+
+    return () => {
+      window.removeEventListener('hashchange', bump);
+      window.removeEventListener('popstate', bump);
+      clearInterval(poll);
+    };
+  }, []);
+
+  // Theo dõi hash thật để bump tick khi cần
+  const lastHashRef = useRef(typeof window !== 'undefined' ? window.location.hash : '');
+  useEffect(() => {
+    const check = () => {
+      const h = window.location.hash;
+      if (h !== lastHashRef.current) {
+        lastHashRef.current = h;
+        setHashTick((t) => t + 1);
+      }
+    };
+    const id = setInterval(check, 200);
+    return () => clearInterval(id);
+  }, []);
+
   const [menu, setMenu] = useState(false);
   const [toolOpen, setToolOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -97,7 +142,33 @@ export default function App() {
   useEffect(() => {
     document.title = pageTitle(page);
     document.getElementById('main')?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  // ============================================================
+  // ĐỒNG BỘ HASH ↔ TRẠNG THÁI ĐĂNG NHẬP
+  // Vừa login/logout → force về #home.
+  // Dùng replaceState để không trigger hashchange.
+  // ============================================================
+  const prevLoginRef = useRef(isLoggedIn);
+  useEffect(() => {
+    if (!prevLoginRef.current && isLoggedIn) {
+      if (window.location.hash !== '#home') {
+        history.replaceState(null, '', '#home');
+      }
+      lastHashRef.current = '#home';
+      setHashTick((t) => t + 1);
+      window.scrollTo(0, 0);
+    }
+    if (prevLoginRef.current && !isLoggedIn) {
+      if (window.location.hash !== '#home') {
+        history.replaceState(null, '', '#home');
+      }
+      lastHashRef.current = '#home';
+      setHashTick((t) => t + 1);
+    }
+    prevLoginRef.current = isLoggedIn;
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const d = dlgRef.current;
@@ -123,7 +194,7 @@ export default function App() {
     const t = setTimeout(() => setLoading(false), 700);
 
     const onHash = () => {
-      setPage(readPage());
+      setHashTick((x) => x + 1);
       setMenu(false);
       setToolOpen(false);
       window.scrollTo(0, 0);
@@ -132,7 +203,7 @@ export default function App() {
     const onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        if (location.hash !== '#table') location.hash = 'table';
+        if (window.location.hash !== '#table') window.location.hash = 'table';
         setTimeout(() => document.getElementById('search')?.focus(), 60);
       }
       if (e.key === 'Escape') {
@@ -159,8 +230,6 @@ export default function App() {
       document.removeEventListener('mousedown', onDocClick);
     };
   }, []);
-
-  const isToolPage = NAV_TOOLS.some(([id]) => id === page);
 
   if (!ready) {
     return (
@@ -189,7 +258,7 @@ export default function App() {
         page={page}
         theme={theme}
         onSearch={() => {
-          if (location.hash !== '#table') location.hash = 'table';
+          if (window.location.hash !== '#table') window.location.hash = 'table';
           setTimeout(() => document.getElementById('search')?.focus(), 100);
         }}
         onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -215,7 +284,6 @@ export default function App() {
                 <span className="nav-label">{label}</span>
               </a>
             ))}
-            {/* ĐÃ XÓA DROPDOWN "CÔNG CỤ" — vì đã có mục riêng trong NAV_MAIN */}
           </nav>
 
           <div className="nav-actions">
