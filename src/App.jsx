@@ -37,10 +37,11 @@ const NAV_MAIN = [
   ['home', 'Trang chủ', IconHome],
   ['ai', 'CU AI', IconRobot],
   ['table', 'Bảng tuần hoàn', IconAtom],
-  ['tools', 'Công cụ', IconTools],
+  ['tools', 'Công cụ', IconTools], // ← THÊM DÒNG NÀY
 ];
 
 const NAV_TOOLS = [
+  ['formulas', 'Công thức nhanh', IconCalc],   // ← THÊM VÀO ĐẦU
   ['analyze', 'Phân tích', IconMicroscope],
   ['balance', 'Cân bằng PTHH', IconScale],
   ['pomodoro', 'Pomodoro', IconTimer],
@@ -51,7 +52,6 @@ const NAV_TOOLS = [
   ['games', 'Trò chơi', IconGamepad],
   ['profile', 'Trang cá nhân', IconUser],
 ];
-
 const NAV_BOTTOM = [
   ['home', 'Trang chủ', IconHome],
   ['table', 'Bảng TH', IconAtom],
