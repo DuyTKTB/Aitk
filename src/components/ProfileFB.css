@@ -130,3 +130,217 @@
 .pf-dialog p { margin: 0; font: 400 .88rem/1.5 var(--sans); color: var(--mut); }
 
 @media (prefers-reduced-motion: reduce) { .pf *, .pf *::before { transition-duration: .01ms !important; animation: none !important; } }
+/* ============================================================
+   BỔ SUNG: Avatar Upload, Stats, Achievements
+   ============================================================ */
+
+/* ---------- Avatar wrap ---------- */
+.pf-avatar-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.pf-avatar-wrap .pf-avatar {
+  position: relative;
+  overflow: hidden;
+}
+
+.pf-avatar-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+.pf-spin {
+  animation: pf-spin-anim 1s linear infinite;
+}
+@keyframes pf-spin-anim {
+  to { transform: rotate(360deg); }
+}
+
+.pf-avatar-edit {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.pf-avatar-edit:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+  background: var(--acc);
+  color: var(--acc-ink);
+}
+.pf-avatar-edit:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.pf-avatar-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Stats cards ---------- */
+.pf-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.8rem;
+  margin-bottom: 1.6rem;
+}
+@media (max-width: 640px) {
+  .pf-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.pf-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.1rem 0.6rem;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  text-align: center;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pf-stat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.pf-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: #111;
+  border: 1.5px solid var(--ink);
+}
+
+.pf-stat-value {
+  font: 700 1.8rem var(--sans);
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.pf-stat-label {
+  font: 600 0.7rem var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mut);
+}
+
+/* ---------- Achievements ---------- */
+.pf-ach-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.pf-ach-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+}
+
+.pf-ach-title {
+  margin: 0;
+  font: 700 1.1rem var(--sans);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.pf-ach-count {
+  font: 700 0.82rem var(--mono);
+  color: var(--acc);
+  padding: 0.15rem 0.6rem;
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  border-radius: 999px;
+}
+
+.pf-ach-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.7rem;
+}
+@media (max-width: 640px) {
+  .pf-ach-grid { grid-template-columns: 1fr; }
+}
+
+.pf-ach-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  opacity: 0.55;
+  transition: all 0.2s;
+}
+.pf-ach-card.unlocked {
+  opacity: 1;
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.pf-ach-card.unlocked:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.pf-ach-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1.5px solid var(--ink);
+  transition: all 0.2s;
+}
+.pf-ach-card:not(.unlocked) .pf-ach-icon {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.pf-ach-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.pf-ach-info b {
+  font: 700 0.92rem var(--sans);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.pf-ach-info small {
+  font: 400 0.76rem var(--sans);
+  color: var(--mut);
+  line-height: 1.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-stat-card,
+  .pf-ach-card,
+  .pf-avatar-edit {
+    transition: none;
+  }
+}

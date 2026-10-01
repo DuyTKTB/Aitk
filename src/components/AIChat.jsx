@@ -669,7 +669,7 @@ export default function AIChat() {
             aria-haspopup="menu"
             aria-expanded={userMenuOpen}
           >
-            <UserAvatar user={user} initial={userInitial} color={tier.color} />
+            <UserAvatar user={user} initial={userInitial} color={tier?.color} />
             <div className="ds-user-info">
               <b>{userName}{tier.key === 'vip' && <VerifiedBadge isVip size={12} />}</b>
               <span className="ds-user-tier-name">

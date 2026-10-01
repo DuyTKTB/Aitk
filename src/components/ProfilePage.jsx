@@ -4,6 +4,9 @@ import { translateAuthError } from '../lib/firebase.js';
 import { TIERS } from '../lib/tier.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
+import ProfileStats from './ProfileStats.jsx';
+import ProfileAchievements from './ProfileAchievements.jsx';
+import { IcoCamera, IcoSpinner } from './ProfileIcons.jsx';
 import './ProfileFB.css';
 
 /* ---------- Màu avatar: tự động theo tên, cho phép chọn lại (lưu máy) ---------- */
@@ -16,7 +19,6 @@ const ls = {
   set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* bỏ qua */ } },
 };
 
-/* ---------- Quy tắc mật khẩu (hiển thị checklist thật, không chỉ thanh màu) ---------- */
 const PW_RULES = [
   ['Từ 6 ký tự', (p) => p.length >= 6],
   ['Có chữ hoa và chữ thường', (p) => /[a-z]/.test(p) && /[A-Z]/.test(p)],
@@ -24,10 +26,43 @@ const PW_RULES = [
   ['Có ký tự đặc biệt', (p) => /[^A-Za-z0-9]/.test(p)],
 ];
 
-function Avatar({ photoURL, initial, color, isVip }) {
+function Avatar({ photoURL, initial, color, isVip, onUpload, uploading }) {
+  const fileRef = useRef(null);
+
+  const handleChange = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (f && onUpload) await onUpload(f);
+  };
+
   return (
-    <div className={'pf-avatar' + (isVip ? ' vip' : '')} style={{ '--av': color }}>
-      {photoURL ? <img src={photoURL} alt="" /> : <span>{initial}</span>}
+    <div className="pf-avatar-wrap">
+      <div className={'pf-avatar' + (isVip ? ' vip' : '')} style={{ '--av': color }}>
+        {photoURL ? <img src={photoURL} alt="" /> : <span>{initial}</span>}
+        {uploading && (
+          <div className="pf-avatar-loading">
+            <IcoSpinner size={28} className="pf-spin" />
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        className="pf-avatar-edit"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        aria-label="Đổi ảnh đại diện"
+        title="Đổi ảnh đại diện"
+      >
+        <IcoCamera size={16} />
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handleChange}
+      />
     </div>
   );
 }
@@ -61,7 +96,11 @@ function PwInput({ id, label, value, onChange, show, onToggle, hint, ...rest }) 
 }
 
 export default function ProfilePage() {
-  const { user, tier, logout, updateDisplayName, changePassword, sendVerifyEmail, refreshUser, refreshTier } = useAuth();
+  const {
+    user, tier, logout,
+    updateDisplayName, changePassword, sendVerifyEmail,
+    refreshUser, refreshTier, uploadAvatar,
+  } = useAuth();
 
   const [tab, setTab] = useState(() => ls.get('cs-profile-tab', 'info'));
   const [secTab, setSecTab] = useState('password');
@@ -73,7 +112,8 @@ export default function ProfilePage() {
   const [showNew, setShowNew] = useState(false);
   const [caps, setCaps] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null); // {type, text}
+  const [uploading, setUploading] = useState(false);
+  const [toast, setToast] = useState(null);
   const [copied, setCopied] = useState(false);
   const [askLogout, setAskLogout] = useState(false);
   const [pickedColor, setPickedColor] = useState(() => ls.get('cs-avatar-color', ''));
@@ -95,7 +135,6 @@ export default function ProfilePage() {
   const identCode = useMemo(() => 'A7-' + hashStr(email).toString(16).slice(0, 6).toUpperCase(), [email]);
   const pwScore = pwStrength(newPw);
 
-  /* ---------- Toast tự tắt ---------- */
   const say = useCallback((type, text) => {
     clearTimeout(toastTimer.current);
     setToast({ type, text });
@@ -106,7 +145,6 @@ export default function ProfilePage() {
   const fail = (t) => say('error', t);
   const err = (e) => fail(e.code ? translateAuthError(e.code) : e.message);
 
-  /* ---------- Lưu tab đang xem; cảnh báo khi rời trang với tên chưa lưu ---------- */
   useEffect(() => { ls.set('cs-profile-tab', tab); }, [tab]);
   useEffect(() => {
     if (!dirty) return undefined;
@@ -115,7 +153,6 @@ export default function ProfilePage() {
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
 
-  /* ---------- Hộp thoại đăng xuất (thay cho confirm()) ---------- */
   useEffect(() => {
     const d = dlg.current; if (!d) return;
     if (askLogout && !d.open) d.showModal();
@@ -129,7 +166,18 @@ export default function ProfilePage() {
     catch { fail('Trình duyệt không cho phép sao chép.'); }
   };
 
-  /* ---------- Handlers ---------- */
+  const handleUpload = async (file) => {
+    setUploading(true);
+    try {
+      await uploadAvatar(file);
+      ok('Đã cập nhật ảnh đại diện!');
+    } catch (x) {
+      err(x);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const saveName = async (e) => {
     e.preventDefault();
     const t = name.trim();
@@ -163,12 +211,11 @@ export default function ProfilePage() {
   };
   const sendVerify = run(sendVerifyEmail, () => ok('Đã gửi email xác thực. Kiểm tra hộp thư (cả mục Spam).'));
   const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
-  const syncTier = run(refreshTier, (t) => ok(`Gói hiện tại: ${t.name}`));
+  const syncTier = run(refreshTier, (t) => ok(`Gói hiện tại: ${t?.name || tier?.name || 'Miễn phí'}`));
 
   const TABS = [['info', 'Hồ sơ', 'user'], ['security', 'Bảo mật', 'shield'], ['upgrade', 'Gói dùng', 'crown']];
   const SEC = [['password', 'Mật khẩu'], ['verify', 'Xác thực email'], ['devices', 'Phiên đăng nhập']];
 
-  /* mũi tên trái/phải chuyển tab (đúng chuẩn tablist) */
   const onTabKey = (e) => {
     const i = TABS.findIndex(([id]) => id === tab);
     if (e.key === 'ArrowRight') setTab(TABS[(i + 1) % TABS.length][0]);
@@ -183,11 +230,17 @@ export default function ProfilePage() {
       </div>
 
       <div className="pf-grid">
-        {/* ============ THẺ ĐỊNH DANH ============ */}
         <aside className="pf-card" style={{ '--tier': tier?.color || '#6b675e' }}>
           <div className="pf-card-band"><span>{tier?.name || 'Free'}</span><span>№ {identCode}</span></div>
           <div className="pf-card-body">
-            <Avatar photoURL={user?.photoURL} initial={initial} color={color} isVip={isVip} />
+            <Avatar
+              photoURL={user?.photoURL}
+              initial={initial}
+              color={color}
+              isVip={isVip}
+              onUpload={handleUpload}
+              uploading={uploading}
+            />
             <h1 className="pf-name">{display || 'Ẩn danh'}{isVip && <VerifiedBadge isVip size={20} />}</h1>
             <p className="pf-rank">{rankFor(tier)}</p>
 
@@ -209,7 +262,6 @@ export default function ProfilePage() {
           </div>
         </aside>
 
-        {/* ============ NỘI DUNG ============ */}
         <div className="pf-main">
           <nav className="pf-tabs" role="tablist" onKeyDown={onTabKey}>
             {TABS.map(([id, label, icon]) => (
@@ -222,23 +274,29 @@ export default function ProfilePage() {
 
           <div className="pf-panel" role="tabpanel" aria-labelledby={'pf-t-' + tab}>
             {tab === 'info' && (
-              <form onSubmit={saveName} noValidate>
-                <h2>Thông tin cá nhân</h2>
-                <Field id="pf-name" label="Tên hiển thị" hint={`${name.trim().length}/30 — hiện trong app và chat cộng đồng`}>
-                  <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} autoComplete="name" placeholder="Nguyễn Văn A" />
-                </Field>
-                <Field id="pf-email" label="Email" hint="Email gắn với tài khoản nên không đổi được." locked>
-                  <input id="pf-email" value={email} disabled readOnly />
-                </Field>
-                <div className="pf-actions">
-                  <button type="submit" className="pf-btn primary" disabled={loading || !dirty}>
-                    <Glyph name={loading ? 'spinner' : 'check'} size={15} className={loading ? 'spin' : ''} />
-                    {loading ? 'Đang lưu…' : 'Lưu thay đổi'}
-                  </button>
-                  <button type="button" className="pf-btn" disabled={!dirty} onClick={() => setName(display)}>Hoàn tác</button>
-                  {dirty && <span className="pf-dirty">Chưa lưu</span>}
-                </div>
-              </form>
+              <>
+                <ProfileStats />
+
+                <form onSubmit={saveName} noValidate style={{ marginTop: '1.6rem' }}>
+                  <h2>Thông tin cá nhân</h2>
+                  <Field id="pf-name" label="Tên hiển thị" hint={`${name.trim().length}/30 — hiện trong app và chat cộng đồng`}>
+                    <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} autoComplete="name" placeholder="Nguyễn Văn A" />
+                  </Field>
+                  <Field id="pf-email" label="Email" hint="Email gắn với tài khoản nên không đổi được." locked>
+                    <input id="pf-email" value={email} disabled readOnly />
+                  </Field>
+                  <div className="pf-actions">
+                    <button type="submit" className="pf-btn primary" disabled={loading || !dirty}>
+                      <Glyph name={loading ? 'spinner' : 'check'} size={15} className={loading ? 'spin' : ''} />
+                      {loading ? 'Đang lưu…' : 'Lưu thay đổi'}
+                    </button>
+                    <button type="button" className="pf-btn" disabled={!dirty} onClick={() => setName(display)}>Hoàn tác</button>
+                    {dirty && <span className="pf-dirty">Chưa lưu</span>}
+                  </div>
+                </form>
+
+                <ProfileAchievements />
+              </>
             )}
 
             {tab === 'security' && (
@@ -316,7 +374,7 @@ export default function ProfilePage() {
                 <p className="pf-sub-text">Đang dùng <b style={{ color: tier?.color }}>{tier?.name}</b> — {tier?.desc}</p>
                 <div className="pf-tiers">
                   {Object.values(TIERS).map((t) => {
-                    const cur = t.key === tier.key;
+                    const cur = t.key === tier?.key;
                     return (
                       <article key={t.key} className={'pf-tier' + (cur ? ' current' : '') + (t.key === 'vip' ? ' vip' : '')} style={{ '--tier': t.color }}>
                         <header>
