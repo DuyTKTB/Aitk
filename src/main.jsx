@@ -12,7 +12,7 @@ import './home-polish.css';    // 5. Sửa lỗi trang chủ
 import './tools-page.css';     // 6. Trang Công cụ
 import './home-glass.css';     // 7. Lớp kính + blur nhẹ
 import './tools-plus.css';     // 8. Trang Công cụ: hình mẫu + Prompt Free (PHẢI nằm cuối)
-
+import './tools-calm.css'; 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>

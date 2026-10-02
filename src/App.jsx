@@ -236,8 +236,8 @@ export default function App() {
       <header className={'nav-wrap' + (scrolled ? ' scrolled' : '')} ref={navRef}>
         <div className="nav-apple">
           <a className="nav-logo" href="#home" aria-label="Trang chủ">
-            <span className="logo-text">A7 K60 DTA</span>
-          </a>
+  <img src="/img/logo.png" alt="A7K60 TK MEDIA" style={{ height: 122, width: 'auto' }} />
+</a>
 
           <nav className="nav-links" aria-label="Điều hướng chính">
             {NAV_MAIN.map(([id, label, Icon]) => (

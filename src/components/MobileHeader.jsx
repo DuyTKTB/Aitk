@@ -8,16 +8,12 @@ export default function MobileHeader({ page, theme, onSearch, onToggleTheme, onM
   return (
     <header className="mhead-bar">
       {/* ----- BÊN TRÁI: logo + text ----- */}
-      <div className="mhead-left">
-        <div className="mhead-logo">
-          <AIMark size={42} animate mode="idle" />
-        </div>
-
-        <div className="mhead-text">
-          <span className="mhead-sub">A7 K60 DTA</span>
-          <span className="mhead-main">Học Hóa</span>
-        </div>
-      </div>
+<div className="mhead-logo">
+  <img 
+    src="/img/logo.png" 
+    alt="A7K60 TK MEDIA" 
+  />
+</div>
 
       {/* ----- BÊN PHẢI: 2 nút ----- */}
       <div className="mhead-right">

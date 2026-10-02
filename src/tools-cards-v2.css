@@ -1,0 +1,370 @@
+/* ============================================================
+   tools-cards-v2.css — thẻ công cụ kiểu "bento" tối + khối xanh phát sáng
+   Cảm hứng: poster typography (thẻ đen bo lớn, ô con, nút viên thuốc phát sáng,
+   chữ khổng lồ bị cắt đáy, nét vẽ tay màu xanh).
+
+   Import CUỐI CÙNG trong main.jsx (sau tools-plus.css):
+     import './tools-cards-v2.css';
+
+   Chỉ tác động vào .ai-card / .study-card / .hot-card nên thẻ Prompt giữ nguyên.
+   ============================================================ */
+
+/* ---------- 0. TOKEN ---------- */
+@property --tk-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes tk-spin { to { --tk-ang: 360deg; } }
+@keyframes tk-draw { to { stroke-dashoffset: 0; } }
+
+.tk-page {
+  --tk-solid: var(--panel);
+  --tk-ink-tile: #050a22;
+  --tk-light-tile: #f3f7ff;
+  --tk-ice: #c9f1ff;
+  --tk-blue-panel: linear-gradient(112deg, #2f6bff 0%, #4a9bff 58%, #a4e0ff 100%);
+  --tk-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+  --tk-squiggle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2 6C14 1 22 9 34 5S56 1 68 5 92 9 118 3' fill='none' stroke='%232f6bff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+[data-theme='dark'] .tk-page { --tk-solid: #070d2a; }
+
+/* ---------- 1. KHUNG THẺ ---------- */
+.tk-page :is(.ai-card, .study-card, .hot-card) {
+  --mx: 50%; --my: 50%;
+  isolation: isolate;
+  padding: 8px;
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  background: var(--tk-solid);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 14px 30px -22px rgba(10, 18, 48, .5);
+}
+.tk-page :is(.ai-card, .study-card, .hot-card):hover,
+.tk-page :is(.ai-card, .study-card, .hot-card):focus-within {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--acc) 40%, var(--line));
+  box-shadow: 0 30px 60px -28px color-mix(in srgb, var(--acc) 70%, transparent), 0 1px 0 rgba(255, 255, 255, .08) inset;
+}
+
+/* đèn rọi theo con trỏ (JS ghi --mx / --my) */
+.tk-page :is(.ai-card, .study-card, .hot-card)::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(340px circle at var(--mx) var(--my), color-mix(in srgb, var(--acc) 24%, transparent), transparent 70%);
+}
+.tk-page :is(.ai-card, .study-card, .hot-card):hover::before { opacity: 1; }
+
+/* viền sáng chạy quanh khi hover */
+.tk-page :is(.ai-card, .study-card, .hot-card)::after {
+  content: ''; position: absolute; inset: 0; z-index: 6; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--tk-ang), transparent 0 52%, var(--acc) 72%, #8fd3ff 86%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity .35s;
+  animation: tk-spin 3.6s linear infinite paused;
+}
+.tk-page :is(.ai-card, .study-card, .hot-card):hover::after,
+.tk-page :is(.ai-card, .study-card, .hot-card):focus-within::after { opacity: 1; animation-play-state: running; }
+
+.tk-page .ai-card.comparing { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 35%, transparent), 0 30px 60px -28px color-mix(in srgb, var(--acc) 70%, transparent); }
+.tk-page .hot-card.is-fav { border-color: color-mix(in srgb, #ffc94d 60%, var(--line)); }
+
+/* ---------- 2. KHỐI HÌNH (ô con bo tròn) ---------- */
+.tk-page :is(.ai-card, .study-card, .hot-card) .tk-art {
+  border-radius: 20px; background: #06103a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+.tk-page :is(.ai-card, .study-card, .hot-card) .tk-art::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: screen; opacity: .85;
+  background:
+    radial-gradient(70% 90% at 0% 0%, rgba(108, 196, 255, .55), transparent 70%),
+    linear-gradient(135deg, rgba(47, 107, 255, .55), transparent 60%);
+}
+.tk-page :is(.ai-card, .study-card, .hot-card) .tk-art::after {
+  background: linear-gradient(180deg, transparent 45%, rgba(3, 7, 30, .6));
+}
+/* lớp nhiễu hạt */
+.tk-page :is(.ai-card, .study-card, .hot-card) .tk-art-over::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--tk-grain); opacity: .22; mix-blend-mode: overlay;
+}
+
+/* nhãn + huy hiệu xếp thành hàng, không đè nhau nữa */
+.tk-page :is(.ai-card, .study-card, .hot-card) .tk-art-over {
+  display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: .4rem; padding: .75rem;
+}
+.tk-page .hot-card .tk-art-over { padding-right: 3.6rem; }
+.tk-page .tk-art-over :is(.pl-chip, .hot-rank, .tool-badge-hot) {
+  position: static; inset: auto; right: auto; top: auto; left: auto;
+  display: inline-flex; align-items: center; gap: .38rem; padding: .26rem .65rem; border-radius: 999px;
+  font: 600 .7rem var(--sans); letter-spacing: 0; color: #fff;
+  background: rgba(6, 12, 40, .5); border: 1px solid rgba(255, 255, 255, .26); box-shadow: none;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.tk-page .tk-art-over .tool-badge-hot::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--dot, #ffc94d); box-shadow: 0 0 8px var(--dot, #ffc94d);
+}
+.tk-page .tk-art-over .tool-badge-hot.top { --dot: #ffc94d; }
+.tk-page .tk-art-over .tool-badge-hot.trend { --dot: #ff6b9d; }
+.tk-page .tk-art-over .tool-badge-hot.free { --dot: #34d399; }
+.tk-page .tk-art-over .tool-badge-hot.hidden { --dot: #a78bfa; }
+.tk-page .tk-art-over .tool-badge-hot.official { --dot: #34d399; }
+.tk-page .tk-art-over .tool-badge-hot.supervip { --dot: #fff; background: linear-gradient(120deg, #a855f7, #f59e0b); border-color: rgba(255, 255, 255, .45); }
+.tk-page .tk-art-over .hot-rank { font-variant-numeric: tabular-nums; }
+.tk-page .tk-art-over .hot-rank.hot-rank-supervip {
+  background: linear-gradient(120deg, #a855f7, #f59e0b) !important; border: 1px solid rgba(255, 255, 255, .45) !important;
+  box-shadow: 0 0 22px rgba(168, 85, 247, .55) !important; padding: .26rem .65rem !important; font: 600 .7rem var(--sans) !important; letter-spacing: 0 !important;
+}
+
+/* chữ khổng lồ bị cắt đáy */
+.tk2-ghost {
+  position: absolute; left: 4.4rem; right: -.6rem; bottom: -.16em; z-index: 1;
+  font: 700 clamp(2.6rem, 4.6vw, 3.5rem)/1 var(--sans); letter-spacing: -.055em; white-space: nowrap; overflow: hidden;
+  color: var(--tk-ice); opacity: .92; pointer-events: none; user-select: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 94%); mask-image: linear-gradient(180deg, #000 30%, transparent 94%);
+  transition: transform .55s var(--ease), opacity .3s;
+}
+.tk-page :is(.ai-card, .study-card, .hot-card):hover .tk2-ghost { transform: translateY(-7px); opacity: 1; }
+.tk-page .hot-card .tk2-ghost { left: 5.4rem; font-size: clamp(3.2rem, 5.4vw, 4.6rem); }
+.tk-page .ai-card.tk-big .tk2-ghost { font-size: clamp(3.4rem, 6vw, 5rem); }
+
+/* ---------- 3. LOGO tròn có "khuyết" ---------- */
+.tk-page :is(.ai-card, .study-card, .hot-card) .tk-logo {
+  margin-top: -1.9rem; border-radius: 50%; background: #fff; border: 4px solid var(--tk-solid);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 26px -8px color-mix(in srgb, var(--acc) 70%, transparent);
+}
+.tk-page .hot-card .tk-logo-cuai,
+.tk-page .tk-logo-cuai {
+  border-radius: 50% !important; border: 4px solid var(--tk-solid) !important;
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, .6), 0 0 30px rgba(168, 85, 247, .65), inset 0 1px 0 rgba(255, 255, 255, .45) !important;
+}
+.tk-page .quickview-logo .tk-logo-cuai { box-shadow: 0 0 0 1px rgba(168, 85, 247, .6), 0 0 30px rgba(168, 85, 247, .6) !important; border: 3px solid var(--panel) !important; }
+
+/* ---------- 4. THÂN THẺ ---------- */
+.tk-page :is(.ai-card, .study-card) .tk-body { padding: .3rem .95rem .3rem; gap: .4rem; }
+.tk-page :is(.ai-card, .study-card) .tk-body h3 {
+  position: relative; width: fit-content; max-width: 100%;
+  font: 700 1.28rem/1.1 var(--sans); letter-spacing: -.04em;
+}
+/* nét vẽ tay hiện ra khi hover */
+.tk-page :is(.ai-card, .study-card) .tk-body h3::after,
+.tk-page .hot-head-text h3::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -7px; height: 8px;
+  background: var(--tk-squiggle) center / 100% 100% no-repeat;
+  clip-path: inset(0 100% 0 0); transition: clip-path .5s var(--ease);
+}
+.tk-page :is(.ai-card, .study-card, .hot-card):hover .tk-body h3::after,
+.tk-page .hot-card:hover .hot-head-text h3::after { clip-path: inset(0 0 0 0); }
+.tk-page .hot-head-text h3 { position: relative; width: fit-content; max-width: 100%; }
+.tk-page .tk-desc { font: 400 .85rem/1.5 var(--sans); margin-top: .25rem; }
+
+.tk-page :is(.ai-card, .study-card) .tk-foot {
+  margin: 0; padding: .35rem .5rem .55rem .95rem; border-top: 0;
+}
+.tk-page .tool-card-domain {
+  font: 500 .72rem var(--sans); color: var(--mut); padding: .22rem .6rem; border-radius: 999px; background: var(--soft);
+  max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* nút viên thuốc phát sáng */
+.tk2-cta, .tk-page .hot-arrow {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .52rem 1rem; border-radius: 999px;
+  font: 600 .78rem var(--sans); color: #fff; letter-spacing: 0;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6); border: 1px solid rgba(125, 165, 255, .6);
+  box-shadow: 0 0 20px rgba(47, 107, 255, .42), inset 0 1px 0 rgba(255, 255, 255, .35);
+  transition: box-shadow .3s, transform .3s var(--ease);
+}
+.tk2-cta svg, .tk-page .hot-arrow svg { transition: transform .3s var(--ease); }
+.tk-page :is(.ai-card, .study-card, .hot-card):hover .tk2-cta,
+.tk-page .hot-card:hover .hot-arrow { box-shadow: 0 0 34px rgba(47, 107, 255, .85), inset 0 1px 0 rgba(255, 255, 255, .4); }
+.tk-page :is(.ai-card, .study-card, .hot-card):hover .tk2-cta svg,
+.tk-page .hot-card:hover .hot-arrow svg { transform: translate(2px, -2px); }
+
+/* hàng nút phụ: viên thuốc mờ */
+.tk-page .ai-card .tool-actions {
+  margin: 0 .5rem .5rem; padding: .22rem; gap: .1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--soft);
+}
+.tk-page .ai-card .tool-btn { border-radius: 999px; border: 0; padding: .42rem .3rem; }
+.tk-page .ai-card .tool-btn:hover { background: color-mix(in srgb, var(--acc) 18%, transparent); color: var(--ink); }
+.tk-page .ai-card .tool-btn.on { background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; box-shadow: 0 0 16px rgba(47, 107, 255, .55); }
+
+/* nút sao ở thẻ Hot */
+.tk-page .hot-card .tk-star { top: 1.1rem; right: 1.1rem; z-index: 7; }
+
+/* thẻ Học tập */
+.tk-page .study-card .tk-art-ico { left: 1rem; top: 1rem; transform: none; width: 50px; height: 50px; border-radius: 16px; }
+.tk-page .study-card .tool-badge { top: .9rem; right: .9rem; }
+.tk-page .study-card .tk2-ghost { left: .9rem; }
+
+/* ---------- 5. THẺ AI HOT: ô con kiểu bento ---------- */
+.tk-page .hot-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 1.3rem; }
+.tk-page .hot-card { background: var(--tk-solid); }
+.tk-page .hot-body { padding: .3rem .95rem .95rem; gap: .85rem; }
+.tk-page .hot-head { align-items: flex-start; gap: .9rem; }
+.tk-page .hot-head .tk-logo { margin-top: -1.9rem; }
+.tk-page .hot-head-text { padding-top: .25rem; display: grid; gap: .35rem; }
+.tk-page .hot-head-text h3 { font: 700 1.45rem/1.05 var(--sans); letter-spacing: -.045em; }
+.tk-page .hot-desc { font: 400 .9rem/1.5 var(--sans); color: var(--mut); }
+
+.tk-page .hot-why { padding: .1rem 0 .1rem .9rem; border: 0; border-left: 2px solid transparent; border-image: linear-gradient(180deg, var(--acc), transparent) 1; border-radius: 0; background: none; }
+.tk-page .hot-why b { font: 600 .74rem var(--sans); letter-spacing: 0; color: var(--acc-soft); }
+.tk-page .hot-why p { font: 400 .86rem/1.55 var(--sans); }
+
+.tk-page .hot-best { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .45rem; background: none; border: 0; padding: 0; }
+.tk-page .hot-best b { font: 600 .74rem var(--sans); letter-spacing: 0; color: var(--mut); margin: 0 .2rem 0 0; }
+.tk-page .hot-best ul { display: contents; list-style: none; margin: 0; padding: 0; }
+.tk-page .hot-best li {
+  list-style: none; margin: 0; padding: .28rem .72rem; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--soft); font: 500 .75rem var(--sans); color: var(--ink);
+}
+
+/* khối xanh + 2 ô con (đen / trắng) như ảnh mẫu */
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .5rem; margin: 0; overflow: hidden;
+  border: 0; border-radius: 24px; background: var(--tk-blue-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 20px 44px -26px rgba(47, 107, 255, .9);
+}
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons)::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; background-image: var(--tk-grain); opacity: .2; mix-blend-mode: overlay;
+}
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) > div {
+  position: relative; padding: .85rem .9rem .9rem; border-radius: 18px; border: 0;
+  background: var(--tk-ink-tile); color: #eef2ff;
+}
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) > div:nth-child(2) { background: var(--tk-light-tile); color: #0a1230; }
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) > div:only-child { grid-column: 1 / -1; }
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) b,
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) b.pros-label,
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) b.cons-label {
+  display: block; margin: 0 0 .5rem; font: 700 1rem/1.1 var(--sans); letter-spacing: -.03em; color: inherit;
+}
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .32rem; }
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) li {
+  position: relative; margin: 0; padding-left: 1.05rem; font: 400 .78rem/1.35 var(--sans); color: inherit; opacity: .92;
+}
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) li::before {
+  content: ''; position: absolute; left: 0; top: .5em; width: 6px; height: 6px; border-radius: 50%; background: #5aa8ff; box-shadow: 0 0 8px #5aa8ff;
+}
+.tk-page :is(.hot-pros-cons, .quickview-pros-cons) > div:nth-child(2) li::before { background: #ef4444; box-shadow: none; }
+
+.tk-page .hot-foot { margin-top: auto; padding-top: .1rem; border: 0; display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.tk-page .hot-domain { font: 500 .72rem var(--sans); color: var(--mut); padding: .22rem .6rem; border-radius: 999px; background: var(--soft); }
+
+/* ---------- 6. CUAI — thẻ tím–vàng nổi bật ---------- */
+.tk-page .cuai-spotlight { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; animation: none; margin-bottom: 1.6rem; }
+.tk-page .cuai-spotlight-label {
+  padding: .32rem .85rem .32rem .7rem; margin-bottom: .75rem; border-radius: 999px; border: 1px solid rgba(168, 85, 247, .5);
+  background: rgba(168, 85, 247, .14); color: var(--ink); font: 600 .78rem var(--sans); letter-spacing: 0; box-shadow: none;
+}
+.tk-page .hot-card.hot-card-cuai {
+  border: 1px solid rgba(168, 85, 247, .5) !important;
+  background:
+    radial-gradient(70% 55% at 0% 0%, rgba(168, 85, 247, .3), transparent 65%),
+    radial-gradient(55% 55% at 100% 100%, rgba(245, 158, 11, .18), transparent 65%),
+    var(--tk-solid) !important;
+  box-shadow: 0 40px 90px -40px rgba(168, 85, 247, .8) !important;
+}
+.tk-page .hot-card.hot-card-cuai:hover { border-color: #a855f7 !important; box-shadow: 0 44px 100px -36px rgba(168, 85, 247, .95) !important; }
+.tk-page .hot-card-cuai::after {
+  opacity: .95; animation-play-state: running;
+  background: conic-gradient(from var(--tk-ang), transparent 0 40%, #a855f7 62%, #f59e0b 80%, transparent 100%);
+}
+.tk-page .hot-card-cuai .tk-art { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 0 50px -10px rgba(168, 85, 247, .6); }
+.tk-page .hot-card-cuai .tk2-ghost { font-size: clamp(4.4rem, 9vw, 8rem); left: 6.6rem; }
+
+@media (min-width: 900px) {
+  .tk-page .hot-card-cuai .hot-link { display: grid; grid-template-columns: minmax(280px, 38%) 1fr; column-gap: .5rem; }
+  .tk-page .hot-card-cuai .tk-art { aspect-ratio: auto !important; min-height: 100%; }
+  .tk-page .hot-card-cuai .hot-body { padding: 1rem 1.1rem 1.1rem; }
+  .tk-page .hot-card-cuai .hot-head .tk-logo { margin-top: 0; }
+  .tk-page .hot-card-cuai .tk2-ghost { left: 1.1rem; bottom: -.12em; }
+}
+
+/* ---------- 7. NÂNG CẤP TỔNG THỂ TRANG ---------- */
+.tk-page .tools-header { position: relative; padding-right: clamp(0px, 14vw, 170px); }
+.tk-page .tools-header h1 { font: 700 clamp(2.6rem, 7vw, 4.6rem)/1 var(--sans); letter-spacing: -.055em; margin-bottom: .75rem; }
+.tk2-h1 { position: relative; display: inline-block; padding-bottom: .12em; }
+.tk2-scribble { position: absolute; left: -2%; bottom: -.04em; width: 104%; height: .3em; overflow: visible; pointer-events: none; }
+.tk2-scribble path { fill: none; stroke: var(--acc); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: tk-draw 1.1s .35s var(--ease) forwards; }
+.tk2-doodle { position: absolute; right: 0; top: -.4rem; width: clamp(64px, 11vw, 120px); height: auto; overflow: visible; pointer-events: none; }
+.tk2-doodle path { fill: none; stroke: var(--acc); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: tk-draw .9s var(--ease) forwards; }
+.tk2-doodle path:nth-child(1) { animation-delay: .5s; }
+.tk2-doodle path:nth-child(2) { animation-delay: .7s; }
+.tk2-doodle path:nth-child(3) { animation-delay: .95s; }
+
+.tk-page .tools-tabs { padding: .35rem; background: var(--glass); }
+.tk-page .tools-tab { padding: .62rem 1.35rem; font-weight: 600; }
+.tk-page .tools-tab.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; border: 0;
+  box-shadow: 0 0 24px rgba(47, 107, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+
+.tk-page .tools-search { padding: 1rem 1.4rem; background: var(--glass); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.tk-page .tools-search::before {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--tk-ang), transparent 0 55%, var(--acc) 72%, #8fd3ff 86%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity .3s; animation: tk-spin 3s linear infinite;
+}
+.tk-page .tools-search:focus-within::before { opacity: 1; }
+
+.tk-page .tools-cat.on, .tk-page .hot-chip.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; border-color: transparent;
+  box-shadow: 0 0 20px rgba(47, 107, 255, .45), inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+.tk-page .hot-filters { background: var(--glass); border: 1px solid var(--line); border-radius: 22px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.tk-page .hot-chip { border-color: var(--line); }
+.tk-page .hot-chip:hover { border-color: var(--acc); color: var(--ink); }
+.tk-page .hot-filter-label { font: 600 .78rem var(--sans); letter-spacing: 0; }
+
+/* banner AI Hot: khối xanh phát sáng */
+.tk-page .hot-intro {
+  position: relative; overflow: hidden; align-items: center; padding: 1.6rem 1.8rem; border: 0; border-radius: 30px; color: #fff;
+  background: radial-gradient(120% 150% at 0% 0%, #7fd0ff 0%, #2f6bff 38%, #1738c9 78%);
+  box-shadow: 0 30px 70px -34px rgba(47, 107, 255, .95), inset 0 1px 0 rgba(255, 255, 255, .45);
+}
+.tk-page .hot-intro::after { content: ''; position: absolute; inset: 0; pointer-events: none; background-image: var(--tk-grain); opacity: .2; mix-blend-mode: overlay; }
+.tk-page .hot-intro > * { position: relative; z-index: 1; }
+.tk-page .hot-intro h2 { color: #fff; font: 700 clamp(1.4rem, 3vw, 2rem)/1.1 var(--sans); letter-spacing: -.045em; }
+.tk-page .hot-intro p, .tk-page .hot-intro b { color: rgba(255, 255, 255, .9); }
+.tk-page .hot-intro-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; font-size: 1.9rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .4); filter: none; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+/* thanh so sánh + xem nhanh */
+.tk-page .compare-bar-v2 {
+  background: rgba(6, 10, 34, .82); color: #eef2ff; border: 1px solid rgba(130, 160, 255, .3);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .7), 0 0 30px rgba(47, 107, 255, .25);
+}
+.tk-page .compare-btn.ghost { color: #eef2ff; }
+.tk-page .compare-btn.primary { background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; box-shadow: 0 0 18px rgba(47, 107, 255, .55); }
+.tk-page .quickview {
+  border-radius: 30px; border: 1px solid var(--line);
+  background: radial-gradient(90% 38% at 50% 0%, color-mix(in srgb, var(--acc) 24%, transparent), transparent 70%), var(--panel);
+}
+.tk-page .quickview-btn { border-radius: 999px; }
+.tk-page .quickview-btn.primary {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; border-color: rgba(125, 165, 255, .6); box-shadow: 0 0 22px rgba(47, 107, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.tk-page .quickview-cuai { border: 1px solid rgba(168, 85, 247, .55) !important; box-shadow: 0 40px 90px -30px rgba(168, 85, 247, .7) !important; }
+.tk-page .cuai-badge-inline { border: 0; box-shadow: none; font: 600 .68rem var(--sans); letter-spacing: 0; }
+.tk-page .hot-tag.official { border: 0; }
+
+/* ---------- 8. MOBILE ---------- */
+@media (max-width: 720px) {
+  .tk-page .tools-header { padding-right: 0; }
+  .tk2-doodle { top: -1.6rem; width: 64px; }
+  .tk-page :is(.hot-pros-cons, .quickview-pros-cons) { grid-template-columns: 1fr; }
+  .tk-page .hot-intro { flex-direction: row; align-items: flex-start; padding: 1.2rem; border-radius: 24px; }
+  .tk-page .hot-intro-icon { width: 48px; height: 48px; font-size: 1.4rem; }
+  .tk-page :is(.ai-card, .study-card, .hot-card) { border-radius: 24px; }
+}
+
+/* ---------- 9. TRỢ NĂNG ---------- */
+@media (hover: none) {
+  .tk-page :is(.ai-card, .study-card, .hot-card):hover { transform: none; }
+  .tk-page :is(.ai-card, .study-card, .hot-card) .tk-body h3::after,
+  .tk-page .hot-head-text h3::after { clip-path: inset(0 0 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tk-page :is(.ai-card, .study-card, .hot-card), .tk-page :is(.ai-card, .study-card, .hot-card)::after,
+  .tk-page .tools-search::before, .tk2-ghost, .tk2-cta, .tk-page .hot-arrow { animation: none !important; transition: none !important; }
+  .tk-page :is(.ai-card, .study-card, .hot-card):hover { transform: none; }
+  .tk2-scribble path, .tk2-doodle path { animation: none; stroke-dashoffset: 0; }
+  .tk-page :is(.ai-card, .study-card, .hot-card) .tk-body h3::after { clip-path: inset(0 0 0 0); transition: none; }
+}
