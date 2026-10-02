@@ -1,14 +1,11 @@
 // ============================================================
 // AI — Google Gemini API
-// Hỗ trợ NHIỀU ẢNH, giữ nguyên tỉ lệ (không crop)
+// Hỗ trợ NHIỀU ẢNH (max 10), giữ nguyên tỉ lệ
 // ============================================================
 
 const API_KEY = import.meta.env.VITE_GEMINI_KEY || '';
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
-// ============================================================
-// THÔNG BÁO LỖI
-// ============================================================
 const MSG_OUT_OF_QUOTA =
   '⚠️ Bạn đã hết quyền sử dụng AI miễn phí hôm nay.\n\n' +
   'Để được cấp thêm lượt, vui lòng liên hệ Admin:\n' +
@@ -28,9 +25,6 @@ class OutOfQuotaError extends Error {
   }
 }
 
-// ============================================================
-// MODELS — cập nhật theo danh sách Google mới nhất
-// ============================================================
 const MODELS = [
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
@@ -55,11 +49,9 @@ function orderModels(hasImage, type) {
   return [...first, ...MODELS.filter((m) => !first.includes(m))];
 }
 
-// Giảm maxTokens để AI trả lời ngắn hơn
 const maxTokensFor = (type) =>
   type === 'problem' ? 8192 : type === 'theory' ? 4096 : 2048;
 
-// Mức suy nghĩ: dùng thinkingBudget (số token), KHÔNG dùng thinkingLevel
 const thinkingBudgetFor = (type) => {
   if (type === 'problem') return 8192;
   if (type === 'theory') return 4096;
@@ -247,9 +239,6 @@ function normalizeChemistryText(text) {
   return result;
 }
 
-// ============================================================
-// REQUEST TYPE DETECT
-// ============================================================
 function detectRequestType(history) {
   const lastUser = [...history].reverse().find((m) => m.role === 'user');
   if (!lastUser) return 'general';
@@ -279,9 +268,6 @@ function getTemperature(type) {
   }
 }
 
-// ============================================================
-// PREPARE MESSAGES cho Gemini — HỖ TRỢ NHIỀU ẢNH
-// ============================================================
 function prepareGeminiContents(history) {
   return history.map((message) => {
     if (message.role === 'model') {
@@ -297,10 +283,7 @@ function prepareGeminiContents(history) {
     const imageParts = parts.filter((p) => p.inlineData);
 
     const geminiParts = [];
-    // Text trước để AI hiểu ngữ cảnh
     if (text) geminiParts.push({ text });
-
-    // NHIỀU ẢNH: giữ đúng thứ tự
     for (const img of imageParts) {
       geminiParts.push({
         inline_data: {
@@ -309,16 +292,12 @@ function prepareGeminiContents(history) {
         },
       });
     }
-
     if (geminiParts.length === 0) geminiParts.push({ text: '' });
 
     return { role: 'user', parts: geminiParts };
   });
 }
 
-// ============================================================
-// STREAM ONE MODEL
-// ============================================================
 async function streamOne({ model, contents, temperature, maxTokens, thinkingBudget, ctrl, claim, onChunk }) {
   let stall;
   let reader;
@@ -337,8 +316,6 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
       maxOutputTokens: maxTokens,
       topP: 0.9,
     };
-
-    // thinkingBudget: số nguyên (token), KHÔNG dùng thinkingLevel
     if (thinkingBudget && thinkingBudget > 0) {
       generationConfig.thinkingConfig = { thinkingBudget };
     }
@@ -363,12 +340,10 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
     if (!res.ok) {
       const status = res.status;
       const body = await res.text().catch(() => '');
-
       console.warn(`[A7 Assistant] ✗ ${model} → ${status}`, body.slice(0, 300));
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
 
-      // Nếu model không hỗ trợ thinking → thử lại không thinking
       if (status === 400 && thinkingBudget && /thinking/i.test(body)) {
         reader?.cancel?.().catch?.(() => {});
         clearTimeout(stall);
@@ -405,11 +380,7 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
         if (!data) continue;
 
         let parsed;
-        try {
-          parsed = JSON.parse(data);
-        } catch {
-          continue;
-        }
+        try { parsed = JSON.parse(data); } catch { continue; }
 
         const deltaText = (parsed.candidates?.[0]?.content?.parts || [])
           .filter((p) => p.text && !p.thought)
@@ -432,9 +403,6 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
   }
 }
 
-// ============================================================
-// ASK AI — ENTRY POINT
-// ============================================================
 export function askAI(history, onChunk, onReasoning) {
   if (!API_KEY) {
     return Promise.reject(new Error('Chưa cấu hình VITE_GEMINI_KEY trong file .env'));
@@ -557,39 +525,68 @@ export function askAI(history, onChunk, onReasoning) {
 }
 
 // ============================================================
-// COMPRESS IMAGE — GIỮ NGUYÊN TỈ LỆ, KHÔNG CROP
+// COMPRESS IMAGE — giữ tỉ lệ, có fallback cho iOS cũ
 // ============================================================
-/**
- * Nén ảnh nhưng GIỮ NGUYÊN bố cục (không cắt, không ép vuông).
- * - Giữ đúng aspect ratio gốc.
- * - Chỉ thu nhỏ nếu cạnh dài > MAX_SIZE.
- * - Nếu ảnh nhỏ hơn MAX_SIZE thì giữ nguyên kích thước.
- * - Chất lượng JPEG 0.88 (cân bằng size/chất lượng).
- * - Nếu là PNG có nền trong suốt → giữ PNG.
- */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
-  if (!file.type || !file.type.startsWith('image/')) {
+  // Điện thoại đôi khi trả file ảnh với type rỗng (HEIC...) → kiểm tra thêm theo đuôi file
+  const looksImage = (file.type && file.type.startsWith('image/'))
+    || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif)$/i.test(file.name || '');
+  if (!looksImage) {
     throw new Error('File không phải hình ảnh.');
   }
+  if (file.size > 30 * 1024 * 1024) {
+    throw new Error('Ảnh quá lớn (trên 30MB). Hãy chọn ảnh nhỏ hơn.');
+  }
 
-  const MAX_SIZE = 1600;
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const MAX_SIZE = isMobile ? 1400 : 1800;
 
-  // Dùng createImageBitmap để đọc kích thước gốc
-  let bitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    throw new Error('Không đọc được ảnh.');
+  let bitmap = null;
+  let W = 0, H = 0;
+  let cleanup = () => {};
+
+  // Cách 1: createImageBitmap (nhanh, nhưng iOS < 15 không hỗ trợ)
+  if (typeof createImageBitmap === 'function') {
+    try {
+      bitmap = await createImageBitmap(file);
+      W = bitmap.width;
+      H = bitmap.height;
+      cleanup = () => bitmap.close?.();
+    } catch {
+      bitmap = null;
+    }
+  }
+
+  // Cách 2 (fallback): dùng <img> + ObjectURL cho iOS cũ
+  if (!bitmap) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error(
+          /\.(heic|heif)$/i.test(file.name || '') || /hei[cf]/i.test(file.type || '')
+            ? 'Trình duyệt chưa đọc được ảnh HEIC. Hãy đổi sang JPG/PNG hoặc chụp ở chế độ "Tương thích nhất".'
+            : 'Không đọc được ảnh.'
+        ));
+        el.src = url;
+      });
+      bitmap = img;
+      W = img.naturalWidth || img.width;
+      H = img.naturalHeight || img.height;
+      cleanup = () => URL.revokeObjectURL(url);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
   }
 
   try {
-    const { width: W, height: H } = bitmap;
+    if (!W || !H) throw new Error('Ảnh không hợp lệ.');
 
-    // Tính tỉ lệ thu nhỏ, KHÔNG ép vuông
     const longest = Math.max(W, H);
     const scale = longest > MAX_SIZE ? MAX_SIZE / longest : 1;
-
     const width = Math.max(1, Math.round(W * scale));
     const height = Math.max(1, Math.round(H * scale));
 
@@ -602,33 +599,21 @@ export async function compressImage(file) {
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-
-    // Vẽ với kích thước đã scale, giữ nguyên bố cục
     ctx.drawImage(bitmap, 0, 0, width, height);
 
-    // Giữ PNG nếu là PNG (giữ nền trong suốt)
     const isPng = file.type === 'image/png';
     const mimeType = isPng ? 'image/png' : 'image/jpeg';
 
-    const dataUrl = isPng
+    let dataUrl = isPng
       ? canvas.toDataURL('image/png')
-      : canvas.toDataURL('image/jpeg', 0.88);
+      : canvas.toDataURL('image/jpeg', 0.85);
+
+    // Nếu vẫn quá lớn (> 4MB), nén thêm
+    if (dataUrl.length > 4 * 1024 * 1024) {
+      dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+    }
 
     const base64 = dataUrl.split(',')[1];
-
-    // Kiểm tra nếu ảnh nén vẫn quá lớn (> 5MB) → giảm chất lượng
-    if (base64.length > 5 * 1024 * 1024 && !isPng) {
-      const smaller = canvas.toDataURL('image/jpeg', 0.7);
-      return {
-        dataUrl: smaller,
-        base64: smaller.split(',')[1],
-        mimeType: 'image/jpeg',
-        width,
-        height,
-        originalWidth: W,
-        originalHeight: H,
-      };
-    }
 
     return {
       dataUrl,
@@ -638,14 +623,12 @@ export async function compressImage(file) {
       height,
       originalWidth: W,
       originalHeight: H,
+      sizeKB: Math.round(dataUrl.length * 0.75 / 1024),
     };
   } finally {
-    bitmap.close();
+    cleanup();
   }
 }
 
-// ============================================================
-// CHECK API
-// ============================================================
 export const AI_READY = Boolean(API_KEY);
 export { MODELS };
