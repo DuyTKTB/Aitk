@@ -3,13 +3,16 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { AuthProvider } from './hooks/useAuth.jsx';
 
-// ===== CSS IMPORTS — THỨ TỰ QUAN TRỌNG =====
-import './index.css';           // 1. Base + component styles (file gốc)
-import './theme-sandra.css';    // 2. Theme xanh navy (KHÔNG còn @import font)
-import './home-fx.css';         // 3. Hiệu ứng trang chủ (marquee, split text, bento)
-import './home-stack.css';
-import './home-polish.css'; // 5. Sửa lỗi + nâng cấp trang chủ (PHẢI nằm cuối)
-import './tools-page.css';
+// ===== CSS — THỨ TỰ QUAN TRỌNG (file sau ghi đè file trước) =====
+import './index.css';          // 1. Nền + component gốc
+import './theme-sandra.css';   // 2. Theme xanh navy
+import './home-fx.css';        // 3. Hiệu ứng chữ + bố cục trang chủ
+import './home-stack.css';     // 4. Nền của card stack
+import './home-polish.css';    // 5. Sửa lỗi trang chủ
+import './tools-page.css';     // 6. Trang Công cụ
+import './home-glass.css';     // 7. Lớp kính + blur nhẹ
+import './tools-plus.css';     // 8. Trang Công cụ: hình mẫu + Prompt Free (PHẢI nằm cuối)
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>

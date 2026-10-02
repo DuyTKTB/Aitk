@@ -1,36 +1,25 @@
-import { IconSearch, IconMenu, IconSun, IconMoon } from './Icons.jsx';
 import AIMark from './AIMark.jsx';
 
-/* Tên trang hiển thị trên header */
-const LABELS = {
-  home: { sub: 'A7 K60 DTA', main: 'Học Hóa' },
-  table: { sub: 'Bảng tuần hoàn', main: '118 nguyên tố' },
-  formulas: { sub: 'Công thức', main: 'Tính nhanh' },
-  ai: { sub: 'Trợ lý AI', main: 'Hỏi Hóa học' },
-  analyze: { sub: 'Phân tích', main: 'Hợp chất' },
-  balance: { sub: 'Cân bằng', main: 'Phương trình' },
-  pomodoro: { sub: 'Pomodoro', main: 'Tập trung' },
-  exam: { sub: 'Kỳ thi', main: 'Đếm ngược' },
-  notes: { sub: 'Ghi chú', main: 'Sổ tay' },
-  grade: { sub: 'Tính điểm', main: 'Học tập' },
-  quiz: { sub: 'Ôn tập', main: 'Quiz' },
-  games: { sub: 'Trò chơi', main: 'Học mà chơi' },
-  profile: { sub: 'Trang cá nhân', main: 'Tài khoản' },
-};
-
-export default function MobileHeader({ page, onSearch, theme, onToggleTheme }) {
-  const info = LABELS[page] || LABELS.home;
-
+/* ============================================================
+   MOBILE HEADER — chỉ hiện trên mobile (< 720px)
+   Logo AI (AIMark) + tên app + nút search/theme
+   ============================================================ */
+export default function MobileHeader({ page, theme, onSearch, onToggleTheme, onMenu }) {
   return (
     <header className="mhead-bar">
+      {/* ----- BÊN TRÁI: logo + text ----- */}
       <div className="mhead-left">
-        <AIMark size={36} mode="idle" className="mhead-logo" />
+        <div className="mhead-logo">
+          <AIMark size={42} animate mode="idle" />
+        </div>
+
         <div className="mhead-text">
-          <span className="mhead-sub">{info.sub}</span>
-          <span className="mhead-main">{info.main}</span>
+          <span className="mhead-sub">A7 K60 DTA</span>
+          <span className="mhead-main">Học Hóa</span>
         </div>
       </div>
 
+      {/* ----- BÊN PHẢI: 2 nút ----- */}
       <div className="mhead-right">
         <button
           type="button"
@@ -38,18 +27,35 @@ export default function MobileHeader({ page, onSearch, theme, onToggleTheme }) {
           onClick={onSearch}
           aria-label="Tìm kiếm"
         >
-          <IconSearch />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
         </button>
 
-        {/* Nút đổi sáng/tối */}
         <button
           type="button"
           className="mhead-btn"
           onClick={onToggleTheme}
-          aria-label={theme === 'dark' ? 'Chuyển chế độ sáng' : 'Chuyển chế độ tối'}
-          title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+          aria-label={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
         >
-          {theme === 'dark' ? <IconSun /> : <IconMoon />}
+          {theme === 'dark' ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
         </button>
       </div>
     </header>

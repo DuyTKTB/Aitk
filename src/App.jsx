@@ -53,11 +53,12 @@ const NAV_TOOLS = [
   ['profile', 'Trang cá nhân', IconUser],
 ];
 
+// ✅ Mobile bottom nav — có nút Công cụ (thay cho Trò chơi)
 const NAV_BOTTOM = [
   ['home', 'Trang chủ', IconHome],
   ['table', 'Bảng TH', IconAtom],
   ['ai', 'AI', 'aimark'],
-  ['games', 'Trò chơi', IconGamepad],
+  ['tools', 'Công cụ', IconTools],     // ← ĐỔI từ 'games' thành 'tools'
   ['profile', 'Cá nhân', IconUser],
 ];
 
@@ -84,45 +85,11 @@ export default function App() {
   // QUẢN LÝ PAGE — ĐỌC TRỰC TIẾP TỪ HASH MỖI RENDER
   // Không dùng state để tránh lệch giữa URL và UI.
   // ============================================================
-  const [hashTick, setHashTick] = useState(0);
+  const [, setHashTick] = useState(0);
   const page = readPage();
 
-  // Đồng bộ khi hash đổi (bất kỳ nguồn nào: click, back/forward, code)
-  useEffect(() => {
-    const bump = () => setHashTick((t) => t + 1);
-
-    window.addEventListener('hashchange', bump);
-    window.addEventListener('popstate', bump);
-
-    // Poll nhẹ — bắt trường hợp hash bị đổi qua history.pushState / replaceState
-    const poll = setInterval(() => {
-      setHashTick((t) => {
-        // Chỉ bump khi hash thực sự khác lần đọc trước
-        const cur = readPage();
-        return t === 0 ? t : t; // giữ nguyên, nhưng so sánh bằng biến ngoài
-      });
-    }, 250);
-
-    return () => {
-      window.removeEventListener('hashchange', bump);
-      window.removeEventListener('popstate', bump);
-      clearInterval(poll);
-    };
-  }, []);
-
-  // Theo dõi hash thật để bump tick khi cần
+  // Chỉ cần một listener: hashchange đã bắt mọi thay đổi hash (click, back/forward, code).
   const lastHashRef = useRef(typeof window !== 'undefined' ? window.location.hash : '');
-  useEffect(() => {
-    const check = () => {
-      const h = window.location.hash;
-      if (h !== lastHashRef.current) {
-        lastHashRef.current = h;
-        setHashTick((t) => t + 1);
-      }
-    };
-    const id = setInterval(check, 200);
-    return () => clearInterval(id);
-  }, []);
 
   const [menu, setMenu] = useState(false);
   const [toolOpen, setToolOpen] = useState(false);
@@ -194,6 +161,7 @@ export default function App() {
     const t = setTimeout(() => setLoading(false), 700);
 
     const onHash = () => {
+      lastHashRef.current = window.location.hash;
       setHashTick((x) => x + 1);
       setMenu(false);
       setToolOpen(false);
@@ -439,11 +407,16 @@ export default function App() {
         <small>© 2026 A7 K60 DTA — bycode Duy TK</small>
       </footer>
 
+      {/* ============================================================
+          BOTTOM NAV — Mobile
+          Nút "Công cụ" thay cho "Trò chơi"
+          Active khi ở #tools HOẶC bất kỳ route con #games/...
+          ============================================================ */}
       <nav className="bottom-nav" aria-label="Điều hướng di động">
         {NAV_BOTTOM.map(([id, label, Icon]) => {
           const isActive =
             page === id ||
-            (id === 'games' && page.startsWith('games/'));
+            (id === 'tools' && page.startsWith('games/'));
           return (
             <a
               key={id}

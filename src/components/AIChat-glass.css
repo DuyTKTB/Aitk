@@ -6,7 +6,7 @@
    không đổi vị trí hay kích thước nên bố cục desktop + mobile giữ nguyên.
    Chỉ áp dụng khi app ở chế độ tối ([data-theme="dark"]) để không bị lệch với phần còn lại.
    ============================================================ */
-
+a
 /* ---------- 1. Token cục bộ (chỉ khi app ở chế độ tối) ---------- */
 [data-theme='dark'] .ds-page {
   --bg: #0a0b10; --panel: #0d0f18; --ink: #eef1ff; --mut: rgba(255, 255, 255, .5);
@@ -288,3 +288,52 @@
 @media (prefers-reduced-motion: reduce) {
   [data-theme='light'] .ds-page .ds-input-bar::after { animation: none; }
 }
+/* ============================================================
+   ẢNH — Glass theme (giữ tỉ lệ, không crop)
+   ============================================================ */
+
+[data-theme='dark'] .ds-page .ds-img-grid,
+[data-theme='light'] .ds-page .ds-img-grid {
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme='dark'] .ds-page .ds-img-grid-item,
+[data-theme='light'] .ds-page .ds-img-grid-item {
+  border-color: var(--edge);
+  background: rgba(255, 255, 255, .04);
+}
+
+[data-theme='dark'] .ds-page .ds-img-grid-x {
+  background: rgba(0, 0, 0, .7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+}
+[data-theme='dark'] .ds-page .ds-img-grid-x:hover {
+  background: var(--acc);
+}
+
+[data-theme='dark'] .ds-page .ds-msg-img-grid .ds-msg-img {
+  border-color: var(--edge);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+}
+[data-theme='light'] .ds-page .ds-msg-img-grid .ds-msg-img {
+  border-color: var(--edge);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+}
+
+/* Nút "Xóa hết" */
+[data-theme='dark'] .ds-page .ds-img-grid-clear {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+[data-theme='light'] .ds-page .ds-img-grid-clear {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+/* ============================================================
+   XÓA rule cũ ép vuông (nếu có trong glass.css)
+   ============================================================ */
+/* [data-theme='dark'] .ds-page .ds-msg-img { aspect-ratio: 1; } ← XÓA */

@@ -1,181 +1,127 @@
 /* ============================================================
-   AIChat.css — lớp giao diện cho trợ lý AI (nạp SAU index.css)
-   Nguyên tắc: chỉ đổi màu / viền / bo góc / chữ. KHÔNG đổi vị trí, kích thước,
-   nên bố cục desktop + mobile trong index.css giữ nguyên.
-   Phẳng, viền mảnh, nhãn nhỏ dùng font mono — không bóng đổ lòe loẹt.
+   ẢNH — Preview grid nhiều ảnh (giữ tỉ lệ, không crop)
    ============================================================ */
 
-.ds-page {
-  --ds-line: color-mix(in srgb, var(--ink) 12%, transparent);
-  --ds-wash: color-mix(in srgb, var(--ink) 5%, transparent);
-  --ds-wash-2: color-mix(in srgb, var(--ink) 9%, transparent);
-}
-.ds-page :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-
-/* ---------- Sidebar ---------- */
-.ds-page .ds-sidebar { border-right-color: var(--ds-line); }
-.ds-page .ds-sidebar-head { border-bottom: 0; }
-.ds-page .ds-new-btn { border-radius: 10px; justify-content: flex-start; font-weight: 700; }
-.ds-page .ds-new-btn:hover { background: var(--acc); color: var(--acc-ink); }
-
-.ds-search {
-  display: flex; align-items: center; gap: .5rem;
-  margin: 0 .8rem .5rem; padding: .45rem .65rem;
-  border: 1px solid var(--ds-line); border-radius: 10px; color: var(--mut);
-  transition: border-color .15s;
-}
-.ds-search:focus-within { border-color: var(--ink); }
-.ds-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 500 .82rem var(--sans); color: var(--ink); }
-.ds-search input::placeholder { color: var(--mut); }
-.ds-search button { display: grid; place-items: center; border: 0; background: none; color: var(--mut); cursor: pointer; padding: 2px; }
-.ds-search button:hover { color: var(--ink); }
-
-.ds-page .ds-group-label {
-  font-family: var(--mono); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mut);
-}
-.ds-page .ds-chat-item { border-radius: 8px; transition: background .15s; }
-.ds-page .ds-chat-item:hover { background: var(--ds-wash); }
-.ds-page .ds-chat-item.active { background: var(--ds-wash-2); box-shadow: inset 2px 0 0 var(--acc); }
-.ds-page .ds-chat-expand svg { transition: transform .2s var(--ease); }
-.ds-page .ds-chat-expand.open svg { transform: rotate(90deg); }
-.ds-page .ds-submenu-item { border-radius: 6px; }
-.ds-page .ds-submenu-item:hover { background: var(--ds-wash); color: var(--ink); }
-.ds-page .ds-user-btn { border-radius: 10px; }
-.ds-page .ds-user-btn:hover, .ds-page .ds-user-btn.open { background: var(--ds-wash); }
-.ds-page .ds-user-avatar { overflow: hidden; border: 1px solid var(--ds-line); }
-.ds-page .ds-user-menu { border: 1px solid var(--ink); border-radius: 12px; box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .35); }
-
-/* ---------- Header ---------- */
-.ds-page .ds-header { border-bottom-color: var(--ds-line); }
-.ds-page .ds-page-title { letter-spacing: -.02em; }
-.ds-page .ds-status { display: inline-flex; align-items: center; gap: .4rem; font-family: var(--mono); color: var(--mut); }
-.ds-page .ds-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--post); }
-.ds-page .ds-status[data-s='busy']::before { background: var(--acc); animation: ds-pulse 1s ease-in-out infinite; }
-@keyframes ds-pulse { 50% { opacity: .25; } }
-
-.ds-page .ds-quota-item { border-radius: 8px; border-color: var(--ds-line); background: transparent; font-family: var(--mono); }
-.ds-page .ds-quota-item.low { color: var(--alkaline-ink, #b26a00); border-color: var(--alkaline); }
-.ds-page .ds-quota-item.empty { color: var(--acc); border-color: var(--acc); }
-.ds-page .ds-quota-upgrade { border-radius: 8px; }
-
-.ds-page .ds-grade { border: 1px solid var(--ds-line); background: transparent; border-radius: 10px; }
-.ds-page .ds-grade-btn { border-radius: 7px; background: transparent; color: var(--mut); transition: background .15s, color .15s; }
-.ds-page .ds-grade-btn:hover { color: var(--ink); }
-.ds-page .ds-grade-btn.on { background: var(--ink); color: var(--bg); }
-
-/* ---------- Trạng thái trống ---------- */
-.ds-page .ds-empty-title { letter-spacing: -.04em; text-wrap: balance; }
-.ds-page .ds-empty-sub { color: var(--mut); text-wrap: pretty; }
-.ds-page .ds-suggestion {
-  position: relative; border: 1px solid var(--ds-line); border-radius: 12px; background: transparent;
-  flex-direction: column; align-items: flex-start; gap: .35rem;
-  transition: border-color .15s, transform .15s var(--ease), background .15s;
-}
-.ds-page .ds-suggestion:hover { background: var(--ds-wash); border-color: var(--ink); transform: translateY(-1px); box-shadow: none; }
-.ds-page .ds-suggestion-tag { font: 600 .66rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--acc); }
-.ds-page .ds-suggestion::after { content: '→'; position: absolute; top: .8rem; right: .9rem; color: var(--mut); transition: transform .15s var(--ease), color .15s; }
-.ds-page .ds-suggestion:hover::after { transform: translateX(3px); color: var(--ink); }
-
-/* ---------- Tin nhắn ---------- */
-.ds-page .ds-msg-user-text { background: var(--ink); color: var(--bg); border-radius: 16px 16px 4px 16px; }
-.ds-page .ds-msg-img { border-color: var(--ds-line); }
-
-.ds-page .ds-msg-model { flex-direction: row; align-items: flex-start; gap: .8rem; max-width: 100%; }
-.ds-page .ds-avatar { flex-shrink: 0; width: 34px !important; margin-top: .15rem; color: var(--ink); }
-.ds-page .ds-msg-body { flex: 1; min-width: 0; }
-
-/* câu trả lời: bỏ khung bong bóng, chữ đọc thoáng như tài liệu */
-.ds-page .ds-msg-content { background: transparent; border: 0; border-radius: 0; padding: 0; font-size: .96rem; line-height: 1.75; }
-.ds-page .ds-msg-content.quota-error { padding: .8rem 1rem; border: 1px solid var(--acc); border-radius: 10px; background: color-mix(in srgb, var(--acc) 8%, transparent); }
-.ds-page .ds-msg-content h3, .ds-page .ds-msg-content h4 { margin: 1.2rem 0 .4rem; letter-spacing: -.02em; line-height: 1.3; }
-.ds-page .ds-msg-content h3 { font-size: 1.12rem; }
-.ds-page .ds-msg-content h4 { font-size: 1rem; }
-.ds-page .ds-msg-content strong { font-weight: 700; }
-.ds-page .ds-msg-content sub, .ds-page .ds-msg-content sup { font-size: .72em; line-height: 0; }
-.ds-page .ds-gap { height: .35rem; }
-.ds-page .ds-msg-content hr { border: 0; border-top: 1px solid var(--ds-line); margin: 1rem 0; }
-.ds-page .ds-msg-content blockquote { margin: .6rem 0; padding: .1rem 0 .1rem .9rem; border-left: 2px solid var(--acc); color: var(--mut); }
-
-.ds-page .ds-list { margin: 0 0 .8rem; padding-left: 1.4rem; }
-.ds-page ul.ds-list { list-style: disc; }
-.ds-page ol.ds-list { list-style: decimal; }
-.ds-page .ds-list li { padding-left: .2rem; margin: .25rem 0; }
-.ds-page .ds-list li::before { content: none; }
-.ds-page .ds-list li::marker { color: var(--acc); font-weight: 700; }
-
-.ds-page .ds-inline-code, .ds-page .ds-code-inline {
-  font-family: var(--mono); font-size: .86em; padding: .12em .42em; border-radius: 5px; background: var(--ds-wash-2); color: var(--ink);
+/* Grid preview trong khung nhập */
+.ds-img-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: .6rem;
+  padding: .5rem;
+  background: var(--soft);
+  border-radius: 12px;
+  align-items: flex-start;
 }
 
-.ds-page .ds-table-wrap { overflow-x: auto; margin: .8rem 0; border: 1px solid var(--ds-line); border-radius: 10px; }
-.ds-page .ds-table-wrap table { width: 100%; border-collapse: collapse; font-size: .86rem; }
-.ds-page .ds-table-wrap th { text-align: left; font: 600 .7rem var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--mut); background: var(--ds-wash); white-space: nowrap; }
-.ds-page .ds-table-wrap th, .ds-page .ds-table-wrap td { padding: .55rem .8rem; border-bottom: 1px solid var(--ds-line); }
-.ds-page .ds-table-wrap tr:last-child td { border-bottom: 0; }
-
-.ds-page .ds-codeblock { margin: .8rem 0; border: 1px solid var(--ds-line); border-radius: 10px; overflow: hidden; background: transparent; }
-.ds-page .ds-code-head { display: flex; align-items: center; justify-content: space-between; padding: .4rem .8rem; background: var(--ds-wash); border-bottom: 1px solid var(--ds-line); font: 600 .68rem var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
-.ds-page .ds-code-copy { display: inline-flex; align-items: center; gap: .3rem; border: 0; background: none; color: var(--mut); font: 600 .68rem var(--mono); text-transform: none; cursor: pointer; }
-.ds-page .ds-code-copy:hover { color: var(--ink); }
-.ds-page .ds-code { margin: 0; padding: .8rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.6; background: transparent; }
-
-/* phân tích của AI */
-.ds-page .ds-reasoning-box { border: 1px dashed var(--ds-line); border-radius: 10px; background: transparent; margin-bottom: .7rem; }
-.ds-page .ds-reasoning-toggle { color: var(--mut); font-family: var(--mono); }
-.ds-page .ds-reasoning-toggle:hover { color: var(--ink); }
-.ds-page .ds-reasoning-arrow { display: inline-flex; margin-left: auto; transition: transform .2s var(--ease); }
-.ds-page .ds-reasoning-arrow.open { transform: rotate(90deg); }
-.ds-page .ds-reasoning-content { color: var(--mut); }
-.ds-page .ds-reasoning-box.streaming { border-color: color-mix(in srgb, var(--acc) 55%, transparent); }
-.ds-page .ds-thinking { font: 500 .85rem var(--mono); color: var(--mut); animation: ds-pulse 1.4s ease-in-out infinite; }
-
-/* thu gọn: chiều cao lấy từ prop (mặc định 420px), mờ dần về màu nền trang */
-.ds-page .ds-msg-collapsible.collapsed { max-height: var(--ds-collapse, 420px); }
-.ds-page .ds-msg-collapsible.collapsed::after { background: linear-gradient(to bottom, transparent, var(--bg)); }
-.ds-page .ds-msg-more { border-radius: 8px; border-color: var(--ds-line); }
-
-/* thao tác dưới câu trả lời */
-.ds-msg-actions { display: flex; gap: .25rem; margin-top: .45rem; opacity: 0; transition: opacity .15s; }
-.ds-msg-model:hover .ds-msg-actions, .ds-msg-actions:focus-within, .ds-msg-actions.last { opacity: 1; }
-@media (hover: none) { .ds-msg-actions { opacity: 1; } }
-.ds-page .ds-msg-copy, .ds-msg-regen {
-  display: inline-flex; align-items: center; gap: .35rem; position: static; margin: 0; opacity: 1;
-  padding: .28rem .6rem; border: 1px solid transparent; border-radius: 8px; background: transparent;
-  font: 600 .72rem var(--sans); color: var(--mut); cursor: pointer; transition: color .15s, background .15s, border-color .15s;
+.ds-img-grid-item {
+  position: relative;
+  width: 88px;
+  max-width: 88px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  transition: transform .15s var(--ease);
 }
-.ds-page .ds-msg-copy:hover, .ds-msg-regen:hover { color: var(--ink); background: var(--ds-wash); border-color: var(--ds-line); }
-.ds-stopped { display: inline-block; margin-top: .4rem; font: 500 .7rem var(--mono); color: var(--mut); }
+.ds-img-grid-item:hover { transform: translateY(-2px); }
 
-/* ---------- Ô nhập ---------- */
-.ds-page .ds-input-wrap { border-top-color: var(--ds-line); box-shadow: none; }
-.ds-page .ds-input-bar { border: 1px solid var(--ds-line); border-radius: 16px; box-shadow: none; background: var(--bg); transition: border-color .15s, box-shadow .15s; }
-.ds-page .ds-input-bar:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 28%, transparent); }
-.ds-page .ds-input-icon { border-radius: 10px; color: var(--mut); }
-.ds-page .ds-input-icon:hover { background: var(--ds-wash-2); color: var(--ink); }
-.ds-page .ds-send { background: var(--acc); color: var(--acc-ink); border: 0; border-radius: 12px; transition: filter .15s, transform .12s, background .15s; }
-.ds-page .ds-send:hover:not(:disabled) { filter: brightness(.94); }
-.ds-page .ds-send:active:not(:disabled) { transform: scale(.94); }
-.ds-page .ds-send:disabled { background: var(--ds-wash-2); color: var(--mut); cursor: not-allowed; }
-.ds-page .ds-send.stop { background: var(--ink); color: var(--bg); }
-.ds-page .ds-img-chip { border: 1px solid var(--ds-line); border-radius: 12px; background: var(--ds-wash); }
-.ds-page .ds-disclaimer { color: var(--mut); }
-
-.ds-page .ds-error, .ds-page .ds-quota-error { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; border-radius: 10px; }
-.ds-retry { margin-left: auto; padding: .25rem .7rem; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: 700 .74rem var(--sans); cursor: pointer; }
-.ds-retry:hover { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
-.ds-page .ds-warning { border-radius: 12px; }
-
-/* ---------- Hộp thoại xác nhận ---------- */
-.ds-confirm { width: min(92vw, 380px); padding: 1.4rem; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--bg); color: var(--ink); }
-.ds-confirm::backdrop { background: rgba(0, 0, 0, .5); }
-.ds-confirm h3 { margin: 0 0 .4rem; font: 700 1.1rem var(--sans); }
-.ds-confirm p { margin: 0 0 1.2rem; font: 400 .88rem/1.5 var(--sans); color: var(--mut); }
-.ds-confirm-actions { display: flex; gap: .6rem; justify-content: flex-end; }
-.ds-confirm-actions button { padding: .6rem 1.1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--bg); color: var(--ink); font: 700 .82rem var(--sans); cursor: pointer; }
-.ds-confirm-actions button:hover { background: var(--ds-wash-2); }
-.ds-confirm-actions .danger { border-color: var(--acc); background: var(--acc); color: var(--acc-ink); }
-.ds-confirm-actions .danger:hover { filter: brightness(.94); background: var(--acc); }
-
-@media (prefers-reduced-motion: reduce) {
-  .ds-page *, .ds-page *::before, .ds-page *::after { animation: none !important; transition-duration: .01ms !important; }
+.ds-img-grid-item img {
+  display: block;
+  width: 100%;
+  height: auto;                  /* ← GIỮ NGUYÊN TỈ LỆ */
+  max-height: 120px;
+  object-fit: contain;           /* ← KHÔNG crop */
+  background: var(--bg);
 }
+
+.ds-img-grid-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .65);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  transition: background .15s;
+}
+.ds-img-grid-x:hover { background: var(--acc); }
+
+.ds-img-grid-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .35rem .7rem;
+  border: 1px solid var(--acc);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--acc);
+  cursor: pointer;
+  font: 600 .7rem var(--sans);
+  align-self: center;
+  transition: background .15s;
+}
+.ds-img-grid-clear:hover {
+  background: var(--acc);
+  color: var(--acc-ink);
+}
+
+/* Grid ảnh trong tin nhắn user đã gửi */
+.ds-msg-img-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: .5rem;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.ds-msg-img-grid .ds-msg-img {
+  display: block;
+  max-width: min(220px, 45vw);
+  max-height: 280px;
+  width: auto;
+  height: auto;
+  object-fit: contain;           /* ← KHÔNG crop, giữ bố cục */
+  border-radius: 12px;
+  border: 1px solid var(--soft);
+  background: var(--bg);
+  cursor: zoom-in;
+  transition: transform .15s var(--ease);
+}
+.ds-msg-img-grid .ds-msg-img:hover {
+  transform: scale(1.02);
+}
+
+/* Ảnh đơn (legacy) */
+.ds-msg-img {
+  display: block;
+  max-width: min(320px, 70vw);
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-bottom: .5rem;
+  border: 1px solid var(--soft);
+  background: var(--bg);
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .ds-img-grid-item { width: 72px; max-width: 72px; }
+  .ds-img-grid-item img { max-height: 96px; }
+  .ds-msg-img-grid .ds-msg-img { max-width: 42vw; max-height: 200px; }
+  .ds-msg-img { max-width: 70vw; max-height: 240px; }
+}
+
+/* ============================================================
+   XÓA rule cũ ép vuông ảnh (nếu có)
+   ============================================================ */
+/* .ds-msg-img { aspect-ratio: 1; object-fit: cover; } ← XÓA nếu có */

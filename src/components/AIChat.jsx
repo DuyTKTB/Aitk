@@ -32,6 +32,7 @@ const SUGGESTIONS = [
 ];
 
 const MAX_CHATS = 50;
+const MAX_IMAGES = 5;
 const rid = () => Math.random().toString(36).slice(2, 10);
 const isCoarse = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const onAiPage = () => location.hash.slice(1) === 'ai';
@@ -56,13 +57,17 @@ function groupChats(chats) {
   return groups;
 }
 
-// id = chỉ số thật trong chat.messages (trước đây là chỉ số sau khi lọc → nhảy sai tin nhắn)
+// id = chỉ số thật trong chat.messages
+// Hiển thị nhãn: text nếu có, không thì [N ảnh] hoặc [Ảnh]
 function getChatMessages(chat, max = 8) {
   if (!chat?.messages) return [];
   const out = [];
   chat.messages.forEach((m, i) => {
     if (m.role === 'user') {
-      out.push({ id: i, text: (m.preview?.text || (m.preview?.img ? '[Ảnh]' : 'Tin nhắn')).slice(0, 60) });
+      const imgCount = m.preview?.images?.length || (m.preview?.img ? 1 : 0);
+      const label = m.preview?.text
+        || (imgCount > 1 ? `[${imgCount} ảnh]` : imgCount === 1 ? '[Ảnh]' : 'Tin nhắn');
+      out.push({ id: i, text: label.slice(0, 60) });
     }
   });
   return out.slice(-max);
@@ -112,9 +117,10 @@ export default function AIChat() {
   const [activeId, setActiveId] = useLocalStorage('cs-ai-active', null);
 
   const [input, setInput] = useState('');
-  const [image, setImage] = useState(null);
+  // ✅ MỚI — mảng ảnh, tối đa MAX_IMAGES
+  const [images, setImages] = useState([]);
   const [grade, setGrade] = useState('Lớp 11');
-  const [busyId, setBusyId] = useState(null); // id cuộc trò chuyện đang chờ AI
+  const [busyId, setBusyId] = useState(null);
   const [streaming, setStreaming] = useState('');
   const [reasoning, setReasoning] = useState('');
   const [showReasoning, setShowReasoning] = useState(true);
@@ -163,7 +169,7 @@ export default function AIChat() {
     askConfirm({ title: 'Đăng xuất?', body: 'Bạn sẽ quay về trang đăng nhập.', okLabel: 'Đăng xuất', onOk: logout });
   };
 
-  /* ---------- Chỉ hoạt động khi đang ở trang AI (component luôn được giữ mount trong App) ---------- */
+  /* ---------- Chỉ hoạt động khi đang ở trang AI ---------- */
   const consumePending = useCallback(() => {
     try {
       const raw = localStorage.getItem('cs-ai-pending');
@@ -224,8 +230,10 @@ export default function AIChat() {
 
   useEffect(() => {
     if (!stickRef.current) return;
+    // Chỉ tự scroll khi đang ở đúng chat này → tránh giật khi chat ở tab khác
+    if (busyId !== activeId) return;
     end.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-  }, [streaming, reasoning]);
+  }, [streaming, reasoning, busyId, activeId]);
 
   /* ---------- Khác ---------- */
   useEffect(() => {
@@ -248,34 +256,75 @@ export default function AIChat() {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
   }, [input]);
 
-  /* ---------- Ảnh: chọn / dán / kéo thả ---------- */
-  const handleFile = useCallback(async (f) => {
-    if (!f) return;
-    if (!f.type.startsWith('image/')) { setErr('Chỉ chấp nhận file ảnh.'); return; }
-    try {
-      setImage(await compressImage(f));
-      setErr('');
-    } catch {
-      setErr('Không đọc được ảnh.');
-    }
-  }, []);
+  /* ---------- Ảnh: chọn NHIỀU / dán NHIỀU / kéo thả NHIỀU ---------- */
+  const handleFiles = useCallback(async (files) => {
+    if (!files || files.length === 0) return;
 
-  const pickImage = (e) => {
-    const f = e.target.files?.[0];
+    const fileArr = Array.from(files).filter((f) => f.type && f.type.startsWith('image/'));
+    if (fileArr.length === 0) {
+      setErr('Chỉ chấp nhận file ảnh.');
+      return;
+    }
+
+    // Giới hạn tổng số ảnh
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      setErr(`Chỉ được gửi tối đa ${MAX_IMAGES} ảnh mỗi lần.`);
+      return;
+    }
+
+    const toProcess = fileArr.slice(0, remaining);
+    if (fileArr.length > remaining) {
+      setErr(`Chỉ nhận ${remaining} ảnh đầu — tối đa ${MAX_IMAGES} ảnh.`);
+    }
+
+    try {
+      const results = await Promise.all(
+        toProcess.map(async (f) => {
+          const compressed = await compressImage(f);
+          return {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            ...compressed,
+            name: f.name || 'ảnh',
+          };
+        })
+      );
+      setImages((prev) => [...prev, ...results]);
+      if (fileArr.length <= remaining) setErr('');
+    } catch (e) {
+      setErr(e?.message || 'Không đọc được ảnh.');
+    }
+  }, [images.length]);
+
+  const pickImages = (e) => {
+    const files = e.target.files;
     e.target.value = '';
-    handleFile(f);
+    handleFiles(files);
   };
+
+  const removeImage = (id) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const clearImages = () => setImages([]);
 
   useEffect(() => {
     const onPaste = (e) => {
-      if (!visibleRef.current) return; // trước đây dán ảnh ở trang khác cũng bị nhận
-      const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
-      const file = item?.getAsFile();
-      if (file) handleFile(file);
+      if (!visibleRef.current) return;
+      const items = [...(e.clipboardData?.items || [])];
+      const files = items
+        .filter((i) => i.type.startsWith('image/'))
+        .map((i) => i.getAsFile())
+        .filter(Boolean);
+
+      if (files.length > 0) {
+        e.preventDefault();
+        handleFiles(files);
+      }
     };
     addEventListener('paste', onPaste);
     return () => removeEventListener('paste', onPaste);
-  }, [handleFile]);
+  }, [handleFiles]);
 
   /* ---------- Quản lý cuộc trò chuyện ---------- */
   const newChat = () => {
@@ -286,7 +335,7 @@ export default function AIChat() {
     setSidebarOpen(false);
     setExpandedId(null);
     setInput('');
-    setImage(null);
+    setImages([]);
     setErr('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
@@ -430,7 +479,6 @@ export default function AIChat() {
           messages: [...baseMessages, { role: 'model', parts: [{ text: e.message }], text: e.message, isQuotaError: true }],
         }));
       } else if (finalText) {
-        // lỗi giữa chừng nhưng đã có nội dung → giữ lại phần đã nhận
         updateChat(chatId, (c) => ({
           ...c,
           messages: [...baseMessages, { role: 'model', parts: [{ text: finalText }], text: finalText, reasoning: finalReasoning, stopped: true }],
@@ -449,9 +497,9 @@ export default function AIChat() {
 
   const send = async (overrideText) => {
     const text = (typeof overrideText === 'string' ? overrideText : input).trim();
-    if ((!text && !image) || loading) return;
+    if ((!text && images.length === 0) || loading) return;
 
-    const hasImg = Boolean(image);
+    const hasImg = images.length > 0;
     if (denyQuota(hasImg)) return;
     setQuotaError('');
     const nq = consumeQuota(uid, tier, hasImg);
@@ -461,9 +509,10 @@ export default function AIChat() {
     let current = activeChat;
     if (!chatId || !current) {
       const newId = rid();
+      const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
       current = {
         id: newId,
-        title: text ? text.slice(0, 40) : 'Phân tích ảnh',
+        title: text ? text.slice(0, 40) : fallbackTitle,
         messages: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -474,21 +523,43 @@ export default function AIChat() {
       chatId = newId;
     }
 
+    // ✅ Build parts: text trước, rồi nhiều ảnh theo thứ tự
     const parts = [];
-    if (image) parts.push({ inlineData: { mimeType: image.mimeType, data: image.base64 } });
-    parts.push({ text: (text || 'Phân tích ảnh này.') + `\n\nTrình độ: ${grade}. KHÔNG dùng LaTeX.` });
+    const defaultText = images.length > 1 ? 'Phân tích các ảnh này.' : 'Phân tích ảnh này.';
+    const userText = (text || (images.length > 0 ? defaultText : ''))
+      + `\n\nTrình độ: ${grade}. KHÔNG dùng LaTeX.`;
+    parts.push({ text: userText });
 
-    const userMsg = { role: 'user', parts, preview: { text, img: image?.dataUrl } };
+    for (const img of images) {
+      parts.push({
+        inlineData: { mimeType: img.mimeType, data: img.base64 },
+      });
+    }
+
+    const userMsg = {
+      role: 'user',
+      parts,
+      preview: {
+        text,
+        images: images.map((img) => ({
+          dataUrl: img.dataUrl,
+          width: img.width,
+          height: img.height,
+        })),
+      },
+    };
+
     const baseMessages = [...current.messages, userMsg];
+    const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
 
     updateChat(chatId, (c) => ({
       ...c,
       messages: baseMessages,
-      title: c.messages.length === 0 ? (text ? text.slice(0, 40) : 'Phân tích ảnh') : c.title,
+      title: c.messages.length === 0 ? (text ? text.slice(0, 40) : fallbackTitle) : c.title,
     }));
 
     setInput('');
-    setImage(null);
+    setImages([]);
     stickRef.current = true;
     await run(chatId, baseMessages);
   };
@@ -549,14 +620,22 @@ export default function AIChat() {
     : 'sẵn sàng';
   const markMode = loading ? 'think' : 'idle';
 
+  const hasInput = Boolean(input.trim()) || images.length > 0;
+  const placeholder = images.length > 0
+    ? `Đã chọn ${images.length} ảnh — thêm mô tả (không bắt buộc)…`
+    : 'Hỏi về Hóa học, hoặc dán ảnh đề bài…';
+
   return (
     <div
       className="ds-page"
       onDragOver={(e) => { if (visible) e.preventDefault(); }}
       onDrop={(e) => {
         if (!visible) return;
-        const f = e.dataTransfer?.files?.[0];
-        if (f) { e.preventDefault(); handleFile(f); }
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          e.preventDefault();
+          handleFiles(files);
+        }
       }}
     >
       <aside className={'ds-sidebar' + (sidebarOpen ? ' open' : '')}>
@@ -753,7 +832,7 @@ export default function AIChat() {
               <b>Chưa cấu hình API</b>
               <p>
                 Thêm vào file <code>.env</code> dòng:{' '}
-                <code className="ds-code-inline">VITE_OPENROUTER_KEY=sk-or-v1-...</code>{' '}
+                <code className="ds-code-inline">VITE_GEMINI_KEY=AIza...</code>{' '}
                 rồi restart <code>npm run dev</code>.
               </p>
             </div>
@@ -764,7 +843,7 @@ export default function AIChat() {
               <AIMark size={220} look mode={markMode} animate={visible} />
               <h1 className="ds-empty-title">Hôm nay bạn muốn hỏi gì về Hóa?</h1>
               <p className="ds-empty-sub">
-                Gõ câu hỏi, dán ảnh đề bài hoặc chụp trang sách. Chọn đúng lớp ở góc trên để câu trả lời vừa sức.
+                Gõ câu hỏi, dán ảnh đề bài hoặc chụp trang sách. Có thể gửi tối đa {MAX_IMAGES} ảnh cùng lúc.
               </p>
               <div className="ds-suggestions">
                 {SUGGESTIONS.map((s) => (
@@ -783,7 +862,25 @@ export default function AIChat() {
                   <div key={i} data-msg-idx={i} className={'ds-msg ds-msg-' + m.role}>
                     {m.role === 'user' ? (
                       <>
-                        {m.preview?.img && <img src={m.preview.img} alt="Ảnh đã gửi" className="ds-msg-img" />}
+                        {/* ✅ Nhiều ảnh — giữ tỉ lệ */}
+                        {m.preview?.images?.length > 0 && (
+                          <div className="ds-msg-img-grid">
+                            {m.preview.images.map((img, idx) => (
+                              <img
+                                key={idx}
+                                src={img.dataUrl}
+                                alt={`Ảnh ${idx + 1}`}
+                                className="ds-msg-img"
+                                style={{ aspectRatio: img.width && img.height ? `${img.width} / ${img.height}` : undefined }}
+                                onClick={() => window.open(img.dataUrl, '_blank')}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {/* Legacy: ảnh đơn */}
+                        {m.preview?.img && !m.preview?.images && (
+                          <img src={m.preview.img} alt="Ảnh đã gửi" className="ds-msg-img" />
+                        )}
                         {m.preview?.text && <div className="ds-msg-user-text">{m.preview.text}</div>}
                       </>
                     ) : (
@@ -881,24 +978,76 @@ export default function AIChat() {
 
       <div className="ds-input-wrap">
         <div className="ds-input-inner">
-          {image && (
-            <div className="ds-img-chip">
-              <img src={image.dataUrl} alt="Xem trước" />
-              <span>Ảnh đã chọn</span>
-              <button onClick={() => setImage(null)} type="button" aria-label="Bỏ ảnh"><IcoClose size={14} /></button>
+          {/* ✅ MỚI — Preview grid nhiều ảnh, giữ tỉ lệ */}
+          {images.length > 0 && (
+            <div className="ds-img-grid">
+              {images.map((img) => (
+                <div key={img.id} className="ds-img-grid-item">
+                  <img
+                    src={img.dataUrl}
+                    alt={img.name}
+                    style={{ aspectRatio: img.width && img.height ? `${img.width} / ${img.height}` : undefined }}
+                  />
+                  <button
+                    type="button"
+                    className="ds-img-grid-x"
+                    onClick={() => removeImage(img.id)}
+                    aria-label={`Xóa ảnh ${img.name}`}
+                  >
+                    <IcoClose size={12} />
+                  </button>
+                </div>
+              ))}
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  className="ds-img-grid-clear"
+                  onClick={clearImages}
+                  aria-label="Xóa tất cả ảnh"
+                >
+                  <IcoTrash size={12} />
+                  <span>Xóa hết ({images.length})</span>
+                </button>
+              )}
             </div>
           )}
 
           <div className="ds-input-bar">
-            <button className="ds-input-icon ds-icon-gallery" onClick={() => fileRef.current?.click()} title="Chọn ảnh từ thư viện" aria-label="Chọn ảnh" type="button">
+            <button
+              className="ds-input-icon ds-icon-gallery"
+              onClick={() => fileRef.current?.click()}
+              title="Chọn ảnh (có thể chọn nhiều)"
+              aria-label="Chọn ảnh"
+              type="button"
+            >
               <IcoImage size={18} />
             </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={pickImages}
+            />
 
-            <button className="ds-input-icon ds-icon-camera" onClick={() => cameraRef.current?.click()} title="Chụp ảnh" aria-label="Chụp ảnh" type="button">
+            <button
+              className="ds-input-icon ds-icon-camera"
+              onClick={() => cameraRef.current?.click()}
+              title="Chụp ảnh"
+              aria-label="Chụp ảnh"
+              type="button"
+            >
               <IcoCamera size={18} />
             </button>
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={pickImage} />
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={pickImages}
+            />
 
             <textarea
               ref={inputRef}
@@ -906,7 +1055,7 @@ export default function AIChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Hỏi về Hóa học, hoặc dán ảnh đề bài…"
+              placeholder={placeholder}
               aria-label="Nhập câu hỏi"
               maxLength={4000}
               rows={1}
@@ -917,8 +1066,8 @@ export default function AIChat() {
                 <IcoStop size={18} />
               </button>
             ) : (
-              <button className="ds-send" onClick={() => send()} disabled={!input.trim() && !image} type="button" aria-label="Gửi">
-                {input.trim() || image ? <IcoSend size={18} /> : <IcoAIStar size={18} />}
+              <button className="ds-send" onClick={() => send()} disabled={!hasInput} type="button" aria-label="Gửi">
+                {hasInput ? <IcoSend size={18} /> : <IcoAIStar size={18} />}
               </button>
             )}
           </div>

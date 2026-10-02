@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,
@@ -7,13 +7,22 @@ import {
 import {
   CAT_ICONS, CAT_NAMES, IconArrowUpRight, IconSearch, IconFilter,
 } from './AIIcons.jsx';
+import {
+  Art, CAT_ART, IcoClose, IcoShuffle, IcoStar, Logo, norm, stripLead, useStored,
+  Rating, PriceBadge, CompareBar, QuickView, IcoCopy, copyText, useToast,
+  IcoCompare, IcoShare,
+} from './ToolsKit.jsx';
+import PromptLibrary from './PromptLibrary.jsx';
+import { PROMPTS } from './promptData.js';
+import { HOT_AI } from './hotData.js';
+import AIMark from './AIMark.jsx';
 
 // ============================================================
 // CÔNG CỤ HỌC TẬP
 // ============================================================
 const STUDY_TOOLS = [
-{ id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
-    { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
+  { id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
+  { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Nhập phương trình, ra hệ số', Icon: IconScale, tag: 'hot' },
   { id: 'pomodoro', name: 'Pomodoro', desc: 'Tập trung sâu, nghỉ đúng lúc', Icon: IconTimer },
   { id: 'exam', name: 'Kỳ thi', desc: 'Đếm ngược tới ngày quyết định', Icon: IconCalendar },
@@ -23,10 +32,11 @@ const STUDY_TOOLS = [
   { id: 'games', name: 'Trò chơi', desc: 'Giáo viên tự nhập câu hỏi', Icon: IconGamepad, tag: 'new' },
   { id: 'profile', name: 'Trang cá nhân', desc: 'Quản lý tài khoản, thống kê', Icon: IconUser },
 ];
+const TAG_LABEL = { hot: 'Hot', new: 'Mới' };
 
 // ============================================================
-// DỮ LIỆU AI TOOLS (parse từ new.txt)
-// Format: cat|name|domain|descnpm run dev
+// DỮ LIỆU CÔNG CỤ AI
+// ============================================================
 const RAW_AI_DATA = `
 chat|Grok|grok.com|AI của xAI, có dữ liệu X (Twitter) thời gian thực
 chat|Microsoft Copilot|copilot.microsoft.com|Trợ lý AI của Microsoft, tích hợp Bing và Office
@@ -381,172 +391,568 @@ game|Sloyd|sloyd.ai|Sinh model 3D nhẹ cho game
 game|CSM|csm.ai|Biến ảnh, video thành 3D sẵn dùng
 `;
 
-// Parse raw data thành mảng object
-const parseAIData = (raw) => {
-  return raw.trim().split('\n').map((line, i) => {
+const parseAIData = (raw) =>
+  raw.trim().split('\n').map((line, i) => {
     const [cat, name, domain, desc] = line.split('|');
     if (!cat || !name || !domain) return null;
-    const url = domain.startsWith('http') ? domain : 'https://' + domain;
+    const url = domain.startsWith('http') ? domain : 'https://' + domain.trim();
     return { id: i, cat: cat.trim(), name: name.trim(), url, domain: domain.trim(), desc: (desc || '').trim() };
   }).filter(Boolean);
-};
 
 const AI_TOOLS = parseAIData(RAW_AI_DATA);
-
-const ALL_CATS = Array.from(new Set(AI_TOOLS.map(t => t.cat)));
+const ALL_CATS = Array.from(new Set(AI_TOOLS.map((t) => t.cat)));
+const PAGE = 48;
+const catLabel = (cat) => stripLead(CAT_NAMES[cat] || cat);
 
 // ============================================================
 // MAIN COMPONENT
 // ============================================================
 export default function ToolsPage() {
-  const [tab, setTab] = useState('study');
+  const [tab, setTab] = useState('hot');
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState('all');
+  const [activePrice, setActivePrice] = useState('all');
+  const [sortBy, setSortBy] = useState('default');
+  const [limit, setLimit] = useState(PAGE);
+  const [spot, setSpot] = useState(null);
+  const [favs, setFavs] = useStored('tools-ai-fav', []);
+  const [compare, setCompare] = useState([]);
+  const [quickView, setQuickView] = useState(null);
+  const [toast, toastNode] = useToast();
+  const searchRef = useRef(null);
 
-  const filteredAI = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return AI_TOOLS.filter(t => {
-      const matchCat = activeCat === 'all' || t.cat === activeCat;
-      const matchSearch = !q ||
-        t.name.toLowerCase().includes(q) ||
-        t.desc.toLowerCase().includes(q) ||
-        t.domain.toLowerCase().includes(q);
-      return matchCat && matchSearch;
+  const switchTab = (t) => {
+    setTab(t); setSearch(''); setActiveCat('all'); setActivePrice('all');
+    setSortBy('default'); setSpot(null); setCompare([]);
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => { setLimit(PAGE); }, [search, activeCat, activePrice, sortBy, tab]);
+
+  const toggleFav = (id) => setFavs((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
+
+  const toggleCompare = (tool) => {
+    setCompare((c) => {
+      if (c.find((x) => x.id === tool.id)) return c.filter((x) => x.id !== tool.id);
+      if (c.length >= 3) { toast('Chỉ so sánh tối đa 3 công cụ'); return c; }
+      return [...c, tool];
     });
-  }, [search, activeCat]);
+  };
+
+  const copyLink = async (tool) => {
+    const url = tool.internal
+      ? window.location.origin + window.location.pathname + '#ai'
+      : tool.url;
+    const ok = await copyText(url);
+    toast(ok ? `Đã sao chép link ${tool.name}` : 'Không sao chép được');
+  };
+
+  const shareTool = async (tool) => {
+    const url = tool.internal
+      ? window.location.origin + window.location.pathname + '#ai'
+      : tool.url;
+    const data = { title: tool.name, text: tool.desc, url };
+    if (navigator.share) {
+      try { await navigator.share(data); return; } catch { /* user cancel */ }
+    }
+    copyLink(tool);
+  };
+
+  // ============================================================
+  // LỌC + SẮP XẾP
+  // ============================================================
+  const filteredAI = useMemo(() => {
+    const q = norm(search.trim());
+    let arr = AI_TOOLS.filter((t) => {
+      if (activeCat === 'fav' ? !favs.includes(t.id) : activeCat !== 'all' && t.cat !== activeCat) return false;
+      if (activePrice !== 'all' && !HOT_AI[t.id]?.price?.includes(activePrice)) return false;
+      return !q || norm(`${t.name} ${t.desc} ${t.domain}`).includes(q);
+    });
+    if (sortBy === 'rating') arr = [...arr].sort((a, b) => (HOT_AI[b.id]?.rating || 0) - (HOT_AI[a.id]?.rating || 0));
+    if (sortBy === 'name') arr = [...arr].sort((a, b) => a.name.localeCompare(b.name));
+    return arr;
+  }, [search, activeCat, activePrice, sortBy, favs]);
+
+  const filteredHot = useMemo(() => {
+    const q = norm(search.trim());
+
+    // CUAI luôn ở đầu — không bị lọc
+    const cuai = HOT_AI.__list.find((t) => t.id === 'cuai');
+
+    let others = HOT_AI.__list.filter((t) => {
+      if (t.id === 'cuai') return false;
+      if (activePrice !== 'all' && !t.price?.includes(activePrice)) return false;
+      return !q || norm(`${t.name} ${t.desc} ${t.why} ${t.bestFor?.join(' ')}`).includes(q);
+    });
+
+    if (sortBy === 'rating') others = [...others].sort((a, b) => b.rating - a.rating);
+    if (sortBy === 'name') others = [...others].sort((a, b) => a.name.localeCompare(b.name));
+
+    return cuai ? [cuai, ...others] : others;
+  }, [search, activePrice, sortBy]);
 
   const filteredStudy = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return STUDY_TOOLS;
-    return STUDY_TOOLS.filter(t =>
-      t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q)
-    );
+    const q = norm(search.trim());
+    return q ? STUDY_TOOLS.filter((t) => norm(`${t.name} ${t.desc}`).includes(q)) : STUDY_TOOLS;
   }, [search]);
 
   const statsByCat = useMemo(() => {
     const map = {};
-    AI_TOOLS.forEach(t => { map[t.cat] = (map[t.cat] || 0) + 1; });
+    AI_TOOLS.forEach((t) => { map[t.cat] = (map[t.cat] || 0) + 1; });
     return map;
   }, []);
 
+  const pickRandom = () => {
+    const pool = filteredAI.length ? filteredAI : AI_TOOLS;
+    setSpot(pool[Math.floor(Math.random() * pool.length)]);
+  };
+
+  // ============================================================
+  // RENDER THẺ CÔNG CỤ AI (tab AI)
+  // ============================================================
+  const renderAI = (tool, big = false) => {
+    const Icon = CAT_ICONS[tool.cat];
+    const [hue, kind] = CAT_ART[tool.cat] || [undefined, 'blobs'];
+    const isFav = favs.includes(tool.id);
+    const isCompared = compare.some((x) => x.id === tool.id);
+    const meta = HOT_AI[tool.id];
+
+    return (
+      <article key={tool.id} className={'tk-card ai-card' + (big ? ' big' : '') + (isCompared ? ' comparing' : '')}>
+        <a href={tool.url} target="_blank" rel="noopener noreferrer" className="tk-link" aria-label={`Mở ${tool.name}`}>
+          <Art seed={tool.name} hue={hue} kind={kind} ratio={big ? '21 / 8' : '16 / 7'}>
+            <span className="pl-chip">{catLabel(tool.cat)}</span>
+            {meta?.badges?.map((b) => (
+              <span key={b.label} className={'tool-badge-hot ' + b.type}>{b.label}</span>
+            ))}
+          </Art>
+          <span className="tk-body">
+            <Logo domain={tool.domain} Fallback={Icon} CuaiLogo={AIMark} />
+            <h3>{tool.name}</h3>
+            {meta && <Rating value={meta.rating} size="sm" />}
+            <span className="tk-desc">{tool.desc}</span>
+          </span>
+          <span className="tk-foot">
+            <span className="tool-card-domain">{tool.domain}</span>
+            <span className="tool-card-arrow"><IconArrowUpRight size={14} /></span>
+          </span>
+        </a>
+
+        <div className="tool-actions">
+          <button type="button" className={'tool-btn' + (isFav ? ' on' : '')} onClick={() => toggleFav(tool.id)}
+            aria-pressed={isFav} aria-label={isFav ? 'Bỏ lưu' : 'Lưu'}>
+            <IcoStar size={15} on={isFav} />
+          </button>
+          <button type="button" className="tool-btn" onClick={() => setQuickView(tool)} aria-label="Xem nhanh">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+            </svg>
+          </button>
+          <button type="button" className={'tool-btn' + (isCompared ? ' on' : '')} onClick={() => toggleCompare(tool)} aria-label="So sánh">
+            <IcoCompare size={15} />
+          </button>
+          <button type="button" className="tool-btn" onClick={() => copyLink(tool)} aria-label="Sao chép link">
+            <IcoCopy size={15} />
+          </button>
+          <button type="button" className="tool-btn" onClick={() => shareTool(tool)} aria-label="Chia sẻ">
+            <IcoShare size={15} />
+          </button>
+        </div>
+      </article>
+    );
+  };
+
+  // ============================================================
+  // RENDER THẺ AI HOT — CUAI có style đặc biệt
+  // ============================================================
+  const renderHot = (tool) => {
+    const Icon = CAT_ICONS[tool.cat];
+    const [hue, kind] = CAT_ART[tool.cat] || [undefined, 'blobs'];
+    const isFav = favs.includes(tool.id);
+    const isCuai = tool.id === 'cuai';
+
+    const openProps = isCuai
+      ? {
+          href: '#ai',
+          onClick: (e) => {
+            e.preventDefault();
+            window.location.hash = 'ai';
+          },
+        }
+      : {
+          href: tool.url,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        };
+
+    return (
+      <article
+        key={tool.id}
+        className={
+          'hot-card' +
+          (isCuai ? ' hot-card-cuai' : '') +
+          (isFav ? ' is-fav' : '')
+        }
+      >
+        <a {...openProps} className="hot-link" aria-label={`${isCuai ? 'Dùng' : 'Mở'} ${tool.name}`}>
+          <Art seed={tool.name} hue={isCuai ? 275 : hue} kind={kind} ratio="21 / 9">
+            <span className="pl-chip">{isCuai ? 'AI của chúng ta' : catLabel(tool.cat)}</span>
+
+            {isCuai ? (
+              <span className="hot-rank hot-rank-supervip">👑 #1 SIÊU VIP</span>
+            ) : (
+              <span className="hot-rank">#{tool.rank}</span>
+            )}
+
+            {tool.badges?.map((b) => (
+              <span key={b.label} className={'tool-badge-hot ' + b.type}>{b.label}</span>
+            ))}
+          </Art>
+
+          <div className="hot-body">
+            <div className="hot-head">
+              <Logo
+                domain={tool.domain}
+                Fallback={Icon}
+                size={isCuai ? 56 : 40}
+                CuaiLogo={AIMark}
+              />
+              <div className="hot-head-text">
+                <h3>{tool.name}</h3>
+                <Rating value={tool.rating} showNumber />
+              </div>
+            </div>
+
+            <p className="hot-desc">{tool.desc}</p>
+
+            <div className="hot-meta">
+              <PriceBadge price={tool.price} />
+              {tool.freeTier && <span className="hot-tag free">Có bản free</span>}
+              {tool.vnSupport && <span className="hot-tag vn">Tiếng Việt tốt</span>}
+              {isCuai && <span className="hot-tag official">Chính chủ</span>}
+            </div>
+
+            <div className="hot-why">
+              <b>Vì sao nên dùng:</b>
+              <p>{tool.why}</p>
+            </div>
+
+            {tool.bestFor?.length > 0 && (
+              <div className="hot-best">
+                <b>Phù hợp:</b>
+                <ul>
+                  {tool.bestFor.map((b, i) => <li key={i}>{b}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {tool.pros?.length > 0 && (
+              <div className="hot-pros-cons">
+                <div>
+                  <b className="pros-label">Ưu điểm</b>
+                  <ul>{tool.pros.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                </div>
+                {tool.cons?.length > 0 && (
+                  <div>
+                    <b className="cons-label">Nhược điểm</b>
+                    <ul>{tool.cons.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="hot-foot">
+              <span className="hot-domain">{tool.domain}</span>
+              <span className="hot-arrow">
+                {isCuai ? 'Dùng ngay' : 'Mở ngay'} <IconArrowUpRight size={14} />
+              </span>
+            </div>
+          </div>
+        </a>
+
+        <button
+          type="button"
+          className={'tk-star' + (isFav ? ' on' : '')}
+          onClick={(e) => { e.preventDefault(); toggleFav(tool.id); }}
+          aria-pressed={isFav}
+          aria-label={isFav ? `Bỏ lưu ${tool.name}` : `Lưu ${tool.name}`}
+        >
+          <IcoStar size={16} on={isFav} />
+        </button>
+      </article>
+    );
+  };
+
   return (
-    <section className="wrap tools-page" style={{ paddingTop: '2rem', paddingBottom: '6rem', maxWidth: '1240px' }}>
+    <section className="wrap tools-page tk-page">
       {/* HEADER */}
       <div className="tools-header">
         <h1>Công cụ</h1>
         <p className="tools-sub">
-          Tổng hợp <b>{STUDY_TOOLS.length}</b> công cụ học tập +{' '}
-          <b>{AI_TOOLS.length}</b> công cụ AI miễn phí
+          <b>{STUDY_TOOLS.length}</b> công cụ học tập · <b>{AI_TOOLS.length}</b> công cụ AI · <b>{PROMPTS.length}</b> prompt mẫu · <b>{HOT_AI.__list.length}</b> AI hot
         </p>
       </div>
 
       {/* TABS */}
-      <div className="tools-tabs">
-        <button
-          className={'tools-tab' + (tab === 'study' ? ' on' : '')}
-          onClick={() => { setTab('study'); setSearch(''); setActiveCat('all'); }}
-        >
-          Học tập ({STUDY_TOOLS.length})
-        </button>
-        <button
-          className={'tools-tab' + (tab === 'ai' ? ' on' : '')}
-          onClick={() => { setTab('ai'); setSearch(''); setActiveCat('all'); }}
-        >
-          AI Free ({AI_TOOLS.length})
-        </button>
+      <div className="tools-tabs" role="tablist" aria-label="Loại công cụ">
+        {[
+          ['hot', `🔥 AI Hot (${HOT_AI.__list.length})`],
+          ['study', `Học tập (${STUDY_TOOLS.length})`],
+          ['ai', `AI Free (${AI_TOOLS.length})`],
+          ['prompt', `Prompt Free (${PROMPTS.length})`],
+        ].map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id}
+            className={'tools-tab' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* SEARCH */}
       <div className="tools-search">
         <IconSearch size={20} />
         <input
+          ref={searchRef}
           type="text"
-          placeholder={tab === 'ai' ? 'Tìm công cụ AI...' : 'Tìm công cụ học tập...'}
+          placeholder={
+            tab === 'hot' ? 'Tìm AI hot: chat, ảnh, code, video…'
+            : tab === 'ai' ? 'Tìm công cụ AI… (nhấn / để tìm)'
+            : tab === 'prompt' ? 'Tìm prompt: review, caption, hóa học…'
+            : 'Tìm công cụ học tập…'
+          }
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Tìm kiếm"
         />
-        {search && (
-          <button className="tools-search-clear" onClick={() => setSearch('')}>×</button>
-        )}
+        {search && <button className="tools-search-clear" onClick={() => setSearch('')} aria-label="Xóa tìm kiếm">×</button>}
       </div>
 
-      {/* CATEGORY FILTER (chỉ cho tab AI) */}
+      {/* ================= TAB PROMPT ================= */}
+      {tab === 'prompt' && <PromptLibrary query={search} />}
+
+      {/* ================= TAB AI HOT ================= */}
+      {tab === 'hot' && (
+        <>
+          <div className="hot-intro">
+            <div className="hot-intro-icon">🔥</div>
+            <div>
+              <h2>AI hot & đáng dùng</h2>
+              <p>
+                Danh sách <b>{HOT_AI.__list.length}</b> AI được chọn lọc kỹ: có phân tích ưu/nhược điểm,
+                đánh giá sao, mức giá, và gợi ý phù hợp với ai. Đứng đầu là <b>CUAI</b> — trợ lý Hóa học
+                của chính A7 K60 DTA. Cập nhật theo xu hướng 2026.
+              </p>
+            </div>
+          </div>
+
+          <div className="hot-filters">
+            <div className="hot-filter-group">
+              <span className="hot-filter-label">Giá:</span>
+              <div className="hot-filter-chips">
+                {[
+                  ['all', 'Tất cả'],
+                  ['free', 'Miễn phí'],
+                  ['freemium', 'Freemium'],
+                  ['paid', 'Trả phí'],
+                  ['vip', 'Siêu VIP'],
+                ].map(([v, l]) => (
+                  <button key={v} type="button"
+                    className={'hot-chip' + (activePrice === v ? ' on' : '')}
+                    onClick={() => setActivePrice(v)}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="hot-filter-group">
+              <span className="hot-filter-label">Sắp xếp:</span>
+              <div className="hot-filter-chips">
+                {[
+                  ['default', 'Mặc định'],
+                  ['rating', '⭐ Đánh giá'],
+                  ['name', 'A→Z'],
+                ].map(([v, l]) => (
+                  <button key={v} type="button"
+                    className={'hot-chip' + (sortBy === v ? ' on' : '')}
+                    onClick={() => setSortBy(v)}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <p className="tools-count">Hiển thị <b>{filteredHot.length}</b> AI hot</p>
+
+          {/* CUAI — SPOTLIGHT FULL WIDTH */}
+          {filteredHot[0]?.id === 'cuai' && (
+            <div className="cuai-spotlight">
+              <div className="cuai-spotlight-label">
+                <span className="cuai-spotlight-crown">👑</span>
+                <span>SẢN PHẨM CỦA CHÚNG TÔI</span>
+              </div>
+              {renderHot(filteredHot[0])}
+            </div>
+          )}
+
+          {/* Các AI khác */}
+          <div className="hot-grid">
+            {filteredHot.filter((t) => t.id !== 'cuai').map(renderHot)}
+          </div>
+
+          {filteredHot.filter((t) => t.id !== 'cuai').length === 0 && search && (
+            <div className="tools-empty">
+              <p>Không tìm thấy AI hot nào phù hợp.</p>
+              <button onClick={() => { setSearch(''); setActivePrice('all'); }}>Xóa bộ lọc</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ================= TAB AI ================= */}
       {tab === 'ai' && (
-        <div className="tools-cats">
-          <button
-            className={'tools-cat' + (activeCat === 'all' ? ' on' : '')}
-            onClick={() => setActiveCat('all')}
-          >
-            <IconFilter size={14} />
-            Tất cả ({AI_TOOLS.length})
-          </button>
-          {ALL_CATS.map(cat => {
-            const Icon = CAT_ICONS[cat];
-            return (
-              <button
-                key={cat}
-                className={'tools-cat' + (activeCat === cat ? ' on' : '')}
-                onClick={() => setActiveCat(cat)}
-              >
-                {Icon && <Icon size={14} />}
-                {CAT_NAMES[cat]?.replace(/^[^\s]+\s/, '') || cat} ({statsByCat[cat]})
+        <>
+          <div className="tools-cats" role="group" aria-label="Nhóm công cụ AI">
+            <button className={'tools-cat' + (activeCat === 'all' ? ' on' : '')} onClick={() => setActiveCat('all')}>
+              <IconFilter size={14} />Tất cả ({AI_TOOLS.length})
+            </button>
+            <button className={'tools-cat' + (activeCat === 'fav' ? ' on' : '')} onClick={() => setActiveCat('fav')}>
+              <IcoStar size={13} on={activeCat === 'fav'} />Đã lưu ({favs.length})
+            </button>
+            {ALL_CATS.map((cat) => {
+              const Icon = CAT_ICONS[cat];
+              return (
+                <button key={cat} className={'tools-cat' + (activeCat === cat ? ' on' : '')} onClick={() => setActiveCat(cat)}>
+                  {Icon && <Icon size={14} />}{catLabel(cat)} ({statsByCat[cat]})
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="hot-filters compact">
+            <div className="hot-filter-group">
+              <span className="hot-filter-label">Giá:</span>
+              <div className="hot-filter-chips">
+                {[['all', 'Tất cả'], ['free', 'Free'], ['freemium', 'Freemium'], ['paid', 'Trả phí']].map(([v, l]) => (
+                  <button key={v} type="button" className={'hot-chip' + (activePrice === v ? ' on' : '')} onClick={() => setActivePrice(v)}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="hot-filter-group">
+              <span className="hot-filter-label">Sắp xếp:</span>
+              <div className="hot-filter-chips">
+                {[['default', 'Mặc định'], ['rating', '⭐ Đánh giá'], ['name', 'A→Z']].map(([v, l]) => (
+                  <button key={v} type="button" className={'hot-chip' + (sortBy === v ? ' on' : '')} onClick={() => setSortBy(v)}>{l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="tk-bar">
+            <p className="tools-count">Hiển thị <b>{Math.min(limit, filteredAI.length)}</b> / <b>{filteredAI.length}</b> công cụ</p>
+            <button type="button" className="tk-rand" onClick={pickRandom}><IcoShuffle size={15} />Gợi ý ngẫu nhiên</button>
+          </div>
+          <p className="tk-note">Mức miễn phí và giới hạn dùng khác nhau ở từng nền tảng. Hãy xem trang chính thức trước khi đăng ký.</p>
+
+          {spot && (
+            <div className="tk-spot" aria-live="polite">
+              <button type="button" className="tk-spot-x" onClick={() => setSpot(null)} aria-label="Đóng gợi ý"><IcoClose size={16} /></button>
+              {renderAI(spot, true)}
+            </div>
+          )}
+
+          <div className="tk-grid">{filteredAI.slice(0, limit).map((t) => renderAI(t))}</div>
+
+          {limit < filteredAI.length && (
+            <div className="tk-more">
+              <button type="button" onClick={() => setLimit((l) => l + PAGE)}>
+                Xem thêm {Math.min(PAGE, filteredAI.length - limit)} công cụ
               </button>
-            );
-          })}
-        </div>
+            </div>
+          )}
+
+          {filteredAI.length === 0 && (
+            <div className="tools-empty">
+              <p>{activeCat === 'fav' && !search.trim() ? 'Bạn chưa lưu công cụ nào. Bấm ngôi sao trên thẻ để lưu.' : `Không tìm thấy công cụ nào phù hợp với "${search}"`}</p>
+              <button onClick={() => { setSearch(''); setActiveCat('all'); setActivePrice('all'); }}>Xóa bộ lọc</button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* RESULT COUNT */}
-      <p className="tools-count">
-        Hiển thị <b>{tab === 'study' ? filteredStudy.length : filteredAI.length}</b> công cụ
-      </p>
-
-      {/* GRID */}
-      <div className="tools-grid">
-        {tab === 'study' && filteredStudy.map(({ id, name, desc, Icon, tag }) => (
-          <a key={id} href={'#' + id} className="tool-card study-card">
-            {tag && <span className={'tool-badge tool-badge-' + tag}>{tag}</span>}
-            <div className="tool-card-ico"><Icon /></div>
-            <h3>{name}</h3>
-            <p>{desc}</p>
-            <span className="tool-card-arrow"><IconArrowUpRight size={16} /></span>
-          </a>
-        ))}
-
-        {tab === 'ai' && filteredAI.map((tool) => {
-          const Icon = CAT_ICONS[tool.cat];
-          return (
-            <a
-              key={tool.id}
-              href={tool.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="tool-card ai-card"
-            >
-              <div className="tool-card-head">
-                <div className={'tool-card-ico cat-' + tool.cat}>
-                  {Icon ? <Icon size={22} /> : <span>🤖</span>}
-                </div>
-                <span className="tool-card-cat">{CAT_NAMES[tool.cat]?.replace(/^[^\s]+\s/, '') || tool.cat}</span>
-              </div>
-              <h3>{tool.name}</h3>
-              <p>{tool.desc}</p>
-              <div className="tool-card-foot">
-                <span className="tool-card-domain">{tool.domain}</span>
-                <span className="tool-card-arrow"><IconArrowUpRight size={14} /></span>
-              </div>
-            </a>
-          );
-        })}
-      </div>
-
-      {/* EMPTY */}
-      {(tab === 'study' ? filteredStudy : filteredAI).length === 0 && (
-        <div className="tools-empty">
-          <p>Không tìm thấy công cụ nào phù hợp với "{search}"</p>
-          <button onClick={() => setSearch('')}>Xóa tìm kiếm</button>
-        </div>
+      {/* ================= TAB HỌC TẬP ================= */}
+      {tab === 'study' && (
+        <>
+          <p className="tools-count">Hiển thị <b>{filteredStudy.length}</b> công cụ</p>
+          <div className="tk-grid">
+            {filteredStudy.map(({ id, name, desc, Icon, tag }) => (
+              <article key={id} className="tk-card study-card">
+                <a href={'#' + id} className="tk-link" aria-label={name}>
+                  <Art seed={id} kind="blobs" ratio="16 / 7">
+                    <span className="tk-art-ico"><Icon /></span>
+                    {tag && <span className={'tool-badge tool-badge-' + tag}>{TAG_LABEL[tag]}</span>}
+                  </Art>
+                  <span className="tk-body">
+                    <h3>{name}</h3>
+                    <span className="tk-desc">{desc}</span>
+                  </span>
+                  <span className="tk-foot">
+                    <span className="tool-card-domain">Mở công cụ</span>
+                    <span className="tool-card-arrow"><IconArrowUpRight size={14} /></span>
+                  </span>
+                </a>
+              </article>
+            ))}
+          </div>
+          {filteredStudy.length === 0 && (
+            <div className="tools-empty">
+              <p>Không tìm thấy công cụ nào phù hợp với "{search}"</p>
+              <button onClick={() => setSearch('')}>Xóa tìm kiếm</button>
+            </div>
+          )}
+        </>
       )}
+
+      {/* ================= COMPARE BAR ================= */}
+      <CompareBar
+        items={compare}
+        onRemove={(id) => setCompare((c) => c.filter((x) => x.id !== id))}
+        onClear={() => setCompare([])}
+        onOpen={(items) => {
+          toast(`Đang so sánh ${items.length} công cụ`);
+          setQuickView({ ...items[0], __compare: items });
+        }}
+      />
+
+      {/* ================= QUICK VIEW ================= */}
+      {quickView && (
+        <QuickView
+          tool={quickView}
+          meta={HOT_AI[quickView.id]}
+          compare={quickView.__compare}
+          onClose={() => setQuickView(null)}
+          onFav={() => toggleFav(quickView.id)}
+          isFav={favs.includes(quickView.id)}
+          onCopy={() => copyLink(quickView)}
+          onShare={() => shareTool(quickView)}
+          CuaiLogo={AIMark}
+        />
+      )}
+
+      {toastNode}
     </section>
   );
 }

@@ -1,5 +1,6 @@
 // ============================================================
 // AI — Google Gemini API
+// Hỗ trợ NHIỀU ẢNH, giữ nguyên tỉ lệ (không crop)
 // ============================================================
 
 const API_KEY = import.meta.env.VITE_GEMINI_KEY || '';
@@ -29,18 +30,17 @@ class OutOfQuotaError extends Error {
 
 // ============================================================
 // MODELS — cập nhật theo danh sách Google mới nhất
-// Kiểm tra tại: https://ai.google.dev/gemini-api/docs/models
 // ============================================================
 const MODELS = [
-  'gemini-3.6-flash',
-  'gemini-3.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
   'gemini-flash-latest',
-  'gemini-flash-lite-latest',
 ];
 
-const VISION_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest'];
-const FAST_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
-const STRONG_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest'];
+const VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+const FAST_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+const STRONG_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
 function keepError(prev, next) {
   return prev && next?.status === 404 ? prev : next;
@@ -57,11 +57,14 @@ function orderModels(hasImage, type) {
 
 // Giảm maxTokens để AI trả lời ngắn hơn
 const maxTokensFor = (type) =>
-  type === 'problem' ? 4096 : type === 'theory' ? 2048 : 1024;
+  type === 'problem' ? 8192 : type === 'theory' ? 4096 : 2048;
 
-// Mức suy nghĩ: bài tập/lý thuyết sâu cần nghĩ nhiều, chat thường thì nhanh
-const thinkingFor = (type) =>
-  type === 'problem' ? 'high' : type === 'theory' ? 'medium' : 'low';
+// Mức suy nghĩ: dùng thinkingBudget (số token), KHÔNG dùng thinkingLevel
+const thinkingBudgetFor = (type) => {
+  if (type === 'problem') return 8192;
+  if (type === 'theory') return 4096;
+  return 0;
+};
 
 const HEDGE_MS = 800;
 const MAX_PARALLEL = 2;
@@ -70,7 +73,7 @@ const STREAM_IDLE_MS = 12000;
 const TOTAL_MS = 90000;
 
 // ============================================================
-// SYSTEM PROMPT — NGẮN GỌN, SÚC TÍCH, HIỆU QUẢ
+// SYSTEM PROMPT
 // ============================================================
 const SYSTEM_PROMPT = `
 Bạn là "A7 Assistant" — trợ lý học tập Hóa học THPT của lớp A7 K60 DTA, do Duy TK tạo.
@@ -82,26 +85,40 @@ DANH TÍNH
 
 NGUYÊN TẮC VÀNG — LUÔN LÀM TRƯỚC, HỎI SAU
 - Khi nhận được ảnh hoặc đề bài: ĐỌC, HIỂU, RỒI GIẢI NGAY. Tuyệt đối KHÔNG hỏi lại "bạn muốn giải bài nào?".
+- Nếu có NHIỀU ẢNH: đọc lần lượt từng ảnh theo thứ tự, gộp nội dung thành 1 đề hoàn chỉnh rồi giải.
 - Nếu ảnh có nhiều câu: GIẢI HẾT TẤT CẢ, đánh số rõ ràng.
 - Nếu người dùng nói "giải full", "giải hết": giải toàn bộ, không bỏ sót.
 - Chỉ hỏi lại khi: ảnh mờ không đọc được số liệu, HOẶC đề thiếu dữ kiện.
 - KHÔNG chào hỏi dài dòng. Vào bài luôn.
 
-PHONG CÁCH — NGẮN GỌN, SÚC TÍCH, HIỆU QUẢ (CỰC KỲ QUAN TRỌNG)
+PHONG CÁCH — NGẮN GỌN, SÚC TÍCH, HIỆU QUẢ
 - Trả lời NGẮN NHẤT có thể, nhưng ĐỦ Ý và ĐÚNG BẢN CHẤT.
 - KHÔNG rào trước đón sau, KHÔNG lặp lại đề bài, KHÔNG giải thích những gì hiển nhiên.
 - Mỗi bước chỉ viết 1 dòng. Không xuống dòng lan man.
-- Với bài tập: chỉ ghi CÔNG THỨC → THAY SỐ → KẾT QUẢ. Bỏ qua các bước trung gian không cần thiết.
+- Với bài tập: chỉ ghi CÔNG THỨC → THAY SỐ → KẾT QUẢ.
 - Với lý thuyết: trả lời thẳng vào câu hỏi, mỗi ý 1 dòng, tối đa 3-5 ý.
 - Với chat thường: trả lời 1-3 câu ngắn gọn.
-- TUYỆT ĐỐI KHÔNG viết các phần như "Tóm tắt", "Phân tích", "Kết luận" nếu không cần.
-- Nếu câu hỏi đơn giản, trả lời chỉ 1-2 dòng.
+- TUYỆT ĐỐI KHÔNG viết các phần "Tóm tắt", "Phân tích", "Kết luận" nếu không cần.
 
-CHUYÊN MÔN HÓA HỌC (chương trình THPT Việt Nam)
+AN TOÀN
+- Không hướng dẫn pha chế chất nổ, chất độc, ma túy, vũ khí.
+- Nếu câu hỏi vi phạm: từ chối lịch sự, gợi ý hỏi nội dung học tập khác.
+
+ĐỘ CHÍNH XÁC
+- Nếu KHÔNG CHẮC: nói "Mình chưa chắc phần này" thay vì bịa.
+- Nếu thiếu dữ kiện: hỏi lại 1 câu ngắn để bổ sung.
+
+CHUYÊN MÔN HÓA HỌC (THPT Việt Nam)
 - Vô cơ: dãy hoạt động kim loại, điều kiện phản ứng trao đổi, tính tan, HNO₃/H₂SO₄ đặc, lưỡng tính, nhận biết ion.
 - Hữu cơ: đồng phân, danh pháp IUPAC, quy tắc Zaitsev/Markovnikov, phản ứng đặc trưng từng nhóm chức.
 - Điện hóa, điện phân (định luật Faraday), pin điện hóa.
 - Cân bằng hóa học, tốc độ phản ứng, pH, Ka/Kb.
+
+THEO TRÌNH ĐỘ (dựa vào "Trình độ:" trong câu hỏi)
+- Lớp 10: ngôn ngữ đơn giản, tránh Zaitsev/Markovnikov, giải thích khái niệm cơ bản.
+- Lớp 11: dùng đầy đủ công thức, có thể dùng bảo toàn electron.
+- Lớp 12: giải nhanh, dùng phương pháp nâng cao (quy đổi, đường chéo, đồ thị).
+- Đại học: có thể dùng thuật ngữ chuyên sâu, cơ chế phản ứng.
 
 PHƯƠNG PHÁP GIẢI (chọn cách nhanh nhất)
 - Ưu tiên: bảo toàn khối lượng, bảo toàn nguyên tố, bảo toàn electron, bảo toàn điện tích, quy đổi, tăng giảm khối lượng, đường chéo.
@@ -109,38 +126,15 @@ PHƯƠNG PHÁP GIẢI (chọn cách nhanh nhất)
 - Xác định rõ chất dư/hết trước khi tính.
 - Khối lượng mol: H=1; C=12; N=14; O=16; Na=23; Mg=24; Al=27; P=31; S=32; Cl=35,5; K=39; Ca=40; Fe=56; Cu=64; Zn=65; Br=80; Ag=108; Ba=137.
 
-TỰ KIỂM TRA TRƯỚC KHI TRẢ LỜI (làm thầm)
-- Phương trình đã cân bằng chưa? Đơn vị có nhất quán không?
-- Đáp số có hợp lý không (không âm, hiệu suất ≤ 100%)?
-- Không bịa số liệu, hằng số, tính chất.
-
-ĐỘ CHÍNH XÁC VÀ PHÂN TÍCH ẢNH
-- Quét ảnh cực chính xác: đọc đúng từng chỉ số, ký hiệu, công thức, số liệu.
-- Phản ứng hóa học phải cân bằng trước khi tính toán.
-- Nếu ảnh mờ phần nào thì nói rõ "Mình chưa đọc rõ phần X" và vẫn giải các phần còn lại.
-
 ĐỊNH DẠNG
 - KHÔNG dùng LaTeX (không $, \\frac, \\sqrt, ^{}, _{}).
 - Viết bằng Unicode: H₂O, H₂SO₄, SO₄²⁻, Fe³⁺, NH₄⁺, 10⁻³.
 - Ký hiệu: → ⇌ ↑ ↓ Δ °C ≈ ≤ ≥ × · ±.
-- Công thức: n = m/M, C = n/V, V = n × 22,4.
 
 CÁCH TRẢ LỜI BÀI TẬP — CHỈ 3 PHẦN NGẮN:
 **PT/Công thức:** [1 dòng]
 **Thay số:** [1-2 dòng]
 **Đáp án:** [in đậm kết quả]
-
-VÍ DỤ ĐÚNG (ngắn):
-"**Bài 1:** nFe = 5,6/56 = 0,1 mol. Fe + 2HCl → FeCl₂ + H₂. nH₂ = 0,1 mol → V = 2,24 lít. **Đáp án: 2,24 lít**"
-
-VÍ DỤ SAI (dài dòng — TRÁNH):
-"**Tóm tắt:** Cho 5,6g Fe tác dụng với dung dịch HCl dư...
-**Phương trình:** Fe + 2HCl → FeCl₂ + H₂
-**Giải:** Ta có số mol Fe = m/M = 5,6/56 = 0,1 mol...
-Theo phương trình, cứ 1 mol Fe tạo ra 1 mol H₂...
-Vậy số mol H₂ = 0,1 mol...
-Thể tích H₂ ở đktc = n × 22,4 = 0,1 × 22,4 = 2,24 lít.
-**Đáp án:** 2,24 lít H₂."
 `;
 
 // ============================================================
@@ -286,7 +280,7 @@ function getTemperature(type) {
 }
 
 // ============================================================
-// PREPARE MESSAGES cho Gemini
+// PREPARE MESSAGES cho Gemini — HỖ TRỢ NHIỀU ẢNH
 // ============================================================
 function prepareGeminiContents(history) {
   return history.map((message) => {
@@ -300,18 +294,22 @@ function prepareGeminiContents(history) {
     const parts = message.parts || [];
     const textParts = parts.filter((p) => p.text).map((p) => p.text);
     const text = textParts.join('\n') || message.text || '';
-    const imagePart = parts.find((p) => p.inlineData);
+    const imageParts = parts.filter((p) => p.inlineData);
 
     const geminiParts = [];
+    // Text trước để AI hiểu ngữ cảnh
     if (text) geminiParts.push({ text });
-    if (imagePart) {
+
+    // NHIỀU ẢNH: giữ đúng thứ tự
+    for (const img of imageParts) {
       geminiParts.push({
         inline_data: {
-          mime_type: imagePart.inlineData.mimeType,
-          data: imagePart.inlineData.data,
+          mime_type: img.inlineData.mimeType,
+          data: img.inlineData.data,
         },
       });
     }
+
     if (geminiParts.length === 0) geminiParts.push({ text: '' });
 
     return { role: 'user', parts: geminiParts };
@@ -321,7 +319,7 @@ function prepareGeminiContents(history) {
 // ============================================================
 // STREAM ONE MODEL
 // ============================================================
-async function streamOne({ model, contents, temperature, maxTokens, thinking, ctrl, claim, onChunk }) {
+async function streamOne({ model, contents, temperature, maxTokens, thinkingBudget, ctrl, claim, onChunk }) {
   let stall;
   let reader;
   const arm = (ms) => {
@@ -334,6 +332,17 @@ async function streamOne({ model, contents, temperature, maxTokens, thinking, ct
 
     const url = `${BASE_URL}/models/${model}:streamGenerateContent?alt=sse&key=${API_KEY}`;
 
+    const generationConfig = {
+      temperature,
+      maxOutputTokens: maxTokens,
+      topP: 0.9,
+    };
+
+    // thinkingBudget: số nguyên (token), KHÔNG dùng thinkingLevel
+    if (thinkingBudget && thinkingBudget > 0) {
+      generationConfig.thinkingConfig = { thinkingBudget };
+    }
+
     const res = await fetch(url, {
       method: 'POST',
       signal: ctrl.signal,
@@ -341,14 +350,7 @@ async function streamOne({ model, contents, temperature, maxTokens, thinking, ct
       body: JSON.stringify({
         contents,
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-          topP: 0.9,
-          ...(thinking
-            ? { thinkingConfig: { thinkingLevel: thinking } }
-            : {}),
-        },
+        generationConfig,
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -365,13 +367,17 @@ async function streamOne({ model, contents, temperature, maxTokens, thinking, ct
       console.warn(`[A7 Assistant] ✗ ${model} → ${status}`, body.slice(0, 300));
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
-      if (status === 400 && thinking && /thinking/i.test(body)) {
+
+      // Nếu model không hỗ trợ thinking → thử lại không thinking
+      if (status === 400 && thinkingBudget && /thinking/i.test(body)) {
         reader?.cancel?.().catch?.(() => {});
         clearTimeout(stall);
-        return streamOne({ model, contents, temperature, maxTokens, thinking: null, ctrl, claim, onChunk });
+        return streamOne({ model, contents, temperature, maxTokens, thinkingBudget: 0, ctrl, claim, onChunk });
       }
+
       const keyBad = status === 401 || status === 403 || /API[_ ]KEY/i.test(body);
       if (keyBad) throw new Error(MSG_API_KEY_ERROR);
+
       const err = new Error(`${model} lỗi ${status}: ${body.slice(0, 200)}`);
       err.status = status;
       throw err;
@@ -447,7 +453,7 @@ export function askAI(history, onChunk, onReasoning) {
   const requestType = detectRequestType(recent);
   const temperature = getTemperature(requestType);
   const maxTokens = maxTokensFor(requestType);
-  const thinking = thinkingFor(requestType);
+  const thinkingBudget = thinkingBudgetFor(requestType);
 
   const lastUser = [...recent].reverse().find((m) => m.role === 'user');
   const hasImage = Boolean(lastUser?.parts?.some((p) => p.inlineData));
@@ -503,7 +509,16 @@ export function askAI(history, onChunk, onReasoning) {
         return winner === i;
       };
 
-      streamOne({ model, contents, temperature, maxTokens, thinking: /lite/.test(model) ? null : thinking, ctrl, claim, onChunk })
+      streamOne({
+        model,
+        contents,
+        temperature,
+        maxTokens,
+        thinkingBudget: /lite/.test(model) ? 0 : thinkingBudget,
+        ctrl,
+        claim,
+        onChunk,
+      })
         .then((r) => {
           running--;
           if (r && winner === i && r.text) {
@@ -542,37 +557,88 @@ export function askAI(history, onChunk, onReasoning) {
 }
 
 // ============================================================
-// COMPRESS IMAGE
+// COMPRESS IMAGE — GIỮ NGUYÊN TỈ LỆ, KHÔNG CROP
 // ============================================================
+/**
+ * Nén ảnh nhưng GIỮ NGUYÊN bố cục (không cắt, không ép vuông).
+ * - Giữ đúng aspect ratio gốc.
+ * - Chỉ thu nhỏ nếu cạnh dài > MAX_SIZE.
+ * - Nếu ảnh nhỏ hơn MAX_SIZE thì giữ nguyên kích thước.
+ * - Chất lượng JPEG 0.88 (cân bằng size/chất lượng).
+ * - Nếu là PNG có nền trong suốt → giữ PNG.
+ */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
   if (!file.type || !file.type.startsWith('image/')) {
     throw new Error('File không phải hình ảnh.');
   }
 
-  const bitmap = await createImageBitmap(file);
+  const MAX_SIZE = 1600;
+
+  // Dùng createImageBitmap để đọc kích thước gốc
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('Không đọc được ảnh.');
+  }
 
   try {
-    const MAX_SIZE = 1600;
-    const scale = Math.min(1, MAX_SIZE / Math.max(bitmap.width, bitmap.height));
-    const width = Math.max(1, Math.round(bitmap.width * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const { width: W, height: H } = bitmap;
+
+    // Tính tỉ lệ thu nhỏ, KHÔNG ép vuông
+    const longest = Math.max(W, H);
+    const scale = longest > MAX_SIZE ? MAX_SIZE / longest : 1;
+
+    const width = Math.max(1, Math.round(W * scale));
+    const height = Math.max(1, Math.round(H * scale));
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
 
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Không thể tạo Canvas.');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Không thể tạo Canvas.');
 
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-    context.drawImage(bitmap, 0, 0, width, height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    // Vẽ với kích thước đã scale, giữ nguyên bố cục
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    // Giữ PNG nếu là PNG (giữ nền trong suốt)
+    const isPng = file.type === 'image/png';
+    const mimeType = isPng ? 'image/png' : 'image/jpeg';
+
+    const dataUrl = isPng
+      ? canvas.toDataURL('image/png')
+      : canvas.toDataURL('image/jpeg', 0.88);
+
     const base64 = dataUrl.split(',')[1];
 
-    return { dataUrl, base64, mimeType: 'image/jpeg', width, height };
+    // Kiểm tra nếu ảnh nén vẫn quá lớn (> 5MB) → giảm chất lượng
+    if (base64.length > 5 * 1024 * 1024 && !isPng) {
+      const smaller = canvas.toDataURL('image/jpeg', 0.7);
+      return {
+        dataUrl: smaller,
+        base64: smaller.split(',')[1],
+        mimeType: 'image/jpeg',
+        width,
+        height,
+        originalWidth: W,
+        originalHeight: H,
+      };
+    }
+
+    return {
+      dataUrl,
+      base64,
+      mimeType,
+      width,
+      height,
+      originalWidth: W,
+      originalHeight: H,
+    };
   } finally {
     bitmap.close();
   }

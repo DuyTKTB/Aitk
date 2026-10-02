@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
 /* CHEM STUDY — Editorial × Swiss × Brutalist. Giấy kem + mực đen + một màu nhấn duy nhất. */
 :root {
   --bg: #efece4; --panel: #efece4; --ink: #111; --mut: #6b675e; --soft: rgba(17, 17, 17, .16); --line: #111;
@@ -11208,4 +11207,253 @@ kbd { border-radius: 6px; font-family: var(--sans); }
   .cta-side { padding: 1.4rem 1.2rem; }
   .cta-grid .cta-card { padding: 2rem 1.4rem; }
   .qr-box { max-width: 260px; margin: 0 auto 0.9rem; }
+}
+/* ============================================================
+   MOBILE HEADER — chỉ hiện trên mobile
+   ============================================================ */
+.mhead-bar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .mhead-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
+
+    padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    background: var(--bg);
+    border-bottom: 1px solid var(--soft);
+
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* ---- Bên trái: logo + text ---- */
+  .mhead-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .mhead-logo {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+  }
+
+  .mhead-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .mhead-sub {
+    font: 600 .65rem var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--mut);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mhead-main {
+    font: 700 1.05rem var(--sans);
+    letter-spacing: -.02em;
+    color: var(--ink);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- Bên phải: 2 nút ---- */
+  .mhead-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .mhead-btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mhead-btn:hover { background: var(--soft); }
+  .mhead-btn:active { transform: scale(.92); }
+
+  .mhead-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Đẩy nội dung xuống dưới header */
+  main {
+    padding-top: .5rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mhead-btn { transition: none; }
+}
+/* ============================================================
+   MOBILE HEADER — chỉ hiện trên mobile (< 720px)
+   Logo AI (AIMark) + text 2 dòng + nút search/theme
+   ============================================================ */
+
+/* Ẩn trên desktop */
+.mhead-bar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+
+  /* ---------- HEADER ---------- */
+  .mhead-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
+
+    padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+
+    background: var(--bg);
+    border-bottom: 1px solid var(--soft);
+
+    width: 100%;
+    box-sizing: border-box;
+
+    /* Cho chữ không tràn */
+    min-width: 0;
+  }
+
+  /* ---------- BÊN TRÁI ---------- */
+  .mhead-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* Khung logo AI */
+  .mhead-logo {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    color: var(--ink);
+  }
+
+  .mhead-logo .ai-mark {
+    width: 42px !important;
+    height: auto !important;
+    display: block;
+  }
+
+  /* Khối text 2 dòng */
+  .mhead-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  /* Dòng nhỏ: A7 K60 DTA */
+  .mhead-sub {
+    font: 600 .65rem var(--mono, monospace);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--mut);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Dòng lớn: Học Hóa */
+  .mhead-main {
+    font: 700 1.05rem var(--sans, system-ui);
+    letter-spacing: -.02em;
+    color: var(--ink);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------- BÊN PHẢI ---------- */
+  .mhead-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .mhead-btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mhead-btn:hover {
+    background: var(--soft);
+  }
+  .mhead-btn:active {
+    transform: scale(.92);
+  }
+
+  .mhead-btn svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+  }
+
+  /* ---------- ĐẨY NỘI DUNG XUỐNG ---------- */
+  main {
+    padding-top: .5rem !important;
+  }
+}
+
+/* ---------- Giảm chuyển động ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .mhead-btn {
+    transition: none;
+  }
 }

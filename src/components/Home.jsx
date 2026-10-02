@@ -18,7 +18,7 @@ const TOOLS = [
   ['grade', 'Tính điểm', 'Cần bao nhiêu để đạt mục tiêu', IconCalc],
   ['quiz', 'Ôn tập', 'Quiz thông minh, nhớ lâu hơn', IconQuiz],
   ['formulas', 'Công thức nhanh', 'Mol, pH, vô cơ, hữu cơ', IconFlask],
-  ['games', 'Trò chơi', 'Giáo viên tự nhập câu hỏi', IconGamepad],
+  ['games', 'Trò chơi', '6 trò chơi hóa học, giáo viên tự nhập câu hỏi', IconGamepad],
 ];
 
 const WORDS = ['Hiđro', 'Oxi', 'Cacbon', 'Vàng', 'Sắt', 'Neon', 'Silic', 'Heli', 'Natri', 'Bạc'];
@@ -57,22 +57,22 @@ const CLASSES = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
 const MANIFESTO = [
   { num: '01', title: 'Học', body: 'Bảng tuần hoàn tương tác, công thức nhanh, phân tích hợp chất — mọi thứ bạn cần để hiểu Hóa học từ gốc.' },
   { num: '02', title: 'Luyện', body: 'Quiz thông minh theo phương pháp lặp lại ngắt quãng. Nhớ lâu hơn, quên ít hơn, không cần cày cuốc.' },
-  { num: '03', title: 'Hỏi', body: 'Trợ lý AI giải đề, giảng lý thuyết, sinh câu hỏi ôn tập. Như có gia sư riêng 24/7, miễn phí.' },
+  { num: '03', title: 'Hỏi', body: 'Trợ lý AI giải đề, giảng lý thuyết, sinh câu hỏi ôn tập. Như có gia sư riêng, sẵn sàng bất cứ lúc nào.' },
 ];
 
 const STATEMENT =
   'Hóa học không phải là thứ để học thuộc. Hiểu bản chất, luyện đúng cách, hỏi khi cần — phần còn lại để chúng mình lo.';
 
 const STATS = [
-  { num: 'AI', label: 'Trợ lý', sub: 'Miễn phí 24/7' },
+  { num: 'AI', label: 'Trợ lý', sub: 'Sẵn sàng 24/7' },
   { num: 118, label: 'Nguyên tố', sub: 'Bảng tuần hoàn đầy đủ' },
   { num: 9, label: 'Công cụ', sub: 'Từ mol tới pH' },
-  { num: 3, label: 'Trò chơi', sub: 'Tương tác vui' },
+  { num: 6, label: 'Trò chơi', sub: 'Vừa chơi vừa học' },
 ];
 
 const QUOTES = [
-  { text: 'Không có gì mất đi, không có gì được tạo ra, mọi thứ chỉ biến đổi.', author: 'Antoine Lavoisier', role: 'Cha đẻ Hóa học hiện đại' },
-  { text: 'Hóa học là môn học của sự thay đổi và biến hóa không ngừng.', author: 'Marie Curie', role: 'Nobel Vật lý & Hóa học' },
+  { text: 'Không có gì mất đi, không có gì được tạo ra, mọi thứ chỉ biến đổi.', author: 'Antoine Lavoisier', role: 'Cha đẻ Hóa học hiện đại (diễn giải)' },
+  { text: 'Trong khoa học, chúng ta phải quan tâm đến sự vật, chứ không phải con người.', author: 'Marie Curie', role: 'Nobel Vật lý & Hóa học' },
   { text: 'Điều quan trọng là không ngừng đặt câu hỏi. Tò mò là gốc của mọi tri thức.', author: 'Albert Einstein', role: 'Nobel Vật lý' },
 ];
 
@@ -401,7 +401,7 @@ export default function Home() {
             <div className="hero-home-meta">
               <span><b>10–12</b> bám sát chương trình</span>
               <span><b>24/7</b> luôn sẵn sàng</span>
-              <span><b>0đ</b> không cần tài khoản</span>
+              <span><b>0đ</b> miễn phí học tập</span>
             </div>
           </div>
 
@@ -553,23 +553,23 @@ export default function Home() {
       {/* ================= CTA — 3 CARD: VIP | CHÍNH | QR ================= */}
       <section className="cta-grid">
 
-        {/* CARD TRÁI: NÂNG CẤP VIP */}
+        {/* CARD TRÁI: GÓI VIP (sắp ra mắt) */}
         <aside className="cta-side vip-card">
           <div className="cta-side-head">
             <span className="cta-side-badge">VIP</span>
-            <h3>Nâng cấp VIP</h3>
+            <h3>Gói VIP</h3>
           </div>
           <p className="cta-side-desc">
-            Mở khóa toàn bộ tính năng cao cấp: không giới hạn câu hỏi AI, bảng tuần hoàn nâng cao, quiz chuyên sâu.
+            Đang chuẩn bị: hỏi AI không giới hạn, bộ đề chuyên sâu theo lớp và xử lý ưu tiên.
           </p>
           <ul className="vip-list">
-            <li>✓ Không giới hạn hỏi AI</li>
+            <li>✓ Hỏi AI không giới hạn</li>
             <li>✓ Ưu tiên xử lý nhanh</li>
-            <li>✓ Bộ đề VIP theo lớp</li>
+            <li>✓ Bộ đề theo lớp</li>
             <li>✓ Không quảng cáo</li>
           </ul>
-          <a className="btn primary cta-side-btn" href="#vip">Nâng cấp ngay →</a>
-          <span className="cta-side-note">Từ 49.000đ/tháng</span>
+          <button className="btn primary cta-side-btn" type="button" disabled>Sắp ra mắt</button>
+          <span className="cta-side-note">Sẽ mở đăng ký trong thời gian tới</span>
         </aside>
 
         {/* CARD GIỮA: CTA chính */}
@@ -578,7 +578,7 @@ export default function Home() {
             <AIMark look mode="talk" title="Trợ lý AI" />
           </div>
           <p className="slogan center" style={{ justifyContent: 'center' }}>
-            Bắt đầu ngay — miễn phí, không cần tài khoản
+            Bắt đầu ngay — miễn phí cho học sinh
           </p>
           <h2 className="cta-title fx-title fx-cta">
             <Split text="Sẵn sàng *chinh *phục" />
@@ -607,7 +607,7 @@ export default function Home() {
           <div className="qr-box">
             <img src="/img/qr.png" alt="Mã QR ủng hộ dự án" loading="lazy" />
           </div>
-          <p className="cta-side-note">Cảm ơn bạn rất nhiều 💙</p>
+          <p className="cta-side-note">Cảm ơn bạn rất nhiều</p>
         </aside>
 
       </section>
