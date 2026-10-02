@@ -11528,3 +11528,45 @@ kbd { border-radius: 6px; font-family: var(--sans); }
     display: none !important;
   }
 }
+/* ============================================================
+   FIX MOBILE — Thu nhỏ con AI và nút bottom nav
+   ============================================================ */
+@media (max-width: 720px) {
+
+  /* 1. Thu nhỏ con AI (hero mascot) trên mobile */
+  .hero-mascot {
+    max-width: 260px !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 0 auto 1rem !important;
+  }
+  
+  .hero-mascot .ai-mark {
+    width: 100% !important;
+    max-width: 260px !important;
+  }
+  
+  /* 2. Đảm bảo con AI không đè lên nội dung */
+  .hero-mascot {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  /* 3. Thu nhỏ nút AI ở bottom nav */
+  .bnav-item.active .bnav-icon {
+    width: 38px !important;
+    height: 38px !important;
+    transform: translateY(-20px) scale(1.1) !important;
+  }
+  
+  .bnav-item.active .bnav-icon svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  
+  /* 4. Thu nhỏ notch */
+  .bnav-item.active::before {
+    width: 62px !important;
+    height: 32px !important;
+    top: -1px !important;
+  }
+}
