@@ -25,7 +25,7 @@ import LoginPage from './components/LoginPage.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
 import './app-extra.css';
 import MobileHeader from './components/MobileHeader.jsx';
-import AIMark from './components/AIMark.jsx';
+import BottomNav from './components/BottomNav.jsx';
 import ToolsPage from './components/ToolsPage.jsx';
 import {
   IconHome, IconAtom, IconCalc, IconRobot, IconMicroscope, IconScale,
@@ -53,15 +53,7 @@ const NAV_TOOLS = [
   ['profile', 'Trang cá nhân', IconUser],
 ];
 
-// ✅ Mobile bottom nav — có nút Công cụ (thay cho Trò chơi)
-const NAV_BOTTOM = [
-  ['home', 'Trang chủ', IconHome],
-  ['table', 'Bảng TH', IconAtom],
-  ['ai', 'AI', 'aimark'],
-  ['tools', 'Công cụ', IconTools],     // ← ĐỔI từ 'games' thành 'tools'
-  ['profile', 'Cá nhân', IconUser],
-];
-
+// Mobile bottom nav: xem components/BottomNav.jsx
 const PAGES = [...NAV_MAIN, ...NAV_TOOLS];
 
 const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
@@ -407,31 +399,7 @@ export default function App() {
         <small>© 2026 A7 K60 DTA — bycode Duy TK</small>
       </footer>
 
-      {/* ============================================================
-          BOTTOM NAV — Mobile
-          Nút "Công cụ" thay cho "Trò chơi"
-          Active khi ở #tools HOẶC bất kỳ route con #games/...
-          ============================================================ */}
-      <nav className="bottom-nav" aria-label="Điều hướng di động">
-        {NAV_BOTTOM.map(([id, label, Icon]) => {
-          const isActive =
-            page === id ||
-            (id === 'tools' && page.startsWith('games/'));
-          return (
-            <a
-              key={id}
-              href={'#' + id}
-              className={'bnav-item' + (isActive ? ' active' : '')}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <span className="bnav-icon">
-                {Icon === 'aimark' ? <AIMark size={24} animate={false} /> : <Icon />}
-              </span>
-              <span className="bnav-label">{label}</span>
-            </a>
-          );
-        })}
-      </nav>
+      <BottomNav page={page} />
     </>
   );
 }

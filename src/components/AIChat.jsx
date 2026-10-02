@@ -18,6 +18,7 @@ import {
 import './AIChat.css';
 import '../AIChat-glass.css';
 import '../AIChat-pro.css';
+import '../AIChat-fix.css';
 
 /* Nút AI lấp lánh */
 const IcoAIStar = ({ size = 18 }) => (
@@ -59,13 +60,30 @@ const QUICK_PROMPTS = [
   { icon: 'book', label: 'Tóm tắt lý thuyết', prompt: 'Tóm tắt lý thuyết liên quan cần nhớ để giải dạng bài này.' },
 ];
 
-/* Gợi ý khi trống */
-const SUGGESTIONS = [
+/* Gợi ý khi trống — kho 8 câu, mỗi lần hiện ngẫu nhiên 4 */
+const SUGGESTION_POOL = [
   { tag: 'Định luật', text: 'Giải thích định luật bảo toàn khối lượng', icon: 'scale' },
   { tag: 'Bảng tuần hoàn', text: 'Sinh 5 câu hỏi về bảng tuần hoàn', icon: 'table' },
   { tag: 'Cân bằng PTHH', text: 'Cách cân bằng phương trình Fe + O2', icon: 'flask' },
   { tag: 'Dung dịch', text: 'Giải thích công thức tính pH', icon: 'drop' },
+  { tag: 'Cấu tạo nguyên tử', text: 'Cách viết cấu hình electron của nguyên tử', icon: 'atom' },
+  { tag: 'Mol & khối lượng', text: 'Cách tính số mol và khối lượng chất tham gia', icon: 'bolt' },
+  { tag: 'Oxi hóa - khử', text: 'Cách xác định chất oxi hóa và chất khử', icon: 'bulb' },
+  { tag: 'Liên kết hóa học', text: 'Phân biệt liên kết ion và liên kết cộng hóa trị', icon: 'steps' },
 ];
+const pickSuggestions = (seed) => {
+  const arr = [...SUGGESTION_POOL];
+  let x = seed || 1;
+  for (let i = arr.length - 1; i > 0; i--) {          // xáo trộn có hạt giống
+    x = (x * 1664525 + 1013904223) % 4294967296;
+    const j = x % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, 4);
+};
+
+const DRAFT_KEY = 'cs-ai-draft';
+const readDraft = () => { try { return localStorage.getItem(DRAFT_KEY) || ''; } catch { return ''; } };
 
 const MAX_CHATS = 50;
 const MAX_IMAGES = 10;
@@ -252,7 +270,8 @@ export default function AIChat() {
   const [chats, setChats] = useLocalStorage('cs-ai-chats', []);
   const [activeId, setActiveId] = useLocalStorage('cs-ai-active', null);
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(readDraft);
+  const [sugSeed, setSugSeed] = useState(() => Date.now() % 100000);
   const [images, setImages] = useState([]);
   const [grade, setGrade] = useState('Lớp 11');
   const [busyId, setBusyId] = useState(null);
@@ -290,6 +309,7 @@ export default function AIChat() {
   const visibleRef = useRef(visible);
   const chatsRef = useRef(chats);
   const qTimer = useRef(null);
+  const newChatRef = useRef(null);
   visibleRef.current = visible;
   chatsRef.current = chats;
   imagesRef.current = images;
@@ -401,6 +421,48 @@ export default function AIChat() {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
   }, [input]);
+
+  /* ---------- Lưu nháp tin nhắn (không mất chữ khi tải lại trang) ---------- */
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        if (input) localStorage.setItem(DRAFT_KEY, input.slice(0, 4000));
+        else localStorage.removeItem(DRAFT_KEY);
+      } catch { /* */ }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [input]);
+
+  /* ---------- Đánh dấu đang ở trang AI (ẩn nút chat nổi) + khóa cuộn nền ---------- */
+  useEffect(() => {
+    document.body.classList.toggle('on-ai-page', visible);
+    return () => document.body.classList.remove('on-ai-page');
+  }, [visible]);
+
+  useEffect(() => {
+    const lock = visible && (Boolean(lightbox) || (sidebarOpen && matchMedia('(max-width: 900px)').matches));
+    document.body.classList.toggle('ds-lock', lock);
+    return () => document.body.classList.remove('ds-lock');
+  }, [visible, lightbox, sidebarOpen]);
+
+  /* ---------- Phím tắt: Ctrl/⌘+K = chat mới · "/" = focus ô nhập ---------- */
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!visibleRef.current) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        newChatRef.current?.();
+        return;
+      }
+      const tag = (e.target?.tagName || '').toLowerCase();
+      if (e.key === '/' && tag !== 'input' && tag !== 'textarea' && !e.target?.isContentEditable) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, []);
 
   /* ---------- Ảnh ---------- */
   const handleFiles = useCallback(async (files) => {
@@ -570,6 +632,8 @@ export default function AIChat() {
     setErr('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
+
+  newChatRef.current = newChat;
 
   const updateChat = (id, updater) => {
     setChats((prev) => prev.map((c) => (c.id === id ? { ...updater(c), updatedAt: Date.now() } : c)));
@@ -839,6 +903,7 @@ export default function AIChat() {
     return q ? chats.filter((c) => (c.title || '').toLowerCase().includes(q)) : chats;
   }, [chats, query]);
   const groups = useMemo(() => groupChats(filtered), [filtered]);
+  const suggestions = useMemo(() => pickSuggestions(sugSeed), [sugSeed]);
 
   const userName = user?.displayName || 'Ẩn danh';
   const userInitial = (userName || user?.email || '?').trim().charAt(0).toUpperCase();
@@ -1124,7 +1189,7 @@ export default function AIChat() {
                 Gõ câu hỏi, dán ảnh đề bài hoặc chụp trang sách. Tối đa {MAX_IMAGES} ảnh cùng lúc.
               </p>
               <div className="ds-suggestions">
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <button key={s.text} className="ds-suggestion" onClick={() => send(s.text)} type="button">
                     <span className="ds-suggestion-icon"><PromptIcon name={s.icon} size={22} /></span>
                     <span className="ds-suggestion-body">
@@ -1134,6 +1199,10 @@ export default function AIChat() {
                   </button>
                 ))}
               </div>
+              <button type="button" className="ds-suggest-refresh" onClick={() => setSugSeed((v) => v + 7919)}>
+                <IcoRefresh size={13} />
+                <span>Gợi ý khác</span>
+              </button>
             </div>
           ) : (
             <div className="ds-chat">

@@ -1,0 +1,137 @@
+/* ============================================================
+   AIChat-fix.css — NẠP CUỐI CÙNG (sau AIChat-pro.css)
+   Sửa lỗi + làm đẹp trang AI Chat, ưu tiên điện thoại.
+   ============================================================ */
+
+.ds-page {
+  --fx-nav-clear: calc(16px + 68px + 10px);   /* khoảng chừa cho bottom-nav pill nổi */
+  --fx-radius: 18px;
+}
+
+/* ------------------------------------------------------------
+   1) LOGO CON MẮT: không bao giờ tràn ra ngoài khung
+   ------------------------------------------------------------ */
+.ds-page svg.ai-mark,
+.bottom-nav svg.ai-mark {
+  overflow: hidden !important;      /* index.css đang ép "visible" nên hình lỗi mới tràn cả màn hình */
+  max-width: 100% !important;
+  height: auto !important;
+  contain: paint;
+  transform: none !important;
+}
+
+.ds-page .ds-empty > svg.ai-mark {
+  width: min(168px, 46vw) !important;
+  margin: 0 auto .4rem !important;
+  filter: drop-shadow(0 14px 30px color-mix(in srgb, var(--g1, #3b82f6) 35%, transparent));
+}
+.ds-page .ds-title-block > svg.ai-mark { width: 46px !important; flex: 0 0 auto; }
+.ds-page .ds-avatar { width: 38px !important; flex: 0 0 auto; }
+
+/* ------------------------------------------------------------
+   2) ẨN NÚT CHAT NỔI TRÊN TRANG AI (đang đè lên thẻ gợi ý)
+   ------------------------------------------------------------ */
+body.on-ai-page .chatfab,
+body.on-ai-page .chatfab-ring { display: none !important; }
+
+/* khóa cuộn nền khi mở sidebar / lightbox */
+body.ds-lock { overflow: hidden !important; touch-action: none; }
+
+/* ------------------------------------------------------------
+   3) EMPTY STATE
+   ------------------------------------------------------------ */
+.ds-page .ds-empty { text-align: center; padding: 1.2rem 1rem .5rem !important; }
+.ds-page .ds-empty-title { text-wrap: balance; }
+.ds-page .ds-empty-sub { text-wrap: pretty; max-width: 34ch; margin-inline: auto; }
+
+.ds-page .ds-suggestions { margin-inline: auto; }
+.ds-page .ds-suggestion {
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 10px 24px -18px rgba(15,23,42,.35);
+  min-height: 64px;
+}
+/* vòng xanh khi chạm trên điện thoại: chỉ hiện khi dùng bàn phím */
+.ds-page .ds-suggestion:focus { outline: none; }
+.ds-page .ds-suggestion:focus-visible {
+  outline: 2px solid var(--g1, var(--acc)); outline-offset: 2px;
+}
+@media (hover: none) {
+  .ds-page .ds-suggestion:hover { transform: none; box-shadow: 0 10px 24px -18px rgba(15,23,42,.35); border-color: var(--soft) !important; }
+  .ds-page .ds-suggestion:active { transform: scale(.985); border-color: var(--g1, var(--acc)) !important; }
+}
+
+.ds-suggest-refresh {
+  display: inline-flex; align-items: center; gap: .4rem;
+  margin: .9rem auto 0; padding: .4rem .9rem;
+  border: 1px dashed var(--edge, var(--soft)); border-radius: 999px;
+  background: transparent; color: var(--mut); font: 600 .74rem inherit; font-family: inherit;
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.ds-suggest-refresh:hover { color: var(--g1, var(--acc)); border-color: var(--g1, var(--acc)); }
+
+/* ------------------------------------------------------------
+   4) THANH NHẬP: luôn nằm TRÊN bottom-nav, không bị che
+   ------------------------------------------------------------ */
+@media (max-width: 720px) {
+  body .ds-page .ds-input-wrap {
+    position: fixed !important;
+    left: 0 !important; right: 0 !important;
+    bottom: calc(var(--fx-nav-clear) + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 9990 !important;                 /* dưới nav (9999), trên nội dung */
+    padding: .5rem .75rem .35rem !important;
+    background: linear-gradient(to top, var(--bg) 62%, transparent) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  body .ds-page .ds-main {
+    padding-bottom: calc(var(--fx-nav-clear) + 150px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .ds-page .ds-input-bar {
+    border-radius: 22px !important;
+    box-shadow: 0 14px 34px -16px rgba(15, 23, 42, .45) !important;
+  }
+  .ds-page .ds-input { font-size: 16px !important; }   /* chống iOS tự zoom */
+  .ds-page .ds-disclaimer { font-size: .62rem; margin: .3rem 0 0; opacity: .8; }
+
+  .ds-page .ds-jump { top: -48px; }
+  .ds-page .ds-suggestions { grid-template-columns: 1fr !important; gap: .5rem !important; }
+  .ds-page .ds-suggestion { padding: .65rem .85rem !important; }
+  .ds-page .ds-suggestion-text { font-size: .8rem !important; }
+}
+
+/* ------------------------------------------------------------
+   5) HEADER MOBILE GỌN HƠN
+   ------------------------------------------------------------ */
+@media (max-width: 720px) {
+  .ds-page .ds-header-inner { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .ds-page .ds-header-inner::-webkit-scrollbar { display: none; }
+  .ds-page .ds-title-block { flex: 0 1 auto !important; min-width: 0; }
+  .ds-page .ds-page-title { display: none; }               /* nhường chỗ cho quota + lớp */
+  .ds-page .ds-status { display: none; }
+  .ds-page .ds-quota { margin-left: auto !important; flex-shrink: 0; }
+  .ds-page .ds-grade-select { flex-shrink: 0; max-width: 110px; }
+}
+
+/* ------------------------------------------------------------
+   6) CHI TIẾT NHỎ
+   ------------------------------------------------------------ */
+.ds-page .ds-msg-user-text { overflow-wrap: anywhere; }
+.ds-page .ds-msg-content { overflow-wrap: anywhere; }
+.ds-page .ds-msg-content pre,
+.ds-page .ds-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.ds-page .ds-input-bar:focus-within {
+  border-color: var(--g1, var(--acc)) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--g1, #3b82f6) 22%, transparent), 0 14px 34px -16px rgba(15,23,42,.45) !important;
+}
+
+.ds-page .ds-send:disabled { opacity: .55; }
+
+/* tin nhắn mới hiện nhẹ nhàng */
+.ds-page .ds-msg { animation: fx-in .28s ease both; }
+@keyframes fx-in { from { opacity: 0; transform: translateY(6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-page .ds-msg { animation: none; }
+}
