@@ -11570,3 +11570,8 @@ kbd { border-radius: 6px; font-family: var(--sans); }
     top: -1px !important;
   }
 }
+@media (max-width: 720px) {
+  .hero-mascot {
+    display: none !important;
+  }
+}
