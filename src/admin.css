@@ -1,0 +1,334 @@
+/* ============================================================
+   FIX: Force tabs hiển thị
+   ============================================================ */
+.ad-tabs {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-bottom: 24px !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.ad-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 10px 20px !important;
+  border: 1.5px solid var(--soft, #ccc) !important;
+  border-radius: 999px !important;
+  background: var(--bg, #fff) !important;
+  color: var(--mut, #666) !important;
+  cursor: pointer !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  transition: all 0.15s !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  width: auto !important;
+}
+
+.ad-tab:hover {
+  border-color: var(--ink, #111) !important;
+  color: var(--ink, #111) !important;
+}
+
+.ad-tab.on {
+  background: var(--ink, #111) !important;
+  color: var(--bg, #fff) !important;
+  border-color: var(--ink, #111) !important;
+}
+/* ============================================================
+   IMPORT JSON — STICKY HEADER + STATUS
+   ============================================================ */
+
+.ad-import {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ad-import-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.2rem;
+  background: var(--bg);
+  border: 1.5px solid var(--acc);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--acc);
+  margin-bottom: .5rem;
+}
+
+.ad-import-sticky h2 {
+  margin: 0 0 .3rem;
+  font-size: 1.1rem;
+  letter-spacing: -.02em;
+}
+
+.ad-import-sticky .ad-hint {
+  margin: 0;
+  font-size: .76rem;
+}
+
+.ad-import-sticky-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.ad-status {
+  padding: .8rem 1rem;
+  border-radius: 10px;
+  font: 500 .85rem var(--sans);
+  line-height: 1.4;
+}
+
+.ad-status-info {
+  background: var(--soft);
+  border-left: 4px solid var(--mut);
+  color: var(--ink);
+}
+
+.ad-status-success {
+  background: color-mix(in srgb, #22c55e 12%, var(--bg));
+  border-left: 4px solid #22c55e;
+  color: #15803d;
+}
+[data-theme='dark'] .ad-status-success {
+  color: #4ade80;
+}
+
+.ad-status-error {
+  background: color-mix(in srgb, var(--acc) 12%, var(--bg));
+  border-left: 4px solid var(--acc);
+  color: var(--acc);
+}
+
+@media (max-width: 720px) {
+  .ad-import-sticky {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ad-import-sticky-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .ad-import-sticky-actions .ad-btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
+/* ============================================================
+   IMPORT — STICKY + STATUS + FLOATING BUTTON
+   ============================================================ */
+
+.ad-import {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 120px; /* chừa chỗ cho nút floating */
+}
+
+.ad-import-sticky {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.2rem;
+  background: var(--bg);
+  border: 1.5px solid var(--acc);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--acc);
+}
+
+.ad-import-sticky h2 {
+  margin: 0 0 .3rem;
+  font-size: 1.1rem;
+  letter-spacing: -.02em;
+}
+
+.ad-import-sticky .ad-hint {
+  margin: 0;
+  font-size: .76rem;
+}
+
+.ad-import-sticky-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.ad-status {
+  padding: .8rem 1rem;
+  border-radius: 10px;
+  font: 500 .85rem var(--sans);
+  line-height: 1.4;
+}
+
+.ad-status-info {
+  background: var(--soft);
+  border-left: 4px solid var(--mut);
+}
+
+.ad-status-success {
+  background: color-mix(in srgb, #22c55e 12%, var(--bg));
+  border-left: 4px solid #22c55e;
+  color: #15803d;
+}
+[data-theme='dark'] .ad-status-success {
+  color: #4ade80;
+}
+
+.ad-status-error {
+  background: color-mix(in srgb, var(--acc) 12%, var(--bg));
+  border-left: 4px solid var(--acc);
+  color: var(--acc);
+}
+
+@media (max-width: 720px) {
+  .ad-import-sticky {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ad-import-sticky-actions {
+    width: 100%;
+  }
+  .ad-import-sticky-actions .ad-btn {
+    flex: 1;
+  }
+}
+/* ============================================================
+   PROMPT BUILDER
+   ============================================================ */
+.ad-prompt-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding: 1.5rem;
+  border: 2px solid var(--acc);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 6px 6px 0 var(--acc);
+}
+
+.ad-pb-head h2 {
+  margin: 0 0 .3rem;
+  font-size: 1.2rem;
+}
+.ad-pb-head .ad-hint {
+  margin: 0;
+}
+
+/* Templates */
+.ad-pb-templates {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.ad-pb-tpl {
+  padding: .6rem 1rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--mut);
+  cursor: pointer;
+  font: 600 .82rem var(--sans);
+  transition: all .15s;
+}
+.ad-pb-tpl:hover { border-color: var(--ink); color: var(--ink); }
+.ad-pb-tpl.on {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+/* Form */
+.ad-pb-form {
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+}
+
+.ad-pb-image-hint {
+  padding: 1rem;
+  background: color-mix(in srgb, var(--acc) 8%, var(--bg));
+  border-left: 4px solid var(--acc);
+  border-radius: 10px;
+}
+.ad-pb-image-hint p { margin: 0 0 .5rem; }
+.ad-pb-image-hint ol { margin: 0; padding-left: 1.4rem; }
+.ad-pb-image-hint li { padding: .2rem 0; font-size: .85rem; }
+
+/* Preview */
+.ad-pb-preview {
+  padding: .8rem 1rem;
+  border: 1px solid var(--soft);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.ad-pb-preview summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: .82rem;
+}
+.ad-pb-preview pre {
+  margin: 1rem 0 0;
+  padding: .8rem;
+  background: var(--soft);
+  border-radius: 8px;
+  font: 500 .75rem var(--mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Actions */
+.ad-pb-actions {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.ad-pb-actions .ad-btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+/* Import JSON */
+.ad-pb-import {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding-top: 1.2rem;
+  border-top: 1.5px dashed var(--soft);
+}
+.ad-pb-import h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.ad-pb-import textarea {
+  width: 100%;
+  padding: .9rem 1rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 .82rem var(--mono);
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+}
+.ad-pb-import textarea:focus {
+  outline: 0;
+  border-color: var(--acc);
+  box-shadow: 3px 3px 0 var(--acc);
+}

@@ -16,6 +16,13 @@ import PromptLibrary from './PromptLibrary.jsx';
 import { PROMPTS } from './promptData.js';
 import { HOT_AI, PRICE_META } from './hotData.js';
 import AIMark from './AIMark.jsx';
+import DocsLibrary from './DocsLibrary.jsx';
+import { DOCS, GRADES } from './docsData.js';
+import './tools-neo.css';
+import ExamBank from './ExamBank.jsx';
+import FormulaLibrary from './FormulaLibrary.jsx';
+import { EXAMS } from './examData.js';
+import { FORMULAS } from './formulaData.js';
 
 // ============================================================
 // CÔNG CỤ HỌC TẬP
@@ -430,8 +437,9 @@ const Chevron = ({ open }) => (
 // MAIN COMPONENT
 // ============================================================
 export default function ToolsPage() {
-  const [tab, setTab] = useState('hot');
+  const [tab, setTab] = useState('docs');
   const [search, setSearch] = useState('');
+  const [docGrade, setDocGrade] = useState('all');
   const [activeCat, setActiveCat] = useState('all');
   const [activePrice, setActivePrice] = useState('all');
   const [sortBy, setSortBy] = useState('default');
@@ -715,20 +723,58 @@ export default function ToolsPage() {
   };
 
   const hotOthers = filteredHot.filter((t) => t.id !== 'cuai');
+const tabList = [
+  ['docs', 'Tài liệu', DOCS.length],
+  ['exam', 'Đề thi', EXAMS.length],
+  ['formula', 'Công thức', FORMULAS.length],
+  ['hot', 'AI Hot', HOT_AI.__list.length],
+  ['study', 'Học tập', STUDY_TOOLS.length],
+  ['ai', 'AI Free', AI_TOOLS.length],
+  ['prompt', 'Prompt Free', PROMPTS.length],
+];
+  const tabName = (tabList.find((t) => t[0] === tab) || [])[1];
 
   return (
     <section className="wrap tools-page tk-page tc">
+      <div className="tn-shell">
+        <aside className="tn-side" aria-label="Danh mục công cụ">
+          <div className="tn-side-brand"><b>Công cụ</b><small>A7 K60 DTA</small></div>
+          <p className="tn-side-label">Danh mục</p>
+          {tabList.map(([id, label, n]) => (
+            <button key={id} type="button" className={'tn-side-item' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
+              <span>{label}</span><i>{n}</i>
+            </button>
+          ))}
+          <p className="tn-side-label">Kho tài liệu</p>
+          {GRADES.map((g) => (
+            <button key={g} type="button" className={'tn-side-item' + (tab === 'docs' && docGrade === g ? ' on' : '')}
+              onClick={() => { switchTab('docs'); setDocGrade(g); }}>
+              <span>Lớp {g}</span>
+            </button>
+          ))}
+          <p className="tn-side-label">Công cụ học tập</p>
+          {STUDY_TOOLS.map(({ id, name, Icon }) => (
+            <a key={id} href={'#' + id} className="tn-side-item"><Icon /><span>{name}</span></a>
+          ))}
+        </aside>
+
+        <div className="tn-main">
       {/* HEADER */}
       <div className="tools-header">
         <h1>Công cụ</h1>
-        <p className="tools-sub">
-          <b>{STUDY_TOOLS.length}</b> công cụ học tập, <b>{AI_TOOLS.length}</b> công cụ AI, <b>{PROMPTS.length}</b> prompt mẫu và <b>{HOT_AI.__list.length}</b> AI đáng dùng nhất.
-        </p>
+        <div className="tn-top">
+          <span><b>{STUDY_TOOLS.length}</b> công cụ học tập</span>
+          <span><b>{AI_TOOLS.length}</b> công cụ AI</span>
+          <span><b>{PROMPTS.length}</b> prompt mẫu</span>
+          <span><b>{DOCS.length}</b> tài liệu</span>
+        </div>
+        <nav className="tn-crumb" aria-label="Đường dẫn"><a href="#home">Trang chủ</a><i>›</i><span>Công cụ</span><i>›</i><b>{tabName}</b></nav>
       </div>
 
       {/* TABS */}
       <div className="tools-tabs" role="tablist" aria-label="Loại công cụ">
         {[
+          ['docs', 'Tài liệu', DOCS.length],
           ['hot', 'AI Hot', HOT_AI.__list.length],
           ['study', 'Học tập', STUDY_TOOLS.length],
           ['ai', 'AI Free', AI_TOOLS.length],
@@ -748,7 +794,8 @@ export default function ToolsPage() {
           ref={searchRef}
           type="text"
           placeholder={
-            tab === 'hot' ? 'Tìm AI hot: chat, ảnh, code, video…'
+            tab === 'docs' ? 'Tìm tài liệu: hóa 11, toán 12, đề thi…'
+            : tab === 'hot' ? 'Tìm AI hot: chat, ảnh, code, video…'
             : tab === 'ai' ? 'Tìm công cụ AI…'
             : tab === 'prompt' ? 'Tìm prompt: review, caption, hóa học…'
             : 'Tìm công cụ học tập…'
@@ -762,8 +809,16 @@ export default function ToolsPage() {
           : <kbd className="tc-kbd" aria-hidden="true">/</kbd>}
       </div>
 
-      {/* ================= TAB PROMPT ================= */}
-      {tab === 'prompt' && <PromptLibrary query={search} />}
+{tab === 'docs' && <DocsLibrary query={search} grade={docGrade} onGrade={setDocGrade} />}
+
+{/* ================= TAB ĐỀ THI ================= */}
+{tab === 'exam' && <ExamBank query={search} />}
+
+{/* ================= TAB CÔNG THỨC ================= */}
+{tab === 'formula' && <FormulaLibrary query={search} />}
+
+{/* ================= TAB PROMPT ================= */}
+{tab === 'prompt' && <PromptLibrary query={search} />}
 
       {/* ================= TAB AI HOT ================= */}
       {tab === 'hot' && (
@@ -904,6 +959,8 @@ export default function ToolsPage() {
       )}
 
       {toastNode}
+        </div>
+      </div>
     </section>
   );
 }

@@ -11504,28 +11504,34 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 /* ============================================================
    LOGO MOBILE — Hiển thị rõ, không bị bóp méo
    ============================================================ */
+/* ============================================================
+   LOGO MOBILE — FIX CUỐI CÙNG
+   ============================================================ */
 @media (max-width: 720px) {
+  .mhead-bar {
+    min-height: 60px !important;
+  }
+
   .mhead-logo {
-    flex-shrink: 0 !important;
+    height: 48px !important;
+    width: auto !important;
+    max-width: none !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
-    width: auto !important;
-    height: 44px !important;
-    max-width: 200px !important;
+    flex-shrink: 0 !important;
     overflow: visible !important;
   }
-  
-  .mhead-logo img {
-    height: 100px !important;
+
+  .mhead-logo img,
+  .mhead-logo svg,
+  .mhead-logo picture,
+  .mhead-logo > * {
+    height: 48px !important;
     width: auto !important;
-    max-width: 200px !important;
+    max-height: 48px !important;
+    max-width: none !important;
     object-fit: contain !important;
     display: block !important;
-  }
-  
-  .mhead-logo .ai-mark {
-    display: none !important;
   }
 }
 /* ============================================================
@@ -12064,5 +12070,302 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 @media (prefers-reduced-motion: reduce) {
   .pnav, .pnav *, .pnav-ico, .pnav-label {
     transition: none !important;
+  }
+}
+/* ============================================================
+   MOBILE FIX — Trang Công cụ (ToolsPage) gọn gàng, dễ dùng
+   Chỉ áp dụng khi màn hình ≤ 720px
+   ============================================================ */
+
+@media (max-width: 720px) {
+
+  /* ---------- 1. ẨN CÁC PHẦN KHÔNG CẦN THIẾT ---------- */
+  .tools-page .tn-top,
+  .tools-page .tn-crumb,
+  .tools-page .tools-count:first-of-type,
+  .tools-page .tn-side {
+    display: none !important;
+  }
+
+  /* Ẩn header cũ to — dùng mhead-bar thay thế */
+  .tools-page .tools-header h1 {
+    font-size: 1.5rem !important;
+    margin-bottom: 1rem !important;
+    letter-spacing: -.03em !important;
+  }
+
+  /* Ẩn breadcrumb + stats bar */
+  .tools-page .tn-crumb,
+  .tools-page .tn-stats {
+    display: none !important;
+  }
+
+  /* ---------- 2. CONTAINER + PADDING ---------- */
+  .tools-page {
+    padding: 0.75rem 0.9rem calc(120px + env(safe-area-inset-bottom)) !important;
+    max-width: 100% !important;
+  }
+
+  .tools-page .tn-shell {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .tools-page .tn-main {
+    width: 100% !important;
+  }
+
+  /* ---------- 3. TAB BAR — SCROLL NGANG ĐƯỢC ---------- */
+  .tools-page .tools-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 0 1rem 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    border-bottom: 1px solid var(--soft, rgba(0,0,0,.08)) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    width: 100% !important;
+  }
+  .tools-page .tools-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .tools-page .tools-tab {
+    flex: 0 0 auto !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    border-bottom: 2px solid transparent !important;
+    background: transparent !important;
+    color: var(--mut) !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .tools-page .tools-tab.on {
+    color: var(--ink) !important;
+    border-bottom-color: var(--acc) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .tools-page .tools-tab .tc-n {
+    margin-left: 0.35rem !important;
+    font-size: 0.7rem !important;
+    opacity: 0.7 !important;
+  }
+
+  /* ---------- 4. SEARCH BAR — GỌN GÀNG ---------- */
+  .tools-page .tools-search {
+    padding: 0.7rem 1rem !important;
+    margin: 0 0 0.8rem 0 !important;
+    border-radius: 12px !important;
+    font-size: 0.9rem !important;
+    min-height: 44px !important;
+  }
+
+  .tools-page .tools-search input {
+    font-size: 0.92rem !important;
+  }
+
+  /* Ẩn phím tắt "/" trên mobile — vô nghĩa */
+  .tools-page .tc-kbd {
+    display: none !important;
+  }
+
+  /* ---------- 5. FILTER CHIPS — THU NHỎ + SCROLL NGANG ---------- */
+  .tools-page .tools-cats,
+  .tools-page .eb-filters,
+  .tools-page .eb-filter-row,
+  .tools-page .tn-chips,
+  .tools-page .hot-filters,
+  .tools-page .hot-filter-group,
+  .tools-page .hot-filter-chips {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 0.4rem !important;
+    padding: 0 0 0.5rem 0 !important;
+    margin: 0 0 0.9rem 0 !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .tools-page .tools-cats::-webkit-scrollbar,
+  .tools-page .eb-filters::-webkit-scrollbar,
+  .tools-page .tn-chips::-webkit-scrollbar,
+  .tools-page .hot-filters::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Chip nhỏ lại, không xuống dòng */
+  .tools-page .tools-cat,
+  .tools-page .eb-chip,
+  .tools-page .tn-chip,
+  .tools-page .hot-chip {
+    flex: 0 0 auto !important;
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    min-height: 34px !important;
+    line-height: 1 !important;
+  }
+
+  /* Label filter (Loại đề, Môn, Lớp...) — ẩn chữ, chỉ giữ chip */
+  .tools-page .eb-filter-label,
+  .tools-page .hot-filter-label {
+    display: none !important;
+  }
+
+  /* Filter row — bỏ border, bỏ padding */
+  .tools-page .eb-filter-row {
+    border-bottom: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* ---------- 6. BAR "XEM THÊM" + ĐẾM ---------- */
+  .tools-page .tc-bar,
+  .tools-page .eb-toolbar,
+  .tools-page .tk-bar {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.8rem !important;
+  }
+
+  .tools-page .tools-count,
+  .tools-page .eb-count {
+    font-size: 0.8rem !important;
+    margin: 0 !important;
+  }
+
+  .tools-page .tc-note,
+  .tools-page .tk-note {
+    display: none !important;
+  }
+
+  /* ---------- 7. GRID TÀI LIỆU / ĐỀ THI — 1 CỘT ---------- */
+  .tools-page .tn-grid,
+  .tools-page .tc-grid,
+  .tools-page .eb-grid,
+  .tools-page .tk-grid,
+  .tools-page .hot-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* ---------- 8. CARD — GỌN HƠN ---------- */
+  .tools-page .tn-card,
+  .tools-page .tc-cell,
+  .tools-page .eb-card,
+  .tools-page .tk-card,
+  .tools-page .hot-card {
+    border-radius: 14px !important;
+    padding: 0.9rem !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Ẩn bớt meta thừa trong thẻ */
+  .tools-page .tn-meta span:nth-child(n+4),
+  .tools-page .eb-card-tags {
+    display: none !important;
+  }
+
+  /* ---------- 9. BOTTOM NAV + PET + FAB ---------- */
+  /* Đảm bảo nội dung không bị bottom nav che */
+  .tools-page {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Pet widget — đẩy lên trên bottom nav, thu nhỏ */
+  .petw {
+    width: 60px !important;
+    height: 60px !important;
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    z-index: 50 !important;
+  }
+
+  /* Nút chat FAB — đẩy lên trên bottom nav */
+  .chatfab {
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    right: 12px !important;
+    width: 50px !important;
+    height: 50px !important;
+    z-index: 60 !important;
+  }
+
+  /* Bottom nav — pill gọn */
+  .pnav,
+  .bottom-nav {
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    height: 56px !important;
+    padding: 5px !important;
+    width: calc(100vw - 20px) !important;
+  }
+
+  .pnav-item,
+  .bnav-item {
+    height: 46px !important;
+    min-width: 46px !important;
+    padding: 0 12px !important;
+  }
+
+  .pnav-ico svg,
+  .bnav-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* ---------- 10. HEADER MOBILE (mhead) ---------- */
+  .mhead-bar {
+    padding: 8px 12px !important;
+    min-height: 52px !important;
+  }
+
+  .mhead-logo img {
+    height: 40px !important;
+    max-width: 140px !important;
+  }
+
+  /* ---------- 11. MODAL / DIALOG TRÊN MOBILE ---------- */
+  .pl-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .pl-modal {
+    grid-template-columns: 1fr !important;
+    padding: 1rem !important;
+    max-height: 100dvh !important;
+  }
+
+  /* QuickView modal */
+  .quickview-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+  }
+
+  .quickview {
+    border-radius: 0 !important;
+    max-height: 100dvh !important;
+    padding: 1.2rem 1rem !important;
   }
 }
