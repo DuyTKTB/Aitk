@@ -6,6 +6,7 @@ const STORAGE_KEY = 'cs-api-usage';
 export const API_LIMITS = {
   gemini: { name: 'Gemini', color: '#4285f4', rpd: 1500 },
   groq:   { name: 'Groq',   color: '#f55036', rpd: 14400 },
+  agnes:  { name: 'Agnes',  color: '#7c3aed', rpd: 5000 },  // ← Thêm dòng này
 };
 
 function read() {

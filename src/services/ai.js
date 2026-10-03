@@ -1,10 +1,15 @@
 import { trackRequest } from './apiTracker.js';
 
+/* ============================================================
+   API KEYS
+   ============================================================ */
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || '';
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GROQ_KEY   = import.meta.env.VITE_GROQ_API_KEY || '';
+const AGNES_KEY  = import.meta.env.VITE_AGNES_API_KEY || '';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-const GROQ_BASE = 'https://api.groq.com/openai/v1';
+const GROQ_BASE   = 'https://api.groq.com/openai/v1';
+const AGNES_BASE  = 'https://apihub.agnes-ai.com/v1';
 
 const MSG_OUT_OF_QUOTA =
   '⚠️ Bạn đã hết quyền sử dụng AI miễn phí hôm nay.\n\n' +
@@ -34,35 +39,15 @@ class AbortError extends Error {
 }
 
 /* ============================================================
-   CẤU HÌNH MODEL
+   CẤU HÌNH MODEL — 3 PROVIDERS
    ============================================================ */
+const GEMINI_VISION_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash'];
+const GEMINI_TEXT_MODELS   = ['gemini-flash-latest', 'gemini-3.5-flash'];
 
-const GEMINI_VISION_MODELS = [
-  'gemini-flash-latest',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-];
+const GROQ_FAST_MODELS   = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+const GROQ_STRONG_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 
-const GEMINI_TEXT_MODELS = [
-  'gemini-flash-latest',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-];
-
-const GROQ_TEXT_MODELS = [
-  'openai/gpt-oss-120b',
-  'openai/gpt-oss-20b',
-];
-
-const GROQ_FAST_MODELS = [
-  'openai/gpt-oss-20b',
-  'openai/gpt-oss-120b',
-];
-
-const GROQ_STRONG_MODELS = [
-  'openai/gpt-oss-120b',
-  'openai/gpt-oss-20b',
-];
+const AGNES_MODELS = ['agnes-3.0-flash', 'agnes-2.5-pro-beta'];
 
 const HEDGE_MS = 800;
 const MAX_PARALLEL = 2;
@@ -72,7 +57,7 @@ const TOTAL_MS = 120000;
 const RETRY_DELAY_MS = 1000;
 
 /* ============================================================
-   SYSTEM PROMPT CHÍNH
+   SYSTEM PROMPT CHÍNH — giữ nguyên của bạn
    ============================================================ */
 const SYSTEM_PROMPT = `
 Bạn là "A7 Assistant" — trợ lý học tập thông minh của lớp A7 K60 DTA, do Duy TK tạo.
@@ -142,9 +127,6 @@ CÁCH TRẢ LỜI BÀI TẬP HÓA — CHỈ 3 PHẦN NGẮN:
 **Đáp án:** [in đậm kết quả]
 `;
 
-/* ============================================================
-   SYSTEM PROMPT CHO TÍNH NĂNG SO SÁNH
-   ============================================================ */
 export const COMPARE_SYSTEM_PROMPT = `
 Bạn là chuyên gia đánh giá công cụ AI hàng đầu, chuyên tư vấn cho người dùng Việt Nam.
 
@@ -169,7 +151,7 @@ QUY TẮC
 `;
 
 /* ============================================================
-   UNICODE / LATEX CONVERTER
+   UNICODE / LATEX CONVERTER — giữ nguyên của bạn
    ============================================================ */
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
@@ -311,9 +293,8 @@ const maxTokensFor = (type) =>
   type === 'problem' ? 8192 : type === 'theory' ? 4096 : 2048;
 
 /* ============================================================
-   CHUYỂN ĐỔI HISTORY → FORMAT
+   PREPARE — đổi history → format từng provider
    ============================================================ */
-
 function prepareGeminiContents(history) {
   return history.map((message) => {
     if (message.role === 'model') {
@@ -344,7 +325,7 @@ function prepareGeminiContents(history) {
   });
 }
 
-function prepareGroqMessages(history, systemPrompt = SYSTEM_PROMPT) {
+function prepareOpenAIMessages(history, systemPrompt) {
   const messages = [{ role: 'system', content: systemPrompt }];
 
   for (const message of history) {
@@ -384,8 +365,6 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
     arm(FIRST_TOKEN_MS);
 
     const url = `${GEMINI_BASE}/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
-
-    // 📊 Track request
     trackRequest('gemini');
 
     const res = await fetch(url, {
@@ -410,10 +389,7 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
       const body = await res.text().catch(() => '');
       console.warn(`[A7 Assistant] ✗ Gemini/${model} → ${status}`, body.slice(0, 200));
 
-      // 📊 Track lỗi
-      if (status === 429 || status === 503 || status === 500) {
-        trackRequest('gemini', true);
-      }
+      if (status === 429 || status === 503 || status === 500) trackRequest('gemini', true);
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
       if (status === 503 || status === 502 || status === 504) {
@@ -431,7 +407,6 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
       if (status === 401 || status === 403 || /API[_ ]KEY/i.test(body)) {
         throw new Error(MSG_API_KEY_ERROR);
       }
-
       const err = new Error(`Gemini ${model} lỗi ${status}`);
       err.status = status;
       throw err;
@@ -503,11 +478,8 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
       top_p: 0.9,
     };
 
-    if (/gpt-oss/i.test(model)) {
-      body.reasoning_effort = 'medium';
-    }
+    if (/gpt-oss/i.test(model)) body.reasoning_effort = 'medium';
 
-    // 📊 Track request
     trackRequest('groq');
 
     const res = await fetch(`${GROQ_BASE}/chat/completions`, {
@@ -525,10 +497,7 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
       const bodyText = await res.text().catch(() => '');
       console.warn(`[A7 Assistant] ✗ Groq/${model} → ${status}`, bodyText.slice(0, 200));
 
-      // 📊 Track lỗi
-      if (status === 429 || status === 503 || status === 500) {
-        trackRequest('groq', true);
-      }
+      if (status === 429 || status === 503 || status === 500) trackRequest('groq', true);
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
       if (status === 503 || status === 502 || status === 504 || status === 500) {
@@ -544,7 +513,6 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
         err.isOverload = true;
         throw err;
       }
-
       const err = new Error(`Groq ${model} lỗi ${status}`);
       err.status = status;
       throw err;
@@ -591,13 +559,133 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
 }
 
 /* ============================================================
-   HÀM CHÍNH — askAI
+   STREAM AGNES (OpenAI-compatible)
+   ============================================================ */
+async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, claim, onChunk }) {
+  let stall;
+  let reader;
+  const arm = (ms) => {
+    clearTimeout(stall);
+    stall = setTimeout(() => ctrl.abort(), ms);
+  };
+
+  try {
+    arm(FIRST_TOKEN_MS);
+
+    trackRequest('agnes');
+
+    const res = await fetch(`${AGNES_BASE}/chat/completions`, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${AGNES_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: true,
+        temperature,
+        max_tokens: maxTokens,
+        top_p: 0.9,
+      }),
+    });
+
+    if (!res.ok) {
+      const status = res.status;
+      const body = await res.text().catch(() => '');
+      console.warn(`[A7 Assistant] ✗ Agnes/${model} → ${status}`, body.slice(0, 200));
+
+      if (status === 429 || status === 503 || status === 500) trackRequest('agnes', true);
+
+      if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
+      if (status === 503 || status === 502 || status === 504) {
+        const err = new Error(`${model} quá tải (${status})`);
+        err.status = status;
+        err.isOverload = true;
+        throw err;
+      }
+      if (status === 404) {
+        const err = new Error(`${model} không tồn tại`);
+        err.status = 404;
+        err.isOverload = true;
+        throw err;
+      }
+      if (status === 401 || status === 403) throw new Error(MSG_API_KEY_ERROR);
+
+      const err = new Error(`Agnes ${model} lỗi ${status}`);
+      err.status = status;
+      throw err;
+    }
+
+    reader = res.body.getReader();
+    const dec = new TextDecoder('utf-8');
+    let buf = '';
+    let text = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split(/\r?\n/);
+      buf = lines.pop() || '';
+
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const data = t.slice(5).trim();
+        if (!data || data === '[DONE]') continue;
+
+        let parsed;
+        try { parsed = JSON.parse(data); } catch { continue; }
+
+        const deltaText = parsed.choices?.[0]?.delta?.content || '';
+        if (!deltaText) continue;
+
+        if (!claim()) return null;
+
+        text += deltaText;
+        arm(STREAM_IDLE_MS);
+        onChunk(normalizeChemistryText(text));
+      }
+    }
+
+    return { text: normalizeChemistryText(text.trim()), model };
+  } finally {
+    clearTimeout(stall);
+    reader?.cancel().catch(() => {});
+  }
+}
+
+/* ============================================================
+   PROVIDER CONFIG — thứ tự ưu tiên + fallback
+   ============================================================ */
+function getProviders(hasImage) {
+  const providers = [];
+
+  // Ảnh bắt buộc dùng Gemini (vision)
+  if (hasImage) {
+    if (GEMINI_KEY) providers.push({ id: 'gemini', models: GEMINI_VISION_MODELS, type: 'vision' });
+    return providers;
+  }
+
+  // Text: Agnes → Gemini → Groq (theo thứ tự ưu tiên)
+  if (AGNES_KEY)  providers.push({ id: 'agnes',  models: AGNES_MODELS,        type: 'text' });
+  if (GEMINI_KEY) providers.push({ id: 'gemini', models: GEMINI_TEXT_MODELS,  type: 'text' });
+  if (GROQ_KEY)   providers.push({ id: 'groq',   models: GROQ_STRONG_MODELS,  type: 'text' });
+
+  return providers;
+}
+
+/* ============================================================
+   HÀM CHÍNH — askAI (multi-provider, multi-fallback)
    ============================================================ */
 export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) {
   const activeSystemPrompt = customSystemPrompt || SYSTEM_PROMPT;
 
-  if (!GEMINI_KEY && !GROQ_KEY) {
-    return Promise.reject(new Error('Chưa cấu hình API key trong .env'));
+  if (!GEMINI_KEY && !GROQ_KEY && !AGNES_KEY) {
+    return Promise.reject(new Error('Chưa cấu hình API key nào trong .env'));
   }
   if (!Array.isArray(history) || history.length === 0) {
     return Promise.reject(new Error('Không có nội dung câu hỏi.'));
@@ -616,30 +704,31 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
   const lastUser = [...recent].reverse().find((m) => m.role === 'user');
   const hasImage = Boolean(lastUser?.parts?.some((p) => p.inlineData));
 
-  const useGemini = hasImage ? Boolean(GEMINI_KEY) : false;
-  const useGroq = !hasImage && Boolean(GROQ_KEY);
-
   if (hasImage && !GEMINI_KEY) {
     return Promise.reject(new Error(
-      'Cần cấu hình VITE_GEMINI_KEY trong .env để đọc ảnh. Groq không hỗ trợ vision.'
+      'Cần cấu hình VITE_GEMINI_KEY trong .env để đọc ảnh. Các AI khác không hỗ trợ vision.'
     ));
   }
 
-  const modelList = useGemini
-    ? GEMINI_VISION_MODELS
-    : (requestType === 'problem' || requestType === 'theory' ? GROQ_STRONG_MODELS : GROQ_FAST_MODELS);
+  const providers = getProviders(hasImage);
+  if (providers.length === 0) {
+    return Promise.reject(new Error('Không có AI provider nào khả dụng.'));
+  }
+
+  // Chuẩn bị payloads cho từng provider
+  const geminiContents = prepareGeminiContents(recent);
+  const messagesOpenAI = prepareOpenAIMessages(recent, activeSystemPrompt);
 
   let abortFn = null;
 
   const promise = new Promise((resolve, reject) => {
     const ctrls = [];
-    let next = 0;
-    let running = 0;
-    let winner = null;
     let finished = false;
     let lastError = null;
     let aborted = false;
-    let triedFallback = false;
+    let winner = null;
+    let providerIdx = 0;
+    let modelIdx = 0;
 
     const finish = (fn, value) => {
       if (finished) return;
@@ -660,87 +749,106 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
       finish(reject, new AbortError());
     };
 
-    const launchFallback = () => {
-      if (triedFallback || finished || aborted || hasImage || !GEMINI_KEY) return;
-      triedFallback = true;
-      console.log('[A7 Assistant] Fallback Groq → Gemini');
-      next = 0;
-      running = 0;
-      winner = null;
-      lastError = null;
-      setTimeout(launchGemini, 500);
-    };
-
-    const launchGroq = () => {
+    const launchNext = () => {
       if (finished || aborted || winner !== null) return;
-      if (next >= modelList.length) {
-        if (running === 0) {
-          if (!triedFallback && GEMINI_KEY) {
-            launchFallback();
-            return;
-          }
-          finish(reject, lastError || new Error('Tất cả model Groq đều thất bại.'));
-        }
+
+      // Đã hết tất cả provider + model?
+      if (providerIdx >= providers.length) {
+        finish(reject, lastError || new Error('Tất cả AI đều thất bại. Thử lại sau.'));
         return;
       }
-      if (running >= MAX_PARALLEL) return;
 
-      const i = next++;
-      const model = modelList[i];
+      const provider = providers[providerIdx];
+      const model = provider.models[modelIdx];
+
+      const i = ctrls.length;
       const ctrl = new AbortController();
       ctrls[i] = ctrl;
-      running++;
 
       const claim = () => {
         if (aborted) return false;
         if (winner === null) {
           winner = i;
           ctrls.forEach((c, j) => { if (j !== i) { try { c.abort(); } catch {} } });
-          console.log(`[A7 Assistant] ✓ Groq/${model}`);
+          console.log(`[A7 Assistant] ✓ ${provider.id}/${model}`);
         }
         return winner === i;
       };
 
-      streamGroq({
-        model,
-        messages: prepareGroqMessages(recent, activeSystemPrompt),
-        temperature,
-        maxTokens,
-        ctrl,
-        claim,
-        onChunk,
-      })
+      // Chọn stream function theo provider
+      let streamPromise;
+      if (provider.id === 'gemini') {
+        streamPromise = streamGemini({
+          model,
+          contents: geminiContents,
+          temperature,
+          maxTokens,
+          systemPrompt: activeSystemPrompt,
+          ctrl,
+          claim,
+          onChunk,
+        });
+      } else if (provider.id === 'groq') {
+        streamPromise = streamGroq({
+          model,
+          messages: messagesOpenAI,
+          temperature,
+          maxTokens,
+          ctrl,
+          claim,
+          onChunk,
+        });
+      } else if (provider.id === 'agnes') {
+        streamPromise = streamAgnes({
+          model,
+          messages: messagesOpenAI,
+          temperature,
+          maxTokens,
+          ctrl,
+          claim,
+          onChunk,
+        });
+      }
+
+      // Advance con trỏ trước khi chạy (để fallback tiếp theo biết vị trí)
+      const nextProviderIdx = providerIdx;
+      const nextModelIdx = modelIdx + 1;
+
+      streamPromise
         .then((r) => {
-          running--;
           if (aborted) return;
           if (r && winner === i && r.text) {
             onChunk(r.text);
-            finish(resolve, { text: r.text, reasoning: '', model: `groq/${model}`, requestType });
+            finish(resolve, {
+              text: r.text,
+              reasoning: '',
+              model: `${provider.id}/${model}`,
+              requestType,
+            });
           } else if (winner === i) {
-            finish(reject, new Error(`${model} không trả nội dung`));
+            finish(reject, new Error(`${provider.id}/${model} không trả nội dung`));
           } else {
-            lastError = lastError || new Error(`${model} không trả nội dung`);
-            launchGroq();
+            lastError = lastError || new Error(`${provider.id}/${model} không trả nội dung`);
+            advance();
           }
         })
         .catch((err) => {
-          running--;
-
           if (err?.isQuota) {
+            // Hết quota → chuyển ngay sang provider khác
             ctrls.forEach((c) => { try { c.abort(); } catch {} });
-            if (GEMINI_KEY && !triedFallback) {
-              launchFallback();
-              return;
+            if (winner === null) {
+              lastError = err;
+              advance(true);
             }
-            finish(reject, err);
             return;
           }
 
           if (err?.isOverload) {
+            // Quá tải → đợi 1s rồi thử model/provider khác
             if (winner === null) {
               lastError = err;
               setTimeout(() => {
-                if (!finished && !aborted && winner === null) launchGroq();
+                if (!finished && !aborted && winner === null) advance();
               }, RETRY_DELAY_MS);
             }
             return;
@@ -750,90 +858,29 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
             finish(reject, err instanceof Error ? err : new Error(String(err)));
           } else if (winner === null) {
             lastError = lastError || err;
-            launchGroq();
+            advance();
           }
         });
-    };
 
-    const launchGemini = () => {
-      if (finished || aborted || winner !== null) return;
-      if (next >= GEMINI_VISION_MODELS.length) {
-        if (running === 0) finish(reject, lastError || new Error('Tất cả model Gemini đều thất bại.'));
-        return;
-      }
-      if (running >= MAX_PARALLEL) return;
+      // Hàm advance để di chuyển sang model/provider tiếp theo
+      function advance(skipModel = false) {
+        if (finished || aborted || winner !== null) return;
 
-      const i = next++;
-      const model = hasImage
-        ? GEMINI_VISION_MODELS[i % GEMINI_VISION_MODELS.length]
-        : GEMINI_TEXT_MODELS[i % GEMINI_TEXT_MODELS.length];
-      const ctrl = new AbortController();
-      ctrls[i] = ctrl;
-      running++;
-
-      const claim = () => {
-        if (aborted) return false;
-        if (winner === null) {
-          winner = i;
-          ctrls.forEach((c, j) => { if (j !== i) { try { c.abort(); } catch {} } });
-          console.log(`[A7 Assistant] ✓ Gemini/${model}`);
+        if (!skipModel && nextModelIdx < provider.models.length) {
+          // Thử model tiếp theo của cùng provider
+          modelIdx = nextModelIdx;
+        } else {
+          // Chuyển sang provider tiếp theo
+          providerIdx = nextProviderIdx + 1;
+          modelIdx = 0;
         }
-        return winner === i;
-      };
 
-      streamGemini({
-        model,
-        contents: prepareGeminiContents(recent),
-        temperature,
-        maxTokens,
-        systemPrompt: activeSystemPrompt,
-        ctrl,
-        claim,
-        onChunk,
-      })
-        .then((r) => {
-          running--;
-          if (aborted) return;
-          if (r && winner === i && r.text) {
-            onChunk(r.text);
-            finish(resolve, { text: r.text, reasoning: '', model: `gemini/${model}`, requestType });
-          } else if (winner === i) {
-            finish(reject, new Error(`${model} không trả nội dung`));
-          } else {
-            lastError = lastError || new Error(`${model} không trả nội dung`);
-            launchGemini();
-          }
-        })
-        .catch((err) => {
-          running--;
-
-          if (err?.isQuota) {
-            ctrls.forEach((c) => { try { c.abort(); } catch {} });
-            finish(reject, err);
-            return;
-          }
-
-          if (err?.isOverload) {
-            if (winner === null) {
-              lastError = err;
-              setTimeout(() => {
-                if (!finished && !aborted && winner === null) launchGemini();
-              }, RETRY_DELAY_MS);
-            }
-            return;
-          }
-
-          if (winner === i) {
-            finish(reject, err instanceof Error ? err : new Error(String(err)));
-          } else if (winner === null) {
-            lastError = lastError || err;
-            launchGemini();
-          }
-        });
+        // Đợi 1 chút để tránh spam
+        setTimeout(launchNext, 200);
+      }
     };
 
-    if (useGemini) launchGemini();
-    else launchGroq();
+    launchNext();
   });
 
   promise.abort = () => { if (abortFn) abortFn(); };
@@ -842,7 +889,7 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
 }
 
 /* ============================================================
-   NÉN ẢNH
+   NÉN ẢNH — giữ nguyên của bạn
    ============================================================ */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
@@ -912,12 +959,16 @@ export async function compressImage(file) {
 
     const base64 = dataUrl.split(',')[1];
 
-    return { dataUrl, base64, mimeType, width, height, originalWidth: W, originalHeight: H, sizeKB: Math.round((dataUrl.length * 0.75) / 1024) };
+    return {
+      dataUrl, base64, mimeType, width, height,
+      originalWidth: W, originalHeight: H,
+      sizeKB: Math.round((dataUrl.length * 0.75) / 1024),
+    };
   } finally {
     cleanup();
   }
 }
 
-export const AI_READY = Boolean(GEMINI_KEY || GROQ_KEY);
+export const AI_READY = Boolean(GEMINI_KEY || GROQ_KEY || AGNES_KEY);
 export const VISION_SUPPORTED = Boolean(GEMINI_KEY);
-export { GROQ_TEXT_MODELS as MODELS, GEMINI_VISION_MODELS, GROQ_FAST_MODELS, GROQ_STRONG_MODELS };
+export { GROQ_STRONG_MODELS as MODELS, GEMINI_VISION_MODELS, GROQ_FAST_MODELS, GROQ_STRONG_MODELS, AGNES_MODELS };
