@@ -25,6 +25,10 @@ import FormulaLibrary from './FormulaLibrary.jsx';
 import { EXAMS } from './examData.js';
 import { FORMULAS } from './formulaData.js';
 import StudySheet from './StudySheet.jsx';
+import CompareModal from './CompareModal.jsx';
+import UpgradePrompt from './UpgradePrompt.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
+
 const STUDY_TOOLS = [
   { id: 'table', name: 'Bảng tuần hoàn', desc: 'Bảng tuần hoàn tương tác', Icon: IconAtom, tag: 'hot' },
   { id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
@@ -40,7 +44,9 @@ const STUDY_TOOLS = [
   { id: 'games', name: 'Trò chơi', desc: 'Giáo viên tự nhập câu hỏi', Icon: IconGamepad, tag: 'new' },
   { id: 'profile', name: 'Trang cá nhân', desc: 'Quản lý tài khoản, thống kê', Icon: IconUser },
 ];
+
 const TAG_LABEL = { hot: 'Hot', new: 'Mới' };
+
 const RAW_AI_DATA = `
 chat|Grok|grok.com|AI của xAI, có dữ liệu X (Twitter) thời gian thực
 chat|Microsoft Copilot|copilot.microsoft.com|Trợ lý AI của Microsoft, tích hợp Bing và Office
@@ -425,6 +431,7 @@ const Chevron = ({ open }) => (
     <path d="M6 9l6 6 6-6" />
   </svg>
 );
+
 export default function ToolsPage() {
   const [tab, setTab] = useState('docs');
   const [search, setSearch] = useState('');
@@ -440,7 +447,12 @@ export default function ToolsPage() {
   const [openHot, setOpenHot] = useState(null);
   const [toast, toastNode] = useToast();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const searchRef = useRef(null);
+
+  const { tier } = useAuth();
+  const isVip = tier?.key === 'vip';
 
   const switchTab = (t) => {
     setTab(t); setSearch(''); setActiveCat('all'); setActivePrice('all');
@@ -489,6 +501,7 @@ export default function ToolsPage() {
     }
     copyLink(tool);
   };
+
   const filteredAI = useMemo(() => {
     const q = norm(search.trim());
     let arr = AI_TOOLS.filter((t) => {
@@ -565,6 +578,7 @@ export default function ToolsPage() {
       </div>
     );
   };
+
   const renderAI = (tool, big = false) => {
     const Icon = CAT_ICONS[tool.cat];
     const isCompared = compare.some((x) => x.id === tool.id);
@@ -604,6 +618,7 @@ export default function ToolsPage() {
       </article>
     );
   };
+
   const renderCuai = (tool) => {
     const Icon = CAT_ICONS[tool.cat];
     return (
@@ -633,6 +648,7 @@ export default function ToolsPage() {
       </section>
     );
   };
+
   const renderHotRow = (tool) => {
     const Icon = CAT_ICONS[tool.cat];
     const open = openHot === tool.id;
@@ -906,14 +922,28 @@ export default function ToolsPage() {
             </>
           )}
 
+          {/* ================= GỢI Ý VIP KHI ĐANG CHỌN ================= */}
+          {compare.length >= 2 && !isVip && (
+            <p className="tc-note tc-note-vip" style={{ textAlign: 'center', marginBottom: '.4rem' }}>
+              💎 So sánh công cụ AI là tính năng <b>VIP</b>. Nâng cấp để mở khóa.
+            </p>
+          )}
+
           {/* ================= COMPARE BAR ================= */}
           <CompareBar
             items={compare}
             onRemove={(id) => setCompare((c) => c.filter((x) => x.id !== id))}
             onClear={() => setCompare([])}
             onOpen={(items) => {
-              toast(`Đang so sánh ${items.length} công cụ`);
-              setQuickView({ ...items[0], __compare: items });
+              if (items.length < 2) {
+                toast('Cần chọn ít nhất 2 công cụ để so sánh');
+                return;
+              }
+              if (!isVip) {
+                setShowUpgrade(true);
+                return;
+              }
+              setShowCompare(true);
             }}
           />
 
@@ -931,6 +961,26 @@ export default function ToolsPage() {
               CuaiLogo={AIMark}
             />
           )}
+
+          {/* ================= COMPARE MODAL (AI) ================= */}
+          {showCompare && compare.length >= 2 && isVip && (
+            <CompareModal
+              tools={compare}
+              onClose={() => setShowCompare(false)}
+            />
+          )}
+
+          {/* ================= UPGRADE PROMPT ================= */}
+          <UpgradePrompt
+            open={showUpgrade}
+            feature="So sánh công cụ AI"
+            onClose={() => setShowUpgrade(false)}
+            onUpgrade={() => {
+              setShowUpgrade(false);
+              try { localStorage.setItem('cs-profile-tab', 'upgrade'); } catch { /* */ }
+              window.location.hash = 'profile';
+            }}
+          />
 
           {toastNode}
 
