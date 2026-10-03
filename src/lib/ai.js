@@ -1,3 +1,5 @@
+import { trackRequest } from './apiTracker.js';
+
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || '';
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
@@ -70,7 +72,7 @@ const TOTAL_MS = 120000;
 const RETRY_DELAY_MS = 1000;
 
 /* ============================================================
-   SYSTEM PROMPT CHÍNH — A7 Assistant đa môn, tập trung Hóa
+   SYSTEM PROMPT CHÍNH
    ============================================================ */
 const SYSTEM_PROMPT = `
 Bạn là "A7 Assistant" — trợ lý học tập thông minh của lớp A7 K60 DTA, do Duy TK tạo.
@@ -114,14 +116,13 @@ CHUYÊN MÔN HÓA HỌC (TRỌNG TÂM)
 - Hữu cơ: đồng phân, danh pháp IUPAC, quy tắc Zaitsev/Markovnikov, phản ứng đặc trưng từng nhóm chức.
 - Điện hóa, điện phân (định luật Faraday), pin điện hóa.
 - Cân bằng hóa học, tốc độ phản ứng, pH, Ka/Kb.
-- Hóa phân tích, hóa lý cơ bản (nếu hỏi).
 
 HỖ TRỢ CÁC MÔN KHÁC
-- Toán: đại số, hình học, lượng giác, giải tích, xác suất — giải được hầu hết bài THPT.
-- Lý: cơ học, điện, quang, nhiệt, dao động, sóng — giải bài THPT.
-- Sinh: di truyền, sinh thái, tế bào, tiến hóa — giải thích và trả lời.
-- Văn: phân tích, cảm nhận, viết đoạn — hỗ trợ ở mức hướng dẫn.
-- Anh: ngữ pháp, từ vựng, dịch — giải thích và hướng dẫn.
+- Toán: đại số, hình học, lượng giác, giải tích, xác suất.
+- Lý: cơ học, điện, quang, nhiệt, dao động, sóng.
+- Sinh: di truyền, sinh thái, tế bào, tiến hóa.
+- Văn: phân tích, cảm nhận, viết đoạn.
+- Anh: ngữ pháp, từ vựng, dịch.
 - Sử, Địa, Tin: cung cấp thông tin và hướng dẫn khi được hỏi.
 
 PHƯƠNG PHÁP GIẢI (chọn cách nhanh nhất)
@@ -142,7 +143,7 @@ CÁCH TRẢ LỜI BÀI TẬP HÓA — CHỈ 3 PHẦN NGẮN:
 `;
 
 /* ============================================================
-   SYSTEM PROMPT CHO TÍNH NĂNG SO SÁNH CÔNG CỤ AI
+   SYSTEM PROMPT CHO TÍNH NĂNG SO SÁNH
    ============================================================ */
 export const COMPARE_SYSTEM_PROMPT = `
 Bạn là chuyên gia đánh giá công cụ AI hàng đầu, chuyên tư vấn cho người dùng Việt Nam.
@@ -384,6 +385,9 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
 
     const url = `${GEMINI_BASE}/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
 
+    // 📊 Track request
+    trackRequest('gemini');
+
     const res = await fetch(url, {
       method: 'POST',
       signal: ctrl.signal,
@@ -405,6 +409,11 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
       const status = res.status;
       const body = await res.text().catch(() => '');
       console.warn(`[A7 Assistant] ✗ Gemini/${model} → ${status}`, body.slice(0, 200));
+
+      // 📊 Track lỗi
+      if (status === 429 || status === 503 || status === 500) {
+        trackRequest('gemini', true);
+      }
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
       if (status === 503 || status === 502 || status === 504) {
@@ -498,6 +507,9 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
       body.reasoning_effort = 'medium';
     }
 
+    // 📊 Track request
+    trackRequest('groq');
+
     const res = await fetch(`${GROQ_BASE}/chat/completions`, {
       method: 'POST',
       signal: ctrl.signal,
@@ -512,6 +524,11 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
       const status = res.status;
       const bodyText = await res.text().catch(() => '');
       console.warn(`[A7 Assistant] ✗ Groq/${model} → ${status}`, bodyText.slice(0, 200));
+
+      // 📊 Track lỗi
+      if (status === 429 || status === 503 || status === 500) {
+        trackRequest('groq', true);
+      }
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
       if (status === 503 || status === 502 || status === 504 || status === 500) {
@@ -575,7 +592,6 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
 
 /* ============================================================
    HÀM CHÍNH — askAI
-   Signature: askAI(history, onChunk, onReasoning, customSystemPrompt)
    ============================================================ */
 export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) {
   const activeSystemPrompt = customSystemPrompt || SYSTEM_PROMPT;

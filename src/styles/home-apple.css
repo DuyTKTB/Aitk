@@ -1,0 +1,1977 @@
+/* ============================================================
+   HOME APPLE — Glassmorphism Apple Vision Pro
+   Import SAU TẤT CẢ các file home-*.css trong main.jsx:
+   
+   import './styles/home-plus.css';
+   import './styles/home-apple.css';   ← thêm dòng này CUỐI
+   ============================================================ */
+
+/* ============================================================
+   1. TOKENS + AMBIENT BACKGROUND
+   ============================================================ */
+:root {
+  --h-glass: rgba(255, 255, 255, .48);
+  --h-glass-strong: rgba(255, 255, 255, .72);
+  --h-glass-hover: rgba(255, 255, 255, .85);
+  --h-glass-border: rgba(255, 255, 255, .65);
+  --h-line-1: color-mix(in srgb, var(--ink) 8%, transparent);
+  --h-line-2: color-mix(in srgb, var(--ink) 14%, transparent);
+  --h-shadow-1: 0 1px 2px rgba(0, 0, 0, .03);
+  --h-shadow-2: 0 1px 2px rgba(0, 0, 0, .03), 0 8px 24px -8px rgba(0, 0, 0, .08);
+  --h-shadow-3: 0 1px 2px rgba(0, 0, 0, .03), 0 12px 32px -12px rgba(0, 0, 0, .12);
+  --h-shadow-hover: 0 1px 2px rgba(0, 0, 0, .04), 0 16px 40px -12px rgba(0, 0, 0, .16);
+  --h-inset: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --h-blur: blur(24px) saturate(180%);
+}
+
+[data-theme='dark'] {
+  --h-glass: rgba(255, 255, 255, .05);
+  --h-glass-strong: rgba(255, 255, 255, .08);
+  --h-glass-hover: rgba(255, 255, 255, .12);
+  --h-glass-border: rgba(255, 255, 255, .1);
+  --h-inset: inset 0 1px 0 rgba(255, 255, 255, .06);
+  --h-shadow-hover: 0 1px 2px rgba(0, 0, 0, .2), 0 16px 40px -12px rgba(0, 0, 0, .4);
+}
+
+/* Ambient gradient toàn trang */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 18%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 14%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #22d3ee 12%, transparent),
+      transparent 60%);
+  opacity: .9;
+}
+
+[data-theme='dark'] body::before {
+  opacity: 1;
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 12%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 8%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #0891b2 8%, transparent),
+      transparent 60%);
+}
+
+/* ============================================================
+   2. HERO — Glass panel + Ambient glow
+   ============================================================ */
+.hm-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 4rem 1.25rem 3rem;
+  margin-bottom: 2rem;
+}
+
+.hm-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(50% 40% at 20% 30%,
+      color-mix(in srgb, #3b82f6 20%, transparent),
+      transparent 60%),
+    radial-gradient(40% 35% at 80% 70%,
+      color-mix(in srgb, #8b5cf6 16%, transparent),
+      transparent 60%);
+  opacity: .5;
+}
+
+.hm-hero-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 50% 100%,
+      color-mix(in srgb, #22d3ee 12%, transparent),
+      transparent 60%);
+}
+
+.hm-hero-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Badge */
+.hm-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .55rem !important;
+  padding: .5rem 1rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  font: 500 .82rem var(--sans) !important;
+  color: var(--mut) !important;
+  margin: 0 0 1.5rem !important;
+}
+
+.hm-badge-dot {
+  display: grid !important;
+  place-items: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #4d86ff, #8b5cf6) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 6px -1px rgba(77, 134, 255, .5) !important;
+}
+
+/* Title */
+.hm-h1 {
+  font: 600 clamp(2.4rem, 6vw, 4.5rem)/1.05 var(--sans) !important;
+  letter-spacing: -.045em !important;
+  color: var(--ink) !important;
+  margin: 0 0 1.5rem !important;
+  text-transform: none !important;
+}
+
+.hm-lead {
+  font: 400 1.1rem/1.65 var(--sans) !important;
+  color: var(--mut) !important;
+  margin: 0 0 2rem !important;
+  max-width: 560px !important;
+}
+
+/* Ask box — Glass input */
+.hm-ask {
+  position: relative !important;
+  max-width: 620px !important;
+  padding: 1rem 1.15rem .65rem !important;
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 22px !important;
+  box-shadow:
+    var(--h-inset),
+    0 1px 2px rgba(0, 0, 0, .03),
+    0 12px 40px -12px rgba(0, 0, 0, .12) !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+  margin-bottom: 1rem !important;
+}
+
+.hm-ask:focus-within {
+  border-color: color-mix(in srgb, var(--acc) 50%, var(--h-glass-border)) !important;
+  box-shadow:
+    var(--h-inset),
+    0 0 0 4px color-mix(in srgb, var(--acc) 12%, transparent),
+    0 16px 48px -12px color-mix(in srgb, var(--acc) 30%, transparent) !important;
+}
+
+.hm-ask textarea {
+  width: 100% !important;
+  background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  resize: none !important;
+  font: 500 1.05rem/1.5 var(--sans) !important;
+  color: var(--ink) !important;
+  padding: .35rem .25rem !important;
+  min-height: 56px !important;
+  box-shadow: none !important;
+}
+
+.hm-ask textarea::placeholder {
+  color: var(--mut) !important;
+  opacity: .7 !important;
+}
+
+.hm-ask-bar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: .6rem !important;
+  padding-top: .5rem !important;
+}
+
+.hm-ask-left {
+  display: flex !important;
+  gap: .4rem !important;
+  align-items: center !important;
+}
+
+.hm-ask-btn {
+  display: grid !important;
+  place-items: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--h-inset) !important;
+  color: var(--ink) !important;
+  cursor: pointer !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+.hm-ask-btn:hover {
+  background: var(--h-glass-hover) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+}
+
+.hm-ask select {
+  height: 36px !important;
+  padding: 0 2rem 0 .85rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--h-inset) !important;
+  color: var(--ink) !important;
+  font: 500 .82rem var(--sans) !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  outline: 0 !important;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right .7rem center;
+}
+
+.hm-ask select:focus {
+  border-color: var(--acc) !important;
+  box-shadow:
+    var(--h-inset),
+    0 0 0 3px color-mix(in srgb, var(--acc) 15%, transparent) !important;
+}
+
+.hm-ask-send {
+  display: grid !important;
+  place-items: center !important;
+  width: 42px !important;
+  height: 42px !important;
+  padding: 0 !important;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .5) !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+.hm-ask-send:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow:
+    var(--h-inset),
+    0 8px 20px -6px rgba(31, 79, 230, .6) !important;
+}
+
+.hm-ask-send:disabled {
+  opacity: .45 !important;
+  cursor: not-allowed !important;
+}
+
+/* Quick prompts */
+.hm-quick {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.hm-quick button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .45rem !important;
+  padding: .55rem 1rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 500 .8rem var(--sans) !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+}
+
+.hm-quick button:hover {
+  background: var(--h-glass-hover) !important;
+  color: var(--ink) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+}
+
+/* Meta info */
+.hm-meta {
+  display: flex !important;
+  gap: 1.5rem !important;
+  flex-wrap: wrap !important;
+  padding: 1.25rem 0 0 !important;
+  margin: 0 !important;
+  border-top: 1px solid var(--h-line-1) !important;
+  font: 500 .82rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.hm-meta > span {
+  display: inline-flex !important;
+  align-items: baseline !important;
+  gap: .35rem !important;
+}
+
+.hm-meta > span b {
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+}
+
+/* ============================================================
+   3. MASCOT + CHIPS — Glass chips
+   ============================================================ */
+.hero-mascot {
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+.hero-mascot-ring {
+  position: absolute !important;
+  inset: 3% !important;
+  border: 1px dashed var(--h-line-2) !important;
+  border-radius: 50% !important;
+  animation: hx-spin 60s linear infinite !important;
+}
+
+.hero-mascot-ring.r2 {
+  inset: 15% !important;
+  animation-duration: 42s !important;
+  animation-direction: reverse !important;
+}
+
+@keyframes hx-spin { to { transform: rotate(360deg); } }
+
+.hx-bubble {
+  position: absolute !important;
+  top: -20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  max-width: 240px !important;
+  padding: .65rem 1rem !important;
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-2) !important;
+  font: 500 .8rem/1.45 var(--sans) !important;
+  color: var(--ink) !important;
+  text-align: center !important;
+  z-index: 4 !important;
+}
+
+.hx-bubble::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 50% !important;
+  bottom: -7px !important;
+  transform: translateX(-50%) rotate(45deg) !important;
+  width: 12px !important;
+  height: 12px !important;
+  background: var(--h-glass-strong) !important;
+  border-right: 1px solid var(--h-glass-border) !important;
+  border-bottom: 1px solid var(--h-glass-border) !important;
+}
+
+.hx-chip {
+  position: absolute !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 52px !important;
+  height: 52px !important;
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  font: 600 1rem var(--sans) !important;
+  color: var(--ink) !important;
+  animation: hx-float 6s ease-in-out infinite !important;
+  animation-delay: var(--d, 0s) !important;
+}
+
+.hx-chip small {
+  position: absolute !important;
+  top: 4px !important;
+  left: 6px !important;
+  font: 500 .58rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.hx-chip.acc {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow:
+    var(--h-inset),
+    0 8px 20px -6px rgba(31, 79, 230, .5) !important;
+}
+
+.hx-chip.acc small { color: rgba(255, 255, 255, .75) !important; }
+
+@keyframes hx-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-12px) rotate(3deg); }
+}
+
+/* ============================================================
+   4. STACK CARDS — Glass sections
+   ============================================================ */
+.stack-cards {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+  max-width: 1280px !important;
+  margin: 2rem auto 4rem !important;
+  padding: 0 1.25rem !important;
+}
+
+.stack-card {
+  position: relative !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 2.5rem 2.5rem !important;
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    var(--h-inset),
+    0 1px 2px rgba(0, 0, 0, .03),
+    0 16px 48px -20px rgba(0, 0, 0, .12) !important;
+  transition: all .3s cubic-bezier(.32, .72, 0, 1) !important;
+  transform: translateZ(0) !important;
+}
+
+.stack-card:hover {
+  box-shadow:
+    var(--h-inset),
+    0 1px 2px rgba(0, 0, 0, .04),
+    0 24px 64px -24px rgba(0, 0, 0, .18) !important;
+}
+
+@media (max-width: 720px) {
+  .stack-card {
+    padding: 1.5rem 1.25rem !important;
+    border-radius: 22px !important;
+  }
+}
+
+.hm-stack-in {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   5. HEAD — Section header
+   ============================================================ */
+.hm-head {
+  display: grid !important;
+  grid-template-columns: 1.2fr 1fr !important;
+  gap: 2rem !important;
+  align-items: end !important;
+  margin-bottom: 2rem !important;
+  padding-bottom: 1.5rem !important;
+  border-bottom: 1px solid var(--h-line-1) !important;
+}
+
+@media (max-width: 720px) {
+  .hm-head {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+.hm-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  padding: .35rem .85rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset) !important;
+  font: 500 .72rem var(--sans) !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+  margin-bottom: .8rem !important;
+}
+
+.hm-tag i {
+  display: grid !important;
+  place-items: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  font: 600 .7rem var(--sans) !important;
+  font-style: normal !important;
+  box-shadow: 0 2px 6px -1px rgba(31, 79, 230, .5) !important;
+}
+
+.hm-h2 {
+  font: 600 clamp(1.75rem, 4vw, 2.75rem)/1.1 var(--sans) !important;
+  letter-spacing: -.035em !important;
+  color: var(--ink) !important;
+  margin: 0 !important;
+  text-transform: none !important;
+}
+
+.hm-sublead {
+  font: 400 1rem/1.65 var(--sans) !important;
+  color: var(--mut) !important;
+  margin: 0 !important;
+  max-width: 42ch !important;
+}
+
+/* ============================================================
+   6. STEPS
+   ============================================================ */
+.hm-steps {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 1.25rem !important;
+}
+
+@media (max-width: 720px) {
+  .hm-steps { grid-template-columns: 1fr !important; }
+}
+
+.hm-step {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .8rem !important;
+  padding: 1.5rem 1.5rem 1.25rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+  overflow: hidden !important;
+}
+
+.hm-step:hover {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--h-glass-border)) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-hover) !important;
+}
+
+.hm-step-n {
+  display: grid !important;
+  place-items: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  font: 600 1rem var(--sans) !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .5) !important;
+  margin-bottom: .5rem !important;
+}
+
+.hm-step h3 {
+  margin: 0 !important;
+  font: 600 1.4rem var(--sans) !important;
+  letter-spacing: -.025em !important;
+  color: var(--ink) !important;
+  text-transform: none !important;
+}
+
+.hm-step p {
+  margin: 0 !important;
+  font: 400 .9rem/1.6 var(--sans) !important;
+  color: var(--mut) !important;
+  flex: 1 !important;
+}
+
+.hm-step-cta {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .4rem !important;
+  padding-top: 1rem !important;
+  margin-top: .5rem !important;
+  border-top: 1px solid var(--h-line-1) !important;
+  font: 500 .82rem var(--sans) !important;
+  color: var(--acc) !important;
+  transition: gap .2s !important;
+}
+
+.hm-step:hover .hm-step-cta { gap: .65rem !important; }
+
+/* ============================================================
+   7. PANELS / FEATURED
+   ============================================================ */
+.hm-panel {
+  padding: 1.5rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+}
+
+.featured-table {
+  padding: 1.5rem !important;
+}
+
+.hm-more {
+  margin: 1.5rem 0 0 !important;
+  text-align: center !important;
+}
+
+/* ============================================================
+   8. STATS
+   ============================================================ */
+.hm-wrap {
+  max-width: 1280px !important;
+  margin: 0 auto !important;
+  padding: 0 1.25rem !important;
+}
+
+.hm-stats {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1rem !important;
+  margin: 3rem 0 !important;
+}
+
+@media (max-width: 720px) {
+  .hm-stats { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+.hm-stat {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .35rem !important;
+  padding: 1.75rem 1.5rem !important;
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-2) !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.hm-stat::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--acc) 25%, transparent),
+    transparent 70%);
+  pointer-events: none;
+  opacity: .6;
+  transition: transform .6s var(--ease);
+}
+
+.hm-stat:hover {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--h-glass-border)) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-hover) !important;
+}
+
+.hm-stat:hover::before {
+  transform: scale(1.3);
+}
+
+.hm-stat-num {
+  font: 600 clamp(2.2rem, 4vw, 3rem)/1 var(--sans) !important;
+  letter-spacing: -.04em !important;
+  color: var(--ink) !important;
+  font-variant-numeric: tabular-nums !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.hm-stat-label {
+  font: 500 .82rem var(--sans) !important;
+  color: var(--ink) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.hm-stat-sub {
+  font: 400 .75rem var(--sans) !important;
+  color: var(--mut) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* ============================================================
+   9. QUOTES
+   ============================================================ */
+.hm-section {
+  padding: 2rem 1.25rem !important;
+  margin: 0 auto !important;
+}
+
+.fx-quote {
+  position: relative !important;
+  padding: 2.5rem 2.5rem 2rem !important;
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-2) !important;
+}
+
+.fx-quote-mark {
+  position: absolute !important;
+  top: -.5rem !important;
+  left: 1.5rem !important;
+  font: 700 5rem/1 var(--serif, serif) !important;
+  color: var(--acc) !important;
+  opacity: .15 !important;
+}
+
+.fx-quote-text {
+  font: italic 400 clamp(1.1rem, 2vw, 1.35rem)/1.55 var(--serif, serif) !important;
+  color: var(--ink) !important;
+  margin: 0 0 1.5rem !important;
+  letter-spacing: -.01em !important;
+}
+
+.fx-quote footer {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .15rem !important;
+  padding-top: 1.25rem !important;
+  border-top: 1px solid var(--h-line-1) !important;
+}
+
+.fx-quote footer b {
+  font: 600 .9rem var(--sans) !important;
+  color: var(--ink) !important;
+}
+
+.fx-quote footer span {
+  font: 400 .8rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.fx-quote-tabs {
+  display: flex !important;
+  gap: .5rem !important;
+  margin-top: 1.5rem !important;
+  flex-wrap: wrap !important;
+}
+
+.fx-quote-tabs button {
+  position: relative !important;
+  padding: .5rem 1rem !important;
+  background: var(--h-glass) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 500 .78rem var(--sans) !important;
+  transition: all .2s !important;
+  overflow: hidden !important;
+}
+
+.fx-quote-tabs button.on {
+  background: var(--h-glass-hover) !important;
+  color: var(--ink) !important;
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--h-glass-border)) !important;
+}
+
+/* ============================================================
+   10. CTA GRID — Glass cards
+   ============================================================ */
+.cta-grid {
+  max-width: 1280px !important;
+  margin: 4rem auto 6rem !important;
+  padding: 0 1.25rem !important;
+}
+
+.cta-side {
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-2) !important;
+  padding: 1.75rem 1.5rem !important;
+  transition: all .3s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+.cta-side:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-hover) !important;
+}
+
+.cta-side-head h3 {
+  font: 600 1.15rem var(--sans) !important;
+  color: var(--ink) !important;
+  letter-spacing: -.02em !important;
+}
+
+.cta-side-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 40px !important;
+  height: 26px !important;
+  padding: 0 .6rem !important;
+  background: linear-gradient(180deg, #fbbf24, #f59e0b) !important;
+  border-radius: 8px !important;
+  color: #111 !important;
+  font: 600 .7rem var(--sans) !important;
+  letter-spacing: .04em !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px rgba(245, 158, 11, .5) !important;
+}
+
+.cta-side-badge.heart {
+  background: linear-gradient(180deg, #f87171, #ef4444) !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px rgba(239, 68, 68, .5) !important;
+  font-size: .95rem !important;
+}
+
+.cta-side-desc {
+  font: 400 .88rem/1.6 var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.vip-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 0 1.25rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .5rem !important;
+}
+
+.vip-list li {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: .5rem !important;
+  font: 500 .85rem/1.45 var(--sans) !important;
+  color: var(--ink) !important;
+}
+
+.qr-box {
+  padding: 1rem !important;
+  background: #fff !important;
+  border-radius: 18px !important;
+  box-shadow:
+    var(--h-inset),
+    0 8px 24px -8px rgba(0, 0, 0, .12) !important;
+}
+
+.cta-grid .cta-card {
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    var(--h-inset),
+    0 24px 60px -20px rgba(0, 0, 0, .15) !important;
+  padding: 3rem 2rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+/* ============================================================
+   11. HP-* COMPONENTS (HomePlus)
+   ============================================================ */
+
+/* Tiles (Today section) */
+.hp-tiles {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+@media (max-width: 720px) {
+  .hp-tiles { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+.hp-tile {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .35rem !important;
+  padding: 1.4rem 1.35rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  overflow: hidden !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+.hp-tile:hover {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--h-glass-border)) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-hover) !important;
+}
+
+.hp-tile-l {
+  font: 500 .72rem var(--sans) !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.hp-tile-v {
+  font: 600 clamp(1.6rem, 3vw, 2.2rem)/1 var(--sans) !important;
+  letter-spacing: -.03em !important;
+  color: var(--ink) !important;
+  display: flex !important;
+  align-items: baseline !important;
+  gap: .35rem !important;
+}
+
+.hp-tile-v small {
+  font: 500 .85rem var(--sans) !important;
+  color: var(--mut) !important;
+  letter-spacing: 0 !important;
+}
+
+.hp-tile-s {
+  font: 400 .78rem var(--sans) !important;
+  color: var(--mut) !important;
+  line-height: 1.45 !important;
+}
+
+/* Continue bar */
+.hp-continue {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .75rem !important;
+  padding: .75rem 1.25rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset) !important;
+  text-decoration: none !important;
+  color: var(--ink) !important;
+  transition: all .2s !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.hp-continue:hover {
+  background: var(--h-glass-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Daily challenge card */
+.hp-daily {
+  padding: 1.75rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  transition: all .25s !important;
+}
+
+.hp-daily:hover {
+  background: var(--h-glass-hover) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-2) !important;
+}
+
+.hp-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  padding: .35rem .85rem !important;
+  background: var(--h-glass-strong) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset) !important;
+  font: 500 .7rem var(--sans) !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.hp-q {
+  font: 500 1.2rem/1.4 var(--sans) !important;
+  letter-spacing: -.02em !important;
+  color: var(--ink) !important;
+  margin: 1rem 0 !important;
+}
+
+.hp-opts {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: .6rem !important;
+  margin-bottom: 1rem !important;
+}
+
+@media (max-width: 480px) {
+  .hp-opts { grid-template-columns: 1fr !important; }
+}
+
+.hp-opt {
+  display: flex !important;
+  align-items: center !important;
+  gap: .7rem !important;
+  padding: .85rem 1rem !important;
+  background: var(--h-glass-strong) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--h-inset) !important;
+  color: var(--ink) !important;
+  cursor: pointer !important;
+  font: 500 .9rem var(--sans) !important;
+  text-align: left !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+}
+
+.hp-opt i {
+  display: grid !important;
+  place-items: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  background: var(--h-glass) !important;
+  border-radius: 8px !important;
+  font: 600 .8rem var(--sans) !important;
+  color: var(--mut) !important;
+  font-style: normal !important;
+  flex-shrink: 0 !important;
+}
+
+.hp-opt:hover:not(:disabled) {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 40%, var(--h-glass-border)) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+}
+
+.hp-opt.ok {
+  background: linear-gradient(180deg, #4ade80, #22c55e) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px rgba(34, 197, 94, .5) !important;
+}
+
+.hp-opt.ok i {
+  background: rgba(255, 255, 255, .25) !important;
+  color: #fff !important;
+}
+
+.hp-opt.bad {
+  background: linear-gradient(180deg, #f87171, #ef4444) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}
+
+.hp-opt.bad i {
+  background: rgba(255, 255, 255, .25) !important;
+  color: #fff !important;
+}
+
+.hp-opt.dim {
+  opacity: .5 !important;
+}
+
+/* Element of day */
+.hp-eod {
+  padding: 1.75rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  transition: all .25s !important;
+}
+
+.hp-eod:hover {
+  background: var(--h-glass-hover) !important;
+  box-shadow: var(--h-inset), var(--h-shadow-2) !important;
+}
+
+.hp-eod-body {
+  display: flex !important;
+  gap: 1.25rem !important;
+  align-items: center !important;
+  margin: 1rem 0 !important;
+}
+
+.hp-cell {
+  display: grid !important;
+  place-items: center !important;
+  width: 84px !important;
+  height: 84px !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--t) 90%, #fff),
+    var(--t)) !important;
+  border-radius: 16px !important;
+  color: #111 !important;
+  box-shadow:
+    var(--h-inset),
+    0 8px 20px -6px color-mix(in srgb, var(--t) 50%, transparent) !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+
+.hp-cell small {
+  position: absolute !important;
+  top: 6px !important;
+  left: 8px !important;
+  font: 600 .7rem var(--sans) !important;
+  opacity: .7 !important;
+}
+
+.hp-cell b {
+  font: 700 2.2rem var(--sans) !important;
+  letter-spacing: -.04em !important;
+  line-height: 1 !important;
+}
+
+.hp-cell em {
+  position: absolute !important;
+  bottom: 6px !important;
+  font: 500 .62rem var(--sans) !important;
+  font-style: normal !important;
+  opacity: .7 !important;
+}
+
+/* Bento tools */
+.hp-bento {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1rem !important;
+}
+
+@media (max-width: 1024px) {
+  .hp-bento { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+@media (max-width: 640px) {
+  .hp-bento { grid-template-columns: 1fr !important; }
+}
+
+.hp-bt {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .9rem !important;
+  padding: 1.35rem 1.25rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+  overflow: hidden !important;
+}
+
+.hp-bt:hover {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--t, var(--acc)) 40%, var(--h-glass-border)) !important;
+  transform: translateY(-4px) !important;
+  box-shadow:
+    var(--h-inset),
+    0 16px 40px -12px color-mix(in srgb, var(--t, var(--acc)) 35%, transparent) !important;
+}
+
+.hp-bt.ai { grid-column: span 2 !important; }
+.hp-bt.games { grid-column: span 2 !important; }
+
+@media (max-width: 640px) {
+  .hp-bt.ai, .hp-bt.games { grid-column: span 1 !important; }
+}
+
+.hp-bt-link {
+  display: flex !important;
+  align-items: center !important;
+  gap: .9rem !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.hp-bt-ico {
+  display: grid !important;
+  place-items: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--t, var(--acc)) 90%, #fff),
+    var(--t, var(--acc))) !important;
+  border-radius: 12px !important;
+  color: #111 !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px color-mix(in srgb, var(--t, var(--acc)) 50%, transparent) !important;
+  flex-shrink: 0 !important;
+}
+
+.hp-bt-txt {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .15rem !important;
+}
+
+.hp-bt-txt b {
+  font: 600 1rem var(--sans) !important;
+  letter-spacing: -.015em !important;
+  color: var(--ink) !important;
+}
+
+.hp-bt-txt small {
+  font: 400 .78rem var(--sans) !important;
+  color: var(--mut) !important;
+  line-height: 1.4 !important;
+}
+
+.hp-bt-go {
+  color: var(--mut) !important;
+  flex-shrink: 0 !important;
+  transition: all .2s !important;
+}
+
+.hp-bt:hover .hp-bt-go {
+  color: var(--acc) !important;
+  transform: translate(2px, -2px) !important;
+}
+
+/* More tools */
+.hp-more-tools {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .5rem !important;
+  margin-top: 1.5rem !important;
+  padding-top: 1.5rem !important;
+  border-top: 1px solid var(--h-line-1) !important;
+}
+
+.hp-more-tools a {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .4rem !important;
+  padding: .5rem 1rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--h-inset) !important;
+  color: var(--mut) !important;
+  text-decoration: none !important;
+  font: 500 .8rem var(--sans) !important;
+  transition: all .2s !important;
+}
+
+.hp-more-tools a:hover {
+  background: var(--h-glass-hover) !important;
+  color: var(--ink) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Lab box */
+.hp-lab-box {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 2rem !important;
+  align-items: center !important;
+  padding: 2rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+}
+
+@media (max-width: 720px) {
+  .hp-lab-box {
+    grid-template-columns: 1fr !important;
+    padding: 1.25rem !important;
+  }
+}
+
+.hp-beaker {
+  display: grid !important;
+  place-items: center !important;
+  padding: 1rem !important;
+}
+
+.hp-beaker svg {
+  max-width: 260px !important;
+  height: auto !important;
+}
+
+/* Road */
+.hp-road {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+}
+
+.hp-tabs {
+  display: inline-flex !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--h-inset) !important;
+  align-self: flex-start !important;
+  overflow-x: auto !important;
+  max-width: 100% !important;
+  scrollbar-width: none !important;
+}
+
+.hp-tabs::-webkit-scrollbar { display: none !important; }
+
+.hp-tabs button {
+  padding: .55rem 1rem !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 500 .85rem var(--sans) !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  white-space: nowrap !important;
+  font-family: inherit !important;
+}
+
+.hp-tabs button:hover { color: var(--ink) !important; }
+
+.hp-tabs button.on {
+  background: var(--h-glass-strong) !important;
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .06),
+    inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+}
+
+/* Community */
+.hp-comm {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1.25rem !important;
+}
+
+@media (max-width: 720px) {
+  .hp-comm { grid-template-columns: 1fr !important; }
+}
+
+.hp-board, .hp-log {
+  padding: 1.75rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+}
+
+.hp-board h3, .hp-log h3 {
+  font: 600 1.1rem var(--sans) !important;
+  letter-spacing: -.02em !important;
+  color: var(--ink) !important;
+  margin: 0 0 1.25rem !important;
+}
+
+/* FAQ */
+.hp-faq {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .6rem !important;
+}
+
+.hp-faq details {
+  padding: 1.15rem 1.35rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--h-inset) !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  overflow: hidden !important;
+}
+
+.hp-faq details:hover {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 25%, var(--h-glass-border)) !important;
+}
+
+.hp-faq details[open] {
+  border-color: color-mix(in srgb, var(--acc) 40%, var(--h-glass-border)) !important;
+  box-shadow:
+    var(--h-inset),
+    0 0 0 3px color-mix(in srgb, var(--acc) 10%, transparent) !important;
+}
+
+.hp-faq summary {
+  cursor: pointer !important;
+  list-style: none !important;
+  font: 500 1rem var(--sans) !important;
+  color: var(--ink) !important;
+  padding-right: 2rem !important;
+  position: relative !important;
+}
+
+.hp-faq summary::-webkit-details-marker { display: none !important; }
+
+.hp-faq summary::after {
+  content: '+' !important;
+  position: absolute !important;
+  right: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: var(--h-glass-strong) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 50% !important;
+  color: var(--mut) !important;
+  font: 400 1.1rem var(--sans) !important;
+  transition: transform .2s !important;
+}
+
+.hp-faq details[open] summary::after {
+  content: '−' !important;
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+  border-color: transparent !important;
+}
+
+.hp-faq details p {
+  margin: .85rem 0 0 !important;
+  font: 400 .92rem/1.65 var(--sans) !important;
+  color: var(--mut) !important;
+  padding-top: .85rem !important;
+  border-top: 1px solid var(--h-line-1) !important;
+}
+
+/* Everyday section */
+.hp-ed {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1rem !important;
+}
+
+@media (max-width: 1024px) {
+  .hp-ed { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+@media (max-width: 640px) {
+  .hp-ed { grid-template-columns: 1fr !important; }
+}
+
+.hp-ed-c {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .5rem !important;
+  padding: 1.5rem 1.35rem 1.25rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+  overflow: hidden !important;
+}
+
+.hp-ed-c:hover {
+  background: var(--h-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--t, var(--acc)) 40%, var(--h-glass-border)) !important;
+  transform: translateY(-4px) !important;
+  box-shadow:
+    var(--h-inset),
+    0 16px 40px -12px color-mix(in srgb, var(--t, var(--acc)) 35%, transparent) !important;
+}
+
+.hp-ed-c .sym {
+  display: grid !important;
+  place-items: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--t, var(--acc)) 90%, #fff),
+    var(--t, var(--acc))) !important;
+  border-radius: 12px !important;
+  color: #111 !important;
+  font: 700 1.1rem var(--sans) !important;
+  box-shadow:
+    var(--h-inset),
+    0 4px 12px -4px color-mix(in srgb, var(--t, var(--acc)) 50%, transparent) !important;
+}
+
+.hp-ed-c small {
+  font: 500 .68rem var(--sans) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .1em !important;
+  color: var(--mut) !important;
+}
+
+.hp-ed-c b {
+  font: 600 1rem/1.35 var(--sans) !important;
+  letter-spacing: -.015em !important;
+  color: var(--ink) !important;
+}
+
+.hp-ed-c p {
+  font: 400 .82rem/1.5 var(--sans) !important;
+  color: var(--mut) !important;
+  margin: 0 !important;
+  flex: 1 !important;
+}
+
+.hp-ed-c .go {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  font: 500 .78rem var(--sans) !important;
+  color: var(--acc) !important;
+  padding-top: .6rem !important;
+  margin-top: .4rem !important;
+  border-top: 1px solid var(--h-line-1) !important;
+}
+
+/* ============================================================
+   12. WORD MARQUEE — Glass
+   ============================================================ */
+.hp-words {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+  padding: 2.5rem 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent) !important;
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent) !important;
+}
+
+.hp-words-row {
+  display: flex !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+.hp-words-row > div {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2.5rem !important;
+  animation: hp-words-marquee 50s linear infinite !important;
+}
+
+.hp-words-row.rev > div {
+  animation-direction: reverse !important;
+  animation-duration: 55s !important;
+}
+
+.hp-words-row span {
+  font: 600 clamp(2rem, 5vw, 4rem)/1 var(--sans) !important;
+  letter-spacing: -.045em !important;
+  color: var(--ink) !important;
+  transition: all .3s !important;
+}
+
+.hp-words-row span.o {
+  color: transparent !important;
+  -webkit-text-stroke: 2px color-mix(in srgb, var(--ink) 30%, transparent) !important;
+}
+
+.hp-words-row i {
+  color: var(--acc) !important;
+  font-style: normal !important;
+  font-size: 1.5rem !important;
+  opacity: .5 !important;
+}
+
+@keyframes hp-words-marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* Element marquee */
+.hp-marq {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+  padding: 2rem 0 !important;
+  overflow: hidden !important;
+}
+
+.hp-marq-row {
+  display: flex !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+.hp-marq-row > div {
+  display: flex !important;
+  gap: 1rem !important;
+  animation: hp-marq-scroll 60s linear infinite !important;
+}
+
+.hp-marq-row.rev > div {
+  animation-direction: reverse !important;
+  animation-duration: 65s !important;
+}
+
+.hp-mchip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .65rem !important;
+  padding: .85rem 1.25rem !important;
+  background: var(--h-glass) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--h-inset), var(--h-shadow-1) !important;
+  flex-shrink: 0 !important;
+}
+
+.hp-mchip small {
+  font: 600 .68rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.hp-mchip b {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--t) 90%, #fff),
+    var(--t)) !important;
+  border-radius: 8px !important;
+  color: #111 !important;
+  font: 700 .9rem var(--sans) !important;
+  box-shadow: var(--h-inset) !important;
+}
+
+.hp-mchip em {
+  font: 500 .82rem var(--sans) !important;
+  font-style: normal !important;
+  color: var(--ink) !important;
+}
+
+@keyframes hp-marq-scroll {
+  to { transform: translateX(-50%); }
+}
+
+/* ============================================================
+   13. REVEAL ANIMATION
+   ============================================================ */
+.hp-rv {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .7s cubic-bezier(.32, .72, 0, 1),
+              transform .7s cubic-bezier(.32, .72, 0, 1);
+  transition-delay: var(--d, 0ms);
+}
+
+.hp-rv.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-rv { opacity: 1; transform: none; transition: none; }
+}
+
+/* ============================================================
+   14. SPOTLIGHT (Mouse tracking)
+   ============================================================ */
+.hp-spot {
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.hp-spot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(320px circle at var(--mx) var(--my),
+    color-mix(in srgb, var(--acc) 8%, transparent),
+    transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+  z-index: 0;
+}
+
+.hp-spot:hover::before { opacity: 1; }
+
+.hp-spot > * { position: relative; z-index: 1; }
+
+/* ============================================================
+   15. HERO LINDY (chat mockup)
+   ============================================================ */
+.hl-mockup {
+  background: var(--h-glass-strong) !important;
+  -webkit-backdrop-filter: var(--h-blur) !important;
+  backdrop-filter: var(--h-blur) !important;
+  border: 1px solid var(--h-glass-border) !important;
+  border-radius: 24px !important;
+  box-shadow:
+    var(--h-inset),
+    0 30px 80px -30px rgba(0, 0, 0, .25) !important;
+  overflow: hidden !important;
+}
+
+.hl-sidebar {
+  background: var(--h-glass) !important;
+  border-right: 1px solid var(--h-line-1) !important;
+}
+
+.hl-main-head {
+  background: var(--h-glass) !important;
+  border-bottom: 1px solid var(--h-line-1) !important;
+}
+
+.hl-input {
+  background: var(--h-glass) !important;
+  border-top: 1px solid var(--h-line-1) !important;
+}
+
+.hl-nav.on {
+  background: var(--h-glass-strong) !important;
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+}
+
+.hl-ask {
+  background: var(--h-glass) !important;
+  border-color: var(--h-glass-border) !important;
+}
+
+.hl-ask.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+/* ============================================================
+   16. MOBILE
+   ============================================================ */
+@media (max-width: 720px) {
+  .hm-hero {
+    padding: 2rem 1rem 1.5rem !important;
+  }
+  .hm-h1 {
+    font-size: clamp(2rem, 9vw, 2.8rem) !important;
+  }
+  .hm-ask {
+    border-radius: 18px !important;
+  }
+  .stack-cards {
+    gap: 1rem !important;
+    padding: 0 .75rem !important;
+  }
+  .hm-head {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  .hm-h2 {
+    font-size: clamp(1.5rem, 6vw, 2rem) !important;
+  }
+  .hm-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: .75rem !important;
+  }
+  .hm-stat {
+    padding: 1.25rem 1rem !important;
+  }
+  .hm-stat-num {
+    font-size: 1.75rem !important;
+  }
+  .hx-chip {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: .85rem !important;
+  }
+  .hx-bubble {
+    font-size: .72rem !important;
+    padding: .5rem .75rem !important;
+    max-width: 180px !important;
+  }
+  .hp-words-row span {
+    font-size: 1.75rem !important;
+  }
+  .cta-grid {
+    margin: 3rem auto !important;
+  }
+  .cta-grid .cta-card {
+    padding: 2rem 1.25rem !important;
+  }
+}
+
+/* ============================================================
+   17. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .hx-chip,
+  .hero-mascot-ring,
+  .hp-words-row > div,
+  .hp-marq-row > div,
+  .hx-float {
+    animation: none !important;
+  }
+  .stack-card,
+  .hm-stat,
+  .hp-tile,
+  .hp-bt,
+  .hp-ed-c,
+  .hp-opt,
+  .cta-side,
+  .hm-step {
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+   18. FALLBACK — không hỗ trợ backdrop-filter
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hm-badge,
+  .hm-ask,
+  .hm-ask-btn,
+  .hm-ask select,
+  .hm-quick button,
+  .hx-bubble,
+  .hx-chip,
+  .stack-card,
+  .hm-tag,
+  .hm-step,
+  .hm-panel,
+  .hm-stat,
+  .fx-quote,
+  .fx-quote-tabs button,
+  .cta-side,
+  .cta-grid .cta-card,
+  .hp-tile,
+  .hp-continue,
+  .hp-daily,
+  .hp-pill,
+  .hp-opt,
+  .hp-eod,
+  .hp-bt,
+  .hp-more-tools a,
+  .hp-lab-box,
+  .hp-tabs,
+  .hp-board,
+  .hp-log,
+  .hp-faq details,
+  .hp-ed-c,
+  .hp-mchip,
+  .hl-mockup,
+  .hl-sidebar,
+  .hl-main-head,
+  .hl-input,
+  .hl-ask {
+    background: var(--bg) !important;
+  }
+  [data-theme='dark'] .hm-badge,
+  [data-theme='dark'] .hm-ask,
+  [data-theme='dark'] .stack-card,
+  [data-theme='dark'] .hm-stat,
+  [data-theme='dark'] .hp-tile,
+  [data-theme='dark'] .hp-bt,
+  [data-theme='dark'] .hp-opt,
+  [data-theme='dark'] .cta-side,
+  [data-theme='dark'] .hp-faq details {
+    background: #121214 !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .hm-ask, .stack-card, .hm-stat, .hp-tile, .hp-bt, .cta-side,
+  .hp-daily, .hp-eod, .hp-lab-box, .hp-board, .hp-log, .hp-faq details {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

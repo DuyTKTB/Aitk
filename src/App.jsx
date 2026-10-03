@@ -1,8 +1,10 @@
 ﻿﻿import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useLocalStorage } from './hooks.js';
+
+/* ============ LAZY PAGES ============ */
 const Home = lazy(() => import('./components/Home.jsx'));
 const PeriodicTable = lazy(() => import('./components/PeriodicTable.jsx'));
-const Pomodoro = lazy(() => import('./components/Pomodoro.jsx'));
+const ClockHub = lazy(() => import('./components/ClockHub.jsx'));
 const ExamCountdown = lazy(() => import('./components/ExamCountdown.jsx'));
 const Notes = lazy(() => import('./components/Notes.jsx'));
 const Quiz = lazy(() => import('./components/Quiz.jsx'));
@@ -24,13 +26,11 @@ const JeopardyGame = lazy(() => import('./components/games/JeopardyGame.jsx'));
 const VirtualLab = lazy(() => import('./components/games/VirtualLab.jsx'));
 const ElementBattle = lazy(() => import('./components/games/ElementBattle.jsx'));
 const ChemSudoku = lazy(() => import('./components/games/ChemSudoku.jsx'));
-const AdminLayout = lazy(() => import('./components/admin/AdminLayout.jsx'));
-const Dashboard = lazy(() => import('./components/admin/Dashboard.jsx'));
-const ExamManager = lazy(() => import('./components/admin/ExamManager.jsx'));
-const QuestionManager = lazy(() => import('./components/admin/QuestionManager.jsx'));
-const UserManager = lazy(() => import('./components/admin/UserManager.jsx'));
-const ActivityPage = lazy(() => import('./components/admin/ActivityPage.jsx'));
-const SettingsPage = lazy(() => import('./components/admin/SettingsPage.jsx'));
+
+/* ============ ADMIN ============ */
+const AdminPanel = lazy(() => import('./components/AdminPanel.jsx'));
+
+/* ============ WIDGETS ============ */
 import PetWidget from './components/PetWidget.jsx';
 import ChatWidget from './components/ChatWidget.jsx';
 import MobileHeader from './components/MobileHeader.jsx';
@@ -38,16 +38,20 @@ import BottomNav from './components/BottomNav.jsx';
 import DesktopNav from './components/DesktopNav.jsx';
 import StudySheet from './components/StudySheet.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
+
 import { useAuth } from './hooks/useAuth.jsx';
 import './app-extra.css';
 import './stats.css';
 import './admin-dashboard.css';
+import './admin-upgrade.css';
+
 import {
   IconHome, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
   IconTools, IconUser,
 } from './components/Icons.jsx';
 
+/* ============ ICONS ============ */
 const IconNotebook = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <rect x="5" y="3" width="14" height="18" rx="2" />
@@ -61,12 +65,15 @@ const IconChart = ({ size = 18 }) => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20V8" />
   </svg>
 );
+
 const PageLoader = () => (
   <div className="page-loader" role="status" aria-live="polite">
     <div className="page-loader-spinner" />
     <span>Đang tải…</span>
   </div>
 );
+
+/* ============ NAV CONFIG ============ */
 const NAV_MAIN = [
   ['home', 'Trang chủ', IconHome],
   ['ai', 'CU AI', IconRobot],
@@ -78,7 +85,7 @@ const NAV_TOOLS = [
   ['formulas', 'Công thức nhanh', IconCalc],
   ['analyze', 'Phân tích', IconMicroscope],
   ['balance', 'Cân bằng PTHH', IconScale],
-  ['pomodoro', 'Pomodoro', IconTimer],
+  ['pomodoro', 'Clock Hub', IconTimer],
   ['exam', 'Kỳ thi', IconCalendar],
   ['notes', 'Ghi chú', IconNote],
   ['notebook', 'Sổ tay', IconNotebook],
@@ -97,6 +104,7 @@ const PAGES = [
 
 const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
 
+/* ============ PAGE ROUTING HELPERS ============ */
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
   const h = window.location.hash.slice(1);
@@ -113,7 +121,6 @@ const pageTitle = (page) => {
   return 'Trang chủ · A7 K60 DTA';
 };
 
-/* Meta description cho từng trang — SEO */
 const pageMeta = (page) => {
   const metas = {
     home: 'Học Hóa học thông minh với AI, bảng tuần hoàn tương tác, quiz và trò chơi giáo dục.',
@@ -123,6 +130,7 @@ const pageMeta = (page) => {
     formulas: 'Tra cứu công thức Hóa học nhanh chóng theo chủ đề.',
     balance: 'Cân bằng phương trình hóa học chính xác bằng đại số tuyến tính.',
     analyze: 'Phân tích hợp chất — nhận diện loại, tính chất, phản ứng đặc trưng.',
+    pomodoro: 'Clock Hub — Đồng hồ tổng hợp: Pomodoro, hẹn giờ, báo thức, bấm giây, đồng hồ thế giới.',
     quiz: 'Ôn tập Hóa học với quiz thông minh, lặp lại ngắt quãng.',
     games: 'Học Hóa qua trò chơi: bắt gà, bắn súng, phòng lab ảo, đấu nguyên tố.',
     profile: 'Trang cá nhân — quản lý tài khoản, thống kê học tập.',
@@ -130,7 +138,6 @@ const pageMeta = (page) => {
   return metas[page] || metas.home;
 };
 
-/* Kiểm tra quyền admin */
 const isAdmin = (user) => {
   if (!user) return false;
   if (user.isAdmin === true) return true;
@@ -142,6 +149,7 @@ const isAdmin = (user) => {
   return ADMIN_EMAILS.includes(user.email);
 };
 
+/* ============ MAIN APP ============ */
 export default function App() {
   const { ready, isLoggedIn, user, logout } = useAuth();
   const [, setHashTick] = useState(0);
@@ -155,7 +163,6 @@ export default function App() {
   const dlgRef = useRef(null);
   const navRef = useRef(null);
   const progRef = useRef(null);
-  const [adminTab, setAdminTab] = useState('dashboard');
   const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
 
   /* ============ THEME ============ */
@@ -165,7 +172,7 @@ export default function App() {
     if (meta) meta.content = theme === 'dark' ? '#030618' : '#f3f6ff';
   }, [theme]);
 
-  /* ============ TITLE + META DESCRIPTION (SEO) ============ */
+  /* ============ TITLE + META ============ */
   useEffect(() => {
     document.title = pageTitle(page);
     let metaDesc = document.querySelector('meta[name="description"]');
@@ -178,14 +185,14 @@ export default function App() {
     document.getElementById('main')?.focus({ preventScroll: true });
   }, [page]);
 
-  /* Nếu user không phải admin mà vào #admin → đẩy về home */
+  /* ============ ADMIN GUARD ============ */
   useEffect(() => {
     if (page === 'admin' && !isAdmin(user)) {
       window.location.hash = 'home';
     }
   }, [page, user]);
 
-  /* Theo dõi login/logout để reset hash */
+  /* ============ LOGIN/LOGOUT RESET ============ */
   const prevLoginRef = useRef(isLoggedIn);
   useEffect(() => {
     if (!prevLoginRef.current && isLoggedIn) {
@@ -200,7 +207,7 @@ export default function App() {
     prevLoginRef.current = isLoggedIn;
   }, [isLoggedIn]);
 
-  /* Dialog logout */
+  /* ============ LOGOUT DIALOG ============ */
   useEffect(() => {
     const d = dlgRef.current;
     if (!d) return;
@@ -208,7 +215,7 @@ export default function App() {
     if (!askLogout && d.open) d.close();
   }, [askLogout]);
 
-  /* Scroll progress bar */
+  /* ============ SCROLL PROGRESS ============ */
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 12);
@@ -222,7 +229,7 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  /* Hash change + keyboard + click outside */
+  /* ============ HASH + KEYBOARD + CLICK ============ */
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 700);
     const onHash = () => {
@@ -254,7 +261,7 @@ export default function App() {
     };
   }, []);
 
-  /* ============ RENDER GUARDS ============ */
+  /* ============ GUARDS ============ */
   if (!ready) {
     return (
       <div className="loader">
@@ -274,6 +281,7 @@ export default function App() {
   /* ============ PAGE ROUTING ============ */
   const renderPage = () => {
     if (page === 'home') return <Home />;
+
     if (page === 'table') {
       return (
         <section className="wrap">
@@ -282,7 +290,9 @@ export default function App() {
         </section>
       );
     }
+
     if (page === 'tools') return <ToolsPage />;
+
     if (page.startsWith('exam/')) {
       return (
         <ExamDetail
@@ -291,11 +301,12 @@ export default function App() {
         />
       );
     }
+
     if (page === 'ai') return <AIChat />;
     if (page === 'formulas') return <FormulaCalculator />;
     if (page === 'analyze') return <CompoundAnalyzer />;
     if (page === 'balance') return <EquationBalancer />;
-    if (page === 'pomodoro') return <Pomodoro />;
+    if (page === 'pomodoro') return <ClockHub />;
     if (page === 'exam') return <ExamCountdown />;
     if (page === 'notes') return <Notes />;
     if (page === 'notebook') return <WrongNotebook />;
@@ -310,18 +321,14 @@ export default function App() {
     if (page === 'games/lab') return <VirtualLab />;
     if (page === 'games/battle') return <ElementBattle />;
     if (page === 'games/sudoku') return <ChemSudoku />;
+
+    /* ============ ADMIN ============ */
     if (page === 'admin' && isAdmin(user)) {
-      return (
-        <AdminLayout active={adminTab} onNavigate={setAdminTab}>
-          {adminTab === 'dashboard' && <Dashboard onNavigate={setAdminTab} />}
-          {adminTab === 'exams' && <ExamManager />}
-          {adminTab === 'questions' && <QuestionManager />}
-          {adminTab === 'users' && <UserManager />}
-          {adminTab === 'activity' && <ActivityPage />}
-          {adminTab === 'settings' && <SettingsPage />}
-        </AdminLayout>
-      );
+      /* AdminPanel đã tự có sidebar + điều hướng (Tổng quan, Đề thi, Tạo đề,
+         Câu hỏi, Người dùng, Hoạt động, Cài đặt, Hướng dẫn) */
+      return <AdminPanel />;
     }
+
     return <Home />;
   };
 
@@ -331,11 +338,11 @@ export default function App() {
       <a className="skip-link" href="#main">Bỏ qua điều hướng</a>
       <div className="scroll-progress" ref={progRef} aria-hidden="true" />
 
-      {/* Widget nổi — luôn mount */}
+      {/* Widget nổi */}
       <PetWidget />
       <ChatWidget />
 
-      {/* Loader ban đầu — ẩn sau 700ms */}
+      {/* Loader ban đầu */}
       <div className={'loader' + (loading ? '' : ' hide')} aria-hidden={!loading}>
         <span>A7 K60 DTA</span>
       </div>
@@ -369,7 +376,7 @@ export default function App() {
       {/* Bottom sheet mobile */}
       <StudySheet open={menu} onClose={() => setMenu(false)} />
 
-      {/* ============ MAIN CONTENT ============ */}
+      {/* ============ MAIN ============ */}
       <main id="main" tabIndex={-1}>
         <Suspense fallback={<PageLoader />}>
           {renderPage()}
@@ -403,7 +410,7 @@ export default function App() {
           <a href="#balance">Cân bằng PTHH</a>
           <a href="#notebook">Sổ tay</a>
           <a href="#stats">Thống kê</a>
-          <a href="#pomodoro">Pomodoro</a>
+          <a href="#pomodoro">Clock Hub</a>
           <a href="#exam">Kỳ thi</a>
           <a href="#grade">Tính điểm</a>
           <a href="#games">Trò chơi</a>

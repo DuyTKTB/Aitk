@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { translateAuthError } from '../lib/firebase.js';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
 import './AuthProfile.css';
-
+import './LoginPage-v2.css'; 
 const PW_RULES = [
   ['Từ 6 ký tự', (p) => p.length >= 6],
   ['Có chữ hoa và chữ thường', (p) => /[a-z]/.test(p) && /[A-Z]/.test(p)],

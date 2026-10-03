@@ -1,0 +1,438 @@
+/* ============================================================
+   NOTEBOOK GUIDE — Modal hướng dẫn từng bước
+   Import trong WrongNotebook.jsx
+   ============================================================ */
+
+.nb-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, .55);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  animation: nb-guide-fade .3s ease;
+}
+
+@keyframes nb-guide-fade {
+  from { opacity: 0; }
+}
+
+.nb-guide {
+  position: relative;
+  width: min(640px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, .9);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    0 40px 100px -20px rgba(0, 0, 0, .5),
+    0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
+  overflow: hidden;
+  animation: nb-guide-pop .4s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+[data-theme='dark'] .nb-guide {
+  background: rgba(20, 22, 30, .92);
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 40px 100px -20px rgba(0, 0, 0, .8);
+}
+
+@keyframes nb-guide-pop {
+  from { opacity: 0; transform: translateY(24px) scale(.94); }
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.nb-guide-head {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.nb-guide-head-l {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.nb-guide-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  align-self: flex-start;
+  padding: .35rem .8rem;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  color: #fff;
+  border-radius: 999px;
+  font: 600 .72rem var(--sans);
+  letter-spacing: .02em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 4px 12px -4px rgba(31, 79, 230, .5);
+}
+
+.nb-guide-progress {
+  position: relative;
+  height: 4px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.nb-guide-progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4d86ff, #8b5cf6);
+  border-radius: 999px;
+  transition: width .4s cubic-bezier(.32, .72, 0, 1);
+}
+
+.nb-guide-counter {
+  font: 500 .72rem var(--sans);
+  color: var(--mut);
+}
+
+.nb-guide-x {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  border-radius: 10px;
+  color: var(--mut);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+
+.nb-guide-x:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+  transform: rotate(90deg);
+}
+
+/* ============================================================
+   BODY
+   ============================================================ */
+.nb-guide-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: nb-guide-slide .35s cubic-bezier(.32, .72, 0, 1);
+}
+
+@keyframes nb-guide-slide {
+  from { opacity: 0; transform: translateX(16px); }
+}
+
+.nb-guide-icon {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 24px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--g-color, var(--acc)) 22%, transparent),
+    color-mix(in srgb, var(--g-color, var(--acc)) 8%, transparent));
+  color: var(--g-color, var(--acc));
+  border: 1px solid color-mix(in srgb, var(--g-color, var(--acc)) 30%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 12px 32px -8px color-mix(in srgb, var(--g-color, var(--acc)) 40%, transparent);
+  margin-bottom: 1.25rem;
+}
+
+.nb-guide-title {
+  margin: 0 0 .6rem;
+  font: 600 clamp(1.35rem, 3vw, 1.65rem)/1.25 var(--sans);
+  letter-spacing: -.03em;
+  color: var(--ink);
+}
+
+.nb-guide-desc {
+  margin: 0 0 1.5rem;
+  font: 400 1rem/1.6 var(--sans);
+  color: var(--mut);
+  max-width: 480px;
+}
+
+.nb-guide-points {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  text-align: left;
+}
+
+.nb-guide-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  padding: .85rem 1rem;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  border-radius: 12px;
+  font: 500 .88rem/1.5 var(--sans);
+  color: var(--ink);
+}
+
+.nb-guide-point-ico {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(180deg, #4ade80, #22c55e);
+  border-radius: 50%;
+  color: #fff;
+  flex-shrink: 0;
+  margin-top: 1px;
+  box-shadow: 0 2px 6px -1px rgba(34, 197, 94, .5);
+}
+
+.nb-guide-points b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.nb-guide-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  padding: .85rem 1.1rem;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #fbbf24 12%, transparent),
+    color-mix(in srgb, #fbbf24 5%, transparent));
+  border: 1px solid color-mix(in srgb, #fbbf24 30%, transparent);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  text-align: left;
+  font: 400 .86rem/1.55 var(--sans);
+  color: var(--ink);
+  margin-top: auto;
+}
+
+.nb-guide-tip > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #d97706;
+}
+
+[data-theme='dark'] .nb-guide-tip > svg {
+  color: #fbbf24;
+}
+
+.nb-guide-tip b {
+  font-weight: 600;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.nb-guide-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  flex-wrap: wrap;
+}
+
+.nb-guide-skip {
+  padding: .55rem .9rem;
+  background: transparent;
+  border: 0;
+  color: var(--mut);
+  cursor: pointer;
+  font: 500 .82rem var(--sans);
+  transition: color .15s;
+}
+
+.nb-guide-skip:hover {
+  color: var(--ink);
+}
+
+.nb-guide-nav {
+  display: flex;
+  gap: .5rem;
+  margin-left: auto;
+}
+
+.nb-guide-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  padding: .7rem 1.35rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font: 600 .85rem var(--sans);
+  transition: all .2s cubic-bezier(.32, .72, 0, 1);
+  font-family: inherit;
+  border: 1px solid transparent;
+}
+
+.nb-guide-btn.ghost {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+
+.nb-guide-btn.ghost:hover {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.nb-guide-btn.primary {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 4px 12px -4px rgba(31, 79, 230, .5);
+}
+
+.nb-guide-btn.primary:hover {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 8px 20px -6px rgba(31, 79, 230, .6);
+}
+
+/* ============================================================
+   DOTS
+   ============================================================ */
+.nb-guide-dots {
+  display: flex;
+  justify-content: center;
+  gap: .35rem;
+  padding: 0 1.5rem 1.25rem;
+}
+
+.nb-guide-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.nb-guide-dot:hover {
+  background: color-mix(in srgb, var(--ink) 25%, transparent);
+}
+
+.nb-guide-dot.on {
+  width: 24px;
+  background: linear-gradient(90deg, #4d86ff, #8b5cf6);
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 640px) {
+  .nb-guide-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .nb-guide {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92dvh;
+    border-radius: 24px 24px 0 0;
+  }
+  .nb-guide-head {
+    padding: 1rem 1.15rem .85rem;
+  }
+  .nb-guide-body {
+    padding: 1.5rem 1.15rem 1.25rem;
+  }
+  .nb-guide-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+  }
+  .nb-guide-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+  .nb-guide-title {
+    font-size: 1.25rem;
+  }
+  .nb-guide-desc {
+    font-size: .92rem;
+    margin-bottom: 1.25rem;
+  }
+  .nb-guide-points li {
+    font-size: .82rem;
+    padding: .75rem .85rem;
+  }
+  .nb-guide-tip {
+    font-size: .82rem;
+    padding: .75rem .95rem;
+  }
+  .nb-guide-foot {
+    padding: .85rem 1.15rem 1rem;
+    flex-wrap: wrap-reverse;
+  }
+  .nb-guide-skip {
+    order: 1;
+    width: 100%;
+    text-align: center;
+  }
+  .nb-guide-nav {
+    order: 0;
+    width: 100%;
+  }
+  .nb-guide-btn {
+    flex: 1;
+  }
+  .nb-guide-dots {
+    padding: 0 1.15rem 1rem;
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .nb-guide-backdrop,
+  .nb-guide,
+  .nb-guide-body,
+  .nb-guide-progress i,
+  .nb-guide-dot {
+    animation: none !important;
+    transition: none !important;
+  }
+}

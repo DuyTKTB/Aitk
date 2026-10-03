@@ -1,0 +1,93 @@
+/* ============================================================
+   HOME AMBIENT — CHỈ 2 điều duy nhất:
+   1. Ambient gradient ở body (nền trang)
+   2. Blur fade ở đáy viewport
+   
+   KHÔNG đụng gì khác. KHÔNG override layout, KHÔNG ::before trên card.
+   ============================================================ */
+
+/* ============================================================
+   1. AMBIENT GRADIENT — Nền trang có màu sống động nhẹ
+   ============================================================ */
+body {
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 8%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 6%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #22d3ee 6%, transparent),
+      transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+[data-theme='dark'] body {
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 12%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 8%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #0891b2 8%, transparent),
+      transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* ============================================================
+   2. BLUR FADE Ở ĐÁY VIEWPORT
+   ============================================================ */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100px;
+  pointer-events: none;
+  z-index: 40;
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--bg) 90%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 55%, transparent) 40%,
+    transparent 100%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to top,
+    black 0%,
+    black 40%,
+    transparent 100%);
+  mask-image: linear-gradient(to top,
+    black 0%,
+    black 40%,
+    transparent 100%);
+}
+
+[data-theme='dark'] body::after {
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--bg) 95%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 65%, transparent) 40%,
+    transparent 100%);
+}
+
+@media (max-width: 720px) {
+  body::after {
+    height: 80px;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* ============================================================
+   3. REDUCED MOTION / TRANSPARENCY
+   ============================================================ */
+@media (prefers-reduced-transparency: reduce) {
+  body::after {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

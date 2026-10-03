@@ -13,6 +13,7 @@ import './tools-upgrade-2.css';
 import './tools-upgrade-3.css';
 import './admin.css';
 import './admin-dashboard.css';
+import './admin-upgrade.css';   // sau admin-dashboard.css
 import './stats.css';
 import './study-sheet.css';
 import './nav-home-v2.css';
@@ -20,7 +21,7 @@ import './home-plus.css';
 import './home-extras.css';
 import './AIChat-glass-v2.css';
 import './components/CommandPalette.css';
-
+import './styles/tools-apple.css';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <SettingsProvider>

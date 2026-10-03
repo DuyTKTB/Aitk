@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import {
   IconDashboard, IconExam, IconQuestion, IconUsers, IconActivity, IconSettings,
@@ -15,12 +16,22 @@ export const MENU = [
   { id: 'guide', name: 'Hướng dẫn', Icon: IconBook, color: 'var(--post, #6fb35a)', group: 3 },
 ];
 
+/* Chống lồng khung: nếu AdminLayout đã có ở ngoài thì lớp trong chỉ trả nội dung */
+const NestedCtx = createContext(false);
+
 export default function AdminLayout({ active, onNavigate, children }) {
+  const nested = useContext(NestedCtx);
+  if (nested) return <>{children}</>;
+  return <AdminLayoutInner active={active} onNavigate={onNavigate}>{children}</AdminLayoutInner>;
+}
+
+function AdminLayoutInner({ active, onNavigate, children }) {
   const { user, logout } = useAuth();
   const current = MENU.find((m) => m.id === active) || MENU[0];
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Quản trị viên';
 
   return (
+    <NestedCtx.Provider value>
     <div className="adl">
       <a href="#adl-main" className="adl-skip">Bỏ qua menu</a>
 
@@ -87,5 +98,6 @@ export default function AdminLayout({ active, onNavigate, children }) {
         <main id="adl-main" className="adl-content">{children}</main>
       </div>
     </div>
+    </NestedCtx.Provider>
   );
 }

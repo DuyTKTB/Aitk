@@ -20,6 +20,7 @@ import AIMark from './AIMark.jsx';
 import DocsLibrary from './DocsLibrary.jsx';
 import { DOCS, GRADES } from './docsData.js';
 import '../tools-all.css';
+import '../styles/tools-apple.css';   // ← THÊM DÒNG NÀY
 import ExamBank from './ExamBank.jsx';
 import FormulaLibrary from './FormulaLibrary.jsx';
 import { EXAMS } from './examData.js';

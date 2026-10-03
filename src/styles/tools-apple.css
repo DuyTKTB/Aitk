@@ -1,0 +1,1545 @@
+/* ============================================================
+   TOOLS APPLE v1 — Glassmorphism Apple Vision Pro
+   Import SAU TẤT CẢ tools-*.css khác trong main.jsx:
+   
+   import './styles/tools-all.css';
+   import './styles/tools-neo.css';
+   import './styles/tools-upgrade-3.css';
+   import './styles/tools-apple.css';   ← thêm dòng này CUỐI
+   ============================================================ */
+
+/* ============================================================
+   1. TOKENS + AMBIENT BACKGROUND
+   ============================================================ */
+.tools-page {
+  --t-glass: rgba(255, 255, 255, .48);
+  --t-glass-strong: rgba(255, 255, 255, .72);
+  --t-glass-hover: rgba(255, 255, 255, .85);
+  --t-glass-border: rgba(255, 255, 255, .65);
+  --t-line-1: color-mix(in srgb, var(--ink) 8%, transparent);
+  --t-line-2: color-mix(in srgb, var(--ink) 14%, transparent);
+  --t-shadow-1: 0 1px 2px rgba(0, 0, 0, .03);
+  --t-shadow-2: 0 1px 2px rgba(0, 0, 0, .03), 0 8px 24px -8px rgba(0, 0, 0, .08);
+  --t-shadow-3: 0 1px 2px rgba(0, 0, 0, .03), 0 12px 32px -12px rgba(0, 0, 0, .12);
+  --t-shadow-hover: 0 1px 2px rgba(0, 0, 0, .04), 0 12px 32px -10px rgba(0, 0, 0, .14);
+  --t-inset: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --t-blur: blur(24px) saturate(180%);
+
+  position: relative;
+  max-width: 1440px !important;
+  margin: 0 auto !important;
+  padding: 1.5rem 1.25rem 6rem !important;
+  background: transparent !important;
+  color: var(--ink);
+}
+
+[data-theme='dark'] .tools-page {
+  --t-glass: rgba(255, 255, 255, .05);
+  --t-glass-strong: rgba(255, 255, 255, .08);
+  --t-glass-hover: rgba(255, 255, 255, .12);
+  --t-glass-border: rgba(255, 255, 255, .1);
+  --t-inset: inset 0 1px 0 rgba(255, 255, 255, .06);
+  --t-shadow-hover: 0 1px 2px rgba(0, 0, 0, .2), 0 12px 32px -10px rgba(0, 0, 0, .4);
+}
+
+/* Ambient gradient 3 góc */
+.tools-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 20%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 16%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #22d3ee 14%, transparent),
+      transparent 60%);
+  opacity: .85;
+}
+
+[data-theme='dark'] .tools-page::before {
+  opacity: 1;
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 14%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 10%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #0891b2 10%, transparent),
+      transparent 60%);
+}
+
+/* Blur fade ở đáy */
+.tools-page::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 140px;
+  pointer-events: none;
+  z-index: 40;
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--bg) 92%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 60%, transparent) 40%,
+    transparent 100%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(to top,
+    black 0%,
+    black 40%,
+    transparent 100%);
+  mask-image: linear-gradient(to top,
+    black 0%,
+    black 40%,
+    transparent 100%);
+}
+
+[data-theme='dark'] .tools-page::after {
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--bg) 95%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 65%, transparent) 40%,
+    transparent 100%);
+}
+
+@media (max-width: 720px) {
+  .tools-page::after {
+    height: 100px;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* ============================================================
+   2. HEADER
+   ============================================================ */
+.tools-page h1,
+.tools-page .tools-header h1 {
+  font: 600 clamp(2rem, 5vw, 3rem) var(--sans) !important;
+  letter-spacing: -.04em !important;
+  color: var(--ink) !important;
+  text-transform: none !important;
+  margin: 0 0 1.25rem !important;
+}
+
+.tools-page .tools-header {
+  margin-bottom: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+  border-bottom: 1px solid var(--t-line-1) !important;
+}
+
+.tools-page .tools-header-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-end !important;
+  gap: 1rem !important;
+  flex-wrap: wrap !important;
+}
+
+/* ============================================================
+   3. LAYOUT
+   ============================================================ */
+.tools-page .tn-shell {
+  display: grid !important;
+  grid-template-columns: 260px minmax(0, 1fr) !important;
+  gap: 1.5rem !important;
+  align-items: start !important;
+}
+
+@media (max-width: 900px) {
+  .tools-page .tn-shell {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* ============================================================
+   4. SIDEBAR — Glass panel
+   ============================================================ */
+.tools-page .tn-side {
+  position: sticky !important;
+  top: 90px !important;
+  max-height: calc(100vh - 110px) !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  padding: 1.25rem 1rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--t-inset), var(--t-shadow-2) !important;
+  scrollbar-width: thin !important;
+}
+
+@media (max-width: 900px) {
+  .tools-page .tn-side { display: none !important; }
+}
+
+.tools-page .tn-side-brand {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .2rem !important;
+  padding: .5rem .6rem 1rem !important;
+  margin-bottom: .5rem !important;
+  border-bottom: 1px solid var(--t-line-1) !important;
+}
+
+.tools-page .tn-side-brand b {
+  font: 600 1.05rem var(--sans) !important;
+  letter-spacing: -.02em !important;
+  color: var(--ink) !important;
+  text-transform: none !important;
+}
+
+.tools-page .tn-side-brand small {
+  font: 500 .68rem var(--sans) !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-side-label {
+  margin: 1.1rem .6rem .4rem !important;
+  font: 600 .68rem var(--sans) !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-side-label:first-of-type { margin-top: 0 !important; }
+
+/* Nav items */
+.tools-page .tn-side-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: .65rem !important;
+  width: 100% !important;
+  padding: .6rem .8rem !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  font: 500 .85rem var(--sans) !important;
+  text-align: left !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+}
+
+.tools-page .tn-side-item:hover {
+  background: var(--t-glass-strong) !important;
+  color: var(--ink) !important;
+  border-color: var(--t-line-1) !important;
+}
+
+.tools-page .tn-side-item.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  font-weight: 600 !important;
+  box-shadow:
+    var(--t-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .45) !important;
+}
+
+.tools-page .tn-side-item span { flex: 1 !important; min-width: 0 !important; }
+
+.tools-page .tn-side-item i {
+  font: 600 .72rem var(--sans) !important;
+  font-style: normal !important;
+  color: var(--mut) !important;
+  padding: .1rem .5rem !important;
+  background: var(--t-glass-strong) !important;
+  border-radius: 999px !important;
+  min-width: 24px !important;
+  text-align: center !important;
+}
+
+.tools-page .tn-side-item.on i {
+  background: rgba(255, 255, 255, .25) !important;
+  color: #fff !important;
+}
+
+.tools-page .tn-side-item svg {
+  flex-shrink: 0 !important;
+  width: 17px !important;
+  height: 17px !important;
+  opacity: .8;
+}
+
+.tools-page .tn-side-item.on svg { opacity: 1; }
+
+/* ============================================================
+   5. MAIN AREA
+   ============================================================ */
+.tools-page .tn-main {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+}
+
+/* ============================================================
+   6. BREADCRUMB + STATS
+   ============================================================ */
+.tools-page .tn-crumb {
+  display: flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  padding: .75rem 1rem !important;
+  margin-bottom: 1rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--t-inset) !important;
+  font: 500 .78rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-crumb a {
+  color: var(--mut) !important;
+  text-decoration: none !important;
+  transition: color .15s !important;
+}
+
+.tools-page .tn-crumb a:hover { color: var(--ink) !important; }
+.tools-page .tn-crumb i { opacity: .4 !important; font-style: normal !important; }
+.tools-page .tn-crumb b { color: var(--ink) !important; font-weight: 600 !important; }
+
+.tools-page .tn-top {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .5rem !important;
+  margin-bottom: .75rem !important;
+}
+
+.tools-page .tn-top > span {
+  padding: .5rem .85rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 11px !important;
+  box-shadow: var(--t-inset) !important;
+  font: 500 .78rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-top > span b {
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+  margin-right: .25rem !important;
+}
+
+/* ============================================================
+   7. TABS — Pill toggle
+   ============================================================ */
+.tools-page .tools-tabs {
+  display: inline-flex !important;
+  gap: 2px !important;
+  padding: 4px !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--t-inset), var(--t-shadow-1) !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  max-width: 100% !important;
+  align-self: flex-start !important;
+  margin-bottom: 1rem !important;
+}
+
+.tools-page .tools-tabs::-webkit-scrollbar { display: none !important; }
+
+.tools-page .tools-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  padding: .6rem 1.1rem !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 500 .85rem var(--sans) !important;
+  white-space: nowrap !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: -.005em !important;
+}
+
+.tools-page .tools-tab:hover {
+  color: var(--ink) !important;
+  background: var(--t-glass-strong) !important;
+}
+
+.tools-page .tools-tab.on {
+  background: rgba(255, 255, 255, .95) !important;
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .06),
+    0 4px 12px -4px rgba(0, 0, 0, .08),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+[data-theme='dark'] .tools-page .tools-tab.on {
+  background: rgba(255, 255, 255, .14) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .3),
+    inset 0 1px 0 rgba(255, 255, 255, .1) !important;
+}
+
+/* Remove dot from tools-upgrade-3 */
+.tools-page .tools-tab::before { display: none !important; }
+
+.tools-page .tools-tab .tc-n {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 22px !important;
+  height: 18px !important;
+  padding: 0 .45rem !important;
+  background: var(--t-glass-strong) !important;
+  border-radius: 999px !important;
+  font: 600 .68rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tools-tab.on .tc-n {
+  background: color-mix(in srgb, var(--ink) 10%, transparent) !important;
+  color: var(--ink) !important;
+}
+
+/* ============================================================
+   8. SEARCH BAR — Glass input
+   ============================================================ */
+.tools-page .tools-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: .7rem !important;
+  padding: .85rem 1.15rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--t-inset), var(--t-shadow-1) !important;
+  margin-bottom: 1rem !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+.tools-page .tools-search:focus-within {
+  background: var(--t-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 50%, var(--t-glass-border)) !important;
+  box-shadow:
+    var(--t-inset),
+    0 0 0 4px color-mix(in srgb, var(--acc) 12%, transparent),
+    0 4px 16px -6px color-mix(in srgb, var(--acc) 25%, transparent) !important;
+}
+
+.tools-page .tools-search svg {
+  flex-shrink: 0 !important;
+  color: var(--mut) !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.tools-page .tools-search input {
+  flex: 1 !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  font: 500 .95rem var(--sans) !important;
+  color: var(--ink) !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.tools-page .tools-search input:focus { box-shadow: none !important; }
+.tools-page .tools-search input::placeholder { color: var(--mut) !important; opacity: .7 !important; }
+
+.tools-page .tools-search-clear {
+  display: grid !important;
+  place-items: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--t-glass-strong) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font-size: 1.05rem !important;
+  line-height: 1 !important;
+  transition: all .15s !important;
+}
+
+.tools-page .tools-search-clear:hover {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+}
+
+.tools-page .tc-kbd {
+  padding: .25rem .55rem !important;
+  background: var(--t-glass-strong) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 6px !important;
+  font: 600 .7rem var(--sans) !important;
+  color: var(--mut) !important;
+  flex-shrink: 0 !important;
+}
+
+/* ============================================================
+   9. CATEGORY CHIPS
+   ============================================================ */
+.tools-page .tools-cats {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .4rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.tools-page .tools-cat {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .4rem !important;
+  padding: .45rem .9rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--t-inset) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 500 .82rem var(--sans) !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+}
+
+.tools-page .tools-cat:hover {
+  background: var(--t-glass-hover) !important;
+  color: var(--ink) !important;
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--t-glass-border)) !important;
+  transform: translateY(-1px) !important;
+}
+
+.tools-page .tools-cat.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  font-weight: 600 !important;
+  box-shadow:
+    var(--t-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .45) !important;
+}
+
+.tools-page .tools-cat em {
+  font: 600 .72rem var(--sans) !important;
+  font-style: normal !important;
+  padding: .05rem .4rem !important;
+  background: rgba(255, 255, 255, .5) !important;
+  border-radius: 999px !important;
+  color: var(--mut) !important;
+}
+
+[data-theme='dark'] .tools-page .tools-cat em {
+  background: rgba(255, 255, 255, .12) !important;
+}
+
+.tools-page .tools-cat.on em {
+  background: rgba(255, 255, 255, .25) !important;
+  color: #fff !important;
+}
+
+/* ============================================================
+   10. CONTROLS — Segmented + Sort
+   ============================================================ */
+.tools-page .tc-controls {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 1rem !important;
+}
+
+.tools-page .tc-seg {
+  display: inline-flex !important;
+  gap: 2px !important;
+  padding: 4px !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--t-inset) !important;
+}
+
+.tools-page .tc-seg button {
+  padding: .5rem .9rem !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 500 .8rem var(--sans) !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  font-family: inherit !important;
+  white-space: nowrap !important;
+}
+
+.tools-page .tc-seg button:hover {
+  color: var(--ink) !important;
+  background: var(--t-glass-strong) !important;
+}
+
+.tools-page .tc-seg button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, .95) !important;
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .06),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+[data-theme='dark'] .tools-page .tc-seg button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, .14) !important;
+}
+
+.tools-page .tc-sort {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  font: 500 .82rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tc-sort select {
+  padding: .5rem .85rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--t-inset) !important;
+  color: var(--ink) !important;
+  font: 500 .82rem var(--sans) !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  width: auto !important;
+  outline: 0 !important;
+}
+
+.tools-page .tc-sort select:focus {
+  border-color: var(--acc) !important;
+  box-shadow:
+    var(--t-inset),
+    0 0 0 3px color-mix(in srgb, var(--acc) 15%, transparent) !important;
+}
+
+/* ============================================================
+   11. TOOLBAR — Count + Random
+   ============================================================ */
+.tools-page .tc-bar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  flex-wrap: wrap !important;
+  margin-bottom: .75rem !important;
+}
+
+.tools-page .tools-count {
+  font: 400 .88rem var(--sans) !important;
+  color: var(--mut) !important;
+  margin: 0 !important;
+}
+
+.tools-page .tools-count b {
+  color: var(--ink) !important;
+  font-weight: 600 !important;
+}
+
+.tools-page .tc-note {
+  font: 400 .8rem/1.5 var(--sans) !important;
+  color: var(--mut) !important;
+  opacity: .85 !important;
+  margin: 0 0 1rem !important;
+}
+
+/* ============================================================
+   12. BUTTONS — Pill glass + primary gradient
+   ============================================================ */
+.tools-page .tc-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .45rem !important;
+  padding: .6rem 1.1rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--t-inset) !important;
+  color: var(--ink) !important;
+  cursor: pointer !important;
+  font: 500 .82rem var(--sans) !important;
+  text-decoration: none !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  white-space: nowrap !important;
+  font-family: inherit !important;
+}
+
+.tools-page .tc-btn:hover {
+  background: var(--t-glass-hover) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--t-inset), var(--t-shadow-1) !important;
+}
+
+.tools-page .tc-btn.primary,
+.tools-page .tc-btn.accent {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  box-shadow:
+    var(--t-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .5) !important;
+}
+
+.tools-page .tc-btn.primary:hover,
+.tools-page .tc-btn.accent:hover {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff) !important;
+  box-shadow:
+    var(--t-inset),
+    0 8px 20px -6px rgba(31, 79, 230, .6) !important;
+}
+
+/* ============================================================
+   13. ICON BUTTONS
+   ============================================================ */
+.tools-page .tc-ib {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 9px !important;
+  box-shadow: var(--t-inset) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+}
+
+.tools-page .tc-ib svg {
+  width: 15px !important;
+  height: 15px !important;
+  display: block !important;
+}
+
+.tools-page .tc-ib:hover {
+  background: var(--t-glass-hover) !important;
+  color: var(--ink) !important;
+  transform: translateY(-1px) !important;
+  box-shadow:
+    var(--t-inset),
+    0 4px 12px -4px rgba(0, 0, 0, .12) !important;
+}
+
+.tools-page .tc-ib.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow:
+    var(--t-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .5) !important;
+}
+
+.tools-page .tc-star.on,
+.tools-page .tc-ib.on.tc-star {
+  background: linear-gradient(180deg, #fbbf24, #f59e0b) !important;
+  color: #111 !important;
+  border-color: transparent !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .5),
+    0 4px 12px -4px rgba(245, 158, 11, .5) !important;
+}
+
+/* ============================================================
+   14. GRID + CARDS — Glass tiles
+   ============================================================ */
+.tools-page .tc-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+  gap: 1rem !important;
+  margin-top: 1rem !important;
+}
+
+.tools-page .tc-cell {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .7rem !important;
+  padding: 1.1rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--t-inset), var(--t-shadow-1) !important;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1) !important;
+  overflow: hidden !important;
+}
+
+.tools-page .tc-cell:hover {
+  background: var(--t-glass-hover) !important;
+  border-color: color-mix(in srgb, var(--acc) 25%, var(--t-glass-border)) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: var(--t-inset), var(--t-shadow-hover) !important;
+}
+
+/* Remove old pseudo effects */
+.tools-page .tc-cell::before,
+.tools-page .tc-cell::after {
+  display: none !important;
+}
+
+.tools-page .tc-cell.comparing {
+  border-color: var(--acc) !important;
+  background: color-mix(in srgb, var(--acc) 6%, var(--t-glass)) !important;
+  box-shadow:
+    var(--t-inset),
+    0 0 0 2px color-mix(in srgb, var(--acc) 30%, transparent),
+    var(--t-shadow-2) !important;
+}
+
+/* Tile header */
+.tools-page .tc-tile {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: .3rem !important;
+}
+
+.tools-page .tc-no {
+  font: 500 .72rem var(--sans) !important;
+  color: var(--mut) !important;
+  letter-spacing: .02em !important;
+}
+
+.tools-page .tc-sym {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 9px !important;
+  background: var(--t-glass-strong) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  font: 600 .75rem var(--sans) !important;
+  color: var(--ink) !important;
+}
+
+/* Logo/Icon wrapper */
+.tools-page .tc-link {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .55rem !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  flex: 1 !important;
+}
+
+.tools-page .tc-name {
+  font: 600 1rem/1.3 var(--sans) !important;
+  letter-spacing: -.015em !important;
+  color: var(--ink) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  white-space: normal !important;
+  min-height: 2.6em;
+}
+
+.tools-page .tc-desc {
+  font: 400 .82rem/1.45 var(--sans) !important;
+  color: var(--mut) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  white-space: normal !important;
+}
+
+/* Icon square inside AI free */
+.tools-page .tc-ico {
+  display: grid !important;
+  place-items: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 11px !important;
+  background: var(--t-glass-strong) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  box-shadow: var(--t-inset) !important;
+  color: var(--ink) !important;
+}
+
+/* Foot */
+.tools-page .tc-foot {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  padding-top: .75rem !important;
+  margin-top: auto !important;
+  border-top: 1px solid var(--t-line-1) !important;
+}
+
+.tools-page .tc-domain {
+  font: 500 .74rem var(--sans) !important;
+  color: var(--mut) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+}
+
+.tools-page .tc-tools {
+  display: flex !important;
+  gap: .25rem !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tc-arrow {
+  color: var(--acc) !important;
+  transition: transform .2s !important;
+}
+
+.tools-page .tc-cell:hover .tc-arrow {
+  transform: translate(2px, -2px) !important;
+}
+
+/* Price */
+.tools-page .tc-price {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  font: 500 .74rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tc-price i {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tag */
+.tools-page .tc-tag {
+  position: absolute !important;
+  top: .75rem !important;
+  right: .75rem !important;
+  padding: .2rem .6rem !important;
+  border-radius: 6px !important;
+  font: 600 .68rem var(--sans) !important;
+  color: #fff !important;
+  z-index: 2 !important;
+}
+
+.tools-page .tc-tag.hot {
+  background: linear-gradient(180deg, #ff8a1a, #ff4d1a) !important;
+}
+
+.tools-page .tc-tag.new {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+}
+
+/* ============================================================
+   15. HOT AI — Collapsible rows
+   ============================================================ */
+.tools-page .tc-cuai {
+  display: grid !important;
+  grid-template-columns: 1.4fr 1fr !important;
+  gap: 1.75rem !important;
+  padding: 1.5rem 1.75rem !important;
+  margin-bottom: 1.25rem !important;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #4d86ff 8%, var(--t-glass)),
+    color-mix(in srgb, #8b5cf6 6%, var(--t-glass))) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid color-mix(in srgb, #4d86ff 30%, var(--t-glass-border)) !important;
+  border-radius: 22px !important;
+  box-shadow:
+    var(--t-inset),
+    0 12px 32px -16px color-mix(in srgb, #4d86ff 35%, transparent) !important;
+}
+
+@media (max-width: 720px) {
+  .tools-page .tc-cuai {
+    grid-template-columns: 1fr !important;
+    padding: 1.25rem !important;
+    gap: 1rem !important;
+  }
+}
+
+.tools-page .tc-cuai-id {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  margin-bottom: .75rem !important;
+}
+
+.tools-page .tc-cuai-id h2 {
+  margin: 0 0 .15rem !important;
+  font: 600 1.4rem var(--sans) !important;
+  letter-spacing: -.03em !important;
+  color: var(--ink) !important;
+  text-transform: none !important;
+}
+
+.tools-page .tc-cuai-by {
+  font: 500 .78rem var(--sans) !important;
+  color: var(--mut) !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+}
+
+.tools-page .tc-cuai-desc {
+  font: 500 .95rem/1.55 var(--sans) !important;
+  color: var(--ink) !important;
+  margin: 0 0 .5rem !important;
+}
+
+.tools-page .tc-cuai-why {
+  font: 400 .88rem/1.6 var(--sans) !important;
+  color: var(--mut) !important;
+  margin: 0 0 1rem !important;
+}
+
+.tools-page .tc-cuai-foot {
+  display: flex !important;
+  align-items: center !important;
+  gap: .6rem !important;
+  flex-wrap: wrap !important;
+}
+
+.tools-page .tc-cuai-side {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .8rem !important;
+  padding: .5rem 0 !important;
+}
+
+.tools-page .tc-cuai-side h3 {
+  margin: 0 !important;
+  font: 600 .8rem var(--sans) !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tc-cuai-side ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .5rem !important;
+}
+
+.tools-page .tc-cuai-side li {
+  font: 500 .85rem/1.4 var(--sans) !important;
+  color: var(--ink) !important;
+  padding-left: 1.3rem !important;
+  position: relative !important;
+}
+
+.tools-page .tc-cuai-side li::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: .5rem !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: var(--acc) !important;
+}
+
+.tools-page .tc-el {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 64px !important;
+  height: 64px !important;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  border-radius: 16px !important;
+  color: #fff !important;
+  box-shadow:
+    var(--t-inset),
+    0 8px 24px -8px rgba(31, 79, 230, .5) !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tc-el span {
+  font: 500 .6rem var(--sans) !important;
+  opacity: .8 !important;
+}
+
+.tools-page .tc-el b {
+  font: 700 1.4rem var(--sans) !important;
+  letter-spacing: -.04em !important;
+  line-height: 1 !important;
+}
+
+.tools-page .tc-el i {
+  font: 500 .55rem var(--sans) !important;
+  font-style: normal !important;
+  margin-top: 2px !important;
+  opacity: .9 !important;
+}
+
+/* ============================================================
+   16. HOT ROWS (collapsible)
+   ============================================================ */
+.tools-page .tc-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .6rem !important;
+}
+
+.tools-page .tc-row {
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--t-inset), var(--t-shadow-1) !important;
+  overflow: hidden !important;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+.tools-page .tc-row:hover {
+  background: var(--t-glass-strong) !important;
+  box-shadow: var(--t-inset), var(--t-shadow-2) !important;
+}
+
+.tools-page .tc-row.open {
+  border-color: color-mix(in srgb, var(--acc) 40%, var(--t-glass-border)) !important;
+  box-shadow:
+    var(--t-inset),
+    0 0 0 2px color-mix(in srgb, var(--acc) 15%, transparent),
+    var(--t-shadow-2) !important;
+}
+
+.tools-page .tc-row-main {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.tools-page .tc-row-toggle {
+  display: grid !important;
+  grid-template-columns: 40px 44px 1fr auto 24px !important;
+  gap: 1rem !important;
+  align-items: center !important;
+  width: 100% !important;
+  padding: .85rem 1rem !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  font-family: inherit !important;
+  color: inherit !important;
+  transition: background .15s !important;
+}
+
+.tools-page .tc-rank {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: var(--t-glass-strong) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  font: 600 .82rem var(--sans) !important;
+  color: var(--ink) !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tc-row.top .tc-rank {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow:
+    var(--t-inset),
+    0 4px 12px -4px rgba(31, 79, 230, .5) !important;
+}
+
+.tools-page .tc-row-text {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .15rem !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.tools-page .tc-row-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: .6rem !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tc-sub {
+  font: 500 .74rem var(--sans) !important;
+  color: var(--mut) !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+}
+
+.tools-page .tc-chev {
+  color: var(--mut) !important;
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1) !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tc-chev.open {
+  transform: rotate(180deg) !important;
+}
+
+.tools-page .tc-row-main > .tc-star {
+  margin-right: .6rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* Detail expand */
+.tools-page .tc-detail {
+  padding: 1rem 1.25rem 1.25rem !important;
+  border-top: 1px solid var(--t-line-1) !important;
+  background: color-mix(in srgb, var(--ink) 2%, transparent) !important;
+  animation: tc-detail-in .25s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+@keyframes tc-detail-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+.tools-page .tc-why {
+  font: 400 .9rem/1.6 var(--sans) !important;
+  color: var(--ink) !important;
+  margin: 0 0 1rem !important;
+}
+
+.tools-page .tc-cols {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.tools-page .tc-cols h4 {
+  font: 600 .75rem var(--sans) !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+  margin: 0 0 .5rem !important;
+}
+
+.tools-page .tc-cols ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .35rem !important;
+}
+
+.tools-page .tc-cols li {
+  font: 400 .85rem/1.5 var(--sans) !important;
+  color: var(--ink) !important;
+  padding-left: 1.2rem !important;
+  position: relative !important;
+}
+
+.tools-page .tc-cols li::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: .55rem !important;
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50% !important;
+  background: var(--mut) !important;
+}
+
+.tools-page .tc-cols .pro li::before { background: #22c55e !important; }
+.tools-page .tc-cols .con li::before { background: #ef4444 !important; }
+
+.tools-page .tc-detail-foot {
+  display: flex !important;
+  align-items: center !important;
+  gap: .6rem !important;
+  flex-wrap: wrap !important;
+  padding-top: 1rem !important;
+  border-top: 1px solid var(--t-line-1) !important;
+}
+
+/* ============================================================
+   17. SPOTLIGHT (Random pick)
+   ============================================================ */
+.tools-page .tc-spot {
+  padding: 1.25rem !important;
+  margin-bottom: 1rem !important;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--acc) 8%, var(--t-glass)),
+    var(--t-glass)) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid color-mix(in srgb, var(--acc) 40%, var(--t-glass-border)) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    var(--t-inset),
+    0 8px 24px -12px color-mix(in srgb, var(--acc) 30%, transparent) !important;
+  animation: tc-spot-in .35s cubic-bezier(.32, .72, 0, 1) !important;
+}
+
+@keyframes tc-spot-in {
+  from { opacity: 0; transform: translateY(-8px); }
+}
+
+.tools-page .tc-spot-head {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 1rem !important;
+}
+
+.tools-page .tc-spot-head span {
+  font: 600 .8rem var(--sans) !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  color: var(--acc) !important;
+}
+
+.tools-page .tc-spot .tc-cell {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.tools-page .tc-spot .tc-cell:hover {
+  transform: none !important;
+}
+
+/* ============================================================
+   18. MORE + EMPTY
+   ============================================================ */
+.tools-page .tc-more {
+  display: flex !important;
+  justify-content: center !important;
+  margin-top: 1.5rem !important;
+}
+
+.tools-page .tc-more .tc-btn {
+  padding: .75rem 1.75rem !important;
+  font-size: .85rem !important;
+}
+
+.tools-page .tools-empty {
+  padding: 3rem 1rem !important;
+  text-align: center !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tools-empty p {
+  font: 500 .92rem var(--sans) !important;
+  margin: 0 0 1rem !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tools-empty button {
+  padding: .6rem 1.4rem !important;
+  background: var(--t-glass) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid var(--t-glass-border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--t-inset) !important;
+  color: var(--ink) !important;
+  cursor: pointer !important;
+  font: 500 .85rem var(--sans) !important;
+  transition: all .2s !important;
+}
+
+.tools-page .tools-empty button:hover {
+  background: var(--t-glass-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ============================================================
+   19. VIP NOTE
+   ============================================================ */
+.tools-page .tc-note-vip {
+  padding: .75rem 1rem !important;
+  background: color-mix(in srgb, #fbbf24 10%, var(--t-glass)) !important;
+  -webkit-backdrop-filter: var(--t-blur) !important;
+  backdrop-filter: var(--t-blur) !important;
+  border: 1px solid color-mix(in srgb, #fbbf24 40%, var(--t-glass-border)) !important;
+  border-radius: 12px !important;
+  color: var(--ink) !important;
+  font: 500 .85rem var(--sans) !important;
+  text-align: center !important;
+  margin-bottom: .75rem !important;
+}
+
+/* ============================================================
+   20. MOBILE
+   ============================================================ */
+@media (max-width: 720px) {
+  .tools-page {
+    padding: 1rem .75rem 5rem !important;
+  }
+  .tools-page::after {
+    height: 100px;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .tools-page .tc-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: .75rem !important;
+  }
+  .tools-page .tc-row-toggle {
+    grid-template-columns: 36px 40px 1fr 20px !important;
+    gap: .6rem !important;
+    padding: .7rem .8rem !important;
+  }
+  .tools-page .tc-row-meta { display: none !important; }
+  .tools-page .tc-rank {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: .74rem !important;
+  }
+  .tools-page .tc-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .tools-page .tc-sort {
+    justify-content: space-between !important;
+  }
+  .tools-page .tc-cuai {
+    padding: 1.15rem !important;
+  }
+  .tools-page .tc-ib {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .tools-page .tc-ib svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .tools-page .tc-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ============================================================
+   21. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .tools-page *,
+  .tools-page *::before,
+  .tools-page *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ============================================================
+   22. FALLBACK — không hỗ trợ backdrop-filter
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tools-page .tn-side,
+  .tools-page .tools-tabs,
+  .tools-page .tools-search,
+  .tools-page .tools-cat,
+  .tools-page .tc-seg,
+  .tools-page .tc-sort select,
+  .tools-page .tc-btn,
+  .tools-page .tc-ib,
+  .tools-page .tc-cell,
+  .tools-page .tc-row,
+  .tools-page .tc-cuai,
+  .tools-page .tc-spot {
+    background: var(--bg) !important;
+  }
+  [data-theme='dark'] .tools-page .tn-side,
+  [data-theme='dark'] .tools-page .tools-tabs,
+  [data-theme='dark'] .tools-page .tools-search,
+  [data-theme='dark'] .tools-page .tools-cat,
+  [data-theme='dark'] .tools-page .tc-seg,
+  [data-theme='dark'] .tools-page .tc-sort select,
+  [data-theme='dark'] .tools-page .tc-btn,
+  [data-theme='dark'] .tools-page .tc-ib,
+  [data-theme='dark'] .tools-page .tc-cell,
+  [data-theme='dark'] .tools-page .tc-row,
+  [data-theme='dark'] .tools-page .tc-cuai,
+  [data-theme='dark'] .tools-page .tc-spot {
+    background: #121214 !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .tools-page .tn-side,
+  .tools-page .tools-tabs,
+  .tools-page .tools-search,
+  .tools-page .tools-cat,
+  .tools-page .tc-seg,
+  .tools-page .tc-sort select,
+  .tools-page .tc-btn,
+  .tools-page .tc-ib,
+  .tools-page .tc-cell,
+  .tools-page .tc-row,
+  .tools-page .tc-cuai {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

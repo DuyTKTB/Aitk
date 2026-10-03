@@ -332,3 +332,291 @@
   border-color: var(--acc);
   box-shadow: 3px 3px 0 var(--acc);
 }
+/* ============================================================
+   FORM TẠO ĐỀ MỚI — ĐẸP HƠN
+   ============================================================ */
+
+/* Container */
+.ad {
+  padding: 1rem 1.5rem 2rem;
+}
+
+.ad-head {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--soft);
+}
+
+.ad-head h1 {
+  font: 700 clamp(1.4rem, 3vw, 2rem) var(--sans);
+  letter-spacing: -.035em;
+  margin: 0 0 .3rem;
+  color: var(--ink);
+}
+
+.ad-head p {
+  margin: 0;
+  font: 400 .88rem var(--sans);
+  color: var(--mut);
+}
+
+/* Tabs */
+.ad-tabs {
+  display: flex;
+  gap: .3rem;
+  margin-bottom: 1.5rem;
+  padding: .3rem;
+  background: var(--soft);
+  border-radius: 999px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ad-tabs::-webkit-scrollbar { display: none; }
+
+.ad-tab {
+  flex: none;
+  padding: .65rem 1.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mut);
+  cursor: pointer;
+  font: 600 .84rem var(--sans);
+  white-space: nowrap;
+  transition: all .2s;
+}
+.ad-tab:hover { color: var(--ink); background: rgba(0,0,0,.03); }
+.ad-tab.on {
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+/* Form chính */
+.ad-form {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--bg);
+  border: 1px solid var(--soft);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px -8px rgba(0,0,0,.08);
+}
+
+.ad-form h2 {
+  margin: 0 0 1.8rem;
+  font: 700 1.4rem var(--sans);
+  letter-spacing: -.03em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.ad-form h2::before {
+  content: '';
+  width: 4px;
+  height: 24px;
+  background: var(--acc);
+  border-radius: 2px;
+}
+
+/* Nhóm 2 cột */
+.ad-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .ad-form-row { grid-template-columns: 1fr; gap: 1rem; }
+}
+
+/* Từng field */
+.ad-form label {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1.2rem;
+  grid-column: auto;
+}
+
+.ad-form label > span {
+  font: 600 .74rem var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--mut);
+}
+
+.ad-form input[type="text"],
+.ad-form input[type="number"],
+.ad-form select,
+.ad-form textarea {
+  padding: .85rem 1rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 .92rem var(--sans);
+  transition: all .2s;
+  outline: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ad-form textarea {
+  resize: vertical;
+  min-height: 90px;
+  border-radius: 14px;
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+
+.ad-form input:focus,
+.ad-form select:focus,
+.ad-form textarea:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 15%, transparent);
+  background: var(--bg);
+}
+
+.ad-form input::placeholder,
+.ad-form textarea::placeholder {
+  color: var(--mut);
+  opacity: .6;
+}
+
+.ad-form select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3e%3cpath d='M1 1l5 5 5-5' stroke='%236b675e' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Checkbox */
+.ad-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: .7rem !important;
+  padding: .9rem 1.1rem;
+  background: var(--soft);
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  grid-column: 1 / -1;
+  transition: background .15s;
+}
+
+.ad-checkbox:hover { background: color-mix(in srgb, var(--soft) 70%, var(--bg)); }
+
+.ad-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--acc);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.ad-checkbox span {
+  font: 500 .88rem var(--sans) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--ink) !important;
+}
+
+/* Nút hành động */
+.ad-form-actions {
+  display: flex;
+  gap: .8rem;
+  justify-content: flex-end;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--soft);
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .ad-form-actions {
+    flex-direction: column-reverse;
+  }
+  .ad-form-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Nút */
+.ad-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .75rem 1.4rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+  font: 600 .84rem var(--sans);
+  transition: all .2s cubic-bezier(.22,1,.36,1);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.ad-btn:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--soft);
+  transform: translateY(-1px);
+}
+
+.ad-btn.primary {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px -4px rgba(47, 107, 255, .6), inset 0 1px 0 rgba(255,255,255,.3);
+  font-weight: 700;
+  padding: .85rem 1.8rem;
+}
+
+.ad-btn.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff);
+  box-shadow: 0 8px 24px -6px rgba(47, 107, 255, .8), inset 0 1px 0 rgba(255,255,255,.4);
+  transform: translateY(-2px);
+}
+
+.ad-btn.primary:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Thông báo lỗi */
+.ad-err {
+  padding: .8rem 1rem;
+  margin: 1rem 0;
+  border: 1.5px solid var(--acc);
+  border-left-width: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--acc) 8%, var(--bg));
+  color: var(--acc);
+  font: 600 .85rem var(--sans);
+}
+
+.ad-hint {
+  margin: 1.2rem 0 0;
+  padding: .8rem 1rem;
+  background: var(--soft);
+  border-radius: 10px;
+  font: 400 .82rem/1.5 var(--sans);
+  color: var(--mut);
+  text-align: center;
+}
+
+.ad-hint b { color: var(--ink); }

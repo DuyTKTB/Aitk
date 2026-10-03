@@ -1,0 +1,1072 @@
+/* ============================================================
+   LOGIN PAGE v2 — Glassmorphism Apple Style
+   Override AuthProfile.css (chỉ visual, KHÔNG đổi layout)
+   ============================================================ */
+
+/* ============================================================
+   1. PAGE WRAPPER + AMBIENT BACKGROUND
+   ============================================================ */
+.lx-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Ambient gradient toàn trang */
+.lx-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(50% 40% at 15% 20%,
+      color-mix(in srgb, #4d86ff 20%, transparent),
+      transparent 60%),
+    radial-gradient(45% 40% at 85% 30%,
+      color-mix(in srgb, #8b5cf6 16%, transparent),
+      transparent 60%),
+    radial-gradient(60% 50% at 50% 100%,
+      color-mix(in srgb, #22d3ee 12%, transparent),
+      transparent 60%);
+  animation: lx-ambient 20s ease-in-out infinite;
+}
+
+[data-theme='dark'] .lx-page::before {
+  background:
+    radial-gradient(50% 40% at 15% 20%,
+      color-mix(in srgb, #4d86ff 14%, transparent),
+      transparent 60%),
+    radial-gradient(45% 40% at 85% 30%,
+      color-mix(in srgb, #8b5cf6 10%, transparent),
+      transparent 60%),
+    radial-gradient(60% 50% at 50% 100%,
+      color-mix(in srgb, #0891b2 10%, transparent),
+      transparent 60%);
+}
+
+@keyframes lx-ambient {
+  0%, 100% { opacity: .85; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.08); }
+}
+
+/* ============================================================
+   2. SHELL LAYOUT
+   ============================================================ */
+.lx-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  width: min(1120px, 100%);
+  min-height: 620px;
+  border-radius: 32px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .55);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, .7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    0 30px 80px -30px rgba(0, 0, 0, .25),
+    0 2px 8px -2px rgba(0, 0, 0, .06);
+}
+
+[data-theme='dark'] .lx-shell {
+  background: rgba(255, 255, 255, .04);
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 30px 80px -30px rgba(0, 0, 0, .6);
+}
+
+@media (max-width: 900px) {
+  .lx-shell {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    border-radius: 24px;
+  }
+}
+
+/* ============================================================
+   3. HERO PANEL (bên trái)
+   ============================================================ */
+.lx-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem 2.75rem;
+  overflow: hidden;
+  background: linear-gradient(160deg,
+    color-mix(in srgb, #4d86ff 92%, #000) 0%,
+    color-mix(in srgb, #6366f1 85%, #000) 50%,
+    color-mix(in srgb, #8b5cf6 90%, #000) 100%);
+  color: #fff;
+}
+
+[data-theme='dark'] .lx-hero {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, #1d4ed8 65%, #000) 0%,
+    color-mix(in srgb, #4338ca 60%, #000) 50%,
+    color-mix(in srgb, #6d28d9 65%, #000) 100%);
+}
+
+.lx-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 20% 30%,
+      rgba(255, 255, 255, .25),
+      transparent 60%),
+    radial-gradient(50% 45% at 80% 70%,
+      rgba(255, 255, 255, .15),
+      transparent 55%);
+  pointer-events: none;
+}
+
+.lx-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  pointer-events: none;
+}
+
+.lx-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.lx-hero-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 400px;
+  margin: -200px 0 0 -200px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, .35),
+    transparent 60%);
+  filter: blur(60px);
+  animation: lx-glow-rotate 20s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes lx-glow-rotate {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  33%  { transform: translate(30px, -20px) rotate(120deg); }
+  66%  { transform: translate(-20px, 30px) rotate(240deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
+}
+
+/* Hero head */
+.lx-hero-head {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  font: 600 .85rem var(--sans);
+  letter-spacing: .02em;
+}
+
+.lx-hero-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow:
+    0 0 0 3px rgba(74, 222, 128, .25),
+    0 0 12px rgba(74, 222, 128, .8);
+  animation: lx-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes lx-dot-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 3px rgba(74, 222, 128, .25), 0 0 12px rgba(74, 222, 128, .8); }
+  50%      { opacity: .7; box-shadow: 0 0 0 6px rgba(74, 222, 128, .15), 0 0 20px rgba(74, 222, 128, 1); }
+}
+
+.lx-hero-brand {
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  font-size: .78rem;
+  opacity: .95;
+}
+
+/* Hero body */
+.lx-hero-body {
+  margin: 2rem 0;
+}
+
+.lx-hero-title {
+  font: 500 clamp(2rem, 4.5vw, 3rem)/1.1 var(--sans);
+  letter-spacing: -.04em;
+  margin: 0 0 1rem;
+  color: #fff;
+  text-transform: none;
+}
+
+.lx-hero-title em {
+  display: block;
+  font: 400 italic clamp(2rem, 4.5vw, 3rem)/1.1 var(--serif, 'Inter', serif);
+  font-style: italic;
+  color: rgba(255, 255, 255, .85);
+  margin-top: .15rem;
+}
+
+.lx-hero-sub {
+  margin: 0;
+  font: 400 1rem/1.6 var(--sans);
+  color: rgba(255, 255, 255, .85);
+  max-width: 420px;
+}
+
+/* Hero foot (fact) */
+.lx-hero-foot {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, .2);
+}
+
+.lx-fact-wrap {
+  min-height: 52px;
+}
+
+.lx-fact-wrap small {
+  display: block;
+  font: 500 .72rem var(--sans);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .6);
+  margin-bottom: .35rem;
+}
+
+.lx-fact {
+  margin: 0;
+  font: 400 .92rem/1.55 var(--sans);
+  color: rgba(255, 255, 255, .95);
+  animation: lx-fact-in .5s cubic-bezier(.32, .72, 0, 1);
+}
+
+@keyframes lx-fact-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.lx-dots {
+  display: flex;
+  gap: .35rem;
+}
+
+.lx-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .35);
+  transition: all .3s cubic-bezier(.32, .72, 0, 1);
+}
+
+.lx-dots span.on {
+  width: 24px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+/* Ẩn hero trên mobile */
+@media (max-width: 900px) {
+  .lx-hero {
+    padding: 2rem 1.75rem 1.5rem;
+    min-height: 200px;
+  }
+  .lx-hero-title {
+    font-size: 1.75rem;
+  }
+  .lx-hero-title em {
+    font-size: 1.75rem;
+  }
+  .lx-hero-sub {
+    font-size: .88rem;
+  }
+  .lx-hero-body {
+    margin: 1rem 0;
+  }
+  .lx-hero-foot {
+    display: none;
+  }
+}
+
+/* ============================================================
+   4. CARD PANEL (bên phải)
+   ============================================================ */
+.lx-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2.25rem;
+  background: transparent;
+}
+
+@media (max-width: 900px) {
+  .lx-card {
+    padding: 1.5rem 1.25rem 2rem;
+  }
+}
+
+.lx-inner {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  animation: lx-in .5s cubic-bezier(.32, .72, 0, 1);
+}
+
+@keyframes lx-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+.lx-inner.shake {
+  animation: lx-shake .45s cubic-bezier(.36, .07, .19, .97);
+}
+
+@keyframes lx-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+
+/* Topbar */
+.lx-topbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lx-lang {
+  display: inline-flex;
+  align-items: center;
+  padding: .28rem .7rem;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 999px;
+  font: 600 .7rem var(--sans);
+  letter-spacing: .08em;
+  color: var(--mut);
+  text-transform: uppercase;
+}
+
+/* Welcome */
+.lx-welcome {
+  text-align: left;
+}
+
+.lx-welcome h2 {
+  margin: 0 0 .35rem;
+  font: 600 clamp(1.5rem, 3vw, 1.75rem)/1.15 var(--sans);
+  letter-spacing: -.03em;
+  color: var(--ink);
+  text-transform: none;
+}
+
+.lx-welcome p {
+  margin: 0;
+  font: 400 .9rem/1.5 var(--sans);
+  color: var(--mut);
+}
+
+/* ============================================================
+   5. SOCIAL BUTTONS
+   ============================================================ */
+.lx-social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .55rem;
+}
+
+.lx-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  font: 500 .85rem var(--sans);
+  transition: all .2s cubic-bezier(.32, .72, 0, 1);
+  font-family: inherit;
+}
+
+.lx-social-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 15%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .08);
+}
+
+.lx-social-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* Divider */
+.lx-divider {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  color: var(--mut);
+  font: 500 .72rem var(--sans);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.lx-divider::before,
+.lx-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+/* ============================================================
+   6. FORM + FLOATING LABEL INPUTS
+   ============================================================ */
+.lx-form {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+
+.lx-name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .65rem;
+}
+
+/* Field with floating label */
+.lx-field {
+  position: relative;
+  display: block;
+}
+
+.lx-field input {
+  width: 100%;
+  padding: 1.4rem .95rem .55rem;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 12px;
+  color: var(--ink);
+  font: 500 .92rem var(--sans);
+  outline: 0;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1);
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.lx-field input:hover {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 15%, transparent);
+}
+
+.lx-field input:focus {
+  background: var(--bg);
+  border-color: var(--acc);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 12%, transparent);
+}
+
+/* Label */
+.lx-field label {
+  position: absolute;
+  top: .9rem;
+  left: 1rem;
+  font: 500 .92rem var(--sans);
+  color: var(--mut);
+  pointer-events: none;
+  transition: all .2s cubic-bezier(.32, .72, 0, 1);
+  transform-origin: left center;
+}
+
+/* Khi focus hoặc có value → label bay lên */
+.lx-field input:focus + label,
+.lx-field input:not(:placeholder-shown) + label {
+  top: .42rem;
+  font-size: .68rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+
+.lx-field input:focus + label {
+  color: var(--acc);
+}
+
+/* Right slot (eye button) */
+.lx-right {
+  position: absolute;
+  top: 50%;
+  right: .65rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.lx-eye {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--mut);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.lx-eye:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+}
+
+/* Hint */
+.lx-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin: -.3rem 0 0;
+  font: 500 .75rem var(--sans);
+  color: #f59e0b;
+}
+
+/* Collapse (register extra fields) */
+.lx-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .35s cubic-bezier(.32, .72, 0, 1);
+}
+
+.lx-collapse.open {
+  grid-template-rows: 1fr;
+}
+
+.lx-collapse > div {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+/* Password strength */
+.lx-strength {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+.lx-meter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+
+.lx-meter i {
+  height: 4px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 2px;
+  transition: background .3s cubic-bezier(.32, .72, 0, 1);
+}
+
+.lx-meter[data-s="1"] i:nth-child(1) { background: #ef4444; }
+.lx-meter[data-s="2"] i:nth-child(-n+2) { background: #f59e0b; }
+.lx-meter[data-s="3"] i:nth-child(-n+3) { background: #84cc16; }
+.lx-meter[data-s="4"] i { background: #22c55e; }
+
+.lx-meter-label {
+  font: 600 .72rem var(--sans);
+  color: var(--mut);
+  min-width: 60px;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* Password rules */
+.pf-rules {
+  list-style: none;
+  padding: 0;
+  margin: .5rem 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .35rem .9rem;
+  font: 400 .74rem var(--sans);
+  color: var(--mut);
+}
+
+.pf-rules li {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .12rem 0;
+  transition: color .2s;
+}
+
+.pf-rules li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--ink) 15%, transparent);
+  transition: all .2s;
+}
+
+.pf-rules li.ok {
+  color: var(--ink);
+}
+
+.pf-rules li.ok::before {
+  background: #22c55e;
+  border-color: #22c55e;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 6'/%3E%3C/svg%3E");
+  background-size: 8px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+@media (max-width: 480px) {
+  .pf-rules { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   7. CHECKBOX + ROW BETWEEN
+   ============================================================ */
+.lx-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .65rem;
+  flex-wrap: wrap;
+}
+
+.lx-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+  font: 500 .82rem var(--sans);
+  color: var(--ink);
+  user-select: none;
+}
+
+.lx-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--acc);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.lx-checkbox-terms {
+  align-items: flex-start;
+  font-size: .8rem;
+  line-height: 1.5;
+  color: var(--mut);
+}
+
+.lx-checkbox-terms input[type="checkbox"] {
+  margin-top: 2px;
+}
+
+.lx-checkbox a {
+  color: var(--acc);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity .15s;
+}
+
+.lx-checkbox a:hover {
+  opacity: .8;
+  text-decoration: underline;
+}
+
+.lx-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--acc);
+  cursor: pointer;
+  font: 500 .82rem var(--sans);
+  transition: opacity .15s;
+  font-family: inherit;
+}
+
+.lx-link:hover {
+  opacity: .8;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   8. ERROR / INFO
+   ============================================================ */
+.lx-err,
+.lx-info {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .7rem .9rem;
+  border-radius: 10px;
+  font: 500 .8rem/1.45 var(--sans);
+  margin: 0;
+}
+
+.lx-err {
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  border-left-width: 3px;
+  color: #dc2626;
+}
+
+[data-theme='dark'] .lx-err {
+  color: #f87171;
+}
+
+.lx-err > svg,
+.lx-info > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.lx-info {
+  background: color-mix(in srgb, #22c55e 10%, transparent);
+  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  border-left-width: 3px;
+  color: #16a34a;
+}
+
+[data-theme='dark'] .lx-info {
+  color: #4ade80;
+}
+
+/* ============================================================
+   9. SUBMIT BUTTON
+   ============================================================ */
+.lx-submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  width: 100%;
+  padding: .95rem 1.25rem;
+  margin-top: .4rem;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font: 600 .92rem var(--sans);
+  letter-spacing: -.005em;
+  transition: all .25s cubic-bezier(.32, .72, 0, 1);
+  font-family: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 6px 20px -6px rgba(31, 79, 230, .5);
+  overflow: hidden;
+}
+
+.lx-submit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, .25),
+    transparent);
+  transition: left .6s cubic-bezier(.32, .72, 0, 1);
+}
+
+.lx-submit:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 12px 32px -8px rgba(31, 79, 230, .6);
+}
+
+.lx-submit:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.lx-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.lx-submit:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.lx-arrow {
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+  display: inline-block;
+}
+
+.lx-submit:hover:not(:disabled) .lx-arrow {
+  transform: translateX(4px);
+}
+
+.lx-submit .spin,
+.spin {
+  animation: lx-spin 1s linear infinite;
+}
+
+@keyframes lx-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   10. SWITCH + NOTE
+   ============================================================ */
+.lx-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  margin: .35rem 0 0;
+  font: 400 .85rem var(--sans);
+  color: var(--mut);
+  text-align: center;
+  flex-wrap: wrap;
+}
+
+.lx-switch button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--acc);
+  cursor: pointer;
+  font: 600 .85rem var(--sans);
+  transition: opacity .15s;
+  font-family: inherit;
+}
+
+.lx-switch button:hover {
+  opacity: .8;
+  text-decoration: underline;
+}
+
+.lx-note {
+  margin: .5rem 0 0;
+  text-align: center;
+  font: 400 .72rem/1.5 var(--sans);
+  color: var(--mut);
+  opacity: .8;
+}
+
+/* ============================================================
+   11. DIALOG (Forgot Password)
+   ============================================================ */
+.pf-dialog {
+  width: min(420px, 92vw);
+  padding: 1.75rem 1.5rem 1.5rem;
+  background: rgba(255, 255, 255, .92);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 24px;
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    0 30px 80px -20px rgba(0, 0, 0, .35);
+}
+
+[data-theme='dark'] .pf-dialog {
+  background: rgba(20, 22, 30, .92);
+  border-color: rgba(255, 255, 255, .1);
+}
+
+.pf-dialog::backdrop {
+  background: rgba(0, 0, 0, .5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.pf-dialog h3 {
+  margin: 0 0 .5rem;
+  font: 600 1.2rem var(--sans);
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+
+.pf-dialog p {
+  margin: 0 0 1.25rem;
+  font: 400 .88rem/1.55 var(--sans);
+  color: var(--mut);
+}
+
+.pf-dialog input {
+  width: 100%;
+  padding: .85rem 1rem;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 12px;
+  color: var(--ink);
+  font: 500 .92rem var(--sans);
+  outline: 0;
+  transition: all .2s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.pf-dialog input:focus {
+  border-color: var(--acc);
+  background: var(--bg);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 12%, transparent);
+}
+
+.pf-actions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+  padding-top: .9rem;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  margin-top: 1rem;
+}
+
+.pf-actions.flat {
+  border: 0;
+  padding: 0;
+  margin-top: .8rem;
+}
+
+.pf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  padding: .65rem 1.15rem;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 10px;
+  color: var(--ink);
+  cursor: pointer;
+  font: 500 .85rem var(--sans);
+  transition: all .2s cubic-bezier(.32, .72, 0, 1);
+  font-family: inherit;
+}
+
+.pf-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 15%, transparent);
+  transform: translateY(-1px);
+}
+
+.pf-btn.primary {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 4px 12px -4px rgba(31, 79, 230, .5);
+}
+
+.pf-btn.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 8px 20px -6px rgba(31, 79, 230, .6);
+}
+
+.pf-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   12. MOBILE
+   ============================================================ */
+@media (max-width: 640px) {
+  .lx-page {
+    padding: .75rem;
+  }
+  .lx-name-row {
+    grid-template-columns: 1fr;
+  }
+  .lx-social {
+    grid-template-columns: 1fr;
+  }
+  .lx-inner {
+    max-width: 100%;
+    gap: 1rem;
+  }
+  .lx-welcome h2 {
+    font-size: 1.4rem;
+  }
+  .lx-hero {
+    padding: 1.75rem 1.25rem 1.25rem;
+  }
+  .lx-hero-title,
+  .lx-hero-title em {
+    font-size: 1.5rem;
+  }
+  .lx-hero-sub {
+    font-size: .85rem;
+  }
+  .lx-hero-brand {
+    font-size: .7rem;
+  }
+}
+
+/* ============================================================
+   13. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .lx-page::before,
+  .lx-hero-glow,
+  .lx-hero-dot,
+  .lx-fact,
+  .lx-inner,
+  .lx-submit::before {
+    animation: none !important;
+    transition: none !important;
+  }
+  .lx-submit:hover:not(:disabled)::before {
+    left: -100%;
+  }
+}
+
+/* ============================================================
+   14. FALLBACK
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lx-shell {
+    background: var(--bg);
+  }
+  [data-theme='dark'] .lx-shell {
+    background: #121214;
+  }
+}
