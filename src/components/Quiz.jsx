@@ -5,6 +5,8 @@ import { pickNext, mastery, stats, srsReview, freshRecord, isDue } from '../lib/
 import { ACHIEVEMENTS, getLevel } from '../data/achievements.js';
 import { sound } from '../lib/gameSound.js';
 import { Ico, AchIcon } from './QuizIcons.jsx';
+import AIQuizGenerator from './AIQuizGenerator.jsx';
+import './ai-quiz-generator.css';
 
 /* ============================================================
    CẤU HÌNH
@@ -550,6 +552,14 @@ export default function Quiz() {
         <button className="btn sm" type="button" onClick={() => setModal('stats')}><Ico n="chart" size={15} /> Thống kê</button>
         <button className="btn sm" type="button" onClick={() => setModal('ach')}><Ico n="trophy" size={15} /> Thành tích {achievements.length}/{ACHIEVEMENTS.length}</button>
         {wrongBank.length > 0 && <button className="btn sm" type="button" onClick={() => setModal('review')}><Ico n="review" size={15} /> Câu sai {wrongBank.length}</button>}
+        <button
+          className="btn sm qz-ai-btn"
+          type="button"
+          onClick={() => setModal('aigen')}
+          title="AI đọc tài liệu và tạo đề riêng cho bạn"
+        >
+          <Ico n="sparkle" size={15} /> AI Tạo Đề <span className="vip-badge">VIP</span>
+        </button>
         <span className="qz-grow" />
         <button className="btn sm icon" type="button" onClick={() => setPrefs({ ...prefs, sound: !prefs.sound })} aria-label={prefs.sound ? 'Tắt âm thanh' : 'Bật âm thanh'} aria-pressed={prefs.sound}><Ico n={prefs.sound ? 'sound' : 'mute'} size={16} /></button>
         <button className="btn sm icon" type="button" onClick={exportData} aria-label="Xuất tiến độ"><Ico n="down" size={16} /></button>
@@ -803,6 +813,13 @@ export default function Quiz() {
             <button className="btn primary" type="button" onClick={() => { setModal(null); start('weak'); }}><Ico n="play" size={15} /> Luyện ngay</button>
             <button className="btn" type="button" onClick={() => { setWrongBank([]); setModal(null); }}>Xóa danh sách</button>
           </div>
+        </Modal>
+      )}
+
+      {/* ===== AI TẠO ĐỀ (VIP) ===== */}
+      {modal === 'aigen' && (
+        <Modal title="AI Tạo Đề" icon="sparkle" onClose={() => setModal(null)} wide>
+          <AIQuizGenerator onClose={() => setModal(null)} />
         </Modal>
       )}
 

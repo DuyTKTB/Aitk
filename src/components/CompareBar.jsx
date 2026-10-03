@@ -1,3 +1,5 @@
+import Icon from './Icon.jsx';
+
 export default function CompareBar({ elements, onOpen, onClear }) {
   return (
     <div className="compare-bar" role="region" aria-label="So sánh nguyên tố">
@@ -8,7 +10,7 @@ export default function CompareBar({ elements, onOpen, onClear }) {
         </div>
       ))}
       <button className="btn primary" onClick={onOpen}>So sánh</button>
-      <button className="btn" onClick={onClear}>✕</button>
+      <button className="btn" onClick={onClear} aria-label="Bỏ chọn"><Icon name="close" size={16} /></button>
     </div>
   );
 }

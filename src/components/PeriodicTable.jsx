@@ -4,7 +4,16 @@ import ElementCard from './ElementCard.jsx';
 import ElementModal from './ElementModal.jsx';
 import CompareBar from './CompareBar.jsx';
 import TrendLegend from './TrendLegend.jsx';
+import AiQuiz from './AiQuiz.jsx';
+import useVip from '../hooks/useVip.js';
+import './periodic-table.css';
+import './ai-features.css';
+import './element-modal.css';
+import Icon from './Icon.jsx';
 
+const loadFavs = () => {
+  try { return new Set(JSON.parse(localStorage.getItem('pt-favs') || '[]')); } catch { return new Set(); }
+};
 const goTable = () => { location.hash = 'table'; };
 const initialZoom = () => (innerWidth < 640 ? 0.6 : Math.min(1.15, (innerWidth - 48) / 1060));
 const clampZoom = (z) => Math.min(2, Math.max(0.4, +z.toFixed(2)));
@@ -37,7 +46,17 @@ export default function PeriodicTable({ preview = false }) {
   const [revealed, setRevealed] = useState(new Set()); // z đã lật trong study
   const [cursor, setCursor] = useState(null);       // { g, p } ô đang focus bàn phím
   const [zoom, setZoom] = useState(initialZoom);
+  const { vip } = useVip();
+  const [favs, setFavs] = useState(loadFavs);
+  const [onlyFav, setOnlyFav] = useState(false);
+  const [stateF, setStateF] = useState('');
+  const [quizOpen, setQuizOpen] = useState(false);
   const gridRef = useRef(null);
+  useEffect(() => {
+    try { localStorage.setItem('pt-favs', JSON.stringify([...favs])); } catch { /* bỏ qua */ }
+  }, [favs]);
+  const toggleFav = (z) => setFavs((f) => { const n = new Set(f); if (n.has(z)) n.delete(z); else n.add(z); return n; });
+  const pickRandom = () => setSel(ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)]);
   const close = useCallback(() => setSel(null), []);
   useEffect(() => {
     if (preview) return;
@@ -58,9 +77,11 @@ export default function PeriodicTable({ preview = false }) {
     const isOn = (e) =>
       (cat === 'all' || e.category === cat) &&
       (!nq || (/^\d+$/.test(nq) ? e.atomicNumber === +nq : e.s.symbol === nq || e.s.name.includes(nq) || e.s.vn.includes(nq))) &&
-      (!hl || (hl.t === 'g' ? e.group === hl.v : e.period === hl.v));
+      (!hl || (hl.t === 'g' ? e.group === hl.v : e.period === hl.v)) &&
+      (!onlyFav || favs.has(e.atomicNumber)) &&
+      (!stateF || e.stateAtRoomTemp === stateF);
     return new Set(ELEMENTS.filter(isOn).map((e) => e.atomicNumber));
-  }, [nq, cat, hl]);
+  }, [nq, cat, hl, onlyFav, favs, stateF]);
   const trendInfo = useMemo(() => {
     if (!trend) return null;
     const vals = ELEMENTS.map((e) => e[trend]).filter((v) => typeof v === 'number');
@@ -68,8 +89,8 @@ export default function PeriodicTable({ preview = false }) {
   }, [trend]);
 
   const toggle = (t, v) => setHl((h) => (h && h.t === t && h.v === v ? null : { t, v }));
-  const reset = () => { setQ(''); setCat('all'); setHl(null); setTrend(''); setCompare([]); };
-  const filtering = !!(q || cat !== 'all' || hl || trend);
+  const reset = () => { setQ(''); setCat('all'); setHl(null); setTrend(''); setCompare([]); setOnlyFav(false); setStateF(''); };
+  const filtering = !!(q || cat !== 'all' || hl || trend || onlyFav || stateF);
   const active = (t, v) => (hl && hl.t === t && hl.v === v ? ' act' : '');
   const handleSelect = (e, ev) => {
     if (preview) return goTable();
@@ -122,22 +143,25 @@ export default function PeriodicTable({ preview = false }) {
     <div>
       {!preview && (
         <div className="toolbar">
-          <input
-            id="search" type="search" value={q} autoComplete="off"
-            placeholder="🔍 Tìm kiếm nguyên tố... (Ctrl + K)"
-            aria-label="Tìm kiếm nguyên tố"
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                const f = ELEMENTS.find((x) => matches.has(x.atomicNumber));
-                if (f) setSel(f);
-              }
-            }}
-          />
+          <div className="searchbox">
+            <Icon name="search" size={18} />
+            <input
+              id="search" type="search" value={q} autoComplete="off"
+              placeholder="Tìm kiếm nguyên tố... (Ctrl + K)"
+              aria-label="Tìm kiếm nguyên tố"
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const f = ELEMENTS.find((x) => matches.has(x.atomicNumber));
+                  if (f) setSel(f);
+                }
+              }}
+            />
+          </div>
           <div className="zoom" role="group" aria-label="Thu phóng bảng">
-            <button className="btn" onClick={() => setZoom((z) => clampZoom(z - 0.1))} aria-label="Thu nhỏ">−</button>
+            <button className="btn" onClick={() => setZoom((z) => clampZoom(z - 0.1))} aria-label="Thu nhỏ"><Icon name="minus" size={16} /></button>
             <span aria-live="polite">{Math.round(zoom * 100)}%</span>
-            <button className="btn" onClick={() => setZoom((z) => clampZoom(z + 0.1))} aria-label="Phóng to">+</button>
+            <button className="btn" onClick={() => setZoom((z) => clampZoom(z + 0.1))} aria-label="Phóng to"><Icon name="plus" size={16} /></button>
           </div>
         </div>
       )}
@@ -157,11 +181,27 @@ export default function PeriodicTable({ preview = false }) {
             className={'chip' + (study ? ' on' : '')}
             onClick={() => { setStudy(!study); setRevealed(new Set()); setStudyStats({ ok: 0, no: 0 }); }}
           >
-            🎓 Chế độ học
+            <Icon name="cap" size={16} /> Chế độ học
+          </button>
+          <label className="pt-trend">
+            <span>Trạng thái</span>
+            <select value={stateF} onChange={(e) => setStateF(e.target.value)}>
+              <option value="">Tất cả</option>
+              <option value="Rắn">Rắn</option>
+              <option value="Lỏng">Lỏng</option>
+              <option value="Khí">Khí</option>
+            </select>
+          </label>
+          <button className={'chip' + (onlyFav ? ' on' : '')} onClick={() => setOnlyFav(!onlyFav)}>
+            <Icon name="star" size={15} fill={onlyFav} /> Yêu thích ({favs.size})
+          </button>
+          <button className="chip" onClick={pickRandom}><Icon name="dice" size={16} /> Ngẫu nhiên</button>
+          <button className="chip vip" onClick={() => setQuizOpen(true)}>
+            <Icon name="sparkle" size={16} /> AI Quiz <em className="vip-badge">VIP</em>
           </button>
           {compare.length > 0 && (
             <button className="chip" onClick={() => setCompare([])}>
-              ✕ Bỏ chọn ({compare.length}/2)
+              <Icon name="close" size={14} /> Bỏ chọn ({compare.length}/2)
             </button>
           )}
         </div>
@@ -185,7 +225,7 @@ export default function PeriodicTable({ preview = false }) {
 
       {!preview && (
         <p className="hint">
-          {study && `🎓 Chế độ học: ${studyStats.ok} đúng / ${studyStats.no} sai. `}
+          {study && `Chế độ học: ${studyStats.ok} đúng / ${studyStats.no} sai. `}
           {filtering && !study ? `${matches.size} nguyên tố phù hợp. ` : ''}
           {!study && 'Bấm số nhóm/chu kỳ để làm nổi bật. Shift+Click chọn 2 nguyên tố để so sánh. Dùng phím ←→↑↓ di chuyển.'}
         </p>
@@ -221,6 +261,7 @@ export default function PeriodicTable({ preview = false }) {
                 study={study}
                 revealed={revealed.has(e.atomicNumber)}
                 selected={selected}
+                fav={favs.has(e.atomicNumber)}
                 cursor={isCursor}
               />
             );
@@ -241,8 +282,13 @@ export default function PeriodicTable({ preview = false }) {
           e={sel.__compare ? null : sel}
           compare={sel.__compare}
           onClose={close}
+          vip={vip}
+          fav={!sel.__compare && favs.has(sel.atomicNumber)}
+          onToggleFav={() => !sel.__compare && toggleFav(sel.atomicNumber)}
         />
       )}
+
+      {quizOpen && <AiQuiz vip={vip} onClose={() => setQuizOpen(false)} />}
     </div>
   );
 }
