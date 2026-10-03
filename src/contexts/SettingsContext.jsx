@@ -1,10 +1,10 @@
-// src/contexts/SettingsContext.jsx
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 const KEY = 'app-settings-v1';
+const BASE_TITLE = 'A7 K60 DTA';
 
 const DEFAULT = {
-  siteName: 'A7 K60 DTA',
+  siteName: BASE_TITLE,
   siteDesc: 'Học Hóa học thông minh hơn',
   enableAI: true,
   enableChat: true,
@@ -30,16 +30,17 @@ export function SettingsProvider({ children }) {
     }
   });
 
-  // Áp dụng settings lên DOM mỗi khi thay đổi
+  const originalTitle = useRef(typeof document !== 'undefined' ? document.title : BASE_TITLE);
   useEffect(() => {
-    // 1. Cập nhật title
-    const baseTitle = 'A7 K60 DTA';
-    document.title = document.title.replace(
-      new RegExp(baseTitle, 'g'),
-      settings.siteName || baseTitle
-    );
-
-    // 2. Cập nhật meta description
+    const newName = settings.siteName || BASE_TITLE;
+    const currentTitle = document.title || '';
+    if (currentTitle.includes(BASE_TITLE)) {
+      document.title = currentTitle.replace(BASE_TITLE, newName);
+    } else if (currentTitle.includes(settings.siteName) && settings.siteName !== newName) {
+      document.title = currentTitle.replace(settings.siteName, newName);
+    } else if (originalTitle.current.includes(BASE_TITLE)) {
+      document.title = originalTitle.current.replace(BASE_TITLE, newName);
+    }
     let metaDesc = document.querySelector('meta[name="description"]');
     if (!metaDesc) {
       metaDesc = document.createElement('meta');
@@ -47,16 +48,12 @@ export function SettingsProvider({ children }) {
       document.head.appendChild(metaDesc);
     }
     metaDesc.content = settings.siteDesc || '';
-
-    // 3. Toggle classes lên body để CSS ẩn/hiện
     document.body.classList.toggle('hide-ai', !settings.enableAI);
     document.body.classList.toggle('hide-chat', !settings.enableChat);
     document.body.classList.toggle('hide-pet', !settings.enablePet);
     document.body.classList.toggle('hide-games', !settings.enableGames);
     document.body.classList.toggle('hide-quiz', !settings.enableQuiz);
     document.body.classList.toggle('maintenance-mode', settings.maintenanceMode);
-
-    // 4. Lưu localStorage
     try {
       localStorage.setItem(KEY, JSON.stringify(settings));
     } catch { /* noop */ }

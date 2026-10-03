@@ -1,7 +1,3 @@
-// ============================================================
-// KHO TÀI LIỆU — lớp 10, 11, 12
-// Sách SGK từ taphuan.nxbgd.vn — có link chi tiết + ảnh bìa thật
-// ============================================================
 export const PORTAL = 'https://taphuan.nxbgd.vn/tap-huan';
 
 export const GRADES = [10, 11, 12];
@@ -18,11 +14,6 @@ export const KINDS = {
   sgk: 'Sách giáo khoa', sbt: 'Sách bài tập', cd: 'Chuyên đề',
   lt: 'Lý thuyết', de: 'Đề thi', khac: 'Khác',
 };
-
-// ============================================================
-// DỮ LIỆU SÁCH — tự động gộp từ taphuan.nxbgd.vn
-// Cấu trúc: BOOKS[grade][subject] = [{ url, title, img }, ...]
-// ============================================================
 const BOOKS = {
   10: {
     toan: [
@@ -185,15 +176,7 @@ const BOOKS = {
     ],
   },
 };
-
-// ============================================================
-// PDF CỦA BẠN (giữ nguyên)
-// ============================================================
 export const LOCAL_DOCS = [];
-
-// ============================================================
-// TẠO SHELVES — mỗi lớp × môn = 1 thẻ, dùng ảnh bìa + link thật
-// ============================================================
 const SHELVES = GRADES.flatMap((g) =>
   SUBJECTS.map(([s, name]) => {
     const books = BOOKS[g]?.[s] || [];
@@ -218,8 +201,6 @@ export const DOCS = [
   ...LOCAL_DOCS.map((d) => ({ ...d, source: 'Tài liệu của bạn' })),
   ...SHELVES,
 ];
-
-// Helper: đếm tổng sách
 export const TOTAL_BOOKS = Object.values(BOOKS).reduce(
   (sum, grade) => sum + Object.values(grade).reduce((s, arr) => s + arr.length, 0),
   0

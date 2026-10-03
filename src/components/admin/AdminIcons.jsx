@@ -1,5 +1,3 @@
-// src/components/admin/AdminIcons.jsx
-// SVG icons cho Admin — KHÔNG dùng emoji
 
 const Svg = ({ size = 18, children, filled = false, sw = 1.8 }) => (
   <svg
@@ -16,8 +14,6 @@ const Svg = ({ size = 18, children, filled = false, sw = 1.8 }) => (
     {children}
   </svg>
 );
-
-// ===== MENU =====
 export const IconDashboard = (p) => (
   <Svg {...p}>
     <rect x="3" y="3" width="7" height="9" />
@@ -64,8 +60,6 @@ export const IconSettings = (p) => (
     <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" />
   </Svg>
 );
-
-// ===== ACTION =====
 export const IconBell = (p) => (
   <Svg {...p}>
     <path d="M6 8a6 6 0 0 1 12 0v5l1.5 3H4.5L6 13z" />

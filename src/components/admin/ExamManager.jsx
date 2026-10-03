@@ -23,10 +23,6 @@ export default function ExamManager() {
 
   return <ExamList onEdit={openEditor} onCreate={() => setView('create')} />;
 }
-
-// ============================================================
-// DANH SÁCH ĐỀ với nút Sửa / Nhân bản / Xóa / Preview
-// ============================================================
 function ExamList({ onEdit, onCreate }) {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,8 +83,6 @@ function ExamList({ onEdit, onCreate }) {
     if (!confirm(`Nhân bản đề "${exam.title}"?`)) return;
     try {
       setMsg('⏳ Đang nhân bản…');
-
-      // 1. Copy exam
       const { data: newExam, error: e1 } = await supabase
         .from('exams')
         .insert({
@@ -106,8 +100,6 @@ function ExamList({ onEdit, onCreate }) {
         .single();
 
       if (e1) throw e1;
-
-      // 2. Copy questions + answers
       const { data: questions } = await supabase
         .from('questions')
         .select('*, answers:answers(id, label, content, is_correct, sort_order)')

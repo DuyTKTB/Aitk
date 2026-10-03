@@ -1,7 +1,5 @@
 import { useState, useMemo } from 'react';
 import { ELEMENTS } from '../data/elements.js';
-
-// ===== Số hữu tỉ chính xác (BigInt) — tránh sai số dấu phẩy động =====
 function babs(a) { return a < 0n ? -a : a; }
 function bgcd(a, b) { a = babs(a); b = babs(b); while (b) { [a, b] = [b, a % b]; } return a === 0n ? 1n : a; }
 
@@ -22,8 +20,6 @@ class Frac {
   isZero() { return this.n === 0n; }
 }
 const F0 = new Frac(0n), F1 = new Frac(1n);
-
-// ===== Parser công thức hóa học: H2O, Ca(OH)2, Al2(SO4)3, CuSO4.5H2O... =====
 const SYMSET = new Set(ELEMENTS.map((e) => e.symbol));
 const isValidSymbol = (s) => SYMSET.has(s);
 
@@ -72,8 +68,6 @@ function parseFormula(f) {
   if (stack.length !== 1) throw new Error('Ngoặc không cân đối');
   return stack[0];
 }
-
-// ===== Tách phương trình thành 2 vế, mỗi vế thành các chất =====
 function splitEquation(raw) {
   const arrowMatch = raw.match(/(<->|<=>|->|=>|→|⇌|=)/);
   if (!arrowMatch) throw new Error('Thiếu mũi tên phản ứng. Dùng "->", "=" hoặc "→" để ngăn cách 2 vế.');
@@ -89,8 +83,6 @@ function splitEquation(raw) {
   if (!L.length || !R.length) throw new Error('Cả hai vế phải có ít nhất một chất.');
   return { L, R };
 }
-
-// ===== Rút gọn ma trận về dạng bậc thang rút gọn (RREF) trên trường hữu tỉ =====
 function rref(M) {
   const rows = M.length, cols = M[0].length;
   let lead = 0;
@@ -115,16 +107,12 @@ function rref(M) {
   }
   return pivots;
 }
-
-// ===== Cân bằng: giải hệ thuần nhất A·x = 0, chọn nghiệm nguyên dương nhỏ nhất =====
 function solveCoeffs(raw) {
   const { L, R } = splitEquation(raw);
   const terms = [...L.map((t) => ({ ...t, side: 1 })), ...R.map((t) => ({ ...t, side: -1 }))];
   const elements = [];
   for (const t of terms) for (const el in t.counts) if (!elements.includes(el)) elements.push(el);
   const nCols = terms.length;
-
-  // Ma trận sâu, mỗi ô là Frac độc lập
   const M = elements.map((el) => terms.map((t) => new Frac((t.counts[el] || 0) * t.side)));
   const pivots = rref(M);
 
@@ -139,8 +127,6 @@ function solveCoeffs(raw) {
     const pc = pivots[r];
     x[pc] = M[r][chosen].neg();
   }
-
-  // Quy đồng mẫu số chung rồi rút gọn về số nguyên nhỏ nhất
   let lcm = 1n;
   for (const f of x) lcm = (lcm * f.d) / bgcd(lcm, f.d);
   let ints = x.map((f) => (f.n * (lcm / f.d)));
@@ -148,8 +134,6 @@ function solveCoeffs(raw) {
   for (const v of ints) g = bgcd(g, v);
   if (g === 0n) throw new Error('Không tìm được nghiệm hợp lệ.');
   ints = ints.map((v) => v / g);
-
-  // Chuẩn hoá dấu: tất cả phải cùng dấu (dương)
   const nonZero = ints.filter((v) => v !== 0n);
   if (nonZero.some((v) => v < 0n) && nonZero.some((v) => v > 0n)) {
     throw new Error('Phương trình không thể cân bằng với các chất đã cho — kiểm tra lại chất tham gia/sản phẩm.');
@@ -209,8 +193,6 @@ export default function EquationBalancer() {
       setTimeout(() => setCopied(false), 1500);
     } catch {}
   };
-
-  // Bảng đối chiếu số nguyên tử mỗi nguyên tố ở 2 vế
   const check = result.ok
     ? result.elements.map((el) => {
         const left = result.L.reduce((s, t, i) => s + (t.counts[el] || 0) * result.coeffL[i], 0);

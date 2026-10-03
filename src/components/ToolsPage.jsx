@@ -3,6 +3,7 @@ import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,
   IconGamepad, IconUser, IconCalc,
+  IconBook, IconChart, IconAtom,
 } from './Icons.jsx';
 import {
   CAT_ICONS, CAT_NAMES, IconArrowUpRight, IconSearch,
@@ -13,37 +14,33 @@ import {
   IcoCompare, IcoShare,
 } from './ToolsKit.jsx';
 import PromptLibrary from './PromptLibrary.jsx';
-import { PROMPTS } from './promptData.js';
+import { PROMPTS } from '../prompts/index.js';
 import { HOT_AI, PRICE_META } from './hotData.js';
 import AIMark from './AIMark.jsx';
 import DocsLibrary from './DocsLibrary.jsx';
 import { DOCS, GRADES } from './docsData.js';
-import './tools-neo.css';
+import '../tools-all.css';
 import ExamBank from './ExamBank.jsx';
 import FormulaLibrary from './FormulaLibrary.jsx';
 import { EXAMS } from './examData.js';
 import { FORMULAS } from './formulaData.js';
-
-// ============================================================
-// CÔNG CỤ HỌC TẬP
-// ============================================================
+import StudySheet from './StudySheet.jsx';
 const STUDY_TOOLS = [
+  { id: 'table', name: 'Bảng tuần hoàn', desc: 'Bảng tuần hoàn tương tác', Icon: IconAtom, tag: 'hot' },
   { id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
   { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Nhập phương trình, ra hệ số', Icon: IconScale, tag: 'hot' },
   { id: 'pomodoro', name: 'Pomodoro', desc: 'Tập trung sâu, nghỉ đúng lúc', Icon: IconTimer },
   { id: 'exam', name: 'Kỳ thi', desc: 'Đếm ngược tới ngày quyết định', Icon: IconCalendar },
   { id: 'notes', name: 'Ghi chú', desc: 'Ghi chú nhanh, lưu trữ', Icon: IconNote },
+  { id: 'notebook', name: 'Sổ tay', desc: 'Lưu câu sai để ôn lại', Icon: IconBook, tag: 'new' },
   { id: 'grade', name: 'Tính điểm', desc: 'Cần bao nhiêu để đạt mục tiêu', Icon: IconTarget },
   { id: 'quiz', name: 'Ôn tập', desc: 'Quiz thông minh, nhớ lâu hơn', Icon: IconQuiz },
+  { id: 'stats', name: 'Thống kê', desc: 'Xem tiến độ học tập', Icon: IconChart, tag: 'new' },
   { id: 'games', name: 'Trò chơi', desc: 'Giáo viên tự nhập câu hỏi', Icon: IconGamepad, tag: 'new' },
   { id: 'profile', name: 'Trang cá nhân', desc: 'Quản lý tài khoản, thống kê', Icon: IconUser },
 ];
 const TAG_LABEL = { hot: 'Hot', new: 'Mới' };
-
-// ============================================================
-// DỮ LIỆU CÔNG CỤ AI
-// ============================================================
 const RAW_AI_DATA = `
 chat|Grok|grok.com|AI của xAI, có dữ liệu X (Twitter) thời gian thực
 chat|Microsoft Copilot|copilot.microsoft.com|Trợ lý AI của Microsoft, tích hợp Bing và Office
@@ -410,10 +407,6 @@ const AI_TOOLS = parseAIData(RAW_AI_DATA);
 const ALL_CATS = Array.from(new Set(AI_TOOLS.map((t) => t.cat)));
 const PAGE = 48;
 const catLabel = (cat) => stripLead(CAT_NAMES[cat] || cat);
-
-// ============================================================
-// THÀNH PHẦN NHỎ
-// ============================================================
 const CAT_SYM = {
   chat: 'Ch', write: 'Wr', image: 'Im', video: 'Vd', audio: 'Au', study: 'St', code: 'Co', trans: 'Tr',
   search: 'Se', work: 'Wk', biz: 'Bz', agent: 'Ag', model: 'Mo', fun: 'Fu', game: 'Ga',
@@ -432,10 +425,6 @@ const Chevron = ({ open }) => (
     <path d="M6 9l6 6 6-6" />
   </svg>
 );
-
-// ============================================================
-// MAIN COMPONENT
-// ============================================================
 export default function ToolsPage() {
   const [tab, setTab] = useState('docs');
   const [search, setSearch] = useState('');
@@ -450,6 +439,7 @@ export default function ToolsPage() {
   const [quickView, setQuickView] = useState(null);
   const [openHot, setOpenHot] = useState(null);
   const [toast, toastNode] = useToast();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const searchRef = useRef(null);
 
   const switchTab = (t) => {
@@ -499,10 +489,6 @@ export default function ToolsPage() {
     }
     copyLink(tool);
   };
-
-  // ============================================================
-  // LỌC + SẮP XẾP
-  // ============================================================
   const filteredAI = useMemo(() => {
     const q = norm(search.trim());
     let arr = AI_TOOLS.filter((t) => {
@@ -517,19 +503,14 @@ export default function ToolsPage() {
 
   const filteredHot = useMemo(() => {
     const q = norm(search.trim());
-
-    // CUAI luôn ở đầu — không bị lọc
     const cuai = HOT_AI.__list.find((t) => t.id === 'cuai');
-
     let others = HOT_AI.__list.filter((t) => {
       if (t.id === 'cuai') return false;
       if (activePrice !== 'all' && !t.price?.includes(activePrice)) return false;
       return !q || norm(`${t.name} ${t.desc} ${t.why} ${t.bestFor?.join(' ')}`).includes(q);
     });
-
     if (sortBy === 'rating') others = [...others].sort((a, b) => b.rating - a.rating);
     if (sortBy === 'name') others = [...others].sort((a, b) => a.name.localeCompare(b.name));
-
     return cuai ? [cuai, ...others] : others;
   }, [search, activePrice, sortBy]);
 
@@ -548,10 +529,6 @@ export default function ToolsPage() {
     const pool = filteredAI.length ? filteredAI : AI_TOOLS;
     setSpot(pool[Math.floor(Math.random() * pool.length)]);
   };
-
-  // ============================================================
-  // DÙNG CHUNG
-  // ============================================================
   const openProps = (tool) => (tool.internal
     ? { href: '#ai', onClick: (e) => { e.preventDefault(); window.location.hash = 'ai'; } }
     : { href: tool.url, target: '_blank', rel: 'noopener noreferrer' });
@@ -588,10 +565,6 @@ export default function ToolsPage() {
       </div>
     );
   };
-
-  // ============================================================
-  // Ô CÔNG CỤ AI (tab AI Free)
-  // ============================================================
   const renderAI = (tool, big = false) => {
     const Icon = CAT_ICONS[tool.cat];
     const isCompared = compare.some((x) => x.id === tool.id);
@@ -631,10 +604,6 @@ export default function ToolsPage() {
       </article>
     );
   };
-
-  // ============================================================
-  // CUAI — một khối đảo màu duy nhất trên trang
-  // ============================================================
   const renderCuai = (tool) => {
     const Icon = CAT_ICONS[tool.cat];
     return (
@@ -664,10 +633,6 @@ export default function ToolsPage() {
       </section>
     );
   };
-
-  // ============================================================
-  // HÀNG AI HOT — bấm để mở chi tiết
-  // ============================================================
   const renderHotRow = (tool) => {
     const Icon = CAT_ICONS[tool.cat];
     const open = openHot === tool.id;
@@ -723,15 +688,15 @@ export default function ToolsPage() {
   };
 
   const hotOthers = filteredHot.filter((t) => t.id !== 'cuai');
-const tabList = [
-  ['docs', 'Tài liệu', DOCS.length],
-  ['exam', 'Đề thi', EXAMS.length],
-  ['formula', 'Công thức', FORMULAS.length],
-  ['hot', 'AI Hot', HOT_AI.__list.length],
-  ['study', 'Học tập', STUDY_TOOLS.length],
-  ['ai', 'AI Free', AI_TOOLS.length],
-  ['prompt', 'Prompt Free', PROMPTS.length],
-];
+  const tabList = [
+    ['docs', 'Tài liệu', DOCS.length],
+    ['exam', 'Đề thi', EXAMS.length],
+    ['formula', 'Công thức', FORMULAS.length],
+    ['hot', 'AI Hot', HOT_AI.__list.length],
+    ['study', 'Học tập', STUDY_TOOLS.length],
+    ['ai', 'AI Free', AI_TOOLS.length],
+    ['prompt', 'Prompt Free', PROMPTS.length],
+  ];
   const tabName = (tabList.find((t) => t[0] === tab) || [])[1];
 
   return (
@@ -759,206 +724,218 @@ const tabList = [
         </aside>
 
         <div className="tn-main">
-      {/* HEADER */}
-      <div className="tools-header">
-        <h1>Công cụ</h1>
-        <div className="tn-top">
-          <span><b>{STUDY_TOOLS.length}</b> công cụ học tập</span>
-          <span><b>{AI_TOOLS.length}</b> công cụ AI</span>
-          <span><b>{PROMPTS.length}</b> prompt mẫu</span>
-          <span><b>{DOCS.length}</b> tài liệu</span>
-        </div>
-        <nav className="tn-crumb" aria-label="Đường dẫn"><a href="#home">Trang chủ</a><i>›</i><span>Công cụ</span><i>›</i><b>{tabName}</b></nav>
-      </div>
-
-      {/* TABS */}
-      <div className="tools-tabs" role="tablist" aria-label="Loại công cụ">
-        {[
-          ['docs', 'Tài liệu', DOCS.length],
-          ['hot', 'AI Hot', HOT_AI.__list.length],
-          ['study', 'Học tập', STUDY_TOOLS.length],
-          ['ai', 'AI Free', AI_TOOLS.length],
-          ['prompt', 'Prompt Free', PROMPTS.length],
-        ].map(([id, label, n]) => (
-          <button key={id} role="tab" aria-selected={tab === id}
-            className={'tools-tab' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
-            {label}<span className="tc-n">{n}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* SEARCH */}
-      <div className="tools-search">
-        <IconSearch size={18} />
-        <input
-          ref={searchRef}
-          type="text"
-          placeholder={
-            tab === 'docs' ? 'Tìm tài liệu: hóa 11, toán 12, đề thi…'
-            : tab === 'hot' ? 'Tìm AI hot: chat, ảnh, code, video…'
-            : tab === 'ai' ? 'Tìm công cụ AI…'
-            : tab === 'prompt' ? 'Tìm prompt: review, caption, hóa học…'
-            : 'Tìm công cụ học tập…'
-          }
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Tìm kiếm"
-        />
-        {search
-          ? <button className="tools-search-clear" onClick={() => setSearch('')} aria-label="Xóa tìm kiếm">×</button>
-          : <kbd className="tc-kbd" aria-hidden="true">/</kbd>}
-      </div>
-
-{tab === 'docs' && <DocsLibrary query={search} grade={docGrade} onGrade={setDocGrade} />}
-
-{/* ================= TAB ĐỀ THI ================= */}
-{tab === 'exam' && <ExamBank query={search} />}
-
-{/* ================= TAB CÔNG THỨC ================= */}
-{tab === 'formula' && <FormulaLibrary query={search} />}
-
-{/* ================= TAB PROMPT ================= */}
-{tab === 'prompt' && <PromptLibrary query={search} />}
-
-      {/* ================= TAB AI HOT ================= */}
-      {tab === 'hot' && (
-        <>
-          <p className="tc-lede">
-            {HOT_AI.__list.length} AI được chọn lọc, mỗi cái có ưu nhược điểm, mức giá và việc nó làm tốt nhất.
-            CUAI, trợ lý Hóa học của chính A7 K60 DTA, đứng đầu danh sách. Cập nhật theo xu hướng 2026.
-          </p>
-
-          {renderControls(true)}
-
-          <p className="tools-count">Hiển thị <b>{filteredHot.length}</b> AI hot</p>
-
-          {filteredHot[0]?.id === 'cuai' && renderCuai(filteredHot[0])}
-
-          <ul className="tc-list">{hotOthers.map(renderHotRow)}</ul>
-
-          {hotOthers.length === 0 && search && (
-            <div className="tools-empty">
-              <p>Không tìm thấy AI hot nào phù hợp.</p>
-              <button onClick={() => { setSearch(''); setActivePrice('all'); }}>Xóa bộ lọc</button>
+          {/* HEADER */}
+          <div className="tools-header">
+            <div className="tools-header-row">
+              <h1>Công cụ</h1>
+              <button
+                type="button"
+                className="tools-menu-btn"
+                onClick={() => setSheetOpen(true)}
+                aria-label="Mở danh mục công cụ học tập"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span>Menu</span>
+              </button>
             </div>
-          )}
-        </>
-      )}
+            <div className="tn-top">
+              <span><b>{STUDY_TOOLS.length}</b> công cụ học tập</span>
+              <span><b>{AI_TOOLS.length}</b> công cụ AI</span>
+              <span><b>{PROMPTS.length}</b> prompt mẫu</span>
+              <span><b>{DOCS.length}</b> tài liệu</span>
+            </div>
+            <nav className="tn-crumb" aria-label="Đường dẫn">
+              <a href="#home">Trang chủ</a><i>›</i><span>Công cụ</span><i>›</i><b>{tabName}</b>
+            </nav>
+          </div>
 
-      {/* ================= TAB AI ================= */}
-      {tab === 'ai' && (
-        <>
-          <div className="tools-cats" role="group" aria-label="Nhóm công cụ AI">
-            <button className={'tools-cat' + (activeCat === 'all' ? ' on' : '')} onClick={() => setActiveCat('all')}>
-              Tất cả<em>{AI_TOOLS.length}</em>
-            </button>
-            <button className={'tools-cat' + (activeCat === 'fav' ? ' on' : '')} onClick={() => setActiveCat('fav')}>
-              Đã lưu<em>{favs.length}</em>
-            </button>
-            {ALL_CATS.map((cat) => (
-              <button key={cat} data-cat={cat} className={'tools-cat' + (activeCat === cat ? ' on' : '')} onClick={() => setActiveCat(cat)}>
-                {catLabel(cat)}<em>{statsByCat[cat]}</em>
+          {/* TABS */}
+          <div className="tools-tabs" role="tablist" aria-label="Loại công cụ">
+            {[
+              ['docs', 'Tài liệu', DOCS.length],
+              ['hot', 'AI Hot', HOT_AI.__list.length],
+              ['study', 'Học tập', STUDY_TOOLS.length],
+              ['ai', 'AI Free', AI_TOOLS.length],
+              ['prompt', 'Prompt Free', PROMPTS.length],
+            ].map(([id, label, n]) => (
+              <button key={id} role="tab" aria-selected={tab === id}
+                className={'tools-tab' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
+                {label}<span className="tc-n">{n}</span>
               </button>
             ))}
           </div>
 
-          {renderControls(false)}
-
-          <div className="tc-bar">
-            <p className="tools-count">Hiển thị <b>{Math.min(limit, filteredAI.length)}</b> / <b>{filteredAI.length}</b> công cụ</p>
-            <button type="button" className="tc-btn" onClick={pickRandom}><IcoShuffle size={15} />Gợi ý ngẫu nhiên</button>
+          {/* SEARCH */}
+          <div className="tools-search">
+            <IconSearch size={18} />
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder={
+                tab === 'docs' ? 'Tìm tài liệu: hóa 11, toán 12, đề thi…'
+                : tab === 'hot' ? 'Tìm AI hot: chat, ảnh, code, video…'
+                : tab === 'ai' ? 'Tìm công cụ AI…'
+                : tab === 'prompt' ? 'Tìm prompt: review, caption, hóa học…'
+                : 'Tìm công cụ học tập…'
+              }
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Tìm kiếm"
+            />
+            {search
+              ? <button className="tools-search-clear" onClick={() => setSearch('')} aria-label="Xóa tìm kiếm">×</button>
+              : <kbd className="tc-kbd" aria-hidden="true">/</kbd>}
           </div>
-          <p className="tc-note">Mức miễn phí và giới hạn dùng khác nhau ở từng nền tảng. Hãy xem trang chính thức trước khi đăng ký.</p>
 
-          {spot && (
-            <div className="tc-spot" aria-live="polite">
-              <div className="tc-spot-head">
-                <span>Gợi ý cho bạn</span>
-                <button type="button" className="tc-ib" onClick={() => setSpot(null)} aria-label="Đóng gợi ý"><IcoClose size={16} /></button>
+          {tab === 'docs' && <DocsLibrary query={search} grade={docGrade} onGrade={setDocGrade} />}
+          {tab === 'exam' && <ExamBank query={search} />}
+          {tab === 'formula' && <FormulaLibrary query={search} />}
+          {tab === 'prompt' && <PromptLibrary query={search} />}
+
+          {/* ================= TAB AI HOT ================= */}
+          {tab === 'hot' && (
+            <>
+              <p className="tc-lede">
+                {HOT_AI.__list.length} AI được chọn lọc, mỗi cái có ưu nhược điểm, mức giá và việc nó làm tốt nhất.
+                CUAI, trợ lý Hóa học của chính A7 K60 DTA, đứng đầu danh sách. Cập nhật theo xu hướng 2026.
+              </p>
+
+              {renderControls(true)}
+
+              <p className="tools-count">Hiển thị <b>{filteredHot.length}</b> AI hot</p>
+
+              {filteredHot[0]?.id === 'cuai' && renderCuai(filteredHot[0])}
+
+              <ul className="tc-list">{hotOthers.map(renderHotRow)}</ul>
+
+              {hotOthers.length === 0 && search && (
+                <div className="tools-empty">
+                  <p>Không tìm thấy AI hot nào phù hợp.</p>
+                  <button onClick={() => { setSearch(''); setActivePrice('all'); }}>Xóa bộ lọc</button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ================= TAB AI ================= */}
+          {tab === 'ai' && (
+            <>
+              <div className="tools-cats" role="group" aria-label="Nhóm công cụ AI">
+                <button className={'tools-cat' + (activeCat === 'all' ? ' on' : '')} onClick={() => setActiveCat('all')}>
+                  Tất cả<em>{AI_TOOLS.length}</em>
+                </button>
+                <button className={'tools-cat' + (activeCat === 'fav' ? ' on' : '')} onClick={() => setActiveCat('fav')}>
+                  Đã lưu<em>{favs.length}</em>
+                </button>
+                {ALL_CATS.map((cat) => (
+                  <button key={cat} data-cat={cat} className={'tools-cat' + (activeCat === cat ? ' on' : '')} onClick={() => setActiveCat(cat)}>
+                    {catLabel(cat)}<em>{statsByCat[cat]}</em>
+                  </button>
+                ))}
               </div>
-              {renderAI(spot, true)}
-            </div>
-          )}
 
-          <div className="tc-grid">{filteredAI.slice(0, limit).map((t) => renderAI(t))}</div>
+              {renderControls(false)}
 
-          {limit < filteredAI.length && (
-            <div className="tc-more">
-              <button type="button" className="tc-btn" onClick={() => setLimit((l) => l + PAGE)}>
-                Xem thêm {Math.min(PAGE, filteredAI.length - limit)} công cụ
-              </button>
-            </div>
-          )}
+              <div className="tc-bar">
+                <p className="tools-count">Hiển thị <b>{Math.min(limit, filteredAI.length)}</b> / <b>{filteredAI.length}</b> công cụ</p>
+                <button type="button" className="tc-btn" onClick={pickRandom}><IcoShuffle size={15} />Gợi ý ngẫu nhiên</button>
+              </div>
+              <p className="tc-note">Mức miễn phí và giới hạn dùng khác nhau ở từng nền tảng. Hãy xem trang chính thức trước khi đăng ký.</p>
 
-          {filteredAI.length === 0 && (
-            <div className="tools-empty">
-              <p>{activeCat === 'fav' && !search.trim() ? 'Bạn chưa lưu công cụ nào. Bấm ngôi sao trên ô để lưu.' : `Không tìm thấy công cụ nào phù hợp với "${search}"`}</p>
-              <button onClick={() => { setSearch(''); setActiveCat('all'); setActivePrice('all'); }}>Xóa bộ lọc</button>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ================= TAB HỌC TẬP ================= */}
-      {tab === 'study' && (
-        <>
-          <p className="tools-count">Hiển thị <b>{filteredStudy.length}</b> công cụ</p>
-          <div className="tc-grid">
-            {filteredStudy.map(({ id, name, desc, Icon, tag }, i) => (
-              <article key={id} data-cat="study" className="tc-cell">
-                <div className="tc-tile" aria-hidden="true">
-                  <span className="tc-no">{String(i + 1).padStart(3, '0')}</span>
-                  <span className="tc-sym">{Array.from(name).slice(0, 2).join('')}</span>
+              {spot && (
+                <div className="tc-spot" aria-live="polite">
+                  <div className="tc-spot-head">
+                    <span>Gợi ý cho bạn</span>
+                    <button type="button" className="tc-ib" onClick={() => setSpot(null)} aria-label="Đóng gợi ý"><IcoClose size={16} /></button>
+                  </div>
+                  {renderAI(spot, true)}
                 </div>
-                {tag && <span className={'tc-tag ' + tag}>{TAG_LABEL[tag]}</span>}
-                <a href={'#' + id} className="tc-link" aria-label={name}>
-                  <span className="tc-ico"><Icon /></span>
-                  <span className="tc-name">{name}</span>
-                  <span className="tc-desc">{desc}</span>
-                </a>
-                <div className="tc-foot">
-                  <span className="tc-domain">Mở công cụ</span>
-                  <span className="tc-arrow"><IconArrowUpRight size={14} /></span>
+              )}
+
+              <div className="tc-grid">{filteredAI.slice(0, limit).map((t) => renderAI(t))}</div>
+
+              {limit < filteredAI.length && (
+                <div className="tc-more">
+                  <button type="button" className="tc-btn" onClick={() => setLimit((l) => l + PAGE)}>
+                    Xem thêm {Math.min(PAGE, filteredAI.length - limit)} công cụ
+                  </button>
                 </div>
-              </article>
-            ))}
-          </div>
-          {filteredStudy.length === 0 && (
-            <div className="tools-empty">
-              <p>Không tìm thấy công cụ nào phù hợp với "{search}"</p>
-              <button onClick={() => setSearch('')}>Xóa tìm kiếm</button>
-            </div>
+              )}
+
+              {filteredAI.length === 0 && (
+                <div className="tools-empty">
+                  <p>{activeCat === 'fav' && !search.trim() ? 'Bạn chưa lưu công cụ nào. Bấm ngôi sao trên ô để lưu.' : `Không tìm thấy công cụ nào phù hợp với "${search}"`}</p>
+                  <button onClick={() => { setSearch(''); setActiveCat('all'); setActivePrice('all'); }}>Xóa bộ lọc</button>
+                </div>
+              )}
+            </>
           )}
-        </>
-      )}
 
-      {/* ================= COMPARE BAR ================= */}
-      <CompareBar
-        items={compare}
-        onRemove={(id) => setCompare((c) => c.filter((x) => x.id !== id))}
-        onClear={() => setCompare([])}
-        onOpen={(items) => {
-          toast(`Đang so sánh ${items.length} công cụ`);
-          setQuickView({ ...items[0], __compare: items });
-        }}
-      />
+          {/* ================= TAB HỌC TẬP ================= */}
+          {tab === 'study' && (
+            <>
+              <p className="tools-count">Hiển thị <b>{filteredStudy.length}</b> công cụ</p>
+              <div className="tc-grid">
+                {filteredStudy.map(({ id, name, desc, Icon, tag }, i) => (
+                  <article key={id} data-cat="study" className="tc-cell">
+                    <div className="tc-tile" aria-hidden="true">
+                      <span className="tc-no">{String(i + 1).padStart(3, '0')}</span>
+                      <span className="tc-sym">{Array.from(name).slice(0, 2).join('')}</span>
+                    </div>
+                    {tag && <span className={'tc-tag ' + tag}>{TAG_LABEL[tag]}</span>}
+                    <a href={'#' + id} className="tc-link" aria-label={name}>
+                      <span className="tc-ico"><Icon /></span>
+                      <span className="tc-name">{name}</span>
+                      <span className="tc-desc">{desc}</span>
+                    </a>
+                    <div className="tc-foot">
+                      <span className="tc-domain">Mở công cụ</span>
+                      <span className="tc-arrow"><IconArrowUpRight size={14} /></span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {filteredStudy.length === 0 && (
+                <div className="tools-empty">
+                  <p>Không tìm thấy công cụ nào phù hợp với "{search}"</p>
+                  <button onClick={() => setSearch('')}>Xóa tìm kiếm</button>
+                </div>
+              )}
+            </>
+          )}
 
-      {/* ================= QUICK VIEW ================= */}
-      {quickView && (
-        <QuickView
-          tool={quickView}
-          meta={HOT_AI[quickView.id]}
-          compare={quickView.__compare}
-          onClose={() => setQuickView(null)}
-          onFav={() => toggleFav(quickView.id)}
-          isFav={favs.includes(quickView.id)}
-          onCopy={() => copyLink(quickView)}
-          onShare={() => shareTool(quickView)}
-          CuaiLogo={AIMark}
-        />
-      )}
+          {/* ================= COMPARE BAR ================= */}
+          <CompareBar
+            items={compare}
+            onRemove={(id) => setCompare((c) => c.filter((x) => x.id !== id))}
+            onClear={() => setCompare([])}
+            onOpen={(items) => {
+              toast(`Đang so sánh ${items.length} công cụ`);
+              setQuickView({ ...items[0], __compare: items });
+            }}
+          />
 
-      {toastNode}
+          {/* ================= QUICK VIEW ================= */}
+          {quickView && (
+            <QuickView
+              tool={quickView}
+              meta={HOT_AI[quickView.id]}
+              compare={quickView.__compare}
+              onClose={() => setQuickView(null)}
+              onFav={() => toggleFav(quickView.id)}
+              isFav={favs.includes(quickView.id)}
+              onCopy={() => copyLink(quickView)}
+              onShare={() => shareTool(quickView)}
+              CuaiLogo={AIMark}
+            />
+          )}
+
+          {toastNode}
+
+          {/* BOTTOM SHEET 13 mục — chỉ hiện mobile */}
+          <StudySheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
         </div>
       </div>
     </section>

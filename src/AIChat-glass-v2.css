@@ -1,0 +1,798 @@
+/* ============================================================
+   AIChat-glass-v2.css — Nâng cấp toàn diện giao diện AI Chat
+   Nạp SAU AIChat-glass.css trong AIChat.jsx.
+   Bao gồm: glass message, gradient user, reasoning timeline,
+            pin chat, preview, bento suggestions, quota ring,
+            scroll button + badge, AI typing wave.
+   ============================================================ */
+
+/* ============================================================
+   1. GLASS MESSAGE BUBBLES — Tin nhắn AI kiểu "frosted card"
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-msg-model .ds-msg-content,
+[data-theme='light'] .ds-page .ds-msg-model .ds-msg-content {
+  position: relative;
+  padding: 1.1rem 1.3rem;
+  border-radius: 20px 20px 20px 6px;
+  border-left: 0;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .ds-page .ds-msg-model .ds-msg-content {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .055),
+    rgba(255, 255, 255, .015));
+  border: 1px solid rgba(255, 255, 255, .08);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 0 0 1px rgba(96, 165, 250, .06),
+    0 12px 32px -16px rgba(59, 130, 246, .35);
+}
+
+[data-theme='light'] .ds-page .ds-msg-model .ds-msg-content {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .9),
+    rgba(255, 255, 255, .75));
+  border: 1px solid rgba(30, 50, 120, .08);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, .05),
+    0 12px 32px -16px rgba(59, 130, 246, .25);
+}
+
+/* Vệt sáng phía trên giống input bar */
+[data-theme='dark'] .ds-page .ds-msg-model .ds-msg-content::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #60a5fa, transparent);
+  opacity: .5;
+  pointer-events: none;
+}
+
+[data-theme='light'] .ds-page .ds-msg-model .ds-msg-content::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+  opacity: .6;
+  pointer-events: none;
+}
+
+/* Avatar AI có glow */
+[data-theme='dark'] .ds-page .ds-avatar {
+  filter: drop-shadow(0 0 12px rgba(96, 165, 250, .7));
+}
+[data-theme='light'] .ds-page .ds-avatar {
+  filter: drop-shadow(0 2px 10px rgba(59, 130, 246, .4));
+}
+
+/* ============================================================
+   2. USER MESSAGE — Gradient + vệt sáng chéo
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-msg-user-text,
+[data-theme='light'] .ds-page .ds-msg-user-text {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, .18) 0%,
+      transparent 30%),
+    linear-gradient(135deg, #3b82f6, #6366f1 60%, #8b5cf6);
+  box-shadow:
+    0 10px 30px -12px rgba(99, 102, 241, .8),
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    inset 0 -1px 0 rgba(0, 0, 0, .15);
+}
+
+[data-theme='dark'] .ds-page .ds-msg-user-text::before,
+[data-theme='light'] .ds-page .ds-msg-user-text::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 60%; height: 200%;
+  background: linear-gradient(105deg,
+    transparent 30%,
+    rgba(255, 255, 255, .18) 50%,
+    transparent 70%);
+  transform: rotate(20deg);
+  pointer-events: none;
+}
+
+/* ============================================================
+   3. REASONING TIMELINE — Các bước có chấm sáng
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-reasoning-steps,
+[data-theme='light'] .ds-page .ds-reasoning-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  position: relative;
+}
+
+[data-theme='dark'] .ds-page .ds-reasoning-steps::before,
+[data-theme='light'] .ds-page .ds-reasoning-steps::before {
+  content: '';
+  position: absolute;
+  left: 5px; top: 10px; bottom: 10px;
+  width: 1px;
+  background: linear-gradient(180deg,
+    transparent,
+    rgba(96, 165, 250, .4),
+    transparent);
+}
+
+[data-theme='dark'] .ds-page .ds-reasoning-steps li,
+[data-theme='light'] .ds-page .ds-reasoning-steps li {
+  display: flex;
+  gap: .8rem;
+  align-items: flex-start;
+  animation: ds-step-in .45s cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+
+@keyframes ds-step-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+[data-theme='dark'] .ds-page .ds-reasoning-dot {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  margin-top: .35rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, #60a5fa 40%, rgba(96, 165, 250, .2));
+  box-shadow: 0 0 8px rgba(96, 165, 250, .7);
+}
+
+[data-theme='light'] .ds-page .ds-reasoning-dot {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  margin-top: .35rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, #3b82f6 40%, rgba(59, 130, 246, .2));
+  box-shadow: 0 0 8px rgba(59, 130, 246, .5);
+}
+
+[data-theme='dark'] .ds-page .ds-reasoning-steps li > *:not(.ds-reasoning-dot) {
+  flex: 1;
+  min-width: 0;
+  font-size: .85rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, .78);
+  margin: 0;
+}
+
+[data-theme='light'] .ds-page .ds-reasoning-steps li > *:not(.ds-reasoning-dot) {
+  flex: 1;
+  min-width: 0;
+  font-size: .85rem;
+  line-height: 1.55;
+  color: rgba(10, 18, 48, .75);
+  margin: 0;
+}
+
+[data-theme='dark'] .ds-page .ds-reasoning-steps li p,
+[data-theme='light'] .ds-page .ds-reasoning-steps li p {
+  margin: 0;
+}
+
+/* ============================================================
+   4. PIN CHAT + PREVIEW trong sidebar
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-chat-item-pin,
+[data-theme='light'] .ds-page .ds-chat-item-pin {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(255, 255, 255, .35);
+  opacity: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  transition: opacity .15s, color .15s, transform .15s;
+}
+
+[data-theme='light'] .ds-page .ds-chat-item-pin {
+  color: rgba(10, 18, 48, .35);
+}
+
+[data-theme='dark'] .ds-page .ds-chat-item:hover .ds-chat-item-pin,
+[data-theme='light'] .ds-page .ds-chat-item:hover .ds-chat-item-pin {
+  opacity: 1;
+}
+
+[data-theme='dark'] .ds-page .ds-chat-item-pin.on {
+  opacity: 1;
+  color: #fbbf24;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, .7));
+  transform: rotate(-15deg);
+}
+
+[data-theme='light'] .ds-page .ds-chat-item-pin.on {
+  opacity: 1;
+  color: #f59e0b;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, .5));
+  transform: rotate(-15deg);
+}
+
+/* Preview tin nhắn cuối */
+[data-theme='dark'] .ds-page .ds-chat-item-preview {
+  display: block;
+  font: 400 .7rem var(--sans);
+  color: rgba(255, 255, 255, .35);
+  padding: .15rem .3rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+[data-theme='light'] .ds-page .ds-chat-item-preview {
+  display: block;
+  font: 400 .7rem var(--sans);
+  color: rgba(10, 18, 48, .4);
+  padding: .15rem .3rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* Chat item có preview → title không đè */
+[data-theme='dark'] .ds-page .ds-chat-item:has(.ds-chat-item-preview) .ds-chat-item-title,
+[data-theme='light'] .ds-page .ds-chat-item:has(.ds-chat-item-preview) .ds-chat-item-title {
+  padding-bottom: 0;
+}
+
+/* ============================================================
+   5. BENTO SUGGESTIONS — Card đầu to hơn
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-suggestions,
+[data-theme='light'] .ds-page .ds-suggestions {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: .8rem;
+  max-width: 720px;
+}
+
+[data-theme='dark'] .ds-page .ds-suggestion:first-child,
+[data-theme='light'] .ds-page .ds-suggestion:first-child {
+  grid-row: span 2;
+  border-color: rgba(130, 160, 255, .25);
+}
+
+[data-theme='dark'] .ds-page .ds-suggestion:first-child {
+  background: linear-gradient(160deg,
+    rgba(59, 130, 246, .15),
+    rgba(139, 92, 246, .08));
+}
+
+[data-theme='light'] .ds-page .ds-suggestion:first-child {
+  background: linear-gradient(160deg,
+    rgba(59, 130, 246, .08),
+    rgba(139, 92, 246, .04));
+}
+
+[data-theme='dark'] .ds-page .ds-suggestion:first-child .ds-suggestion-icon,
+[data-theme='light'] .ds-page .ds-suggestion:first-child .ds-suggestion-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  margin-bottom: .8rem;
+  box-shadow: 0 8px 24px -8px rgba(99, 102, 241, .7);
+}
+
+[data-theme='dark'] .ds-page .ds-suggestion:first-child .ds-suggestion-text,
+[data-theme='light'] .ds-page .ds-suggestion:first-child .ds-suggestion-text {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[data-theme='dark'] .ds-page .ds-suggestion:first-child .ds-suggestion-tag,
+[data-theme='light'] .ds-page .ds-suggestion:first-child .ds-suggestion-tag {
+  font-size: .8rem;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  [data-theme='dark'] .ds-page .ds-suggestions,
+  [data-theme='light'] .ds-page .ds-suggestions {
+    grid-template-columns: 1fr 1fr;
+  }
+  [data-theme='dark'] .ds-page .ds-suggestion:first-child,
+  [data-theme='light'] .ds-page .ds-suggestion:first-child {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+
+/* ============================================================
+   6. QUOTA RING — Vòng tròn tiến độ
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-quota-ring,
+[data-theme='light'] .ds-page .ds-quota-ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  cursor: help;
+  transition: transform .15s;
+}
+
+[data-theme='dark'] .ds-page .ds-quota-ring:hover,
+[data-theme='light'] .ds-page .ds-quota-ring:hover {
+  transform: scale(1.1);
+}
+
+[data-theme='dark'] .ds-page .ds-quota-ring b,
+[data-theme='light'] .ds-page .ds-quota-ring b {
+  position: absolute;
+  font: 700 .65rem var(--mono);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  letter-spacing: -.02em;
+}
+
+[data-theme='dark'] .ds-page .ds-quota-ring svg {
+  filter: drop-shadow(0 0 4px rgba(96, 165, 250, .3));
+}
+
+/* ============================================================
+   7. SCROLL BUTTON + BADGE
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-jump,
+[data-theme='light'] .ds-page .ds-jump {
+  position: absolute;
+  top: -52px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(20, 25, 45, .75);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  box-shadow:
+    0 8px 24px -8px rgba(59, 130, 246, .5),
+    inset 0 1px 0 rgba(255, 255, 255, .1);
+  animation: ds-jump-in .3s cubic-bezier(.22, 1, .36, 1);
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  z-index: 5;
+}
+
+[data-theme='light'] .ds-page .ds-jump {
+  background: rgba(255, 255, 255, .9);
+  border-color: rgba(30, 50, 120, .15);
+  color: #0a1230;
+  box-shadow:
+    0 8px 24px -8px rgba(59, 130, 246, .4),
+    inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+@keyframes ds-jump-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+[data-theme='dark'] .ds-page .ds-jump:hover {
+  border-color: rgba(130, 160, 255, .5);
+  box-shadow:
+    0 10px 28px -6px rgba(99, 102, 241, .7),
+    inset 0 1px 0 rgba(255, 255, 255, .15);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+[data-theme='light'] .ds-page .ds-jump:hover {
+  border-color: rgba(59, 130, 246, .5);
+  box-shadow:
+    0 10px 28px -6px rgba(59, 130, 246, .5),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+[data-theme='dark'] .ds-page .ds-jump:active,
+[data-theme='light'] .ds-page .ds-jump:active {
+  transform: translateX(-50%) scale(.94);
+}
+
+[data-theme='dark'] .ds-page .ds-jump-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  font: 700 .62rem var(--mono);
+  display: grid;
+  place-items: center;
+  border: 2px solid #0a0b10;
+  box-shadow: 0 0 10px rgba(99, 102, 241, .8);
+  animation: ds-badge-pop .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+[data-theme='light'] .ds-page .ds-jump-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  font: 700 .62rem var(--mono);
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, .6);
+  animation: ds-badge-pop .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@keyframes ds-badge-pop {
+  from { transform: scale(.4); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   8. AI TYPING WAVE — Sóng sáng + chấm nhún
+   ============================================================ */
+[data-theme='dark'] .ds-page .ds-thinking,
+[data-theme='light'] .ds-page .ds-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .8rem 1.1rem;
+  border-radius: 16px 16px 16px 4px;
+  font: 500 .9rem var(--sans);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .ds-page .ds-thinking {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .05),
+    rgba(255, 255, 255, .02));
+  border: 1px solid rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .75);
+}
+
+[data-theme='light'] .ds-page .ds-thinking {
+  background: linear-gradient(180deg,
+    rgba(59, 130, 246, .06),
+    rgba(139, 92, 246, .03));
+  border: 1px solid rgba(30, 50, 120, .08);
+  color: rgba(10, 18, 48, .7);
+}
+
+[data-theme='dark'] .ds-page .ds-thinking::before,
+[data-theme='light'] .ds-page .ds-thinking::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg,
+    transparent 40%,
+    rgba(96, 165, 250, .15) 50%,
+    transparent 60%);
+  animation: ds-shimmer-sweep 2s infinite;
+  pointer-events: none;
+}
+
+@keyframes ds-shimmer-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* Sóng nhún 3 chấm */
+[data-theme='dark'] .ds-page .ds-thinking::after,
+[data-theme='light'] .ds-page .ds-thinking::after {
+  content: '';
+  width: 24px;
+  height: 10px;
+  background-image:
+    radial-gradient(circle at 4px 5px, currentColor 2px, transparent 2.5px),
+    radial-gradient(circle at 12px 5px, currentColor 2px, transparent 2.5px),
+    radial-gradient(circle at 20px 5px, currentColor 2px, transparent 2.5px);
+  background-repeat: no-repeat;
+  animation: ds-wave 1.4s infinite;
+  opacity: .75;
+}
+
+@keyframes ds-wave {
+  0%, 100% { opacity: .3; }
+  50%      { opacity: 1; }
+}
+
+/* ============================================================
+   9. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .ds-reasoning-steps li,
+  .ds-jump,
+  .ds-jump-badge,
+  .ds-thinking::before,
+  .ds-thinking::after {
+    animation: none !important;
+  }
+  .ds-jump {
+    transform: translateX(-50%) !important;
+  }
+}
+/* ============================================================
+   MESSAGE ACTION BUTTONS — Sao chép / Tạo lại
+   ============================================================ */
+
+.ds-page .ds-msg-copy,
+.ds-page .ds-msg-regen {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .75rem;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font: 600 .72rem var(--sans);
+  letter-spacing: -.005em;
+  white-space: nowrap;
+  transition: background .2s, color .2s, box-shadow .2s, transform .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Dark mode ---------- */
+[data-theme='dark'] .ds-page .ds-msg-copy,
+[data-theme='dark'] .ds-page .ds-msg-regen {
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .7);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .08),
+    0 1px 2px rgba(0, 0, 0, .2);
+}
+
+[data-theme='dark'] .ds-page .ds-msg-copy:hover,
+[data-theme='dark'] .ds-page .ds-msg-regen:hover {
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgba(130, 160, 255, .4),
+    0 4px 12px -4px rgba(59, 130, 246, .5);
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .ds-page .ds-msg-copy:active,
+[data-theme='dark'] .ds-page .ds-msg-regen:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 0 0 1px rgba(130, 160, 255, .5),
+    0 1px 2px rgba(0, 0, 0, .3);
+}
+
+/* Nút "Tạo lại" có accent xanh nhẹ để nổi bật hơn */
+[data-theme='dark'] .ds-page .ds-msg-regen {
+  background: linear-gradient(180deg,
+    rgba(59, 130, 246, .15),
+    rgba(139, 92, 246, .1));
+  color: #a5c4ff;
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, .3),
+    0 2px 8px -2px rgba(59, 130, 246, .4);
+}
+
+[data-theme='dark'] .ds-page .ds-msg-regen:hover {
+  background: linear-gradient(180deg,
+    rgba(59, 130, 246, .25),
+    rgba(139, 92, 246, .18));
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, .55),
+    0 6px 18px -4px rgba(99, 102, 241, .8);
+}
+
+/* Icon xoay khi hover */
+[data-theme='dark'] .ds-page .ds-msg-regen:hover svg {
+  animation: ds-spin-once .5s ease;
+}
+
+@keyframes ds-spin-once {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ---------- Light mode ---------- */
+[data-theme='light'] .ds-page .ds-msg-copy,
+[data-theme='light'] .ds-page .ds-msg-regen {
+  background: rgba(255, 255, 255, .8);
+  color: #5d6a94;
+  box-shadow:
+    inset 0 0 0 1px rgba(30, 50, 120, .1),
+    0 1px 3px rgba(30, 50, 120, .05);
+}
+
+[data-theme='light'] .ds-page .ds-msg-copy:hover,
+[data-theme='light'] .ds-page .ds-msg-regen:hover {
+  background: #fff;
+  color: #0a1230;
+  box-shadow:
+    inset 0 0 0 1px rgba(59, 130, 246, .4),
+    0 4px 12px -4px rgba(59, 130, 246, .3);
+  transform: translateY(-1px);
+}
+
+[data-theme='light'] .ds-page .ds-msg-regen {
+  background: linear-gradient(180deg,
+    rgba(59, 130, 246, .1),
+    rgba(139, 92, 246, .06));
+  color: #2f6bff;
+  box-shadow:
+    inset 0 0 0 1px rgba(59, 130, 246, .25),
+    0 2px 8px -2px rgba(59, 130, 246, .25);
+}
+
+[data-theme='light'] .ds-page .ds-msg-regen:hover {
+  background: linear-gradient(180deg, #3b82f6, #6366f1);
+  color: #fff;
+  box-shadow:
+    0 6px 18px -4px rgba(99, 102, 241, .7);
+}
+
+/* Icon trong nút */
+.ds-page .ds-msg-copy svg,
+.ds-page .ds-msg-regen svg {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+}
+
+/* Khoảng cách giữa các nút */
+.ds-page .ds-msg-actions {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .8rem;
+}
+
+/* Nút của user (copy/edit trong umsg-actions) */
+[data-theme='dark'] .ds-page .ds-umsg-actions button,
+[data-theme='light'] .ds-page .ds-umsg-actions button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .2s, color .2s, transform .15s;
+}
+
+[data-theme='dark'] .ds-page .ds-umsg-actions button {
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .7);
+}
+
+[data-theme='dark'] .ds-page .ds-umsg-actions button:hover {
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+[data-theme='light'] .ds-page .ds-umsg-actions button {
+  background: rgba(30, 50, 120, .06);
+  color: #5d6a94;
+}
+
+[data-theme='light'] .ds-page .ds-umsg-actions button:hover {
+  background: rgba(59, 130, 246, .12);
+  color: #2f6bff;
+  transform: scale(1.1);
+}
+
+.ds-page .ds-umsg-actions {
+  display: flex;
+  gap: .35rem;
+  margin-top: .4rem;
+  justify-content: flex-end;
+}
+/* ============================================================
+   SIDEBAR PREVIEW — Logo AI + icon user thay emoji
+   ============================================================ */
+
+.ds-page .ds-chat-item-preview {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font: 400 .7rem var(--sans);
+  padding: .15rem .3rem 0;
+  overflow: hidden;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.ds-page .ds-preview-ico {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Icon user — SVG trong vòng tròn nhỏ */
+.ds-page .ds-preview-ico.user {
+  padding: 2px;
+  border-radius: 50%;
+  box-sizing: content-box;
+}
+
+.ds-page .ds-preview-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Dark mode ---------- */
+[data-theme='dark'] .ds-page .ds-chat-item-preview {
+  color: rgba(255, 255, 255, .4);
+}
+
+[data-theme='dark'] .ds-page .ds-chat-item-preview.ai {
+  color: rgba(165, 196, 255, .75);
+}
+
+[data-theme='dark'] .ds-page .ds-preview-ico:not(.user) {
+  filter: drop-shadow(0 0 4px rgba(96, 165, 250, .5));
+}
+
+[data-theme='dark'] .ds-page .ds-preview-ico.user {
+  background: rgba(255, 255, 255, .1);
+  color: rgba(255, 255, 255, .65);
+}
+
+/* ---------- Light mode ---------- */
+[data-theme='light'] .ds-page .ds-chat-item-preview {
+  color: rgba(10, 18, 48, .45);
+}
+
+[data-theme='light'] .ds-page .ds-chat-item-preview.ai {
+  color: rgba(47, 107, 255, .75);
+}
+
+[data-theme='light'] .ds-page .ds-preview-ico.user {
+  background: rgba(30, 50, 120, .08);
+  color: rgba(10, 18, 48, .6);
+}
+/* ============================================================
+   CHAT ITEM INFO — wrapper cho title + preview
+   ============================================================ */
+.ds-page .ds-chat-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}

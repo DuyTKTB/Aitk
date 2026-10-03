@@ -243,3 +243,303 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 @media (prefers-reduced-motion: reduce) {
   .hero-home-blob { animation: none; }
 }
+/* ============================================================
+   CTA GRID v2 — Đồng bộ theme tối, glass, viền mờ
+   ============================================================ */
+
+.cta-grid {
+  position: relative;
+  width: 100%;
+  max-width: 1240px;
+  margin: 5rem auto;
+  padding: 0 1.25rem;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+/* ============ CARD 2 BÊN ============ */
+.cta-side {
+  display: flex;
+  flex-direction: column;
+  padding: 1.8rem 1.5rem;
+  border-radius: 22px;
+
+  /* Nền glass tối, khớp với theme */
+  background: var(--glass, color-mix(in srgb, var(--bg) 70%, #fff));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+
+  /* Viền mờ nhạt */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 1px 3px color-mix(in srgb, var(--ink) 5%, transparent),
+    0 20px 40px -20px color-mix(in srgb, var(--ink) 20%, transparent);
+
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  text-align: left;
+  color: var(--ink);
+}
+
+.cta-side:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--acc) 30%, transparent),
+    0 2px 6px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 24px 50px -20px color-mix(in srgb, var(--acc) 25%, transparent);
+}
+
+/* Header card bên */
+.cta-side-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+}
+
+.cta-side-head h3 {
+  font: 700 1.1rem var(--sans);
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Badge */
+.cta-side-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 26px;
+  padding: 0 0.55rem;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
+  font: 800 0.7rem var(--sans);
+  letter-spacing: 0.06em;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #f59e0b 40%, transparent),
+    0 4px 12px -2px rgba(251, 191, 36, 0.4);
+}
+
+.cta-side-badge.heart {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #ef4444 40%, transparent),
+    0 4px 12px -2px rgba(239, 68, 68, 0.4);
+  font-size: 0.95rem;
+}
+
+/* Mô tả */
+.cta-side-desc {
+  font: 400 0.9rem/1.6 var(--sans);
+  color: var(--mut);
+  margin: 0 0 1.2rem;
+  letter-spacing: -0.005em;
+}
+
+/* Danh sách VIP */
+.vip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.vip-list li {
+  font: 500 0.88rem/1.4 var(--sans);
+  color: var(--ink);
+  padding-left: 0.2rem;
+  opacity: 0.9;
+}
+
+/* Nút trong card bên */
+.cta-side-btn {
+  margin-top: auto;
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.cta-side-btn:disabled {
+  background: var(--soft);
+  color: var(--mut);
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+.cta-side-note {
+  font: 400 0.75rem var(--sans);
+  color: var(--mut);
+  text-align: center;
+  margin: 0.8rem 0 0;
+  opacity: 0.75;
+}
+
+/* QR box */
+.qr-card {
+  align-items: stretch;
+}
+
+.qr-box {
+  display: grid;
+  place-items: center;
+  padding: 0.9rem;
+
+  /* Nền sáng cho QR (bắt buộc để scan được) */
+  background: #fff;
+  border-radius: 16px;
+  margin: 0 0 1rem;
+  aspect-ratio: 1 / 1;
+
+  /* Viền mờ nhẹ */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent),
+    0 8px 24px -8px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.qr-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+  display: block;
+}
+
+/* ============ CARD GIỮA ============ */
+.cta-grid .cta-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  border-radius: 26px;
+
+  /* Nền glass tối, khớp với theme */
+  background: var(--glass, color-mix(in srgb, var(--bg) 70%, #fff));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+
+  /* Viền mờ + shadow sâu */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 1px 3px color-mix(in srgb, var(--ink) 5%, transparent),
+    0 30px 60px -25px color-mix(in srgb, var(--acc) 15%, transparent);
+
+  color: var(--ink);
+}
+
+/* ============ TIÊU ĐỀ CTA — BỎ GRADIENT, ĐỌC RÕ ============ */
+.cta-title,
+.fx-cta {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 5.5vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  text-wrap: balance;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+
+  /* Bỏ gradient xuyên thấu */
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+}
+
+/* Từ nhấn mạnh "chinh phục" — màu accent rõ ràng */
+.cta-title .fx-hl,
+.cta-title .fx-shimmer {
+  color: var(--acc-soft, var(--acc)) !important;
+  background: none !important;
+  -webkit-text-fill-color: var(--acc-soft, var(--acc)) !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  animation: none !important;
+}
+
+/* Đoạn lead trong card giữa */
+.cta-card .lead,
+.cta-card p.lead {
+  color: var(--mut) !important;
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 42ch;
+  opacity: 1 !important;
+}
+
+/* Nút trong card giữa */
+.cta-card .cta-actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+/* Slogan pill */
+.cta-card .slogan {
+  background: color-mix(in srgb, var(--soft) 80%, transparent);
+  border: 0;
+  color: var(--mut);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+/* Logo AI ở đầu card giữa */
+.cta-mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.cta-mark .ai-mark {
+  filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--acc) 30%, transparent));
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 1024px) {
+  .cta-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+  .cta-grid .cta-card {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .cta-grid {
+    grid-template-columns: 1fr;
+    margin: 3rem auto;
+    gap: 1rem;
+  }
+  .cta-side {
+    padding: 1.5rem 1.3rem;
+  }
+  .cta-grid .cta-card {
+    padding: 2rem 1.4rem;
+  }
+  .qr-box {
+    max-width: 240px;
+    margin: 0 auto 1rem;
+  }
+  .cta-title,
+  .fx-cta {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  .cta-side,
+  .cta-side:hover {
+    transition: none;
+    transform: none;
+  }
+}

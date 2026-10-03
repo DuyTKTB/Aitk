@@ -9,8 +9,6 @@ export default function ActivityPage() {
   const [filterDays, setFilterDays] = useState(7);
   const [filterSubject, setFilterSubject] = useState('all');
   const [detail, setDetail] = useState(null);
-
-  // Thống kê tổng
   const [stats, setStats] = useState({
     today: 0,
     week: 0,
@@ -19,7 +17,6 @@ export default function ActivityPage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterDays, filterSubject]);
 
   const load = async () => {
@@ -55,8 +52,6 @@ export default function ActivityPage() {
       }
 
       setAttempts(filtered);
-
-      // Thống kê
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayCount = filtered.filter(
@@ -290,10 +285,6 @@ export default function ActivityPage() {
     </div>
   );
 }
-
-// ============================================================
-// HELPERS
-// ============================================================
 function StatBox({ Icon, label, value, color }) {
   return (
     <div className="adl-stat" style={{ '--stat-color': color }}>

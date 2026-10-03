@@ -1,4 +1,3 @@
-// symbol,English name,Vietnamese name,atomic mass  (thứ tự = số hiệu nguyên tử 1..118)
 const RAW = `H,Hydrogen,Hiđro,1.008;He,Helium,Heli,4.0026;Li,Lithium,Liti,6.94;Be,Beryllium,Beri,9.0122;B,Boron,Bo,10.81;C,Carbon,Cacbon,12.011;N,Nitrogen,Nitơ,14.007;O,Oxygen,Oxi,15.999;F,Fluorine,Flo,18.998;Ne,Neon,Neon,20.180;
 Na,Sodium,Natri,22.990;Mg,Magnesium,Magie,24.305;Al,Aluminium,Nhôm,26.982;Si,Silicon,Silic,28.085;P,Phosphorus,Photpho,30.974;S,Sulfur,Lưu huỳnh,32.06;Cl,Chlorine,Clo,35.45;Ar,Argon,Agon,39.948;K,Potassium,Kali,39.098;Ca,Calcium,Canxi,40.078;
 Sc,Scandium,Scanđi,44.956;Ti,Titanium,Titan,47.867;V,Vanadium,Vanađi,50.942;Cr,Chromium,Crom,51.996;Mn,Manganese,Mangan,54.938;Fe,Iron,Sắt,55.845;Co,Cobalt,Coban,58.933;Ni,Nickel,Niken,58.693;Cu,Copper,Đồng,63.546;Zn,Zinc,Kẽm,65.38;
@@ -28,8 +27,6 @@ const SETS = {
 };
 const category = (z) =>
   Object.keys(SETS).find((k) => SETS[k].includes(z)) || (z >= 57 && z <= 71 ? 'lanthanide' : z >= 89 && z <= 103 ? 'actinide' : 'transition');
-
-// [chu kỳ, nhóm] — nhóm = null với hàng f-block (Lanthanide/Actinide nằm 2 hàng riêng bên dưới)
 function position(z) {
   if (z === 1) return [1, 1];
   if (z === 2) return [1, 18];
@@ -46,8 +43,6 @@ function position(z) {
   if (z <= 103) return [7, null];
   return [7, z - 100];
 }
-
-// Cấu hình electron: quy tắc Madelung + các ngoại lệ thực nghiệm
 const ORB = '1s 2s 2p 3s 3p 4s 3d 4p 5s 4d 5p 6s 4f 5d 6p 7s 5f 6d 7p'.split(' ');
 const CAP = { s: 2, p: 6, d: 10, f: 14 };
 const EX = {
@@ -69,8 +64,6 @@ const fmtConfig = (o) => Object.keys(o).filter((k) => o[k])
   .sort((a, b) => a[0] - b[0] || 'spdf'.indexOf(a[1]) - 'spdf'.indexOf(b[1]))
   .map((k) => k + sup(o[k])).join(' ');
 function config(z) { return fmtConfig(rawConfig(z)); }
-
-// Cấu hình rút gọn kiểu [Ar]3d⁵4s¹ — dùng khí hiếm gần nhất phía trước làm lõi
 const NOBLE = { 2: 'He', 10: 'Ne', 18: 'Ar', 36: 'Kr', 54: 'Xe', 86: 'Rn' };
 function shortConfig(z) {
   const coreZ = [86, 54, 36, 18, 10, 2].find((nz) => nz < z);
@@ -79,22 +72,15 @@ function shortConfig(z) {
   for (const k in full) { const r = full[k] - (core[k] || 0); if (r > 0) rem[k] = r; }
   return `[${NOBLE[coreZ]}] ${fmtConfig(rem)}`;
 }
-
-// Số electron hóa trị — tính chắc chắn cho nguyên tố nhóm A (chương trình phổ thông chủ yếu dùng nhóm này)
 function valenceElectrons(z, group) {
   if (z === 2) return 2; // He
   if (group === 1 || group === 2) return group;
   if (group >= 13 && group <= 18) return group - 10;
   return null; // khối d/f: cách tính phức tạp hơn, không hiển thị số cố định
 }
-
-// Trạng thái ở nhiệt độ phòng (~25°C)
 const GAS = new Set('H He N O F Ne Cl Ar Kr Xe Rn'.split(' '));
 const LIQUID = new Set('Br Hg'.split(' '));
 const stateAtRoomTemp = (sym) => (GAS.has(sym) ? 'Khí' : LIQUID.has(sym) ? 'Lỏng' : 'Rắn');
-
-// Dữ liệu bổ sung cho các nguyên tố thường gặp trong chương trình phổ thông VN
-// (độ âm điện Pauling, số oxi hóa phổ biến). Nguyên tố không có trong bảng sẽ hiển thị "Chưa có dữ liệu".
 const EXTRA = {
   H: { en: 2.20, ox: [1, -1] }, He: { en: null, ox: [] }, Li: { en: 0.98, ox: [1] }, Be: { en: 1.57, ox: [2] },
   B: { en: 2.04, ox: [3] }, C: { en: 2.55, ox: [-4, 2, 4] }, N: { en: 3.04, ox: [-3, 2, 3, 4, 5] }, O: { en: 3.44, ox: [-2, -1] },
@@ -110,8 +96,6 @@ const EXTRA = {
   Ba: { en: 0.89, ox: [2] }, Pt: { en: 2.28, ox: [2, 4] }, Au: { en: 2.54, ox: [1, 3] }, Hg: { en: 2.00, ox: [1, 2] },
   Pb: { en: 2.33, ox: [2, 4] },
 };
-
-// Nguyên tử khối làm tròn kiểu SGK phổ thông VN (dùng trong công tắc "Dùng số liệu SGK" ở MolarMass)
 export const SGK_MASS = {
   H: 1, He: 4, Li: 7, Be: 9, B: 11, C: 12, N: 14, O: 16, F: 19, Ne: 20, Na: 23, Mg: 24, Al: 27, Si: 28, P: 31,
   S: 32, Cl: 35.5, Ar: 40, K: 39, Ca: 40, Cr: 52, Mn: 55, Fe: 56, Ni: 59, Cu: 64, Zn: 65, Br: 80, Ag: 108, Sn: 119,
@@ -129,14 +113,11 @@ export const ELEMENTS = RAW.replace(/\n/g, '').split(';').map((row, i) => {
     category: category(z), electronConfiguration: config(z), shortConfiguration: shortConfig(z),
     valenceElectrons: valenceElectrons(z, group), stateAtRoomTemp: stateAtRoomTemp(symbol),
     electronegativity: extra.en, oxidationStates: extra.ox,
-    // vị trí trên lưới: hàng 1 = nhãn nhóm, hàng 2-8 = chu kỳ 1-7, hàng 9 = khoảng cách, hàng 10-11 = f-block
     row: isF ? (z <= 71 ? 10 : 11) : period + 1,
     col: isF ? (z <= 71 ? z - 57 : z - 89) + 4 : group + 1,
     s: { symbol: norm(symbol), name: norm(name), vn: norm(vietnameseName) },
   };
 });
-// ====== BỔ SUNG CHO TREND MODE ======
-// Bán kính nguyên tử (pm), nhiệt độ nóng chảy (K) — nguồn: bảng tuần hoàn IUPAC
 const RADIUS = {
   H: 53, He: 31, Li: 167, Be: 112, B: 87, C: 67, N: 56, O: 48, F: 42, Ne: 38,
   Na: 190, Mg: 145, Al: 118, Si: 111, P: 98, S: 88, Cl: 79, Ar: 71,
@@ -159,13 +140,10 @@ const MELTING = {
   Ag: 1235, Cd: 594, In: 430, Sn: 505, Sb: 904, Te: 723, I: 387, Xe: 161,
   Cs: 302, Ba: 1000, W: 3695, Pt: 2041, Au: 1337, Hg: 234, Pb: 601, U: 1405,
 };
-// patch vào ELEMENTS — thêm SAU khi ELEMENTS đã tạo
 for (const el of ELEMENTS) {
   el.atomicRadius = RADIUS[el.symbol] ?? null;
   el.meltingPoint = MELTING[el.symbol] ?? null;
 }
-
-// Metadata cho dropdown Trend
 export const TRENDS = [
   { key: 'atomicMass', label: 'Khối lượng nguyên tử', unit: 'u', fmt: (v) => v.toFixed(2) },
   { key: 'electronegativity', label: 'Độ âm điện (Pauling)', unit: '', fmt: (v) => v.toFixed(2) },

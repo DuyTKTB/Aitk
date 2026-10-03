@@ -44,8 +44,6 @@ export default function StatsPage() {
   const bestScore = totalAttempts
     ? Math.max(...attempts.map((a) => Number(a.score || 0)))
     : 0;
-
-  // Thống kê theo môn
   const bySubject = {};
   attempts.forEach((a) => {
     const subj = a.exam?.subject?.name || 'Khác';
@@ -59,8 +57,6 @@ export default function StatsPage() {
     count: v.count,
     avg: v.sum / v.count,
   }));
-
-  // 7 ngày gần đây
   const last7 = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));

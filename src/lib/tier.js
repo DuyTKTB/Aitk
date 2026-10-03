@@ -41,12 +41,8 @@ const CACHE_MS = 60 * 1000; // 1 phút
    ============================================================ */
 export async function getTier(uid) {
   if (!uid) return TIERS.free;
-
-  // Cache còn hiệu lực
   const c = cache.get(uid);
   if (c && Date.now() - c.t < CACHE_MS) return c.tier;
-
-  // Chưa cấu hình DB → mặc định free
   if (!HAS_DB) {
     cache.set(uid, { tier: TIERS.free, t: Date.now() });
     return TIERS.free;
@@ -109,8 +105,6 @@ export async function syncUserInfo(user) {
       email: user.email || '',
       lastSeen: Date.now(),
     };
-
-    // Nếu user chưa có trên DB → tạo mới với tier 'free'
     if (!existing) {
       payload.tier = 'free';
       payload.createdAt = Date.now();

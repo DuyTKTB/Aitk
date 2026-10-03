@@ -8,8 +8,6 @@ import TrendLegend from './TrendLegend.jsx';
 const goTable = () => { location.hash = 'table'; };
 const initialZoom = () => (innerWidth < 640 ? 0.6 : Math.min(1.15, (innerWidth - 48) / 1060));
 const clampZoom = (z) => Math.min(2, Math.max(0.4, +z.toFixed(2)));
-
-// đọc filter từ URL hash (dạng #table?q=fe&cat=transition&trend=atomicRadius)
 function readHash() {
   const hash = location.hash;
   const qIdx = hash.indexOf('?');
@@ -41,8 +39,6 @@ export default function PeriodicTable({ preview = false }) {
   const [zoom, setZoom] = useState(initialZoom);
   const gridRef = useRef(null);
   const close = useCallback(() => setSel(null), []);
-
-  // --- zoom bằng bàn phím ---
   useEffect(() => {
     if (preview) return;
     const onKey = (e) => {
@@ -53,14 +49,10 @@ export default function PeriodicTable({ preview = false }) {
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, [preview]);
-
-  // --- đồng bộ URL ---
   useEffect(() => {
     if (preview) return;
     writeHash({ q, cat, trend });
   }, [q, cat, trend, preview]);
-
-  // --- filter ---
   const nq = norm(q);
   const matches = useMemo(() => {
     const isOn = (e) =>
@@ -69,8 +61,6 @@ export default function PeriodicTable({ preview = false }) {
       (!hl || (hl.t === 'g' ? e.group === hl.v : e.period === hl.v));
     return new Set(ELEMENTS.filter(isOn).map((e) => e.atomicNumber));
   }, [nq, cat, hl]);
-
-  // --- trend: tính min/max để normalize ---
   const trendInfo = useMemo(() => {
     if (!trend) return null;
     const vals = ELEMENTS.map((e) => e[trend]).filter((v) => typeof v === 'number');
@@ -81,13 +71,10 @@ export default function PeriodicTable({ preview = false }) {
   const reset = () => { setQ(''); setCat('all'); setHl(null); setTrend(''); setCompare([]); };
   const filtering = !!(q || cat !== 'all' || hl || trend);
   const active = (t, v) => (hl && hl.t === t && hl.v === v ? ' act' : '');
-
-  // --- chọn nguyên tố ---
   const handleSelect = (e, ev) => {
     if (preview) return goTable();
 
     if (study) {
-      // Study mode: lật đáp án
       setRevealed((r) => {
         const n = new Set(r);
         if (n.has(e.atomicNumber)) n.delete(e.atomicNumber); else n.add(e.atomicNumber);
@@ -97,7 +84,6 @@ export default function PeriodicTable({ preview = false }) {
     }
 
     if (ev?.shiftKey) {
-      // Shift+Click → thêm vào compare
       setCompare((c) => {
         if (c.find((x) => x.atomicNumber === e.atomicNumber)) {
           return c.filter((x) => x.atomicNumber !== e.atomicNumber);
@@ -108,8 +94,6 @@ export default function PeriodicTable({ preview = false }) {
     }
     setSel(e);
   };
-
-  // --- keyboard nav trên bàn tuần hoàn ---
   useEffect(() => {
     if (!gridRef.current) return;
     const onKey = (ev) => {

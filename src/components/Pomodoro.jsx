@@ -14,8 +14,6 @@ const PRESETS = [
 ];
 
 const pad = (n) => String(n).padStart(2, '0');
-
-// Âm thanh bằng Web Audio API — không cần file
 function beep(freq = 880, dur = 0.15, vol = 0.3) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -61,8 +59,6 @@ export default function Pomodoro() {
   const endAt = useRef(0);
   const modeRef = useRef(mode);
   modeRef.current = mode;
-
-  // Đăng ký notification
   useEffect(() => {
     if (notify && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -74,8 +70,6 @@ export default function Pomodoro() {
       try { new Notification(title, { body, icon: '/favicon.ico' }); } catch {}
     }
   };
-
-  // Timer
   useEffect(() => {
     if (!run) return;
     endAt.current = Date.now() + left * 1000;
@@ -117,10 +111,7 @@ export default function Pomodoro() {
       }
     }, 250);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run]);
-
-  // Cập nhật title tab
   useEffect(() => {
     if (run) {
       document.title = `${pad(Math.floor(left / 60))}:${pad(left % 60)} — ${MODES.find(m => m.key === mode).label}`;
@@ -129,8 +120,6 @@ export default function Pomodoro() {
     }
     return () => { document.title = 'A7 K60 DTA — bycode Duy TK'; };
   }, [left, run, mode]);
-
-  // Space để start/pause, Esc thoát zen
   useEffect(() => {
     const onKey = (e) => {
       if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
@@ -171,15 +160,11 @@ export default function Pomodoro() {
     setMode('focus');
     setLeft(p.focus * 60);
   };
-
-  // Progress ring
   const total = cfg[mode] * 60;
   const progress = total > 0 ? (total - left) / total : 0;
   const R = 120;
   const C = 2 * Math.PI * R;
   const dash = C * (1 - progress);
-
-  // Mini bar chart 7 ngày
   const last7 = useMemo(() => {
     const arr = [];
     for (let i = 6; i >= 0; i--) {

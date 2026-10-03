@@ -79,8 +79,6 @@ const GAMES = [
       'Hết ô = tổng kết, đội nào nhiều điểm thắng.',
     ],
   },
-
-  // ============ 3 GAME MỚI — PHẢI NẰM TRONG MẢNG NÀY ============
   {
     id: 'lab',
     num: '04',
@@ -153,7 +151,6 @@ const GAMES = [
       'Dùng "Gợi ý" khi bí (bị trừ điểm).',
     ],
   },
-  // ============ HẾT 3 GAME MỚI ============
 ];
 
 export default function GameHub() {

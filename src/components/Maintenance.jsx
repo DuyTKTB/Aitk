@@ -11,16 +11,12 @@ const ADMIN_FB = 'https://www.facebook.com/nguyentheduytk';
 export default function Maintenance({ info }) {
   const [dots, setDots] = useState('');
   const [now, setNow] = useState(Date.now());
-
-  // Animation dấu chấm
   useEffect(() => {
     const t = setInterval(() => {
       setDots((d) => (d.length >= 3 ? '' : d + '.'));
     }, 500);
     return () => clearInterval(t);
   }, []);
-
-  // Đồng hồ cập nhật mỗi giây
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
@@ -31,8 +27,6 @@ export default function Maintenance({ info }) {
     info?.message ||
     'Hệ thống đang được nâng cấp để phục vụ bạn tốt hơn. Vui lòng quay lại sau ít phút.';
   const etaAt = info?.eta ? Number(info.eta) : null;
-
-  // Đếm ngược (nếu có ETA)
   let countdown = null;
   if (etaAt && etaAt > now) {
     const s = Math.floor((etaAt - now) / 1000);

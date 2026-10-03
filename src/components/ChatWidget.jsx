@@ -402,7 +402,6 @@ export default function ChatWidget() {
       setNewBelow((n) => n + 1);
     }
     prevLast.current = lastId;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastId]);
 
   useLayoutEffect(() => {

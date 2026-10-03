@@ -1,4 +1,3 @@
-// Hệ thống Spaced Repetition cải tiến (SM-2 variant)
 const DAY = 86400000;
 const STORAGE_KEY = 'cs-srs';
 

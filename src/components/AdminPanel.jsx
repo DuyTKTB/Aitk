@@ -36,13 +36,9 @@ export default function AdminPanel() {
   const [tab, setTab] = useState('list');
   const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
-
-  // State cho Prompt Builder
   const [generatedQs, setGeneratedQs] = useState(null);
   const [grades, setGrades] = useState([]);
   const [subjects, setSubjects] = useState([]);
-
-  // Check quyền admin
   useEffect(() => {
     if (!user) { setChecking(false); return; }
     (async () => {
@@ -60,8 +56,6 @@ export default function AdminPanel() {
       setChecking(false);
     })();
   }, [user]);
-
-  // Load grades + subjects khi vào tab prompt
   useEffect(() => {
     if (tab !== 'prompt') return;
     Promise.all([fetchGrades(), fetchSubjects()])
@@ -131,7 +125,6 @@ export default function AdminPanel() {
                 setGeneratedQs(qs);
               }
             } catch (e) {
-              // JSON chưa hoàn chỉnh — bỏ qua, đợi paste đủ
             }
           }}
         />
@@ -143,8 +136,6 @@ export default function AdminPanel() {
           onBack={() => setGeneratedQs(null)}
           onSave={async (qs) => {
             try {
-              // Tạo đề mới + lưu tất cả câu hỏi vào
-              // Sử dụng grades/subjects mặc định
               const defaultGrade = grades[0]?.id;
               const defaultSubject = subjects[0]?.id;
 
@@ -171,14 +162,8 @@ export default function AdminPanel() {
     </div>
   );
 }
-
-// ============================================================
-// HELPER: Lưu câu hỏi AI vào đề mới
-// ============================================================
 async function saveQuestionsToNewExam(questions, { gradeId, subjectId, title }) {
   const examTitle = title || `Đề AI tạo ${new Date().toLocaleDateString('vi-VN')}`;
-
-  // 1. Tạo exam
   const { data: exam, error: e1 } = await supabase
     .from('exams')
     .insert({
@@ -196,8 +181,6 @@ async function saveQuestionsToNewExam(questions, { gradeId, subjectId, title }) 
     .single();
 
   if (e1) throw e1;
-
-  // 2. Insert câu hỏi + đáp án
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
 
@@ -232,10 +215,6 @@ async function saveQuestionsToNewExam(questions, { gradeId, subjectId, title }) 
 
   return exam;
 }
-
-// ============================================================
-// DANH SÁCH ĐỀ
-// ============================================================
 function ExamList() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -340,10 +319,6 @@ function ExamList() {
     </div>
   );
 }
-
-// ============================================================
-// TẠO ĐỀ THỦ CÔNG
-// ============================================================
 function ExamCreate({ onDone }) {
   const [grades, setGrades] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -504,10 +479,6 @@ function ExamCreate({ onDone }) {
     </form>
   );
 }
-
-// ============================================================
-// IMPORT JSON
-// ============================================================
 const SAMPLE_JSON = `{
   "title": "Đề thi thử giữa kỳ 1 - Hóa học 11",
   "description": "Đề minh họa 3 câu hỏi",

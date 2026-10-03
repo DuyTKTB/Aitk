@@ -1,4 +1,3 @@
-// src/components/FormulaLibrary.jsx
 import { useState, useMemo, useCallback } from 'react';
 import { FORMULAS, FORMULA_CATEGORIES } from './formulaData.js';
 import {

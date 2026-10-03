@@ -1,5 +1,3 @@
-// src/hooks/useGamification.js
-// Quản lý XP, Level, Streak
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from './useAuth.jsx';
 
@@ -18,8 +16,6 @@ export function useGamification() {
       return {};
     }
   });
-
-  // Load per user
   useEffect(() => {
     if (!uid) return;
     try {
@@ -53,8 +49,6 @@ export function useGamification() {
     },
     [uid]
   );
-
-  // Cập nhật khi làm 1 câu
   const recordAnswer = useCallback(
     (isCorrect) => {
       const today = new Date().toISOString().slice(0, 10);
@@ -67,15 +61,11 @@ export function useGamification() {
         xp += 2;
         totalWrong += 1;
       }
-
-      // Streak
       if (lastStudyDate !== today) {
         const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
         if (lastStudyDate === yesterday) streak += 1;
         else streak = 1;
       }
-
-      // Level
       let level = 1;
       for (let i = 0; i < LEVEL_XP.length; i++) {
         if (xp >= LEVEL_XP[i]) level = i + 1;

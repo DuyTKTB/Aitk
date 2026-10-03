@@ -1,15 +1,11 @@
 import { useState, useMemo } from 'react';
 import { ELEMENTS, SGK_MASS } from '../data/elements.js';
-
-// Bảng khối lượng: ưu tiên atomicMass chuẩn, fallback [số khối]
 const MASS = Object.fromEntries(
   ELEMENTS.map((e) => [
     e.symbol,
     parseFloat(e.atomicMass.replace(/[[\]]/g, '')),
   ])
 );
-
-// Kiểm tra ký hiệu có tồn tại không (phân biệt hoa/thường)
 const isValidSymbol = (s) => s in MASS;
 
 /**
@@ -26,8 +22,6 @@ const isValidSymbol = (s) => s in MASS;
 function parse(f) {
   const stack = [{}];
   let i = 0;
-
-  // Đọc số (mặc định 1 nếu không có)
   const readNumber = () => {
     let s = '';
     while (i < f.length && /\d/.test(f[i])) s += f[i++];
@@ -37,8 +31,6 @@ function parse(f) {
   const add = (group, sym, n) => {
     group[sym] = (group[sym] || 0) + n;
   };
-
-  // Nhân toàn bộ group con vào group cha
   const mergeIntoParent = (child, mult) => {
     const parent = stack[stack.length - 1];
     for (const k in child) add(parent, k, child[k] * mult);
@@ -46,15 +38,11 @@ function parse(f) {
 
   while (i < f.length) {
     const c = f[i];
-
-    // Mở ngoặc
     if (c === '(' || c === '[') {
       stack.push({});
       i++;
       continue;
     }
-
-    // Đóng ngoặc
     if (c === ')' || c === ']') {
       if (stack.length < 2) throw new Error('Ngoặc không cân đối');
       i++;
@@ -63,25 +51,17 @@ function parse(f) {
       mergeIntoParent(top, mult);
       continue;
     }
-
-    // Dấu chấm ngậm nước: CuSO4.5H2O
     if (c === '·' || c === '.' || c === '*') {
       i++;
       const mult = readNumber();
-      // Phần sau dấu chấm được parse như một group mới rồi nhân vào group hiện tại
       const sub = {};
-      // Lưu lại vị trí để parse đệ quy đơn giản: cắt chuỗi còn lại
       const rest = f.slice(i);
       const subParsed = parse(rest);
       for (const k in subParsed) add(sub, k, subParsed[k] * mult);
       for (const k in sub) add(stack[stack.length - 1], k, sub[k]);
       return stack[0]; // đã xử lý hết phần còn lại
     }
-
-    // Bỏ qua khoảng trắng / ký tự lạ
     if (!/[A-Za-z]/.test(c)) throw new Error(`Ký tự không hợp lệ: "${c}"`);
-
-    // Đọc nguyên tố: ưu tiên 2 ký tự (Co) trước 1 ký tự (C)
     const two = f.slice(i, i + 2);
     const one = f[i];
 
@@ -93,9 +73,7 @@ function parse(f) {
       sym = one;
       i += 1;
     } else {
-      // Thử phần còn lại sau ký tự đầu (trường hợp CO → C + O)
       if (two.length === 2 && /^[A-Z][a-z]$/.test(two)) {
-        // Co không hợp lệ, nhưng C hợp lệ → quay lại 1 ký tự
         if (isValidSymbol(one)) {
           sym = one;
           i += 1;
@@ -118,7 +96,6 @@ function parse(f) {
 const fmt = (n, digits = 4) => {
   if (isNaN(n) || !isFinite(n)) return '—';
   if (n === 0) return '0';
-  // Dùng toPrecision cho số rất nhỏ, toFixed cho số thường
   if (Math.abs(n) < 1e-3 || Math.abs(n) >= 1e6) return n.toPrecision(digits);
   return +n.toFixed(digits);
 };

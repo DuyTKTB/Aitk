@@ -65,8 +65,6 @@ const randomSpecial = () => {
 
 export default function JeopardyGame() {
   const [phase, setPhase] = useState('setup');
-
-  // Setup state
   const [teams, setTeams] = useState([
     { id: 1, name: 'Đội 1', score: 0, color: TEAM_COLORS[0] },
     { id: 2, name: 'Đội 2', score: 0, color: TEAM_COLORS[1] },
@@ -77,8 +75,6 @@ export default function JeopardyGame() {
   const [activeTile, setActiveTile] = useState(null);
   const [answerRevealed, setAnswerRevealed] = useState(false);
   const [winner, setWinner] = useState(null);
-
-  // Persist teams
   useEffect(() => {
     try {
       const raw = localStorage.getItem('cs-game:jeopardy:teams');
@@ -150,10 +146,7 @@ export default function JeopardyGame() {
     sound.click();
     const cat = categories[tile.catIdx];
     const q = cat.questions[tile.qIdx];
-
-    // Xử lý special trước khi mở
     if (tile.special === 'skip') {
-      // Mất lượt ngay
       sound.wrong();
       const nextTurn = (currentTurn + 1) % teams.length;
       setCurrentTurn(nextTurn);
@@ -183,7 +176,6 @@ export default function JeopardyGame() {
     if (activeTile.special === 'double') points *= 2;
 
     if (activeTile.special === 'steal') {
-      // Cướp điểm từ đội đang dẫn đầu (khác đội hiện tại)
       const otherTeams = teams.filter((_, i) => i !== currentTurn).sort((a, b) => b.score - a.score);
       const victim = otherTeams[0];
       const stolen = Math.min(victim?.score || 0, points);
@@ -204,8 +196,6 @@ export default function JeopardyGame() {
         ? { ...t, used: true }
         : t
     ));
-
-    // Giữ nguyên lượt nếu đúng
     setTimeout(() => {
       closeTile();
       checkEnd();

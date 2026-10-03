@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { inlineFormat } from '../lib/chemText.js';
-import { IcoCopy, IcoCheck } from './Icons2.jsx';
+import { IcoCopy, IcoCheck } from './Icons.jsx';
 
 const html = (s) => ({ __html: inlineFormat(s) });
 const UL = /^\s*[-*•]\s+/;
@@ -62,7 +62,6 @@ function MarkdownBase({ text }) {
       continue;
     }
 
-    // dòng trống giữa các mục cùng danh sách → giữ liền một danh sách (số thứ tự không bị về 1)
     if (t === '' && list) {
       const nx = nextNonEmpty(i + 1);
       if ((list.type === 'ul' && UL.test(nx)) || (list.type === 'ol' && OL.test(nx))) continue;
@@ -137,21 +136,34 @@ export function CodeBlock({ lang, code }) {
   );
 }
 
-/* Thu gọn câu trả lời dài. Câu trả lời mới nhất mở sẵn. */
+/* Thu gọn câu trả lời dài. FIX: chỉ measure 1 lần để tránh re-render liên tục */
 export function CollapsibleText({ children, collapsedHeight = 420, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const [needs, setNeeds] = useState(false);
   const ref = useRef(null);
+  const measured = useRef(false);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return undefined;
-    const measure = () => setNeeds(el.scrollHeight > collapsedHeight + 60);
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
+    if (!el || measured.current) return undefined;
+    measured.current = true;
+
+    const measure = () => {
+      if (!el) return;
+      const shouldNeed = el.scrollHeight > collapsedHeight + 60;
+      setNeeds((prev) => (prev === shouldNeed ? prev : shouldNeed));
+    };
+    const raf = requestAnimationFrame(measure);
+
+    if (typeof ResizeObserver === 'undefined') {
+      return () => cancelAnimationFrame(raf);
+    }
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [collapsedHeight]);
 
   const collapsed = needs && !open;
@@ -165,7 +177,12 @@ export function CollapsibleText({ children, collapsedHeight = 420, defaultOpen =
         {children}
       </div>
       {needs && (
-        <button type="button" className={'ds-msg-more' + (open ? ' open' : '')} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <button
+          type="button"
+          className={'ds-msg-more' + (open ? ' open' : '')}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
           {open ? 'Thu gọn' : 'Xem thêm'}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
             <polyline points="6 9 12 15 18 9" />
@@ -173,5 +190,23 @@ export function CollapsibleText({ children, collapsedHeight = 420, defaultOpen =
         </button>
       )}
     </>
+  );
+}
+
+/* Reasoning steps — hiển thị từng bước với timeline */
+export function ReasoningSteps({ text }) {
+  if (!text) return null;
+
+  const lines = text.split('\n').filter((l) => l.trim());
+
+  return (
+    <ol className="ds-reasoning-steps">
+      {lines.map((line, i) => (
+        <li key={i} style={{ '--i': i }}>
+          <span className="ds-reasoning-dot" aria-hidden="true" />
+          <MarkdownLike text={line} />
+        </li>
+      ))}
+    </ol>
   );
 }

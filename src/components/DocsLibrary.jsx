@@ -3,10 +3,6 @@ import { GRADES, SUBJECTS, SUBJ, KINDS, DOCS } from './docsData.js';
 import { IcoStar, IcoClose, norm, useStored } from './ToolsKit.jsx';
 import { IconArrowUpRight } from './AIIcons.jsx';
 import { SubjectIcon, subjectColor } from './SubjectIcons.jsx';
-
-// ============================================================
-// LAZY IMAGE — chỉ load khi thẻ vào viewport, load trực tiếp
-// ============================================================
 function LazyCover({ src, alt, fallbackIcon }) {
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -52,10 +48,6 @@ function LazyCover({ src, alt, fallbackIcon }) {
     </span>
   );
 }
-
-// ============================================================
-// PDF Modal
-// ============================================================
 const Pdf = ({ doc, onClose }) => {
   const ref = useRef(null);
   useEffect(() => { ref.current?.showModal(); }, []);
@@ -73,10 +65,6 @@ const Pdf = ({ doc, onClose }) => {
     </dialog>
   );
 };
-
-// ============================================================
-// Book List Modal
-// ============================================================
 const BookList = ({ doc, onClose }) => {
   const ref = useRef(null);
   useEffect(() => { ref.current?.showModal(); }, []);
@@ -130,10 +118,6 @@ const BookList = ({ doc, onClose }) => {
     </dialog>
   );
 };
-
-// ============================================================
-// MAIN
-// ============================================================
 const PAGE_SIZE = 12;
 
 export default function DocsLibrary({ query = '', grade: gProp, onGrade }) {

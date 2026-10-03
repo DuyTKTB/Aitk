@@ -11,6 +11,7 @@ import {
 
 /* ============================================================
    useState + LocalStorage, tự đồng bộ giữa các component
+   - Chống infinite loop: cờ isRemoteUpdate
    ============================================================ */
 export function useLocalStorage(key, initial) {
   const [value, setValue] = useState(() => {
@@ -23,8 +24,12 @@ export function useLocalStorage(key, initial) {
   });
   const cur = useRef(value);
   cur.current = value;
-
+  const isRemoteUpdate = useRef(false);
   useEffect(() => {
+    if (isRemoteUpdate.current) {
+      isRemoteUpdate.current = false;
+      return;
+    }
     try {
       const raw = JSON.stringify(value);
       if (localStorage.getItem(key) !== raw) {
@@ -35,14 +40,17 @@ export function useLocalStorage(key, initial) {
       /* bỏ qua khi bị chặn */
     }
   }, [key, value]);
-
   useEffect(() => {
     const on = (e) => {
       if (e.detail !== key) return;
       try {
         const s = localStorage.getItem(key);
-        if (s !== null && s !== JSON.stringify(cur.current)) {
-          setValue(JSON.parse(s));
+        if (s !== null) {
+          const parsed = JSON.parse(s);
+          if (JSON.stringify(parsed) !== JSON.stringify(cur.current)) {
+            isRemoteUpdate.current = true;
+            setValue(parsed);
+          }
         }
       } catch {
         /* bỏ qua */

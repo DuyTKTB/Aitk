@@ -268,7 +268,6 @@ export function AuthProvider({ children }) {
 const logout = useCallback(async () => {
   try {
     await signOut(auth);
-    // 👇 THÊM DÒNG NÀY — reset hash về home sau khi đăng xuất
     location.hash = 'home';
   } catch (e) {
     console.error('Logout error:', e);

@@ -1,5 +1,3 @@
-// src/components/ChemIcons.jsx
-// Bộ SVG icon thuần — không dùng emoji. Kế thừa currentColor và size.
 
 const base = {
   viewBox: '0 0 24 24',
@@ -15,8 +13,6 @@ const Svg = ({ size = 18, children, filled = false }) => (
     {children}
   </svg>
 );
-
-// ---------- Môn học ----------
 export const IconMath = ({ size }) => (
   <Svg size={size}><path d="M4 20 20 4" /><path d="M4 4h6" /><path d="M14 20h6" /><circle cx="8" cy="17" r="1.2" /><circle cx="16" cy="7" r="1.2" /></Svg>
 );
@@ -44,8 +40,6 @@ export const IconGeography = ({ size }) => (
 export const IconInformatics = ({ size }) => (
   <Svg size={size}><rect x="3" y="4" width="18" height="14" rx="1.5" /><path d="M8 21h8M12 18v3" /><path d="M8 9l-2 2 2 2M16 9l2 2-2 2M13 8l-2 8" /></Svg>
 );
-
-// ---------- Hành động ----------
 export const IconPlay = ({ size }) => (<Svg size={size}><path d="M8 5v14l11-7z" filled /></Svg>);
 export const IconClock = ({ size }) => (<Svg size={size}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>);
 export const IconList = ({ size }) => (<Svg size={size}><path d="M8 6h13M8 12h13M8 18h13" /><circle cx="4" cy="6" r="1" filled /><circle cx="4" cy="12" r="1" filled /><circle cx="4" cy="18" r="1" filled /></Svg>);
@@ -63,8 +57,6 @@ export const IconChevronDown = ({ size }) => (<Svg size={size}><path d="M6 9l6 6
 export const IconSearch = ({ size }) => (<Svg size={size}><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4.2-4.2" /></Svg>);
 export const IconFlag = ({ size }) => (<Svg size={size}><path d="M6 3v18" /><path d="M6 4h11l-2 4 2 4H6" /></Svg>);
 export const IconTrophy = ({ size }) => (<Svg size={size}><path d="M7 5h10v4a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3" /><path d="M9 18h6M12 14v4" /></Svg>);
-
-// ---------- Hóa học ----------
 export const IconFlask = ({ size }) => (<Svg size={size}><path d="M9 3h6v5l4.5 9.2A1.8 1.8 0 0 1 17.9 20H6.1a1.8 1.8 0 0 1-1.6-2.8L9 8z" /><path d="M7 13h10" /></Svg>);
 export const IconAtom = ({ size }) => (<Svg size={size}><circle cx="12" cy="12" r="1.8" filled /><ellipse cx="12" cy="12" rx="9" ry="3.5" /><ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(60 12 12)" /><ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(120 12 12)" /></Svg>);
 export const IconMolecule = ({ size }) => (<Svg size={size}><circle cx="6" cy="12" r="2.2" /><circle cx="18" cy="7" r="2.2" /><circle cx="18" cy="17" r="2.2" /><path d="M8 11l8-3M8 13l8 3" /></Svg>);
@@ -73,8 +65,6 @@ export const IconFormula = ({ size }) => (<Svg size={size}><path d="M5 5h6M8 5v1
 export const IconReaction = ({ size }) => (<Svg size={size}><path d="M4 12h7M13 12h7" /><path d="M10 8l2 4-2 4M14 8l-2 4 2 4" /></Svg>);
 export const IconBalance = ({ size }) => (<Svg size={size}><path d="M12 3v18" /><path d="M4 7h16" /><path d="M6 7l-3 6h6zM18 7l-3 6h6z" /></Svg>);
 export const IconGraph = ({ size }) => (<Svg size={size}><path d="M4 20V4M4 20h16" /><path d="M6 16c3 0 4-8 7-8s3 5 6 5" /></Svg>);
-
-// ---------- Trạng thái ----------
 export const IconStreak = ({ size }) => (<Svg size={size}><path d="M12 3c1 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 3 3 3 3 0 0-2-1-3 0-5z" /></Svg>);
 export const IconTarget = ({ size }) => (<Svg size={size}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" filled /></Svg>);
 export const IconLevel = ({ size }) => (<Svg size={size}><path d="M4 20V8M10 20V4M16 20v-8M22 20v-4" /></Svg>);

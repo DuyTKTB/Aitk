@@ -7,8 +7,6 @@ import { CHEMICALS, REACTIONS, findReaction } from '../data/reactions';
 /* ============================================================
    1) PHÂN TÍCH DUNG DỊCH — pH chính xác bằng log nồng độ
    ============================================================ */
-
-// Hằng số axit/bazơ mạnh giả định (chỉ minh họa)
 const ACID_STRENGTH = { HCl: 1, H2SO4: 2, HNO3: 1 };
 const BASE_STRENGTH = { NaOH: 1, KOH: 1, CaOH2: 2 };
 
@@ -24,7 +22,6 @@ export function analyzePH(contents) {
   Object.entries(contents).forEach(([k, v]) => {
     const c = CHEMICALS[k];
     if (!c) return;
-    // Chỉ tính chất tan
     if (c.state === 'liquid' || c.type === 'acid' || c.type === 'base') {
       volume += v;
       if (ACID_STRENGTH[k]) acidMol += ACID_STRENGTH[k] * v;
@@ -38,10 +35,8 @@ export function analyzePH(contents) {
   let ph;
   if (Math.abs(net) < 0.01) ph = 7;
   else if (net > 0) {
-    // Dư axit — pH từ 7 → 1
     ph = 7 - Math.min(6, 2 + Math.log2(net + 1) * 1.2);
   } else {
-    // Dư bazơ — pH từ 7 → 13
     ph = 7 + Math.min(6, 2 + Math.log2(-net + 1) * 1.2);
   }
   ph = Math.max(0.5, Math.min(13.5, ph));
@@ -121,7 +116,6 @@ export function react(contents) {
   });
   rxn.outputs.forEach((k) => {
     const c = CHEMICALS[k];
-    // Khí bay ra ngoài — không tích tụ
     if (c && c.state !== 'gas') {
       newContents[k] = (newContents[k] || 0) + 1;
     }
@@ -139,8 +133,6 @@ export function react(contents) {
  */
 export function suggestNext(contents) {
   const keys = Object.keys(contents).filter((k) => contents[k] > 0);
-
-  // Nếu cốc rỗng → gợi ý chất khởi đầu
   if (keys.length === 0) {
     return [
       { key: 'Na', reason: 'Thử đổ Natri vào nước để xem phản ứng mãnh liệt' },
@@ -148,15 +140,11 @@ export function suggestNext(contents) {
       { key: 'NaOH', reason: 'Bazơ mạnh, tạo kết tủa đẹp' },
     ];
   }
-
-  // Nếu có 1 chất → tìm tất cả chất khác tạo phản ứng
   const suggestions = new Map();
   REACTIONS.forEach((r) => {
     const rInputs = r.inputs;
-    // Nếu mọi chất trong cốc đều nằm trong rInputs
     const allInReaction = keys.every((k) => rInputs.includes(k));
     if (!allInReaction) return;
-    // Tìm chất còn thiếu
     rInputs.forEach((k) => {
       if (!keys.includes(k)) {
         if (!suggestions.has(k)) {
@@ -198,8 +186,6 @@ export function compareReactions(eqA, eqB) {
 /* ============================================================
    7) TOOLTIP HÓA HỌC — thông tin chất
    ============================================================ */
-
-// Khối lượng mol thô (gần đúng) cho các nguyên tố phổ biến
 const MOLAR = {
   H: 1, C: 12, N: 14, O: 16, Na: 23, Mg: 24, Al: 27,
   Si: 28, P: 31, S: 32, Cl: 35.5, K: 39, Ca: 40,
@@ -210,7 +196,6 @@ const MOLAR = {
 export function molarMass(formula) {
   if (!formula) return 0;
   let total = 0;
-  // Tách từng nguyên tố + số nguyên tử (kể cả số thập phân như CuSO₄.5H₂O)
   const clean = formula.replace(/[₀-₉]/g, (m) =>
     '₀₁₂₃₄₅₆₇₈₉'.indexOf(m)
   );

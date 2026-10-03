@@ -1,10 +1,3 @@
-// ============================================================
-// THƯ VIỆN PROMPT — phiên bản chi tiết
-// - Biến điền được viết dạng {{tên biến}}
-// - img (tuỳ chọn): đường dẫn ảnh mẫu thật
-// - sample (tuỳ chọn): đoạn kết quả mẫu
-// - long (tuỳ chọn): true nếu prompt dài > 500 ký tự
-// ============================================================
 
 export const PROMPT_CATS = [
   { id: 'huong-dan', name: 'Hướng dẫn dùng', hue: 200, kind: 'guide', guide: true },
@@ -16,10 +9,6 @@ export const PROMPT_CATS = [
   { id: 'mkt', name: 'Marketing & Maps', hue: 22, kind: 'chart', chat: true },
   { id: 'dich', name: 'Dịch & ngoại ngữ', hue: 48, kind: 'bubbles', chat: true },
 ];
-
-// ============================================================
-// HƯỚNG DẪN SỬ DỤNG — hiển thị dạng step-by-step
-// ============================================================
 export const GUIDE_STEPS = [
   {
     num: '01',
@@ -82,12 +71,7 @@ export const GUIDE_STEPS = [
     ],
   },
 ];
-
-// ============================================================
-// PROMPTS — chi tiết, dài, có cấu trúc rõ
-// ============================================================
 export const PROMPTS = [
-  // ================= HỌC HÓA =================
   {
     id: 'hoc-giai-thich',
     cat: 'hoc',
@@ -452,8 +436,6 @@ YÊU CẦU MÔ TẢ:
 - Công thức Unicode.`,
     long: true,
   },
-
-  // ================= VIẾT & HỌC THUẬT =================
   {
     id: 'viet-tom-tat',
     cat: 'viet',
@@ -618,8 +600,6 @@ YÊU CẦU:
 - Đánh dấu rõ Tiêu đề / Nội dung / Chữ ký.`,
     long: true,
   },
-
-  // ================= TẠO ẢNH =================
   {
     id: 'anh-san-pham',
     cat: 'anh',
@@ -766,8 +746,6 @@ TECHNICAL: ultra detailed, high dynamic range, sharp focus on foreground and mid
 NEGATIVE: no HDR over-processing, no oversaturated colors, no people in frame (unless specified), no text, no watermark.`,
     long: true,
   },
-
-  // ================= TẠO VIDEO =================
   {
     id: 'vd-san-pham',
     cat: 'video',
@@ -868,8 +846,6 @@ GHI CHÚ THÊM:
 - 3 lỗi cần tránh khi làm video 15 giây.`,
     long: true,
   },
-
-  // ================= LẬP TRÌNH =================
   {
     id: 'code-giai-thich',
     cat: 'code',
@@ -1054,8 +1030,6 @@ YÊU CẦU:
 - Code block có syntax highlighting.`,
     long: true,
   },
-
-  // ================= MARKETING =================
   {
     id: 'mkt-review-tot',
     cat: 'mkt',
@@ -1365,8 +1339,6 @@ YÊU CẦU:
 - Chia theo tuần để không quá dài.`,
     long: true,
   },
-
-  // ================= DỊCH & NGOẠI NGỮ =================
   {
     id: 'dich-nhat',
     cat: 'dich',

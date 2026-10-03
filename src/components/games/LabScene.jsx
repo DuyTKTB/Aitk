@@ -282,8 +282,6 @@ export default function LabScene({
   const COUNT = vessels.length;
   const GAP = 40;
   const PADDING_X = 60;
-
-  // Tính chiều rộng mỗi dụng cụ
   const vesselWidth = 220;
   const totalWidth = Math.max(900, PADDING_X * 2 + COUNT * vesselWidth + (COUNT - 1) * GAP);
   const viewBoxWidth = totalWidth;
@@ -316,7 +314,6 @@ export default function LabScene({
       {/* Vẽ từng dụng cụ */}
       {vessels.map((v, i) => {
         const V = VESSEL_SHAPES[v.vessel] || VESSEL_SHAPES.beaker;
-        // Căn giữa theo chiều rộng dụng cụ
         const cellX = PADDING_X + i * (vesselWidth + GAP);
         const vesselX = cellX + (vesselWidth - V.w) / 2;
         const vesselY = tableTop - V.h + burnerOffset - 10;

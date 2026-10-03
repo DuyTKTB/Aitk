@@ -1,0 +1,69 @@
+/* ============================================================
+   FX-FALLBACK — CSS tạm cho Split / Rolling / typed bubble (Home.jsx)
+   CHỈ dùng khi chưa tìm được file CSS gốc của .fx-*
+   Import SAU index.css trong main.jsx. Tìm được file gốc thì XÓA file này.
+   ============================================================ */
+
+/* Chữ chỉ dành cho trình đọc màn hình */
+.fx-sr {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Split: từng từ trượt lên */
+.fx-wm { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .12em; margin-bottom: -.12em; }
+.fx-s {
+  display: inline-block;
+  transform: translateY(110%);
+  transition: transform .6s var(--ease, ease)
+    calc(var(--base, 0ms) + var(--i, 0) * var(--step, 55ms));
+}
+.fx-split.on .fx-s { transform: none; }
+
+/* Chữ "Hóa học" — gradient xanh */
+.fx-shimmer {
+  background: linear-gradient(100deg, #2563ff 0%, #38bdf8 50%, #2563ff 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: fx-shimmer 4s linear infinite;
+}
+@keyframes fx-shimmer { to { background-position: -200% 0; } }
+
+.fx-hl { color: var(--acc, #2563ff); }
+
+/* Rolling: các cụm "thông minh hơn." xếp chồng, luân phiên */
+.fx-roll { display: inline-grid; color: var(--acc, #2563ff); }
+.fx-roll-w {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(60%);
+  transition: opacity .5s var(--ease, ease), transform .5s var(--ease, ease);
+}
+.fx-roll-w.in  { opacity: 1; transform: none; }
+.fx-roll-w.out { opacity: 0; transform: translateY(-60%); }
+
+/* Bong bóng gõ chữ: ghost giữ chỗ, chữ gõ nằm đè lên */
+.fx-typed { display: inline-grid; }
+.fx-typed > * { grid-area: 1 / 1; }
+.fx-ghost { visibility: hidden; }
+.fx-caret {
+  display: inline-block;
+  width: 2px; height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--acc, #2563ff);
+  animation: fx-blink 1s steps(1) infinite;
+}
+@keyframes fx-blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-s { transform: none !important; transition: none !important; }
+  .fx-roll-w { transition: none !important; }
+  .fx-shimmer, .fx-caret { animation: none !important; }
+}

@@ -1,7 +1,3 @@
-// ============================================================
-// DỮ LIỆU AI HOT — CUAI đầu tiên với badge Siêu VIP
-// id CUAI dùng chuỗi 'cuai', các AI khác dùng số khớp RAW_AI_DATA
-// ============================================================
 
 export const RATING_META = {
   5: { label: 'Xuất sắc', color: '#16a34a' },
@@ -17,14 +13,7 @@ export const PRICE_META = {
   paid: { label: 'Trả phí', color: '#ef4444', icon: '💰' },
   vip: { label: 'Siêu VIP', color: '#a855f7', icon: '👑' },
 };
-
-// ============================================================
-// DANH SÁCH AI HOT — CUAI ở vị trí #1
-// ============================================================
 const HOT = [
-  // ============================================================
-  // 🏆 CUAI — SẢN PHẨM CỦA CHÍNH WEB, ƯU TIÊN SỐ 1
-  // ============================================================
   {
     id: 'cuai',
     rank: 1,
@@ -62,10 +51,6 @@ const HOT = [
       { type: 'official', label: 'CHÍNH CHỦ' },
     ],
   },
-
-  // ============================================================
-  // CÁC AI HOT KHÁC
-  // ============================================================
   {
     id: 0, rank: 2, cat: 'chat', name: 'Grok', domain: 'grok.com',
     rating: 5, price: 'freemium', freeTier: true, vnSupport: true,

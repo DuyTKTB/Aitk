@@ -11,8 +11,6 @@ export default function DotOrb({ className = '' }) {
     if (!cv) return undefined;
     const ctx = cv.getContext('2d');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // Các điểm phân bố đều trên mặt cầu (Fibonacci)
     const pts = Array.from({ length: N }, (_, i) => {
       const y = 1 - (i / (N - 1)) * 2;
       const r = Math.sqrt(1 - y * y);
@@ -39,7 +37,6 @@ export default function DotOrb({ className = '' }) {
       const tilt = 0.35, ct = Math.cos(tilt), st = Math.sin(tilt);
 
       for (const [x0, y0, z0] of pts) {
-        // làm méo nhẹ để bề mặt trông như sóng
         const k = 1
           + 0.16 * Math.sin(x0 * 2.6 + t * 0.0006) * Math.cos(y0 * 2.2 - t * 0.0005)
           + 0.08 * Math.sin(z0 * 3.4 + t * 0.0009);

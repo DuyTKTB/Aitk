@@ -1,5 +1,3 @@
-// src/components/SubjectIcons.jsx
-// Bộ SVG icon cho từng môn học. Không dùng emoji.
 
 const Svg = ({ size = 22, children }) => (
   <svg
@@ -16,8 +14,6 @@ const Svg = ({ size = 22, children }) => (
     {children}
   </svg>
 );
-
-// ===== TOÁN: compa + thước =====
 export const IconMath = (p) => (
   <Svg {...p}>
     <path d="M12 21L5 5" />
@@ -27,8 +23,6 @@ export const IconMath = (p) => (
     <path d="M9 11h6" />
   </Svg>
 );
-
-// ===== NGỮ VĂN: sách mở =====
 export const IconLiterature = (p) => (
   <Svg {...p}>
     <path d="M3 5a2 2 0 0 1 2-2h6v18H5a2 2 0 0 1-2-2z" />
@@ -36,8 +30,6 @@ export const IconLiterature = (p) => (
     <path d="M7 8h2M15 8h2" />
   </Svg>
 );
-
-// ===== TIẾNG ANH: quả địa cầu =====
 export const IconEnglish = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="9" />
@@ -45,8 +37,6 @@ export const IconEnglish = (p) => (
     <path d="M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
   </Svg>
 );
-
-// ===== VẬT LÍ: nguyên tử =====
 export const IconPhysics = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="1.8" fill="currentColor" />
@@ -55,8 +45,6 @@ export const IconPhysics = (p) => (
     <ellipse cx="12" cy="12" rx="9" ry="3.8" transform="rotate(120 12 12)" />
   </Svg>
 );
-
-// ===== HÓA HỌC: bình tam giác =====
 export const IconChemistry = (p) => (
   <Svg {...p}>
     <path d="M9 3h6" />
@@ -66,8 +54,6 @@ export const IconChemistry = (p) => (
     <circle cx="14" cy="18" r=".5" fill="currentColor" />
   </Svg>
 );
-
-// ===== SINH HỌC: ADN =====
 export const IconBiology = (p) => (
   <Svg {...p}>
     <path d="M8 4c4 2 6 6 6 10a6 6 0 0 1-6 6" />
@@ -75,8 +61,6 @@ export const IconBiology = (p) => (
     <path d="M9 8h6M9 12h6M9 16h6" />
   </Svg>
 );
-
-// ===== LỊCH SỬ: cột đền =====
 export const IconHistory = (p) => (
   <Svg {...p}>
     <path d="M3 10L12 4l9 6" />
@@ -85,16 +69,12 @@ export const IconHistory = (p) => (
     <path d="M10 19v-4h4v4" />
   </Svg>
 );
-
-// ===== ĐỊA LÍ: bản đồ gấp =====
 export const IconGeography = (p) => (
   <Svg {...p}>
     <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
     <path d="M9 4v14M15 6v14" />
   </Svg>
 );
-
-// ===== TIN HỌC: màn hình có code =====
 export const IconInformatics = (p) => (
   <Svg {...p}>
     <rect x="3" y="4" width="18" height="13" rx="2" />
@@ -102,24 +82,18 @@ export const IconInformatics = (p) => (
     <path d="M8 9l-2 2 2 2M16 9l2 2-2 2M13 8l-2 8" />
   </Svg>
 );
-
-// ===== CÔNG NGHỆ: bánh răng + tua vít =====
 export const IconTech = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="3" />
     <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4" />
   </Svg>
 );
-
-// ===== GDQP: khiên =====
 export const IconShield = (p) => (
   <Svg {...p}>
     <path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" />
     <path d="M9 12l2 2 4-4" />
   </Svg>
 );
-
-// ===== HĐTN: la bàn =====
 export const IconCompass = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="9" />
@@ -127,8 +101,6 @@ export const IconCompass = (p) => (
     <path d="M15.5 8.5L13 13l-4.5 2.5L11 11z" />
   </Svg>
 );
-
-// ===== ICON MẶC ĐỊNH (chữ "10", "11", "12") =====
 export const IconDefault = ({ size, grade }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
     <text
@@ -144,8 +116,6 @@ export const IconDefault = ({ size, grade }) => (
     </text>
   </svg>
 );
-
-// ===== MAP: mã môn → component icon =====
 const SUBJECT_MAP = {
   toan: IconMath,
   van: IconLiterature,
@@ -161,8 +131,6 @@ const SUBJECT_MAP = {
   hdtn: IconCompass,
   ktpl: IconShield,
 };
-
-// ===== MAP: mã môn → màu (dùng CSS var có sẵn trong index.css) =====
 export const SUBJECT_COLOR = {
   toan: '#f3e27a',      // vàng
   van: '#f2b6c6',       // hồng
@@ -178,8 +146,6 @@ export const SUBJECT_COLOR = {
   hdtn: '#e6b3e0',      // hồng tím
   ktpl: '#ff9b85',      // cam đỏ
 };
-
-// ===== Component chính =====
 export function SubjectIcon({ subject, grade, size = 22 }) {
   const Comp = SUBJECT_MAP[subject];
   if (!Comp) return <IconDefault size={size} grade={grade} />;

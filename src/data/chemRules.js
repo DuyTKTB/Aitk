@@ -1,9 +1,5 @@
-// ============================================================
-//  CHEM RULES — Rule engine cho hóa học phổ thông VN
-// ============================================================
 
 export const COMPOUNDS = {
-  // --- Axit vô cơ ---
   'HCl':   { name: 'Axit clohiđric',      type: 'acid', strength: 'strong',
              ions: ['H+', 'Cl-'], common: 'Dung dịch axit, dạ dày' },
   'HBr':   { name: 'Axit bromhiđric',     type: 'acid', strength: 'strong',
@@ -32,8 +28,6 @@ export const COMPOUNDS = {
              ions: ['H+', 'ClO4-'] },
   'CH3COOH': { name: 'Axit axetic',       type: 'acid', strength: 'weak',
              ions: ['H+', 'CH3COO-'], note: 'Giấm ăn' },
-
-  // --- Bazơ ---
   'NaOH':  { name: 'Natri hiđroxit',      type: 'base', strength: 'strong',
              ions: ['Na+', 'OH-'], common: 'Xút, xà phòng' },
   'KOH':   { name: 'Kali hiđroxit',       type: 'base', strength: 'strong',
@@ -58,8 +52,6 @@ export const COMPOUNDS = {
              ions: ['Zn(2+)', '2OH-'], note: 'Lưỡng tính' },
   'NH3':   { name: 'Amoniac',             type: 'base', strength: 'weak',
              ions: [], note: 'Khí, tan tốt trong nước, mùi khai' },
-
-  // --- Oxit ---
   'H2O':   { name: 'Nước',                type: 'oxide', sub: 'neutral' },
   'CO2':   { name: 'Cacbon đioxit',       type: 'oxide', sub: 'acidic',
              note: 'Khí nhà kính' },
@@ -98,8 +90,6 @@ export const COMPOUNDS = {
   'Cr2O3': { name: 'Crom(III) oxit',      type: 'oxide', sub: 'amphoteric' },
   'MnO2':  { name: 'Mangan(IV) oxit',     type: 'oxide', sub: 'amphoteric',
              note: 'Chất xúc tác phân hủy H2O2' },
-
-  // --- Muối ---
   'NaCl':  { name: 'Natri clorua',        type: 'salt', sub: 'neutral',
              ions: ['Na+', 'Cl-'], common: 'Muối ăn' },
   'KCl':   { name: 'Kali clorua',         type: 'salt', sub: 'neutral',
@@ -180,8 +170,6 @@ export const COMPOUNDS = {
              ions: ['Ca(2+)', '2Cl-'] },
   'MgCl2': { name: 'Magie clorua',        type: 'salt', sub: 'neutral',
              ions: ['Mg(2+)', '2Cl-'] },
-
-  // --- Hữu cơ đơn giản ---
   'CH4':   { name: 'Metan',               type: 'organic', sub: 'alkane',
              note: 'Khí tự nhiên, khí biogas' },
   'C2H6':  { name: 'Etan',                type: 'organic', sub: 'alkane' },
@@ -200,8 +188,6 @@ export const COMPOUNDS = {
   'C12H22O11': { name: 'Saccarozơ',       type: 'organic', sub: 'sugar',
              common: 'Đường mía' },
 };
-
-// ---------- 2. PHÂN LOẠI THEO CÔNG THỨC ----------
 export function classify(formula) {
   if (COMPOUNDS[formula]) return COMPOUNDS[formula].type;
   if (/^H\d*[A-Z]/.test(formula)) return 'acid';
@@ -209,8 +195,6 @@ export function classify(formula) {
   if (/O\d*$/.test(formula)) return 'oxide';
   return 'unknown';
 }
-
-// ---------- 3. PHÂN TÍCH HỢP CHẤT ----------
 const TYPE_NAMES = {
   acid: 'Axit',
   base: 'Bazơ',
@@ -241,8 +225,6 @@ export function analyze(formula) {
     ...buildReactions({ type }),
   };
 }
-
-// ---------- 4. RULE ENGINE PHẢN ỨNG ----------
 function buildReactions(comp) {
   const reactions = [];
   const t = comp.type;

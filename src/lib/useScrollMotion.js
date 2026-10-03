@@ -49,8 +49,6 @@ export default function useScrollMotion(rootRef) {
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return undefined;
-
-    // Giảm chuyển động: để CSS tự trả panel về dòng chảy thường, không chạy gì cả
     if (mq('(prefers-reduced-motion: reduce)')) return undefined;
 
     const fine = mq('(hover: hover) and (pointer: fine)');
@@ -85,7 +83,6 @@ export default function useScrollMotion(rootRef) {
           p.style.zIndex = String(i + 1);
           p.style.top = Math.min(0, vh - h) + 'px';
           const inner = p.querySelector('[data-stack-inner]');
-          // tâm thu nhỏ = tâm vùng đang nhìn thấy của panel
           if (inner) inner.style.transformOrigin = `50% ${h > vh ? h - vh / 2 : h / 2}px`;
         });
       };
@@ -100,8 +97,6 @@ export default function useScrollMotion(rootRef) {
         const next = panels[i + 1];
         const after = panels[i + 2];
         if (!inner || !next) return;
-
-        // Lớp liền trước: 1 → 0.96, mờ nhẹ
         gsap.fromTo(
           inner,
           { scale: 1, y: 0, opacity: 1, filter: 'blur(0px)' },
@@ -110,7 +105,6 @@ export default function useScrollMotion(rootRef) {
             scrollTrigger: { trigger: next, start: 'top bottom', end: 'top top', scrub: true, invalidateOnRefresh: true },
           },
         );
-        // Lớp cũ hơn: lùi sâu thêm
         if (after) {
           gsap.fromTo(
             inner,
@@ -176,7 +170,6 @@ export default function useScrollMotion(rootRef) {
           el,
           { clipPath: 'inset(60px 40px round 24px)', scale: 1.06, opacity: 0.4 },
           {
-            // inset âm để bóng đổ/glow không bị cắt khi đã mở hết
             clipPath: 'inset(-60px -60px round 24px)', scale: 1, opacity: 1, ease: 'none',
             scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 55%', scrub: true },
           },
@@ -198,7 +191,6 @@ export default function useScrollMotion(rootRef) {
 
       /* ---------- 9. Tương tác chuột (chỉ desktop có con trỏ) ---------- */
       if (fine) {
-        // 9a. Gradient bám con trỏ
         const glows = panels.filter((p) => p.hasAttribute('data-glow'));
         let gRaf = 0;
         let gEvt = null;
@@ -219,8 +211,6 @@ export default function useScrollMotion(rootRef) {
         };
         window.addEventListener('pointermove', glowMove, { passive: true });
         off.push(() => { window.removeEventListener('pointermove', glowMove); cancelAnimationFrame(gRaf); });
-
-        // 9b. Tilt 3D
         TILT.forEach(([sel, max]) => {
           root.querySelectorAll(sel).forEach((el) => {
             gsap.set(el, { transformPerspective: 900 });
@@ -237,8 +227,6 @@ export default function useScrollMotion(rootRef) {
             off.push(() => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerleave', leave); });
           });
         });
-
-        // 9c. Nút từ tính
         const mags = [...root.querySelectorAll(MAGNETIC)];
         mags.forEach((m) => m.classList.add('sm-m'));
         let mRaf = 0;

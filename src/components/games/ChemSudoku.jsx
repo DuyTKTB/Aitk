@@ -38,23 +38,17 @@ export default function ChemSudoku() {
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => mo.disconnect();
   }, []);
-
-  // Load best times
   useEffect(() => {
     try {
       const raw = localStorage.getItem('cs-game:sudoku:best');
       if (raw) setBestTimes(JSON.parse(raw));
     } catch {}
   }, []);
-
-  // Timer
   useEffect(() => {
     if (phase !== 'playing') return;
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, [phase]);
-
-  // Keyboard
   useEffect(() => {
     if (phase !== 'playing') return;
     const onKey = (e) => {
@@ -80,7 +74,6 @@ export default function ChemSudoku() {
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, phase, noteMode, notes]);
 
   const startGame = (diff) => {
@@ -101,12 +94,9 @@ export default function ChemSudoku() {
   const placeNumber = (value) => {
     if (!selected) return;
     const { row, col } = selected;
-
-    // Ô đã cho sẵn → không sửa
     if (initialBoard[row][col] !== 0) return;
 
     if (noteMode) {
-      // Note mode: toggle note
       const key = `${row},${col}`;
       setNotes((n) => {
         const set = new Set(n[key] || []);
@@ -117,8 +107,6 @@ export default function ChemSudoku() {
       sound.click?.();
       return;
     }
-
-    // Kiểm tra hợp lệ
     if (!isValidMove(board, row, col, value)) {
       sound.wrong?.();
       setWrongCells((w) => ({ ...w, [`${row},${col}`]: true }));
@@ -143,20 +131,15 @@ export default function ChemSudoku() {
     const next = board.map((r) => [...r]);
     next[row][col] = value;
     setBoard(next);
-
-    // Xóa notes của ô này
     setNotes((n) => {
       const copy = { ...n };
       delete copy[`${row},${col}`];
       return copy;
     });
-
-    // Kiểm tra win
     if (isComplete(next)) {
       setTimeout(() => {
         setPhase('won');
         sound.win?.();
-        // Lưu best time
         const key = difficulty;
         const current = bestTimes[key];
         if (!current || seconds < current) {
@@ -184,13 +167,9 @@ export default function ChemSudoku() {
 
   const useHint = () => {
     if (phase !== 'playing') return;
-    // Tìm ô trống đầu tiên
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (board[r][c] === 0) {
-          // Tìm giá trị đúng từ puzzle gốc (đã giải)
-          // Ở đây ta dùng logic: thử từng số 1-9, số nào valid và không conflict với tương lai
-          // Đơn giản: dùng solution nếu có, hoặc brute force
           const solution = solveSudoku(board);
           if (solution) {
             setBoard(solution);
@@ -234,12 +213,8 @@ export default function ChemSudoku() {
     setInitialBoard([]);
     setSelected(null);
   };
-
-  // Notes cho ô đang chọn
   const selectedNotes = selected ? notes[`${selected.row},${selected.col}`] : null;
   const selectedValue = selected ? board[selected.row]?.[selected.col] : 0;
-
-  // Highlight hàng/cột/box
   const isHighlighted = (r, c) => {
     if (!selected) return false;
     if (r === selected.row || c === selected.col) return true;
@@ -478,8 +453,6 @@ function formatTime(s) {
   const sec = s % 60;
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
-
-// Backtracking solver cho hint
 function solveSudoku(board) {
   const b = board.map((r) => [...r]);
   if (solve(b)) return b;

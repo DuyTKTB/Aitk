@@ -20,8 +20,6 @@ const rid = () => Math.random().toString(36).slice(2, 10);
 const MAX_LEN = 500;
 const CARD_W = 260;
 const CARD_H = 160;
-
-// Vị trí ngẫu nhiên trong canvas (tránh chồng quá nhiều)
 function randomPos(index, total) {
   const cols = Math.max(3, Math.floor((window.innerWidth - 80) / (CARD_W + 20)));
   const col = index % cols;
@@ -49,8 +47,6 @@ export default function Notes() {
   const dragRef = useRef(null);
 
   const localMode = !DB;
-
-  // Load notes
   useEffect(() => {
     if (localMode) {
       try {
@@ -76,15 +72,11 @@ export default function Notes() {
     });
     return () => es.close();
   }, [localMode]);
-
-  // Persist local
   useEffect(() => {
     if (localMode) {
       try { localStorage.setItem('cs-notes-local', JSON.stringify(notes)); } catch {}
     }
   }, [notes, localMode]);
-
-  // Submit (tạo hoặc sửa)
   const submit = async (e) => {
     e.preventDefault();
     const title = form.title.trim().slice(0, 80);
@@ -98,8 +90,6 @@ export default function Notes() {
       name: (form.name.trim() || name).slice(0, 20),
       uid,
     };
-
-    // Sửa note cũ
     if (editing) {
       if (localMode) {
         setNotes((n) => n.map((x) => (x.id === editing.id ? { ...x, ...base } : x)));
@@ -119,8 +109,6 @@ export default function Notes() {
       setShowForm(false);
       return;
     }
-
-    // Tạo note mới
     const pos = randomPos(notes.length, notes.length + 1);
     const note = { ...base, t: Date.now(), votes: 0, x: pos.x, y: pos.y };
 
@@ -188,8 +176,6 @@ export default function Notes() {
     setShowForm(true);
     scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  // Drag handlers
   const onPointerDown = (e, note) => {
     if (!dragMode) return;
     if (e.button !== 0) return;
@@ -211,8 +197,6 @@ export default function Notes() {
     const dy = e.clientY - d.sy;
     if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
     if (!d.moved) return;
-
-    // Cập nhật local state ngay để mượt
     setNotes((n) =>
       n.map((x) =>
         x.id === d.id
@@ -228,8 +212,6 @@ export default function Notes() {
     dragRef.current = null;
     if (!d || !d.moved) return;
     setDragging(null);
-
-    // Tìm note đã cập nhật
     const updated = notes.find((x) => x.id === d.id);
     if (!updated) return;
 
@@ -240,7 +222,6 @@ export default function Notes() {
         body: JSON.stringify({ x: updated.x, y: updated.y }),
       });
     } catch {
-      // rollback không cần — lần sau mở lại sẽ đồng bộ từ server
     }
   };
 

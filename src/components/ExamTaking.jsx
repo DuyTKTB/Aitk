@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchExamQuestions, createAttempt, saveUserAnswer, submitAttempt } from '../lib/examApi.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 
@@ -10,42 +10,28 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
   const [answers, setAnswers] = useState({});
   const [current, setCurrent] = useState(0);
   const [flags, setFlags] = useState(new Set());
-  const [timeLeft, setTimeLeft] = useState(exam?.duration * 60 || 0);
+  const [timeLeft, setTimeLeft] = useState((exam?.duration || 45) * 60);
   const [startedAt] = useState(Date.now());
-
-  // Load questions + tạo attempt
+  const [submitted, setSubmitted] = useState(false);
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
         setLoading(true);
         const qs = await fetchExamQuestions(exam.id);
+        if (!alive) return;
         setQuestions(qs);
-        const attempt = await createAttempt(exam.id, mode, user?.id);
+        const attempt = await createAttempt(exam.id, mode, user?.id || user?.uid);
+        if (!alive) return;
         setAttemptId(attempt.id);
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-  }, [exam.id, mode, user?.id]);
-
-  // Countdown timer cho chế độ thi
-  useEffect(() => {
-    if (mode !== 'exam' || !questions.length) return;
-    const t = setInterval(() => {
-      setTimeLeft((s) => {
-        if (s <= 1) {
-          clearInterval(t);
-          handleSubmit();
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, questions.length]);
+    return () => { alive = false; };
+  }, [exam.id, mode, user?.id, user?.uid]);
 
   const total = questions.length;
   const q = questions[current];
@@ -56,6 +42,53 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
     const s = timeLeft % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }, [timeLeft]);
+
+  /* ============ SUBMIT (useCallback để tránh stale closure) ============ */
+  const handleSubmit = useCallback(async () => {
+    if (submitted) return;
+    setSubmitted(true);
+
+    const timeSpent = Math.floor((Date.now() - startedAt) / 1000);
+    let correct = 0, wrong = 0, blank = 0;
+
+    questions.forEach((question, idx) => {
+      const userAnswerId = answers[idx];
+      if (!userAnswerId) {
+        blank++;
+      } else {
+        const isCorrect = question.answers.find((a) => a.id === userAnswerId)?.is_correct;
+        if (isCorrect) correct++; else wrong++;
+      }
+    });
+
+    const score = total > 0 ? (correct / total) * 10 : 0;
+
+    if (attemptId) {
+      try {
+        await submitAttempt(attemptId, { score, correct, wrong, blank, total, timeSpent });
+      } catch (e) {
+        console.error('Nộp bài lỗi:', e);
+      }
+    }
+
+    onExit?.();
+  }, [submitted, startedAt, questions, answers, total, attemptId, onExit]);
+  useEffect(() => {
+    if (mode !== 'exam' || !questions.length) return undefined;
+    if (submitted) return undefined;
+
+    const t = setInterval(() => {
+      setTimeLeft((s) => {
+        if (s <= 1) {
+          clearInterval(t);
+          setTimeout(() => handleSubmit(), 0);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [mode, questions.length, handleSubmit, submitted]);
 
   const toggleFlag = (id) => {
     setFlags((f) => {
@@ -81,33 +114,6 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
     }
   };
 
-  const handleSubmit = async () => {
-    const timeSpent = Math.floor((Date.now() - startedAt) / 1000);
-    let correct = 0, wrong = 0, blank = 0;
-
-    questions.forEach((question, idx) => {
-      const userAnswerId = answers[idx];
-      if (!userAnswerId) {
-        blank++;
-      } else {
-        const isCorrect = question.answers.find((a) => a.id === userAnswerId)?.is_correct;
-        if (isCorrect) correct++; else wrong++;
-      }
-    });
-
-    const score = total > 0 ? (correct / total) * 10 : 0;
-
-    if (attemptId) {
-      try {
-        await submitAttempt(attemptId, { score, correct, wrong, blank, total, timeSpent });
-      } catch (e) {
-        console.error('Nộp bài lỗi:', e);
-      }
-    }
-
-    onExit?.();
-  };
-
   if (loading) return <div className="eb-loading">Đang tải câu hỏi…</div>;
   if (!q) return <div className="eb-empty"><p>Đề thi chưa có câu hỏi.</p></div>;
 
@@ -124,7 +130,9 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
             <b>{timeFormat}</b>
           </div>
         )}
-        <button className="et-submit" onClick={handleSubmit}>Nộp bài</button>
+        <button className="et-submit" onClick={handleSubmit} disabled={submitted}>
+          {submitted ? 'Đang nộp…' : 'Nộp bài'}
+        </button>
       </div>
 
       <div className="et-progress">
@@ -143,6 +151,7 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
             <button
               className={'et-flag' + (flags.has(current) ? ' on' : '')}
               onClick={() => toggleFlag(current)}
+              type="button"
             >
               {flags.has(current) ? '★ Đã đánh dấu' : '☆ Đánh dấu'}
             </button>
@@ -166,6 +175,7 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
                   className={cls}
                   onClick={() => handleAnswer(opt.id)}
                   disabled={mode === 'practice' && selected}
+                  type="button"
                 >
                   <span className="et-option-key">{opt.label}</span>
                   <span className="et-option-text">{opt.content}</span>
@@ -186,11 +196,13 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
               className="et-nav-btn"
               onClick={() => setCurrent((c) => Math.max(0, c - 1))}
               disabled={current === 0}
+              type="button"
             >‹ Câu trước</button>
             <button
               className="et-nav-btn primary"
               onClick={() => setCurrent((c) => Math.min(total - 1, c + 1))}
               disabled={current === total - 1}
+              type="button"
             >Câu tiếp ›</button>
           </div>
         </div>
@@ -212,6 +224,7 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
                     (isCurrent ? ' current' : '')
                   }
                   onClick={() => setCurrent(i)}
+                  type="button"
                 >{i + 1}</button>
               );
             })}

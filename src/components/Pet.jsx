@@ -116,8 +116,6 @@ function Face({ mood, blink, lookX = 0, lookY = 0 }) {
       </>
     );
   }
-
-  // normal — mắt tròn nhìn theo chuột
   return (
     <>
       <circle cx={CX - eyeGap} cy={cy} r="6" fill={INK} />
@@ -384,8 +382,6 @@ export default function Pet({ mini = false }) {
   const pct = next ? ((total - STAGES[st][0]) / (next[0] - STAGES[st][0])) * 100 : 100;
   const skin = getSkin(st);
   const mood = getMood(live, fed);
-
-  // ngủ đông → lửa thu nhỏ chỉ còn than hồng
   const moodK = mood === 'hibernating' ? 0.72 : mood === 'sleepy' ? 0.88 : mood === 'sad' ? 0.94 : 1;
   const scale = getScale(st) * moodK;
   const atomN = mood === 'hibernating' ? Math.min(ATOM_COUNT[st], 4) : ATOM_COUNT[st];

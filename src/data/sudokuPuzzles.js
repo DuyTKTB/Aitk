@@ -1,4 +1,3 @@
-// 9 nguyên tố đại diện cho 9 "số" trong Sudoku
 export const SUDOKU_ELEMENTS = [
   { key: 'H',  symbol: 'H',  name: 'Hiđro',    color: '#e8f5e9' },
   { key: 'C',  symbol: 'C',  name: 'Cacbon',   color: '#263238' },
@@ -10,8 +9,6 @@ export const SUDOKU_ELEMENTS = [
   { key: 'Cl', symbol: 'Cl', name: 'Clo',      color: '#dcedc8' },
   { key: 'Fe', symbol: 'Fe', name: 'Sắt',      color: '#cfd8dc' },
 ];
-
-// Puzzles — mỗi puzzle là mảng 9x9, 0 = ô trống
 export const SUDOKU_PUZZLES = {
   easy: [
     [5, 3, 0, 0, 7, 0, 0, 0, 0],
@@ -47,8 +44,6 @@ export const SUDOKU_PUZZLES = {
     [0, 2, 0, 0, 0, 0, 1, 0, 0],
   ],
 };
-
-// Câu hỏi gợi ý — khi user cần hint
 export const SUDOKU_HINTS = [
   { q: 'Nguyên tố nào có ký hiệu H?', a: 'H', wrong: ['He', 'Hg', 'Ho'] },
   { q: 'Nguyên tố nào có số hiệu 6?', a: 'C', wrong: ['N', 'O', 'B'] },
@@ -60,18 +55,13 @@ export const SUDOKU_HINTS = [
   { q: 'Nguyên tố nào tạo muối ăn với Na?', a: 'Cl', wrong: ['F', 'Br', 'I'] },
   { q: 'Nguyên tố nào có trong hemoglobin?', a: 'Fe', wrong: ['Cu', 'Zn', 'Mg'] },
 ];
-
-// Kiểm tra nước đi hợp lệ
 export function isValidMove(board, row, col, value) {
-  // Check row
   for (let c = 0; c < 9; c++) {
     if (c !== col && board[row][c] === value) return false;
   }
-  // Check col
   for (let r = 0; r < 9; r++) {
     if (r !== row && board[r][col] === value) return false;
   }
-  // Check 3x3 box
   const boxR = Math.floor(row / 3) * 3;
   const boxC = Math.floor(col / 3) * 3;
   for (let r = boxR; r < boxR + 3; r++) {
@@ -81,13 +71,9 @@ export function isValidMove(board, row, col, value) {
   }
   return true;
 }
-
-// Đếm số ô còn trống
 export function countEmpty(board) {
   return board.flat().filter((v) => v === 0).length;
 }
-
-// Kiểm tra hoàn thành
 export function isComplete(board) {
   return board.flat().every((v) => v !== 0);
 }

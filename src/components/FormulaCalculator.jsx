@@ -378,7 +378,6 @@ const ISO = {
 };
 
 const saltRange = (T, a, b, low, mid, high, t1, t2) => {
-  // trả về mô tả sản phẩm + số mol muối cho các khoảng T
   if (T < 1 - 1e-9) return { p: `${low} (axit còn dư)` };
   if (eq(T, 1)) return { p: `Chỉ tạo ${low}` };
   if (T < 2) return { p: `Tạo 2 muối: ${low} và ${mid}`, x: [[low, 2 * a - b], [mid, b - a]] };

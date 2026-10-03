@@ -49,7 +49,6 @@ export default function ProfileAchievements() {
 
   const list = useMemo(() => {
     return ACHIEVEMENTS_DEF.map((a) => {
-      // Thành tích mở nếu: có trong list unlocked HOẶC check() trả về true
       const isUnlocked = unlocked.includes(a.id) || a.check(ctx);
       return { ...a, isUnlocked };
     });

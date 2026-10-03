@@ -24,7 +24,6 @@ export default function SceneWrapper({
           preserveDrawingBuffer: false,
         }}
         onCreated={({ gl }) => {
-          // Bắt lỗi context lost, log ra console
           gl.domElement.addEventListener('webglcontextlost', (e) => {
             e.preventDefault();
             console.warn('[ChemStudy] WebGL context lost — thử reload trang');

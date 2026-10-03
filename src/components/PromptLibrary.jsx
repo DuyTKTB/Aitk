@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PROMPTS, PROMPT_CATS, GUIDE_STEPS } from './promptData.js';
+import { PROMPTS, PROMPT_CATS, GUIDE_STEPS } from '../prompts/index.js';
 import {
   Art, IcoCheck, IcoClose, IcoCopy, IcoSpark, IcoStar,
   copyText, norm, useStored, useToast,
@@ -7,32 +7,63 @@ import {
 import { IconArrowUpRight } from './AIIcons.jsx';
 
 const VAR_RE = /\{\{([^}]+)\}\}/g;
-const LONG_VAR = /code|css|văn bản|đoạn|đề bài|nội dung|ghi chú|tin nhắn|bài làm|bối cảnh|thông báo lỗi/i;
+const LONG_VAR = /code|css|van ban|doan|de bai|noi dung|ghi chu|tin nhan|bai lam|boi canh|thong bao loi/i;
 const CATS = Object.fromEntries(PROMPT_CATS.map((c) => [c.id, c]));
+const PAGE_SIZE = 24;
 
 const varsOf = (text) => [...new Set([...text.matchAll(VAR_RE)].map((m) => m[1].trim()))];
 const fill = (text, vals) =>
   text.replace(VAR_RE, (_, n) => (vals[n.trim()] || '').trim() || `[${n.trim()}]`);
 
-// Đếm số từ / ký tự để hiển thị badge độ dài
 const statsOf = (text) => {
   const chars = text.length;
   const words = text.trim().split(/\s+/).length;
   return { chars, words };
 };
 
-// ============================================================
-// TAB HƯỚNG DẪN SỬ DỤNG
-// ============================================================
+/* ============================================================
+   CARD IMAGE - Dung anh that /img/prom.png
+   Neu anh loi thi fallback ve Art SVG
+   ============================================================ */
+function CardCover({ prompt, cat }) {
+  const [imgError, setImgError] = useState(false);
+
+  if (!imgError) {
+    return (
+      <div className="pl-cover">
+        <img
+          src="/img/prom.png"
+          alt={prompt.title}
+          className="pl-cover-img"
+          loading="lazy"
+          decoding="async"
+          onError={() => setImgError(true)}
+        />
+        <span className="pl-chip">{cat.name}</span>
+        {statsOf(prompt.prompt).chars > 800 && <span className="pl-long">CHI TIET</span>}
+      </div>
+    );
+  }
+  return (
+    <Art seed={prompt.id} hue={cat.hue} kind={cat.kind} ratio="16 / 10">
+      <span className="pl-chip">{cat.name}</span>
+      {statsOf(prompt.prompt).chars > 800 && <span className="pl-long">CHI TIET</span>}
+    </Art>
+  );
+}
+
+/* ============================================================
+   TAB HUONG DAN SU DUNG
+   ============================================================ */
 function GuideTab() {
   return (
     <div className="pl-guide">
       <header className="pl-guide-head">
-        <h2>Cách dùng thư viện prompt</h2>
+        <h2>Cach dung thu vien prompt</h2>
         <p>
-          Thư viện có <b>{PROMPTS.length}</b> prompt chia theo <b>{PROMPT_CATS.length - 1}</b> nhóm.
-          Mỗi prompt là một "công thức" sẵn — bạn chỉ cần điền vài chỗ trống rồi gửi cho AI.
-          Dưới đây là 6 bước để dùng hiệu quả.
+          Thu vien co <b>{PROMPTS.length}</b> prompt chia theo <b>{PROMPT_CATS.length - 1}</b> nhom.
+          Moi prompt la mot "cong thuc" san - ban chi can dien vai cho trong roi gui cho AI.
+          Duoi day la 6 buoc de dung hieu qua.
         </p>
       </header>
 
@@ -56,81 +87,81 @@ function GuideTab() {
       </ol>
 
       <section className="pl-guide-example">
-        <h3>Ví dụ minh hoạ</h3>
+        <h3>Vi du minh hoa</h3>
         <div className="pl-guide-example-grid">
           <div>
-            <b>Prompt gốc</b>
-            <pre>{`Bạn là gia sư Hóa học kiên nhẫn, đang dạy học sinh {{lớp}}.
-Hãy giải thích: {{khái niệm}}.`}</pre>
+            <b>Prompt goc</b>
+            <pre>{`Ban la gia su Hoa hoc kien nhan, dang day hoc sinh {{lop}}.
+Hay giai thich: {{khai niem}}.`}</pre>
           </div>
           <div>
-            <b>Sau khi điền</b>
-            <pre>{`Bạn là gia sư Hóa học kiên nhẫn, đang dạy học sinh Lớp 11.
-Hãy giải thích: Ancol – Phenol.`}</pre>
+            <b>Sau khi dien</b>
+            <pre>{`Ban la gia su Hoa hoc kien nhan, dang day hoc sinh Lop 11.
+Hay giai thich: Ancol - Phenol.`}</pre>
           </div>
         </div>
       </section>
 
       <section className="pl-guide-faq">
-        <h3>Câu hỏi thường gặp</h3>
+        <h3>Cau hoi thuong gap</h3>
         <details>
-          <summary>Prompt dài có làm AI trả lời chậm không?</summary>
+          <summary>Prompt dai co lam AI tra loi cham khong?</summary>
           <p>
-            Không đáng kể. Prompt dài giúp AI hiểu rõ yêu cầu hơn, đổi lại tốn thêm vài token đầu vào.
-            Với Gemini/Claude/ChatGPT, prompt 2000-3000 ký tự vẫn rất nhanh.
+            Khong dang ke. Prompt dai giup AI hieu ro yeu cau hon, doi lai ton them vai token dau vao.
+            Voi Gemini/Claude/ChatGPT, prompt 2000-3000 ky tu van rat nhanh.
           </p>
         </details>
         <details>
-          <summary>Tôi có thể sửa prompt không?</summary>
+          <summary>Toi co the sua prompt khong?</summary>
           <p>
-            Có. Sau khi điền biến, bạn có thể sửa trực tiếp trong khung "Prompt hoàn chỉnh".
-            Bấm "Đặt lại theo các ô đã điền" nếu muốn quay về bản gốc.
+            Co. Sau khi dien bien, ban co the sua truc tiep trong khung "Prompt hoan chinh".
+            Bam "Dat lai theo cac o da dien" neu muon quay ve ban goc.
           </p>
         </details>
         <details>
-          <summary>Prompt có dấu [tên biến] thì sao?</summary>
+          <summary>Prompt co dau [ten bien] thi sao?</summary>
           <p>
-            Đó là ô bạn chưa điền. AI vẫn hiểu và sẽ hỏi lại hoặc tự đoán. Tốt nhất là điền đầy đủ
-            để có kết quả chính xác nhất.
+            Do la o ban chua dien. AI van hieu va se hoi lai hoac tu doan. Tot nhat la dien day du
+            de co ket qua chinh xac nhat.
           </p>
         </details>
         <details>
-          <summary>Gửi prompt dài qua URL được không?</summary>
+          <summary>Gui prompt dai qua URL duoc khong?</summary>
           <p>
-            Chỉ khi prompt dưới ~7000 ký tự (giới hạn của trình duyệt). Prompt dài hơn thì phải
-            sao chép rồi dán thủ công.
+            Chi khi prompt duoi ~7000 ky tu (gioi han cua trinh duyet). Prompt dai hon thi phai
+            sao chep roi dan thu cong.
           </p>
         </details>
         <details>
-          <summary>Prompt lưu ở đâu?</summary>
+          <summary>Prompt luu o dau?</summary>
           <p>
-            Trong localStorage của trình duyệt — chỉ trên máy bạn. Xoá cache trình duyệt sẽ mất.
-            Nếu muốn giữ lâu, hãy sao chép ra ngoài.
+            Trong localStorage cua trinh duyet - chi tren may ban. Xoa cache trinh duyet se mat.
+            Neu muon giu lau, hay sao chep ra ngoai.
           </p>
         </details>
       </section>
 
       <section className="pl-guide-tips-final">
-        <h3>5 mẹo dùng prompt hiệu quả</h3>
+        <h3>5 meo dung prompt hieu qua</h3>
         <ul>
-          <li><b>Càng cụ thể càng tốt:</b> "viết 200 từ" tốt hơn "viết ngắn".</li>
-          <li><b>Cho ví dụ mẫu:</b> AI sẽ bắt chước giọng văn của ví dụ.</li>
-          <li><b>Yêu cầu AI tự kiểm tra:</b> thêm "kiểm tra lại kết quả trước khi trả lời".</li>
-          <li><b>Chia nhỏ task:</b> thay vì "viết bài luận 1000 từ", chia thành dàn ý → viết từng phần.</li>
-          <li><b>Lặp lại ngữ cảnh:</b> nếu chat dài, nhắc lại yêu cầu ở cuối để AI không quên.</li>
+          <li><b>Cang cu the cang tot:</b> "viet 200 tu" tot hon "viet ngan".</li>
+          <li><b>Cho vi du mau:</b> AI se bat chuoc giong van cua vi du.</li>
+          <li><b>Yeu cau AI tu kiem tra:</b> them "kiem tra lai ket qua truoc khi tra loi".</li>
+          <li><b>Chia nho task:</b> thay vi "viet bai luan 1000 tu", chia thanh dan y roi viet tung phan.</li>
+          <li><b>Lap lai ngu canh:</b> neu chat dai, nhac lai yeu cau o cuoi de AI khong quen.</li>
         </ul>
       </section>
     </div>
   );
 }
 
-// ============================================================
-// CỬA SỔ CHI TIẾT
-// ============================================================
+/* ============================================================
+   CUA SO CHI TIET
+   ============================================================ */
 function PromptModal({ p, fav, onFav, onClose }) {
   const ref = useRef(null);
   const [toast, toastNode] = useToast();
-  const cat = CATS[p.cat];
+  const cat = CATS[p.cat] || { name: p.cat, hue: 200, kind: 'blobs' };
   const vars = useMemo(() => varsOf(p.prompt), [p]);
   const [vals, setVals] = useState({});
   const [edited, setEdited] = useState(null);
@@ -154,28 +185,28 @@ function PromptModal({ p, fav, onFav, onClose }) {
   const copy = async () => {
     const ok = await copyText(text);
     setCopied(ok);
-    toast(ok ? 'Đã sao chép prompt' : 'Không sao chép được, hãy bôi đen và sao chép thủ công');
+    toast(ok ? 'Da sao chep prompt' : 'Khong sao chep duoc, hay boi den va sao chep thu cong');
     if (ok) setTimeout(() => setCopied(false), 1600);
   };
 
   const needFilled = () => {
     if (missing === 0 || edited !== null) return true;
-    toast(`Còn ${missing} ô chưa điền`);
+    toast(`Con ${missing} o chua dien`);
     return false;
   };
 
   const askHere = () => {
     if (!needFilled()) return;
     try {
-      localStorage.setItem('cs-ai-pending', JSON.stringify({ text, grade: 'Lớp 11', t: Date.now() }));
-    } catch { /* localStorage bị chặn */ }
+      localStorage.setItem('cs-ai-pending', JSON.stringify({ text, grade: 'Lop 11', t: Date.now() }));
+    } catch (e) { /* localStorage bi chan */ }
     location.hash = 'ai';
   };
 
   const openExternal = (base) => {
     if (!needFilled()) return;
     const url = base + encodeURIComponent(text);
-    if (url.length > 7000) { toast('Prompt quá dài để gửi qua đường dẫn, hãy sao chép rồi dán'); return; }
+    if (url.length > 7000) { toast('Prompt qua dai de gui qua duong dan, hay sao chep roi dan'); return; }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -188,7 +219,7 @@ function PromptModal({ p, fav, onFav, onClose }) {
       onClick={(e) => e.target === ref.current && ref.current.close()}
     >
       <div className="pl-modal">
-        <button type="button" className="pl-x" onClick={() => ref.current.close()} aria-label="Đóng">
+        <button type="button" className="pl-x" onClick={() => ref.current.close()} aria-label="Dong">
           <IcoClose size={18} />
         </button>
 
@@ -199,14 +230,14 @@ function PromptModal({ p, fav, onFav, onClose }) {
           <div className="pl-tags">{p.tags.map((t) => <span key={t}>{t}</span>)}</div>
           {p.sample && (
             <figure className="pl-sample">
-              <figcaption>Ví dụ kết quả</figcaption>
+              <figcaption>Vi du ket qua</figcaption>
               <blockquote>{p.sample}</blockquote>
             </figure>
           )}
           <div className="pl-stats">
-            <span>📝 {words} từ</span>
-            <span>🔤 {chars} ký tự</span>
-            <span>🕳️ {vars.length} ô cần điền</span>
+            <span>Tu: {words}</span>
+            <span>Ky tu: {chars}</span>
+            <span>O can dien: {vars.length}</span>
           </div>
         </aside>
 
@@ -220,9 +251,9 @@ function PromptModal({ p, fav, onFav, onClose }) {
                 <label key={v} className="pl-field">
                   <span>{v}</span>
                   {LONG_VAR.test(v) ? (
-                    <textarea rows={3} value={vals[v] || ''} onChange={(e) => setVar(v, e.target.value)} placeholder={`Nhập ${v}…`} />
+                    <textarea rows={3} value={vals[v] || ''} onChange={(e) => setVar(v, e.target.value)} placeholder={`Nhap ${v}...`} />
                   ) : (
-                    <input value={vals[v] || ''} onChange={(e) => setVar(v, e.target.value)} placeholder={`Nhập ${v}…`} />
+                    <input value={vals[v] || ''} onChange={(e) => setVar(v, e.target.value)} placeholder={`Nhap ${v}...`} />
                   )}
                 </label>
               ))}
@@ -230,9 +261,9 @@ function PromptModal({ p, fav, onFav, onClose }) {
           )}
 
           <div className="pl-preview-head">
-            <b>Prompt hoàn chỉnh</b>
+            <b>Prompt hoan chinh</b>
             <span className={'pl-miss' + (missing ? ' warn' : '')}>
-              {vars.length === 0 ? 'Không cần điền gì' : missing ? `Còn ${missing} ô chưa điền` : 'Đã điền đủ'}
+              {vars.length === 0 ? 'Khong can dien gi' : missing ? `Con ${missing} o chua dien` : 'Da dien du'}
             </span>
           </div>
           <textarea
@@ -240,36 +271,36 @@ function PromptModal({ p, fav, onFav, onClose }) {
             rows={12}
             value={text}
             onChange={(e) => setEdited(e.target.value)}
-            aria-label="Prompt hoàn chỉnh, có thể chỉnh trực tiếp"
+            aria-label="Prompt hoan chinh, co the chinh truc tiep"
           />
           {edited !== null && (
-            <button type="button" className="pl-link" onClick={() => setEdited(null)}>Đặt lại theo các ô đã điền</button>
+            <button type="button" className="pl-link" onClick={() => setEdited(null)}>Dat lai theo cac o da dien</button>
           )}
 
           <div className="pl-actions">
             <button type="button" className="pl-btn primary" onClick={copy}>
               {copied ? <IcoCheck size={16} /> : <IcoCopy size={16} />}
-              {copied ? 'Đã sao chép' : 'Sao chép'}
+              {copied ? 'Da sao chep' : 'Sao chep'}
             </button>
 
             {cat.chat && (
               <>
-                <button type="button" className="pl-btn" onClick={askHere}><IcoSpark size={16} />Hỏi AI của web</button>
+                <button type="button" className="pl-btn" onClick={askHere}><IcoSpark size={16} />Hoi AI cua web</button>
                 <button type="button" className="pl-btn" onClick={() => openExternal('https://chatgpt.com/?q=')}>ChatGPT <IconArrowUpRight size={13} /></button>
                 <button type="button" className="pl-btn" onClick={() => openExternal('https://claude.ai/new?q=')}>Claude <IconArrowUpRight size={13} /></button>
               </>
             )}
             {cat.open && cat.open.map(([name, url]) => (
               <a key={name} className="pl-btn" href={url} target="_blank" rel="noopener noreferrer">
-                Mở {name} <IconArrowUpRight size={13} />
+                Mo {name} <IconArrowUpRight size={13} />
               </a>
             ))}
 
             <button type="button" className={'pl-btn ghost' + (fav ? ' on' : '')} onClick={onFav} aria-pressed={fav}>
-              <IcoStar size={16} on={fav} />{fav ? 'Đã lưu' : 'Lưu'}
+              <IcoStar size={16} on={fav} />{fav ? 'Da luu' : 'Luu'}
             </button>
           </div>
-          {cat.open && <p className="pl-note">Dán prompt vào công cụ vừa mở. Mỗi nền tảng có giới hạn miễn phí riêng.</p>}
+          {cat.open && <p className="pl-note">Dan prompt vao cong cu vua mo. Moi nen tang co gioi han mien phi rieng.</p>}
         </div>
       </div>
       {toastNode}
@@ -277,18 +308,20 @@ function PromptModal({ p, fav, onFav, onClose }) {
   );
 }
 
-// ============================================================
-// DANH SÁCH
-// ============================================================
+/* ============================================================
+   DANH SACH - co pagination
+   ============================================================ */
 export default function PromptLibrary({ query }) {
   const [cat, setCat] = useState('all');
   const [openId, setOpenId] = useState(null);
   const [favs, setFavs] = useStored('tools-prompt-fav', []);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, toastNode] = useToast();
+  const [page, setPage] = useState(1);
 
   const toggleFav = (id) =>
     setFavs((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
+  useEffect(() => { setPage(1); }, [query, cat]);
 
   const list = useMemo(() => {
     const q = norm(query.trim());
@@ -298,6 +331,8 @@ export default function PromptLibrary({ query }) {
       return p.cat === cat && (!q || norm(`${p.title} ${p.desc} ${p.tags.join(' ')} ${p.prompt}`).includes(q));
     });
   }, [query, cat, favs]);
+  const visible = useMemo(() => list.slice(0, page * PAGE_SIZE), [list, page]);
+  const hasMore = visible.length < list.length;
 
   const counts = useMemo(() => {
     const m = {};
@@ -307,7 +342,7 @@ export default function PromptLibrary({ query }) {
 
   const quickCopy = async (p) => {
     const ok = await copyText(p.prompt);
-    toast(ok ? 'Đã sao chép bản gốc (còn các ô {{…}} để điền)' : 'Không sao chép được');
+    toast(ok ? 'Da sao chep ban goc (con cac o {{...}} de dien)' : 'Khong sao chep duoc');
     if (ok) { setCopiedId(p.id); setTimeout(() => setCopiedId(null), 1400); }
   };
 
@@ -316,15 +351,15 @@ export default function PromptLibrary({ query }) {
 
   return (
     <>
-      <div className="tools-cats" role="group" aria-label="Nhóm prompt">
+      <div className="tools-cats" role="group" aria-label="Nhom prompt">
         <button className={'tools-cat' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>
-          Tất cả ({PROMPTS.length})
+          Tat ca ({PROMPTS.length})
         </button>
         <button className={'tools-cat' + (cat === 'fav' ? ' on' : '')} onClick={() => setCat('fav')}>
-          <IcoStar size={13} on={cat === 'fav'} />Đã lưu ({favs.length})
+          <IcoStar size={13} on={cat === 'fav'} />Da luu ({favs.length})
         </button>
         <button className={'tools-cat' + (isGuide ? ' on' : '')} onClick={() => setCat('huong-dan')}>
-          📖 Hướng dẫn dùng
+          Huong dan dung
         </button>
         {PROMPT_CATS.filter((c) => c.id !== 'huong-dan').map((c) => (
           <button key={c.id} className={'tools-cat' + (cat === c.id ? ' on' : '')} onClick={() => setCat(c.id)}>
@@ -338,33 +373,29 @@ export default function PromptLibrary({ query }) {
       ) : (
         <>
           <p className="tools-count">
-            Hiển thị <b>{list.length}</b> prompt · bấm vào thẻ để điền biến và dùng ngay
+            Hien thi <b>{visible.length}</b> / <b>{list.length}</b> prompt - bam vao the de dien bien va dung ngay
           </p>
 
           <div className="tk-grid pl-grid">
-            {list.map((p) => {
-              const c = CATS[p.cat];
+            {visible.map((p) => {
+              const c = CATS[p.cat] || { name: p.cat, hue: 200, kind: 'blobs' };
               const isFav = favs.includes(p.id);
-              const { chars } = statsOf(p.prompt);
               return (
                 <article key={p.id} className="tk-card pl-card">
-                  <button type="button" className="pl-open" onClick={() => setOpenId(p.id)} aria-label={`Mở prompt ${p.title}`}>
-                    <Art seed={p.id} hue={c.hue} kind={c.kind} src={p.img}>
-                      <span className="pl-chip">{c.name}</span>
-                      {chars > 800 && <span className="pl-long">CHI TIẾT</span>}
-                    </Art>
+                  <button type="button" className="pl-open" onClick={() => setOpenId(p.id)} aria-label={`Mo prompt ${p.title}`}>
+                    <CardCover prompt={p} cat={c} />
                     <span className="tk-body">
                       <h3>{p.title}</h3>
                       <span className="tk-desc">{p.desc}</span>
                     </span>
                   </button>
                   <div className="tk-foot">
-                    <span className="pl-tagline">{p.tags.join(' · ')}</span>
+                    <span className="pl-tagline">{p.tags.join(' - ')}</span>
                     <span className="pl-mini">
-                      <button type="button" className={'tk-ib' + (isFav ? ' on' : '')} onClick={() => toggleFav(p.id)} aria-pressed={isFav} aria-label={isFav ? 'Bỏ lưu' : 'Lưu prompt'}>
+                      <button type="button" className={'tk-ib' + (isFav ? ' on' : '')} onClick={() => toggleFav(p.id)} aria-pressed={isFav} aria-label={isFav ? 'Bo luu' : 'Luu prompt'}>
                         <IcoStar size={16} on={isFav} />
                       </button>
-                      <button type="button" className="tk-ib" onClick={() => quickCopy(p)} aria-label="Sao chép nhanh">
+                      <button type="button" className="tk-ib" onClick={() => quickCopy(p)} aria-label="Sao chep nhanh">
                         {copiedId === p.id ? <IcoCheck size={16} /> : <IcoCopy size={16} />}
                       </button>
                     </span>
@@ -374,10 +405,23 @@ export default function PromptLibrary({ query }) {
             })}
           </div>
 
+          {/* Nut "Xem them" */}
+          {hasMore && (
+            <div className="tc-more">
+              <button
+                type="button"
+                className="tc-btn"
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Xem them {Math.min(PAGE_SIZE, list.length - visible.length)} prompt
+              </button>
+            </div>
+          )}
+
           {list.length === 0 && (
             <div className="tools-empty">
-              <p>{cat === 'fav' && !query.trim() ? 'Bạn chưa lưu prompt nào. Bấm ngôi sao trên thẻ để lưu.' : 'Không có prompt nào khớp với bộ lọc.'}</p>
-              {cat !== 'all' && <button onClick={() => setCat('all')}>Xem tất cả prompt</button>}
+              <p>{cat === 'fav' && !query.trim() ? 'Ban chua luu prompt nao. Bam ngoi sao tren the de luu.' : 'Khong co prompt nao khop voi bo loc.'}</p>
+              {cat !== 'all' && <button onClick={() => setCat('all')}>Xem tat ca prompt</button>}
             </div>
           )}
         </>

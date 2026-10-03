@@ -34,8 +34,6 @@ const POWER_TYPES = [
   { key: 'shield', icon: '🛡', label: 'Thêm 1 mạng',     msg: () => '🛡 +1 mạng!' },
   { key: 'bonus',  icon: '★', label: 'Điểm thưởng',      points: 80, msg: (p) => `★ +${p.points} điểm!` },
 ];
-
-// Mỗi gà có một tông màu lông hơi khác nhau cho sân thêm sống động
 const BODY_TINTS_LIGHT = ['#f5f0e0', '#efe6c9', '#e9d9b0', '#f2eadb', '#e3d5ad'];
 const BODY_TINTS_DARK  = ['#e8e3d5', '#ded4b8', '#cfc19a', '#e2d9c6', '#d6c9a4'];
 
@@ -300,7 +298,6 @@ export default function Chicken2D() {
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, phase]);
 
   const rampMultiplier = (idx) => {
@@ -341,8 +338,6 @@ export default function Chicken2D() {
       x: PADDING + Math.random() * (FIELD_W - CHICKEN_W - PADDING * 2),
       y: PADDING + Math.random() * (FIELD_H - CHICKEN_H - PADDING * 2),
     }));
-
-    // Gà vàng vật phẩm — chỉ từ câu 2 trở đi, xác suất 40%
     if (config.powerups && idx > 0 && Math.random() < 0.4) {
       const power = POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)];
       list.push({
@@ -485,15 +480,12 @@ export default function Chicken2D() {
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, chickens, combo, lives, qIndex, turn]);
 
   const q = questions[qIndex];
   const activePreset = SPEED_PRESETS.find((p) => Math.abs(p.mult - config.speed) < 0.05);
   const update = (key, val) => setConfig({ ...config, [key]: val });
   const effectiveSpeed = config.speed * rampMultiplier(qIndex);
-
-  // Huy hiệu cuối game
   const buildBadges = () => {
     const badges = [];
     if (mistakes === 0) badges.push({ icon: '💯', label: 'Hoàn hảo — không sai câu nào' });

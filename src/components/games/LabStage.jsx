@@ -76,7 +76,6 @@ function mixColor(contents) {
 
 /* Áp dụng chỉ thị màu lên màu nền */
 function applyIndicators({ r, g, b }, contents, ph) {
-  // PP
   if (contents.PP > 0) {
     const c = INDICATORS.PP.color(ph);
     if (c) {
@@ -85,7 +84,6 @@ function applyIndicators({ r, g, b }, contents, ph) {
       return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
     }
   }
-  // Quỳ
   if (contents.Quy > 0) {
     const c = INDICATORS.Quy.color(ph);
     if (c) {
@@ -146,8 +144,6 @@ function Vessel({
   const precipitating = fx?.kind === 'precip' || fx?.kind === 'precipitate';
   const precipColor = fx?.color || '#ffffff';
   const steaming = (heat && temp > 60) || fx?.steam;
-
-  // Đèn cồn dưới tâm dụng cụ
   const burnerX = centerX;
   const burnerY = shape.h - 25;
 

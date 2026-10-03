@@ -1,6 +1,3 @@
-// ============================================================
-// ACHIEVEMENTS & LEVELS — Hệ thống thành tích cho Quiz v2
-// ============================================================
 
 /**
  * Danh sách thành tích.
@@ -21,7 +18,6 @@
  * }
  */
 export const ACHIEVEMENTS = [
-  // ════════ CẤP ĐỘ HỌC TẬP ════════
   {
     id: 'first-step',
     icon: '👣',
@@ -50,8 +46,6 @@ export const ACHIEVEMENTS = [
     desc: 'Trả lời đúng 500 câu',
     check: (s) => s.totalCorrect >= 500,
   },
-
-  // ════════ ĐỘ CHÍNH XÁC / STREAK ════════
   {
     id: 'perfect-10',
     icon: '💯',
@@ -73,8 +67,6 @@ export const ACHIEVEMENTS = [
     desc: 'Đúng 50 câu liên tiếp',
     check: (s) => s.maxStreak >= 50,
   },
-
-  // ════════ CHUỖI NGÀY ════════
   {
     id: 'streak-3',
     icon: '📅',
@@ -96,8 +88,6 @@ export const ACHIEVEMENTS = [
     desc: 'Học 30 ngày liên tiếp',
     check: (s) => s.streak >= 30,
   },
-
-  // ════════ THÀNH THẠO NGUYÊN TỐ ════════
   {
     id: 'mastery-10',
     icon: '🌟',
@@ -126,8 +116,6 @@ export const ACHIEVEMENTS = [
     desc: 'Thành thạo tất cả nguyên tố',
     check: (s) => s.mastered >= 118,
   },
-
-  // ════════ CHẾ ĐỘ ĐẶC BIỆT ════════
   {
     id: 'speed-demon',
     icon: '⚡',

@@ -1,9 +1,4 @@
-// src/lib/examApi.js
 import { supabase } from './supabase.js';
-
-// ============================================================
-// ĐỀ THI
-// ============================================================
 export async function fetchExams(filters = {}) {
   const {
     gradeId, subjectId, examType, semester, schoolYear, program,
@@ -78,10 +73,6 @@ export async function fetchExamQuestions(examId) {
     answers: (q.answers || []).sort((a, b) => a.sort_order - b.sort_order),
   }));
 }
-
-// ============================================================
-// LƯỢT LÀM BÀI
-// ============================================================
 export async function createAttempt(examId, mode, userId) {
   const { data, error } = await supabase
     .from('exam_attempts')
@@ -176,10 +167,6 @@ export async function fetchUserAttempts(userId, limit = 20) {
   if (error) throw error;
   return data || [];
 }
-
-// ============================================================
-// DANH MỤC
-// ============================================================
 export async function fetchGrades() {
   const { data, error } = await supabase.from('grades').select('*').order('sort_order');
   if (error) throw error;
@@ -199,10 +186,6 @@ export async function fetchTopics(subjectId) {
   if (error) throw error;
   return data || [];
 }
-
-// ============================================================
-// CÂU HỎI ĐÃ LƯU / CÂU SAI
-// ============================================================
 export async function saveQuestion(userId, questionId, note = null) {
   const { error } = await supabase
     .from('saved_questions')
@@ -284,10 +267,6 @@ export async function fetchWrongQuestions(userId) {
   if (error) throw error;
   return data || [];
 }
-
-// ============================================================
-// ADMIN — CRUD
-// ============================================================
 export async function createExam(exam) {
   const { data, error } = await supabase.from('exams').insert(exam).select().single();
   if (error) throw error;

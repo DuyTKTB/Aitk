@@ -137,8 +137,6 @@ export default function SlingshotGame() {
   const [comboBanner, setComboBanner] = useState(null);
   const [powerBanner, setPowerBanner] = useState(null);
   const [floats, setFloats] = useState([]);
-
-  // Aiming state
   const [aiming, setAiming] = useState(false);
   const [aimPos, setAimPos] = useState({ x: 0, y: 0 });
   const [projectile, setProjectile] = useState(null);
@@ -149,8 +147,6 @@ export default function SlingshotGame() {
   const projectileRef = useRef(null);
   const bannerTimer = useRef();
   const powerBannerTimer = useRef();
-
-  // Theme
   useEffect(() => {
     const read = () => setTheme(document.documentElement.dataset.theme || 'light');
     read();
@@ -158,8 +154,6 @@ export default function SlingshotGame() {
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => mo.disconnect();
   }, []);
-
-  // Persist
   useEffect(() => {
     try { localStorage.setItem('cs-game:slingshot:questions', JSON.stringify(questions)); } catch {}
   }, [questions]);
@@ -286,7 +280,6 @@ export default function SlingshotGame() {
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, phase]);
 
   /* ===== PROJECTILE ANIMATION ===== */
@@ -332,7 +325,6 @@ export default function SlingshotGame() {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectile?.id, wind, targets]);
 
   /* ===== VẬT PHẨM ===== */

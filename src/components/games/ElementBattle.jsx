@@ -4,8 +4,6 @@ import GameOverModal from './GameOverModal';
 import { sound } from '../../lib/gameSound';
 
 const ELEMENT_KEYS = Object.keys(ELEMENT_STATS);
-
-// Thanh máu
 function HpBar({ hp, maxHp, label, side = 'left' }) {
   const pct = Math.max(0, (hp / maxHp) * 100);
   const color = pct > 60 ? 'var(--post)' : pct > 30 ? 'var(--alkaline)' : 'var(--acc)';
@@ -21,8 +19,6 @@ function HpBar({ hp, maxHp, label, side = 'left' }) {
     </div>
   );
 }
-
-// Sprite nguyên tố
 function ElementSprite({ data, side, hit, theme }) {
   const stats = ELEMENT_STATS[data.key];
   if (!stats) return null;
@@ -87,8 +83,6 @@ export default function ElementBattle() {
     setBattleCount((c) => c + 1);
     pushLog(`⚔ ${s1.name} (${p1Key}) đấu với ${s2.name} (${p2Key})!`, 'system');
   };
-
-  // AI chọn nguyên tố
   const pickAIOpponent = (playerKey) => {
     const pool = ELEMENT_KEYS.filter((k) => k !== playerKey);
     const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -101,24 +95,18 @@ export default function ElementBattle() {
     setSelectedMove(move);
 
     if (move.id === 'shield') {
-      // Hồi máu không cần câu hỏi
       executeMove(move, true);
       return;
     }
-
-    // Cần trả lời câu hỏi
     const q = BATTLE_QUESTIONS[Math.floor(Math.random() * BATTLE_QUESTIONS.length)];
     const options = [q.a, ...q.wrong].sort(() => Math.random() - 0.5);
     setCurrentQuestion({ ...q, options });
     setQuestionTimer(15);
     setPhase('question');
   };
-
-  // Timer câu hỏi
   useEffect(() => {
     if (phase !== 'question') return;
     if (questionTimer <= 0) {
-      // Hết giờ = trượt
       pushLog(`⏱ Hết giờ! ${turn === 0 ? 'P1' : 'P2'} không trả lời được.`, 'warn');
       setPhase('battle');
       setSelectedMove(null);
@@ -128,7 +116,6 @@ export default function ElementBattle() {
     }
     const id = setTimeout(() => setQuestionTimer((t) => t - 1), 1000);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionTimer, phase]);
 
   const answerQuestion = (choice) => {
@@ -165,16 +152,12 @@ export default function ElementBattle() {
       setTimeout(endTurn, 800);
       return;
     }
-
-    // Kiểm tra accuracy
     if (Math.random() > move.accuracy) {
       pushLog(`💨 ${attackerStats.name} dùng ${move.name} nhưng trượt!`, 'warn');
       sound.wrong?.();
       setTimeout(endTurn, 800);
       return;
     }
-
-    // Tính damage
     const baseAtk = attackerStats.atk * move.atkMult;
     const defense = defenderStats.def;
     const typeMult = TYPE_CHART[attackerStats.type]?.[defenderStats.type] || 1;
@@ -197,8 +180,6 @@ export default function ElementBattle() {
       typeMult >= 1.5 ? 'success' : typeMult <= 0.5 ? 'warn' : 'info'
     );
     sound.click?.();
-
-    // Kiểm tra kết thúc
     setTimeout(() => {
       const newP2Hp = turn === 0 ? Math.max(0, p2Hp - damage) : p2Hp;
       const newP1Hp = turn === 1 ? Math.max(0, p1Hp - damage) : p1Hp;
@@ -218,8 +199,6 @@ export default function ElementBattle() {
     const next = turn === 0 ? 1 : 0;
     setTurn(next);
     setSelectedMove(null);
-
-    // AI tự chơi
     if (next === 1 && mode === 'ai') {
       setTimeout(() => aiTurn(), 900);
     }
@@ -230,8 +209,6 @@ export default function ElementBattle() {
     const defenderKey = p1Key;
     const attackerStats = ELEMENT_STATS[attackerKey];
     const defenderStats = ELEMENT_STATS[defenderKey];
-
-    // AI chọn move thông minh: ưu tiên type advantage
     const typeMult = TYPE_CHART[attackerStats.type]?.[defenderStats.type] || 1;
     let move;
     if (p2Hp < attackerStats.hp * 0.3 && Math.random() < 0.5) {
@@ -241,8 +218,6 @@ export default function ElementBattle() {
     } else {
       move = MOVE_POOL[Math.floor(Math.random() * MOVE_POOL.length)];
     }
-
-    // AI trả lời đúng với xác suất 70%
     const aiCorrect = Math.random() < 0.7;
     if (move.id === 'shield') {
       const heal = move.heal;

@@ -28,7 +28,6 @@ export default function ExamEditor({ examId, onBack }) {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
   const load = async () => {
@@ -107,7 +106,6 @@ export default function ExamEditor({ examId, onBack }) {
   const handleSaveQuestion = async (q) => {
     try {
       setSaving(true);
-      // Update question
       await supabase
         .from('questions')
         .update({
@@ -117,8 +115,6 @@ export default function ExamEditor({ examId, onBack }) {
           question_type: q.question_type,
         })
         .eq('id', q.id);
-
-      // Update answers
       for (const ans of q.answers) {
         await supabase
           .from('answers')

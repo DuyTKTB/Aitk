@@ -32,15 +32,11 @@ export default function ExamBank({ query = '', grade: gProp }) {
     gradeId: null, subjectId: null, examType: null,
     difficulty: null, search: '', sort: 'newest',
   });
-
-  // Load danh mục
   useEffect(() => {
     Promise.all([fetchGrades(), fetchSubjects()])
       .then(([g, s]) => { setGrades(g); setSubjects(s); })
       .catch((e) => { console.error(e); setError('Không tải được danh mục'); });
   }, []);
-
-  // Sync grade prop
   useEffect(() => {
     if (gProp && grades.length) {
       const g = grades.find((x) => x.name === `Lớp ${gProp}`);
@@ -49,8 +45,6 @@ export default function ExamBank({ query = '', grade: gProp }) {
       setFilters((f) => ({ ...f, gradeId: null }));
     }
   }, [gProp, grades]);
-
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => {
       setFilters((f) => ({ ...f, search: query }));
@@ -58,8 +52,6 @@ export default function ExamBank({ query = '', grade: gProp }) {
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
-
-  // Load exams
   const loadExams = useCallback(async () => {
     setLoading(true);
     setError(null);

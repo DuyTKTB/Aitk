@@ -149,8 +149,6 @@ export default function VirtualLab() {
         newContents[k] = (newContents[k] || 0) + 1;
       }
     });
-
-    // Cập nhật dụng cụ
     updateVessel(vesselId, (v) => ({
       contents: newContents,
       fx: { id: Date.now(), ...rxn.effect },
@@ -163,8 +161,6 @@ export default function VirtualLab() {
 
     if (rxn.danger >= 3 || rxn.effect?.type === 'fire') triggerShake();
     if (rxn.danger >= 3 && !goggles) showToast(`⚠ Nguy hiểm cấp ${rxn.danger}! Đeo kính bảo hộ!`);
-
-    // Điểm + khám phá
     setProg((p) => {
       const isNew = !p.found.includes(rxn.equation);
       let gain = isNew ? 10 : 0;
@@ -215,8 +211,6 @@ export default function VirtualLab() {
 
     sound.click?.();
     setLast(null);
-
-    // Cập nhật contents, chờ hiệu ứng đổ rồi trộn
     updateVessel(targetId, (v) => {
       const next = { ...v.contents, [key]: (v.contents[key] || 0) + 1 };
       setTimeout(() => settle(targetId, next, v.heat), SETTLE_MS);

@@ -1,5 +1,3 @@
-// src/components/formulaData.js
-// File này CHỈ chứa dữ liệu. KHÔNG được có JSX, KHÔNG có <select>, onChange, className.
 
 export const FORMULA_CATEGORIES = [
   { id: 'all',       name: 'Tất cả',        Icon: 'IconBook'      },

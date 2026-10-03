@@ -3,8 +3,6 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 /* ============================================================
    ToolsKit — tiện ích dùng chung cho ToolsPage + PromptLibrary
    ============================================================ */
-
-// ---------- Lưu localStorage an toàn ----------
 export function useStored(key, init) {
   const [v, setV] = useState(() => {
     try {
@@ -17,14 +15,10 @@ export function useStored(key, init) {
   }, [key, v]);
   return [v, setV];
 }
-
-// ---------- Chuẩn hóa tìm không dấu ----------
 export const norm = (s) =>
   String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
 
 export const stripLead = (s) => String(s).replace(/^[^\p{L}\p{N}\s]+\s*/u, '');
-
-// ---------- Sao chép ----------
 export async function copyText(t) {
   try {
     await navigator.clipboard.writeText(t);
@@ -42,8 +36,6 @@ export async function copyText(t) {
     } catch { return false; }
   }
 }
-
-// ---------- Toast ----------
 export function useToast() {
   const [msg, setMsg] = useState('');
   const t = useRef(0);
@@ -56,8 +48,6 @@ export function useToast() {
   const node = <div className={'tk-toast' + (msg ? ' on' : '')} role="status" aria-live="polite">{msg}</div>;
   return [show, node];
 }
-
-// ---------- Icon nhỏ ----------
 const svg = (children, size = 18, fill = 'none') => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
@@ -73,16 +63,12 @@ export const IcoImage = ({ size }) => svg(<><rect x="3" y="4" width="18" height=
 export const IcoCompare = ({ size }) => svg(<><path d="M3 6h7M14 6h7M3 18h7M14 18h7" /><path d="M10 3v18M14 3v18" /></>, size);
 export const IcoShare = ({ size }) => svg(<><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.6" y1="10.7" x2="15.4" y2="6.3" /><line x1="8.6" y1="13.3" x2="15.4" y2="17.7" /></>, size);
 export const IcoSort = ({ size }) => svg(<><path d="M3 6h18M6 12h12M10 18h4" /></>, size);
-
-// ---------- Màu + kiểu hình mẫu ----------
 export const CAT_ART = {
   chat: [235, 'bubbles'], write: [330, 'lines'], image: [40, 'scene'], video: [215, 'scene'],
   audio: [280, 'chart'], study: [145, 'molecule'], code: [200, 'code'], trans: [50, 'bubbles'],
   search: [170, 'lines'], work: [25, 'chart'], biz: [8, 'chart'], agent: [245, 'molecule'],
   model: [95, 'molecule'], fun: [320, 'blobs'], game: [265, 'blobs'],
 };
-
-// ---------- Hình mẫu SVG ----------
 const hash = (s) => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i += 1) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -196,15 +182,9 @@ export function Art({ seed, hue, kind = 'blobs', src, ratio = '16 / 9', classNam
     </div>
   );
 }
-
-// ============================================================
-// LOGO — favicon cho web thường, AIMark cho CUAI
-// ============================================================
 export function Logo({ domain, Fallback, size = 44, CuaiLogo }) {
   const [bad, setBad] = useState(false);
   const host = String(domain).split('/')[0];
-
-  // CUAI → dùng logo AI sống động của web
   if (domain === 'A7 K60 DTA' && CuaiLogo) {
     return (
       <span className="tk-logo tk-logo-cuai" style={{ width: size, height: size }}>
@@ -225,10 +205,6 @@ export function Logo({ domain, Fallback, size = 44, CuaiLogo }) {
     </span>
   );
 }
-
-// ============================================================
-// RATING
-// ============================================================
 export function Rating({ value = 0, size = 'md', showNumber = false }) {
   const stars = Array.from({ length: 5 }, (_, i) => i < Math.round(value));
   return (
@@ -245,10 +221,6 @@ export function Rating({ value = 0, size = 'md', showNumber = false }) {
     </span>
   );
 }
-
-// ============================================================
-// PRICE BADGE
-// ============================================================
 export function PriceBadge({ price = 'freemium' }) {
   const META = {
     free: { label: 'Miễn phí', cls: 'free' },
@@ -259,10 +231,6 @@ export function PriceBadge({ price = 'freemium' }) {
   const m = META[price] || META.freemium;
   return <span className={'price-badge ' + m.cls}>{m.label}</span>;
 }
-
-// ============================================================
-// COMPARE BAR
-// ============================================================
 export function CompareBar({ items = [], onRemove, onClear, onOpen }) {
   if (items.length === 0) return null;
   return (
@@ -285,10 +253,6 @@ export function CompareBar({ items = [], onRemove, onClear, onOpen }) {
     </div>
   );
 }
-
-// ============================================================
-// QUICK VIEW
-// ============================================================
 export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, onShare, CuaiLogo }) {
   const ref = useRef(null);
   useEffect(() => {

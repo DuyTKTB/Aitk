@@ -1,4 +1,3 @@
-// src/components/examData.js
 export const EXAM_TYPES = [
   { id: 'thpt',      name: 'Thi THPT Quốc gia', short: 'THPT' },
   { id: 'giua_ky',   name: 'Thi giữa kỳ',       short: 'GK'   },

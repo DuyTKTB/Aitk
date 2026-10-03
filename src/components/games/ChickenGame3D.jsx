@@ -161,7 +161,6 @@ export default function ChickenGame3D() {
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, phase]);
 
   const buildQuestion = (idx) => {
@@ -269,7 +268,6 @@ export default function ChickenGame3D() {
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, chickens, combo, lives, qIndex]);
 
   const q = questions[qIndex];

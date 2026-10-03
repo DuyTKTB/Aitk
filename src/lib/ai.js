@@ -1,7 +1,3 @@
-// ============================================================
-// AI — Google Gemini API
-// Hỗ trợ NHIỀU ẢNH (max 10), giữ nguyên tỉ lệ
-// ============================================================
 
 const API_KEY = import.meta.env.VITE_GEMINI_KEY || '';
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
@@ -25,16 +21,41 @@ class OutOfQuotaError extends Error {
   }
 }
 
+class AbortError extends Error {
+  constructor() {
+    super('Đã dừng');
+    this.name = 'AbortError';
+    this.isAbort = true;
+  }
+}
 const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-flash-latest',
+  'gemini-2.5-flash',           // ưu tiên 1: mạnh + ổn định
+  'gemini-2.5-flash-lite',      // ưu tiên 2: nhẹ + nhanh
+  'gemini-2.0-flash',           // ưu tiên 3: ổn định
+  'gemini-2.0-flash-lite',      // ưu tiên 4: nhẹ
+  'gemini-1.5-flash',           // ưu tiên 5: rất stable
+  'gemini-1.5-flash-8b',        // ưu tiên 6: nhẹ nhất
+  'gemini-flash-latest',        // ưu tiên 7 (cuối): hay overload
 ];
 
-const VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
-const FAST_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
-const STRONG_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+const VISION_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+];
+
+const FAST_MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash-8b',
+  'gemini-2.5-flash',
+];
+
+const STRONG_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+];
 
 function keepError(prev, next) {
   return prev && next?.status === 404 ? prev : next;
@@ -57,16 +78,12 @@ const thinkingBudgetFor = (type) => {
   if (type === 'theory') return 4096;
   return 0;
 };
-
 const HEDGE_MS = 800;
 const MAX_PARALLEL = 2;
 const FIRST_TOKEN_MS = 30000;
 const STREAM_IDLE_MS = 12000;
 const TOTAL_MS = 90000;
-
-// ============================================================
-// SYSTEM PROMPT
-// ============================================================
+const RETRY_DELAY_MS = 800;      // đợi trước khi retry khi gặp 503
 const SYSTEM_PROMPT = `
 Bạn là "A7 Assistant" — trợ lý học tập Hóa học THPT của lớp A7 K60 DTA, do Duy TK tạo.
 
@@ -128,10 +145,6 @@ CÁCH TRẢ LỜI BÀI TẬP — CHỈ 3 PHẦN NGẮN:
 **Thay số:** [1-2 dòng]
 **Đáp án:** [in đậm kết quả]
 `;
-
-// ============================================================
-// LATEX → UNICODE
-// ============================================================
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
   '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
@@ -343,6 +356,12 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
       console.warn(`[A7 Assistant] ✗ ${model} → ${status}`, body.slice(0, 300));
 
       if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
+      if (status === 503 || status === 502 || status === 504) {
+        const err = new Error(`${model} đang quá tải (${status})`);
+        err.status = status;
+        err.isOverload = true;
+        throw err;
+      }
 
       if (status === 400 && thinkingBudget && /thinking/i.test(body)) {
         reader?.cancel?.().catch?.(() => {});
@@ -402,7 +421,6 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
     reader?.cancel().catch(() => {});
   }
 }
-
 export function askAI(history, onChunk, onReasoning) {
   if (!API_KEY) {
     return Promise.reject(new Error('Chưa cấu hình VITE_GEMINI_KEY trong file .env'));
@@ -427,7 +445,9 @@ export function askAI(history, onChunk, onReasoning) {
   const hasImage = Boolean(lastUser?.parts?.some((p) => p.inlineData));
   const modelList = orderModels(hasImage, requestType);
 
-  return new Promise((resolve, reject) => {
+  let abortFn = null;
+
+  const promise = new Promise((resolve, reject) => {
     const ctrls = [];
     let next = 0;
     let running = 0;
@@ -435,6 +455,9 @@ export function askAI(history, onChunk, onReasoning) {
     let finished = false;
     let lastError = null;
     let hedgeTimer;
+    let aborted = false;
+    let overloadRetries = 0;
+    const MAX_OVERLOAD_RETRIES = 2;
 
     const finish = (fn, value) => {
       if (finished) return;
@@ -445,16 +468,31 @@ export function askAI(history, onChunk, onReasoning) {
     };
 
     const totalTimer = setTimeout(() => {
-      ctrls.forEach((c) => c.abort());
+      ctrls.forEach((c) => { try { c.abort(); } catch {} });
       finish(reject, lastError || new Error('AI phản hồi quá chậm, bạn thử lại nhé.'));
     }, TOTAL_MS);
+    abortFn = () => {
+      if (finished) return;
+      aborted = true;
+      ctrls.forEach((c) => { try { c.abort(); } catch {} });
+      finish(reject, new AbortError());
+    };
 
     const launch = () => {
       clearTimeout(hedgeTimer);
-      if (finished || winner !== null) return;
+      if (finished || aborted || winner !== null) return;
 
       if (next >= modelList.length) {
-        if (running === 0) finish(reject, lastError || new Error('Tất cả model đều thất bại.'));
+        if (running === 0) {
+          if (lastError?.isOverload && overloadRetries < MAX_OVERLOAD_RETRIES) {
+            overloadRetries++;
+            console.warn(`[A7 Assistant] Tất cả model quá tải → retry lần ${overloadRetries}/${MAX_OVERLOAD_RETRIES}`);
+            next = 0;
+            setTimeout(launch, RETRY_DELAY_MS * (overloadRetries + 1));
+            return;
+          }
+          finish(reject, lastError || new Error('Tất cả model đều thất bại.'));
+        }
         return;
       }
       if (running >= MAX_PARALLEL) return;
@@ -468,10 +506,15 @@ export function askAI(history, onChunk, onReasoning) {
       hedgeTimer = setTimeout(launch, HEDGE_MS);
 
       const claim = () => {
+        if (aborted) return false;
         if (winner === null) {
           winner = i;
           clearTimeout(hedgeTimer);
-          ctrls.forEach((c, j) => j !== i && c.abort());
+          ctrls.forEach((c, j) => {
+            if (j !== i) {
+              try { c.abort(); } catch {}
+            }
+          });
           console.log(`[A7 Assistant] ✓ Phản hồi từ: ${model}`);
         }
         return winner === i;
@@ -489,6 +532,7 @@ export function askAI(history, onChunk, onReasoning) {
       })
         .then((r) => {
           running--;
+          if (aborted) return;
           if (r && winner === i && r.text) {
             onChunk(r.text);
             finish(resolve, { text: r.text, reasoning: '', model, requestType, temperature });
@@ -503,8 +547,18 @@ export function askAI(history, onChunk, onReasoning) {
           running--;
 
           if (err?.isQuota) {
-            ctrls.forEach((c) => c.abort());
+            ctrls.forEach((c) => { try { c.abort(); } catch {} });
             finish(reject, err);
+            return;
+          }
+          if (err?.isOverload) {
+            console.warn(`[A7 Assistant] ${model} quá tải → thử model kế tiếp sau ${RETRY_DELAY_MS}ms`);
+            if (winner === null) {
+              lastError = err;
+              setTimeout(() => {
+                if (!finished && !aborted && winner === null) launch();
+              }, RETRY_DELAY_MS);
+            }
             return;
           }
 
@@ -522,14 +576,14 @@ export function askAI(history, onChunk, onReasoning) {
 
     launch();
   });
-}
+  promise.abort = () => {
+    if (abortFn) abortFn();
+  };
 
-// ============================================================
-// COMPRESS IMAGE — giữ tỉ lệ, có fallback cho iOS cũ
-// ============================================================
+  return promise;
+}
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
-  // Điện thoại đôi khi trả file ảnh với type rỗng (HEIC...) → kiểm tra thêm theo đuôi file
   const looksImage = (file.type && file.type.startsWith('image/'))
     || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif)$/i.test(file.name || '');
   if (!looksImage) {
@@ -546,7 +600,6 @@ export async function compressImage(file) {
   let W = 0, H = 0;
   let cleanup = () => {};
 
-  // Cách 1: createImageBitmap (nhanh, nhưng iOS < 15 không hỗ trợ)
   if (typeof createImageBitmap === 'function') {
     try {
       bitmap = await createImageBitmap(file);
@@ -558,7 +611,6 @@ export async function compressImage(file) {
     }
   }
 
-  // Cách 2 (fallback): dùng <img> + ObjectURL cho iOS cũ
   if (!bitmap) {
     const url = URL.createObjectURL(file);
     try {
@@ -608,7 +660,6 @@ export async function compressImage(file) {
       ? canvas.toDataURL('image/png')
       : canvas.toDataURL('image/jpeg', 0.85);
 
-    // Nếu vẫn quá lớn (> 4MB), nén thêm
     if (dataUrl.length > 4 * 1024 * 1024) {
       dataUrl = canvas.toDataURL('image/jpeg', 0.65);
     }

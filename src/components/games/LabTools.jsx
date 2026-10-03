@@ -164,8 +164,6 @@ export function FilterBar({ value, onChange }) {
 export function ChemTooltip({ chemKey, anchor }) {
   const info = chemKey ? chemInfo(chemKey) : null;
   if (!info || !anchor) return null;
-
-  // Đặt tooltip gần con trỏ, không bị tràn màn hình
   const padding = 16;
   const W = 240;
   let left = anchor.x + padding;
@@ -425,8 +423,6 @@ export function hitTestVessels(vessels, VESSEL_SHAPES, clientX, clientY, svgEl) 
   const scaleY = viewBox.height / rect.height;
   const vx = (clientX - rect.left) * scaleX;
   const vy = (clientY - rect.top) * scaleY;
-
-  // Đảo ngược thứ tự để ưu tiên dụng cụ trên cùng
   for (let i = vessels.length - 1; i >= 0; i--) {
     const v = vessels[i];
     const shape = VESSEL_SHAPES[v.type];

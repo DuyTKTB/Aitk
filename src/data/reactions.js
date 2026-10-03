@@ -1,6 +1,4 @@
-// Database phản ứng hóa học cho Virtual Lab
 export const CHEMICALS = {
-  // Đơn chất — kim loại
   Na:   { name: 'Natri',        formula: 'Na',    type: 'metal',    color: '#c0c0c0', state: 'solid' },
   K:    { name: 'Kali',         formula: 'K',     type: 'metal',    color: '#c0c0c0', state: 'solid' },
   Ca:   { name: 'Canxi',        formula: 'Ca',    type: 'metal',    color: '#d4d4d4', state: 'solid' },
@@ -11,14 +9,10 @@ export const CHEMICALS = {
   Cu:   { name: 'Đồng',         formula: 'Cu',    type: 'metal',    color: '#b87333', state: 'solid' },
   Ag:   { name: 'Bạc',          formula: 'Ag',    type: 'metal',    color: '#e8e8e8', state: 'solid' },
   Au:   { name: 'Vàng',         formula: 'Au',    type: 'metal',    color: '#ffd700', state: 'solid' },
-
-  // Đơn chất — khí
   H2:   { name: 'Hiđro',        formula: 'H₂',    type: 'gas',      color: '#f0f0f0', state: 'gas' },
   O2:   { name: 'Oxi',          formula: 'O₂',    type: 'gas',      color: '#e0f0ff', state: 'gas' },
   N2:   { name: 'Nitơ',         formula: 'N₂',    type: 'gas',      color: '#e8e8ff', state: 'gas' },
   Cl2:  { name: 'Clo',          formula: 'Cl₂',   type: 'gas',      color: '#e8f5b0', state: 'gas' },
-
-  // Hợp chất — dung dịch
   H2O:  { name: 'Nước',         formula: 'H₂O',   type: 'compound', color: '#a7c4f2', state: 'liquid' },
   HCl:  { name: 'Axit clohiđric', formula: 'HCl', type: 'acid',     color: '#ffe8b0', state: 'liquid' },
   H2SO4:{ name: 'Axit sunfuric', formula: 'H₂SO₄', type: 'acid',    color: '#fff0c0', state: 'liquid' },
@@ -26,12 +20,8 @@ export const CHEMICALS = {
   NaOH: { name: 'Natri hiđroxit', formula: 'NaOH', type: 'base',    color: '#d0e8ff', state: 'liquid' },
   KOH:  { name: 'Kali hiđroxit', formula: 'KOH',  type: 'base',     color: '#d0e8ff', state: 'liquid' },
   CaOH2:{ name: 'Canxi hiđroxit', formula: 'Ca(OH)₂', type: 'base', color: '#d8e8ff', state: 'liquid' },
-
-  // Chỉ thị
   PP:   { name: 'Phenolphtalein', formula: 'PP',  type: 'indicator', color: '#f0e8f8', state: 'liquid' },
   Quy:  { name: 'Quỳ tím',      formula: 'Quỳ',   type: 'indicator', color: '#b88ee0', state: 'liquid' },
-
-  // Muối — rắn
   NaCl: { name: 'Muối ăn',      formula: 'NaCl',  type: 'salt',     color: '#ffffff', state: 'solid' },
   CuSO4:{ name: 'Đồng sunfat',  formula: 'CuSO₄', type: 'salt',     color: '#2e86de', state: 'solid' },
   CaCO3:{ name: 'Đá vôi',       formula: 'CaCO₃', type: 'salt',     color: '#f5f5f5', state: 'solid' },
@@ -39,8 +29,6 @@ export const CHEMICALS = {
   BaCl2:{ name: 'Bari clorua',  formula: 'BaCl₂', type: 'salt',     color: '#f0f4f8', state: 'solid' },
   KI:   { name: 'Kali iotua',   formula: 'KI',    type: 'salt',     color: '#eef2f6', state: 'solid' },
   PbNO3:{ name: 'Chì(II) nitrat', formula: 'Pb(NO₃)₂', type: 'salt', color: '#eef0f2', state: 'solid' },
-
-  // Muối — sản phẩm (có thể tạo ra)
   ZnCl2:{ name: 'Kẽm clorua',    formula: 'ZnCl₂', type: 'salt',    color: '#e8f0f8', state: 'liquid' },
   FeCl2:{ name: 'Sắt(II) clorua', formula: 'FeCl₂', type: 'salt',   color: '#c8e0b8', state: 'liquid' },
   FeCl3:{ name: 'Sắt(III) clorua', formula: 'FeCl₃', type: 'salt',  color: '#d4a86a', state: 'liquid' },
@@ -51,16 +39,12 @@ export const CHEMICALS = {
   KCl:  { name: 'Kali clorua',   formula: 'KCl',   type: 'salt',    color: '#e8f0f8', state: 'liquid' },
   KNO3: { name: 'Kali nitrat',   formula: 'KNO₃',  type: 'salt',    color: '#e8f0f8', state: 'liquid' },
   AlCl3:{ name: 'Nhôm clorua',   formula: 'AlCl₃', type: 'salt',    color: '#e8f0f8', state: 'liquid' },
-
-  // Kết tủa — rắn
   AgCl: { name: 'Bạc clorua',    formula: 'AgCl',  type: 'salt',    color: '#ffffff', state: 'solid' },
   BaSO4:{ name: 'Bari sunfat',   formula: 'BaSO₄', type: 'salt',    color: '#f8f8f8', state: 'solid' },
   PbI2: { name: 'Chì(II) iotua', formula: 'PbI₂',  type: 'salt',    color: '#f2c40c', state: 'solid' },
   CuOH2:{ name: 'Đồng(II) hiđroxit', formula: 'Cu(OH)₂', type: 'base', color: '#4a90d9', state: 'solid' },
   FeOH3:{ name: 'Sắt(III) hiđroxit', formula: 'Fe(OH)₃', type: 'base', color: '#a0442a', state: 'solid' },
   MgOH2:{ name: 'Magie hiđroxit', formula: 'Mg(OH)₂', type: 'base', color: '#f0f4f8', state: 'solid' },
-
-  // Oxit
   CaO:  { name: 'Vôi sống',     formula: 'CaO',   type: 'oxide',    color: '#f8f8f8', state: 'solid' },
   CuO:  { name: 'Đồng oxit',    formula: 'CuO',   type: 'oxide',    color: '#1a1a1a', state: 'solid' },
   Fe2O3:{ name: 'Sắt(III) oxit', formula: 'Fe₂O₃', type: 'oxide',  color: '#a0442a', state: 'solid' },
@@ -70,7 +54,6 @@ export const CHEMICALS = {
 };
 
 export const REACTIONS = [
-  // Kim loại + Axit → Muối + H₂
   {
     inputs: ['Na', 'HCl'],
     outputs: ['NaCl', 'H2'],
@@ -111,8 +94,6 @@ export const REACTIONS = [
     note: 'Nhôm tan, sủi bọt khí H₂',
     danger: 2,
   },
-
-  // Axit + Bazơ → Muối + H₂O
   {
     inputs: ['HCl', 'NaOH'],
     outputs: ['NaCl', 'H2O'],
@@ -129,8 +110,6 @@ export const REACTIONS = [
     note: 'Trung hòa, tỏa nhiệt mạnh',
     danger: 2,
   },
-
-  // Oxit bazơ + Nước → Bazơ
   {
     inputs: ['CaO', 'H2O'],
     outputs: ['CaOH2'],
@@ -147,8 +126,6 @@ export const REACTIONS = [
     note: '⚠ Natri cháy trên mặt nước — phản ứng cực mạnh!',
     danger: 5,
   },
-
-  // Muối + Muối → Kết tủa
   {
     inputs: ['AgNO3', 'NaCl'],
     outputs: ['AgCl', 'NaNO3'],
@@ -213,8 +190,6 @@ export const REACTIONS = [
     note: 'Nước vôi trong bị đục — phản ứng nhận biết CO₂',
     danger: 1,
   },
-
-  // Chỉ thị
   {
     inputs: ['HCl', 'Quy'],
     outputs: ['Quy'],

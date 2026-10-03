@@ -33,8 +33,6 @@ export default function ElementModal({ e, compare, onClose }) {
     ref.current?.focus();
     return () => removeEventListener('keydown', onKey);
   }, [onClose]);
-
-  // ===== MODE SO SÁNH =====
   if (compare && compare.length === 2) {
     const [a, b] = compare;
     const rowsA = ROWS(a), rowsB = ROWS(b);
@@ -77,8 +75,6 @@ export default function ElementModal({ e, compare, onClose }) {
       </div>
     );
   }
-
-  // ===== MODE ĐƠN =====
   const catName = CATS.find((c) => c[0] === e.category)?.[1] ?? e.category;
   const rows = [
     ['Khối lượng nguyên tử', MASS_LABEL(e.atomicMass)],

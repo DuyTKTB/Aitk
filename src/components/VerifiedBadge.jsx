@@ -18,8 +18,6 @@ export function useUserTier(uid) {
       return;
     }
     let cancelled = false;
-
-    // Cache có sẵn → dùng luôn
     if (tierCache.has(uid)) {
       setIsVip(tierCache.get(uid));
       return;

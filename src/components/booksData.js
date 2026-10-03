@@ -1,6 +1,3 @@
-// src/components/booksData.js
-// Dữ liệu sách từ taphuan.nxbgd.vn — tự động gộp từ 11 file JSON
-// Cấu trúc: BOOKS[grade][subject] = [{ url, title, img }, ...]
 
 export const BOOKS = {
   10: {
@@ -164,18 +161,12 @@ export const BOOKS = {
     ],
   },
 };
-
-// Helper: lấy sách theo lớp + môn
 export function getBooks(grade, subject) {
   return BOOKS[grade]?.[subject] || [];
 }
-
-// Helper: lấy sách đầu tiên (để hiển thị ảnh bìa)
 export function getFirstBook(grade, subject) {
   return BOOKS[grade]?.[subject]?.[0] || null;
 }
-
-// Helper: đếm tổng sách
 export function countBooks() {
   let total = 0;
   for (const grade of Object.values(BOOKS)) {

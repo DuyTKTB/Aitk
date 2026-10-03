@@ -40,16 +40,12 @@ export default function ExamCountdown() {
   const [notified, setNotified] = useLocalStorage('cs-exam-notified', {});
   const [notifyOn, setNotifyOn] = useLocalStorage('cs-exam-notify', false);
   const fileRef = useRef(null);
-
-  // Tick mỗi giây khi có kỳ thi gần
   useEffect(() => {
     const hasNear = exams.some((x) => stamp(x) - now < 864e5 && stamp(x) > now);
     const interval = hasNear ? 1000 : 15000;
     const id = setInterval(() => setNow(Date.now()), interval);
     return () => clearInterval(id);
   }, [exams, now]);
-
-  // Notification khi gần tới
   useEffect(() => {
     if (!notifyOn || !('Notification' in window) || Notification.permission !== 'granted') return;
     for (const x of exams) {
@@ -83,8 +79,6 @@ export default function ExamCountdown() {
     past(a) - past(b) ||
     (past(a) ? stamp(b) - stamp(a) : Number(b.pinned) - Number(a.pinned) || stamp(a) - stamp(b))
   );
-
-  // Export/Import
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify({ exams, exported: Date.now() })], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

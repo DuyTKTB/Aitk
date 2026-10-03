@@ -295,8 +295,8 @@ legend { padding: 0 .4rem; font: 700 .8rem var(--mono); text-transform: uppercas
 .foot small { width: 100%; }
 
 /* ============ ANIMATIONS ============ */
-main > * { animation: in .8s var(--ease) both; }
-.grid > *, .tools > * { animation: in .7s var(--ease) both; }
+main > * { animation: in .8s var(--ease) backwards; }
+.grid > *, .tools > * { animation: in .7s var(--ease) backwards; }
 .grid > :nth-child(2), .tools > :nth-child(2) { animation-delay: .07s; }
 .grid > :nth-child(3), .tools > :nth-child(3) { animation-delay: .14s; }
 .grid > :nth-child(n+4), .tools > :nth-child(n+4) { animation-delay: .21s; }
@@ -12367,5 +12367,731 @@ kbd { border-radius: 6px; font-family: var(--sans); }
     border-radius: 0 !important;
     max-height: 100dvh !important;
     padding: 1.2rem 1rem !important;
+  }
+}
+/* ============================================================
+   POLISH — Viền mềm, font đẹp, bo góc mượt
+   ============================================================ */
+
+/* ---------- 1. FONT ---------- */
+:root {
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --serif: 'Inter', Georgia, serif;   /* dùng Inter italic cho đồng bộ */
+  
+  /* Font smoothing cho chữ mượt */
+  --font-feature: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: var(--font-feature);
+}
+
+body {
+  font-family: var(--sans);
+  font-weight: 400;
+  letter-spacing: -0.011em;   /* Inter thường cần -0.01em */
+  line-height: 1.55;
+}
+
+/* Tiêu đề: font weight 600-700, letter-spacing chặt hơn */
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+h1 { letter-spacing: -0.04em; }
+
+/* Đoạn văn: line-height thoáng hơn */
+p {
+  line-height: 1.65;
+  letter-spacing: -0.008em;
+}
+
+/* Chữ mono (số, code) */
+code, kbd, pre, .mono, .stat-num, [class*="-num"] {
+  font-family: var(--mono);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  letter-spacing: -0.01em;
+}
+
+
+/* ============================================================
+   2. VIỀN MỀM — thay vì border sắc, dùng shadow mờ
+   ============================================================ */
+
+/* Card chung: bỏ border cứng, thay bằng shadow mờ */
+.card,
+.quote-card,
+.stack-card,
+.tool,
+.manifesto-card,
+.hx2-card,
+.tn-card,
+.game-card-v2,
+.ds-msg-content,
+.ai-chat,
+.ai-input-bar {
+  /* Bỏ border sắc */
+  border-color: transparent !important;
+  
+  /* Viền mờ + shadow nhẹ */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent),   /* viền 1px siêu nhạt */
+    0 1px 2px color-mix(in srgb, var(--ink) 4%, transparent),    /* shadow vi mô */
+    0 8px 24px -8px color-mix(in srgb, var(--ink) 10%, transparent); /* shadow mềm */
+  
+  transition: box-shadow .3s var(--ease), transform .3s var(--ease);
+}
+
+/* Hover: nâng nhẹ + shadow sâu hơn */
+.card:hover,
+.quote-card:hover,
+.tool:hover,
+.manifesto-card:hover,
+.hx2-card:hover,
+.tn-card:hover,
+.game-card-v2:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--acc) 25%, transparent),
+    0 2px 4px color-mix(in srgb, var(--ink) 6%, transparent),
+    0 16px 40px -12px color-mix(in srgb, var(--acc) 20%, transparent);
+  transform: translateY(-2px);
+}
+
+
+/* ============================================================
+   3. STACK-CARD (Ba bước, một hành trình) — full + viền mờ
+   ============================================================ */
+
+.stack-cards {
+  padding: 0;
+}
+
+.stack-card {
+  /* Full width */
+  max-width: 100%;
+  margin: 0 0 1rem;
+  
+  /* Bo góc lớn */
+  border-radius: 32px;
+  border: 0;
+  
+  /* Nền mờ + viền sáng */
+  background: var(--glass, color-mix(in srgb, var(--bg) 85%, #fff));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  
+  /* Viền mờ (không sắc) */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ink) 5%, transparent),
+    0 1px 3px color-mix(in srgb, var(--ink) 3%, transparent),
+    0 20px 50px -20px color-mix(in srgb, var(--ink) 12%, transparent);
+  
+  padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 5vw, 5rem);
+}
+
+.stack-card:first-of-type {
+  margin-top: 2rem;
+}
+
+.stack-card:last-of-type {
+  margin-bottom: 2rem;
+}
+
+/* Nội dung bên trong vẫn giới hạn max-width */
+.stack-card > * {
+  max-width: 1240px;
+  margin-inline: auto;
+}
+
+/* Bỏ hiệu ứng scale khi scroll nếu muốn phẳng hơn */
+@media (max-width: 720px) {
+  .stack-card {
+    border-radius: 24px;
+    padding: 1.5rem 1.2rem;
+  }
+}
+
+
+/* ============================================================
+   4. TIÊU ĐỀ SECTION (fx-title) — đẹp hơn
+   ============================================================ */
+
+.fx-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+/* Từ nhấn mạnh (.fx-hl) — bỏ nền highlight, chỉ giữ gradient chữ */
+.fx-hl {
+  color: var(--acc);
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+}
+
+.fx-hl .fx-wm {
+  background: none !important;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+}
+
+/* Hoặc nếu muốn giữ highlight mềm, dùng cái này: */
+.fx-hl .fx-wm {
+  background: linear-gradient(
+    180deg,
+    transparent 60%,
+    color-mix(in srgb, var(--acc) 12%, transparent) 60%
+  );
+  border-radius: 4px;
+  padding: 0 0.15em;
+  margin: 0 -0.15em;
+}
+
+
+/* ============================================================
+   5. NÚT BẤM — mềm, không sắc
+   ============================================================ */
+
+.btn {
+  border: 0;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 1px 2px color-mix(in srgb, var(--ink) 4%, transparent);
+  transition: all .2s var(--ease);
+}
+
+.btn:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent),
+    0 4px 12px -4px color-mix(in srgb, var(--acc) 30%, transparent);
+  transform: translateY(-1px);
+}
+
+.btn.primary {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--acc) 60%, transparent),
+    0 6px 16px -6px color-mix(in srgb, var(--acc) 50%, transparent);
+}
+
+.btn.primary:hover {
+  box-shadow:
+    0 0 0 1px var(--acc),
+    0 10px 24px -8px color-mix(in srgb, var(--acc) 60%, transparent);
+}
+
+
+/* ============================================================
+   6. Ô NHẬP LIỆU — mềm
+   ============================================================ */
+
+input, select, textarea {
+  border: 0;
+  background: color-mix(in srgb, var(--soft) 60%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
+  transition: all .2s var(--ease);
+}
+
+input:focus, select:focus, textarea:focus {
+  box-shadow:
+    0 0 0 1px var(--acc),
+    0 0 0 4px color-mix(in srgb, var(--acc) 15%, transparent);
+  background: var(--bg);
+}
+/* ============================================================
+   FIX: Pet và Chat FAB không chồng nhau trên mobile
+   ============================================================ */
+@media (max-width: 720px) {
+
+  /* Chat FAB — giữ nguyên vị trí cũ (góc phải-dưới, trên bottom nav) */
+  .cw-fab,
+  .chatfab {
+    right: 14px !important;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 52px !important;
+    height: 52px !important;
+    z-index: 60 !important;
+  }
+
+  /* Pet — nằm bên TRÁI, ngang tầm chat FAB nhưng khác cột */
+  .petw {
+    z-index: 45 !important;
+  }
+
+  /* Nếu user đã lưu vị trí cũ (góc phải-dưới), ép pet ra giữa màn hình */
+  .petw[data-legacy="1"] {
+    left: 14px !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+/* ============================================================
+   PET PANEL COMPACT — Nhỏ gọn hơn + tab Nhân vật
+   ============================================================ */
+
+/* Panel gọn hơn */
+.pet-pane-compact {
+  width: min(300px, calc(100vw - 32px)) !important;
+  max-height: min(70vh, 520px) !important;
+  border-radius: 18px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--bg) !important;
+  border: 1.5px solid var(--ink) !important;
+  box-shadow: 6px 6px 0 var(--ink) !important;
+}
+
+/* Header gọn */
+.pet-pane-compact .pet-head {
+  padding: .7rem .9rem !important;
+  border-bottom: 1px solid var(--soft);
+}
+.pet-pane-compact .pet-head-name {
+  font-size: .95rem !important;
+}
+.pet-pane-compact .pet-head-icon {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 9px !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 1rem !important;
+}
+.pet-pane-compact .pet-head-close {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Tabs gọn — 4 tab */
+.pet-pane-compact .pet-tabs {
+  padding: .35rem .35rem 0 !important;
+  gap: 0 !important;
+}
+.pet-pane-compact .pet-tab {
+  padding: .45rem .25rem !important;
+  font-size: .6rem !important;
+  gap: .15rem !important;
+}
+.pet-pane-compact .pet-tab svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+.pet-pane-compact .pet-tab span {
+  font-size: .58rem !important;
+  letter-spacing: 0 !important;
+}
+
+/* Body gọn */
+.pet-tab-body-compact {
+  padding: .7rem .9rem .8rem !important;
+  gap: .6rem !important;
+}
+
+/* Field gọn */
+.pet-pane-compact .pet-field-label {
+  font-size: .6rem !important;
+}
+.pet-pane-compact .pet-field-input {
+  padding: .4rem .6rem !important;
+  font-size: .8rem !important;
+  border-radius: 8px !important;
+}
+
+/* Stat cards gọn */
+.pet-pane-compact .pet-stat-grid {
+  gap: .35rem !important;
+}
+.pet-pane-compact .pet-stat-card {
+  padding: .5rem .25rem !important;
+  border-radius: 10px !important;
+  border-width: 1px !important;
+}
+.pet-pane-compact .pet-stat-card-icon {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 6px !important;
+  margin-bottom: 0 !important;
+}
+.pet-pane-compact .pet-stat-card-icon svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+.pet-pane-compact .pet-stat-card-num {
+  font-size: 1.1rem !important;
+  margin-top: .15rem !important;
+}
+.pet-pane-compact .pet-stat-card-label {
+  font-size: .55rem !important;
+}
+
+/* Progress gọn */
+.pet-pane-compact .pet-progress-block {
+  padding: .55rem .7rem !important;
+  border-radius: 10px !important;
+}
+.pet-pane-compact .pet-progress-head {
+  margin-bottom: .35rem !important;
+}
+.pet-pane-compact .pet-progress-label {
+  font-size: .6rem !important;
+}
+.pet-pane-compact .pet-progress-value {
+  font-size: .75rem !important;
+}
+.pet-pane-compact .pet-progress-bar {
+  height: 6px !important;
+}
+.pet-pane-compact .pet-progress-hint {
+  font-size: .62rem !important;
+}
+
+/* ============================================================
+   SKIN PICKER — Chọn nhân vật
+   ============================================================ */
+.pet-skins {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.pet-skins-hint {
+  margin: 0;
+  font: 400 .72rem var(--sans);
+  color: var(--mut);
+  text-align: center;
+}
+.pet-skins-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .35rem;
+}
+.pet-skin-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  padding: .6rem .25rem .5rem;
+  background: var(--bg);
+  border: 1.5px solid var(--soft);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .2s var(--ease), border-color .2s, box-shadow .2s, background .2s;
+  font: inherit;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.pet-skin-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--skin-color);
+  box-shadow: 0 4px 12px -4px var(--skin-color);
+}
+.pet-skin-card.on {
+  background: var(--skin-bg);
+  border-color: var(--skin-color);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--skin-color) 20%, transparent);
+}
+.pet-skin-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.pet-skin-name {
+  font: 600 .68rem var(--sans);
+  color: var(--ink);
+}
+.pet-skin-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--skin-color);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 .65rem var(--sans);
+  border: 2px solid var(--bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+}
+.pet-skins-current {
+  margin: .2rem 0 0;
+  font: 400 .68rem var(--sans);
+  color: var(--mut);
+  text-align: center;
+}
+.pet-skins-current b {
+  color: var(--ink);
+}
+
+/* ============================================================
+   CHAT & MEMORIES GỌN
+   ============================================================ */
+.pet-chat-compact {
+  padding: .6rem .9rem .8rem !important;
+  gap: .5rem !important;
+}
+.pet-chat-compact .pet-chat-msgs {
+  max-height: 160px !important;
+}
+.pet-chat-compact .pet-chat-msg {
+  font-size: .78rem !important;
+  padding: .35rem .6rem !important;
+}
+.pet-chat-compact .pet-chat-chip {
+  font-size: .65rem !important;
+  padding: .25rem .55rem !important;
+}
+.pet-chat-compact .pet-chat-form input {
+  font-size: .78rem !important;
+  padding: .4rem .6rem !important;
+}
+.pet-chat-compact .pet-chat-form .btn {
+  font-size: .7rem !important;
+  padding: .4rem .7rem !important;
+}
+
+.pet-memories-compact {
+  padding: .6rem .9rem .8rem !important;
+  gap: .4rem !important;
+}
+.pet-memories-compact .pet-memory {
+  padding: .5rem .7rem !important;
+  border-radius: 10px !important;
+  gap: .55rem !important;
+}
+.pet-memories-compact .pet-memory-icon {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+}
+.pet-memories-compact .pet-memory b {
+  font-size: .78rem !important;
+}
+.pet-memories-compact .pet-memory small {
+  font-size: .65rem !important;
+}
+
+/* ============================================================
+   FIX: Pet + Chat FAB không chồng nhau
+   ============================================================ */
+@media (min-width: 721px) {
+  .petw {
+    left: auto !important;
+    right: 24px !important;
+    top: auto !important;
+    bottom: 130px !important;
+    z-index: 45 !important;
+  }
+}
+@media (max-width: 720px) {
+  .petw {
+    left: auto !important;
+    right: 14px !important;
+    top: auto !important;
+    bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 45 !important;
+  }
+}
+/* ============================================================
+   PET — CỐ ĐỊNH, KHÔNG KÉO THẢ
+   ============================================================ */
+.petw {
+  cursor: pointer !important;   /* đổi từ grab → pointer */
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  transition: transform .2s var(--ease, ease);
+}
+.petw:hover {
+  transform: scale(1.05);
+}
+.petw:active {
+  transform: scale(.96);
+}
+
+/* Xóa mọi CSS kéo thả cũ nếu có */
+.petw:active {
+  cursor: pointer !important;
+}
+
+/* Panel pet — vị trí do JS tính, CSS chỉ lo style */
+.pet-pane-compact {
+  position: fixed !important;
+  z-index: 46 !important;
+  max-height: min(70vh, 520px) !important;
+  overflow-y: auto !important;
+}
+
+/* ============================================================
+   SKIN PICKER (giữ từ tin trước)
+   ============================================================ */
+.pet-skins {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.pet-skins-hint {
+  margin: 0;
+  font: 400 .72rem var(--sans);
+  color: var(--mut);
+  text-align: center;
+}
+.pet-skins-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .35rem;
+}
+.pet-skin-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  padding: .6rem .25rem .5rem;
+  background: var(--bg);
+  border: 1.5px solid var(--soft);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .2s, border-color .2s, box-shadow .2s, background .2s;
+  font: inherit;
+  color: var(--ink);
+}
+.pet-skin-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--skin-color);
+  box-shadow: 0 4px 12px -4px var(--skin-color);
+}
+.pet-skin-card.on {
+  background: var(--skin-bg);
+  border-color: var(--skin-color);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--skin-color) 20%, transparent);
+}
+.pet-skin-emoji { font-size: 1.4rem; line-height: 1; }
+.pet-skin-name { font: 600 .68rem var(--sans); color: var(--ink); }
+.pet-skin-check {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 18px; height: 18px;
+  background: var(--skin-color);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 .65rem var(--sans);
+  border: 2px solid var(--bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+}
+.pet-skins-current {
+  margin: .2rem 0 0;
+  font: 400 .68rem var(--sans);
+  color: var(--mut);
+  text-align: center;
+}
+.pet-skins-current b { color: var(--ink); }
+
+/* ============================================================
+   FIX PET + CHAT FAB không đè nhau
+   ============================================================ */
+@media (min-width: 721px) {
+  .petw {
+    right: 24px !important;
+    bottom: 130px !important;
+    left: auto !important;
+    top: auto !important;
+  }
+}
+@media (max-width: 720px) {
+  .petw {
+    right: 14px !important;
+    bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
+    left: auto !important;
+    top: auto !important;
+  }
+}
+/* ============================================================
+   🔥 FIX CUỐI — Pet LUÔN ở góc TRÁI, thắng mọi CSS khác
+   ============================================================ */
+
+/* Override mạnh bằng :where + specificity cao */
+html body .petw,
+html body .petw.petw-happy,
+html body .petw.petw-normal,
+html body .petw.petw-sleepy,
+html body .petw.petw-sad,
+html body .petw.petw-hibernating {
+  position: fixed !important;
+  right: auto !important;
+  left: 24px !important;
+  top: auto !important;
+  bottom: 150px !important;
+  z-index: 250 !important;
+  cursor: pointer !important;
+}
+
+/* Mobile */
+@media (max-width: 720px) {
+  html body .petw,
+  html body .petw.petw-happy,
+  html body .petw.petw-normal,
+  html body .petw.petw-sleepy,
+  html body .petw.petw-sad,
+  html body .petw.petw-hibernating {
+    left: 14px !important;
+    bottom: 180px !important;
+    right: auto !important;
+  }
+}
+
+/* Xóa hết cursor grab cũ */
+html body .petw,
+html body .petw:active {
+  cursor: pointer !important;
+}
+/* ============================================================
+   PAGE LOADER — Fallback khi lazy-load page
+   ============================================================ */
+
+.page-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 60vh;
+  padding: 3rem 1rem;
+  color: var(--mut);
+  font: 500 0.88rem var(--sans);
+}
+
+.page-loader-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid var(--soft);
+  border-top-color: var(--acc);
+  border-radius: 50%;
+  animation: pl-spin 0.85s linear infinite;
+}
+
+@keyframes pl-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loader-spinner {
+    animation: none;
+    border-top-color: var(--soft);
   }
 }
