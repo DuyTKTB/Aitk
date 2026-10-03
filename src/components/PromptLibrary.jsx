@@ -22,33 +22,25 @@ const statsOf = (text) => {
 };
 
 /* ============================================================
-   CARD IMAGE - Dung anh that /img/prom.png
-   Neu anh loi thi fallback ve Art SVG
+   CARD IMAGE — Luôn dùng ảnh thật /img/prom.png
+   Cache-busting bằng ?v= để tránh CDN cache ảnh cũ.
+   Khi bạn đổi ảnh mới, tăng số version (v=2 → v=3 → v=4...).
    ============================================================ */
-function CardCover({ prompt, cat }) {
-  const [imgError, setImgError] = useState(false);
+const PROM_IMG_VERSION = 2;
 
-  if (!imgError) {
-    return (
-      <div className="pl-cover">
-        <img
-          src="/img/prom.png"
-          alt={prompt.title}
-          className="pl-cover-img"
-          loading="lazy"
-          decoding="async"
-          onError={() => setImgError(true)}
-        />
-        <span className="pl-chip">{cat.name}</span>
-        {statsOf(prompt.prompt).chars > 800 && <span className="pl-long">CHI TIET</span>}
-      </div>
-    );
-  }
+function CardCover({ prompt, cat }) {
   return (
-    <Art seed={prompt.id} hue={cat.hue} kind={cat.kind} ratio="16 / 10">
+    <div className="pl-cover">
+      <img
+        src={`/img/prom.png?v=${PROM_IMG_VERSION}`}
+        alt={prompt.title}
+        className="pl-cover-img"
+        loading="lazy"
+        decoding="async"
+      />
       <span className="pl-chip">{cat.name}</span>
-      {statsOf(prompt.prompt).chars > 800 && <span className="pl-long">CHI TIET</span>}
-    </Art>
+      {statsOf(prompt.prompt).chars > 800 && <span className="pl-long">CHI TIẾT</span>}
+    </div>
   );
 }
 
