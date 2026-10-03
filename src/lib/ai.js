@@ -1,6 +1,5 @@
-
-const API_KEY = import.meta.env.VITE_GEMINI_KEY || '';
-const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const BASE_URL = 'https://api.groq.com/openai/v1';
 
 const MSG_OUT_OF_QUOTA =
   '⚠️ Bạn đã hết quyền sử dụng AI miễn phí hôm nay.\n\n' +
@@ -28,33 +27,39 @@ class AbortError extends Error {
     this.isAbort = true;
   }
 }
+
+/* ============================================================
+   DANH SÁCH MODEL GROQ
+   - llama-3.3-70b-versatile: mạnh nhất, đa dụng
+   - llama-3.1-8b-instant: nhanh nhất, nhẹ
+   - openai/gpt-oss-120b: model mã nguồn mở của OpenAI
+   - qwen/qwen3-32b: tốt cho đa ngôn ngữ
+   - moonshotai/kimi-k2-instruct: mạnh về lập luận
+   ============================================================ */
 const MODELS = [
-  'gemini-2.5-flash',           // ưu tiên 1: mạnh + ổn định
-  'gemini-2.5-flash-lite',      // ưu tiên 2: nhẹ + nhanh
-  'gemini-2.0-flash',           // ưu tiên 3: ổn định
-  'gemini-2.0-flash-lite',      // ưu tiên 4: nhẹ
-  'gemini-1.5-flash',           // ưu tiên 5: rất stable
-  'gemini-1.5-flash-8b',        // ưu tiên 6: nhẹ nhất
-  'gemini-flash-latest',        // ưu tiên 7 (cuối): hay overload
+  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-120b',
+  'moonshotai/kimi-k2-instruct',
+  'qwen/qwen3-32b',
+  'llama-3.1-8b-instant',
 ];
 
+// Groq không có model vision riêng cho mọi tài khoản.
+// Nếu tài khoản được bật, có thể dùng llama-3.2-11b-vision-preview.
 const VISION_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
+  'llama-3.2-11b-vision-preview',
+  'llama-3.2-90b-vision-preview',
 ];
 
 const FAST_MODELS = [
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-flash-8b',
-  'gemini-2.5-flash',
+  'llama-3.1-8b-instant',
+  'llama-3.3-70b-versatile',
 ];
 
 const STRONG_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
+  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-120b',
+  'moonshotai/kimi-k2-instruct',
 ];
 
 function keepError(prev, next) {
@@ -73,17 +78,20 @@ function orderModels(hasImage, type) {
 const maxTokensFor = (type) =>
   type === 'problem' ? 8192 : type === 'theory' ? 4096 : 2048;
 
-const thinkingBudgetFor = (type) => {
-  if (type === 'problem') return 8192;
-  if (type === 'theory') return 4096;
-  return 0;
+/* Groq dùng reasoning_effort cho các model hỗ trợ (gpt-oss) */
+const reasoningEffortFor = (type) => {
+  if (type === 'problem') return 'high';
+  if (type === 'theory') return 'medium';
+  return 'low';
 };
+
 const HEDGE_MS = 800;
 const MAX_PARALLEL = 2;
 const FIRST_TOKEN_MS = 30000;
 const STREAM_IDLE_MS = 12000;
 const TOTAL_MS = 90000;
-const RETRY_DELAY_MS = 800;      // đợi trước khi retry khi gặp 503
+const RETRY_DELAY_MS = 800;
+
 const SYSTEM_PROMPT = `
 Bạn là "A7 Assistant" — trợ lý học tập Hóa học THPT của lớp A7 K60 DTA, do Duy TK tạo.
 
@@ -145,6 +153,10 @@ CÁCH TRẢ LỜI BÀI TẬP — CHỈ 3 PHẦN NGẮN:
 **Thay số:** [1-2 dòng]
 **Đáp án:** [in đậm kết quả]
 `;
+
+/* ============================================================
+   UNICODE / LATEX CONVERTER (giữ nguyên)
+   ============================================================ */
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
   '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
@@ -281,37 +293,67 @@ function getTemperature(type) {
   }
 }
 
-function prepareGeminiContents(history) {
-  return history.map((message) => {
-    if (message.role === 'model') {
-      return {
-        role: 'model',
-        parts: [{ text: message.parts?.[0]?.text || message.text || '' }],
-      };
+/* ============================================================
+   CHUYỂN ĐỔI HISTORY → GROQ MESSAGES (chuẩn OpenAI)
+   - role 'model' → 'assistant'
+   - parts [{text}, {inlineData}] → content + image_url (data URI)
+   ============================================================ */
+function prepareGroqMessages(history) {
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
+
+  for (const message of history) {
+    const role = message.role === 'model' ? 'assistant' : 'user';
+
+    // Assistant: chỉ text, không có ảnh
+    if (role === 'assistant') {
+      const text = message.parts?.[0]?.text || message.text || '';
+      messages.push({ role, content: text });
+      continue;
     }
 
+    // User: có thể có text + ảnh
     const parts = message.parts || [];
     const textParts = parts.filter((p) => p.text).map((p) => p.text);
     const text = textParts.join('\n') || message.text || '';
     const imageParts = parts.filter((p) => p.inlineData);
 
-    const geminiParts = [];
-    if (text) geminiParts.push({ text });
+    if (imageParts.length === 0) {
+      messages.push({ role, content: text || '' });
+      continue;
+    }
+
+    // Groq vision dùng format OpenAI: content là array
+    const content = [];
+    if (text) content.push({ type: 'text', text });
     for (const img of imageParts) {
-      geminiParts.push({
-        inline_data: {
-          mime_type: img.inlineData.mimeType,
-          data: img.inlineData.data,
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${img.inlineData.mimeType};base64,${img.inlineData.data}`,
         },
       });
     }
-    if (geminiParts.length === 0) geminiParts.push({ text: '' });
+    if (content.length === 0) content.push({ type: 'text', text: '' });
 
-    return { role: 'user', parts: geminiParts };
-  });
+    messages.push({ role, content });
+  }
+
+  return messages;
 }
 
-async function streamOne({ model, contents, temperature, maxTokens, thinkingBudget, ctrl, claim, onChunk }) {
+/* ============================================================
+   STREAMING 1 MODEL
+   ============================================================ */
+async function streamOne({
+  model,
+  messages,
+  temperature,
+  maxTokens,
+  reasoningEffort,
+  ctrl,
+  claim,
+  onChunk,
+}) {
   let stall;
   let reader;
   const arm = (ms) => {
@@ -322,57 +364,88 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
   try {
     arm(FIRST_TOKEN_MS);
 
-    const url = `${BASE_URL}/models/${model}:streamGenerateContent?alt=sse&key=${API_KEY}`;
-
-    const generationConfig = {
+    const body = {
+      model,
+      messages,
+      stream: true,
       temperature,
-      maxOutputTokens: maxTokens,
-      topP: 0.9,
+      max_tokens: maxTokens,
+      top_p: 0.9,
     };
-    if (thinkingBudget && thinkingBudget > 0) {
-      generationConfig.thinkingConfig = { thinkingBudget };
+
+    // gpt-oss hỗ trợ reasoning_effort
+    if (/gpt-oss/i.test(model) && reasoningEffort) {
+      body.reasoning_effort = reasoningEffort;
     }
 
-    const res = await fetch(url, {
+    const res = await fetch(`${BASE_URL}/chat/completions`, {
       method: 'POST',
       signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const status = res.status;
-      const body = await res.text().catch(() => '');
-      console.warn(`[A7 Assistant] ✗ ${model} → ${status}`, body.slice(0, 300));
+      const bodyText = await res.text().catch(() => '');
+      console.warn(`[A7 Assistant] ✗ ${model} → ${status}`, bodyText.slice(0, 300));
 
-      if (status === 429) throw new OutOfQuotaError(MSG_OUT_OF_QUOTA);
-      if (status === 503 || status === 502 || status === 504) {
+      if (status === 429) {
+        // Groq trả 429 khi hết quota hoặc vượt rate limit
+        const retryAfter = res.headers.get('retry-after') || '60';
+        const err = new OutOfQuotaError(
+          `${MSG_OUT_OF_QUOTA}\n\n(Thử lại sau ${retryAfter} giây.)`
+        );
+        throw err;
+      }
+
+      if (status === 503 || status === 502 || status === 504 || status === 500) {
         const err = new Error(`${model} đang quá tải (${status})`);
         err.status = status;
         err.isOverload = true;
         throw err;
       }
 
-      if (status === 400 && thinkingBudget && /thinking/i.test(body)) {
-        reader?.cancel?.().catch?.(() => {});
-        clearTimeout(stall);
-        return streamOne({ model, contents, temperature, maxTokens, thinkingBudget: 0, ctrl, claim, onChunk });
+      if (status === 401 || status === 403) {
+        throw new Error(MSG_API_KEY_ERROR);
       }
 
-      const keyBad = status === 401 || status === 403 || /API[_ ]KEY/i.test(body);
-      if (keyBad) throw new Error(MSG_API_KEY_ERROR);
+      // Model không tồn tại → thử model kế
+      if (status === 404) {
+        const err = new Error(`${model} không tồn tại`);
+        err.status = 404;
+        throw err;
+      }
 
-      const err = new Error(`${model} lỗi ${status}: ${body.slice(0, 200)}`);
+      // 400 có thể do model không hỗ trợ vision, hoặc reasoning_effort không hợp lệ
+      if (status === 400) {
+        if (reasoningEffort && /reasoning/i.test(bodyText)) {
+          reader?.cancel?.().catch?.(() => {});
+          clearTimeout(stall);
+          return streamOne({
+            model,
+            messages,
+            temperature,
+            maxTokens,
+            reasoningEffort: null,
+            ctrl,
+            claim,
+            onChunk,
+          });
+        }
+        // Có thể do gửi ảnh nhưng model không hỗ trợ
+        if (/vision|image|multimodal/i.test(bodyText)) {
+          const err = new Error(`${model} không hỗ trợ ảnh`);
+          err.status = 400;
+          err.isOverload = true; // coi như lỗi tạm để thử model khác
+          throw err;
+        }
+      }
+
+      const err = new Error(`${model} lỗi ${status}: ${bodyText.slice(0, 200)}`);
       err.status = status;
       throw err;
     }
@@ -396,15 +469,16 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
         const t = line.trim();
         if (!t.startsWith('data:')) continue;
         const data = t.slice(5).trim();
-        if (!data) continue;
+        if (!data || data === '[DONE]') continue;
 
         let parsed;
-        try { parsed = JSON.parse(data); } catch { continue; }
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          continue;
+        }
 
-        const deltaText = (parsed.candidates?.[0]?.content?.parts || [])
-          .filter((p) => p.text && !p.thought)
-          .map((p) => p.text)
-          .join('');
+        const deltaText = parsed.choices?.[0]?.delta?.content || '';
         if (!deltaText) continue;
 
         if (!claim()) return null;
@@ -421,9 +495,13 @@ async function streamOne({ model, contents, temperature, maxTokens, thinkingBudg
     reader?.cancel().catch(() => {});
   }
 }
+
+/* ============================================================
+   HÀM CHÍNH — askAI (giữ nguyên logic hedge, retry, abort)
+   ============================================================ */
 export function askAI(history, onChunk, onReasoning) {
   if (!API_KEY) {
-    return Promise.reject(new Error('Chưa cấu hình VITE_GEMINI_KEY trong file .env'));
+    return Promise.reject(new Error('Chưa cấu hình VITE_GROQ_API_KEY trong file .env'));
   }
   if (!Array.isArray(history) || history.length === 0) {
     return Promise.reject(new Error('Không có nội dung câu hỏi.'));
@@ -435,11 +513,11 @@ export function askAI(history, onChunk, onReasoning) {
       : { ...m, parts: m.parts.map((p) => (p.inlineData ? { text: '[ảnh đã gửi trước đó]' } : p)) }
   );
 
-  const contents = prepareGeminiContents(recent);
+  const messages = prepareGroqMessages(recent);
   const requestType = detectRequestType(recent);
   const temperature = getTemperature(requestType);
   const maxTokens = maxTokensFor(requestType);
-  const thinkingBudget = thinkingBudgetFor(requestType);
+  const reasoningEffort = reasoningEffortFor(requestType);
 
   const lastUser = [...recent].reverse().find((m) => m.role === 'user');
   const hasImage = Boolean(lastUser?.parts?.some((p) => p.inlineData));
@@ -468,13 +546,22 @@ export function askAI(history, onChunk, onReasoning) {
     };
 
     const totalTimer = setTimeout(() => {
-      ctrls.forEach((c) => { try { c.abort(); } catch {} });
+      ctrls.forEach((c) => {
+        try {
+          c.abort();
+        } catch {}
+      });
       finish(reject, lastError || new Error('AI phản hồi quá chậm, bạn thử lại nhé.'));
     }, TOTAL_MS);
+
     abortFn = () => {
       if (finished) return;
       aborted = true;
-      ctrls.forEach((c) => { try { c.abort(); } catch {} });
+      ctrls.forEach((c) => {
+        try {
+          c.abort();
+        } catch {}
+      });
       finish(reject, new AbortError());
     };
 
@@ -486,7 +573,9 @@ export function askAI(history, onChunk, onReasoning) {
         if (running === 0) {
           if (lastError?.isOverload && overloadRetries < MAX_OVERLOAD_RETRIES) {
             overloadRetries++;
-            console.warn(`[A7 Assistant] Tất cả model quá tải → retry lần ${overloadRetries}/${MAX_OVERLOAD_RETRIES}`);
+            console.warn(
+              `[A7 Assistant] Tất cả model quá tải → retry lần ${overloadRetries}/${MAX_OVERLOAD_RETRIES}`
+            );
             next = 0;
             setTimeout(launch, RETRY_DELAY_MS * (overloadRetries + 1));
             return;
@@ -512,7 +601,9 @@ export function askAI(history, onChunk, onReasoning) {
           clearTimeout(hedgeTimer);
           ctrls.forEach((c, j) => {
             if (j !== i) {
-              try { c.abort(); } catch {}
+              try {
+                c.abort();
+              } catch {}
             }
           });
           console.log(`[A7 Assistant] ✓ Phản hồi từ: ${model}`);
@@ -522,10 +613,10 @@ export function askAI(history, onChunk, onReasoning) {
 
       streamOne({
         model,
-        contents,
+        messages,
         temperature,
         maxTokens,
-        thinkingBudget: /lite/.test(model) ? 0 : thinkingBudget,
+        reasoningEffort: /gpt-oss/i.test(model) ? reasoningEffort : null,
         ctrl,
         claim,
         onChunk,
@@ -535,7 +626,13 @@ export function askAI(history, onChunk, onReasoning) {
           if (aborted) return;
           if (r && winner === i && r.text) {
             onChunk(r.text);
-            finish(resolve, { text: r.text, reasoning: '', model, requestType, temperature });
+            finish(resolve, {
+              text: r.text,
+              reasoning: '',
+              model,
+              requestType,
+              temperature,
+            });
           } else if (winner === i) {
             finish(reject, new Error(`${model} không trả nội dung`));
           } else {
@@ -547,12 +644,19 @@ export function askAI(history, onChunk, onReasoning) {
           running--;
 
           if (err?.isQuota) {
-            ctrls.forEach((c) => { try { c.abort(); } catch {} });
+            ctrls.forEach((c) => {
+              try {
+                c.abort();
+              } catch {}
+            });
             finish(reject, err);
             return;
           }
+
           if (err?.isOverload) {
-            console.warn(`[A7 Assistant] ${model} quá tải → thử model kế tiếp sau ${RETRY_DELAY_MS}ms`);
+            console.warn(
+              `[A7 Assistant] ${model} quá tải → thử model kế tiếp sau ${RETRY_DELAY_MS}ms`
+            );
             if (winner === null) {
               lastError = err;
               setTimeout(() => {
@@ -576,16 +680,22 @@ export function askAI(history, onChunk, onReasoning) {
 
     launch();
   });
+
   promise.abort = () => {
     if (abortFn) abortFn();
   };
 
   return promise;
 }
+
+/* ============================================================
+   NÉN ẢNH (giữ nguyên)
+   ============================================================ */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
-  const looksImage = (file.type && file.type.startsWith('image/'))
-    || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif)$/i.test(file.name || '');
+  const looksImage =
+    (file.type && file.type.startsWith('image/')) ||
+    /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif)$/i.test(file.name || '');
   if (!looksImage) {
     throw new Error('File không phải hình ảnh.');
   }
@@ -597,7 +707,8 @@ export async function compressImage(file) {
   const MAX_SIZE = isMobile ? 1400 : 1800;
 
   let bitmap = null;
-  let W = 0, H = 0;
+  let W = 0,
+    H = 0;
   let cleanup = () => {};
 
   if (typeof createImageBitmap === 'function') {
@@ -617,11 +728,14 @@ export async function compressImage(file) {
       const img = await new Promise((resolve, reject) => {
         const el = new Image();
         el.onload = () => resolve(el);
-        el.onerror = () => reject(new Error(
-          /\.(heic|heif)$/i.test(file.name || '') || /hei[cf]/i.test(file.type || '')
-            ? 'Trình duyệt chưa đọc được ảnh HEIC. Hãy đổi sang JPG/PNG hoặc chụp ở chế độ "Tương thích nhất".'
-            : 'Không đọc được ảnh.'
-        ));
+        el.onerror = () =>
+          reject(
+            new Error(
+              /\.(heic|heif)$/i.test(file.name || '') || /hei[cf]/i.test(file.type || '')
+                ? 'Trình duyệt chưa đọc được ảnh HEIC. Hãy đổi sang JPG/PNG hoặc chụp ở chế độ "Tương thích nhất".'
+                : 'Không đọc được ảnh.'
+            )
+          );
         el.src = url;
       });
       bitmap = img;
@@ -674,7 +788,7 @@ export async function compressImage(file) {
       height,
       originalWidth: W,
       originalHeight: H,
-      sizeKB: Math.round(dataUrl.length * 0.75 / 1024),
+      sizeKB: Math.round((dataUrl.length * 0.75) / 1024),
     };
   } finally {
     cleanup();
