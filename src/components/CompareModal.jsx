@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { askAI } from '../lib/ai.js';
+import { askAI, COMPARE_SYSTEM_PROMPT } from '../lib/ai.js';
 import { MarkdownLike } from './ChatMarkdown.jsx';
 import { HOT_AI } from './hotData.js';
 import AIMark from './AIMark.jsx';
@@ -35,7 +35,7 @@ export default function CompareModal({ tools, onClose }) {
 - Lý do nên dùng: ${meta.why || 'không có dữ liệu'}`;
     }).join('\n');
 
-    return `Bạn là chuyên gia đánh giá công cụ AI. Hãy so sánh ${tools.length} công cụ sau một cách khách quan, chi tiết và hữu ích cho người dùng Việt Nam.
+    return `Hãy so sánh ${tools.length} công cụ AI sau đây một cách khách quan, chi tiết và hữu ích cho người dùng Việt Nam:
 
 ${list}
 
@@ -49,24 +49,28 @@ YÊU CẦU:
    - Hỗ trợ tiếng Việt
    - Phù hợp với ai
 3. Sau bảng, viết phần "Nên chọn cái nào?" — chia theo 3-4 tình huống cụ thể (ví dụ: "Nếu bạn là học sinh...", "Nếu bạn cần miễn phí...", "Nếu bạn cần chuyên nghiệp...").
-4. Kết luận ngắn 2-3 câu.
+4. Kết luận ngắn 2-3 câu với khuyến nghị rõ ràng.
 
-QUAN TRỌNG:
+ĐỊNH DẠNG:
 - Trả lời bằng tiếng Việt.
-- Không dùng LaTeX.
 - Dùng bảng markdown (| ... | ... |) để dễ đọc.
 - Khách quan, không thiên vị.
 - Ngắn gọn, súc tích, tránh lan man.`;
   };
 
-  /* Gọi AI */
+  /* Gọi AI với system prompt riêng cho so sánh */
   const runCompare = async () => {
     setLoading(true);
     setErr('');
     setResult('');
     try {
       const history = [{ role: 'user', parts: [{ text: buildPrompt() }] }];
-      await askAI(history, (partial) => setResult(partial));
+      await askAI(
+        history,
+        (partial) => setResult(partial),
+        null,
+        COMPARE_SYSTEM_PROMPT
+      );
     } catch (e) {
       setErr(e?.message || 'Không gọi được AI. Kiểm tra mạng hoặc API.');
     } finally {
