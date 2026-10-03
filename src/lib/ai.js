@@ -29,36 +29,43 @@ class AbortError extends Error {
 }
 
 /* ============================================================
-   DANH SÁCH MODEL GROQ
-   - llama-3.3-70b-versatile: mạnh nhất, đa dụng
-   - llama-3.1-8b-instant: nhanh nhất, nhẹ
-   - openai/gpt-oss-120b: model mã nguồn mở của OpenAI
-   - qwen/qwen3-32b: tốt cho đa ngôn ngữ
-   - moonshotai/kimi-k2-instruct: mạnh về lập luận
+   DANH SÁCH MODEL GROQ — Cập nhật 2026
+   - Model text (không hỗ trợ ảnh)
+   - Model vision (hỗ trợ ảnh) — tách riêng
    ============================================================ */
-const MODELS = [
-  'llama-3.3-70b-versatile',
-  'openai/gpt-oss-120b',
-  'moonshotai/kimi-k2-instruct',
-  'qwen/qwen3-32b',
-  'llama-3.1-8b-instant',
+
+// Model mạnh, không hỗ trợ ảnh
+const TEXT_MODELS = [
+  'openai/gpt-oss-120b',              // Mạnh nhất, agentic
+  'llama-3.3-70b-versatile',          // Đa dụng, ổn định, 500K TPD
+  'qwen/qwen3-32b',                   // Reasoning mạnh
+  'moonshotai/kimi-k2-instruct',      // Tool calling tốt
+  'openai/gpt-oss-20b',               // Nhẹ hơn
+  'llama-3.1-8b-instant',             // Nhanh nhất
 ];
 
-// Groq không có model vision riêng cho mọi tài khoản.
-// Nếu tài khoản được bật, có thể dùng llama-3.2-11b-vision-preview.
+// Model vision (chỉ dùng khi có ảnh)
 const VISION_MODELS = [
-  'llama-3.2-11b-vision-preview',
-  'llama-3.2-90b-vision-preview',
+  'qwen/qwen3.8-27b',                            // Vision chính thức, ổn định nhất
+  'meta-llama/llama-4-maverick-17b-128e-instruct', // Hỗ trợ 5 ảnh
+  'llama-3.2-90b-vision-preview',                // Vision cũ (nếu còn)
+  'llama-3.2-11b-vision-preview',                // Vision nhẹ
 ];
 
+// Set để kiểm tra nhanh model có hỗ trợ vision không
+const GROQ_VISION_MODELS = new Set(VISION_MODELS);
+
+// Model ưu tiên cho từng loại tác vụ
 const FAST_MODELS = [
   'llama-3.1-8b-instant',
+  'openai/gpt-oss-20b',
   'llama-3.3-70b-versatile',
 ];
 
 const STRONG_MODELS = [
-  'llama-3.3-70b-versatile',
   'openai/gpt-oss-120b',
+  'llama-3.3-70b-versatile',
+  'qwen/qwen3-32b',
   'moonshotai/kimi-k2-instruct',
 ];
 
@@ -67,18 +74,18 @@ function keepError(prev, next) {
 }
 
 function orderModels(hasImage, type) {
-  const first = hasImage
-    ? VISION_MODELS
-    : type === 'problem' || type === 'theory'
-    ? STRONG_MODELS
-    : FAST_MODELS;
-  return [...first, ...MODELS.filter((m) => !first.includes(m))];
+  if (hasImage) {
+    // Có ảnh → ưu tiên model vision, sau đó mới fallback sang text
+    return [...VISION_MODELS, ...TEXT_MODELS];
+  }
+  const first = type === 'problem' || type === 'theory' ? STRONG_MODELS : FAST_MODELS;
+  return [...first, ...TEXT_MODELS.filter((m) => !first.includes(m))];
 }
 
 const maxTokensFor = (type) =>
   type === 'problem' ? 8192 : type === 'theory' ? 4096 : 2048;
 
-/* Groq dùng reasoning_effort cho các model hỗ trợ (gpt-oss) */
+/* Groq dùng reasoning_effort cho model gpt-oss */
 const reasoningEffortFor = (type) => {
   if (type === 'problem') return 'high';
   if (type === 'theory') return 'medium';
@@ -155,7 +162,7 @@ CÁCH TRẢ LỜI BÀI TẬP — CHỈ 3 PHẦN NGẮN:
 `;
 
 /* ============================================================
-   UNICODE / LATEX CONVERTER (giữ nguyên)
+   UNICODE / LATEX CONVERTER
    ============================================================ */
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
@@ -294,35 +301,69 @@ function getTemperature(type) {
 }
 
 /* ============================================================
-   CHUYỂN ĐỔI HISTORY → GROQ MESSAGES (chuẩn OpenAI)
-   - role 'model' → 'assistant'
-   - parts [{text}, {inlineData}] → content + image_url (data URI)
+   CHUYỂN ĐỔI HISTORY → GROQ MESSAGES
+   - Đảm bảo content LUÔN là string cho assistant
+   - Tự động bỏ ảnh nếu model không hỗ trợ vision
    ============================================================ */
-function prepareGroqMessages(history) {
+function prepareGroqMessages(history, model) {
   const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
+  const supportsVision = GROQ_VISION_MODELS.has(model);
 
   for (const message of history) {
     const role = message.role === 'model' ? 'assistant' : 'user';
 
-    // Assistant: chỉ text, không có ảnh
+    // ===== ASSISTANT: content luôn là string =====
     if (role === 'assistant') {
-      const text = message.parts?.[0]?.text || message.text || '';
-      messages.push({ role, content: text });
-      continue;
-    }
+      let text = '';
 
-    // User: có thể có text + ảnh
-    const parts = message.parts || [];
-    const textParts = parts.filter((p) => p.text).map((p) => p.text);
-    const text = textParts.join('\n') || message.text || '';
-    const imageParts = parts.filter((p) => p.inlineData);
+      // Ưu tiên 1: định dạng OpenAI (content là string)
+      if (typeof message.content === 'string') {
+        text = message.content;
+      }
+      // Ưu tiên 2: content là mảng (multimodal)
+      else if (Array.isArray(message.content)) {
+        text = message.content
+          .filter((p) => p.type === 'text' || p.text)
+          .map((p) => p.text || '')
+          .join('\n');
+      }
+      // Ưu tiên 3: định dạng Gemini (parts)
+      else if (Array.isArray(message.parts)) {
+        text = message.parts
+          .filter((p) => p.text)
+          .map((p) => p.text)
+          .join('\n');
+      }
+      // Ưu tiên 4: text trực tiếp
+      else if (typeof message.text === 'string') {
+        text = message.text;
+      }
 
-    if (imageParts.length === 0) {
       messages.push({ role, content: text || '' });
       continue;
     }
 
-    // Groq vision dùng format OpenAI: content là array
+    // ===== USER: có thể có text + ảnh =====
+    const parts = Array.isArray(message.parts) ? message.parts : [];
+    const textParts = parts.filter((p) => p.text).map((p) => p.text);
+    const text = textParts.join('\n') || message.text || '';
+    const imageParts = parts.filter((p) => p.inlineData);
+
+    // Nếu model không hỗ trợ vision → chỉ gửi text, bỏ ảnh
+    if (!supportsVision || imageParts.length === 0) {
+      // Nếu có ảnh nhưng model không vision, thêm ghi chú thay thế
+      let finalText = text;
+      if (imageParts.length > 0 && !supportsVision) {
+        const note = imageParts.length === 1
+          ? '[Người dùng gửi 1 ảnh nhưng model hiện tại không hỗ trợ đọc ảnh]'
+          : `[Người dùng gửi ${imageParts.length} ảnh nhưng model hiện tại không hỗ trợ đọc ảnh]`;
+        finalText = text ? `${text}\n\n${note}` : note;
+      }
+      messages.push({ role, content: finalText || '' });
+      continue;
+    }
+
+    // Model vision → gửi content dạng mảng (chuẩn OpenAI)
     const content = [];
     if (text) content.push({ type: 'text', text });
     for (const img of imageParts) {
@@ -394,7 +435,6 @@ async function streamOne({
       console.warn(`[A7 Assistant] ✗ ${model} → ${status}`, bodyText.slice(0, 300));
 
       if (status === 429) {
-        // Groq trả 429 khi hết quota hoặc vượt rate limit
         const retryAfter = res.headers.get('retry-after') || '60';
         const err = new OutOfQuotaError(
           `${MSG_OUT_OF_QUOTA}\n\n(Thử lại sau ${retryAfter} giây.)`
@@ -413,15 +453,14 @@ async function streamOne({
         throw new Error(MSG_API_KEY_ERROR);
       }
 
-      // Model không tồn tại → thử model kế
       if (status === 404) {
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
         throw err;
       }
 
-      // 400 có thể do model không hỗ trợ vision, hoặc reasoning_effort không hợp lệ
       if (status === 400) {
+        // Reasoning không hợp lệ → thử lại không có reasoning
         if (reasoningEffort && /reasoning/i.test(bodyText)) {
           reader?.cancel?.().catch?.(() => {});
           clearTimeout(stall);
@@ -436,11 +475,18 @@ async function streamOne({
             onChunk,
           });
         }
-        // Có thể do gửi ảnh nhưng model không hỗ trợ
-        if (/vision|image|multimodal/i.test(bodyText)) {
+        // Vision không hỗ trợ → coi như lỗi tạm để thử model khác
+        if (/vision|image|multimodal|content must be a string/i.test(bodyText)) {
           const err = new Error(`${model} không hỗ trợ ảnh`);
           err.status = 400;
-          err.isOverload = true; // coi như lỗi tạm để thử model khác
+          err.isOverload = true;
+          throw err;
+        }
+        // Content không phải string → coi như lỗi tạm
+        if (/must be a string/i.test(bodyText)) {
+          const err = new Error(`${model} yêu cầu content là string`);
+          err.status = 400;
+          err.isOverload = true;
           throw err;
         }
       }
@@ -497,7 +543,7 @@ async function streamOne({
 }
 
 /* ============================================================
-   HÀM CHÍNH — askAI (giữ nguyên logic hedge, retry, abort)
+   HÀM CHÍNH — askAI
    ============================================================ */
 export function askAI(history, onChunk, onReasoning) {
   if (!API_KEY) {
@@ -513,7 +559,6 @@ export function askAI(history, onChunk, onReasoning) {
       : { ...m, parts: m.parts.map((p) => (p.inlineData ? { text: '[ảnh đã gửi trước đó]' } : p)) }
   );
 
-  const messages = prepareGroqMessages(recent);
   const requestType = detectRequestType(recent);
   const temperature = getTemperature(requestType);
   const maxTokens = maxTokensFor(requestType);
@@ -591,6 +636,9 @@ export function askAI(history, onChunk, onReasoning) {
       const ctrl = new AbortController();
       ctrls[i] = ctrl;
       running++;
+
+      // Chuẩn bị messages RIÊNG cho từng model (quan trọng: vision vs text)
+      const messages = prepareGroqMessages(recent, model);
 
       hedgeTimer = setTimeout(launch, HEDGE_MS);
 
@@ -689,7 +737,7 @@ export function askAI(history, onChunk, onReasoning) {
 }
 
 /* ============================================================
-   NÉN ẢNH (giữ nguyên)
+   NÉN ẢNH
    ============================================================ */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
@@ -796,4 +844,4 @@ export async function compressImage(file) {
 }
 
 export const AI_READY = Boolean(API_KEY);
-export { MODELS };
+export { TEXT_MODELS as MODELS, VISION_MODELS, GROQ_VISION_MODELS };
