@@ -39,6 +39,7 @@ import DesktopNav from './components/DesktopNav.jsx';
 import StudySheet from './components/StudySheet.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import Landing from './components/Landing.jsx';
+import SiteFooter from './components/SiteFooter.jsx';
 
 import { useAuth } from './hooks/useAuth.jsx';
 import './app-extra.css';
@@ -272,8 +273,7 @@ export default function App() {
     );
   }
 
-  /* Khách: luôn thấy landing page. Đăng nhập/đăng ký (#login, #register) và mọi
-     chức năng cần tài khoản (#ai, #quiz, #table…) chỉ mở hộp thoại, không đổi trang. */
+  /* Khách: luôn thấy landing page. */
   if (!isLoggedIn) {
     return (
       <Landing
@@ -329,10 +329,7 @@ export default function App() {
     if (page === 'games/battle') return <ElementBattle />;
     if (page === 'games/sudoku') return <ChemSudoku />;
 
-    /* ============ ADMIN ============ */
     if (page === 'admin' && isAdmin(user)) {
-      /* AdminPanel đã tự có sidebar + điều hướng (Tổng quan, Đề thi, Tạo đề,
-         Câu hỏi, Người dùng, Hoạt động, Cài đặt, Hướng dẫn) */
       return <AdminPanel />;
     }
 
@@ -405,25 +402,8 @@ export default function App() {
         </div>
       </dialog>
 
-      {/* Footer */}
-      <footer className="foot">
-        <div>
-          <b>A7 K60 DTA</b>
-          <p>bycode Duy TK</p>
-        </div>
-        <nav aria-label="Liên kết chân trang">
-          <a href="#table">Bảng tuần hoàn</a>
-          <a href="#formulas">Công thức nhanh</a>
-          <a href="#balance">Cân bằng PTHH</a>
-          <a href="#notebook">Sổ tay</a>
-          <a href="#stats">Thống kê</a>
-          <a href="#pomodoro">Clock Hub</a>
-          <a href="#exam">Kỳ thi</a>
-          <a href="#grade">Tính điểm</a>
-          <a href="#games">Trò chơi</a>
-        </nav>
-        <small>© 2026 A7 K60 DTA — bycode Duy TK</small>
-      </footer>
+      {/* ============ FOOTER + BANNER (dùng chung) ============ */}
+      <SiteFooter />
 
       {/* Bottom nav mobile */}
       <BottomNav page={page} />

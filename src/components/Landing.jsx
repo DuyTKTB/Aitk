@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense, useCallback } from 'react';
 import AIMark from './AIMark.jsx';
+import SiteFooter from './SiteFooter.jsx';
 import './landing-v3.css';
 import './landing-ocean.css';
 
@@ -129,42 +130,12 @@ const TRACK = [
 ];
 
 const FAQS = [
-  {
-    cat: 'Cơ bản',
-    icon: '💡',
-    q: 'Mình có phải trả phí không?',
-    a: 'Không. Tài khoản học sinh miễn phí. Gói VIP đang được chuẩn bị và sẽ chỉ là tùy chọn. Bạn có thể dùng đầy đủ các công cụ cơ bản mà không mất phí.',
-  },
-  {
-    cat: 'AI',
-    icon: '🤖',
-    q: 'AI có giải được bài từ ảnh chụp không?',
-    a: 'Có. Bạn chụp đề bài, AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.',
-  },
-  {
-    cat: 'AI',
-    icon: '🎯',
-    q: 'Kết quả của AI có chính xác tuyệt đối không?',
-    a: 'Không. AI có thể sai, nhất là bài tính toán dài. Hãy đọc kỹ từng bước và đối chiếu với sách giáo khoa khi cần. AI được thiết kế để hỗ trợ, không thay thế bạn.',
-  },
-  {
-    cat: 'Tính năng',
-    icon: '📚',
-    q: 'Sổ câu sai hoạt động thế nào?',
-    a: 'Khi làm quiz, câu sai được lưu lại cùng đáp án đúng. Bạn mở sổ tay để ôn riêng những câu đó, không phải làm lại cả đề. Cuối tuần chỉ cần xem lại là đủ.',
-  },
-  {
-    cat: 'Cơ bản',
-    icon: '📱',
-    q: 'Mình dùng được trên điện thoại không?',
-    a: 'Được. Trang chạy trên trình duyệt điện thoại và có thể thêm vào màn hình chính như một ứng dụng. Giao diện tự động điều chỉnh cho màn hình nhỏ.',
-  },
-  {
-    cat: 'Bảo mật',
-    icon: '🔒',
-    q: 'Dữ liệu học tập của mình được lưu ở đâu?',
-    a: 'Tiến độ, sổ câu sai và ghi chú gắn với tài khoản của bạn, nên đăng nhập trên máy khác vẫn thấy lại. Chúng tôi không chia sẻ dữ liệu với bên thứ ba.',
-  },
+  { cat: 'Cơ bản', icon: '💡', q: 'Mình có phải trả phí không?', a: 'Không. Tài khoản học sinh miễn phí. Gói VIP đang được chuẩn bị và sẽ chỉ là tùy chọn. Bạn có thể dùng đầy đủ các công cụ cơ bản mà không mất phí.' },
+  { cat: 'AI', icon: '🤖', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp đề bài, AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
+  { cat: 'AI', icon: '🎯', q: 'Kết quả của AI có chính xác tuyệt đối không?', a: 'Không. AI có thể sai, nhất là bài tính toán dài. Hãy đọc kỹ từng bước và đối chiếu với sách giáo khoa khi cần. AI được thiết kế để hỗ trợ, không thay thế bạn.' },
+  { cat: 'Tính năng', icon: '📚', q: 'Sổ câu sai hoạt động thế nào?', a: 'Khi làm quiz, câu sai được lưu lại cùng đáp án đúng. Bạn mở sổ tay để ôn riêng những câu đó, không phải làm lại cả đề. Cuối tuần chỉ cần xem lại là đủ.' },
+  { cat: 'Cơ bản', icon: '📱', q: 'Mình dùng được trên điện thoại không?', a: 'Được. Trang chạy trên trình duyệt điện thoại và có thể thêm vào màn hình chính như một ứng dụng. Giao diện tự động điều chỉnh cho màn hình nhỏ.' },
+  { cat: 'Bảo mật', icon: '🔒', q: 'Dữ liệu học tập của mình được lưu ở đâu?', a: 'Tiến độ, sổ câu sai và ghi chú gắn với tài khoản của bạn, nên đăng nhập trên máy khác vẫn thấy lại. Chúng tôi không chia sẻ dữ liệu với bên thứ ba.' },
 ];
 
 const FEEDBACK = [['bug', 'Báo lỗi'], ['idea', 'Góp ý'], ['star', 'Khen ngợi']];
@@ -1047,33 +1018,8 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         </section>
       </main>
 
-      {/* ============ FOOTER ============ */}
-      <footer className="lp-foot lp-wrap">
-        <div className="lp-foot-top">
-          <div className="lp-foot-brand">
-            <b>A7 K60 DTA</b>
-            <small>Trợ lý AI Hóa học cho học sinh 10–12. Học chủ động, hiểu tận gốc.</small>
-          </div>
-          <div className="lp-foot-links">
-            <div>
-              <b>Sản phẩm</b>
-              <button type="button" onClick={() => go('lp-story')}>Cách học</button>
-              <button type="button" onClick={() => go('lp-feat')}>Công cụ</button>
-              <button type="button" onClick={() => go('lp-grades')}>Lộ trình</button>
-            </div>
-            <div>
-              <b>Hỗ trợ</b>
-              <button type="button" onClick={() => setFbOpen(true)}>Gửi phản hồi</button>
-              <a href="#login">Đăng nhập</a>
-              <a href="#register">Đăng ký</a>
-            </div>
-          </div>
-        </div>
-        <div className="lp-foot-bot">
-          <small>© 2026 · bycode Duy TK</small>
-          <small>Made with ⚗ in Vietnam</small>
-        </div>
-      </footer>
+      {/* ============ FOOTER + BANNER (dùng chung) ============ */}
+      <SiteFooter />
 
       <button type="button" className="lp-fab" onClick={() => setFbOpen(true)} aria-label="Gửi phản hồi">
         <IcoChat />

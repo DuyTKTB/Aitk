@@ -35,7 +35,6 @@ import '../AIChat-glass-v2.css';
 /* ============================================================
    ICONS
    ============================================================ */
-
 const IcoAIStar = ({ size = 18 }) => (
   <svg className="ds-sparkle" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <path d="M10 3.2c.5 3.9 2.4 6.1 6.3 6.8-3.9.7-5.8 2.9-6.3 6.8-.5-3.9-2.4-6.1-6.3-6.8C7.6 9.3 9.5 7.1 10 3.2Z" />
@@ -74,7 +73,6 @@ const IcoSpeakerOff = ({ size = 14 }) => (
 /* ============================================================
    CONSTANTS
    ============================================================ */
-
 const CLASSES = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
 
 const QUICK_PROMPTS = [
@@ -96,6 +94,7 @@ const SUGGESTION_POOL = [
   { tag: 'Oxi hóa - khử', text: 'Cách xác định chất oxi hóa và chất khử', icon: 'bulb' },
   { tag: 'Liên kết hóa học', text: 'Phân biệt liên kết ion và liên kết cộng hóa trị', icon: 'steps' },
 ];
+
 const pickSuggestions = (seed) => {
   const arr = [...SUGGESTION_POOL];
   let x = seed || 1;
@@ -170,6 +169,23 @@ const withImages = (m) => {
   return { ...m, parts: [...(m.parts || []), ...extra] };
 };
 
+/* ============================================================
+   STRIP MARKDOWN — Fix lỗi hiển thị ** ** trong preview
+   ============================================================ */
+const stripMarkdown = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const SpeechRec = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
   : null;
@@ -179,7 +195,6 @@ const GROUP_LABELS = { today: 'Hôm nay', yesterday: 'Hôm qua', week: '7 ngày 
 /* ============================================================
    HELPERS
    ============================================================ */
-
 function groupChats(chats) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
@@ -202,7 +217,7 @@ function getChatMessages(chat, max = 8) {
   chat.messages.forEach((m, i) => {
     if (m.role === 'user') {
       const imgCount = m.preview?.images?.length || (m.preview?.img ? 1 : 0);
-      const label = m.preview?.text
+      const label = stripMarkdown(m.preview?.text)
         || (imgCount > 1 ? `[${imgCount} ảnh]` : imgCount === 1 ? '[Ảnh]' : 'Tin nhắn');
       out.push({ id: i, text: label.slice(0, 60) });
     }
@@ -215,7 +230,7 @@ function getChatPreview(chat) {
   const m = chat.messages[chat.messages.length - 1];
 
   if (m.role === 'user') {
-    const t = m.preview?.text?.trim();
+    const t = stripMarkdown(m.preview?.text);
     const nImg = m.preview?.images?.length || 0;
     if (t) return { role: 'user', text: t.slice(0, 40) };
     if (nImg > 0) return { role: 'user', text: `[${nImg} ảnh]` };
@@ -224,19 +239,18 @@ function getChatPreview(chat) {
 
   return {
     role: 'ai',
-    text: (m.text || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+    text: stripMarkdown(m.text).slice(0, 40),
   };
 }
 
 /* ============================================================
    SUBCOMPONENTS
    ============================================================ */
-
 function UserAvatar({ user, initial, color }) {
   return (
     <div className="ds-user-avatar" style={{ background: color, color: '#111' }}>
       {user?.photoURL
-        ? <img src={user.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+        ? <img src={user.photoURL} alt="" />
         : initial}
     </div>
   );
@@ -322,9 +336,9 @@ function Lightbox({ state, onChange, onClose }) {
   );
 }
 
-function QuotaRing({ left, total, size = 32, label }) {
+function QuotaRing({ left, total, size = 34, label }) {
   const pct = total === Infinity ? 100 : Math.max(0, (left / total) * 100);
-  const r = (size - 4) / 2;
+  const r = (size - 6) / 2;
   const c = 2 * Math.PI * r;
   const off = c * (1 - pct / 100);
   const color = pct > 50 ? '#10b981' : pct > 20 ? '#f59e0b' : '#ef4444';
@@ -334,12 +348,12 @@ function QuotaRing({ left, total, size = 32, label }) {
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke="currentColor" strokeWidth="2"
+          fill="none" stroke="currentColor" strokeWidth="2.5"
           opacity=".15"
         />
         <circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke={color} strokeWidth="2"
+          fill="none" stroke={color} strokeWidth="2.5"
           strokeDasharray={c} strokeDashoffset={off}
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -354,7 +368,6 @@ function QuotaRing({ left, total, size = 32, label }) {
 /* ============================================================
    MAIN COMPONENT
    ============================================================ */
-
 export default function AIChat() {
   const { user, tier, logout } = useAuth();
   const uid = user?.uid;
@@ -425,9 +438,7 @@ export default function AIChat() {
   const lastMsg = messages[messages.length - 1];
   const canRetry = !loading && lastMsg?.role === 'user';
 
-  /* ============================================================
-     TTS — Kiểm tra hỗ trợ
-     ============================================================ */
+  /* TTS */
   useEffect(() => {
     setTtsSupported(tts.isSupported());
     return () => tts.stop();
@@ -436,9 +447,7 @@ export default function AIChat() {
     if (!visible) tts.stop();
   }, [visible]);
 
-  /* ============================================================
-     SYNC CHAT LÊN SUPABASE
-     ============================================================ */
+  /* SYNC CHAT LÊN SUPABASE */
   useEffect(() => {
     if (!uid) { setSynced(true); return undefined; }
 
@@ -467,7 +476,6 @@ export default function AIChat() {
           if (local.length > 0) {
             try {
               await migrateLocalChats(uid, local);
-              console.log(`[AIChat] Đã migrate ${local.length} chat lên server`);
             } catch (e) {
               console.warn('[AIChat] Migrate fail:', e.message);
             }
@@ -486,6 +494,7 @@ export default function AIChat() {
       cancelAllSyncs();
     };
   }, [uid]);
+
   useEffect(() => {
     if (!uid || !synced) return undefined;
     const timer = setTimeout(() => {
@@ -504,9 +513,7 @@ export default function AIChat() {
     return () => clearTimeout(timer);
   }, [chats, pinnedIds, uid, synced]);
 
-  /* ============================================================
-     TTS — Auto-read khi có tin nhắn mới
-     ============================================================ */
+  /* TTS Auto-read */
   useEffect(() => {
     if (!autoSpeak || !ttsSupported) return;
     if (loading) return;
@@ -521,9 +528,7 @@ export default function AIChat() {
       .finally(() => setSpeakingId((cur) => (cur === id ? null : cur)));
   }, [messages.length, autoSpeak, ttsSupported, loading]);
 
-  /* ============================================================
-     ĐIỀU HƯỚNG
-     ============================================================ */
+  /* ĐIỀU HƯỚNG */
   const goProfile = () => { setUserMenuOpen(false); location.hash = 'profile'; };
   const goUpgrade = () => {
     setUserMenuOpen(false);
@@ -587,9 +592,7 @@ export default function AIChat() {
     return () => { clearTimeout(t); document.removeEventListener('click', close); };
   }, [userMenuOpen]);
 
-  /* ============================================================
-     CUỘN
-     ============================================================ */
+  /* CUỘN */
   const hasMessages = messages.length > 0;
   useEffect(() => {
     const el = end.current;
@@ -638,9 +641,7 @@ export default function AIChat() {
     });
   }, [setPinnedIds]);
 
-  /* ============================================================
-     KHÁC
-     ============================================================ */
+  /* KHÁC */
   useEffect(() => {
     if (!activeId && chats.length > 0) setActiveId(chats[0].id);
   }, [chats.length, activeId, setActiveId, chats]);
@@ -695,9 +696,7 @@ export default function AIChat() {
     return () => removeEventListener('keydown', onKey);
   }, []);
 
-  /* ============================================================
-     ẢNH
-     ============================================================ */
+  /* ẢNH */
   const handleFiles = useCallback(async (files) => {
     const fileArr = Array.from(files || []);
     if (fileArr.length === 0) return;
@@ -771,9 +770,7 @@ export default function AIChat() {
     return () => removeEventListener('paste', onPaste);
   }, [handleFiles]);
 
-  /* ============================================================
-     NHẬP BẰNG GIỌNG NÓI
-     ============================================================ */
+  /* NHẬP BẰNG GIỌNG NÓI */
   const toggleVoice = () => {
     if (!SpeechRec) { setErr('Trình duyệt này chưa hỗ trợ nhập giọng nói. Hãy dùng Chrome hoặc Safari mới.'); return; }
     if (recRef.current) { recRef.current.stop(); return; }
@@ -799,9 +796,7 @@ export default function AIChat() {
   };
   useEffect(() => () => recRef.current?.abort?.(), []);
 
-  /* ============================================================
-     TTS — Đọc tin nhắn
-     ============================================================ */
+  /* TTS — Đọc tin nhắn */
   const speakMsg = async (text, id) => {
     if (!ttsSupported) return;
     if (speakingId === id) {
@@ -820,9 +815,7 @@ export default function AIChat() {
     }
   };
 
-  /* ============================================================
-     XUẤT CHAT (.md)
-     ============================================================ */
+  /* XUẤT CHAT (.md) */
   const exportChat = () => {
     if (!activeChat || activeChat.messages.length === 0) return;
     const lines = [`# ${activeChat.title}`, ''];
@@ -845,9 +838,7 @@ export default function AIChat() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  /* ============================================================
-     ĐỔI TÊN CHAT
-     ============================================================ */
+  /* ĐỔI TÊN CHAT */
   const startRename = (c, e) => {
     e?.stopPropagation();
     setRenamingId(c.id);
@@ -863,9 +854,7 @@ export default function AIChat() {
     setRenamingId(null);
   };
 
-  /* ============================================================
-     SỬA TIN NHẮN ĐÃ GỬI
-     ============================================================ */
+  /* SỬA TIN NHẮN ĐÃ GỬI */
   const editMessage = (idx) => {
     if (loading || !activeChat) return;
     const m = activeChat.messages[idx];
@@ -886,9 +875,7 @@ export default function AIChat() {
     setTimeout(() => inputRef.current?.focus(), 80);
   };
 
-  /* ============================================================
-     QUẢN LÝ CHAT
-     ============================================================ */
+  /* QUẢN LÝ CHAT */
   const newChat = () => {
     const id = rid();
     const chat = { id, title: 'Trò chuyện mới', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
@@ -975,9 +962,7 @@ export default function AIChat() {
     }, 200);
   };
 
-  /* ============================================================
-     GỌI AI
-     ============================================================ */
+  /* GỌI AI */
   const denyQuota = (hasImg) => {
     if (canSend(uid, tier, hasImg)) return false;
     setQuotaError(
@@ -1251,9 +1236,7 @@ export default function AIChat() {
     send();
   };
 
-  /* ============================================================
-     DỮ LIỆU HIỂN THỊ
-     ============================================================ */
+  /* DỮ LIỆU HIỂN THỊ */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const arr = q
@@ -1282,9 +1265,7 @@ export default function AIChat() {
     ? `Đã chọn ${images.length} ảnh — thêm mô tả (không bắt buộc)…`
     : 'Hỏi về Hóa học, hoặc dán ảnh đề bài…';
 
-  /* ============================================================
-     RENDER
-     ============================================================ */
+  /* RENDER */
   return (
     <div
       className="ds-page"
@@ -1394,18 +1375,12 @@ export default function AIChat() {
                             {preview.text && renamingId !== c.id && (
                               <span className={`ds-chat-item-preview ${preview.role}`}>
                                 {preview.role === 'ai' ? (
-                                  <img
-                                    src="/img/logo.png"
-                                    alt=""
-                                    className="ds-preview-ico"
-                                    aria-hidden="true"
-                                    draggable={false}
-                                  />
+                                  <AIMark size={12} animate={false} className="ds-preview-ico" />
                                 ) : (
                                   <svg
                                     className="ds-preview-ico user"
-                                    width="14"
-                                    height="14"
+                                    width="12"
+                                    height="12"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
@@ -1432,10 +1407,10 @@ export default function AIChat() {
                             <IcoPin filled={isPinned} />
                           </button>
                           <button className="ds-chat-item-edit" onClick={(e) => startRename(c, e)} type="button" aria-label="Đổi tên" title="Đổi tên">
-                            <IcoEdit size={13} />
+                            <IcoEdit size={12} />
                           </button>
                           <button className="ds-chat-item-del" onClick={(e) => deleteChat(c.id, e)} type="button" aria-label="Xóa">
-                            <IcoTrash size={13} />
+                            <IcoTrash size={12} />
                           </button>
                         </div>
 
@@ -1597,7 +1572,7 @@ export default function AIChat() {
 
           {messages.length === 0 && !(showLive && (streaming || reasoning)) ? (
             <div className="ds-empty">
-              <AIMark size={200} look mode={markMode} animate={visible} />
+              <AIMark size={180} look mode={markMode} animate={visible} />
               <h1 className="ds-empty-title">Hôm nay bạn muốn hỏi gì về Hóa?</h1>
               <p className="ds-empty-sub">
                 Gõ câu hỏi, dán ảnh đề bài hoặc chụp trang sách. Tối đa {MAX_IMAGES} ảnh cùng lúc.
@@ -1605,7 +1580,7 @@ export default function AIChat() {
               <div className="ds-suggestions">
                 {suggestions.map((s) => (
                   <button key={s.text} className="ds-suggestion" onClick={() => send(s.text)} type="button">
-                    <span className="ds-suggestion-icon"><PromptIcon name={s.icon} size={22} /></span>
+                    <span className="ds-suggestion-icon"><PromptIcon name={s.icon} size={20} /></span>
                     <span className="ds-suggestion-body">
                       <span className="ds-suggestion-tag">{s.tag}</span>
                       <span className="ds-suggestion-text">{s.text}</span>
@@ -1802,10 +1777,9 @@ export default function AIChat() {
               {images.map((img, idx) => (
                 <div key={img.id} className="ds-img-grid-item">
                   <img
-                    src={img.dataUrl}
+                    src={img.thumb || img.dataUrl}
                     alt={img.name}
-                    style={{ aspectRatio: img.width && img.height ? `${img.width} / ${img.height}` : undefined }}
-                    onClick={() => setLightbox({ list: images.map((x) => x.dataUrl), index: idx })}
+                    onClick={() => setLightbox({ list: images.map((x) => x.thumb || x.dataUrl), index: idx })}
                   />
                   <span className="ds-img-grid-n">{idx + 1}</span>
                   <button

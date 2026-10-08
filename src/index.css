@@ -13095,3 +13095,200 @@ html body .petw:active {
     border-top-color: var(--soft);
   }
 }
+/* ============================================================
+   FIX Z-INDEX LOGO — Dán vào CUỐI index.css
+   ============================================================ */
+
+/* Đảm bảo mọi logo trang trí (CUAI TK MEDIA) không đè lên UI */
+.cuai-logo,
+.cuai-brand,
+.logo-cuai,
+[class*="cuai-logo"],
+[class*="cuai-brand"] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Footer luôn trên logo trang trí */
+.foot {
+  position: relative;
+  z-index: 10;
+}
+
+/* Input bar của AI chat và các overlay luôn trên cùng */
+.ds-input-wrap {
+  z-index: 9999;
+}
+
+.ds-lightbox,
+.ds-dropzone {
+  z-index: 100000;
+}
+
+.chatfab {
+  z-index: 9998;
+}
+
+.cw-fab {
+  z-index: 9998;
+}
+
+.petw {
+  z-index: 9997;
+}
+
+/* ============================================================
+   FIX LOGO MOBILE HEADER
+   ============================================================ */
+@media (max-width: 720px) {
+  .mhead-bar {
+    min-height: 60px;
+  }
+
+  .mhead-logo {
+    height: 48px;
+    width: auto;
+    max-width: none;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+
+  .mhead-logo img,
+  .mhead-logo svg,
+  .mhead-logo picture,
+  .mhead-logo > * {
+    height: 48px;
+    width: auto;
+    max-height: 48px;
+    max-width: none;
+    object-fit: contain;
+    display: block;
+  }
+}
+/* ============================================================
+   FIX TRIỆT ĐỂ — Logo CUAI TK MEDIA đè lên UI
+   Dán vào CUỐI index.css
+   ============================================================ */
+
+/* ---- 1. Ẩn logo CUAI TK MEDIA khi không ở trang chủ/landing ---- */
+/* Logo này có thể là <img>, <svg>, hoặc <div> với class chứa "cuai" */
+body:not(.on-landing) [class*="cuai-logo"],
+body:not(.on-landing) [class*="cuai-brand"],
+body:not(.on-landing) [class*="cuai-mark"],
+body:not(.on-landing) .cuai-logo,
+body:not(.on-landing) .cuai-brand,
+body:not(.on-landing) .cuai-mark {
+  display: none !important;
+}
+
+/* ---- 2. Ẩn logo TK MEDIA lớn nằm giữa màn hình ---- */
+/* Logo này thường có position: fixed và z-index cao */
+[class*="tk-media-logo"],
+[class*="tkmedia-logo"],
+[class*="brand-logo-fixed"],
+.tk-media,
+.tkmedia {
+  display: none !important;
+}
+
+/* ---- 3. Nếu logo là <img> với src chứa "cuai" hoặc "tkmedia" ---- */
+img[src*="cuai"][style*="fixed"],
+img[src*="tkmedia"][style*="fixed"],
+img[src*="tk-media"][style*="fixed"] {
+  display: none !important;
+}
+
+/* ---- 4. Fallback: ẩn mọi element có position fixed + z-index > 9000 
+        mà không phải là các widget hợp lệ ---- */
+body:not(.on-landing) > div[style*="position: fixed"][style*="z-index: 9999"]:not(.chatfab):not(.cw-fab):not(.petw):not(.ds-input-wrap):not(.ds-lightbox):not(.ds-dropzone):not(.pnav):not(.bottom-nav):not(.mhead-bar):not(.nav-wrap):not(.cw-pane):not(.chatpane-v2):not(.chatpane):not(.pane) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* ---- 5. Đảm bảo z-index đúng thứ tự ---- */
+:root {
+  --z-footer: 10;
+  --z-content: 100;
+  --z-nav: 9999;
+  --z-bottom-nav: 9999;
+  --z-fab: 9998;
+  --z-pet: 9997;
+  --z-chat-pane: 9999;
+  --z-modal: 99990;
+  --z-lightbox: 100000;
+}
+
+.foot {
+  position: relative !important;
+  z-index: var(--z-footer) !important;
+}
+
+main {
+  position: relative;
+  z-index: var(--z-content);
+}
+
+.ds-input-wrap {
+  z-index: var(--z-nav) !important;
+}
+
+.chatfab,
+.cw-fab {
+  z-index: var(--z-fab) !important;
+}
+
+.petw {
+  z-index: var(--z-pet) !important;
+}
+
+/* ---- 6. Fix cho trang AI Chat ---- */
+body.on-ai-page .ds-input-wrap {
+  z-index: 9999 !important;
+}
+
+body.on-ai-page .ds-header {
+  z-index: 100 !important;
+}
+
+/* ---- 7. Fix logo footer nếu có ---- */
+.foot img,
+.foot svg {
+  max-height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* ---- 8. Mobile header fix ---- */
+@media (max-width: 720px) {
+  .mhead-bar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    min-height: 60px !important;
+  }
+
+  .mhead-logo {
+    height: 48px !important;
+    width: auto !important;
+    max-width: none !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+  }
+
+  .mhead-logo img,
+  .mhead-logo svg,
+  .mhead-logo picture,
+  .mhead-logo > * {
+    height: 48px !important;
+    width: auto !important;
+    max-height: 48px !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+}

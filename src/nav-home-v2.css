@@ -59,7 +59,7 @@
     padding: 0 6px;
     border-radius: 999px;
   }
-  .dn-logo img { display: block; height: 140px; width: auto; }
+  .dn-logo img { display: block; height: 80px; width: auto; }
 
   /* Nhóm link + chỉ báo trượt */
   .dn-links {
