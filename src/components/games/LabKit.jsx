@@ -3,9 +3,10 @@
    ============================================================ */
 import { useState, useRef, useEffect } from 'react';
 import { CHEMICALS } from '../../data/reactions';
+import { GIcon } from './GameIcons';
 
 /* ---------- Màu sắc cho lọ ---------- */
-const STATE_ICON = { solid: '◆', liquid: '💧', gas: '☁' };
+const STATE_ICON = { solid: 'solid', liquid: 'drop', gas: 'cloud' };
 const STATE_LABEL = { solid: 'Rắn', liquid: 'Lỏng', gas: 'Khí' };
 
 /* ---------- 1) LỌ HÓA CHẤT SVG ---------- */
@@ -98,7 +99,7 @@ export function ChemCard({ chemKey, disabled, onClick, onDragStart }) {
       <ChemBottle chemKey={chemKey} size={44} />
       <span className="lk-chem-formula">{c.formula}</span>
       <span className="lk-chem-name">{c.name}</span>
-      <span className="lk-chem-state">{STATE_ICON[c.state]} {STATE_LABEL[c.state]}</span>
+      <span className="lk-chem-state"><GIcon name={STATE_ICON[c.state]} /> {STATE_LABEL[c.state]}</span>
     </button>
   );
 }

@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import QuestionEditor from './QuestionEditor';
 import GameOverModal from './GameOverModal';
 import { sound } from '../../lib/gameSound';
+import { GIcon } from './GameIcons';
+import GameBar from './GameBar';
+import FieldFit from './FieldFit';
 
 const W = 900;
 const H = 560;
@@ -31,10 +34,10 @@ const DIFFICULTY = [
 ];
 
 const SLING_POWERS = [
-  { key: 'calm',   icon: '🌬', label: 'Lặng gió',        msg: () => '🌬 Gió đã lặng!' },
-  { key: 'time',   icon: '⏳', label: 'Cộng 8 giây',      seconds: 8, msg: (p) => `⏳ +${p.seconds}s!` },
-  { key: 'shield', icon: '🛡', label: 'Thêm 1 mạng',      msg: () => '🛡 +1 mạng!' },
-  { key: 'bonus',  icon: '★',  label: 'Điểm thưởng',      points: 100, msg: (p) => `★ +${p.points} điểm!` },
+  { key: 'calm',   icon: 'wind',      label: 'Lặng gió',        msg: () => 'Gió đã lặng!' },
+  { key: 'time',   icon: 'hourglass', label: 'Cộng 8 giây',      seconds: 8, msg: (p) => `+${p.seconds}s!` },
+  { key: 'shield', icon: 'shield',    label: 'Thêm 1 mạng',      msg: () => '+1 mạng!' },
+  { key: 'bonus',  icon: 'star',      label: 'Điểm thưởng',      points: 100, msg: (p) => `+${p.points} điểm!` },
 ];
 
 /* ===== BÓNG BAY BIA ===== */
@@ -70,7 +73,7 @@ function Balloon({ target, theme, sway }) {
           <ellipse cx="24" cy="20" rx="8" ry="12" fill="#fff" opacity=".35" />
           <polygon points="30,66 38,66 34,76" fill={fill} stroke={ink} strokeWidth="2" />
         </svg>
-        <span className="balloon-label">{target.isBonus ? target.power.icon : target.text}</span>
+        <span className="balloon-label">{target.isBonus ? <GIcon name={target.power.icon} /> : target.text}</span>
       </div>
       {target.hit && (target.correct || target.isBonus) && (
         <div className="balloon-pop" />
@@ -141,6 +144,11 @@ export default function SlingshotGame() {
   const [aimPos, setAimPos] = useState({ x: 0, y: 0 });
   const [projectile, setProjectile] = useState(null);
   const [trail, setTrail] = useState([]);
+  const [paused, setPaused] = useState(false);
+  const [isRecord, setIsRecord] = useState(false);
+  const wrongLogRef = useRef([]);   // câu sai để hiện "Câu cần ôn"
+  const answeredRef = useRef(0);
+  const correctRef = useRef(0);
 
   const fieldRef = useRef(null);
   const rafRef = useRef();
@@ -217,6 +225,8 @@ export default function SlingshotGame() {
   const startGame = () => {
     if (!questions.length) return;
     setScores([0, 0]); setCombo(0); setMaxCombo(0); setMistakes(0); setBullseyes(0); setLives(3); setQIndex(0); setTurn(0);
+    wrongLogRef.current = []; answeredRef.current = 0; correctRef.current = 0;
+    setPaused(false); setIsRecord(false);
     setTimeLeft(config.timeLimit || 0);
     setWind(rollWind(0));
     setPhase('playing');
@@ -258,18 +268,19 @@ export default function SlingshotGame() {
     setComboBanner(`COMBO ×${n}!`);
     bannerTimer.current = setTimeout(() => setComboBanner(null), 1300);
   };
-  const showPowerBanner = (text) => {
+  const showPowerBanner = (text, icon) => {
     clearTimeout(powerBannerTimer.current);
-    setPowerBanner(text);
+    setPowerBanner({ text, icon });
     powerBannerTimer.current = setTimeout(() => setPowerBanner(null), 1600);
   };
 
   /* ===== TIME ===== */
   useEffect(() => {
-    if (phase !== 'playing' || !config.timeLimit) return;
+    if (phase !== 'playing' || paused || !config.timeLimit) return;
     if (timeLeft <= 0) {
       sound.wrong();
       triggerWrong();
+      logWrong();
       setCombo(0);
       setMistakes((m) => m + 1);
       const nl = lives - 1;
@@ -280,11 +291,11 @@ export default function SlingshotGame() {
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
-  }, [timeLeft, phase]);
+  }, [timeLeft, phase, paused]);
 
   /* ===== PROJECTILE ANIMATION ===== */
   useEffect(() => {
-    if (!projectile) return;
+    if (!projectile || paused) return;
     let last = performance.now();
     const tick = (now) => {
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -325,12 +336,12 @@ export default function SlingshotGame() {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [projectile?.id, wind, targets]);
+  }, [projectile?.id, wind, targets, paused]);
 
   /* ===== VẬT PHẨM ===== */
   const collectPower = (t) => {
     setTargets((ts) => ts.map((x) => (x.id === t.id ? { ...x, hit: true } : x)));
-    spawnFloat(t.x, t.y, t.power.icon, 'gold');
+    spawnFloat(t.x, t.y, <GIcon name={t.power.icon} />, 'gold');
     const p = t.power;
     if (p.key === 'calm') setWind(0);
     else if (p.key === 'time' && config.timeLimit) setTimeLeft((tl) => tl + p.seconds);
@@ -339,13 +350,28 @@ export default function SlingshotGame() {
       const who = config.twoPlayer ? turn : 0;
       setScores((s) => { const n = [...s]; n[who] += p.points; return n; });
     }
-    showPowerBanner(p.msg(p));
+    showPowerBanner(p.msg(p), p.icon);
     sound.correct?.();
+  };
+
+  /* Ghi câu sai để hiện "Câu cần ôn" ở màn hình kết thúc */
+  const logWrong = () => {
+    answeredRef.current += 1;
+    const cur = questions[qIndex];
+    if (cur) wrongLogRef.current.push({ question: cur.question, correct: cur.correct, question_id: cur.question_id });
+  };
+
+  /* Tạm dừng: đồng hồ + viên đạn đang bay dừng lại (effect tự hủy rAF rồi chạy lại khi tiếp tục) */
+  const togglePause = () => {
+    if (phase !== 'playing') return;
+    setPaused((p) => !p);
   };
 
   /* ===== HIT HANDLER (với chấm điểm theo độ chính xác) ===== */
   const handleHit = (t, dist) => {
     if (t.correct) {
+      answeredRef.current += 1;
+      correctRef.current += 1;
       sound.correct();
       triggerCorrectFlash();
       setTargets((ts) => ts.map((x) => (x.id === t.id ? { ...x, hit: true } : t.isBonus ? x : { ...x, hit: true })));
@@ -372,6 +398,7 @@ export default function SlingshotGame() {
       triggerWrong();
       setTargets((ts) => ts.map((x) => (x.isBonus ? x : { ...x, hit: true })));
       setCombo(0);
+      logWrong();
       setMistakes((m) => m + 1);
       const nl = lives - 1;
       setLives(nl);
@@ -383,6 +410,7 @@ export default function SlingshotGame() {
     setPhase('over');
     if (won) sound.win(); else sound.lose();
     const finalScore = config.twoPlayer ? Math.max(scores[0], scores[1]) : scores[0];
+    setIsRecord(!config.twoPlayer && finalScore > 0 && finalScore > (leaderboard[0]?.score || 0));
     if (!config.twoPlayer && config.playerName.trim() && finalScore > 0) {
       const entry = { name: config.playerName.trim(), score: finalScore, date: Date.now() };
       const next = [...leaderboard, entry].sort((a, b) => b.score - a.score).slice(0, 10);
@@ -393,11 +421,12 @@ export default function SlingshotGame() {
   /* ===== AIMING ===== */
   const getLocalPos = (e) => {
     const rect = fieldRef.current.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const k = rect.width / W || 1; // sân có thể đang bị thu nhỏ (màn hình nhỏ)
+    return { x: (e.clientX - rect.left) / k, y: (e.clientY - rect.top) / k };
   };
 
   const onPointerDown = (e) => {
-    if (phase !== 'playing' || projectile) return;
+    if (phase !== 'playing' || projectile || paused) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setAiming(true);
     setAimPos(getLocalPos(e));
@@ -452,16 +481,18 @@ export default function SlingshotGame() {
     return pts;
   };
 
+  useEffect(() => { if (phase !== 'playing') setPaused(false); }, [phase]);
+
   const q = questions[qIndex];
   const diffLabel = diff.label;
   const update = (key, val) => setConfig({ ...config, [key]: val });
 
   const buildBadges = () => {
     const badges = [];
-    if (mistakes === 0) badges.push({ icon: '💯', label: 'Hoàn hảo — không sai lần nào' });
-    if (bullseyes >= 3) badges.push({ icon: '🎯', label: `Xạ thủ chính xác — ${bullseyes} lần bắn trúng tâm` });
-    if (maxCombo >= 10) badges.push({ icon: '🔥', label: `Chuỗi combo khủng ×${maxCombo}` });
-    else if (maxCombo >= 5) badges.push({ icon: '⚡', label: `Chuỗi combo tốt ×${maxCombo}` });
+    if (mistakes === 0) badges.push({ icon: 'perfect', label: 'Hoàn hảo — không sai lần nào' });
+    if (bullseyes >= 3) badges.push({ icon: 'target', label: `Xạ thủ chính xác — ${bullseyes} lần bắn trúng tâm` });
+    if (maxCombo >= 10) badges.push({ icon: 'fire', label: `Chuỗi combo khủng ×${maxCombo}` });
+    else if (maxCombo >= 5) badges.push({ icon: 'bolt', label: `Chuỗi combo tốt ×${maxCombo}` });
     return badges;
   };
 
@@ -557,7 +588,7 @@ export default function SlingshotGame() {
               <label className="row" style={{ cursor: 'pointer', gap: '.5rem' }}>
                 <input type="checkbox" checked={config.powerups} onChange={(e) => update('powerups', e.target.checked)} />
                 <span style={{ textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--sans)', fontSize: '.9rem', color: 'var(--ink)' }}>
-                  Bóng bay vàng vật phẩm (🌬 lặng gió · ⏳ +giờ · 🛡 +mạng · ★ điểm thưởng)
+                  Bóng bay vàng vật phẩm (lặng gió · +giờ · +mạng · điểm thưởng)
                 </span>
               </label>
             </div>
@@ -619,6 +650,7 @@ export default function SlingshotGame() {
 
     return (
       <section className="wrap">
+        <GameBar paused={paused} onTogglePause={togglePause} />
         <div className="game-hud">
           <span className="hud-item">Câu <b>{qIndex + 1}</b>/{questions.length}</span>
           <span className="hud-item">Combo <b>×{combo}</b></span>
@@ -627,7 +659,7 @@ export default function SlingshotGame() {
             {Array.from({ length: Math.max(3 - lives, 0) }).map((_, i) => <span key={'e' + i} className="life-heart empty">♡</span>)}
           </span>
           {config.timeLimit > 0 && (
-            <span className="hud-item" style={{ color: timeLeft <= 5 ? 'var(--acc)' : 'var(--ink)', fontWeight: 700 }}>⏱ {timeLeft}s</span>
+            <span className="hud-item" style={{ color: timeLeft <= 5 ? 'var(--acc)' : 'var(--ink)', fontWeight: 700 }}><GIcon name="timer" /> {timeLeft}s</span>
           )}
           <span className="hud-item hud-score">{scoreLabel}</span>
         </div>
@@ -644,6 +676,7 @@ export default function SlingshotGame() {
           </div>
         )}
 
+        <FieldFit width={W} height={H}>
         <div
           ref={fieldRef}
           className={'sling-field sling-field-sky' + (shake ? ' shake' : '')}
@@ -723,12 +756,20 @@ export default function SlingshotGame() {
 
           {flash && <div className={'field-flash ' + flash} />}
           {comboBanner && <div className="combo-banner">{comboBanner}</div>}
-          {powerBanner && <div className="power-toast">{powerBanner}</div>}
+          {powerBanner && <div className="power-toast"><GIcon name={powerBanner.icon} /> {powerBanner.text}</div>}
 
           {!aiming && !projectile && (
-            <div className="sling-hint">Giữ chuột và kéo để ngắm — thả để bắn</div>
+            <div className="sling-hint">Giữ và kéo để ngắm — thả để bắn</div>
+          )}
+
+          {paused && (
+            <div className="gx-pause" role="status">
+              <b>Tạm dừng</b>
+              <button className="btn primary" type="button" onClick={togglePause}>Tiếp tục</button>
+            </div>
           )}
         </div>
+        </FieldFit>
 
         <div className="row center" style={{ marginTop: '1rem' }}>
           <button className="btn" onClick={() => setPhase('setup')} type="button">← Dừng</button>
@@ -748,6 +789,13 @@ export default function SlingshotGame() {
       <GameOverModal
         title={lives <= 0 ? 'Hết mạng' : 'Hoàn thành'}
         score={config.twoPlayer ? Math.max(scores[0], scores[1]) : scores[0]}
+        record={isRecord}
+        stats={config.twoPlayer ? undefined : [
+          { label: 'Trúng đích', value: `${correctRef.current}/${answeredRef.current}` },
+          { label: 'Bắn trúng tâm', value: String(bullseyes) },
+          { label: 'Combo tối đa', value: `×${maxCombo}` },
+        ]}
+        wrong={wrongLogRef.current}
         onRestart={() => setPhase('setup')}
         extra={
           <>
@@ -762,7 +810,7 @@ export default function SlingshotGame() {
             )}
             {badges.length > 0 && (
               <ul className="achv-list">
-                {badges.map((b, i) => (<li key={i} className="achv-item"><span className="achv-icon">{b.icon}</span>{b.label}</li>))}
+                {badges.map((b, i) => (<li key={i} className="achv-item"><span className="achv-icon"><GIcon name={b.icon} /></span>{b.label}</li>))}
               </ul>
             )}
           </>

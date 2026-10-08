@@ -7,6 +7,8 @@ import QuestionEditor from './QuestionEditor';
 import GameOverModal from './GameOverModal';
 import { GAME_PRESETS } from '../../data/gamePresets';
 import { sound } from '../../lib/gameSound';
+import GameBar from './GameBar';
+import { GIcon } from './GameIcons';
 import { getPalette } from '../../lib/threeUtils';
 
 const FIELD = { minX: -8, maxX: 8, minZ: -5, maxZ: 5 };
@@ -466,6 +468,7 @@ export default function ChickenGame3D() {
   if (phase === 'playing') {
     return (
       <section className="wrap">
+        <GameBar />
         <div className="game-hud">
           <span className="hud-item">Câu <b>{qIndex + 1}</b>/{questions.length}</span>
           <span className="hud-item">Combo <b>×{combo}</b></span>
@@ -478,7 +481,7 @@ export default function ChickenGame3D() {
                 fontWeight: 700,
               }}
             >
-              ⏱ {timeLeft}s
+              <GIcon name="timer" /> {timeLeft}s
             </span>
           )}
           <span className="hud-item hud-score">Điểm {score}</span>

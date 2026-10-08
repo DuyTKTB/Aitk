@@ -8,6 +8,8 @@ import {
   isComplete,
 } from '../../data/sudokuPuzzles';
 import { sound } from '../../lib/gameSound';
+import GameBar from './GameBar';
+import { GIcon } from './GameIcons';
 
 const DIFFICULTIES = [
   { key: 'easy',   label: 'Dễ',    time: 0 },
@@ -24,6 +26,7 @@ export default function ChemSudoku() {
   const [mistakes, setMistakes] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [seconds, setSeconds] = useState(0);
+  const [paused, setPaused] = useState(false);
   const [noteMode, setNoteMode] = useState(false);
   const [notes, setNotes] = useState({}); // { 'r,c': Set of values }
   const [wrongCells, setWrongCells] = useState({}); // { 'r,c': true }
@@ -45,14 +48,16 @@ export default function ChemSudoku() {
     } catch {}
   }, []);
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || paused) return;
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(id);
-  }, [phase]);
+  }, [phase, paused]);
+  useEffect(() => { if (phase !== 'playing') setPaused(false); }, [phase]);
+  const togglePause = () => { if (phase === 'playing') setPaused((p) => !p); };
   useEffect(() => {
     if (phase !== 'playing') return;
     const onKey = (e) => {
-      if (!selected) return;
+      if (!selected || paused) return;
       const num = parseInt(e.key, 10);
       if (num >= 1 && num <= 9) {
         placeNumber(num);
@@ -74,7 +79,7 @@ export default function ChemSudoku() {
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [selected, phase, noteMode, notes]);
+  }, [selected, phase, noteMode, notes, paused]);
 
   const startGame = (diff) => {
     const puzzle = SUDOKU_PUZZLES[diff].map((r) => [...r]);
@@ -85,6 +90,7 @@ export default function ChemSudoku() {
     setMistakes(0);
     setHintsUsed(0);
     setSeconds(0);
+    setPaused(false);
     setNotes({});
     setWrongCells({});
     setHintCell(null);
@@ -289,6 +295,14 @@ export default function ChemSudoku() {
   if (phase === 'playing') {
     return (
       <section className="wrap csd-game">
+        <GameBar paused={paused} onTogglePause={togglePause} />
+        {paused && (
+          <div className="gx-pause" role="status" style={{ position: 'fixed', background: 'var(--bg)', backdropFilter: 'none' }}>
+            <b>Tạm dừng</b>
+            <small style={{ color: 'var(--mut)' }}>Bàn cờ được ẩn trong lúc dừng</small>
+            <button className="btn primary" type="button" onClick={togglePause}>Tiếp tục</button>
+          </div>
+        )}
         <div className="csd-header">
           <button className="btn sm" onClick={exit} type="button">← Menu</button>
           <div className="csd-stats">
@@ -398,13 +412,13 @@ export default function ChemSudoku() {
                 onClick={() => setNoteMode(!noteMode)}
                 type="button"
               >
-                ✎ Ghi chú {noteMode ? 'ON' : 'OFF'}
+                <GIcon name="pencil" /> Ghi chú {noteMode ? 'ON' : 'OFF'}
               </button>
               <button className="btn sm" onClick={clearCell} disabled={!selected} type="button">
                 ⌫ Xóa
               </button>
               <button className="btn sm" onClick={useHint} type="button">
-                💡 Gợi ý
+                <GIcon name="bulb" /> Gợi ý
               </button>
               <button className="btn sm" onClick={reset} type="button">
                 ↻ Chơi lại
@@ -425,7 +439,7 @@ export default function ChemSudoku() {
     <section className="wrap">
       <div className="backdrop">
         <div className="gameover-modal">
-          <h2>🎉 Hoàn thành!</h2>
+          <h2><GIcon name="trophy" /> Hoàn thành!</h2>
           <div className="grade-big">
             <span>THỜI GIAN</span>
             <b>{formatTime(seconds)}</b>

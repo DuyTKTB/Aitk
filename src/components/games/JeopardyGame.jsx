@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import GameOverModal from './GameOverModal';
+import GameBar from './GameBar';
+import { GIcon } from './GameIcons';
+import QuestionBankPicker from './QuestionBankPicker';
 import { sound } from '../../lib/gameSound';
 
 const DEFAULT_CATEGORIES = [
@@ -75,6 +78,7 @@ export default function JeopardyGame() {
   const [activeTile, setActiveTile] = useState(null);
   const [answerRevealed, setAnswerRevealed] = useState(false);
   const [winner, setWinner] = useState(null);
+  const [showBank, setShowBank] = useState(false);
   useEffect(() => {
     try {
       const raw = localStorage.getItem('cs-game:jeopardy:teams');
@@ -246,6 +250,7 @@ export default function JeopardyGame() {
   const remaining = useMemo(() => tiles.filter((t) => !t.used).length, [tiles]);
   const activeCat = activeTile ? categories[activeTile.catIdx] : null;
   const activeQ = activeTile ? activeCat.questions[activeTile.qIdx] : null;
+  const totalCells = categories.reduce((s, c) => s + c.questions.length, 0);
 
   /* ============ SETUP ============ */
   if (phase === 'setup') {
@@ -288,8 +293,11 @@ export default function JeopardyGame() {
           <div className="setup-content">
             <h3 className="setup-title">Bộ câu hỏi</h3>
             <p className="hint">
-              4 chủ đề × 5 câu = 20 ô. Câu hỏi có sẵn, bạn có thể chơi ngay.
+              {categories.length} chủ đề · {totalCells} ô. Dùng bộ có sẵn hoặc lấy từ ngân hàng theo chuyên đề.
             </p>
+            <button className="btn sm" onClick={() => setShowBank(true)} type="button" style={{ marginBottom: '.8rem' }}>
+              Lấy từ ngân hàng câu hỏi
+            </button>
             <div className="jeopardy-preview">
               {categories.map((c, i) => (
                 <div key={i} className="jeopardy-preview-col">
@@ -319,12 +327,20 @@ export default function JeopardyGame() {
           <div className="game-start-info">
             <div><small>Đội</small><b>{teams.length}</b></div>
             <div><small>Chủ đề</small><b>{categories.length}</b></div>
-            <div><small>Số ô</small><b>20</b></div>
+            <div><small>Số ô</small><b>{totalCells}</b></div>
           </div>
           <button className="btn primary" onClick={startGame} disabled={teams.length < MIN_TEAMS} type="button">
             Bắt đầu chơi →
           </button>
         </div>
+
+        {showBank && (
+          <QuestionBankPicker
+            mode="jeopardy"
+            onApply={(cats) => { setCategories(cats); setShowBank(false); }}
+            onClose={() => setShowBank(false)}
+          />
+        )}
       </section>
     );
   }
@@ -333,6 +349,7 @@ export default function JeopardyGame() {
   if (phase === 'playing') {
     return (
       <section className="wrap">
+        <GameBar />
         {/* Scoreboard */}
         <div className="jeopardy-scores">
           {teams.map((t, i) => (
@@ -388,7 +405,7 @@ export default function JeopardyGame() {
                 <span className="jeopardy-modal-cat">{activeCat.name}</span>
                 <span className="jeopardy-modal-val">
                   {activeQ.v}{activeTile.special === 'double' && ' ×2'}
-                  {activeTile.special === 'steal' && ' 🔥 CƯỚP'}
+                  {activeTile.special === 'steal' && <> <GIcon name="fire" /> CƯỚP</>}
                 </span>
               </div>
 
@@ -409,8 +426,8 @@ export default function JeopardyGame() {
                   </button>
                 ) : (
                   <>
-                    <button className="btn primary" onClick={markCorrect} type="button">✓ Đúng</button>
-                    <button className="btn" onClick={markWrong} type="button">✗ Sai</button>
+                    <button className="btn primary" onClick={markCorrect} type="button"><GIcon name="check" /> Đúng</button>
+                    <button className="btn" onClick={markWrong} type="button"><GIcon name="cross" /> Sai</button>
                   </>
                 )}
                 <button className="btn" onClick={skipTurn} type="button">Bỏ qua</button>
@@ -429,7 +446,7 @@ export default function JeopardyGame() {
     <section className="wrap">
       <div className="backdrop">
         <div className="gameover-modal" style={{ maxWidth: 520 }}>
-          <h2>🏆 Kết thúc</h2>
+          <h2><GIcon name="trophy" /> Kết thúc</h2>
           <div style={{ margin: '1.5rem 0' }}>
             {ranking.map((t, i) => (
               <div key={t.id} className="jeopardy-rank-row" style={{ '--tc': t.color }}>

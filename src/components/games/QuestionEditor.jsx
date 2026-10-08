@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { GAME_PRESETS } from '../../data/gamePresets';
+import QuestionBankPicker from './QuestionBankPicker';
 
 export default function QuestionEditor({
   game,
@@ -6,6 +8,28 @@ export default function QuestionEditor({
   onChange,
   maxQuestions = 30,
 }) {
+  const [showBank, setShowBank] = useState(false);
+
+  /* Nhận câu từ ngân hàng. Giữ question_id/topic_id để sau này ghi điểm + Sổ tay lỗi sai. */
+  const applyBank = (picked, how) => {
+    const clean = picked.map((q) => ({
+      question: q.question,
+      correct: q.correct,
+      wrong: q.wrong,
+      question_id: q.question_id,
+      topic_id: q.topic_id,
+      difficulty: q.difficulty,
+      explanation: q.explanation,
+    }));
+    if (how === 'replace') {
+      onChange(clean.slice(0, maxQuestions));
+    } else {
+      const have = new Set(questions.map((q) => q.question_id).filter(Boolean));
+      onChange([...questions, ...clean.filter((q) => !have.has(q.question_id))].slice(0, maxQuestions));
+    }
+    setShowBank(false);
+  };
+
   const addEmpty = () => {
     if (questions.length >= maxQuestions) return;
     onChange([...questions, { question: '', correct: '', wrong: ['', '', ''] }]);
@@ -79,6 +103,9 @@ export default function QuestionEditor({
           <button className="btn sm" onClick={loadPreset} type="button">
             Tải mẫu
           </button>
+          <button className="btn sm" onClick={() => setShowBank(true)} type="button">
+            Từ ngân hàng
+          </button>
           <label className="btn sm" style={{ cursor: 'pointer', margin: 0 }}>
             Nhập JSON
             <input type="file" accept=".json" hidden onChange={importJSON} />
@@ -94,7 +121,7 @@ export default function QuestionEditor({
 
       {questions.length === 0 ? (
         <p className="hint center" style={{ padding: '2rem 0' }}>
-          Chưa có câu hỏi. Bấm <b>Tải mẫu</b> để có 10 câu mẫu, hoặc <b>+ Thêm câu</b> để tự nhập.
+          Chưa có câu hỏi. Bấm <b>Tải mẫu</b> để có 10 câu mẫu, <b>Từ ngân hàng</b> để lấy câu theo chuyên đề, hoặc <b>+ Thêm câu</b> để tự nhập.
         </p>
       ) : (
         <div className="qlist">
@@ -134,6 +161,10 @@ export default function QuestionEditor({
             </div>
           ))}
         </div>
+      )}
+
+      {showBank && (
+        <QuestionBankPicker mode="list" maxCount={maxQuestions} onApply={applyBank} onClose={() => setShowBank(false)} />
       )}
     </div>
   );

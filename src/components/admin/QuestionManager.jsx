@@ -8,8 +8,18 @@ import {
 } from './AdminUI.jsx';
 import { DIFFICULTIES, diffColor, diffName } from './adminConstants.js';
 import { escapeLike, friendlyError } from './adminUtils.js';
+import { topicGroups, topicName, UNCLASSIFIED } from '../../data/chemTopics.js';
 
 const PAGE_SIZE = 20;
+
+/* <option> chuyên đề nhóm theo lớp */
+function TopicOptions() {
+  return topicGroups().map((g) => (
+    <optgroup key={g.grade} label={g.label}>
+      {g.topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+    </optgroup>
+  ));
+}
 
 /* Ngân hàng câu hỏi: tìm kiếm / lọc / xem / xóa câu hỏi của mọi đề.
    (Trước đây file này là bản sao lỗi của ExamManager và import vòng sang AdminPanel.) */
@@ -26,6 +36,8 @@ export default function QuestionManager({ onOpenExam }) {
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('all');
   const [subjectId, setSubjectId] = useState('all');
+  const [topicFilter, setTopicFilter] = useState('all');
+  const [savingTopic, setSavingTopic] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [detail, setDetail] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -40,7 +52,7 @@ export default function QuestionManager({ onOpenExam }) {
     });
   }, []);
 
-  useEffect(() => { setPage(0); }, [term, difficulty, subjectId]);
+  useEffect(() => { setPage(0); }, [term, difficulty, subjectId, topicFilter]);
 
   const load = useCallback(async () => {
     const my = ++reqId.current;
@@ -50,7 +62,7 @@ export default function QuestionManager({ onOpenExam }) {
       let q = supabase
         .from('questions')
         .select(`
-          id, question_number, content, explanation, difficulty, question_type, exam_id,
+          id, question_number, content, explanation, difficulty, question_type, topic_id, exam_id,
           exams!inner(id, title, subject_id, grade:grades(name), subject:subjects(name)),
           answers(id, label, content, is_correct, sort_order)
         `, { count: 'exact' })
@@ -61,6 +73,8 @@ export default function QuestionManager({ onOpenExam }) {
       if (term) q = q.ilike('content', `%${escapeLike(term)}%`);
       if (difficulty !== 'all') q = q.eq('difficulty', difficulty);
       if (subjectId !== 'all') q = q.eq('exams.subject_id', Number(subjectId));
+      if (topicFilter === UNCLASSIFIED) q = q.is('topic_id', null);
+      else if (topicFilter !== 'all') q = q.eq('topic_id', topicFilter);
 
       const { data, count, error: e } = await q;
       if (e) throw e;
@@ -74,9 +88,26 @@ export default function QuestionManager({ onOpenExam }) {
     } finally {
       if (my === reqId.current) setLoading(false);
     }
-  }, [page, term, difficulty, subjectId]);
+  }, [page, term, difficulty, subjectId, topicFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  /* Đổi chuyên đề của một câu ngay trong ngân hàng câu hỏi */
+  const handleTopicChange = async (q, value) => {
+    const next = value || null;
+    setSavingTopic(true);
+    try {
+      const { error: e } = await supabase.from('questions').update({ topic_id: next }).eq('id', q.id);
+      if (e) throw e;
+      setRows((rs) => rs.map((r) => (r.id === q.id ? { ...r, topic_id: next } : r)));
+      setDetail((d) => (d && d.id === q.id ? { ...d, topic_id: next } : d));
+      toast.success('Đã cập nhật chuyên đề');
+    } catch (e) {
+      toast.error('Không cập nhật được chuyên đề: ' + friendlyError(e));
+    } finally {
+      setSavingTopic(false);
+    }
+  };
 
   const handleDelete = async (q) => {
     const ok = await confirm({
@@ -102,7 +133,7 @@ export default function QuestionManager({ onOpenExam }) {
   };
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilter = term || difficulty !== 'all' || subjectId !== 'all';
+  const hasFilter = term || difficulty !== 'all' || subjectId !== 'all' || topicFilter !== 'all';
 
   return (
     <div className="adl-panel">
@@ -126,8 +157,13 @@ export default function QuestionManager({ onOpenExam }) {
           <option value="all">Mọi độ khó</option>
           {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
+        <select value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)} aria-label="Lọc theo chuyên đề">
+          <option value="all">Mọi chuyên đề</option>
+          <option value={UNCLASSIFIED}>Chưa phân loại</option>
+          <TopicOptions />
+        </select>
         {hasFilter && (
-          <button type="button" className="adl-btn-sm" onClick={() => { setSearch(''); setDifficulty('all'); setSubjectId('all'); }}>
+          <button type="button" className="adl-btn-sm" onClick={() => { setSearch(''); setDifficulty('all'); setSubjectId('all'); setTopicFilter('all'); }}>
             <IconClose size={12} /> Xóa lọc
           </button>
         )}
@@ -153,7 +189,7 @@ export default function QuestionManager({ onOpenExam }) {
                   <td className="adl-table-id">{q.question_number}</td>
                   <td className="adl-td-title">
                     <b className="adl-clamp">{q.content}</b>
-                    <small>{q.answers?.length || 0} đáp án{q.explanation ? ' · có lời giải' : ' · chưa có lời giải'}</small>
+                    <small>{q.answers?.length || 0} đáp án{q.explanation ? ' · có lời giải' : ' · chưa có lời giải'} · {topicName(q.topic_id)}</small>
                   </td>
                   <td className="adl-td-title">
                     <b className="adl-clamp-1">{q.exams?.title}</b>
@@ -191,6 +227,13 @@ export default function QuestionManager({ onOpenExam }) {
           onClose={() => setDetail(null)}
         >
           <p className="adl-detail-q">{detail.content}</p>
+          <label className="adl-field adl-field-inline">
+            <span>Chuyên đề</span>
+            <select value={detail.topic_id || ''} disabled={savingTopic} onChange={(e) => handleTopicChange(detail, e.target.value)}>
+              <option value="">Chưa phân loại</option>
+              <TopicOptions />
+            </select>
+          </label>
           <ul className="adl-answer-list">
             {[...(detail.answers || [])].sort((a, b) => a.sort_order - b.sort_order).map((a) => (
               <li key={a.id} className={a.is_correct ? 'correct' : ''}>

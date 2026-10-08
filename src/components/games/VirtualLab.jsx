@@ -9,6 +9,8 @@ import {
   SAFETY_TIPS,
 } from '../../data/reactions';
 import { sound } from '../../lib/gameSound';
+import GameBar from './GameBar';
+import { GIcon } from './GameIcons';
 import LabScene from './LabScene';
 import { ChemCard, useDragDrop } from './LabKit';
 import './lab.css';
@@ -32,9 +34,9 @@ const TYPE_FILTERS = [
 ];
 
 const VESSEL_TYPES = [
-  { key: 'beaker', label: 'Cốc', icon: '🥃' },
-  { key: 'flask', label: 'Bình tam giác', icon: '🧪' },
-  { key: 'tube', label: 'Ống nghiệm', icon: '🧬' },
+  { key: 'beaker', label: 'Cốc', icon: 'beaker' },
+  { key: 'flask', label: 'Bình tam giác', icon: 'flask' },
+  { key: 'tube', label: 'Ống nghiệm', icon: 'tube' },
 ];
 
 let vesselIdCounter = 0;
@@ -160,7 +162,7 @@ export default function VirtualLab() {
     setTimeout(() => updateVessel(vesselId, { fx: null }), FX_MS);
 
     if (rxn.danger >= 3 || rxn.effect?.type === 'fire') triggerShake();
-    if (rxn.danger >= 3 && !goggles) showToast(`⚠ Nguy hiểm cấp ${rxn.danger}! Đeo kính bảo hộ!`);
+    if (rxn.danger >= 3 && !goggles) showToast(`Cảnh báo: nguy hiểm cấp ${rxn.danger}! Đeo kính bảo hộ!`);
     setProg((p) => {
       const isNew = !p.found.includes(rxn.equation);
       let gain = isNew ? 10 : 0;
@@ -257,7 +259,7 @@ export default function VirtualLab() {
   const toggleHeat = () => {
     if (!current) return;
     updateVessel(current.id, (v) => ({ heat: !v.heat }));
-    showToast(current.heat ? 'Tắt đèn cồn.' : '🔥 Bật đèn cồn — đang đun nóng...');
+    showToast(current.heat ? 'Tắt đèn cồn.' : 'Bật đèn cồn — đang đun nóng...');
   };
 
   const doStir = () => {
@@ -335,6 +337,7 @@ export default function VirtualLab() {
   /* ==================== RENDER ==================== */
   return (
     <section className="lk-page">
+      <GameBar />
       <a href="#games" className="btn sm" style={{ marginBottom: '1.2rem' }}>← Danh sách trò chơi</a>
 
       {/* HEADER */}
@@ -423,7 +426,7 @@ export default function VirtualLab() {
                   className={current?.vessel === vt.key ? 'on' : ''}
                   onClick={() => changeVesselType(vt.key)}
                   title={vt.label}
-                >{vt.icon} {vt.label}</button>
+                ><GIcon name={vt.icon} /> {vt.label}</button>
               ))}
             </div>
 
@@ -434,34 +437,34 @@ export default function VirtualLab() {
               onClick={() => addVessel(current?.vessel || 'beaker')}
               disabled={vessels.length >= MAX_VESSELS}
               title={vessels.length >= MAX_VESSELS ? 'Bàn đã đầy' : 'Thêm dụng cụ mới'}
-            >➕ Thêm ({vessels.length}/{MAX_VESSELS})</button>
+            ><GIcon name="plus" /> Thêm ({vessels.length}/{MAX_VESSELS})</button>
 
             <button
               type="button"
               className={'lk-toggle' + (current?.heat ? ' on' : '')}
               onClick={toggleHeat}
-            >🔥 Đèn cồn {current?.heat ? 'BẬT' : 'tắt'}</button>
+            ><GIcon name="fire" /> Đèn cồn {current?.heat ? 'BẬT' : 'tắt'}</button>
 
             <button
               type="button"
               className="lk-toggle"
               onClick={doStir}
               disabled={!analysis.totalUnits}
-            >🥄 Khuấy</button>
+            ><GIcon name="stir" /> Khuấy</button>
 
             <button
               type="button"
               className="lk-toggle"
               onClick={dump}
               disabled={!analysis.totalUnits}
-            >🗑 Đổ bỏ</button>
+            ><GIcon name="trash" /> Đổ bỏ</button>
 
             <label className="lk-toggle" style={{ cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={goggles}
                 onChange={(e) => setGoggles(e.target.checked)}
-              /> 🥽 Kính bảo hộ
+              /> <GIcon name="goggles" /> Kính bảo hộ
             </label>
           </div>
 
@@ -535,7 +538,7 @@ export default function VirtualLab() {
                   </span>
                 ))}
               </div>
-              <p className="lk-result-safe">⚠ {SAFETY_TIPS[last.danger]}</p>
+              <p className="lk-result-safe"><GIcon name="warning" /> {SAFETY_TIPS[last.danger]}</p>
             </div>
           )}
         </div>

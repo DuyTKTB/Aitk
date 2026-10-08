@@ -9,6 +9,7 @@ import {
   IcoBulb, IcoStats, IcoFire, IcoTag, IcoEye, IcoInfo,
 } from './NotebookIcons.jsx';
 import NotebookGuide from './NotebookGuide.jsx';
+import { topicName, UNCLASSIFIED } from '../data/chemTopics.js';
 import './notebook-v2.css';
 import './notebook-guide.css';
 
@@ -33,6 +34,7 @@ export default function WrongNotebook() {
   // Filters
   const [search, setSearch] = useState('');
   const [filterDiff, setFilterDiff] = useState('all');
+  const [filterTopic, setFilterTopic] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('list');
 
@@ -70,7 +72,7 @@ export default function WrongNotebook() {
           .select(`
             id, wrong_count, mastered, last_wrong_at,
             question:questions(
-              id, question_number, content, explanation, difficulty,
+              id, question_number, content, explanation, difficulty, topic_id,
               exam:exams(id, title, subject:subjects(name)),
               answers:answers(id, label, content, is_correct)
             )
@@ -84,7 +86,7 @@ export default function WrongNotebook() {
           .select(`
             id, note, saved_at,
             question:questions(
-              id, question_number, content, explanation, difficulty,
+              id, question_number, content, explanation, difficulty, topic_id,
               exam:exams(id, title, subject:subjects(name)),
               answers:answers(id, label, content, is_correct)
             )
@@ -108,6 +110,16 @@ export default function WrongNotebook() {
   /* ============ FILTER + SORT ============ */
   const items = tab === 'wrong' ? wrongQs : savedQs;
 
+  /* Các chuyên đề có trong danh sách hiện tại, nhiều câu nhất lên đầu */
+  const topicCounts = useMemo(() => {
+    const m = new Map();
+    for (const it of items) {
+      const id = it.question?.topic_id || UNCLASSIFIED;
+      m.set(id, (m.get(id) || 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [items]);
+
   const filtered = useMemo(() => {
     let arr = items;
 
@@ -125,6 +137,10 @@ export default function WrongNotebook() {
 
     if (filterDiff !== 'all') {
       arr = arr.filter((it) => it.question?.difficulty === filterDiff);
+    }
+
+    if (filterTopic !== 'all') {
+      arr = arr.filter((it) => (it.question?.topic_id || UNCLASSIFIED) === filterTopic);
     }
 
     arr = [...arr].sort((a, b) => {
@@ -146,7 +162,7 @@ export default function WrongNotebook() {
     });
 
     return arr;
-  }, [items, search, filterDiff, sortBy]);
+  }, [items, search, filterDiff, filterTopic, sortBy]);
 
   /* ============ STATS ============ */
   const stats = useMemo(() => {
@@ -345,7 +361,7 @@ export default function WrongNotebook() {
         <button
           type="button"
           className={'nb-tab' + (tab === 'wrong' ? ' on' : '')}
-          onClick={() => { setTab('wrong'); setSelected(new Set()); }}
+          onClick={() => { setTab('wrong'); setSelected(new Set()); setFilterTopic('all'); }}
         >
           <IcoX size={16} />
           <span>Câu sai</span>
@@ -354,7 +370,7 @@ export default function WrongNotebook() {
         <button
           type="button"
           className={'nb-tab' + (tab === 'saved' ? ' on' : '')}
-          onClick={() => { setTab('saved'); setSelected(new Set()); }}
+          onClick={() => { setTab('saved'); setSelected(new Set()); setFilterTopic('all'); }}
         >
           <IcoStar size={16} filled />
           <span>Đã lưu</span>
@@ -456,6 +472,29 @@ export default function WrongNotebook() {
         ))}
       </div>
 
+      {/* ============ TOPIC FILTERS ============ */}
+      {topicCounts.some(([id]) => id !== UNCLASSIFIED) && (
+        <div className="nb-filters" aria-label="Lọc theo chuyên đề">
+          <button
+            type="button"
+            className={'nb-chip' + (filterTopic === 'all' ? ' on' : '')}
+            onClick={() => setFilterTopic('all')}
+          >
+            Mọi chuyên đề
+          </button>
+          {topicCounts.map(([id, n]) => (
+            <button
+              key={id}
+              type="button"
+              className={'nb-chip' + (filterTopic === id ? ' on' : '')}
+              onClick={() => setFilterTopic(id)}
+            >
+              {topicName(id)} · {n}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ============ BULK ACTIONS ============ */}
       {selected.size > 0 && (
         <div className="nb-bulk">
@@ -507,7 +546,7 @@ export default function WrongNotebook() {
           {items.length > 0 && (
             <button
               className="nb-btn nb-btn-ghost"
-              onClick={() => { setSearch(''); setFilterDiff('all'); }}
+              onClick={() => { setSearch(''); setFilterDiff('all'); setFilterTopic('all'); }}
             >
               <IcoClose size={15} />
               Xóa bộ lọc
@@ -567,6 +606,11 @@ export default function WrongNotebook() {
                       {q.exam?.subject?.name && (
                         <span className="nb-badge subject">
                           {q.exam.subject.name}
+                        </span>
+                      )}
+                      {q.topic_id && (
+                        <span className="nb-badge subject">
+                          {topicName(q.topic_id)}
                         </span>
                       )}
                     </div>

@@ -420,7 +420,7 @@ function Vessel({
           fill="var(--acc)"
           fontFamily="var(--mono)"
           fontWeight="700"
-        >🔥 {Math.round(temp)}°C</text>
+        >{Math.round(temp)}°C</text>
       )}
     </g>
   );

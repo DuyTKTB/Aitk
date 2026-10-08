@@ -8,6 +8,16 @@ import {
 } from './AdminUI.jsx';
 import { ANSWER_LABELS, DIFFICULTIES, EXAM_TYPES } from './adminConstants.js';
 import { friendlyError, isTempId, newTempId } from './adminUtils.js';
+import { topicGroups, gradeNumber } from '../../data/chemTopics.js';
+
+/* <option> chuyên đề nhóm theo lớp (lớp của đề được đưa lên đầu) */
+function TopicOptions({ preferGrade }) {
+  return topicGroups(preferGrade).map((g) => (
+    <optgroup key={g.grade} label={g.label}>
+      {g.topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+    </optgroup>
+  ));
+}
 
 const blankAnswers = () => ANSWER_LABELS.slice(0, 4).map((label, i) => ({
   id: newTempId(), label, content: '', is_correct: i === 0, sort_order: i, _new: true,
@@ -38,8 +48,10 @@ export default function ExamEditor({ examId, onBack }) {
   const [savingExam, setSavingExam] = useState(false);
   const [savingQ, setSavingQ] = useState(() => new Set());
   const [qErrors, setQErrors] = useState({});
+  const [bulkTopic, setBulkTopic] = useState('');
 
   const dirtyQuestions = useMemo(() => questions.filter((q) => q._dirty), [questions]);
+  const unclassifiedCount = useMemo(() => questions.filter((q) => !q.topic_id).length, [questions]);
   const anyDirty = examDirty || dirtyQuestions.length > 0;
   useUnsavedWarning(anyDirty);
 
@@ -125,10 +137,17 @@ export default function ExamEditor({ examId, onBack }) {
     const nextNumber = questions.reduce((m, q) => Math.max(m, q.question_number || 0), 0) + 1;
     setQuestions((qs) => [...qs, {
       id: newTempId(), exam_id: examId, question_number: nextNumber, content: '',
-      explanation: '', difficulty: 'medium', question_type: 'single_choice',
+      explanation: '', difficulty: 'medium', question_type: 'single_choice', topic_id: null,
       answers: blankAnswers(), _removed: [], _new: true, _dirty: true,
     }]);
     setTimeout(() => document.querySelector('.adl-qedit-item:last-child textarea')?.focus(), 60);
+  };
+
+  /* Gán một chuyên đề cho mọi câu CHƯA có chuyên đề. Chỉ đánh dấu "chưa lưu" — bấm "Lưu tất cả" để ghi. */
+  const applyTopicToUnclassified = () => {
+    if (!bulkTopic || unclassifiedCount === 0) return;
+    setQuestions((qs) => qs.map((q) => (q.topic_id ? q : { ...q, topic_id: bulkTopic, _dirty: true })));
+    toast.success(`Đã gán chuyên đề cho ${unclassifiedCount} câu — bấm "Lưu tất cả" để ghi.`);
   };
 
   /* ============ LƯU ============ */
@@ -182,6 +201,7 @@ export default function ExamEditor({ examId, onBack }) {
         explanation: q.explanation?.trim() || null,
         difficulty: q.difficulty || 'medium',
         question_type: q.question_type || 'single_choice',
+        topic_id: q.topic_id || null,
       };
 
       if (q._new) {
@@ -308,6 +328,8 @@ export default function ExamEditor({ examId, onBack }) {
   }
   if (!exam) return <EmptyState Icon={IconQuestion} title="Không tìm thấy đề" action={<button type="button" className="adl-btn-outline" onClick={onBack}>Quay lại</button>} />;
 
+  const examGrade = gradeNumber(grades.find((g) => g.id === exam.grade_id)?.name);
+
   return (
     <div className="adl-editor">
       <div className="adl-editor-bar">
@@ -390,6 +412,19 @@ export default function ExamEditor({ examId, onBack }) {
           <button type="button" className="adl-btn-sm primary" onClick={addQuestion}><IconPlus size={13} /> Thêm câu hỏi</button>
         </header>
 
+        {unclassifiedCount > 0 && (
+          <div className="adl-filter-bar">
+            <span className="adl-hint">{unclassifiedCount} câu chưa có chuyên đề</span>
+            <select value={bulkTopic} onChange={(e) => setBulkTopic(e.target.value)} aria-label="Chọn chuyên đề để gán hàng loạt">
+              <option value="">Chọn chuyên đề…</option>
+              <TopicOptions preferGrade={examGrade} />
+            </select>
+            <button type="button" className="adl-btn-sm" onClick={applyTopicToUnclassified} disabled={!bulkTopic}>
+              Gán cho {unclassifiedCount} câu
+            </button>
+          </div>
+        )}
+
         {questions.length === 0 ? (
           <EmptyState Icon={IconQuestion} title="Đề chưa có câu hỏi" action={<button type="button" className="adl-btn-primary" onClick={addQuestion}><IconPlus size={14} /> Thêm câu đầu tiên</button>}>
             Thêm thủ công tại đây, hoặc quay lại tab Tạo đề để import/AI sinh câu hỏi.
@@ -447,6 +482,13 @@ export default function ExamEditor({ examId, onBack }) {
                       <span>Độ khó</span>
                       <select value={q.difficulty || 'medium'} onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, difficulty: e.target.value }))}>
                         {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="adl-field adl-field-inline">
+                      <span>Chuyên đề</span>
+                      <select value={q.topic_id || ''} onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, topic_id: e.target.value || null }))}>
+                        <option value="">Chưa phân loại</option>
+                        <TopicOptions preferGrade={examGrade} />
                       </select>
                     </label>
                     {!errs && !q._dirty && <span className="adl-ok-text"><IconCheck size={14} /> Đã lưu</span>}

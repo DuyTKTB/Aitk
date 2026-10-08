@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ELEMENT_STATS, TYPE_CHART, MOVE_POOL, BATTLE_QUESTIONS } from '../../data/elementStats';
 import GameOverModal from './GameOverModal';
 import { sound } from '../../lib/gameSound';
+import GameBar from './GameBar';
+import { GIcon } from './GameIcons';
 
 const ELEMENT_KEYS = Object.keys(ELEMENT_STATS);
 function HpBar({ hp, maxHp, label, side = 'left' }) {
@@ -66,8 +68,8 @@ export default function ElementBattle() {
     }
   }, [log]);
 
-  const pushLog = useCallback((msg, type = 'info') => {
-    setLog((l) => [...l, { msg, type, id: Date.now() + Math.random() }].slice(-30));
+  const pushLog = useCallback((msg, type = 'info', icon = null) => {
+    setLog((l) => [...l, { msg, type, icon, id: Date.now() + Math.random() }].slice(-30));
   }, []);
 
   const startBattle = () => {
@@ -81,7 +83,7 @@ export default function ElementBattle() {
     setWinner(null);
     setPhase('battle');
     setBattleCount((c) => c + 1);
-    pushLog(`⚔ ${s1.name} (${p1Key}) đấu với ${s2.name} (${p2Key})!`, 'system');
+    pushLog(`${s1.name} (${p1Key}) đấu với ${s2.name} (${p2Key})!`, 'system', 'sword');
   };
   const pickAIOpponent = (playerKey) => {
     const pool = ELEMENT_KEYS.filter((k) => k !== playerKey);
@@ -107,7 +109,7 @@ export default function ElementBattle() {
   useEffect(() => {
     if (phase !== 'question') return;
     if (questionTimer <= 0) {
-      pushLog(`⏱ Hết giờ! ${turn === 0 ? 'P1' : 'P2'} không trả lời được.`, 'warn');
+      pushLog(`Hết giờ! ${turn === 0 ? 'P1' : 'P2'} không trả lời được.`, 'warn', 'timer');
       setPhase('battle');
       setSelectedMove(null);
       setCurrentQuestion(null);
@@ -123,7 +125,7 @@ export default function ElementBattle() {
     setPhase('battle');
 
     if (!correct) {
-      pushLog(`❌ Sai! Đáp án đúng: ${currentQuestion.a}`, 'warn');
+      pushLog(`Sai! Đáp án đúng: ${currentQuestion.a}`, 'warn', 'cross');
       setSelectedMove(null);
       setCurrentQuestion(null);
       sound.wrong?.();
@@ -132,7 +134,7 @@ export default function ElementBattle() {
     }
 
     sound.correct?.();
-    pushLog(`✅ Đúng! ${currentQuestion.a}`, 'success');
+    pushLog(`Đúng! ${currentQuestion.a}`, 'success', 'check');
     executeMove(selectedMove, true);
     setCurrentQuestion(null);
   };
@@ -147,13 +149,13 @@ export default function ElementBattle() {
       const heal = move.heal;
       if (turn === 0) setP1Hp((h) => Math.min(attackerStats.hp, h + heal));
       else setP2Hp((h) => Math.min(attackerStats.hp, h + heal));
-      pushLog(`🛡 ${attackerStats.name} hồi ${heal} HP`, 'heal');
+      pushLog(`${attackerStats.name} hồi ${heal} HP`, 'heal', 'heart');
       sound.correct?.();
       setTimeout(endTurn, 800);
       return;
     }
     if (Math.random() > move.accuracy) {
-      pushLog(`💨 ${attackerStats.name} dùng ${move.name} nhưng trượt!`, 'warn');
+      pushLog(`${attackerStats.name} dùng ${move.name} nhưng trượt!`, 'warn', 'wind');
       sound.wrong?.();
       setTimeout(endTurn, 800);
       return;
@@ -176,8 +178,9 @@ export default function ElementBattle() {
     setTimeout(() => setHitSide(null), 400);
 
     pushLog(
-      `⚔ ${attackerStats.name} dùng ${move.name} → ${damage} dmg ${effectiveness}`,
-      typeMult >= 1.5 ? 'success' : typeMult <= 0.5 ? 'warn' : 'info'
+      `${attackerStats.name} dùng ${move.name} → ${damage} dmg ${effectiveness}`,
+      typeMult >= 1.5 ? 'success' : typeMult <= 0.5 ? 'warn' : 'info',
+      'sword'
     );
     sound.click?.();
     setTimeout(() => {
@@ -188,7 +191,7 @@ export default function ElementBattle() {
         setWinner(w);
         setPhase('over');
         sound.win?.();
-        pushLog(`🏆 ${ELEMENT_STATS[w].name} thắng!`, 'system');
+        pushLog(`${ELEMENT_STATS[w].name} thắng!`, 'system', 'trophy');
         return;
       }
       endTurn();
@@ -222,20 +225,20 @@ export default function ElementBattle() {
     if (move.id === 'shield') {
       const heal = move.heal;
       setP2Hp((h) => Math.min(attackerStats.hp, h + heal));
-      pushLog(`🛡 ${attackerStats.name} hồi ${heal} HP`, 'heal');
+      pushLog(`${attackerStats.name} hồi ${heal} HP`, 'heal', 'heart');
       setTimeout(endTurn, 800);
       return;
     }
 
     if (!aiCorrect) {
-      pushLog(`💨 AI dùng ${move.name} nhưng trượt!`, 'warn');
+      pushLog(`AI dùng ${move.name} nhưng trượt!`, 'warn', 'wind');
       sound.wrong?.();
       setTimeout(endTurn, 800);
       return;
     }
 
     if (Math.random() > move.accuracy) {
-      pushLog(`💨 AI dùng ${move.name} nhưng trượt!`, 'warn');
+      pushLog(`AI dùng ${move.name} nhưng trượt!`, 'warn', 'wind');
       setTimeout(endTurn, 800);
       return;
     }
@@ -248,7 +251,7 @@ export default function ElementBattle() {
     setHitSide('p1');
     setTimeout(() => setHitSide(null), 400);
 
-    pushLog(`⚔ AI (${attackerStats.name}) dùng ${move.name} → ${damage} dmg`, 'warn');
+    pushLog(`AI (${attackerStats.name}) dùng ${move.name} → ${damage} dmg`, 'warn', 'sword');
 
     setTimeout(() => {
       if (p1Hp - damage <= 0) {
@@ -290,20 +293,20 @@ export default function ElementBattle() {
             onClick={() => setMode('ai')}
             type="button"
           >
-            🤖 Đấu với máy
+            <GIcon name="robot" /> Đấu với máy
           </button>
           <button
             className={'eb-mode-btn' + (mode === 'pvp' ? ' on' : '')}
             onClick={() => setMode('pvp')}
             type="button"
           >
-            👥 2 người chơi
+            <GIcon name="users" /> 2 người chơi
           </button>
         </div>
 
         {/* Type chart */}
         <details className="eb-typechart">
-          <summary>📊 Xem bảng khắc chế hệ</summary>
+          <summary><GIcon name="chart" /> Xem bảng khắc chế hệ</summary>
           <div className="eb-typechart-body">
             <p className="hint">1.5x = rất hiệu quả · 0.5x = không hiệu quả · 0.25x = gần như miễn nhiễm</p>
             <div className="eb-chart-grid">
@@ -331,7 +334,7 @@ export default function ElementBattle() {
 
         {/* Chọn P1 */}
         <h3 className="eb-pick-title">
-          {mode === 'pvp' ? '👤 Người chơi 1 — Chọn nguyên tố' : '👤 Chọn nguyên tố của bạn'}
+          <GIcon name="user" /> {mode === 'pvp' ? 'Người chơi 1 — Chọn nguyên tố' : 'Chọn nguyên tố của bạn'}
         </h3>
         <div className="eb-pick-grid">
           {ELEMENT_KEYS.map((k) => {
@@ -348,10 +351,10 @@ export default function ElementBattle() {
                 <div className="eb-pick-key">{k}</div>
                 <div className="eb-pick-name">{s.name}</div>
                 <div className="eb-pick-stats">
-                  <span title="HP">❤ {s.hp}</span>
-                  <span title="ATK">⚔ {s.atk}</span>
-                  <span title="DEF">🛡 {s.def}</span>
-                  <span title="SPD">💨 {s.spd}</span>
+                  <span title="HP"><GIcon name="heart" /> {s.hp}</span>
+                  <span title="ATK"><GIcon name="sword" /> {s.atk}</span>
+                  <span title="DEF"><GIcon name="shield" /> {s.def}</span>
+                  <span title="SPD"><GIcon name="wind" /> {s.spd}</span>
                 </div>
                 <div className="eb-pick-type">{s.type}</div>
               </button>
@@ -362,7 +365,7 @@ export default function ElementBattle() {
         {/* Chọn P2 (chỉ khi pvp) */}
         {mode === 'pvp' && (
           <>
-            <h3 className="eb-pick-title">👥 Người chơi 2 — Chọn nguyên tố</h3>
+            <h3 className="eb-pick-title"><GIcon name="users" /> Người chơi 2 — Chọn nguyên tố</h3>
             <div className="eb-pick-grid">
               {ELEMENT_KEYS.map((k) => {
                 const s = ELEMENT_STATS[k];
@@ -379,10 +382,10 @@ export default function ElementBattle() {
                     <div className="eb-pick-key">{k}</div>
                     <div className="eb-pick-name">{s.name}</div>
                     <div className="eb-pick-stats">
-                      <span>❤ {s.hp}</span>
-                      <span>⚔ {s.atk}</span>
-                      <span>🛡 {s.def}</span>
-                      <span>💨 {s.spd}</span>
+                      <span title="HP"><GIcon name="heart" /> {s.hp}</span>
+                      <span title="ATK"><GIcon name="sword" /> {s.atk}</span>
+                      <span title="DEF"><GIcon name="shield" /> {s.def}</span>
+                      <span title="SPD"><GIcon name="wind" /> {s.spd}</span>
                     </div>
                     <div className="eb-pick-type">{s.type}</div>
                   </button>
@@ -395,7 +398,7 @@ export default function ElementBattle() {
         {/* AI auto-pick display */}
         {mode === 'ai' && p2Key && (
           <div className="eb-ai-pick">
-            <span className="eb-ai-label">🤖 Máy chọn:</span>
+            <span className="eb-ai-label"><GIcon name="robot" /> Máy chọn:</span>
             <div className="eb-ai-card">
               <span className="eb-pick-emoji">{ELEMENT_STATS[p2Key].emoji}</span>
               <b>{p2Key}</b>
@@ -416,7 +419,7 @@ export default function ElementBattle() {
             disabled={!p1Key || !p2Key}
             type="button"
           >
-            ⚔ Vào trận →
+            <GIcon name="sword" /> Vào trận →
           </button>
         </div>
       </section>
@@ -431,6 +434,7 @@ export default function ElementBattle() {
 
     return (
       <section className="wrap eb-battle">
+        <GameBar />
         {/* Arena */}
         <div className="eb-arena">
           <div className="eb-side eb-side-left">
@@ -452,7 +456,7 @@ export default function ElementBattle() {
         {/* Log */}
         <div className="eb-log" ref={logRef}>
           {log.map((l) => (
-            <div key={l.id} className={'eb-log-line eb-log-' + l.type}>{l.msg}</div>
+            <div key={l.id} className={'eb-log-line eb-log-' + l.type}>{l.icon && <GIcon name={l.icon} />} {l.msg}</div>
           ))}
         </div>
 
@@ -473,9 +477,9 @@ export default function ElementBattle() {
                   <b>{m.name}</b>
                   <small>{m.desc}</small>
                   <div className="eb-move-meta">
-                    {m.atkMult > 0 && <span>⚔ {m.atkMult}×</span>}
-                    {m.heal && <span>💚 +{m.heal}HP</span>}
-                    <span>🎯 {Math.round(m.accuracy * 100)}%</span>
+                    {m.atkMult > 0 && <span><GIcon name="sword" /> {m.atkMult}×</span>}
+                    {m.heal && <span><GIcon name="heart" /> +{m.heal}HP</span>}
+                    <span><GIcon name="target" /> {Math.round(m.accuracy * 100)}%</span>
                   </div>
                 </button>
               ))}
@@ -484,7 +488,7 @@ export default function ElementBattle() {
         )}
 
         {phase === 'battle' && turn === 1 && mode === 'ai' && (
-          <div className="eb-ai-thinking">🤖 AI đang suy nghĩ...</div>
+          <div className="eb-ai-thinking"><GIcon name="robot" /> AI đang suy nghĩ...</div>
         )}
 
         <div className="row center" style={{ marginTop: '1rem' }}>
@@ -496,9 +500,9 @@ export default function ElementBattle() {
           <div className="backdrop">
             <div className="eb-question-modal" role="dialog" aria-modal="true">
               <div className="eb-question-head">
-                <span>⚔ Trả lời để tấn công</span>
+                <span><GIcon name="sword" /> Trả lời để tấn công</span>
                 <span className={'eb-question-timer' + (questionTimer <= 5 ? ' urgent' : '')}>
-                  ⏱ {questionTimer}s
+                  <GIcon name="timer" /> {questionTimer}s
                 </span>
               </div>
               <div className="eb-question-body">
@@ -528,7 +532,7 @@ export default function ElementBattle() {
   return (
     <section className="wrap">
       <GameOverModal
-        title={winner ? `🏆 ${winnerStats.name} thắng!` : 'Kết thúc'}
+        title={winner ? <><GIcon name="trophy" /> {winnerStats.name} thắng!</> : 'Kết thúc'}
         score={winner === p1Key ? p1Hp : p1Hp > 0 ? p1Hp : 0}
         onRestart={reset}
         extra={

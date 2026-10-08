@@ -10,6 +10,7 @@ import {
   findReaction,
 } from '../../data/reactions';
 import { compareReactions, suggestNext } from '../../lib/labEngine';
+import { GIcon } from './GameIcons';
 
 const ELEMENTS_MINI = [
   { sym: 'H',  name: 'Hiđro',    z: 1,  color: '#a7c4f2' },
@@ -100,7 +101,7 @@ export default function LabNotebook({
                   letterSpacing: '.08em',
                   color: 'var(--acc)',
                   marginBottom: '.35rem',
-                }}>💡 Gợi ý</div>
+                }}><GIcon name="bulb" /> Gợi ý</div>
                 {suggestions.slice(0, 2).map((s) => (
                   <button
                     key={s.key}

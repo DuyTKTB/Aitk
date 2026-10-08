@@ -22,6 +22,7 @@ import './home-extras.css';
 import './AIChat-glass-v2.css';
 import './components/CommandPalette.css';
 import './styles/tools-apple.css';
+import './games-upgrade.css'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <SettingsProvider>

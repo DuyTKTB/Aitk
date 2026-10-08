@@ -4,6 +4,7 @@ import { askAI, fetchPlan } from '../services/api.js';
 import { compressImage } from '../services/ai.js';
 import VipGate from './VipGate.jsx';
 import AIMark from './AIMark.jsx';
+import { sanitizeTopicId, topicPromptList } from '../data/chemTopics.js';
 
 /* ============================================================
    AI QUIZ GENERATOR — Tính năng VIP
@@ -96,6 +97,13 @@ function buildQuizPrompt({ content, targetScore, questionCount, subject, grade }
     ? '\n\nẢNH BÀI HỌC ĐÃ ĐƯỢC ĐÍNH KÈM — hãy đọc nội dung ảnh trước khi tạo câu hỏi.'
     : '';
 
+  /* Chỉ môn Hóa mới có danh mục chuyên đề để gắn topic_id */
+  const isChem = /hóa|hoá/i.test(subject || 'Hóa học');
+  const topicRule = isChem
+    ? `\n7. Gán cho mỗi câu một "topic_id" lấy ĐÚNG từ danh sách dưới đây (không tự tạo id mới; nếu không khớp chuyên đề nào thì để null):\n${topicPromptList()}`
+    : '';
+  const topicField = isChem ? ',\n    "topic_id": "id trong danh sách ở mục 7 hoặc null"' : '';
+
   return `Bạn là giáo viên ${subject || 'Hóa học'} ${grade || 'THPT'} tạo đề kiểm tra.
 
 NHIỆM VỤ: Tạo ${questionCount} câu hỏi trắc nghiệm dựa trên nội dung bài học dưới đây.
@@ -110,7 +118,7 @@ YÊU CẦU QUAN TRỌNG:
    - Thông hiểu (medium): ~${Math.round(questionCount * 0.4)} câu  
    - Vận dụng (hard): ~${questionCount - Math.round(questionCount * 0.8)} câu
 5. Ký hiệu Unicode: H₂O, Fe³⁺, →, ⇌, KHÔNG dùng LaTeX.
-6. Lời giải 2-4 câu, rõ ràng.
+6. Lời giải 2-4 câu, rõ ràng.${topicRule}
 
 ĐỊNH DẠNG ĐẦU RA: Chỉ trả về JSON thuần (không markdown, không code fence):
 [
@@ -120,7 +128,7 @@ YÊU CẦU QUAN TRỌNG:
     "answer": 0,
     "explain": "Lời giải ngắn",
     "difficulty": "easy|medium|hard",
-    "topic": "Chủ đề nhỏ"
+    "topic": "Chủ đề nhỏ"${topicField}
   }
 ]
 
@@ -243,7 +251,8 @@ export default function AIQuizGenerator({ onClose }) {
 
       if (!valid.length) throw new Error('AI không tạo được câu hỏi hợp lệ. Thử lại.');
 
-      setQuestions(valid.slice(0, questionCount));
+      /* topic_id do AI trả về có thể sai/bịa → chỉ giữ id có trong danh mục */
+      setQuestions(valid.slice(0, questionCount).map((q) => ({ ...q, topic_id: sanitizeTopicId(q.topic_id) })));
       setQIndex(0);
       setPicks({});
       setShowExplain({});

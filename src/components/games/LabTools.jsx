@@ -9,6 +9,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { CHEMICALS } from '../../data/reactions';
 import { chemInfo } from '../../lib/labEngine';
+import { GIcon } from './GameIcons';
 
 /* ============================================================
    1) LỌ HÓA CHẤT SVG — vẽ bằng path, đẹp như thật
@@ -98,7 +99,8 @@ export function ChemBottle({ chemKey, size = 52 }) {
 /* ============================================================
    2) THẺ HÓA CHẤT KÉO THẢ
    ============================================================ */
-const STATE_LABEL = { solid: '◆ Rắn', liquid: '💧 Lỏng', gas: '☁ Khí' };
+const STATE_LABEL = { solid: 'Rắn', liquid: 'Lỏng', gas: 'Khí' };
+const STATE_ICON = { solid: 'solid', liquid: 'drop', gas: 'cloud' };
 
 export function ChemCard({ chemKey, disabled, onClick, onDragStart, onDragEnd, onMouseEnter, onMouseLeave }) {
   const c = CHEMICALS[chemKey];
@@ -124,7 +126,7 @@ export function ChemCard({ chemKey, disabled, onClick, onDragStart, onDragEnd, o
       <ChemBottle chemKey={chemKey} size={40} />
       <span className="lk-chem-formula">{c.formula}</span>
       <span className="lk-chem-name">{c.name}</span>
-      <span className="lk-chem-state">{STATE_LABEL[c.state]}</span>
+      <span className="lk-chem-state"><GIcon name={STATE_ICON[c.state]} /> {STATE_LABEL[c.state]}</span>
     </button>
   );
 }
@@ -248,9 +250,9 @@ export function ChemShelf({
    6) TOOLBAR DỤNG CỤ (giữa) — chọn dụng cụ, thêm/xóa
    ============================================================ */
 export const TOOL_TYPES = [
-  { key: 'beaker', label: 'Cốc', icon: '🥃' },
-  { key: 'flask', label: 'Bình tam giác', icon: '🧪' },
-  { key: 'tube', label: 'Ống nghiệm', icon: '🧬' },
+  { key: 'beaker', label: 'Cốc', icon: 'beaker' },
+  { key: 'flask', label: 'Bình tam giác', icon: 'flask' },
+  { key: 'tube', label: 'Ống nghiệm', icon: 'tube' },
 ];
 
 export function VesselToolbar({
@@ -281,7 +283,7 @@ export function VesselToolbar({
             className={activeType === t.key ? 'on' : ''}
             onClick={() => onActiveTypeChange?.(t.key)}
           >
-            <span>{t.icon}</span>
+            <span><GIcon name={t.icon} /></span>
             {t.label}
           </button>
         ))}
@@ -295,7 +297,7 @@ export function VesselToolbar({
         disabled={vesselCount >= maxVessels}
         title={vesselCount >= maxVessels ? 'Bàn đã đầy' : 'Thêm dụng cụ mới vào bàn'}
       >
-        ➕ Thêm dụng cụ ({vesselCount}/{maxVessels})
+        <GIcon name="plus" /> Thêm dụng cụ ({vesselCount}/{maxVessels})
       </button>
 
       <div className="lk-tool-divider" />
@@ -308,7 +310,7 @@ export function VesselToolbar({
         disabled={!hasContents}
         title="Bật/tắt đèn cồn cho dụng cụ đang chọn"
       >
-        🔥 Đèn cồn {heat ? 'BẬT' : 'tắt'}
+        <GIcon name="fire" /> Đèn cồn {heat ? 'BẬT' : 'tắt'}
       </button>
 
       <button
@@ -318,7 +320,7 @@ export function VesselToolbar({
         disabled={!hasContents}
         title="Khuấy dụng cụ đang chọn"
       >
-        🥄 Khuấy
+        <GIcon name="stir" /> Khuấy
       </button>
 
       <button
@@ -328,7 +330,7 @@ export function VesselToolbar({
         disabled={!hasContents}
         title="Đổ bỏ dụng cụ đang chọn"
       >
-        🗑 Đổ bỏ
+        <GIcon name="trash" /> Đổ bỏ
       </button>
 
       <label className="lk-toggle" style={{ cursor: 'pointer' }}>
@@ -338,7 +340,7 @@ export function VesselToolbar({
           onChange={(e) => onToggleGoggles?.(e.target.checked)}
           style={{ width: 'auto' }}
         />
-        🥽 Kính bảo hộ
+        <GIcon name="goggles" /> Kính bảo hộ
       </label>
 
       <div className="lk-tool-right">
@@ -347,7 +349,7 @@ export function VesselToolbar({
           className="lk-toggle"
           onClick={onDumpAll}
           disabled={vesselCount === 0}
-        >🗑 Tất cả</button>
+        ><GIcon name="trash" /> Tất cả</button>
       </div>
     </div>
   );
