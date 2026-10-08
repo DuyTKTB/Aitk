@@ -5,42 +5,16 @@ import './HeroLindy.css';
 /* ============================================================
    DỮ LIỆU
    ============================================================ */
-
-/* Mỗi channel có bộ câu hỏi + trả lời riêng */
 const CHANNELS = [
   {
     id: 'troly',
     label: '# trợ-lý-ai',
     members: '2,300 học sinh',
     qa: [
-      {
-        q: 'Cân bằng giúp mình PTHH: Fe + O₂ → Fe₂O₃',
-        a: {
-          steps: '1 bước · 2s',
-          text: 'Cân bằng xong: 4Fe + 3O₂ → 2Fe₂O₃. Kiểm tra: Fe 4=4, O 6=6 ✓',
-        },
-      },
-      {
-        q: 'Tính pH của dung dịch HCl 0,01M',
-        a: {
-          steps: '1 bước · 2s',
-          text: 'HCl là axit mạnh, phân ly hoàn toàn. [H⁺] = 0,01M → pH = -log(0,01) = 2.',
-        },
-      },
-      {
-        q: 'Giải thích định luật bảo toàn khối lượng',
-        a: {
-          steps: '1 bước · 3s',
-          text: 'Trong phản ứng hóa học, tổng khối lượng chất tham gia = tổng khối lượng chất tạo thành. Vì nguyên tử chỉ sắp xếp lại, không sinh ra hay mất đi.',
-        },
-      },
-      {
-        q: 'Tính số mol của 5,6g Fe (M = 56)',
-        a: {
-          steps: '1 bước · 1s',
-          text: 'n = m / M = 5,6 / 56 = 0,1 mol. Vậy 5,6g Fe có 0,1 mol nguyên tử Fe.',
-        },
-      },
+      { q: 'Cân bằng giúp mình PTHH: Fe + O₂ → Fe₂O₃', a: { steps: '1 bước · 2s', text: 'Cân bằng xong: 4Fe + 3O₂ → 2Fe₂O₃. Kiểm tra: Fe 4=4, O 6=6 ✓' } },
+      { q: 'Tính pH của dung dịch HCl 0,01M', a: { steps: '1 bước · 2s', text: 'HCl là axit mạnh, phân ly hoàn toàn. [H⁺] = 0,01M → pH = -log(0,01) = 2.' } },
+      { q: 'Giải thích định luật bảo toàn khối lượng', a: { steps: '1 bước · 3s', text: 'Trong phản ứng hóa học, tổng khối lượng chất tham gia = tổng khối lượng chất tạo thành. Vì nguyên tử chỉ sắp xếp lại, không sinh ra hay mất đi.' } },
+      { q: 'Tính số mol của 5,6g Fe (M = 56)', a: { steps: '1 bước · 1s', text: 'n = m / M = 5,6 / 56 = 0,1 mol. Vậy 5,6g Fe có 0,1 mol nguyên tử Fe.' } },
     ],
   },
   {
@@ -48,27 +22,9 @@ const CHANNELS = [
     label: '# bảng-tuần-hoàn',
     members: '1,850 học sinh',
     qa: [
-      {
-        q: 'Nguyên tố nào có độ âm điện lớn nhất?',
-        a: {
-          steps: '1 bước · 2s',
-          text: 'Flo (F) có độ âm điện lớn nhất — 3,98 theo thang Pauling. Kế tiếp là Oxi (3,44) và Clo (3,16).',
-        },
-      },
-      {
-        q: 'Vì sao kim loại kiềm hoạt động mạnh?',
-        a: {
-          steps: '2 bước · 4s',
-          text: 'Kim loại kiềm (Li, Na, K…) có 1 electron lớp ngoài cùng, dễ nhường để đạt cấu hình bền → tính khử rất mạnh.',
-        },
-      },
-      {
-        q: 'Sắt thuộc nhóm nào trong bảng tuần hoàn?',
-        a: {
-          steps: '1 bước · 1s',
-          text: 'Fe (Z=26) thuộc nhóm VIIIB, chu kỳ 4, là kim loại chuyển tiếp. Cấu hình: [Ar]3d⁶4s².',
-        },
-      },
+      { q: 'Nguyên tố nào có độ âm điện lớn nhất?', a: { steps: '1 bước · 2s', text: 'Flo (F) có độ âm điện lớn nhất — 3,98 theo thang Pauling. Kế tiếp là Oxi (3,44) và Clo (3,16).' } },
+      { q: 'Vì sao kim loại kiềm hoạt động mạnh?', a: { steps: '2 bước · 4s', text: 'Kim loại kiềm (Li, Na, K…) có 1 electron lớp ngoài cùng, dễ nhường để đạt cấu hình bền → tính khử rất mạnh.' } },
+      { q: 'Sắt thuộc nhóm nào trong bảng tuần hoàn?', a: { steps: '1 bước · 1s', text: 'Fe (Z=26) thuộc nhóm VIIIB, chu kỳ 4, là kim loại chuyển tiếp. Cấu hình: [Ar]3d⁶4s².' } },
     ],
   },
   {
@@ -76,27 +32,9 @@ const CHANNELS = [
     label: '# cân-bằng-pthh',
     members: '980 học sinh',
     qa: [
-      {
-        q: 'Cân bằng: Al + HCl → AlCl₃ + H₂',
-        a: {
-          steps: '1 bước · 3s',
-          text: '2Al + 6HCl → 2AlCl₃ + 3H₂. Kiểm tra Al 2=2, H 6=6, Cl 6=6 ✓',
-        },
-      },
-      {
-        q: 'Cân bằng: C₃H₈ + O₂ → CO₂ + H₂O',
-        a: {
-          steps: '1 bước · 4s',
-          text: 'C₃H₈ + 5O₂ → 3CO₂ + 4H₂O. C 3=3, H 8=8, O 10=10 ✓',
-        },
-      },
-      {
-        q: 'Cân bằng: KMnO₄ + HCl → KCl + MnCl₂ + Cl₂ + H₂O',
-        a: {
-          steps: '2 bước · 6s',
-          text: '2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂ + 8H₂O. Đây là phản ứng oxi hóa – khử kinh điển.',
-        },
-      },
+      { q: 'Cân bằng: Al + HCl → AlCl₃ + H₂', a: { steps: '1 bước · 3s', text: '2Al + 6HCl → 2AlCl₃ + 3H₂. Kiểm tra Al 2=2, H 6=6, Cl 6=6 ✓' } },
+      { q: 'Cân bằng: C₃H₈ + O₂ → CO₂ + H₂O', a: { steps: '1 bước · 4s', text: 'C₃H₈ + 5O₂ → 3CO₂ + 4H₂O. C 3=3, H 8=8, O 10=10 ✓' } },
+      { q: 'Cân bằng: KMnO₄ + HCl → KCl + MnCl₂ + Cl₂ + H₂O', a: { steps: '2 bước · 6s', text: '2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂ + 8H₂O. Đây là phản ứng oxi hóa – khử kinh điển.' } },
     ],
   },
   {
@@ -104,33 +42,13 @@ const CHANNELS = [
     label: '# ôn-tập',
     members: '1,200 học sinh',
     qa: [
-      {
-        q: 'Sinh 5 câu trắc nghiệm về Este – Lipit',
-        a: {
-          steps: '5 câu · độ khó tăng dần',
-          text: 'Đã tạo xong 5 câu trắc nghiệm Este – Lipit kèm đáp án và giải thích chi tiết.',
-          file: { badge: 'QUIZ', title: 'este-lipit-quiz.pdf', sub: '5 câu · có lời giải' },
-        },
-      },
-      {
-        q: 'Tóm tắt chương Ancol – Phenol',
-        a: {
-          steps: '1 bước · 5s',
-          text: 'Ancol: R–OH, có nhóm –OH gắn C no. Phenol: C₆H₅–OH, –OH gắn trực tiếp vòng benzen. Phenol có tính axit yếu, tác dụng NaOH; ancol thì không.',
-        },
-      },
-      {
-        q: 'Công thức tính số đồng phân ankan?',
-        a: {
-          steps: '1 bước · 3s',
-          text: 'Ankan CₙH₂ₙ₊₂: n=1→1, n=2→1, n=3→1, n=4→2, n=5→3, n=6→5, n=7→9, n=8→18, n=9→35, n=10→75 đồng phân.',
-        },
-      },
+      { q: 'Sinh 5 câu trắc nghiệm về Este – Lipit', a: { steps: '5 câu · độ khó tăng dần', text: 'Đã tạo xong 5 câu trắc nghiệm Este – Lipit kèm đáp án và giải thích chi tiết.', file: { badge: 'QUIZ', title: 'este-lipit-quiz.pdf', sub: '5 câu · có lời giải' } } },
+      { q: 'Tóm tắt chương Ancol – Phenol', a: { steps: '1 bước · 5s', text: 'Ancol: R–OH, có nhóm –OH gắn C no. Phenol: C₆H₅–OH, –OH gắn trực tiếp vòng benzen. Phenol có tính axit yếu, tác dụng NaOH; ancol thì không.' } },
+      { q: 'Công thức tính số đồng phân ankan?', a: { steps: '1 bước · 3s', text: 'Ankan CₙH₂ₙ₊₂: n=1→1, n=2→1, n=3→1, n=4→2, n=5→3, n=6→5, n=7→9, n=8→18, n=9→35, n=10→75 đồng phân.' } },
     ],
   },
 ];
 
-/* Icon app bay */
 const Icons = {
   stripe: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /></svg>),
   gmail:  (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 7 9-7" /></svg>),
@@ -151,18 +69,31 @@ const FLOATING = [
 
 const AI_NAME = 'CUAI';
 
-export default function HeroLindy() {
+/* ============================================================
+   ICONS
+   ============================================================ */
+const IcoSend = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+);
+
+/* ============================================================
+   COMPONENT
+   ============================================================ */
+export default function HeroLindy({ onSend }) {
   const [activeCh, setActiveCh] = useState(0);
   const [activeQA, setActiveQA] = useState(0);
   const [typing, setTyping] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [inputVal, setInputVal] = useState('');
   const timersRef = useRef([]);
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
   const channel = CHANNELS[activeCh];
   const qa = channel.qa[activeQA];
 
-  /* Khi đổi channel → reset về câu hỏi đầu */
   useEffect(() => {
     setActiveQA(0);
     setShowAnswer(false);
@@ -171,7 +102,6 @@ export default function HeroLindy() {
     timersRef.current = [];
   }, [activeCh]);
 
-  /* Khi ấn câu hỏi mới → chạy typing rồi hiện trả lời */
   const askQuestion = (idx) => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
@@ -186,23 +116,40 @@ export default function HeroLindy() {
     );
   };
 
-  /* Auto scroll khi có nội dung mới */
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [showAnswer, typing, activeQA]);
 
+  /* ===== GỬI CÂU HỎI → CHUYỂN SANG CUAI ===== */
+  const submit = (text) => {
+    const q = (text || inputVal).trim();
+    if (!q) {
+      // Không có text → vẫn vào CUAI
+      try {
+        localStorage.setItem('cs-ai-pending', JSON.stringify({ text: '', t: Date.now() }));
+      } catch { /* */ }
+      if (onSend) onSend('');
+      else location.hash = 'ai';
+      return;
+    }
+    // Có text → lưu vào localStorage rồi chuyển
+    try {
+      localStorage.setItem('cs-ai-pending', JSON.stringify({ text: q, t: Date.now() }));
+    } catch { /* */ }
+    if (onSend) onSend(q);
+    else location.hash = 'ai';
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    }
+  };
+
   return (
     <section className="hl-wrap">
-      {/* Logo AIMark bên TRÁI — chỉ desktop */}
-      <div className="hl-logo hl-logo-left" aria-hidden="true">
-        <AIMark size={280} look mode="idle" title="" />
-      </div>
-      {/* Logo AIMark bên PHẢI — chỉ desktop */}
-      <div className="hl-logo hl-logo-right" aria-hidden="true">
-        <AIMark size={240} look mode="think" title="" />
-      </div>
-
       {/* Icon bay */}
       <div className="hl-floating" aria-hidden="true">
         {FLOATING.map((f) => (
@@ -222,7 +169,7 @@ export default function HeroLindy() {
       </div>
 
       <div className="hl-mockup">
-        {/* Sidebar — click đổi channel */}
+        {/* Sidebar */}
         <aside className="hl-sidebar">
           <div className="hl-sidebar-head">
             <span>Học Hóa</span>
@@ -257,7 +204,6 @@ export default function HeroLindy() {
           </header>
 
           <div className="hl-messages" ref={scrollRef}>
-            {/* Câu hỏi hiện tại (user) */}
             <div className="hl-msg show">
               <div className="hl-msg-avatar user blur-1">
                 <span className="hl-blob b1" />
@@ -273,7 +219,6 @@ export default function HeroLindy() {
               </div>
             </div>
 
-            {/* AI đang gõ */}
             {typing && (
               <div className="hl-msg show">
                 <div className="hl-msg-avatar ai">
@@ -291,7 +236,6 @@ export default function HeroLindy() {
               </div>
             )}
 
-            {/* AI trả lời */}
             {showAnswer && (
               <div className="hl-msg show">
                 <div className="hl-msg-avatar ai">
@@ -320,7 +264,7 @@ export default function HeroLindy() {
             )}
           </div>
 
-          {/* Hàng câu hỏi gợi ý — click để đổi */}
+          {/* Câu hỏi gợi ý */}
           <div className="hl-asks">
             <span className="hl-asks-label">Hỏi nhanh:</span>
             {channel.qa.map((item, i) => (
@@ -335,9 +279,26 @@ export default function HeroLindy() {
             ))}
           </div>
 
-          <div className="hl-input" role="button" tabIndex={0}>
-            <span>Nhắn cho {AI_NAME}…</span>
-            <span className="hl-input-send">↑</span>
+          {/* INPUT THẬT — gõ + Enter → CUAI */}
+          <div className="hl-input-wrap">
+            <input
+              ref={inputRef}
+              type="text"
+              className="hl-input"
+              placeholder={`Nhắn cho ${AI_NAME}…`}
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={onKeyDown}
+              aria-label={`Nhắn cho ${AI_NAME}`}
+            />
+            <button
+              type="button"
+              className="hl-input-send"
+              onClick={() => submit()}
+              aria-label="Gửi tin nhắn"
+            >
+              <IcoSend size={16} />
+            </button>
           </div>
         </main>
       </div>

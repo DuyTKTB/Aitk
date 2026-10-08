@@ -38,6 +38,7 @@ import BottomNav from './components/BottomNav.jsx';
 import DesktopNav from './components/DesktopNav.jsx';
 import StudySheet from './components/StudySheet.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
+import Landing from './components/Landing.jsx';
 
 import { useAuth } from './hooks/useAuth.jsx';
 import './app-extra.css';
@@ -108,6 +109,7 @@ const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudok
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
   const h = window.location.hash.slice(1);
+  if (h === 'login' || h === 'register') return h;
   if (GAME_ROUTES.includes(h)) return h;
   if (h.startsWith('exam/')) return h;
   return PAGES.some((p) => p[0] === h) ? h : 'home';
@@ -270,11 +272,16 @@ export default function App() {
     );
   }
 
+  /* Khách: luôn thấy landing page. Đăng nhập/đăng ký (#login, #register) và mọi
+     chức năng cần tài khoản (#ai, #quiz, #table…) chỉ mở hộp thoại, không đổi trang. */
   if (!isLoggedIn) {
     return (
-      <Suspense fallback={<div className="loader"><span>A7 K60 DTA</span></div>}>
-        <LoginPage />
-      </Suspense>
+      <Landing
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        authOpen={page !== 'home'}
+        authMode={page === 'register' ? 'register' : 'login'}
+      />
     );
   }
 

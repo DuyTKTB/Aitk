@@ -879,3 +879,80 @@
   }
   .hl-msg { opacity: 1; transform: none; }
 }
+/* ============================================================
+   home-lindy.css — Wrapper cho HeroLindy trong Home
+   Import SAU home-pro.css
+   ============================================================ */
+
+/* Hero Lindy — layout mới */
+.hm-hero-lindy {
+  position: relative;
+  padding: calc(var(--nav-h, 68px) + 2rem) 0 3rem;
+  overflow: hidden;
+}
+
+.hm-hero-lindy-head {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 2.5rem;
+}
+
+.hm-hero-lindy-head .hm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 1.2rem;
+  padding: .35rem .9rem;
+  border-radius: 999px;
+  background: var(--hp-glass, rgba(14, 22, 58, .42));
+  border: 1px solid var(--hp-line, rgba(170, 195, 255, .22));
+  color: var(--mut);
+  font-size: .82rem;
+}
+
+.hm-hero-lindy-head .hm-h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2.2rem, 5.5vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+  font-weight: 800;
+}
+
+.hm-hero-lindy-head .hm-lead {
+  margin: 0 auto;
+  max-width: 34em;
+  color: var(--mut);
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
+  line-height: 1.6;
+}
+
+/* Đảm bảo HeroLindy nằm trên nền */
+.hm-hero-lindy .hl-wrap {
+  position: relative;
+  z-index: 2;
+}
+
+/* Nền hero */
+.hm-hero-lindy .hm-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .6;
+}
+
+/* Mobile */
+@media (max-width: 860px) {
+  .hm-hero-lindy {
+    padding-top: calc(var(--nav-h, 68px) + 1rem);
+  }
+  .hm-hero-lindy-head {
+    margin-bottom: 1.5rem;
+    padding-inline: 1rem;
+  }
+  .hm-hero-lindy-head .hm-h1 {
+    font-size: clamp(1.8rem, 7vw, 2.8rem);
+  }
+}

@@ -1,385 +1,300 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { translateAuthError } from '../lib/firebase.js';
-import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
-import './AuthProfile.css';
-import './LoginPage-v2.css'; 
-const PW_RULES = [
-  ['Từ 6 ký tự', (p) => p.length >= 6],
-  ['Có chữ hoa và chữ thường', (p) => /[a-z]/.test(p) && /[A-Z]/.test(p)],
-  ['Có chữ số', (p) => /\d/.test(p)],
-  ['Có ký tự đặc biệt', (p) => /[^A-Za-z0-9]/.test(p)],
-];
+import './login-page.css';
 
-const FACTS = [
-  'Nước là hợp chất phổ biến nhất trên Trái Đất.',
-  'Vàng là kim loại có thể kéo thành sợi mỏng hơn tóc người.',
-  'Heli là nguyên tố duy nhất không đông đặc ở 0K.',
-  'Kim cương và than chì đều làm từ Cacbon.',
-];
+/* ============================================================
+   SVG ICONS
+   ============================================================ */
+const IcoGoogle = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.4-.4-3.5z" />
+    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+    <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.2 5.2C41.9 35 44 30 44 24c0-1.2-.1-2.4-.4-3.5z" />
+  </svg>
+);
 
-export default function LoginPage() {
-  const { login, register, loginWithGoogle, loginFacebook, resetPassword } = useAuth();
+const IcoMail = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="2.5" />
+    <path d="M3 7l9 6 9-6" />
+  </svg>
+);
 
-  const [mode, setMode] = useState('login');           // 'login' | 'register'
+const IcoLock = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="4" y="10" width="16" height="11" rx="2.5" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+
+const IcoUser = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+  </svg>
+);
+
+const IcoEye = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const IcoEyeOff = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6 0-10-7-10-7a18.45 18.45 0 0 1 4.06-4.94M9.9 4.24A9.12 9.12 0 0 1 12 4c6 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22" />
+  </svg>
+);
+
+const IcoArrow = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+
+const IcoAlert = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 8v4M12 16h.01" />
+  </svg>
+);
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+export default function LoginPage({ initialMode = 'login', onDone }) {
+  const { login, register, loginWithGoogle, resetPassword } = useAuth();
+  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(true);
-  const [agree, setAgree] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [pass, setPass] = useState('');
+  const [name, setName] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [info, setInfo] = useState('');
-  const [caps, setCaps] = useState(false);
-  const [fact, setFact] = useState(0);
-  const [shake, setShake] = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
-  const forgotRef = useRef(null);
+  const [tick, setTick] = useState(false);
+  const firstRef = useRef(null);
 
-  const isRegister = mode === 'register';
-  const pwScore = pwStrength(password);
+  useEffect(() => { setMode(initialMode); }, [initialMode]);
 
   useEffect(() => {
-    const t = setInterval(() => setFact((f) => (f + 1) % FACTS.length), 5000);
-    return () => clearInterval(t);
-  }, []);
+    const t = setTimeout(() => firstRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, [mode]);
 
-  useEffect(() => {
-    const d = forgotRef.current;
-    if (!d) return;
-    if (forgotOpen && !d.open) d.showModal();
-    if (!forgotOpen && d.open) d.close();
-  }, [forgotOpen]);
+  const isLogin = mode === 'login';
+  const isForgot = mode === 'forgot';
 
-  const fail = (msg) => {
-    setErr(msg);
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
-  };
-
-  const onSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    setErr('');
-    setInfo('');
-
-    if (isRegister) {
-      if (!firstName.trim() || !lastName.trim()) return fail('Vui lòng nhập họ và tên.');
-      if (password.length < 6) return fail('Mật khẩu phải từ 6 ký tự.');
-      if (password !== confirm) return fail('Mật khẩu xác nhận không khớp.');
-      if (!agree) return fail('Bạn cần đồng ý với điều khoản sử dụng.');
-    }
-
-    setLoading(true);
+    setErr(''); setInfo(''); setBusy(true);
     try {
-      if (isRegister) {
-        await register(email.trim(), password, firstName.trim(), lastName.trim(), remember);
-        setInfo('Đăng ký thành công! Kiểm tra email để xác thực tài khoản.');
+      if (isForgot) {
+        await resetPassword(email);
+        setInfo('Đã gửi link đặt lại mật khẩu tới email của bạn.');
+      } else if (isLogin) {
+        await login(email, pass);
+        onDone?.();
       } else {
-        await login(email.trim(), password, remember);
+        await register(email, pass, name);
+        onDone?.();
       }
-    } catch (x) {
-      fail(x.code ? translateAuthError(x.code) : (x.message || 'Có lỗi xảy ra.'));
+    } catch (e2) {
+      const msg = String(e2?.code || e2?.message || '');
+      setErr(
+        msg.includes('invalid-credential') || msg.includes('wrong-password') ? 'Email hoặc mật khẩu không đúng.'
+        : msg.includes('user-not-found') ? 'Tài khoản không tồn tại.'
+        : msg.includes('email-already-in-use') ? 'Email này đã được đăng ký.'
+        : msg.includes('weak-password') ? 'Mật khẩu cần ít nhất 6 ký tự.'
+        : msg.includes('invalid-email') ? 'Email không hợp lệ.'
+        : msg.includes('too-many-requests') ? 'Quá nhiều lần thử. Vui lòng đợi vài phút.'
+        : 'Có lỗi xảy ra, vui lòng thử lại.'
+      );
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  const onGoogle = async () => {
-    setErr('');
-    setLoading(true);
-    try {
-      await loginWithGoogle();
-    } catch (x) {
-      fail(x.code ? translateAuthError(x.code) : (x.message || 'Đăng nhập Google thất bại.'));
-    } finally {
-      setLoading(false);
-    }
+  const google = async () => {
+    setErr(''); setBusy(true);
+    try { await loginWithGoogle(); onDone?.(); }
+    catch { setErr('Không đăng nhập được bằng Google.'); }
+    finally { setBusy(false); }
   };
 
-  const onFacebook = async () => {
-    setErr('');
-    setLoading(true);
-    try {
-      await loginFacebook();
-    } catch (x) {
-      fail(x.code ? translateAuthError(x.code) : (x.message || 'Đăng nhập Facebook thất bại.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onForgot = async (e) => {
-    e.preventDefault();
-    if (!forgotEmail.trim()) return;
-    setLoading(true);
-    try {
-      await resetPassword(forgotEmail.trim());
-      setInfo('Đã gửi link khôi phục. Kiểm tra hộp thư (cả Spam).');
-      setForgotOpen(false);
-      setForgotEmail('');
-    } catch (x) {
-      fail(x.code ? translateAuthError(x.code) : (x.message || 'Không gửi được email.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleMode = () => {
-    setMode(isRegister ? 'login' : 'register');
-    setErr('');
-    setInfo('');
+  const switchMode = (m) => {
+    setMode(m); setErr(''); setInfo(''); setTick((t) => !t);
   };
 
   return (
-    <div className="lx-page">
-      <div className="lx-shell">
-        {/* ==== PANEL TRÁI ==== */}
-        <div className="lx-hero">
-          <div className="lx-hero-glow" aria-hidden="true" />
+    <div className="lg-wrap" data-mode={mode}>
+      {/* ===== Cột trái: branding ===== */}
+      <aside className="lg-aside" aria-hidden="true">
+        <div className="lg-aside-bg">
+          <span className="lg-aside-orb a" />
+          <span className="lg-aside-orb b" />
+          <span className="lg-aside-orb c" />
+        </div>
+        <div className="lg-aside-content">
+          <div className="lg-brand">
+            <img
+              src="/img/logo.png"
+              alt=""
+              width="40"
+              height="40"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            <b>A7 K60 DTA</b>
+          </div>
+          <h2>
+            Học Hóa học<br />
+            <em>thông minh hơn</em>
+          </h2>
+          <p>Trợ lý AI, bảng tuần hoàn, cân bằng PTHH và 6 trò chơi học Hóa — tất cả trong một tài khoản.</p>
+          <ul className="lg-points">
+            <li>Giải đề từ ảnh chụp, từng bước</li>
+            <li>Sinh quiz, sổ câu sai tự động</li>
+            <li>Miễn phí cho học sinh 10–12</li>
+          </ul>
+        </div>
+      </aside>
 
-          <header className="lx-hero-head">
-            <span className="lx-hero-dot" />
-            <span className="lx-hero-brand">A7 K60 DTA</span>
+      {/* ===== Cột phải: form ===== */}
+      <div className="lg-main">
+        <div className="lg-card">
+          <header className="lg-head">
+            <h1>
+              {isForgot ? 'Đặt lại mật khẩu'
+                : isLogin ? 'Chào mừng trở lại'
+                : 'Tạo tài khoản mới'}
+            </h1>
+            <p>
+              {isForgot ? 'Nhập email để nhận link đặt lại.'
+                : isLogin ? 'Đăng nhập để tiếp tục học.'
+                : 'Miễn phí, chỉ mất vài giây.'}
+            </p>
           </header>
 
-          <div className="lx-hero-body">
-            <h1 className="lx-hero-title">
-              Học Hóa học
-              <em>thông minh hơn.</em>
-            </h1>
-            <p className="lx-hero-sub">
-              Trợ lý AI, bảng tuần hoàn tương tác, quiz thông minh — tất cả trong một.
-            </p>
-          </div>
+          {!isForgot && (
+            <>
+              <button
+                type="button"
+                className="lg-google"
+                onClick={google}
+                disabled={busy}
+              >
+                <IcoGoogle size={20} />
+                <span>Tiếp tục với Google</span>
+              </button>
+              <div className="lg-divider"><span>hoặc</span></div>
+            </>
+          )}
 
-          <footer className="lx-hero-foot">
-            <div className="lx-fact-wrap">
-              <small>Bạn có biết?</small>
-              <p className="lx-fact" key={fact}>{FACTS[fact]}</p>
-            </div>
-            <div className="lx-dots" aria-hidden="true">
-              {FACTS.map((_, i) => <span key={i} className={i === fact ? 'on' : ''} />)}
-            </div>
+          <form className="lg-form" onSubmit={submit} key={tick}>
+            {!isLogin && !isForgot && (
+              <label className="lg-field">
+                <span className="lg-field-ic"><IcoUser /></span>
+                <input
+                  ref={firstRef}
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Tên hiển thị"
+                  autoComplete="name"
+                />
+              </label>
+            )}
+
+            <label className="lg-field">
+              <span className="lg-field-ic"><IcoMail /></span>
+              <input
+                ref={!isLogin || isForgot ? undefined : firstRef}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                autoComplete="email"
+                required
+              />
+            </label>
+
+            {!isForgot && (
+              <label className="lg-field">
+                <span className="lg-field-ic"><IcoLock /></span>
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                  placeholder="Mật khẩu"
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  minLength={6}
+                  required
+                />
+                <button
+                  type="button"
+                  className="lg-eye"
+                  onClick={() => setShowPass((s) => !s)}
+                  aria-label={showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPass ? <IcoEyeOff /> : <IcoEye />}
+                </button>
+              </label>
+            )}
+
+            {isLogin && (
+              <button
+                type="button"
+                className="lg-forgot"
+                onClick={() => switchMode('forgot')}
+              >
+                Quên mật khẩu?
+              </button>
+            )}
+
+            {err && (
+              <p className="lg-msg err" role="alert">
+                <IcoAlert /> {err}
+              </p>
+            )}
+            {info && (
+              <p className="lg-msg ok" role="status">{info}</p>
+            )}
+
+            <button type="submit" className="lg-submit" disabled={busy}>
+              {busy ? (
+                <span className="lg-spinner" aria-hidden="true" />
+              ) : (
+                <>
+                  {isForgot ? 'Gửi link đặt lại'
+                    : isLogin ? 'Đăng nhập'
+                    : 'Tạo tài khoản'}
+                  <IcoArrow />
+                </>
+              )}
+            </button>
+          </form>
+
+          <footer className="lg-foot">
+            {isForgot ? (
+              <button type="button" onClick={() => switchMode('login')}>
+                Quay lại đăng nhập
+              </button>
+            ) : isLogin ? (
+              <p>
+                Chưa có tài khoản?{' '}
+                <button type="button" onClick={() => switchMode('register')}>Đăng ký</button>
+              </p>
+            ) : (
+              <p>
+                Đã có tài khoản?{' '}
+                <button type="button" onClick={() => switchMode('login')}>Đăng nhập</button>
+              </p>
+            )}
           </footer>
         </div>
-
-        {/* ==== PANEL PHẢI ==== */}
-        <div className="lx-card">
-          <div className={'lx-inner' + (shake ? ' shake' : '')}>
-            <div className="lx-topbar">
-              <span className="lx-lang">VI</span>
-            </div>
-
-            <div className="lx-welcome">
-              <h2>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}</h2>
-              <p>{isRegister ? 'Miễn phí, không cần thẻ tín dụng.' : 'Chào mừng trở lại!'}</p>
-            </div>
-
-            <div className="lx-social">
-              <button type="button" className="lx-social-btn" onClick={onGoogle} disabled={loading}>
-                <Glyph name="google" size={16} />
-                Google
-              </button>
-              <button type="button" className="lx-social-btn" onClick={onFacebook} disabled={loading}>
-                <Glyph name="facebook" size={16} />
-                Facebook
-              </button>
-            </div>
-
-            <div className="lx-divider"><span>hoặc</span></div>
-
-            <form className="lx-form" onSubmit={onSubmit} noValidate>
-              {isRegister && (
-                <div className="lx-name-row">
-                  <div className="lx-field">
-                    <input
-                      id="lx-last"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder=" "
-                      autoComplete="family-name"
-                    />
-                    <label htmlFor="lx-last">Họ</label>
-                  </div>
-                  <div className="lx-field">
-                    <input
-                      id="lx-first"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder=" "
-                      autoComplete="given-name"
-                    />
-                    <label htmlFor="lx-first">Tên</label>
-                  </div>
-                </div>
-              )}
-
-              <div className="lx-field">
-                <input
-                  id="lx-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder=" "
-                  autoComplete="email"
-                  required
-                />
-                <label htmlFor="lx-email">Email</label>
-              </div>
-
-              <div className="lx-field">
-                <input
-                  id="lx-pw"
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyUp={(e) => setCaps(!!e.getModifierState?.('CapsLock'))}
-                  onBlur={() => setCaps(false)}
-                  placeholder=" "
-                  autoComplete={isRegister ? 'new-password' : 'current-password'}
-                  required
-                />
-                <label htmlFor="lx-pw">Mật khẩu</label>
-                <div className="lx-right">
-                  <button
-                    type="button"
-                    className="lx-eye"
-                    onClick={() => setShowPw((s) => !s)}
-                    aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  >
-                    <Glyph name={showPw ? 'eyeOff' : 'eye'} size={17} />
-                  </button>
-                </div>
-              </div>
-
-              {caps && (
-                <p className="lx-hint"><Glyph name="alert" size={12} /> Caps Lock đang bật</p>
-              )}
-
-              {isRegister && (
-                <div className="lx-collapse open">
-                  <div>
-                    <div className="lx-field">
-                      <input
-                        id="lx-confirm"
-                        type={showPw ? 'text' : 'password'}
-                        value={confirm}
-                        onChange={(e) => setConfirm(e.target.value)}
-                        placeholder=" "
-                        autoComplete="new-password"
-                      />
-                      <label htmlFor="lx-confirm">Nhập lại mật khẩu</label>
-                    </div>
-
-                    {password && (
-                      <div className="lx-strength">
-                        <div className="lx-meter" data-s={pwScore}>
-                          <i /><i /><i /><i />
-                        </div>
-                        <span className="lx-meter-label">{STRENGTH_LABELS[pwScore]}</span>
-                      </div>
-                    )}
-
-                    <ul className="pf-rules" style={{ marginTop: '.6rem' }}>
-                      {PW_RULES.map(([t, f]) => (
-                        <li key={t} className={f(password) ? 'ok' : ''}>{t}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {!isRegister && (
-                <div className="lx-row-between">
-                  <label className="lx-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
-                    />
-                    Ghi nhớ đăng nhập
-                  </label>
-                  <button
-                    type="button"
-                    className="lx-link"
-                    onClick={() => setForgotOpen(true)}
-                  >
-                    Quên mật khẩu?
-                  </button>
-                </div>
-              )}
-
-              {isRegister && (
-                <label className="lx-checkbox lx-checkbox-terms">
-                  <input
-                    type="checkbox"
-                    checked={agree}
-                    onChange={(e) => setAgree(e.target.checked)}
-                  />
-                  <span>
-                    Tôi đồng ý với <a href="#terms">Điều khoản</a> và <a href="#privacy">Chính sách bảo mật</a>.
-                  </span>
-                </label>
-              )}
-
-              {err && (
-                <p className="lx-err"><Glyph name="alert" size={15} />{err}</p>
-              )}
-              {info && (
-                <p className="lx-info"><Glyph name="check" size={15} />{info}</p>
-              )}
-
-              <button type="submit" className="lx-submit" disabled={loading}>
-                {loading ? (
-                  <><Glyph name="spinner" size={16} className="spin" /> Đang xử lý…</>
-                ) : (
-                  <>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'} <span className="lx-arrow">→</span></>
-                )}
-              </button>
-            </form>
-
-            <p className="lx-switch">
-              {isRegister ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}
-              <button type="button" onClick={toggleMode}>
-                {isRegister ? 'Đăng nhập' : 'Đăng ký ngay'}
-              </button>
-            </p>
-
-            <p className="lx-note">
-              Bằng cách tiếp tục, bạn đồng ý với Điều khoản & Chính sách của A7 K60 DTA.
-            </p>
-          </div>
-        </div>
       </div>
-
-      {/* ==== DIALOG QUÊN MẬT KHẨU ==== */}
-      <dialog
-        ref={forgotRef}
-        className="pf-dialog"
-        onClose={() => setForgotOpen(false)}
-        onClick={(e) => e.target === forgotRef.current && setForgotOpen(false)}
-      >
-        <h3>Quên mật khẩu?</h3>
-        <p>Nhập email đã đăng ký — chúng mình sẽ gửi link khôi phục.</p>
-        <form onSubmit={onForgot}>
-          <input
-            type="email"
-            value={forgotEmail}
-            onChange={(e) => setForgotEmail(e.target.value)}
-            placeholder="Email của bạn"
-            autoFocus
-            required
-          />
-          <div className="pf-actions flat" style={{ marginTop: '.8rem' }}>
-            <button type="button" className="pf-btn" onClick={() => setForgotOpen(false)}>Hủy</button>
-            <button type="submit" className="pf-btn primary" disabled={loading}>Gửi link</button>
-          </div>
-        </form>
-      </dialog>
     </div>
   );
 }
