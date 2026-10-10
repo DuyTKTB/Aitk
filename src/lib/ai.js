@@ -40,9 +40,11 @@ class AbortError extends Error {
 
 /* ============================================================
    CẤU HÌNH MODEL — 3 PROVIDERS
+   ✨ SỬA #1: Bỏ alias "gemini-flash-latest" (bị route về 2.5-flash đã khóa)
+   Dùng model ID cố định: gemini-3.8-flash, fallback gemini-3.7-flash
    ============================================================ */
-const GEMINI_VISION_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash'];
-const GEMINI_TEXT_MODELS   = ['gemini-flash-latest', 'gemini-3.5-flash'];
+const GEMINI_VISION_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash'];
+const GEMINI_TEXT_MODELS   = ['gemini-3.8-flash', 'gemini-3.7-flash'];
 
 const GROQ_FAST_MODELS   = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
 const GROQ_STRONG_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
@@ -57,7 +59,7 @@ const TOTAL_MS = 120000;
 const RETRY_DELAY_MS = 1000;
 
 /* ============================================================
-   SYSTEM PROMPT CHÍNH — giữ nguyên của bạn
+   SYSTEM PROMPT CHÍNH
    ============================================================ */
 const SYSTEM_PROMPT = `
 Bạn là "A7 Assistant" — trợ lý học tập thông minh của lớp A7 K60 DTA, do Duy TK tạo.
@@ -151,7 +153,7 @@ QUY TẮC
 `;
 
 /* ============================================================
-   UNICODE / LATEX CONVERTER — giữ nguyên của bạn
+   UNICODE / LATEX CONVERTER
    ============================================================ */
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
@@ -193,7 +195,7 @@ function latexToUnicode(text) {
   if (!text || !/[\\$^_]/.test(text)) return text;
   let s = text;
   s = s.replace(/\$\$/g, '');
-  s = s.replace(/\\[()[\]]/g, '');
+  s = s.replace(/[()[]]/g, '');
   s = s.replace(/\$/g, '');
   for (let i = 0; i < 2; i++) {
     s = s.replace(
@@ -207,20 +209,7 @@ function latexToUnicode(text) {
     if (!Object.prototype.hasOwnProperty.call(LATEX_SYMBOLS, name)) return m;
     return LATEX_SYMBOLS[name] + (NO_SPACE_AFTER.has(name) ? '' : sp);
   });
-  s = s.replace(/\\[,;:!]/g, ' ');
-  s = s.replace(/\\%/g, '%');
-  s = s.replace(/\\ /g, ' ');
-  s = s.replace(/\b10\^([+-]?\d+)/g, (m, d) => '10' + mapChars(d, SUP_MAP));
-  s = s.replace(/\^\s*\{\s*°\s*\}|\^°/g, '°');
-  s = s.replace(/_\{([^{}]*)\}/g, (m, x) => {
-    const r = mapChars(x, SUB_MAP);
-    return r !== null ? r : '_' + x.trim();
-  });
-  s = s.replace(/\^\{([^{}]*)\}/g, (m, x) => {
-    const r = mapChars(x, SUP_MAP);
-    return r !== null ? r : '^(' + x.trim() + ')';
-  });
-  s = s.replace(/([A-Za-z)\]°])_(\d+)/g, (m, a, d) => a + mapChars(d, SUB_MAP));
+  s = s.replace(/\\[,;:!]/g, ' ');   s = s.replace(/\\%/g, '\%');   s = s.replace(/\\ /g, ' ');   s = s.replace(/\b10\^([+-]?\d+)/g, (m, d) => '10' + mapChars(d, SUP_MAP));   s = s.replace(/\^\s*\{\s*°\s*\}\vert{}\^°/g, '°');   s = s.replace(/_\{([^{}]*)\}/g, (m, x) => {     const r = mapChars(x, SUB_MAP);     return r !== null ? r : '_' + x.trim();   });   s = s.replace(/\^\{([^{}]*)\}/g, (m, x) => {     const r = mapChars(x, SUP_MAP);     return r !== null ? r : '^(' + x.trim() + ')';   });   s = s.replace(/([A-Za-z)\]°])_(\d+)/g, (m, a, d) => a + mapChars(d, SUB_MAP));
   return s;
 }
 
@@ -293,7 +282,7 @@ const maxTokensFor = (type) =>
   type === 'problem' ? 8192 : type === 'theory' ? 4096 : 2048;
 
 /* ============================================================
-   PREPARE — đổi history → format từng provider
+   PREPARE
    ============================================================ */
 function prepareGeminiContents(history) {
   return history.map((message) => {
@@ -352,6 +341,7 @@ function prepareOpenAIMessages(history, systemPrompt) {
 
 /* ============================================================
    STREAM GEMINI
+   ✨ SỬA #2: 404 tách riêng thành isNotFound (không còn isOverload)
    ============================================================ */
 async function streamGemini({ model, contents, temperature, maxTokens, systemPrompt, ctrl, claim, onChunk }) {
   let stall;
@@ -399,9 +389,10 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
         throw err;
       }
       if (status === 404) {
+        // ✨ Model không tồn tại → đánh dấu riêng để fallback NGAY
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
-        err.isOverload = true;
+        err.isNotFound = true;
         throw err;
       }
       if (status === 401 || status === 403 || /API[_ ]KEY/i.test(body)) {
@@ -457,6 +448,7 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
 
 /* ============================================================
    STREAM GROQ
+   ✨ SỬA #3: 404 tách thành isNotFound
    ============================================================ */
 async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim, onChunk }) {
   let stall;
@@ -508,9 +500,10 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
       }
       if (status === 401 || status === 403) throw new Error(MSG_API_KEY_ERROR);
       if (status === 404) {
+        // ✨ Model không tồn tại → fallback NGAY
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
-        err.isOverload = true;
+        err.isNotFound = true;
         throw err;
       }
       const err = new Error(`Groq ${model} lỗi ${status}`);
@@ -559,7 +552,8 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
 }
 
 /* ============================================================
-   STREAM AGNES (OpenAI-compatible)
+   STREAM AGNES
+   ✨ SỬA #4: 404 tách thành isNotFound
    ============================================================ */
 async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, claim, onChunk }) {
   let stall;
@@ -606,9 +600,10 @@ async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, clai
         throw err;
       }
       if (status === 404) {
+        // ✨ Model không tồn tại → fallback NGAY
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
-        err.isOverload = true;
+        err.isNotFound = true;
         throw err;
       }
       if (status === 401 || status === 403) throw new Error(MSG_API_KEY_ERROR);
@@ -659,18 +654,16 @@ async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, clai
 }
 
 /* ============================================================
-   PROVIDER CONFIG — thứ tự ưu tiên + fallback
+   PROVIDER CONFIG
    ============================================================ */
 function getProviders(hasImage) {
   const providers = [];
 
-  // Ảnh bắt buộc dùng Gemini (vision)
   if (hasImage) {
     if (GEMINI_KEY) providers.push({ id: 'gemini', models: GEMINI_VISION_MODELS, type: 'vision' });
     return providers;
   }
 
-  // Text: Agnes → Gemini → Groq (theo thứ tự ưu tiên)
   if (AGNES_KEY)  providers.push({ id: 'agnes',  models: AGNES_MODELS,        type: 'text' });
   if (GEMINI_KEY) providers.push({ id: 'gemini', models: GEMINI_TEXT_MODELS,  type: 'text' });
   if (GROQ_KEY)   providers.push({ id: 'groq',   models: GROQ_STRONG_MODELS,  type: 'text' });
@@ -679,7 +672,9 @@ function getProviders(hasImage) {
 }
 
 /* ============================================================
-   HÀM CHÍNH — askAI (multi-provider, multi-fallback)
+   HÀM CHÍNH — askAI
+   ✨ SỬA #5: thêm nhánh isNotFound → advance(true) nhảy provider ngay
+   ✨ SỬA #6: thêm nhánh isAbort → không hiện lỗi khi user dừng
    ============================================================ */
 export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) {
   const activeSystemPrompt = customSystemPrompt || SYSTEM_PROMPT;
@@ -715,7 +710,6 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
     return Promise.reject(new Error('Không có AI provider nào khả dụng.'));
   }
 
-  // Chuẩn bị payloads cho từng provider
   const geminiContents = prepareGeminiContents(recent);
   const messagesOpenAI = prepareOpenAIMessages(recent, activeSystemPrompt);
 
@@ -752,7 +746,6 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
     const launchNext = () => {
       if (finished || aborted || winner !== null) return;
 
-      // Đã hết tất cả provider + model?
       if (providerIdx >= providers.length) {
         finish(reject, lastError || new Error('Tất cả AI đều thất bại. Thử lại sau.'));
         return;
@@ -775,7 +768,6 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
         return winner === i;
       };
 
-      // Chọn stream function theo provider
       let streamPromise;
       if (provider.id === 'gemini') {
         streamPromise = streamGemini({
@@ -810,7 +802,6 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
         });
       }
 
-      // Advance con trỏ trước khi chạy (để fallback tiếp theo biết vị trí)
       const nextProviderIdx = providerIdx;
       const nextModelIdx = modelIdx + 1;
 
@@ -833,8 +824,10 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
           }
         })
         .catch((err) => {
+          // ✨ SỬA #6: user dừng → không hiện lỗi
+          if (err?.isAbort || aborted) return;
+
           if (err?.isQuota) {
-            // Hết quota → chuyển ngay sang provider khác
             ctrls.forEach((c) => { try { c.abort(); } catch {} });
             if (winner === null) {
               lastError = err;
@@ -843,8 +836,18 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
             return;
           }
 
+          // ✨ SỬA #5: model không tồn tại → nhảy provider tiếp theo NGAY
+          // (không đợi, không thử model cùng provider vì có thể cùng bị khóa)
+          if (err?.isNotFound) {
+            if (winner === null) {
+              lastError = err;
+              console.warn(`[A7 Assistant] ⟳ ${provider.id}/${model} not found → nhảy provider tiếp`);
+              advance(true);
+            }
+            return;
+          }
+
           if (err?.isOverload) {
-            // Quá tải → đợi 1s rồi thử model/provider khác
             if (winner === null) {
               lastError = err;
               setTimeout(() => {
@@ -862,20 +865,16 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
           }
         });
 
-      // Hàm advance để di chuyển sang model/provider tiếp theo
       function advance(skipModel = false) {
         if (finished || aborted || winner !== null) return;
 
         if (!skipModel && nextModelIdx < provider.models.length) {
-          // Thử model tiếp theo của cùng provider
           modelIdx = nextModelIdx;
         } else {
-          // Chuyển sang provider tiếp theo
           providerIdx = nextProviderIdx + 1;
           modelIdx = 0;
         }
 
-        // Đợi 1 chút để tránh spam
         setTimeout(launchNext, 200);
       }
     };
@@ -889,7 +888,7 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
 }
 
 /* ============================================================
-   NÉN ẢNH — giữ nguyên của bạn
+   NÉN ẢNH
    ============================================================ */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');

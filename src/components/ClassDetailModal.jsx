@@ -1,15 +1,21 @@
 /* ============================================================
-   ClassDetailModal.jsx — Modal chi tiết lớp học (Vitality)
+   ClassDetailModal.jsx — Modal chi tiết lớp học (Vitality) v2
    ------------------------------------------------------------
    Props:
-     - classInfo: { id, name, subject, teacherName, key, members[], memberIds[] }
+     - classInfo: { id, name, subject, teacherName, key, members[],
+                    memberIds[], pendingMembers[], pendingIds[],
+                    requireApproval }
      - exams: mảng đề của lớp này
      - onClose: callback đóng modal
      - onExportCsv: callback xuất bảng điểm
      - onOpenExam: callback mở đề (chuyển sang tab Sửa đề)
+     - onApprove, onReject, onApproveAll, onToggleApproval: duyệt HS
+     - onOpenRetryTab: callback khi GV muốn xem yêu cầu thi lại
+     - retryRequests: danh sách yêu cầu thi lại (đã lọc theo lớp)
+     - onApproveRetry, onDenyRetry, onToggleAllowance: duyệt thi lại
+     - allowances: { [studentId]: true/false } — quyền thi lại của từng HS
    ------------------------------------------------------------
-   4 tab: Tổng quan · Thành viên · Đề thi · Bảng điểm
-   Tab Thành viên có bảng HS → bấm vào mở StudentModal
+   6 tab: Tổng quan · Thành viên · Chờ duyệt · Đề thi · Bảng điểm · Xin thi lại
    ============================================================ */
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { getSubmissionsByExam } from '../lib/classroom.js';
@@ -18,7 +24,7 @@ import StudentModal from './StudentModal.jsx';
 import '../styles/class-detail.css';
 
 /* ============================================================
-   SVG ICONS — không dùng icon font
+   SVG ICONS
    ============================================================ */
 const Svg = ({ size = 18, sw = 1.8, children, title }) => (
   <svg
@@ -100,14 +106,46 @@ const IconTrendUp = (p) => (
     <path d="M14 7h7v7" />
   </Svg>
 );
-const IconTrophy = (p) => (
+const IconChevron = (p) => <Svg {...p}><path d="M9 6l6 6-6 6" /></Svg>;
+const IconUserPlus = (p) => (
   <Svg {...p}>
-    <path d="M7 5h10v4a5 5 0 0 1-10 0z" />
-    <path d="M7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3" />
-    <path d="M9 18h6M12 14v4" />
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="8.5" cy="7" r="4" />
+    <line x1="20" y1="8" x2="20" y2="14" />
+    <line x1="23" y1="11" x2="17" y2="11" />
   </Svg>
 );
-const IconChevron = (p) => <Svg {...p}><path d="M9 6l6 6-6 6" /></Svg>;
+const IconX = (p) => (
+  <Svg {...p}>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </Svg>
+);
+const IconBell = (p) => (
+  <Svg {...p}>
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </Svg>
+);
+const IconUnlock = (p) => (
+  <Svg {...p}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 7.464-2" />
+  </Svg>
+);
+const IconLock = (p) => (
+  <Svg {...p}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </Svg>
+);
+const IconTrash = (p) => (
+  <Svg {...p}>
+    <path d="M4 7h16M10 11v6M14 11v6" />
+    <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+    <path d="M9 7V4h6v3" />
+  </Svg>
+);
 
 /* ============================================================
    HELPERS
@@ -142,20 +180,38 @@ const pctOf = (sub) => {
   return Math.round((sub.score / sub.totalPoints) * 100);
 };
 
-/* ============================================================
-   TABS
-   ============================================================ */
-const TABS = [
-  { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
-  { key: 'members', label: 'Thành viên', Icon: IconUsers },
-  { key: 'exams', label: 'Đề thi', Icon: IconBook },
-  { key: 'scores', label: 'Bảng điểm', Icon: IconTable },
-];
+const timeAgoShort = (t) => {
+  const ms = Date.now() - tsMs(t);
+  if (ms < 60e3) return 'vừa xong';
+  const m = Math.floor(ms / 60e3);
+  if (m < 60) return `${m} phút trước`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} giờ trước`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} ngày trước`;
+  return new Date(tsMs(t)).toLocaleDateString('vi-VN');
+};
 
 /* ============================================================
    MAIN
    ============================================================ */
-export default function ClassDetailModal({ classInfo, exams = [], onClose, onExportCsv, onOpenExam }) {
+export default function ClassDetailModal({
+  classInfo,
+  exams = [],
+  onClose,
+  onExportCsv,
+  onOpenExam,
+  onApprove,
+  onReject,
+  onApproveAll,
+  onToggleApproval,
+  onRemoveMember,
+  retryRequests = [],
+  allowances = {},
+  onApproveRetry,
+  onDenyRetry,
+  onToggleAllowance,
+}) {
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
   const [memberFilter, setMemberFilter] = useState('all');
@@ -164,6 +220,11 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
   const [openStudent, setOpenStudent] = useState(null);
 
   const members = classInfo?.members || [];
+  const pending = classInfo?.pendingMembers || [];
+  const pendingRetry = useMemo(
+    () => (retryRequests || []).filter((r) => r.status === 'pending'),
+    [retryRequests]
+  );
 
   /* ---- Load submissions của tất cả đề trong lớp ---- */
   const loadSubmissions = useCallback(async () => {
@@ -205,7 +266,6 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
     const totalStudents = members.length;
     const totalSubs = allSubs.length;
 
-    // Điểm TB lớp
     const scores = allSubs
       .filter((s) => s.totalPoints > 0)
       .map((s) => (s.score / s.totalPoints) * 100);
@@ -213,17 +273,14 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
       ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
       : null;
 
-    // Tỷ lệ đạt (>= 50%)
     const passed = scores.filter((s) => s >= 50).length;
     const passRate = scores.length ? Math.round((passed / scores.length) * 100) : 0;
 
-    // Tỷ lệ hoàn thành (HS đã làm ít nhất 1 đề)
     const activeStudentIds = new Set(allSubs.map((s) => s.studentId));
     const completedRate = totalStudents
       ? Math.round((activeStudentIds.size / totalStudents) * 100)
       : 0;
 
-    // Vi phạm
     const totalViolations = allSubs.reduce((sum, s) => sum + (s.violationCount || 0), 0);
 
     return {
@@ -242,23 +299,27 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
      ============================================================ */
   const studentsStats = useMemo(() => {
     return members.map((m) => {
-      // Tìm các submission của HS này
       const mySubs = [];
       exams.forEach((ex) => {
         const subs = submissionsMap[ex.id] || [];
-        const sub = subs.find((s) => s.studentId === m.id);
-        if (sub) {
-          mySubs.push({ ...sub, examTitle: ex.title, examId: ex.id, examDuration: ex.duration });
-        }
+        // Lấy TẤT CẢ submission của HS cho đề này (để biết thi lại)
+        const mySubsForExam = subs.filter((s) => s.studentId === m.id);
+        mySubsForExam.forEach((sub) => {
+          mySubs.push({
+            ...sub,
+            examTitle: ex.title,
+            examId: ex.id,
+            examDuration: ex.duration,
+          });
+        });
       });
 
       const doneCount = mySubs.length;
       const scores = mySubs
         .filter((s) => s.totalPoints > 0)
         .map((s) => (s.score / s.totalPoints) * 100);
-      const avg = scores.length
-        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-        : null;
+      // Điểm TB lấy cao nhất (theo yêu cầu)
+      const avg = scores.length ? Math.round(Math.max(...scores)) : null;
 
       const totalViolations = mySubs.reduce((sum, s) => sum + (s.violationCount || 0), 0);
       const lastSub = mySubs.reduce((latest, s) => {
@@ -294,7 +355,6 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
       );
     }
     return list.sort((a, b) => {
-      // Ưu tiên: có điểm TB cao lên đầu, HS chưa làm xuống cuối
       if (a.avgScore == null && b.avgScore != null) return 1;
       if (b.avgScore == null && a.avgScore != null) return -1;
       return (b.avgScore || 0) - (a.avgScore || 0);
@@ -312,6 +372,18 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
         return { label: ex.title, value: avg };
       });
   }, [exams, submissionsMap]);
+
+  /* ============================================================
+     TABS
+     ============================================================ */
+  const TABS = [
+    { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
+    { key: 'members', label: 'Thành viên', Icon: IconUsers, badge: members.length },
+    { key: 'pending', label: 'Chờ duyệt', Icon: IconUserPlus, badge: pending.length, danger: true },
+    { key: 'exams', label: 'Đề thi', Icon: IconBook, badge: exams.length },
+    { key: 'scores', label: 'Bảng điểm', Icon: IconTable },
+    { key: 'retry', label: 'Xin thi lại', Icon: IconBell, badge: pendingRetry.length, danger: true },
+  ];
 
   /* ============================================================
      RENDER
@@ -352,11 +424,10 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
               >
                 <I size={15} />
                 <span>{t.label}</span>
-                {t.key === 'members' && (
-                  <em>{members.length}</em>
-                )}
-                {t.key === 'exams' && (
-                  <em>{exams.length}</em>
+                {t.badge > 0 && (
+                  <em style={t.danger ? { background: '#dc2626', color: '#fff' } : undefined}>
+                    {t.badge}
+                  </em>
                 )}
               </button>
             );
@@ -511,20 +582,14 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
                         <th style={{ width: 100 }}>Điểm TB</th>
                         <th style={{ width: 100 }}>Vi phạm</th>
                         <th style={{ width: 140 }}>Lần cuối</th>
-                        <th style={{ width: 40 }} />
+                        <th style={{ width: 60 }} />
                       </tr>
                     </thead>
                     <tbody>
                       {filteredStudents.map((s, i) => (
-                        <tr
-                          key={s.id}
-                          className="cd-row"
-                          onClick={() => setOpenStudent(s)}
-                          tabIndex={0}
-                          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpenStudent(s)}
-                        >
+                        <tr key={s.id} className="cd-row">
                           <td className="cd-idx">{i + 1}</td>
-                          <td>
+                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
                             <div className="cd-cell-student">
                               <Avatar name={s.name} size={36} />
                               <div>
@@ -533,12 +598,12 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
                               </div>
                             </div>
                           </td>
-                          <td>
+                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
                             <span className="cd-badge">
                               <b>{s.doneCount}</b>/{s.totalExams}
                             </span>
                           </td>
-                          <td>
+                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
                             {s.avgScore == null ? (
                               <span className="cd-muted">—</span>
                             ) : (
@@ -554,7 +619,7 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
                               </b>
                             )}
                           </td>
-                          <td>
+                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
                             {s.totalViolations === 0 ? (
                               <span className="cd-muted">0</span>
                             ) : (
@@ -567,13 +632,87 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
                             {s.lastSubAt ? fmtDate(s.lastSubAt) : '—'}
                           </td>
                           <td>
-                            <IconChevron size={14} />
+                            {onRemoveMember && (
+                              <button
+                                type="button"
+                                className="vt-icon-btn danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRemoveMember(classInfo, s);
+                                }}
+                                title="Xóa khỏi lớp"
+                                aria-label={`Xóa ${s.name} khỏi lớp`}
+                              >
+                                <IconTrash size={14} />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ---------- TAB: CHỜ DUYỆT ---------- */}
+          {tab === 'pending' && (
+            <div className="cd-members">
+              <div className="cd-toolbar">
+                <label className="cd-check">
+                  <input
+                    type="checkbox"
+                    checked={classInfo?.requireApproval !== false}
+                    onChange={(e) => onToggleApproval?.(classInfo, e.target.checked)}
+                  />
+                  Học sinh phải được duyệt mới vào lớp
+                </label>
+                {pending.length > 0 && (
+                  <button
+                    type="button"
+                    className="vt-btn sm primary"
+                    onClick={() => onApproveAll?.(classInfo)}
+                  >
+                    <IconCheck size={13} /> Duyệt tất cả ({pending.length})
+                  </button>
+                )}
+              </div>
+
+              {pending.length === 0 ? (
+                <div className="cd-empty">
+                  <span><IconUserPlus size={30} /></span>
+                  <h3>Không có yêu cầu nào</h3>
+                  <p>Học sinh nhập key lớp sẽ xuất hiện ở đây để chờ duyệt.</p>
+                </div>
+              ) : (
+                <ul className="cd-sub-list">
+                  {pending.map((p) => (
+                    <li key={p.id} className="cd-sub-item">
+                      <Avatar name={p.name} size={40} />
+                      <div className="cd-sub-main">
+                        <h4>{p.name}</h4>
+                        <p className="cd-sub-meta">
+                          {p.email || '—'} · yêu cầu {timeAgoShort(p.requestedAt)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="vt-btn sm primary"
+                        onClick={() => onApprove?.(classInfo, p.id)}
+                      >
+                        <IconCheck size={13} /> Duyệt
+                      </button>
+                      <button
+                        type="button"
+                        className="vt-btn sm danger"
+                        onClick={() => onReject?.(classInfo, p.id)}
+                      >
+                        <IconX size={13} /> Từ chối
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           )}
@@ -704,10 +843,99 @@ export default function ClassDetailModal({ classInfo, exams = [], onClose, onExp
               )}
             </div>
           )}
+
+          {/* ---------- TAB: XIN THI LẠI ---------- */}
+          {tab === 'retry' && (
+            <div className="cd-members">
+              {pendingRetry.length === 0 && Object.keys(allowances).filter((k) => allowances[k]).length === 0 ? (
+                <div className="cd-empty">
+                  <span><IconBell size={30} /></span>
+                  <h3>Chưa có yêu cầu thi lại</h3>
+                  <p>Khi học sinh bấm "Xin cô cho thi lại", yêu cầu sẽ xuất hiện ở đây.</p>
+                </div>
+              ) : (
+                <>
+                  {pendingRetry.length > 0 && (
+                    <>
+                      <h3 style={{ margin: '0 0 .7rem', font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>
+                        Yêu cầu chờ duyệt ({pendingRetry.length})
+                      </h3>
+                      <ul className="cd-sub-list" style={{ marginBottom: '1.2rem' }}>
+                        {pendingRetry.map((r) => {
+                          const examTitle = exams.find((e) => e.id === r.examId)?.title || 'Đề không xác định';
+                          return (
+                            <li key={r.id} className="cd-sub-item" style={{ flexWrap: 'wrap' }}>
+                              <Avatar name={r.studentName} size={40} />
+                              <div className="cd-sub-main" style={{ flex: '1 1 200px' }}>
+                                <h4>{r.studentName}</h4>
+                                <p className="cd-sub-meta">
+                                  <b>{examTitle}</b>
+                                </p>
+                                <p className="cd-sub-meta">
+                                  {r.reason ? `Lý do: "${r.reason}"` : 'Không có lý do'}
+                                  {' · '}{timeAgoShort(r.requestedAt)}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                className="vt-btn sm primary"
+                                onClick={() => onApproveRetry?.(r)}
+                              >
+                                <IconCheck size={13} /> Duyệt
+                              </button>
+                              <button
+                                type="button"
+                                className="vt-btn sm danger"
+                                onClick={() => onDenyRetry?.(r)}
+                              >
+                                <IconX size={13} /> Từ chối
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+
+                  <h3 style={{ margin: '1rem 0 .7rem', font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>
+                    Bật thi lại mọi đề cho từng HS
+                  </h3>
+                  <p className="cd-muted" style={{ margin: '0 0 .7rem', fontSize: '.82rem' }}>
+                    Bật xong, HS đó có thể làm lại bất kỳ đề nào của lớp này mà không cần xin từng đề.
+                  </p>
+                  <ul className="cd-sub-list">
+                    {members.map((m) => {
+                      const allowed = !!allowances[m.id];
+                      return (
+                        <li key={m.id} className="cd-sub-item">
+                          <Avatar name={m.name} size={40} />
+                          <div className="cd-sub-main">
+                            <h4>{m.name}</h4>
+                            <p className="cd-sub-meta">{m.email || '—'}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className={'vt-btn sm' + (allowed ? ' danger' : ' primary')}
+                            onClick={() => onToggleAllowance?.(classInfo, m, !allowed)}
+                          >
+                            {allowed ? (
+                              <><IconLock size={13} /> Khóa thi lại</>
+                            ) : (
+                              <><IconUnlock size={13} /> Cho thi lại mọi đề</>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ============ MODAL CHI TIẾT HỌC SINH (chồng lên) ============ */}
+      {/* ============ MODAL CHI TIẾT HỌC SINH ============ */}
       {openStudent && (
         <StudentModal
           student={openStudent}

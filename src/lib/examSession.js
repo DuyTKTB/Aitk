@@ -1,5 +1,5 @@
 /* ============================================================
-   examSession.js — Quản lý PHÒNG THI TRỰC TIẾP (Live Exam Session)
+   examSession.js — Quản lý PHÒNG THI TRỰC TIẾP (Live Exam Session) v2
    ------------------------------------------------------------
    KHÔNG dùng orderBy trong query để tránh cần composite index.
    Sort client-side.
@@ -12,16 +12,24 @@
        └─ /students/{studentId}
            ├─ studentName, joinedAt, lastSeen
            ├─ status: 'joined' | 'examining' | 'submitted' | 'kicked' | 'paused'
+           ├─ paused: boolean               ← MỚI: GV bật/tắt
+           ├─ pausedAtMs: number            ← MỚI: thời điểm bật
            ├─ currentQuestion, answered
            ├─ thumbnail (base64), thumbnailAt, thumbnailAtMs, motion
-           ├─ burst: { frames: [base64...], reason, at }
+           ├─ burst: { frames, reason, at }
            ├─ warning: { message, at }
            └─ violations: [{ type, severity, at, snapshotUrl, meta }]
+
+   Thay đổi so với v1:
+     • Thêm setStudentPaused({ sessionId, studentId, paused }) → GV
+       điều khiển thật sự, không còn qua regex tin nhắn.
+     • markStudentSubmitted: check status trước khi tăng stats.submitted
+       → tránh gọi 2 lần (nộp tay + auto) tăng stats 2 lần.
    ============================================================ */
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, serverTimestamp, onSnapshot, arrayUnion, increment,
-  Timestamp, limit,
+  Timestamp, limit, runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
 
@@ -32,8 +40,8 @@ const HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 export function isStudentOnline(student, now = Date.now()) {
-  if (!student?.lastSeen) return false;
-  const ts = student.lastSeen?.toMillis?.() ?? student.lastSeenMs ?? student.lastSeen;
+  const ts = student?.lastSeenMs ?? student?.lastSeen?.toMillis?.() ?? student?.lastSeen;
+  if (!ts) return false;
   return now - ts < HEARTBEAT_TIMEOUT_MS;
 }
 
@@ -212,8 +220,6 @@ export function listenLiveSessionForClass(classId, cb) {
    3) STUDENT — Join / heartbeat / submit
    ============================================================ */
 
-/* Tạo document HS trong session. Nếu đã tồn tại → chỉ update lastSeen.
-   Ném lỗi RÕ RÀNG nếu thất bại để ExamJoin bắt được. */
 export async function joinExamSession({
   sessionId,
   studentId,
@@ -225,7 +231,6 @@ export async function joinExamSession({
 
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
 
-  // Thử đọc trước để biết đã tồn tại chưa
   let snap;
   try {
     snap = await getDoc(ref);
@@ -235,7 +240,6 @@ export async function joinExamSession({
   }
 
   if (snap.exists()) {
-    // Đã tồn tại → chỉ update lastSeen
     try {
       await updateDoc(ref, {
         lastSeen: serverTimestamp(),
@@ -248,7 +252,6 @@ export async function joinExamSession({
     return { id: studentId, restored: true };
   }
 
-  // Chưa tồn tại → tạo mới
   try {
     await setDoc(ref, {
       studentId,
@@ -258,6 +261,8 @@ export async function joinExamSession({
       lastSeen: serverTimestamp(),
       lastSeenMs: Date.now(),
       status: 'joined',
+      paused: false,
+      pausedAtMs: null,
       currentQuestion: 0,
       answered: 0,
       thumbnail: null,
@@ -273,7 +278,6 @@ export async function joinExamSession({
     throw new Error(`Không tạo được document HS (${e.code || 'unknown'}): ${e.message}`);
   }
 
-  // Cập nhật stats (không quan trọng nếu fail)
   try {
     await updateDoc(doc(db, SESSIONS, sessionId), {
       'stats.joined': increment(1),
@@ -285,7 +289,6 @@ export async function joinExamSession({
   return { id: studentId, restored: false };
 }
 
-/* Heartbeat — nếu document chưa tồn tại (do join fail), tự tạo lại */
 export async function heartbeat({
   sessionId,
   studentId,
@@ -309,7 +312,6 @@ export async function heartbeat({
   try {
     await updateDoc(ref, patch);
   } catch (e) {
-    // Nếu document chưa tồn tại → tạo lại
     if (e.code === 'not-found') {
       console.warn('[examSession] heartbeat: doc không tồn tại, tự tạo lại.');
       try {
@@ -319,6 +321,8 @@ export async function heartbeat({
           joinedAt: serverTimestamp(),
           joinedAtMs: Date.now(),
           ...patch,
+          paused: false,
+          pausedAtMs: null,
           thumbnail: null,
           thumbnailAt: null,
           thumbnailAtMs: null,
@@ -327,7 +331,6 @@ export async function heartbeat({
           violations: [],
           warning: null,
         });
-        // Cập nhật stats joined
         try {
           await updateDoc(doc(db, SESSIONS, sessionId), {
             'stats.joined': increment(1),
@@ -356,7 +359,6 @@ export async function uploadThumbnailV2({ sessionId, studentId, dataUrl, motion 
       motion,
     });
   } catch (e) {
-    // Bỏ qua lỗi not-found (sẽ tự fix ở heartbeat)
     if (e.code !== 'not-found') {
       console.warn('[examSession] uploadThumbnailV2 failed:', e.message);
     }
@@ -384,7 +386,6 @@ export async function uploadBurst({ sessionId, studentId, frames, reason = '' })
   }
 }
 
-/* Report violation — nếu document chưa tồn tại → tự tạo */
 export async function reportViolation({
   sessionId,
   studentId,
@@ -413,7 +414,6 @@ export async function reportViolation({
       lastSeenMs: Date.now(),
     });
   } catch (e) {
-    // Nếu document chưa tồn tại → tạo mới kèm violation
     if (e.code === 'not-found') {
       console.warn('[examSession] reportViolation: doc chưa có, tự tạo.');
       try {
@@ -425,6 +425,8 @@ export async function reportViolation({
           lastSeen: serverTimestamp(),
           lastSeenMs: Date.now(),
           status: 'examining',
+          paused: false,
+          pausedAtMs: null,
           currentQuestion: 0,
           answered: 0,
           thumbnail: null,
@@ -443,7 +445,6 @@ export async function reportViolation({
     }
   }
 
-  // Cập nhật stats session (không quan trọng)
   if (severity === 'hard') {
     try {
       await updateDoc(doc(db, SESSIONS, sessionId), {
@@ -453,18 +454,30 @@ export async function reportViolation({
   }
 }
 
+/* ============================================================
+   FIX #8: markStudentSubmitted
+   ------------------------------------------------------------
+   Trước đây gọi 2 lần (nộp tay + auto) sẽ tăng stats.submitted 2 lần.
+   Nay đọc doc HS trước, nếu đã 'submitted' thì không tăng nữa.
+   ============================================================ */
 export async function markStudentSubmitted({ sessionId, studentId }) {
   if (!sessionId || !studentId) return;
   try {
-    await updateDoc(doc(db, SESSIONS, sessionId, 'students', studentId), {
-      status: 'submitted',
-      submittedAt: serverTimestamp(),
-      submittedAtMs: Date.now(),
-      lastSeen: serverTimestamp(),
-      lastSeenMs: Date.now(),
-    });
-    await updateDoc(doc(db, SESSIONS, sessionId), {
-      'stats.submitted': increment(1),
+    const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+    const sref = doc(db, SESSIONS, sessionId);
+    // Transaction: gọi nhiều lần (nộp tay + auto) vẫn chỉ tăng stats.submitted đúng 1 lần
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists() && snap.data()?.status === 'submitted') return;
+      tx.set(ref, {
+        studentId,
+        status: 'submitted',
+        submittedAt: serverTimestamp(),
+        submittedAtMs: Date.now(),
+        lastSeen: serverTimestamp(),
+        lastSeenMs: Date.now(),
+      }, { merge: true });
+      tx.update(sref, { 'stats.submitted': increment(1) });
     });
   } catch (e) {
     console.warn('[examSession] markStudentSubmitted failed:', e.message);
@@ -501,6 +514,31 @@ export async function warnStudent({ sessionId, studentId, message }) {
     });
   } catch (e) {
     console.warn('[examSession] warnStudent failed:', e.message);
+  }
+}
+
+/* ============================================================
+   FIX #5: setStudentPaused — GV điều khiển tạm dừng thật sự
+   ------------------------------------------------------------
+   Trước đây GV gửi tin nhắn có chữ "TẠM DỪNG", HS listener dùng
+   regex để nhận biết → dễ sai + HS tự bấm "Tôi đã hiểu" là tiếp
+   tục được. Nay dùng field `paused: boolean` trên doc HS:
+     • GV bật: setStudentPaused({ paused: true })
+     • GV tắt: setStudentPaused({ paused: false })
+   HS listener chỉ cần đọc `doc.paused`.
+   ============================================================ */
+export async function setStudentPaused({ sessionId, studentId, paused }) {
+  if (!sessionId || !studentId) return;
+  try {
+    const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+    await updateDoc(ref, {
+      paused: !!paused,
+      pausedAtMs: Date.now(),
+      lastSeen: serverTimestamp(),
+      lastSeenMs: Date.now(),
+    });
+  } catch (e) {
+    console.warn('[examSession] setStudentPaused failed:', e.message);
   }
 }
 

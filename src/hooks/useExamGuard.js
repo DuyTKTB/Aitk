@@ -1,12 +1,15 @@
 /* ============================================================
-   useExamGuard.js — v4 STRICT + FORCE FULLSCREEN
+   useExamGuard.js — v3.1 STRICT + FORCE FULLSCREEN
    ------------------------------------------------------------
-   Sửa v4:
-     • Mọi effect gọi recordEvent qua hàm ỔN ĐỊNH (ref) → interval
-       kiểm tra fullscreen/DevTools không còn bị huỷ & tạo lại mỗi
-       khi finishExam/sessionId/user đổi tham chiếu (nguyên nhân bộ
-       đếm vi phạm đứng ở 0/3).
-     • onAutoSubmit / onEvent cũng đọc qua ref.
+   Fixes so với v3:
+     • Fix #2: interval check fullscreen 500ms gọi recordEvent
+       liên tục khi mất fullscreen > 5s, không reset mốc → đủ
+       limit sau ~2s. Nay reset lastFullscreenAtRef sau mỗi lần
+       ghi nhận, cách nhau 5s mới tính lần tiếp theo.
+     • Fix #9: logic strictMode return sớm khi next === 1 → nếu
+       limit = 1 thì không bao giờ auto-submit. Nay kiểm tra
+       auto-submit TRƯỚC strict-mode, để limit = 1 auto-submit
+       ngay lần vi phạm đầu tiên.
    ============================================================ */
 import { useEffect, useRef, useState, useCallback } from 'react';
 
@@ -32,9 +35,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
 
   const activeRef = useRef(active);
   const limitRef = useRef(limit);
-  const strictRef = useRef(strictMode);
   const onEventRef = useRef(onEvent);
-  const onAutoSubmitRef = useRef(onAutoSubmit);
   const lastEventAtRef = useRef(0);
   const blurTimerRef = useRef(null);
   const autoSubmittedRef = useRef(false);
@@ -44,7 +45,6 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   const lastFullscreenAtRef = useRef(0);
   const blurStartRef = useRef(0);
   const devtoolsOpenRef = useRef(false);
-  const recordEventRef = useRef(null);
 
   useEffect(() => {
     activeRef.current = active;
@@ -55,18 +55,15 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     }
   }, [active]);
   useEffect(() => { limitRef.current = limit; }, [limit]);
-  useEffect(() => { strictRef.current = strictMode; }, [strictMode]);
   useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
-  useEffect(() => { onAutoSubmitRef.current = onAutoSubmit; }, [onAutoSubmit]);
 
   const inStartupGrace = () => Date.now() - activeSinceRef.current < STARTUP_GRACE_MS;
 
-  /* ---- Record event (đọc mọi thứ qua ref → identity ổn định) ---- */
+  /* ---- Record event ---- */
   const recordEvent = useCallback((type, severity, meta = {}) => {
     if (!activeRef.current) return;
     if (autoSubmittedRef.current) return;
 
-    const strict = strictRef.current;
     const inGrace = inStartupGrace();
     const now = Date.now();
 
@@ -77,7 +74,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       type,
       at: now,
       severity: inGrace ? 'soft' : severity,
-      meta: { ...(meta || {}), inGrace, strict },
+      meta: { ...(meta || {}), inGrace, strict: strictMode },
     };
     setEvents((arr) => [...arr, evt]);
     onEventRef.current?.(evt);
@@ -91,19 +88,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       const next = violationsRef.current + 1;
       violationsRef.current = next;
       setViolations(next);
-      console.log('[guard] Vi phạm', next, '/', limitRef.current, '→', type);
 
-      if (strict && next === 1 && limitRef.current > 1) {
-        setWarning({
-          type: 'violation-strict',
-          text: `⚠ NGHIÊM TRỌNG: ${humanReason(type)}. Vi phạm tiếp theo sẽ tự động nộp bài!`,
-          eventType: type,
-          count: next,
-          limit: limitRef.current,
-        });
-        return;
-      }
-
+      // FIX #9: kiểm tra auto-submit TRƯỚC strict-mode
+      // để limit = 1 vẫn auto-submit ngay lần vi phạm đầu tiên.
       if (next >= limitRef.current) {
         if (!autoSubmittedRef.current) {
           autoSubmittedRef.current = true;
@@ -114,44 +101,57 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
             count: next,
             limit: limitRef.current,
           });
-          onAutoSubmitRef.current?.(next);
+          onAutoSubmit?.(next);
         }
-      } else {
+        return;
+      }
+
+      // Strict mode: cảnh báo đỏ ngay từ lần đầu
+      // (nhưng chưa auto-submit vì limit > 1 — đã check ở trên)
+      if (strictMode && next === 1) {
         setWarning({
-          type: 'violation',
-          text: humanReason(type),
+          type: 'violation-strict',
+          text: `⚠ NGHIÊM TRỌNG: ${humanReason(type)}. Vi phạm tiếp theo sẽ tự động nộp bài!`,
           eventType: type,
           count: next,
           limit: limitRef.current,
         });
+        return;
       }
-    } else {
-      setWarning({ type: 'warn-soft', text: humanReason(type), eventType: type });
-    }
-  }, []);
 
-  recordEventRef.current = recordEvent;
-  /* fire: luôn cùng một tham chiếu, các effect chỉ phụ thuộc cái này */
-  const fire = useCallback((...args) => recordEventRef.current?.(...args), []);
+      setWarning({
+        type: 'violation',
+        text: humanReason(type),
+        eventType: type,
+        count: next,
+        limit: limitRef.current,
+      });
+    } else {
+      setWarning({
+        type: 'warn-soft',
+        text: humanReason(type),
+        eventType: type,
+      });
+    }
+  }, [onAutoSubmit, strictMode]);
 
   /* ---- Fullscreen helpers ---- */
-  const checkIsFullscreen = useCallback(() => !!(
-    document.fullscreenElement ||
-    document.webkitFullscreenElement ||
-    document.mozFullScreenElement ||
-    document.msFullscreenElement
-  ), []);
+  const checkIsFullscreen = useCallback(() => {
+    return !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+  }, []);
 
   const enterFullscreen = useCallback(async () => {
     try {
-      /* Gọi requestFullscreen ĐỒNG BỘ trong tick đầu để còn "user gesture" */
       const el = document.documentElement;
-      let p;
-      if (el.requestFullscreen) p = el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) p = el.webkitRequestFullscreen();
-      else if (el.mozRequestFullScreen) p = el.mozRequestFullScreen();
-      else if (el.msRequestFullscreen) p = el.msRequestFullscreen();
-      await p;
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+      else if (el.mozRequestFullScreen) await el.mozRequestFullScreen();
+      else if (el.msRequestFullscreen) await el.msRequestFullscreen();
 
       setIsFullscreen(true);
       lastFullscreenAtRef.current = Date.now();
@@ -176,21 +176,32 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     setIsFullscreen(false);
   }, []);
 
-  /* ---- Fullscreen change ---- */
+  /* ---- Fullscreen event listeners ---- */
   useEffect(() => {
     if (!active) return undefined;
     const onFsChange = () => {
       const fs = checkIsFullscreen();
+      console.log('[guard] fullscreenchange →', fs);
       setIsFullscreen(fs);
-      if (fs) lastFullscreenAtRef.current = Date.now();
-      else if (activeRef.current && fullscreenLock) fire('exit_fullscreen', 'hard', { source: 'event' });
+      if (fs) {
+        lastFullscreenAtRef.current = Date.now();
+      } else if (activeRef.current && fullscreenLock) {
+        recordEvent('exit_fullscreen', 'hard', { source: 'event' });
+      }
     };
-    const evs = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
-    evs.forEach((e) => document.addEventListener(e, onFsChange));
-    return () => evs.forEach((e) => document.removeEventListener(e, onFsChange));
-  }, [active, fullscreenLock, fire, checkIsFullscreen]);
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    document.addEventListener('mozfullscreenchange', onFsChange);
+    document.addEventListener('MSFullscreenChange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+      document.removeEventListener('mozfullscreenchange', onFsChange);
+      document.removeEventListener('MSFullscreenChange', onFsChange);
+    };
+  }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
 
-  /* ---- Interval: ở exam mà không fullscreen > 5s → vi phạm ---- */
+  /* ---- Interval check: nếu ở exam mà không fullscreen quá 5s → vi phạm ---- */
   useEffect(() => {
     if (!active || !fullscreenLock) return undefined;
     const id = setInterval(() => {
@@ -199,33 +210,39 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       setIsFullscreen(fs);
       if (fs) {
         lastFullscreenAtRef.current = Date.now();
-        return;
-      }
-      const noFsDuration = Date.now() - lastFullscreenAtRef.current;
-      if (noFsDuration > NO_FS_LIMIT_MS) {
-        fire('exit_fullscreen', 'hard', { source: 'interval', duration: Math.round(noFsDuration / 1000) });
-        /* tính lại mốc để mỗi ~5s mới tính 1 lần, không dồn liên tục */
-        lastFullscreenAtRef.current = Date.now();
+      } else {
+        const noFsDuration = Date.now() - lastFullscreenAtRef.current;
+        if (noFsDuration > NO_FS_LIMIT_MS) {
+          recordEvent('exit_fullscreen', 'hard', {
+            source: 'interval',
+            duration: Math.round(noFsDuration / 1000),
+          });
+          // FIX #2: reset mốc để 5 giây sau mới tính lần tiếp theo
+          // (trước đây không reset → interval 500ms gọi liên tục → đủ limit sau ~2s)
+          lastFullscreenAtRef.current = Date.now();
+        }
       }
     }, FS_CHECK_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [active, fullscreenLock, fire, checkIsFullscreen]);
+  }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
 
-  /* ---- Escape / F11 ---- */
+  /* ---- Keydown Escape/F11 ---- */
   useEffect(() => {
     if (!active || !fullscreenLock) return undefined;
     const onKey = (e) => {
       if (e.key === 'Escape' || e.key === 'F11') {
+        console.log('[guard] Bấm', e.key);
         setTimeout(() => {
-          if (!checkIsFullscreen() && activeRef.current) {
-            fire('exit_fullscreen', 'hard', { source: 'key', key: e.key });
+          const fs = checkIsFullscreen();
+          if (!fs && activeRef.current) {
+            recordEvent('exit_fullscreen', 'hard', { source: 'key', key: e.key });
           }
         }, 250);
       }
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
-  }, [active, fullscreenLock, fire, checkIsFullscreen]);
+  }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
 
   /* ---- Tab visibility ---- */
   useEffect(() => {
@@ -233,12 +250,12 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     const onVis = () => {
       if (document.hidden && activeRef.current) {
         lastHiddenAtRef.current = Date.now();
-        fire('tab_hidden', 'hard');
+        recordEvent('tab_hidden', 'hard');
       }
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [active, fire]);
+  }, [active, recordEvent]);
 
   /* ---- Window blur ---- */
   useEffect(() => {
@@ -250,14 +267,14 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         if (!activeRef.current) return;
         if (document.hasFocus()) return;
         if (document.hidden || Date.now() - lastHiddenAtRef.current < 8000) return;
-        fire('window_blur', 'hard');
+        recordEvent('window_blur', 'hard');
       }, BLUR_GRACE_MS);
     };
     const onFocus = () => {
       clearTimeout(blurTimerRef.current);
       const duration = blurStartRef.current ? Date.now() - blurStartRef.current : 0;
       if (duration > LONG_BLUR_MS && activeRef.current) {
-        fire('long_blur', 'hard', { duration: Math.round(duration / 1000) });
+        recordEvent('long_blur', 'hard', { duration: Math.round(duration / 1000) });
       }
       blurStartRef.current = 0;
     };
@@ -268,12 +285,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('focus', onFocus);
     };
-  }, [active, fire]);
+  }, [active, recordEvent]);
 
-  /* ---- DevTools detection ----
-     Lưu ý: DevTools mở DẠNG DOCK (như ảnh bạn gửi) làm innerWidth nhỏ hơn
-     outerWidth > 160px → sẽ bị tính vi phạm. Đúng ý đồ khi thi thật,
-     nhưng khi dev hãy mở DevTools dạng cửa sổ riêng hoặc tắt check này. */
+  /* ---- DevTools detection ---- */
   useEffect(() => {
     if (!active) return undefined;
     const id = setInterval(() => {
@@ -283,15 +297,15 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       const isOpen = wDiff > DEVTOOLS_THRESHOLD || hDiff > DEVTOOLS_THRESHOLD;
       if (isOpen && !devtoolsOpenRef.current) {
         devtoolsOpenRef.current = true;
-        fire('devtools_open', 'hard');
+        recordEvent('devtools_open', 'hard');
       } else if (!isOpen) {
         devtoolsOpenRef.current = false;
       }
     }, 1500);
     return () => clearInterval(id);
-  }, [active, fire]);
+  }, [active, recordEvent]);
 
-  /* ---- Phím tắt / copy / paste ---- */
+  /* ---- Keyboard shortcuts ---- */
   useEffect(() => {
     if (!active) return undefined;
     const onKey = (e) => {
@@ -302,12 +316,12 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       if (block) {
         e.preventDefault();
         e.stopPropagation();
-        fire('devtools_shortcut', 'soft');
+        recordEvent('devtools_shortcut', 'soft');
       }
       if (e.key === 'PrintScreen') {
         e.preventDefault();
         try { navigator.clipboard.writeText(''); } catch { /* */ }
-        fire('screenshot_attempt', 'hard');
+        recordEvent('screenshot_attempt', 'hard');
       }
     };
     const onKeyUp = (e) => {
@@ -315,10 +329,10 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         try { navigator.clipboard.writeText(''); } catch { /* */ }
       }
     };
-    const onCtx = (e) => { e.preventDefault(); fire('contextmenu', 'soft'); };
-    const onCopy = (e) => { if (blockCopyPaste) { e.preventDefault(); fire('copy', 'soft'); } };
-    const onCut = (e) => { if (blockCopyPaste) { e.preventDefault(); fire('cut', 'soft'); } };
-    const onPaste = (e) => { if (blockCopyPaste) { e.preventDefault(); fire('paste', 'soft'); } };
+    const onCtx = (e) => { e.preventDefault(); recordEvent('contextmenu', 'soft'); };
+    const onCopy = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('copy', 'soft'); } };
+    const onCut = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('cut', 'soft'); } };
+    const onPaste = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('paste', 'soft'); } };
 
     document.addEventListener('keydown', onKey, true);
     document.addEventListener('keyup', onKeyUp, true);
@@ -326,6 +340,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     document.addEventListener('copy', onCopy);
     document.addEventListener('cut', onCut);
     document.addEventListener('paste', onPaste);
+
     return () => {
       document.removeEventListener('keydown', onKey, true);
       document.removeEventListener('keyup', onKeyUp, true);
@@ -334,11 +349,11 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       document.removeEventListener('cut', onCut);
       document.removeEventListener('paste', onPaste);
     };
-  }, [active, blockCopyPaste, fire]);
+  }, [active, blockCopyPaste, recordEvent]);
 
   /* ---- API ---- */
-  const clearWarning = useCallback(() => setWarning(null), []);
-  const reset = useCallback(() => {
+  const clearWarning = () => setWarning(null);
+  const reset = () => {
     violationsRef.current = 0;
     setViolations(0);
     setWarning(null);
@@ -349,9 +364,11 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     lastFullscreenAtRef.current = Date.now();
     blurStartRef.current = 0;
     devtoolsOpenRef.current = false;
-  }, []);
+  };
 
-  const pushEvent = fire;
+  const pushEvent = useCallback((type, severity, meta) => {
+    recordEvent(type, severity, meta);
+  }, [recordEvent]);
 
   return {
     violations,

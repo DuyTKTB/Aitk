@@ -15,6 +15,7 @@ const DEDUP_MS = 800;
 const BLUR_GRACE_MS = 800;
 const STARTUP_GRACE_MS = 3000;
 const FS_CHECK_INTERVAL_MS = 500;      // check fullscreen mỗi 500ms
+const FS_REPEAT_MS = 20000;            // tối thiểu giữa 2 lần ghi vi phạm fullscreen
 const NO_FS_LIMIT_MS = 5000;           // ở exam mà không fullscreen > 5s → vi phạm
 const LONG_BLUR_MS = 15000;
 const DEVTOOLS_THRESHOLD = 160;
@@ -42,6 +43,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   const lastFullscreenAtRef = useRef(0);
   const blurStartRef = useRef(0);
   const devtoolsOpenRef = useRef(false);
+  const fsRecordedAtRef = useRef(0); // lần ghi vi phạm fullscreen gần nhất (0 = đang ổn)
 
   useEffect(() => {
     activeRef.current = active;
@@ -89,7 +91,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       if (strictMode && next === 1) {
         setWarning({
           type: 'violation-strict',
-          text: `⚠ NGHIÊM TRỌNG: ${humanReason(type)}. Vi phạm tiếp theo sẽ tự động nộp bài!`,
+          text: `⚠ NGHIÊM TRỌNG: ${humanReason(type)}. Còn ${Math.max(0, limitRef.current - next)} lần vi phạm nữa sẽ tự động nộp bài!`,
           eventType: type,
           count: next,
           limit: limitRef.current,
@@ -147,6 +149,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
 
       setIsFullscreen(true);
       lastFullscreenAtRef.current = Date.now();
+      fsRecordedAtRef.current = 0;
       setWarning(null);
       activeSinceRef.current = Date.now();
       console.log('[guard] ✅ Đã vào fullscreen');
@@ -177,7 +180,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       setIsFullscreen(fs);
       if (fs) {
         lastFullscreenAtRef.current = Date.now();
+        fsRecordedAtRef.current = 0;
       } else if (activeRef.current && fullscreenLock) {
+        fsRecordedAtRef.current = Date.now();
         recordEvent('exit_fullscreen', 'hard', { source: 'event' });
       }
     };
@@ -202,10 +207,13 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       setIsFullscreen(fs);
       if (fs) {
         lastFullscreenAtRef.current = Date.now();
+        fsRecordedAtRef.current = 0;
       } else {
-        // Ở exam mà không fullscreen > NO_FS_LIMIT_MS → vi phạm
+        // Không fullscreen > NO_FS_LIMIT_MS và đã quá FS_REPEAT_MS kể từ lần ghi trước → vi phạm
+        // (tránh ghi liên tục mỗi giây trong lúc overlay đang bắt chờ)
         const noFsDuration = Date.now() - lastFullscreenAtRef.current;
-        if (noFsDuration > NO_FS_LIMIT_MS) {
+        if (noFsDuration > NO_FS_LIMIT_MS && Date.now() - fsRecordedAtRef.current > FS_REPEAT_MS) {
+          fsRecordedAtRef.current = Date.now();
           recordEvent('exit_fullscreen', 'hard', {
             source: 'interval',
             duration: Math.round(noFsDuration / 1000),
@@ -224,7 +232,8 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         console.log('[guard] Bấm', e.key);
         setTimeout(() => {
           const fs = checkIsFullscreen();
-          if (!fs && activeRef.current) {
+          if (!fs && activeRef.current && Date.now() - fsRecordedAtRef.current > FS_REPEAT_MS) {
+            fsRecordedAtRef.current = Date.now();
             recordEvent('exit_fullscreen', 'hard', { source: 'key', key: e.key });
           }
         }, 250);
@@ -354,6 +363,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     lastFullscreenAtRef.current = Date.now();
     blurStartRef.current = 0;
     devtoolsOpenRef.current = false;
+    fsRecordedAtRef.current = 0;
   };
 
   const pushEvent = useCallback((type, severity, meta) => {

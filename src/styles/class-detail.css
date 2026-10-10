@@ -853,3 +853,90 @@
   .cd-tab svg { display: block; }
   .cd-tab em { display: none; }
 }
+
+/* ============================================================
+   TAB MỚI — CHỜ DUYỆT + XIN THI LẠI
+   Append vào cuối class-detail.css
+   ============================================================ */
+
+/* ============ CHECKBOX "HỌC SINH PHẢI ĐƯỢC DUYỆT" ============ */
+.cd-check {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .9rem;
+  border-radius: 999px;
+  background: var(--vt-tint);
+  border: 1.5px solid var(--soft);
+  color: var(--ink);
+  font: 600 .82rem var(--sans);
+  cursor: pointer;
+  user-select: none;
+  transition: all .15s;
+}
+.cd-check:hover {
+  border-color: var(--acc);
+}
+.cd-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--acc);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* ============ TAB BADGE ĐỎ (số yêu cầu chờ) ============ */
+.cd-tab em.danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* ============ YÊU CẦU THI LẠI — LIST ============ */
+.cd-sub-item .cd-sub-main h4 {
+  margin: 0 0 .15rem;
+  font: 700 .95rem var(--sans);
+  color: var(--ink);
+}
+
+.cd-sub-item .cd-sub-main .cd-sub-meta b {
+  color: var(--acc);
+  font-weight: 700;
+}
+
+/* Nút duyệt / từ chối trong tab */
+.cd-sub-item .vt-btn.sm {
+  flex-shrink: 0;
+}
+
+/* ============ TIÊU ĐỀ SECTION TRONG TAB RETRY ============ */
+.cd-members > h3 {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font: 800 .95rem var(--sans);
+  color: var(--ink);
+  letter-spacing: -.01em;
+  margin: 0 0 .7rem;
+}
+
+/* ============ RESPONSIVE — 2 tab mới ============ */
+@media (max-width: 640px) {
+  .cd-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cd-toolbar .cd-check {
+    justify-content: center;
+  }
+  .cd-toolbar .vt-btn.sm.primary {
+    width: 100%;
+  }
+
+  .cd-sub-item {
+    flex-wrap: wrap;
+  }
+  .cd-sub-item .vt-btn.sm {
+    flex: 1;
+  }
+}

@@ -218,22 +218,8 @@ export default function CreateExamAI({ grades = [], defaultSubject = '', onGener
             onProgress: (d, t) => t > 1 && setBusy(`Đang soạn đề (đợt ${d}/${t})…`),
           });
 
-      let questions = res.questions;
-      let verifyNote = '';
-      if (cfg.verify) {
-        try {
-          const v = await doVerify(questions, signal);
-          questions = v.questions;
-          verifyNote = v.diff + v.unsure === 0
-            ? ' AI giải lại và khớp toàn bộ đáp án.'
-            : ` AI giải lại thấy ${v.diff + v.unsure} câu cần xem lại.`;
-        } catch (e) {
-          verifyNote = e?.name === 'AbortError'
-            ? ' Đã bỏ qua bước kiểm tra đáp án.'
-            : ' Chưa kiểm tra lại được đáp án (có thể bấm "Kiểm tra đáp án" sau).';
-        }
-      }
-
+      // Hiện đề NGAY, kiểm tra đáp án chạy tiếp ở nền rồi mới đánh dấu cảnh báo
+      const questions = res.questions;
       setDraft({ meta: res.meta, questions });
       setMode('edit');
       setFiles([]);
@@ -242,10 +228,27 @@ export default function CreateExamAI({ grades = [], defaultSubject = '', onGener
       say(
         'ai',
         `Đã ${m === 'digitize' ? 'số hóa' : 'tạo'} ${questions.length} câu môn ${cfg.subject}.` +
-        verifyNote +
+        (cfg.verify ? ' Đang kiểm tra lại đáp án — thầy/cô xem tạm đề bên dưới.' : '') +
         (flagged ? ` Có ${flagged} câu đánh dấu vàng — thầy/cô nên xem trước khi lưu.` : '') +
         ' Bấm vào từng câu để xem, đổi đáp án hoặc viết lại; nhắn tiếp để chỉnh cả đề.'
       );
+
+      if (cfg.verify) {
+        try {
+          const v = await doVerify(questions, signal);
+          // gộp kết quả theo vị trí câu, giữ nguyên các thay đổi khác của bản nháp
+          setDraft((d) => (d && d.questions.length === v.questions.length
+            ? { ...d, questions: d.questions.map((q, i) => ({ ...q, warns: v.questions[i].warns, verified: v.questions[i].verified })) }
+            : d));
+          say('ai', v.diff + v.unsure === 0
+            ? 'Kiểm tra xong: AI giải lại và khớp toàn bộ đáp án.'
+            : `Kiểm tra xong: ${v.diff + v.unsure} câu cần xem lại (đã đánh dấu vàng).`);
+        } catch (e) {
+          say('ai', e?.name === 'AbortError'
+            ? 'Đã bỏ qua bước kiểm tra đáp án.'
+            : 'Chưa kiểm tra lại được đáp án (có thể bấm "Kiểm tra đáp án" sau).');
+        }
+      }
     });
   };
 

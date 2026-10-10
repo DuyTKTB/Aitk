@@ -1,4 +1,4 @@
-﻿﻿﻿﻿import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
+﻿﻿import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
 import { useLocalStorage } from './hooks.js';
 
 /* ============ LAZY PAGES ============ */
@@ -472,7 +472,11 @@ export default function App() {
   /* ============ LAYOUT CHÍNH ============ */
   return (
     <>
-      <a className="skip-link" href="#main">Bỏ qua điều hướng</a>
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}
+      >Bỏ qua điều hướng</a>
       <div className="scroll-progress" ref={progRef} aria-hidden="true" />
 
       <PetWidget />

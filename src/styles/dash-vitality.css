@@ -6,7 +6,7 @@
    Thay cho: teacher-dashboard-v2.css và live-proctor.css
    ============================================================ */
 
-.vt {
+:root, .vt {
   --vt-a1: color-mix(in srgb, var(--acc) 60%, #8fd8ff);
   --vt-a2: var(--acc);
   --vt-a3: color-mix(in srgb, var(--acc) 70%, #0b1a66);

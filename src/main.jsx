@@ -1,6 +1,5 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App.jsx';
 import { AuthProvider } from './hooks/useAuth.jsx';
 import { SettingsProvider } from './contexts/SettingsContext.jsx';
 import './index.css';
@@ -23,9 +22,10 @@ import './components/CommandPalette.css';
 import './styles/tools-apple.css';
 import './games-upgrade.css';
 import './styles/tokens.css';
-import './styles/round-polish.css';   // CUỐI CÙNG: lớp bo tròn + làm đẹp
 import './styles/class-detail.css';
 import './styles/violation-overlay.css';
+import './styles/round-polish.css';   // CUỐI CÙNG: lớp bo tròn + làm đẹp
+import App from './App.jsx';          // SAU toàn bộ CSS nền để CSS của App/lazy không bị index.css đè
 import { ToastProvider } from './ui/index.jsx';
 import { applySettings } from './lib/settings.js';
 import { initFeedbackQueue } from './lib/feedback.js';

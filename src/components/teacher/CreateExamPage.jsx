@@ -10,10 +10,11 @@
            (mất sạch dữ liệu đang nhập khi bấm Lưu / đổi tab)
          • đổi tab làm mất cuộc trò chuyện AI (nay giữ mounted)
    ============================================================ */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
 import CreateExamAI from './CreateExamAI.jsx';
 import { createExam } from '../../lib/classroom.js';
+import { clearDraft } from '../../lib/examAiUtils.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useToast } from '../admin/AdminUI.jsx';
 import './create-exam-page.css';
@@ -43,13 +44,14 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
   const [initialData, setInitialData] = useState(null);
   const [formVersion, setFormVersion] = useState(0); // đổi khi nạp đề mới từ AI
   const [saving, setSaving] = useState(false);
+  const dirtyRef = useRef(false); // form thủ công đang có nội dung
 
   /* AI sinh đề xong → chuyển sang tab thủ công với dữ liệu điền sẵn */
   const handleAIGenerated = useCallback((payload) => {
     const { questions, meta, warnings = [] } = payload;
 
     // Đã nạp đề AI trước đó → hỏi trước khi ghi đè phần đang sửa
-    if (formVersion > 0 && !window.confirm('Thay nội dung đang soạn ở tab Thủ công bằng đề AI này?')) {
+    if ((formVersion > 0 || dirtyRef.current) && !window.confirm('Thay nội dung đang soạn ở tab Thủ công bằng đề AI này?')) {
       return;
     }
 
@@ -106,6 +108,7 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         proctor: data.proctor,
       });
       toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
+      clearDraft(); // đề đã lưu → bỏ bản nháp AI cũ
       onDone?.(exam);
     } catch (e) {
       console.error(e);
@@ -144,6 +147,7 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         <ExamCreateForm
           key={'form-' + formVersion}
           initial={initialData}
+          onDirty={(d) => { dirtyRef.current = d; }}
           classInfo={classInfo}
           onSave={handleSave}
           onCancel={onCancel}

@@ -1,16 +1,10 @@
 /* ============================================================
-   ExamJoin.jsx — Phòng thi học sinh (v3.3 — Force Fullscreen)
+   ExamJoin.jsx — Phòng thi học sinh (v4)
    ------------------------------------------------------------
-   Tích hợp:
-     • ViolationOverlay full-screen khi vi phạm hard
-     • Strict mode: 1 vi phạm đã cảnh báo đỏ
-     • Banner đỏ nhắc vào lại fullscreen nếu bị thoát
-     • Tạm dừng bởi GV (pause overlay)
-     • Beep sound khi vi phạm
-     • Adaptive thumbnail + burst snapshot
-     • Camera AI: no_face, multi_face, look_away, phone_like
-     • Listen lệnh từ GV: kick / warn / pause
-     • Log chi tiết để debug
+   Thêm so với v3.4:
+     • Tính năng A: checkRetryPermit trước khi vào thi.
+       Nếu HS đã nộp và chưa được duyệt → màn "hết lượt" + nút xin.
+     • Modal xin thi lại (gõ lý do) — dùng RetryRequestModal.
    ============================================================ */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
@@ -20,6 +14,10 @@ import {
   startAttempt,
   saveAttemptAnswers,
   appendAttemptEvents,
+  getSubmissionForStudent,
+  checkRetryPermit,
+  markPermitUsed,
+  requestRetry,
 } from '../lib/classroom.js';
 import {
   joinExamSession,
@@ -30,11 +28,15 @@ import {
   markStudentSubmitted,
   listenMySessionDoc,
   getLiveSessionForClass,
+  listenSession,
+  timeRemaining,
 } from '../lib/examSession.js';
 import { useExamGuard } from '../hooks/useExamGuard.js';
 import { useProctorCamera } from '../hooks/useProctorCamera.js';
 import ExamResult from './ExamResult.jsx';
 import ViolationOverlay from './ViolationOverlay.jsx';
+import MathText from './MathText.jsx';
+import RetryRequestModal from './RetryRequestModal.jsx';
 import '../styles/classroom.css';
 import '../styles/exam-pro.css';
 
@@ -125,6 +127,12 @@ const IcoPause = ({ size = 48 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <rect x="7" y="5" width="3.5" height="14" rx="1" />
     <rect x="13.5" y="5" width="3.5" height="14" rx="1" />
+  </svg>
+);
+const IcoLock = ({ size = 56 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
   </svg>
 );
 
@@ -218,16 +226,48 @@ function KickedScreen({ reason, onExit }) {
 /* ============================================================
    MÀN HÌNH TẠM DỪNG
    ============================================================ */
-function PausedScreen({ onResume }) {
+function PausedScreen() {
   return (
     <div className="ep-pause-overlay">
       <div className="ep-pause-card">
         <IcoPause size={56} />
         <h2>Bài làm đã tạm dừng</h2>
-        <p>Giáo viên yêu cầu bạn tạm dừng làm bài. Vui lòng chờ hướng dẫn tiếp theo.</p>
-        <button className="td-btn primary" type="button" onClick={onResume} style={{ marginTop: '1rem' }}>
-          <IcoCheck size={14} /> Tôi đã hiểu
+        <p>Giáo viên yêu cầu bạn tạm dừng làm bài. Vui lòng ngồi yên và chờ hướng dẫn tiếp theo. Đồng hồ đã dừng.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   MÀN HÌNH HẾT LƯỢT — có nút xin thi lại
+   ============================================================ */
+function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sending }) {
+  return (
+    <div className="ej-notfound">
+      <IcoLock size={56} />
+      <h2>Bạn đã làm bài này rồi</h2>
+      <p style={{ color: 'var(--ink)', fontSize: '1rem' }}>
+        Đề <b>"{exam.title}"</b> chỉ cho phép làm 1 lần.
+      </p>
+      {prevSubmission && (
+        <p style={{ fontSize: '.92rem' }}>
+          Điểm lần trước: <b>{prevSubmission.score}/{prevSubmission.totalPoints}</b>
+          {prevSubmission.autoSubmitted && ' · tự động nộp'}
+        </p>
+      )}
+      <p style={{ color: 'var(--mut)', fontSize: '.85rem', maxWidth: '42ch' }}>
+        Nếu muốn làm lại, hãy gửi yêu cầu cho giáo viên. Khi cô duyệt, bạn có thể vào lại.
+      </p>
+      <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '.6rem' }}>
+        <button
+          className="td-btn primary"
+          onClick={onRequestRetry}
+          type="button"
+          disabled={sending}
+        >
+          <IcoBell size={14} /> {sending ? 'Đang gửi…' : 'Xin cô cho thi lại'}
         </button>
+        <button className="td-btn" onClick={onExit} type="button">Về trang chủ</button>
       </div>
     </div>
   );
@@ -260,7 +300,7 @@ const makeThumbnail = (video, max = 160) => {
 export default function ExamJoin({ token, onExit }) {
   const { user } = useAuth();
 
-  /* ---------- 1. STATE ---------- */
+  /* ---------- STATE ---------- */
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState('confirm');
@@ -283,9 +323,15 @@ export default function ExamJoin({ token, onExit }) {
   const [teacherWarning, setTeacherWarning] = useState(null);
   const [kickReason, setKickReason] = useState('');
   const [paused, setPaused] = useState(false);
-  const [pausedReason, setPausedReason] = useState('');
 
-  /* ---------- 2. REF ---------- */
+  /* Retry permit */
+  const [prevSubmission, setPrevSubmission] = useState(null);
+  const [retryPermit, setRetryPermit] = useState(null);
+  const [permitChecked, setPermitChecked] = useState(false);
+  const [retryModalOpen, setRetryModalOpen] = useState(false);
+  const [sendingRetry, setSendingRetry] = useState(false);
+
+  /* ---------- REF ---------- */
   const startTimeRef = useRef(null);
   const submittedRef = useRef(false);
   const answersRef = useRef({});
@@ -303,9 +349,9 @@ export default function ExamJoin({ token, onExit }) {
   const burstHandlerRef = useRef(null);
   const pausedRef = useRef(false);
   const joinReadyRef = useRef(false);
-  const fullscreenRetryRef = useRef(0);
+  const joinStartedRef = useRef(false);
 
-  /* ---------- 3. SYNC REF ---------- */
+  /* ---------- SYNC REF ---------- */
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { currentQRef.current = currentQ; }, [currentQ]);
   useEffect(() => { pausedRef.current = paused; }, [paused]);
@@ -314,10 +360,10 @@ export default function ExamJoin({ token, onExit }) {
     answeredRef.current = Object.keys(answers).length;
   }, [answers]);
 
-  /* ---------- 4. MEMO ---------- */
+  /* ---------- MEMO ---------- */
   const proctorConfig = useMemo(() => exam?.proctor || null, [exam?.id]); // eslint-disable-line
 
-  /* ---------- 5. ORDER ---------- */
+  /* ---------- ORDER ---------- */
   const order = useMemo(() => {
     const n = exam?.questions?.length || 0;
     const idx = Array.from({ length: n }, (_, i) => i);
@@ -342,7 +388,7 @@ export default function ExamJoin({ token, onExit }) {
     return idx;
   }, [exam?.id, exam?.shuffle, user?.uid]);
 
-  /* ---------- 6. LOAD EXAM + SESSION ---------- */
+  /* ---------- LOAD EXAM + SESSION + PERMIT ---------- */
   useEffect(() => {
     (async () => {
       try {
@@ -350,16 +396,43 @@ export default function ExamJoin({ token, onExit }) {
         setExam(ex);
         if (ex) {
           setTimeLeft(ex.duration * 60);
+
+          // Session
           if (ex.classId) {
             try {
               const live = await getLiveSessionForClass(ex.classId);
-              if (live) {
-                console.log('[ExamJoin] Tìm thấy live session:', live.id);
-                setSession(live);
-              }
+              if (live) setSession(live);
             } catch (e) {
               console.warn('[ExamJoin] không tìm được session:', e.message);
             }
+          }
+
+          // Permit check nếu HS đã có submission
+          if (user?.uid) {
+            try {
+              const prev = await getSubmissionForStudent(ex.id, user.uid);
+              setPrevSubmission(prev || null);
+
+              if (prev) {
+                // Đã nộp → cần permit (trừ khi exam.allowRetry=true)
+                if (ex.allowRetry) {
+                  setRetryPermit({ canRetry: true, source: 'allowRetry' });
+                } else {
+                  const permit = await checkRetryPermit({
+                    examId: ex.id,
+                    classId: ex.classId,
+                    studentId: user.uid,
+                  });
+                  setRetryPermit(permit);
+                }
+              } else {
+                setRetryPermit({ canRetry: true, source: 'first-time' });
+              }
+            } catch (e) {
+              console.warn('[ExamJoin] check permit lỗi:', e.message);
+              setRetryPermit({ canRetry: true, source: 'error-fallback' });
+            }
+            setPermitChecked(true);
           }
         }
       } catch (e) {
@@ -368,9 +441,9 @@ export default function ExamJoin({ token, onExit }) {
         setLoading(false);
       }
     })();
-  }, [token]);
+  }, [token, user?.uid]);
 
-  /* ---------- 7. finishExam ---------- */
+  /* ---------- finishExam ---------- */
   const finishExam = useCallback(async (opts = {}) => {
     if (!exam || !user || submittedRef.current) return;
     submittedRef.current = true;
@@ -386,11 +459,17 @@ export default function ExamJoin({ token, onExit }) {
           autoSubmitted: !!opts.auto,
           violationCount: opts.violationCount || 0,
           cameraStatus: opts.cameraStatus || 'off',
+          isRetry: !!prevSubmission,
         },
       });
 
       if (sessionId) {
         markStudentSubmitted({ sessionId, studentId: user.uid }).catch(() => {});
+      }
+
+      // Nếu là thi lại → đánh dấu permit đã dùng
+      if (retryPermit?.source === 'permit' && retryPermit.permit?.id) {
+        markPermitUsed({ permitId: retryPermit.permit.id, teacherId: user.uid }).catch(() => {});
       }
 
       guardRef.current?.exitFullscreen?.();
@@ -422,14 +501,13 @@ export default function ExamJoin({ token, onExit }) {
       });
       setStage('result');
     }
-  }, [exam, user, sessionId]);
+  }, [exam, user, sessionId, retryPermit, prevSubmission]);
 
-  /* ---------- 8. handleAutoSubmit ---------- */
   const handleAutoSubmit = useCallback((count) => {
     finishExam({ auto: true, violationCount: count ?? guardRef.current?.violations ?? 0 });
   }, [finishExam]);
 
-  /* ---------- 9. GUARD (STRICT MODE) ---------- */
+  /* ---------- GUARD ---------- */
   const guard = useExamGuard({
     active: stage === 'exam',
     onAutoSubmit: handleAutoSubmit,
@@ -472,7 +550,7 @@ export default function ExamJoin({ token, onExit }) {
 
   guardRef.current = guard;
 
-  /* ---------- 10. CAMERA ---------- */
+  /* ---------- CAMERA ---------- */
   const cameraEnabled =
     stage === 'exam' &&
     cameraConsent &&
@@ -489,7 +567,6 @@ export default function ExamJoin({ token, onExit }) {
     },
   });
 
-  /* ---------- 11. CAMERA BẮT BUỘC ---------- */
   const camBlocked =
     cameraEnabled &&
     proctorConfig?.camera === 'required' &&
@@ -503,7 +580,7 @@ export default function ExamJoin({ token, onExit }) {
     return () => clearTimeout(t);
   }, [camBlocked, proctor.status]);
 
-  /* ---------- 12. COUNTDOWN ---------- */
+  /* ---------- COUNTDOWN ---------- */
   useEffect(() => {
     if (stage !== 'exam') return undefined;
     if (paused) return undefined;
@@ -521,7 +598,7 @@ export default function ExamJoin({ token, onExit }) {
     }
   }, [stage, timeLeft, exam, finishExam, proctor.status, paused]);
 
-  /* ---------- 13. persistAnswers ---------- */
+  /* ---------- persistAnswers ---------- */
   const persistAnswers = useCallback((next) => {
     if (!exam || !user?.uid) return;
     clearTimeout(saveTimerRef.current);
@@ -530,18 +607,11 @@ export default function ExamJoin({ token, onExit }) {
     }, 1500);
   }, [exam, user?.uid]);
 
-  /* ============================================================
-     14. SESSION: JOIN
-     ============================================================ */
+  /* ---------- JOIN (1 lần) ---------- */
   useEffect(() => {
     if (stage !== 'exam' || !session?.id || !user?.uid) return undefined;
-    if (joinReady) return undefined;
-
-    console.log('[ExamJoin] ═══════════════════════════════════════');
-    console.log('[ExamJoin] BẮT ĐẦU JOIN SESSION');
-    console.log('[ExamJoin] sessionId:', session.id);
-    console.log('[ExamJoin] studentId:', user.uid);
-    console.log('[ExamJoin] ═══════════════════════════════════════');
+    if (joinStartedRef.current) return undefined;
+    joinStartedRef.current = true;
 
     setSessionId(session.id);
     setJoinError(null);
@@ -551,15 +621,10 @@ export default function ExamJoin({ token, onExit }) {
       studentId: user.uid,
       studentName: user.displayName || user.email || 'Học sinh',
     })
-      .then((res) => {
-        console.log('[ExamJoin] ✅ Join session OK:', res);
-        setJoinReady(true);
-      })
+      .then(() => setJoinReady(true))
       .catch((e) => {
-        console.error('[ExamJoin] ❌ Join session FAIL!');
-        console.error('[ExamJoin] code:', e.code);
-        console.error('[ExamJoin] message:', e.message);
-
+        console.error('[ExamJoin] Join session FAIL:', e.code, e.message);
+        joinStartedRef.current = false;
         setJoinError({
           code: e.code || 'unknown',
           message: e.message || 'Không join được session',
@@ -568,28 +633,30 @@ export default function ExamJoin({ token, onExit }) {
         });
       });
 
+    return undefined;
+  }, [stage, session?.id, user?.uid]);
+
+  /* ---------- LISTEN (suốt phiên) ---------- */
+  useEffect(() => {
+    if (stage !== 'exam' || !session?.id || !user?.uid) return undefined;
+
     const unsub = listenMySessionDoc(session.id, user.uid, (doc) => {
       if (!doc) return;
 
       if (doc.status === 'kicked') {
-        if (stage !== 'kicked') {
-          setKickReason(doc.kickReason || '');
-          submittedRef.current = true;
-          guardRef.current?.exitFullscreen?.();
-          setStage('kicked');
-        }
+        setKickReason(doc.kickReason || '');
+        submittedRef.current = true;
+        guardRef.current?.exitFullscreen?.();
+        setStage('kicked');
         return;
       }
+
+      setPaused(!!doc.paused);
 
       const w = doc.warning;
       if (w && w.at && w.at > warningSeenRef.current) {
         warningSeenRef.current = w.at;
         setTeacherWarning(w);
-
-        if (w.message && /TẠM DỪNG|tạm dừng|tạm ngưng/i.test(w.message)) {
-          setPaused(true);
-          setPausedReason(w.message);
-        }
 
         if (w.message && /fullscreen|toàn màn hình/i.test(w.message)) {
           guardRef.current?.enterFullscreen?.();
@@ -602,12 +669,29 @@ export default function ExamJoin({ token, onExit }) {
     return () => {
       unsub?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, session?.id, user?.uid, joinReady]);
+  }, [stage, session?.id, user?.uid]);
 
-  /* ============================================================
-     15. HEARTBEAT
-     ============================================================ */
+  /* ---------- SESSION: GV kết thúc → tự nộp; giới hạn theo giờ đóng phòng ---------- */
+  useEffect(() => {
+    if (stage !== 'exam' || !session?.id) return undefined;
+    let first = true;
+    return listenSession(session.id, (s) => {
+      if (!s) return;
+      if (s.status === 'ended') {
+        if (!submittedRef.current) {
+          finishExam({ auto: true, violationCount: guardRef.current?.violations ?? 0 });
+        }
+        return;
+      }
+      if (first) {
+        first = false;
+        const rem = timeRemaining(s);
+        if (s.status === 'live' && rem > 0) setTimeLeft((t) => Math.min(t, rem));
+      }
+    });
+  }, [stage, session?.id, finishExam]);
+
+  /* ---------- HEARTBEAT ---------- */
   useEffect(() => {
     if (stage !== 'exam' || !sessionId || !user?.uid) return undefined;
     if (!joinReady) return undefined;
@@ -645,17 +729,13 @@ export default function ExamJoin({ token, onExit }) {
     }).catch(() => {});
   }, [currentQ, answers, stage, sessionId, user?.uid, paused, joinReady]);
 
-  /* ============================================================
-     16. ĐÁNH DẤU ACTIVE
-     ============================================================ */
+  /* ---------- ACTIVE ---------- */
   useEffect(() => {
     if (stage !== 'exam' || paused) return;
     activeUntilRef.current = Date.now() + 5000;
   }, [currentQ, answers, stage, paused]);
 
-  /* ============================================================
-     16b. ADAPTIVE THUMBNAIL UPLOAD
-     ============================================================ */
+  /* ---------- THUMBNAIL ---------- */
   useEffect(() => {
     if (stage !== 'exam' || !sessionId || !user?.uid) return undefined;
     if (!cameraEnabled) return undefined;
@@ -663,8 +743,6 @@ export default function ExamJoin({ token, onExit }) {
 
     const video = proctor.videoRef?.current;
     if (!video) return undefined;
-
-    console.log('[ExamJoin] 🎥 Bắt đầu upload thumbnail camera');
 
     let stopped = false;
     let lastFrameData = null;
@@ -745,9 +823,7 @@ export default function ExamJoin({ token, onExit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, sessionId, user?.uid, cameraEnabled, joinReady]);
 
-  /* ============================================================
-     16c. BURST
-     ============================================================ */
+  /* ---------- BURST ---------- */
   useEffect(() => {
     if (stage !== 'exam' || !sessionId || !user?.uid) return undefined;
     if (!cameraEnabled) return undefined;
@@ -784,39 +860,11 @@ export default function ExamJoin({ token, onExit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, sessionId, user?.uid, cameraEnabled, joinReady]);
 
-  /* ============================================================
-     16d. AUTO RE-ENTER FULLSCREEN
-     Chạy mỗi khi mất fullscreen trong lúc thi
-     ============================================================ */
+  /* ---------- FULLSCREEN BANNER ---------- */
   const overlayOpen = guard.warning?.type === 'violation'
     || guard.warning?.type === 'violation-strict'
     || guard.warning?.type === 'auto-submit';
 
-  useEffect(() => {
-    if (overlayOpen) return undefined;
-    if (stage !== 'exam') return undefined;
-    if (paused) return undefined;
-    if (!proctorConfig?.fullscreenLock) return undefined;
-    if (guard.isFullscreen) return undefined;
-
-    // Thử vào lại fullscreen sau 400ms
-    const t = setTimeout(() => {
-      console.log('[ExamJoin] 🔄 Thử vào lại fullscreen...');
-      guard.enterFullscreen().then((ok) => {
-        if (!ok) {
-          fullscreenRetryRef.current += 1;
-          console.warn('[ExamJoin] Không vào được fullscreen, lần thử:', fullscreenRetryRef.current);
-        } else {
-          fullscreenRetryRef.current = 0;
-        }
-      });
-    }, 400);
-    return () => clearTimeout(t);
-  }, [overlayOpen, stage, guard, proctorConfig, paused]);
-
-  /* ============================================================
-     16e. LISTEN FULLSCREEN CHANGE — hiện banner nếu không ở FS
-     ============================================================ */
   const [showFsBanner, setShowFsBanner] = useState(false);
 
   useEffect(() => {
@@ -843,36 +891,34 @@ export default function ExamJoin({ token, onExit }) {
     return () => clearInterval(id);
   }, [stage, proctorConfig, overlayOpen, paused]);
 
-  /* ---------- 17. Handlers ---------- */
+  /* ---------- Handlers ---------- */
   const startExam = async () => {
-    console.log('[ExamJoin] ▶ Bắt đầu thi — thử vào fullscreen...');
     const fsOk = await guard.enterFullscreen();
-    console.log('[ExamJoin] Kết quả fullscreen:', fsOk ? '✅ OK' : '❌ Fail');
-
     if (!fsOk) {
-      // Không vào được fullscreen — vẫn cho thi nhưng banner sẽ nhắc
-      console.warn('[ExamJoin] Không vào fullscreen ngay, sẽ retry sau khi vào stage exam');
+      console.warn('[ExamJoin] Không vào fullscreen ngay, banner sẽ nhắc lại');
     }
 
     startTimeRef.current = Date.now();
     submittedRef.current = false;
-    setStage('exam');
-    guard.reset();
-
-    // Retry sau khi vào stage exam (đề phòng Chrome block lần đầu)
-    if (!fsOk) {
-      setTimeout(() => {
-        console.log('[ExamJoin] 🔄 Retry fullscreen lần 2...');
-        guard.enterFullscreen();
-      }, 800);
-    }
+    joinStartedRef.current = false;
 
     try {
       const att = await startAttempt({
         examId: exam.id,
         student: { id: user.uid, name: user.displayName || user.email },
+        forceNew: !!(prevSubmission && retryPermit?.canRetry), // thi lại → tạo attempt mới
       });
+
+      // Nếu attempt cũ đã nộp và không có permit → không cho vào
+      if (att.submitted && !retryPermit?.canRetry) {
+        setStage('out-of-attempts');
+        guard.exitFullscreen();
+        return;
+      }
+
       attemptRef.current = att;
+      setStage('exam');
+      guard.reset();
 
       if (!att.submitted && att.answers && typeof att.answers === 'object') setAnswers(att.answers);
       if (!att.submitted && att.startedAt) {
@@ -882,11 +928,12 @@ export default function ExamJoin({ token, onExit }) {
       }
     } catch (e) {
       console.warn('Không tạo được attempt:', e);
+      setStage('exam');
+      guard.reset();
     }
   };
 
   const handleReenterFullscreen = () => {
-    console.log('[ExamJoin] User bấm vào lại fullscreen');
     guard.enterFullscreen();
   };
 
@@ -902,6 +949,35 @@ export default function ExamJoin({ token, onExit }) {
   const toggleFlag = (qIdx) => {
     if (paused) return;
     setFlags((f) => ({ ...f, [qIdx]: !f[qIdx] }));
+  };
+
+  /* ---------- RETRY REQUEST ---------- */
+  const openRetryModal = () => setRetryModalOpen(true);
+
+  const handleSubmitRetry = async (reason) => {
+    setSendingRetry(true);
+    try {
+      const res = await requestRetry({
+        examId: exam.id,
+        classId: exam.classId,
+        student: { id: user.uid, name: user.displayName || user.email },
+        reason,
+      });
+
+      if (!res.ok) {
+        setError(res.error || 'Không gửi được yêu cầu.');
+        if (res.duplicate) setRetryModalOpen(false);
+      } else {
+        setRetryModalOpen(false);
+        setError('');
+        // Chuyển sang màn hình chờ
+        setStage('pending-retry');
+      }
+    } catch (e) {
+      setError(e.message || 'Lỗi gửi yêu cầu.');
+    } finally {
+      setSendingRetry(false);
+    }
   };
 
   const onCamDragStart = (e) => {
@@ -932,7 +1008,7 @@ export default function ExamJoin({ token, onExit }) {
   /* ============================================================
      EARLY RETURN
      ============================================================ */
-  if (loading) {
+  if (loading || (user?.uid && !permitChecked)) {
     return (
       <div className="ej-notfound">
         <div className="page-loader-spinner" />
@@ -974,17 +1050,88 @@ export default function ExamJoin({ token, onExit }) {
     return <KickedScreen reason={kickReason} onExit={onExit} />;
   }
 
+  /* ---------- MÀN HẾT LƯỢT ---------- */
+  if (stage === 'out-of-attempts') {
+    return (
+      <>
+        <OutOfAttemptsScreen
+          exam={exam}
+          prevSubmission={prevSubmission}
+          onExit={onExit}
+          onRequestRetry={openRetryModal}
+          sending={sendingRetry}
+        />
+        {retryModalOpen && (
+          <RetryRequestModal
+            exam={exam}
+            onClose={() => setRetryModalOpen(false)}
+            onSubmit={handleSubmitRetry}
+            sending={sendingRetry}
+            error={error}
+          />
+        )}
+      </>
+    );
+  }
+
+  /* ---------- MÀN CHỜ DUYỆT ---------- */
+  if (stage === 'pending-retry') {
+    return (
+      <div className="ej-notfound">
+        <IcoBell size={56} />
+        <h2>Đã gửi yêu cầu</h2>
+        <p>Yêu cầu xin thi lại của bạn đã được gửi tới giáo viên.</p>
+        <p style={{ color: 'var(--mut)', fontSize: '.85rem', maxWidth: '42ch' }}>
+          Vui lòng chờ cô duyệt. Khi được duyệt, bạn có thể vào lại link này để thi.
+        </p>
+        <button className="td-btn primary" onClick={onExit} type="button">Về trang chủ</button>
+      </div>
+    );
+  }
+
   if (stage === 'confirm') {
     const needCamera = proctorConfig?.camera === 'required';
     const wantCamera = proctorConfig?.camera && proctorConfig.camera !== 'off';
     const canStart = !needCamera || cameraConsent;
 
+    // Nếu HS đã nộp và chưa có permit → hiện màn hết lượt luôn
+    if (prevSubmission && !retryPermit?.canRetry) {
+      return (
+        <>
+          <OutOfAttemptsScreen
+            exam={exam}
+            prevSubmission={prevSubmission}
+            onExit={onExit}
+            onRequestRetry={openRetryModal}
+            sending={sendingRetry}
+          />
+          {retryModalOpen && (
+            <RetryRequestModal
+              exam={exam}
+              onClose={() => setRetryModalOpen(false)}
+              onSubmit={handleSubmitRetry}
+              sending={sendingRetry}
+              error={error}
+            />
+          )}
+        </>
+      );
+    }
+
+    const isRetry = prevSubmission && retryPermit?.canRetry;
+
     return (
       <div className="ej-confirm">
         <div className="ej-confirm-card">
           <div className="ej-warn-ico"><IcoShield size={56} /></div>
-          <h1>Bạn sắp vào chế độ thi</h1>
+          <h1>{isRetry ? 'Thi lại bài' : 'Bạn sắp vào chế độ thi'}</h1>
           <p className="ej-confirm-sub">{exam.title}</p>
+
+          {isRetry && (
+            <p className="ej-session-note" style={{ borderLeftColor: '#16a34a', background: 'color-mix(in srgb, #16a34a 10%, var(--bg))', borderColor: 'color-mix(in srgb, #16a34a 35%, var(--bg))' }}>
+              <IcoCheck size={14} /> Bạn đã được cô cho phép thi lại bài này.
+            </p>
+          )}
 
           {session && (
             <p className="ej-session-note">
@@ -1034,7 +1181,7 @@ export default function ExamJoin({ token, onExit }) {
           <div className="ej-confirm-actions">
             <button className="td-btn" onClick={onExit} type="button">Hủy</button>
             <button className="td-btn primary big" onClick={startExam} type="button" disabled={!canStart}>
-              <IcoFullscreen /> Bắt đầu thi
+              <IcoFullscreen /> {isRetry ? 'Bắt đầu thi lại' : 'Bắt đầu thi'}
             </button>
           </div>
         </div>
@@ -1082,7 +1229,6 @@ export default function ExamJoin({ token, onExit }) {
   return (
     <>
       <div className="ep-exam">
-        {/* ============ BANNER FULLSCREEN ============ */}
         {showFsBanner && (
           <div className="ep-warning danger" role="alert" style={{
             background: '#dc2626',
@@ -1100,7 +1246,7 @@ export default function ExamJoin({ token, onExit }) {
           }}>
             <IcoWarning size={22} />
             <span style={{ flex: 1, fontSize: '.95rem' }}>
-              ⚠ Bạn đang KHÔNG ở chế độ toàn màn hình. Đây là vi phạm!
+              Bạn đang KHÔNG ở chế độ toàn màn hình. Đây là vi phạm!
             </span>
             <button
               type="button"
@@ -1156,7 +1302,7 @@ export default function ExamJoin({ token, onExit }) {
             )}
             {joinError && (
               <span className="ep-monitor-chip" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>
-                ⚠ Không kết nối được GV
+                Không kết nối được GV
               </span>
             )}
             {paused && (
@@ -1213,7 +1359,7 @@ export default function ExamJoin({ token, onExit }) {
                 </button>
               </div>
 
-              <p className="ep-q-text">{q.q}</p>
+              <MathText as="p" className="ep-q-text">{q.q}</MathText>
 
               <div className="ep-opts">
                 {q.options.map((opt, i) => (
@@ -1226,7 +1372,7 @@ export default function ExamJoin({ token, onExit }) {
                     disabled={paused}
                   >
                     <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
-                    <span className="ep-opt-text">{opt}</span>
+                    <span className="ep-opt-text"><MathText>{opt}</MathText></span>
                     {answers[qi] === i && <span className="ep-opt-check"><IcoCheck /></span>}
                   </button>
                 ))}
@@ -1428,8 +1574,16 @@ export default function ExamJoin({ token, onExit }) {
         }}
       />
 
-      {paused && (
-        <PausedScreen onResume={() => setPaused(false)} />
+      {paused && <PausedScreen />}
+
+      {retryModalOpen && (
+        <RetryRequestModal
+          exam={exam}
+          onClose={() => setRetryModalOpen(false)}
+          onSubmit={handleSubmitRetry}
+          sending={sendingRetry}
+          error={error}
+        />
       )}
     </>
   );

@@ -1,13 +1,15 @@
 /* ============================================================
-   TeacherDashboard.jsx — Quản lý lớp học (Vitality)
+   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v2
    ------------------------------------------------------------
    Sidebar: Tổng quan | Lớp học | Đề thi | Phòng thi | Tạo đề
    Nút "Quản trị" chỉ hiện nếu user là admin.
    ------------------------------------------------------------
    Tích hợp:
-     • ClassDetailModal (tab Thành viên + bảng điểm + chi tiết HS)
-     • LiveProctorView (giám sát trực tiếp)
-     • CreateExamPage (thủ công hoặc AI)
+     • ClassDetailModal v2 (tab Chờ duyệt + Xin thi lại)
+     • LiveProctorView
+     • CreateExamPage
+     • Duyệt thành viên lớp (pending members)
+     • Duyệt thi lại (retry requests) + bật allowance
    ============================================================ */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
@@ -19,6 +21,16 @@ import {
   createClass,
   removeClassMember,
   deleteExam as deleteExamFs,
+  approveMember,
+  rejectMember,
+  approveAllMembers,
+  setClassApproval,
+  getClassById,
+  approveRetry,
+  denyRetry,
+  setStudentRetryAllowance,
+  listenRetryRequestsByClasses,
+  getClassAllowances,
 } from '../lib/classroom.js';
 import {
   createExamSession,
@@ -40,6 +52,7 @@ import {
   IcoPlay, IcoStop, IcoRefresh, IcoUsers, IcoBook, IcoChart, IcoClock,
   IcoCheckCircle, IcoCopy, IcoTrash, IcoVideo, IcoDot, IcoGrid,
   IcoDownload, IcoChevronRight, IcoAlert, IcoUserPlus, IcoKey, IcoMonitor,
+  IcoBell,
 } from '../lib/sessionIcons.jsx';
 import '../styles/classroom.css';
 
@@ -102,6 +115,17 @@ export default function TeacherDashboard() {
   const [toast, setToast] = useState(null);
   const [startingId, setStartingId] = useState(null);
 
+  /* Retry requests realtime */
+  const [allRetryRequests, setRetryRequests] = useState([]);
+  // listenRetryRequests trả về yêu cầu của MỌI giáo viên → chỉ giữ lớp của mình
+  const retryRequests = useMemo(
+    () => allRetryRequests.filter((r) => classes.some((c) => c.id === r.classId)),
+    [allRetryRequests, classes]
+  );
+
+  /* Allowances cho lớp đang chọn */
+  const [allowances, setAllowances] = useState({});
+
   const toastTimer = useRef(null);
   const say = useCallback((text) => {
     clearTimeout(toastTimer.current);
@@ -163,6 +187,37 @@ export default function TeacherDashboard() {
     return () => unsubs.forEach((u) => u && u());
   }, [liveIdsKey]);
 
+  /* Realtime retry requests — chỉ các lớp của giáo viên này */
+  const classIdsKey = classes.map((c) => c.id).sort().join(',');
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const ids = classIdsKey ? classIdsKey.split(',') : [];
+    const unsub = listenRetryRequestsByClasses(
+      ids,
+      (list) => setRetryRequests(list || []),
+      (err) => say(`Không đọc được yêu cầu thi lại (${err.code || 'lỗi'}). Kiểm tra Firestore Rules.`)
+    );
+    return () => unsub?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, classIdsKey]);
+
+  /* Load allowances khi chọn lớp */
+  useEffect(() => {
+    if (!selectedClass?.id) {
+      setAllowances({});
+      return;
+    }
+    (async () => {
+      try {
+        const fresh = await getClassById(selectedClass.id);
+        setSelectedClass(fresh);
+        setAllowances(await getClassAllowances(selectedClass.id));
+      } catch (e) {
+        console.warn(e);
+      }
+    })();
+  }, [selectedClass?.id]);
+
   /* ---------- ACTIONS ---------- */
   const copyText = useCallback(async (text, keyId, msg = 'Đã sao chép') => {
     try {
@@ -182,6 +237,7 @@ export default function TeacherDashboard() {
         name: newClassName.trim(),
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
+        requireApproval: true,
       });
       setNewClassName('');
       setShowCreateClass(false);
@@ -276,15 +332,85 @@ export default function TeacherDashboard() {
         try {
           await removeClassMember(cls.id, m.id);
           await refresh();
-          setSelectedClass((prev) =>
-            prev ? { ...prev, members: (prev.members || []).filter((x) => x.id !== m.id) } : null
-          );
+          await reloadClass(cls.id);
           say('Đã xóa thành viên');
         } catch (e) {
           say('Lỗi: ' + e.message);
         }
       },
     });
+  };
+
+  /* ============ DUYỆT THÀNH VIÊN ============ */
+  const reloadClass = async (id) => {
+    const fresh = await getClassById(id);
+    setSelectedClass(fresh);
+  };
+
+  const handleApprove = async (cls, sid) => {
+    const r = await approveMember(cls.id, sid);
+    say(r.ok ? 'Đã duyệt vào lớp' : r.error);
+    if (r.ok) { await reloadClass(cls.id); await refresh(); }
+  };
+
+  const handleReject = async (cls, sid) => {
+    const r = await rejectMember(cls.id, sid);
+    say(r.ok ? 'Đã từ chối' : r.error);
+    if (r.ok) { await reloadClass(cls.id); await refresh(); }
+  };
+
+  const handleApproveAll = async (cls) => {
+    const r = await approveAllMembers(cls.id);
+    say(r.ok ? `Đã duyệt ${r.count || ''} yêu cầu` : r.error);
+    if (r.ok) { await reloadClass(cls.id); await refresh(); }
+  };
+
+  const handleToggleApproval = async (cls, v) => {
+    await setClassApproval(cls.id, v);
+    await reloadClass(cls.id);
+    await refresh();
+    say(v ? 'Bật duyệt thành viên' : 'Tắt duyệt thành viên');
+  };
+
+  /* ============ DUYỆT THI LẠI ============ */
+  const handleApproveRetry = async (req) => {
+    const r = await approveRetry({
+      permitId: req.id,
+      teacherId: user.uid,
+      note: '',
+    });
+    say(r.ok ? `Đã duyệt cho ${req.studentName} thi lại` : r.error);
+    if (r.ok) {
+      // refresh requests
+      /* listener realtime tự cập nhật */
+    }
+  };
+
+  const handleDenyRetry = async (req) => {
+    const r = await denyRetry({
+      permitId: req.id,
+      teacherId: user.uid,
+      note: '',
+    });
+    say(r.ok ? `Đã từ chối ${req.studentName}` : r.error);
+    if (r.ok) {
+      /* listener realtime tự cập nhật */
+    }
+  };
+
+  const handleToggleAllowance = async (cls, m, allowed) => {
+    const r = await setStudentRetryAllowance({
+      classId: cls.id,
+      studentId: m.id,
+      allowed,
+      teacherId: user.uid,
+    });
+    if (r.ok) {
+      setAllowances((prev) => ({ ...prev, [m.id]: allowed }));
+      say(allowed ? `Đã bật thi lại cho ${m.name}` : `Đã khóa thi lại của ${m.name}`);
+    } else {
+      say(r.error || 'Lỗi');
+    }
   };
 
   /* ---------- DERIVED ---------- */
@@ -335,6 +461,20 @@ export default function TeacherDashboard() {
 
   const classById = useMemo(() => Object.fromEntries(classes.map((c) => [c.id, c])), [classes]);
 
+  /* Tổng số yêu cầu chờ duyệt (cả lớp + thi lại) */
+  const totalPendingMembers = useMemo(
+    () => classes.reduce((sum, c) => sum + (c.pendingMembers?.length || 0), 0),
+    [classes]
+  );
+  const totalPendingRetry = useMemo(
+    () => retryRequests.filter((r) => r.status === 'pending').length,
+    [retryRequests]
+  );
+  const retryRequestsForClass = useMemo(() => {
+    if (!selectedClass?.id) return [];
+    return retryRequests.filter((r) => r.classId === selectedClass.id);
+  }, [retryRequests, selectedClass?.id]);
+
   const openNewExam = () => {
     if (classes.length === 0) { say('Hãy tạo lớp trước khi tạo đề'); goSection('classes'); return; }
     if (classes.length === 1) { setSelectedClass(classes[0]); goSection('create'); return; }
@@ -353,7 +493,6 @@ export default function TeacherDashboard() {
     say('Đã xuất bảng điểm');
   };
 
-  /* ---------- EXPORT CLASS CSV (dùng cho ClassDetailModal) ---------- */
   const exportClassCsv = useCallback((cls, clsExams, subsMap) => {
     if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất'); return; }
     const members = cls.members || [];
@@ -373,7 +512,7 @@ export default function TeacherDashboard() {
           row.push('');
         }
       });
-      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : '';
+      const avg = scores.length ? Math.round(Math.max(...scores)) : '';
       row.push(avg === '' ? '' : `${avg}%`);
       rows.push(row);
     });
@@ -409,13 +548,25 @@ export default function TeacherDashboard() {
   /* ---------- NAV ---------- */
   const navItems = [
     { key: 'overview', label: 'Tổng quan', Icon: IcoGrid },
-    { key: 'classes', label: 'Lớp học', Icon: IcoUsers },
+    {
+      key: 'classes',
+      label: 'Lớp học',
+      Icon: IcoUsers,
+      badge: totalPendingMembers > 0 ? totalPendingMembers : null,
+      live: totalPendingMembers > 0,
+    },
     { key: 'exams', label: 'Đề thi', Icon: IcoBook },
     { key: 'sessions', label: 'Phòng thi', Icon: IcoVideo, badge: liveSessions.length || null, live: true },
     { key: 'create', label: 'Tạo đề', Icon: IcoBook },
+    {
+      key: 'retry',
+      label: 'Xin thi lại',
+      Icon: IcoBell,
+      badge: totalPendingRetry > 0 ? totalPendingRetry : null,
+      live: totalPendingRetry > 0,
+    },
   ];
 
-  /* Nút "Quản trị" cho admin */
   const extraNav = isAdmin ? (
     <button
       type="button"
@@ -470,6 +621,10 @@ export default function TeacherDashboard() {
       title: 'Tạo đề mới',
       subtitle: 'Thủ công hoặc để AI sinh từ ảnh, PDF, Word, Excel',
     },
+    retry: {
+      title: 'Yêu cầu thi lại',
+      subtitle: `${totalPendingRetry} yêu cầu đang chờ duyệt`,
+    },
   }[section] || {};
 
   const goBell = () => {
@@ -490,13 +645,19 @@ export default function TeacherDashboard() {
     >
       <Topbar
         {...topProps}
-        search={section !== 'create' ? search : undefined}
+        search={section !== 'create' && section !== 'retry' ? search : undefined}
         bell={section !== 'create' ? {
-          on: liveSessions.length > 0,
-          onClick: goBell,
-          title: liveSessions.length
-            ? `${liveSessions.length} phòng thi đang LIVE`
-            : 'Chưa có phòng thi LIVE',
+          on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0,
+          onClick: () => {
+            if (totalPendingRetry > 0) goSection('retry');
+            else if (totalPendingMembers > 0) goSection('classes');
+            else goBell();
+          },
+          title: [
+            liveSessions.length ? `${liveSessions.length} phòng LIVE` : '',
+            totalPendingRetry ? `${totalPendingRetry} yêu cầu thi lại` : '',
+            totalPendingMembers ? `${totalPendingMembers} HS chờ duyệt` : '',
+          ].filter(Boolean).join(' · ') || 'Không có thông báo mới',
         } : undefined}
       />
 
@@ -669,6 +830,7 @@ export default function TeacherDashboard() {
             .map((cls) => {
               const members = cls.members || [];
               const classExams = exams.filter((e) => e.classId === cls.id);
+              const pendingCount = cls.pendingMembers?.length || 0;
               return (
                 <article key={cls.id} className="vt-card vt-class">
                   <header>
@@ -679,6 +841,29 @@ export default function TeacherDashboard() {
                     </div>
                     <i className="vt-count">{members.length}</i>
                   </header>
+
+                  {/* Badge chờ duyệt */}
+                  {pendingCount > 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '.5rem',
+                        padding: '.5rem .8rem',
+                        borderRadius: 12,
+                        background: 'color-mix(in srgb, #f59e0b 14%, var(--vt-tint))',
+                        border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)',
+                        color: '#b45309',
+                        font: '700 .78rem var(--sans)',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setSelectedClass(cls)}
+                    >
+                      <IcoBell size={14} />
+                      <span style={{ flex: 1 }}>{pendingCount} học sinh chờ duyệt</span>
+                      <IcoChevronRight size={14} />
+                    </div>
+                  )}
 
                   <div className="vt-keybox">
                     <IcoKey size={15} />
@@ -939,34 +1124,119 @@ export default function TeacherDashboard() {
       })()}
 
       {/* ============================================================
+          XIN THI LẠI — GV duyệt
+         ============================================================ */}
+      {section === 'retry' && (() => {
+        const pending = retryRequests.filter((r) => r.status === 'pending');
+        return (
+          <>
+            <div className="vt-range">
+              <h2>Yêu cầu thi lại</h2>
+              <button type="button" className="vt-btn sm" onClick={async () => {
+                /* listener realtime tự cập nhật */
+                say('Đã làm mới');
+              }}>
+                <IcoRefresh size={13} /> Làm mới
+              </button>
+            </div>
+
+            {pending.length === 0 ? (
+              <div className="vt-empty">
+                <span><IcoBell size={30} /></span>
+                <h3>Không có yêu cầu nào</h3>
+                <p>Khi học sinh bấm "Xin cô cho thi lại", yêu cầu sẽ xuất hiện ở đây.</p>
+              </div>
+            ) : (
+              <div className="vt-stackcards">
+                {pending.map((r) => {
+                  const exam = exams.find((e) => e.id === r.examId);
+                  const cls = classById[r.classId];
+                  return (
+                    <article key={r.id} className="vt-card">
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <Avatar name={r.studentName} size={48} />
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <h3 style={{ margin: 0, font: '800 1.05rem var(--sans)', letterSpacing: '-.02em' }}>
+                            {r.studentName}
+                          </h3>
+                          <p style={{ margin: '.2rem 0 0', color: 'var(--mut)', font: '500 .82rem var(--sans)' }}>
+                            Lớp {cls?.name || '—'} · Đề {exam?.title || '—'}
+                          </p>
+                          {r.reason && (
+                            <p style={{
+                              margin: '.7rem 0 0',
+                              padding: '.6rem .9rem',
+                              borderRadius: 10,
+                              background: 'var(--vt-tint)',
+                              color: 'var(--ink)',
+                              font: '500 .85rem/1.5 var(--sans)',
+                            }}>
+                              "{r.reason}"
+                            </p>
+                          )}
+                          <p style={{ margin: '.5rem 0 0', color: 'var(--mut)', font: '500 .74rem var(--sans)' }}>
+                            Gửi cách đây {Math.round((Date.now() - (r.requestedAtMs || tsMs(r.requestedAt))) / 60000)} phút
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="vt-btn primary"
+                            onClick={() => handleApproveRetry(r)}
+                          >
+                            <IcoCheckCircle size={14} /> Duyệt
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-btn danger"
+                            onClick={() => handleDenyRetry(r)}
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* ============================================================
           TẠO ĐỀ
          ============================================================ */}
       {section === 'create' && (
-        <CreateExamPage
-          classInfo={
-            selectedClass
-              ? selectedClass
-              : classes.length === 1
-                ? classes[0]
-                : {
-                    id: classes[0]?.id,
-                    name: classes[0]?.name || 'Chọn lớp',
-                    teacherId: user.uid,
-                    teacherName: user.displayName || user.email,
-                  }
-          }
-          grades={[]}
-          subjects={[]}
-          onDone={async () => {
-            await refresh();
-            setSelectedClass(null);
-            goSection('exams');
-          }}
-          onCancel={() => {
-            setSelectedClass(null);
-            goSection('overview');
-          }}
-        />
+        classes.length > 1 && !selectedClass ? (
+          <div className="vt-empty">
+            <span><IcoBook size={30} /></span>
+            <h3>Chọn lớp để tạo đề</h3>
+            <p>Bạn có nhiều lớp — chọn 1 lớp trước khi tạo đề.</p>
+            <button
+              type="button"
+              className="vt-btn primary"
+              onClick={() => setShowClassPicker(true)}
+            >
+              <IcoUsers size={14} /> Chọn lớp
+            </button>
+          </div>
+        ) : (
+          <CreateExamPage
+            classInfo={selectedClass || classes[0]}
+            grades={[]}
+            subjects={[]}
+            onDone={async () => {
+              await refresh();
+              setSelectedClass(null);
+              goSection('exams');
+            }}
+            onCancel={() => {
+              setSelectedClass(null);
+              goSection('overview');
+            }}
+          />
+        )
       )}
 
       {/* ============ TOAST ============ */}
@@ -1003,7 +1273,9 @@ export default function TeacherDashboard() {
               maxLength={20}
             />
           </label>
-          <p className="vt-muted">Sau khi tạo, bạn sẽ có key để gửi cho học sinh vào lớp.</p>
+          <p className="vt-muted">
+            Sau khi tạo, bạn sẽ có key để gửi cho học sinh. Học sinh nhập key sẽ chờ bạn duyệt mới vào lớp.
+          </p>
         </Modal>
       )}
 
@@ -1031,7 +1303,7 @@ export default function TeacherDashboard() {
         </Modal>
       )}
 
-      {/* ============ CHI TIẾT LỚP (MỚI) ============ */}
+      {/* ============ CHI TIẾT LỚP ============ */}
       {selectedClass && !showExamCreate && section !== 'create' && (
         <ClassDetailModal
           classInfo={selectedClass}
@@ -1043,10 +1315,20 @@ export default function TeacherDashboard() {
             const ex = exams.find((e) => e.id === examId);
             if (ex) setSelectedExam(ex);
           }}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onApproveAll={handleApproveAll}
+          onToggleApproval={handleToggleApproval}
+          onRemoveMember={handleRemoveMember}
+          retryRequests={retryRequestsForClass}
+          allowances={allowances}
+          onApproveRetry={handleApproveRetry}
+          onDenyRetry={handleDenyRetry}
+          onToggleAllowance={handleToggleAllowance}
         />
       )}
 
-      {/* ============ MODAL TẠO ĐỀ CŨ (giữ để tương thích) ============ */}
+      {/* ============ MODAL TẠO ĐỀ CŨ ============ */}
       {showExamCreate && selectedClass && (
         <ExamCreate
           classInfo={selectedClass}

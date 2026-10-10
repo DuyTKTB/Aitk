@@ -1,17 +1,21 @@
 /* ============================================================
-   LiveProctorView.jsx — Giám sát trực tiếp (Vitality)
+   LiveProctorView.jsx — Giám sát trực tiếp (Vitality) v2
    ------------------------------------------------------------
    Sidebar: Camera | Nhật ký | Danh sách | Báo cáo
-   Quản lý camera mới:
+   Quản lý camera:
      • Lọc: Tất cả / Online / Vi phạm / Mất hình / Đã nộp
-     • Sắp xếp: ưu tiên rủi ro / tên / tiến độ + Ghim HS
+     • Sắp xếp: rủi ro / tên / tiến độ + Ghim HS
      • Cỡ ô camera S / M / L
      • Thanh sức khỏe camera
      • "Cần chú ý": xếp hạng HS theo điểm rủi ro
      • Âm báo khi có vi phạm nặng mới
      • Nhắc cả phòng, lời nhắc nhanh, chuyển HS trước/sau (← →)
      • Báo cáo CSV: danh sách + chi tiết vi phạm
-     • [MỚI] Nút "Cảnh báo nghiêm trọng" + "Yêu cầu tạm dừng"
+   ------------------------------------------------------------
+   THAY ĐỔI v2:
+     • StudentModal dùng setStudentPaused (field boolean) thay
+       vì gửi tin nhắn regex "TẠM DỪNG".
+     • Nút đổi thành toggle "Tạm dừng HS này" / "Cho làm tiếp".
    ============================================================ */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
@@ -20,6 +24,7 @@ import {
   endExamSession,
   kickStudent,
   warnStudent,
+  setStudentPaused,
   isStudentOnline,
   timeRemaining,
   shortName,
@@ -51,7 +56,6 @@ const QUICK_WARNS = [
 ];
 
 const SEVERE_WARN = '⚠ CẢNH BÁO NGHIÊM TRỌNG: Bạn đã vi phạm quy chế thi. Vi phạm thêm sẽ bị mời ra khỏi phòng.';
-const PAUSE_MSG = '⏸ Giáo viên yêu cầu bạn TẠM DỪNG làm bài. Vui lòng ngồi yên và chờ hướng dẫn.';
 
 function hardCount(st) {
   return (st.violations || []).filter((v) => v.severity === 'hard').length;
@@ -118,6 +122,7 @@ function CamCard({ st, now, total, pinned, highlight, onOpen, onPin }) {
     !online && st.status !== 'submitted' ? 'offline' : '',
     highlight ? 'hl' : '',
     pinned ? 'pinned' : '',
+    st.paused ? 'paused' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -134,7 +139,13 @@ function CamCard({ st, now, total, pinned, highlight, onOpen, onPin }) {
             <IcoDot size={7} /> {online ? 'LIVE' : 'OFF'}
           </span>
 
-          {hard && meta && st.status !== 'submitted' && (
+          {st.paused && st.status !== 'submitted' && (
+            <span className="vt-cam-viol" style={{ background: '#f59e0b' }}>
+              <IcoClock size={12} /> Tạm dừng
+            </span>
+          )}
+
+          {hard && meta && st.status !== 'submitted' && !st.paused && (
             <span className="vt-cam-viol" title={meta.label}><meta.Icon size={12} /> {hardCount(st)}</span>
           )}
           {burstFresh && (
@@ -179,12 +190,13 @@ function CamCard({ st, now, total, pinned, highlight, onOpen, onPin }) {
 /* ============================================================
    STUDENT MODAL
    ============================================================ */
-function StudentModal({ student, total, onClose, onKick, onWarn, onPrev, onNext, index, count, requestKick }) {
+function StudentModal({ student, total, onClose, onKick, onWarn, onTogglePause, onPrev, onNext, index, count, requestKick, actioning }) {
   const [text, setText] = useState('');
   const [sent, setSent] = useState(false);
   const online = isStudentOnline(student);
   const violations = student.violations || [];
   const progress = total > 0 ? Math.min(100, Math.round(((student.answered || 0) / total) * 100)) : null;
+  const paused = !!student.paused;
 
   useEffect(() => {
     const h = (e) => {
@@ -206,7 +218,7 @@ function StudentModal({ student, total, onClose, onKick, onWarn, onPrev, onNext,
   };
 
   const statusText =
-    student.status === 'examining' ? 'Đang làm bài'
+    student.status === 'examining' ? (paused ? 'Đang tạm dừng' : 'Đang làm bài')
       : student.status === 'submitted' ? 'Đã nộp bài'
         : student.status === 'kicked' ? 'Đã bị mời ra'
           : 'Đã vào phòng';
@@ -289,34 +301,55 @@ function StudentModal({ student, total, onClose, onKick, onWarn, onPrev, onNext,
             <h4><IcoBell size={14} /> Nhắc học sinh</h4>
             <div className="vt-quick-warns">
               {QUICK_WARNS.map((w) => (
-                <button key={w} type="button" className="vt-pill sm" onClick={() => send(w)}>{w}</button>
+                <button
+                  key={w}
+                  type="button"
+                  className="vt-pill sm"
+                  onClick={() => send(w)}
+                  disabled={!online || actioning}
+                >
+                  {w}
+                </button>
               ))}
             </div>
 
-            {/* Nút cảnh báo nghiêm trọng */}
             <div style={{ marginTop: '.7rem' }}>
               <button
                 type="button"
                 className="vt-btn danger block"
                 onClick={() => send(SEVERE_WARN)}
-                disabled={!online}
+                disabled={!online || actioning}
               >
                 <IcoAlert size={14} /> Cảnh báo nghiêm trọng
               </button>
             </div>
 
-            {/* Nút yêu cầu tạm dừng */}
+            {/* Nút toggle Tạm dừng / Cho làm tiếp */}
             <div style={{ marginTop: '.5rem' }}>
               <button
                 type="button"
-                className="vt-btn warning block"
-                onClick={() => send(PAUSE_MSG)}
-                disabled={!online}
-                style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}
+                className="vt-btn block"
+                onClick={() => onTogglePause(student.id, !paused)}
+                disabled={!online || actioning || student.status === 'submitted' || student.status === 'kicked'}
+                style={{
+                  background: paused ? '#16a34a' : '#f59e0b',
+                  color: '#fff',
+                  borderColor: paused ? '#16a34a' : '#f59e0b',
+                }}
               >
-                <IcoClock size={14} /> Yêu cầu tạm dừng
+                {paused ? (
+                  <><IcoVideo size={14} /> Cho làm tiếp</>
+                ) : (
+                  <><IcoClock size={14} /> Tạm dừng học sinh này</>
+                )}
               </button>
             </div>
+
+            {paused && (
+              <p className="vt-muted" style={{ margin: '.5rem 0 0', fontSize: '.78rem' }}>
+                Học sinh đang thấy màn hình "Bài làm đã tạm dừng". Đồng hồ đã dừng.
+              </p>
+            )}
 
             <div className="vt-warn-row" style={{ marginTop: '.7rem' }}>
               <input
@@ -326,8 +359,14 @@ function StudentModal({ student, total, onClose, onKick, onWarn, onPrev, onNext,
                 placeholder="Nhập lời nhắc riêng…"
                 maxLength={200}
                 aria-label="Lời nhắc"
+                disabled={actioning}
               />
-              <button type="button" className="vt-btn primary" onClick={() => send()} disabled={!text.trim()}>
+              <button
+                type="button"
+                className="vt-btn primary"
+                onClick={() => send()}
+                disabled={!text.trim() || actioning}
+              >
                 {sent ? <><IcoCheckCircle size={14} /> Đã gửi</> : 'Gửi'}
               </button>
             </div>
@@ -367,6 +406,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastText, setBroadcastText] = useState('');
   const [toast, setToast] = useState(null);
+  const [actioning, setActioning] = useState(false);
 
   const seenViolRef = useRef(new Map());
   const loadedRef = useRef(false);
@@ -425,8 +465,9 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     const camBad = students.filter((s) => ['stale', 'none'].includes(camState(s, now))).length;
     const offline = students.filter((s) => camState(s, now) === 'off').length;
     const camOk = students.filter((s) => camState(s, now) === 'ok').length;
+    const paused = students.filter((s) => s.paused).length;
     const active = students.filter((s) => s.status !== 'submitted' && s.status !== 'kicked');
-    return { online, submitted, violators, camBad, offline, camOk, active };
+    return { online, submitted, violators, camBad, offline, camOk, active, paused };
   }, [students, now]);
 
   const filterDefs = [
@@ -434,6 +475,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     { key: 'online', label: 'Online', test: (s) => isStudentOnline(s, now) && s.status !== 'submitted' && s.status !== 'kicked' },
     { key: 'viol', label: 'Vi phạm', test: (s) => hardCount(s) > 0 },
     { key: 'cam', label: 'Mất hình', test: (s) => ['stale', 'none', 'off'].includes(camState(s, now)) && s.status !== 'submitted' && s.status !== 'kicked' },
+    { key: 'paused', label: 'Tạm dừng', test: (s) => !!s.paused },
     { key: 'done', label: 'Đã nộp', test: (s) => s.status === 'submitted' },
   ];
   const filterTabs = filterDefs.map((f) => ({ key: f.key, label: f.label, count: students.filter(f.test).length }));
@@ -510,6 +552,19 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     await warnStudent({ sessionId, studentId, message });
   }, [sessionId]);
 
+  const handleTogglePause = useCallback(async (studentId, paused) => {
+    setActioning(true);
+    try {
+      await setStudentPaused({ sessionId, studentId, paused });
+      const st = students.find((x) => x.id === studentId);
+      say(paused ? `Đã tạm dừng ${shortName(st?.studentName)}` : `Đã cho ${shortName(st?.studentName)} làm tiếp`);
+    } catch (e) {
+      say('Không đổi được trạng thái: ' + e.message);
+    } finally {
+      setActioning(false);
+    }
+  }, [sessionId, students, say]);
+
   const sendBroadcast = async () => {
     const m = broadcastText.trim();
     if (!m) return;
@@ -529,13 +584,17 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
       ['Bắt đầu', session.startedAtMs ? new Date(session.startedAtMs).toLocaleString('vi-VN') : ''],
       ['Kết thúc', isEnded ? new Date(session.endedAtMs || Date.now()).toLocaleString('vi-VN') : 'Chưa kết thúc'],
       [],
-      ['Học sinh', 'Trạng thái', 'Đã trả lời', 'Vi phạm nặng', 'Vi phạm nhẹ', 'Vào phòng', 'Chi tiết vi phạm'],
+      ['Học sinh', 'Trạng thái', 'Đã trả lời', 'Tạm dừng', 'Vi phạm nặng', 'Vi phạm nhẹ', 'Vào phòng', 'Chi tiết vi phạm'],
     ];
     students.forEach((st) => {
       const detail = (st.violations || [])
         .map((v) => `${fmtClock(v.at)} ${violationMeta(v.type).label}`)
         .join(' | ');
-      rows.push([st.studentName, st.status, st.answered || 0, hardCount(st), softCount(st), fmtClock(st.joinedAtMs), detail]);
+      rows.push([
+        st.studentName, st.status, st.answered || 0,
+        st.paused ? 'Có' : 'Không',
+        hardCount(st), softCount(st), fmtClock(st.joinedAtMs), detail,
+      ]);
     });
     const safe = (session.title || 'phong-thi').replace(/[^\p{L}\p{N}]+/gu, '-');
     downloadCsv(`bao-cao-${safe}.csv`, rows);
@@ -611,6 +670,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
             <dl className="vt-hero-facts">
               <div><dt>Đã vào</dt><dd>{students.length}</dd></div>
               <div><dt>Đã nộp</dt><dd>{stats.submitted}</dd></div>
+              {stats.paused > 0 && <div><dt>Tạm dừng</dt><dd>{stats.paused}</dd></div>}
             </dl>
             {!isEnded && (
               <div className="vt-hero-btns">
@@ -810,7 +870,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
                     const cs = camState(s, now);
                     return (
                       <tr key={s.id}>
-                        <td><span className="vt-td-name"><Avatar name={s.studentName} size={32} /><b>{s.studentName}</b></span></td>
+                        <td><span className="vt-td-name"><Avatar name={s.studentName} size={32} /><b>{s.studentName}</b>{s.paused && <i className="vt-chip soon" style={{ fontSize: '.62rem' }}>Tạm dừng</i>}</span></td>
                         <td><span className={'vt-chip st-' + s.status}>{{ examining: 'Đang làm', submitted: 'Đã nộp', kicked: 'Bị mời ra', joined: 'Đã vào' }[s.status] || s.status}</span></td>
                         <td>
                           <div className="vt-td-prog">
@@ -917,7 +977,9 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
           onNext={() => step(1)}
           onKick={handleKick}
           onWarn={handleWarn}
+          onTogglePause={handleTogglePause}
           requestKick={setKickTarget}
+          actioning={actioning}
         />
       )}
 

@@ -265,6 +265,6 @@
 
 @media (max-width: 720px) {
   .cea-quick { padding: 0 .8rem .5rem; }
-  .cea-q-text { display: none; }
+  .cea-q-text { order: 3; flex-basis: 100%; white-space: normal; }
   .cea-q-head { flex-wrap: wrap; }
 }

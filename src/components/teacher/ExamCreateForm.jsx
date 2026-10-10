@@ -2,7 +2,7 @@
    ExamCreateForm.jsx — Form tạo đề thủ công
    (Dùng class .cep-* cho giao diện đồng bộ trang Tạo đề)
    ============================================================ */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /* ============ SVG ICONS ============ */
 const IcoPlus = ({ size = 14 }) => (
@@ -97,6 +97,8 @@ const toFormQuestion = (q) => {
     points: q.points || 1,
     explain: q.explain || q.explanation || '',
     warns: Array.isArray(q.warns) ? q.warns : [],
+    topic: q.topic || '',
+    level: q.level || '',
   };
 };
 
@@ -108,6 +110,7 @@ const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
    ============================================================ */
 export default function ExamCreateForm({
   initial = null,
+  onDirty,
   classInfo,
   onSave,
   onCancel,
@@ -145,6 +148,11 @@ export default function ExamCreateForm({
     maxSnapshots: 10,
     retentionDays: 30,
   });
+
+  /* Báo cho trang cha biết form đang có nội dung (để hỏi trước khi ghi đè) */
+  useEffect(() => {
+    onDirty?.(!!title.trim() || questions.some((q) => q.q.trim() || q.options.some((o) => o.trim())));
+  }, [title, questions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ============ QUESTION ACTIONS ============ */
   const updateQ = (i, patch) => {
@@ -234,6 +242,8 @@ export default function ExamCreateForm({
         correct: newCorrect >= 0 ? newCorrect : 0,
         points: Number(q.points) || 1,
         ...(q.explain?.trim() ? { explain: q.explain.trim() } : {}),
+        ...(q.topic ? { topic: q.topic } : {}),
+        ...(q.level ? { level: q.level } : {}),
       };
     });
 

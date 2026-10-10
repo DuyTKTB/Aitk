@@ -1027,3 +1027,6 @@
     transition-duration: .01ms !important;
   }
 }
+
+/* (Đã bỏ khối FALLBACK .vt-modal / .vt-btn / .vt-backdrop: dash-vitality.css đã đủ biến ở :root,
+   khối cũ ghi đè toàn cục làm mọi modal .vt-modal bị ép rộng 480px.) */

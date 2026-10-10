@@ -136,7 +136,7 @@ export default function ViolationOverlay({ warning, onDismiss, strict = false })
     }
 
     // Đếm ngược
-    const initialDelay = isAutoSubmit ? 5 : strict ? 10 : 5;
+    const initialDelay = warning?.type === 'violation-strict' ? 10 : 5;
     setCountdown(initialDelay);
     setCanDismiss(false);
 
@@ -155,7 +155,7 @@ export default function ViolationOverlay({ warning, onDismiss, strict = false })
       clearInterval(beepIntervalRef.current);
       clearInterval(countdownRef.current);
     };
-  }, [warning, isSoft, isAutoSubmit, strict]);
+  }, [warning, isSoft, isAutoSubmit]);
 
   /* ===== Không render gì cho soft ===== */
   if (!warning || isSoft) return null;
@@ -168,7 +168,7 @@ export default function ViolationOverlay({ warning, onDismiss, strict = false })
   };
 
   /* ===== Render ===== */
-  const isStrict = warning?.type === 'violation-strict' || strict;
+  const isStrict = warning?.type === 'violation-strict';
   const Icon = isAutoSubmit ? IconStop : isStrict ? IconShield : IconAlert;
 
   return (
@@ -214,11 +214,12 @@ export default function ViolationOverlay({ warning, onDismiss, strict = false })
 
         {!isAutoSubmit && (
           <p className="ep-violation-note">
-            {isStrict && warning.count === 1
-              ? '⚠ Vi phạm thêm 1 lần nữa sẽ tự động nộp bài.'
-              : warning.count >= warning.limit - 1
+            {(() => {
+              const remaining = Math.max(1, (warning.limit || 3) - (warning.count || 0));
+              return remaining <= 1
                 ? '⚠ Vi phạm thêm 1 lần nữa sẽ tự động nộp bài.'
-                : `Còn ${warning.limit - warning.count} lần nữa trước khi tự động nộp.`}
+                : `Vi phạm thêm ${remaining} lần nữa sẽ tự động nộp bài.`;
+            })()}
           </p>
         )}
 
