@@ -1,283 +1,235 @@
-﻿import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react';
-import HeroLindy from './HeroLindy.jsx';
-import { IcoSparkle } from './Icons.jsx';
-import { HeroNet, useSpotlight, useGreeting } from './HomePlus.jsx';
-import './home-pro.css';
-import './home-lindy.css';
+﻿import { useState } from 'react';
+import AIMark from './AIMark.jsx';
+import { useGreeting } from './HomePlus.jsx';
+import { Badge, Button, Card, CardHead, EmptyState } from '../ui/index.jsx';
+import { timeAgo, useProgress } from '../lib/progress.js';
+import { elementOfDay } from '../lib/elementOfDay.js';
+import './home-dashboard.css';
 
 /* ============================================================
-   Home.jsx — Trang chủ khi đã đăng nhập
-   Cấu trúc:
-     1. HeroLindy — mockup chat AI
-     2. Quick Actions — 4 nút vào việc chính
-     3. CTA "Bắt đầu khám phá" → CUAI
+   Home.jsx — dashboard sau đăng nhập
+   Đầu trang: CUAI chào + nhắn theo tình trạng học (thân thiện)
+   Cột chính: ô hỏi · lối tắt · số liệu · học tiếp
+   Cột phải : hôm nay · nên ôn · nắm vững theo chương · nguyên tố hôm nay
    ============================================================ */
 
-const PeriodicTable = lazy(() => import('./PeriodicTable.jsx'));
+const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const SUGGEST = ['Cân bằng Fe + O₂ → Fe₂O₃', 'Tóm tắt chương Este – Lipit', 'Vì sao kim loại kiềm hoạt động mạnh?'];
 
-const ROLL = ['thông minh hơn.', 'nhanh hơn.', 'vui hơn.', 'nhớ lâu hơn.'];
+const ico = (d) => ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
+);
+const IcoCamera = ico(<><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" /><circle cx="12" cy="12.5" r="3.5" /></>);
+const IcoQuiz = ico(<><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7v.5M12 17h.01" /></>);
+const IcoBalance = ico(<path d="M12 3v18M3 7h18M7 7l-3 7a3 3 0 0 0 6 0L7 7zM17 7l-3 7a3 3 0 0 0 6 0l-3-7z" />);
+const IcoChart = ico(<><path d="M3 3v18h18" /><path d="M7 14l3-3 3 3 5-6" /></>);
+const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />);
+const IcoFlame = ico(<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2.2 1.4.9 2.2 1.7 2.7C10.4 8.6 10.6 5.6 12 3z" />);
 
-const reduced = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-function useInView(threshold = 0.15) {
-  const ref = useRef(null);
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    if (!('IntersectionObserver' in window)) { setOn(true); return undefined; }
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { setOn(true); io.disconnect(); }
-    }, { threshold });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [threshold]);
-  return [ref, on];
+function goAI(payload) {
+  try { localStorage.setItem('cs-ai-pending', JSON.stringify({ ...payload, t: Date.now() })); } catch { /* */ }
+  location.hash = 'ai';
 }
 
-function Split({ text, base = 0, step = 55 }) {
-  const [ref, on] = useInView(0.3);
+/* Lời nhắn của CUAI: dựa vào tình trạng thật của người học */
+function cuaiSays(p) {
+  const left = p.goal - p.today;
+  if (p.isEmpty) return 'Mình là CUAI. Hỏi mình một bài Hóa bất kỳ để bắt đầu nhé.';
+  if (p.today >= p.goal) return 'Xong mục tiêu hôm nay rồi. Muốn thử thêm một bài khó không?';
+  if (p.today === 0 && p.streak >= 3) return `Chuỗi ${p.streak} ngày đang chờ bạn. Làm vài câu để giữ nó nhé.`;
+  if (p.today > 0) return `Còn ${left} câu nữa là đạt mục tiêu. Bạn làm được.`;
+  const h = new Date().getHours();
+  return h < 11 ? 'Buổi sáng học dễ nhớ nhất. Bắt đầu bằng một câu nhé.' : h < 18 ? 'Hôm nay mình ôn chương nào đây?' : 'Tối nay ôn nhẹ vài câu trước khi nghỉ nhé.';
+}
+
+function Head({ p, hello, name }) {
   return (
-    <span
-      ref={ref}
-      className={'fx-split' + (on ? ' on' : '')}
-      style={{ '--base': base + 'ms', '--step': step + 'ms' }}
-    >
-      <span className="fx-sr">{text.replace(/\*/g, '')}</span>
-      {text.split(' ').map((w, i) => (
-        <Fragment key={i}>
-          <span className="fx-wm" aria-hidden="true">
-            <span className="fx-s" style={{ '--i': i }}>
-              {w.startsWith('*') ? <span className="fx-shimmer">{w.slice(1)}</span> : w}
-            </span>
-          </span>{' '}
-        </Fragment>
-      ))}
-    </span>
+    <header className="db-head">
+      <div className="db-cuai"><AIMark size={46} animate title="CUAI" /></div>
+      <div className="db-head-text">
+        <h1>{hello}, {name}</h1>
+        <p className="db-bubble" role="status">{cuaiSays(p)}</p>
+      </div>
+      <div className="db-level" title={`Cấp ${p.lv.lvl}: ${p.lv.title}`}>
+        <b>Cấp {p.lv.lvl}</b><span>{p.lv.title}</span>
+      </div>
+    </header>
   );
 }
 
-function Rolling({ words }) {
-  const [s, setS] = useState({ i: 0, p: -1 });
-  useEffect(() => {
-    if (reduced()) return undefined;
-    const t = setInterval(() => setS((c) => ({ i: (c.i + 1) % words.length, p: c.i })), 2600);
-    return () => clearInterval(t);
-  }, [words.length]);
+function Composer() {
+  const [val, setVal] = useState('');
+  const submit = (e) => { e?.preventDefault(); goAI({ text: val.trim() }); };
   return (
-    <span className="hm-roll">
-      {words.map((w, k) => (
-        <span
-          key={w}
-          aria-hidden={k !== s.i}
-          className={'hm-roll-w' + (k === s.i ? ' in' : k === s.p ? ' out' : '')}
-        >
-          {w}
-        </span>
-      ))}
-    </span>
+    <form className="db-composer" onSubmit={submit}>
+      <label htmlFor="db-ask" className="sr-only">Hỏi CUAI</label>
+      <textarea
+        id="db-ask" rows={2} value={val} placeholder="Hỏi CUAI một bài Hóa, một khái niệm, hoặc xin 5 câu trắc nghiệm…"
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); }}
+      />
+      <div className="db-composer-bar">
+        <div className="db-chips">{SUGGEST.map((s) => <button key={s} type="button" onClick={() => setVal(s)}>{s}</button>)}</div>
+        <Button variant="primary" type="submit" icon aria-label="Gửi cho CUAI"><IcoSend /></Button>
+      </div>
+    </form>
   );
 }
 
-function trackHero(e) {
-  const r = e.currentTarget.getBoundingClientRect();
-  e.currentTarget.style.setProperty('--hx', e.clientX - r.left + 'px');
-  e.currentTarget.style.setProperty('--hy', e.clientY - r.top + 'px');
-}
-
-/* ============================================================
-   QUICK ACTIONS — 4 nút vào việc chính
-   ============================================================ */
-const IcoCamera = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" />
-    <circle cx="12" cy="12.5" r="3.5" />
-  </svg>
-);
-
-const IcoQuiz = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7v.5" />
-    <path d="M12 17h.01" />
-  </svg>
-);
-
-const IcoBalance = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3v18M3 7h18M7 7l-3 7a3 3 0 0 0 6 0L7 7zM17 7l-3 7a3 3 0 0 0 6 0l-3-7z" />
-  </svg>
-);
-
-const IcoChart = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M3 3v18h18" />
-    <path d="M7 14l3-3 3 3 5-6" />
-  </svg>
-);
-
-const IcoArrow = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M5 12h14M12 5l7 7-7 7" />
-  </svg>
-);
-
-const IcoRocket = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M9 15c-3 3-3 6-3 6s3 0 6-3M14.5 9.5 12 12M9 15l-3-3s3-2 4-6 8-3 8-3-1 7-3 8-6 4-6 4z" />
-    <circle cx="15" cy="9" r="1.5" />
-  </svg>
-);
-
-const QUICK_ACTIONS = [
-  {
-    id: 'capture',
-    Icon: IcoCamera,
-    label: 'Chụp đề',
-    desc: 'Gửi ảnh đề cho AI',
-    color: 'blue',
-    action: () => {
-      try { localStorage.setItem('cs-ai-pending', JSON.stringify({ action: 'capture', t: Date.now() })); } catch { /* */ }
-      location.hash = 'ai';
-    },
-  },
-  {
-    id: 'quiz',
-    Icon: IcoQuiz,
-    label: 'Quiz',
-    desc: 'Luyện tập nhanh',
-    color: 'purple',
-    action: () => { location.hash = 'quiz'; },
-  },
-  {
-    id: 'balance',
-    Icon: IcoBalance,
-    label: 'Cân bằng',
-    desc: 'Cân bằng PTHH',
-    color: 'green',
-    action: () => { location.hash = 'balance'; },
-  },
-  {
-    id: 'progress',
-    Icon: IcoChart,
-    label: 'Tiến độ',
-    desc: 'Xem thống kê',
-    color: 'orange',
-    action: () => { location.hash = 'stats'; },
-  },
+const SHORTCUTS = [
+  { href: '#ai', Icon: IcoCamera, label: 'Chụp đề', desc: 'Gửi ảnh cho CUAI', onClick: () => goAI({ action: 'capture' }) },
+  { href: '#quiz', Icon: IcoQuiz, label: 'Quiz', desc: 'Luyện nhanh' },
+  { href: '#balance', Icon: IcoBalance, label: 'Cân bằng PTHH', desc: 'Từng bước' },
+  { href: '#stats', Icon: IcoChart, label: 'Thống kê', desc: 'Tiến độ của bạn' },
 ];
-
-function QuickActions() {
-  const [ref, on] = useInView(0.1);
-
+function Shortcuts() {
   return (
-    <section ref={ref} className={'hp-quick-section' + (on ? ' in' : '')}>
-      <div className="hp-quick-head">
-        <h2>Bắt đầu nhanh</h2>
-        <p>Chọn một hành động để vào việc ngay</p>
+    <nav className="db-shortcuts" aria-label="Lối tắt">
+      {SHORTCUTS.map(({ href, Icon, label, desc, onClick }) => (
+        <a key={label} href={href} onClick={onClick ? (e) => { e.preventDefault(); onClick(); } : undefined}>
+          <Icon /><span><b>{label}</b><small>{desc}</small></span>
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function Spark({ week }) {
+  const max = Math.max(1, ...week.map((d) => d.count));
+  const pts = week.map((d, i) => `${(i / 6) * 100},${28 - (d.count / max) * 24}`).join(' ');
+  return (
+    <svg className="db-spark" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function Stats({ p }) {
+  const nextText = p.lv.next ? `${p.xp}/${p.lv.next.xp} XP lên cấp ${p.lv.next.lvl}` : `${p.xp} XP · cấp cao nhất`;
+  return (
+    <section className="db-stats" aria-label="Số liệu học tập">
+      <div className="db-stat streak">
+        <small>Chuỗi ngày</small>
+        <b className="num"><IcoFlame size={20} />{p.streak}</b>
+        <span>{p.streak ? 'ngày liên tiếp' : 'Học hôm nay để bắt đầu'}</span>
       </div>
-      <div className="hp-quick-grid">
-        {QUICK_ACTIONS.map(({ id, Icon, label, desc, color, action }, i) => (
-          <button
-            key={id}
-            type="button"
-            className={'hp-quick-btn hp-quick-' + color}
-            style={{ '--i': i }}
-            onClick={action}
-          >
-            <span className="hp-quick-ico">
-              <Icon size={22} />
-            </span>
-            <span className="hp-quick-text">
-              <b>{label}</b>
-              <small>{desc}</small>
-            </span>
-            <span className="hp-quick-arrow" aria-hidden="true">
-              <IcoArrow size={16} />
-            </span>
-          </button>
+      <div className="db-stat">
+        <small>Độ chính xác</small>
+        <b className="num">{p.accuracy === null ? '–' : p.accuracy + '%'}</b>
+        <span className="num">{p.answered ? `${p.answered} câu đã làm` : 'Làm quiz để có số liệu'}</span>
+      </div>
+      <div className="db-stat">
+        <small>7 ngày qua</small>
+        <b className="num">{p.week.reduce((a, d) => a + d.count, 0)}<em> câu</em></b>
+        <Spark week={p.week} />
+      </div>
+      <div className="db-stat">
+        <small>Cấp {p.lv.lvl}</small>
+        <b className="lv">{p.lv.title}</b>
+        <div className="db-bar thin" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={p.lv.progress} aria-label="Tiến độ lên cấp"><i style={{ width: p.lv.progress + '%' }} /></div>
+        <span className="num">{nextText}</span>
+      </div>
+    </section>
+  );
+}
+
+function RecentCard({ p }) {
+  return (
+    <Card className="db-recent">
+      <CardHead title="Học tiếp" />
+      {p.isEmpty ? (
+        <EmptyState title="Chưa có hoạt động nào" text="Hỏi CUAI một câu hoặc làm vài câu quiz, phần này sẽ giúp bạn quay lại đúng chỗ đang học."
+          action={<Button variant="primary" href="#quiz">Làm quiz đầu tiên</Button>} />
+      ) : (
+        <ul>{p.recent.slice(0, 5).map((r) => (
+          <li key={r.id}><a href={'#' + (r.hash || 'ai')}><span>{r.title}{r.n > 1 ? <> · <span className="num">{r.n} lượt</span></> : null}</span><time className="num">{timeAgo(r.t)}</time></a></li>
+        ))}</ul>
+      )}
+    </Card>
+  );
+}
+
+function TodayCard({ p }) {
+  const done = p.today >= p.goal;
+  const pct = Math.min(100, Math.round((p.today / p.goal) * 100));
+  return (
+    <Card className="db-today">
+      <CardHead title="Hôm nay" action={<a href="#settings">Đổi mục tiêu</a>} />
+      <p className="db-today-line">
+        <b className="num">{p.today}</b><span className="num"> / {p.goal} câu</span>
+        {done && <Badge tone="ok">Hoàn thành</Badge>}
+      </p>
+      <div className={'db-bar' + (done ? ' done' : '')} role="progressbar" aria-valuemin={0} aria-valuemax={p.goal} aria-valuenow={Math.min(p.today, p.goal)} aria-label="Tiến độ mục tiêu hôm nay"><i style={{ width: pct + '%' }} /></div>
+      <ol className="db-week" aria-label="7 ngày gần nhất">
+        {p.week.map((d) => (
+          <li key={d.key} className={(d.count ? 'on ' : '') + (d.today ? 'today' : '')}>
+            <span className="db-dot" /><small>{DOW[d.dow]}</small>
+            <span className="sr-only">{d.count ? `${d.count} câu` : 'chưa học'}</span>
+          </li>
         ))}
-      </div>
-    </section>
+      </ol>
+    </Card>
   );
 }
 
-/* ============================================================
-   CTA — Bắt đầu khám phá CUAI
-   ============================================================ */
-function ExploreCTA() {
-  const [ref, on] = useInView(0.15);
-
-  const goToAI = () => {
-    try {
-      localStorage.setItem('cs-ai-pending', JSON.stringify({ text: '', t: Date.now() }));
-    } catch { /* */ }
-    location.hash = 'ai';
-  };
-
+function ReviewCard({ p }) {
+  if (!p.wrongCount) return null;
   return (
-    <section ref={ref} className={'hp-explore' + (on ? ' in' : '')}>
-      <div className="hp-explore-glow" aria-hidden="true" />
-      <div className="hp-explore-inner">
-        <span className="hp-explore-badge">
-          <IcoSparkle size={14} />
-          Trợ lý AI
-        </span>
-        <h2>
-          Sẵn sàng <em>khám phá</em>?
-        </h2>
-        <p>
-          Hỏi AI bất cứ điều gì về Hóa học — giải đề, giảng lý thuyết, sinh quiz.
-          Bắt đầu cuộc trò chuyện đầu tiên của bạn ngay bây giờ.
-        </p>
-        <button
-          type="button"
-          className="hp-explore-btn"
-          onClick={goToAI}
-        >
-          <IcoRocket size={20} />
-          <span>Bắt đầu khám phá</span>
-          <IcoArrow size={18} />
-        </button>
-      </div>
-    </section>
+    <Card className="db-review">
+      <CardHead title="Nên ôn hôm nay" />
+      <p>Bạn có <b className="num">{p.wrongCount}</b> nguyên tố từng trả lời sai. Ôn lại bây giờ để nhớ lâu hơn.</p>
+      <Button variant="primary" href="#quiz">Ôn câu sai</Button>
+    </Card>
   );
 }
 
-/* ============================================================
-   MAIN
-   ============================================================ */
+function MasteryCard({ p }) {
+  const pct = Math.round((p.mastered / p.totalElements) * 100);
+  return (
+    <Card className="db-mastery">
+      <CardHead title="Nguyên tố đã thành thạo" action={<a href="#table">Bảng tuần hoàn</a>} />
+      <p className="db-mastery-line"><b className="num">{p.mastered}</b><span className="num"> / {p.totalElements}</span></p>
+      <div className="db-bar" role="progressbar" aria-valuemin={0} aria-valuemax={p.totalElements} aria-valuenow={p.mastered} aria-label="Số nguyên tố đã thành thạo"><i style={{ width: pct + '%' }} /></div>
+      <p className="db-legend">{p.mastered ? 'Tính theo lịch ôn lặp lại của Quiz.' : 'Làm Quiz để bắt đầu mở khóa từng nguyên tố.'}</p>
+    </Card>
+  );
+}
+
+function ElementCard() {
+  const e = elementOfDay();
+  return (
+    <Card className="db-element" tight>
+      <div className="db-el-cell" aria-hidden="true"><small>{e.z}</small><b>{e.s}</b><span>{e.m}</span></div>
+      <div>
+        <h2>Nguyên tố hôm nay: {e.n}</h2>
+        <p>{e.fact}</p>
+        <a href="#table">Xem trên bảng tuần hoàn</a>
+      </div>
+    </Card>
+  );
+}
+
 export default function Home() {
   const { hello, name } = useGreeting();
-  useSpotlight();
-
+  const p = useProgress();
   return (
-    <div className="hp">
-      {/* 1. KHUNG CHAT AI */}
-      <section className="hm-hero-lindy" onPointerMove={trackHero}>
-        <div className="hm-hero-bg" aria-hidden="true"><HeroNet /></div>
-
-        <div className="hm-wrap hm-hero-lindy-head">
-          <p className="hm-badge">
-            <span className="hm-badge-dot"><IcoSparkle size={13} /></span>
-            {hello}, {name}
-          </p>
-          <h1 className="hm-h1">
-            <Split text="Học *Hóa *học" base={100} />
-            <br />
-            <Rolling words={ROLL} />
-          </h1>
+    <div className="db">
+      <div className="db-aurora" aria-hidden="true" />
+      <Head p={p} hello={hello} name={name} />
+      <div className="db-grid">
+        <div className="db-main">
+          <Composer />
+          <Shortcuts />
+          <Stats p={p} />
+          <RecentCard p={p} />
         </div>
-
-        <HeroLindy />
-      </section>
-
-      {/* 2. QUICK ACTIONS — 4 nút vào việc chính */}
-      <QuickActions />
-
-      {/* 3. CTA — Bắt đầu khám phá CUAI */}
-      <ExploreCTA />
+        <aside className="db-side">
+          <TodayCard p={p} />
+          <ReviewCard p={p} />
+          <MasteryCard p={p} />
+          <ElementCard />
+        </aside>
+      </div>
     </div>
   );
 }

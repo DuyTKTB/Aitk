@@ -1,12 +1,9 @@
 /* ============================================================
    TIER — Quản lý gói sử dụng (Free / VIP)
-   Lưu trên Firebase Realtime Database: /users/{uid}/tier.json
-   - Free: 18 tin nhắn / 5 ảnh mỗi ngày
-   - VIP:  không giới hạn chat / 30 ảnh mỗi ngày
+   Lưu trên FIRESTORE: /users/{uid}.tier
    ============================================================ */
-
-const DB = (import.meta.env.VITE_FIREBASE_DB_URL || '').replace(/\/$/, '');
-const HAS_DB = /^https?:\/\//.test(DB);
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { db } from './firebase.js';
 
 export const TIERS = {
   free: {
@@ -33,50 +30,50 @@ export const TIERS = {
 
 /* Cache tier để không spam API */
 const cache = new Map();
-const CACHE_MS = 60 * 1000; // 1 phút
+const CACHE_MS = 60 * 1000;
 
 /* ============================================================
-   Lấy tier của user
-   - Nếu chưa có trên DB → mặc định 'free'
+   Lấy tier của user từ Firestore
    ============================================================ */
 export async function getTier(uid) {
   if (!uid) return TIERS.free;
+
   const c = cache.get(uid);
   if (c && Date.now() - c.t < CACHE_MS) return c.tier;
-  if (!HAS_DB) {
-    cache.set(uid, { tier: TIERS.free, t: Date.now() });
-    return TIERS.free;
-  }
 
   try {
-    const res = await fetch(`${DB}/users/${uid}/tier.json`);
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json();
-    const key = (data?.tier || data || 'free').toString().toLowerCase();
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) {
+      cache.set(uid, { tier: TIERS.free, t: Date.now() });
+      return TIERS.free;
+    }
+    const data = snap.data();
+    const key = (data?.tier || 'free').toString().toLowerCase();
     const tier = TIERS[key] || TIERS.free;
     cache.set(uid, { tier, t: Date.now() });
     return tier;
-  } catch {
+  } catch (e) {
+    console.warn('Lỗi đọc tier:', e);
     return TIERS.free;
   }
 }
 
-/* Xóa cache (khi admin đổi tier) */
+/* Xóa cache */
 export function clearTierCache(uid) {
   if (uid) cache.delete(uid);
   else cache.clear();
 }
 
 /* ============================================================
-   Lấy thông tin đầy đủ từ DB (tier + note + upgradedAt)
+   Lấy thông tin đầy đủ
    ============================================================ */
 export async function getTierInfo(uid) {
-  if (!uid || !HAS_DB) return { tier: 'free', note: '', upgradedAt: null };
+  if (!uid) return { tier: 'free', note: '', upgradedAt: null };
 
   try {
-    const res = await fetch(`${DB}/users/${uid}.json`);
-    if (!res.ok) return { tier: 'free', note: '', upgradedAt: null };
-    const data = await res.json();
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) return { tier: 'free', note: '', upgradedAt: null };
+    const data = snap.data();
     return {
       tier: (data?.tier || 'free').toString().toLowerCase(),
       note: data?.note || '',
@@ -90,35 +87,44 @@ export async function getTierInfo(uid) {
 }
 
 /* ============================================================
-   Lưu info cơ bản khi user đăng nhập lần đầu (để admin quản lý)
+   Sync info user (đã có useAuth làm rồi, giữ để tương thích)
    ============================================================ */
 export async function syncUserInfo(user) {
-  if (!user?.uid || !HAS_DB) return;
+  if (!user?.uid) return;
   try {
-    const ref = `${DB}/users/${user.uid}.json`;
-    const check = await fetch(ref);
-    const existing = check.ok ? await check.json() : null;
-
-    const payload = {
-      uid: user.uid,
-      displayName: user.displayName || '',
-      email: user.email || '',
-      lastSeen: Date.now(),
-    };
-    if (!existing) {
-      payload.tier = 'free';
-      payload.createdAt = Date.now();
+    const ref = doc(db, 'users', user.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        uid: user.uid,
+        displayName: user.displayName || '',
+        email: user.email || '',
+        tier: 'free',
+        createdAt: new Date().toISOString(),
+      });
     }
-
-    await fetch(ref, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
   } catch {}
 }
 
 /* ============================================================
-   Đọc quota dựa theo tier (không đọc từ localStorage nữa)
+   Admin: set tier cho user
+   ============================================================ */
+export async function setUserTier(uid, tierKey) {
+  if (!uid) return { ok: false };
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      tier: tierKey,
+      upgradedAt: new Date().toISOString(),
+    });
+    clearTierCache(uid);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/* ============================================================
+   Quota theo tier
    ============================================================ */
 export function getQuotaForTier(tier) {
   return {

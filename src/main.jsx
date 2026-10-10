@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { AuthProvider } from './hooks/useAuth.jsx';
 import { SettingsProvider } from './contexts/SettingsContext.jsx';
-import CommandPalette from './components/CommandPalette.jsx';
 import './index.css';
 import './theme-sandra.css';
 import './fx.css';
@@ -22,13 +21,25 @@ import './home-extras.css';
 import './AIChat-glass-v2.css';
 import './components/CommandPalette.css';
 import './styles/tools-apple.css';
-import './games-upgrade.css'
+import './games-upgrade.css';
+import './styles/tokens.css';
+import './styles/round-polish.css';   // CUỐI CÙNG: lớp bo tròn + làm đẹp
+import './styles/class-detail.css';
+import './styles/violation-overlay.css';
+import { ToastProvider } from './ui/index.jsx';
+import { applySettings } from './lib/settings.js';
+import { initFeedbackQueue } from './lib/feedback.js';
+
+applySettings();
+initFeedbackQueue();
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <SettingsProvider>
       <AuthProvider>
-        <App />
-        <CommandPalette />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </AuthProvider>
     </SettingsProvider>
   </StrictMode>

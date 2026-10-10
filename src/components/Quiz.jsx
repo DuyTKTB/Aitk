@@ -4,6 +4,7 @@ import { useLocalStorage, studyToday, liveStreak, dayKey } from '../hooks.js';
 import { pickNext, mastery, stats, srsReview, freshRecord, isDue } from '../lib/srs.js';
 import { ACHIEVEMENTS, getLevel } from '../data/achievements.js';
 import { sound } from '../lib/gameSound.js';
+import { recordActivity } from '../lib/progress.js';
 import { Ico, AchIcon } from './QuizIcons.jsx';
 import AIQuizGenerator from './AIQuizGenerator.jsx';
 import './ai-quiz-generator.css';
@@ -420,6 +421,7 @@ export default function Quiz() {
     });
     setXp((x) => x + gain);
     setStreak(studyToday(streak));
+    recordActivity({ type: 'quiz', title: 'Quiz nguyên tố', hash: 'quiz' });
     setGs((g) => {
       const k = g.byKind?.[q.kind] || { ok: 0, all: 0 };
       return {
@@ -462,6 +464,7 @@ export default function Quiz() {
     setRecords((prev) => ({ ...prev, [e.atomicNumber]: srsReview(prev[e.atomicNumber] || freshRecord(), quality) }));
     setXp((x) => x + (quality >= 3 ? 3 : 1));
     setStreak((st) => studyToday(st));
+    recordActivity({ type: 'quiz', title: 'Ôn thẻ nguyên tố', hash: 'quiz' });
   }, [setRecords, setXp, setStreak]);
 
   /* ---------- thành tích ---------- */

@@ -18,8 +18,8 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';   // ← THÊM DÒNG NÀY
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -30,19 +30,42 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);   // ← THÊM DÒNG NÀY
+export const storage = getStorage(app);
 
 /* ============================================================
-   ĐĂNG KÝ
+   ĐĂNG KÝ (nhận role)
    ============================================================ */
-export async function register(email, password, displayName) {
+export async function register(email, password, displayName, opts = {}) {
+  const { role = 'student' } = opts;
   const cred = await createUserWithEmailAndPassword(auth, email, password);
+
   if (displayName) {
     await updateProfile(cred.user, { displayName: displayName.trim() });
   }
+
+  // Lưu user metadata vào Firestore
+  try {
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      role,
+      email,
+      displayName: displayName || '',
+      createdAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Không lưu được user metadata:', e);
+  }
+
+  // Cache local để đọc nhanh
+  try {
+    const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+    meta[cred.user.uid] = { role, email };
+    localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+  } catch {}
+
   return cred.user;
 }
 
@@ -51,6 +74,16 @@ export async function register(email, password, displayName) {
    ============================================================ */
 export async function login(email, password) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
+  // Cache role khi đăng nhập
+  try {
+    const snap = await getDoc(doc(db, 'users', cred.user.uid));
+    if (snap.exists()) {
+      const role = snap.data()?.role || 'student';
+      const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+      meta[cred.user.uid] = { role, email: cred.user.email };
+      localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+    }
+  } catch {}
   return cred.user;
 }
 
@@ -61,6 +94,24 @@ export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   const cred = await signInWithPopup(auth, provider);
+
+  // Nếu user mới → tạo profile student mặc định
+  try {
+    const snap = await getDoc(doc(db, 'users', cred.user.uid));
+    if (!snap.exists()) {
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        role: 'student',
+        email: cred.user.email,
+        displayName: cred.user.displayName || '',
+        createdAt: new Date().toISOString(),
+      });
+    }
+    const role = snap.exists() ? snap.data()?.role : 'student';
+    const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+    meta[cred.user.uid] = { role, email: cred.user.email };
+    localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+  } catch {}
+
   return cred.user;
 }
 
@@ -151,10 +202,8 @@ export async function setRememberMe(remember) {
 }
 
 /* ============================================================
-   UPLOAD AVATAR  ← THÊM HÀM NÀY
+   UPLOAD AVATAR
    ============================================================ */
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-
 export async function uploadAvatar(file) {
   if (!auth.currentUser) throw new Error('Chưa đăng nhập');
   if (!file) throw new Error('Không có file');
@@ -173,7 +222,7 @@ export async function uploadAvatar(file) {
 }
 
 /* ============================================================
-   DỊCH LỖI FIREBASE SANG TIẾNG VIỆT
+   DỊCH LỖI
    ============================================================ */
 export function translateAuthError(code) {
   const map = {

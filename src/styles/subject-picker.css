@@ -1,0 +1,39 @@
+/* subject-picker.css — prefix sp- (dùng token có sẵn của app) */
+.sp { display: flex; flex-direction: column; gap: .6rem; }
+.sp-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.sp-chip {
+  padding: .38rem .85rem;
+  border: 1.5px solid var(--soft, #e5e7eb);
+  border-radius: 999px;
+  background: var(--panel, #fff);
+  color: var(--mut, #6b7280);
+  font: 700 .76rem var(--sans, system-ui);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.sp-chip:hover:not(:disabled) { border-color: var(--acc, #2f6bff); color: var(--acc, #2f6bff); }
+.sp-chip.on { background: var(--acc, #2f6bff); border-color: var(--acc, #2f6bff); color: #fff; }
+.sp-chip:disabled { opacity: .5; cursor: not-allowed; }
+.sp-chip:focus-visible, .sp-custom input:focus-visible { outline: 2px solid var(--acc, #2f6bff); outline-offset: 2px; }
+
+.sp-custom {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .35rem .8rem;
+  border: 1.5px solid var(--soft, #e5e7eb);
+  border-radius: 12px;
+  background: var(--panel, #fff);
+}
+.sp-custom.on { border-color: var(--acc, #2f6bff); }
+.sp-custom span { flex-shrink: 0; font: 700 .74rem var(--sans, system-ui); color: var(--mut, #6b7280); }
+.sp-custom input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink, #111827);
+  font: 500 .84rem var(--sans, system-ui);
+  outline: 0;
+}
+.sp-hint { margin: 0; font: 500 .72rem var(--sans, system-ui); color: var(--mut, #6b7280); }

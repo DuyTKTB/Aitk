@@ -4820,7 +4820,6 @@ main { padding-top: calc(var(--nav-h) + 28px); }
   .mhead-text {
     display: none;
   }
-}
 
   .nav-item .nav-label { display: none; }
   .nav-item .nav-ico { display: inline; font-size: 1.15rem; }
@@ -4844,6 +4843,7 @@ main { padding-top: calc(var(--nav-h) + 28px); }
   }
   .nav-drop-menu.open { transform: translateY(0); 
   }
+}
 
 /* ============================================================
    SCROLL SNAP — Vuốt là hít vào từng section
@@ -13292,3 +13292,219 @@ body.on-ai-page .ds-header {
     display: block !important;
   }
 }
+/* ============================================================
+   NAV LOGO IMG — hiển thị ảnh logo.png
+   ============================================================ */
+.nav-logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 12px 0 8px !important;
+}
+
+.nav-logo-img {
+  height: 36px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  display: block;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.nav-logo:hover .nav-logo-img {
+  transform: scale(1.04);
+}
+
+/* Ẩn dấu chấm cam + chữ nếu có ảnh logo */
+.nav-logo-img ~ .nav-logo-dot,
+.nav-logo-img ~ .logo-text {
+  display: none;
+}
+
+/* Nếu ảnh lỗi (fallback) → hiện chấm + chữ */
+.nav-logo-img[style*="display: none"] ~ .nav-logo-dot {
+  display: inline-block !important;
+}
+.nav-logo-img[style*="display: none"] ~ .logo-text {
+  display: inline !important;
+}
+
+/* ============================================================
+   DROPDOWN CÔNG CỤ — dạng lưới 2 cột với mô tả
+   ============================================================ */
+.nav-drop-tools {
+  min-width: 620px !important;
+  max-width: 720px !important;
+  padding: 14px !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(-6px) !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px !important;
+}
+.nav-drop-tools.open {
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+.nav-tool-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+  text-decoration: none !important;
+  color: var(--ink) !important;
+  transition: background .15s !important;
+  min-width: 0;
+}
+.nav-tool-item:hover {
+  background: var(--soft) !important;
+  transform: none !important;
+}
+.nav-tool-item.active {
+  background: color-mix(in srgb, var(--acc) 12%, transparent) !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+
+.nav-tool-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.nav-tool-item:hover .nav-tool-icon {
+  background: var(--acc);
+  color: var(--acc-ink);
+}
+.nav-tool-item.active .nav-tool-icon {
+  background: var(--acc);
+  color: var(--acc-ink);
+}
+
+.nav-tool-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.nav-tool-text b {
+  font: 600 .85rem var(--sans);
+  color: var(--ink);
+  line-height: 1.2;
+}
+.nav-tool-text small {
+  font: 400 .72rem var(--sans);
+  color: var(--mut);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile: dropdown 1 cột */
+@media (max-width: 720px) {
+  .nav-drop-tools {
+    min-width: 0 !important;
+    grid-template-columns: 1fr !important;
+    left: 10px !important;
+    right: 10px !important;
+    transform: translateX(0) translateY(-6px) !important;
+  }
+  .nav-drop-tools.open {
+    transform: translateX(0) translateY(0) !important;
+  }
+  .nav-tool-item {
+    padding: 8px 10px !important;
+  }
+  .nav-tool-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+}
+
+/* ============================================================
+   MOBILE: logo responsive
+   ============================================================ */
+@media (max-width: 720px) {
+  .nav-logo-img {
+    height: 42px;
+    max-width: 160px;
+  }
+}
+@media (max-width: 420px) {
+  .nav-logo-img {
+    height: 38px;
+    max-width: 130px;
+  }
+}
+/* ============================================================
+   MEGA MENU CÔNG CỤ (kiểu cũ: header + lưới 3 cột + footer)
+   Dán vào CUỐI index.css (hoặc cuối tools-apple.css)
+   ============================================================ */
+.nav-drop-tools {
+  display: block !important;
+  min-width: 0 !important;
+  width: min(860px, calc(100vw - 32px)) !important;
+  max-width: none !important;
+  padding: 22px 24px 14px !important;
+  border-radius: 28px !important;
+}
+.nav-mega-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.nav-mega-title { font: 600 1.05rem var(--sans); color: var(--ink); }
+.nav-drop-menu .nav-mega-all {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 10px 10px 10px 22px; border-radius: 999px;
+  background: linear-gradient(135deg, #3b6cff, #2347e8);
+  color: #fff; font: 600 .9rem var(--sans); text-decoration: none;
+  box-shadow: 0 8px 20px rgba(45, 85, 255, .35);
+}
+.nav-drop-menu .nav-mega-all:hover { transform: translateY(-1px); background: linear-gradient(135deg, #4a78ff, #2a50ee); }
+.nav-mega-all-ico {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 50%; background: #fff; color: #2347e8;
+}
+.nav-mega-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 6px 14px;
+}
+.nav-mega-grid .nav-tool-item { align-items: center !important; }
+.nav-mega-grid .nav-tool-icon { width: 40px; height: 40px; border-radius: 12px; }
+.nav-mega-grid .nav-tool-text b { font-size: .92rem; }
+.nav-mega-foot { margin-top: 8px; padding-top: 8px; }
+.nav-drop-menu .nav-mega-admin {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 10px; font: 500 .82rem var(--sans); color: var(--mut);
+}
+.nav-drop-tools.open { transform: translateX(-50%) translateY(0) !important; }
+
+/* Ô tìm kiếm dạng pill */
+.nav-search-pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 8px 0 14px; min-width: 210px;
+  border-radius: 999px; border: 1px solid var(--nav-border, rgba(0,0,0,.08));
+  background: color-mix(in srgb, var(--soft) 70%, transparent);
+  color: var(--mut); font: 500 .85rem var(--sans); cursor: pointer;
+}
+.nav-search-pill:hover { background: var(--soft); color: var(--ink); }
+.nav-search-text { flex: 1; text-align: left; }
+.nav-search-pill kbd {
+  padding: 3px 8px; border-radius: 8px; font: 500 .7rem var(--sans);
+  border: 1px solid var(--nav-border, rgba(0,0,0,.1)); background: var(--bg, #fff); color: var(--mut);
+}
+@media (max-width: 1100px) {
+  .nav-search-pill { min-width: 0; padding: 0 12px; }
+  .nav-search-text, .nav-search-pill kbd { display: none; }
+}
+@media (max-width: 900px) { .nav-mega-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px) { .nav-mega-grid { grid-template-columns: 1fr; } }

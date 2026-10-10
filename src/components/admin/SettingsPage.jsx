@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useSettings } from '../../contexts/SettingsContext.jsx';
+import AdminShell, { Topbar, Modal, ConfirmDialog } from './AdminShell.jsx';
 import {
-  IconSettings, IconTrash, IconSave, IconRefresh, IconDownload, IconUpload, IconDatabase,
-  IconShield, IconWarning, IconInfo,
+  IconSettings, IconTrash, IconSave, IconRefresh, IconDownload, IconUpload,
+  IconDatabase, IconShield, IconWarning, IconInfo, IconCheck,
 } from './AdminIcons.jsx';
-import { InlineAlert, Spinner, useConfirm, useToast } from './AdminUI.jsx';
 import { chunk, downloadFile, fetchAllRows, friendlyError } from './adminUtils.js';
 
 /* Bảng được sao lưu. profiles chỉ để lưu trữ — KHÔNG BAO GIỜ bị xóa/ghi đè khi khôi phục. */
 const BACKUP_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers', 'profiles'];
-/* Thứ tự khôi phục (cha → con) và thứ tự xóa (con → cha) */
 const RESTORE_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers'];
 const DELETE_ORDER = ['answers', 'questions', 'exams', 'topics'];
-const ALL_ROWS = (q) => q.not('id', 'is', null); // hoạt động với cả id uuid lẫn số
+const ALL_ROWS = (q) => q.not('id', 'is', null);
 
 const TOGGLES = [
   { key: 'enableAI', label: 'AI Chat (CU AI)', desc: 'Trợ lý AI Hóa học trong web' },
@@ -21,13 +20,11 @@ const TOGGLES = [
   { key: 'enablePet', label: 'Pet Widget', desc: 'Linh vật pha lê ở góc phải' },
   { key: 'enableGames', label: 'Trò chơi', desc: 'GameHub và các game nhỏ' },
   { key: 'enableQuiz', label: 'Ôn tập (Quiz)', desc: 'Trang quiz và SRS' },
-  { key: 'maintenanceMode', label: 'Chế độ bảo trì', desc: 'Khóa toàn bộ web, chỉ admin vào được' },
+  { key: 'maintenanceMode', label: 'Chế độ bảo trì', desc: 'Khóa toàn bộ web, chỉ admin vào được', danger: true },
 ];
 
 export default function SettingsPage() {
   const { settings, updateSettings, resetSettings } = useSettings();
-  const toast = useToast();
-  const confirm = useConfirm();
 
   const initial = useMemo(() => ({
     siteName: settings.siteName ?? '',
@@ -51,35 +48,52 @@ export default function SettingsPage() {
   const [restoreMode, setRestoreMode] = useState('merge');
   const fileRef = useRef(null);
 
+  const [toast, setToast] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const toastTimer = useRef(null);
+
+  const say = (text) => {
+    clearTimeout(toastTimer.current);
+    setToast(text);
+    toastTimer.current = setTimeout(() => setToast(null), 2400);
+  };
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
   /* ============ CẤU HÌNH ============ */
   const handleSave = async () => {
-    if (!form.siteName.trim()) return toast.error('Tên website không được để trống.');
+    if (!form.siteName.trim()) return say('Tên website không được để trống.');
     if (form.maintenanceMode && !initial.maintenanceMode) {
-      const ok = await confirm({
+      setConfirm({
         title: 'Bật chế độ bảo trì',
-        message: 'Toàn bộ học sinh sẽ không vào được web cho đến khi bạn tắt chế độ này.',
-        confirmText: 'Bật bảo trì',
+        body: 'Toàn bộ học sinh sẽ không vào được web cho đến khi bạn tắt chế độ này.',
+        okLabel: 'Bật bảo trì',
         danger: true,
+        onOk: () => {
+          try {
+            updateSettings({ ...form, siteName: form.siteName.trim(), siteDesc: form.siteDesc.trim() });
+            say('Đã lưu và áp dụng ngay');
+          } catch (e) {
+            say('Không lưu được cấu hình: ' + e.message);
+          }
+        },
       });
-      if (!ok) return;
+      return;
     }
     try {
       updateSettings({ ...form, siteName: form.siteName.trim(), siteDesc: form.siteDesc.trim() });
-      toast.success('Đã lưu và áp dụng ngay');
+      say('Đã lưu và áp dụng ngay');
     } catch (e) {
-      toast.error('Không lưu được cấu hình: ' + e.message);
+      say('Không lưu được cấu hình: ' + e.message);
     }
   };
 
-  const handleReset = async () => {
-    const ok = await confirm({
+  const handleReset = () => {
+    setConfirm({
       title: 'Khôi phục mặc định',
-      message: 'Đặt lại toàn bộ cài đặt giao diện/tính năng về mặc định và tải lại trang?',
-      confirmText: 'Khôi phục',
+      body: 'Đặt lại toàn bộ cài đặt giao diện/tính năng về mặc định và tải lại trang?',
+      okLabel: 'Khôi phục',
+      onOk: () => { resetSettings(); window.location.reload(); },
     });
-    if (!ok) return;
-    resetSettings();
-    window.location.reload();
   };
 
   /* ============ SAO LƯU ============ */
@@ -108,10 +122,10 @@ export default function SettingsPage() {
       const { backup, warnings } = await buildBackup();
       if (Object.keys(backup.tables).length === 0) throw new Error('Không đọc được bảng nào. Kiểm tra quyền truy cập Supabase.');
       downloadFile(`backup-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`, JSON.stringify(backup, null, 2));
-      if (warnings.length) toast.info(`Đã tải backup, nhưng bỏ qua ${warnings.length} bảng lỗi: ${warnings[0]}`);
-      else toast.success('Đã tải file sao lưu');
+      if (warnings.length) say(`Đã tải backup, bỏ qua ${warnings.length} bảng lỗi`);
+      else say('Đã tải file sao lưu');
     } catch (e) {
-      toast.error('Lỗi sao lưu: ' + friendlyError(e));
+      say('Lỗi sao lưu: ' + friendlyError(e));
     } finally {
       setBusy(null);
       setProgress('');
@@ -127,7 +141,7 @@ export default function SettingsPage() {
     } catch {
       throw new Error('File không phải JSON hợp lệ.');
     }
-    const tables = json?.tables && typeof json.tables === 'object' ? json.tables : json; // hỗ trợ định dạng cũ
+    const tables = json?.tables && typeof json.tables === 'object' ? json.tables : json;
     const found = RESTORE_TABLES.filter((t) => Array.isArray(tables?.[t]));
     if (found.length === 0) throw new Error('File không chứa dữ liệu hợp lệ (cần các bảng exams, questions, answers…).');
     for (const t of found) {
@@ -145,22 +159,23 @@ export default function SettingsPage() {
     try {
       parsed = await readBackupFile(file);
     } catch (e) {
-      return toast.error(e.message);
+      return say(e.message);
     }
     const { tables, found } = parsed;
     const summary = found.map((t) => `${t}: ${tables[t].length}`).join(' · ');
 
-    const ok = await confirm({
+    setConfirm({
       title: restoreMode === 'replace' ? 'Khôi phục — THAY THẾ toàn bộ' : 'Khôi phục — Gộp dữ liệu',
-      message: restoreMode === 'replace'
+      body: restoreMode === 'replace'
         ? `Sẽ XÓA toàn bộ đề, câu hỏi, đáp án hiện có rồi nạp lại từ file (${summary}). Hệ thống tự tải bản sao lưu an toàn trước khi xóa. Tài khoản người dùng không bị đụng tới.`
         : `Sẽ thêm mới và cập nhật theo id từ file (${summary}). Dữ liệu hiện có không bị xóa. Tài khoản người dùng không bị đụng tới.`,
-      confirmText: restoreMode === 'replace' ? 'Thay thế dữ liệu' : 'Khôi phục',
+      okLabel: restoreMode === 'replace' ? 'Thay thế dữ liệu' : 'Khôi phục',
       danger: restoreMode === 'replace',
-      requireText: restoreMode === 'replace' ? 'KHOI PHUC' : undefined,
+      onOk: () => doRestore(tables, found),
     });
-    if (!ok) return;
+  };
 
+  const doRestore = async (tables, found) => {
     setBusy('restore');
     try {
       if (restoreMode === 'replace') {
@@ -175,7 +190,6 @@ export default function SettingsPage() {
           if (error) throw new Error(`Xóa bảng ${t} thất bại: ${friendlyError(error)}`);
         }
       }
-
       let written = 0;
       for (const t of RESTORE_TABLES) {
         if (!found.includes(t)) continue;
@@ -187,11 +201,11 @@ export default function SettingsPage() {
           written += part.length;
         }
       }
-      toast.success(`Khôi phục xong ${written.toLocaleString('vi-VN')} dòng`);
+      say(`Khôi phục xong ${written.toLocaleString('vi-VN')} dòng`);
       setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
       console.error(e);
-      toast.error(e.message + (restoreMode === 'replace' ? ' — hãy nạp lại file sao lưu an toàn vừa được tải về.' : ''));
+      say(e.message);
     } finally {
       setBusy(null);
       setProgress('');
@@ -199,156 +213,312 @@ export default function SettingsPage() {
   };
 
   /* ============ VÙNG NGUY HIỂM ============ */
-  const deleteAttempts = async () => {
-    const ok = await confirm({
+  const deleteAttempts = () => {
+    setConfirm({
       title: 'Xóa tất cả lượt làm bài',
-      message: 'Toàn bộ lịch sử làm bài và chi tiết đáp án của học sinh sẽ bị xóa vĩnh viễn.',
-      confirmText: 'Xóa lượt làm bài',
+      body: 'Toàn bộ lịch sử làm bài và chi tiết đáp án của học sinh sẽ bị xóa vĩnh viễn.',
+      okLabel: 'Xóa lượt làm bài',
       danger: true,
-      requireText: 'XOA',
+      onOk: async () => {
+        setBusy('attempts');
+        try {
+          const r1 = await ALL_ROWS(supabase.from('user_answers').delete());
+          if (r1.error) throw r1.error;
+          const r2 = await ALL_ROWS(supabase.from('exam_attempts').delete());
+          if (r2.error) throw r2.error;
+          await ALL_ROWS(supabase.from('exams').update({ attempt_count: 0 }));
+          say('Đã xóa toàn bộ lượt làm bài');
+        } catch (e) {
+          say('Không xóa được: ' + friendlyError(e));
+        } finally {
+          setBusy(null);
+        }
+      },
     });
-    if (!ok) return;
-    setBusy('attempts');
-    try {
-      const r1 = await ALL_ROWS(supabase.from('user_answers').delete());
-      if (r1.error) throw r1.error;
-      const r2 = await ALL_ROWS(supabase.from('exam_attempts').delete());
-      if (r2.error) throw r2.error;
-      const r3 = await ALL_ROWS(supabase.from('exams').update({ attempt_count: 0 }));
-      if (r3.error) console.warn('Không reset được attempt_count:', r3.error.message);
-      toast.success('Đã xóa toàn bộ lượt làm bài');
-    } catch (e) {
-      toast.error('Không xóa được: ' + friendlyError(e));
-    } finally {
-      setBusy(null);
-    }
   };
 
-  const deleteExams = async () => {
-    const ok = await confirm({
+  const deleteExams = () => {
+    setConfirm({
       title: 'Xóa tất cả đề thi',
-      message: 'Toàn bộ đề, câu hỏi và đáp án sẽ bị xóa vĩnh viễn. Hãy tải bản sao lưu trước.',
-      confirmText: 'Xóa tất cả đề',
+      body: 'Toàn bộ đề, câu hỏi và đáp án sẽ bị xóa vĩnh viễn. Hãy tải bản sao lưu trước.',
+      okLabel: 'Xóa tất cả đề',
       danger: true,
-      requireText: 'XOA TAT CA',
+      onOk: async () => {
+        setBusy('exams');
+        try {
+          const { error } = await ALL_ROWS(supabase.from('exams').delete());
+          if (error) throw error;
+          say('Đã xóa toàn bộ đề thi');
+          setTimeout(() => window.location.reload(), 1200);
+        } catch (e) {
+          say('Không xóa được: ' + friendlyError(e));
+        } finally {
+          setBusy(null);
+        }
+      },
     });
-    if (!ok) return;
-    setBusy('exams');
-    try {
-      const { error } = await ALL_ROWS(supabase.from('exams').delete());
-      if (error) throw error;
-      toast.success('Đã xóa toàn bộ đề thi');
-      setTimeout(() => window.location.reload(), 1200);
-    } catch (e) {
-      toast.error('Không xóa được: ' + friendlyError(e));
-    } finally {
-      setBusy(null);
-    }
   };
 
   const working = busy !== null;
 
   return (
-    <div className="adl-settings">
-      <section className="adl-panel">
-        <header className="adl-panel-head">
-          <h3><IconSettings size={16} /><span>Thông tin website</span></h3>
+    <AdminShell active="settings" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
+      <Topbar
+        title="Cài đặt"
+        subtitle="Tên website, bật/tắt tính năng, sao lưu và khôi phục"
+      />
+
+      {/* ===== THÔNG TIN WEBSITE ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">Thông tin website</h3>
         </header>
-        <div className="adl-form">
-          <label className="adl-field">
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <label className="vt-field">
             <span>Tên website</span>
-            <input type="text" value={form.siteName} onChange={(e) => set('siteName', e.target.value)} maxLength={80} />
+            <input
+              type="text"
+              value={form.siteName}
+              onChange={(e) => set('siteName', e.target.value)}
+              maxLength={80}
+            />
           </label>
-          <label className="adl-field">
+          <label className="vt-field">
             <span>Mô tả ngắn</span>
-            <input type="text" value={form.siteDesc} onChange={(e) => set('siteDesc', e.target.value)} maxLength={200} />
+            <input
+              type="text"
+              value={form.siteDesc}
+              onChange={(e) => set('siteDesc', e.target.value)}
+              maxLength={200}
+            />
           </label>
         </div>
-      </section>
+      </div>
 
-      <section className="adl-panel">
-        <header className="adl-panel-head">
-          <h3><IconSettings size={16} /><span>Bật / tắt tính năng</span></h3>
+      {/* ===== BẬT/TẮT TÍNH NĂNG ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">Bật / tắt tính năng</h3>
         </header>
 
-        <div className="adl-toggles">
+        <div style={{ display: 'grid', gap: '.5rem' }}>
           {TOGGLES.map((t) => (
-            <Toggle key={t.key} label={t.label} desc={t.desc} checked={form[t.key]} onChange={(v) => set(t.key, v)} danger={t.key === 'maintenanceMode'} />
+            <ToggleRow
+              key={t.key}
+              label={t.label}
+              desc={t.desc}
+              checked={form[t.key]}
+              onChange={(v) => set(t.key, v)}
+              danger={t.danger}
+            />
           ))}
         </div>
 
         {form.maintenanceMode && (
-          <InlineAlert type="warn">Chế độ bảo trì đang được bật: học sinh sẽ thấy trang bảo trì thay vì web.</InlineAlert>
+          <div
+            className="vt-card soft"
+            style={{ marginTop: '1rem', borderLeft: '4px solid var(--vt-amber)' }}
+          >
+            <p className="vt-muted" style={{ margin: 0 }}>
+              Chế độ bảo trì đang được bật: học sinh sẽ thấy trang bảo trì thay vì web.
+            </p>
+          </div>
         )}
 
-        <div className="adl-form-actions">
-          <button type="button" className="adl-btn-primary" onClick={handleSave} disabled={!dirty}><IconSave size={14} /> Lưu cấu hình</button>
-          <button type="button" className="adl-btn-outline" onClick={() => setForm(initial)} disabled={!dirty}>Hoàn tác thay đổi</button>
-          <button type="button" className="adl-btn-outline" onClick={handleReset}><IconRefresh size={14} /> Khôi phục mặc định</button>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1.2rem' }}>
+          <button type="button" className="vt-btn primary" onClick={handleSave} disabled={!dirty}>
+            <IconSave size={14} /> Lưu cấu hình
+          </button>
+          <button type="button" className="vt-btn" onClick={() => setForm(initial)} disabled={!dirty}>
+            Hoàn tác thay đổi
+          </button>
+          <button type="button" className="vt-btn" onClick={handleReset}>
+            <IconRefresh size={14} /> Khôi phục mặc định
+          </button>
         </div>
-        <p className="adl-hint"><IconInfo size={14} /><span>Cài đặt áp dụng ngay khi bấm Lưu, không cần tải lại trang.</span></p>
-      </section>
+        <p className="vt-muted" style={{ marginTop: '.8rem', fontSize: '.8rem' }}>
+          <IconInfo size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />
+          Cài đặt áp dụng ngay khi bấm Lưu, không cần tải lại trang.
+        </p>
+      </div>
 
-      <section className="adl-panel">
-        <header className="adl-panel-head">
-          <h3><IconDatabase size={16} /><span>Sao lưu và khôi phục</span></h3>
+      {/* ===== SAO LƯU / KHÔI PHỤC ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">Sao lưu và khôi phục</h3>
         </header>
 
-        <p className="adl-hint">
-          <IconShield size={14} />
-          <span>
-            File sao lưu gồm lớp, môn, chủ đề, đề thi, câu hỏi, đáp án và hồ sơ người dùng. Khi khôi phục,
-            <b> tài khoản người dùng không bao giờ bị xóa hay ghi đè</b>.
-          </span>
+        <p className="vt-muted" style={{ marginTop: 0 }}>
+          <IconShield size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />
+          File sao lưu gồm lớp, môn, chủ đề, đề thi, câu hỏi, đáp án và hồ sơ người dùng.
+          Khi khôi phục, <b>tài khoản người dùng không bao giờ bị xóa hay ghi đè</b>.
         </p>
 
-        <div className="adl-restore-mode" role="radiogroup" aria-label="Cách khôi phục">
-          <label className={restoreMode === 'merge' ? 'on' : ''}>
-            <input type="radio" name="restore-mode" checked={restoreMode === 'merge'} onChange={() => setRestoreMode('merge')} />
-            <div><b>Gộp (khuyên dùng)</b><small>Thêm mới và cập nhật theo id, không xóa gì.</small></div>
-          </label>
-          <label className={restoreMode === 'replace' ? 'on danger' : ''}>
-            <input type="radio" name="restore-mode" checked={restoreMode === 'replace'} onChange={() => setRestoreMode('replace')} />
-            <div><b>Thay thế</b><small>Xóa đề/câu hỏi hiện có rồi nạp lại từ file. Tự tải bản an toàn trước.</small></div>
-          </label>
+        <div style={{ display: 'grid', gap: '.6rem', marginTop: '1rem' }}>
+          <RestoreModeCard
+            active={restoreMode === 'merge'}
+            onSelect={() => setRestoreMode('merge')}
+            title="Gộp (khuyên dùng)"
+            desc="Thêm mới và cập nhật theo id, không xóa gì."
+          />
+          <RestoreModeCard
+            active={restoreMode === 'replace'}
+            onSelect={() => setRestoreMode('replace')}
+            title="Thay thế"
+            desc="Xóa đề/câu hỏi hiện có rồi nạp lại từ file. Tự tải bản an toàn trước."
+            danger
+          />
         </div>
 
-        <div className="adl-form-actions">
-          <button type="button" className="adl-btn-primary" onClick={handleBackup} disabled={working}>
-            {busy === 'backup' ? <Spinner size={14} /> : <IconDownload size={14} />} Tải bản sao lưu
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1.2rem' }}>
+          <button type="button" className="vt-btn primary" onClick={handleBackup} disabled={working}>
+            {busy === 'backup' ? 'Đang tạo…' : <><IconDownload size={14} /> Tải bản sao lưu</>}
           </button>
-          <button type="button" className="adl-btn-outline" onClick={() => fileRef.current?.click()} disabled={working}>
-            {busy === 'restore' ? <Spinner size={14} /> : <IconUpload size={14} />} Khôi phục từ file
+          <button type="button" className="vt-btn" onClick={() => fileRef.current?.click()} disabled={working}>
+            {busy === 'restore' ? 'Đang khôi phục…' : <><IconUpload size={14} /> Khôi phục từ file</>}
           </button>
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={(e) => handleRestore(e.target.files?.[0])} />
         </div>
-        {progress && <p className="adl-progress" role="status"><Spinner size={13} /> {progress}</p>}
-      </section>
 
-      <section className="adl-panel adl-danger">
-        <header className="adl-panel-head">
-          <h3><IconWarning size={16} /><span>Vùng nguy hiểm</span></h3>
+        {progress && (
+          <p className="vt-muted" style={{ marginTop: '.8rem', fontSize: '.82rem' }}>
+            <span className="page-loader-spinner" style={{ display: 'inline-block', width: 12, height: 12, marginRight: 6, verticalAlign: '-2px' }} />
+            {progress}
+          </p>
+        )}
+      </div>
+
+      {/* ===== VÙNG NGUY HIỂM ===== */}
+      <div className="vt-card" style={{ borderLeft: '4px solid var(--vt-red)' }}>
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">
+            <IconWarning size={16} style={{ verticalAlign: '-2px', marginRight: 6, color: 'var(--vt-red)' }} />
+            Vùng nguy hiểm
+          </h3>
         </header>
-        <p className="adl-hint"><IconWarning size={14} /><span>Các thao tác dưới đây <b>không thể hoàn tác</b>. Hãy tải bản sao lưu trước khi thực hiện.</span></p>
-        <div className="adl-form-actions">
-          <button type="button" className="adl-btn-danger" onClick={deleteAttempts} disabled={working}>
-            {busy === 'attempts' ? <Spinner size={14} /> : <IconTrash size={14} />} Xóa tất cả lượt làm bài
+        <p className="vt-muted">
+          Các thao tác dưới đây <b>không thể hoàn tác</b>. Hãy tải bản sao lưu trước khi thực hiện.
+        </p>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="vt-btn danger" onClick={deleteAttempts} disabled={working}>
+            {busy === 'attempts' ? 'Đang xóa…' : <><IconTrash size={14} /> Xóa tất cả lượt làm bài</>}
           </button>
-          <button type="button" className="adl-btn-danger" onClick={deleteExams} disabled={working}>
-            {busy === 'exams' ? <Spinner size={14} /> : <IconTrash size={14} />} Xóa tất cả đề thi
+          <button type="button" className="vt-btn danger" onClick={deleteExams} disabled={working}>
+            {busy === 'exams' ? 'Đang xóa…' : <><IconTrash size={14} /> Xóa tất cả đề thi</>}
           </button>
         </div>
-      </section>
-    </div>
+      </div>
+
+      {/* ===== CONFIRM ===== */}
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        body={confirm?.body}
+        okLabel={confirm?.okLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          const fn = confirm?.onOk;
+          setConfirm(null);
+          fn?.();
+        }}
+      />
+
+      {toast && <div className="vt-toast" role="status">{toast}</div>}
+    </AdminShell>
   );
 }
 
-function Toggle({ label, desc, checked, onChange, danger }) {
+/* ============================================================
+   SUB-COMPONENTS
+   ============================================================ */
+function ToggleRow({ label, desc, checked, onChange, danger }) {
   return (
-    <label className={'adl-toggle' + (danger ? ' danger' : '')}>
-      <div><b>{label}</b><small>{desc}</small></div>
-      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="adl-toggle-slider" aria-hidden="true" />
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        padding: '.7rem .9rem',
+        borderRadius: 14,
+        background: checked ? 'color-mix(in srgb, var(--acc) 8%, var(--vt-tint))' : 'var(--vt-tint)',
+        border: danger && checked ? '1.5px solid var(--vt-red)' : '1.5px solid transparent',
+        cursor: 'pointer',
+        transition: 'all .2s',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ display: 'block', font: '700 .95rem var(--sans)', color: 'var(--ink)' }}>
+          {label}
+        </b>
+        <small style={{ color: 'var(--mut)', fontSize: '.8rem' }}>{desc}</small>
+      </div>
+
+      <span
+        style={{
+          position: 'relative',
+          width: 44,
+          height: 26,
+          flexShrink: 0,
+          borderRadius: 999,
+          background: checked ? (danger ? 'var(--vt-red)' : 'var(--acc)') : 'color-mix(in srgb, var(--ink) 20%, transparent)',
+          transition: 'background .2s',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: checked ? 21 : 3,
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            background: '#fff',
+            boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+            transition: 'left .2s',
+          }}
+        />
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          style={{ position: 'absolute', opacity: 0, inset: 0, cursor: 'pointer', margin: 0 }}
+        />
+      </span>
+    </label>
+  );
+}
+
+function RestoreModeCard({ active, onSelect, title, desc, danger }) {
+  return (
+    <label
+      onClick={onSelect}
+      style={{
+        display: 'flex',
+        gap: '.8rem',
+        alignItems: 'flex-start',
+        padding: '.9rem 1rem',
+        borderRadius: 14,
+        border: active
+          ? `2px solid ${danger ? 'var(--vt-red)' : 'var(--acc)'}`
+          : '2px solid transparent',
+        background: active
+          ? `color-mix(in srgb, ${danger ? 'var(--vt-red)' : 'var(--acc)'} 8%, var(--vt-tint))`
+          : 'var(--vt-tint)',
+        cursor: 'pointer',
+        transition: 'all .2s',
+      }}
+    >
+      <input
+        type="radio"
+        checked={active}
+        onChange={onSelect}
+        style={{ marginTop: 4, accentColor: danger ? 'var(--vt-red)' : 'var(--acc)' }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ display: 'block', font: '700 .92rem var(--sans)', color: 'var(--ink)' }}>{title}</b>
+        <small style={{ color: 'var(--mut)', fontSize: '.78rem', lineHeight: 1.4 }}>{desc}</small>
+      </div>
     </label>
   );
 }

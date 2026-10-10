@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ============ Helpers ============ */
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isTeacherOfExam(examData) {
+      return signedIn() && examData.teacherId == request.auth.uid;
+    }
+    function isTeacherOfClass(classId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+
+    /* ============ USERS ============ */
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || userDoc().role == 'admin');
+      allow create, update: if isOwner(uid);
+      allow delete: if signedIn() && userDoc().role == 'admin';
+    }
+
+    /* ============ CLASSES ============ */
+    match /classes/{classId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn()
+        && (resource.data.teacherId == request.auth.uid
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members','memberIds']));
+      allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+    }
+
+    /* ============ EXAMS ============ */
+    match /exams/{examId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+
+      /* ----- Đáp án riêng tư: CHỈ giáo viên sở hữu đề đọc được ----- */
+      match /private/{docId} {
+        allow read: if signedIn() && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data);
+        allow write: if signedIn() && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data);
+      }
+
+      /* ----- Attempts: học sinh chỉ đọc/ghi attempt của chính mình ----- */
+      match /attempts/{attemptId} {
+        allow read: if signedIn()
+          && (resource.data.studentId == request.auth.uid
+              || isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data));
+        allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+        allow update: if signedIn()
+          && (resource.data.studentId == request.auth.uid
+              || isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data));
+        allow delete: if signedIn()
+          && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data);
+      }
+    }
+
+    /* ============ SUBMISSIONS ============ */
+    match /submissions/{subId} {
+      allow read: if signedIn()
+        && (resource.data.studentId == request.auth.uid
+            || (resource.data.examId is string
+                && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data)));
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      /* Học sinh không sửa được bài đã nộp; giáo viên chấm thì được */
+      allow update: if signedIn()
+        && (resource.data.examId is string
+            && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data));
+      allow delete: if signedIn()
+        && (resource.data.examId is string
+            && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data));
+    }
+
+    /* ============ PRO KEYS + PRO USERS ============ */
+    match /proKeys/{keyId} {
+      allow read, write: if signedIn() && userDoc().role == 'admin';
+    }
+    match /proUsers/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if signedIn() && userDoc().role == 'admin';
+    }
+
+    /* ============ AI CHATS (Supabase vẫn chính; rules này dự phòng) ============ */
+    match /ai_chats/{chatId} {
+      allow read, write: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    /* ============ Storage ============ */
+    match /databases/{database}/documents {
+      /* (không áp dụng — storage có rules riêng) */
+    }
+  }
+}

@@ -1,0 +1,262 @@
+/* ============================================================
+   violation-overlay.css — Overlay đỏ khi vi phạm
+   Prefix: ep-violation-
+   ============================================================ */
+
+.ep-violation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(220, 38, 38, 0.96), rgba(80, 0, 0, 0.98) 70%),
+    #000;
+  animation: ep-violation-pulse 1s ease-in-out infinite;
+  overflow: hidden;
+  font-family: var(--sans, system-ui);
+}
+
+/* Chớp nhẹ khi nghiêm trọng */
+.ep-violation-overlay.strict {
+  animation-duration: 0.6s;
+}
+
+.ep-violation-overlay.auto-submit {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(60, 60, 60, 0.96), rgba(0, 0, 0, 0.99) 70%),
+    #000;
+  animation: none;
+}
+
+/* Hiệu ứng sóng đỏ */
+.ep-violation-overlay::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle, rgba(255, 60, 60, 0.35) 0%, transparent 55%);
+  animation: ep-violation-ripple 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+/* ============ CONTENT ============ */
+.ep-violation-content {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+/* ============ ICON ============ */
+.ep-violation-icon {
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 4px solid rgba(255, 255, 255, 0.35);
+  animation: ep-violation-icon-shake 1.2s ease-in-out infinite;
+}
+
+.ep-violation-overlay.auto-submit .ep-violation-icon {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  animation: none;
+}
+
+/* ============ TITLE ============ */
+.ep-violation-title {
+  font: 900 clamp(1.8rem, 6vw, 3.2rem)/1.1 var(--sans, system-ui);
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  margin: 0;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* ============ TEXT ============ */
+.ep-violation-text {
+  font: 500 clamp(1rem, 2.6vw, 1.4rem)/1.5 var(--sans, system-ui);
+  margin: 0;
+  max-width: 44ch;
+  opacity: 0.95;
+}
+
+/* ============ COUNTER ============ */
+.ep-violation-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.ep-violation-counter-label {
+  font: 700 0.9rem var(--sans, system-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+
+.ep-violation-counter-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.ep-violation-counter-num b {
+  font: 900 clamp(2.8rem, 10vw, 4.5rem)/1 var(--mono, monospace);
+  color: #fbbf24;
+  letter-spacing: -0.05em;
+  text-shadow: 0 0 30px rgba(251, 191, 36, 0.8);
+}
+
+.ep-violation-counter-num em {
+  font: 700 1.6rem var(--mono, monospace);
+  font-style: normal;
+  opacity: 0.7;
+}
+
+/* ============ PROGRESS BAR ============ */
+.ep-violation-bar {
+  width: 100%;
+  max-width: 420px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ep-violation-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #ef4444);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+}
+
+/* ============ NOTE ============ */
+.ep-violation-note {
+  font: 700 0.95rem/1.5 var(--sans, system-ui);
+  margin: 0;
+  color: #fbbf24;
+  max-width: 44ch;
+}
+
+/* ============ BUTTON ============ */
+.ep-violation-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+  padding: 1rem 2.4rem;
+  min-width: 220px;
+  font: 800 1.05rem var(--sans, system-ui);
+  letter-spacing: 0.02em;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+  text-transform: uppercase;
+}
+
+.ep-violation-btn:hover:not(:disabled) {
+  background: #fff;
+  color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.ep-violation-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ep-violation-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+/* ============ FINAL (auto-submit) ============ */
+.ep-violation-final {
+  margin-top: 1rem;
+  padding: 1.4rem 1.8rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 44ch;
+}
+
+.ep-violation-final p {
+  font: 600 1.05rem/1.5 var(--sans, system-ui);
+  margin: 0;
+}
+
+.ep-violation-final-sub {
+  margin-top: 0.6rem !important;
+  font-size: 0.9rem !important;
+  opacity: 0.7;
+  font-weight: 400 !important;
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes ep-violation-pulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.15);
+  }
+}
+
+@keyframes ep-violation-ripple {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes ep-violation-icon-shake {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-8deg); }
+  40% { transform: rotate(8deg); }
+  60% { transform: rotate(-5deg); }
+  80% { transform: rotate(5deg); }
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 640px) {
+  .ep-violation-overlay { padding: 1.2rem; }
+  .ep-violation-icon { width: 100px; height: 100px; }
+  .ep-violation-icon svg { width: 56px; height: 56px; }
+  .ep-violation-counter { padding: 0.8rem 1.2rem; }
+  .ep-violation-btn { width: 100%; min-width: 0; }
+  .ep-violation-title { font-size: clamp(1.4rem, 7vw, 2rem); }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  .ep-violation-overlay,
+  .ep-violation-overlay::before,
+  .ep-violation-icon {
+    animation: none !important;
+  }
+}

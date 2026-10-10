@@ -61,6 +61,23 @@ const IcoAlert = ({ size = 16 }) => (
   </svg>
 );
 
+const IcoStudent = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  </svg>
+);
+
+const IcoTeacher = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+  </svg>
+);
+
 /* ============================================================
    MAIN
    ============================================================ */
@@ -70,6 +87,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('student');
   const [showPass, setShowPass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -98,7 +116,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
         await login(email, pass);
         onDone?.();
       } else {
-        await register(email, pass, name);
+        await register(email, pass, name, { role });
         onDone?.();
       }
     } catch (e2) {
@@ -241,6 +259,42 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                   {showPass ? <IcoEyeOff /> : <IcoEye />}
                 </button>
               </label>
+            )}
+
+            {/* ===== CHỌN VAI TRÒ (chỉ khi đăng ký) ===== */}
+            {!isLogin && !isForgot && (
+              <div className="lg-role">
+                <span className="lg-role-label">Bạn là:</span>
+                <div className="lg-role-options">
+                  <button
+                    type="button"
+                    className={'lg-role-btn' + (role === 'student' ? ' on' : '')}
+                    onClick={() => setRole('student')}
+                  >
+                    <IcoStudent />
+                    <div>
+                      <b>Học sinh</b>
+                      <small>Tham gia lớp, làm bài</small>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className={'lg-role-btn' + (role === 'teacher' ? ' on' : '')}
+                    onClick={() => setRole('teacher')}
+                  >
+                    <IcoTeacher />
+                    <div>
+                      <b>Giáo viên</b>
+                      <small>Tạo lớp, giao đề</small>
+                    </div>
+                  </button>
+                </div>
+                {role === 'teacher' && (
+                  <p className="lg-role-note">
+                    Sau khi đăng ký, cần liên hệ Admin để nhận KEY PRO kích hoạt.
+                  </p>
+                )}
+              </div>
             )}
 
             {isLogin && (

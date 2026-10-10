@@ -1,0 +1,78 @@
+/* =========================================================================
+   tokens.css — NGUỒN DUY NHẤT cho design token.
+   Import CUỐI CÙNG trong main.jsx (sau index.css, theme-sandra.css…) để
+   thắng mọi lớp ghi đè cũ. Giữ nguyên tên biến cũ (--bg, --ink, --acc,
+   --mut, --line, --soft, --panel, --glass, --r-*, --sh-*, --z-*) nên
+   13k dòng CSS hiện tại vẫn chạy; chỉ thêm biến mới, không đổi tên.
+   Giá trị màu lấy từ theme-sandra (navy + xanh #2f6bff) đang là theme thật.
+   ========================================================================= */
+
+:root {
+  --bg: #f3f6ff;  --panel: #ffffff;  --ink: #0a1230;  --mut: #5d6a94;
+  --soft: rgba(47, 107, 255, .10);   --line: rgba(10, 18, 48, .14);
+  --acc: #2f6bff; --acc-ink: #ffffff; --acc-soft: #2f6bff;
+  --glass: rgba(255, 255, 255, .78);
+
+  --surface:   var(--panel);
+  --surface-2: color-mix(in srgb, var(--ink) 4%, var(--panel));
+  --surface-3: color-mix(in srgb, var(--ink) 8%, var(--panel));
+  --line-soft: color-mix(in srgb, var(--ink) 8%, transparent);
+  --ok: #15803d;   --warn: #b45309;   --err: #c62828;
+  --ok-bg:   color-mix(in srgb, var(--ok) 12%, transparent);
+  --warn-bg: color-mix(in srgb, var(--warn) 14%, transparent);
+  --err-bg:  color-mix(in srgb, var(--err) 12%, transparent);
+
+  --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-xs: .75rem;  --fs-sm: .875rem; --fs-md: 1rem;
+  --fs-lg: 1.2rem;  --fs-xl: 1.5rem;  --fs-2xl: clamp(1.75rem, 3.2vw, 2.4rem);
+  --fw-reg: 400; --fw-med: 500; --fw-bold: 650;
+  --lh-tight: 1.15; --lh-body: 1.55;
+
+  --s-1: .25rem; --s-2: .5rem; --s-3: .75rem; --s-4: 1rem;
+  --s-5: 1.5rem; --s-6: 2rem;  --s-7: 3rem;  --s-8: 4.5rem;
+
+  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+
+  --sh-1: 0 1px 2px rgba(10, 18, 48, .06), 0 2px 10px rgba(10, 18, 48, .05);
+  --sh-2: 0 12px 36px rgba(20, 40, 120, .12);
+  --glow: 0 0 28px rgba(47, 107, 255, .28);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--acc) 35%, transparent);
+
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --dur-1: .15s; --dur-2: .28s; --dur-3: .5s;
+
+  --page-w: 1120px;
+  --nav-h: 52px;
+  --bottom-nav-h: 64px;
+
+  --z-footer: 10; --z-content: 100; --z-nav: 9999; --z-bottom-nav: 9999;
+  --z-fab: 9998; --z-pet: 9997; --z-chat-pane: 9999;
+  --z-toast: 99980; --z-modal: 99990; --z-lightbox: 100000;
+}
+
+[data-theme='dark'] {
+  --bg: #030618;  --panel: #070d2a;  --ink: #eef2ff;  --mut: #8b95bd;
+  --soft: rgba(110, 140, 255, .14);  --line: rgba(130, 160, 255, .22);
+  --acc: #2f6bff; --acc-ink: #ffffff; --acc-soft: #7db3ff;
+  --glass: rgba(18, 30, 82, .38);
+  --ok: #4ade80;  --warn: #fbbf24;  --err: #f87171;
+  --surface-2: color-mix(in srgb, #fff 5%, var(--panel));
+  --surface-3: color-mix(in srgb, #fff 9%, var(--panel));
+  --line-soft: color-mix(in srgb, #fff 8%, transparent);
+  --sh-1: 0 1px 2px rgba(0, 0, 0, .4), 0 2px 10px rgba(0, 0, 0, .35);
+  --sh-2: 0 12px 36px rgba(0, 0, 0, .55);
+  --glow: 0 0 36px rgba(47, 107, 255, .45);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--acc-soft) 45%, transparent);
+}
+
+/* "Giảm chuyển động" trong Cài đặt (xem lib/settings.js) */
+[data-motion='reduced'] *, [data-motion='reduced'] *::before, [data-motion='reduced'] *::after {
+  animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important; scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+
+.num { font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

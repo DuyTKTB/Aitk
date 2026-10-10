@@ -1,0 +1,31 @@
+/* pages.css — Cài đặt, Phản hồi, 404. Chỉ dùng token. */
+.pg { width: min(720px, 100% - 2rem); margin: 0 auto; padding: calc(var(--nav-h) + var(--s-7)) 0 var(--s-8); }
+.pg > h1 { margin: 0 0 var(--s-2); font: var(--fw-med) var(--fs-2xl)/var(--lh-tight) var(--sans); letter-spacing: -.035em; text-transform: none; }
+.pg > .lead { margin: 0 0 var(--s-6); color: var(--mut); max-width: 60ch; }
+.pg .ui-card + .ui-card { margin-top: var(--s-4); }
+
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) 0; }
+.set-row + .set-row { border-top: 1px solid var(--line-soft); }
+.set-row > div:first-child { min-width: 0; }
+.set-row b { display: block; font: var(--fw-med) var(--fs-md) var(--sans); }
+.set-row small { color: var(--mut); font-size: var(--fs-sm); }
+@media (max-width: 560px) { .set-row { flex-wrap: wrap; } }
+
+.fb-form { display: grid; gap: var(--s-4); }
+.fb-check { display: flex; gap: var(--s-2); align-items: flex-start; font: var(--fs-sm)/1.4 var(--sans); color: var(--mut); text-transform: none; letter-spacing: 0; }
+.fb-check input { width: auto; margin-top: .2rem; accent-color: var(--acc); }
+.fb-trap { position: absolute; left: -9999px; }
+.fb-actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+
+/* 404: ô nguyên tố "Nf" */
+.nf { min-height: 100svh; display: grid; place-items: center; padding: calc(var(--nav-h) + var(--s-6)) var(--s-4) var(--s-8); }
+.nf-in { display: grid; grid-template-columns: auto 1fr; gap: var(--s-6); align-items: center; width: min(640px, 100%); }
+.nf-cell { width: 160px; aspect-ratio: 1; display: grid; place-content: center; justify-items: center; position: relative; border: 2px solid var(--acc); border-radius: var(--r-sm); background: var(--soft); }
+.nf-cell small { position: absolute; top: 8px; left: 10px; font-size: var(--fs-xs); color: var(--mut); }
+.nf-cell b { font: var(--fw-med) 3.6rem/1 var(--sans); letter-spacing: -.05em; }
+.nf-cell span { font-size: var(--fs-xs); color: var(--mut); }
+.nf h1 { margin: 0 0 var(--s-2); font: var(--fw-med) var(--fs-xl)/var(--lh-tight) var(--sans); text-transform: none; letter-spacing: -.03em; }
+.nf p { margin: 0 0 var(--s-4); color: var(--mut); }
+.nf code { padding: .1em .4em; border-radius: var(--r-xs); background: var(--surface-3); color: var(--ink); font-family: ui-monospace, monospace; font-size: .9em; }
+.nf-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+@media (max-width: 560px) { .nf-in { grid-template-columns: 1fr; justify-items: start; } .nf-cell { width: 120px; } .nf-cell b { font-size: 2.6rem; } }

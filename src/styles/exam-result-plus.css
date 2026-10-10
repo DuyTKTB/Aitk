@@ -1,0 +1,85 @@
+/* ============================================================
+   exam-result-plus.css — bổ sung cho ExamResult v3 (prefix: erp-)
+   Import SAU classroom.css. Dùng token có sẵn: --panel --ink --mut
+   --soft --acc --sans (có giá trị dự phòng).
+   ============================================================ */
+
+/* ---- Thống kê ---- */
+.erp-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .6rem;
+  margin: 1rem 0 .4rem;
+}
+.erp-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  padding: .7rem .5rem;
+  border-radius: 14px;
+  background: var(--panel, #fff);
+  box-shadow: inset 0 0 0 1.5px var(--soft, #e5e7eb);
+}
+.erp-stat b { font: 800 1.5rem var(--sans, system-ui); font-variant-numeric: tabular-nums; }
+.erp-stat span { font: 600 .74rem var(--sans, system-ui); color: var(--mut, #6b7280); }
+.erp-stat.ok b { color: #16a34a; }
+.erp-stat.no b { color: #dc2626; }
+.erp-stat.skip b { color: #a16207; }
+
+/* ---- Theo chủ đề ---- */
+.erp-topics ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .65rem; }
+.erp-topic-row { display: flex; justify-content: space-between; gap: .75rem; margin-bottom: .25rem; font: 600 .84rem var(--sans, system-ui); color: var(--ink, #111827); }
+.erp-topic-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erp-topic-val { color: var(--mut, #6b7280); font-variant-numeric: tabular-nums; }
+.erp-bar { height: 8px; border-radius: 999px; background: var(--soft, #e5e7eb); overflow: hidden; }
+.erp-bar i { display: block; height: 100%; border-radius: inherit; }
+.erp-bar i.hi { background: #16a34a; }
+.erp-bar i.mid { background: #f59e0b; }
+.erp-bar i.lo { background: #dc2626; }
+
+/* ---- Bộ lọc ---- */
+.erp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .9rem; }
+.erp-head .er-h3 { margin: 0; }
+.erp-filter { display: flex; flex-wrap: wrap; gap: .35rem; }
+.erp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .8rem;
+  border: 1.5px solid var(--soft, #e5e7eb);
+  border-radius: 999px;
+  background: var(--panel, #fff);
+  color: var(--mut, #6b7280);
+  font: 700 .76rem var(--sans, system-ui);
+  cursor: pointer;
+}
+.erp-chip em { font-style: normal; font-variant-numeric: tabular-nums; }
+.erp-chip:hover:not(:disabled) { border-color: var(--acc, #2f6bff); color: var(--acc, #2f6bff); }
+.erp-chip.on { background: var(--acc, #2f6bff); border-color: var(--acc, #2f6bff); color: #fff; }
+.erp-chip:disabled { opacity: .45; cursor: not-allowed; }
+.erp-chip:focus-visible,
+.erp-bar:focus-visible { outline: 2px solid var(--acc, #2f6bff); outline-offset: 2px; }
+
+.erp-empty { margin: 1rem 0; text-align: center; color: var(--mut, #6b7280); font: 500 .88rem var(--sans, system-ui); }
+
+/* ---- Lời giải ---- */
+.erp-explain {
+  margin-top: .6rem;
+  padding: .65rem .85rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--acc, #2563eb) 8%, transparent);
+  border-left: 3px solid var(--acc, #2563eb);
+  font: 500 .86rem/1.55 var(--sans, system-ui);
+}
+.erp-explain b { display: block; margin-bottom: 2px; }
+.erp-explain p { margin: 0; }
+
+/* ---- Công thức không tràn khung ---- */
+.er-q .katex-display,
+.erp-explain .katex-display { overflow-x: auto; overflow-y: hidden; padding: .2rem 0; }
+.er-opt .katex { white-space: nowrap; }
+
+@media (max-width: 520px) {
+  .erp-stat b { font-size: 1.25rem; }
+}

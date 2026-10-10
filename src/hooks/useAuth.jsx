@@ -1,288 +1,193 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-} from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import {
   onAuthStateChanged,
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  FacebookAuthProvider,
-  sendPasswordResetEmail,
-  sendEmailVerification,
-  updateProfile,
+  createUserWithEmailAndPassword,
   signOut,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  setPersistence,
+  updateProfile,
+  updatePassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from 'firebase/auth';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from 'firebase/storage';
-import { auth, db, storage } from '../lib/firebase.js';
-
-const DEFAULT_TIER = {
-  key: 'free',
-  name: 'Miễn phí',
-  color: '#3b82f6',
-  quotaText: 20,
-  quotaImage: 5,
-};
-
-const TIERS = {
-  free: DEFAULT_TIER,
-  vip: {
-    key: 'vip',
-    name: 'CUAI VIP',
-    color: 'linear-gradient(135deg, #ffb020, #ff8800)',
-    quotaText: Infinity,
-    quotaImage: Infinity,
-  },
-};
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db, uploadAvatar as fbUploadAvatar } from '../lib/firebase.js';
+import { getTier } from '../lib/tier.js';   // ← SỬA: getTier thay vì getUserTier
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [tier, setTier] = useState(null);
   const [ready, setReady] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    const fallbackTimer = setTimeout(() => setReady(true), 2000);
-    let unsub = () => {};
-
-    try {
-      unsub = onAuthStateChanged(auth, async (u) => {
-        clearTimeout(fallbackTimer);
-
-        if (!u) {
-          setUser(null);
-          setReady(true);
-          return;
-        }
-
-        let cachedTier = DEFAULT_TIER;
-        try {
-          const cached = localStorage.getItem('cs-user-tier');
-          if (cached) cachedTier = JSON.parse(cached);
-        } catch { /* ignore */ }
-
-        setUser({
-          uid: u.uid,
-          email: u.email,
-          displayName: u.displayName || '',
-          photoURL: u.photoURL || '',
-          emailVerified: u.emailVerified,
-          tier: cachedTier,
-        });
-        setReady(true);
-
-        try {
-          const snap = await getDoc(doc(db, 'users', u.uid));
-          if (snap.exists()) {
-            const data = snap.data();
-            const tierKey = data.tier || 'free';
-            const tier = TIERS[tierKey] || DEFAULT_TIER;
-
-            setUser((prev) => prev && prev.uid === u.uid ? { ...prev, tier } : prev);
-            try { localStorage.setItem('cs-user-tier', JSON.stringify(tier)); } catch { /* ignore */ }
-          }
-        } catch (err) {
-          console.warn('[useAuth] Không lấy được tier:', err);
-        }
-      });
-    } catch (err) {
-      console.error('[useAuth] Lỗi khởi tạo auth:', err);
-      setReady(true);
-    }
-
-    return () => {
-      clearTimeout(fallbackTimer);
-      unsub();
-    };
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
   }, []);
 
-  /* ============ ĐĂNG KÝ ============ */
-  const register = useCallback(async (email, password, firstName, lastName, rememberMe = true) => {
-    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (!mountedRef.current) return;
+      if (u) {
+        setUser(u);
+        setIsLoggedIn(true);
+        try {
+          const t = await getTier(u.uid);   // ← SỬA: truyền u.uid
+          if (mountedRef.current) setTier(t);
+        } catch {
+          if (mountedRef.current) setTier({ key: 'free', name: 'Free', desc: 'Miễn phí' });
+        }
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+        setTier(null);
+      }
+      if (mountedRef.current) setReady(true);
+    });
+    return () => unsub();
+  }, []);
+
+  const register = useCallback(async (email, password, displayName, opts = {}) => {
+    const { role = 'student' } = opts;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    const displayName = `${lastName} ${firstName}`.trim();
-    await updateProfile(cred.user, { displayName });
+
+    if (displayName) {
+      await updateProfile(cred.user, { displayName });
+    }
 
     try {
       await setDoc(doc(db, 'users', cred.user.uid), {
-        email, firstName, lastName, displayName,
-        tier: 'free',
-        createdAt: serverTimestamp(),
-      });
-    } catch (err) { console.warn('[useAuth] Không lưu được user:', err); }
+        role,
+        email,
+        displayName: displayName || '',
+        createdAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Không lưu user metadata:', e);
+    }
 
-    try { await sendEmailVerification(cred.user); } catch { /* ignore */ }
+    try {
+      const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+      meta[cred.user.uid] = { role, email };
+      localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+    } catch {}
+
+    try {
+      await cred.user.reload();
+      if (mountedRef.current) setUser({ ...auth.currentUser });
+    } catch {}
+
     return cred.user;
   }, []);
 
-  /* ============ ĐĂNG NHẬP ============ */
-  const login = useCallback(async (email, password, rememberMe = true) => {
-    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+  const login = useCallback(async (email, password) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    try {
+      const snap = await getDoc(doc(db, 'users', cred.user.uid));
+      if (snap.exists()) {
+        const role = snap.data()?.role || 'student';
+        const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+        meta[cred.user.uid] = { role, email };
+        localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+      }
+    } catch {}
     return cred.user;
   }, []);
 
-  /* ============ GOOGLE ============ */
   const loginWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
-    provider.addScope('email');
-    provider.addScope('profile');
     const cred = await signInWithPopup(auth, provider);
 
     try {
-      const ref = doc(db, 'users', cred.user.uid);
-      const snap = await getDoc(ref);
+      const snap = await getDoc(doc(db, 'users', cred.user.uid));
       if (!snap.exists()) {
-        const fullName = cred.user.displayName || '';
-        const parts = fullName.split(' ');
-        const lastName = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
-        const firstName = parts.length > 0 ? parts.slice(-1)[0] : '';
-        await setDoc(ref, {
-          email: cred.user.email, firstName, lastName,
-          displayName: fullName, photoURL: cred.user.photoURL || '',
-          tier: 'free', createdAt: serverTimestamp(),
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          role: 'student',
+          email: cred.user.email,
+          displayName: cred.user.displayName || '',
+          createdAt: new Date().toISOString(),
         });
       }
-    } catch (err) { console.warn('[useAuth] Lỗi lưu user Google:', err); }
+      const role = snap.exists() ? snap.data()?.role : 'student';
+      const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+      meta[cred.user.uid] = { role, email: cred.user.email };
+      localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+    } catch {}
+
     return cred.user;
   }, []);
 
-  /* ============ FACEBOOK ============ */
-  const loginFacebook = useCallback(async () => {
-    const provider = new FacebookAuthProvider();
-    provider.addScope('email');
-    provider.setCustomParameters({ display: 'popup' });
-    const cred = await signInWithPopup(auth, provider);
-
-    try {
-      const ref = doc(db, 'users', cred.user.uid);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        const fullName = cred.user.displayName || '';
-        const parts = fullName.split(' ');
-        const lastName = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
-        const firstName = parts.length > 0 ? parts.slice(-1)[0] : '';
-        await setDoc(ref, {
-          email: cred.user.email, firstName, lastName,
-          displayName: fullName, photoURL: cred.user.photoURL || '',
-          tier: 'free', createdAt: serverTimestamp(),
-        });
-      }
-    } catch (err) { console.warn('[useAuth] Lỗi lưu user Facebook:', err); }
-    return cred.user;
+  const logout = useCallback(async () => {
+    await signOut(auth);
   }, []);
 
-  /* ============ UPLOAD AVATAR ============ */
-  const uploadAvatar = useCallback(async (file) => {
-    if (!auth.currentUser) throw new Error('Chưa đăng nhập');
-    if (!file) throw new Error('Không có file');
-    if (!file.type.startsWith('image/')) throw new Error('Chỉ chấp nhận file ảnh');
-    if (file.size > 2 * 1024 * 1024) throw new Error('Ảnh phải nhỏ hơn 2MB');
-
-    const uid = auth.currentUser.uid;
-    const path = `avatars/${uid}/${Date.now()}_${file.name}`;
-    const ref = storageRef(storage, path);
-
-    await uploadBytes(ref, file);
-    const url = await getDownloadURL(ref);
-
-    await updateProfile(auth.currentUser, { photoURL: url });
-    try {
-      await updateDoc(doc(db, 'users', uid), { photoURL: url });
-    } catch (err) { console.warn('[useAuth] Không lưu photoURL vào Firestore:', err); }
-
-    setUser((prev) => prev ? { ...prev, photoURL: url } : prev);
-    return url;
-  }, []);
-
-  /* ============ REFRESH USER ============ */
-  const refreshUser = useCallback(async () => {
-    if (!auth.currentUser) return null;
-    await auth.currentUser.reload();
-    const u = auth.currentUser;
-    setUser((prev) => prev ? {
-      ...prev,
-      displayName: u.displayName || '',
-      photoURL: u.photoURL || '',
-      emailVerified: u.emailVerified,
-    } : prev);
-    return u;
-  }, []);
-
-  /* ============ REFRESH TIER ============ */
-  const refreshTier = useCallback(async () => {
-    if (!auth.currentUser) return;
-    try {
-      const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
-      if (snap.exists()) {
-        const data = snap.data();
-        const tierKey = data.tier || 'free';
-        const tier = TIERS[tierKey] || DEFAULT_TIER;
-        setUser((prev) => prev ? { ...prev, tier } : prev);
-        try { localStorage.setItem('cs-user-tier', JSON.stringify(tier)); } catch { /* ignore */ }
-      }
-    } catch (err) { console.warn('[useAuth] Lỗi refresh tier:', err); }
-  }, []);
-
-  /* ============ ĐỔI TÊN ============ */
   const updateDisplayName = useCallback(async (name) => {
     if (!auth.currentUser) throw new Error('Chưa đăng nhập');
-    await updateProfile(auth.currentUser, { displayName: name.trim() });
-    try {
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), { displayName: name.trim() });
-    } catch (err) { console.warn('[useAuth] Không lưu displayName:', err); }
-    setUser((prev) => prev ? { ...prev, displayName: name.trim() } : prev);
-    return auth.currentUser;
+    await updateProfile(auth.currentUser, { displayName: name });
+    await auth.currentUser.reload();
+    if (mountedRef.current) setUser({ ...auth.currentUser });
   }, []);
 
-  /* ============ QUÊN MẬT KHẨU ============ */
+  const changePassword = useCallback(async (oldPassword, newPassword) => {
+    const u = auth.currentUser;
+    if (!u || !u.email) throw new Error('Chưa đăng nhập');
+    const cred = EmailAuthProvider.credential(u.email, oldPassword);
+    await reauthenticateWithCredential(u, cred);
+    await updatePassword(u, newPassword);
+  }, []);
+
+  const sendVerifyEmail = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u) throw new Error('Chưa đăng nhập');
+    await sendEmailVerification(u);
+  }, []);
+
   const resetPassword = useCallback(async (email) => {
     await sendPasswordResetEmail(auth, email);
   }, []);
 
-  /* ============ GỬI LẠI VERIFY ============ */
-  const resendVerification = useCallback(async () => {
-    if (!auth.currentUser) throw new Error('Chưa đăng nhập');
-    await sendEmailVerification(auth.currentUser);
+  const refreshUser = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u) return null;
+    await u.reload();
+    if (mountedRef.current) setUser({ ...auth.currentUser });
+    return auth.currentUser;
   }, []);
 
-  /* ============ ĐĂNG XUẤT ============ */
-const logout = useCallback(async () => {
-  try {
-    await signOut(auth);
-    location.hash = 'home';
-  } catch (e) {
-    console.error('Logout error:', e);
-  }
-}, []);
+  const refreshTier = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u) return null;
+    const t = await getTier(u.uid);   // ← SỬA
+    if (mountedRef.current) setTier(t);
+    return t;
+  }, []);
+
+  const uploadAvatar = useCallback(async (file) => {
+    return fbUploadAvatar(file);
+  }, []);
 
   const value = {
     user,
-    tier: user?.tier || DEFAULT_TIER,
+    tier,
     ready,
-    isLoggedIn: !!user,
-    register, login, loginWithGoogle, loginFacebook,
-    resetPassword, resendVerification,
-    uploadAvatar, refreshUser, refreshTier, updateDisplayName,
+    isLoggedIn,
+    register,
+    login,
+    loginWithGoogle,
     logout,
+    updateDisplayName,
+    changePassword,
+    sendVerifyEmail,
+    resetPassword,
+    refreshUser,
+    refreshTier,
+    uploadAvatar,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

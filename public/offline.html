@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f6bff">
+  <title>Đang ngoại tuyến — CUAI</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f3f6ff; --ink:#0a1230; --mut:#5d6a94; --acc:#2f6bff; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#030618; --ink:#eef2ff; --mut:#8b95bd; } }
+    body { margin:0; min-height:100svh; display:grid; place-items:center; padding:1.5rem; background:var(--bg); color:var(--ink); font:16px/1.55 'DM Sans',system-ui,sans-serif; }
+    main { max-width:26rem; }
+    h1 { margin:0 0 .5rem; font-size:1.6rem; font-weight:500; letter-spacing:-.03em; }
+    p { margin:0 0 1.2rem; color:var(--mut); }
+    button { min-height:44px; padding:0 1.2rem; border:0; border-radius:10px; background:var(--acc); color:#fff; font:inherit; font-weight:500; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Bạn đang ngoại tuyến</h1>
+    <p>CUAI cần mạng để trả lời. Kết nối lại rồi thử lần nữa; các trang bạn đã mở trước đó vẫn xem được.</p>
+    <button onclick="location.reload()">Thử lại</button>
+  </main>
+</body>
+</html>

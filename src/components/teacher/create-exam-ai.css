@@ -1,0 +1,270 @@
+/* ============================================================
+   create-exam-ai.css — bổ sung cho tab "Tạo bằng AI" (v2)
+   Đặt cạnh create-exam-page.css. Dùng lại token: --panel --ink --mut
+   --soft --acc --vt-tint --vt-tint2 --vt-red --vt-amber --sans
+   ============================================================ */
+
+/* ---- Toggle trong cấu hình ---- */
+.cea-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  align-self: flex-start;
+  padding: .45rem .8rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--mut);
+  font: 600 .78rem var(--sans);
+  cursor: pointer;
+}
+.cea-toggle.on { border-color: var(--acc); color: var(--ink); }
+.cea-toggle input { accent-color: var(--acc); width: 16px; height: 16px; }
+
+/* ---- Thao tác nhanh ---- */
+.cea-quick {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding: 0 1.1rem .5rem;
+}
+.cea-quick-btn {
+  padding: .35rem .8rem;
+  border: 1.5px dashed var(--soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mut);
+  font: 600 .74rem var(--sans);
+  cursor: pointer;
+  transition: all .2s;
+}
+.cea-quick-btn:hover { border-color: var(--acc); color: var(--acc); background: var(--vt-tint); }
+
+/* ---- Chế độ gửi ---- */
+.cea-mode {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding: .5rem 1rem 0;
+  border-top: 1px solid var(--soft);
+  background: var(--panel);
+}
+.cea-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .3rem .75rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--mut);
+  font: 700 .72rem var(--sans);
+  cursor: pointer;
+  transition: all .2s;
+}
+.cea-mode-btn.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.cea-mode-btn:disabled { opacity: .5; cursor: not-allowed; }
+.cea-files-note { flex-basis: 100%; color: var(--mut); font: 500 .7rem var(--sans); }
+
+/* ---- Bản nháp ---- */
+.cea-draft {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  padding: .9rem 1rem;
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--acc) 35%, transparent);
+  animation: cea-msg-in .25s cubic-bezier(.22,1,.36,1);
+}
+.cea-draft-head { display: flex; align-items: center; gap: .6rem; }
+.cea-draft-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cea-draft-title b {
+  font: 800 .95rem var(--sans);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cea-draft-title span { font: 500 .74rem var(--sans); color: var(--mut); }
+
+.cea-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--vt-tint2);
+  color: var(--mut);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cea-icon-btn:hover:not(:disabled) { background: var(--acc); color: #fff; }
+.cea-icon-btn.danger:hover:not(:disabled) { background: var(--vt-red); }
+.cea-icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.cea-draft-stats { display: flex; flex-wrap: wrap; gap: .4rem .9rem; font: 600 .74rem var(--sans); color: var(--mut); }
+.cea-stat { display: inline-flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+.cea-stat em {
+  font-style: normal;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  background: var(--vt-tint2);
+  color: var(--ink);
+}
+.cea-stat em.warn, .cea-stat.warn { color: #a16207; }
+.cea-stat.ok { color: #16a34a; }
+
+.cea-draft-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.cea-act {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .4rem .8rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 700 .74rem var(--sans);
+  cursor: pointer;
+  transition: all .2s;
+}
+.cea-act:hover:not(:disabled) { border-color: var(--acc); color: var(--acc); }
+.cea-act.danger:hover:not(:disabled) { border-color: var(--vt-red); color: var(--vt-red); }
+.cea-act:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---- Danh sách câu ---- */
+.cea-qs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.cea-q {
+  border-radius: 12px;
+  background: var(--vt-tint);
+  border-left: 3px solid transparent;
+  overflow: hidden;
+}
+.cea-q.flag { border-left-color: var(--vt-amber, #f59e0b); }
+.cea-q.ok { border-left-color: #22c55e; }
+
+.cea-q-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .75rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  font: 500 .84rem var(--sans);
+}
+.cea-q-num { font: 800 .78rem var(--sans); color: var(--acc); flex-shrink: 0; }
+.cea-q-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cea-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  background: var(--vt-tint2);
+  color: var(--mut);
+  font: 700 .66rem var(--sans);
+  flex-shrink: 0;
+}
+.cea-badge.ans { background: color-mix(in srgb, #22c55e 18%, var(--vt-tint2)); color: #15803d; }
+.cea-badge.warn { background: color-mix(in srgb, #f59e0b 20%, var(--vt-tint2)); color: #a16207; }
+.cea-badge.okb { background: color-mix(in srgb, #22c55e 18%, var(--vt-tint2)); color: #15803d; }
+
+.cea-q-body { padding: 0 .75rem .8rem; display: flex; flex-direction: column; gap: .5rem; }
+.cea-q-full { margin: 0; font: 600 .88rem/1.5 var(--sans); color: var(--ink); white-space: pre-wrap; }
+.cea-q-opts { display: flex; flex-direction: column; gap: .3rem; }
+.cea-q-opt {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .45rem .7rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 500 .84rem/1.4 var(--sans);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.cea-q-opt > span:last-of-type { flex: 1; min-width: 0; word-break: break-word; }
+.cea-q-opt:hover:not(:disabled) { border-color: var(--acc); }
+.cea-q-opt.correct {
+  border-color: #22c55e;
+  background: color-mix(in srgb, #22c55e 10%, var(--panel));
+}
+.cea-q-opt.correct svg { color: #16a34a; }
+.cea-q-key {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--vt-tint2);
+  font: 800 .72rem var(--sans);
+  flex-shrink: 0;
+}
+.cea-q-opt.correct .cea-q-key { background: #22c55e; color: #fff; }
+
+.cea-q-note {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: .35rem;
+  font: 600 .76rem/1.4 var(--sans);
+}
+.cea-q-note.warn { color: #a16207; }
+.cea-q-note svg { flex-shrink: 0; margin-top: 2px; }
+
+.cea-q-explain {
+  padding: .6rem .8rem;
+  border-radius: 10px;
+  background: var(--panel);
+  font: 500 .8rem/1.5 var(--sans);
+  color: var(--ink);
+}
+.cea-q-explain b { display: block; margin-bottom: .2rem; font: 800 .72rem var(--sans); color: var(--mut); text-transform: uppercase; letter-spacing: .04em; }
+.cea-q-explain p { margin: 0; white-space: pre-wrap; }
+
+.cea-q-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.cea-q-regen-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: .4rem .7rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 500 .78rem var(--sans);
+  outline: 0;
+}
+.cea-q-regen-input:focus { border-color: var(--acc); }
+
+.cea-result-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.cea-draft .cea-result-btn { align-self: stretch; justify-content: center; }
+
+@media (max-width: 720px) {
+  .cea-quick { padding: 0 .8rem .5rem; }
+  .cea-q-text { display: none; }
+  .cea-q-head { flex-wrap: wrap; }
+}

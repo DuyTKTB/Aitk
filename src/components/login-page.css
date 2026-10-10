@@ -431,3 +431,75 @@
   .lg-aside-orb { animation: none; }
   .lg-card { animation: none; }
 }
+/* ============================================================
+   ROLE PICKER (chỉ hiện khi đăng ký)
+   ============================================================ */
+.lg-role {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.lg-role-label {
+  font: 600 .72rem var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--lg-mut);
+}
+.lg-role-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+.lg-role-btn {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .7rem .9rem;
+  border: 1.5px solid var(--lg-line);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--lg-mut);
+  transition: all .18s;
+}
+.lg-role-btn:hover {
+  border-color: var(--lg-ink);
+  color: var(--lg-ink);
+}
+.lg-role-btn.on {
+  border-color: var(--lg-acc);
+  background: color-mix(in srgb, var(--lg-acc) 12%, transparent);
+  color: var(--lg-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-acc) 20%, transparent);
+}
+.lg-role-btn > svg { flex-shrink: 0; }
+.lg-role-btn > div {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  min-width: 0;
+}
+.lg-role-btn b {
+  font: 700 .82rem var(--sans);
+  color: inherit;
+}
+.lg-role-btn small {
+  font: 400 .68rem var(--sans);
+  opacity: .75;
+  line-height: 1.2;
+}
+.lg-role-note {
+  margin: .3rem 0 0;
+  padding: .5rem .8rem;
+  background: color-mix(in srgb, var(--lg-acc) 12%, transparent);
+  border-left: 3px solid var(--lg-acc);
+  border-radius: 8px;
+  font: 500 .75rem var(--sans);
+  color: var(--lg-acc2);
+  line-height: 1.4;
+}
+@media (max-width: 480px) {
+  .lg-role-options { grid-template-columns: 1fr; }
+}

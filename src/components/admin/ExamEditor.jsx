@@ -1,16 +1,21 @@
+/* ============================================================
+   ExamEditor.jsx — Sửa đề thi (Vitality)
+   ------------------------------------------------------------
+   Logic giữ nguyên từ bản cũ, chỉ đổi:
+     • Bọc trong AdminShell
+     • Đổi class .adl-* → .vt-* cho giao diện đồng bộ
+   ============================================================ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import AdminShell, { Topbar, ConfirmDialog } from './AdminShell.jsx';
 import {
   IconBack, IconPlus, IconTrash, IconEdit, IconSave, IconQuestion, IconCheck, IconWarning,
 } from './AdminIcons.jsx';
-import {
-  EmptyState, ErrorState, InlineAlert, PageLoader, Spinner, useConfirm, useToast, useUnsavedWarning,
-} from './AdminUI.jsx';
 import { ANSWER_LABELS, DIFFICULTIES, EXAM_TYPES } from './adminConstants.js';
 import { friendlyError, isTempId, newTempId } from './adminUtils.js';
 import { topicGroups, gradeNumber } from '../../data/chemTopics.js';
 
-/* <option> chuyên đề nhóm theo lớp (lớp của đề được đưa lên đầu) */
+/* <option> chuyên đề nhóm theo lớp */
 function TopicOptions({ preferGrade }) {
   return topicGroups(preferGrade).map((g) => (
     <optgroup key={g.grade} label={g.label}>
@@ -23,7 +28,6 @@ const blankAnswers = () => ANSWER_LABELS.slice(0, 4).map((label, i) => ({
   id: newTempId(), label, content: '', is_correct: i === 0, sort_order: i, _new: true,
 }));
 
-/* Kiểm tra một câu trước khi lưu → mảng lỗi */
 function validateQuestion(q) {
   const errs = [];
   if (!q.content?.trim()) errs.push('thiếu nội dung câu hỏi');
@@ -34,30 +38,85 @@ function validateQuestion(q) {
   return errs;
 }
 
+/* ============================================================
+   WRAPPER — xử lý loading / error / empty
+   ============================================================ */
 export default function ExamEditor({ examId, onBack }) {
-  const toast = useToast();
-  const confirm = useConfirm();
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
+  if (loading || loadError) {
+    return (
+      <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
+        <Topbar
+          title="Sửa đề"
+          subtitle={loadError ? 'Không tải được' : 'Đang tải…'}
+        />
+        {loadError ? (
+          <div className="vt-empty">
+            <span><IconQuestion size={30} /></span>
+            <h3>Không tải được đề</h3>
+            <p>{loadError}</p>
+            <button type="button" className="vt-btn primary" onClick={onBack}>
+              <IconBack size={14} /> Quay lại danh sách
+            </button>
+          </div>
+        ) : (
+          <div className="vt-loading">
+            <div className="page-loader-spinner" />
+            <p>Đang tải đề…</p>
+          </div>
+        )}
+      </AdminShell>
+    );
+  }
+
+  return (
+    <ExamEditorInner
+      examId={examId}
+      onBack={onBack}
+      onLoadingChange={setLoading}
+      onError={setLoadError}
+    />
+  );
+}
+
+/* ============================================================
+   INNER — logic chính
+   ============================================================ */
+function ExamEditorInner({ examId, onBack, onLoadingChange, onError }) {
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [grades, setGrades] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
   const [examDirty, setExamDirty] = useState(false);
   const [savingExam, setSavingExam] = useState(false);
   const [savingQ, setSavingQ] = useState(() => new Set());
   const [qErrors, setQErrors] = useState({});
   const [bulkTopic, setBulkTopic] = useState('');
 
+  const [toast, setToast] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const say = useCallback((t) => {
+    setToast(t);
+    setTimeout(() => setToast((cur) => (cur === t ? null : cur)), 2400);
+  }, []);
+
   const dirtyQuestions = useMemo(() => questions.filter((q) => q._dirty), [questions]);
   const unclassifiedCount = useMemo(() => questions.filter((q) => !q.topic_id).length, [questions]);
   const anyDirty = examDirty || dirtyQuestions.length > 0;
-  useUnsavedWarning(anyDirty);
+
+  /* Cảnh báo rời trang */
+  useEffect(() => {
+    if (!anyDirty) return undefined;
+    const h = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [anyDirty]);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+    onLoadingChange?.(true);
+    onError?.(null);
     try {
       const [examRes, qRes, gRes, sRes] = await Promise.all([
         supabase.from('exams').select('*').eq('id', examId).single(),
@@ -88,11 +147,11 @@ export default function ExamEditor({ examId, onBack }) {
       setQErrors({});
     } catch (e) {
       console.error(e);
-      setLoadError(friendlyError(e));
+      onError?.(friendlyError(e));
     } finally {
-      setLoading(false);
+      onLoadingChange?.(false);
     }
-  }, [examId]);
+  }, [examId, onLoadingChange, onError]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -140,23 +199,21 @@ export default function ExamEditor({ examId, onBack }) {
       explanation: '', difficulty: 'medium', question_type: 'single_choice', topic_id: null,
       answers: blankAnswers(), _removed: [], _new: true, _dirty: true,
     }]);
-    setTimeout(() => document.querySelector('.adl-qedit-item:last-child textarea')?.focus(), 60);
   };
 
-  /* Gán một chuyên đề cho mọi câu CHƯA có chuyên đề. Chỉ đánh dấu "chưa lưu" — bấm "Lưu tất cả" để ghi. */
   const applyTopicToUnclassified = () => {
     if (!bulkTopic || unclassifiedCount === 0) return;
     setQuestions((qs) => qs.map((q) => (q.topic_id ? q : { ...q, topic_id: bulkTopic, _dirty: true })));
-    toast.success(`Đã gán chuyên đề cho ${unclassifiedCount} câu — bấm "Lưu tất cả" để ghi.`);
+    say(`Đã gán chuyên đề cho ${unclassifiedCount} câu — bấm "Lưu tất cả" để ghi.`);
   };
 
   /* ============ LƯU ============ */
   const handleSaveExam = async () => {
     const title = exam.title?.trim();
     const duration = Number(exam.duration);
-    if (!title) return toast.error('Tiêu đề đề thi không được để trống.');
-    if (!Number.isInteger(duration) || duration < 1 || duration > 300) return toast.error('Thời gian làm bài phải từ 1 đến 300 phút.');
-    if (!exam.grade_id || !exam.subject_id) return toast.error('Hãy chọn lớp và môn.');
+    if (!title) { say('Tiêu đề đề thi không được để trống.'); return; }
+    if (!Number.isInteger(duration) || duration < 1 || duration > 300) { say('Thời gian làm bài phải từ 1 đến 300 phút.'); return; }
+    if (!exam.grade_id || !exam.subject_id) { say('Hãy chọn lớp và môn.'); return; }
 
     setSavingExam(true);
     try {
@@ -175,20 +232,19 @@ export default function ExamEditor({ examId, onBack }) {
       if (error) throw error;
       setExam((e) => ({ ...e, title, duration }));
       setExamDirty(false);
-      toast.success('Đã lưu thông tin đề');
+      say('Đã lưu thông tin đề');
     } catch (e) {
-      toast.error('Không lưu được đề: ' + friendlyError(e));
+      say('Không lưu được đề: ' + friendlyError(e));
     } finally {
       setSavingExam(false);
     }
   };
 
-  /* Lưu một câu: question + answers (thêm / sửa / xóa). Trả về true nếu thành công */
   const saveQuestion = async (q, { silent = false } = {}) => {
     const errs = validateQuestion(q);
     if (errs.length) {
       setQErrors((m) => ({ ...m, [q.id]: errs }));
-      if (!silent) toast.error(`Câu ${questions.findIndex((x) => x.id === q.id) + 1}: ${errs.join(', ')}.`);
+      if (!silent) say(`Câu ${questions.findIndex((x) => x.id === q.id) + 1}: ${errs.join(', ')}.`);
       return false;
     }
     setQErrors((m) => { const n = { ...m }; delete n[q.id]; return n; });
@@ -257,11 +313,11 @@ export default function ExamEditor({ examId, onBack }) {
             : a)),
         };
       }));
-      if (!silent) toast.success('Đã lưu câu hỏi');
+      if (!silent) say('Đã lưu câu hỏi');
       return true;
     } catch (e) {
       console.error(e);
-      toast.error('Không lưu được câu hỏi: ' + friendlyError(e));
+      say('Không lưu được câu hỏi: ' + friendlyError(e));
       return false;
     } finally {
       setSavingQ((s) => { const n = new Set(s); n.delete(q.id); return n; });
@@ -276,229 +332,539 @@ export default function ExamEditor({ examId, onBack }) {
     }
     if (examDirty) await handleSaveExam();
     const fail = dirtyQuestions.length - ok;
-    if (fail === 0) toast.success(`Đã lưu ${ok} câu hỏi`);
-    else toast.error(`${fail} câu chưa lưu được — xem thông báo đỏ ở từng câu.`);
+    if (fail === 0) say(`Đã lưu ${ok} câu hỏi`);
+    else say(`${fail} câu chưa lưu được — xem thông báo đỏ ở từng câu.`);
   };
 
-  const handleDeleteQuestion = async (q, idx) => {
+  const handleDeleteQuestion = (q, idx) => {
     if (q._new) {
       setQuestions((qs) => qs.filter((x) => x.id !== q.id));
       return;
     }
-    const ok = await confirm({
+    setConfirm({
       title: `Xóa câu ${idx + 1}`,
-      message: 'Câu hỏi và các đáp án sẽ bị xóa khỏi đề. Không thể hoàn tác.',
-      confirmText: 'Xóa câu',
+      body: 'Câu hỏi và các đáp án sẽ bị xóa khỏi đề. Không thể hoàn tác.',
+      okLabel: 'Xóa câu',
       danger: true,
+      onOk: async () => {
+        try {
+          const { error } = await supabase.from('questions').delete().eq('id', q.id);
+          if (error) throw error;
+          setQuestions((qs) => qs.filter((x) => x.id !== q.id));
+          say('Đã xóa câu hỏi');
+        } catch (e) {
+          say('Không xóa được câu hỏi: ' + friendlyError(e));
+        }
+      },
     });
-    if (!ok) return;
-    try {
-      const { error } = await supabase.from('questions').delete().eq('id', q.id);
-      if (error) throw error;
-      setQuestions((qs) => qs.filter((x) => x.id !== q.id));
-      toast.success('Đã xóa câu hỏi');
-    } catch (e) {
-      toast.error('Không xóa được câu hỏi: ' + friendlyError(e));
-    }
   };
 
-  const handleBack = async () => {
+  const handleBack = () => {
     if (anyDirty) {
-      const ok = await confirm({
+      setConfirm({
         title: 'Có thay đổi chưa lưu',
-        message: 'Rời khỏi trang sẽ mất các chỉnh sửa chưa lưu.',
-        confirmText: 'Rời đi',
-        cancelText: 'Ở lại',
+        body: 'Rời khỏi trang sẽ mất các chỉnh sửa chưa lưu.',
+        okLabel: 'Rời đi',
+        cancelLabel: 'Ở lại',
         danger: true,
+        onOk: onBack,
       });
-      if (!ok) return;
+      return;
     }
     onBack();
   };
 
-  /* ============ RENDER ============ */
-  if (loading) return <PageLoader text="Đang tải đề…" />;
-  if (loadError) {
+  if (!exam) {
     return (
-      <div>
-        <button type="button" className="adl-btn-outline" onClick={onBack}><IconBack size={14} /> Quay lại danh sách</button>
-        <ErrorState message={loadError} onRetry={load} />
-      </div>
+      <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
+        <Topbar title="Sửa đề" subtitle="Không tìm thấy đề" />
+        <div className="vt-empty">
+          <span><IconQuestion size={30} /></span>
+          <h3>Không tìm thấy đề</h3>
+          <p>Đề có thể đã bị xóa hoặc ID không đúng.</p>
+          <button type="button" className="vt-btn primary" onClick={onBack}>
+            <IconBack size={14} /> Quay lại danh sách
+          </button>
+        </div>
+      </AdminShell>
     );
   }
-  if (!exam) return <EmptyState Icon={IconQuestion} title="Không tìm thấy đề" action={<button type="button" className="adl-btn-outline" onClick={onBack}>Quay lại</button>} />;
 
   const examGrade = gradeNumber(grades.find((g) => g.id === exam.grade_id)?.name);
 
   return (
-    <div className="adl-editor">
-      <div className="adl-editor-bar">
-        <button type="button" className="adl-btn-outline" onClick={handleBack}><IconBack size={14} /> Danh sách đề</button>
-        <div className="adl-editor-bar-right">
-          {anyDirty && <span className="adl-dirty"><IconWarning size={14} /> Có thay đổi chưa lưu</span>}
-          <button type="button" className="adl-btn-primary" onClick={saveAll} disabled={!anyDirty || savingExam || savingQ.size > 0}>
-            {savingExam || savingQ.size > 0 ? <Spinner size={14} /> : <IconSave size={14} />} Lưu tất cả
-          </button>
-        </div>
-      </div>
+    <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
+      <Topbar
+        title="Sửa đề"
+        subtitle={exam.title}
+        right={
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+            {anyDirty && (
+              <span style={{
+                padding: '.3rem .7rem',
+                background: 'color-mix(in srgb, var(--vt-amber) 20%, transparent)',
+                borderRadius: 999,
+                font: '700 .72rem var(--sans)',
+                color: '#a16207',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '.3rem',
+              }}>
+                <IconWarning size={12} /> Có thay đổi chưa lưu
+              </span>
+            )}
+            <button
+              type="button"
+              className="vt-btn primary"
+              onClick={saveAll}
+              disabled={!anyDirty || savingExam || savingQ.size > 0}
+            >
+              <IconSave size={14} /> {savingExam || savingQ.size > 0 ? 'Đang lưu…' : 'Lưu tất cả'}
+            </button>
+          </div>
+        }
+      />
 
-      <section className="adl-panel">
-        <header className="adl-panel-head">
-          <h3><IconEdit size={16} /><span>Thông tin đề</span></h3>
-          <button type="button" className="adl-btn-sm primary" onClick={handleSaveExam} disabled={!examDirty || savingExam}>
-            {savingExam ? <Spinner size={13} /> : <IconSave size={13} />} Lưu thông tin
+      {/* ===== NÚT QUAY LẠI ===== */}
+      <button
+        type="button"
+        className="vt-btn sm"
+        onClick={handleBack}
+        style={{ alignSelf: 'flex-start' }}
+      >
+        <IconBack size={14} /> Danh sách đề
+      </button>
+
+      {/* ===== THÔNG TIN ĐỀ ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">
+            <IconEdit size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+            Thông tin đề
+          </h3>
+          <button
+            type="button"
+            className="vt-btn sm primary"
+            onClick={handleSaveExam}
+            disabled={!examDirty || savingExam}
+          >
+            <IconSave size={13} /> {savingExam ? 'Đang lưu…' : 'Lưu thông tin'}
           </button>
         </header>
 
-        <div className="adl-form">
-          <label className="adl-field">
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <label className="vt-field">
             <span>Tiêu đề</span>
-            <input type="text" value={exam.title || ''} onChange={(e) => patchExam({ title: e.target.value })} maxLength={200} />
-          </label>
-          <label className="adl-field">
-            <span>Mô tả</span>
-            <textarea value={exam.description || ''} onChange={(e) => patchExam({ description: e.target.value })} rows={2} />
+            <input
+              type="text"
+              value={exam.title || ''}
+              onChange={(e) => patchExam({ title: e.target.value })}
+              maxLength={200}
+            />
           </label>
 
-          <div className="adl-form-row">
-            <label className="adl-field">
+          <label className="vt-field">
+            <span>Mô tả</span>
+            <textarea
+              value={exam.description || ''}
+              onChange={(e) => patchExam({ description: e.target.value })}
+              rows={2}
+              style={{ padding: '.7rem .9rem', borderRadius: 14, minHeight: 'auto' }}
+            />
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '.7rem' }}>
+            <label className="vt-field">
               <span>Lớp</span>
-              <select value={exam.grade_id ?? ''} onChange={(e) => patchExam({ grade_id: Number(e.target.value) })}>
+              <select
+                value={exam.grade_id ?? ''}
+                onChange={(e) => patchExam({ grade_id: Number(e.target.value) })}
+                style={{ height: 42, padding: '0 .8rem', borderRadius: 12, border: '1px solid var(--soft)', background: 'var(--vt-tint2)', color: 'var(--ink)' }}
+              >
                 {grades.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </label>
-            <label className="adl-field">
+            <label className="vt-field">
               <span>Môn</span>
-              <select value={exam.subject_id ?? ''} onChange={(e) => patchExam({ subject_id: Number(e.target.value) })}>
+              <select
+                value={exam.subject_id ?? ''}
+                onChange={(e) => patchExam({ subject_id: Number(e.target.value) })}
+                style={{ height: 42, padding: '0 .8rem', borderRadius: 12, border: '1px solid var(--soft)', background: 'var(--vt-tint2)', color: 'var(--ink)' }}
+              >
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </label>
-            <label className="adl-field">
+            <label className="vt-field">
               <span>Loại đề</span>
-              <select value={exam.exam_type || ''} onChange={(e) => patchExam({ exam_type: e.target.value })}>
+              <select
+                value={exam.exam_type || ''}
+                onChange={(e) => patchExam({ exam_type: e.target.value })}
+                style={{ height: 42, padding: '0 .8rem', borderRadius: 12, border: '1px solid var(--soft)', background: 'var(--vt-tint2)', color: 'var(--ink)' }}
+              >
                 {EXAM_TYPES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </label>
-            <label className="adl-field">
+            <label className="vt-field">
               <span>Độ khó</span>
-              <select value={exam.difficulty || 'medium'} onChange={(e) => patchExam({ difficulty: e.target.value })}>
+              <select
+                value={exam.difficulty || 'medium'}
+                onChange={(e) => patchExam({ difficulty: e.target.value })}
+                style={{ height: 42, padding: '0 .8rem', borderRadius: 12, border: '1px solid var(--soft)', background: 'var(--vt-tint2)', color: 'var(--ink)' }}
+              >
                 {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </label>
-            <label className="adl-field">
+            <label className="vt-field">
               <span>Thời gian (phút)</span>
-              <input type="number" value={exam.duration ?? ''} onChange={(e) => patchExam({ duration: e.target.value })} min={1} max={300} />
+              <input
+                type="number"
+                value={exam.duration ?? ''}
+                onChange={(e) => patchExam({ duration: e.target.value })}
+                min={1}
+                max={300}
+              />
             </label>
           </div>
 
-          <label className="adl-field">
+          <label className="vt-field">
             <span>Nguồn đề</span>
-            <input type="text" value={exam.source || ''} onChange={(e) => patchExam({ source: e.target.value })} placeholder="VD: Sở GD&ĐT, trường THPT…" />
+            <input
+              type="text"
+              value={exam.source || ''}
+              onChange={(e) => patchExam({ source: e.target.value })}
+              placeholder="VD: Sở GD&ĐT, trường THPT…"
+            />
           </label>
 
-          <label className="adl-checkbox">
-            <input type="checkbox" checked={!!exam.is_published} onChange={(e) => patchExam({ is_published: e.target.checked })} />
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '.6rem',
+            padding: '.6rem .8rem',
+            background: exam.is_published ? 'color-mix(in srgb, var(--acc) 8%, var(--vt-tint))' : 'var(--vt-tint)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            font: '600 .88rem var(--sans)',
+          }}>
+            <input
+              type="checkbox"
+              checked={!!exam.is_published}
+              onChange={(e) => patchExam({ is_published: e.target.checked })}
+              style={{ accentColor: 'var(--acc)', width: 18, height: 18 }}
+            />
             <span>Hiển thị cho học sinh</span>
           </label>
+
           {exam.is_published && questions.length === 0 && (
-            <InlineAlert type="warn">Đề đang hiện nhưng chưa có câu hỏi nào. Hãy thêm câu hỏi bên dưới.</InlineAlert>
+            <div style={{
+              padding: '.7rem 1rem',
+              background: 'color-mix(in srgb, var(--vt-amber) 15%, var(--vt-tint))',
+              borderLeft: '3px solid var(--vt-amber)',
+              borderRadius: 10,
+              fontSize: '.85rem',
+              color: 'var(--ink)',
+            }}>
+              Đề đang hiện nhưng chưa có câu hỏi nào. Hãy thêm câu hỏi bên dưới.
+            </div>
           )}
         </div>
-      </section>
+      </div>
 
-      <section className="adl-panel">
-        <header className="adl-panel-head">
-          <h3><IconQuestion size={16} /><span>Câu hỏi ({questions.length})</span></h3>
-          <button type="button" className="adl-btn-sm primary" onClick={addQuestion}><IconPlus size={13} /> Thêm câu hỏi</button>
+      {/* ===== CÂU HỎI ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">
+            <IconQuestion size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+            Câu hỏi ({questions.length})
+          </h3>
+          <button type="button" className="vt-btn sm primary" onClick={addQuestion}>
+            <IconPlus size={13} /> Thêm câu hỏi
+          </button>
         </header>
 
+        {/* Bulk topic assign */}
         {unclassifiedCount > 0 && (
-          <div className="adl-filter-bar">
-            <span className="adl-hint">{unclassifiedCount} câu chưa có chuyên đề</span>
-            <select value={bulkTopic} onChange={(e) => setBulkTopic(e.target.value)} aria-label="Chọn chuyên đề để gán hàng loạt">
+          <div style={{
+            display: 'flex',
+            gap: '.5rem',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            padding: '.7rem .9rem',
+            background: 'var(--vt-tint)',
+            borderRadius: 14,
+            marginBottom: '1rem',
+          }}>
+            <span style={{ font: '600 .82rem var(--sans)', color: 'var(--mut)' }}>
+              {unclassifiedCount} câu chưa có chuyên đề
+            </span>
+            <select
+              value={bulkTopic}
+              onChange={(e) => setBulkTopic(e.target.value)}
+              style={{
+                padding: '.4rem .7rem',
+                borderRadius: 999,
+                border: '1px solid var(--soft)',
+                background: 'var(--bg)',
+                color: 'var(--ink)',
+                fontSize: '.82rem',
+              }}
+              aria-label="Chọn chuyên đề để gán hàng loạt"
+            >
               <option value="">Chọn chuyên đề…</option>
               <TopicOptions preferGrade={examGrade} />
             </select>
-            <button type="button" className="adl-btn-sm" onClick={applyTopicToUnclassified} disabled={!bulkTopic}>
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={applyTopicToUnclassified}
+              disabled={!bulkTopic}
+            >
               Gán cho {unclassifiedCount} câu
             </button>
           </div>
         )}
 
         {questions.length === 0 ? (
-          <EmptyState Icon={IconQuestion} title="Đề chưa có câu hỏi" action={<button type="button" className="adl-btn-primary" onClick={addQuestion}><IconPlus size={14} /> Thêm câu đầu tiên</button>}>
-            Thêm thủ công tại đây, hoặc quay lại tab Tạo đề để import/AI sinh câu hỏi.
-          </EmptyState>
+          <div className="vt-empty">
+            <span><IconQuestion size={30} /></span>
+            <h3>Đề chưa có câu hỏi</h3>
+            <p>Thêm thủ công tại đây, hoặc quay lại tab Tạo đề để import/AI sinh câu hỏi.</p>
+            <button type="button" className="vt-btn primary" onClick={addQuestion}>
+              <IconPlus size={14} /> Thêm câu đầu tiên
+            </button>
+          </div>
         ) : (
-          <ul className="adl-qedit-list">
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '.8rem' }}>
             {questions.map((q, qIdx) => {
               const saving = savingQ.has(q.id);
               const errs = qErrors[q.id];
               return (
-                <li key={q.id} className={'adl-qedit-item' + (q._dirty ? ' dirty' : '') + (errs ? ' invalid' : '')}>
-                  <div className="adl-qedit-head">
-                    <b>Câu {qIdx + 1}{q._new && <em className="adl-tag">Mới</em>}{q._dirty && !q._new && <em className="adl-tag warn">Chưa lưu</em>}</b>
-                    <div className="adl-qedit-actions">
-                      <button type="button" className="adl-btn-sm" onClick={() => saveQuestion(q)} disabled={saving || !q._dirty}>
-                        {saving ? <Spinner size={13} /> : <IconSave size={13} />} Lưu
+                <li
+                  key={q.id}
+                  style={{
+                    padding: '1rem 1.1rem',
+                    borderRadius: 16,
+                    background: 'var(--vt-tint)',
+                    borderLeft: errs ? '4px solid var(--vt-red)' : q._dirty ? '4px solid var(--vt-amber)' : '4px solid transparent',
+                    boxShadow: q._dirty ? '0 0 0 1px color-mix(in srgb, var(--vt-amber) 30%, transparent)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.8rem', gap: '.5rem' }}>
+                    <b style={{ font: '700 .9rem var(--sans)', display: 'inline-flex', alignItems: 'center', gap: '.4rem' }}>
+                      Câu {qIdx + 1}
+                      {q._new && (
+                        <span className="vt-chip" style={{ fontSize: '.62rem' }}>Mới</span>
+                      )}
+                      {q._dirty && !q._new && (
+                        <span className="vt-chip soon" style={{ fontSize: '.62rem' }}>Chưa lưu</span>
+                      )}
+                    </b>
+                    <div style={{ display: 'flex', gap: '.3rem' }}>
+                      <button
+                        type="button"
+                        className="vt-btn sm"
+                        onClick={() => saveQuestion(q)}
+                        disabled={saving || !q._dirty}
+                      >
+                        <IconSave size={13} /> {saving ? 'Đang lưu…' : 'Lưu'}
                       </button>
-                      <button type="button" className="adl-icon-btn-sm danger" onClick={() => handleDeleteQuestion(q, qIdx)} title="Xóa câu" aria-label={`Xóa câu ${qIdx + 1}`}>
+                      <button
+                        type="button"
+                        className="vt-icon-btn danger"
+                        onClick={() => handleDeleteQuestion(q, qIdx)}
+                        title="Xóa câu"
+                      >
                         <IconTrash size={14} />
                       </button>
                     </div>
                   </div>
 
-                  {errs && <InlineAlert type="error">Chưa lưu được: {errs.join(', ')}.</InlineAlert>}
+                  {errs && (
+                    <div style={{
+                      padding: '.6rem .9rem',
+                      background: 'color-mix(in srgb, var(--vt-red) 12%, var(--vt-tint))',
+                      borderLeft: '3px solid var(--vt-red)',
+                      borderRadius: 10,
+                      fontSize: '.8rem',
+                      color: 'var(--vt-red)',
+                      marginBottom: '.8rem',
+                    }}>
+                      Chưa lưu được: {errs.join(', ')}.
+                    </div>
+                  )}
 
-                  <label className="adl-field">
+                  <label className="vt-field">
                     <span>Nội dung câu hỏi</span>
-                    <textarea value={q.content || ''} onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, content: e.target.value }))} rows={2} />
+                    <textarea
+                      value={q.content || ''}
+                      onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, content: e.target.value }))}
+                      rows={2}
+                      style={{ padding: '.6rem .8rem', borderRadius: 12, minHeight: 'auto' }}
+                    />
                   </label>
 
-                  <fieldset className="adl-qedit-opts">
-                    <legend>Đáp án — chọn nút tròn ở đáp án đúng</legend>
-                    {q.answers.map((a) => (
-                      <div key={a.id} className={'adl-qedit-opt' + (a.is_correct ? ' correct' : '')}>
-                        <input type="radio" name={`correct-${q.id}`} checked={!!a.is_correct} onChange={() => setCorrect(q.id, a.id)} aria-label={`Đáp án ${a.label} là đáp án đúng`} />
-                        <b>{a.label}</b>
-                        <input type="text" value={a.content || ''} onChange={(e) => updateAnswer(q.id, a.id, e.target.value)} aria-label={`Nội dung đáp án ${a.label}`} />
-                        <button type="button" className="adl-icon-btn-sm" onClick={() => removeAnswer(q.id, a.id)} disabled={q.answers.length <= 2} title="Xóa đáp án" aria-label={`Xóa đáp án ${a.label}`}>
-                          <IconTrash size={13} />
+                  <fieldset style={{
+                    border: 0,
+                    padding: 0,
+                    margin: '.7rem 0',
+                  }}>
+                    <legend style={{
+                      font: '600 .72rem var(--sans)',
+                      color: 'var(--mut)',
+                      marginBottom: '.4rem',
+                    }}>
+                      Đáp án — chọn nút tròn ở đáp án đúng
+                    </legend>
+                    <div style={{ display: 'grid', gap: '.35rem' }}>
+                      {q.answers.map((a) => (
+                        <div
+                          key={a.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '.5rem',
+                            padding: '.45rem .7rem',
+                            borderRadius: 12,
+                            background: a.is_correct ? 'color-mix(in srgb, #22c55e 15%, var(--vt-tint))' : 'var(--panel)',
+                            border: a.is_correct ? '1.5px solid #22c55e' : '1.5px solid transparent',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name={`correct-${q.id}`}
+                            checked={!!a.is_correct}
+                            onChange={() => setCorrect(q.id, a.id)}
+                            style={{ accentColor: '#22c55e' }}
+                            aria-label={`Đáp án ${a.label} là đáp án đúng`}
+                          />
+                          <b style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: a.is_correct ? '#22c55e' : 'var(--vt-tint2)',
+                            color: a.is_correct ? '#fff' : 'var(--ink)',
+                            display: 'grid',
+                            placeItems: 'center',
+                            font: '700 .78rem var(--sans)',
+                            flexShrink: 0,
+                          }}>
+                            {a.label}
+                          </b>
+                          <input
+                            type="text"
+                            value={a.content || ''}
+                            onChange={(e) => updateAnswer(q.id, a.id, e.target.value)}
+                            aria-label={`Nội dung đáp án ${a.label}`}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '.4rem .6rem',
+                              borderRadius: 8,
+                              border: 0,
+                              background: 'transparent',
+                              color: 'var(--ink)',
+                              font: '500 .88rem var(--sans)',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="vt-icon-btn"
+                            onClick={() => removeAnswer(q.id, a.id)}
+                            disabled={q.answers.length <= 2}
+                            title="Xóa đáp án"
+                            style={{ width: 26, height: 26 }}
+                          >
+                            <IconTrash size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      {q.answers.length < ANSWER_LABELS.length && (
+                        <button
+                          type="button"
+                          className="vt-btn sm"
+                          onClick={() => addAnswer(q.id)}
+                          style={{ justifySelf: 'start' }}
+                        >
+                          <IconPlus size={12} /> Thêm đáp án
                         </button>
-                      </div>
-                    ))}
-                    {q.answers.length < ANSWER_LABELS.length && (
-                      <button type="button" className="adl-btn-sm" onClick={() => addAnswer(q.id)}><IconPlus size={12} /> Thêm đáp án</button>
-                    )}
+                      )}
+                    </div>
                   </fieldset>
 
-                  <label className="adl-field">
+                  <label className="vt-field" style={{ marginTop: '.5rem' }}>
                     <span>Lời giải</span>
-                    <textarea value={q.explanation || ''} onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, explanation: e.target.value }))} rows={2} />
+                    <textarea
+                      value={q.explanation || ''}
+                      onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, explanation: e.target.value }))}
+                      rows={2}
+                      style={{ padding: '.6rem .8rem', borderRadius: 12, minHeight: 'auto' }}
+                    />
                   </label>
 
-                  <div className="adl-qedit-meta">
-                    <label className="adl-field adl-field-inline">
-                      <span>Độ khó</span>
-                      <select value={q.difficulty || 'medium'} onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, difficulty: e.target.value }))}>
+                  <div style={{ display: 'flex', gap: '.7rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '.5rem' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', font: '600 .78rem var(--sans)' }}>
+                      <span style={{ color: 'var(--mut)' }}>Độ khó</span>
+                      <select
+                        value={q.difficulty || 'medium'}
+                        onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, difficulty: e.target.value }))}
+                        style={{
+                          padding: '.35rem .7rem',
+                          borderRadius: 999,
+                          border: '1px solid var(--soft)',
+                          background: 'var(--bg)',
+                          color: 'var(--ink)',
+                          fontSize: '.78rem',
+                        }}
+                      >
                         {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
                     </label>
-                    <label className="adl-field adl-field-inline">
-                      <span>Chuyên đề</span>
-                      <select value={q.topic_id || ''} onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, topic_id: e.target.value || null }))}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', font: '600 .78rem var(--sans)' }}>
+                      <span style={{ color: 'var(--mut)' }}>Chuyên đề</span>
+                      <select
+                        value={q.topic_id || ''}
+                        onChange={(e) => patchQuestion(q.id, (x) => ({ ...x, topic_id: e.target.value || null }))}
+                        style={{
+                          padding: '.35rem .7rem',
+                          borderRadius: 999,
+                          border: '1px solid var(--soft)',
+                          background: 'var(--bg)',
+                          color: 'var(--ink)',
+                          fontSize: '.78rem',
+                        }}
+                      >
                         <option value="">Chưa phân loại</option>
                         <TopicOptions preferGrade={examGrade} />
                       </select>
                     </label>
-                    {!errs && !q._dirty && <span className="adl-ok-text"><IconCheck size={14} /> Đã lưu</span>}
+                    {!errs && !q._dirty && (
+                      <span style={{ color: '#16a34a', font: '600 .78rem var(--sans)', display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}>
+                        <IconCheck size={13} /> Đã lưu
+                      </span>
+                    )}
                   </div>
                 </li>
               );
             })}
           </ul>
         )}
-      </section>
-    </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        body={confirm?.body}
+        okLabel={confirm?.okLabel}
+        danger={confirm?.danger}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          const fn = confirm?.onOk;
+          setConfirm(null);
+          fn?.();
+        }}
+      />
+
+      {toast && <div className="vt-toast" role="status">{toast}</div>}
+    </AdminShell>
   );
 }

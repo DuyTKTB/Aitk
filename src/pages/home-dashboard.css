@@ -1,0 +1,87 @@
+/* home-dashboard.css — thay home-pro.css + home-lindy.css cho trang Home.
+   (HeroLindy.css vẫn giữ nếu trang khác còn dùng.) */
+
+.db { width: min(var(--page-w), 100% - 2rem); margin: 0 auto; padding: calc(var(--nav-h) + var(--s-7)) 0 var(--s-8); }
+.db-head { margin-bottom: var(--s-5); }
+.db-head h1 { margin: 0; font: var(--fw-med) var(--fs-2xl)/var(--lh-tight) var(--sans); letter-spacing: -.035em; text-transform: none; }
+.db-head p { margin: var(--s-2) 0 0; color: var(--mut); }
+
+.db-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: var(--s-5); align-items: start; }
+.db-main, .db-side { display: grid; gap: var(--s-5); }
+.db-side { position: sticky; top: calc(var(--nav-h) + var(--s-5)); }
+
+/* ---- Ô hỏi CUAI: phần duy nhất được làm nổi ---- */
+.db-composer { padding: var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-2); transition: border-color var(--dur-2), box-shadow var(--dur-2); }
+.db-composer:focus-within { border-color: var(--acc); box-shadow: var(--sh-2), var(--ring); }
+.db-composer textarea { width: 100%; min-height: 4.2rem; resize: none; border: 0; outline: 0; background: none; padding: var(--s-1); font: var(--fw-reg) 1.1rem/1.5 var(--sans); color: var(--ink); caret-color: var(--acc); }
+.db-composer textarea::placeholder { color: var(--mut); }
+.db-composer-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-3); margin-top: var(--s-2); }
+.db-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.db-chips button { padding: .35rem .75rem; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface-2); color: var(--mut); font: var(--fs-xs)/1.3 var(--sans); cursor: pointer; transition: color var(--dur-1), border-color var(--dur-1); }
+.db-chips button:hover { color: var(--ink); border-color: var(--acc); }
+.db-chips button:focus-visible { outline: 0; box-shadow: var(--ring); }
+
+/* ---- Lối tắt: một hàng phẳng, một màu nhấn ---- */
+.db-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+.db-shortcuts a { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); min-width: 0; color: var(--ink); transition: background var(--dur-1); }
+.db-shortcuts a + a { border-left: 1px solid var(--line-soft); }
+.db-shortcuts a:hover { background: var(--soft); }
+.db-shortcuts a:focus-visible { outline: 0; box-shadow: inset var(--ring); }
+.db-shortcuts svg { flex: none; color: var(--acc-soft); }
+.db-shortcuts span { display: grid; min-width: 0; }
+.db-shortcuts b { font: var(--fw-med) var(--fs-sm)/1.3 var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-shortcuts small { color: var(--mut); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Hôm nay ---- */
+.db-today-line { display: flex; align-items: baseline; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.db-today-line b { font: var(--fw-med) 2.2rem/1 var(--sans); letter-spacing: -.04em; }
+.db-today-line span { color: var(--mut); }
+.db-today-line .ui-badge { margin-left: auto; }
+.db-bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.db-bar i { display: block; height: 100%; border-radius: inherit; background: var(--acc); transition: width var(--dur-3) var(--ease); }
+.db-week { display: grid; grid-template-columns: repeat(7, 1fr); margin: var(--s-4) 0 0; padding: 0; list-style: none; text-align: center; }
+.db-week li { display: grid; justify-items: center; gap: 6px; color: var(--mut); }
+.db-dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line); }
+.db-week .on .db-dot { background: var(--acc); border-color: var(--acc); }
+.db-week .today small { color: var(--ink); font-weight: var(--fw-bold); }
+.db-week small { font-size: var(--fs-xs); }
+
+/* ---- Ô chương kiểu bảng tuần hoàn ---- */
+.db-topics ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.db-topics button {
+  position: relative; width: 100%; aspect-ratio: 1; display: grid; place-content: center; justify-items: center; gap: 0; padding: 0;
+  border-radius: var(--r-xs); border: 1px solid color-mix(in srgb, var(--acc) 45%, var(--line)); cursor: pointer; color: var(--ink);
+  background: color-mix(in srgb, var(--acc) var(--m, 0%), var(--surface));
+  transition: transform var(--dur-1), box-shadow var(--dur-1);
+}
+.db-topics button.new { border-style: dashed; border-color: var(--line); background: transparent; color: var(--mut); }
+.db-topics button:hover { transform: translateY(-2px); box-shadow: var(--sh-1); z-index: 1; }
+.db-topics button:focus-visible { outline: 0; box-shadow: var(--ring); }
+.db-topics small { position: absolute; top: 3px; left: 5px; font-size: .62rem; opacity: .8; }
+.db-topics b { font: var(--fw-med) 1.25rem/1 var(--sans); letter-spacing: -.03em; }
+.db-topics span { display: none; }
+/* nền xanh đậm (≥55%) dùng chữ sáng để đủ tương phản */
+.db-topics button.hi { color: #fff; }
+
+/* ---- Học tiếp ---- */
+.db-recent ul { margin: 0; padding: 0; list-style: none; }
+.db-recent li + li { border-top: 1px solid var(--line-soft); }
+.db-recent a { display: flex; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) 0; color: var(--ink); }
+.db-recent a:hover span { color: var(--acc-soft); }
+.db-recent a:focus-visible { outline: 0; box-shadow: var(--ring); border-radius: var(--r-xs); }
+.db-recent span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-recent time { flex: none; color: var(--mut); font-size: var(--fs-sm); }
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .db-grid { grid-template-columns: 1fr; }
+  .db-side { position: static; }
+}
+@media (max-width: 640px) {
+  .db { padding-top: calc(var(--nav-h) + var(--s-6)); padding-bottom: calc(var(--bottom-nav-h) + var(--s-7)); }
+  .db-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .db-shortcuts a:nth-child(3) { border-left: 0; }
+  .db-shortcuts a:nth-child(n+3) { border-top: 1px solid var(--line-soft); }
+  .db-composer-bar { flex-direction: column-reverse; align-items: stretch; }
+  .db-composer-bar .ui-btn { width: 100%; }
+}

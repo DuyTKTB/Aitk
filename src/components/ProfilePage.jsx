@@ -6,6 +6,8 @@ import VerifiedBadge from './VerifiedBadge.jsx';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
 import ProfileStats from './ProfileStats.jsx';
 import ProfileAchievements from './ProfileAchievements.jsx';
+import TeacherProPanel from './TeacherProPanel.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { IcoCamera, IcoSpinner } from './ProfileIcons.jsx';
 import './ProfileFB.css';
 
@@ -100,6 +102,8 @@ export default function ProfilePage() {
     updateDisplayName, changePassword, sendVerifyEmail,
     refreshUser, refreshTier, uploadAvatar,
   } = useAuth();
+
+  const pro = useTeacherPro();
 
   const [tab, setTab] = useState(() => ls.get('cs-profile-tab', 'info'));
   const [secTab, setSecTab] = useState('password');
@@ -212,7 +216,13 @@ export default function ProfilePage() {
   const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
   const syncTier = run(refreshTier, (t) => ok(`Gói hiện tại: ${t?.name || tier?.name || 'Miễn phí'}`));
 
-  const TABS = [['info', 'Hồ sơ', 'user'], ['security', 'Bảo mật', 'shield'], ['upgrade', 'Gói dùng', 'crown']];
+  /* TABS — có thêm tab Giáo viên */
+  const TABS = [
+    ['info', 'Hồ sơ', 'user'],
+    ['security', 'Bảo mật', 'shield'],
+    ['upgrade', 'Gói dùng', 'crown'],
+    ['teacher', pro.isPro ? 'Giáo viên PRO' : 'Kích hoạt PRO', 'crown'],
+  ];
   const SEC = [['password', 'Mật khẩu'], ['verify', 'Xác thực email'], ['devices', 'Phiên đăng nhập']];
 
   const onTabKey = (e) => {
@@ -230,19 +240,27 @@ export default function ProfilePage() {
 
       <div className="pf-grid">
         {/* ============ THẺ ĐỊNH DANH ============ */}
-        <aside className="pf-card" style={{ '--tier': tier?.color || '#6b675e' }}>
-          <div className="pf-card-band"><span>{tier?.name || 'Free'}</span><span>№ {identCode}</span></div>
+        <aside className="pf-card" style={{ '--tier': pro.isPro ? '#f59e0b' : (tier?.color || '#6b675e') }}>
+          <div className="pf-card-band">
+            <span>{pro.isPro ? 'GIÁO VIÊN PRO' : (tier?.name || 'Free')}</span>
+            <span>№ {identCode}</span>
+          </div>
           <div className="pf-card-body">
             <Avatar
               photoURL={user?.photoURL}
               initial={initial}
               color={color}
-              isVip={isVip}
+              isVip={isVip || pro.isPro}
               onUpload={handleUpload}
               uploading={uploading}
             />
-            <h1 className="pf-name">{display || 'Ẩn danh'}{isVip && <VerifiedBadge isVip size={20} />}</h1>
-            <p className="pf-rank">{rankFor(tier)}</p>
+            <h1 className="pf-name">
+              {display || 'Ẩn danh'}
+              {(isVip || pro.isPro) && <VerifiedBadge isVip size={20} />}
+            </h1>
+            <p className="pf-rank">
+              {pro.isPro ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}
+            </p>
 
             {!user?.photoURL && (
               <div className="pf-swatches" role="radiogroup" aria-label="Màu avatar">
@@ -405,6 +423,13 @@ export default function ProfilePage() {
                   <div><b>Nâng cấp lên CUAI VIP</b><p>Nhắn Admin qua Facebook, sau khi xác nhận thanh toán tài khoản được nâng trong 24 giờ.</p>
                     <div className="pf-actions flat"><button type="button" className="pf-btn" onClick={syncTier} disabled={loading}><Glyph name="refresh" size={15} />Làm mới trạng thái gói</button></div></div>
                 </div>
+              </>
+            )}
+
+            {/* ============ TAB: GIÁO VIÊN PRO ============ */}
+            {tab === 'teacher' && (
+              <>
+                <TeacherProPanel />
               </>
             )}
           </div>

@@ -1,0 +1,377 @@
+/* ============================================================
+   live-session-banner.css — Banner thông báo phòng thi cho HS
+   Prefix: lsb-
+   ============================================================ */
+
+.lsb-wrap {
+  position: fixed;
+  top: calc(var(--nav-h, 52px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9997;
+  width: min(640px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  pointer-events: none;
+}
+
+.lsb-banner {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: .85rem 1rem;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #fff;
+  border-radius: 16px;
+  box-shadow:
+    0 12px 40px -8px rgba(220, 38, 38, .5),
+    0 4px 12px rgba(0, 0, 0, .15),
+    inset 0 1px 0 rgba(255, 255, 255, .15);
+  animation: lsb-in .4s var(--ease, cubic-bezier(.2,.7,.2,1));
+  overflow: hidden;
+}
+
+/* Ánh sáng quét qua (gloss) */
+.lsb-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, .18),
+    transparent);
+  animation: lsb-gloss 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes lsb-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lsb-gloss {
+  0% { left: -100%; }
+  60%, 100% { left: 200%; }
+}
+
+/* Urgent mode (< 5 phút) */
+.lsb-banner.urgent {
+  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+  animation: lsb-in .4s var(--ease, ease), lsb-pulse 2s ease-in-out infinite;
+}
+
+@keyframes lsb-pulse {
+  0%, 100% {
+    box-shadow:
+      0 12px 40px -8px rgba(220, 38, 38, .5),
+      0 4px 12px rgba(0, 0, 0, .15),
+      inset 0 1px 0 rgba(255, 255, 255, .15);
+  }
+  50% {
+    box-shadow:
+      0 12px 48px -8px rgba(220, 38, 38, .85),
+      0 4px 20px rgba(220, 38, 38, .4),
+      inset 0 1px 0 rgba(255, 255, 255, .2);
+  }
+}
+
+/* ---- Chấm LIVE ---- */
+.lsb-dot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #fff;
+  position: relative;
+}
+
+.lsb-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .3);
+  animation: lsb-ping 1.6s ease-out infinite;
+}
+
+@keyframes lsb-ping {
+  0% { transform: scale(.5); opacity: .9; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ---- Icon loa ---- */
+.lsb-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .18);
+  flex-shrink: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ---- Nội dung ---- */
+.lsb-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.lsb-title-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .2rem;
+}
+
+.lsb-title {
+  font: 700 1rem var(--sans, system-ui);
+  letter-spacing: -.02em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lsb-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .15rem .5rem;
+  background: #fff;
+  color: #dc2626;
+  border-radius: 6px;
+  font: 800 .6rem var(--mono, monospace);
+  letter-spacing: .08em;
+  flex-shrink: 0;
+  animation: lsb-live-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes lsb-live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+
+.lsb-meta {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin: 0;
+  font: 500 .75rem var(--sans, system-ui);
+  color: rgba(255, 255, 255, .85);
+  flex-wrap: wrap;
+}
+
+.lsb-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.lsb-sep {
+  opacity: .5;
+}
+
+.lsb-time {
+  font-family: var(--mono, monospace);
+  font-weight: 700;
+  color: #fff !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.lsb-time.urgent {
+  color: #fef08a !important;
+  animation: lsb-time-blink 1s ease-in-out infinite;
+}
+
+@keyframes lsb-time-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+/* ---- Actions ---- */
+.lsb-actions {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-shrink: 0;
+}
+
+.lsb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform .15s, background .15s, color .15s;
+}
+
+.lsb-btn:active {
+  transform: scale(.95);
+}
+
+.lsb-btn-enter {
+  padding: .55rem 1rem;
+  background: #fff;
+  color: #dc2626;
+  font: 700 .82rem var(--sans, system-ui);
+  letter-spacing: -.01em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+  white-space: nowrap;
+}
+
+.lsb-btn-enter:hover {
+  background: #fef2f2;
+  transform: translateY(-1px);
+}
+
+.lsb-btn-enter svg {
+  fill: currentColor;
+}
+
+.lsb-btn-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+}
+
+.lsb-btn-close:hover {
+  background: rgba(255, 255, 255, .28);
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 720px) {
+  .lsb-wrap {
+    top: calc(var(--nav-h, 52px) + 8px);
+    width: calc(100vw - 16px);
+    gap: .4rem;
+  }
+
+  .lsb-banner {
+    gap: .6rem;
+    padding: .7rem .8rem;
+    border-radius: 14px;
+    flex-wrap: wrap;
+  }
+
+  .lsb-ico {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .lsb-ico svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .lsb-title {
+    font-size: .9rem;
+  }
+
+  .lsb-meta {
+    font-size: .7rem;
+  }
+
+  .lsb-actions {
+    width: 100%;
+    justify-content: stretch;
+    gap: .35rem;
+  }
+
+  .lsb-btn-enter {
+    flex: 1;
+    padding: .55rem .8rem;
+    font-size: .82rem;
+  }
+
+  .lsb-btn-close {
+    width: 38px;
+    height: 38px;
+  }
+
+  .lsb-meta span:not(.lsb-time):not(:first-child) {
+    display: none;
+  }
+
+  .lsb-sep {
+    display: none;
+  }
+}
+
+.lsb-wrap .lsb-banner + .lsb-banner {
+  margin-top: 0;
+}
+
+/* ============================================================
+   TABLET
+   ============================================================ */
+@media (min-width: 721px) and (max-width: 1024px) {
+  .lsb-wrap {
+    width: min(560px, calc(100vw - 32px));
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .lsb-banner,
+  .lsb-banner::before,
+  .lsb-dot::before,
+  .lsb-live-tag,
+  .lsb-time.urgent {
+    animation: none !important;
+  }
+
+  .lsb-btn-enter:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   DARK MODE tweak
+   ============================================================ */
+[data-theme='dark'] .lsb-banner {
+  box-shadow:
+    0 12px 48px -8px rgba(220, 38, 38, .65),
+    0 4px 16px rgba(0, 0, 0, .4),
+    inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+
+[data-theme='dark'] .lsb-banner.urgent {
+  box-shadow:
+    0 12px 52px -8px rgba(220, 38, 38, .9),
+    0 4px 20px rgba(220, 38, 38, .5),
+    inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+
+/* ============================================================
+   FALLBACK — backdrop-filter
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lsb-ico {
+    background: rgba(255, 255, 255, .25);
+  }
+}
