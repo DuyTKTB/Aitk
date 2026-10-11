@@ -2,7 +2,7 @@
 
 import { auth, db } from '../lib/firebase.js';
 import { doc, getDoc } from 'firebase/firestore';
-import { askAI as callModel, compressImage } from './ai.js';
+import { askAI as callModel, compressImage } from '../lib/ai.js';
 
 export const UPGRADE_URL = '/vip';
 
