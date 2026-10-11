@@ -22,7 +22,7 @@ export default function Maintenance({ info }) {
     return () => clearInterval(t);
   }, []);
 
-  const title = info?.title || 'CUAI đang bảo trì';
+  const title = info?.title || 'ELECAI đang bảo trì';
   const message =
     info?.message ||
     'Hệ thống đang được nâng cấp để phục vụ bạn tốt hơn. Vui lòng quay lại sau ít phút.';
@@ -125,7 +125,7 @@ export default function Maintenance({ info }) {
 
         {/* Footer */}
         <p className="mt-footer">
-          © 2026 A7 K60 DTA — bycode Duy TK
+          © 2026 ELEC AI — bycode Duy TK
         </p>
       </div>
     </div>

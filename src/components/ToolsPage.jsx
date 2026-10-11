@@ -517,15 +517,15 @@ export default function ToolsPage() {
 
   const filteredHot = useMemo(() => {
     const q = norm(search.trim());
-    const cuai = HOT_AI.__list.find((t) => t.id === 'cuai');
+    const ELECAI = HOT_AI.__list.find((t) => t.id === 'ELECAI');
     let others = HOT_AI.__list.filter((t) => {
-      if (t.id === 'cuai') return false;
+      if (t.id === 'ELECAI') return false;
       if (activePrice !== 'all' && !t.price?.includes(activePrice)) return false;
       return !q || norm(`${t.name} ${t.desc} ${t.why} ${t.bestFor?.join(' ')}`).includes(q);
     });
     if (sortBy === 'rating') others = [...others].sort((a, b) => b.rating - a.rating);
     if (sortBy === 'name') others = [...others].sort((a, b) => a.name.localeCompare(b.name));
-    return cuai ? [cuai, ...others] : others;
+    return ELECAI ? [ELECAI, ...others] : others;
   }, [search, activePrice, sortBy]);
 
   const filteredStudy = useMemo(() => {
@@ -592,7 +592,7 @@ export default function ToolsPage() {
         </div>
         {renderStar(tool)}
         <a href={tool.url} target="_blank" rel="noopener noreferrer" className="tc-link" aria-label={`Mở ${tool.name}`}>
-          <Logo domain={tool.domain} Fallback={Icon} CuaiLogo={AIMark} size={big ? 52 : 40} />
+          <Logo domain={tool.domain} Fallback={Icon} ELECAILogo={AIMark} size={big ? 52 : 40} />
           <span className="tc-name">{tool.name}</span>
           <span className="tc-desc">{tool.desc}</span>
         </a>
@@ -620,30 +620,30 @@ export default function ToolsPage() {
     );
   };
 
-  const renderCuai = (tool) => {
+  const renderELECAI = (tool) => {
     const Icon = CAT_ICONS[tool.cat];
     return (
-      <section className="tc-cuai" aria-label="CUAI">
-        <div className="tc-cuai-main">
-          <div className="tc-cuai-id">
-            <Logo domain={tool.domain} Fallback={Icon} size={64} CuaiLogo={AIMark} />
+      <section className="tc-ELECAI" aria-label="ELECAI">
+        <div className="tc-ELECAI-main">
+          <div className="tc-ELECAI-id">
+            <Logo domain={tool.domain} Fallback={Icon} size={64} ELECAILogo={AIMark} />
             <div>
               <h2>{tool.name}</h2>
-              <span className="tc-cuai-by">{tool.domain}</span>
+              <span className="tc-ELECAI-by">{tool.domain}</span>
             </div>
           </div>
-          <p className="tc-cuai-desc">{tool.desc}</p>
-          <p className="tc-cuai-why">{tool.why}</p>
-          <div className="tc-cuai-foot">
+          <p className="tc-ELECAI-desc">{tool.desc}</p>
+          <p className="tc-ELECAI-why">{tool.why}</p>
+          <div className="tc-ELECAI-foot">
             <a {...openProps(tool)} className="tc-btn accent">
               Dùng ngay <IconArrowUpRight size={14} />
             </a>
             {renderStar(tool)}
           </div>
         </div>
-        <div className="tc-cuai-side">
-          <div className="tc-el" aria-hidden="true"><span>29</span><b>Cu</b><i>CUAI</i></div>
-          <h3>Dùng CUAI để</h3>
+        <div className="tc-ELECAI-side">
+          <div className="tc-el" aria-hidden="true"><span>29</span><b>Cu</b><i>ELECAI</i></div>
+          <h3>Dùng ELECAI để</h3>
           <ul>{tool.bestFor?.map((b) => <li key={b}>{b}</li>)}</ul>
         </div>
       </section>
@@ -659,7 +659,7 @@ export default function ToolsPage() {
           <button type="button" className="tc-row-toggle" aria-expanded={open}
             onClick={() => setOpenHot(open ? null : tool.id)}>
             <span className="tc-rank">{tool.rank}</span>
-            <Logo domain={tool.domain} Fallback={Icon} size={40} CuaiLogo={AIMark} />
+            <Logo domain={tool.domain} Fallback={Icon} size={40} ELECAILogo={AIMark} />
             <span className="tc-row-text">
               <span className="tc-name">{tool.name}</span>
               <span className="tc-desc">{tool.desc}</span>
@@ -704,7 +704,7 @@ export default function ToolsPage() {
     );
   };
 
-  const hotOthers = filteredHot.filter((t) => t.id !== 'cuai');
+  const hotOthers = filteredHot.filter((t) => t.id !== 'ELECAI');
   const tabList = [
     ['docs', 'Tài liệu', DOCS.length],
     ['exam', 'Đề thi', EXAMS.length],
@@ -720,7 +720,7 @@ export default function ToolsPage() {
     <section className="wrap tools-page tk-page tc">
       <div className="tn-shell">
         <aside className="tn-side" aria-label="Danh mục công cụ">
-          <div className="tn-side-brand"><b>Công cụ</b><small>A7 K60 DTA</small></div>
+          <div className="tn-side-brand"><b>Công cụ</b><small>ELEC AI</small></div>
           <p className="tn-side-label">Danh mục</p>
           {tabList.map(([id, label, n]) => (
             <button key={id} type="button" className={'tn-side-item' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
@@ -816,14 +816,14 @@ export default function ToolsPage() {
             <>
               <p className="tc-lede">
                 {HOT_AI.__list.length} AI được chọn lọc, mỗi cái có ưu nhược điểm, mức giá và việc nó làm tốt nhất.
-                CUAI, trợ lý Hóa học của chính A7 K60 DTA, đứng đầu danh sách. Cập nhật theo xu hướng 2026.
+                ELECAI, trợ lý Hóa học của chính ELEC AI, đứng đầu danh sách. Cập nhật theo xu hướng 2026.
               </p>
 
               {renderControls(true)}
 
               <p className="tools-count">Hiển thị <b>{filteredHot.length}</b> AI hot</p>
 
-              {filteredHot[0]?.id === 'cuai' && renderCuai(filteredHot[0])}
+              {filteredHot[0]?.id === 'ELECAI' && renderELECAI(filteredHot[0])}
 
               <ul className="tc-list">{hotOthers.map(renderHotRow)}</ul>
 
@@ -959,7 +959,7 @@ export default function ToolsPage() {
               isFav={favs.includes(quickView.id)}
               onCopy={() => copyLink(quickView)}
               onShare={() => shareTool(quickView)}
-              CuaiLogo={AIMark}
+              ELECAILogo={AIMark}
             />
           )}
 

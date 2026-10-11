@@ -365,7 +365,7 @@ function MagBtn({ as: Tag = 'button', className = '', children, ...rest }) {
 function Logo({ size = 40 }) {
   const [err, setErr] = useState(false);
   if (err) return <IcoLogoFallback size={size} />;
-  return <img src={LOGO} alt="A7 K60 DTA" width={size} height={size} onError={() => setErr(true)} />;
+  return <img src={LOGO} alt="ELEC AI" width={size} height={size} onError={() => setErr(true)} />;
 }
 
 /* ============================================================
@@ -601,7 +601,7 @@ function Tools() {
               <u className="ai">Bước 1: Viết phương trình…</u>
               <u className="ai">4Fe + 3O₂ → 2Fe₂O₃ ✓</u>
             </div>
-            <h3>CU AI</h3>
+            <h3>ELEC AI</h3>
             <p>Trợ lý Hóa học cho Lớp 10, 11, 12 và Đại học. Gõ, dán ảnh đề hoặc nói bằng giọng, có lịch sử trò chuyện để quay lại bài cũ.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Hỏi thử <IcoArrow size={15} /></button>
           </article>
@@ -776,7 +776,7 @@ function Faq() {
           Câu hỏi <span className="lp-faq-em">thường gặp</span>
         </h2>
         <p className="lp-faq-lead">
-          Những thắc mắc phổ biến nhất khi bắt đầu học Hóa cùng A7 K60 DTA.
+          Những thắc mắc phổ biến nhất khi bắt đầu học Hóa cùng ELEC AI.
           Không thấy câu trả lời? Gửi phản hồi cho tụi mình.
         </p>
       </div>
@@ -979,7 +979,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
                   </span>
                 ))}
               </div>
-              <p className="lp-brand-tag" aria-hidden="true">A7 K60 DTA</p>
+              <p className="lp-brand-tag" aria-hidden="true">ELEC AI</p>
             </div>
 
             <div className="lp-hero-ask">

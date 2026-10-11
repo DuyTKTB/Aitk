@@ -164,7 +164,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
               height="40"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <b>A7 K60 DTA</b>
+            <b>ELEC AI</b>
           </div>
           <h2>
             Học Hóa học<br />

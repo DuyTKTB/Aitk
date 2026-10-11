@@ -13,7 +13,7 @@ export default function NotFound() {
           <p>{bad ? <>Địa chỉ <code>{bad}</code> không tồn tại hoặc đã được chuyển.</> : 'Trang bạn mở không tồn tại hoặc đã được chuyển.'}</p>
           <div className="nf-actions">
             <Button variant="primary" href="#home">Về trang chủ</Button>
-            <Button href="#ai">Hỏi CUAI</Button>
+            <Button href="#ai">Hỏi ELECAI</Button>
             <Button href="#feedback">Báo link hỏng</Button>
           </div>
         </div>

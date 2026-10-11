@@ -623,7 +623,7 @@
 
 .lp-card-done {
   border-color: #16a34a;
-  background: color-mix(in srgb, #16a34a 5%, var(--panel));
+  background: #f3faf6; background: color-mix(in srgb, #16a34a 5%, var(--panel));
 }
 
 .lp-card-kicked {
@@ -697,12 +697,12 @@
 }
 
 .lp-log-item.sev-hard {
-  background: color-mix(in srgb, #dc2626 8%, var(--soft));
-  border-color: color-mix(in srgb, #dc2626 22%, transparent);
+  background: #e4d8db; background: color-mix(in srgb, #dc2626 8%, var(--soft));
+  border-color: rgba(220,38,38,0.22); border-color: color-mix(in srgb, #dc2626 22%, transparent);
 }
 
 .lp-log-item.sev-hard:hover {
-  background: color-mix(in srgb, #dc2626 14%, var(--soft));
+  background: #e4cccf; background: color-mix(in srgb, #dc2626 14%, var(--soft));
 }
 
 .lp-log-ico {
@@ -882,8 +882,8 @@
 }
 
 .lp-stat-card.danger {
-  border-color: color-mix(in srgb, #dc2626 40%, var(--soft));
-  background: color-mix(in srgb, #dc2626 4%, var(--panel));
+  border-color: #e19a9c; border-color: color-mix(in srgb, #dc2626 40%, var(--soft));
+  background: #fef6f6; background: color-mix(in srgb, #dc2626 4%, var(--panel));
 }
 
 .lp-stat-icon {
@@ -1103,7 +1103,7 @@
   font: 500 .8rem var(--sans);
 }
 
-.lp-modal-viol li.sev-hard { background: color-mix(in srgb, #dc2626 8%, var(--soft)); }
+.lp-modal-viol li.sev-hard { background: #e4d8db; background: color-mix(in srgb, #dc2626 8%, var(--soft)); }
 
 .lp-viol-time {
   font: 600 .68rem var(--mono);
@@ -1213,8 +1213,8 @@
    ============================================================ */
 .lp-modal-burst {
   padding: 1rem 1.1rem;
-  background: color-mix(in srgb, #f59e0b 8%, var(--panel));
-  border: 1.5px solid color-mix(in srgb, #f59e0b 35%, var(--soft));
+  background: #fef7eb; background: color-mix(in srgb, #f59e0b 8%, var(--panel));
+  border: 1.5px solid #ebcd9d; border: 1.5px solid color-mix(in srgb, #f59e0b 35%, var(--soft));
   border-radius: 14px;
   animation: lp-fade-in .4s var(--ease);
 }

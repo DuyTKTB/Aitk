@@ -42,7 +42,7 @@
 .cep-tab.on {
   background: var(--panel);
   color: var(--acc);
-  box-shadow: 0 2px 10px -4px color-mix(in srgb, var(--ink) 20%, transparent);
+  box-shadow: 0 2px 10px -4px rgba(17,24,39,0.20); box-shadow: 0 2px 10px -4px color-mix(in srgb, var(--ink) 20%, transparent);
 }
 .cep-tab svg { flex-shrink: 0; }
 
@@ -51,7 +51,8 @@
   background: var(--panel);
   border-radius: 22px;
   padding: 1.4rem 1.5rem;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 5%, transparent),
+  box-shadow: 0 0 0 1px rgba(17,24,39,0.05),
+              0 14px 34px -18px rgba(17,24,39,0.38); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 5%, transparent),
               0 14px 34px -18px color-mix(in srgb, var(--ink) 38%, transparent);
 }
 .cep-card-head {
@@ -153,10 +154,10 @@
   transition: background .2s;
   border: 1.5px solid transparent;
 }
-.cep-check:hover { background: color-mix(in srgb, var(--acc) 6%, var(--vt-tint)); }
+.cep-check:hover { background: #e8efff; background: color-mix(in srgb, var(--acc) 6%, var(--vt-tint)); }
 .cep-check.on {
-  background: color-mix(in srgb, var(--acc) 10%, var(--vt-tint));
-  border-color: color-mix(in srgb, var(--acc) 40%, transparent);
+  background: #e0e9ff; background: color-mix(in srgb, var(--acc) 10%, var(--vt-tint));
+  border-color: rgba(47,107,255,0.40); border-color: color-mix(in srgb, var(--acc) 40%, transparent);
 }
 .cep-check input[type="checkbox"],
 .cep-check input[type="radio"] {
@@ -207,7 +208,7 @@
   font: 700 .65rem var(--sans);
 }
 .cep-qbadge.warn {
-  background: color-mix(in srgb, var(--vt-amber) 20%, var(--vt-tint));
+  background: #f4e5ce; background: color-mix(in srgb, var(--vt-amber) 20%, var(--vt-tint));
   color: #a16207;
 }
 
@@ -223,7 +224,7 @@
   margin-bottom: .4rem;
 }
 .cep-opt-row.correct {
-  background: color-mix(in srgb, #22c55e 12%, var(--panel));
+  background: #e4f8ec; background: color-mix(in srgb, #22c55e 12%, var(--panel));
   border-color: #22c55e;
 }
 .cep-opt-key {
@@ -282,9 +283,9 @@
   align-items: center;
   gap: .4rem;
   padding: .6rem 1.1rem;
-  border: 1.5px dashed color-mix(in srgb, var(--acc) 45%, transparent);
+  border: 1.5px dashed rgba(47,107,255,0.45); border: 1.5px dashed color-mix(in srgb, var(--acc) 45%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--acc) 5%, transparent);
+  background: rgba(47,107,255,0.05); background: color-mix(in srgb, var(--acc) 5%, transparent);
   color: var(--acc);
   font: 700 .82rem var(--sans);
   cursor: pointer;
@@ -323,7 +324,7 @@
   gap: .3rem;
   padding: .3rem .7rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--vt-amber) 20%, transparent);
+  background: rgba(245,158,11,0.20); background: color-mix(in srgb, var(--vt-amber) 20%, transparent);
   color: #a16207;
   font: 700 .72rem var(--sans);
 }
@@ -339,17 +340,17 @@
   line-height: 1.5;
 }
 .cep-alert.error {
-  background: color-mix(in srgb, var(--vt-red) 10%, transparent);
+  background: rgba(220,38,38,0.10); background: color-mix(in srgb, var(--vt-red) 10%, transparent);
   border-left: 3px solid var(--vt-red);
   color: var(--vt-red);
 }
 .cep-alert.warn {
-  background: color-mix(in srgb, var(--vt-amber) 15%, transparent);
+  background: rgba(245,158,11,0.15); background: color-mix(in srgb, var(--vt-amber) 15%, transparent);
   border-left: 3px solid var(--vt-amber);
   color: #a16207;
 }
 .cep-alert.info {
-  background: color-mix(in srgb, var(--acc) 8%, transparent);
+  background: rgba(47,107,255,0.08); background: color-mix(in srgb, var(--acc) 8%, transparent);
   border-left: 3px solid var(--acc);
   color: var(--acc);
 }
@@ -416,15 +417,15 @@
   align-items: center;
   gap: .5rem;
   padding: 2.2rem 1.4rem;
-  border: 2px dashed color-mix(in srgb, var(--acc) 35%, transparent);
+  border: 2px dashed rgba(47,107,255,0.35); border: 2px dashed color-mix(in srgb, var(--acc) 35%, transparent);
   border-radius: 22px;
-  background: color-mix(in srgb, var(--acc) 4%, var(--panel));
+  background: #f7f9ff; background: color-mix(in srgb, var(--acc) 4%, var(--panel));
   text-align: center;
   transition: all .25s cubic-bezier(.22,1,.36,1);
 }
 .cep-drop.on {
   border-color: var(--acc);
-  background: color-mix(in srgb, var(--acc) 12%, var(--panel));
+  background: #e6edff; background: color-mix(in srgb, var(--acc) 12%, var(--panel));
   transform: scale(1.01);
 }
 .cep-drop-icon {
@@ -487,7 +488,7 @@
   padding: .2rem .4rem;
   border-radius: 6px;
 }
-.cep-link:hover { background: color-mix(in srgb, var(--vt-red) 10%, transparent); }
+.cep-link:hover { background: rgba(220,38,38,0.10); background: color-mix(in srgb, var(--vt-red) 10%, transparent); }
 
 .cep-files-list {
   display: grid;
@@ -501,7 +502,7 @@
   padding: .6rem .8rem;
   background: var(--panel);
   border-radius: 14px;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
+  box-shadow: 0 0 0 1px rgba(17,24,39,0.06); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .cep-filecard.loading {
   justify-content: center;
@@ -543,7 +544,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid color-mix(in srgb, var(--acc) 30%, transparent);
+  border: 2px solid rgba(47,107,255,0.30); border: 2px solid color-mix(in srgb, var(--acc) 30%, transparent);
   border-top-color: var(--acc);
   border-radius: 50%;
   animation: cep-spin .8s linear infinite;
@@ -556,7 +557,7 @@
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: color-mix(in srgb, #050a24 55%, transparent);
+  background: rgba(5,10,36,0.55); background: color-mix(in srgb, #050a24 55%, transparent);
   backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
@@ -611,7 +612,8 @@
   min-height: 480px;
   background: var(--panel);
   border-radius: 22px;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 5%, transparent),
+  box-shadow: 0 0 0 1px rgba(17,24,39,0.05),
+              0 14px 34px -18px rgba(17,24,39,0.38); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 5%, transparent),
               0 14px 34px -18px color-mix(in srgb, var(--ink) 38%, transparent);
   overflow: hidden;
 }
@@ -621,7 +623,7 @@
   position: absolute;
   inset: 0;
   z-index: 100;
-  background: color-mix(in srgb, var(--acc) 15%, var(--panel));
+  background: #e0e9ff; background: color-mix(in srgb, var(--acc) 15%, var(--panel));
   backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
@@ -804,7 +806,7 @@
 }
 .cea-msg-text p { margin: 0; }
 .cea-msg-text.error {
-  background: color-mix(in srgb, var(--vt-red) 12%, var(--vt-tint));
+  background: #f1dee5; background: color-mix(in srgb, var(--vt-red) 12%, var(--vt-tint));
   color: var(--vt-red);
   border-left: 3px solid var(--vt-red);
 }
@@ -904,7 +906,7 @@
 .cea-result {
   padding: .8rem 1rem;
   border-radius: 14px;
-  background: color-mix(in srgb, #22c55e 8%, var(--vt-tint));
+  background: #e3f3f2; background: color-mix(in srgb, #22c55e 8%, var(--vt-tint));
   border-left: 3px solid #22c55e;
   display: flex;
   flex-direction: column;
@@ -998,7 +1000,7 @@
   padding: .35rem .5rem .35rem .4rem;
   border-radius: 12px;
   background: var(--panel);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
+  box-shadow: 0 0 0 1px rgba(17,24,39,0.06); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
   max-width: 240px;
 }
 .cea-file-chip.loading { padding: .5rem .9rem; color: var(--mut); font: 500 .78rem var(--sans); }
@@ -1133,7 +1135,7 @@
   font: 600 .82rem var(--sans);
 }
 .cea-alert.error {
-  background: color-mix(in srgb, var(--vt-red) 12%, var(--vt-tint));
+  background: #f1dee5; background: color-mix(in srgb, var(--vt-red) 12%, var(--vt-tint));
   border-left: 3px solid var(--vt-red);
   color: var(--vt-red);
 }
@@ -1143,7 +1145,7 @@
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid color-mix(in srgb, var(--acc) 30%, transparent);
+  border: 2px solid rgba(47,107,255,0.30); border: 2px solid color-mix(in srgb, var(--acc) 30%, transparent);
   border-top-color: var(--acc);
   border-radius: 50%;
   animation: cea-spin .8s linear infinite;
@@ -1162,4 +1164,19 @@
   .cea-suggestions { grid-template-columns: 1fr; }
   .cea-input-bar { padding: .6rem .7rem; }
   .cea-chat { padding: .8rem; }
+}/* ---- Banner khôi phục nháp (thêm vào cuối create-exam-page.css) ---- */
+.cep-draft-banner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .7rem;
+  margin: 0 0 1rem; padding: .8rem 1rem; border-radius: 14px;
+  background: #fef9e7; background: color-mix(in srgb, #f59e0b 12%, var(--panel, #fff));
+  box-shadow: inset 0 0 0 1.5px #fcd34d; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, #f59e0b 45%, transparent);
 }
+.cep-draft-banner b { display: block; font: 800 .88rem var(--sans, system-ui); color: var(--ink, #111827); }
+.cep-draft-banner span { font: 500 .78rem var(--sans, system-ui); color: var(--mut, #6b7280); }
+.cep-draft-actions { display: flex; gap: .4rem; }
+.cep-draft-btn {
+  padding: .4rem .95rem; border-radius: 999px; cursor: pointer; font: 700 .78rem var(--sans, system-ui);
+  border: 1.5px solid var(--soft, #e5e7eb); background: var(--panel, #fff); color: var(--ink, #111827);
+}
+.cep-draft-btn.primary { background: var(--acc, #2f6bff); border-color: var(--acc, #2f6bff); color: #fff; }
+.cep-draft-btn:focus-visible { outline: 2px solid var(--acc, #2f6bff); outline-offset: 2px; }

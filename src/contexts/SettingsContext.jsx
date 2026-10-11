@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 const KEY = 'app-settings-v1';
-const BASE_TITLE = 'A7 K60 DTA';
+const BASE_TITLE = 'ELEC AI';
 
 const DEFAULT = {
   siteName: BASE_TITLE,

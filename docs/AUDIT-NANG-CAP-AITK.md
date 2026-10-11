@@ -1,4 +1,4 @@
-# Audit & đề xuất nâng cấp Aitk / A7 K60 DTA
+# Audit & đề xuất nâng cấp Aitk / ELEC AI
 
 **Ngày audit:** 05/10/2026  
 **Repository:** `DuyTKTB/Aitk`  

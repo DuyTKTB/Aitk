@@ -1,212 +1,198 @@
 /* ============================================================
-   LiveSessionBanner.jsx — v4
+   LiveSessionBanner v2 — Banner "Phòng thi đang mở" cho học sinh
    ------------------------------------------------------------
-   Thông báo "Phòng thi đang mở" cho học sinh.
-
-   v4:
-     • Giao diện mới: thẻ nổi có vòng đếm ngược (còn bao nhiêu % thời gian),
-       tiêu đề, lớp · giáo viên, nút "Vào thi ngay". Xem live-session-banner.css.
-     • SỬA LỖI HS không thấy thông báo: bản cũ ẩn banner nếu HS đã từng nộp
-       ĐỀ ĐÓ ở bất kỳ phiên nào. Khi GV mở lại cùng một đề (như 7 phiên cùng
-       đề trong ảnh chụp) thì HS đã làm trước đó sẽ không bao giờ thấy banner
-       nữa. Nay chỉ ẩn khi bài nộp thuộc CHÍNH phiên này
-       (submittedAtMs >= startedAtMs của phiên).
-     • Không hiện banner cho chính giáo viên tạo phiên (họ đã có nút "Giám sát").
-     • Giữ các sửa lỗi v3 (kiểm tra "đã nộp" lại khi rời trang thi, đồng hồ
-       chỉ chạy khi có phòng, dọn mục ẩn cũ).
+   Sửa so với v1:
+   • ẨN khi học sinh đã nộp bài của phòng thi đó (trước đây vẫn hiện "Vào thi ngay")
+   • Tự tải lại danh sách lớp (mỗi 60s, khi quay lại tab, khi có mạng) →
+     lớp mới được duyệt không cần reload trang
+   • Có CHUÔNG để xem lại các phòng thi đã ẩn (nút ẩn ghi "bấm vào chuông" nhưng v1 không có chuông)
    ============================================================ */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { listenLiveSessionForClass, timeRemaining } from '../lib/examSession.js';
+import { serverNow } from '../lib/serverClock.js';
 import { getClassesByStudent, getSubmissionForStudent } from '../lib/classroom.js';
-import { IcoClock, IcoUsers, IcoUser, IcoPlay, IcoClose } from '../lib/sessionIcons.jsx';
+import {
+  IcoDot, IcoClock, IcoUsers, IcoPlay, IcoClose, IcoBroadcast, IcoBell,
+} from '../lib/sessionIcons.jsx';
 import '../styles/live-session-banner.css';
 
-const CLASS_REFRESH_MS = 30000;
-const URGENT_SECONDS = 300;
+const LS_KEY = 'cs-dismissed-sessions';
+const DAY = 24 * 3600 * 1000;
+const CLASS_REFRESH_MS = 60 * 1000;
 
-const subMs = (sub) =>
-  sub?.submittedAtMs ?? sub?.submittedAt?.toMillis?.() ?? (typeof sub?.submittedAt === 'number' ? sub.submittedAt : 0);
+const loadDismissed = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    const now = Date.now();
+    // dọn các mục cũ hơn 1 ngày để localStorage không phình
+    return Object.fromEntries(Object.entries(raw).filter(([, t]) => now - t < DAY));
+  } catch { return {}; }
+};
+
+function fmtTime(seconds) {
+  const s0 = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s0 / 3600);
+  const m = Math.floor((s0 % 3600) / 60);
+  const s = s0 % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
 
 export default function LiveSessionBanner() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [now, setNow] = useState(Date.now());
-  const [submittedAt, setSubmittedAt] = useState({}); // examId -> thời điểm nộp gần nhất (ms)
-  const [dismissed, setDismissed] = useState(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem('cs-dismissed-sessions') || '{}');
-      const cutoff = Date.now() - 7 * 864e5;
-      return Object.fromEntries(Object.entries(raw).filter(([, at]) => at > cutoff));
-    } catch { return {}; }
-  });
+  const [now, setNow] = useState(serverNow);
+  const [dismissed, setDismissed] = useState(loadDismissed);
+  const [submittedMap, setSubmittedMap] = useState({}); // { [examId]: true }
+  const [onExamPage, setOnExamPage] = useState(() => location.hash.startsWith('#exam/'));
 
-  const classIdsRef = useRef('');
-
-  /* Đồng hồ 1s — chỉ chạy khi có phòng thi */
-  const hasSessions = sessions.length > 0;
+  /* ---- Đồng hồ 1s ---- */
   useEffect(() => {
-    if (!hasSessions) return undefined;
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(serverNow()), 1000);
     return () => clearInterval(t);
-  }, [hasSessions]);
+  }, []);
 
-  /* Danh sách lớp của HS (tải lại mỗi 30s để bắt lớp mới được duyệt) */
-  useEffect(() => {
-    if (!user?.uid) return undefined;
-    let alive = true;
-    const load = async () => {
-      try {
-        const list = await getClassesByStudent(user.uid);
-        if (!alive) return;
-        const key = list.map((c) => c.id).sort().join(',');
-        if (key !== classIdsRef.current) {
-          classIdsRef.current = key;
-          setClasses(list);
-        }
-      } catch (e) {
-        console.warn('[LiveSessionBanner] load classes fail:', e.message);
-      }
-    };
-    load();
-    const t = setInterval(load, CLASS_REFRESH_MS);
-    return () => { alive = false; clearInterval(t); };
+  /* ---- Danh sách lớp: tải lại định kỳ / khi quay lại tab / khi có mạng ---- */
+  const loadClasses = useCallback(async () => {
+    if (!user?.uid) return;
+    try {
+      const list = await getClassesByStudent(user.uid);
+      setClasses((prev) => {
+        const a = prev.map((c) => c.id).sort().join(',');
+        const b = list.map((c) => c.id).sort().join(',');
+        return a === b ? prev : list; // không đổi → không kích hoạt lại listener
+      });
+    } catch (e) {
+      console.warn('[LiveSessionBanner] load classes fail:', e.message);
+    }
   }, [user?.uid]);
 
-  /* Nghe phòng thi đang mở của từng lớp */
+  useEffect(() => {
+    loadClasses();
+    const id = setInterval(loadClasses, CLASS_REFRESH_MS);
+    const onVis = () => { if (!document.hidden) loadClasses(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('online', loadClasses);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('online', loadClasses);
+    };
+  }, [loadClasses]);
+
+  /* ---- Nghe phiên thi live của từng lớp ---- */
   useEffect(() => {
     if (classes.length === 0) { setSessions([]); return undefined; }
-    const unsubs = [];
-    const sessionMap = new Map();
-    classes.forEach((cls) => {
-      const unsub = listenLiveSessionForClass(cls.id, (session) => {
-        if (session) sessionMap.set(cls.id, { ...session, _class: cls });
-        else sessionMap.delete(cls.id);
-        setSessions(Array.from(sessionMap.values()));
-      });
-      unsubs.push(unsub);
-    });
+    const map = new Map();
+    const unsubs = classes.map((cls) =>
+      listenLiveSessionForClass(cls.id, (session) => {
+        if (session) map.set(cls.id, { ...session, _class: cls });
+        else map.delete(cls.id);
+        setSessions(Array.from(map.values()));
+      })
+    );
     return () => unsubs.forEach((u) => u && u());
   }, [classes]);
 
-  const [onExamPage, setOnExamPage] = useState(() => location.hash.startsWith('#exam/'));
+  /* ---- Kiểm tra đã nộp chưa (mỗi examId kiểm tra 1 lần) ---- */
+  useEffect(() => {
+    if (!user?.uid) return;
+    const todo = sessions.map((s) => s.examId).filter((id) => id && submittedMap[id] === undefined);
+    if (!todo.length) return;
+    let alive = true;
+    (async () => {
+      const entries = await Promise.all(todo.map(async (examId) => {
+        try { return [examId, !!(await getSubmissionForStudent(examId, user.uid))]; }
+        catch { return [examId, false]; }
+      }));
+      if (alive) setSubmittedMap((m) => ({ ...m, ...Object.fromEntries(entries) }));
+    })();
+    return () => { alive = false; };
+  }, [sessions, user?.uid, submittedMap]);
+
+  /* ---- Ẩn khi đang trong phòng thi ---- */
   useEffect(() => {
     const check = () => setOnExamPage(location.hash.startsWith('#exam/'));
-    check();
     window.addEventListener('hashchange', check);
     return () => window.removeEventListener('hashchange', check);
   }, []);
 
-  /* Lấy thời điểm HS nộp từng đề; tải lại mỗi khi HS rời trang thi */
-  const sessionExamKey = sessions.map((s) => s.examId).filter(Boolean).sort().join(',');
-  useEffect(() => {
-    if (!user?.uid || !sessionExamKey || onExamPage) return undefined;
-    let alive = true;
-    (async () => {
-      const found = {};
-      await Promise.all(sessionExamKey.split(',').map(async (examId) => {
-        try {
-          const sub = await getSubmissionForStudent(examId, user.uid);
-          if (sub) found[examId] = subMs(sub) || Date.now();
-        } catch { /* */ }
-      }));
-      if (alive && Object.keys(found).length) setSubmittedAt((prev) => ({ ...prev, ...found }));
-    })();
-    return () => { alive = false; };
-  }, [sessionExamKey, user?.uid, onExamPage]);
-
-  const handleDismiss = useCallback((sessionId) => {
-    setDismissed((prev) => {
-      const next = { ...prev, [sessionId]: Date.now() };
-      try { localStorage.setItem('cs-dismissed-sessions', JSON.stringify(next)); } catch { /* */ }
-      return next;
-    });
+  /* ---- Handlers ---- */
+  const persist = (next) => {
+    setDismissed(next);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch { /* */ }
+  };
+  const handleDismiss = useCallback((id) => persist({ ...dismissed, [id]: Date.now() }), [dismissed]);
+  const handleRestore = useCallback(() => persist({}), []);
+  const handleEnter = useCallback((s) => {
+    const key = s.examToken || s.examId;
+    if (key) location.hash = `exam/${key}`;
   }, []);
 
-  const handleEnter = useCallback((session) => {
-    const token = session.examToken || session.examId;
-    if (token) location.hash = `exam/${token}`;
-  }, []);
+  /* ---- Lọc ---- */
+  const { visible, hiddenCount } = useMemo(() => {
+    const open = sessions.filter((s) => timeRemaining(s, now) > 0 && !submittedMap[s.examId]);
+    return {
+      visible: open.filter((s) => !dismissed[s.id]).sort((a, b) => timeRemaining(a, now) - timeRemaining(b, now)),
+      hiddenCount: open.filter((s) => dismissed[s.id]).length,
+    };
+  }, [sessions, now, dismissed, submittedMap]);
 
-  if (onExamPage || sessions.length === 0) return null;
-
-  const visible = sessions.filter((s) => {
-    if (s.teacherId && s.teacherId === user?.uid) return false; // GV chủ phiên không cần banner
-    if (dismissed[s.id]) return false;
-    const mine = submittedAt[s.examId];
-    if (mine && mine >= (s.startedAtMs || 0)) return false; // đã nộp TRONG phiên này
-    return timeRemaining(s, now) > 0;
-  });
-
-  if (visible.length === 0) return null;
+  if (onExamPage) return null;
+  if (visible.length === 0 && hiddenCount === 0) return null;
 
   return (
     <div className="lsb-wrap" role="region" aria-label="Phòng thi đang mở">
       {visible.map((s) => {
         const remaining = timeRemaining(s, now);
-        const urgent = remaining < URGENT_SECONDS;
-        const total =
-          (Number(s.duration) || 0) * 60 ||
-          Math.max(1, Math.round(((s.closesAtMs || 0) - (s.startedAtMs || 0)) / 1000));
-        const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
-        const earlier = submittedAt[s.examId] && submittedAt[s.examId] < (s.startedAtMs || 0);
-
+        const urgent = remaining < 300;
         return (
-          <div key={s.id} className={'lsb-banner' + (urgent ? ' urgent' : '')}>
-            <div className="lsb-ring" style={{ '--p': pct }} aria-hidden="true">
-              <span className="lsb-ring-time">{fmtTime(remaining)}</span>
-            </div>
+          <div key={s.id} className={'lsb-banner' + (urgent ? ' urgent' : '')} role="alert">
+            <span className="lsb-dot" aria-hidden="true"><IcoDot size={9} /></span>
+            <span className="lsb-ico" aria-hidden="true"><IcoBroadcast size={22} /></span>
 
             <div className="lsb-body">
               <div className="lsb-title-row">
-                <span className="lsb-live-tag"><i aria-hidden="true" />Đang thi</span>
-                <b className="lsb-title" title={s.title}>{s.title}</b>
+                <b className="lsb-title">{s.title}</b>
+                <span className="lsb-live-tag">LIVE</span>
               </div>
               <p className="lsb-meta">
                 <span><IcoUsers size={12} /> {s._class?.name || 'Lớp học'}</span>
-                <span className="lsb-sep" aria-hidden="true" />
-                <span><IcoUser size={12} /> {s.teacherName || 'Giáo viên'}</span>
-                <span className="lsb-sep" aria-hidden="true" />
-                <span className={'lsb-time' + (urgent ? ' urgent' : '')}>
-                  <IcoClock size={12} /> Còn {fmtLeft(remaining)}
+                <span className="lsb-sep">·</span>
+                <span>GV {s.teacherName || 'Giáo viên'}</span>
+                <span className="lsb-sep">·</span>
+                <span className={urgent ? 'lsb-time urgent' : 'lsb-time'}>
+                  <IcoClock size={12} /> Còn {fmtTime(remaining)}
                 </span>
               </p>
-              {earlier && <p className="lsb-note">Bạn đã làm đề này ở phiên trước.</p>}
+              {urgent && <p className="lsb-urgent-note">Sắp hết giờ vào phòng thi!</p>}
             </div>
 
             <div className="lsb-actions">
               <button type="button" className="lsb-btn lsb-btn-enter" onClick={() => handleEnter(s)}>
-                <IcoPlay size={13} />
-                <span>Vào thi ngay</span>
+                <IcoPlay size={14} /><span>Vào thi ngay</span>
               </button>
-              <button
-                type="button"
-                className="lsb-btn lsb-btn-close"
-                onClick={() => handleDismiss(s.id)}
-                aria-label="Ẩn thông báo này"
-                title="Ẩn thông báo phòng thi này"
-              >
+              <button type="button" className="lsb-btn lsb-btn-close" onClick={() => handleDismiss(s.id)}
+                aria-label="Ẩn thông báo này" title="Ẩn (bấm chuông để xem lại)">
                 <IcoClose size={14} />
               </button>
             </div>
           </div>
         );
       })}
+
+      {/* Chuông: xem lại phòng thi đã ẩn */}
+      {visible.length === 0 && hiddenCount > 0 && (
+        <button type="button" className="lsb-bell" onClick={handleRestore}
+          aria-label={`Có ${hiddenCount} phòng thi đang mở. Bấm để hiện lại`}>
+          <IcoBell size={16} />
+          <span>{hiddenCount} phòng thi đang mở</span>
+          <i className="lsb-bell-dot" aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
-}
-
-function fmtTime(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-/* "4 phút 41 giây" / "58 giây" — dễ đọc hơn mm:ss cho dòng chữ */
-function fmtLeft(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m} phút ${String(s).padStart(2, '0')} giây` : `${s} giây`;
 }

@@ -420,7 +420,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="pf-note">
                   <Glyph name="info" size={18} />
-                  <div><b>Nâng cấp lên CUAI VIP</b><p>Nhắn Admin qua Facebook, sau khi xác nhận thanh toán tài khoản được nâng trong 24 giờ.</p>
+                  <div><b>Nâng cấp lên ELECAI VIP</b><p>Nhắn Admin qua Facebook, sau khi xác nhận thanh toán tài khoản được nâng trong 24 giờ.</p>
                     <div className="pf-actions flat"><button type="button" className="pf-btn" onClick={syncTier} disabled={loading}><Glyph name="refresh" size={15} />Làm mới trạng thái gói</button></div></div>
                 </div>
               </>

@@ -67,7 +67,7 @@ const FLOATING = [
   { key: 'zapier',  top: '30%', left: '16%', delay: '-2.5s', size: 40, rotate: -10 },
 ];
 
-const AI_NAME = 'CUAI';
+const AI_NAME = 'ELECAI';
 
 /* ============================================================
    ICONS
@@ -121,11 +121,11 @@ export default function HeroLindy({ onSend }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [showAnswer, typing, activeQA]);
 
-  /* ===== GỬI CÂU HỎI → CHUYỂN SANG CUAI ===== */
+  /* ===== GỬI CÂU HỎI → CHUYỂN SANG ELECAI ===== */
   const submit = (text) => {
     const q = (text || inputVal).trim();
     if (!q) {
-      // Không có text → vẫn vào CUAI
+      // Không có text → vẫn vào ELECAI
       try {
         localStorage.setItem('cs-ai-pending', JSON.stringify({ text: '', t: Date.now() }));
       } catch { /* */ }
@@ -279,7 +279,7 @@ export default function HeroLindy({ onSend }) {
             ))}
           </div>
 
-          {/* INPUT THẬT — gõ + Enter → CUAI */}
+          {/* INPUT THẬT — gõ + Enter → ELECAI */}
           <div className="hl-input-wrap">
             <input
               ref={inputRef}

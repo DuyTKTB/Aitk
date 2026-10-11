@@ -31,7 +31,7 @@ export function exportData() {
     }
   }
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'cuai-du-lieu-' + new Date().toISOString().slice(0, 10) + '.json' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'ELECAI-du-lieu-' + new Date().toISOString().slice(0, 10) + '.json' });
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }

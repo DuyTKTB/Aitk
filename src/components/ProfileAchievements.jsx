@@ -32,7 +32,7 @@ const ACHIEVEMENTS_DEF = [
   {
     id: 'vip',
     title: 'VIP',
-    desc: 'Nâng cấp lên gói CUAI VIP',
+    desc: 'Nâng cấp lên gói ELECAI VIP',
     Ico: IcoCrown,
     color: 'var(--transition)',
     check: ({ tier }) => tier?.key === 'vip',

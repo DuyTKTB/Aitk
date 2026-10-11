@@ -129,12 +129,12 @@
   margin-top: -1.9rem; border-radius: 50%; background: #fff; border: 4px solid var(--tk-solid);
   box-shadow: 0 0 0 1px var(--line), 0 12px 26px -8px color-mix(in srgb, var(--acc) 70%, transparent);
 }
-.tk-page .hot-card .tk-logo-cuai,
-.tk-page .tk-logo-cuai {
+.tk-page .hot-card .tk-logo-ELECAI,
+.tk-page .tk-logo-ELECAI {
   border-radius: 50% !important; border: 4px solid var(--tk-solid) !important;
   box-shadow: 0 0 0 1px rgba(168, 85, 247, .6), 0 0 30px rgba(168, 85, 247, .65), inset 0 1px 0 rgba(255, 255, 255, .45) !important;
 }
-.tk-page .quickview-logo .tk-logo-cuai { box-shadow: 0 0 0 1px rgba(168, 85, 247, .6), 0 0 30px rgba(168, 85, 247, .6) !important; border: 3px solid var(--panel) !important; }
+.tk-page .quickview-logo .tk-logo-ELECAI { box-shadow: 0 0 0 1px rgba(168, 85, 247, .6), 0 0 30px rgba(168, 85, 247, .6) !important; border: 3px solid var(--panel) !important; }
 
 /* ---------- 4. THÂN THẺ ---------- */
 .tk-page :is(.ai-card, .study-card) .tk-body { padding: .3rem .95rem .3rem; gap: .4rem; }
@@ -246,13 +246,13 @@
 .tk-page .hot-foot { margin-top: auto; padding-top: .1rem; border: 0; display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
 .tk-page .hot-domain { font: 500 .72rem var(--sans); color: var(--mut); padding: .22rem .6rem; border-radius: 999px; background: var(--soft); }
 
-/* ---------- 6. CUAI — thẻ tím–vàng nổi bật ---------- */
-.tk-page .cuai-spotlight { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; animation: none; margin-bottom: 1.6rem; }
-.tk-page .cuai-spotlight-label {
+/* ---------- 6. ELECAI — thẻ tím–vàng nổi bật ---------- */
+.tk-page .ELECAI-spotlight { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; animation: none; margin-bottom: 1.6rem; }
+.tk-page .ELECAI-spotlight-label {
   padding: .32rem .85rem .32rem .7rem; margin-bottom: .75rem; border-radius: 999px; border: 1px solid rgba(168, 85, 247, .5);
   background: rgba(168, 85, 247, .14); color: var(--ink); font: 600 .78rem var(--sans); letter-spacing: 0; box-shadow: none;
 }
-.tk-page .hot-card.hot-card-cuai {
+.tk-page .hot-card.hot-card-ELECAI {
   border: 1px solid rgba(168, 85, 247, .5) !important;
   background:
     radial-gradient(70% 55% at 0% 0%, rgba(168, 85, 247, .3), transparent 65%),
@@ -260,20 +260,20 @@
     var(--tk-solid) !important;
   box-shadow: 0 40px 90px -40px rgba(168, 85, 247, .8) !important;
 }
-.tk-page .hot-card.hot-card-cuai:hover { border-color: #a855f7 !important; box-shadow: 0 44px 100px -36px rgba(168, 85, 247, .95) !important; }
-.tk-page .hot-card-cuai::after {
+.tk-page .hot-card.hot-card-ELECAI:hover { border-color: #a855f7 !important; box-shadow: 0 44px 100px -36px rgba(168, 85, 247, .95) !important; }
+.tk-page .hot-card-ELECAI::after {
   opacity: .95; animation-play-state: running;
   background: conic-gradient(from var(--tk-ang), transparent 0 40%, #a855f7 62%, #f59e0b 80%, transparent 100%);
 }
-.tk-page .hot-card-cuai .tk-art { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 0 50px -10px rgba(168, 85, 247, .6); }
-.tk-page .hot-card-cuai .tk2-ghost { font-size: clamp(4.4rem, 9vw, 8rem); left: 6.6rem; }
+.tk-page .hot-card-ELECAI .tk-art { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 0 50px -10px rgba(168, 85, 247, .6); }
+.tk-page .hot-card-ELECAI .tk2-ghost { font-size: clamp(4.4rem, 9vw, 8rem); left: 6.6rem; }
 
 @media (min-width: 900px) {
-  .tk-page .hot-card-cuai .hot-link { display: grid; grid-template-columns: minmax(280px, 38%) 1fr; column-gap: .5rem; }
-  .tk-page .hot-card-cuai .tk-art { aspect-ratio: auto !important; min-height: 100%; }
-  .tk-page .hot-card-cuai .hot-body { padding: 1rem 1.1rem 1.1rem; }
-  .tk-page .hot-card-cuai .hot-head .tk-logo { margin-top: 0; }
-  .tk-page .hot-card-cuai .tk2-ghost { left: 1.1rem; bottom: -.12em; }
+  .tk-page .hot-card-ELECAI .hot-link { display: grid; grid-template-columns: minmax(280px, 38%) 1fr; column-gap: .5rem; }
+  .tk-page .hot-card-ELECAI .tk-art { aspect-ratio: auto !important; min-height: 100%; }
+  .tk-page .hot-card-ELECAI .hot-body { padding: 1rem 1.1rem 1.1rem; }
+  .tk-page .hot-card-ELECAI .hot-head .tk-logo { margin-top: 0; }
+  .tk-page .hot-card-ELECAI .tk2-ghost { left: 1.1rem; bottom: -.12em; }
 }
 
 /* ---------- 7. NÂNG CẤP TỔNG THỂ TRANG ---------- */
@@ -341,8 +341,8 @@
 .tk-page .quickview-btn.primary {
   background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; border-color: rgba(125, 165, 255, .6); box-shadow: 0 0 22px rgba(47, 107, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .35);
 }
-.tk-page .quickview-cuai { border: 1px solid rgba(168, 85, 247, .55) !important; box-shadow: 0 40px 90px -30px rgba(168, 85, 247, .7) !important; }
-.tk-page .cuai-badge-inline { border: 0; box-shadow: none; font: 600 .68rem var(--sans); letter-spacing: 0; }
+.tk-page .quickview-ELECAI { border: 1px solid rgba(168, 85, 247, .55) !important; box-shadow: 0 40px 90px -30px rgba(168, 85, 247, .7) !important; }
+.tk-page .ELECAI-badge-inline { border: 0; box-shadow: none; font: 600 .68rem var(--sans); letter-spacing: 0; }
 .tk-page .hot-tag.official { border: 0; }
 
 /* ---------- 8. MOBILE ---------- */

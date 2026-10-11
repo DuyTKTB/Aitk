@@ -9,7 +9,7 @@ import './home-features.css';
 
 /* ============================================================
    Home.jsx — dashboard sau đăng nhập
-   Đầu trang: CUAI chào + nhắn theo tình trạng học (thân thiện)
+   Đầu trang: ELECAI chào + nhắn theo tình trạng học (thân thiện)
    Cột chính: ô hỏi · lối tắt · số liệu · ôn tập · học tiếp · lộ trình · trò chơi
    Cột phải : hôm nay · nên ôn · vào lớp · nắm vững · công cụ · nguyên tố hôm nay
    Thêm      : ôn tập thông minh · lộ trình theo lớp · trò chơi (khớp với Landing)
@@ -35,10 +35,10 @@ function goAI(payload) {
   location.hash = 'ai';
 }
 
-/* Lời nhắn của CUAI: dựa vào tình trạng thật của người học */
-function cuaiSays(p) {
+/* Lời nhắn của ELECAI: dựa vào tình trạng thật của người học */
+function ELECAISays(p) {
   const left = p.goal - p.today;
-  if (p.isEmpty) return 'Mình là CUAI. Hỏi mình một bài Hóa bất kỳ để bắt đầu nhé.';
+  if (p.isEmpty) return 'Mình là ELECAI. Hỏi mình một bài Hóa bất kỳ để bắt đầu nhé.';
   if (p.today >= p.goal) return 'Xong mục tiêu hôm nay rồi. Muốn thử thêm một bài khó không?';
   if (p.today === 0 && p.streak >= 3) return `Chuỗi ${p.streak} ngày đang chờ bạn. Làm vài câu để giữ nó nhé.`;
   if (p.today > 0) return `Còn ${left} câu nữa là đạt mục tiêu. Bạn làm được.`;
@@ -49,10 +49,10 @@ function cuaiSays(p) {
 function Head({ p, hello, name }) {
   return (
     <header className="db-head">
-      <div className="db-cuai"><AIMark size={46} animate title="CUAI" /></div>
+      <div className="db-ELECAI"><AIMark size={46} animate title="ELECAI" /></div>
       <div className="db-head-text">
         <h1>{hello}, {name}</h1>
-        <p className="db-bubble" role="status">{cuaiSays(p)}</p>
+        <p className="db-bubble" role="status">{ELECAISays(p)}</p>
       </div>
       <div className="db-level" title={`Cấp ${p.lv.lvl}: ${p.lv.title}`}>
         <b>Cấp {p.lv.lvl}</b><span>{p.lv.title}</span>
@@ -66,22 +66,22 @@ function Composer() {
   const submit = (e) => { e?.preventDefault(); goAI({ text: val.trim() }); };
   return (
     <form className="db-composer" onSubmit={submit}>
-      <label htmlFor="db-ask" className="sr-only">Hỏi CUAI</label>
+      <label htmlFor="db-ask" className="sr-only">Hỏi ELECAI</label>
       <textarea
-        id="db-ask" rows={2} value={val} placeholder="Hỏi CUAI một bài Hóa, một khái niệm, hoặc xin 5 câu trắc nghiệm…"
+        id="db-ask" rows={2} value={val} placeholder="Hỏi ELECAI một bài Hóa, một khái niệm, hoặc xin 5 câu trắc nghiệm…"
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); }}
       />
       <div className="db-composer-bar">
         <div className="db-chips">{SUGGEST.map((s) => <button key={s} type="button" onClick={() => setVal(s)}>{s}</button>)}</div>
-        <Button variant="primary" type="submit" icon aria-label="Gửi cho CUAI"><IcoSend /></Button>
+        <Button variant="primary" type="submit" icon aria-label="Gửi cho ELECAI"><IcoSend /></Button>
       </div>
     </form>
   );
 }
 
 const SHORTCUTS = [
-  { href: '#ai', Icon: IcoCamera, label: 'Chụp đề', desc: 'Gửi ảnh cho CUAI', onClick: () => goAI({ action: 'capture' }) },
+  { href: '#ai', Icon: IcoCamera, label: 'Chụp đề', desc: 'Gửi ảnh cho ELECAI', onClick: () => goAI({ action: 'capture' }) },
   { href: '#quiz', Icon: IcoQuiz, label: 'Quiz', desc: 'Luyện nhanh' },
   { href: '#balance', Icon: IcoBalance, label: 'Cân bằng PTHH', desc: 'Từng bước' },
   { href: '#stats', Icon: IcoChart, label: 'Thống kê', desc: 'Tiến độ của bạn' },
@@ -142,7 +142,7 @@ function RecentCard({ p }) {
     <Card className="db-recent">
       <CardHead title="Học tiếp" />
       {p.isEmpty ? (
-        <EmptyState title="Chưa có hoạt động nào" text="Hỏi CUAI một câu hoặc làm vài câu quiz, phần này sẽ giúp bạn quay lại đúng chỗ đang học."
+        <EmptyState title="Chưa có hoạt động nào" text="Hỏi ELECAI một câu hoặc làm vài câu quiz, phần này sẽ giúp bạn quay lại đúng chỗ đang học."
           action={<Button variant="primary" href="#quiz">Làm quiz đầu tiên</Button>} />
       ) : (
         <ul>{p.recent.slice(0, 5).map((r) => (
@@ -273,7 +273,7 @@ function ModesCard() {
 }
 
 /* ============================================================
-   LỘ TRÌNH THEO LỚP — bấm chương để CUAI tóm tắt + ra 3 câu ôn
+   LỘ TRÌNH THEO LỚP — bấm chương để ELECAI tóm tắt + ra 3 câu ôn
    ============================================================ */
 const ROAD = {
   'Lớp 10': { goal: 'Vững nền tảng: cấu tạo nguyên tử, bảng tuần hoàn, liên kết và phản ứng.', topics: ['Cấu tạo nguyên tử', 'Bảng tuần hoàn', 'Liên kết hóa học', 'Phản ứng oxi hóa – khử', 'Năng lượng hóa học', 'Tốc độ phản ứng', 'Nhóm halogen'] },
@@ -308,7 +308,7 @@ function RoadmapCard() {
           </li>
         ))}
       </ol>
-      <p className="db-legend">Bấm một chương để CUAI tóm tắt và ra 3 câu ôn tập.</p>
+      <p className="db-legend">Bấm một chương để ELECAI tóm tắt và ra 3 câu ôn tập.</p>
     </Card>
   );
 }

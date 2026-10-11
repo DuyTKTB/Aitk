@@ -95,7 +95,7 @@
   overflow-wrap: anywhere;
 }
 .cai-msg.user .cai-bubble { background: var(--acc, #2f6bff); color: #fff; border-bottom-right-radius: 6px; }
-.cai-msg.error .cai-bubble { background: color-mix(in srgb, #dc2626 10%, var(--panel, #fff)); color: #991b1b; }
+.cai-msg.error .cai-bubble { background: #fce9e9; background: color-mix(in srgb, #dc2626 10%, var(--panel, #fff)); color: #991b1b; }
 
 .cai-busy { display: inline-flex; align-items: center; gap: .6rem; color: var(--mut, #6b7280); }
 .cai-dots { display: inline-flex; gap: 3px; }
@@ -203,4 +203,8 @@
   .cai-msg, .cea-draft { animation: none !important; }
   .cai-dots i { animation: none; opacity: .7; }
   .cai-cfg-chev { transition: none; }
+}
+/* Fallback cho trình duyệt chưa hỗ trợ field-sizing (Safari/Firefox cũ): ô nhập cao vừa phải + cuộn */
+@supports not (field-sizing: content) {
+  .cai-input textarea { min-height: 44px; height: 44px; overflow-y: auto; }
 }

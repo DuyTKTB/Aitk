@@ -49,7 +49,7 @@ export default function Settings({ theme, onToggleTheme }) {
           {inst.installed ? <Badge tone="ok">Đã cài</Badge> : <Button variant="primary" disabled={!inst.canPrompt} onClick={inst.install}>Cài app</Button>}
         </div>
         <div className="set-row">
-          <div><b>Kết nối</b><small>{online ? 'Đang có mạng.' : 'Đang ngoại tuyến: CUAI chưa trả lời được, phần đã tải vẫn xem được.'}</small></div>
+          <div><b>Kết nối</b><small>{online ? 'Đang có mạng.' : 'Đang ngoại tuyến: ELECAI chưa trả lời được, phần đã tải vẫn xem được.'}</small></div>
           <Badge tone={online ? 'ok' : 'warn'}>{online ? 'Trực tuyến' : 'Ngoại tuyến'}</Badge>
         </div>
       </Card>

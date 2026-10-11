@@ -39,7 +39,7 @@ function AdminLayoutInner({ active, onNavigate, children }) {
         <div className="adl-brand">
           <span className="adl-brand-mark"><IconFlask size={18} /></span>
           <div>
-            <b>A7 K60 DTA</b>
+            <b>ELEC AI</b>
             <small>Khu quản trị</small>
           </div>
         </div>

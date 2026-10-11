@@ -968,7 +968,7 @@ export default function AIChat() {
     setQuotaError(
       hasImg
         ? `Bạn đã dùng hết ${tier.quotaImage} lượt gửi ảnh hôm nay. Quay lại vào ngày mai nhé!`
-        : `Bạn đã dùng hết ${tier.quotaText} lượt chat hôm nay. Nâng cấp lên CUAI VIP để chat không giới hạn!`
+        : `Bạn đã dùng hết ${tier.quotaText} lượt chat hôm nay. Nâng cấp lên ELECAI VIP để chat không giới hạn!`
     );
     clearTimeout(qTimer.current);
     qTimer.current = setTimeout(() => setQuotaError(''), 6000);
@@ -1511,7 +1511,7 @@ export default function AIChat() {
 
             <div className="ds-quota">
               {tier.key === 'vip' ? (
-                <span className="ds-quota-item vip" title="Gói CUAI VIP — Chat không giới hạn">
+                <span className="ds-quota-item vip" title="Gói ELECAI VIP — Chat không giới hạn">
                   <IcoCrown size={13} /><span>VIP</span>
                 </span>
               ) : (

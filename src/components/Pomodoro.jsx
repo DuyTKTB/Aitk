@@ -155,9 +155,9 @@ export default function Pomodoro() {
       const m = MODES.find((x) => x.key === mode);
       document.title = `${pad(Math.floor(left / 60))}:${pad(left % 60)} — ${m.shortLabel}`;
     } else {
-      document.title = 'A7 K60 DTA — bycode Duy TK';
+      document.title = 'ELEC AI — bycode Duy TK';
     }
-    return () => { document.title = 'A7 K60 DTA — bycode Duy TK'; };
+    return () => { document.title = 'ELEC AI — bycode Duy TK'; };
   }, [left, run, mode]);
 
   /* ============ KEYBOARD ============ */

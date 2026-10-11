@@ -6,11 +6,11 @@ import './home-dashboard.css';
 
 /* ============================================================
    Home.jsx — Trang chủ sau đăng nhập, dạng dashboard.
-   Một việc chính: hỏi CUAI. Mọi thứ còn lại để quay lại học tiếp.
+   Một việc chính: hỏi ELECAI. Mọi thứ còn lại để quay lại học tiếp.
 
      ┌───────────────────────────┬────────────────┐
      │ Chào, {tên}               │                │
-     │ [ Ô hỏi CUAI ]            │ Hôm nay        │
+     │ [ Ô hỏi ELECAI ]            │ Hôm nay        │
      │ 4 lối tắt                 │ (mục tiêu+tuần)│
      │ Học tiếp (gần đây)        │ Nắm vững theo  │
      │                           │ chương         │
@@ -30,7 +30,7 @@ const IcoBalance = ico(<path d="M12 3v18M3 7h18M7 7l-3 7a3 3 0 0 0 6 0L7 7zM17 7
 const IcoChart = ico(<><path d="M3 3v18h18" /><path d="M7 14l3-3 3 3 5-6" /></>);
 const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />);
 
-/* ---- chuyển sang CUAI, giữ nguyên hợp đồng localStorage cũ ---- */
+/* ---- chuyển sang ELECAI, giữ nguyên hợp đồng localStorage cũ ---- */
 function goAI(payload) {
   try { localStorage.setItem('cs-ai-pending', JSON.stringify({ ...payload, t: Date.now() })); } catch { /* */ }
   location.hash = 'ai';
@@ -41,9 +41,9 @@ function Composer() {
   const submit = (e) => { e?.preventDefault(); goAI({ text: val.trim() }); };
   return (
     <form className="db-composer" onSubmit={submit}>
-      <label htmlFor="db-ask" className="sr-only">Hỏi CUAI</label>
+      <label htmlFor="db-ask" className="sr-only">Hỏi ELECAI</label>
       <textarea
-        id="db-ask" rows={2} value={val} placeholder="Hỏi CUAI một bài Hóa, một khái niệm, hoặc xin 5 câu trắc nghiệm…"
+        id="db-ask" rows={2} value={val} placeholder="Hỏi ELECAI một bài Hóa, một khái niệm, hoặc xin 5 câu trắc nghiệm…"
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); }}
       />
@@ -51,14 +51,14 @@ function Composer() {
         <div className="db-chips">
           {SUGGEST.map((s) => <button key={s} type="button" onClick={() => setVal(s)}>{s}</button>)}
         </div>
-        <Button variant="primary" type="submit" icon aria-label="Gửi cho CUAI"><IcoSend /></Button>
+        <Button variant="primary" type="submit" icon aria-label="Gửi cho ELECAI"><IcoSend /></Button>
       </div>
     </form>
   );
 }
 
 const SHORTCUTS = [
-  { href: '#ai', Icon: IcoCamera, label: 'Chụp đề', desc: 'Gửi ảnh cho CUAI', onClick: () => goAI({ action: 'capture' }) },
+  { href: '#ai', Icon: IcoCamera, label: 'Chụp đề', desc: 'Gửi ảnh cho ELECAI', onClick: () => goAI({ action: 'capture' }) },
   { href: '#quiz', Icon: IcoQuiz, label: 'Quiz', desc: 'Luyện nhanh' },
   { href: '#balance', Icon: IcoBalance, label: 'Cân bằng PTHH', desc: 'Từng bước' },
   { href: '#stats', Icon: IcoChart, label: 'Thống kê', desc: 'Tiến độ của bạn' },
@@ -133,7 +133,7 @@ function RecentCard({ p }) {
       {p.isEmpty ? (
         <EmptyState
           title="Chưa có hoạt động nào"
-          text="Hỏi CUAI một câu hoặc làm vài câu quiz, phần này sẽ giúp bạn quay lại đúng chỗ đang học."
+          text="Hỏi ELECAI một câu hoặc làm vài câu quiz, phần này sẽ giúp bạn quay lại đúng chỗ đang học."
           action={<Button variant="primary" href="#quiz">Làm quiz đầu tiên</Button>}
         />
       ) : (

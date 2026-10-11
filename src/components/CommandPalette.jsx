@@ -96,7 +96,7 @@ const IcoTheme = ({ size = 18 }) => (
    ============================================================ */
 const COMMANDS = [
   { id: 'home',       group: 'Điều hướng', label: 'Trang chủ',          Icon: IconHome,      keywords: 'home trang chu' },
-  { id: 'ai',         group: 'Điều hướng', label: 'Trợ lý AI',          Icon: IconRobot,     keywords: 'chat ai cuai' },
+  { id: 'ai',         group: 'Điều hướng', label: 'Trợ lý AI',          Icon: IconRobot,     keywords: 'chat ai ELECAI' },
   { id: 'table',      group: 'Điều hướng', label: 'Bảng tuần hoàn',     Icon: IconAtom,      keywords: 'pt bang tuan hoan' },
   { id: 'tools',      group: 'Điều hướng', label: 'Công cụ',            Icon: IconTools,     keywords: 'tools cong cu' },
   { id: 'profile',    group: 'Điều hướng', label: 'Trang cá nhân',      Icon: IconUser,      keywords: 'profile ca nhan' },
@@ -306,7 +306,7 @@ export default function CommandPalette() {
           <span><kbd>↑↓</kbd> di chuyển</span>
           <span><kbd>↵</kbd> chọn</span>
           <span><kbd>ESC</kbd> đóng</span>
-          <span className="cp-foot-brand">A7 K60 DTA</span>
+          <span className="cp-foot-brand">ELEC AI</span>
         </div>
       </div>
     </div>

@@ -1239,10 +1239,10 @@ dialog .tk-toast { position: fixed; }
   .hot-card:hover { transform: none; }
 }
 /* ============================================================
-   CUAI SPOTLIGHT — thẻ Siêu VIP nổi bật
+   ELECAI SPOTLIGHT — thẻ Siêu VIP nổi bật
    ============================================================ */
 
-.cuai-spotlight {
+.ELECAI-spotlight {
   position: relative;
   margin-bottom: 2rem;
   padding: 1.2rem;
@@ -1257,9 +1257,9 @@ dialog .tk-toast { position: fixed; }
     0 0 0 1px rgba(255, 176, 32, 0.2),
     0 20px 60px -22px rgba(168, 85, 247, 0.65),
     0 8px 24px -12px rgba(255, 176, 32, 0.4);
-  animation: cuai-glow 4s ease-in-out infinite;
+  animation: ELECAI-glow 4s ease-in-out infinite;
 }
-@keyframes cuai-glow {
+@keyframes ELECAI-glow {
   0%, 100% {
     box-shadow:
       0 0 0 1px rgba(255, 176, 32, 0.2),
@@ -1274,7 +1274,7 @@ dialog .tk-toast { position: fixed; }
   }
 }
 
-.cuai-spotlight-label {
+.ELECAI-spotlight-label {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
@@ -1289,19 +1289,19 @@ dialog .tk-toast { position: fixed; }
   box-shadow: 2px 2px 0 #111;
   text-transform: uppercase;
 }
-.cuai-spotlight-crown {
+.ELECAI-spotlight-crown {
   font-size: 1rem;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));
 }
 
-/* Thẻ CUAI: nổi bật hơn các thẻ khác */
-.hot-card-cuai {
+/* Thẻ ELECAI: nổi bật hơn các thẻ khác */
+.hot-card-ELECAI {
   border: 2px solid rgba(168, 85, 247, 0.6) !important;
   background: linear-gradient(180deg,
     rgba(168, 85, 247, 0.08),
     var(--panel) 60%) !important;
 }
-.hot-card-cuai:hover {
+.hot-card-ELECAI:hover {
   border-color: #a855f7 !important;
   box-shadow: 0 24px 60px -22px rgba(168, 85, 247, 0.7) !important;
 }
@@ -1318,10 +1318,10 @@ dialog .tk-toast { position: fixed; }
 }
 
 /* ============================================================
-   CUAI LOGO — dùng AIMark, khung gradient tím-vàng
+   ELECAI LOGO — dùng AIMark, khung gradient tím-vàng
    ============================================================ */
 
-.tk-logo-cuai {
+.tk-logo-ELECAI {
   position: relative;
   display: grid !important;
   place-items: center;
@@ -1339,7 +1339,7 @@ dialog .tk-toast { position: fixed; }
 }
 
 /* Ánh sáng xoay quanh logo */
-.tk-logo-cuai::before {
+.tk-logo-ELECAI::before {
   content: '';
   position: absolute;
   inset: -50%;
@@ -1349,16 +1349,16 @@ dialog .tk-toast { position: fixed; }
     rgba(255, 255, 255, 0.5) 60deg,
     transparent 120deg
   );
-  animation: tk-logo-cuai-spin 8s linear infinite;
+  animation: tk-logo-ELECAI-spin 8s linear infinite;
   z-index: 0;
   pointer-events: none;
 }
-@keyframes tk-logo-cuai-spin {
+@keyframes tk-logo-ELECAI-spin {
   to { transform: rotate(360deg); }
 }
 
 /* Logo AIMark bên trong */
-.tk-logo-cuai > svg.ai-mark {
+.tk-logo-ELECAI > svg.ai-mark {
   position: relative;
   z-index: 1;
   width: auto !important;
@@ -1370,17 +1370,17 @@ dialog .tk-toast { position: fixed; }
 }
 
 /* Đồng tử — làm trắng để nổi trên nền gradient */
-.tk-logo-cuai > svg.ai-mark circle[fill="var(--acc)"] {
+.tk-logo-ELECAI > svg.ai-mark circle[fill="var(--acc)"] {
   fill: #ffffff !important;
 }
 
 /* Xoá rule chữ "AI" cũ nếu còn */
-.tk-logo-cuai-text {
+.tk-logo-ELECAI-text {
   display: none !important;
 }
 
 /* Khi logo to (QuickView) — bo góc lớn hơn chút */
-.quickview-logo .tk-logo-cuai {
+.quickview-logo .tk-logo-ELECAI {
   border-radius: 18px !important;
   box-shadow:
     4px 4px 0 #111,
@@ -1388,8 +1388,8 @@ dialog .tk-toast { position: fixed; }
     inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
 }
 
-/* Thẻ CUAI trong hot-grid — logo to hơn */
-.hot-card-cuai .tk-logo-cuai {
+/* Thẻ ELECAI trong hot-grid — logo to hơn */
+.hot-card-ELECAI .tk-logo-ELECAI {
   border-radius: 18px !important;
   box-shadow:
     4px 4px 0 #111,
@@ -1398,7 +1398,7 @@ dialog .tk-toast { position: fixed; }
 }
 
 /* Badge inline trong quickview */
-.cuai-badge-inline {
+.ELECAI-badge-inline {
   display: inline-block;
   margin-left: .5rem;
   padding: .2rem .55rem;
@@ -1412,8 +1412,8 @@ dialog .tk-toast { position: fixed; }
   vertical-align: middle;
 }
 
-/* QuickView CUAI */
-.quickview-cuai {
+/* QuickView ELECAI */
+.quickview-ELECAI {
   border: 2px solid rgba(168, 85, 247, 0.6) !important;
   background: linear-gradient(180deg,
     rgba(168, 85, 247, 0.08),
@@ -2142,7 +2142,7 @@ dialog .tk-toast { position: fixed; }
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  .cuai-spotlight {
+  .ELECAI-spotlight {
     padding: .8rem;
     border-radius: 20px;
   }
@@ -2176,5 +2176,5 @@ dialog .tk-toast { position: fixed; }
 @media (prefers-reduced-motion: reduce) {
   .hot-card, .hot-arrow, .compare-bar-v2, .tool-btn { transition: none; animation: none; }
   .hot-card:hover { transform: none; }
-  .cuai-spotlight { animation: none; }
+  .ELECAI-spotlight { animation: none; }
 }

@@ -1,0 +1,85 @@
+rules_version = '2';
+// ============================================================
+// firestore.rules (ĐỀ XUẤT) — gộp vào file rules hiện tại, CHỌN 1 file duy nhất
+// (xóa firebase-rules.json nếu không dùng). Kiểm tra bằng Emulator trước khi deploy.
+// Admin = custom claim `admin` (do Cloud Function setAdminClaim cấp), KHÔNG dùng email trong bundle.
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()  { return request.auth != null; }
+    function isAdmin()   { return signedIn() && request.auth.token.admin == true; }
+    function isOwner(uid){ return signedIn() && request.auth.uid == uid; }
+
+    // ---- Người dùng: tự sửa hồ sơ nhưng KHÔNG tự đổi role/tier ----
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && request.resource.data.role in ['student', 'teacher']
+                       && request.resource.data.get('tier', 'free') == 'free';
+      allow update: if isAdmin()
+                    || (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'tier', 'upgradedAt']));
+    }
+
+    // ---- Key PRO / PRO user: chỉ admin + Cloud Function ----
+    match /proKeys/{id}  { allow read, write: if isAdmin(); }
+    match /proUsers/{id} { allow read: if isOwner(id) || isAdmin(); allow write: if isAdmin(); }
+
+    // ---- Đề: giáo viên chủ đề ghi; học sinh chỉ đọc. KHÔNG còn trường `correct` trong doc đề ----
+    match /exams/{examId} {
+      allow read: if signedIn();
+      // Khi chuyển sang chấm trên server: createExam phải LOẠI trường `correct` khỏi questions
+      // và gọi Cloud Function saveExamAnswers để lưu đáp án vào examAnswers/{examId}.
+      allow create: if signedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.teacherId) || isAdmin();
+
+      match /attempts/{attemptId} {
+        allow read, write: if (signedIn() && attemptId == examId + '_' + request.auth.uid)
+                           || isOwner(get(/databases/$(database)/documents/exams/$(examId)).data.teacherId);
+      }
+    }
+
+    // ---- ĐÁP ÁN: chỉ giáo viên chủ đề / admin đọc; ghi qua Cloud Function ----
+    match /examAnswers/{examId} {
+      allow read: if isOwner(resource.data.teacherId) || isAdmin();
+      allow write: if false;
+    }
+
+    // ---- Bài nộp: học sinh đọc bài của mình, giáo viên đọc bài đề của mình; KHÔNG client nào ghi điểm ----
+    match /submissions/{subId} {
+      allow read: if isOwner(resource.data.studentId)
+                  || isOwner(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.teacherId)
+                  || isAdmin();
+      allow write: if false;   // chỉ Cloud Function submitExam (Admin SDK) ghi
+    }
+
+    // ---- Xin thi lại ----
+    match /examRetryPermits/{id} {
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid
+                       && request.resource.data.status == 'pending';
+      allow read: if isOwner(resource.data.studentId)
+                  || isOwner(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.teacherId);
+      allow update: if isOwner(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.teacherId); // duyệt / từ chối / dùng
+      allow delete: if isAdmin();
+    }
+
+    // ---- Phòng thi trực tiếp + ảnh camera ----
+    match /examSessions/{sid} {
+      allow read: if signedIn();
+      allow create, update, delete: if isOwner(request.resource.data.teacherId) || isOwner(resource.data.teacherId) || isAdmin();
+
+      match /students/{stuId} {
+        allow read: if signedIn();
+        allow write: if isOwner(stuId)
+                     || isOwner(get(/databases/$(database)/documents/examSessions/$(sid)).data.teacherId);
+      }
+      // ảnh camera: học sinh GHI của mình, chỉ giáo viên chủ phiên ĐỌC (trẻ vị thành niên)
+      match /media/{stuId} {
+        allow write: if isOwner(stuId);
+        allow read, delete: if isOwner(get(/databases/$(database)/documents/examSessions/$(sid)).data.teacherId) || isAdmin();
+      }
+    }
+
+    // ---- Lượt dùng AI: chỉ server ghi ----
+    match /aiUsage/{id} { allow read: if signedIn() && id.matches(request.auth.uid + '_.*'); allow write: if false; }
+  }
+}

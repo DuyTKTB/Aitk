@@ -9,7 +9,7 @@
      import './tools-calm.css';      // thay cho tools-cards-v2.css (xóa import cũ)
 
    Nguyên tắc: không glow, không gradient, không animation vô hạn.
-   Màu nhấn chỉ dùng cho: nút CUAI, ngôi sao đã lưu, vòng focus.
+   Màu nhấn chỉ dùng cho: nút ELECAI, ngôi sao đã lưu, vòng focus.
    ============================================================ */
 
 .tc {
@@ -140,7 +140,7 @@
   display: grid; place-items: center; flex: none; margin: 0; overflow: hidden;
   border-radius: 8px; border: 1px solid var(--tc-hair); background: #fff; box-shadow: none;
 }
-.tc .tk-logo-cuai { background: transparent; border-radius: 50%; border: 0; box-shadow: none; }
+.tc .tk-logo-ELECAI { background: transparent; border-radius: 50%; border: 0; box-shadow: none; }
 
 /* ---------- LƯỚI Ô NGUYÊN TỐ (AI Free + Học tập) ---------- */
 .tc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
@@ -196,21 +196,21 @@
 .tc-spot .tc-name { font-size: 1.2rem; }
 .tc-more { display: flex; justify-content: center; margin-top: 1.5rem; }
 
-/* ---------- CUAI: khối đảo màu duy nhất ---------- */
-.tc-cuai {
+/* ---------- ELECAI: khối đảo màu duy nhất ---------- */
+.tc-ELECAI {
   display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 1.5rem 3.5rem; margin: 0 0 2rem; padding: 1.75rem;
   border-radius: var(--tc-r); background: var(--ink); color: var(--bg);
 }
-.tc-cuai-id { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }
-.tc-cuai .tk-logo-cuai { background: var(--bg); }
-.tc-cuai h2 { margin: 0; font: 700 clamp(2.4rem, 5vw, 3.6rem)/1 var(--sans); letter-spacing: -.055em; }
-.tc-cuai-by { font: 500 .85rem var(--sans); opacity: .65; }
-.tc-cuai-desc { margin: 0 0 .6rem; font: 600 1.1rem/1.4 var(--sans); letter-spacing: -.02em; }
-.tc-cuai-why { margin: 0 0 1.4rem; max-width: 62ch; font: 400 .92rem/1.6 var(--sans); opacity: .75; }
-.tc-cuai-foot { display: flex; align-items: center; gap: .5rem; }
-.tc-cuai .tc-ib { color: var(--bg); opacity: .7; }
-.tc-cuai .tc-ib:hover { opacity: 1; background: color-mix(in srgb, var(--bg) 18%, transparent); color: var(--bg); }
-.tc-cuai .tc-ib.on { color: var(--acc); opacity: 1; }
+.tc-ELECAI-id { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }
+.tc-ELECAI .tk-logo-ELECAI { background: var(--bg); }
+.tc-ELECAI h2 { margin: 0; font: 700 clamp(2.4rem, 5vw, 3.6rem)/1 var(--sans); letter-spacing: -.055em; }
+.tc-ELECAI-by { font: 500 .85rem var(--sans); opacity: .65; }
+.tc-ELECAI-desc { margin: 0 0 .6rem; font: 600 1.1rem/1.4 var(--sans); letter-spacing: -.02em; }
+.tc-ELECAI-why { margin: 0 0 1.4rem; max-width: 62ch; font: 400 .92rem/1.6 var(--sans); opacity: .75; }
+.tc-ELECAI-foot { display: flex; align-items: center; gap: .5rem; }
+.tc-ELECAI .tc-ib { color: var(--bg); opacity: .7; }
+.tc-ELECAI .tc-ib:hover { opacity: 1; background: color-mix(in srgb, var(--bg) 18%, transparent); color: var(--bg); }
+.tc-ELECAI .tc-ib.on { color: var(--acc); opacity: 1; }
 .tc-el {
   display: grid; align-content: space-between; width: 128px; aspect-ratio: 1; margin-bottom: 1.25rem; padding: .6rem .75rem;
   border-radius: 8px; background: var(--acc); color: var(--acc-ink);
@@ -218,10 +218,10 @@
 .tc-el span { font: 600 .8rem/1 var(--sans); }
 .tc-el b { font: 700 3.2rem/.9 var(--sans); letter-spacing: -.06em; }
 .tc-el i { font: 600 .75rem/1 var(--sans); font-style: normal; }
-.tc-cuai-side h3 { margin: 0 0 .6rem; font: 600 .9rem var(--sans); opacity: .65; }
-.tc-cuai-side ul { margin: 0; padding: 0; list-style: none; }
-.tc-cuai-side li { padding: .7rem 0; border-top: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); font: 500 .95rem/1.4 var(--sans); }
-.tc-cuai-side li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); }
+.tc-ELECAI-side h3 { margin: 0 0 .6rem; font: 600 .9rem var(--sans); opacity: .65; }
+.tc-ELECAI-side ul { margin: 0; padding: 0; list-style: none; }
+.tc-ELECAI-side li { padding: .7rem 0; border-top: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); font: 500 .95rem/1.4 var(--sans); }
+.tc-ELECAI-side li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); }
 
 /* ---------- AI HOT: danh sách xếp hạng ---------- */
 .tc-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--ink); }
@@ -271,14 +271,14 @@
 .tc .quickview-btn { border-radius: var(--tc-r); box-shadow: none; }
 .tc .quickview-btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .tc .quickview-btn.primary:hover { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
-.tc .quickview-cuai { border: 1px solid var(--ink) !important; box-shadow: none !important; }
+.tc .quickview-ELECAI { border: 1px solid var(--ink) !important; box-shadow: none !important; }
 .tc .quickview-pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; padding: 0; border: 0; background: none; box-shadow: none; }
 .tc .quickview-pros-cons > div { padding: 0; background: none; color: inherit; border: 0; }
-.tc .cuai-badge-inline { background: var(--acc); color: var(--acc-ink); border: 0; }
+.tc .ELECAI-badge-inline { background: var(--acc); color: var(--acc-ink); border: 0; }
 
 /* ---------- MOBILE ---------- */
 @media (max-width: 760px) {
-  .tc-cuai { grid-template-columns: 1fr; padding: 1.25rem; gap: 1.25rem; }
+  .tc-ELECAI { grid-template-columns: 1fr; padding: 1.25rem; gap: 1.25rem; }
   .tc-cols { grid-template-columns: 1fr; gap: 1.1rem; }
   .tc-detail { padding: .25rem .75rem 1.25rem; }
   .tc-row-toggle { grid-template-columns: 2rem 36px minmax(0, 1fr) 1rem; gap: .7rem; padding: .9rem .25rem .9rem .5rem; }

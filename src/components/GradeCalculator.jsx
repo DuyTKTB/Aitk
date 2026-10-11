@@ -171,7 +171,7 @@ function drawReport({ title, gpaText, rank, rows, hide, st }) {
     y += 78;
   });
   g.fillStyle = '#6b675e'; g.font = `400 22px ${F}`;
-  g.fillText(`A7 K60 DTA · CHEM STUDY · ${new Date().toLocaleDateString('vi-VN')}`, 72, H - 48);
+  g.fillText(`ELEC AI · ELEC AI · ${new Date().toLocaleDateString('vi-VN')}`, 72, H - 48);
   return cv;
 }
 

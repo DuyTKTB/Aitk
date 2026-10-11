@@ -18,7 +18,10 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import {
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, setDoc, getDoc,
+} from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -33,7 +36,18 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+/* Bật cache offline: rớt mạng giữa giờ thi vẫn ghi được đáp án, có mạng lại tự đồng bộ.
+   initializeFirestore chỉ gọi được 1 lần (HMR sẽ ném lỗi) → lúc đó dùng lại instance cũ. */
+function makeDb() {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return getFirestore(app);
+  }
+}
+export const db = makeDb();
 export const storage = getStorage(app);
 
 /* ============================================================

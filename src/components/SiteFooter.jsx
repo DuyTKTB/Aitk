@@ -10,7 +10,7 @@ export default function SiteFooter() {
       {/* Info */}
       <div className="sf-top">
         <div className="sf-brand">
-          <b>A7 K60 DTA</b>
+          <b>ELEC AI</b>
           <small>Trợ lý AI Hóa học cho học sinh 10–12. Học chủ động, hiểu tận gốc.</small>
         </div>
 
@@ -42,7 +42,7 @@ export default function SiteFooter() {
       <div className="sf-banner" aria-hidden="true">
         <img
           src="/img/banner.png"
-          alt="A7 K60 DTA"
+          alt="ELEC AI"
           className="sf-banner-img"
           loading="lazy"
           onError={(e) => { e.currentTarget.style.display = 'none'; }}

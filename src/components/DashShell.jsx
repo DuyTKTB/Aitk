@@ -24,7 +24,7 @@ export function BrandMark({ size = 34 }) {
         {AIMarkComp ? <AIMarkComp size={size} /> : <i className="vt-brand-fallback" />}
       </span>
       <span className="vt-brand-text">
-        <b>Chem Study</b>
+        <b>ELEC AI</b>
         <small>Góc giáo viên</small>
       </span>
     </div>

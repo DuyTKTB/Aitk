@@ -32,6 +32,7 @@ import {
   Timestamp, limit, runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { serverNow } from './serverClock.js';
 
 const SESSIONS = 'examSessions';
 const HEARTBEAT_TIMEOUT_MS = 60 * 1000;
@@ -39,21 +40,16 @@ const HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 /* ============ HELPERS ============ */
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
-export function isStudentOnline(student, now = Date.now()) {
+export function isStudentOnline(student, now = serverNow()) {
   const ts = student?.lastSeenMs ?? student?.lastSeen?.toMillis?.() ?? student?.lastSeen;
   if (!ts) return false;
   return now - ts < HEARTBEAT_TIMEOUT_MS;
 }
 
-export function timeRemaining(session, now = Date.now()) {
+export function timeRemaining(session, now = serverNow()) {
   if (!session?.closesAt) return 0;
   const end = session.closesAt?.toMillis?.() ?? session.closesAtMs ?? session.closesAt;
   return Math.max(0, Math.floor((end - now) / 1000));
-}
-
-/** Phòng còn mở thật sự: status 'live' VÀ chưa hết giờ (status không tự đổi khi hết giờ). */
-export function isSessionLive(session, now = Date.now()) {
-  return session?.status === 'live' && timeRemaining(session, now) > 0;
 }
 
 export function secondsSinceUpdate(student, now = Date.now()) {
@@ -121,6 +117,13 @@ export async function endExamSession(sessionId) {
 
 export async function deleteExamSession(sessionId) {
   if (!sessionId) return;
+  // Firestore không tự xóa subcollection → dọn học sinh + ảnh camera để không sót dữ liệu của trẻ vị thành niên
+  for (const sub of ['students', MEDIA]) {
+    // eslint-disable-next-line no-await-in-loop
+    const snap = await getDocs(collection(db, SESSIONS, sessionId, sub));
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  }
   await deleteDoc(doc(db, SESSIONS, sessionId));
 }
 
@@ -190,16 +193,43 @@ export function listenSession(sessionId, cb) {
 
 export function listenSessionStudents(sessionId, cb) {
   if (!sessionId) return () => {};
-  const q = query(collection(db, SESSIONS, sessionId, 'students'));
-  return onSnapshot(
-    q,
+  let students = [];
+  let media = new Map();
+  let ready = false;
+
+  // Gộp ảnh (doc media) vào từng học sinh → giao diện vẫn đọc st.thumbnail / st.burst như cũ.
+  // Dữ liệu cũ (ảnh còn nằm trong doc students) vẫn hiển thị vì chỉ ghi đè khi media có.
+  const emit = () => {
+    if (!ready) return;
+    const list = students.map((st) => {
+      const m = media.get(st.id);
+      return m ? { ...st, ...m } : st;
+    });
+    list.sort((a, b) => (a.joinedAtMs || 0) - (b.joinedAtMs || 0));
+    cb(list);
+  };
+
+  const unsubStudents = onSnapshot(
+    query(collection(db, SESSIONS, sessionId, 'students')),
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => (a.joinedAtMs || 0) - (b.joinedAtMs || 0));
-      cb(list);
+      students = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      ready = true;
+      emit();
     },
     (err) => console.warn('[examSession] listenSessionStudents error:', err.message)
   );
+  const unsubMedia = onSnapshot(
+    query(collection(db, SESSIONS, sessionId, MEDIA)),
+    (snap) => {
+      media = new Map(snap.docs.map((d) => {
+        const { expireAt, ...rest } = d.data(); // eslint-disable-line no-unused-vars
+        return [d.id, rest];
+      }));
+      emit();
+    },
+    (err) => console.warn('[examSession] listen media error:', err.message)
+  );
+  return () => { unsubStudents(); unsubMedia(); };
 }
 
 export function listenLiveSessionForClass(classId, cb) {
@@ -245,10 +275,6 @@ export async function joinExamSession({
   }
 
   if (snap.exists()) {
-    // v3: HS đã bị GV mời ra thì không cho vào lại bằng cách tải lại trang
-    if (snap.data()?.status === 'kicked') {
-      return { id: studentId, restored: true, kicked: true };
-    }
     try {
       await updateDoc(ref, {
         lastSeen: serverTimestamp(),
@@ -310,7 +336,7 @@ export async function heartbeat({
 
   const patch = {
     lastSeen: serverTimestamp(),
-    lastSeenMs: Date.now(),
+    lastSeenMs: serverNow(),
   };
   if (typeof currentQuestion === 'number') patch.currentQuestion = currentQuestion;
   if (typeof answered === 'number') patch.answered = answered;
@@ -319,24 +345,7 @@ export async function heartbeat({
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
 
   try {
-    if (patch.status) {
-      /* v3: heartbeat KHÔNG được ghi đè trạng thái cuối. Trước đây nhịp tim 15s của HS
-         có thể đổi 'kicked' / 'submitted' ngược về 'examining' (HS bị kick vẫn "sống lại"). */
-      await runTransaction(db, async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists()) {
-          const err = new Error('not-found');
-          err.code = 'not-found';
-          throw err;
-        }
-        const cur = snap.data()?.status;
-        const next = { ...patch };
-        if (cur === 'kicked' || cur === 'submitted') delete next.status;
-        tx.update(ref, next);
-      });
-    } else {
-      await updateDoc(ref, patch);
-    }
+    await updateDoc(ref, patch);
   } catch (e) {
     if (e.code === 'not-found') {
       console.warn('[examSession] heartbeat: doc không tồn tại, tự tạo lại.');
@@ -375,40 +384,44 @@ export async function uploadThumbnail({ sessionId, studentId, dataUrl }) {
   return uploadThumbnailV2({ sessionId, studentId, dataUrl, motion: false });
 }
 
-export async function uploadThumbnailV2({ sessionId, studentId, dataUrl, motion = false }) {
+/* ------------------------------------------------------------
+   ẢNH CAMERA nằm ở doc RIÊNG: examSessions/{sid}/media/{studentId}
+   • Heartbeat (cập nhật mỗi vài giây) chỉ ghi doc `students` nhỏ, không đẩy lại ảnh
+     → giảm hẳn lượt đọc/băng thông khi giáo viên nghe nhiều học sinh,
+     → không chạm giới hạn 1MB/doc.
+   • `expireAt` dùng cho Firestore TTL → thật sự tự xóa theo lời hứa trong form.
+     Bật 1 lần:  gcloud firestore fields ttls update expireAt --collection-group=media --enable-ttl
+   ------------------------------------------------------------ */
+const MEDIA = 'media';
+const DEFAULT_RETENTION_DAYS = 30;
+const expireAtFrom = (days) => Timestamp.fromMillis(Date.now() + (Number(days) || DEFAULT_RETENTION_DAYS) * 86400000);
+
+export async function uploadThumbnailV2({ sessionId, studentId, dataUrl, motion = false, retentionDays }) {
   if (!sessionId || !studentId || !dataUrl) return;
   try {
-    await updateDoc(doc(db, SESSIONS, sessionId, 'students', studentId), {
+    await setDoc(doc(db, SESSIONS, sessionId, MEDIA, studentId), {
       thumbnail: dataUrl,
       thumbnailAt: serverTimestamp(),
-      thumbnailAtMs: Date.now(),
+      thumbnailAtMs: serverNow(),
       motion,
-    });
+      expireAt: expireAtFrom(retentionDays),
+    }, { merge: true });
   } catch (e) {
-    if (e.code !== 'not-found') {
-      console.warn('[examSession] uploadThumbnailV2 failed:', e.message);
-    }
+    console.warn('[examSession] uploadThumbnailV2 failed:', e.message);
   }
 }
 
-export async function uploadBurst({ sessionId, studentId, frames, reason = '' }) {
+export async function uploadBurst({ sessionId, studentId, frames, reason = '', retentionDays }) {
   if (!sessionId || !studentId || !Array.isArray(frames) || frames.length === 0) return;
   const cleanFrames = frames.filter(Boolean).slice(0, 6);
   if (cleanFrames.length === 0) return;
   try {
-    await updateDoc(doc(db, SESSIONS, sessionId, 'students', studentId), {
-      burst: {
-        frames: cleanFrames,
-        reason,
-        at: Date.now(),
-      },
-      lastSeen: serverTimestamp(),
-      lastSeenMs: Date.now(),
-    });
+    await setDoc(doc(db, SESSIONS, sessionId, MEDIA, studentId), {
+      burst: { frames: cleanFrames, reason, at: serverNow() },
+      expireAt: expireAtFrom(retentionDays),
+    }, { merge: true });
   } catch (e) {
-    if (e.code !== 'not-found') {
-      console.warn('[examSession] uploadBurst failed:', e.message);
-    }
+    console.warn('[examSession] uploadBurst failed:', e.message);
   }
 }
 

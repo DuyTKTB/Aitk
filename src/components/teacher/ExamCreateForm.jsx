@@ -3,8 +3,6 @@
    (Dùng class .cep-* cho giao diện đồng bộ trang Tạo đề)
    ============================================================ */
 import { useState, useEffect } from 'react';
-import ExamPickerFromBank from './ExamPickerFromBank.jsx';
-import { CHEM_TOPICS } from '../../data/chemTopics.js';
 
 /* ============ SVG ICONS ============ */
 const IcoPlus = ({ size = 14 }) => (
@@ -101,15 +99,8 @@ const toFormQuestion = (q) => {
     warns: Array.isArray(q.warns) ? q.warns : [],
     topic: q.topic || '',
     level: q.level || '',
-    bankId: q.bankId || '', // có giá trị nếu câu lấy từ ngân hàng → để tăng "số lần dùng"
   };
 };
-
-/* Chuyển câu của ngân hàng thành câu của form (kèm tên chuyên đề để HS xem kết quả theo chủ đề) */
-const fromBankQuestion = (b) => ({
-  ...toFormQuestion({ ...b, topic: CHEM_TOPICS.find((t) => t.id === b.topicId)?.name || '' }),
-  bankId: b.id,
-});
 
 const localToIso = (v) => (v ? new Date(v).toISOString() : null);
 const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -120,8 +111,8 @@ const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 export default function ExamCreateForm({
   initial = null,
   onDirty,
+  onSnapshot,   // (mới) nhận bản chụp toàn bộ form, đã debounce — dùng để autosave nháp
   classInfo,
-  teacherId = '',
   onSave,
   onCancel,
   saving = false,
@@ -140,8 +131,6 @@ export default function ExamCreateForm({
   const [opensAt, setOpensAt] = useState(initial?.opensAt || '');
   const [closesAt, setClosesAt] = useState(initial?.closesAt || '');
   const [error, setError] = useState('');
-  const [showPicker, setShowPicker] = useState(false);
-  const [saveToBank, setSaveToBank] = useState(false);
 
   /* Proctor config */
   const [proctor, setProctor] = useState(initial?.proctor || {
@@ -165,6 +154,17 @@ export default function ExamCreateForm({
   useEffect(() => {
     onDirty?.(!!title.trim() || questions.some((q) => q.q.trim() || q.options.some((o) => o.trim())));
   }, [title, questions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Autosave: báo bản chụp form cho trang cha sau 800ms không gõ nữa */
+  useEffect(() => {
+    if (!onSnapshot) return undefined;
+    const t = setTimeout(() => {
+      onSnapshot({
+        title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor,
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ============ QUESTION ACTIONS ============ */
   const updateQ = (i, patch) => {
@@ -256,7 +256,6 @@ export default function ExamCreateForm({
         ...(q.explain?.trim() ? { explain: q.explain.trim() } : {}),
         ...(q.topic ? { topic: q.topic } : {}),
         ...(q.level ? { level: q.level } : {}),
-        ...(q.bankId ? { bankId: q.bankId } : {}), // trang cha sẽ tách ra trước khi lưu đề
       };
     });
 
@@ -275,18 +274,7 @@ export default function ExamCreateForm({
       opensAt: localToIso(opensAt),
       closesAt: localToIso(closesAt),
       proctor,
-      saveToBank,
     });
-  };
-
-  /* Thêm câu từ ngân hàng; nếu form đang chỉ có 1 câu trống thì thay luôn câu trống đó */
-  const handlePickFromBank = (picked) => {
-    const mapped = picked.map(fromBankQuestion);
-    setQuestions((qs) => {
-      const onlyBlank = qs.length === 1 && !qs[0].q.trim() && qs[0].options.every((o) => !o.trim());
-      return [...(onlyBlank ? [] : qs), ...mapped];
-    });
-    setShowPicker(false);
   };
 
   /* ============ RENDER ============ */
@@ -580,21 +568,10 @@ export default function ExamCreateForm({
           ))}
         </div>
 
-        <div className="cep-add-row" style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '.6rem' }}>
+        <div className="cep-add-row" style={{ marginTop: '1rem' }}>
           <button type="button" className="cep-add-btn" onClick={addQuestion}>
             <IcoPlus size={14} /> Thêm câu hỏi
           </button>
-          {teacherId && (
-            <button type="button" className="cep-add-btn" onClick={() => setShowPicker(true)}>
-              <IcoDoc size={14} /> Chọn từ ngân hàng
-            </button>
-          )}
-          {teacherId && (
-            <label className={'cep-check' + (saveToBank ? ' on' : '')}>
-              <input type="checkbox" checked={saveToBank} onChange={(e) => setSaveToBank(e.target.checked)} />
-              Lưu các câu mới vào ngân hàng khi lưu đề
-            </label>
-          )}
         </div>
       </div>
 
@@ -603,16 +580,6 @@ export default function ExamCreateForm({
           <IcoX size={16} />
           <span>{error}</span>
         </div>
-      )}
-
-      {showPicker && (
-        <ExamPickerFromBank
-          teacherId={teacherId}
-          defaultSubject={classInfo?.subject || ''}
-          excludeIds={questions.map((q) => q.bankId).filter(Boolean)}
-          onPick={handlePickFromBank}
-          onClose={() => setShowPicker(false)}
-        />
       )}
 
       {/* ===== ACTIONS ===== */}

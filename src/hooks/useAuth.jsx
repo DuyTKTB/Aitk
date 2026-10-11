@@ -15,9 +15,31 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, uploadAvatar as fbUploadAvatar } from '../lib/firebase.js';
-import { getTier } from '../lib/tier.js';   // ← SỬA: getTier thay vì getUserTier
+import { getTier } from '../lib/tier.js';
 
 const AuthContext = createContext(null);
+
+/* ============================================================
+   Gán custom claims vào user object
+   ------------------------------------------------------------
+   Firebase User là instance của class — không spread được.
+   Phải gán trực tiếp thuộc tính để giữ nguyên method.
+   ============================================================ */
+async function enrichUser(u, forceRefresh = false) {
+  if (!u) return null;
+  try {
+    const tokenResult = await u.getIdTokenResult(forceRefresh);
+    const claims = tokenResult?.claims || {};
+    u.claims = claims;
+    u.isAdmin = claims.admin === true;
+  } catch (e) {
+    // Không lấy được token — vẫn trả user, chỉ thiếu claims
+    u.claims = u.claims || {};
+    u.isAdmin = u.claims.admin === true;
+    console.warn('[useAuth] Không lấy được ID token result:', e?.message);
+  }
+  return u;
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -31,17 +53,24 @@ export function AuthProvider({ children }) {
     return () => { mountedRef.current = false; };
   }, []);
 
+  /* ============ AUTH STATE ============ */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!mountedRef.current) return;
+
       if (u) {
-        setUser(u);
+        const enriched = await enrichUser(u);
+        if (!mountedRef.current) return;
+        setUser(enriched ? { ...enriched } : u);
         setIsLoggedIn(true);
+
         try {
-          const t = await getTier(u.uid);   // ← SỬA: truyền u.uid
+          const t = await getTier(u.uid);
           if (mountedRef.current) setTier(t);
         } catch {
-          if (mountedRef.current) setTier({ key: 'free', name: 'Free', desc: 'Miễn phí' });
+          if (mountedRef.current) {
+            setTier({ key: 'free', name: 'Free', desc: 'Miễn phí' });
+          }
         }
       } else {
         setUser(null);
@@ -53,6 +82,22 @@ export function AuthProvider({ children }) {
     return () => unsub();
   }, []);
 
+  /* ============ REFRESH CLAIMS KHI QUAY LẠI TAB ============ */
+  /* Tránh trường hợp admin vừa được cấp claim ở tab khác mà không thấy cập nhật */
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    const onVisible = async () => {
+      if (document.hidden) return;
+      const u = auth.currentUser;
+      if (!u) return;
+      const enriched = await enrichUser(u, true);
+      if (mountedRef.current && enriched) setUser({ ...enriched });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [isLoggedIn]);
+
+  /* ============ REGISTER ============ */
   const register = useCallback(async (email, password, displayName, opts = {}) => {
     const { role = 'student' } = opts;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -76,18 +121,21 @@ export function AuthProvider({ children }) {
       const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
       meta[cred.user.uid] = { role, email };
       localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-    } catch {}
+    } catch { /* ignore */ }
 
     try {
       await cred.user.reload();
-      if (mountedRef.current) setUser({ ...auth.currentUser });
-    } catch {}
+      const enriched = await enrichUser(auth.currentUser);
+      if (mountedRef.current && enriched) setUser({ ...enriched });
+    } catch { /* ignore */ }
 
     return cred.user;
   }, []);
 
+  /* ============ LOGIN ============ */
   const login = useCallback(async (email, password) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+
     try {
       const snap = await getDoc(doc(db, 'users', cred.user.uid));
       if (snap.exists()) {
@@ -96,10 +144,16 @@ export function AuthProvider({ children }) {
         meta[cred.user.uid] = { role, email };
         localStorage.setItem('cs-user-meta', JSON.stringify(meta));
       }
-    } catch {}
+    } catch { /* ignore */ }
+
+    // Force refresh token để lấy claim mới (quan trọng sau khi setAdminClaim)
+    const enriched = await enrichUser(cred.user, true);
+    if (mountedRef.current && enriched) setUser({ ...enriched });
+
     return cred.user;
   }, []);
 
+  /* ============ LOGIN GOOGLE ============ */
   const loginWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(auth, provider);
@@ -118,22 +172,29 @@ export function AuthProvider({ children }) {
       const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
       meta[cred.user.uid] = { role, email: cred.user.email };
       localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-    } catch {}
+    } catch { /* ignore */ }
+
+    const enriched = await enrichUser(cred.user, true);
+    if (mountedRef.current && enriched) setUser({ ...enriched });
 
     return cred.user;
   }, []);
 
+  /* ============ LOGOUT ============ */
   const logout = useCallback(async () => {
     await signOut(auth);
   }, []);
 
+  /* ============ UPDATE DISPLAY NAME ============ */
   const updateDisplayName = useCallback(async (name) => {
     if (!auth.currentUser) throw new Error('Chưa đăng nhập');
     await updateProfile(auth.currentUser, { displayName: name });
     await auth.currentUser.reload();
-    if (mountedRef.current) setUser({ ...auth.currentUser });
+    const enriched = await enrichUser(auth.currentUser);
+    if (mountedRef.current && enriched) setUser({ ...enriched });
   }, []);
 
+  /* ============ CHANGE PASSWORD ============ */
   const changePassword = useCallback(async (oldPassword, newPassword) => {
     const u = auth.currentUser;
     if (!u || !u.email) throw new Error('Chưa đăng nhập');
@@ -142,41 +203,50 @@ export function AuthProvider({ children }) {
     await updatePassword(u, newPassword);
   }, []);
 
+  /* ============ SEND VERIFY EMAIL ============ */
   const sendVerifyEmail = useCallback(async () => {
     const u = auth.currentUser;
     if (!u) throw new Error('Chưa đăng nhập');
     await sendEmailVerification(u);
   }, []);
 
+  /* ============ RESET PASSWORD ============ */
   const resetPassword = useCallback(async (email) => {
     await sendPasswordResetEmail(auth, email);
   }, []);
 
-  const refreshUser = useCallback(async () => {
+  /* ============ REFRESH USER ============ */
+  const refreshUser = useCallback(async (forceRefresh = true) => {
     const u = auth.currentUser;
     if (!u) return null;
     await u.reload();
-    if (mountedRef.current) setUser({ ...auth.currentUser });
-    return auth.currentUser;
+    const enriched = await enrichUser(u, forceRefresh);
+    if (mountedRef.current && enriched) setUser({ ...enriched });
+    return enriched;
   }, []);
 
+  /* ============ REFRESH TIER ============ */
   const refreshTier = useCallback(async () => {
     const u = auth.currentUser;
     if (!u) return null;
-    const t = await getTier(u.uid);   // ← SỬA
+    const t = await getTier(u.uid);
     if (mountedRef.current) setTier(t);
     return t;
   }, []);
 
+  /* ============ UPLOAD AVATAR ============ */
   const uploadAvatar = useCallback(async (file) => {
     return fbUploadAvatar(file);
   }, []);
 
+  /* ============ CONTEXT VALUE ============ */
   const value = {
     user,
     tier,
     ready,
     isLoggedIn,
+    // Tiện: dùng trực tiếp không cần gọi isAdmin(user)
+    isAdmin: user?.isAdmin === true,
     register,
     login,
     loginWithGoogle,

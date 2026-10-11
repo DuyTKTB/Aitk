@@ -12,7 +12,7 @@ export const TIERS = {
   },
   vip: {
     key: 'vip',
-    name: 'CUAI VIP',
+    name: 'ELECAI VIP',
     color: '#ffb020',
     quotaText: Infinity,
     quotaImage: Infinity,

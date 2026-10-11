@@ -10,7 +10,7 @@
 .db-main, .db-side { display: grid; gap: var(--s-5); }
 .db-side { position: sticky; top: calc(var(--nav-h) + var(--s-5)); }
 
-/* ---- Ô hỏi CUAI: phần duy nhất được làm nổi ---- */
+/* ---- Ô hỏi ELECAI: phần duy nhất được làm nổi ---- */
 .db-composer { padding: var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-2); transition: border-color var(--dur-2), box-shadow var(--dur-2); }
 .db-composer:focus-within { border-color: var(--acc); box-shadow: var(--sh-2), var(--ring); }
 .db-composer textarea { width: 100%; min-height: 4.2rem; resize: none; border: 0; outline: 0; background: none; padding: var(--s-1); font: var(--fw-reg) 1.1rem/1.5 var(--sans); color: var(--ink); caret-color: var(--acc); }

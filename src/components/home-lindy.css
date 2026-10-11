@@ -339,7 +339,7 @@
 }
 
 /* ============================================================
-   EXPLORE CTA — Bắt đầu khám phá CUAI
+   EXPLORE CTA — Bắt đầu khám phá ELECAI
    ============================================================ */
 .hp-explore {
   position: relative;
@@ -635,7 +635,7 @@
   .hp-explore-btn::before { animation: none; }
 }
 /* ============================================================
-   INPUT THẬT — gõ + Enter → CUAI
+   INPUT THẬT — gõ + Enter → ELECAI
    ============================================================ */
 .hl-input-wrap {
   display: flex;

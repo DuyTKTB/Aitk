@@ -10,12 +10,11 @@
            (mất sạch dữ liệu đang nhập khi bấm Lưu / đổi tab)
          • đổi tab làm mất cuộc trò chuyện AI (nay giữ mounted)
    ============================================================ */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
 import CreateExamAI from './CreateExamAI.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
-import { bumpUsage, addQuestionsBatch } from '../../lib/questionBank.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useToast } from '../admin/AdminUI.jsx';
 import './create-exam-page.css';
@@ -35,6 +34,27 @@ const IcoSparkle = ({ size = 16 }) => (
   </svg>
 );
 
+/* ---------- Nháp tạo thủ công (autosave, theo lớp) ---------- */
+const draftKey = (classId) => `cs-exam-manual-draft:${classId || 'none'}`;
+const readManualDraft = (classId) => {
+  try {
+    const d = JSON.parse(localStorage.getItem(draftKey(classId)) || 'null');
+    const has = d && (d.title?.trim() || d.questions?.some((q) => q.q?.trim()));
+    return has ? d : null;
+  } catch { return null; }
+};
+const writeManualDraft = (classId, d) => {
+  try { localStorage.setItem(draftKey(classId), JSON.stringify({ ...d, savedAt: Date.now() })); } catch { /* đầy bộ nhớ */ }
+};
+const clearManualDraft = (classId) => { try { localStorage.removeItem(draftKey(classId)); } catch { /* */ } };
+const fmtAgo = (t) => {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return 'vừa xong';
+  if (m < 60) return `${m} phút trước`;
+  const h = Math.round(m / 60);
+  return h < 24 ? `${h} giờ trước` : `${Math.round(h / 24)} ngày trước`;
+};
+
 /* ============================================================
    MAIN
    ============================================================ */
@@ -46,6 +66,30 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
   const [formVersion, setFormVersion] = useState(0); // đổi khi nạp đề mới từ AI
   const [saving, setSaving] = useState(false);
   const dirtyRef = useRef(false); // form thủ công đang có nội dung
+  const [pendingDraft, setPendingDraft] = useState(() => readManualDraft(classInfo?.id));
+
+  /* Cảnh báo khi đóng/tải lại tab lúc còn nội dung chưa lưu */
+  useEffect(() => {
+    const h = (e) => { if (dirtyRef.current && !saving) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [saving]);
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    setInitialData(pendingDraft);
+    setFormVersion((v) => v + 1);
+    setPendingDraft(null);
+    setTab('manual');
+    toast.success('Đã khôi phục bản nháp');
+  };
+  const discardDraft = () => { clearManualDraft(classInfo?.id); setPendingDraft(null); };
+
+  /* Form báo bản chụp → lưu nháp (chỉ khi đang có nội dung) */
+  const handleSnapshot = useCallback((snap) => {
+    const has = snap.title?.trim() || snap.questions?.some((q) => q.q?.trim());
+    if (has) writeManualDraft(classInfo?.id, snap);
+  }, [classInfo?.id]);
 
   /* AI sinh đề xong → chuyển sang tab thủ công với dữ liệu điền sẵn */
   const handleAIGenerated = useCallback((payload) => {
@@ -87,17 +131,12 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
 
   /* Lưu đề */
   const handleSave = async (data) => {
-    if (saving) return; // chống bấm "Lưu đề" 2 lần → tạo 2 đề giống nhau
     if (!classInfo?.id) {
       toast.error('Thiếu thông tin lớp.');
       return;
     }
     setSaving(true);
     try {
-      // bankId chỉ dùng nội bộ để đếm lượt dùng — không lưu vào đề (HS đọc được tài liệu đề)
-      const bankIds = [...new Set(data.questions.map((q) => q.bankId).filter(Boolean))];
-      const examQuestions = data.questions.map(({ bankId, ...rest }) => rest); // eslint-disable-line no-unused-vars
-
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
@@ -105,7 +144,7 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         title: data.title,
         description: data.description,
         duration: data.duration,
-        questions: examQuestions,
+        questions: data.questions,
         showAnswerAfter: data.showAnswerAfter,
         allowRetry: data.allowRetry,
         shuffle: data.shuffle,
@@ -113,26 +152,10 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         closesAt: data.closesAt,
         proctor: data.proctor,
       });
-      // Ngân hàng câu hỏi: tăng số lần dùng + (tùy chọn) lưu các câu mới. Lỗi ở đây không làm hỏng việc lưu đề.
-      if (bankIds.length) bumpUsage(bankIds).catch((e) => console.warn('[bumpUsage]', e?.message));
-      let banked = 0;
-      if (data.saveToBank) {
-        try {
-          const fresh = data.questions.filter((q) => !q.bankId);
-          const r = await addQuestionsBatch({
-            teacherId: user.uid,
-            questions: fresh.map(({ bankId, ...q }) => ({ ...q, subject: classInfo?.subject || 'Hóa học' })), // eslint-disable-line no-unused-vars
-          });
-          banked = r.count;
-        } catch (e) {
-          console.warn('[addQuestionsBatch]', e?.message);
-        }
-      }
-      toast.success(
-        `Đã tạo đề "${data.title}" với ${data.questions.length} câu` +
-        (banked ? ` · đã lưu ${banked} câu mới vào ngân hàng` : '')
-      );
+      toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
       clearDraft(); // đề đã lưu → bỏ bản nháp AI cũ
+      clearManualDraft(classInfo.id);
+      dirtyRef.current = false;
       onDone?.(exam);
     } catch (e) {
       console.error(e);
@@ -166,14 +189,30 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         </button>
       </div>
 
+      {/* ===== BẢN NHÁP CHƯA LƯU ===== */}
+      {pendingDraft && (
+        <div className="cep-draft-banner" role="status">
+          <div>
+            <b>Có bản nháp chưa lưu</b>
+            <span>
+              “{pendingDraft.title?.trim() || 'Đề chưa đặt tên'}” · {pendingDraft.questions?.length || 0} câu · {fmtAgo(pendingDraft.savedAt)}
+            </span>
+          </div>
+          <div className="cep-draft-actions">
+            <button type="button" className="cep-draft-btn primary" onClick={restoreDraft}>Khôi phục</button>
+            <button type="button" className="cep-draft-btn" onClick={discardDraft}>Bỏ</button>
+          </div>
+        </div>
+      )}
+
       {/* ===== NỘI DUNG — cả 2 tab luôn mounted để không mất dữ liệu ===== */}
       <div hidden={tab !== 'manual'}>
         <ExamCreateForm
           key={'form-' + formVersion}
           initial={initialData}
           onDirty={(d) => { dirtyRef.current = d; }}
+          onSnapshot={handleSnapshot}
           classInfo={classInfo}
-          teacherId={user?.uid || ''}
           onSave={handleSave}
           onCancel={onCancel}
           saving={saving}

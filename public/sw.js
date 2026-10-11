@@ -2,10 +2,10 @@
    Tăng VERSION mỗi lần phát hành để làm mới cache cũ.
    - Điều hướng: mạng trước, rớt thì dùng bản đã lưu, cuối cùng /offline.html
    - File tĩnh cùng origin: trả bản cache ngay, cập nhật nền (stale-while-revalidate)
-   - /api/* và mọi request không phải GET: KHÔNG đụng (chat CUAI, phản hồi, đăng nhập) */
+   - /api/* và mọi request không phải GET: KHÔNG đụng (chat ELECAI, phản hồi, đăng nhập) */
 const VERSION = 'v1';
-const SHELL = `cuai-shell-${VERSION}`;
-const ASSETS = `cuai-assets-${VERSION}`;
+const SHELL = `ELECAI-shell-${VERSION}`;
+const ASSETS = `ELECAI-assets-${VERSION}`;
 const PRECACHE = ['/', '/offline.html', '/manifest.webmanifest', '/logo.png'];
 
 self.addEventListener('install', (e) => {

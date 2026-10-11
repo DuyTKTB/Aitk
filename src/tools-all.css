@@ -1021,9 +1021,9 @@ section.wrap.tools-page {
 }
 
 /* ============================================================
-   19. CUAI HERO CARD
+   19. ELECAI HERO CARD
    ============================================================ */
-.tc-cuai {
+.tc-ELECAI {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: 2rem;
@@ -1039,7 +1039,7 @@ section.wrap.tools-page {
   overflow: hidden;
 }
 
-.tc-cuai::before {
+.tc-ELECAI::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -1049,10 +1049,10 @@ section.wrap.tools-page {
 }
 
 @media (max-width: 720px) {
-  .tc-cuai { grid-template-columns: 1fr; padding: 1.2rem; gap: 1.2rem; }
+  .tc-ELECAI { grid-template-columns: 1fr; padding: 1.2rem; gap: 1.2rem; }
 }
 
-.tc-cuai-id {
+.tc-ELECAI-id {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -1061,7 +1061,7 @@ section.wrap.tools-page {
   z-index: 1;
 }
 
-.tc-cuai-id h2 {
+.tc-ELECAI-id h2 {
   margin: 0 0 .15rem;
   font: 700 1.6rem var(--sans);
   letter-spacing: -.03em;
@@ -1069,14 +1069,14 @@ section.wrap.tools-page {
   color: var(--ink);
 }
 
-.tc-cuai-by {
+.tc-ELECAI-by {
   font: 500 .72rem var(--mono);
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--mut);
 }
 
-.tc-cuai-desc {
+.tc-ELECAI-desc {
   font: 500 .95rem/1.5 var(--sans);
   color: var(--ink);
   margin: 0 0 .6rem;
@@ -1084,7 +1084,7 @@ section.wrap.tools-page {
   z-index: 1;
 }
 
-.tc-cuai-why {
+.tc-ELECAI-why {
   font: 400 .85rem/1.6 var(--sans);
   color: var(--mut);
   margin: 0 0 1rem;
@@ -1092,7 +1092,7 @@ section.wrap.tools-page {
   z-index: 1;
 }
 
-.tc-cuai-foot {
+.tc-ELECAI-foot {
   display: flex;
   align-items: center;
   gap: .6rem;
@@ -1101,7 +1101,7 @@ section.wrap.tools-page {
   z-index: 1;
 }
 
-.tc-cuai-side {
+.tc-ELECAI-side {
   display: flex;
   flex-direction: column;
   gap: .8rem;
@@ -1110,7 +1110,7 @@ section.wrap.tools-page {
   z-index: 1;
 }
 
-.tc-cuai-side h3 {
+.tc-ELECAI-side h3 {
   margin: 0;
   font: 700 .82rem var(--mono);
   text-transform: uppercase;
@@ -1118,7 +1118,7 @@ section.wrap.tools-page {
   color: var(--ink);
 }
 
-.tc-cuai-side ul {
+.tc-ELECAI-side ul {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -1127,14 +1127,14 @@ section.wrap.tools-page {
   gap: .5rem;
 }
 
-.tc-cuai-side li {
+.tc-ELECAI-side li {
   font: 500 .82rem/1.4 var(--sans);
   color: var(--ink);
   padding-left: 1.2rem;
   position: relative;
 }
 
-.tc-cuai-side li::before {
+.tc-ELECAI-side li::before {
   content: '✓';
   position: absolute;
   left: 0;
@@ -2777,7 +2777,7 @@ section.wrap.tools-page {
   flex-wrap: wrap;
 }
 
-.cuai-badge-inline {
+.ELECAI-badge-inline {
   display: inline-flex;
   align-items: center;
   gap: .2rem;
@@ -3022,7 +3022,7 @@ section.wrap.tools-page {
   }
   .tc-row-meta { display: none; }
   .tc-rank { width: 28px; height: 28px; font-size: .72rem; }
-  .tc-cuai { padding: 1.2rem; }
+  .tc-ELECAI { padding: 1.2rem; }
   .tc-controls { flex-direction: column; align-items: stretch; }
   .tc-sort { justify-content: space-between; }
   .quickview { padding: 1.5rem 1.2rem 1.2rem; }

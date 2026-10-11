@@ -18,7 +18,7 @@ export const TIERS = {
   },
   vip: {
     key: 'vip',
-    name: 'CUAI VIP',
+    name: 'ELECAI VIP',
     icon: '👑',
     quotaText: Infinity,
     quotaImage: 30,

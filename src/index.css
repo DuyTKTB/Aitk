@@ -1,4 +1,4 @@
-/* CHEM STUDY — Editorial × Swiss × Brutalist. Giấy kem + mực đen + một màu nhấn duy nhất. */
+/* ELEC AI — Editorial × Swiss × Brutalist. Giấy kem + mực đen + một màu nhấn duy nhất. */
 :root {
   --bg: #efece4; --panel: #efece4; --ink: #111; --mut: #6b675e; --soft: rgba(17, 17, 17, .16); --line: #111;
   --acc: #ff4d1a; --acc-ink: #111; --shadow: none;
@@ -11380,7 +11380,7 @@ kbd { border-radius: 6px; font-family: var(--sans); }
     min-width: 0;
   }
 
-  /* Dòng nhỏ: A7 K60 DTA */
+  /* Dòng nhỏ: ELEC AI */
   .mhead-sub {
     font: 600 .65rem var(--mono, monospace);
     text-transform: uppercase;
@@ -13099,12 +13099,12 @@ html body .petw:active {
    FIX Z-INDEX LOGO — Dán vào CUỐI index.css
    ============================================================ */
 
-/* Đảm bảo mọi logo trang trí (CUAI TK MEDIA) không đè lên UI */
-.cuai-logo,
-.cuai-brand,
-.logo-cuai,
-[class*="cuai-logo"],
-[class*="cuai-brand"] {
+/* Đảm bảo mọi logo trang trí (ELECAI TK MEDIA) không đè lên UI */
+.ELECAI-logo,
+.ELECAI-brand,
+.logo-ELECAI,
+[class*="ELECAI-logo"],
+[class*="ELECAI-brand"] {
   position: relative;
   z-index: 1;
 }
@@ -13168,18 +13168,18 @@ html body .petw:active {
   }
 }
 /* ============================================================
-   FIX TRIỆT ĐỂ — Logo CUAI TK MEDIA đè lên UI
+   FIX TRIỆT ĐỂ — Logo ELECAI TK MEDIA đè lên UI
    Dán vào CUỐI index.css
    ============================================================ */
 
-/* ---- 1. Ẩn logo CUAI TK MEDIA khi không ở trang chủ/landing ---- */
-/* Logo này có thể là <img>, <svg>, hoặc <div> với class chứa "cuai" */
-body:not(.on-landing) [class*="cuai-logo"],
-body:not(.on-landing) [class*="cuai-brand"],
-body:not(.on-landing) [class*="cuai-mark"],
-body:not(.on-landing) .cuai-logo,
-body:not(.on-landing) .cuai-brand,
-body:not(.on-landing) .cuai-mark {
+/* ---- 1. Ẩn logo ELECAI TK MEDIA khi không ở trang chủ/landing ---- */
+/* Logo này có thể là <img>, <svg>, hoặc <div> với class chứa "ELECAI" */
+body:not(.on-landing) [class*="ELECAI-logo"],
+body:not(.on-landing) [class*="ELECAI-brand"],
+body:not(.on-landing) [class*="ELECAI-mark"],
+body:not(.on-landing) .ELECAI-logo,
+body:not(.on-landing) .ELECAI-brand,
+body:not(.on-landing) .ELECAI-mark {
   display: none !important;
 }
 
@@ -13193,8 +13193,8 @@ body:not(.on-landing) .cuai-mark {
   display: none !important;
 }
 
-/* ---- 3. Nếu logo là <img> với src chứa "cuai" hoặc "tkmedia" ---- */
-img[src*="cuai"][style*="fixed"],
+/* ---- 3. Nếu logo là <img> với src chứa "ELECAI" hoặc "tkmedia" ---- */
+img[src*="ELECAI"][style*="fixed"],
 img[src*="tkmedia"][style*="fixed"],
 img[src*="tk-media"][style*="fixed"] {
   display: none !important;

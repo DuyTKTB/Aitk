@@ -54,7 +54,7 @@ export default function UpgradePrompt({ open, feature, onClose, onUpgrade }) {
         </h2>
 
         <p className="upgrade-prompt-desc">
-          Nâng cấp lên <b>CUAI VIP</b> để mở khóa toàn bộ tính năng cao cấp:
+          Nâng cấp lên <b>ELECAI VIP</b> để mở khóa toàn bộ tính năng cao cấp:
           so sánh công cụ bằng AI, hỏi AI không giới hạn, ưu tiên xử lý, và nhiều thứ khác.
         </p>
 

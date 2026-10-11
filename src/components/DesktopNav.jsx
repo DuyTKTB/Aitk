@@ -112,7 +112,7 @@ export default function DesktopNav({
         <a className="nav-logo" href="#home" aria-label="Trang chủ">
           <img
             src="/img/logo.png"
-            alt="A7 K60 DTA"
+            alt="ELEC AI"
             className="nav-logo-img"
             onError={(e) => {
               // Fallback nếu không tải được ảnh
@@ -121,7 +121,7 @@ export default function DesktopNav({
             }}
           />
           <span className="nav-logo-dot" aria-hidden="true" />
-          <span className="logo-text">A7 K60 DTA</span>
+          <span className="logo-text">ELEC AI</span>
         </a>
 
         <div className="nav-links">
@@ -134,13 +134,13 @@ export default function DesktopNav({
             <span className="nav-label">Trang chủ</span>
           </a>
 
-          {/* CU AI */}
+          {/* ELEC AI */}
           <a
             href="#ai"
             className={'nav-item' + (page === 'ai' ? ' active' : '')}
           >
             <span className="nav-ico"><IconRobot size={15} /></span>
-            <span className="nav-label">CU AI</span>
+            <span className="nav-label">ELEC AI</span>
           </a>
 
           {/* Công cụ dropdown */}

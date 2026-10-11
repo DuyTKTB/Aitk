@@ -1,6 +1,6 @@
 {
-  "name": "A7 K60 DTA — Học Hóa cùng CUAI",
-  "short_name": "CUAI",
+  "name": "ELEC AI — Học Hóa cùng ELECAI",
+  "short_name": "ELECAI",
   "description": "Học Hóa với trợ lý AI: giải đề, cân bằng PTHH, quiz và theo dõi tiến độ.",
   "lang": "vi",
   "start_url": "/#home",
@@ -16,7 +16,7 @@
     { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Hỏi CUAI", "url": "/#ai" },
+    { "name": "Hỏi ELECAI", "url": "/#ai" },
     { "name": "Quiz", "url": "/#quiz" },
     { "name": "Cân bằng PTHH", "url": "/#balance" }
   ]

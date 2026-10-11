@@ -15,11 +15,11 @@ export const PRICE_META = {
 };
 const HOT = [
   {
-    id: 'cuai',
+    id: 'ELECAI',
     rank: 1,
     cat: 'chat',
-    name: 'CUAI',
-    domain: 'A7 K60 DTA',
+    name: 'ELECAI',
+    domain: 'ELEC AI',
     url: '#ai',
     internal: true,
     rating: 5,
@@ -27,7 +27,7 @@ const HOT = [
     freeTier: true,
     vnSupport: true,
     isSuperVip: true,
-    desc: 'Trợ lý Hóa học AI của A7 K60 DTA — miễn phí, không giới hạn cho học sinh',
+    desc: 'Trợ lý Hóa học AI của ELEC AI — miễn phí, không giới hạn cho học sinh',
     why: 'Đây là AI của chính chúng ta — được tối ưu riêng cho môn Hóa học THPT Việt Nam. Hiểu chương trình Lớp 10-11-12 và Đại học, giải bài tập từng bước, phân tích ảnh đề bài, không dùng LaTeX khó đọc. Miễn phí hoàn toàn, không cần đăng ký, không giới hạn lượt chat cho học sinh trong lớp. Đặc biệt: trả lời ngắn gọn, đi thẳng vào bản chất, không lan man như các AI nước ngoài.',
     bestFor: [
       'Giải bài tập Hóa học từ Lớp 10 đến Đại học',

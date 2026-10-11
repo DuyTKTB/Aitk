@@ -132,7 +132,7 @@ function FocusTab({ soundPreset }) {
   useEffect(() => {
     document.title = run
       ? `${pad(Math.floor(left / 60))}:${pad(left % 60)} — ${modes.find((m) => m.key === mode)?.label}`
-      : 'A7 K60 DTA';
+      : 'ELEC AI';
   }, [left, run, mode]);
 
   const pick = (m) => { setRun(false); setMode(m); setLeft(cfg[m] * 60); };

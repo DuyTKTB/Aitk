@@ -182,13 +182,13 @@ export function Art({ seed, hue, kind = 'blobs', src, ratio = '16 / 9', classNam
     </div>
   );
 }
-export function Logo({ domain, Fallback, size = 44, CuaiLogo }) {
+export function Logo({ domain, Fallback, size = 44, ELECAILogo }) {
   const [bad, setBad] = useState(false);
   const host = String(domain).split('/')[0];
-  if (domain === 'A7 K60 DTA' && CuaiLogo) {
+  if (domain === 'ELEC AI' && ELECAILogo) {
     return (
-      <span className="tk-logo tk-logo-cuai" style={{ width: size, height: size }}>
-        <CuaiLogo size={Math.round(size * 0.72)} animate={false} mode="idle" />
+      <span className="tk-logo tk-logo-ELECAI" style={{ width: size, height: size }}>
+        <ELECAILogo size={Math.round(size * 0.72)} animate={false} mode="idle" />
       </span>
     );
   }
@@ -253,7 +253,7 @@ export function CompareBar({ items = [], onRemove, onClear, onOpen }) {
     </div>
   );
 }
-export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, onShare, CuaiLogo }) {
+export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, onShare, ELECAILogo }) {
   const ref = useRef(null);
   useEffect(() => {
     const d = ref.current;
@@ -261,10 +261,10 @@ export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, 
   }, []);
   if (!tool) return null;
 
-  const isCuai = tool.id === 'cuai' || tool.internal;
+  const isELECAI = tool.id === 'ELECAI' || tool.internal;
 
   const handleOpen = (e) => {
-    if (isCuai) {
+    if (isELECAI) {
       e.preventDefault();
       window.location.hash = 'ai';
       ref.current?.close();
@@ -278,17 +278,17 @@ export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, 
       onClose={onClose}
       onClick={(e) => e.target === ref.current && ref.current.close()}
     >
-      <div className={'quickview' + (isCuai ? ' quickview-cuai' : '')}>
+      <div className={'quickview' + (isELECAI ? ' quickview-ELECAI' : '')}>
         <button type="button" className="quickview-x" onClick={() => ref.current.close()} aria-label="Đóng">×</button>
 
         <header className="quickview-head">
           <div className="quickview-logo">
-            <Logo domain={tool.domain} size={56} CuaiLogo={CuaiLogo} />
+            <Logo domain={tool.domain} size={56} ELECAILogo={ELECAILogo} />
           </div>
           <div className="quickview-title">
             <h2>
               {tool.name}
-              {isCuai && <span className="cuai-badge-inline">👑 Siêu VIP</span>}
+              {isELECAI && <span className="ELECAI-badge-inline">👑 Siêu VIP</span>}
             </h2>
             <span className="quickview-domain">{tool.domain}</span>
             {meta?.rating && <Rating value={meta.rating} showNumber />}
@@ -317,7 +317,7 @@ export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, 
               <PriceBadge price={meta.price} />
               {meta.freeTier && <span className="hot-tag free">Có bản free</span>}
               {meta.vnSupport && <span className="hot-tag vn">Tiếng Việt tốt</span>}
-              {isCuai && <span className="hot-tag official">Chính chủ</span>}
+              {isELECAI && <span className="hot-tag official">Chính chủ</span>}
             </div>
 
             {meta.pros?.length > 0 && (
@@ -350,13 +350,13 @@ export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, 
 
         <div className="quickview-actions">
           <a
-            href={isCuai ? '#ai' : tool.url}
-            target={isCuai ? undefined : '_blank'}
-            rel={isCuai ? undefined : 'noopener noreferrer'}
+            href={isELECAI ? '#ai' : tool.url}
+            target={isELECAI ? undefined : '_blank'}
+            rel={isELECAI ? undefined : 'noopener noreferrer'}
             className="quickview-btn primary"
             onClick={handleOpen}
           >
-            {isCuai ? 'Dùng ngay →' : 'Mở công cụ ↗'}
+            {isELECAI ? 'Dùng ngay →' : 'Mở công cụ ↗'}
           </a>
           <button type="button" className={'quickview-btn' + (isFav ? ' on' : '')} onClick={onFav}>
             {isFav ? '★ Đã lưu' : '☆ Lưu'}

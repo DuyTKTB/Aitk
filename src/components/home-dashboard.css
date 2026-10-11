@@ -1,5 +1,5 @@
 /* home-dashboard.css — Home dashboard (thay home-pro.css + home-lindy.css).
-   Ba lớp: nền kính navy · số liệu dày · CUAI thân thiện. Chỉ dùng token. */
+   Ba lớp: nền kính navy · số liệu dày · ELECAI thân thiện. Chỉ dùng token. */
 
 @property --db-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 
@@ -25,9 +25,9 @@
 .db-side > :nth-child(3) { animation-delay: 280ms; } .db-side > :nth-child(4) { animation-delay: 350ms; }
 @keyframes db-in { from { opacity: 0; transform: translateY(14px); } }
 
-/* ---- Đầu trang: CUAI chào ---- */
+/* ---- Đầu trang: ELECAI chào ---- */
 .db-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-4); align-items: center; margin-bottom: var(--s-5); }
-.db-cuai { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: var(--glass); border: 1px solid var(--line); box-shadow: var(--glow); }
+.db-ELECAI { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: var(--glass); border: 1px solid var(--line); box-shadow: var(--glow); }
 .db-head h1 { margin: 0; font: var(--fw-med) var(--fs-2xl)/var(--lh-tight) var(--sans); letter-spacing: -.035em; text-transform: none; }
 .db-bubble { position: relative; display: inline-block; margin: var(--s-2) 0 0; padding: .45rem .85rem; border-radius: var(--r-md); border-top-left-radius: 4px; background: var(--soft); color: var(--ink); font-size: var(--fs-sm); line-height: 1.45; max-width: 60ch; }
 .db-level { display: grid; justify-items: end; padding: .5rem .85rem; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--glass); line-height: 1.25; }
@@ -38,7 +38,7 @@
 .db-main, .db-side { display: grid; gap: var(--s-5); }
 .db-side { position: sticky; top: calc(var(--nav-h) + var(--s-5)); }
 
-/* ---- Ô hỏi CUAI: viền sáng quay khi gõ ---- */
+/* ---- Ô hỏi ELECAI: viền sáng quay khi gõ ---- */
 .db-composer { position: relative; isolation: isolate; padding: var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line);
   background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
   box-shadow: var(--sh-2); transition: border-color var(--dur-2), box-shadow var(--dur-2); }
@@ -152,7 +152,7 @@
   .db { padding-top: calc(var(--nav-h) + var(--s-6)); padding-bottom: calc(var(--bottom-nav-h) + var(--s-7)); }
   .db-head { grid-template-columns: auto minmax(0, 1fr); }
   .db-level { grid-column: 1 / -1; justify-items: start; grid-auto-flow: column; gap: var(--s-2); width: fit-content; }
-  .db-cuai { width: 48px; height: 48px; }
+  .db-ELECAI { width: 48px; height: 48px; }
   .db-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .db-shortcuts a:nth-child(3) { border-left: 0; }
   .db-shortcuts a:nth-child(n+3) { border-top: 1px solid var(--line-soft); }
