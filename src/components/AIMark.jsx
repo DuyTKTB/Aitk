@@ -1,43 +1,121 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 /* ============================================================
-   AIMark.jsx — logo "con mắt" của trợ lý AI (bản viết lại, an toàn cho mobile)
+   AIMark.jsx — logo ELEC AI (bình hóa học + nguyên tử + sách mở)
 
-   Vì sao bản cũ bị phình to / lệch trên điện thoại?
-   • Con ngươi bị dịch chuyển bằng tọa độ con trỏ KHÔNG giới hạn.
-   • Trên iOS Safari, CSS transform áp lên phần tử con của <svg> tính gốc toạ độ
-     theo cả khung nhìn thay vì theo chính phần tử → hình bị phóng/lệch.
-   Bản này:
-   • Chỉ dùng thuộc tính transform của SVG (không dùng CSS transform).
-   • Độ lệch ngươi luôn bị kẹp ≤ MAX px trong hệ toạ độ viewBox.
-   • Màn hình cảm ứng: không bám theo ngón tay, chỉ liếc ngẫu nhiên nhẹ.
-   • Tôn trọng prefers-reduced-motion.
-   • Mọi nét đều nằm gọn trong viewBox 620×500 nên overflow:hidden không cắt mất gì.
+   Props:
+   size (px chiều rộng) · mode 'idle' | 'think' | 'talk' | 'success' | 'error'
+   look (parallax theo con trỏ) · animate · className
+   effects 'full' | 'lite'  (mặc định: size < 56 → 'lite', còn lại 'full')
 
-   Props giữ nguyên như bản cũ:
-   size (px chiều rộng) · mode 'idle' | 'think' | 'talk' · look · animate · className
+   Hiệu ứng:
+   • Chất lỏng đổi màu theo mode (xanh / tím khi nghĩ / cyan khi nói / lục / đỏ)
+   • Hạt nhân phát sáng + electron có đuôi sao chổi
+   • Khói bốc từ miệng bình + vệt sáng quét qua kính
+   • Ký hiệu hóa học (H₂O, π, Σ, e⁻) bay lên từ quyển sách
+   • Chạm / click → sóng + tia sáng bắn ra
+   • success → pháo sáng nhỏ; error → bình rung nhẹ
+
+   An toàn cho mobile: chỉ dùng transform thuộc tính của SVG (không CSS transform),
+   độ lệch parallax kẹp ≤ MAX, tôn trọng prefers-reduced-motion.
+   Lite = bỏ khói, vệt sáng, ký hiệu, đuôi electron cho nhẹ.
    ============================================================ */
 
 const VB_W = 620;
 const VB_H = 500;
-const CX = 330;
-const CY = 285;
-const MAX = 20; // độ lệch tối đa của con ngươi
+const CX = 310;
+const CY = 250;
+const AY = CY - 20; // tâm nguyên tử
+const MAX = 10;
+
+const PALETTE = {
+  idle: ['#8fd3ff', '#4a9bff', '#2f6bff'],
+  think: ['#d2b8ff', '#9a74ff', '#5b3df0'],
+  talk: ['#9af2ff', '#32c8f2', '#1f8fe0'],
+  success: ['#a6f3c0', '#3fcf7a', '#1fa85a'],
+  error: ['#ffc2c2', '#ff6b6b', '#e03a3a'],
+};
+
+const orbitPath = (rx, ry) =>
+  `M${rx} 0A${rx} ${ry} 0 1 1 ${-rx} 0A${rx} ${ry} 0 1 1 ${rx} 0Z`;
+
+const ORBITS = [
+  { rx: 215, ry: 74, rot: 32, r: 15, dur: 11, begin: -2 },
+  { rx: 215, ry: 74, rot: -32, r: 11, dur: 14, begin: -7 },
+  { rx: 78, ry: 170, rot: 8, r: 9, dur: 17, begin: -10 },
+];
+
+const SYMBOLS = [
+  { s: 'H₂O', x: 188, d: 5.2 },
+  { s: 'π', x: 252, d: 4.6 },
+  { s: 'Σ', x: 368, d: 5.6 },
+  { s: 'e⁻', x: 432, d: 4.9 },
+];
+
+const SPARKS = Array.from({ length: 8 }, (_, i) => {
+  const a = (i / 8) * Math.PI * 2;
+  return { dx: Math.cos(a) * 170, dy: Math.sin(a) * 130 };
+});
+
+/* Hạt bay vòng khi "think": mỗi vòng là một chuỗi hạt nhỏ dần như đuôi sao chổi */
+const comet = (R, n, span, phase) =>
+  Array.from({ length: n }, (_, i) => {
+    const f = i / (n - 1); // 0 = đuôi, 1 = đầu
+    const a = phase + (f - 1) * span;
+    return {
+      x: CX + R * Math.cos(a),
+      y: AY + R * Math.sin(a),
+      r: 2.5 + f * 7.5,
+      o: 0.1 + f * 0.9,
+    };
+  });
+
+const THINK_RINGS = [
+  { R: 168, dur: 2.8, dir: 1, parts: comet(168, 12, 1.5 * Math.PI * 0.55, 0) },
+  { R: 168, dur: 2.8, dir: 1, parts: comet(168, 12, 1.5 * Math.PI * 0.55, Math.PI) },
+  { R: 118, dur: 3.6, dir: -1, parts: comet(118, 9, Math.PI * 0.7, Math.PI / 2) },
+];
 
 export default function AIMark({
   size = 64,
   mode = 'idle',
   look = false,
   animate = true,
+  effects,
   className = '',
   style,
+  onPointerDown,
   ...rest
 }) {
   const uid = useId().replace(/:/g, '');
   const svgRef = useRef(null);
-  const pupilRef = useRef(null);
+  const atomRef = useRef(null);
+  const flaskRef = useRef(null);
+  const [burst, setBurst] = useState(null); // { n, t0 }
+  const [modeT, setModeT] = useState(0);
 
-  /* ---------- Theo dõi con trỏ (chỉ desktop) / liếc ngẫu nhiên (cảm ứng) ---------- */
+  const full = (effects ? effects === 'full' : size >= 56) && animate;
+
+  const now = () => {
+    try {
+      return svgRef.current?.getCurrentTime?.() ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+  const fire = () => {
+    if (!animate) return;
+    setBurst((b) => ({ n: (b?.n ?? 0) + 1, t0: now() }));
+  };
+
+  /* ---------- Đổi mode: ghi mốc thời gian, success → bắn tia ---------- */
+  useEffect(() => {
+    setModeT(now());
+    if (mode === 'success') fire();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  /* ---------- Parallax nhẹ theo con trỏ (desktop) / thở ngẫu nhiên (cảm ứng) ---------- */
   useEffect(() => {
     if (!look || !animate || typeof window === 'undefined') return undefined;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
@@ -50,21 +128,23 @@ export default function AIMark({
 
     const paint = () => {
       raf = 0;
-      cur.x += (tgt.x - cur.x) * 0.22;
-      cur.y += (tgt.y - cur.y) * 0.22;
-      const el = pupilRef.current;
-      if (el) el.setAttribute('transform', `translate(${cur.x.toFixed(2)} ${cur.y.toFixed(2)})`);
+      cur.x += (tgt.x - cur.x) * 0.16;
+      cur.y += (tgt.y - cur.y) * 0.16;
+      atomRef.current?.setAttribute('transform', `translate(${cur.x.toFixed(2)} ${cur.y.toFixed(2)})`);
+      flaskRef.current?.setAttribute(
+        'transform',
+        `translate(${(cur.x * -0.3).toFixed(2)} ${(cur.y * -0.3).toFixed(2)})`
+      );
       if (Math.abs(tgt.x - cur.x) > 0.05 || Math.abs(tgt.y - cur.y) > 0.05) raf = requestAnimationFrame(paint);
     };
     const aim = (x, y) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       const d = Math.hypot(x, y) || 1;
-      const s = Math.min(d, MAX) / d; // kẹp độ dài vector ≤ MAX
+      const s = Math.min(d, MAX) / d;
       tgt.x = x * s;
       tgt.y = y * s;
       if (!raf) raf = requestAnimationFrame(paint);
     };
-
     const onMove = (e) => {
       const svg = svgRef.current;
       if (!svg) return;
@@ -73,7 +153,7 @@ export default function AIMark({
       const dx = e.clientX - (r.left + (r.width * CX) / VB_W);
       const dy = e.clientY - (r.top + (r.height * CY) / VB_H);
       const d = Math.hypot(dx, dy) || 1;
-      const f = Math.min(1, d / 260) * MAX; // càng xa càng lệch, tối đa MAX
+      const f = Math.min(1, d / 300) * MAX;
       aim((dx / d) * f, (dy / d) * f);
     };
 
@@ -81,8 +161,8 @@ export default function AIMark({
       window.addEventListener('pointermove', onMove, { passive: true });
     } else {
       timer = window.setInterval(() => {
-        aim((Math.random() - 0.5) * 2 * 14, (Math.random() - 0.5) * 2 * 9);
-      }, 2600);
+        aim((Math.random() - 0.5) * 2 * 8, (Math.random() - 0.5) * 2 * 6);
+      }, 2800);
     }
     return () => {
       window.removeEventListener('pointermove', onMove);
@@ -91,12 +171,40 @@ export default function AIMark({
     };
   }, [look, animate]);
 
-  /* ---------- Hoạt ảnh SVG (SMIL) — hoạt động tốt trên Safari/Chrome ---------- */
+  /* ---------- Nhịp hoạt ảnh theo trạng thái ---------- */
   const fast = mode === 'talk';
   const busy = mode === 'think' || fast;
-  const pulseDur = fast ? '.55s' : '1.2s';
+  const k = fast ? 0.45 : busy ? 0.65 : 1;
+  const t = (s) => `${(s * k).toFixed(2)}s`;
+  const pal = PALETTE[mode] || PALETTE.idle;
 
   const h = Math.round((size * VB_H) / VB_W);
+  const id = (n) => `${uid}-${n}`;
+  const stopStyle = (c) => ({ stopColor: c, transition: 'stop-color .7s ease' });
+
+  const flaskPath =
+    'M291 108V206L218 322C205 344 213 366 238 372C275 382 345 382 382 372C407 366 415 344 402 322L329 206V108Z';
+
+  const Wing = () => (
+    <>
+      <path
+        d="M70 410C72 403 100 402 114 408L152 462C161 474 178 473 195 468C238 454 280 454 306 476L300 480C270 464 232 464 198 476C172 484 142 488 128 477C105 452 86 430 70 410Z"
+        fill={`url(#${id('cover')})`}
+      />
+      <path
+        d="M308 478C276 430 222 396 140 384C154 406 170 426 186 442C232 434 276 442 308 478Z"
+        fill={`url(#${id('page')})`}
+      />
+      <path
+        d="M140 384C175 392 215 408 250 430"
+        fill="none"
+        stroke="#fff"
+        strokeOpacity=".55"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </>
+  );
 
   return (
     <svg
@@ -108,72 +216,331 @@ export default function AIMark({
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Trợ lý AI"
-      style={{ overflow: 'hidden', ...style }}
+      style={{ overflow: 'hidden', touchAction: 'manipulation', ...style }}
+      onPointerDown={(e) => {
+        fire();
+        onPointerDown?.(e);
+      }}
       {...rest}
     >
       <defs>
-        <radialGradient id={`${uid}-iris`} cx="40%" cy="35%" r="75%">
-          <stop offset="0%" stopColor="#7aa7ff" />
-          <stop offset="55%" stopColor="#2f6bff" />
-          <stop offset="100%" stopColor="#1f45d6" />
+        <linearGradient id={id('liquid')} x1="0" y1="0" x2="0.6" y2="1">
+          <stop offset="0%" style={stopStyle(pal[0])} />
+          <stop offset="50%" style={stopStyle(pal[1])} />
+          <stop offset="100%" style={stopStyle(pal[2])} />
+        </linearGradient>
+        <linearGradient id={id('glass')} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity=".85" />
+          <stop offset="100%" stopColor="#cfe4ff" stopOpacity=".35" />
+        </linearGradient>
+        <linearGradient id={id('rim')} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#b9d8ff" />
+          <stop offset="100%" stopColor="#7fb0ff" />
+        </linearGradient>
+        <linearGradient id={id('page')} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#7fd0ff" />
+          <stop offset="55%" stopColor="#4a9bff" />
+          <stop offset="100%" stopColor="#2f78f0" />
+        </linearGradient>
+        <linearGradient id={id('cover')} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#c3d3ff" />
+          <stop offset="100%" stopColor="#8fb0ff" />
+        </linearGradient>
+        <radialGradient id={id('ball')} cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="#bfe0ff" />
+          <stop offset="55%" stopColor="#4f9bff" />
+          <stop offset="100%" stopColor="#2f6bff" />
         </radialGradient>
+        <radialGradient id={id('glow')} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#5aa5ff" stopOpacity=".28" />
+          <stop offset="100%" stopColor="#5aa5ff" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={id('nuc')} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" style={stopStyle(pal[0])} stopOpacity=".95" />
+          <stop offset="100%" style={stopStyle(pal[1])} stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={id('floor')} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" style={stopStyle(pal[1])} stopOpacity=".45" />
+          <stop offset="100%" style={stopStyle(pal[1])} stopOpacity="0" />
+        </radialGradient>
+        <clipPath id={id('clip')}>
+          <path d={flaskPath} />
+        </clipPath>
       </defs>
 
-      {/* Quầng sáng nhẹ phía sau */}
-      <circle cx={CX} cy={CY} r="190" style={{ fill: 'var(--acc, #2f6bff)' }} opacity=".08">
-        {animate && (
-          <animate attributeName="opacity" values=".05;.14;.05" dur={busy ? '1.6s' : '4.5s'} repeatCount="indefinite" />
-        )}
+      {/* Quầng sáng nền */}
+      <circle cx={CX} cy={CY} r="230" fill={`url(#${id('glow')})`}>
+        {animate && <animate attributeName="opacity" values=".65;1;.65" dur={t(5)} repeatCount="indefinite" />}
       </circle>
 
-      {/* Xúc tu: nhóm xoay nhẹ quanh thân (rotate quanh tâm bằng SMIL, không dùng CSS) */}
-      <g fill="none" stroke="currentColor" strokeLinecap="round">
-        {animate && (
-          <animateTransform
-            attributeName="transform"
-            type="rotate"
-            values={`0 ${CX} ${CY};2.5 ${CX} ${CY};0 ${CX} ${CY};-2.5 ${CX} ${CY};0 ${CX} ${CY}`}
-            dur={busy ? '3s' : '7s'}
-            repeatCount="indefinite"
-          />
-        )}
-        <path d="M252 214C222 176 190 150 158 130" strokeWidth="24" />
-        <circle cx="128" cy="112" r="40" strokeWidth="26" />
+      {/* Nguyên tử: quỹ đạo, electron + đuôi, hạt nhân (lớp parallax) */}
+      <g ref={atomRef}>
+        <g transform={`translate(${CX} ${AY})`}>
+          {ORBITS.map((o, i) => (
+            <g key={i} transform={`rotate(${o.rot})`}>
+              <ellipse rx={o.rx} ry={o.ry} fill="none" stroke="#6aa8ff" strokeOpacity=".5" strokeWidth="3" />
+              {/* Đuôi sao chổi: các chấm nhỏ dần bám sau electron */}
+              {full &&
+                [3, 2, 1].map((j) => (
+                  <circle key={j} r={Math.max(2, o.r * (1 - j * 0.2))} fill={`url(#${id('ball')})`} opacity={0.42 - j * 0.09}>
+                    <animateMotion
+                      path={orbitPath(o.rx, o.ry)}
+                      dur={t(o.dur)}
+                      begin={`${(o.begin + j * 0.22).toFixed(2)}s`}
+                      repeatCount="indefinite"
+                      rotate="0"
+                    />
+                  </circle>
+                ))}
+              <circle r={o.r} fill={`url(#${id('ball')})`} opacity=".92">
+                {animate && (
+                  <animateMotion
+                    path={orbitPath(o.rx, o.ry)}
+                    dur={t(o.dur)}
+                    begin={`${o.begin}s`}
+                    repeatCount="indefinite"
+                    rotate="0"
+                  />
+                )}
+              </circle>
+            </g>
+          ))}
 
-        <path d="M420 205C456 176 486 160 516 142" strokeWidth="20" />
-        <circle cx="543" cy="128" r="26" strokeWidth="18" />
+          {/* Hạt nhân phát sáng (nằm sau bình, lộ ra qua kính) */}
+          <circle r="34" fill={`url(#${id('nuc')})`}>
+            {animate && (
+              <animate attributeName="r" values="26;42;26" dur={t(2.2)} repeatCount="indefinite" />
+            )}
+          </circle>
+        </g>
 
-        <path d="M246 356C208 384 176 400 146 414" strokeWidth="20" />
-        <circle cx="122" cy="426" r="28" strokeWidth="18" />
+        {/* Hạt nhỏ trôi nhẹ */}
+        {[
+          [78, 288, 9, 4],
+          [548, 268, 8, 5],
+          [122, 196, 7, 6],
+          [500, 340, 5, 4.5],
+        ].map(([x, y, r, d], i) => (
+          <circle key={i} cx={x} cy={y} r={r} fill={`url(#${id('ball')})`} opacity=".75">
+            {animate && (
+              <animate attributeName="cy" values={`${y};${y - 8};${y}`} dur={t(d)} begin={`${-i}s`} repeatCount="indefinite" />
+            )}
+          </circle>
+        ))}
       </g>
 
-      {/* Thân: vòng tròn dày */}
-      <circle cx={CX} cy={CY} r="125" fill="none" stroke="currentColor" strokeWidth="58" />
+      {/* Bình hóa học (rung khi error) */}
+      <g ref={flaskRef}>
+        <g>
+          {animate && mode === 'error' && (
+            <animateTransform
+              key={`shake-${modeT}`}
+              attributeName="transform"
+              type="translate"
+              values="0 0;-5 0;5 0;-4 0;4 0;-2 0;0 0"
+              dur=".5s"
+              begin={`${modeT}s`}
+              repeatCount="3"
+            />
+          )}
+          <g>
+            {animate && (
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0;0 -5;0 0"
+                dur={t(5.5)}
+                repeatCount="indefinite"
+              />
+            )}
 
-      {/* Tròng mắt (nhấp nháy / đập nhịp theo trạng thái) */}
-      <ellipse cx={CX} cy={CY} rx="66" ry="66" fill={`url(#${uid}-iris)`}>
-        {animate && !busy && (
-          <animate
-            attributeName="ry"
-            values="66;66;66;5;66;66"
-            keyTimes="0;.62;.66;.69;.72;1"
-            dur="5.6s"
-            repeatCount="indefinite"
-          />
-        )}
-        {animate && busy && (
-          <>
-            <animate attributeName="rx" values="62;70;62" dur={pulseDur} repeatCount="indefinite" />
-            <animate attributeName="ry" values="62;70;62" dur={pulseDur} repeatCount="indefinite" />
-          </>
-        )}
+            {/* Khói bốc từ miệng bình */}
+            {full &&
+              [0, 1, 2].map((i) => (
+                <circle key={i} cx={310 + (i - 1) * 6} cy="90" r="8" fill="#cfe4ff" opacity="0">
+                  <animate attributeName="cy" values="90;24" dur={t(3.6)} begin={`${-i * 1.2}s`} repeatCount="indefinite" />
+                  <animate attributeName="r" values="7;24" dur={t(3.6)} begin={`${-i * 1.2}s`} repeatCount="indefinite" />
+                  <animate
+                    attributeName="opacity"
+                    values="0;.4;0"
+                    dur={t(3.6)}
+                    begin={`${-i * 1.2}s`}
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              ))}
+
+            {/* Thân thủy tinh */}
+            <path d={flaskPath} fill={`url(#${id('glass')})`} />
+
+            {/* Chất lỏng */}
+            <g clipPath={`url(#${id('clip')})`}>
+              <path
+                fill={`url(#${id('liquid')})`}
+                d="M190 292C235 274 268 288 300 304C336 322 366 288 430 280V400H190Z"
+              >
+                {animate && (
+                  <animate
+                    attributeName="d"
+                    dur={t(4)}
+                    repeatCount="indefinite"
+                    values="M190 292C235 274 268 288 300 304C336 322 366 288 430 280V400H190Z;
+                            M190 284C232 296 268 308 300 296C340 282 368 304 430 290V400H190Z;
+                            M190 292C235 274 268 288 300 304C336 322 366 288 430 280V400H190Z"
+                  />
+                )}
+              </path>
+              <ellipse cx="272" cy="344" rx="34" ry="12" fill="#fff" opacity=".18" />
+
+              {/* Bọt khí trong chất lỏng */}
+              {[
+                [285, 330, 12, 3.2],
+                [330, 345, 9, 2.6],
+                [305, 360, 7, 3.8],
+                ...(full ? [[262, 352, 6, 2.9], [352, 336, 5, 3.4]] : []),
+              ].map(([x, y, r, d], i) => (
+                <circle key={i} cx={x} cy={y} r={r} fill="#fff" opacity=".85">
+                  {animate && (
+                    <>
+                      <animate attributeName="cy" values={`${y};${y - 38};${y}`} dur={t(d)} begin={`${-i * 0.9}s`} repeatCount="indefinite" />
+                      <animate attributeName="opacity" values=".85;.35;.85" dur={t(d)} begin={`${-i * 0.9}s`} repeatCount="indefinite" />
+                    </>
+                  )}
+                </circle>
+              ))}
+            </g>
+
+            {/* Bọt khí bay lên trong cổ bình */}
+            {[
+              [296, 252, 6],
+              [322, 228, 5],
+              [308, 196, 4],
+            ].map(([x, y, r], i) => (
+              <circle key={i} cx={x} cy={y} r={r} fill="#8fc2ff" opacity=".8">
+                {animate && (
+                  <>
+                    <animate attributeName="cy" values={`${y};${y - 46};${y}`} dur={t(3 + i * 0.7)} begin={`${-i * 1.1}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values=".8;0;.8" dur={t(3 + i * 0.7)} begin={`${-i * 1.1}s`} repeatCount="indefinite" />
+                  </>
+                )}
+              </circle>
+            ))}
+
+            {/* Vệt sáng quét qua kính */}
+            {full && (
+              <g clipPath={`url(#${id('clip')})`}>
+                <polygon points="0,90 26,90 -8,390 -34,390" fill="#fff" opacity=".4">
+                  <animateTransform
+                    attributeName="transform"
+                    type="translate"
+                    values="160 0;160 0;470 0"
+                    keyTimes="0;.55;1"
+                    dur="6s"
+                    repeatCount="indefinite"
+                  />
+                </polygon>
+              </g>
+            )}
+
+            {/* Viền kính + vành miệng + vệt phản chiếu */}
+            <path d={flaskPath} fill="none" stroke={`url(#${id('rim')})`} strokeWidth="6" strokeLinejoin="round" />
+            <rect x="278" y="92" width="64" height="16" rx="8" fill="#eaf3ff" stroke={`url(#${id('rim')})`} strokeWidth="5" />
+            <path d="M300 118V196" stroke="#fff" strokeOpacity=".8" strokeWidth="5" strokeLinecap="round" />
+          </g>
+        </g>
+      </g>
+
+      {/* Khi AI đang suy nghĩ: các hạt nguyên tử bay vòng quanh logo */}
+      {animate && mode === 'think' && (
+        <g key={`think-${modeT}`} pointerEvents="none" opacity="0">
+          <animate attributeName="opacity" values="0;1" dur=".5s" begin={`${modeT}s`} fill="freeze" />
+          {/* Vòng dẫn mờ */}
+          <circle cx={CX} cy={AY} r="168" fill="none" stroke={pal[1]} strokeOpacity=".18" strokeWidth="2" strokeDasharray="4 10" />
+          <circle cx={CX} cy={AY} r="118" fill="none" stroke={pal[1]} strokeOpacity=".14" strokeWidth="2" strokeDasharray="3 9" />
+          {THINK_RINGS.map((ring, ri) => (
+            <g key={ri}>
+              <animateTransform
+                attributeName="transform"
+                type="rotate"
+                values={ring.dir > 0 ? `0 ${CX} ${AY};360 ${CX} ${AY}` : `360 ${CX} ${AY};0 ${CX} ${AY}`}
+                dur={`${ring.dur}s`}
+                repeatCount="indefinite"
+              />
+              {ring.parts.map((p, i) => (
+                <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={p.r.toFixed(1)} fill={pal[ri === 2 ? 0 : 1]} opacity={p.o.toFixed(2)} />
+              ))}
+              {/* Đầu sao chổi có quầng sáng */}
+              <circle
+                cx={ring.parts[ring.parts.length - 1].x.toFixed(1)}
+                cy={ring.parts[ring.parts.length - 1].y.toFixed(1)}
+                r="15"
+                fill={pal[0]}
+                opacity=".28"
+              />
+            </g>
+          ))}
+        </g>
+      )}
+
+      {/* Bóng sáng dưới sách */}
+      <ellipse cx={CX} cy="482" rx="150" ry="14" fill={`url(#${id('floor')})`}>
+        {animate && <animate attributeName="opacity" values=".6;1;.6" dur={t(4)} repeatCount="indefinite" />}
       </ellipse>
 
-      {/* Con ngươi — chỉ phần này di chuyển (đã kẹp ≤ MAX) */}
-      <g ref={pupilRef}>
-        <circle cx={CX} cy={CY} r="26" fill="#0b1020" />
-        <circle cx={CX - 12} cy={CY - 14} r="9" fill="#fff" opacity=".92" />
+      {/* Ký hiệu hóa học bay lên từ sách */}
+      {full &&
+        SYMBOLS.map((s, i) => (
+          <text
+            key={s.s}
+            x={s.x}
+            y="430"
+            textAnchor="middle"
+            fontSize="26"
+            fontWeight="700"
+            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            fill="#4a9bff"
+            opacity="0"
+          >
+            {s.s}
+            <animate attributeName="y" values="430;340" dur={t(s.d)} begin={`${-i * 1.3}s`} repeatCount="indefinite" />
+            <animate
+              attributeName="opacity"
+              values="0;.85;0"
+              keyTimes="0;.35;1"
+              dur={t(s.d)}
+              begin={`${-i * 1.3}s`}
+              repeatCount="indefinite"
+            />
+          </text>
+        ))}
+
+      {/* Sách mở */}
+      <g>
+        <Wing />
+        <g transform={`translate(${CX * 2} 0) scale(-1 1)`}>
+          <Wing />
+        </g>
       </g>
+
+      {/* Sóng + tia sáng khi chạm / success */}
+      {animate && burst && (
+        <g key={burst.n} pointerEvents="none">
+          {[0, 0.18].map((dl, i) => (
+            <circle key={i} cx={CX} cy={AY} r="20" fill="none" stroke={pal[1]} strokeWidth="5" opacity="0">
+              <animate attributeName="r" values="20;210" dur=".9s" begin={`${burst.t0 + dl}s`} fill="freeze" />
+              <animate attributeName="opacity" values=".7;0" dur=".9s" begin={`${burst.t0 + dl}s`} fill="freeze" />
+            </circle>
+          ))}
+          {SPARKS.map((p, i) => (
+            <circle key={i} cx={CX} cy={AY} r="7" fill={pal[0]} opacity="0">
+              <animate attributeName="cx" values={`${CX};${CX + p.dx}`} dur=".8s" begin={`${burst.t0}s`} fill="freeze" />
+              <animate attributeName="cy" values={`${AY};${AY + p.dy}`} dur=".8s" begin={`${burst.t0}s`} fill="freeze" />
+              <animate attributeName="opacity" values="1;0" dur=".8s" begin={`${burst.t0}s`} fill="freeze" />
+              <animate attributeName="r" values="8;2" dur=".8s" begin={`${burst.t0}s`} fill="freeze" />
+            </circle>
+          ))}
+        </g>
+      )}
     </svg>
   );
 }
