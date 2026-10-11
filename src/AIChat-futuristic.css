@@ -1,0 +1,1030 @@
+/* ============================================================
+   AIChat-futuristic.css — Lớp giao diện tương lai (nạp CUỐI CÙNG)
+   Kính iOS · Viền sáng AI · Lịch sử thư mục · Nền động ·
+   Thẻ Hôm nay · Thanh nhập viên thuốc · Tin nhắn đẹp hơn ·
+   Action buttons kiểu Apple
+   ============================================================ */
+
+.ds-page {
+  --glass-bg: rgba(10, 15, 30, 0.55);
+  --glass-bg-strong: rgba(10, 15, 30, 0.85);
+  --glass-border: rgba(100, 150, 255, 0.18);
+  --glass-border-strong: rgba(100, 150, 255, 0.35);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --ai-glow-1: rgba(59, 130, 246, 0.6);
+  --ai-glow-2: rgba(139, 92, 246, 0.5);
+  --ai-glow-3: rgba(96, 165, 250, 0.4);
+  --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --smooth-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --apple-blue: #0a84ff;
+  --apple-blue-2: #0066cc;
+  --apple-red: #ff453a;
+  --apple-glass: rgba(120, 130, 160, 0.12);
+  --apple-glass-hover: rgba(120, 130, 160, 0.2);
+}
+
+[data-theme='light'] .ds-page {
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(47, 107, 255, 0.15);
+  --glass-border-strong: rgba(47, 107, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(47, 107, 255, 0.12);
+  --ai-glow-1: rgba(59, 130, 246, 0.35);
+  --ai-glow-2: rgba(139, 92, 246, 0.3);
+  --ai-glow-3: rgba(96, 165, 250, 0.25);
+  --apple-glass: rgba(60, 80, 140, 0.08);
+  --apple-glass-hover: rgba(60, 80, 140, 0.14);
+}
+
+/* ============================================================
+   1. NỀN ĐỘNG & LỚP KÍNH
+   ============================================================ */
+[data-theme='dark'] .ds-page {
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(59, 130, 246, 0.12), transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(139, 92, 246, 0.08), transparent 50%),
+    #050810;
+}
+
+[data-theme='light'] .ds-page {
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(59, 130, 246, 0.08), transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(139, 92, 246, 0.05), transparent 50%),
+    #f3f6ff;
+}
+
+.ds-live-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.5;
+}
+[data-theme='light'] .ds-live-bg { opacity: 0.35; }
+
+.ds-live-bg .atom-bg {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ai-glow-1), transparent 70%);
+  animation: atom-float 22s ease-in-out infinite;
+  filter: blur(30px);
+  will-change: transform;
+}
+
+.ds-live-bg .bond-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ai-glow-2), transparent);
+  opacity: 0.3;
+  animation: bond-pulse 8s ease-in-out infinite;
+}
+@keyframes bond-pulse {
+  0%, 100% { opacity: 0.15; transform: scaleX(0.8); }
+  50% { opacity: 0.4; transform: scaleX(1.2); }
+}
+
+@keyframes atom-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -80px) scale(1.15); }
+  66% { transform: translate(-40px, 50px) scale(0.9); }
+}
+
+[data-theme='dark'] .ds-sidebar,
+[data-theme='dark'] .ds-header,
+[data-theme='dark'] .ds-input-wrap {
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  background: var(--glass-bg);
+}
+
+[data-theme='light'] .ds-sidebar,
+[data-theme='light'] .ds-header,
+[data-theme='light'] .ds-input-wrap {
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  background: var(--glass-bg);
+}
+
+.ds-sidebar { border-right: 1px solid var(--glass-border); }
+.ds-header { border-bottom: 1px solid var(--glass-border); }
+.ds-input-wrap { border-top: 1px solid var(--glass-border); }
+
+/* ============================================================
+   2. LỊCH SỬ DẠNG THƯ MỤC KÍNH
+   ============================================================ */
+.ds-sidebar-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ds-sidebar-main,
+.ds-sidebar-folder-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.6rem 0.5rem;
+  scrollbar-width: thin;
+}
+
+.ds-sidebar-folder-view {
+  animation: slide-in-right 0.3s var(--smooth-ease);
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.ds-folder-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+}
+
+.ds-folder {
+  position: relative;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: all 0.25s var(--smooth-ease);
+  overflow: hidden;
+  text-align: left;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+[data-theme='light'] .ds-folder {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+}
+
+.ds-folder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, var(--ai-glow-1), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.ds-folder:hover {
+  transform: translateY(-3px);
+  border-color: var(--glass-border-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25),
+              0 0 0 3px color-mix(in srgb, var(--acc) 18%, transparent);
+}
+.ds-folder:hover::before { opacity: 0.25; }
+.ds-folder:active { transform: translateY(-1px) scale(0.99); }
+
+.ds-folder-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.4rem;
+  line-height: 1;
+  display: block;
+  filter: drop-shadow(0 0 8px var(--ai-glow-1));
+}
+
+.ds-folder-name {
+  font: 600 0.9rem var(--sans);
+  color: var(--ink);
+  margin-bottom: 0.15rem;
+}
+
+.ds-folder-count {
+  font: 500 0.72rem var(--sans);
+  color: var(--mut);
+}
+
+.ds-folder-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font: 400 0.7rem var(--sans);
+  color: var(--mut);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.ds-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.5rem 0.7rem;
+  margin-bottom: 0.4rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.ds-folder-back {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--soft);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--ink);
+  transition: all 0.2s var(--spring-ease);
+}
+.ds-folder-back:hover {
+  background: var(--acc);
+  color: var(--acc-ink);
+  transform: scale(1.08);
+}
+
+.ds-folder-title {
+  font: 700 0.92rem var(--sans);
+  color: var(--ink);
+  flex: 1;
+}
+
+.ds-folder-title-count {
+  font: 500 0.72rem var(--sans);
+  color: var(--mut);
+}
+
+/* ============================================================
+   3. MÀN HÌNH CHÀO & QUẢ CẦU AI
+   ============================================================ */
+.ds-empty {
+  position: relative;
+  z-index: 1;
+}
+
+.ds-empty .ai-mark {
+  filter: drop-shadow(0 0 30px var(--ai-glow-1)) drop-shadow(0 0 60px var(--ai-glow-2));
+  animation: orb-breathe 4s ease-in-out infinite;
+}
+
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 30px var(--ai-glow-1)) drop-shadow(0 0 60px var(--ai-glow-2));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 45px var(--ai-glow-1)) drop-shadow(0 0 80px var(--ai-glow-2));
+  }
+}
+
+.ds-today-card {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  padding: 1.25rem 1.35rem;
+  margin: 1.2rem auto 0;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.06));
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  box-shadow: var(--glass-shadow);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s var(--smooth-ease);
+  text-align: left;
+  color: var(--ink);
+  font-family: inherit;
+  display: block;
+}
+
+[data-theme='light'] .ds-today-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.04));
+}
+
+.ds-today-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--acc);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3),
+              0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent);
+}
+
+.ds-today-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent, var(--ai-glow-1), transparent 30%);
+  animation: rotate-glow 8s linear infinite;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+@keyframes rotate-glow { to { transform: rotate(360deg); } }
+
+.ds-today-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, transparent 50%, var(--acc) 50%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.ds-today-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  font: 700 0.65rem var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 15%, transparent);
+  border-radius: 999px;
+  margin-bottom: 0.8rem;
+  position: relative;
+  z-index: 2;
+}
+
+.ds-today-content {
+  font: 500 1rem/1.55 var(--sans);
+  color: var(--ink);
+  position: relative;
+  z-index: 2;
+  word-break: break-word;
+}
+
+.ds-today-content code {
+  font-family: var(--mono);
+  background: var(--soft);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.ds-today-hint {
+  font: 400 0.75rem var(--sans);
+  color: var(--mut);
+  margin-top: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  position: relative;
+  z-index: 2;
+  opacity: 0.85;
+}
+
+.ds-today-hint svg { color: var(--acc); }
+
+/* ============================================================
+   4. THANH NHẬP VIÊN THUỐC & MENU BONG BÓNG
+   ============================================================ */
+.ds-input-inner { position: relative; }
+
+.ds-input-bar {
+  border-radius: 999px !important;
+  padding: 0.4rem 0.5rem 0.4rem 0.6rem !important;
+  gap: 0.35rem !important;
+  align-items: center;
+}
+
+.ds-input-icon.ds-icon-mic {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: var(--soft);
+  color: var(--mut);
+  transition: all 0.25s var(--spring-ease);
+}
+
+.ds-input-bar .ds-input:placeholder-shown ~ .ds-icon-mic:not(.rec),
+.ds-input-bar:has(.ds-input:placeholder-shown) .ds-icon-mic:not(.rec) {
+  background: linear-gradient(135deg, #4d86ff, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 0 18px var(--ai-glow-1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: mic-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% {
+    box-shadow: 0 0 18px var(--ai-glow-1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 28px var(--ai-glow-1),
+                0 0 40px var(--ai-glow-2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+.ds-input-bar:has(.ds-input:not(:placeholder-shown)) .ds-icon-mic,
+.ds-input-bar.has-content .ds-icon-mic {
+  background: var(--soft);
+  color: var(--mut);
+  box-shadow: none;
+  animation: none;
+}
+
+.ds-input-icon.ds-icon-mic.rec {
+  background: #ef4444 !important;
+  color: #fff;
+  animation: ds-rec 1.4s ease-out infinite;
+}
+
+.ds-input-icon.ds-icon-attach {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  background: var(--soft);
+  color: var(--mut);
+  transition: all 0.25s var(--spring-ease);
+}
+
+.ds-input-icon.ds-icon-attach:hover,
+.ds-input-icon.ds-icon-attach.on {
+  background: var(--acc);
+  color: var(--acc-ink);
+  transform: rotate(45deg);
+}
+
+.ds-attach-menu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: bubble-in 0.3s var(--spring-ease);
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.85); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ds-attach-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 200px;
+  padding: 0.7rem 1rem;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--ink);
+  font: 500 0.82rem var(--sans);
+  box-shadow: var(--glass-shadow);
+  transition: all 0.25s var(--spring-ease);
+  text-align: left;
+}
+
+.ds-attach-btn:hover {
+  background: var(--acc);
+  color: var(--acc-ink);
+  border-color: var(--acc);
+  transform: translateX(6px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--acc) 40%, transparent);
+}
+
+.ds-attach-btn svg { flex-shrink: 0; }
+
+/* ============================================================
+   5. TIN NHẮN ĐẸP HƠN & HIỆU ỨNG
+   ============================================================ */
+.ds-msg {
+  animation: msg-spring-in 0.55s var(--spring-ease) both;
+}
+
+@keyframes msg-spring-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ds-msg-model .ds-msg-content {
+  position: relative;
+  overflow: hidden;
+}
+
+.ds-msg-model .ds-msg-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.08), transparent);
+  animation: text-shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes text-shimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+.ds-eq-card {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  margin: 1rem 0;
+  position: relative;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  overflow-x: auto;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--line);
+}
+
+.ds-eq-card::before {
+  content: '⚗';
+  position: absolute;
+  top: 0.3rem;
+  left: 0.6rem;
+  font-size: 0.85rem;
+  opacity: 0.4;
+  color: var(--acc);
+}
+
+.ds-eq-arrow {
+  display: inline-block;
+  color: var(--acc);
+  font-weight: 700;
+  margin: 0 0.5rem;
+  filter: drop-shadow(0 0 6px var(--ai-glow-1));
+}
+
+/* ============================================================
+   5.5 ACTION BUTTONS — APPLE STYLE
+   ============================================================ */
+
+.ds-msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+  padding: 0;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s var(--smooth-ease),
+              transform 0.35s var(--smooth-ease);
+}
+
+.ds-msg:hover .ds-msg-actions,
+.ds-msg:focus-within .ds-msg-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (hover: none) {
+  .ds-msg-actions { opacity: 1; transform: translateY(0); }
+}
+
+/* Nút chính — Apple pill với kính mờ */
+.ds-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--apple-glass);
+  color: var(--ink);
+  font: 500 0.78rem/1 var(--sans);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s var(--smooth-ease),
+              transform 0.15s var(--smooth-ease),
+              color 0.2s;
+  position: relative;
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  backdrop-filter: blur(10px) saturate(180%);
+}
+
+[data-theme='dark'] .ds-action-btn {
+  background: rgba(120, 140, 200, 0.12);
+  color: rgba(230, 235, 255, 0.9);
+}
+
+.ds-action-btn:hover {
+  background: var(--apple-glass-hover);
+}
+
+[data-theme='dark'] .ds-action-btn:hover {
+  background: rgba(120, 140, 200, 0.22);
+}
+
+.ds-action-btn:active {
+  transform: scale(0.96);
+  transition-duration: 0.08s;
+}
+
+.ds-action-btn svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  opacity: 0.85;
+  transition: opacity 0.2s, transform 0.25s var(--spring-ease);
+}
+
+.ds-action-btn:hover svg { opacity: 1; }
+
+/* Nút accent — Apple System Blue */
+.ds-action-btn.accent {
+  background: linear-gradient(180deg, var(--apple-blue), var(--apple-blue-2));
+  color: #fff;
+  box-shadow:
+    0 2px 8px rgba(10, 132, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.ds-action-btn.accent:hover {
+  background: linear-gradient(180deg, #1a8fff, #0a76e0);
+  box-shadow:
+    0 4px 16px rgba(10, 132, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.ds-action-btn.accent svg { opacity: 1; }
+
+/* Icon-only button */
+.ds-action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--apple-glass);
+  color: var(--ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, transform 0.15s;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .ds-action-icon-btn {
+  background: rgba(120, 140, 200, 0.12);
+  color: rgba(230, 235, 255, 0.9);
+}
+
+.ds-action-icon-btn:hover {
+  background: var(--apple-glass-hover);
+}
+
+[data-theme='dark'] .ds-action-icon-btn:hover {
+  background: rgba(120, 140, 200, 0.22);
+}
+
+.ds-action-icon-btn:active {
+  transform: scale(0.92);
+}
+
+.ds-action-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ds-action-icon-btn.on,
+.ds-action-btn.on {
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--apple-blue);
+}
+
+[data-theme='dark'] .ds-action-icon-btn.on,
+[data-theme='dark'] .ds-action-btn.on {
+  background: rgba(10, 132, 255, 0.22);
+  color: #5ac8fa;
+}
+
+/* Menu "..." */
+.ds-more-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.ds-more-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  padding: 0.4rem;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  animation: ds-more-in 0.22s var(--spring-ease);
+  transform-origin: bottom right;
+}
+
+[data-theme='light'] .ds-more-menu {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+
+@keyframes ds-more-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.ds-more-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: 500 0.82rem/1.2 var(--sans);
+  letter-spacing: -0.01em;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ds-more-item:hover {
+  background: rgba(120, 130, 160, 0.15);
+}
+
+[data-theme='dark'] .ds-more-item:hover {
+  background: rgba(120, 140, 200, 0.18);
+}
+
+.ds-more-item svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.ds-more-item.danger { color: var(--apple-red); }
+.ds-more-item.danger svg { opacity: 0.9; }
+.ds-more-item.danger:hover {
+  background: rgba(255, 69, 58, 0.12);
+}
+
+/* Responsive hiển thị nút */
+@media (max-width: 720px) {
+  .ds-msg-actions {
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .ds-action-btn {
+    min-height: 40px;
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .ds-action-icon-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .ds-action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ds-msg-actions .ds-action-desktop-only {
+    display: none;
+  }
+}
+
+@media (min-width: 721px) {
+  .ds-msg-actions .ds-action-mobile-only {
+    display: none;
+  }
+}
+
+/* ============================================================
+   6. NÚT GỬI
+   ============================================================ */
+.ds-send {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #4d86ff, #1f4fe6) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px -4px rgba(77, 134, 255, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transition: all 0.25s var(--spring-ease) !important;
+}
+
+.ds-send:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 8px 24px -4px rgba(77, 134, 255, 0.85),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.ds-send:active:not(:disabled) { transform: scale(0.95); }
+
+.ds-send:disabled {
+  background: var(--soft) !important;
+  color: var(--mut) !important;
+  box-shadow: none !important;
+  opacity: 0.6;
+}
+
+.ds-send.stop {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+}
+
+/* ============================================================
+   7. HEADER KÍNH
+   ============================================================ */
+.ds-header-inner {
+  position: relative;
+}
+
+.ds-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ai-glow-1), var(--ai-glow-2), transparent);
+  opacity: 0.6;
+  pointer-events: none;
+  animation: header-glow 4s ease-in-out infinite;
+}
+
+@keyframes header-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+}
+
+/* ============================================================
+   8. SIDEBAR HEAD
+   ============================================================ */
+.ds-sidebar-head {
+  padding: 0.9rem 0.8rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.ds-new-btn {
+  background: linear-gradient(135deg, #4d86ff, #1f4fe6);
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px -4px rgba(77, 134, 255, 0.5);
+  transition: all 0.25s var(--spring-ease);
+  font-weight: 600;
+}
+
+.ds-new-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(77, 134, 255, 0.75);
+}
+
+/* ============================================================
+   9. USER MENU
+   ============================================================ */
+.ds-user-wrap {
+  border-top: 1px solid var(--glass-border);
+}
+
+.ds-user-menu {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  border-radius: 18px;
+}
+
+/* ============================================================
+   10. INPUT BAR
+   ============================================================ */
+.ds-input-bar {
+  background: var(--glass-bg-strong) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.ds-input-bar:focus-within {
+  border-color: var(--acc) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25),
+              0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================================
+   11. MOBILE
+   ============================================================ */
+@media (max-width: 900px) {
+  .ds-sidebar {
+    border-radius: 0 24px 24px 0;
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.35);
+  }
+}
+
+@media (max-width: 720px) {
+  .ds-folder { padding: 0.9rem 1rem; }
+  .ds-folder-icon { font-size: 1.3rem; }
+  .ds-folder-name { font-size: 0.85rem; }
+
+  .ds-input-wrap {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 24px 24px 0 0;
+    padding: 0.7rem 0.8rem 0.9rem !important;
+  }
+
+  .ds-input-bar {
+    border-radius: 999px !important;
+    padding: 0.35rem 0.4rem 0.35rem 0.5rem !important;
+  }
+
+  .ds-input-icon.ds-icon-mic {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .ds-attach-btn { width: 180px; }
+
+  .ds-today-card {
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+  }
+
+  .ds-today-content { font-size: 0.92rem; }
+}
+
+@media (max-width: 480px) {
+  .ds-today-content { font-size: 0.88rem; }
+  .ds-attach-btn { width: 160px; font-size: 0.78rem; }
+}
+
+/* ============================================================
+   12. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .ds-live-bg .atom-bg,
+  .ds-live-bg .bond-line,
+  .ds-empty .ai-mark,
+  .ds-today-card::before,
+  .ds-msg,
+  .ds-msg-model .ds-msg-content::after,
+  .ds-header::after,
+  .ds-input-bar .ds-icon-mic,
+  .ds-msg-actions,
+  .ds-action-btn,
+  .ds-action-icon-btn,
+  .ds-more-menu {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ds-folder:hover,
+  .ds-today-card:hover,
+  .ds-attach-btn:hover,
+  .ds-action-btn:hover {
+    transform: none !important;
+  }
+}

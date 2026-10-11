@@ -1,0 +1,637 @@
+/* ============================================================
+   teacher-apple.css — Apple macOS & iPadOS Studio Theme
+   Áp dụng chuẩn Apple HIG, visionOS Bento Grid & SF Pro Typography
+   ============================================================ */
+
+/* ============ CANVAS & ROOT ============ */
+.vt {
+  min-height: 100dvh;
+  padding: calc(var(--nav-h, 56px) + 1.25rem) 1.25rem 6.5rem !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  font-family: var(--sans) !important;
+}
+
+.vt *, .vt *::before, .vt *::after {
+  box-sizing: border-box;
+}
+
+/* ============ BENTO STUDIO FRAME ============ */
+.vt-frame {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  grid-template-columns: 240px minmax(0, 1fr) !important;
+  gap: 1.25rem !important;
+  padding: 1.15rem !important;
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-2xl, 24px) !important;
+  box-shadow: var(--sh-2), var(--glass-specular) !important;
+  min-height: calc(100dvh - 8rem) !important;
+}
+
+/* ============ MACOS FROSTED SIDEBAR ============ */
+.vt-side {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  padding: 1.25rem 0.85rem !important;
+  background: var(--surface-1) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--r-xl, 18px) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--glass-specular) !important;
+}
+
+.vt-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  padding: 0.2rem 0.5rem 1rem !important;
+  margin-bottom: 0.4rem !important;
+  border-bottom: 1px solid var(--line-soft) !important;
+}
+
+.vt-brand-mark {
+  color: var(--acc) !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex-shrink: 0 !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--acc) 14%, var(--surface-2)) !important;
+}
+
+.vt-brand-text b {
+  font: 700 1.05rem var(--sans) !important;
+  letter-spacing: -0.025em !important;
+  font-style: normal !important;
+  color: var(--ink) !important;
+}
+
+.vt-brand-text small {
+  font: 500 0.72rem var(--sans) !important;
+  color: var(--mut) !important;
+}
+
+/* ============ NAVIGATION ITEMS (APPLE CAPSULE) ============ */
+.vt-nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.35rem !important;
+  margin-top: 0.2rem !important;
+}
+
+.vt-nav-item {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 0.65rem 0.95rem !important;
+  border: 0 !important;
+  border-radius: var(--r-md, 10px) !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 600 0.88rem var(--sans) !important;
+  font-style: normal !important;
+  text-align: left !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+
+.vt-nav-item:hover {
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+}
+
+.vt-nav-item.on {
+  background: color-mix(in srgb, var(--acc) 12%, var(--surface-2)) !important;
+  color: var(--acc) !important;
+  font-weight: 700 !important;
+  margin-right: 0 !important;
+  padding-right: 0.95rem !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 25%, transparent) !important;
+}
+
+/* Loại bỏ hoàn toàn hình cắt lượn sóng cũ của Vitality */
+.vt-nav-item.on::before,
+.vt-nav-item.on::after {
+  display: none !important;
+}
+
+.vt-nav-badge {
+  font: 700 0.72rem var(--sans) !important;
+  font-style: normal !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 0.35rem !important;
+  border-radius: var(--r-pill) !important;
+  display: grid !important;
+  place-items: center !important;
+  background: var(--surface-3) !important;
+  color: var(--ink) !important;
+}
+
+.vt-nav-badge.live {
+  background: var(--err) !important;
+  color: #fff !important;
+  animation: ap-pulse 1.8s infinite !important;
+}
+
+.vt-nav-item.on .vt-nav-badge {
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+}
+
+.vt-side-note {
+  margin: auto 0 0.5rem !important;
+  padding: 0.85rem !important;
+  border-radius: var(--r-lg, 14px) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line-soft) !important;
+  color: var(--mut) !important;
+}
+.vt-side-note b { color: var(--ink) !important; font-size: 0.82rem !important; }
+.vt-side-note small { font-size: 0.72rem !important; line-height: 1.35 !important; }
+
+.vt-exit {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.65rem 0.95rem !important;
+  border: 1px solid var(--line-soft) !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--surface-2) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  font: 600 0.8rem var(--sans) !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+.vt-exit:hover {
+  background: var(--surface-3) !important;
+  color: var(--ink) !important;
+}
+
+/* ============ MAIN SECTION & TOPBAR ============ */
+.vt-main {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.25rem !important;
+}
+
+.vt-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  padding-bottom: 0.85rem !important;
+  border-bottom: 1px solid var(--line-soft) !important;
+  flex-wrap: wrap !important;
+}
+
+.vt-title h1 {
+  margin: 0 !important;
+  font-size: 1.65rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--ink) !important;
+}
+.vt-title p {
+  margin: 0.2rem 0 0 !important;
+  color: var(--mut) !important;
+  font-size: 0.85rem !important;
+}
+
+/* SEGMENTED CONTROL TABS */
+.vt-tabs {
+  display: flex !important;
+  gap: 0.25rem !important;
+  padding: 0.25rem !important;
+  background: var(--surface-2) !important;
+  border-radius: var(--r-pill) !important;
+  border: 1px solid var(--line-soft) !important;
+}
+
+.vt-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.45rem 0.9rem !important;
+  border: 0 !important;
+  border-radius: var(--r-pill) !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  font: 600 0.8rem var(--sans) !important;
+  cursor: pointer !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+
+.vt-tab:hover {
+  color: var(--ink) !important;
+}
+
+.vt-tab.on {
+  background: var(--panel) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+.vt-tab em {
+  font-style: normal !important;
+  font-size: 0.72rem !important;
+  opacity: 0.75 !important;
+}
+
+/* SPOTLIGHT SEARCH BAR */
+.vt-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem 0.9rem !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line-soft) !important;
+  color: var(--mut) !important;
+  min-width: 220px !important;
+  transition: border-color var(--dur-1) var(--ease) !important;
+}
+.vt-search:focus-within {
+  border-color: var(--acc) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 20%, transparent) !important;
+}
+.vt-search input {
+  flex: 1 !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ink) !important;
+  font: 500 0.86rem var(--sans) !important;
+  outline: none !important;
+}
+
+.vt-bell {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  border: 1px solid var(--line-soft) !important;
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+  display: grid !important;
+  place-items: center !important;
+  cursor: pointer !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+.vt-bell:hover { background: var(--surface-3) !important; }
+.vt-bell.on { color: var(--acc) !important; border-color: var(--acc) !important; }
+
+/* ============ HERO SECTION ============ */
+.vt-row-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
+  gap: 1.15rem !important;
+}
+
+.vt-hero {
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--sh-1), var(--glass-specular) !important;
+  border-radius: var(--r-xl, 18px) !important;
+  padding: 1.35rem 1.45rem !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) !important;
+  gap: 1.25rem !important;
+}
+
+.vt-hero-left {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  border-right: 1px solid var(--line-soft) !important;
+  padding-right: 1rem !important;
+}
+
+.vt-hero-label {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--acc) !important;
+}
+
+.vt-hero-num {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 0.4rem !important;
+}
+.vt-hero-num b {
+  font-size: 2.4rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1 !important;
+  color: var(--ink) !important;
+}
+.vt-hero-num span {
+  font-size: 0.85rem !important;
+  color: var(--mut) !important;
+}
+
+.vt-hero-facts {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.6rem !important;
+  margin: 0.5rem 0 !important;
+}
+.vt-hero-facts dt { font-size: 0.72rem !important; color: var(--mut) !important; }
+.vt-hero-facts dd { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--ink) !important; margin: 0 !important; }
+
+.vt-hero-btn {
+  margin-top: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+  padding: 0.55rem 1rem !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+  font: 600 0.82rem var(--sans) !important;
+  border: 0 !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25) !important;
+  transition: transform var(--dur-1) var(--ease) !important;
+}
+.vt-hero-btn:hover { transform: translateY(-1px) !important; }
+
+.vt-hero-chart-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 0.5rem !important;
+}
+.vt-hero-chart-head b {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+}
+
+.vt-hero-foot {
+  font-size: 0.75rem !important;
+  color: var(--mut) !important;
+  margin: 0.4rem 0 0 !important;
+  text-align: right !important;
+}
+
+/* RING CARD */
+.vt-ring-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.75rem !important;
+  padding: 1.25rem !important;
+  text-align: center !important;
+}
+.vt-ring-card header {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  font-size: 0.82rem !important;
+  color: var(--mut) !important;
+}
+.vt-ring-card footer {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  font-size: 0.8rem !important;
+  color: var(--mut) !important;
+  border-top: 1px solid var(--line-soft) !important;
+  padding-top: 0.6rem !important;
+}
+.vt-ring-card footer b { color: var(--ok) !important; font-size: 0.95rem !important; }
+
+/* ============ TITANIUM BENTO CARDS ============ */
+.vt-card {
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--sh-1), var(--glass-specular) !important;
+  border-radius: var(--r-xl, 18px) !important;
+  padding: 1.25rem 1.35rem !important;
+  transition: transform var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease) !important;
+}
+
+.vt-card:hover {
+  border-color: color-mix(in srgb, var(--acc) 35%, var(--glass-border)) !important;
+}
+
+.vt-cols {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) !important;
+  gap: 1.15rem !important;
+}
+
+/* ============ BUTTONS (APPLE PILL) ============ */
+.vt-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.4rem !important;
+  padding: 0.55rem 1rem !important;
+  border-radius: var(--r-pill) !important;
+  border: 1px solid var(--glass-border) !important;
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+  font: 600 0.82rem var(--sans) !important;
+  cursor: pointer !important;
+  box-shadow: var(--glass-specular) !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+.vt-btn:hover { background: var(--surface-3) !important; }
+.vt-btn:active { transform: scale(0.97) !important; }
+
+.vt-btn.primary {
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 14px rgba(0, 113, 227, 0.28) !important;
+}
+.vt-btn.primary:hover {
+  background: var(--acc-hover) !important;
+}
+
+.vt-btn.sm {
+  padding: 0.38rem 0.78rem !important;
+  font-size: 0.76rem !important;
+}
+
+/* ============ ELEC AI CLASS INSIGHTS BANNER ============ */
+.ap-ai-insight-box {
+  background: color-mix(in srgb, var(--acc) 7%, var(--glass)) !important;
+  border: 1px solid color-mix(in srgb, var(--acc) 25%, var(--glass-border)) !important;
+  border-radius: var(--r-xl, 18px) !important;
+  padding: 1.25rem 1.35rem !important;
+  box-shadow: var(--sh-1), var(--glass-specular) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.ap-ai-insight-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.ap-ai-insight-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  padding: 0.25rem 0.65rem !important;
+  border-radius: var(--r-pill) !important;
+  font: 700 0.74rem var(--sans) !important;
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.18), rgba(168, 85, 247, 0.22)) !important;
+  color: var(--acc) !important;
+}
+
+.ap-ai-insight-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 0.85rem !important;
+}
+
+.ap-ai-insight-card {
+  padding: 0.85rem 1rem !important;
+  border-radius: var(--r-lg, 14px) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line-soft) !important;
+}
+.ap-ai-insight-card b {
+  display: block !important;
+  font-size: 0.84rem !important;
+  margin-bottom: 0.25rem !important;
+  color: var(--ink) !important;
+}
+.ap-ai-insight-card p {
+  margin: 0 !important;
+  font-size: 0.78rem !important;
+  color: var(--mut) !important;
+  line-height: 1.4 !important;
+}
+
+/* ============ APPLE VISION SHARE SHEET ============ */
+.ap-qr-modal {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 0.9rem !important;
+  padding: 0.5rem 0 0.3rem !important;
+}
+
+.ap-qr-img-box {
+  padding: 12px !important;
+  border-radius: var(--r-xl, 18px) !important;
+  background: #ffffff !important;
+  box-shadow: var(--sh-2) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+.ap-qr-code-pill {
+  font: 800 1.35rem ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  letter-spacing: 0.1em !important;
+  padding: 0.5rem 1.4rem !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line-soft) !important;
+  color: var(--ink) !important;
+}
+
+.ap-qr-steps {
+  list-style: none !important;
+  margin: 0.3rem 0 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.4rem !important;
+  text-align: left !important;
+  width: 100% !important;
+  font-size: 0.8rem !important;
+  color: var(--mut) !important;
+}
+.ap-qr-steps li {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.45rem 0.75rem !important;
+  border-radius: var(--r-md) !important;
+  background: var(--surface-2) !important;
+}
+.ap-qr-steps b {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 0.7rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* ============ MOBILE OPTIMIZATION ============ */
+@media (max-width: 900px) {
+  .vt {
+    padding: calc(var(--nav-h, 56px) + 0.6rem) 0.6rem 6.5rem !important;
+  }
+  .vt-frame {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    padding: 0.75rem !important;
+    border-radius: var(--r-xl, 18px) !important;
+  }
+  .vt-side {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    padding: 0.5rem 0.65rem !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .vt-side::-webkit-scrollbar { display: none !important; }
+  .vt-brand { display: none !important; }
+  .vt-nav {
+    flex-direction: row !important;
+    gap: 0.3rem !important;
+    margin: 0 !important;
+  }
+  .vt-nav-item {
+    padding: 0.5rem 0.85rem !important;
+    white-space: nowrap !important;
+    border-radius: var(--r-pill) !important;
+  }
+  .vt-side-note { display: none !important; }
+  .vt-exit {
+    margin-left: auto !important;
+    padding: 0.45rem 0.7rem !important;
+  }
+  .vt-exit span { display: none !important; }
+  .vt-row-hero { grid-template-columns: 1fr !important; }
+  .vt-hero { grid-template-columns: 1fr !important; }
+  .vt-hero-left { border-right: 0 !important; padding-right: 0 !important; border-bottom: 1px solid var(--line-soft) !important; padding-bottom: 1rem !important; }
+  .vt-cols { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 640px) {
+  .vt-search { width: 100% !important; }
+  .vt-stat-tiles { grid-template-columns: repeat(2, 1fr) !important; }
+}

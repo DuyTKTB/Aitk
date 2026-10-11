@@ -67,4 +67,26 @@ export const sound = {
     tone(1200, 0.05, 'triangle', 0.15);
     setTimeout(() => tone(300, 0.12, 'sawtooth', 0.12), 40);
   },
+
+  /* ===== TRÒ CHƠI MỚI ===== */
+  wheel: () => tone(800 + Math.random() * 200, 0.03, 'sine', 0.1),
+  pull: () => {
+    tone(300, 0.1, 'sawtooth', 0.2);
+    setTimeout(() => tone(450, 0.15, 'triangle', 0.25), 80);
+  },
+  ding: () => {
+    tone(987, 0.08, 'sine', 0.2);
+    setTimeout(() => tone(1318, 0.2, 'sine', 0.25), 90);
+  },
+  cheer: () => {
+    [523, 659, 784, 1046, 1318].forEach((f, i) =>
+      setTimeout(() => tone(f, 0.15, 'triangle', 0.2), i * 80)
+    );
+  },
+  turbo: () => {
+    tone(200, 0.1, 'sawtooth', 0.25);
+    setTimeout(() => tone(500, 0.2, 'sawtooth', 0.25), 60);
+  },
 };
+
+export default sound;

@@ -1,10 +1,5 @@
 /* ============================================================
    main.jsx — entry point (v3)
-   ------------------------------------------------------------
-   v3:
-     • Khớp cấu trúc thư mục thực tế trong src/.
-     • home-dashboard.css nằm trong components/ (không phải src/).
-     • Bọc ErrorBoundary quanh App để bắt lỗi chunk sau deploy.
    ============================================================ */
 import { StrictMode, Component } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -26,21 +21,8 @@ import './stats.css';
 import './study-sheet.css';
 
 /* ============ CSS TRANG CHỦ ============ */
-import './home-extras.css';
-import './home-fx.css';
-import './home-glass.css';
-import './home-plus.css';
-import './home-polish.css';
-import './home-stack.css';
-import './home-wow.css';
 import './nav-home-v2.css';
-import './components/home-dashboard.css';
-
-/* ============ CSS AI CHAT ============ */
-import './AIChat-fix.css';
-import './AIChat-glass.css';
-import './AIChat-glass-v2.css';
-import './AIChat-pro.css';
+import './styles/home-apple-bento.css';
 
 /* ============ CSS APP ============ */
 import './app-extra.css';
@@ -61,7 +43,7 @@ applySettings();
 initFeedbackQueue();
 
 /* ============================================================
-   ERROR BOUNDARY — bắt lỗi chunk cũ sau deploy
+   ERROR BOUNDARY
    ============================================================ */
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -89,9 +71,7 @@ class ErrorBoundary extends Component {
           regs.forEach((reg) => reg.unregister());
         });
       }
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     setTimeout(() => window.location.reload(), 200);
   };
 
@@ -104,34 +84,17 @@ class ErrorBoundary extends Component {
       );
 
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          padding: '2rem',
-          fontFamily: 'system-ui, sans-serif',
-          textAlign: 'center',
-          background: '#f3f6ff',
-          color: '#0a1230',
-        }}
-      >
+      <div style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        padding: '2rem',
+        fontFamily: 'system-ui, sans-serif',
+        textAlign: 'center',
+        background: '#f3f6ff',
+        color: '#0a1230',
+      }}>
         <div style={{ maxWidth: 480 }}>
-          <svg
-            width="64"
-            height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#2f6bff"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ marginBottom: 16 }}
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
           <h1 style={{ fontSize: '1.5rem', margin: '0 0 .8rem', letterSpacing: '-.02em' }}>
             {isChunkError ? 'Ứng dụng đã cập nhật' : 'Có lỗi xảy ra'}
           </h1>
@@ -181,17 +144,13 @@ createRoot(document.getElementById('root')).render(
 );
 
 /* ============================================================
-   PWA — đăng ký service worker (chỉ production)
+   PWA
    ============================================================ */
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
-      .then((reg) => {
-        console.log('[PWA] Service Worker đã đăng ký:', reg.scope);
-      })
-      .catch((err) => {
-        console.warn('[PWA] Không đăng ký được Service Worker:', err);
-      });
+      .then((reg) => console.log('[PWA] SW registered:', reg.scope))
+      .catch((err) => console.warn('[PWA] SW register fail:', err));
   });
 }

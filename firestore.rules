@@ -1,102 +1,123 @@
 rules_version = '2';
+
+// ===============================================================
+// firestore.rules — ELEC AI (chem-study)
+// ===============================================================
+// Nguyên tắc:
+// • Tất cả người dùng đã đăng nhập (Học sinh & Giáo viên) có toàn quyền
+//   tạo, làm bài, chấm điểm, quản lý lớp, đề thi, phòng thi và bài nộp.
+// • Bảo vệ tài khoản người dùng và hệ thống mã kích hoạt PRO.
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /* ============ Helpers ============ */
+    // -------- HÀM DÙNG CHUNG --------
     function signedIn() {
       return request.auth != null;
     }
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
-    }
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    function isTeacherOfExam(examData) {
-      return signedIn() && examData.teacherId == request.auth.uid;
-    }
-    function isTeacherOfClass(classId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
     }
 
-    /* ============ USERS ============ */
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // ===============================================================
+    // 1. USERS — Hồ sơ người dùng
+    // ===============================================================
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || userDoc().role == 'admin');
-      allow create, update: if isOwner(uid);
-      allow delete: if signedIn() && userDoc().role == 'admin';
+      allow read: if signedIn();
+      allow create: if isOwner(uid);
+      allow update: if (isOwner(uid) && (
+        !('role' in request.resource.data) ||
+        request.resource.data.role == resource.data.role ||
+        isAdmin()
+      )) || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    /* ============ CLASSES ============ */
+    // ===============================================================
+    // 2. CLASSES — Lớp học
+    // ===============================================================
     match /classes/{classId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn()
-        && (resource.data.teacherId == request.auth.uid
-            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members','memberIds']));
-      allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+      allow read, create, update, delete: if signedIn();
     }
 
-    /* ============ EXAMS ============ */
+    // ===============================================================
+    // 3. EXAMS — Đề thi & bài làm dở
+    // ===============================================================
     match /exams/{examId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+      allow read, create, update, delete: if signedIn();
 
-      /* ----- Đáp án riêng tư: CHỈ giáo viên sở hữu đề đọc được ----- */
+      // Đáp án riêng tư của đề
       match /private/{docId} {
-        allow read: if signedIn() && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data);
-        allow write: if signedIn() && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data);
+        allow read, write: if signedIn();
       }
 
-      /* ----- Attempts: học sinh chỉ đọc/ghi attempt của chính mình ----- */
+      // Lần làm bài của học sinh
       match /attempts/{attemptId} {
-        allow read: if signedIn()
-          && (resource.data.studentId == request.auth.uid
-              || isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data));
-        allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
-        allow update: if signedIn()
-          && (resource.data.studentId == request.auth.uid
-              || isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data));
-        allow delete: if signedIn()
-          && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(examId)).data);
+        allow read, write, delete: if signedIn();
       }
     }
 
-    /* ============ SUBMISSIONS ============ */
+    // ===============================================================
+    // 4. SUBMISSIONS — Bài nộp & Kết quả thi
+    // ===============================================================
     match /submissions/{subId} {
-      allow read: if signedIn()
-        && (resource.data.studentId == request.auth.uid
-            || (resource.data.examId is string
-                && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data)));
-      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
-      /* Học sinh không sửa được bài đã nộp; giáo viên chấm thì được */
-      allow update: if signedIn()
-        && (resource.data.examId is string
-            && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data));
-      allow delete: if signedIn()
-        && (resource.data.examId is string
-            && isTeacherOfExam(get(/databases/$(database)/documents/exams/$(resource.data.examId)).data));
+      allow read, create, update, delete: if signedIn();
     }
 
-    /* ============ PRO KEYS + PRO USERS ============ */
+    // ===============================================================
+    // 5. EXAM SESSIONS — Phòng thi trực tiếp (Live Proctoring)
+    // ===============================================================
+    match /examSessions/{sessionId} {
+      allow read, create, update, delete: if signedIn();
+
+      match /students/{studentId} {
+        allow read, write, delete: if signedIn();
+      }
+    }
+
+    // ===============================================================
+    // 6. EXAM RETRY PERMITS — Đơn xin thi lại
+    // ===============================================================
+    match /examRetryPermits/{permitId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    // ===============================================================
+    // 7. STUDENT RETRY ALLOWANCE — Cấp quyền thi lại theo lớp
+    // ===============================================================
+    match /studentRetryAllowance/{allowanceId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    // ===============================================================
+    // 8. PRO KEYS & PRO USERS — Quản lý gói PRO
+    // ===============================================================
     match /proKeys/{keyId} {
-      allow read, write: if signedIn() && userDoc().role == 'admin';
-    }
-    match /proUsers/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if signedIn() && userDoc().role == 'admin';
+      allow read, write: if isAdmin();
     }
 
-    /* ============ AI CHATS (Supabase vẫn chính; rules này dự phòng) ============ */
+    match /proUsers/{uid} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ===============================================================
+    // 9. AI CHATS — Lịch sử hội thoại AI dự phòng
+    // ===============================================================
     match /ai_chats/{chatId} {
       allow read, write: if signedIn() && resource.data.user_id == request.auth.uid;
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
     }
 
-    /* ============ Storage ============ */
-    match /databases/{database}/documents {
-      /* (không áp dụng — storage có rules riêng) */
-    }
   }
 }

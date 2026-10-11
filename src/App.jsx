@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { isAdmin } from './lib/isAdmin.js';   // nguồn duy nhất (claims), thay cho bản cũ đọc VITE_ADMIN_EMAILS
 import { initSubmitQueue } from './lib/submitQueue.js';
@@ -34,11 +34,15 @@ const JeopardyGame = lazy(() => import('./components/games/JeopardyGame.jsx'));
 const VirtualLab = lazy(() => import('./components/games/VirtualLab.jsx'));
 const ElementBattle = lazy(() => import('./components/games/ElementBattle.jsx'));
 const ChemSudoku = lazy(() => import('./components/games/ChemSudoku.jsx'));
+const TugOfWarGame = lazy(() => import('./components/games/TugOfWarGame.jsx'));
+const LuckyWheelGame = lazy(() => import('./components/games/LuckyWheelGame.jsx'));
+const FlipPuzzleGame = lazy(() => import('./components/games/FlipPuzzleGame.jsx'));
+const MillionaireGame = lazy(() => import('./components/games/MillionaireGame.jsx'));
+const QuizRacingGame = lazy(() => import('./components/games/QuizRacingGame.jsx'));
 
 /* ============ CLASSROOM ============ */
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.jsx'));
 const ExamJoin = lazy(() => import('./components/ExamJoin.jsx'));
-const StudentClass = lazy(() => import('./components/StudentClass.jsx'));
 const MyClasses = lazy(() => import('./components/MyClasses.jsx'));
 
 /* ============ ADMIN ============ */
@@ -140,7 +144,7 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Giải trí',
     tools: [
-      { id: 'games', label: 'Trò chơi', desc: '7 game học Hóa', Icon: IconGamepad },
+      { id: 'games', label: 'Trò chơi', desc: '11 game tương tác lớp học', Icon: IconGamepad },
       { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác', Icon: IconHome },
     ],
   },
@@ -160,7 +164,10 @@ const PAGES = [
   ['my-classes', 'Lớp học của tôi', IconClass],
 ];
 
-const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
+const GAME_ROUTES = [
+  'chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku',
+  'tugofwar', 'wheel', 'flip', 'millionaire', 'racing',
+].map((g) => 'games/' + g);
 
 /* ============ PAGE ROUTING HELPERS ============ */
 const readPage = () => {
@@ -169,6 +176,8 @@ const readPage = () => {
   if (h === 'login' || h === 'register') return h;
   if (GAME_ROUTES.includes(h)) return h;
   if (h.startsWith('exam/')) return h;
+  if (h.startsWith('join/')) return 'my-classes';
+  if (h.startsWith('my-classes/')) return 'my-classes';
   if (h === 'admin' || h.startsWith('admin/')) return 'admin';
   if (h === '' || h === 'main') return 'home';
   return PAGES.some((p) => p[0] === h) ? h : '404';
@@ -401,10 +410,10 @@ export default function App() {
     /* ============ CLASSROOM ROUTES ============ */
     if (page === 'classroom') {
       if (pro.isPro || isAdmin(user)) return <TeacherDashboard />;
-      return <StudentClass />;
+      return <MyClasses />;
     }
     if (page === 'my-classes') {
-      return <MyClasses onNavigate={navigate} />;
+      return <MyClasses />;
     }
 
     /* ============ EXAM MODE ============ */
@@ -439,6 +448,11 @@ export default function App() {
     if (page === 'games/lab') return <VirtualLab />;
     if (page === 'games/battle') return <ElementBattle />;
     if (page === 'games/sudoku') return <ChemSudoku />;
+    if (page === 'games/tugofwar') return <TugOfWarGame />;
+    if (page === 'games/wheel') return <LuckyWheelGame />;
+    if (page === 'games/flip') return <FlipPuzzleGame />;
+    if (page === 'games/millionaire') return <MillionaireGame />;
+    if (page === 'games/racing') return <QuizRacingGame />;
 
     if (page === 'admin' && isAdmin(user)) {
       return <AdminPanel />;
@@ -453,6 +467,17 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         {renderPage()}
       </Suspense>
+    );
+  }
+
+  /* ============ AI CHAT — TRANG RIÊNG TOÀN MÀN HÌNH (như ChatGPT) ============ */
+  if (page === 'ai') {
+    return (
+      <ErrorBoundary resetKey={hashTick}>
+        <Suspense fallback={<PageLoader />}>
+          <AIChat onExit={() => { window.location.hash = 'home'; }} />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 

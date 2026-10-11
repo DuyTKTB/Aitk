@@ -1,0 +1,541 @@
+/* =========================================================================
+   aichat-apple-intelligence.css — ELEC AI CHAT CHUẨN APPLE INTELLIGENCE
+   Ngôn ngữ thiết kế: Apple Intelligence & Claude (iOS 18 / macOS Sequoia)
+   • Độ sắc nét cao, tương phản hoàn hảo, không bị mờ đục
+   • Phân tầng Z-Index chuẩn xác: Sidebar (100001) > Overlay (99998) > Content
+   • Sidebar dạng ngăn kéo mượt mà, chữ sắc nét, dễ đọc trên mobile
+   • Khung nhập liệu nổi Capsule Dock với viền quang phổ Apple Intelligence
+   • Bong bóng tin nhắn chuẩn Apple iMessage & Siri
+   ========================================================================= */
+
+/* ============================================================
+   1. BỐ CỤC TOÀN TRANG & HÀO QUANG NỀN APPLE INTELLIGENCE
+   ============================================================ */
+.ds-page {
+  --apple-aura-1: rgba(0, 113, 227, 0.12);
+  --apple-aura-2: rgba(168, 85, 247, 0.10);
+  --apple-aura-3: rgba(255, 45, 85, 0.06);
+  background: var(--bg) !important;
+  color: var(--ink);
+  font-family: var(--sans);
+  position: relative;
+  display: flex !important;
+  flex-direction: row !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  width: 100vw !important;
+  overflow: hidden !important;
+}
+
+[data-theme='dark'] .ds-page {
+  --apple-aura-1: rgba(10, 132, 255, 0.16);
+  --apple-aura-2: rgba(168, 85, 247, 0.12);
+  --apple-aura-3: rgba(255, 45, 85, 0.08);
+  background: #000000 !important;
+}
+
+/* Hào quang nền dịu nhẹ (chỉ nằm ở lớp z-index: 0) */
+.ds-page::before {
+  content: '';
+  position: fixed;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 600px at 20% 25%, var(--apple-aura-1), transparent 70%),
+    radial-gradient(circle 550px at 80% 30%, var(--apple-aura-2), transparent 65%),
+    radial-gradient(circle 700px at 50% 85%, var(--apple-aura-3), transparent 70%);
+  animation: apple-aura-drift 24s ease-in-out infinite alternate;
+}
+
+@keyframes apple-aura-drift {
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.06) translate(15px, -15px) rotate(1.5deg); }
+  100% { transform: scale(0.96) translate(-15px, 15px) rotate(-1.5deg); }
+}
+
+/* ============================================================
+   2. SIDEBAR LỊCH SỬ CHAT (CLAUDE & MACOS SEQUOIA STYLE)
+   ============================================================ */
+/* Desktop Sidebar */
+@media (min-width: 901px) {
+  .ds-sidebar {
+    position: relative !important;
+    z-index: 20 !important;
+    width: 260px !important;
+    flex-shrink: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--glass-thick) !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border-right: 1px solid var(--line) !important;
+    box-shadow: var(--sh-1);
+    transform: none !important;
+  }
+
+  .ds-sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* Mobile Sidebar: Ngăn kéo trượt sang trọng & sắc nét */
+@media (max-width: 900px) {
+  .ds-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100dvh !important;
+    width: min(320px, 86vw) !important;
+    z-index: 100001 !important; /* Luôn NẰM TRÊN Overlay (99998) để không bị mờ */
+    display: flex !important;
+    flex-direction: column !important;
+    background: #141418 !important; /* Nền đậm đặc rõ ràng, không bị lem chữ */
+    border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 16px 0 48px rgba(0, 0, 0, 0.8) !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  [data-theme='light'] .ds-sidebar {
+    background: #ffffff !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 16px 0 48px rgba(0, 0, 0, 0.18) !important;
+  }
+
+  .ds-sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  /* Overlay làm tối nền màn hình khi mở menu */
+  .ds-sidebar-overlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.52) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    backdrop-filter: blur(6px) !important;
+    z-index: 99998 !important; /* Luôn NẰM DƯỚI Sidebar (100001) */
+    cursor: pointer !important;
+  }
+}
+
+/* Phần đầu Sidebar: Nút "+ Trò chuyện mới" và nút "Đóng X" */
+.ds-sidebar-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 1rem 0.85rem 0.75rem !important;
+  gap: 0.5rem !important;
+  flex-shrink: 0 !important;
+}
+
+.ds-new-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  flex: 1 !important;
+  padding: 0.65rem 1rem !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink) !important;
+  font-family: var(--sans) !important;
+  font-weight: 600 !important;
+  font-size: var(--fs-xs) !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+
+.ds-new-btn:hover {
+  background: var(--surface-2) !important;
+  border-color: var(--acc) !important;
+  color: var(--acc) !important;
+}
+
+.ds-sidebar-close {
+  display: grid !important;
+  place-items: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line-soft) !important;
+  color: var(--mut) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: all var(--dur-1) var(--ease) !important;
+}
+
+.ds-sidebar-close:hover {
+  background: var(--surface-3) !important;
+  color: var(--ink) !important;
+}
+
+/* Thanh tìm kiếm hội thoại */
+.ds-search {
+  margin: 0 0.85rem 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.45rem 0.85rem !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line-soft) !important;
+  color: var(--mut) !important;
+}
+
+.ds-search input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--ink) !important;
+  font-size: var(--fs-xs) !important;
+  width: 100% !important;
+}
+
+/* Các mục hội thoại trong Sidebar sắc nét */
+.ds-chat-item {
+  border-radius: var(--r-sm) !important;
+  padding: 0.65rem 0.85rem !important;
+  margin: 3px 8px !important;
+  transition: all var(--dur-1) var(--ease) !important;
+  border: 1px solid transparent !important;
+  color: var(--ink) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+}
+
+.ds-chat-item:hover {
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+}
+
+.ds-chat-item.active {
+  background: color-mix(in srgb, var(--acc) 14%, transparent) !important;
+  border-color: color-mix(in srgb, var(--acc) 30%, transparent) !important;
+  color: var(--acc) !important;
+  font-weight: 600 !important;
+}
+
+.ds-chat-item-title {
+  color: var(--ink) !important;
+  font-weight: 500 !important;
+  font-size: 0.85rem !important;
+  line-height: 1.35 !important;
+}
+
+.ds-chat-item.active .ds-chat-item-title {
+  color: var(--acc) !important;
+  font-weight: 600 !important;
+}
+
+/* User Menu ở chân Sidebar */
+.ds-user-wrap {
+  padding: 0.75rem 0.85rem !important;
+  border-top: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  margin-top: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.ds-user-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  width: 100% !important;
+  padding: 0.45rem 0.6rem !important;
+  border-radius: var(--r-sm) !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--ink) !important;
+  cursor: pointer !important;
+  transition: background var(--dur-1) var(--ease) !important;
+}
+
+.ds-user-btn:hover {
+  background: var(--surface-2) !important;
+}
+
+/* ============================================================
+   3. KHU VỰC NỘI DUNG CHÍNH (CONTENT AREA)
+   ============================================================ */
+.ds-content {
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  position: relative !important;
+  overflow: hidden !important;
+  z-index: 5;
+}
+
+.ds-header {
+  position: relative;
+  z-index: 10;
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border-bottom: 1px solid var(--line) !important;
+  padding: 0.65rem 1rem !important;
+  flex-shrink: 0 !important;
+}
+
+.ds-header-inner {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.65rem !important;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+}
+
+.ds-main {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  padding: 1.5rem 1.25rem 160px !important;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 720px) {
+  .ds-main {
+    padding: 1rem 0.85rem 130px !important;
+  }
+}
+
+/* Màn hình chào mừng căn giữa hoàn hảo */
+.ds-empty {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 2.5rem 1rem 1rem !important;
+  margin: 0 auto !important;
+  max-width: 640px !important;
+  width: 100% !important;
+}
+
+.ds-empty-title {
+  font-size: clamp(1.6rem, 4vw, 2.3rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: var(--letter-spacing-tight) !important;
+  color: var(--ink) !important;
+  margin: 1rem 0 0.45rem !important;
+}
+
+.ds-empty-sub {
+  font-size: var(--fs-sm) !important;
+  color: var(--mut) !important;
+  margin: 0 0 1.75rem !important;
+  line-height: var(--lh-body) !important;
+  max-width: 48ch !important;
+}
+
+/* ============================================================
+   4. BONG BÓNG TIN NHẮN (MESSAGE BUBBLES)
+   ============================================================ */
+.ds-msg-list {
+  position: relative;
+  z-index: 1;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.25rem !important;
+  width: 100% !important;
+}
+
+.ds-msg {
+  width: 100% !important;
+}
+
+/* Tin nhắn của Người dùng (Apple iMessage Blue) */
+.ds-msg-user {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+}
+
+.ds-msg-user-text {
+  background: var(--acc) !important;
+  color: #ffffff !important;
+  border-radius: 20px 20px 6px 20px !important;
+  padding: 0.85rem 1.25rem !important;
+  font-family: var(--sans) !important;
+  font-size: var(--fs-md) !important;
+  line-height: var(--lh-body) !important;
+  box-shadow: 0 2px 10px rgba(0, 113, 227, 0.28) !important;
+  border: none !important;
+  max-width: 85% !important;
+  word-break: break-word !important;
+}
+
+.ds-msg-user-text::before {
+  display: none !important;
+}
+
+/* Tin nhắn của Trợ lý AI (Apple Vision Pro Frosted Glass Card) */
+.ds-msg-model {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.ds-msg-body {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.45rem !important;
+}
+
+.ds-msg-content {
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--sh-1), var(--glass-specular) !important;
+  border-radius: 6px 22px 22px 22px !important;
+  padding: 1.15rem 1.4rem !important;
+  color: var(--ink) !important;
+  font-family: var(--sans) !important;
+  line-height: 1.65 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+[data-theme='dark'] .ds-msg-content {
+  background: rgba(28, 28, 30, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Thanh hành động tin nhắn (Sao chép, Đọc, v.v.) */
+.ds-msg-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  flex-wrap: wrap !important;
+  margin-top: 0.25rem !important;
+}
+
+/* ============================================================
+   5. KHUNG NHẬP LIỆU NỔI APPLE INTELLIGENCE (FLOATING DOCK)
+   ============================================================ */
+.ds-input-wrap {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 260px !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  background: transparent !important;
+  border-top: none !important;
+  padding: 0.75rem 1.25rem 1.25rem !important;
+  pointer-events: none !important;
+  width: auto !important;
+}
+
+@media (max-width: 900px) {
+  .ds-input-wrap {
+    left: 0 !important;
+    padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+.ds-input-inner {
+  pointer-events: auto !important;
+  max-width: 860px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+}
+
+/* Thanh nhập liệu Capsule Dock */
+.ds-input-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  background: var(--glass-thick) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 28px !important;
+  padding: 0.45rem 0.6rem 0.45rem 0.9rem !important;
+  box-shadow: var(--sh-float), var(--glass-specular) !important;
+  transition: all var(--dur-2) var(--ease) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Hiệu ứng viền hào quang Apple Intelligence khi gõ */
+.ds-input-bar:focus-within {
+  border-color: transparent !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #a855f7 35%, transparent),
+              0 16px 48px -10px rgba(0, 113, 227, 0.22),
+              var(--glass-specular) !important;
+}
+
+.ds-input {
+  font-family: var(--sans) !important;
+  font-size: 16px !important; /* Ngăn iOS Safari tự zoom */
+  line-height: 1.45 !important;
+  color: var(--ink) !important;
+  caret-color: var(--acc) !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.ds-input::placeholder {
+  color: var(--mut) !important;
+  opacity: 0.75 !important;
+}
+
+/* Nút gửi Apple iMessage (Send Capsule Button) */
+.ds-send {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  background: var(--acc) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.35) !important;
+  display: grid !important;
+  place-items: center !important;
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease) !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+}
+
+.ds-send:hover {
+  background: var(--acc-hover) !important;
+  transform: scale(1.08) !important;
+}
+
+.ds-send:active {
+  transform: scale(0.92) !important;
+}
+
+.ds-disclaimer {
+  text-align: center !important;
+  font-size: 0.72rem !important;
+  color: var(--mut) !important;
+  margin-top: 0.4rem !important;
+  opacity: 0.8 !important;
+}

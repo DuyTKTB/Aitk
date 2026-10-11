@@ -4,6 +4,10 @@ import SiteFooter from './SiteFooter.jsx';
 import './landing-v3.css';
 import './landing-ocean.css';
 import './landing-class.css';
+import './landing-3d.css';
+import './landing-more.css';
+import { Audience, Bento, ExamFlow, Beyond, Trust, StartSteps } from './LandingSections.jsx';
+import { IconDefs, FaqIcon, AtomOrbit, Molecule, Crystal, Helix, Flask } from './Art3D.jsx';
 
 const LoginPage = lazy(() => import('./LoginPage.jsx'));
 
@@ -70,10 +74,11 @@ const CHIPS = [
 ];
 
 const NAV = [
-  ['Video', 'lp-video'],
   ['Xem thử', 'lp-story'],
   ['Tính năng', 'lp-feat'],
-  ['Lớp học', 'lp-class'],
+  ['Dành cho ai', 'lp-who'],
+  ['Tất cả công cụ', 'lp-all'],
+  ['Phòng thi', 'lp-exam'],
   ['Hỏi đáp', 'lp-faq'],
   ['Bắt đầu', 'lp-cta'],
 ];
@@ -133,15 +138,20 @@ const TRACK = [
 ];
 
 const FAQS = [
-  { cat: 'Cơ bản', icon: '💡', q: 'Mình có phải trả phí không?', a: 'Phần lớn công cụ dùng miễn phí: bảng tuần hoàn, cân bằng PTHH, quiz, sổ câu sai, trò chơi, thư viện tài liệu. Một số tính năng nâng cao như AI Tạo Đề và Hỏi AI trong từng nguyên tố thuộc gói VIP.' },
-  { cat: 'AI', icon: '🤖', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp hoặc dán ảnh đề (tối đa 10 ảnh một lần), AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
-  { cat: 'AI', icon: '🎯', q: 'Kết quả của AI có chính xác tuyệt đối không?', a: 'Không. AI có thể sai, nhất là bài tính toán dài. Hãy đọc kỹ từng bước và đối chiếu với sách giáo khoa khi cần. AI được thiết kế để hỗ trợ, không thay thế bạn.' },
-  { cat: 'Tính năng', icon: '📚', q: 'Sổ câu sai hoạt động thế nào?', a: 'Khi làm quiz, câu sai được lưu lại cùng đáp án đúng. Bạn mở sổ tay để ôn riêng những câu đó, không phải làm lại cả đề.' },
-  { cat: 'Tính năng', icon: '🎮', q: 'Trò chơi có giúp học thật không?', a: 'Có. Câu hỏi trong trò chơi lấy từ ngân hàng câu hỏi theo chuyên đề, điểm được lưu lại và câu trả lời sai đi vào sổ câu sai như khi làm quiz.' },
-  { cat: 'Lớp học', icon: '🏫', q: 'Giáo viên dùng trang này như thế nào?', a: 'Giáo viên được cấp quyền tạo đề, tải tài liệu và quản lý lớp. Học sinh vào lớp bằng mã lớp hoặc đường dẫn đề cô gửi, làm bài ở nhà và xem kết quả ngay.' },
-  { cat: 'Lớp học', icon: '📝', q: 'Làm bài thi do cô giao có khác gì làm quiz?', a: 'Bài thi chạy ở chế độ riêng, có bộ đếm giờ và cơ chế phát hiện rời khỏi bài. Mức giám sát do giáo viên của bạn chọn cho từng đề.' },
-  { cat: 'Cơ bản', icon: '📱', q: 'Mình dùng được trên điện thoại không?', a: 'Được. Trang chạy trên trình duyệt điện thoại và có thể thêm vào màn hình chính như một ứng dụng. Giao diện tự động điều chỉnh cho màn hình nhỏ.' },
-  { cat: 'Bảo mật', icon: '🔒', q: 'Dữ liệu học tập của mình được lưu ở đâu?', a: 'Tiến độ, sổ câu sai và ghi chú gắn với tài khoản của bạn, nên đăng nhập trên máy khác vẫn thấy lại. Chúng tôi không chia sẻ dữ liệu với bên thứ ba.' },
+  { cat: 'Cơ bản', icon: 'bulb', q: 'Mình có phải trả phí không?', a: 'Phần lớn công cụ dùng miễn phí: bảng tuần hoàn, cân bằng PTHH, quiz, sổ câu sai, trò chơi, thư viện tài liệu. Một số tính năng nâng cao như AI Tạo Đề và Hỏi AI trong từng nguyên tố thuộc gói VIP.' },
+  { cat: 'AI', icon: 'bot', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp hoặc dán ảnh đề (tối đa 10 ảnh một lần), AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
+  { cat: 'AI', icon: 'target', q: 'Kết quả của AI có chính xác tuyệt đối không?', a: 'Không. AI có thể sai, nhất là bài tính toán dài. Hãy đọc kỹ từng bước và đối chiếu với sách giáo khoa khi cần. AI được thiết kế để hỗ trợ, không thay thế bạn.' },
+  { cat: 'Tính năng', icon: 'book', q: 'Sổ câu sai hoạt động thế nào?', a: 'Khi làm quiz, câu sai được lưu lại cùng đáp án đúng. Bạn mở sổ tay để ôn riêng những câu đó, không phải làm lại cả đề.' },
+  { cat: 'Tính năng', icon: 'game', q: 'Trò chơi có giúp học thật không?', a: 'Có. Câu hỏi trong trò chơi lấy từ ngân hàng câu hỏi theo chuyên đề, điểm được lưu lại và câu trả lời sai đi vào sổ câu sai như khi làm quiz.' },
+  { cat: 'Lớp học', icon: 'school', q: 'Giáo viên dùng trang này như thế nào?', a: 'Giáo viên được cấp quyền tạo đề, tải tài liệu và quản lý lớp. Học sinh vào lớp bằng mã lớp hoặc đường dẫn đề cô gửi, làm bài ở nhà và xem kết quả ngay.' },
+  { cat: 'Lớp học', icon: 'note', q: 'Làm bài thi do cô giao có khác gì làm quiz?', a: 'Bài thi chạy ở chế độ riêng, có bộ đếm giờ và cơ chế phát hiện rời khỏi bài. Mức giám sát do giáo viên của bạn chọn cho từng đề.' },
+  { cat: 'Cơ bản', icon: 'phone', q: 'Mình dùng được trên điện thoại không?', a: 'Được. Trang chạy trên trình duyệt điện thoại và có thể thêm vào màn hình chính như một ứng dụng. Giao diện tự động điều chỉnh cho màn hình nhỏ.' },
+  { cat: 'Cơ bản', icon: 'globe', q: 'Mình dùng cho môn khác ngoài Hóa được không?', a: 'AI Tạo Đề dùng được cho nhiều môn, và thư viện prompt có sẵn mẫu cho Toán, Lý, Văn, Tiếng Anh. Các công cụ riêng như bảng tuần hoàn hay cân bằng PTHH dành cho Hóa học.' },
+  { cat: 'Lớp học', icon: 'upload', q: 'Giáo viên tạo đề từ file như thế nào?', a: 'Bạn tải ảnh, PDF hoặc Word lên, AI đọc và tách thành từng câu hỏi. Bạn xem lại, sửa đề, đáp án và lời giải rồi mới giao cho lớp.' },
+  { cat: 'Lớp học', icon: 'shield', q: 'Giám sát trực tiếp khi thi là gì?', a: 'Trong lúc lớp làm bài, giáo viên mở màn hình theo dõi để xem tiến độ từng học sinh và các lần rời khỏi bài. Mức giám sát do giáo viên chọn cho từng đề.' },
+  { cat: 'Tính năng', icon: 'repeat', q: 'Lịch ôn lặp lại hoạt động ra sao?', a: 'Câu bạn làm sai được đưa lại sau một khoảng thời gian. Trả lời đúng thì khoảng cách dài dần, trả lời sai thì câu đó quay lại sớm hơn.' },
+  { cat: 'Tính năng', icon: 'paw', q: 'Thú cưng học tập là gì?', a: 'Một bạn đồng hành nhỏ đi cùng bạn trong lúc học, có nhiều kiểu giao diện để chọn. Bạn có thể dùng hoặc bỏ qua tùy thích.' },
+  { cat: 'Bảo mật', icon: 'lock', q: 'Dữ liệu học tập của mình được lưu ở đâu?', a: 'Tiến độ, sổ câu sai và ghi chú gắn với tài khoản của bạn, nên đăng nhập trên máy khác vẫn thấy lại. Chúng tôi không chia sẻ dữ liệu với bên thứ ba.' },
 ];
 
 const FEEDBACK = [['bug', 'Báo lỗi'], ['idea', 'Góp ý'], ['star', 'Khen ngợi']];
@@ -238,6 +248,7 @@ function useScrollEngine(root) {
         let p;
         if (mode === 'pin') p = clamp(-r.top / Math.max(1, r.height - vh));
         else if (mode === 'out') p = clamp(-r.top / Math.max(1, r.height));
+        else if (mode === 'thru') p = clamp((vh - r.top) / (vh + r.height));
         else p = clamp((vh - r.top) / (vh * 0.85));
         s.style.setProperty('--p', p.toFixed(4));
         if (s.dataset.steps) {
@@ -427,6 +438,9 @@ function Manifesto() {
   return (
     <section className="lp-mani" id="lp-about" data-scrub="pin">
       <div className="lp-mani-stick lp-wrap">
+        <Molecule kind="benzene" className="mol-a" />
+        <Molecule kind="water" className="mol-b" />
+        <Molecule kind="methane" className="mol-c" />
         <p>
           {words.map((w, i) => (
             <span key={i} style={{ '--w': (i / (words.length - 1)).toFixed(3) }}>{w} </span>
@@ -466,6 +480,8 @@ function VideoSection() {
       </div>
 
       <div className="lp-vstage" data-scrub="enter">
+        <Crystal className="cry-l" />
+        <Crystal className="cry-r" />
         <div className="lp-vframe">
           {VIDEO.youtubeId ? (
             <iframe
@@ -589,6 +605,7 @@ function Tools() {
   return (
     <section className="lp-h" id="lp-feat" data-scrub="pin" data-hscroll>
       <div className="lp-h-stick">
+        <Flask />
         <div className="lp-h-track" data-track>
           <div className="lp-h-intro">
             <Split text="Mọi công cụ học Hóa, một tài khoản" />
@@ -599,7 +616,7 @@ function Tools() {
             <div className="hp-vis" aria-hidden="true">
               <u className="me">Giải bài tập giúp mình</u>
               <u className="ai">Bước 1: Viết phương trình…</u>
-              <u className="ai">4Fe + 3O₂ → 2Fe₂O₃ ✓</u>
+              <u className="ai">4Fe + 3O₂ → 2Fe₂O₃ <IcoCheck size={13} /></u>
             </div>
             <h3>ELEC AI</h3>
             <p>Trợ lý Hóa học cho Lớp 10, 11, 12 và Đại học. Gõ, dán ảnh đề hoặc nói bằng giọng, có lịch sử trò chuyện để quay lại bài cũ.</p>
@@ -680,6 +697,7 @@ const CLASS_POINTS = [
 function ClassSection() {
   return (
     <section className="lp-wrap lp-sec lp-class" id="lp-class">
+      <Helix className="hx-a" />
       <Split text="Một lớp học, cả cô và trò cùng dùng" />
       <p className="lp-class-lead">Không chỉ để tự học. Giáo viên có thể giao bài, học sinh làm bài và xem lại câu sai, tất cả trên cùng một trang.</p>
       <ul className="lp-vpoints">
@@ -744,7 +762,7 @@ function FaqItem({ item, index }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        <span className="lp-faq-icon" aria-hidden="true">{item.icon}</span>
+        <span className="lp-faq-icon" aria-hidden="true"><FaqIcon name={item.icon} /></span>
         <span className="lp-faq-text">
           <span className="lp-faq-cat">{item.cat}</span>
           <span className="lp-faq-title">{item.q}</span>
@@ -819,6 +837,8 @@ function Faq() {
 /* ============================================================
    MAIN
    ============================================================ */
+const KIT = { Split, MagBtn, openAuth, IcoArrow };
+
 export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
   const [prompt, setPrompt] = useState('');
   const [focus, setFocus] = useState(false);
@@ -897,6 +917,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
 
   return (
     <div className="lp" ref={root}>
+      <IconDefs />
       <div className="lp-progress" aria-hidden="true"><i /></div>
       <div className="lp-bg" aria-hidden="true">
         <i /><i />
@@ -972,6 +993,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
               </div>
               <div className="lp-mascot" aria-hidden="true">
                 <span className="lp-mascot-halo" />
+                <AtomOrbit hero />
                 <AIMark size={240} look mode={focus ? 'think' : 'idle'} />
                 {TILES.map(([s, n, top, side, k]) => (
                   <span key={s} className="lp-tile" style={{ top, ...side, '--k': k }}>
@@ -1039,20 +1061,27 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         <VideoSection />
         <Story />
         <Tools />
+        <Audience kit={KIT} />
+        <Bento kit={KIT} />
         <ClassSection />
+        <ExamFlow kit={KIT} />
 
         <section className="lp-wrap lp-stats" aria-label="Số liệu">
           {STATS.map(([n, s, l]) => <div key={l}><Count to={n} suffix={s} /><span>{l}</span></div>)}
         </section>
 
+        <Beyond kit={KIT} />
         <Grades />
+        <Trust />
         <Faq />
 
         {/* ============ CTA ============ */}
         <section className="lp-wrap lp-sec" id="lp-cta">
           <div className="lp-cta">
+            <AtomOrbit core scrub className="cta-atom" />
             <Split text="Bắt đầu từ câu hỏi đầu tiên của bạn" />
             <p>Tạo tài khoản miễn phí trong vài giây. Không cần thẻ, không cần cài đặt.</p>
+            <StartSteps />
             <div className="lp-cta-btns">
               <MagBtn as="a" className="lp-btn pri lg" href="#register">Đăng ký miễn phí <IcoArrow /></MagBtn>
               <MagBtn as="a" className="lp-btn lg" href="#login">Tôi đã có tài khoản</MagBtn>

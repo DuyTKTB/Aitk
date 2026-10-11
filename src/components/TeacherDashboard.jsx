@@ -21,6 +21,10 @@ import {
   createClass,
   removeClassMember,
   deleteExam as deleteExamFs,
+  updateClass,
+  regenerateClassKey,
+  deleteClass,
+  classJoinUrl,
   approveMember,
   rejectMember,
   approveAllMembers,
@@ -56,6 +60,20 @@ import {
   IcoBell, IcoLibrary,
 } from '../lib/sessionIcons.jsx';
 import '../styles/classroom.css';
+import '../styles/teacher-apple.css';
+
+const IcoSparkles = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" />
+  </svg>
+);
+
+const IcoPin = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="12" y1="17" x2="12" y2="22" />
+    <path d="M5 17h14v-2l-2-2V5a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v8l-2 2z" />
+  </svg>
+);
 
 /* ============================================================
    HELPERS
@@ -106,6 +124,11 @@ export default function TeacherDashboard() {
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
   const [copiedKey, setCopiedKey] = useState(null);
+  const [shareClass, setShareClass] = useState(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [noticeClass, setNoticeClass] = useState(null);
+  const [noticeDraft, setNoticeDraft] = useState('');
+  const [noticeSaving, setNoticeSaving] = useState(false);
 
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
@@ -386,6 +409,69 @@ export default function TeacherDashboard() {
     say(v ? 'Bật duyệt thành viên' : 'Tắt duyệt thành viên', 'success');
   };
 
+  const handleRenameClass = async (cls, name) => {
+    const next = (name || renameDraft).trim();
+    if (!next) return;
+    const r = await updateClass(cls.id, { name: next });
+    say(r.ok ? 'Đã đổi tên lớp' : r.error, r.ok ? 'success' : 'error');
+    if (r.ok) { setRenameDraft(''); await reloadClass(cls.id); await refresh(); }
+  };
+
+  const handleSaveNotice = async () => {
+    if (!noticeClass) return;
+    setNoticeSaving(true);
+    try {
+      const text = noticeDraft.trim();
+      const r = await updateClass(noticeClass.id, {
+        announcement: text ? { text, updatedAt: Date.now() } : null,
+      });
+      if (r.ok) {
+        say(text ? 'Đã ghim thông báo lên lớp' : 'Đã xóa thông báo', 'success');
+        setNoticeClass(null);
+        await refresh();
+      } else {
+        say(r.error || 'Lỗi lưu thông báo', 'error');
+      }
+    } catch (e) {
+      say(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setNoticeSaving(false);
+    }
+  };
+
+  const handleRegenKey = (cls) => {
+    setConfirmState({
+      title: 'Đổi mã lớp?',
+      body: 'Mã cũ sẽ không dùng được nữa. Học sinh mới phải nhập mã mới.',
+      okLabel: 'Đổi mã',
+      danger: true,
+      onOk: async () => {
+        const r = await regenerateClassKey(cls.id);
+        if (!r.ok) { say(r.error, 'error'); return; }
+        say(`Mã mới: ${r.key}`, 'success');
+        await reloadClass(cls.id);
+        await refresh();
+        setShareClass({ ...cls, key: r.key });
+      },
+    });
+  };
+
+  const handleDeleteClass = (cls) => {
+    setConfirmState({
+      title: 'Xóa lớp?',
+      body: `Lớp “${cls.name}”, đề và bài nộp của lớp sẽ bị xóa. Không hoàn tác được.`,
+      okLabel: 'Xóa lớp',
+      danger: true,
+      onOk: async () => {
+        const r = await deleteClass(cls.id);
+        if (!r.ok) { say(r.error, 'error'); return; }
+        setSelectedClass(null);
+        say('Đã xóa lớp', 'success');
+        await refresh();
+      },
+    });
+  };
+
   /* ============ DUYỆT THI LẠI ============ */
   const handleApproveRetry = async (req, note = '') => {
     const r = await approveRetry({
@@ -443,6 +529,28 @@ export default function TeacherDashboard() {
   const passRate = subsInRange.length
     ? Math.round((subsInRange.filter((s) => pctOf(s) >= 50).length / subsInRange.length) * 100)
     : 0;
+
+  const classHealthGrade = useMemo(() => {
+    if (!subsInRange.length) return { grade: 'A', label: 'Chưa có bài nộp' };
+    if (avgPct >= 85 && passRate >= 90) return { grade: 'A+', label: 'Xuất sắc' };
+    if (avgPct >= 75 && passRate >= 80) return { grade: 'A', label: 'Tốt' };
+    if (avgPct >= 65 && passRate >= 70) return { grade: 'B+', label: 'Khá' };
+    if (avgPct >= 50) return { grade: 'B', label: 'Đạt chuẩn' };
+    return { grade: 'C', label: 'Cần hỗ trợ' };
+  }, [subsInRange.length, avgPct, passRate]);
+
+  const atRiskStudents = useMemo(() => {
+    const map = {};
+    subsInRange.forEach((s) => {
+      const p = pctOf(s);
+      if (p < 50) {
+        if (!map[s.studentId] || map[s.studentId].pct > p) {
+          map[s.studentId] = { studentId: s.studentId, studentName: s.studentName, pct: Math.round(p) };
+        }
+      }
+    });
+    return Object.values(map);
+  }, [subsInRange]);
 
   const trend = useMemo(() => {
     return [...exams]
@@ -737,6 +845,53 @@ export default function TeacherDashboard() {
             </div>
           </div>
 
+          {/* ELEC AI CLASS INSIGHTS & DIAGNOSTICS */}
+          <div className="ap-ai-insight-box">
+            <div className="ap-ai-insight-head">
+              <div className="ap-ai-insight-badge">
+                <IcoSparkles size={14} /> ELEC AI Class Insights & Diagnostics
+              </div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--mut)' }}>
+                Dựa trên {subsInRange.length} bài nộp của {classes.length} lớp học
+              </span>
+            </div>
+
+            <div className="ap-ai-insight-grid">
+              <div className="ap-ai-insight-card">
+                <b>Chỉ số tiếp thu bài học</b>
+                <p>
+                  Xếp loại chung: <strong style={{ color: 'var(--acc)', fontSize: '1.05rem' }}>{classHealthGrade.grade}</strong> ({classHealthGrade.label}).
+                  Tỷ lệ học sinh đạt chuẩn từ 50% trở lên là {passRate}%.
+                </p>
+              </div>
+
+              <div className="ap-ai-insight-card">
+                <b>Chẩn đoán bẫy & lỗi sai</b>
+                <p>
+                  {avgPct < 70
+                    ? 'Điểm TB ở mức cần củng cố. Các câu hỏi tính toán định lượng và bảo toàn electron có tỷ lệ sai cao.'
+                    : 'Học sinh nắm vững kiến thức nền tảng. Tỷ lệ hiểu bài và làm đúng đạt mức cao.'}
+                </p>
+              </div>
+
+              <div className="ap-ai-insight-card">
+                <b>Học sinh cần kèm thêm ({atRiskStudents.length})</b>
+                <p>
+                  {atRiskStudents.length > 0
+                    ? `Có ${atRiskStudents.length} học sinh đạt dưới 50% điểm (${atRiskStudents.slice(0, 2).map((s) => s.studentName).join(', ')}${atRiskStudents.length > 2 ? '...' : ''}). Đề xuất mở quyền thi lại để cải thiện.`
+                    : 'Tất cả học sinh đều đang đạt chỉ tiêu qua bài.'}
+                </p>
+              </div>
+
+              <div className="ap-ai-insight-card">
+                <b>Gợi ý của AI cho tiết học tới</b>
+                <p>
+                  Dành 5-10 phút đầu giờ giải đáp các câu bẫy học sinh chọn sai nhiều và công bố bảng điểm vinh danh.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="vt-range">
             <h2>Xem theo thời gian</h2>
             <div className="vt-pills">
@@ -894,12 +1049,39 @@ export default function TeacherDashboard() {
                     <button
                       type="button"
                       className="vt-icon-btn"
-                      onClick={() => copyText(cls.key, cls.id, 'Đã chép key lớp')}
-                      title="Sao chép key"
+                      onClick={() => copyText(cls.key, cls.id, 'Đã chép mã lớp')}
+                      title="Sao chép mã"
                     >
                       {copiedKey === cls.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
                     </button>
+                    <button
+                      type="button"
+                      className="vt-icon-btn"
+                      onClick={() => setShareClass(cls)}
+                      title="Mã QR"
+                    >
+                      QR
+                    </button>
                   </div>
+
+                  {cls.announcement?.text && (
+                    <div style={{
+                      fontSize: '0.78rem',
+                      color: 'var(--ink)',
+                      background: 'color-mix(in srgb, var(--acc) 10%, var(--surface-2))',
+                      padding: '0.4rem 0.65rem',
+                      borderRadius: 10,
+                      border: '1px solid color-mix(in srgb, var(--acc) 22%, transparent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}>
+                      <IcoPin size={13} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {cls.announcement.text}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="vt-stack">
                     {members.slice(0, 5).map((m) => <Avatar key={m.id} name={m.name} size={30} />)}
@@ -909,7 +1091,15 @@ export default function TeacherDashboard() {
 
                   <footer>
                     <button type="button" className="vt-btn sm" onClick={() => setSelectedClass(cls)}>
-                      <IcoUsers size={13} /> Xem chi tiết
+                      <IcoUsers size={13} /> Chi tiết
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn sm"
+                      onClick={() => { setNoticeClass(cls); setNoticeDraft(cls.announcement?.text || ''); }}
+                      title="Ghim thông báo cho lớp"
+                    >
+                      <IcoPin size={12} /> Ghim tin
                     </button>
                     <button
                       type="button"
@@ -917,6 +1107,9 @@ export default function TeacherDashboard() {
                       onClick={() => { setSelectedClass(cls); goSection('create'); }}
                     >
                       <IcoBook size={13} /> Tạo đề
+                    </button>
+                    <button type="button" className="vt-btn sm" onClick={() => handleDeleteClass(cls)}>
+                      Xóa
                     </button>
                   </footer>
                 </article>
@@ -1346,6 +1539,10 @@ export default function TeacherDashboard() {
           onRemoveMember={handleRemoveMember}
           retryRequests={retryRequestsForClass}
           allowances={allowances}
+          onRename={handleRenameClass}
+          onRegenKey={handleRegenKey}
+          onDeleteClass={handleDeleteClass}
+          onShareKey={(cls) => setShareClass(cls)}
           onApproveRetry={handleApproveRetry}
           onDenyRetry={handleDenyRetry}
           onToggleAllowance={handleToggleAllowance}
@@ -1374,6 +1571,88 @@ export default function TeacherDashboard() {
             subs={submissionsMap[selectedExam.id] || []}
             onExport={() => exportExamCsv(selectedExam, submissionsMap[selectedExam.id] || [])}
           />
+        </Modal>
+      )}
+
+      {shareClass && (
+        <Modal title={`Chia sẻ lớp ${shareClass.name}`} size="sm" onClose={() => setShareClass(null)}>
+          <div className="ap-qr-modal">
+            <div className="ap-qr-img-box">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(classJoinUrl(shareClass.key))}&margin=1`}
+                width={200}
+                height={200}
+                alt={`QR mã lớp ${shareClass.key}`}
+              />
+            </div>
+            <div className="ap-qr-code-pill">{shareClass.key}</div>
+            <p className="vt-muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              Học sinh quét mã QR hoặc nhập mã lớp để tham gia lớp học.
+            </p>
+            <div className="ap-class-tools" style={{ justifyContent: 'center', width: '100%' }}>
+              <button type="button" className="vt-btn sm primary" onClick={() => copyText(shareClass.key, shareClass.id, 'Đã chép mã lớp')}>
+                <IcoCopy size={13} /> Chép mã lớp
+              </button>
+              <button type="button" className="vt-btn sm" onClick={() => copyText(classJoinUrl(shareClass.key), `${shareClass.id}-url`, 'Đã chép liên kết')}>
+                Chép link mời
+              </button>
+              <button type="button" className="vt-btn sm" onClick={() => handleRegenKey(shareClass)}>
+                Đổi mã mới
+              </button>
+            </div>
+
+            <ul className="ap-qr-steps">
+              <li><b>1</b> Học sinh mở ELEC AI và vào mục <strong>Lớp học</strong></li>
+              <li><b>2</b> Bấm <strong>Vào lớp</strong> và dán mã lớp <strong>{shareClass.key}</strong></li>
+              <li><b>3</b> Đợi giáo viên duyệt hoặc bắt đầu làm bài thi trực tiếp</li>
+            </ul>
+          </div>
+        </Modal>
+      )}
+
+      {noticeClass && (
+        <Modal title={`Ghim thông báo: ${noticeClass.name}`} size="sm" onClose={() => setNoticeClass(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '0.2rem 0' }}>
+            <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--mut)', lineHeight: 1.45 }}>
+              Thông báo này sẽ được ghim nổi bật ngay đầu trang &ldquo;Lớp học của tôi&rdquo; của toàn bộ học sinh trong lớp {noticeClass.name}.
+            </p>
+            <textarea
+              autoFocus
+              rows={4}
+              value={noticeDraft}
+              onChange={(e) => setNoticeDraft(e.target.value)}
+              placeholder="Ví dụ: Nhớ ôn tập chương Este - Lipit trước giờ kiểm tra thứ Năm nhé các em!"
+              style={{
+                width: '100%',
+                padding: '0.75rem 0.9rem',
+                borderRadius: 12,
+                border: '1px solid var(--line)',
+                background: 'var(--panel)',
+                color: 'var(--ink)',
+                font: '500 0.9rem var(--sans)',
+                resize: 'vertical',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.4rem' }}>
+              {noticeClass.announcement?.text && (
+                <button
+                  type="button"
+                  className="vt-btn sm danger"
+                  onClick={() => { setNoticeDraft(''); setTimeout(handleSaveNotice, 0); }}
+                  disabled={noticeSaving}
+                >
+                  Gỡ thông báo
+                </button>
+              )}
+              <button type="button" className="vt-btn sm" onClick={() => setNoticeClass(null)} disabled={noticeSaving}>
+                Hủy
+              </button>
+              <button type="button" className="vt-btn sm primary" onClick={handleSaveNotice} disabled={noticeSaving}>
+                {noticeSaving ? 'Đang lưu…' : 'Ghim thông báo'}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

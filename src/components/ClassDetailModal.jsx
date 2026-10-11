@@ -191,6 +191,10 @@ export default function ClassDetailModal({
   onApproveRetry,
   onDenyRetry,
   onToggleAllowance,
+  onRename,
+  onRegenKey,
+  onDeleteClass,
+  onShareKey,
 }) {
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
@@ -201,6 +205,11 @@ export default function ClassDetailModal({
 
   const [retryNote, setRetryNote] = useState({});
   const [retryActioning, setRetryActioning] = useState(null);
+  const [renameVal, setRenameVal] = useState(classInfo?.name || '');
+
+  useEffect(() => {
+    setRenameVal(classInfo?.name || '');
+  }, [classInfo?.id, classInfo?.name]);
 
   const members = classInfo?.members || [];
   const pending = classInfo?.pendingMembers || [];
@@ -355,6 +364,7 @@ export default function ClassDetailModal({
     { key: 'exams', label: 'Đề thi', Icon: IconBook, badge: exams.length },
     { key: 'scores', label: 'Bảng điểm', Icon: IconTable },
     { key: 'retry', label: 'Xin thi lại', Icon: IconBell, badge: pendingRetry.length, danger: true },
+    { key: 'settings', label: 'Cài đặt', Icon: IconLock },
   ];
 
   const handleRetryAction = async (r, action) => {
@@ -971,6 +981,45 @@ export default function ClassDetailModal({
                   </ul>
                 </>
               )}
+            </div>
+          )}
+
+          {tab === 'settings' && (
+            <div className="cd-members">
+              <div className="cd-card" style={{ padding: '1rem 1.1rem' }}>
+                <h3>Tên lớp</h3>
+                <label className="cd-search" style={{ marginTop: '0.6rem' }}>
+                  <input
+                    type="text"
+                    value={renameVal}
+                    maxLength={48}
+                    onChange={(e) => setRenameVal(e.target.value)}
+                    aria-label="Tên lớp"
+                  />
+                </label>
+                <div className="ap-class-tools" style={{ marginTop: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="vt-btn sm primary"
+                    disabled={!renameVal.trim() || renameVal.trim() === classInfo?.name}
+                    onClick={() => onRename?.(classInfo, renameVal)}
+                  >
+                    Lưu tên
+                  </button>
+                  <button type="button" className="vt-btn sm" onClick={() => onShareKey?.(classInfo)}>
+                    Mã QR
+                  </button>
+                  <button type="button" className="vt-btn sm" onClick={() => onRegenKey?.(classInfo)}>
+                    Đổi mã lớp
+                  </button>
+                  <button type="button" className="vt-btn sm danger" onClick={() => onDeleteClass?.(classInfo)}>
+                    <IconTrash size={13} /> Xóa lớp
+                  </button>
+                </div>
+                <p className="cd-muted" style={{ marginTop: '0.85rem' }}>
+                  Mã hiện tại: <b>{classInfo?.key || '—'}</b>
+                </p>
+              </div>
             </div>
           )}
         </div>

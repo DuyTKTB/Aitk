@@ -86,11 +86,11 @@
   background: var(--acc);
   color: var(--acc-ink);
   border-color: transparent;
-  box-shadow: 3px 3px 0 var(--ink);
+  box-shadow: var(--sh-1);
 }
 .td-btn.primary:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--ink);
+  box-shadow: var(--sh-2);
 }
 .td-btn.sm { padding: .45rem .85rem; font-size: .75rem; }
 .td-btn.big { padding: .85rem 1.6rem; font-size: .95rem; }
@@ -104,7 +104,7 @@
   background: var(--panel);
   border: 2px solid var(--ink);
   border-radius: 14px;
-  box-shadow: 4px 4px 0 var(--acc);
+  box-shadow: var(--sh-2);
 }
 .td-create-box input {
   flex: 1;
@@ -147,7 +147,7 @@
 .td-card:hover {
   border-color: var(--ink);
   transform: translateY(-2px);
-  box-shadow: 4px 4px 0 var(--acc);
+  box-shadow: var(--sh-2);
 }
 
 .td-card-head {
@@ -259,7 +259,7 @@
   background: var(--bg);
   border: 2px solid var(--ink);
   border-radius: 20px;
-  box-shadow: 8px 8px 0 var(--acc);
+  box-shadow: var(--sh-2);
   animation: cl-pop .3s var(--ease);
 }
 .td-modal.wide { width: min(760px, 100%); }
@@ -557,7 +557,7 @@
   background: var(--panel);
   border: 2px solid var(--ink);
   border-radius: 22px;
-  box-shadow: 10px 10px 0 var(--acc);
+  box-shadow: var(--sh-float);
   text-align: center;
 }
 .ej-warn-ico {
@@ -633,7 +633,7 @@
   background: color-mix(in srgb, var(--acc) 15%, var(--bg));
   color: var(--acc);
   font: 700 .85rem var(--sans);
-  box-shadow: 4px 4px 0 var(--ink);
+  box-shadow: var(--sh-2);
   animation: cl-pop .3s var(--ease);
   max-width: calc(100vw - 2rem);
 }
@@ -757,7 +757,7 @@
 .ej-opt.picked {
   border-color: var(--acc);
   background: color-mix(in srgb, var(--acc) 15%, var(--panel));
-  box-shadow: 3px 3px 0 var(--acc);
+  box-shadow: 0 4px 12px rgba(0,113,227,0.25);
 }
 .ej-opt-key {
   display: grid;
@@ -816,7 +816,7 @@
   border: 2px solid var(--ink);
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 10px 10px 0 var(--acc);
+  box-shadow: var(--sh-float);
 }
 .er-hero {
   padding: 2.5rem 1.5rem;
@@ -982,7 +982,7 @@
   background: var(--panel);
   border: 2px solid var(--ink);
   border-radius: 22px;
-  box-shadow: 10px 10px 0 var(--acc);
+  box-shadow: var(--sh-float);
   text-align: center;
 }
 .sc-key-ico {
@@ -1024,7 +1024,7 @@
   letter-spacing: .1em;
   color: var(--ink);
 }
-.sc-input-row input:focus { outline: 0; border-color: var(--acc); box-shadow: 3px 3px 0 var(--acc); }
+.sc-input-row input:focus { outline: 0; border-color: var(--acc); box-shadow: 0 4px 12px rgba(0,113,227,0.25); }
 .sc-error { color: var(--acc); font: 600 .82rem var(--sans); margin: .5rem 0; }
 .sc-info { color: var(--mut); font: 600 .82rem var(--sans); margin: .5rem 0; }
 .sc-note {
@@ -1180,7 +1180,7 @@
 .sc-class-item.active {
   border-color: var(--acc);
   background: color-mix(in srgb, var(--acc) 8%, var(--panel));
-  box-shadow: 3px 3px 0 var(--acc);
+  box-shadow: 0 4px 12px rgba(0,113,227,0.25);
 }
 .sc-class-ico {
   display: grid;
@@ -1750,7 +1750,7 @@
 .td-session-card:hover {
   transform: translateY(-2px);
   border-color: var(--ink);
-  box-shadow: 4px 4px 0 var(--acc);
+  box-shadow: var(--sh-2);
 }
 
 .td-session-card.live {

@@ -334,6 +334,62 @@ export async function removeClassMember(classId, memberId) {
   }
 }
 
+export async function leaveClass(classId, studentId) {
+  if (!classId || !studentId) return { ok: false, error: 'Thiếu thông tin.' };
+  return removeClassMember(classId, studentId);
+}
+
+export async function cancelJoinRequest(classId, studentId) {
+  if (!classId || !studentId) return { ok: false, error: 'Thiếu thông tin.' };
+  return rejectMember(classId, studentId);
+}
+
+export async function updateClass(classId, patch = {}) {
+  if (!classId) return { ok: false, error: 'Thiếu mã lớp' };
+  const data = {};
+  if (typeof patch.name === 'string' && patch.name.trim()) data.name = patch.name.trim().slice(0, 48);
+  if (typeof patch.subject === 'string') data.subject = patch.subject.trim().slice(0, 40);
+  if (!Object.keys(data).length) return { ok: false, error: 'Không có thay đổi.' };
+  data.updatedAt = serverTimestamp();
+  try {
+    await updateDoc(doc(db, 'classes', classId), data);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: friendlyFirestoreError(e, 'sửa lớp') };
+  }
+}
+
+export async function regenerateClassKey(classId) {
+  if (!classId) return { ok: false, error: 'Thiếu mã lớp' };
+  try {
+    const cls = await getClassById(classId);
+    if (!cls) return { ok: false, error: 'Lớp không tồn tại' };
+    const key = generateClassKey(cls.name);
+    await updateDoc(doc(db, 'classes', classId), { key, updatedAt: serverTimestamp() });
+    return { ok: true, key };
+  } catch (e) {
+    return { ok: false, error: friendlyFirestoreError(e, 'đổi mã lớp') };
+  }
+}
+
+export function classJoinUrl(key) {
+  if (typeof window === 'undefined') return `#join/${key}`;
+  const base = `${window.location.origin}${window.location.pathname || '/'}`;
+  return `${base}#join/${String(key || '').toUpperCase()}`;
+}
+
+export async function deleteClass(classId) {
+  if (!classId) return { ok: false, error: 'Thiếu mã lớp' };
+  try {
+    const exams = await getExamsByClass(classId);
+    await Promise.all(exams.map((ex) => deleteExam(ex.id).catch(() => {})));
+    await deleteDoc(doc(db, 'classes', classId));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: friendlyFirestoreError(e, 'xóa lớp') };
+  }
+}
+
 /* ============================================================
    EXAMS
    ============================================================ */
@@ -460,8 +516,12 @@ export async function deleteExam(examId) {
   try {
     // Xóa kèm dữ liệu liên quan (Firestore không tự xóa subcollection / doc tham chiếu)
     const kill = async (q) => {
-      const s = await getDocs(q);
-      await Promise.all(s.docs.map((d) => deleteDoc(d.ref)));
+      try {
+        const s = await getDocs(q);
+        await Promise.all(s.docs.map((d) => deleteDoc(d.ref).catch((err) => console.warn('[deleteExam sub]', err))));
+      } catch (err) {
+        console.warn('[deleteExam subquery]', err);
+      }
     };
     await kill(query(collection(db, 'submissions'), where('examId', '==', examId)));
     await kill(query(collection(db, 'examRetryPermits'), where('examId', '==', examId)));

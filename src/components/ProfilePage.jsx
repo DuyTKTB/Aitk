@@ -7,6 +7,7 @@ import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
 import ProfileStats from './ProfileStats.jsx';
 import ProfileAchievements from './ProfileAchievements.jsx';
 import TeacherProPanel from './TeacherProPanel.jsx';
+import PaymentPanel from './PaymentPanel.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { IcoCamera, IcoSpinner } from './ProfileIcons.jsx';
 import './ProfileFB.css';
@@ -120,6 +121,7 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [askLogout, setAskLogout] = useState(false);
   const [pickedColor, setPickedColor] = useState(() => ls.get('cs-avatar-color', ''));
+  const [showPayment, setShowPayment] = useState(false);
   const toastTimer = useRef(null);
   const dlg = useRef(null);
 
@@ -161,6 +163,14 @@ export default function ProfilePage() {
     if (askLogout && !d.open) d.showModal();
     if (!askLogout && d.open) d.close();
   }, [askLogout]);
+
+  /* Tự động đóng modal thanh toán khi user đã lên VIP */
+  useEffect(() => {
+    if (showPayment && isVip) {
+      ok('🎉 Chúc mừng! Bạn đã là thành viên ELECAI VIP.');
+      setShowPayment(false);
+    }
+  }, [isVip, showPayment]);
 
   const pickColor = (c) => { setPickedColor(c); ls.set('cs-avatar-color', c); };
 
@@ -216,7 +226,14 @@ export default function ProfilePage() {
   const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
   const syncTier = run(refreshTier, (t) => ok(`Gói hiện tại: ${t?.name || tier?.name || 'Miễn phí'}`));
 
-  /* TABS — có thêm tab Giáo viên */
+  /* Wrapper refresh và trả về trạng thái VIP thực tế */
+  const handlePaymentSuccess = useCallback(async () => {
+    await refreshTier();
+    await refreshUser();
+    // Đọc tier từ closure hiện tại — sẽ được update bởi useEffect
+    return { isVip: false };
+  }, [refreshTier, refreshUser]);
+
   const TABS = [
     ['info', 'Hồ sơ', 'user'],
     ['security', 'Bảo mật', 'shield'],
@@ -413,14 +430,21 @@ export default function ProfilePage() {
                         </ul>
                         {cur ? <button className="pf-btn" disabled type="button">Gói hiện tại</button>
                           : t.key === 'free' ? <button className="pf-btn" disabled type="button">Miễn phí</button>
-                          : <a className="pf-btn primary" href="https://www.facebook.com/nguyentheduytk" target="_blank" rel="noopener noreferrer">Liên hệ nâng cấp</a>}
+                          : <button
+                              className="pf-btn primary"
+                              type="button"
+                              onClick={() => setShowPayment(true)}
+                            >
+                              <Glyph name="crown" size={15} />
+                              Thanh toán tự động
+                            </button>}
                       </article>
                     );
                   })}
                 </div>
                 <div className="pf-note">
                   <Glyph name="info" size={18} />
-                  <div><b>Nâng cấp lên ELECAI VIP</b><p>Nhắn Admin qua Facebook, sau khi xác nhận thanh toán tài khoản được nâng trong 24 giờ.</p>
+                  <div><b>Thanh toán tự động qua QR</b><p>Chuyển khoản đúng nội dung, hệ thống sẽ tự động nâng VIP trong 1-2 phút.</p>
                     <div className="pf-actions flat"><button type="button" className="pf-btn" onClick={syncTier} disabled={loading}><Glyph name="refresh" size={15} />Làm mới trạng thái gói</button></div></div>
                 </div>
               </>
@@ -435,6 +459,27 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ============ MODAL THANH TOÁN TỰ ĐỘNG ============ */}
+      {showPayment && (
+        <div className="pf-modal-overlay" onClick={() => setShowPayment(false)}>
+          <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="pf-modal-close"
+              onClick={() => setShowPayment(false)}
+              aria-label="Đóng"
+            >
+              ×
+            </button>
+            <PaymentPanel
+              identCode={identCode}
+              onPaymentSuccess={handlePaymentSuccess}
+              onClose={() => setShowPayment(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <dialog ref={dlg} className="pf-dialog" onClose={() => setAskLogout(false)} onClick={(e) => e.target === dlg.current && setAskLogout(false)}>
         <h3>Đăng xuất?</h3>

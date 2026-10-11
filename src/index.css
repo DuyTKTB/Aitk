@@ -10682,8 +10682,8 @@ svg.ai-mark.look {
 
   /* ---- SIDEBAR LỊCH SỬ CHAT ---- */
   .ds-sidebar {
-    width: min(300px, 82vw) !important;
-    z-index: 100000 !important;
+    width: min(320px, 86vw) !important;
+    z-index: 100001 !important;
   }
 
   /* Overlay làm tối nền khi mở sidebar */
@@ -10691,8 +10691,8 @@ svg.ai-mark.look {
     display: block !important;
     position: fixed !important;
     inset: 0 !important;
-    background: rgba(0, 0, 0, .45) !important;
-    z-index: 99999 !important;
+    background: rgba(0, 0, 0, .5) !important;
+    z-index: 99998 !important;
     animation: ds-overlay-in .2s ease !important;
   }
 

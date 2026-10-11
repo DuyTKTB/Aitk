@@ -74,34 +74,27 @@
 .vt-brand-mark .ai-mark { color: #fff; max-width: 30px; }
 .vt-brand-fallback { width: 16px; height: 16px; border-radius: 50%; background: var(--vt-amber); box-shadow: 0 0 0 5px rgba(255,255,255,.25); }
 .vt-brand-text { display: grid; line-height: 1.15; min-width: 0; }
-.vt-brand-text b { font: 800 1.12rem var(--sans); letter-spacing: -.03em; font-style: italic; }
+.vt-brand-text b { font: 800 1.12rem var(--sans); letter-spacing: -.03em; color: var(--ink); }
 .vt-brand-text small { font: 600 .72rem var(--sans); opacity: .8; }
 
-.vt-nav { display: flex; flex-direction: column; gap: .5rem; margin-top: .4rem; }
+.vt-nav { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; }
 .vt-nav-item {
   position: relative;
   display: flex; align-items: center; gap: .8rem;
-  padding: .9rem 1.1rem .9rem 1.2rem;
-  border: 0; border-radius: 999px 0 0 999px;
-  background: none; color: #fff; cursor: pointer;
-  font: italic 700 1rem var(--sans); text-align: left;
+  padding: .75rem 1rem;
+  border: 0; border-radius: 12px;
+  background: none; color: var(--mut); cursor: pointer;
+  font: 600 .9rem var(--sans); text-align: left;
   transition: background .2s, color .2s;
 }
-.vt-nav-item:hover { background: rgba(255, 255, 255, .14); }
+.vt-nav-item:hover { background: var(--surface-2); color: var(--ink); }
 .vt-nav-item svg { flex-shrink: 0; }
 .vt-nav-item span { flex: 1; min-width: 0; }
 .vt-nav-item.on {
-  background: var(--panel);
+  background: color-mix(in srgb, var(--acc) 14%, var(--surface-2));
   color: var(--acc);
-  margin-right: -18px;
-  padding-right: calc(1.1rem + 18px);
+  font-weight: 700;
 }
-.vt-nav-item.on::before,
-.vt-nav-item.on::after {
-  content: ''; position: absolute; right: 18px; width: 20px; height: 20px; pointer-events: none;
-}
-.vt-nav-item.on::before { top: -20px; background: radial-gradient(circle at 0 0, transparent 19.5px, var(--panel) 20px); }
-.vt-nav-item.on::after  { bottom: -20px; background: radial-gradient(circle at 0 100%, transparent 19.5px, var(--panel) 20px); }
 
 .vt-nav-badge {
   font: 800 .7rem var(--sans); font-style: normal;

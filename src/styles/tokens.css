@@ -1,71 +1,209 @@
 /* =========================================================================
-   tokens.css — NGUỒN DUY NHẤT cho design token.
-   Import CUỐI CÙNG trong main.jsx (sau index.css, theme-sandra.css…) để
-   thắng mọi lớp ghi đè cũ. Giữ nguyên tên biến cũ (--bg, --ink, --acc,
-   --mut, --line, --soft, --panel, --glass, --r-*, --sh-*, --z-*) nên
-   13k dòng CSS hiện tại vẫn chạy; chỉ thêm biến mới, không đổi tên.
-   Giá trị màu lấy từ theme-sandra (navy + xanh #2f6bff) đang là theme thật.
+   tokens.css — APPLE DESIGN SYSTEM & FROSTED GLASS TOKENS
+   Phiên bản chuẩn hóa theo Apple Human Interface Guidelines (HIG) & visionOS.
+   Bảo toàn 100% tương thích ngược với các tên biến cũ (--bg, --panel, --ink...)
+   đồng thời nâng cấp giá trị sang chuẩn mực sang trọng, tinh tế của Apple.
    ========================================================================= */
 
 :root {
-  --bg: #f3f6ff;  --panel: #ffffff;  --ink: #0a1230;  --mut: #5d6a94;
-  --soft: rgba(47, 107, 255, .10);   --line: rgba(10, 18, 48, .14);
-  --acc: #2f6bff; --acc-ink: #ffffff; --acc-soft: #2f6bff;
-  --glass: rgba(255, 255, 255, .78);
+  /* ============ 1. BẢNG MÀU APPLE LIGHT (Neutral Canvas) ============ */
+  --bg: #f5f5f7;                 /* Nền xám ngà kinh điển của Apple */
+  --panel: #ffffff;              /* Thẻ màu trắng tuyền */
+  --ink: #1d1d1f;                /* Chữ than chì sâu, chống mỏi mắt */
+  --mut: #86868b;                /* Chữ phụ xám trung tính Apple */
+  --line: rgba(0, 0, 0, 0.07);   /* Đường kẻ hairline siêu mảnh */
+  --line-soft: rgba(0, 0, 0, 0.04);
+  --soft: rgba(0, 113, 227, 0.08);
 
-  --surface:   var(--panel);
-  --surface-2: color-mix(in srgb, var(--ink) 4%, var(--panel));
-  --surface-3: color-mix(in srgb, var(--ink) 8%, var(--panel));
-  --line-soft: color-mix(in srgb, var(--ink) 8%, transparent);
-  --ok: #15803d;   --warn: #b45309;   --err: #c62828;
-  --ok-bg:   color-mix(in srgb, var(--ok) 12%, transparent);
-  --warn-bg: color-mix(in srgb, var(--warn) 14%, transparent);
-  --err-bg:  color-mix(in srgb, var(--err) 12%, transparent);
+  /* Apple System Blue */
+  --acc: #0071e3;
+  --acc-ink: #ffffff;
+  --acc-soft: #2997ff;
+  --acc-hover: #0077ed;
 
-  --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --fs-xs: .75rem;  --fs-sm: .875rem; --fs-md: 1rem;
-  --fs-lg: 1.2rem;  --fs-xl: 1.5rem;  --fs-2xl: clamp(1.75rem, 3.2vw, 2.4rem);
-  --fw-reg: 400; --fw-med: 500; --fw-bold: 650;
-  --lh-tight: 1.15; --lh-body: 1.55;
+  /* Vật liệu kính mờ (Apple Frosted Glass Material) */
+  --glass: rgba(255, 255, 255, 0.75);
+  --glass-thick: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-specular: inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(28px) saturate(190%);
 
-  --s-1: .25rem; --s-2: .5rem; --s-3: .75rem; --s-4: 1rem;
-  --s-5: 1.5rem; --s-6: 2rem;  --s-7: 3rem;  --s-8: 4.5rem;
+  /* Bề mặt phân tầng (Surface Elevation) */
+  --surface: var(--panel);
+  --surface-2: #f5f5f7;
+  --surface-3: #e8e8ed;
 
-  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+  /* Màu trạng thái Apple (System Status Colors) */
+  --ok: #34c759;
+  --ok-bg: rgba(52, 199, 89, 0.12);
+  --warn: #ff9f0a;
+  --warn-bg: rgba(255, 159, 10, 0.12);
+  --err: #ff3b30;
+  --err-bg: rgba(255, 59, 48, 0.12);
 
-  --sh-1: 0 1px 2px rgba(10, 18, 48, .06), 0 2px 10px rgba(10, 18, 48, .05);
-  --sh-2: 0 12px 36px rgba(20, 40, 120, .12);
-  --glow: 0 0 28px rgba(47, 107, 255, .28);
-  --ring: 0 0 0 3px color-mix(in srgb, var(--acc) 35%, transparent);
+  /* ============ 2. TYPOGRAPHY (SF PRO HIERARCHY) ============ */
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "DM Sans", system-ui, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.1875rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: clamp(1.8rem, 3.5vw, 2.75rem);
+  --fs-3xl: clamp(2.4rem, 5vw, 3.8rem);
 
-  --ease: cubic-bezier(.2, .7, .2, 1);
-  --dur-1: .15s; --dur-2: .28s; --dur-3: .5s;
+  --fw-reg: 400;
+  --fw-med: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
 
-  --page-w: 1120px;
-  --nav-h: 52px;
-  --bottom-nav-h: 64px;
+  --lh-tight: 1.12;
+  --lh-body: 1.52;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-headline: -0.035em;
 
-  --z-footer: 10; --z-content: 100; --z-nav: 9999; --z-bottom-nav: 9999;
-  --z-fab: 9998; --z-pet: 9997; --z-chat-pane: 9999;
-  --z-toast: 99980; --z-modal: 99990; --z-lightbox: 100000;
+  /* ============ 3. SPACING & SQUIRCLE RADII ============ */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4.5rem;
+
+  /* Bo góc Squircle mượt mà */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --r-pill: 9999px;
+
+  /* ============ 4. BÓNG ĐA TẦNG & PHẢN QUANG (DEPTH & SHADOWS) ============ */
+  --sh-1: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --sh-2: 0 8px 24px -4px rgba(0, 0, 0, 0.06), 0 20px 48px -8px rgba(0, 0, 0, 0.04);
+  --sh-float: 0 24px 60px -12px rgba(0, 0, 0, 0.12), 0 8px 24px -4px rgba(0, 0, 0, 0.04);
+  --glow: 0 0 28px rgba(0, 113, 227, 0.25);
+  --ring: 0 0 0 3.5px rgba(0, 113, 227, 0.35);
+
+  /* Dải sáng Apple Intelligence */
+  --ai-gradient: linear-gradient(135deg, #0071e3 0%, #a855f7 50%, #ff2d55 100%);
+  --ai-glow: 0 0 35px rgba(168, 85, 247, 0.3);
+
+  /* ============ 5. CHUYỂN ĐỘNG (FLUID SPRING MOTION) ============ */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);       /* Apple Fluid Ease */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Apple Spring Pop */
+  --dur-1: 0.16s;
+  --dur-2: 0.28s;
+  --dur-3: 0.45s;
+
+  /* Bố cục trang */
+  --page-w: 1180px;
+  --nav-h: 56px;
+  --bottom-nav-h: 68px;
+
+  --z-footer: 10;
+  --z-content: 100;
+  --z-nav: 9999;
+  --z-bottom-nav: 9999;
+  --z-fab: 9998;
+  --z-pet: 9997;
+  --z-chat-pane: 9999;
+  --z-toast: 99980;
+  --z-modal: 99990;
+  --z-lightbox: 100000;
 }
 
+/* ============ 6. APPLE DARK MODE (Vision Pro / Space Gray) ============ */
 [data-theme='dark'] {
-  --bg: #030618;  --panel: #070d2a;  --ink: #eef2ff;  --mut: #8b95bd;
-  --soft: rgba(110, 140, 255, .14);  --line: rgba(130, 160, 255, .22);
-  --acc: #2f6bff; --acc-ink: #ffffff; --acc-soft: #7db3ff;
-  --glass: rgba(18, 30, 82, .38);
-  --ok: #4ade80;  --warn: #fbbf24;  --err: #f87171;
-  --surface-2: color-mix(in srgb, #fff 5%, var(--panel));
-  --surface-3: color-mix(in srgb, #fff 9%, var(--panel));
-  --line-soft: color-mix(in srgb, #fff 8%, transparent);
-  --sh-1: 0 1px 2px rgba(0, 0, 0, .4), 0 2px 10px rgba(0, 0, 0, .35);
-  --sh-2: 0 12px 36px rgba(0, 0, 0, .55);
-  --glow: 0 0 36px rgba(47, 107, 255, .45);
-  --ring: 0 0 0 3px color-mix(in srgb, var(--acc-soft) 45%, transparent);
+  --bg: #000000;                 /* Nền đen sâu chuẩn OLED của Apple */
+  --panel: #1c1c1e;              /* Apple System Gray 6 Dark */
+  --ink: #f5f5f7;                /* Chữ trắng tinh khiết */
+  --mut: #98989d;                /* Chữ phụ xám bạc sáng */
+  --line: rgba(255, 255, 255, 0.12);
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --soft: rgba(10, 132, 255, 0.14);
+
+  --acc: #0a84ff;                /* Apple System Blue Dark */
+  --acc-ink: #ffffff;
+  --acc-soft: #70b4ff;
+  --acc-hover: #409cff;
+
+  /* Kính mờ siêu thực chế độ tối */
+  --glass: rgba(28, 28, 30, 0.72);
+  --glass-thick: rgba(24, 24, 26, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-specular: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+
+  --surface-2: #2c2c2e;          /* Apple System Gray 5 Dark */
+  --surface-3: #3a3a3c;          /* Apple System Gray 4 Dark */
+
+  --ok: #30d158;
+  --warn: #ffd60a;
+  --err: #ff453a;
+
+  --sh-1: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --sh-2: 0 12px 32px -4px rgba(0, 0, 0, 0.65), 0 24px 60px -8px rgba(0, 0, 0, 0.5);
+  --sh-float: 0 28px 70px -10px rgba(0, 0, 0, 0.8);
+  --glow: 0 0 32px rgba(10, 132, 255, 0.35);
+  --ring: 0 0 0 3.5px rgba(10, 132, 255, 0.45);
 }
 
-/* "Giảm chuyển động" trong Cài đặt (xem lib/settings.js) */
+/* ============ 7. CÁC LỚP TIỆN ÍCH CHUẨN APPLE (UTILITY CLASSES) ============ */
+.apple-card {
+  position: relative;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--sh-1), var(--glass-specular);
+  border-radius: var(--r-lg);
+  transition: transform var(--dur-2) var(--ease),
+              box-shadow var(--dur-2) var(--ease),
+              border-color var(--dur-2) var(--ease);
+}
+
+.apple-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-2), var(--glass-specular);
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--glass-border));
+}
+
+.apple-pill {
+  border-radius: var(--r-pill);
+}
+
+.apple-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--r-pill);
+  background: var(--acc);
+  color: var(--acc-ink);
+  font-family: var(--sans);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.25);
+  transition: transform var(--dur-1) var(--ease),
+              background var(--dur-1) var(--ease),
+              box-shadow var(--dur-1) var(--ease);
+}
+
+.apple-btn-primary:hover {
+  background: var(--acc-hover);
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 113, 227, 0.35);
+}
+
+.apple-btn-primary:active {
+  transform: scale(0.97);
+}
+
+/* Giảm chuyển động theo cài đặt hệ thống */
 [data-motion='reduced'] *, [data-motion='reduced'] *::before, [data-motion='reduced'] *::after {
   animation-duration: .001ms !important; animation-iteration-count: 1 !important;
   transition-duration: .001ms !important; scroll-behavior: auto !important;

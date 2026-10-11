@@ -79,3 +79,24 @@ export const IcoSpinner = ({ size = 16, className = '' }) => (
     <path d="M12 3a9 9 0 1 0 9 9" />
   </svg>
 );
+
+export const IcoCheck = ({ size = 16, strokeWidth = 2.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12l5 5L20 6" />
+  </svg>
+);
+
+export const IcoQr = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <path d="M14 14h3v3h-3zM21 14v3M14 21h3M21 21h.01" />
+  </svg>
+);
+
+export const IcoShield = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
