@@ -1,24 +1,12 @@
 /* ============================================================
-   StudentModal.jsx — Modal chi tiết 1 học sinh (Vitality)
+   StudentModal.jsx — Modal chi tiết 1 học sinh (v2)
    ------------------------------------------------------------
-   Props:
-     - student: { id, name, email, doneCount, totalExams, avgScore,
-                  totalViolations, lastSubAt, submissions[] }
-     - onClose: callback đóng
-   ------------------------------------------------------------
-   Hiển thị:
-     - Header: avatar + tên + email + ngày tham gia
-     - 4 stat: đã làm / điểm TB / tổng thời gian / vi phạm
-     - Danh sách các bài kiểm tra đã làm (điểm, thời gian, vi phạm)
-     - Click từng bài → mở ExamReviewModal để xem lại chi tiết
+   v2: chỉ dùng SVG, không emoji.
    ============================================================ */
 import { useMemo, useState, useEffect } from 'react';
-import { Avatar } from './DashShell.jsx';
+import { Avatar, downloadCsv } from './DashShell.jsx';
 import '../styles/class-detail.css';
 
-/* ============================================================
-   ICONS
-   ============================================================ */
 const Svg = ({ size = 18, sw = 1.8, children }) => (
   <svg
     width={size}
@@ -68,17 +56,19 @@ const IconAlert = (p) => (
     <circle cx="12" cy="16.2" r=".6" fill="currentColor" />
   </Svg>
 );
-const IconChevron = (p) => <Svg {...p}><path d="M9 6l6 6-6 6" /></Svg>;
 const IconEye = (p) => (
   <Svg {...p}>
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
     <circle cx="12" cy="12" r="3" />
   </Svg>
 );
+const IconTrophy = (p) => (
+  <Svg {...p}>
+    <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" />
+    <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+  </Svg>
+);
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
 const tsMs = (v) => {
   if (!v) return 0;
   if (typeof v === 'number') return v;
@@ -100,20 +90,8 @@ const fmtTime = (sec) => {
   if (!t) return '—';
   const h = Math.floor(t / 3600);
   const m = Math.floor((t % 3600) / 60);
-  if (h > 0) return `${h}h ${m}′`;
-  return `${m}′ ${String(t % 60).padStart(2, '0')}″`;
-};
-
-const timeAgo = (t) => {
-  const ms = Date.now() - tsMs(t);
-  if (ms < 60e3) return 'vừa xong';
-  const m = Math.floor(ms / 60e3);
-  if (m < 60) return `${m} phút trước`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} giờ trước`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d} ngày trước`;
-  return new Date(tsMs(t)).toLocaleDateString('vi-VN');
+  if (h > 0) return `${h}h ${m}p`;
+  return `${m}p ${String(t % 60).padStart(2, '0')}s`;
 };
 
 const pctOf = (sub) => {
@@ -121,13 +99,9 @@ const pctOf = (sub) => {
   return Math.round((sub.score / sub.totalPoints) * 100);
 };
 
-/* ============================================================
-   MAIN
-   ============================================================ */
 export default function StudentModal({ student, onClose }) {
   const [detailSub, setDetailSub] = useState(null);
 
-  /* ---- Đóng khi ESC ---- */
   useEffect(() => {
     const h = (e) => {
       if (e.key === 'Escape' && !detailSub) onClose?.();
@@ -136,7 +110,6 @@ export default function StudentModal({ student, onClose }) {
     return () => window.removeEventListener('keydown', h);
   }, [onClose, detailSub]);
 
-  /* ---- Thống kê chi tiết ---- */
   const stats = useMemo(() => {
     const subs = student?.submissions || [];
     const totalTime = subs.reduce((sum, s) => sum + (s.timeSpent || 0), 0);
@@ -157,13 +130,25 @@ export default function StudentModal({ student, onClose }) {
 
   if (!student) return null;
 
+  /* Nâng cấp: xuất toàn bộ bài làm của HS ra CSV (mở được bằng Excel) */
+  const exportCsv = () => {
+    const subs = [...(student.submissions || [])].sort((a, b) => tsMs(b.submittedAt) - tsMs(a.submittedAt));
+    const rows = [['Đề', 'Điểm', 'Tổng điểm', 'Tỷ lệ (%)', 'Số câu đúng', 'Thời gian (giây)', 'Nộp lúc', 'Vi phạm', 'Tự động nộp']];
+    subs.forEach((s) => rows.push([
+      s.examTitle || '', s.score ?? '', s.totalPoints ?? '', pctOf(s),
+      s.correctCount ?? '', Math.round(Number(s.timeSpent) || 0), fmtDateTime(s.submittedAt),
+      s.violationCount || 0, s.autoSubmitted ? 'Có' : 'Không',
+    ]));
+    const safe = String(student.name || 'hoc-sinh').replace(/[\\/:*?"<>|]/g, '').trim() || 'hoc-sinh';
+    downloadCsv(`${safe}-ket-qua.csv`, rows);
+  };
+
   return (
     <div
       className="vt-backdrop cd-backdrop cd-backdrop-2"
       onMouseDown={(e) => e.target === e.currentTarget && !detailSub && onClose?.()}
     >
       <div className="cd-modal vt-modal md" role="dialog" aria-modal="true" aria-label={`Chi tiết ${student.name}`}>
-        {/* ============ HEADER ============ */}
         <header className="cd-head">
           <Avatar name={student.name} size={52} />
           <div className="cd-head-info">
@@ -175,13 +160,11 @@ export default function StudentModal({ student, onClose }) {
           </button>
         </header>
 
-        {/* ============ BODY ============ */}
         <div className="cd-body student-body">
-          {/* ---- 4 STAT ---- */}
           <div className="cd-stat-grid-4">
             <div className="cd-stat-card">
               <span className="cd-stat-card-ico acc"><IconCheck size={18} /></span>
-              <b>{stats.doneCount}/{student.totalExams}</b>
+              <b>{stats.doneCount}/{student.totalExams ?? stats.doneCount}</b>
               <small>Đã làm</small>
             </div>
             <div className="cd-stat-card">
@@ -201,7 +184,6 @@ export default function StudentModal({ student, onClose }) {
             </div>
           </div>
 
-          {/* ---- CẢNH BÁO ĐẶC BIỆT ---- */}
           {stats.autoSubmitted > 0 && (
             <div className="cd-alert danger">
               <IconAlert size={14} />
@@ -209,13 +191,15 @@ export default function StudentModal({ student, onClose }) {
             </div>
           )}
 
-          {/* ---- DANH SÁCH BÀI KIỂM TRA ---- */}
           <section className="cd-section">
             <header className="cd-section-head">
               <h3>
                 <IconBook size={16} /> Các bài kiểm tra đã làm
               </h3>
               <span className="cd-count">{student.submissions?.length || 0} bài</span>
+              {(student.submissions?.length || 0) > 0 && (
+                <button type="button" className="vt-btn sm" onClick={exportCsv}>Xuất CSV</button>
+              )}
             </header>
 
             {(!student.submissions || student.submissions.length === 0) ? (
@@ -275,10 +259,9 @@ export default function StudentModal({ student, onClose }) {
             )}
           </section>
 
-          {/* ---- ĐIỂM CAO NHẤT ---- */}
           {stats.best > 0 && (
             <div className="cd-best">
-              <span className="cd-best-ico">🏆</span>
+              <span className="cd-best-ico"><IconTrophy size={20} /></span>
               <div>
                 <small>Điểm cao nhất</small>
                 <b>{stats.best}%</b>
@@ -288,7 +271,6 @@ export default function StudentModal({ student, onClose }) {
         </div>
       </div>
 
-      {/* ============ MODAL XEM CHI TIẾT BÀI LÀM ============ */}
       {detailSub && (
         <SubmissionDetailModal
           submission={detailSub}
@@ -300,18 +282,22 @@ export default function StudentModal({ student, onClose }) {
   );
 }
 
-/* ============================================================
-   MODAL XEM CHI TIẾT BÀI LÀM
-   ============================================================ */
 function SubmissionDetailModal({ submission, studentName, onClose }) {
   const detail = submission.detail || [];
   const correctCount = submission.correctCount || detail.filter((d) => d.isCorrect).length;
   const totalQ = submission.totalQuestions || detail.length;
   const pct = pctOf(submission);
 
+  // v3: hộp chi tiết bài làm đóng được bằng phím Esc (trước đây không có)
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+
   return (
     <div className="vt-backdrop cd-backdrop cd-backdrop-3" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
-      <div className="cd-modal vt-modal lg" role="dialog" aria-modal="true">
+      <div className="cd-modal vt-modal lg" role="dialog" aria-modal="true" aria-label={`Chi tiết bài làm của ${studentName}`}>
         <header className="cd-head">
           <span className="cd-head-avatar small" aria-hidden="true">
             <IconBook size={20} />

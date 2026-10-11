@@ -1,16 +1,18 @@
 ﻿import { useState } from 'react';
 import AIMark from './AIMark.jsx';
-import { useGreeting } from './HomePlus.jsx';
+import { askAI, useGreeting } from './HomePlus.jsx';
 import { Badge, Button, Card, CardHead, EmptyState } from '../ui/index.jsx';
 import { timeAgo, useProgress } from '../lib/progress.js';
 import { elementOfDay } from '../lib/elementOfDay.js';
 import './home-dashboard.css';
+import './home-features.css';
 
 /* ============================================================
    Home.jsx — dashboard sau đăng nhập
    Đầu trang: CUAI chào + nhắn theo tình trạng học (thân thiện)
-   Cột chính: ô hỏi · lối tắt · số liệu · học tiếp
-   Cột phải : hôm nay · nên ôn · nắm vững theo chương · nguyên tố hôm nay
+   Cột chính: ô hỏi · lối tắt · số liệu · ôn tập · học tiếp · lộ trình · trò chơi
+   Cột phải : hôm nay · nên ôn · vào lớp · nắm vững · công cụ · nguyên tố hôm nay
+   Thêm      : ôn tập thông minh · lộ trình theo lớp · trò chơi (khớp với Landing)
    ============================================================ */
 
 const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -24,6 +26,8 @@ const IcoQuiz = ico(<><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 
 const IcoBalance = ico(<path d="M12 3v18M3 7h18M7 7l-3 7a3 3 0 0 0 6 0L7 7zM17 7l-3 7a3 3 0 0 0 6 0l-3-7z" />);
 const IcoChart = ico(<><path d="M3 3v18h18" /><path d="M7 14l3-3 3 3 5-6" /></>);
 const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />);
+const IcoUsers = ico(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.4c2.2.6 3.5 2.5 3.5 5.6" /></>);
+const IcoLink = ico(<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>);
 const IcoFlame = ico(<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2.2 1.4.9 2.2 1.7 2.7C10.4 8.6 10.6 5.6 12 3z" />);
 
 function goAI(payload) {
@@ -209,6 +213,145 @@ function ElementCard() {
   );
 }
 
+
+/* ============================================================
+   VÀO LỚP — nhập link đề cô gửi hoặc mở Lớp học của tôi
+   ============================================================ */
+function parseExamToken(raw) {
+  const m = /exam\/([^\s?#/]+)/i.exec(raw || '');
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function ClassCard() {
+  const [val, setVal] = useState('');
+  const [err, setErr] = useState('');
+  const submit = (e) => {
+    e.preventDefault();
+    const t = parseExamToken(val);
+    if (!t) { setErr('Chưa nhận ra link đề. Hãy dán nguyên đường dẫn cô gửi, hoặc mở Lớp học của tôi để nhập mã lớp.'); return; }
+    setErr('');
+    location.hash = 'exam/' + t;
+  };
+  return (
+    <Card className="db-class">
+      <CardHead title="Lớp học" action={<a href="#my-classes">Lớp của tôi</a>} />
+      <form onSubmit={submit}>
+        <label htmlFor="db-exam-link" className="sr-only">Link đề cô giáo gửi</label>
+        <div className="db-class-row">
+          <IcoLink size={18} />
+          <input id="db-exam-link" type="text" inputMode="url" autoComplete="off" value={val} placeholder="Dán link đề cô giáo gửi"
+            onChange={(e) => { setVal(e.target.value); if (err) setErr(''); }} aria-invalid={!!err} aria-describedby={err ? 'db-exam-err' : undefined} />
+          <Button variant="primary" type="submit" disabled={!val.trim()}>Vào thi</Button>
+        </div>
+        {err && <p id="db-exam-err" className="db-class-err" role="alert">{err}</p>}
+      </form>
+      <a className="db-class-join" href="#my-classes"><IcoUsers size={18} /><span><b>Tham gia lớp bằng mã</b><small>Xem đề được giao và kết quả của bạn</small></span></a>
+    </Card>
+  );
+}
+
+/* ============================================================
+   ÔN TẬP THÔNG MINH — các chế độ của Quiz
+   ============================================================ */
+const MODES = [
+  ['Thử thách hôm nay', 'Một câu mỗi ngày để giữ chuỗi', '#quiz'],
+  ['Time Attack', 'Càng nhanh càng nhiều điểm', '#quiz'],
+  ['Thẻ ghi nhớ', 'Lật thẻ, tự chấm mức nhớ', '#quiz'],
+  ['Luyện câu sai', 'Chỉ làm lại những câu từng sai', '#notebook'],
+];
+function ModesCard() {
+  return (
+    <Card className="db-modes">
+      <CardHead title="Ôn tập thông minh" action={<a href="#stats">Xem thống kê</a>} />
+      <ul>
+        {MODES.map(([t, d, href]) => (
+          <li key={t}><a href={href}><b>{t}</b><small>{d}</small></a></li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/* ============================================================
+   LỘ TRÌNH THEO LỚP — bấm chương để CUAI tóm tắt + ra 3 câu ôn
+   ============================================================ */
+const ROAD = {
+  'Lớp 10': { goal: 'Vững nền tảng: cấu tạo nguyên tử, bảng tuần hoàn, liên kết và phản ứng.', topics: ['Cấu tạo nguyên tử', 'Bảng tuần hoàn', 'Liên kết hóa học', 'Phản ứng oxi hóa – khử', 'Năng lượng hóa học', 'Tốc độ phản ứng', 'Nhóm halogen'] },
+  'Lớp 11': { goal: 'Mở rộng sang cân bằng hóa học, nitơ – lưu huỳnh và hóa hữu cơ.', topics: ['Cân bằng hóa học', 'Nitơ và lưu huỳnh', 'Đại cương hóa hữu cơ', 'Hiđrocacbon', 'Ancol và phenol', 'Anđehit – axit cacboxylic'] },
+  'Lớp 12': { goal: 'Về đích: hệ thống kiến thức, luyện đề và đếm ngược tới kỳ thi.', topics: ['Este – lipit', 'Cacbohiđrat', 'Amin, amino axit, protein', 'Polime', 'Pin điện và điện phân', 'Đại cương kim loại', 'Kim loại nhóm IA, IIA, nhôm', 'Sắt và hợp chất'] },
+  'Đại học': { goal: 'Nâng lên tư duy định lượng: nhiệt động, động hóa học và phân tích.', topics: ['Hóa đại cương', 'Nhiệt động hóa học', 'Động hóa học', 'Cân bằng ion', 'Hóa phân tích'] },
+};
+const GRADE_KEY = 'cs-home-grade';
+function readGrade() {
+  try { const g = localStorage.getItem(GRADE_KEY); return ROAD[g] ? g : 'Lớp 11'; } catch { return 'Lớp 11'; }
+}
+
+function RoadmapCard() {
+  const [grade, setGrade] = useState(readGrade);
+  const pick = (g) => { setGrade(g); try { localStorage.setItem(GRADE_KEY, g); } catch { /* */ } };
+  const r = ROAD[grade];
+  return (
+    <Card className="db-road">
+      <CardHead title="Lộ trình theo lớp" />
+      <div className="db-tabs" role="tablist" aria-label="Chọn lớp">
+        {Object.keys(ROAD).map((g) => (
+          <button key={g} type="button" role="tab" aria-selected={g === grade} className={g === grade ? 'on' : ''} onClick={() => pick(g)}>{g}</button>
+        ))}
+      </div>
+      <p className="db-road-goal">{r.goal}</p>
+      <ol className="db-road-topics">
+        {r.topics.map((t, i) => (
+          <li key={t}>
+            <button type="button" onClick={() => askAI(`Tóm tắt kiến thức trọng tâm chương "${t}" Hóa học ${grade} kèm 3 câu hỏi ôn tập`, grade)}>
+              <span className="num">{i + 1}</span>{t}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <p className="db-legend">Bấm một chương để CUAI tóm tắt và ra 3 câu ôn tập.</p>
+    </Card>
+  );
+}
+
+/* ============================================================
+   TRÒ CHƠI — 6 game ôn Hóa
+   ============================================================ */
+const GAME_LIST = [
+  ['chicken', 'Bắt gà'], ['slingshot', 'Ná cao su'], ['jeopardy', 'Jeopardy'],
+  ['lab', 'Phòng lab ảo'], ['battle', 'Đấu nguyên tố'], ['sudoku', 'Sudoku hóa học'],
+];
+function GamesCard() {
+  return (
+    <Card className="db-games">
+      <CardHead title="Trò chơi" action={<a href="#games">Xem tất cả</a>} />
+      <ul>
+        {GAME_LIST.map(([id, name]) => (
+          <li key={id}><a href={'#games/' + id}>{name}</a></li>
+        ))}
+      </ul>
+      <p className="db-legend">Điểm được lưu, câu trả lời sai đi vào sổ câu sai.</p>
+    </Card>
+  );
+}
+
+/* ============================================================
+   CÔNG CỤ + THƯ VIỆN — lối vào nhanh
+   ============================================================ */
+const TOOL_LIST = [
+  ['#table', 'Bảng tuần hoàn'], ['#formulas', 'Công thức nhanh'], ['#analyze', 'Phân tích hợp chất'], ['#balance', 'Cân bằng PTHH'],
+  ['#pomodoro', 'Clock Hub'], ['#exam', 'Kỳ thi'], ['#grade', 'Tính điểm'], ['#notes', 'Ghi chú'],
+];
+function ToolsCard() {
+  return (
+    <Card className="db-tools">
+      <CardHead title="Công cụ" action={<a href="#tools">Thư viện và tài liệu</a>} />
+      <ul>
+        {TOOL_LIST.map(([href, name]) => <li key={href}><a href={href}>{name}</a></li>)}
+      </ul>
+    </Card>
+  );
+}
+
 export default function Home() {
   const { hello, name } = useGreeting();
   const p = useProgress();
@@ -221,12 +364,17 @@ export default function Home() {
           <Composer />
           <Shortcuts />
           <Stats p={p} />
+          <ModesCard />
           <RecentCard p={p} />
+          <RoadmapCard />
+          <GamesCard />
         </div>
         <aside className="db-side">
           <TodayCard p={p} />
           <ReviewCard p={p} />
+          <ClassCard />
           <MasteryCard p={p} />
+          <ToolsCard />
           <ElementCard />
         </aside>
       </div>

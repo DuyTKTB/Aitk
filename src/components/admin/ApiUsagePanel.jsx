@@ -2,7 +2,7 @@
    ApiUsagePanel.jsx — Hạn mức API (Vitality)
    ============================================================ */
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { getUsage, resetUsage, API_LIMITS } from '../../lib/apiTracker.js';
+import { getUsage, resetUsage, API_LIMITS } from '../../services/apiTracker.js';
 import { ConfirmDialog } from './AdminShell.jsx';
 import {
   IconActivity, IconRefresh, IconCheckCircle, IconWarning, IconAlert, IconBulb,

@@ -51,6 +51,11 @@ export function timeRemaining(session, now = Date.now()) {
   return Math.max(0, Math.floor((end - now) / 1000));
 }
 
+/** Phòng còn mở thật sự: status 'live' VÀ chưa hết giờ (status không tự đổi khi hết giờ). */
+export function isSessionLive(session, now = Date.now()) {
+  return session?.status === 'live' && timeRemaining(session, now) > 0;
+}
+
 export function secondsSinceUpdate(student, now = Date.now()) {
   const ts = student?.thumbnailAtMs || 0;
   if (!ts) return Infinity;
@@ -240,6 +245,10 @@ export async function joinExamSession({
   }
 
   if (snap.exists()) {
+    // v3: HS đã bị GV mời ra thì không cho vào lại bằng cách tải lại trang
+    if (snap.data()?.status === 'kicked') {
+      return { id: studentId, restored: true, kicked: true };
+    }
     try {
       await updateDoc(ref, {
         lastSeen: serverTimestamp(),
@@ -310,7 +319,24 @@ export async function heartbeat({
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
 
   try {
-    await updateDoc(ref, patch);
+    if (patch.status) {
+      /* v3: heartbeat KHÔNG được ghi đè trạng thái cuối. Trước đây nhịp tim 15s của HS
+         có thể đổi 'kicked' / 'submitted' ngược về 'examining' (HS bị kick vẫn "sống lại"). */
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) {
+          const err = new Error('not-found');
+          err.code = 'not-found';
+          throw err;
+        }
+        const cur = snap.data()?.status;
+        const next = { ...patch };
+        if (cur === 'kicked' || cur === 'submitted') delete next.status;
+        tx.update(ref, next);
+      });
+    } else {
+      await updateDoc(ref, patch);
+    }
   } catch (e) {
     if (e.code === 'not-found') {
       console.warn('[examSession] heartbeat: doc không tồn tại, tự tạo lại.');

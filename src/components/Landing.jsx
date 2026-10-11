@@ -3,6 +3,7 @@ import AIMark from './AIMark.jsx';
 import SiteFooter from './SiteFooter.jsx';
 import './landing-v3.css';
 import './landing-ocean.css';
+import './landing-class.css';
 
 const LoginPage = lazy(() => import('./LoginPage.jsx'));
 
@@ -58,10 +59,11 @@ const PLACEHOLDERS = [
   'Cân bằng giúp mình: Al + HCl → AlCl₃ + H₂',
   'Sinh 10 câu trắc nghiệm về este, có đáp án',
   'Vì sao nước đá nổi trên mặt nước?',
+  'Tóm tắt chương Pin điện và điện phân',
 ];
 
 const CHIPS = [
-  ['Giải thích', 'Giải thích định luật bảo toàn khối lượng'],
+  ['Giải bài từ ảnh', 'Mình sẽ gửi ảnh đề bài, giải từng bước giúp mình nhé'],
   ['Tạo quiz', 'Sinh 5 câu hỏi trắc nghiệm về este'],
   ['Tính pH', 'Cách tính pH của HCl 0,01M'],
   ['Cân bằng PTHH', 'Cân bằng: Fe + O2 → Fe2O3'],
@@ -71,6 +73,7 @@ const NAV = [
   ['Video', 'lp-video'],
   ['Xem thử', 'lp-story'],
   ['Tính năng', 'lp-feat'],
+  ['Lớp học', 'lp-class'],
   ['Hỏi đáp', 'lp-faq'],
   ['Bắt đầu', 'lp-cta'],
 ];
@@ -88,37 +91,37 @@ const TILES = [
 ];
 
 const MANIFESTO =
-  'Hóa học không khó vì có nhiều công thức. Khó vì ít ai chỉ ra lý do của từng bước. Ở đây, mỗi lời giải đi chậm từng dòng, mỗi câu sai được giữ lại để ôn, và mọi thứ nằm gọn trong một tài khoản.';
+  'Học Hóa không khó vì có nhiều công thức. Khó vì ít ai chỉ ra lý do của từng bước, và vì kiến thức nằm rải rác ở quá nhiều nơi. Ở đây AI giải chậm từng dòng, câu sai tự vào sổ để ôn lại, tài liệu và đề thi nằm cùng chỗ, còn cô giáo giao bài ngay trong lớp.';
 
 const STORY = [
-  ['Hỏi', 'Gõ câu hỏi hoặc chụp ảnh đề bài. Không cần viết lại công thức, AI đọc được cả phương trình trong ảnh.'],
-  ['Hiểu', 'Lời giải đi từng bước, mỗi bước kèm lý do và bảng kiểm tra số nguyên tử. Chưa rõ chỗ nào thì hỏi tiếp ngay.'],
-  ['Nhớ', 'Từ bài vừa học, AI sinh quiz. Câu làm sai được lưu vào sổ tay để cuối tuần chỉ cần mở lại là đủ.'],
+  ['Hỏi', 'Gõ câu hỏi, dán hoặc chụp ảnh đề (tối đa 10 ảnh một lần), thậm chí nói bằng giọng. Chọn Lớp 10, 11, 12 hoặc Đại học để câu trả lời đúng mức của bạn.'],
+  ['Hiểu', 'Lời giải đi từng bước, mỗi bước kèm lý do và bảng kiểm tra số nguyên tử. Chưa rõ chỗ nào thì hỏi tiếp ngay trong cùng cuộc trò chuyện.'],
+  ['Nhớ', 'Làm quiz từ bài vừa học. Câu sai tự vào Sổ câu sai và quay lại đúng lúc sắp quên nhờ lịch ôn lặp lại, điểm kinh nghiệm giúp bạn giữ nhịp mỗi ngày.'],
 ];
 
 const MINI_TABLE = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar'];
 
 const GAMES = ['Bắt gà', 'Ná cao su', 'Jeopardy', 'Phòng lab ảo', 'Đấu nguyên tố', 'Sudoku hóa học'];
 
-const STATS = [[118, '', 'nguyên tố trong bảng tuần hoàn'], [9, '', 'công cụ học tập'], [6, '', 'trò chơi ôn Hóa'], [24, '/7', 'trợ lý AI luôn sẵn sàng']];
+const STATS = [[118, '', 'nguyên tố trong bảng tuần hoàn'], [12, '', 'công cụ học tập'], [6, '', 'trò chơi ôn Hóa'], [351, '', 'công cụ AI miễn phí được tuyển chọn']];
 
 const TRACK = [
   {
     g: 'Lớp 10', lvl: 'Nền tảng',
-    body: 'Cấu tạo nguyên tử, bảng tuần hoàn, liên kết hóa học, phản ứng oxi hóa – khử, tốc độ phản ứng.',
-    tools: ['Bảng tuần hoàn', 'Cân bằng PTHH', 'Hỏi AI'],
+    body: 'Cấu tạo nguyên tử, bảng tuần hoàn, liên kết hóa học, phản ứng oxi hóa – khử, tốc độ phản ứng, nhóm halogen.',
+    tools: ['Bảng tuần hoàn', 'Cân bằng PTHH', 'Thẻ ghi nhớ'],
     tip: 'Học bảng tuần hoàn theo nhóm: nhớ một nguyên tố là đoán được tính chất của cả nhóm.',
   },
   {
     g: 'Lớp 11', lvl: 'Đào sâu',
-    body: 'Cân bằng hóa học, nitơ – photpho, hiđrocacbon, ancol – phenol, anđehit – axit cacboxylic.',
+    body: 'Cân bằng hóa học, nitơ – lưu huỳnh, hiđrocacbon, ancol – phenol, anđehit – axit cacboxylic.',
     tools: ['Tính pH', 'Phân tích hợp chất', 'Công thức nhanh'],
     tip: 'pH = −log[H⁺]. Axit mạnh phân li hoàn toàn nên HCl 0,01M có pH = 2.',
   },
   {
     g: 'Lớp 12', lvl: 'Tăng tốc ôn thi',
-    body: 'Este – lipit, cacbohiđrat, amin – amino axit, polime, kim loại và điện phân.',
-    tools: ['Quiz theo chuyên đề', 'Sổ câu sai', 'Kỳ thi đếm ngược'],
+    body: 'Este – lipit, cacbohiđrat, amin – amino axit, polime, pin điện và điện phân, kim loại.',
+    tools: ['Kho đề thi', 'Sổ câu sai', 'Kỳ thi đếm ngược'],
     tip: 'Ghi mỗi câu sai kèm lý do sai. Ôn lại đúng những câu đó sẽ nhanh hơn làm đề mới.',
   },
   {
@@ -130,10 +133,13 @@ const TRACK = [
 ];
 
 const FAQS = [
-  { cat: 'Cơ bản', icon: '💡', q: 'Mình có phải trả phí không?', a: 'Không. Tài khoản học sinh miễn phí. Gói VIP đang được chuẩn bị và sẽ chỉ là tùy chọn. Bạn có thể dùng đầy đủ các công cụ cơ bản mà không mất phí.' },
-  { cat: 'AI', icon: '🤖', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp đề bài, AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
+  { cat: 'Cơ bản', icon: '💡', q: 'Mình có phải trả phí không?', a: 'Phần lớn công cụ dùng miễn phí: bảng tuần hoàn, cân bằng PTHH, quiz, sổ câu sai, trò chơi, thư viện tài liệu. Một số tính năng nâng cao như AI Tạo Đề và Hỏi AI trong từng nguyên tố thuộc gói VIP.' },
+  { cat: 'AI', icon: '🤖', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp hoặc dán ảnh đề (tối đa 10 ảnh một lần), AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
   { cat: 'AI', icon: '🎯', q: 'Kết quả của AI có chính xác tuyệt đối không?', a: 'Không. AI có thể sai, nhất là bài tính toán dài. Hãy đọc kỹ từng bước và đối chiếu với sách giáo khoa khi cần. AI được thiết kế để hỗ trợ, không thay thế bạn.' },
-  { cat: 'Tính năng', icon: '📚', q: 'Sổ câu sai hoạt động thế nào?', a: 'Khi làm quiz, câu sai được lưu lại cùng đáp án đúng. Bạn mở sổ tay để ôn riêng những câu đó, không phải làm lại cả đề. Cuối tuần chỉ cần xem lại là đủ.' },
+  { cat: 'Tính năng', icon: '📚', q: 'Sổ câu sai hoạt động thế nào?', a: 'Khi làm quiz, câu sai được lưu lại cùng đáp án đúng. Bạn mở sổ tay để ôn riêng những câu đó, không phải làm lại cả đề.' },
+  { cat: 'Tính năng', icon: '🎮', q: 'Trò chơi có giúp học thật không?', a: 'Có. Câu hỏi trong trò chơi lấy từ ngân hàng câu hỏi theo chuyên đề, điểm được lưu lại và câu trả lời sai đi vào sổ câu sai như khi làm quiz.' },
+  { cat: 'Lớp học', icon: '🏫', q: 'Giáo viên dùng trang này như thế nào?', a: 'Giáo viên được cấp quyền tạo đề, tải tài liệu và quản lý lớp. Học sinh vào lớp bằng mã lớp hoặc đường dẫn đề cô gửi, làm bài ở nhà và xem kết quả ngay.' },
+  { cat: 'Lớp học', icon: '📝', q: 'Làm bài thi do cô giao có khác gì làm quiz?', a: 'Bài thi chạy ở chế độ riêng, có bộ đếm giờ và cơ chế phát hiện rời khỏi bài. Mức giám sát do giáo viên của bạn chọn cho từng đề.' },
   { cat: 'Cơ bản', icon: '📱', q: 'Mình dùng được trên điện thoại không?', a: 'Được. Trang chạy trên trình duyệt điện thoại và có thể thêm vào màn hình chính như một ứng dụng. Giao diện tự động điều chỉnh cho màn hình nhỏ.' },
   { cat: 'Bảo mật', icon: '🔒', q: 'Dữ liệu học tập của mình được lưu ở đâu?', a: 'Tiến độ, sổ câu sai và ghi chú gắn với tài khoản của bạn, nên đăng nhập trên máy khác vẫn thấy lại. Chúng tôi không chia sẻ dữ liệu với bên thứ ba.' },
 ];
@@ -595,8 +601,8 @@ function Tools() {
               <u className="ai">Bước 1: Viết phương trình…</u>
               <u className="ai">4Fe + 3O₂ → 2Fe₂O₃ ✓</u>
             </div>
-            <h3>Trợ lý AI</h3>
-            <p>Giải đề, giảng lý thuyết, đọc đề từ ảnh chụp. Chọn chế độ Suy luận để xem từng bước hoặc Tra cứu để tìm nhanh.</p>
+            <h3>CU AI</h3>
+            <p>Trợ lý Hóa học cho Lớp 10, 11, 12 và Đại học. Gõ, dán ảnh đề hoặc nói bằng giọng, có lịch sử trò chuyện để quay lại bài cũ.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Hỏi thử <IcoArrow size={15} /></button>
           </article>
 
@@ -605,7 +611,7 @@ function Tools() {
               {MINI_TABLE.map((e, i) => <u key={e} style={{ '--k': i }}>{e}</u>)}
             </div>
             <h3>Bảng tuần hoàn</h3>
-            <p>118 nguyên tố, tìm kiếm tức thì, lọc theo nhóm và xem chi tiết từng nguyên tố.</p>
+            <p>118 nguyên tố, tìm theo ký hiệu, tên hoặc số hiệu, lọc theo nhóm. Mỗi nguyên tố có cấu hình electron, số oxi hóa, ứng dụng và mẹo nhớ.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Mở bảng <IcoArrow size={15} /></button>
           </article>
 
@@ -615,18 +621,27 @@ function Tools() {
               <i />
               <span className="to">4Fe + 3O₂ → 2Fe₂O₃</span>
             </div>
-            <h3>Cân bằng PTHH</h3>
-            <p>Nhập phương trình, nhận kết quả đã cân bằng. Phù hợp để tự kiểm tra bài làm.</p>
+            <h3>Tính toán Hóa học</h3>
+            <p>Cân bằng PTHH, công thức nhanh theo chủ đề, phân tích hợp chất và tính điểm trung bình, tất cả có sẵn khi cần.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Cân bằng thử <IcoArrow size={15} /></button>
           </article>
 
           <article className="lp-hp hp-qz">
             <div className="hp-vis" aria-hidden="true">
-              <u>Quiz theo chuyên đề</u><u>Sổ câu sai</u><u>Thống kê tiến độ</u>
+              <u>Thử thách hôm nay</u><u>Time Attack</u><u>Thẻ ghi nhớ</u><u>Luyện câu sai</u><u>Bộ 10 câu</u>
             </div>
-            <h3>Quiz và sổ câu sai</h3>
-            <p>Làm quiz, câu sai tự vào sổ tay. Xem thống kê để biết chuyên đề nào cần ôn thêm.</p>
+            <h3>Ôn tập thông minh</h3>
+            <p>Quiz nhiều chế độ, lịch ôn lặp lại, điểm kinh nghiệm và cấp độ. Câu sai tự vào sổ tay, thống kê cho biết chuyên đề nào cần ôn thêm.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Bắt đầu ôn <IcoArrow size={15} /></button>
+          </article>
+
+          <article className="lp-hp hp-lib">
+            <div className="hp-vis" aria-hidden="true">
+              <u>39 mục tài liệu</u><u>Kho đề thi</u><u>Công thức</u><u>351 công cụ AI</u><u>346 prompt</u>
+            </div>
+            <h3>Thư viện học tập</h3>
+            <p>Sách giáo khoa, sách bài tập, chuyên đề, lý thuyết và đề thi theo lớp. Thêm danh sách công cụ AI miễn phí và prompt mẫu cho việc học.</p>
+            <button type="button" className="lp-link" onClick={() => openAuth('login')}>Xem thư viện <IcoArrow size={15} /></button>
           </article>
 
           <article className="lp-hp hp-gm">
@@ -634,20 +649,47 @@ function Tools() {
               {GAMES.map((g) => <u key={g}>{g}</u>)}
             </div>
             <h3>Sáu trò chơi</h3>
-            <p>Ôn Hóa mà không thấy chán: từ phòng lab ảo đến đấu nguyên tố và Sudoku hóa học.</p>
+            <p>Ôn Hóa mà không thấy chán: từ phòng lab ảo đến đấu nguyên tố và Sudoku hóa học. Điểm được lưu, câu sai được ghi lại.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Chơi thử <IcoArrow size={15} /></button>
           </article>
 
           <article className="lp-hp hp-st">
             <div className="hp-vis" aria-hidden="true">
-              <u>Clock Hub</u><u>Kỳ thi đếm ngược</u><u>Tính điểm</u><u>Ghi chú</u>
+              <u>Clock Hub</u><u>Kỳ thi đếm ngược</u><u>Ghi chú</u><u>Thống kê</u><u>Thú cưng học tập</u>
             </div>
             <h3>Quản lý việc học</h3>
-            <p>Pomodoro, đếm ngược ngày thi, tính điểm trung bình và ghi chú, tất cả nằm cạnh bài học.</p>
+            <p>Pomodoro, đếm ngược ngày thi, ghi chú và thống kê tiến độ nằm cạnh bài học, kèm chuỗi ngày học để giữ nhịp.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('register')}>Tạo tài khoản <IcoArrow size={15} /></button>
           </article>
         </div>
         <div className="lp-h-rail" aria-hidden="true"><i /></div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   LỚP HỌC
+   ============================================================ */
+const CLASS_POINTS = [
+  ['Giáo viên giao đề', 'Tạo đề thủ công hoặc để AI tạo từ ảnh, PDF, Word. Duyệt từng câu rồi mới giao cho lớp.'],
+  ['Học sinh vào bằng mã', 'Dán mã lớp hoặc mở đường dẫn đề cô gửi. Làm bài ở nhà, xem kết quả và đáp án ngay sau khi nộp.'],
+  ['Theo dõi cả lớp', 'Giáo viên xem điểm, câu sai nhiều nhất và tiến độ của từng học sinh để biết cần dạy lại phần nào.'],
+];
+
+function ClassSection() {
+  return (
+    <section className="lp-wrap lp-sec lp-class" id="lp-class">
+      <Split text="Một lớp học, cả cô và trò cùng dùng" />
+      <p className="lp-class-lead">Không chỉ để tự học. Giáo viên có thể giao bài, học sinh làm bài và xem lại câu sai, tất cả trên cùng một trang.</p>
+      <ul className="lp-vpoints">
+        {CLASS_POINTS.map(([t, d]) => (
+          <li key={t}><b>{t}</b><span>{d}</span></li>
+        ))}
+      </ul>
+      <div className="lp-cta-btns" style={{ marginTop: '1.6rem' }}>
+        <MagBtn as="a" className="lp-btn pri" href="#register">Tạo tài khoản học sinh <IcoArrow size={16} /></MagBtn>
+        <MagBtn as="a" className="lp-btn" href="#login">Tôi là giáo viên</MagBtn>
       </div>
     </section>
   );
@@ -997,6 +1039,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         <VideoSection />
         <Story />
         <Tools />
+        <ClassSection />
 
         <section className="lp-wrap lp-stats" aria-label="Số liệu">
           {STATS.map(([n, s, l]) => <div key={l}><Count to={n} suffix={s} /><span>{l}</span></div>)}

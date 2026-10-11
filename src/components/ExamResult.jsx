@@ -1,13 +1,10 @@
 /* ============================================================
    ExamResult.jsx — Màn hình kết quả cho học sinh (v3)
    ------------------------------------------------------------
-   Giữ nguyên props: { exam, result, showAnswer, onExit }
-   Mới:
-     • Hiển thị công thức (MathText) ở đề, đáp án, lời giải
-     • Bộ lọc: Tất cả / Câu sai / Bỏ trống → ôn nhanh phần chưa vững
-     • Thống kê đúng – sai – bỏ trống
-     • Kết quả theo chủ đề (nếu câu hỏi có topic)
-     • Lời giải dùng class CSS thay vì style inline
+   • Dùng MathText cho câu hỏi, đáp án, lời giải (AI sinh LaTeX).
+   • Thống kê đúng/sai/bỏ trống + lọc ôn nhanh.
+   • Kết quả theo chủ đề (nếu đề có gắn topic).
+   • Chỉ dùng SVG, không emoji.
    ============================================================ */
 import { useMemo, useState } from 'react';
 import MathText from './MathText.jsx';
@@ -33,7 +30,7 @@ const gradeOf = (pct) =>
   : { label: 'Cần cố gắng', color: '#dc2626' };
 
 export default function ExamResult({ exam, result, showAnswer, onExit }) {
-  const [filter, setFilter] = useState('all'); // all | wrong | skipped
+  const [filter, setFilter] = useState('all');
 
   const noScore = result.score == null;
   const pct = !noScore && result.totalPoints > 0
@@ -42,6 +39,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
   const grade = gradeOf(pct);
 
   const details = result.detail || [];
+
   const stats = useMemo(() => {
     let right = 0, wrong = 0, skipped = 0;
     details.forEach((d) => {
@@ -52,7 +50,6 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
     return { right, wrong, skipped };
   }, [details]);
 
-  /* Kết quả theo chủ đề — chỉ khi đề có gắn topic */
   const topics = useMemo(() => {
     const map = new Map();
     (exam.questions || []).forEach((q, i) => {
@@ -85,7 +82,6 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
   return (
     <div className="er-page">
       <div className="er-card">
-        {/* ---------- Điểm ---------- */}
         <div className="er-hero" style={{ '--grade-color': grade.color }}>
           <span className="er-label">{result.autoSubmitted ? 'TỰ ĐỘNG NỘP' : 'KẾT QUẢ'}</span>
           {noScore ? (
@@ -107,7 +103,6 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
           )}
         </div>
 
-        {/* ---------- Thống kê ---------- */}
         {!noScore && details.length > 0 && (
           <>
             <div className="erp-stats" role="group" aria-label="Thống kê bài làm">
@@ -147,7 +142,6 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
           </>
         )}
 
-        {/* ---------- Chi tiết ---------- */}
         {showAnswer && details.length > 0 && (
           <>
             <div className="erp-head">

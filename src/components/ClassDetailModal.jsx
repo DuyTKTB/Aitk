@@ -1,21 +1,10 @@
 /* ============================================================
-   ClassDetailModal.jsx — Modal chi tiết lớp học (Vitality) v2
+   ClassDetailModal.jsx — Modal chi tiết lớp học (Vitality) v3
    ------------------------------------------------------------
-   Props:
-     - classInfo: { id, name, subject, teacherName, key, members[],
-                    memberIds[], pendingMembers[], pendingIds[],
-                    requireApproval }
-     - exams: mảng đề của lớp này
-     - onClose: callback đóng modal
-     - onExportCsv: callback xuất bảng điểm
-     - onOpenExam: callback mở đề (chuyển sang tab Sửa đề)
-     - onApprove, onReject, onApproveAll, onToggleApproval: duyệt HS
-     - onOpenRetryTab: callback khi GV muốn xem yêu cầu thi lại
-     - retryRequests: danh sách yêu cầu thi lại (đã lọc theo lớp)
-     - onApproveRetry, onDenyRetry, onToggleAllowance: duyệt thi lại
-     - allowances: { [studentId]: true/false } — quyền thi lại của từng HS
-   ------------------------------------------------------------
-   6 tab: Tổng quan · Thành viên · Chờ duyệt · Đề thi · Bảng điểm · Xin thi lại
+   v3:
+     • Tab "Xin thi lại" có ô ghi chú khi duyệt / từ chối.
+     • Lịch sử yêu cầu (đã duyệt, từ chối, đã dùng).
+     • Chỉ dùng SVG, không emoji.
    ============================================================ */
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { getSubmissionsByExam } from '../lib/classroom.js';
@@ -23,9 +12,6 @@ import { Avatar, Donut, TrendChart } from './DashShell.jsx';
 import StudentModal from './StudentModal.jsx';
 import '../styles/class-detail.css';
 
-/* ============================================================
-   SVG ICONS
-   ============================================================ */
 const Svg = ({ size = 18, sw = 1.8, children, title }) => (
   <svg
     width={size}
@@ -147,9 +133,6 @@ const IconTrash = (p) => (
   </Svg>
 );
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
 const tsMs = (v) => {
   if (!v) return 0;
   if (typeof v === 'number') return v;
@@ -171,8 +154,8 @@ const fmtTime = (sec) => {
   if (!t) return '—';
   const h = Math.floor(t / 3600);
   const m = Math.floor((t % 3600) / 60);
-  if (h > 0) return `${h}h${String(m).padStart(2, '0')}′`;
-  return `${m}′${String(t % 60).padStart(2, '0')}″`;
+  if (h > 0) return `${h}h${String(m).padStart(2, '0')}p`;
+  return `${m}p${String(t % 60).padStart(2, '0')}s`;
 };
 
 const pctOf = (sub) => {
@@ -192,9 +175,6 @@ const timeAgoShort = (t) => {
   return new Date(tsMs(t)).toLocaleDateString('vi-VN');
 };
 
-/* ============================================================
-   MAIN
-   ============================================================ */
 export default function ClassDetailModal({
   classInfo,
   exams = [],
@@ -219,14 +199,20 @@ export default function ClassDetailModal({
   const [loadingSubs, setLoadingSubs] = useState(true);
   const [openStudent, setOpenStudent] = useState(null);
 
+  const [retryNote, setRetryNote] = useState({});
+  const [retryActioning, setRetryActioning] = useState(null);
+
   const members = classInfo?.members || [];
   const pending = classInfo?.pendingMembers || [];
   const pendingRetry = useMemo(
     () => (retryRequests || []).filter((r) => r.status === 'pending'),
     [retryRequests]
   );
+  const historyRetry = useMemo(
+    () => (retryRequests || []).filter((r) => r.status !== 'pending').slice(0, 30),
+    [retryRequests]
+  );
 
-  /* ---- Load submissions của tất cả đề trong lớp ---- */
   const loadSubmissions = useCallback(async () => {
     if (!exams.length) { setLoadingSubs(false); return; }
     setLoadingSubs(true);
@@ -250,16 +236,12 @@ export default function ClassDetailModal({
 
   useEffect(() => { loadSubmissions(); }, [loadSubmissions]);
 
-  /* ---- Đóng khi bấm ESC ---- */
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape' && !openStudent) onClose?.(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose, openStudent]);
 
-  /* ============================================================
-     STATS TOÀN LỚP
-     ============================================================ */
   const classStats = useMemo(() => {
     const allSubs = Object.values(submissionsMap).flat();
     const totalExams = exams.length;
@@ -294,15 +276,11 @@ export default function ClassDetailModal({
     };
   }, [submissionsMap, exams.length, members.length]);
 
-  /* ============================================================
-     STATS THEO HỌC SINH
-     ============================================================ */
   const studentsStats = useMemo(() => {
     return members.map((m) => {
       const mySubs = [];
       exams.forEach((ex) => {
         const subs = submissionsMap[ex.id] || [];
-        // Lấy TẤT CẢ submission của HS cho đề này (để biết thi lại)
         const mySubsForExam = subs.filter((s) => s.studentId === m.id);
         mySubsForExam.forEach((sub) => {
           mySubs.push({
@@ -318,8 +296,7 @@ export default function ClassDetailModal({
       const scores = mySubs
         .filter((s) => s.totalPoints > 0)
         .map((s) => (s.score / s.totalPoints) * 100);
-      // Điểm TB lấy cao nhất (theo yêu cầu)
-      const avg = scores.length ? Math.round(Math.max(...scores)) : null;
+      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
 
       const totalViolations = mySubs.reduce((sum, s) => sum + (s.violationCount || 0), 0);
       const lastSub = mySubs.reduce((latest, s) => {
@@ -339,7 +316,6 @@ export default function ClassDetailModal({
     });
   }, [members, exams, submissionsMap]);
 
-  /* ---- Filter + search cho tab Thành viên ---- */
   const filteredStudents = useMemo(() => {
     let list = studentsStats;
 
@@ -361,7 +337,6 @@ export default function ClassDetailModal({
     });
   }, [studentsStats, memberFilter, search]);
 
-  /* ---- Trend chart 7 đề gần nhất ---- */
   const trendPoints = useMemo(() => {
     return exams
       .slice(-7)
@@ -373,9 +348,6 @@ export default function ClassDetailModal({
       });
   }, [exams, submissionsMap]);
 
-  /* ============================================================
-     TABS
-     ============================================================ */
   const TABS = [
     { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
     { key: 'members', label: 'Thành viên', Icon: IconUsers, badge: members.length },
@@ -385,13 +357,31 @@ export default function ClassDetailModal({
     { key: 'retry', label: 'Xin thi lại', Icon: IconBell, badge: pendingRetry.length, danger: true },
   ];
 
-  /* ============================================================
-     RENDER
-     ============================================================ */
+  const handleRetryAction = async (r, action) => {
+    setRetryActioning(r.id);
+    try {
+      const note = (retryNote[r.id] || '').trim();
+      if (action === 'approve') {
+        await onApproveRetry?.(r, note);
+      } else {
+        await onDenyRetry?.(r, note);
+      }
+      setRetryNote((prev) => {
+        const next = { ...prev };
+        delete next[r.id];
+        return next;
+      });
+    } finally {
+      setRetryActioning(null);
+    }
+  };
+
   return (
-    <div className="vt-backdrop cd-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !openStudent && onClose?.()}>
+    <div
+      className="vt-backdrop cd-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && !openStudent && onClose?.()}
+    >
       <div className="cd-modal vt-modal xl" role="dialog" aria-modal="true" aria-label={`Chi tiết lớp ${classInfo?.name}`}>
-        {/* ============ HEADER ============ */}
         <header className="cd-head">
           <span className="cd-head-avatar">
             {String(classInfo?.name || '?')[0].toUpperCase()}
@@ -409,7 +399,6 @@ export default function ClassDetailModal({
           </button>
         </header>
 
-        {/* ============ TABS ============ */}
         <nav className="cd-tabs" role="tablist">
           {TABS.map((t) => {
             const I = t.Icon;
@@ -434,9 +423,7 @@ export default function ClassDetailModal({
           })}
         </nav>
 
-        {/* ============ BODY ============ */}
         <div className="cd-body">
-          {/* ---------- TAB: TỔNG QUAN ---------- */}
           {tab === 'overview' && (
             <div className="cd-overview">
               <div className="cd-stat-grid">
@@ -493,7 +480,7 @@ export default function ClassDetailModal({
                     </Donut>
                     <ul className="cd-overview-facts">
                       <li>
-                        <span>Tỷ lệ đạt ≥ 50%</span>
+                        <span>Tỷ lệ đạt từ 50% trở lên</span>
                         <b>{classStats.passRate}%</b>
                       </li>
                       <li>
@@ -518,7 +505,6 @@ export default function ClassDetailModal({
             </div>
           )}
 
-          {/* ---------- TAB: THÀNH VIÊN ---------- */}
           {tab === 'members' && (
             <div className="cd-members">
               <div className="cd-toolbar">
@@ -528,7 +514,7 @@ export default function ClassDetailModal({
                     type="search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Tìm học sinh…"
+                    placeholder="Tìm học sinh..."
                     aria-label="Tìm học sinh"
                   />
                 </label>
@@ -569,7 +555,7 @@ export default function ClassDetailModal({
                 <div className="cd-empty">
                   <span><IconUsers size={30} /></span>
                   <h3>Không có học sinh nào</h3>
-                  <p>Thử đổi bộ lọc hoặc từ khoá tìm kiếm.</p>
+                  <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
                 </div>
               ) : (
                 <div className="cd-table-wrap">
@@ -656,7 +642,6 @@ export default function ClassDetailModal({
             </div>
           )}
 
-          {/* ---------- TAB: CHỜ DUYỆT ---------- */}
           {tab === 'pending' && (
             <div className="cd-members">
               <div className="cd-toolbar">
@@ -717,7 +702,6 @@ export default function ClassDetailModal({
             </div>
           )}
 
-          {/* ---------- TAB: ĐỀ THI ---------- */}
           {tab === 'exams' && (
             <div className="cd-exams">
               {exams.length === 0 ? (
@@ -765,7 +749,6 @@ export default function ClassDetailModal({
             </div>
           )}
 
-          {/* ---------- TAB: BẢNG ĐIỂM ---------- */}
           {tab === 'scores' && (
             <div className="cd-scores">
               {exams.length === 0 || members.length === 0 ? (
@@ -844,7 +827,6 @@ export default function ClassDetailModal({
             </div>
           )}
 
-          {/* ---------- TAB: XIN THI LẠI ---------- */}
           {tab === 'retry' && (
             <div className="cd-members">
               {pendingRetry.length === 0 && Object.keys(allowances).filter((k) => allowances[k]).length === 0 ? (
@@ -863,6 +845,7 @@ export default function ClassDetailModal({
                       <ul className="cd-sub-list" style={{ marginBottom: '1.2rem' }}>
                         {pendingRetry.map((r) => {
                           const examTitle = exams.find((e) => e.id === r.examId)?.title || 'Đề không xác định';
+                          const isActing = retryActioning === r.id;
                           return (
                             <li key={r.id} className="cd-sub-item" style={{ flexWrap: 'wrap' }}>
                               <Avatar name={r.studentName} size={40} />
@@ -872,24 +855,82 @@ export default function ClassDetailModal({
                                   <b>{examTitle}</b>
                                 </p>
                                 <p className="cd-sub-meta">
-                                  {r.reason ? `Lý do: "${r.reason}"` : 'Không có lý do'}
+                                  {r.reason ? `Lý do: ${r.reason}` : 'Không có lý do'}
                                   {' · '}{timeAgoShort(r.requestedAt)}
                                 </p>
                               </div>
-                              <button
-                                type="button"
-                                className="vt-btn sm primary"
-                                onClick={() => onApproveRetry?.(r)}
-                              >
-                                <IconCheck size={13} /> Duyệt
-                              </button>
-                              <button
-                                type="button"
-                                className="vt-btn sm danger"
-                                onClick={() => onDenyRetry?.(r)}
-                              >
-                                <IconX size={13} /> Từ chối
-                              </button>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', flex: '1 1 220px' }}>
+                                <input
+                                  type="text"
+                                  placeholder="Ghi chú gửi học sinh (không bắt buộc)"
+                                  value={retryNote[r.id] || ''}
+                                  onChange={(e) => setRetryNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                                  maxLength={200}
+                                  disabled={isActing}
+                                  style={{
+                                    padding: '.5rem .8rem',
+                                    borderRadius: 10,
+                                    border: '1.5px solid var(--soft)',
+                                    background: 'var(--vt-tint)',
+                                    color: 'var(--ink)',
+                                    font: '500 .8rem var(--sans)',
+                                    width: '100%',
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: '.4rem' }}>
+                                  <button
+                                    type="button"
+                                    className="vt-btn sm primary"
+                                    onClick={() => handleRetryAction(r, 'approve')}
+                                    disabled={isActing}
+                                  >
+                                    <IconCheck size={13} /> {isActing ? 'Đang xử lý...' : 'Duyệt'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="vt-btn sm danger"
+                                    onClick={() => handleRetryAction(r, 'deny')}
+                                    disabled={isActing}
+                                  >
+                                    <IconX size={13} /> Từ chối
+                                  </button>
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+
+                  {historyRetry.length > 0 && (
+                    <>
+                      <h3 style={{ margin: '1rem 0 .7rem', font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>
+                        Lịch sử đã xử lý ({historyRetry.length})
+                      </h3>
+                      <ul className="cd-sub-list" style={{ marginBottom: '1.2rem' }}>
+                        {historyRetry.map((r) => {
+                          const examTitle = exams.find((e) => e.id === r.examId)?.title || '—';
+                          return (
+                            <li key={r.id} className="cd-sub-item">
+                              <Avatar name={r.studentName} size={32} />
+                              <div className="cd-sub-main">
+                                <h4 style={{ fontSize: '.88rem' }}>{r.studentName}</h4>
+                                <p className="cd-sub-meta">
+                                  {examTitle}
+                                  {' · '}
+                                  {r.status === 'approved' && 'Đã duyệt'}
+                                  {r.status === 'denied' && 'Đã từ chối'}
+                                  {r.status === 'used' && 'Đã sử dụng'}
+                                  {' · '}
+                                  {new Date(r.decidedAtMs || r.requestedAtMs || 0).toLocaleDateString('vi-VN')}
+                                </p>
+                                {r.note && (
+                                  <p className="cd-sub-meta" style={{ color: 'var(--ink)' }}>
+                                    Ghi chú: {r.note}
+                                  </p>
+                                )}
+                              </div>
                             </li>
                           );
                         })}
@@ -935,7 +976,6 @@ export default function ClassDetailModal({
         </div>
       </div>
 
-      {/* ============ MODAL CHI TIẾT HỌC SINH ============ */}
       {openStudent && (
         <StudentModal
           student={openStudent}

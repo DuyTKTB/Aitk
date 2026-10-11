@@ -614,6 +614,18 @@ export default function MyClasses({ onNavigate }) {
     el.style.setProperty('--rx', '0deg');
   };
 
+  /* ánh sáng lướt trên tờ đề theo con trỏ */
+  const onDeskMove = (e) => {
+    const d = e.target?.closest?.('.mc3-desk');
+    if (!d) return;
+    const r = d.getBoundingClientRect();
+    d.style.setProperty('--gx', (((e.clientX - r.left) / r.width) * 100).toFixed(1) + '%');
+    d.style.setProperty('--gy', (((e.clientY - r.top) / r.height) * 100).toFixed(1) + '%');
+  };
+
+  const rawName = user?.displayName || (user?.email || '').split('@')[0] || '';
+  const firstName = rawName.trim().split(/\s+/).pop() || '';
+
   /* đồng hồ + cửa sổ theo giờ thật */
   const clockNow = new Date();
   const hrFloat = clockNow.getHours() + clockNow.getMinutes() / 60;
@@ -786,6 +798,15 @@ export default function MyClasses({ onNavigate }) {
               >
                 <i className="orb" />
               </span>
+              <span className="mc3-beam" aria-hidden="true" />
+              <span
+                className="mc3-poster"
+                aria-hidden="true"
+                style={{ '--c': subjectColor(selectedClass?.subject) }}
+              >
+                <i />
+                <b>{selectedClass?.subject || 'Lớp học'}</b>
+              </span>
 
               <ul className="mc3-signs" aria-label="Danh sách lớp">
                 {classStats.map((c, i) => {
@@ -836,6 +857,7 @@ export default function MyClasses({ onNavigate }) {
                         <div className="mc3-board-grid">
                           <div className="mc3-board-main">
                             <p className="mc3-board-kicker">{selectedClass.subject || 'Lớp học'}</p>
+                            {firstName && <p className="mc3-hello">Chào {firstName}, hôm nay học gì nào?</p>}
                             <h2>{selectedClass.name}</h2>
                             <p className="mc3-board-sub">GV {selectedClass.teacherName || 'Giáo viên'}</p>
 
@@ -1024,8 +1046,8 @@ export default function MyClasses({ onNavigate }) {
                       </p>
                     </div>
                   ) : (
-                    <ul className="mc3-desks">
-                      {filteredExams.map((ex) => {
+                    <ul className="mc3-desks" onPointerMove={onDeskMove}>
+                      {filteredExams.map((ex, idx) => {
                         const dl = fmtDeadline(ex.closesAt);
                         const st = ex._st;
                         const sub = ex._sub;
@@ -1035,10 +1057,13 @@ export default function MyClasses({ onNavigate }) {
                           : null;
                         const tone = pct == null ? '' : pct >= 70 ? 'good' : pct >= 50 ? 'mid' : 'low';
                         return (
-                          <li key={ex.id} className={'mc3-desk status-' + st.key}>
+                          <li key={ex.id} className={'mc3-desk status-' + st.key} style={{ '--i': Math.min(idx, 12) }}>
                             <div className="mc3-desk-top">
                               <div className="mc3-paper">
                                 <span className="mc3-clip" aria-hidden="true" />
+                                {pct != null && pct >= 90 && (
+                                  <span className="mc3-star" title="Điểm xuất sắc"><IconMedal size={13} /></span>
+                                )}
                                 {pct != null && (
                                   <span className={'mc3-stamp ' + tone} aria-label={`Điểm ${sub.score}/${sub.totalPoints}`}>
                                     <b>{sub.score}</b>

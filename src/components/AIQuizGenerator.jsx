@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { askAI, fetchPlan } from '../services/api.js';
-import { compressImage } from '../services/ai.js';
+import { compressImage } from '../lib/ai.js';
 import VipGate from './VipGate.jsx';
 import AIMark from './AIMark.jsx';
 import { sanitizeTopicId, topicPromptList } from '../data/chemTopics.js';

@@ -1,15 +1,15 @@
 /* ============================================================
-   useExamGuard.js — v3.1 STRICT + FORCE FULLSCREEN
+   useExamGuard.js — v3.2
    ------------------------------------------------------------
-   Fixes so với v3:
-     • Fix #2: interval check fullscreen 500ms gọi recordEvent
-       liên tục khi mất fullscreen > 5s, không reset mốc → đủ
-       limit sau ~2s. Nay reset lastFullscreenAtRef sau mỗi lần
-       ghi nhận, cách nhau 5s mới tính lần tiếp theo.
-     • Fix #9: logic strictMode return sớm khi next === 1 → nếu
-       limit = 1 thì không bao giờ auto-submit. Nay kiểm tra
-       auto-submit TRƯỚC strict-mode, để limit = 1 auto-submit
-       ngay lần vi phạm đầu tiên.
+   Fix v3.2:
+     • #FS-1: Thiết bị không hỗ trợ Fullscreen API (iPhone Safari,
+       Firefox một số bản) → KHÔNG bật fullscreenLock, tránh
+       auto-submit oan mỗi 20s.
+     • #FS-2: Hạ ngưỡng DevTools lên 220px + chỉ desktop +
+       severity 'soft' (không còn auto-submit).
+     • #FS-3: screenshot_attempt, devtools_shortcut, contextmenu,
+       copy/cut/paste đều 'soft' thay vì 'hard'.
+     • Expose fsSupported cho UI hiển thị đúng.
    ============================================================ */
 import { useEffect, useRef, useState, useCallback } from 'react';
 
@@ -20,11 +20,23 @@ const STARTUP_GRACE_MS = 3000;
 const FS_CHECK_INTERVAL_MS = 500;
 const NO_FS_LIMIT_MS = 5000;
 const LONG_BLUR_MS = 15000;
-const DEVTOOLS_THRESHOLD = 160;
+const DEVTOOLS_THRESHOLD = 220;
+
+function supportsFullscreen() {
+  if (typeof document === 'undefined') return false;
+  const el = document.documentElement;
+  return !!(
+    el.requestFullscreen ||
+    el.webkitRequestFullscreen ||
+    el.mozRequestFullScreen ||
+    el.msRequestFullscreen
+  );
+}
 
 export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   const limit = config?.tabSwitchLimit ?? DEFAULT_LIMIT;
-  const fullscreenLock = config?.fullscreenLock ?? true;
+  const fsSupported = supportsFullscreen();
+  const fullscreenLock = (config?.fullscreenLock ?? true) && fsSupported;
   const blockCopyPaste = config?.blockCopyPaste ?? true;
   const strictMode = config?.strictMode ?? false;
 
@@ -54,12 +66,12 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       autoSubmittedRef.current = false;
     }
   }, [active]);
+
   useEffect(() => { limitRef.current = limit; }, [limit]);
   useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
 
   const inStartupGrace = () => Date.now() - activeSinceRef.current < STARTUP_GRACE_MS;
 
-  /* ---- Record event ---- */
   const recordEvent = useCallback((type, severity, meta = {}) => {
     if (!activeRef.current) return;
     if (autoSubmittedRef.current) return;
@@ -80,7 +92,6 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     onEventRef.current?.(evt);
 
     if (inGrace) {
-      console.log('[guard] Grace period — bỏ qua:', type);
       return;
     }
 
@@ -89,8 +100,6 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       violationsRef.current = next;
       setViolations(next);
 
-      // FIX #9: kiểm tra auto-submit TRƯỚC strict-mode
-      // để limit = 1 vẫn auto-submit ngay lần vi phạm đầu tiên.
       if (next >= limitRef.current) {
         if (!autoSubmittedRef.current) {
           autoSubmittedRef.current = true;
@@ -106,12 +115,10 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         return;
       }
 
-      // Strict mode: cảnh báo đỏ ngay từ lần đầu
-      // (nhưng chưa auto-submit vì limit > 1 — đã check ở trên)
       if (strictMode && next === 1) {
         setWarning({
           type: 'violation-strict',
-          text: `⚠ NGHIÊM TRỌNG: ${humanReason(type)}. Vi phạm tiếp theo sẽ tự động nộp bài!`,
+          text: `CẢNH BÁO NGHIÊM TRỌNG: ${humanReason(type)}. Vi phạm tiếp theo sẽ tự động nộp bài.`,
           eventType: type,
           count: next,
           limit: limitRef.current,
@@ -135,17 +142,24 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     }
   }, [onAutoSubmit, strictMode]);
 
-  /* ---- Fullscreen helpers ---- */
   const checkIsFullscreen = useCallback(() => {
+    if (!fsSupported) return true;
     return !!(
       document.fullscreenElement ||
       document.webkitFullscreenElement ||
       document.mozFullScreenElement ||
       document.msFullscreenElement
     );
-  }, []);
+  }, [fsSupported]);
 
   const enterFullscreen = useCallback(async () => {
+    if (!fsSupported) {
+      setWarning({
+        type: 'warn-soft',
+        text: 'Thiết bị này không hỗ trợ toàn màn hình. Hãy tập trung làm bài.',
+      });
+      return false;
+    }
     try {
       const el = document.documentElement;
       if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
@@ -157,17 +171,15 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       lastFullscreenAtRef.current = Date.now();
       setWarning(null);
       activeSinceRef.current = Date.now();
-      console.log('[guard] ✅ Đã vào fullscreen');
       return true;
     } catch (e) {
-      console.warn('[guard] ❌ Không vào được fullscreen:', e.message);
       setWarning({
         type: 'warn-soft',
         text: 'Không vào được chế độ toàn màn hình. Nhấn F11 hoặc nút bên dưới.',
       });
       return false;
     }
-  }, []);
+  }, [fsSupported]);
 
   const exitFullscreen = useCallback(() => {
     if (document.fullscreenElement && document.exitFullscreen) {
@@ -176,12 +188,10 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     setIsFullscreen(false);
   }, []);
 
-  /* ---- Fullscreen event listeners ---- */
   useEffect(() => {
-    if (!active) return undefined;
+    if (!active || !fsSupported) return undefined;
     const onFsChange = () => {
       const fs = checkIsFullscreen();
-      console.log('[guard] fullscreenchange →', fs);
       setIsFullscreen(fs);
       if (fs) {
         lastFullscreenAtRef.current = Date.now();
@@ -199,11 +209,10 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       document.removeEventListener('mozfullscreenchange', onFsChange);
       document.removeEventListener('MSFullscreenChange', onFsChange);
     };
-  }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
+  }, [active, fullscreenLock, fsSupported, recordEvent, checkIsFullscreen]);
 
-  /* ---- Interval check: nếu ở exam mà không fullscreen quá 5s → vi phạm ---- */
   useEffect(() => {
-    if (!active || !fullscreenLock) return undefined;
+    if (!active || !fullscreenLock || !fsSupported) return undefined;
     const id = setInterval(() => {
       if (!activeRef.current) return;
       const fs = checkIsFullscreen();
@@ -217,21 +226,17 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
             source: 'interval',
             duration: Math.round(noFsDuration / 1000),
           });
-          // FIX #2: reset mốc để 5 giây sau mới tính lần tiếp theo
-          // (trước đây không reset → interval 500ms gọi liên tục → đủ limit sau ~2s)
           lastFullscreenAtRef.current = Date.now();
         }
       }
     }, FS_CHECK_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
+  }, [active, fullscreenLock, fsSupported, recordEvent, checkIsFullscreen]);
 
-  /* ---- Keydown Escape/F11 ---- */
   useEffect(() => {
-    if (!active || !fullscreenLock) return undefined;
+    if (!active || !fullscreenLock || !fsSupported) return undefined;
     const onKey = (e) => {
       if (e.key === 'Escape' || e.key === 'F11') {
-        console.log('[guard] Bấm', e.key);
         setTimeout(() => {
           const fs = checkIsFullscreen();
           if (!fs && activeRef.current) {
@@ -242,9 +247,8 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
-  }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
+  }, [active, fullscreenLock, fsSupported, recordEvent, checkIsFullscreen]);
 
-  /* ---- Tab visibility ---- */
   useEffect(() => {
     if (!active) return undefined;
     const onVis = () => {
@@ -257,7 +261,6 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [active, recordEvent]);
 
-  /* ---- Window blur ---- */
   useEffect(() => {
     if (!active) return undefined;
     const onBlur = () => {
@@ -287,9 +290,10 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
   }, [active, recordEvent]);
 
-  /* ---- DevTools detection ---- */
   useEffect(() => {
     if (!active) return undefined;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) return undefined;
     const id = setInterval(() => {
       if (!activeRef.current) return;
       const wDiff = window.outerWidth - window.innerWidth;
@@ -297,15 +301,14 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       const isOpen = wDiff > DEVTOOLS_THRESHOLD || hDiff > DEVTOOLS_THRESHOLD;
       if (isOpen && !devtoolsOpenRef.current) {
         devtoolsOpenRef.current = true;
-        recordEvent('devtools_open', 'hard');
+        recordEvent('devtools_open', 'soft');
       } else if (!isOpen) {
         devtoolsOpenRef.current = false;
       }
-    }, 1500);
+    }, 2000);
     return () => clearInterval(id);
   }, [active, recordEvent]);
 
-  /* ---- Keyboard shortcuts ---- */
   useEffect(() => {
     if (!active) return undefined;
     const onKey = (e) => {
@@ -321,7 +324,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       if (e.key === 'PrintScreen') {
         e.preventDefault();
         try { navigator.clipboard.writeText(''); } catch { /* */ }
-        recordEvent('screenshot_attempt', 'hard');
+        recordEvent('screenshot_attempt', 'soft');
       }
     };
     const onKeyUp = (e) => {
@@ -351,7 +354,6 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
   }, [active, blockCopyPaste, recordEvent]);
 
-  /* ---- API ---- */
   const clearWarning = () => setWarning(null);
   const reset = () => {
     violationsRef.current = 0;
@@ -376,6 +378,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     warning,
     events,
     isFullscreen,
+    fsSupported,
     enterFullscreen,
     exitFullscreen,
     clearWarning,

@@ -1,15 +1,15 @@
 /* ============================================================
-   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v2
+   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v4
    ------------------------------------------------------------
-   Sidebar: Tổng quan | Lớp học | Đề thi | Phòng thi | Tạo đề
-   Nút "Quản trị" chỉ hiện nếu user là admin.
-   ------------------------------------------------------------
-   Tích hợp:
-     • ClassDetailModal v2 (tab Chờ duyệt + Xin thi lại)
-     • LiveProctorView
-     • CreateExamPage
-     • Duyệt thành viên lớp (pending members)
-     • Duyệt thi lại (retry requests) + bật allowance
+   v4:
+     • Thêm tab "Ngân hàng" — QuestionBank
+     • exportClassCsv: Điểm TB tính trung bình cộng thật
+     • exportClassCsv: thêm cột "Cao nhất"
+     • refresh() surface lỗi ra UI (toast), không nuốt lỗi
+     • handleDeleteSession xóa chỉ khi Firestore OK
+     • Toast có tone (info / success / error)
+     • Ô ghi chú khi duyệt/từ chối thi lại
+     • Chỉ dùng SVG, không emoji
    ============================================================ */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
@@ -44,6 +44,7 @@ import ExamCreate from './ExamCreate.jsx';
 import LiveProctorView from './LiveProctorView.jsx';
 import CreateExamPage from './teacher/CreateExamPage.jsx';
 import ClassDetailModal from './ClassDetailModal.jsx';
+import QuestionBank from './teacher/QuestionBank.jsx';
 import {
   DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
   tsMs, fmtMMSS, fmtClock, downloadCsv,
@@ -52,7 +53,7 @@ import {
   IcoPlay, IcoStop, IcoRefresh, IcoUsers, IcoBook, IcoChart, IcoClock,
   IcoCheckCircle, IcoCopy, IcoTrash, IcoVideo, IcoDot, IcoGrid,
   IcoDownload, IcoChevronRight, IcoAlert, IcoUserPlus, IcoKey, IcoMonitor,
-  IcoBell,
+  IcoBell, IcoLibrary,
 } from '../lib/sessionIcons.jsx';
 import '../styles/classroom.css';
 
@@ -99,6 +100,7 @@ export default function TeacherDashboard() {
   const [submissionsMap, setSubmissionsMap] = useState({});
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [now, setNow] = useState(Date.now());
 
   const [showCreateClass, setShowCreateClass] = useState(false);
@@ -113,11 +115,11 @@ export default function TeacherDashboard() {
 
   const [confirmState, setConfirmState] = useState(null);
   const [toast, setToast] = useState(null);
+  const [toastTone, setToastTone] = useState('info');
   const [startingId, setStartingId] = useState(null);
 
   /* Retry requests realtime */
   const [allRetryRequests, setRetryRequests] = useState([]);
-  // listenRetryRequests trả về yêu cầu của MỌI giáo viên → chỉ giữ lớp của mình
   const retryRequests = useMemo(
     () => allRetryRequests.filter((r) => classes.some((c) => c.id === r.classId)),
     [allRetryRequests, classes]
@@ -127,13 +129,13 @@ export default function TeacherDashboard() {
   const [allowances, setAllowances] = useState({});
 
   const toastTimer = useRef(null);
-  const say = useCallback((text) => {
+  const say = useCallback((text, tone = 'info') => {
     clearTimeout(toastTimer.current);
     setToast(text);
-    toastTimer.current = setTimeout(() => setToast(null), 2400);
+    setToastTone(tone);
+    toastTimer.current = setTimeout(() => setToast(null), 2800);
   }, []);
 
-  /* ---------- CHECK ADMIN ---------- */
   const isAdmin = useMemo(() => getUserRole(user) === 'admin', [user]);
 
   useEffect(() => {
@@ -150,6 +152,7 @@ export default function TeacherDashboard() {
   /* ---------- LOAD ---------- */
   const refresh = useCallback(async () => {
     if (!user?.uid) return;
+    setLoadError('');
     try {
       const [cls, ex, sess] = await Promise.all([
         getClassesByTeacher(user.uid),
@@ -162,15 +165,22 @@ export default function TeacherDashboard() {
 
       const subsMap = {};
       await Promise.all(ex.map(async (e) => {
-        subsMap[e.id] = await getSubmissionsByExam(e.id);
+        try {
+          subsMap[e.id] = await getSubmissionsByExam(e.id);
+        } catch (err) {
+          subsMap[e.id] = [];
+          console.warn('[TeacherDashboard] load subs lỗi cho đề', e.id, err);
+        }
       }));
       setSubmissionsMap(subsMap);
     } catch (err) {
       console.error('[TeacherDashboard] load error:', err);
+      setLoadError(err.message || 'Không tải được dữ liệu lớp học.');
+      say('Không tải được dữ liệu. Vui lòng thử lại.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, say]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -195,7 +205,7 @@ export default function TeacherDashboard() {
     const unsub = listenRetryRequestsByClasses(
       ids,
       (list) => setRetryRequests(list || []),
-      (err) => say(`Không đọc được yêu cầu thi lại (${err.code || 'lỗi'}). Kiểm tra Firestore Rules.`)
+      (err) => say(`Không đọc được yêu cầu thi lại (${err.code || 'lỗi'}).`, 'error')
     );
     return () => unsub?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,10 +233,10 @@ export default function TeacherDashboard() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedKey(keyId);
-      say(msg);
+      say(msg, 'success');
       setTimeout(() => setCopiedKey(null), 1400);
     } catch {
-      say('Không sao chép được');
+      say('Không sao chép được', 'error');
     }
   }, [say]);
 
@@ -242,9 +252,9 @@ export default function TeacherDashboard() {
       setNewClassName('');
       setShowCreateClass(false);
       await refresh();
-      say('Đã tạo lớp mới');
+      say('Đã tạo lớp mới', 'success');
     } catch (e) {
-      say('Lỗi: ' + e.message);
+      say('Lỗi: ' + e.message, 'error');
     }
   };
 
@@ -261,10 +271,10 @@ export default function TeacherDashboard() {
         duration: exam.duration,
       });
       setSessions((prev) => [session, ...prev]);
-      say('Đã bắt đầu phòng thi!');
+      say('Đã bắt đầu phòng thi!', 'success');
       goSection('sessions');
     } catch (e) {
-      say('Không tạo được phòng thi: ' + e.message);
+      say('Không tạo được phòng thi: ' + e.message, 'error');
     } finally {
       setStartingId(null);
     }
@@ -282,9 +292,9 @@ export default function TeacherDashboard() {
           setSessions((prev) =>
             prev.map((s) => (s.id === session.id ? { ...s, status: 'ended', endedAtMs: Date.now() } : s))
           );
-          say('Đã kết thúc phòng thi');
+          say('Đã kết thúc phòng thi', 'success');
         } catch (e) {
-          say('Lỗi: ' + e.message);
+          say('Không kết thúc được: ' + e.message, 'error');
         }
       },
     });
@@ -297,9 +307,13 @@ export default function TeacherDashboard() {
       okLabel: 'Xóa',
       danger: true,
       onOk: async () => {
-        try { await deleteExamSession(s.id); } catch { /* */ }
-        setSessions((prev) => prev.filter((x) => x.id !== s.id));
-        say('Đã xóa phiên');
+        try {
+          await deleteExamSession(s.id);
+          setSessions((prev) => prev.filter((x) => x.id !== s.id));
+          say('Đã xóa phiên', 'success');
+        } catch (e) {
+          say('Không xóa được: ' + e.message, 'error');
+        }
       },
     });
   }, [say]);
@@ -314,9 +328,9 @@ export default function TeacherDashboard() {
         try {
           await deleteExamFs(exam.id);
           setExams((prev) => prev.filter((e) => e.id !== exam.id));
-          say('Đã xóa đề');
+          say('Đã xóa đề', 'success');
         } catch (e) {
-          say('Lỗi: ' + e.message);
+          say('Lỗi: ' + e.message, 'error');
         }
       },
     });
@@ -333,9 +347,9 @@ export default function TeacherDashboard() {
           await removeClassMember(cls.id, m.id);
           await refresh();
           await reloadClass(cls.id);
-          say('Đã xóa thành viên');
+          say('Đã xóa thành viên', 'success');
         } catch (e) {
-          say('Lỗi: ' + e.message);
+          say('Lỗi: ' + e.message, 'error');
         }
       },
     });
@@ -349,19 +363,19 @@ export default function TeacherDashboard() {
 
   const handleApprove = async (cls, sid) => {
     const r = await approveMember(cls.id, sid);
-    say(r.ok ? 'Đã duyệt vào lớp' : r.error);
+    say(r.ok ? 'Đã duyệt vào lớp' : r.error, r.ok ? 'success' : 'error');
     if (r.ok) { await reloadClass(cls.id); await refresh(); }
   };
 
   const handleReject = async (cls, sid) => {
     const r = await rejectMember(cls.id, sid);
-    say(r.ok ? 'Đã từ chối' : r.error);
+    say(r.ok ? 'Đã từ chối' : r.error, r.ok ? 'success' : 'error');
     if (r.ok) { await reloadClass(cls.id); await refresh(); }
   };
 
   const handleApproveAll = async (cls) => {
     const r = await approveAllMembers(cls.id);
-    say(r.ok ? `Đã duyệt ${r.count || ''} yêu cầu` : r.error);
+    say(r.ok ? `Đã duyệt ${r.count || 0} yêu cầu` : r.error, r.ok ? 'success' : 'error');
     if (r.ok) { await reloadClass(cls.id); await refresh(); }
   };
 
@@ -369,33 +383,26 @@ export default function TeacherDashboard() {
     await setClassApproval(cls.id, v);
     await reloadClass(cls.id);
     await refresh();
-    say(v ? 'Bật duyệt thành viên' : 'Tắt duyệt thành viên');
+    say(v ? 'Bật duyệt thành viên' : 'Tắt duyệt thành viên', 'success');
   };
 
   /* ============ DUYỆT THI LẠI ============ */
-  const handleApproveRetry = async (req) => {
+  const handleApproveRetry = async (req, note = '') => {
     const r = await approveRetry({
       permitId: req.id,
       teacherId: user.uid,
-      note: '',
+      note,
     });
-    say(r.ok ? `Đã duyệt cho ${req.studentName} thi lại` : r.error);
-    if (r.ok) {
-      // refresh requests
-      /* listener realtime tự cập nhật */
-    }
+    say(r.ok ? `Đã duyệt cho ${req.studentName} thi lại` : r.error, r.ok ? 'success' : 'error');
   };
 
-  const handleDenyRetry = async (req) => {
+  const handleDenyRetry = async (req, note = '') => {
     const r = await denyRetry({
       permitId: req.id,
       teacherId: user.uid,
-      note: '',
+      note,
     });
-    say(r.ok ? `Đã từ chối ${req.studentName}` : r.error);
-    if (r.ok) {
-      /* listener realtime tự cập nhật */
-    }
+    say(r.ok ? `Đã từ chối ${req.studentName}` : r.error, r.ok ? 'success' : 'error');
   };
 
   const handleToggleAllowance = async (cls, m, allowed) => {
@@ -407,9 +414,9 @@ export default function TeacherDashboard() {
     });
     if (r.ok) {
       setAllowances((prev) => ({ ...prev, [m.id]: allowed }));
-      say(allowed ? `Đã bật thi lại cho ${m.name}` : `Đã khóa thi lại của ${m.name}`);
+      say(allowed ? `Đã bật thi lại cho ${m.name}` : `Đã khóa thi lại của ${m.name}`, 'success');
     } else {
-      say(r.error || 'Lỗi');
+      say(r.error || 'Lỗi', 'error');
     }
   };
 
@@ -461,7 +468,7 @@ export default function TeacherDashboard() {
 
   const classById = useMemo(() => Object.fromEntries(classes.map((c) => [c.id, c])), [classes]);
 
-  /* Tổng số yêu cầu chờ duyệt (cả lớp + thi lại) */
+  /* Tổng số yêu cầu chờ duyệt */
   const totalPendingMembers = useMemo(
     () => classes.reduce((sum, c) => sum + (c.pendingMembers?.length || 0), 0),
     [classes]
@@ -476,13 +483,13 @@ export default function TeacherDashboard() {
   }, [retryRequests, selectedClass?.id]);
 
   const openNewExam = () => {
-    if (classes.length === 0) { say('Hãy tạo lớp trước khi tạo đề'); goSection('classes'); return; }
+    if (classes.length === 0) { say('Hãy tạo lớp trước khi tạo đề', 'error'); goSection('classes'); return; }
     if (classes.length === 1) { setSelectedClass(classes[0]); goSection('create'); return; }
     setShowClassPicker(true);
   };
 
   const exportAllCsv = () => {
-    if (subsInRange.length === 0) { say('Chưa có bài nộp để xuất'); return; }
+    if (subsInRange.length === 0) { say('Chưa có bài nộp để xuất', 'error'); return; }
     const examTitle = Object.fromEntries(exams.map((e) => [e.id, e.title]));
     const rows = [['Đề', 'Họ tên', 'Điểm', 'Tổng điểm', '%', 'Câu đúng', 'Tổng câu', 'Vi phạm']];
     subsInRange.forEach((s) => rows.push([
@@ -490,13 +497,14 @@ export default function TeacherDashboard() {
       Math.round(pctOf(s)), s.correctCount, s.totalQuestions, s.violationCount || 0,
     ]));
     downloadCsv('bang-diem-tong-hop.csv', rows);
-    say('Đã xuất bảng điểm');
+    say('Đã xuất bảng điểm', 'success');
   };
 
+  /* FIX: Điểm TB = trung bình cộng; có thêm cột Cao nhất */
   const exportClassCsv = useCallback((cls, clsExams, subsMap) => {
-    if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất'); return; }
+    if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất', 'error'); return; }
     const members = cls.members || [];
-    const header = ['Học sinh', 'Email', ...clsExams.map((e, i) => `Đề ${i + 1}`), 'Điểm TB'];
+    const header = ['Học sinh', 'Email', ...clsExams.map((e, i) => `Đề ${i + 1}`), 'Điểm TB', 'Cao nhất'];
     const rows = [header];
 
     members.forEach((m) => {
@@ -512,14 +520,16 @@ export default function TeacherDashboard() {
           row.push('');
         }
       });
-      const avg = scores.length ? Math.round(Math.max(...scores)) : '';
+      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : '';
+      const best = scores.length ? Math.max(...scores) : '';
       row.push(avg === '' ? '' : `${avg}%`);
+      row.push(best === '' ? '' : `${best}%`);
       rows.push(row);
     });
 
     const safe = cls.name.replace(/[^\p{L}\p{N}]+/gu, '-');
     downloadCsv(`bang-diem-${safe}.csv`, rows);
-    say('Đã xuất bảng điểm lớp ' + cls.name);
+    say('Đã xuất bảng điểm lớp ' + cls.name, 'success');
   }, [say]);
 
   /* ---------- EARLY RETURN ---------- */
@@ -540,7 +550,16 @@ export default function TeacherDashboard() {
     return (
       <div className="vt"><div className="vt-loading">
         <div className="page-loader-spinner" />
-        <p>Đang tải…</p>
+        <p>Đang tải...</p>
+      </div></div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="vt"><div className="vt-loading">
+        <p style={{ color: 'var(--acc)', fontWeight: 600 }}>{loadError}</p>
+        <button type="button" className="vt-btn primary" onClick={refresh}>Thử lại</button>
       </div></div>
     );
   }
@@ -558,6 +577,7 @@ export default function TeacherDashboard() {
     { key: 'exams', label: 'Đề thi', Icon: IcoBook },
     { key: 'sessions', label: 'Phòng thi', Icon: IcoVideo, badge: liveSessions.length || null, live: true },
     { key: 'create', label: 'Tạo đề', Icon: IcoBook },
+    { key: 'bank', label: 'Ngân hàng', Icon: IcoLibrary },
     {
       key: 'retry',
       label: 'Xin thi lại',
@@ -607,19 +627,23 @@ export default function TeacherDashboard() {
       title: 'Lớp học của tôi',
       subtitle: `${classes.length} lớp · ${classes.reduce((a, c) => a + (c.members?.length || 0), 0)} học sinh`,
       onSearch: setSearch,
-      placeholder: 'Tìm lớp hoặc key…',
+      placeholder: 'Tìm lớp hoặc key...',
     },
     exams: {
       tabs: examTabs, active: subTab, onTab: setSubTab,
-      onSearch: setSearch, placeholder: 'Tìm đề thi…',
+      onSearch: setSearch, placeholder: 'Tìm đề thi...',
     },
     sessions: {
       tabs: sessionTabs, active: subTab, onTab: setSubTab,
-      onSearch: setSearch, placeholder: 'Tìm phiên thi…',
+      onSearch: setSearch, placeholder: 'Tìm phiên thi...',
     },
     create: {
       title: 'Tạo đề mới',
       subtitle: 'Thủ công hoặc để AI sinh từ ảnh, PDF, Word, Excel',
+    },
+    bank: {
+      title: 'Ngân hàng câu hỏi',
+      subtitle: 'Lưu trữ và tái sử dụng câu hỏi',
     },
     retry: {
       title: 'Yêu cầu thi lại',
@@ -645,8 +669,8 @@ export default function TeacherDashboard() {
     >
       <Topbar
         {...topProps}
-        search={section !== 'create' && section !== 'retry' ? search : undefined}
-        bell={section !== 'create' ? {
+        search={section !== 'create' && section !== 'retry' && section !== 'bank' ? search : undefined}
+        bell={section !== 'create' && section !== 'bank' ? {
           on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0,
           onClick: () => {
             if (totalPendingRetry > 0) goSection('retry');
@@ -708,7 +732,7 @@ export default function TeacherDashboard() {
                 <small>{subsInRange.length} bài</small>
               </Donut>
               <footer>
-                <span>Đạt ≥ 50%</span><b>{passRate}%</b>
+                <span>Đạt từ 50% trở lên</span><b>{passRate}%</b>
               </footer>
             </div>
           </div>
@@ -842,7 +866,6 @@ export default function TeacherDashboard() {
                     <i className="vt-count">{members.length}</i>
                   </header>
 
-                  {/* Badge chờ duyệt */}
                   {pendingCount > 0 && (
                     <div
                       style={{
@@ -988,7 +1011,7 @@ export default function TeacherDashboard() {
                         onClick={() => handleStartSession(ex)}
                         disabled={startingId === ex.id || st.key === 'closed'}
                       >
-                        {startingId === ex.id ? 'Đang tạo…' : <><IcoPlay size={14} /> Bắt đầu thi</>}
+                        {startingId === ex.id ? 'Đang tạo...' : <><IcoPlay size={14} /> Bắt đầu thi</>}
                       </button>
                     )}
                     <div className="vt-exam-actions-row">
@@ -998,7 +1021,7 @@ export default function TeacherDashboard() {
                       <button
                         type="button"
                         className="vt-icon-btn"
-                        onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất'))}
+                        onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
                         title="Xuất điểm CSV"
                       >
                         <IcoDownload size={15} />
@@ -1124,7 +1147,12 @@ export default function TeacherDashboard() {
       })()}
 
       {/* ============================================================
-          XIN THI LẠI — GV duyệt
+          NGÂN HÀNG
+         ============================================================ */}
+      {section === 'bank' && <QuestionBank />}
+
+      {/* ============================================================
+          XIN THI LẠI
          ============================================================ */}
       {section === 'retry' && (() => {
         const pending = retryRequests.filter((r) => r.status === 'pending');
@@ -1132,10 +1160,7 @@ export default function TeacherDashboard() {
           <>
             <div className="vt-range">
               <h2>Yêu cầu thi lại</h2>
-              <button type="button" className="vt-btn sm" onClick={async () => {
-                /* listener realtime tự cập nhật */
-                say('Đã làm mới');
-              }}>
+              <button type="button" className="vt-btn sm" onClick={() => say('Đã làm mới', 'success')}>
                 <IcoRefresh size={13} /> Làm mới
               </button>
             </div>
@@ -1171,7 +1196,7 @@ export default function TeacherDashboard() {
                               color: 'var(--ink)',
                               font: '500 .85rem/1.5 var(--sans)',
                             }}>
-                              "{r.reason}"
+                              {r.reason}
                             </p>
                           )}
                           <p style={{ margin: '.5rem 0 0', color: 'var(--mut)', font: '500 .74rem var(--sans)' }}>
@@ -1179,18 +1204,10 @@ export default function TeacherDashboard() {
                           </p>
                         </div>
                         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="vt-btn primary"
-                            onClick={() => handleApproveRetry(r)}
-                          >
+                          <button type="button" className="vt-btn primary" onClick={() => handleApproveRetry(r)}>
                             <IcoCheckCircle size={14} /> Duyệt
                           </button>
-                          <button
-                            type="button"
-                            className="vt-btn danger"
-                            onClick={() => handleDenyRetry(r)}
-                          >
+                          <button type="button" className="vt-btn danger" onClick={() => handleDenyRetry(r)}>
                             Từ chối
                           </button>
                         </div>
@@ -1212,7 +1229,7 @@ export default function TeacherDashboard() {
           <div className="vt-empty">
             <span><IcoBook size={30} /></span>
             <h3>Chọn lớp để tạo đề</h3>
-            <p>Bạn có nhiều lớp — chọn 1 lớp trước khi tạo đề.</p>
+            <p>Bạn có nhiều lớp, chọn 1 lớp trước khi tạo đề.</p>
             <button
               type="button"
               className="vt-btn primary"
@@ -1240,7 +1257,14 @@ export default function TeacherDashboard() {
       )}
 
       {/* ============ TOAST ============ */}
-      {toast && <div className="vt-toast" role="status">{toast}</div>}
+      {toast && (
+        <div
+          className={'vt-toast' + (toastTone === 'error' ? ' error' : toastTone === 'success' ? ' success' : '')}
+          role="status"
+        >
+          {toast}
+        </div>
+      )}
 
       {/* ============ TẠO LỚP ============ */}
       {showCreateClass && (
@@ -1337,7 +1361,7 @@ export default function TeacherDashboard() {
             await refresh();
             setShowExamCreate(false);
             setSelectedClass(null);
-            say('Đã tạo đề');
+            say('Đã tạo đề', 'success');
           }}
         />
       )}
@@ -1411,7 +1435,7 @@ function ExamStats({ exam, subs, onExport }) {
             <div key={i} className="vt-hist-col">
               <span className="vt-hist-n">{n}</span>
               <i style={{ height: `${Math.max(6, (n / maxBin) * 100)}%` }} />
-              <small>{i * 20}–{i === 4 ? 100 : i * 20 + 19}%</small>
+              <small>{i * 20}-{i === 4 ? 100 : i * 20 + 19}%</small>
             </div>
           ))}
         </div>

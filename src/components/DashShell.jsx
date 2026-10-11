@@ -1,24 +1,16 @@
 /* ============================================================
-   DashShell.jsx — Bộ khung dùng chung cho Quản lý lớp học + Giám sát + Admin
+   DashShell.jsx — Bộ khung dùng chung (v2)
    ------------------------------------------------------------
-   Kiểu "Vitality": khung trắng bo tròn, sidebar gradient có
-   tab nổi, thẻ bo lớn, nút dạng pill — nhưng dùng đúng màu
-   chủ đạo --acc của web (xanh #2f6bff).
-
-   Hỗ trợ:
-     • items       mảng { key, label, Icon, badge, live }
-     • active      key đang chọn
-     • onChange    callback đổi tab
-     • onExit      callback thoát (về trang chủ)
-     • exitLabel   nhãn nút thoát
-     • sideNote    JSX phụ trong sidebar (VD: tên lớp đang xem)
-     • extraNav    JSX thêm vào nav (VD: nút "Sang quản trị")
+   v2:
+     • Toast có tone (info/success/error) — dùng CSS variable
+     • Modal backdrop click đóng chính xác, không đóng khi click
+       vào nội dung con.
+     • Chỉ dùng SVG, không emoji.
    ============================================================ */
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { IcoArrowLeft, IcoSearch, IcoClose, IcoBell } from '../lib/sessionIcons.jsx';
 import '../styles/dash-vitality.css';
 
-/* ---------- LOGO: tự lấy AIMark của web (đổi đường dẫn nếu khác) ---------- */
 const markMods = import.meta.glob('./AIMark*.jsx', { eager: true });
 const AIMarkComp = (() => {
   const m = Object.values(markMods)[0];
@@ -39,7 +31,6 @@ export function BrandMark({ size = 34 }) {
   );
 }
 
-/* ---------- HELPERS ---------- */
 export const tsMs = (t) => {
   if (!t) return 0;
   if (typeof t === 'number') return t;
@@ -64,7 +55,9 @@ export const fmtClock = (ms) => {
 
 export function downloadCsv(filename, rows) {
   const esc = (v) => {
-    const s = v == null ? '' : String(v);
+    let s = v == null ? '' : String(v);
+    // v3: chống CSV/Excel formula injection — tên HS như "=HYPERLINK(...)" sẽ bị Excel chạy
+    if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = "'" + s;
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const csv = '\ufeff' + rows.map((r) => r.map(esc).join(',')).join('\r\n');
@@ -73,17 +66,19 @@ export function downloadCsv(filename, rows) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a); // một số trình duyệt chỉ tải khi thẻ <a> nằm trong DOM
   a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/* ---------- AVATAR ---------- */
 export function Avatar({ name = '?', size = 44 }) {
   const str = String(name || '?');
   const ch = (str.trim().split(/\s+/).pop() || '?')[0].toUpperCase();
   let h = 0;
   for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360;
-  const hue = 195 + (h % 90); // dải xanh → tím, hợp tông màu chủ đạo
+  const hue = 195 + (h % 90);
   return (
     <span
       className="vt-avatar"
@@ -100,7 +95,6 @@ export function Avatar({ name = '?', size = 44 }) {
   );
 }
 
-/* ---------- DONUT ---------- */
 export function Donut({ value = 0, max = 100, size = 120, stroke = 12, tone = 'acc', children }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -126,7 +120,6 @@ export function Donut({ value = 0, max = 100, size = 120, stroke = 12, tone = 'a
   );
 }
 
-/* ---------- BIỂU ĐỒ XU HƯỚNG (line / bar) — vẽ trên nền gradient ---------- */
 export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', height = 130 }) {
   const gid = useId().replace(/:/g, '');
   const W = 360;
@@ -197,22 +190,46 @@ export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', 
   );
 }
 
-/* ---------- MODAL ---------- */
+/* v3: ngăn xếp modal — Esc chỉ đóng modal trên cùng (trước đây đóng tất cả cùng lúc). */
+const modalStack = [];
+
 export function Modal({ title, onClose, size = 'md', children, foot }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
-    const h = (e) => e.key === 'Escape' && onClose?.();
+    const token = Symbol('modal');
+    modalStack.push(token);
+    const opener = document.activeElement;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden'; // khóa cuộn trang nền
+
+    const h = (e) => {
+      if (e.key === 'Escape' && modalStack[modalStack.length - 1] === token) closeRef.current?.();
+    };
     window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [onClose]);
+    return () => {
+      window.removeEventListener('keydown', h);
+      const i = modalStack.indexOf(token);
+      if (i >= 0) modalStack.splice(i, 1);
+      document.body.style.overflow = prevOverflow;
+      if (opener && typeof opener.focus === 'function') opener.focus(); // trả focus về nút đã mở
+    };
+  }, []);
 
   return (
-    <div className="vt-backdrop" onClick={onClose}>
+    <div
+      className="vt-backdrop"
+      /* onMouseDown thay cho onClick: bôi đen chữ trong hộp rồi thả chuột ra ngoài
+         không còn làm đóng hộp thoại ngoài ý muốn. */
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+      role="presentation"
+    >
       <div
         className={'vt-modal ' + size}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : 'Hộp thoại'}
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="vt-modal-head">
           <h3>{title}</h3>
@@ -248,10 +265,9 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
   );
 }
 
-/* ---------- THANH TRÊN: tab nghiêng + search + chuông ---------- */
 export function Topbar({
   title, subtitle, tabs, active, onTab, search, onSearch,
-  placeholder = 'Tìm kiếm…', bell,
+  placeholder = 'Tìm kiếm...', bell,
 }) {
   return (
     <header className="vt-top">
@@ -311,7 +327,6 @@ export function Topbar({
   );
 }
 
-/* ---------- KHUNG CHÍNH ---------- */
 export function DashFrame({
   items,
   active,

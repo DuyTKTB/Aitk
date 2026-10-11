@@ -15,6 +15,7 @@ import ExamCreateForm from './ExamCreateForm.jsx';
 import CreateExamAI from './CreateExamAI.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
+import { bumpUsage, addQuestionsBatch } from '../../lib/questionBank.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useToast } from '../admin/AdminUI.jsx';
 import './create-exam-page.css';
@@ -86,12 +87,17 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
 
   /* Lưu đề */
   const handleSave = async (data) => {
+    if (saving) return; // chống bấm "Lưu đề" 2 lần → tạo 2 đề giống nhau
     if (!classInfo?.id) {
       toast.error('Thiếu thông tin lớp.');
       return;
     }
     setSaving(true);
     try {
+      // bankId chỉ dùng nội bộ để đếm lượt dùng — không lưu vào đề (HS đọc được tài liệu đề)
+      const bankIds = [...new Set(data.questions.map((q) => q.bankId).filter(Boolean))];
+      const examQuestions = data.questions.map(({ bankId, ...rest }) => rest); // eslint-disable-line no-unused-vars
+
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
@@ -99,7 +105,7 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         title: data.title,
         description: data.description,
         duration: data.duration,
-        questions: data.questions,
+        questions: examQuestions,
         showAnswerAfter: data.showAnswerAfter,
         allowRetry: data.allowRetry,
         shuffle: data.shuffle,
@@ -107,7 +113,25 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         closesAt: data.closesAt,
         proctor: data.proctor,
       });
-      toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
+      // Ngân hàng câu hỏi: tăng số lần dùng + (tùy chọn) lưu các câu mới. Lỗi ở đây không làm hỏng việc lưu đề.
+      if (bankIds.length) bumpUsage(bankIds).catch((e) => console.warn('[bumpUsage]', e?.message));
+      let banked = 0;
+      if (data.saveToBank) {
+        try {
+          const fresh = data.questions.filter((q) => !q.bankId);
+          const r = await addQuestionsBatch({
+            teacherId: user.uid,
+            questions: fresh.map(({ bankId, ...q }) => ({ ...q, subject: classInfo?.subject || 'Hóa học' })), // eslint-disable-line no-unused-vars
+          });
+          banked = r.count;
+        } catch (e) {
+          console.warn('[addQuestionsBatch]', e?.message);
+        }
+      }
+      toast.success(
+        `Đã tạo đề "${data.title}" với ${data.questions.length} câu` +
+        (banked ? ` · đã lưu ${banked} câu mới vào ngân hàng` : '')
+      );
       clearDraft(); // đề đã lưu → bỏ bản nháp AI cũ
       onDone?.(exam);
     } catch (e) {
@@ -149,6 +173,7 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
           initial={initialData}
           onDirty={(d) => { dirtyRef.current = d; }}
           classInfo={classInfo}
+          teacherId={user?.uid || ''}
           onSave={handleSave}
           onCancel={onCancel}
           saving={saving}

@@ -1,11 +1,11 @@
 /* ============================================================
-   CLASSROOM — Firestore version (v4)
+   CLASSROOM — Firestore version (v5)
    ------------------------------------------------------------
-   Bao gồm:
-     • Tính năng A: Duyệt thi lại (retry permits + allowance)
-     • Tính năng B: Duyệt thành viên lớp (pending members)
-     • Fix 1.1: startAttempt reset khi allowRetry=true
-     • Fix joinClassByKey: gửi yêu cầu thay vì vào thẳng
+   v5 fixes:
+     • submitExam: dùng doc ID cố định ${examId}_${studentId}
+       → KHÔNG tạo 2 submission khi HS bấm nộp 2 lần nhanh.
+     • submitExam: tự động markPermitUsed khi thi lại thành công,
+       tránh 1 permit cho thi lại vô hạn.
    ============================================================ */
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
@@ -22,12 +22,12 @@ export function generateClassKey(className = 'LOP') {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^A-Z0-9]/g, '')
     .slice(0, 6) || 'LOP';
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `${clean}-${rand}`;
 }
 
 export function generateExamToken() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  return Math.random().toString(36).slice(2, 12) + Date.now().toString(36).slice(-4);
 }
 
 function friendlyFirestoreError(e, context = '') {
@@ -36,7 +36,7 @@ function friendlyFirestoreError(e, context = '') {
   const msg = e.message || '';
 
   if (code === 'permission-denied' || /insufficient permissions/i.test(msg)) {
-    return `Firestore Rules chặn${context ? ` (${context})` : ''}. Vào Firebase Console → Firestore → Rules để cấp quyền.`;
+    return `Firestore Rules chặn${context ? ` (${context})` : ''}. Vào Firebase Console, mục Firestore, tab Rules để cấp quyền.`;
   }
   if (code === 'unavailable') return 'Không kết nối được Firestore. Kiểm tra mạng.';
   if (code === 'not-found') return 'Không tìm thấy dữ liệu (có thể đã bị xóa).';
@@ -140,20 +140,15 @@ export async function findClassByKey(key) {
 }
 
 /* ============================================================
-   TÍNH NĂNG B — Duyệt thành viên lớp
+   DUYỆT THÀNH VIÊN LỚP
    ============================================================ */
 export async function joinClassByKey(classKey, student) {
   try {
-    console.log('[joinClassByKey] Bắt đầu join lớp:', { key: classKey, student });
-
     const cls = await findClassByKey(classKey);
-    if (!cls) {
-      return { ok: false, error: 'Key không đúng hoặc lớp không tồn tại.' };
-    }
+    if (!cls) return { ok: false, error: 'Key không đúng hoặc lớp không tồn tại.' };
 
     const memberIds = cls.memberIds || [];
     if (memberIds.includes(student.id)) {
-      console.log('[joinClassByKey] HS đã ở trong lớp này');
       return { ok: true, class: cls, already: true };
     }
 
@@ -170,7 +165,6 @@ export async function joinClassByKey(classKey, student) {
     };
     const ref = doc(db, 'classes', cls.id);
 
-    // Nếu lớp không cần duyệt → vào thẳng
     if (cls.requireApproval === false) {
       const member = { ...person, role: 'member', joinedAt: person.requestedAt };
       delete member.requestedAt;
@@ -178,24 +172,16 @@ export async function joinClassByKey(classKey, student) {
         members: arrayUnion(member),
         memberIds: arrayUnion(student.id),
       });
-      console.log('[joinClassByKey] ✅ Vào lớp ngay (không cần duyệt)');
       return { ok: true, class: cls };
     }
 
-    // Cần duyệt → gửi yêu cầu
     await updateDoc(ref, {
       pendingMembers: arrayUnion(person),
       pendingIds: arrayUnion(student.id),
     });
-    console.log('[joinClassByKey] ⏳ Đã gửi yêu cầu chờ duyệt');
     return { ok: true, class: cls, pending: true };
   } catch (e) {
-    console.error('[joinClassByKey] ❌ Lỗi chi tiết:', {
-      code: e.code,
-      message: e.message,
-      name: e.name,
-    });
-
+    console.error('[joinClassByKey] Lỗi:', e.code, e.message);
     return {
       ok: false,
       error: friendlyFirestoreError(e, 'join lớp'),
@@ -257,11 +243,29 @@ export async function approveAllMembers(classId) {
     const pending = cls.pendingMembers || [];
     if (pending.length === 0) return { ok: true, count: 0 };
 
-    for (const p of pending) {
-      // eslint-disable-next-line no-await-in-loop
-      await approveMember(classId, p.id);
+    // v6: dùng arrayUnion/arrayRemove thay vì ghi đè cả mảng → nếu HS khác vừa xin vào
+    // đúng lúc GV bấm "Duyệt tất cả" thì yêu cầu mới không bị xóa mất.
+    const already = new Set(cls.memberIds || []);
+    const toAdd = pending.filter((p) => !already.has(p.id));
+    const newMembers = toAdd.map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      role: 'member',
+      joinedAt: new Date().toISOString(),
+    }));
+    const newIds = toAdd.map((p) => p.id);
+
+    const patch = {
+      pendingMembers: arrayRemove(...pending),
+      pendingIds: arrayRemove(...pending.map((p) => p.id)),
+    };
+    if (newMembers.length) {
+      patch.members = arrayUnion(...newMembers);
+      patch.memberIds = arrayUnion(...newIds);
     }
-    return { ok: true, count: pending.length };
+    await updateDoc(doc(db, 'classes', classId), patch);
+    return { ok: true, count: toAdd.length };
   } catch (e) {
     console.error('[approveAllMembers] Lỗi:', e.message);
     return { ok: false, error: friendlyFirestoreError(e, 'duyệt tất cả') };
@@ -305,7 +309,24 @@ export async function createExam({
   opensAt = null, closesAt = null,
   proctor = null,
 }) {
-  const totalPoints = (questions || []).reduce((s, q) => s + (q.points || 1), 0);
+  /* v6: chặn đề hỏng ngay từ đầu. Trước đây câu có correct = -1 (AI chưa xác định
+     đáp án) vẫn lưu được và HS không bao giờ được điểm câu đó. */
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw new Error('Đề cần ít nhất 1 câu hỏi.');
+  }
+  const badIdx = questions.findIndex((q) =>
+    !q?.q?.trim() ||
+    !Array.isArray(q.options) ||
+    q.options.filter((o) => String(o || '').trim()).length < 2 ||
+    !Number.isInteger(q.correct) || q.correct < 0 || q.correct >= q.options.length ||
+    !String(q.options[q.correct] || '').trim()
+  );
+  if (badIdx >= 0) {
+    throw new Error(`Câu ${badIdx + 1} không hợp lệ (thiếu nội dung, đáp án hoặc đáp án đúng).`);
+  }
+  // Firestore không nhận giá trị undefined → làm sạch trước khi ghi
+  questions = JSON.parse(JSON.stringify(questions));
+  const totalPoints = questions.reduce((s, q) => s + (q.points || 1), 0);
 
   const data = {
     token: generateExamToken(),
@@ -315,7 +336,7 @@ export async function createExam({
     title: title || 'Đề kiểm tra',
     description: description || '',
     duration: Number(duration) || 15,
-    questions: questions || [],
+    questions,
     totalPoints,
     showAnswerAfter: showAnswerAfter ?? true,
     allowRetry: allowRetry ?? false,
@@ -419,7 +440,6 @@ export async function getExamById(id) {
 export async function deleteExam(examId) {
   if (!examId) return;
   try {
-    // Xóa kèm dữ liệu liên quan (Firestore không tự xóa subcollection / doc tham chiếu)
     const kill = async (q) => {
       const s = await getDocs(q);
       await Promise.all(s.docs.map((d) => deleteDoc(d.ref)));
@@ -456,8 +476,6 @@ export async function startAttempt({ examId, student, forceNew = false }) {
       if (!exam?.allowRetry && !forceNew) {
         return { id: attemptId, ...data, restored: true, submitted: true };
       }
-
-      console.log('[startAttempt] Đề cho làm lại — tạo attempt mới');
     }
 
     const data = {
@@ -513,7 +531,7 @@ export async function appendAttemptEvents({ examId, studentId, events }) {
   const attemptId = `${examId}_${studentId}`;
   const ref = doc(db, 'exams', examId, 'attempts', attemptId);
   try {
-    await updateDoc(ref, { events: arrayUnion(...events) }); // atomic, không mất sự kiện khi ghi song song
+    await updateDoc(ref, { events: arrayUnion(...events) });
   } catch (e) {
     if (e.code !== 'not-found') {
       console.warn('[appendAttemptEvents] Lỗi:', e.code, e.message);
@@ -533,12 +551,19 @@ export async function getAttemptsByExam(examId) {
 }
 
 /* ============================================================
-   SUBMISSIONS
+   SUBMISSIONS — v5
+   ------------------------------------------------------------
+   FIX: dùng doc ID cố định ${examId}_${studentId} → 2 lần nộp
+   nhanh không tạo 2 submission. Ghi đè submission cũ nếu là
+   lần thi lại (có permit).
    ============================================================ */
 export async function submitExam({ examId, student, answers, timeSpent, attemptMeta = {} }) {
   if (!examId || !student?.id) {
     return { ok: false, error: 'Thiếu thông tin nộp bài.' };
   }
+  // v6: không để answers undefined làm crash chấm điểm; không sửa trực tiếp object của caller
+  answers = Array.isArray(answers) ? answers : [];
+  attemptMeta = { ...attemptMeta };
 
   let exam;
   try {
@@ -553,47 +578,43 @@ export async function submitExam({ examId, student, answers, timeSpent, attemptM
   if (exam.opensAt && now < new Date(exam.opensAt).getTime()) {
     return { ok: false, error: 'Đề chưa mở.' };
   }
-  // Cho nộp trễ tối đa bằng thời lượng đề (HS bắt đầu trước giờ đóng vẫn được nộp)
   if (exam.closesAt && now > new Date(exam.closesAt).getTime() + (Number(exam.duration) || 0) * 60000) {
     return { ok: false, error: 'Đề đã đóng.' };
   }
 
-  // Kiểm tra đã nộp chưa
-  let oldSnap;
+  const subId = `${examId}_${student.id}`;
+  const subRef = doc(db, 'submissions', subId);
+
+  let oldSub = null;
   try {
-    const oldQ = query(
-      collection(db, 'submissions'),
-      where('examId', '==', examId),
-      where('studentId', '==', student.id)
-    );
-    oldSnap = await getDocs(oldQ);
+    const oldSnap = await getDoc(subRef);
+    if (oldSnap.exists()) oldSub = { id: oldSnap.id, ...oldSnap.data() };
   } catch (e) {
-    console.warn('[submitExam] Không check được submission cũ:', e.code, e.message);
-    oldSnap = { empty: true, docs: [] };
+    console.warn('[submitExam] Không đọc được submission cũ:', e.code, e.message);
   }
 
-  // Thi lại: phải có permit/allowance hợp lệ (kiểm tra lại ở đây, không tin cờ từ client)
   let retryOk = false;
-  if (attemptMeta.isRetry && oldSnap.docs?.length > 0) {
+  if (attemptMeta.isRetry && oldSub) {
     const p = await checkRetryPermit({ examId, classId: exam.classId, studentId: student.id });
     retryOk = !!p.canRetry;
+    if (retryOk && p.permit?.id) {
+      attemptMeta.permitId = p.permit.id;
+    }
   }
 
-  if (!exam.allowRetry && !retryOk && oldSnap.docs?.length > 0) {
-    const prev = oldSnap.docs[0].data();
+  if (!exam.allowRetry && !retryOk && oldSub) {
     return {
       ok: true,
-      id: oldSnap.docs[0].id,
-      score: prev.score,
-      correct: prev.correctCount,
-      total: prev.totalQuestions || exam.questions.length,
-      totalPoints: prev.totalPoints || exam.totalPoints,
-      detail: prev.detail || [],
+      id: oldSub.id,
+      score: oldSub.score,
+      correct: oldSub.correctCount,
+      total: oldSub.totalQuestions || exam.questions.length,
+      totalPoints: oldSub.totalPoints || exam.totalPoints,
+      detail: oldSub.detail || [],
       alreadySubmitted: true,
     };
   }
 
-  // Chấm điểm
   let correctCount = 0;
   let score = 0;
   const detail = exam.questions.map((q, i) => {
@@ -618,6 +639,7 @@ export async function submitExam({ examId, student, answers, timeSpent, attemptM
     totalQuestions: exam.questions.length,
     timeSpent: timeSpent || 0,
     submittedAt: serverTimestamp(),
+    submittedAtMs: now,
     graded: true,
     autoSubmitted: !!attemptMeta.autoSubmitted,
     violationCount: attemptMeta.violationCount || 0,
@@ -625,10 +647,8 @@ export async function submitExam({ examId, student, answers, timeSpent, attemptM
     isRetry: !!attemptMeta.isRetry,
   };
 
-  let subId;
   try {
-    const ref = await addDoc(collection(db, 'submissions'), data);
-    subId = ref.id;
+    await setDoc(subRef, data);
   } catch (e) {
     console.error('[submitExam] Ghi submission lỗi:', e.code, e.message);
     return {
@@ -643,7 +663,18 @@ export async function submitExam({ examId, student, answers, timeSpent, attemptM
     };
   }
 
-  // Đánh dấu attempt đã nộp
+  if (retryOk && attemptMeta.permitId) {
+    try {
+      await updateDoc(doc(db, 'examRetryPermits', attemptMeta.permitId), {
+        status: 'used',
+        usedAt: serverTimestamp(),
+        usedAtMs: Date.now(),
+      });
+    } catch (e) {
+      console.warn('[submitExam] markPermitUsed fail:', e.message);
+    }
+  }
+
   try {
     const attemptId = `${examId}_${student.id}`;
     await updateDoc(doc(db, 'exams', examId, 'attempts', attemptId), {
@@ -698,23 +729,15 @@ export async function getSubmissionsByStudent(studentId) {
 export async function getSubmissionForStudent(examId, studentId) {
   if (!examId || !studentId) return null;
   try {
-    const q = query(
-      collection(db, 'submissions'),
-      where('examId', '==', examId),
-      where('studentId', '==', studentId)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    const ms = (x) => x?.submittedAt?.toMillis?.() ?? x?.submittedAt ?? 0;
-    const list = snap.docs.map((x) => ({ id: x.id, ...x.data() })).sort((a, b) => ms(b) - ms(a));
-    return list[0]; // bài nộp MỚI NHẤT
+    const snap = await getDoc(doc(db, 'submissions', `${examId}_${studentId}`));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() };
   } catch (e) {
     console.error('[getSubmissionForStudent] Lỗi:', e.code, e.message);
     return null;
   }
 }
 
-/* Lấy tất cả submissions của 1 HS cho 1 đề (để hiện lịch sử thi lại) */
 export async function getAllSubmissionsForStudent(examId, studentId) {
   if (!examId || !studentId) return [];
   try {
@@ -732,24 +755,13 @@ export async function getAllSubmissionsForStudent(examId, studentId) {
 }
 
 /* ============================================================
-   TÍNH NĂNG A — DUYỆT THI LẠI
-   ------------------------------------------------------------
-   Data model:
-     /examRetryPermits/{permitId}
-       examId, classId, studentId, studentName,
-       status: pending|approved|denied|used,
-       reason, requestedAt, decidedAt, decidedBy, usedAt, note
-     /studentRetryAllowance/{classId_studentId}
-       classId, studentId, allowed, updatedAt, updatedBy
+   DUYỆT THI LẠI
    ============================================================ */
-
-/* ------ HS: gửi yêu cầu xin thi lại ------ */
 export async function requestRetry({ examId, classId, student, reason = '' }) {
   if (!examId || !student?.id) {
     return { ok: false, error: 'Thiếu thông tin.' };
   }
   try {
-    // Kiểm tra xem đã có yêu cầu pending chưa
     const q = query(
       collection(db, 'examRetryPermits'),
       where('examId', '==', examId),
@@ -783,7 +795,6 @@ export async function requestRetry({ examId, classId, student, reason = '' }) {
   }
 }
 
-/* ------ GV: duyệt yêu cầu ------ */
 export async function approveRetry({ permitId, teacherId, note = '' }) {
   if (!permitId) return { ok: false, error: 'Thiếu permitId' };
   try {
@@ -801,7 +812,6 @@ export async function approveRetry({ permitId, teacherId, note = '' }) {
   }
 }
 
-/* ------ GV: từ chối yêu cầu ------ */
 export async function denyRetry({ permitId, teacherId, note = '' }) {
   if (!permitId) return { ok: false, error: 'Thiếu permitId' };
   try {
@@ -819,7 +829,6 @@ export async function denyRetry({ permitId, teacherId, note = '' }) {
   }
 }
 
-/* ------ GV: bật cho HS thi lại mọi đề của lớp ------ */
 export async function setStudentRetryAllowance({ classId, studentId, allowed, teacherId }) {
   if (!classId || !studentId) return { ok: false, error: 'Thiếu thông tin.' };
   const id = `${classId}_${studentId}`;
@@ -839,11 +848,9 @@ export async function setStudentRetryAllowance({ classId, studentId, allowed, te
   }
 }
 
-/* ------ HS: kiểm tra permit trước khi vào thi ------ */
 export async function checkRetryPermit({ examId, classId, studentId }) {
   if (!examId || !studentId) return { canRetry: false, source: 'none' };
   try {
-    // 1. Check permit riêng cho đề này
     const q = query(
       collection(db, 'examRetryPermits'),
       where('examId', '==', examId),
@@ -858,7 +865,6 @@ export async function checkRetryPermit({ examId, classId, studentId }) {
       return { canRetry: true, source: 'permit', permit: approved[0] };
     }
 
-    // 2. Check allowance của lớp
     if (classId) {
       const allowId = `${classId}_${studentId}`;
       const allowSnap = await getDoc(doc(db, 'studentRetryAllowance', allowId));
@@ -874,8 +880,7 @@ export async function checkRetryPermit({ examId, classId, studentId }) {
   }
 }
 
-/* ------ HS: đánh dấu permit đã dùng ------ */
-export async function markPermitUsed({ permitId, teacherId }) {
+export async function markPermitUsed({ permitId }) {
   if (!permitId) return { ok: false };
   try {
     await updateDoc(doc(db, 'examRetryPermits', permitId), {
@@ -890,7 +895,6 @@ export async function markPermitUsed({ permitId, teacherId }) {
   }
 }
 
-/* ------ GV: lấy quyền thi lại theo lớp → { [studentId]: true } ------ */
 export async function getClassAllowances(classId) {
   if (!classId) return {};
   try {
@@ -904,7 +908,6 @@ export async function getClassAllowances(classId) {
   }
 }
 
-/* ------ GV: lấy danh sách yêu cầu ------ */
 export async function getRetryRequests({ examId = null, classId = null, status = null } = {}) {
   try {
     const constraints = [];
@@ -923,9 +926,6 @@ export async function getRetryRequests({ examId = null, classId = null, status =
   }
 }
 
-/* ------ GV: lắng nghe yêu cầu thi lại của CÁC LỚP CỦA MÌNH ------
-   Mỗi lớp 1 listener chỉ với where('classId','==',id): không cần composite index,
-   và khớp các Firestore Rules giới hạn theo lớp. Sắp xếp phía client. */
 export function listenRetryRequestsByClasses(classIds, cb, onError) {
   const ids = [...new Set((classIds || []).filter(Boolean))];
   if (ids.length === 0) { cb([]); return () => {}; }
@@ -947,7 +947,6 @@ export function listenRetryRequestsByClasses(classIds, cb, onError) {
   return () => unsubs.forEach((u) => u && u());
 }
 
-/* ------ GV: lắng nghe realtime ------ */
 export function listenRetryRequests(cb, { classId = null, status = null } = {}) {
   const constraints = [];
   if (classId) constraints.push(where('classId', '==', classId));
@@ -963,7 +962,6 @@ export function listenRetryRequests(cb, { classId = null, status = null } = {}) 
   });
 }
 
-/* ============ REALTIME ============ */
 export function listenExamsByClass(classId, cb) {
   if (!classId) return () => {};
   const q = query(collection(db, 'exams'), where('classId', '==', classId));

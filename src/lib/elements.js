@@ -1,5 +1,9 @@
-/* 25 nguyên tố hay gặp ở THPT + một câu chuyện nhỏ cho mỗi nguyên tố. Xoay theo ngày trong năm. */
-export const ELEMENTS = [
+/* ============================================================
+   elements.js — NGUỒN DỮ LIỆU DUY NHẤT cho nguyên tố (24 nguyên tố hay gặp ở THPT)
+   Mỗi phần tử có cả khóa ngắn (z, s, n, m) lẫn khóa đầy đủ (symbol, name, mass)
+   nên code cũ dùng kiểu nào cũng chạy.
+   ============================================================ */
+const RAW = [
   { z: 1, s: 'H', n: 'Hiđro', m: '1,008', fact: 'Nguyên tố nhẹ nhất và nhiều nhất trong vũ trụ.' },
   { z: 2, s: 'He', n: 'Heli', m: '4,003', fact: 'Được phát hiện trên Mặt Trời trước khi tìm thấy trên Trái Đất.' },
   { z: 3, s: 'Li', n: 'Liti', m: '6,94', fact: 'Kim loại nhẹ nhất, có trong pin sạc điện thoại.' },
@@ -26,7 +30,34 @@ export const ELEMENTS = [
   { z: 82, s: 'Pb', n: 'Chì', m: '207,2', fact: 'Rất độc, nên đã bị loại khỏi xăng và ống nước.' },
 ];
 
+/** Thêm khóa đầy đủ để khớp code dùng e.symbol / e.name / e.mass. */
+export const ELEMENTS = RAW.map((e) => ({ ...e, symbol: e.s, name: e.n, mass: e.m, number: e.z }));
+
+/** Danh sách nguyên tố có sẵn "fact" (trước đây là mảng riêng gây trùng dữ liệu). */
+export const ELEMENTS_THPT = ELEMENTS;
+
+/** Ngày thứ mấy trong năm (1..366), tính theo UTC nên không lệch khi đổi giờ. */
+export function dayOfYear(d = new Date()) {
+  const start = Date.UTC(d.getFullYear(), 0, 0);
+  const cur = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.floor((cur - start) / 864e5);
+}
+
+/** Nguyên tố của ngày — xoay vòng theo ngày trong năm. */
 export function elementOfDay(d = new Date()) {
-  const day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
-  return ELEMENTS[day % ELEMENTS.length];
+  return ELEMENTS[dayOfYear(d) % ELEMENTS.length];
+}
+
+const fold = (s) =>
+  String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim();
+
+/** Tìm nguyên tố theo ký hiệu, số hiệu hoặc tên (không phân biệt dấu). */
+export function findElement(query) {
+  const q = fold(query);
+  if (!q) return null;
+  return (
+    ELEMENTS.find((e) => fold(e.s) === q || String(e.z) === q || fold(e.n) === q) ||
+    ELEMENTS.find((e) => fold(e.n).includes(q)) ||
+    null
+  );
 }

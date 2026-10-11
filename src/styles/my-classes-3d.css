@@ -976,3 +976,187 @@
   .mc3-trend li i { animation: none; }
   .mc3-progress-bar i { transition: none; }
 }
+
+/* ---- SỬA LỖI KHÔNG BẤM ĐƯỢC ----
+   Khung .mc3-room nằm ở mặt phẳng z=0, trước tường (z=-50) nên "ăn" hết cú bấm.
+   Cho khung phòng trong suốt với chuột; chỉ tường và sàn nhận bấm. */
+.mc3-room { pointer-events: none; }
+.mc3-wall,
+.mc3-floor { pointer-events: auto; }
+/* tường giữ 3D thật để bảng/giấy nhớ có chiều sâu.
+   Hàng biển lớp để phẳng (1 mặt phẳng nổi trước tường) → bấm chuẩn kể cả khi phòng nghiêng. */
+.mc3-wall { transform-style: preserve-3d; }
+.mc3-stage { transform-style: preserve-3d; }
+.mc3-signs { transform-style: flat; }
+
+/* ============================================================
+   v6 — NÂNG CẤP GIAO DIỆN
+   ============================================================ */
+
+/* ---- sửa chồng chéo trên bảng ---- */
+.mc3-trend ul { margin-bottom: .25rem; }
+.mc3-side-title-2 { margin-top: 1.2rem; }
+.mc3-hello {
+  margin: 0 0 .35rem;
+  font: 700 .86rem var(--sans);
+  color: #fde68a;
+  opacity: .95;
+}
+
+/* ---- giấy nhớ không chạm mép bảng: chỉ đứng bên phải khi đủ rộng ---- */
+.mc3-stage { max-width: 1500px; }
+.mc3-notes { left: calc(50% + 520px); right: auto; width: 190px; top: 1.6rem; }
+@media (max-width: 1520px) {
+  .mc3-notes {
+    position: static;
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1.4rem;
+    transform: translateZ(30px);
+  }
+  .mc3-notes-title { flex-basis: 100%; justify-content: center; }
+  .mc3-note { width: 200px; }
+}
+
+/* ---- nắng chiếu từ cửa sổ + bụi bay ---- */
+.mc3-beam {
+  position: absolute;
+  top: 132px; right: 3.4%;
+  width: 420px; height: 62%;
+  clip-path: polygon(70% 0, 100% 0, 30% 100%, -40% 100%);
+  background: linear-gradient(180deg, var(--beam, rgba(255, 244, 196, .55)), transparent 90%);
+  pointer-events: none;
+  transform: translateZ(2px);
+}
+.mc3-beam::after {
+  content: '';
+  position: absolute;
+  left: 52%; top: 14%;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: -40px 70px 0 #fff, 30px 130px 0 #fff, -90px 180px 0 #fff, 10px 210px 0 #fff, -60px 260px 0 #fff;
+  opacity: .7;
+  animation: mc3-dust 9s ease-in-out infinite;
+}
+@keyframes mc3-dust {
+  0%, 100% { transform: translate(0, 0); opacity: .35; }
+  50% { transform: translate(-14px, 18px); opacity: .85; }
+}
+.mc3[data-tod='dawn']  { --beam: rgba(255, 207, 160, .5); }
+.mc3[data-tod='dusk']  { --beam: rgba(255, 160, 110, .42); }
+.mc3[data-tod='night'] .mc3-beam { display: none; }
+.mc3[data-tod='night'] .mc3-wall {
+  background:
+    linear-gradient(180deg, transparent 78%, rgba(0, 0, 0, .1)),
+    linear-gradient(180deg, color-mix(in srgb, var(--acc) 12%, #101522), color-mix(in srgb, var(--acc) 14%, #0a0e18));
+}
+
+/* ---- áp phích theo môn (kiểu bảng tuần hoàn) ---- */
+.mc3-poster {
+  position: absolute;
+  top: 118px; left: 3.4%;
+  display: grid;
+  gap: .3rem;
+  width: 82px;
+  padding: 7px 7px 8px;
+  background: #fffdf6;
+  box-shadow: 0 10px 16px -8px rgba(0, 0, 0, .45);
+  transform: translateZ(10px) rotate(-3deg);
+}
+.mc3-poster::before {
+  content: '';
+  position: absolute;
+  top: -5px; left: calc(50% - 5px);
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, .35);
+}
+.mc3-poster i {
+  display: block;
+  height: 60px;
+  background:
+    repeating-linear-gradient(90deg, #fffdf6 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(0deg, #fffdf6 0 2px, transparent 2px 9px),
+    linear-gradient(135deg, color-mix(in srgb, var(--c) 85%, #fff), color-mix(in srgb, var(--c) 45%, #6366f1));
+}
+.mc3-poster b {
+  font: 800 .6rem var(--sans);
+  letter-spacing: .05em;
+  text-align: center;
+  text-transform: uppercase;
+  color: #334155;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- thảm trải sàn ---- */
+.mc3-floor-plane::after {
+  content: '';
+  position: absolute;
+  inset: 2% 31% 6% 31%;
+  border-radius: 10px;
+  border: 14px solid #f3e6c8;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .06) 0 8px, transparent 8px 16px),
+    linear-gradient(160deg, color-mix(in srgb, var(--acc) 60%, #1e3a8a), color-mix(in srgb, var(--acc) 35%, #172554));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 40%, #1e3a8a), 0 12px 30px rgba(0, 0, 0, .35);
+  opacity: .9;
+}
+.mc3.flat .mc3-floor-plane::after { display: none; }
+
+/* ---- bàn: giấy rơi xuống, ánh sáng lướt, sao điểm cao ---- */
+.mc3-paper { animation: mc3-drop .7s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes mc3-drop {
+  from { opacity: 0; transform: translateY(-46px) rotate(-5deg) scale(.96); }
+  to   { opacity: 1; transform: rotate(-.5deg); }
+}
+.mc3-paper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(240px circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, .7), transparent 62%);
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.mc3-desk:hover .mc3-paper::after { opacity: 1; }
+
+.mc3-star {
+  position: absolute;
+  top: -10px; left: 14px;
+  display: grid;
+  place-items: center;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(#fde68a, #f59e0b);
+  color: #7c4a03;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .3), inset 0 0 0 2px rgba(255, 255, 255, .5);
+}
+
+/* biển lớp đang chọn: nổi bật hơn */
+.mc3-sign.active { box-shadow: 0 2px 0 color-mix(in srgb, var(--c) 60%, #000), 0 20px 28px -10px color-mix(in srgb, var(--c) 75%, #000), 0 0 0 3px rgba(255, 255, 255, .55); }
+
+@media (max-width: 1360px) { .mc3-beam, .mc3-poster { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .mc3-paper, .mc3-beam::after { animation: none !important; }
+}
+
+/* thảm dịu hơn, thấy sàn gỗ xung quanh */
+.mc3-floor-plane::after {
+  inset: 2% 34% 6% 34%;
+  border-width: 9px;
+  border-color: #ecdcb8;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 8px, transparent 8px 16px),
+    linear-gradient(160deg, color-mix(in srgb, var(--acc) 38%, #5b3a2a), color-mix(in srgb, var(--acc) 22%, #3a2519));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, #5b3a2a), 0 12px 30px rgba(0, 0, 0, .3);
+  opacity: .72;
+}
+
+.mc3-sign-txt small { white-space: nowrap; }
