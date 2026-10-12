@@ -13,6 +13,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
 import CreateExamAI from './CreateExamAI.jsx';
+import AutoExamStudio from './AutoExamStudio.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -58,10 +59,10 @@ const fmtAgo = (t) => {
 /* ============================================================
    MAIN
    ============================================================ */
-export default function CreateExamPage({ classInfo, grades = [], subjects = [], onDone, onCancel }) {
+export default function CreateExamPage({ classInfo, classes = [], grades = [], subjects = [], onDone, onCancel }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [tab, setTab] = useState('manual');
+  const [tab, setTab] = useState('ai'); // Mặc định mở AutoExam AI Studio
   const [initialData, setInitialData] = useState(null);
   const [formVersion, setFormVersion] = useState(0); // đổi khi nạp đề mới từ AI
   const [saving, setSaving] = useState(false);
@@ -172,25 +173,25 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
         <button
           type="button"
           role="tab"
-          aria-selected={tab === 'manual'}
-          className={'cep-tab' + (tab === 'manual' ? ' on' : '')}
-          onClick={() => setTab('manual')}
-        >
-          <IcoDoc size={15} /> Tạo thủ công
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={tab === 'ai'}
           className={'cep-tab' + (tab === 'ai' ? ' on' : '')}
           onClick={() => setTab('ai')}
         >
-          <IcoSparkle size={15} /> Tạo bằng AI
+          <IcoSparkle size={15} /> Tạo bằng AI (AutoExam Studio)
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'manual'}
+          className={'cep-tab' + (tab === 'manual' ? ' on' : '')}
+          onClick={() => setTab('manual')}
+        >
+          <IcoDoc size={15} /> Soạn thủ công
         </button>
       </div>
 
       {/* ===== BẢN NHÁP CHƯA LƯU ===== */}
-      {pendingDraft && (
+      {pendingDraft && tab === 'manual' && (
         <div className="cep-draft-banner" role="status">
           <div>
             <b>Có bản nháp chưa lưu</b>
@@ -206,6 +207,15 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
       )}
 
       {/* ===== NỘI DUNG — cả 2 tab luôn mounted để không mất dữ liệu ===== */}
+      <div hidden={tab !== 'ai'}>
+        <AutoExamStudio
+          classes={classes.length ? classes : classInfo ? [classInfo] : []}
+          initialClass={classInfo}
+          onDone={onDone}
+          onCancel={onCancel}
+        />
+      </div>
+
       <div hidden={tab !== 'manual'}>
         <ExamCreateForm
           key={'form-' + formVersion}
@@ -216,14 +226,6 @@ export default function CreateExamPage({ classInfo, grades = [], subjects = [], 
           onSave={handleSave}
           onCancel={onCancel}
           saving={saving}
-        />
-      </div>
-
-      <div hidden={tab !== 'ai'}>
-        <CreateExamAI
-          grades={grades}
-          subjects={subjects}
-          onGenerated={handleAIGenerated}
         />
       </div>
     </div>

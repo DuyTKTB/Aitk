@@ -1,0 +1,825 @@
+/* ============================================================
+   autoexam-studio.css — Giao diện AI Studio Tạo Đề & Ma Trận Đề Thi
+   Chuẩn thiết kế autoexam.ai & visionOS Studio (Prefix: aes-)
+   ============================================================ */
+
+.aes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  color: var(--ink, #0f172a);
+}
+
+/* ============================================================
+   1. AUTOEXAM TOP HUB (GIAO DIỆN TRANG CHỦ AUTOEXAM.AI)
+   ============================================================ */
+.aes-hub-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.aes-greeting {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink, #0f172a);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aes-hub-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  padding-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.aes-hub-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mut, #64748b);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.aes-hub-tab:hover {
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+}
+
+.aes-hub-tab.active {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+  color: #7e22ce;
+}
+
+/* Ô nhập lệnh tạo đề lớn (Prompt Box) */
+.aes-prompt-box {
+  background: var(--panel, #ffffff);
+  border: 1.5px solid #e9d5ff;
+  border-radius: 20px;
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 10px 30px rgba(168, 85, 247, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.aes-prompt-box:focus-within {
+  border-color: #a855f7;
+  box-shadow: 0 10px 30px rgba(168, 85, 247, 0.15);
+}
+
+.aes-prompt-subtabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.aes-subtab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 0;
+  background: var(--surface-2, #f8fafc);
+  color: var(--mut, #64748b);
+}
+
+.aes-subtab-pill.active {
+  background: #7e22ce;
+  color: #ffffff;
+}
+
+.aes-prompt-input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  font-size: 1.05rem;
+  font-family: inherit;
+  color: var(--ink, #0f172a);
+  background: transparent;
+  resize: none;
+  min-height: 48px;
+}
+
+.aes-prompt-input::placeholder {
+  color: #94a3b8;
+}
+
+.aes-prompt-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.aes-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aes-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  background: var(--surface-2, #f8fafc);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mut, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aes-chip-btn:hover {
+  background: #f1f5f9;
+  color: var(--ink, #0f172a);
+}
+
+.aes-btn-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  background: linear-space, linear-gradient(135deg, #a855f7, #7e22ce);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(126, 34, 206, 0.25);
+  transition: all 0.2s ease;
+}
+
+.aes-btn-send:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(126, 34, 206, 0.35);
+}
+
+/* ============================================================
+   2. AUTOEXAM STUDIO SPLIT LAYOUT (HÌNH 2, 3, 4, 5)
+   ============================================================ */
+.aes-studio {
+  display: grid;
+  grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
+  gap: 1.25rem;
+  height: calc(100vh - 160px);
+  min-height: 640px;
+}
+
+@media (max-width: 1024px) {
+  .aes-studio {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+/* ------------------------------------------------------------
+   LEFT PANE: AI CHAT INTERVIEW (HỎI RẤT KĨ)
+   ------------------------------------------------------------ */
+.aes-left-pane {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+.aes-left-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.aes-left-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #7e22ce;
+}
+
+.aes-left-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Bong bóng chat người dùng & AI */
+.aes-msg-user {
+  align-self: flex-end;
+  background: #f3e8ff;
+  color: #581c87;
+  padding: 0.65rem 1rem;
+  border-radius: 18px 18px 4px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: 85%;
+}
+
+.aes-msg-ai {
+  align-self: flex-start;
+  color: var(--ink, #0f172a);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Thẻ phỏng vấn tương tác (Interactive Question Card) */
+.aes-interview-card {
+  background: #faf5ff;
+  border: 1.5px solid #e9d5ff;
+  border-radius: 18px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: aes-slide-in 0.25s ease;
+}
+
+@keyframes aes-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.aes-interview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #6b21a8;
+}
+
+.aes-interview-step {
+  font-size: 0.75rem;
+  color: #a855f7;
+  font-weight: 700;
+}
+
+.aes-interview-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.aes-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid #e9d5ff;
+  background: #ffffff;
+  color: var(--ink, #0f172a);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.aes-option-btn:hover {
+  border-color: #a855f7;
+  background: #f5f3ff;
+  color: #7e22ce;
+}
+
+.aes-option-btn.selected {
+  border-color: #7e22ce;
+  background: #7e22ce;
+  color: #ffffff;
+}
+
+/* Badge tóm tắt các lựa chọn đã chốt */
+.aes-summary-badge {
+  align-self: flex-end;
+  background: #ede9fe;
+  border: 1px solid #ddd6fe;
+  border-radius: 14px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  color: #4c1d95;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 85%;
+}
+
+.aes-summary-badge span {
+  display: block;
+}
+
+/* Collapsible Steps Trace (Đang phân tích...) */
+.aes-steps-trace {
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 14px;
+  padding: 0.65rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--mut, #64748b);
+}
+
+.aes-trace-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: #0284c7;
+  cursor: pointer;
+}
+
+.aes-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0284c7;
+  box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.6);
+  animation: aes-pulse 1.6s infinite;
+}
+
+@keyframes aes-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(2, 132, 199, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+}
+
+.aes-trace-item {
+  padding-left: 1rem;
+  position: relative;
+  line-height: 1.4;
+}
+
+.aes-trace-item::before {
+  content: '•';
+  position: absolute;
+  left: 0.25rem;
+  color: #0284c7;
+}
+
+/* Thẻ Hành động gợi ý: 1. Xác nhận & Sinh đề */
+.aes-action-box {
+  background: linear-gradient(135deg, rgba(243, 232, 255, 0.7), rgba(245, 243, 255, 0.9));
+  border: 1.5px solid #d8b4fe;
+  border-radius: 18px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.aes-action-box strong {
+  font-size: 0.85rem;
+  color: #581c87;
+}
+
+.aes-btn-confirm-gen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(126, 34, 206, 0.35);
+  transition: all 0.2s ease;
+}
+
+.aes-btn-confirm-gen:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(126, 34, 206, 0.45);
+}
+
+.aes-action-edit-input {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.aes-action-edit-input input {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #d8b4fe;
+  background: #ffffff;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.aes-action-edit-input button {
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  border: 0;
+  background: #7e22ce;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Chat Input Bar ở đáy cột trái */
+.aes-left-inputbar {
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aes-left-inputbar textarea {
+  flex: 1;
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.88rem;
+  outline: none;
+  font-family: inherit;
+  resize: none;
+  max-height: 80px;
+}
+
+.aes-left-inputbar textarea:focus {
+  border-color: #a855f7;
+}
+
+.aes-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+  color: var(--mut, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aes-icon-btn:hover {
+  background: #f1f5f9;
+  color: var(--ink, #0f172a);
+}
+
+/* ------------------------------------------------------------
+   RIGHT PANE: WORKSPACE & LIVE MATRIX / EXAM PREVIEW
+   ------------------------------------------------------------ */
+.aes-right-pane {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+.aes-right-head {
+  padding: 0.9rem 1.4rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.aes-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.aes-status-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.aes-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aes-btn-publish {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(126, 34, 206, 0.25);
+}
+
+.aes-right-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* ============================================================
+   3. CAROUSEL WALKTHROUGH (HÌNH 2, 3, 4)
+   ============================================================ */
+.aes-carousel-card {
+  max-width: 540px;
+  margin: 3rem auto;
+  background: var(--surface-2, #faf5ff);
+  border: 1.5px solid #e9d5ff;
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 15px 40px rgba(168, 85, 247, 0.08);
+}
+
+.aes-carousel-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: #ede9fe;
+  display: grid;
+  place-items: center;
+  color: #7e22ce;
+}
+
+.aes-carousel-card h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.aes-carousel-card p {
+  margin: 0;
+  color: var(--mut, #64748b);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.aes-carousel-dots {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+
+.aes-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #d8b4fe;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aes-dot.active {
+  width: 24px;
+  background: #7e22ce;
+}
+
+/* ============================================================
+   4. BẢNG MA TRẬN ĐỀ THI (HÌNH 5)
+   ============================================================ */
+.aes-matrix-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.aes-matrix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.aes-matrix-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.aes-matrix-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.aes-mbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+}
+
+.aes-matrix-tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 16px;
+  background: var(--panel, #ffffff);
+}
+
+.aes-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.aes-matrix-table th {
+  padding: 0.75rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border-bottom: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  white-space: nowrap;
+}
+
+.aes-matrix-table td {
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.06));
+}
+
+/* Màu các mức độ nhận thức */
+.aes-th-nb { background: rgba(16, 185, 129, 0.08); color: #047857; text-align: center; }
+.aes-th-th { background: rgba(2, 132, 199, 0.08); color: #0369a1; text-align: center; }
+.aes-th-vd { background: rgba(245, 158, 11, 0.08); color: #b45309; text-align: center; }
+.aes-th-vdc { background: rgba(239, 68, 68, 0.08); color: #b91c1c; text-align: center; }
+.aes-th-tot { background: var(--surface-2, #f8fafc); text-align: center; font-weight: 800; }
+
+.aes-cell-val {
+  font-weight: 700;
+  display: block;
+}
+
+.aes-cell-pts {
+  font-size: 0.7rem;
+  color: var(--mut, #64748b);
+  display: block;
+}
+
+.aes-row-part {
+  background: var(--surface-2, #f8fafc);
+  font-weight: 800;
+  color: #7e22ce;
+  font-size: 0.85rem;
+}
+
+.aes-row-total {
+  background: #fdf4ff;
+  font-weight: 800;
+  border-top: 2px solid #e9d5ff;
+}
+
+.aes-matrix-footer {
+  font-size: 0.78rem;
+  color: var(--mut, #64748b);
+  font-style: italic;
+}
+
+/* ============================================================
+   5. BẢN XEM TRƯỚC CÂU HỎI ĐÃ SINH THEO MA TRẬN
+   ============================================================ */
+.aes-exam-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.aes-question-card {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 16px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.aes-question-card:hover {
+  border-color: #d8b4fe;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+
+.aes-q-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.aes-q-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.aes-q-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.aes-badge-level {
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.aes-badge-level.nb { background: #d1fae5; color: #065f46; }
+.aes-badge-level.th { background: #e0f2fe; color: #0369a1; }
+.aes-badge-level.vd { background: #fef3c7; color: #92400e; }
+.aes-badge-level.vdc { background: #fee2e2; color: #991b1b; }
+
+.aes-q-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+}
+
+.aes-opt-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.aes-opt-item.correct {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+  font-weight: 700;
+}
+
+.aes-q-explain {
+  background: #f8fafc;
+  border-left: 3px solid #7e22ce;
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--mut, #475569);
+  line-height: 1.5;
+}

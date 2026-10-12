@@ -692,7 +692,7 @@ export default function TeacherDashboard() {
     },
     { key: 'exams', label: 'Đề thi', Icon: IcoBook },
     { key: 'sessions', label: 'Phòng thi', Icon: IcoVideo, badge: liveSessions.length || null, live: true },
-    { key: 'create', label: 'Tạo đề', Icon: IcoBook },
+    { key: 'create', label: 'AI Tạo đề & Ma trận', Icon: IcoSparkles },
     { key: 'bank', label: 'Ngân hàng', Icon: IcoLibrary },
     { key: 'paper', label: 'Chấm phiếu A4', Icon: IcoScan },
     {
@@ -755,8 +755,8 @@ export default function TeacherDashboard() {
       onSearch: setSearch, placeholder: 'Tìm phiên thi...',
     },
     create: {
-      title: 'Tạo đề mới',
-      subtitle: 'Thủ công hoặc để AI sinh từ ảnh, PDF, Word, Excel',
+      title: 'AutoExam AI Studio',
+      subtitle: 'Trợ lý AI tạo đề thông minh & Lập ma trận chuẩn Bộ GD&ĐT 2025',
     },
     bank: {
       title: 'Ngân hàng câu hỏi',
@@ -1433,38 +1433,24 @@ export default function TeacherDashboard() {
       })()}
 
       {/* ============================================================
-          TẠO ĐỀ
+          TẠO ĐỀ (AUTOEXAM AI STUDIO)
          ============================================================ */}
       {section === 'create' && (
-        classes.length > 1 && !selectedClass ? (
-          <div className="vt-empty">
-            <span><IcoBook size={30} /></span>
-            <h3>Chọn lớp để tạo đề</h3>
-            <p>Bạn có nhiều lớp, chọn 1 lớp trước khi tạo đề.</p>
-            <button
-              type="button"
-              className="vt-btn primary"
-              onClick={() => setShowClassPicker(true)}
-            >
-              <IcoUsers size={14} /> Chọn lớp
-            </button>
-          </div>
-        ) : (
-          <CreateExamPage
-            classInfo={selectedClass || classes[0]}
-            grades={[]}
-            subjects={[]}
-            onDone={async () => {
-              await refresh();
-              setSelectedClass(null);
-              goSection('exams');
-            }}
-            onCancel={() => {
-              setSelectedClass(null);
-              goSection('overview');
-            }}
-          />
-        )
+        <CreateExamPage
+          classInfo={selectedClass || classes[0]}
+          classes={classes}
+          grades={[]}
+          subjects={[]}
+          onDone={async () => {
+            await refresh();
+            setSelectedClass(null);
+            goSection('exams');
+          }}
+          onCancel={() => {
+            setSelectedClass(null);
+            goSection('overview');
+          }}
+        />
       )}
 
       {/* ============ TOAST ============ */}
