@@ -12,7 +12,6 @@
    ============================================================ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
-import CreateExamAI from './CreateExamAI.jsx';
 import AutoExamStudio from './AutoExamStudio.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
@@ -59,7 +58,7 @@ const fmtAgo = (t) => {
 /* ============================================================
    MAIN
    ============================================================ */
-export default function CreateExamPage({ classInfo, classes = [], grades = [], subjects = [], onDone, onCancel }) {
+export default function CreateExamPage({ classInfo, classes = [], classInsights, grades = [], subjects = [], onDone, onCancel }) {
   const { user } = useAuth();
   const toast = useToast();
   const [tab, setTab] = useState('ai'); // Mặc định mở AutoExam AI Studio
@@ -211,6 +210,7 @@ export default function CreateExamPage({ classInfo, classes = [], grades = [], s
         <AutoExamStudio
           classes={classes.length ? classes : classInfo ? [classInfo] : []}
           initialClass={classInfo}
+          classInsights={classInsights}
           onDone={onDone}
           onCancel={onCancel}
         />

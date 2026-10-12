@@ -11,8 +11,10 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import MathText from '../MathText.jsx';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { createExam } from '../../lib/classroom.js';
-import { planMatrixWithAI, generateQuestionsFromApprovedMatrix, BLOOM_MAPPING } from '../../lib/matrixAiService.js';
+import { planMatrixWithAI, generateQuestionsFromApprovedMatrix, refineMatrixWithAI, askPedagogyAI } from '../../lib/matrixAiService.js';
+import { readFile, validateFiles, fmtSize } from '../../lib/fileReader.js';
 import sound from '../../lib/gameSound.js';
+import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import '../../styles/autoexam-studio.css';
 
 /* ============ ICONS ============ */
@@ -23,6 +25,8 @@ const Svg = ({ size = 16, children }) => (
 const IcoSpark = (p) => <Svg {...p}><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" /></Svg>;
 const IcoSend = (p) => <Svg {...p}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></Svg>;
 const IcoPaperclip = (p) => <Svg {...p}><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></Svg>;
+const IcoSim = (p) => <Svg {...p}><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></Svg>;
+const IcoPrinter = (p) => <Svg {...p}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></Svg>;
 const IcoLightbulb = (p) => <Svg {...p}><path d="M9 18h6" /><path d="M10 22h4" /><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.64.78 1.08 1.6 1.41 2.5" /></Svg>;
 const IcoCheck = (p) => <Svg {...p}><polyline points="20 6 9 17 4 12" /></Svg>;
 const IcoTable = (p) => <Svg {...p}><path d="M3 3h18v18H3z" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" /></Svg>;
@@ -55,9 +59,22 @@ const CAROUSEL_SLIDES = [
   },
 ];
 
+function parseExamIntent(text) {
+  const t = String(text || '');
+  const count = t.match(/(\d+)\s*câu/i);
+  const duration = t.match(/(\d+)\s*(phút|phut)/i);
+  const grade = t.match(/lớp\s*(\d{1,2})/i);
+  return {
+    count: count ? Number(count[1]) : null,
+    duration: duration ? Number(duration[1]) : null,
+    grade: grade ? grade[1] : null,
+  };
+}
+
 export default function AutoExamStudio({
   classes = [],
   initialClass = null,
+  classInsights,
   onDone,
   onCancel,
 }) {
@@ -81,9 +98,16 @@ export default function AutoExamStudio({
   const [matrixMode, setMatrixMode] = useState('bogddt'); // bogddt | bloom
   const [questions, setQuestions] = useState([]);
   const [viewMode, setViewMode] = useState('matrix'); // matrix | preview
+  const [showSimulator, setShowSimulator] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [editNote, setEditNote] = useState('');
+  const [studioError, setStudioError] = useState('');
+  const fileInputRef = useRef(null);
 
   // Carousel
   const [carouselIdx, setCarouselIdx] = useState(0);
+
+  const insightText = classInsights?.forAi || '';
 
   // Chat message history
   const [chatMessages, setChatMessages] = useState([
@@ -111,13 +135,14 @@ export default function AutoExamStudio({
     return () => clearInterval(t);
   }, [matrixData]);
 
-  // Xử lý chọn lớp
+  const pushChat = (msg) => setChatMessages((prev) => [...prev, msg]);
+
   const handleSelectGrade = (g) => {
     setSelectedGrade(g);
     sound.ding();
     setChatMessages((prev) => [
       ...prev,
-      { role: 'summary', text: `Bài tập dành cho học sinh: Lớp ${g}` },
+      { role: 'summary', text: `Dành cho học sinh lớp ${g}` },
       { role: 'ai', text: 'Đề gồm bao nhiêu câu và thời lượng làm bài?' },
     ]);
     setStep(2);
@@ -136,17 +161,17 @@ export default function AutoExamStudio({
     setStep(3);
   };
 
-  // Xử lý chọn cấu trúc và KÍCH HOẠT LẬP MA TRẬN
   const handleSelectFormatAndPlanMatrix = async (fmt) => {
     setSelectedFormat(fmt);
     sound.ding();
     setStep(4);
     setAnalyzing(true);
+    setStudioError('');
 
     setChatMessages((prev) => [
       ...prev,
       { role: 'summary', text: `Định dạng: ${fmt}` },
-      { role: 'trace_loading', text: 'Đang phân tích yêu cầu của bạn...' },
+      { role: 'trace_loading', text: insightText ? 'Đang đọc dữ liệu lớp và lập ma trận...' : 'Đang phân tích yêu cầu và lập ma trận...' },
     ]);
 
     try {
@@ -156,6 +181,10 @@ export default function AutoExamStudio({
         subject: 'Hóa học',
         count: selectedCount,
         duration: selectedDuration,
+        format: fmt,
+        intent: activeHubTab === 'sheet' ? 'sheet' : activeHubTab === 'lecture' ? 'lecture' : 'exam',
+        classInsights: insightText,
+        files: attachedFiles,
       });
 
       setMatrixData(planned);
@@ -165,21 +194,28 @@ export default function AutoExamStudio({
         ...prev.filter((m) => m.role !== 'trace_loading'),
         {
           role: 'trace_done',
-          title: `Đề xuất ma trận ${selectedCount} câu — mời bạn xác nhận`,
+          title: `Ma trận ${planned.totalQuestions || selectedCount} câu — xác nhận để sinh đề`,
           steps: [
-            'Đang phân tích yêu cầu của bạn...',
-            'Đang khảo sát dữ liệu đề tối ưu để rèn luyện...',
-            'Ngân hàng câu hỏi: Phân bổ 4 mức độ nhận thức.',
-            `Đề xuất ma trận ${selectedCount} câu — mời bạn xác nhận.`,
+            insightText ? 'Đã đọc điểm yếu từ bài nộp của lớp.' : 'Đã đọc yêu cầu chủ đề và khối lớp.',
+            attachedFiles.length ? `Đã dùng ${attachedFiles.length} tài liệu đính kèm.` : 'Phân bổ 4 mức nhận biết → vận dụng cao.',
+            planned.source === 'fallback' ? 'AI chưa phản hồi — đang dùng khung dự phòng, bạn vẫn chỉnh được.' : 'Ma trận do AI lập theo khảo thí GDPT 2018.',
+            'Xem bảng bên phải rồi bấm Xác nhận & Sinh đề.',
           ],
         },
         {
           role: 'ai_advice',
-          text: planned.aiPedagogicalAdvice || `Chào bạn, mình đã lập xong ma trận gồm đúng ${selectedCount} câu hỏi trong thời lượng ${selectedDuration} phút. Bạn hãy xem ma trận bên phải rồi bấm Xác nhận & Sinh đề nhé! 🎓`,
+          text: planned.aiPedagogicalAdvice || `Đã lập ma trận ${selectedCount} câu / ${selectedDuration} phút. Xem bảng rồi xác nhận để sinh câu hỏi.`,
         },
       ]);
     } catch (e) {
       console.error(e);
+      const msg = e.message || 'Không lập được ma trận.';
+      setStudioError(msg);
+      setChatMessages((prev) => [
+        ...prev.filter((m) => m.role !== 'trace_loading'),
+        { role: 'ai', text: `Không lập được ma trận: ${msg}` },
+      ]);
+      setStep(3);
     } finally {
       setAnalyzing(false);
     }
@@ -612,13 +648,24 @@ export default function AutoExamStudio({
 
             <div className="aes-right-actions">
               {questions.length > 0 && (
-                <button
-                  type="button"
-                  className="vt-btn sm"
-                  onClick={() => setViewMode(viewMode === 'matrix' ? 'preview' : 'matrix')}
-                >
-                  <IcoEye size={14} /> {viewMode === 'matrix' ? 'Xem câu hỏi' : 'Xem ma trận'}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    onClick={() => setViewMode(viewMode === 'matrix' ? 'preview' : 'matrix')}
+                  >
+                    <IcoEye size={14} /> {viewMode === 'matrix' ? 'Xem câu hỏi' : 'Xem ma trận'}
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    style={{ background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', border: 'none', fontWeight: 700 }}
+                    onClick={() => setShowSimulator(true)}
+                    title="Mở bộ mô phỏng học sinh làm bài thi, bản in A4 và đảo 4 mã đề"
+                  >
+                    <IcoSim size={14} /> Mô phỏng & In A4
+                  </button>
+                </>
               )}
               <button
                 type="button"
@@ -803,7 +850,7 @@ export default function AutoExamStudio({
             {/* TRƯỜNG HỢP 3: XEM BỘ CÂU HỎI ĐÃ SINH THEO MA TRẬN */}
             {questions.length > 0 && viewMode === 'preview' && (
               <div className="aes-exam-preview">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem' }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
                       Bộ đề thi ({questions.length} câu hỏi bám sát ma trận)
@@ -812,13 +859,23 @@ export default function AutoExamStudio({
                       Được phân bổ theo 4 mức độ nhận thức. Giáo viên có thể bấm chọn đáp án đúng hoặc sửa nội dung.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className="vt-btn sm"
-                    onClick={() => setViewMode('matrix')}
-                  >
-                    <IcoTable size={14} /> Trở về xem Ma trận
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="vt-btn sm"
+                      onClick={() => setViewMode('matrix')}
+                    >
+                      <IcoTable size={14} /> Trở về xem Ma trận
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn sm primary"
+                      style={{ background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff' }}
+                      onClick={() => setShowSimulator(true)}
+                    >
+                      <IcoSim size={14} /> Mô phỏng & In A4 / Đảo 4 mã đề
+                    </button>
+                  </div>
                 </div>
 
                 {questions.map((q, idx) => {
@@ -880,6 +937,19 @@ export default function AutoExamStudio({
           </div>
         </div>
       </div>
+
+      {/* MODAL MÔ PHỎNG THI, BẢN IN A4 & ĐẢO 4 MÃ ĐỀ */}
+      {showSimulator && (
+        <ExamPreviewSimulator
+          exam={{
+            title: topic || 'Đề kiểm tra Hóa học',
+            duration: selectedDuration || 30,
+          }}
+          questions={questions}
+          matrix={matrixData}
+          onClose={() => setShowSimulator(false)}
+        />
+      )}
     </div>
   );
 }

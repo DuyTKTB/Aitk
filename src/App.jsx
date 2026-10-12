@@ -481,6 +481,17 @@ export default function App() {
     );
   }
 
+  /* ============ TEACHER STUDIO — TRANG RIÊNG TOÀN MÀN HÌNH ELEC AI (CHỦ ĐẠO MÀU XANH) ============ */
+  if (page === 'classroom' && (pro.isPro || isAdmin(user))) {
+    return (
+      <ErrorBoundary resetKey={hashTick}>
+        <Suspense fallback={<PageLoader />}>
+          <TeacherDashboard onExit={() => { window.location.hash = 'home'; }} />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   /* ============ ADMIN MODE LAYOUT ============ */
   if (isAdminMode && isAdmin(user)) {
     return (

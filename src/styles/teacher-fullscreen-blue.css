@@ -1,0 +1,525 @@
+/* ============================================================
+   teacher-fullscreen-blue.css — ELEC AI Teacher Studio Fullscreen
+   Chủ đạo MÀU XANH (Sapphire Blue, Electric Cyan & VisionOS Glassmorphism)
+   Edge-to-edge 100vw, 100vh layout độc lập tương tự ELEC AI (#ai)
+   ============================================================ */
+
+:root {
+  --blue-bg-dark: #070c1e;
+  --blue-side-dark: #0a1532;
+  --blue-card-dark: rgba(13, 27, 62, 0.7);
+  --blue-border-dark: rgba(56, 189, 248, 0.18);
+  --blue-glow: rgba(14, 165, 233, 0.4);
+  --blue-primary: #0284c7;
+  --blue-accent: #38bdf8;
+  --blue-deep: #1d4ed8;
+}
+
+@keyframes pulse-cyan {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 12px rgba(6, 182, 212, 0.6); }
+  50% { opacity: 0.8; transform: scale(1.04); box-shadow: 0 0 20px rgba(6, 182, 212, 0.9); }
+}
+
+@keyframes ambient-glow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(15px, -15px) scale(1.05); }
+}
+
+/* ============================================================
+   KHI CHẠY Ở CHẾ ĐỘ FULLSCREEN (ELEC AI TEACHER STUDIO)
+   ============================================================ */
+.vt.vt-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  z-index: 1000 !important;
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(14, 165, 233, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 85%, rgba(37, 99, 235, 0.12) 0%, transparent 50%),
+    #060a17 !important;
+  color: #f1f5f9 !important;
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif) !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(37, 99, 235, 0.06) 0%, transparent 50%),
+    #f3f8fd !important;
+  color: #0f172a !important;
+}
+
+.vt.vt-fullscreen .vt-frame {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  min-height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: grid !important;
+  grid-template-columns: 250px minmax(0, 1fr) !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
+/* ============================================================
+   SIDEBAR KÍNH XANH SAPPHIRE ELEC AI
+   ============================================================ */
+.vt.vt-fullscreen .vt-side {
+  width: 250px !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  padding: 1.25rem 0.85rem 1rem !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  border-right: 1px solid rgba(56, 189, 248, 0.15) !important;
+  background: linear-gradient(180deg, #09132c 0%, #060e22 100%) !important;
+  backdrop-filter: blur(25px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.45rem !important;
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3) !important;
+  z-index: 20 !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-side {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f6fc 100%) !important;
+  border-right: 1px solid rgba(14, 165, 233, 0.2) !important;
+  box-shadow: 4px 0 20px rgba(14, 165, 233, 0.06) !important;
+}
+
+/* BRAND MARK VỚI CYBER BLUE GLOW */
+.vt.vt-fullscreen .vt-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 0.3rem 0.6rem 1rem !important;
+  margin-bottom: 0.4rem !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15) !important;
+}
+
+.vt.vt-fullscreen .vt-brand-mark {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  flex-shrink: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.5) !important;
+}
+
+.vt.vt-fullscreen .vt-brand-text {
+  display: flex !important;
+  flex-direction: column !important;
+  line-height: 1.2 !important;
+}
+
+.vt.vt-fullscreen .vt-brand-text b {
+  font-size: 1.08rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.025em !important;
+  color: #38bdf8 !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-brand-text b {
+  color: #0284c7 !important;
+}
+
+.vt.vt-fullscreen .vt-brand-text small {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: rgba(148, 163, 184, 0.85) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* NAVIGATION ITEMS */
+.vt.vt-fullscreen .vt-nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.35rem !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding-right: 2px !important;
+}
+
+.vt.vt-fullscreen .vt-nav-item {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.8rem !important;
+  padding: 0.7rem 0.95rem !important;
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-nav-item {
+  color: #475569 !important;
+}
+
+.vt.vt-fullscreen .vt-nav-item:hover {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #38bdf8 !important;
+  border-color: rgba(56, 189, 248, 0.2) !important;
+  transform: translateX(3px) !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-nav-item:hover {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+}
+
+.vt.vt-fullscreen .vt-nav-item.on {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.24) 0%, rgba(37, 99, 235, 0.14) 100%) !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  border-left: 3.5px solid #38bdf8 !important;
+  box-shadow: 0 4px 18px rgba(14, 165, 233, 0.18) !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-nav-item.on {
+  background: linear-gradient(90deg, #e0f2fe 0%, #eff6ff 100%) !important;
+  color: #0284c7 !important;
+  border-color: #bae6fd !important;
+  border-left: 3.5px solid #0284c7 !important;
+}
+
+.vt.vt-fullscreen .vt-nav-badge {
+  margin-left: auto !important;
+  padding: 0.15rem 0.5rem !important;
+  border-radius: 999px !important;
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.5) !important;
+}
+
+.vt.vt-fullscreen .vt-nav-badge.live {
+  background: #06b6d4 !important;
+  animation: pulse-cyan 1.6s infinite !important;
+}
+
+/* NÚT THOÁT VỀ CHEMASTUDY */
+.vt.vt-fullscreen .vt-exit {
+  margin-top: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.6rem !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 12px !important;
+  background: rgba(14, 165, 233, 0.08) !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.vt.vt-fullscreen .vt-exit:hover {
+  background: rgba(14, 165, 233, 0.2) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ============================================================
+   MAIN CONTENT AREA TOÀN MÀN HÌNH
+   ============================================================ */
+.vt.vt-fullscreen .vt-main {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 1.25rem 2rem 3.5rem !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.25rem !important;
+}
+
+/* Custom scrollbar xanh sapphire */
+.vt.vt-fullscreen .vt-main::-webkit-scrollbar,
+.vt.vt-fullscreen .vt-side::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.vt.vt-fullscreen .vt-main::-webkit-scrollbar-thumb,
+.vt.vt-fullscreen .vt-side::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
+  border-radius: 999px;
+}
+
+.vt.vt-fullscreen .vt-main::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.5);
+}
+
+/* ============================================================
+   TOPBAR KÍNH FROSTED SAPPHIRE
+   ============================================================ */
+.vt.vt-fullscreen .vt-top {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  background: rgba(9, 18, 42, 0.82) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 16px !important;
+  padding: 0.85rem 1.25rem !important;
+  border: 1px solid rgba(56, 189, 248, 0.16) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-top {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(14, 165, 233, 0.2) !important;
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.08) !important;
+}
+
+.vt.vt-fullscreen .vt-title h1 {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-title h1 {
+  color: #0f172a !important;
+}
+
+.vt.vt-fullscreen .vt-title p {
+  font-size: 0.82rem !important;
+  color: #94a3b8 !important;
+}
+
+/* TABS */
+.vt.vt-fullscreen .vt-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.25rem !important;
+  background: rgba(10, 20, 48, 0.6) !important;
+  border: 1px solid rgba(56, 189, 248, 0.16) !important;
+  border-radius: 999px !important;
+}
+
+.vt.vt-fullscreen .vt-tab {
+  padding: 0.4rem 0.9rem !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.vt.vt-fullscreen .vt-tab:hover {
+  color: #38bdf8 !important;
+}
+
+.vt.vt-fullscreen .vt-tab.on {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 12px rgba(14, 165, 233, 0.45) !important;
+}
+
+/* Ô TÌM KIẾM */
+.vt.vt-fullscreen .vt-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.45rem 0.85rem !important;
+  border-radius: 999px !important;
+  background: rgba(15, 30, 68, 0.6) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  color: #f8fafc !important;
+  transition: all 0.2s ease !important;
+}
+
+.vt.vt-fullscreen .vt-search:focus-within {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.3) !important;
+}
+
+.vt.vt-fullscreen .vt-search input {
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+  font-size: 0.84rem !important;
+  outline: none !important;
+}
+
+/* ============================================================
+   BENTO CARDS & STATS
+   ============================================================ */
+.vt.vt-fullscreen .vt-card {
+  background: rgba(12, 24, 56, 0.68) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.16) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  color: inherit !important;
+}
+
+[data-theme='light'] .vt.vt-fullscreen .vt-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(14, 165, 233, 0.16) !important;
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.05) !important;
+}
+
+.vt.vt-fullscreen .vt-card:hover {
+  border-color: rgba(56, 189, 248, 0.38) !important;
+  box-shadow: 0 12px 35px rgba(14, 165, 233, 0.14) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* BUTTONS */
+.vt.vt-fullscreen .vt-btn.primary {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 18px rgba(14, 165, 233, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+.vt.vt-fullscreen .vt-btn.primary:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 6px 24px rgba(14, 165, 233, 0.55) !important;
+  transform: translateY(-1px) !important;
+}
+
+.vt.vt-fullscreen .vt-btn:not(.primary) {
+  background: rgba(14, 165, 233, 0.08) !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.vt.vt-fullscreen .vt-btn:not(.primary):hover {
+  background: rgba(14, 165, 233, 0.18) !important;
+  border-color: #38bdf8 !important;
+}
+
+/* BANNER HERO TỔNG QUAN */
+.vt.vt-fullscreen .vt-banner {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(37, 99, 235, 0.18) 100%), rgba(11, 22, 52, 0.7) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  box-shadow: 0 12px 35px rgba(14, 165, 233, 0.15) !important;
+}
+
+/* ============================================================
+   EXAM CARDS, SESSIONS & CLASSES (SAPPHIRE GLASS)
+   ============================================================ */
+.vt.vt-fullscreen .vt-exam,
+.vt.vt-fullscreen .vt-session,
+.vt.vt-fullscreen .vt-class {
+  background: rgba(12, 24, 56, 0.72) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+.vt.vt-fullscreen .vt-exam.live,
+.vt.vt-fullscreen .vt-session.live {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 25px rgba(14, 165, 233, 0.25) !important;
+}
+
+.vt.vt-fullscreen .vt-chip {
+  background: rgba(14, 165, 233, 0.15) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+.vt.vt-fullscreen .vt-chip.live {
+  background: rgba(6, 182, 212, 0.2) !important;
+  color: #22d3ee !important;
+  border-color: #22d3ee !important;
+}
+
+.vt.vt-fullscreen .vt-linkbox,
+.vt.vt-fullscreen .vt-keybox {
+  background: rgba(15, 30, 68, 0.7) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  border-radius: 12px !important;
+}
+
+.vt.vt-fullscreen .vt-linkbox code,
+.vt.vt-fullscreen .vt-keybox code {
+  color: #38bdf8 !important;
+}
+
+/* ============================================================
+   DONUT & TREND CHARTS
+   ============================================================ */
+.vt.vt-fullscreen .vt-donut-bg {
+  stroke: rgba(56, 189, 248, 0.12) !important;
+}
+
+.vt.vt-fullscreen .vt-donut-fg.acc {
+  stroke: #38bdf8 !important;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6));
+}
+
+.vt.vt-fullscreen .vt-trend-bar {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.4) !important;
+}
+
+/* ============================================================
+   MODALS (FROSTED SAPPHIRE ELEC AI)
+   ============================================================ */
+.vt-modal-backdrop {
+  background: rgba(4, 8, 20, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.vt-modal {
+  background: linear-gradient(180deg, #0d1b3d 0%, #070e24 100%) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.28) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(14, 165, 233, 0.2) !important;
+  color: #f1f5f9 !important;
+  border-radius: 24px !important;
+}
+
+.vt-modal-head {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.16) !important;
+}
+
+.vt-modal-head h2 {
+  color: #38bdf8 !important;
+}
+
+.vt-modal-foot {
+  border-top: 1px solid rgba(56, 189, 248, 0.16) !important;
+}
+

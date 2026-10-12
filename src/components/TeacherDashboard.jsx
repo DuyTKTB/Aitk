@@ -13,7 +13,8 @@
    ============================================================ */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { getUserRole } from '../lib/userRole.js';
+import { isAdmin as checkAdmin } from '../lib/isAdmin.js';
+import { buildClassInsights } from '../lib/classInsights.js';
 import {
   getClassesByTeacher,
   getExamsByTeacher,
@@ -50,11 +51,30 @@ import CreateExamPage from './teacher/CreateExamPage.jsx';
 import ClassDetailModal from './ClassDetailModal.jsx';
 import QuestionBank from './teacher/QuestionBank.jsx';
 import PaperGrading from './teacher/PaperGrading.jsx';
+import TeacherSimulatorHub from './teacher/TeacherSimulatorHub.jsx';
+import ExamPreviewSimulator from './teacher/ExamPreviewSimulator.jsx';
 
 const IcoScan = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
     <line x1="4" y1="12" x2="20" y2="12" />
+  </svg>
+);
+
+const IcoShuffle = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="16 3 21 3 21 8" />
+    <line x1="4" y1="20" x2="21" y2="3" />
+    <polyline points="21 16 21 21 16 21" />
+    <line x1="15" y1="15" x2="21" y2="21" />
+    <line x1="4" y1="4" x2="9" y2="9" />
+  </svg>
+);
+
+const IcoEye = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 import {
@@ -69,6 +89,7 @@ import {
 } from '../lib/sessionIcons.jsx';
 import '../styles/classroom.css';
 import '../styles/teacher-apple.css';
+import '../styles/teacher-fullscreen-blue.css';
 
 const IcoSparkles = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -113,7 +134,7 @@ function exportExamCsv(exam, subs) {
 /* ============================================================
    MAIN
    ============================================================ */
-export default function TeacherDashboard() {
+export default function TeacherDashboard({ onExit } = {}) {
   const { user } = useAuth();
   const [section, setSection] = useState('overview');
   const [subTab, setSubTab] = useState('all');
@@ -143,6 +164,7 @@ export default function TeacherDashboard() {
   const [showExamCreate, setShowExamCreate] = useState(false);
   const [showClassPicker, setShowClassPicker] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState(null);
+  const [previewExam, setPreviewExam] = useState(null);
 
   const [confirmState, setConfirmState] = useState(null);
   const [toast, setToast] = useState(null);
@@ -167,12 +189,14 @@ export default function TeacherDashboard() {
     toastTimer.current = setTimeout(() => setToast(null), 2800);
   }, []);
 
-  const isAdmin = useMemo(() => getUserRole(user) === 'admin', [user]);
+  const showAdminLink = checkAdmin(user);
 
   useEffect(() => {
+    const hasLive = sessions.some((s) => s.status === 'live');
+    if (!hasLive) return undefined;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [sessions]);
 
   const goSection = (key) => {
     setSection(key);
@@ -560,6 +584,11 @@ export default function TeacherDashboard() {
     return Object.values(map);
   }, [subsInRange]);
 
+  const classInsights = useMemo(
+    () => buildClassInsights({ exams, submissionsMap, rangeDays: range, now }),
+    [exams, submissionsMap, range, now]
+  );
+
   const trend = useMemo(() => {
     return [...exams]
       .sort((a, b) => tsMs(a.createdAt) - tsMs(b.createdAt))
@@ -693,6 +722,7 @@ export default function TeacherDashboard() {
     { key: 'exams', label: 'Đề thi', Icon: IcoBook },
     { key: 'sessions', label: 'Phòng thi', Icon: IcoVideo, badge: liveSessions.length || null, live: true },
     { key: 'create', label: 'AI Tạo đề & Ma trận', Icon: IcoSparkles },
+    { key: 'simulator', label: 'Mô phỏng & Đảo đề', Icon: IcoShuffle },
     { key: 'bank', label: 'Ngân hàng', Icon: IcoLibrary },
     { key: 'paper', label: 'Chấm phiếu A4', Icon: IcoScan },
     {
@@ -704,7 +734,7 @@ export default function TeacherDashboard() {
     },
   ];
 
-  const extraNav = isAdmin ? (
+  const extraNav = showAdminLink ? (
     <button
       type="button"
       className="vt-nav-item"
@@ -758,6 +788,10 @@ export default function TeacherDashboard() {
       title: 'AutoExam AI Studio',
       subtitle: 'Trợ lý AI tạo đề thông minh & Lập ma trận chuẩn Bộ GD&ĐT 2025',
     },
+    simulator: {
+      title: 'Bộ Xem Trước, Mô Phỏng & Đảo Đề',
+      subtitle: 'Trải nghiệm thi như học sinh, xuất bản in A4 chuẩn Bộ GD&ĐT và tự động hoán vị 4 mã đề',
+    },
     bank: {
       title: 'Ngân hàng câu hỏi',
       subtitle: 'Lưu trữ và tái sử dụng câu hỏi',
@@ -785,12 +819,17 @@ export default function TeacherDashboard() {
       items={navItems}
       active={section}
       onChange={goSection}
-      onExit={() => { window.location.hash = ''; }}
+      fullscreen
+      exitLabel="← Về ChemStudy"
+      onExit={() => {
+        if (onExit) onExit();
+        else window.location.hash = 'home';
+      }}
       extraNav={extraNav}
     >
       <Topbar
         {...topProps}
-        search={section !== 'create' && section !== 'retry' && section !== 'bank' ? search : undefined}
+        search={section !== 'create' && section !== 'simulator' && section !== 'retry' && section !== 'bank' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
           on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0,
           onClick: () => {
@@ -873,34 +912,40 @@ export default function TeacherDashboard() {
               <div className="ap-ai-insight-card">
                 <b>Chỉ số tiếp thu bài học</b>
                 <p>
-                  Xếp loại chung: <strong style={{ color: 'var(--acc)', fontSize: '1.05rem' }}>{classHealthGrade.grade}</strong> ({classHealthGrade.label}).
-                  Tỷ lệ học sinh đạt chuẩn từ 50% trở lên là {passRate}%.
+                  Xếp loại: <strong style={{ color: 'var(--acc)', fontSize: '1.05rem' }}>{classInsights.health.grade}</strong> ({classInsights.health.label}).
+                  Điểm TB {classInsights.avgPct}% · đạt từ 50% là {classInsights.passRate}% trên {classInsights.submissionCount} bài.
                 </p>
               </div>
 
               <div className="ap-ai-insight-card">
-                <b>Chẩn đoán bẫy & lỗi sai</b>
+                <b>Chẩn đoán từ bài nộp</b>
+                <p>{classInsights.diagnosis}</p>
+                {classInsights.weakestTopics[0] && (
+                  <p style={{ marginTop: '0.45rem' }}>
+                    Chuyên đề yếu nhất: <strong>{classInsights.weakestTopics[0].topic}</strong> ({classInsights.weakestTopics[0].rate}% đúng).
+                  </p>
+                )}
+              </div>
+
+              <div className="ap-ai-insight-card">
+                <b>Học sinh cần kèm thêm ({classInsights.atRisk.length})</b>
                 <p>
-                  {avgPct < 70
-                    ? 'Điểm TB ở mức cần củng cố. Các câu hỏi tính toán định lượng và bảo toàn electron có tỷ lệ sai cao.'
-                    : 'Học sinh nắm vững kiến thức nền tảng. Tỷ lệ hiểu bài và làm đúng đạt mức cao.'}
+                  {classInsights.atRisk.length > 0
+                    ? `${classInsights.atRisk.length} học sinh dưới 50% (${classInsights.atRisk.slice(0, 3).map((s) => `${s.studentName} ${s.pct}%`).join(', ')}${classInsights.atRisk.length > 3 ? '…' : ''}). Nên mở quyền thi lại.`
+                    : classInsights.submissionCount
+                      ? 'Không có học sinh dưới 50% trong khoảng đang xem.'
+                      : 'Chưa có bài nộp để thống kê học sinh yếu.'}
                 </p>
               </div>
 
               <div className="ap-ai-insight-card">
-                <b>Học sinh cần kèm thêm ({atRiskStudents.length})</b>
-                <p>
-                  {atRiskStudents.length > 0
-                    ? `Có ${atRiskStudents.length} học sinh đạt dưới 50% điểm (${atRiskStudents.slice(0, 2).map((s) => s.studentName).join(', ')}${atRiskStudents.length > 2 ? '...' : ''}). Đề xuất mở quyền thi lại để cải thiện.`
-                    : 'Tất cả học sinh đều đang đạt chỉ tiêu qua bài.'}
-                </p>
-              </div>
-
-              <div className="ap-ai-insight-card">
-                <b>Gợi ý của AI cho tiết học tới</b>
-                <p>
-                  Dành 5-10 phút đầu giờ giải đáp các câu bẫy học sinh chọn sai nhiều và công bố bảng điểm vinh danh.
-                </p>
+                <b>Gợi ý tiết tới</b>
+                <p>{classInsights.nextLesson}</p>
+                {classInsights.hardest[0] && (
+                  <p style={{ marginTop: '0.45rem' }}>
+                    Câu sai nhiều: đề “{classInsights.hardest[0].examTitle}”, câu {classInsights.hardest[0].index + 1} ({classInsights.hardest[0].rate}% đúng).
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1221,6 +1266,15 @@ export default function TeacherDashboard() {
                       </button>
                     )}
                     <div className="vt-exam-actions-row">
+                      <button
+                        type="button"
+                        className="vt-btn sm"
+                        style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                        onClick={() => setPreviewExam(ex)}
+                        title="Mô phỏng thi, bản in A4 và đảo 4 mã đề"
+                      >
+                        <IcoEye size={13} /> Xem trước & In A4
+                      </button>
                       <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
                         <IcoChart size={13} /> Thống kê
                       </button>
@@ -1353,6 +1407,16 @@ export default function TeacherDashboard() {
       })()}
 
       {/* ============================================================
+          MÔ PHỎNG, BẢN IN A4 & ĐẢO 4 MÃ ĐỀ (STUDIO SUITE)
+         ============================================================ */}
+      {section === 'simulator' && (
+        <TeacherSimulatorHub
+          teacherExams={exams}
+          classes={classes}
+        />
+      )}
+
+      {/* ============================================================
           NGÂN HÀNG
          ============================================================ */}
       {section === 'bank' && <QuestionBank />}
@@ -1439,6 +1503,7 @@ export default function TeacherDashboard() {
         <CreateExamPage
           classInfo={selectedClass || classes[0]}
           classes={classes}
+          classInsights={classInsights}
           grades={[]}
           subjects={[]}
           onDone={async () => {
@@ -1674,6 +1739,14 @@ export default function TeacherDashboard() {
           fn?.();
         }}
       />
+      {/* ============ MODAL XEM TRƯỚC / MÔ PHỎNG / BẢN IN A4 / ĐẢO 4 MÃ ĐỀ ============ */}
+      {previewExam && (
+        <ExamPreviewSimulator
+          exam={previewExam}
+          questions={previewExam.questions || []}
+          onClose={() => setPreviewExam(null)}
+        />
+      )}
     </DashFrame>
   );
 }

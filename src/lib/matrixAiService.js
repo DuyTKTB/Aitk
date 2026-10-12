@@ -1,324 +1,519 @@
 /* ============================================================
-   matrixAiService.js — Dịch vụ AI Lập Ma Trận Đề Thi & Sinh Câu Hỏi
-   Chuẩn Bộ GD&ĐT 2025 & Thang đo Bloom (AutoExam Studio)
+   matrixAiService.js — Lập ma trận & sinh đề (GDPT 2018 / Bộ GD&ĐT)
+   Dùng callModel + parseJsonLoose của examAiUtils.
    ============================================================ */
-import { callModel, normalizeQuestion, rid } from './examAiUtils.js';
-
-/**
- * 4 Mức độ nhận thức chuẩn Bộ GD&ĐT:
- * - Nhận biết (Remembering)
- * - Thông hiểu (Understanding)
- * - Vận dụng (Applying)
- * - Vận dụng cao (Analyzing / Evaluating)
- */
+import {
+  callModel,
+  parseJsonLoose,
+  normalizeQuestion,
+  shuffleOptions,
+  rid,
+} from './examAiUtils.js';
+import { buildFileContext } from './fileReader.js';
 
 export const BLOOM_MAPPING = {
-  nb: { vn: 'Nhận biết', en: 'Remembering', desc: 'Nhớ lại các khái niệm, định nghĩa, công thức cơ bản' },
-  th: { vn: 'Thông hiểu', en: 'Understanding', desc: 'Giải thích, phân biệt, suy luận từ lý thuyết' },
-  vd: { vn: 'Vận dụng', en: 'Applying', desc: 'Áp dụng công thức, tính toán số liệu bài tập đơn giản' },
-  vdc: { vn: 'Vận dụng cao', en: 'Analyzing / Evaluating', desc: 'Bài toán tổng hợp, biện luận, giải quyết vấn đề phức tạp' },
+  nb: { vn: 'Nhận biết', en: 'Remembering', desc: 'Nhớ khái niệm, định nghĩa, công thức' },
+  th: { vn: 'Thông hiểu', en: 'Understanding', desc: 'Giải thích, phân biệt, suy luận' },
+  vd: { vn: 'Vận dụng', en: 'Applying', desc: 'Áp dụng công thức, tính toán một bước' },
+  vdc: { vn: 'Vận dụng cao', en: 'Analyzing', desc: 'Tổng hợp, biện luận, nhiều bước' },
 };
 
-/**
- * Mẫu ma trận sư phạm có sẵn theo môn và chủ đề phổ biến
- * (Hoạt động tức thời ngay cả khi mạng chậm hoặc chưa cấu hình API key)
- */
-export function buildFallbackMatrix({ topic = 'Tính số mol', grade = '11', subject = 'Hóa học', count = 10, duration = 30 }) {
-  const isMol = /mol|khoi luong|the tich|nong do/i.test(topic);
-  const isEste = /este|lipit|chat beo/i.test(topic);
-  const isOxiHoa = /oxi|khu|electron/i.test(topic);
-  const isKimLoai = /kim loai|axit|muoi/i.test(topic);
+const LEVEL_KEYS = ['nb', 'th', 'vd', 'vdc'];
+const GEN_BATCH = 6;
 
-  let p1Topics = [];
-  let p2Topics = [];
+export function emptyLevel() {
+  return { count: 0, points: 0 };
+}
 
+function asLevel(v) {
+  const count = Math.max(0, Math.round(Number(v?.count) || 0));
+  const points = Math.max(0, Number(v?.points) || 0);
+  return { count, points: Math.round(points * 10) / 10 };
+}
+
+export function summarizeMatrix(matrix) {
+  const summary = {
+    nb: emptyLevel(),
+    th: emptyLevel(),
+    vd: emptyLevel(),
+    vdc: emptyLevel(),
+    total: emptyLevel(),
+  };
+  (matrix.parts || []).forEach((p) => {
+    (p.topics || []).forEach((t) => {
+      LEVEL_KEYS.forEach((k) => {
+        const lv = asLevel(t[k]);
+        t[k] = lv;
+        summary[k].count += lv.count;
+        summary[k].points = Math.round((summary[k].points + lv.points) * 10) / 10;
+      });
+    });
+  });
+  summary.total.count = LEVEL_KEYS.reduce((a, k) => a + summary[k].count, 0);
+  summary.total.points = Math.round(LEVEL_KEYS.reduce((a, k) => a + summary[k].points, 0) * 10) / 10 || 10;
+  return summary;
+}
+
+/** Phân bổ lại số câu cho khớp count, giữ tỷ lệ NB/TH/VD/VDC. */
+export function scaleMatrixToCount(matrix, targetCount) {
+  const n = Math.max(4, Math.min(60, Number(targetCount) || 10));
+  const summary = summarizeMatrix(matrix);
+  const current = summary.total.count || 1;
+  if (current === n) {
+    matrix.summary = summary;
+    matrix.totalQuestions = n;
+    return matrix;
+  }
+
+  const cells = [];
+  (matrix.parts || []).forEach((part, pi) => {
+    (part.topics || []).forEach((top, ti) => {
+      LEVEL_KEYS.forEach((k) => {
+        const c = top[k]?.count || 0;
+        if (c > 0) cells.push({ pi, ti, k, count: c, points: top[k].points || 0 });
+      });
+    });
+  });
+  if (!cells.length) {
+    matrix.summary = summary;
+    matrix.totalQuestions = n;
+    return matrix;
+  }
+
+  const scaled = cells.map((c) => ({
+    ...c,
+    count: Math.max(0, Math.round((c.count / current) * n)),
+  }));
+  let diff = n - scaled.reduce((a, c) => a + c.count, 0);
+  let i = 0;
+  while (diff !== 0 && scaled.length) {
+    const cell = scaled[i % scaled.length];
+    if (diff > 0) {
+      cell.count += 1;
+      diff -= 1;
+    } else if (cell.count > 0) {
+      cell.count -= 1;
+      diff += 1;
+    }
+    i += 1;
+    if (i > 400) break;
+  }
+
+  (matrix.parts || []).forEach((part) => {
+    (part.topics || []).forEach((top) => {
+      LEVEL_KEYS.forEach((k) => { top[k] = { count: 0, points: 0 }; });
+    });
+  });
+  scaled.forEach((c) => {
+    const top = matrix.parts[c.pi]?.topics?.[c.ti];
+    if (!top) return;
+    const ptsEach = c.count ? Math.round(((c.points || 0.7) / Math.max(1, c.count === 0 ? 1 : (cells.find((x) => x.pi === c.pi && x.ti === c.ti && x.k === c.k)?.count || 1))) * 10) / 10 : 0;
+    top[c.k] = {
+      count: c.count,
+      points: Math.round((0.7 * c.count) * 10) / 10 || ptsEach,
+    };
+  });
+
+  const sum = summarizeMatrix(matrix);
+  const pointTarget = 10;
+  const rawPts = sum.total.points || 1;
+  (matrix.parts || []).forEach((part) => {
+    (part.topics || []).forEach((top) => {
+      LEVEL_KEYS.forEach((k) => {
+        if (top[k].count > 0) {
+          top[k].points = Math.round((top[k].points / rawPts) * pointTarget * 10) / 10;
+        }
+      });
+    });
+  });
+  matrix.summary = summarizeMatrix(matrix);
+  matrix.totalQuestions = n;
+  matrix.totalPoints = 10;
+  return matrix;
+}
+
+export function flattenMatrixSpecs(matrix) {
+  const specs = [];
+  (matrix.parts || []).forEach((part) => {
+    (part.topics || []).forEach((top) => {
+      LEVEL_KEYS.forEach((lvl) => {
+        const count = top[lvl]?.count || 0;
+        const pts = top[lvl]?.points || 0.7;
+        const each = count ? Math.round((pts / count) * 10) / 10 : 0.7;
+        for (let i = 0; i < count; i++) {
+          specs.push({
+            part: part.partName,
+            format: part.format || 'multiple_choice',
+            topic: top.name,
+            levelKey: lvl,
+            level: BLOOM_MAPPING[lvl].vn,
+            points: each || 0.7,
+          });
+        }
+      });
+    });
+  });
+  return specs;
+}
+
+export function buildFallbackMatrix({
+  topic = 'Tính số mol',
+  grade = '11',
+  subject = 'Hóa học',
+  count = 10,
+  duration = 30,
+  intent = 'exam',
+} = {}) {
+  const t = String(topic || '');
+  const isMol = /mol|khối lượng|the tich|nồng độ|nong do/i.test(t);
+  const isEste = /este|lipit|chất béo|chat beo/i.test(t);
+  const isRedox = /oxi hóa|oxi hoa|khử|electron|số oxi hóa/i.test(t);
+
+  let p1Topics;
+  let p2Topics;
   if (isMol) {
     p1Topics = [
-      { name: 'Tính số mol từ khối lượng chất (m/M)', nb: { count: 1, points: 0.7 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol khí ở điều kiện chuẩn (đkc: V/24.79)', nb: { count: 1, points: 0.7 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol từ nồng độ mol của dung dịch (CM.V)', nb: { count: 0, points: 0 }, th: { count: 1, points: 0.7 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol nguyên tử hoặc ion trong hợp chất', nb: { count: 0, points: 0 }, th: { count: 1, points: 0.7 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol từ nồng độ phần trăm C% và khối lượng riêng d', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 0.7 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol khí theo phương trình trạng thái khí lý tưởng', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 0.7 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol các chất trong hỗn hợp khí qua tỷ khối', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 1, points: 0.9 } },
+      { name: 'Tính n = m/M từ khối lượng và khối lượng mol', nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Số mol khí ở điều kiện chuẩn (V/22,4 hoặc 24,79)', nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Số mol từ nồng độ mol (n = CM·V)', nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Số mol nguyên tử / ion trong hợp chất', nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Đổi C% và khối lượng riêng sang số mol', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: 'Khí lý tưởng pV = nRT', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: 'Hỗn hợp khí, tỷ khối, thành phần mol', nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 0.9 } },
     ];
     p2Topics = [
-      { name: 'Tính số mol chất tham gia và sản phẩm phản ứng', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 1.5 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol ion trong dung dịch điện ly', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 1.5 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính số mol hỗn hợp kim loại phản ứng với axit (bài toán bảo toàn)', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 1, points: 2.0 } },
+      { name: 'Số mol chất trong PTHH (hệ số tỷ lượng)', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: 'Ion trong dung dịch điện li', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: 'Bảo toàn nguyên tố / electron với hỗn hợp kim loại', nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 2.0 } },
     ];
   } else if (isEste) {
     p1Topics = [
-      { name: 'Khái niệm, công thức tổng quát và đồng phân este', nb: { count: 1, points: 0.7 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Danh pháp (gọi tên) các este no đơn chức mạch hở', nb: { count: 1, points: 0.7 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Tính chất vật lý & mùi thơm đặc trưng của este', nb: { count: 0, points: 0 }, th: { count: 1, points: 0.7 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Phản ứng thủy phân este trong môi trường axit & kiềm', nb: { count: 0, points: 0 }, th: { count: 1, points: 0.7 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: 'Bài toán phản ứng xà phòng hóa este đơn chức', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 0.7 }, vdc: { count: 0, points: 0 } },
-      { name: 'Phản ứng đốt cháy este (tính khối lượng CO2 và H2O)', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 0.7 }, vdc: { count: 0, points: 0 } },
-      { name: 'Xác định công thức phân tử este dựa vào phản ứng thủy phân', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 1, points: 0.9 } },
+      { name: 'Công thức tổng quát và đồng phân este', nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Danh pháp este no đơn chức mạch hở', nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Tính chất vật lý, mùi đặc trưng', nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Thủy phân este trong axit và kiềm', nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Xà phòng hóa este đơn chức', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: 'Đốt cháy este: CO2, H2O', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: 'Xác định CTPT este từ thủy phân', nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 0.9 } },
     ];
     p2Topics = [
-      { name: 'Tính chất hóa học của chất béo (lipit / triglixerit)', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 1.5 }, vdc: { count: 0, points: 0 } },
-      { name: 'Bài toán xà phòng hóa chất béo (chỉ số axit, xà phòng hóa)', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 1.5 }, vdc: { count: 0, points: 0 } },
-      { name: 'Bài toán thủy phân hỗn hợp este đa chức / este của phenol', nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 1, points: 2.0 } },
+      { name: 'Tính chất hóa học của chất béo', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: 'Chỉ số axit / xà phòng hóa', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: 'Hỗn hợp este đa chức / este phenol', nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 2.0 } },
+    ];
+  } else if (isRedox) {
+    p1Topics = [
+      { name: 'Số oxi hóa và quy tắc tính', nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Nhận biết chất oxi hóa / chất khử', nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Cân bằng electron trong PTHH', nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Dãy hoạt động kim loại và khả năng khử', nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: 'Bài toán oxi hóa – khử một chất', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: 'Hiệu suất phản ứng oxi hóa – khử', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: 'Bảo toàn electron hỗn hợp', nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 0.9 } },
+    ];
+    p2Topics = [
+      { name: 'Cân bằng PTHH oxi hóa – khử', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: 'Tính khối lượng chất oxi hóa / khử', nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: 'Biện luận hỗn hợp nhiều chất oxi hóa', nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 2.0 } },
     ];
   } else {
-    // Tổng quát cho mọi chủ đề
-    const subName = topic || 'Kiến thức trọng tâm';
+    const name = t || 'Kiến thức trọng tâm';
     p1Topics = [
-      { name: `Khái niệm và định nghĩa cơ bản về ${subName}`, nb: { count: 1, points: 0.7 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: `Tính chất và đặc điểm nhận biết ${subName}`, nb: { count: 1, points: 0.7 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: `Mối quan hệ và quy luật chuyển hóa liên quan đến ${subName}`, nb: { count: 0, points: 0 }, th: { count: 1, points: 0.7 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: `Phân tích hiện tượng và giải thích cơ chế của ${subName}`, nb: { count: 0, points: 0 }, th: { count: 1, points: 0.7 }, vd: { count: 0, points: 0 }, vdc: { count: 0, points: 0 } },
-      { name: `Áp dụng công thức và tính toán cơ bản về ${subName}`, nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 0.7 }, vdc: { count: 0, points: 0 } },
-      { name: `Bài tập vận dụng điều kiện thực tế của ${subName}`, nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 0.7 }, vdc: { count: 0, points: 0 } },
-      { name: `Bài toán tổng hợp và phân tích đa biến về ${subName}`, nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 1, points: 0.9 } },
+      { name: `Khái niệm, định nghĩa ${name}`, nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: `Nhận biết / tính chất đặc trưng của ${name}`, nb: { count: 1, points: 0.7 }, th: emptyLevel(), vd: emptyLevel(), vdc: emptyLevel() },
+      { name: `Giải thích hiện tượng liên quan ${name}`, nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: `Phân biệt các trường hợp gần giống về ${name}`, nb: emptyLevel(), th: { count: 1, points: 0.7 }, vd: emptyLevel(), vdc: emptyLevel() },
+      { name: `Tính toán một bước về ${name}`, nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: `Áp dụng định luật / công thức ${name} vào số liệu`, nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 0.7 }, vdc: emptyLevel() },
+      { name: `Bài toán tổng hợp ${name}`, nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 0.9 } },
     ];
     p2Topics = [
-      { name: `Bài toán tính toán nâng cao dạng chuỗi phản ứng`, nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 1.5 }, vdc: { count: 0, points: 0 } },
-      { name: `Xác định thành phần hỗn hợp qua phương trình định lượng`, nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 1, points: 1.5 }, vdc: { count: 0, points: 0 } },
-      { name: `Bài toán biện luận và tối ưu hóa số liệu (Vận dụng cao)`, nb: { count: 0, points: 0 }, th: { count: 0, points: 0 }, vd: { count: 0, points: 0 }, vdc: { count: 1, points: 2.0 } },
+      { name: `Chuỗi biến đổi / nhiều bước về ${name}`, nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: `Xác định thành phần hỗn hợp liên quan ${name}`, nb: emptyLevel(), th: emptyLevel(), vd: { count: 1, points: 1.5 }, vdc: emptyLevel() },
+      { name: `Biện luận số liệu ${name}`, nb: emptyLevel(), th: emptyLevel(), vd: emptyLevel(), vdc: { count: 1, points: 2.0 } },
     ];
   }
 
-  // Điều chỉnh số lượng câu theo count yêu cầu
-  if (count !== 10) {
-    const factor = count / 10;
-    p1Topics.forEach((t) => {
-      ['nb', 'th', 'vd', 'vdc'].forEach((k) => {
-        if (t[k].count > 0) t[k].points = Math.round((t[k].points / factor) * 10) / 10;
-      });
-    });
+  if (intent === 'sheet') {
+    p2Topics = p2Topics.slice(0, 2);
+    p1Topics = p1Topics.map((row, idx) => (idx < 2
+      ? { ...row, nb: { count: (row.nb.count || 0) + 1, points: 0.7 } }
+      : row));
   }
 
-  // Tính tổng
-  const allTopics = [...p1Topics, ...p2Topics];
-  const summary = {
-    nb: { count: 0, points: 0 },
-    th: { count: 0, points: 0 },
-    vd: { count: 0, points: 0 },
-    vdc: { count: 0, points: 0 },
-    total: { count: 0, points: 0 },
-  };
-
-  allTopics.forEach((t) => {
-    ['nb', 'th', 'vd', 'vdc'].forEach((k) => {
-      summary[k].count += t[k].count;
-      summary[k].points = Math.round((summary[k].points + t[k].points) * 10) / 10;
-    });
-  });
-
-  summary.total.count = summary.nb.count + summary.th.count + summary.vd.count + summary.vdc.count;
-  summary.total.points = 10.0;
-
-  return {
-    title: `Ma trận đề thi ${topic} môn ${subject} ${grade ? `Lớp ${grade}` : ''}`,
+  const matrix = {
+    title: `Ma trận ${intent === 'sheet' ? 'phiếu bài tập' : intent === 'lecture' ? 'câu hỏi bài giảng' : 'đề thi'} ${topic} — ${subject} lớp ${grade}`,
     subject,
     grade,
     duration,
-    totalPoints: 10.0,
+    totalPoints: 10,
     totalQuestions: count,
+    source: 'fallback',
     parts: [
-      { partName: 'Phần 1: Trắc nghiệm khách quan (Nhiều lựa chọn)', format: 'multiple_choice', topics: p1Topics },
-      { partName: 'Phần 2: Trả lời ngắn & Bài toán tính toán số liệu', format: 'short_answer', topics: p2Topics },
+      { partName: 'Phần 1: Trắc nghiệm nhiều lựa chọn', format: 'multiple_choice', topics: p1Topics },
+      { partName: 'Phần 2: Trả lời ngắn / tính toán', format: 'short_answer', topics: p2Topics },
     ],
-    summary,
-    aiPedagogicalAdvice: `Chào bạn, mình đã nắm rõ yêu cầu xây dựng bài luyện tập kỹ năng ${topic} môn ${subject} ${grade ? `lớp ${grade}` : ''}. Hiện tại, mình đã lập khung ma trận gồm đúng ${count} câu hỏi trong thời lượng ${duration} phút, kết hợp giữa trắc nghiệm và câu hỏi trả lời ngắn để học sinh rèn luyện tư duy chuẩn xác. Bạn hãy xem qua ma trận chi tiết này rồi nhấn nút để tiến hành biên soạn nhé! 🎓`,
+    aiPedagogicalAdvice: `Đã lập khung ${count} câu / ${duration} phút cho “${topic}” lớp ${grade}. Ưu tiên 4 mức NB–TH–VD–VDC theo khảo thí. Xem bảng bên phải rồi xác nhận để sinh câu hỏi.`,
   };
+  return scaleMatrixToCount(matrix, count);
 }
 
-/**
- * Gọi AI sinh Ma trận đề thi động
- */
-export async function planMatrixWithAI({ topic, grade, subject = 'Hóa học', count = 10, duration = 30, structure = 'bo_gddt', customPrompt = '', signal }) {
-  const systemPrompt = `Bạn là chuyên gia khảo thí và xây dựng ma trận đề thi chuẩn Bộ Giáo dục & Đào tạo Việt Nam (chương trình GDPT 2018).
-Nhiệm vụ: Lập MA TRẬN ĐỀ THI chi tiết cho môn ${subject}, khối lớp ${grade}, chủ đề "${topic}".
-Số câu: ${count} câu. Thời lượng: ${duration} phút. Tổng điểm: 10.0 điểm.
-Cấu trúc phân bổ 4 mức độ:
-1. Nhận biết (NB): ~20-30%
-2. Thông hiểu (TH): ~20-30%
-3. Vận dụng (VD): ~30-40%
-4. Vận dụng cao (VDC): ~10-20%
+function intentLabel(intent) {
+  if (intent === 'sheet') return 'phiếu bài tập luyện tập (nhiều câu nhận biết/thông hiểu, số liệu đơn)';
+  if (intent === 'lecture') return 'câu hỏi kiểm tra ngay sau bài giảng (ngắn, bám đúng nội dung vừa dạy)';
+  return 'đề kiểm tra/thi (phân hóa, có câu vận dụng cao)';
+}
 
-BẮT BUỘC trả về CHUẨN ĐỊNH DẠNG JSON hợp lệ (không kèm markdown ngoài khối json) với cấu trúc sau:
+export async function planMatrixWithAI({
+  topic,
+  grade,
+  subject = 'Hóa học',
+  count = 10,
+  duration = 30,
+  format = '',
+  intent = 'exam',
+  customPrompt = '',
+  classInsights = '',
+  files = [],
+  signal,
+} = {}) {
+  const n = Math.max(4, Math.min(60, Number(count) || 10));
+  const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
+
+  const system = `Bạn là chuyên gia khảo thí chương trình GDPT 2018 (Việt Nam).
+Nhiệm vụ: lập MA TRẬN đề cho môn ${subject}, lớp ${grade}, chủ đề "${topic}".
+Loại sản phẩm: ${intentLabel(intent)}.
+Số câu: đúng ${n}. Thời lượng: ${duration} phút. Tổng điểm 10.
+Định dạng giáo viên chọn: ${format || 'linh hoạt theo chuẩn Bộ GD&ĐT'}.
+
+Phân bổ gợi ý (có thể lệch ±5% nếu chủ đề đòi hỏi):
+- Nhận biết 20–30%
+- Thông hiểu 20–30%
+- Vận dụng 30–40%
+- Vận dụng cao 10–20%
+Với phiếu bài tập: tăng NB+TH; với đề thi: giữ VDC.
+
+Mỗi dòng chủ đề phải là DẠNG BÀI cụ thể (không viết chung chung kiểu "kiến thức trọng tâm").
+Với Hóa: ghi rõ công thức/định luật (n=m/M, bảo toàn nguyên tố, số oxi hóa…).
+Không bịa chuẩn ngoài chương trình lớp ${grade}.
+
+Chỉ trả JSON:
 {
-  "title": "Ma trận đề thi...",
+  "title": "...",
   "subject": "${subject}",
   "grade": "${grade}",
   "duration": ${duration},
-  "totalPoints": 10.0,
-  "totalQuestions": ${count},
+  "totalPoints": 10,
+  "totalQuestions": ${n},
   "parts": [
     {
       "partName": "Phần 1: Trắc nghiệm khách quan",
       "format": "multiple_choice",
       "topics": [
-        {
-          "name": "Tên chủ đề/dạng bài 1",
-          "nb": { "count": 1, "points": 0.7 },
-          "th": { "count": 0, "points": 0 },
-          "vd": { "count": 0, "points": 0 },
-          "vdc": { "count": 0, "points": 0 }
-        }
+        { "name": "Dạng bài cụ thể", "nb": {"count":1,"points":0.7}, "th":{"count":0,"points":0}, "vd":{"count":0,"points":0}, "vdc":{"count":0,"points":0} }
       ]
     },
     {
-      "partName": "Phần 2: Đúng/Sai hoặc Trả lời ngắn",
+      "partName": "Phần 2: Trả lời ngắn hoặc tính toán",
       "format": "short_answer",
       "topics": [
-        {
-          "name": "Tên chủ đề bài toán vận dụng",
-          "nb": { "count": 0, "points": 0 },
-          "th": { "count": 0, "points": 0 },
-          "vd": { "count": 1, "points": 1.5 },
-          "vdc": { "count": 0, "points": 0 }
-        }
+        { "name": "Dạng bài vận dụng", "nb":{"count":0,"points":0}, "th":{"count":0,"points":0}, "vd":{"count":1,"points":1.5}, "vdc":{"count":0,"points":0} }
       ]
     }
   ],
-  "aiPedagogicalAdvice": "Lời chào và giải thích sư phạm tại sao lập ma trận như vậy..."
+  "aiPedagogicalAdvice": "2–4 câu: vì sao phân bổ như vậy, tiết tới nên nhấn gì",
+  "focusSkills": ["kỹ năng 1", "kỹ năng 2"]
 }`;
 
+  const user = [
+    `Lập ma trận ${n} câu, ${duration} phút, chủ đề: ${topic}.`,
+    customPrompt ? `Yêu cầu thêm: ${customPrompt}` : '',
+    classInsights ? `Phân tích lớp (bám vào đây khi phân bổ VDC/NB):\n${classInsights}` : '',
+    textParts.length ? textParts.join('\n\n') : '',
+  ].filter(Boolean).join('\n\n');
+
   try {
     const raw = await callModel({
-      system: systemPrompt,
-      parts: [`Lập ma trận đề thi cho chủ đề: ${topic}. Yêu cầu bổ sung: ${customPrompt || 'Theo chuẩn GDPT 2018'}`],
-      temperature: 0.4,
+      system,
+      parts: [...imageParts, ...pdfParts, { text: user }],
+      temperature: 0.35,
       signal,
     });
-
-    const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    const data = JSON.parse(clean);
-
-    if (data && data.parts && Array.isArray(data.parts)) {
-      // Tính lại summary cho chính xác
-      const summary = {
-        nb: { count: 0, points: 0 },
-        th: { count: 0, points: 0 },
-        vd: { count: 0, points: 0 },
-        vdc: { count: 0, points: 0 },
-        total: { count: 0, points: 0 },
-      };
-
-      data.parts.forEach((p) => {
-        (p.topics || []).forEach((t) => {
-          ['nb', 'th', 'vd', 'vdc'].forEach((k) => {
-            const cnt = t[k]?.count || 0;
-            const pts = t[k]?.points || 0;
-            summary[k].count += cnt;
-            summary[k].points = Math.round((summary[k].points + pts) * 10) / 10;
-          });
-        });
-      });
-
-      summary.total.count = summary.nb.count + summary.th.count + summary.vd.count + summary.vdc.count;
-      summary.total.points = Math.round((summary.nb.points + summary.th.points + summary.vd.points + summary.vdc.points) * 10) / 10 || 10.0;
-      data.summary = summary;
-      return data;
+    const data = parseJsonLoose(raw);
+    if (data && Array.isArray(data.parts) && data.parts.length) {
+      data.subject = data.subject || subject;
+      data.grade = data.grade || grade;
+      data.duration = Number(data.duration) || duration;
+      data.source = 'ai';
+      const scaled = scaleMatrixToCount(data, n);
+      if (!scaled.aiPedagogicalAdvice) {
+        scaled.aiPedagogicalAdvice = `Ma trận ${n} câu cho “${topic}” lớp ${grade}, bám 4 mức nhận thức.`;
+      }
+      return scaled;
     }
   } catch (err) {
-    console.warn('AI call failed, using intelligent fallback matrix:', err);
+    if (err?.name === 'AbortError') throw err;
+    console.warn('[matrix] AI plan failed, fallback:', err);
   }
 
-  // Fallback chất lượng cao nếu AI timeout hoặc lỗi
-  return buildFallbackMatrix({ topic, grade, subject, count, duration });
+  const fb = buildFallbackMatrix({ topic, grade, subject, count: n, duration, intent });
+  fb.aiPedagogicalAdvice = `${fb.aiPedagogicalAdvice} (Khung dự phòng — AI chưa lập được ma trận động.)`;
+  return fb;
 }
 
-/**
- * Sinh bộ câu hỏi thực tế bám sát từng ô trong Ma trận đã duyệt
- */
-export async function generateQuestionsFromApprovedMatrix({ matrix, onProgress, signal }) {
+export async function refineMatrixWithAI({ matrix, instruction, classInsights = '', signal } = {}) {
+  if (!matrix) throw new Error('Chưa có ma trận để chỉnh.');
+  const n = matrix.totalQuestions || matrix.summary?.total?.count || 10;
+  const system = `Bạn chỉnh MA TRẬN đề thi JSON theo yêu cầu giáo viên.
+Giữ tổng số câu ≈ ${n}, tổng điểm 10, 4 mức nb/th/vd/vdc.
+Chỉ trả cùng schema JSON (title, subject, grade, duration, parts, aiPedagogicalAdvice).`;
+  const raw = await callModel({
+    system,
+    parts: [{
+      text: `Yêu cầu: ${instruction}\n${classInsights ? `Dữ liệu lớp:\n${classInsights}\n` : ''}Ma trận hiện tại:\n${JSON.stringify({
+        title: matrix.title,
+        parts: matrix.parts,
+        summary: matrix.summary,
+      })}`,
+    }],
+    temperature: 0.3,
+    signal,
+  });
+  const data = parseJsonLoose(raw);
+  if (!data?.parts) throw new Error('AI không trả về ma trận hợp lệ.');
+  data.subject = data.subject || matrix.subject;
+  data.grade = data.grade || matrix.grade;
+  data.duration = Number(data.duration) || matrix.duration;
+  data.source = 'ai';
+  return scaleMatrixToCount(data, n);
+}
+
+function listFromPayload(p) {
+  if (Array.isArray(p)) return p;
+  if (Array.isArray(p?.questions)) return p.questions;
+  return [];
+}
+
+export async function generateQuestionsFromApprovedMatrix({
+  matrix,
+  files = [],
+  classInsights = '',
+  onProgress,
+  signal,
+} = {}) {
   const subject = matrix.subject || 'Hóa học';
   const grade = matrix.grade || '11';
+  const specs = flattenMatrixSpecs(matrix);
+  if (!specs.length) throw new Error('Ma trận chưa có ô câu hỏi nào.');
 
-  // Lập danh sách các yêu cầu câu hỏi theo từng ô của ma trận
-  const specs = [];
-  matrix.parts.forEach((part) => {
-    (part.topics || []).forEach((top) => {
-      ['nb', 'th', 'vd', 'vdc'].forEach((lvl) => {
-        const count = top[lvl]?.count || 0;
-        const pts = top[lvl]?.points || 1.0;
-        for (let i = 0; i < count; i++) {
-          specs.push({
-            part: part.partName,
-            topic: top.name,
-            level: BLOOM_MAPPING[lvl].vn,
-            points: pts,
-          });
-        }
+  const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
+  const nBatches = Math.ceil(specs.length / GEN_BATCH);
+  const batches = [];
+  for (let i = 0; i < specs.length; i += GEN_BATCH) batches.push(specs.slice(i, i + GEN_BATCH));
+
+  const system = `Bạn là giáo viên ${subject} lớp ${grade}, ra đề theo ma trận khảo thí Việt Nam.
+Mỗi câu trắc nghiệm đúng 4 phương án, đúng 1 đáp án.
+YÊU CẦU CHẤT LƯỢNG:
+- Giải trong "work" (nháp ≤ 200 ký tự) TRƯỚC khi chốt "correct".
+- Đáp án nhiễu = sai lầm thật (nhầm công thức, quên đổi đơn vị, nhầm khái niệm gần).
+- Không để đáp án đúng dài hơn hẳn; không dùng "tất cả đều đúng".
+- Lời giải không nhắc A/B/C/D (đáp án sẽ bị trộn).
+- Công thức LaTeX trong $...$; trong JSON viết \\\\frac, \\\\ce.
+- Đúng chương trình lớp ${grade}; số liệu phải tính ra khớp đáp án.
+- Câu trả lời ngắn: options vẫn 4 lựa chọn (giá trị số / biểu thức), học sinh chọn 1.
+
+Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":"...","correct":0,"explain":"...","topic":"...","level":"nhận biết|thông hiểu|vận dụng|vận dụng cao","points":0.7}]}`;
+
+  onProgress?.(0, nBatches);
+  const results = new Array(nBatches).fill(null);
+  let firstErr = null;
+  let done = 0;
+
+  const run = async (b) => {
+    const slice = batches[b];
+    const specText = slice.map((s, i) =>
+      `Câu ${i + 1}: dạng "${s.topic}" | mức ${s.level} | ${s.points} điểm | phần ${s.part}`
+    ).join('\n');
+    try {
+      const raw = await callModel({
+        system,
+        parts: [
+          ...imageParts,
+          ...pdfParts,
+          {
+            text: [
+              `Soạn đúng ${slice.length} câu, mỗi câu một dòng spec, không trùng ý.`,
+              specText,
+              classInsights ? `Bám điểm yếu lớp:\n${classInsights}` : '',
+              textParts.length ? `Tài liệu:\n${textParts.join('\n')}` : '',
+            ].filter(Boolean).join('\n\n'),
+          },
+        ],
+        temperature: 0.45,
+        signal,
       });
-    });
-  });
-
-  const promptSpec = specs.map((s, idx) => `Câu ${idx + 1}: Chủ đề "${s.topic}" - Mức độ "${s.level}" - ${s.points} điểm`).join('\n');
-
-  const systemPrompt = `Bạn là giáo viên chuyên môn ${subject} xuất sắc.
-Hãy soạn bộ đề thi gồm đúng ${specs.length} câu hỏi theo đúng ma trận sau:
-${promptSpec}
-
-Quy định chất lượng câu hỏi:
-- Đầy đủ 4 phương án A, B, C, D (với câu trắc nghiệm).
-- Công thức hóa học / toán học dùng chuẩn LaTeX: $H_2SO_4$, $n = \\frac{m}{M}$, $V = 24.79 \\cdot n$.
-- Chỉ rõ đáp án đúng (correct: 0 cho A, 1 cho B, 2 cho C, 3 cho D).
-- Lời giải chi tiết (explain) rõ ràng từng bước.
-
-Trả về mảng JSON câu hỏi:
-[
-  {
-    "q": "Nội dung câu hỏi...",
-    "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
-    "correct": 0,
-    "explain": "Lời giải...",
-    "topic": "Tên chủ đề",
-    "level": "nhận biết | thông hiểu | vận dụng | vận dụng cao",
-    "points": 0.7
-  }
-]`;
-
-  try {
-    if (onProgress) onProgress(1, 2);
-    const raw = await callModel({
-      system: systemPrompt,
-      parts: [`Soạn đề bám sát ${specs.length} câu theo ma trận.`],
-      temperature: 0.5,
-      signal,
-    });
-
-    const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    const list = JSON.parse(clean);
-
-    if (Array.isArray(list) && list.length > 0) {
-      if (onProgress) onProgress(2, 2);
-      return list.map((q, idx) => {
-        const sp = specs[idx] || {};
-        return normalizeQuestion({
-          ...q,
-          points: q.points || sp.points || 1.0,
-          topic: q.topic || sp.topic || '',
-          level: q.level || sp.level || '',
-        });
-      });
+      results[b] = listFromPayload(parseJsonLoose(raw));
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      firstErr = firstErr || e;
     }
-  } catch (e) {
-    console.warn('Lỗi sinh đề bằng AI, sử dụng bộ câu hỏi mẫu chuẩn theo ma trận:', e);
+    onProgress?.(++done, nBatches);
+  };
+
+  let next = 0;
+  const parallel = Math.min(3, nBatches);
+  await Promise.all(Array.from({ length: parallel }, async () => {
+    while (next < nBatches) {
+      const b = next;
+      next += 1;
+      await run(b);
+    }
+  }));
+
+  const raws = [];
+  results.forEach((list) => { (list || []).forEach((q) => raws.push(q)); });
+  if (!raws.length) {
+    throw firstErr || new Error('AI không sinh được câu hỏi. Thử mô tả chủ đề rõ hơn hoặc thử lại.');
   }
 
-  // Fallback sinh câu hỏi mẫu bám sát ma trận nếu mạng gặp sự cố
-  return specs.map((s, idx) => {
-    return {
-      id: rid(),
-      q: `(Câu ${idx + 1} - ${s.level}) Một học sinh thực hiện bài toán liên quan đến "${s.topic}". Cho biết phát biểu hoặc giá trị nào sau đây là chính xác?`,
-      options: [
-        `Giá trị tính toán theo công thức chuẩn của ${s.topic} là chính xác.`,
-        `Giá trị tăng gấp đôi so với điều kiện thường.`,
-        `Số liệu không phụ thuộc vào nồng độ và khối lượng chất.`,
-        `Phản ứng không xảy ra trong điều kiện tiêu chuẩn.`,
-      ],
-      correct: 0,
-      explain: `Áp dụng kiến thức về "${s.topic}" ở mức độ ${s.level}: Học sinh vận dụng đúng định luật bảo toàn và công thức chuẩn để giải bài toán.`,
-      topic: s.topic,
-      level: s.level.toLowerCase(),
-      points: s.points,
-    };
+  const normalized = raws.slice(0, specs.length).map((q, idx) => {
+    const sp = specs[idx] || {};
+    return shuffleOptions(normalizeQuestion({
+      ...q,
+      points: q.points || sp.points || 0.7,
+      topic: q.topic || sp.topic || '',
+      level: q.level || sp.level || '',
+    }));
   });
+
+  if (normalized.length < specs.length) {
+    const missing = specs.length - normalized.length;
+    throw new Error(`AI mới soạn ${normalized.length}/${specs.length} câu (thiếu ${missing}). Hãy bấm sinh lại.`);
+  }
+  return normalized;
 }
+
+export async function askPedagogyAI({ question, matrix, classInsights = '', signal } = {}) {
+  const raw = await callModel({
+    system: `Bạn là trợ lý sư phạm Hóa học phổ thông Việt Nam.
+Trả lời ngắn, cụ thể, có ví dụ số liệu hoặc câu hỏi gợi ý dạy ngay được.
+Chỉ trả JSON: {"answer":"..."}.`,
+    parts: [{
+      text: [
+        question,
+        matrix?.title ? `Đề/ma trận đang mở: ${matrix.title}` : '',
+        classInsights ? `Dữ liệu lớp:\n${classInsights}` : '',
+      ].filter(Boolean).join('\n\n'),
+    }],
+    temperature: 0.5,
+    signal,
+  });
+  try {
+    const p = parseJsonLoose(raw);
+    return String(p?.answer || p?.text || '').trim() || 'Chưa nhận được gợi ý.';
+  } catch {
+    return String(raw || '').trim() || 'Chưa nhận được gợi ý.';
+  }
+}
+
+export const ridMatrix = rid;

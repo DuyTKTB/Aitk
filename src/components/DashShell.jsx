@@ -335,10 +335,12 @@ export function DashFrame({
   exitLabel = 'Về trang chủ',
   sideNote,
   extraNav,
+  fullscreen = false,
+  className = '',
   children,
 }) {
   return (
-    <div className="vt">
+    <div className={`vt ${fullscreen ? 'vt-fullscreen' : ''} ${className}`}>
       <div className="vt-frame">
         <aside className="vt-side">
           <BrandMark />
