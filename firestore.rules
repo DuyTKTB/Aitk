@@ -119,5 +119,16 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
     }
 
+    // ===============================================================
+    // 10. PAPER EXAMS — Chấm phiếu trắc nghiệm A4 (OMR)
+    // ===============================================================
+    match /paperExams/{examId} {
+      allow read, create, update, delete: if signedIn();
+
+      match /results/{resId} {
+        allow read, write, delete: if signedIn();
+      }
+    }
+
   }
 }

@@ -49,6 +49,14 @@ import LiveProctorView from './LiveProctorView.jsx';
 import CreateExamPage from './teacher/CreateExamPage.jsx';
 import ClassDetailModal from './ClassDetailModal.jsx';
 import QuestionBank from './teacher/QuestionBank.jsx';
+import PaperGrading from './teacher/PaperGrading.jsx';
+
+const IcoScan = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+  </svg>
+);
 import {
   DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
   tsMs, fmtMMSS, fmtClock, downloadCsv,
@@ -686,6 +694,7 @@ export default function TeacherDashboard() {
     { key: 'sessions', label: 'Phòng thi', Icon: IcoVideo, badge: liveSessions.length || null, live: true },
     { key: 'create', label: 'Tạo đề', Icon: IcoBook },
     { key: 'bank', label: 'Ngân hàng', Icon: IcoLibrary },
+    { key: 'paper', label: 'Chấm phiếu A4', Icon: IcoScan },
     {
       key: 'retry',
       label: 'Xin thi lại',
@@ -752,6 +761,10 @@ export default function TeacherDashboard() {
     bank: {
       title: 'Ngân hàng câu hỏi',
       subtitle: 'Lưu trữ và tái sử dụng câu hỏi',
+    },
+    paper: {
+      title: 'Chấm phiếu trắc nghiệm A4',
+      subtitle: 'Nhận dạng phiếu tự động bằng Camera hoặc ảnh chụp',
     },
     retry: {
       title: 'Yêu cầu thi lại',
@@ -1343,6 +1356,11 @@ export default function TeacherDashboard() {
           NGÂN HÀNG
          ============================================================ */}
       {section === 'bank' && <QuestionBank />}
+
+      {/* ============================================================
+          CHẤM PHIẾU A4 (OMR)
+         ============================================================ */}
+      {section === 'paper' && <PaperGrading classes={classes} exams={exams} />}
 
       {/* ============================================================
           XIN THI LẠI
