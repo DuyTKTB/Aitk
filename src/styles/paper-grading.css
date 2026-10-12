@@ -508,3 +508,168 @@
   font-weight: 800;
   color: var(--ink, #0f172a);
 }
+
+/* ============================================================
+   TRÌNH SỬA PHIẾU CHI TIẾT (SHEET EDITOR)
+   ============================================================ */
+.pg-editor {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 96vw);
+  max-height: 92vh;
+  border-radius: 24px;
+  background: var(--panel, #ffffff);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+}
+
+.pg-ed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+
+.pg-ed-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.pg-ed-head small {
+  margin-left: 0.6rem;
+  color: var(--mut, #64748b);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.pg-ed-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 1.25rem;
+  padding: 1.25rem 1.4rem;
+  overflow-y: auto;
+}
+
+.pg-ed-img {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 75vh;
+  overflow: auto;
+  border-radius: 16px;
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  background: #000;
+}
+
+.pg-ed-img img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+}
+
+.pg-ed-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.pg-ed-form h4 {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.pg-p1grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 0.4rem;
+}
+
+.pg-p1cell, .pg-p2cell label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 10px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pg-p1cell span {
+  min-width: 1.4rem;
+  color: var(--mut, #64748b);
+}
+
+.pg-p1cell select, .pg-p2cell select {
+  border: 0;
+  background: transparent;
+  color: var(--ink, #0f172a);
+  font-weight: 800;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.pg-p1cell.sus, .pg-p2cell label.sus {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+}
+
+.pg-p2grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+.pg-p2cell {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+}
+
+.pg-p2cell b {
+  grid-column: span 2;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.pg-p3grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+
+.pg-ed-score {
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink, #0f172a);
+}
+
+.pg-editor .pg-foot {
+  padding: 0.9rem 1.4rem;
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+}
+
+@media (max-width: 820px) {
+  .pg-ed-body { grid-template-columns: 1fr; }
+  .pg-ed-img { position: static; max-height: 45vh; }
+  .pg-field.wide { grid-column: auto; }
+}
