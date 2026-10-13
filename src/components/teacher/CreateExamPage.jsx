@@ -13,6 +13,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
 import AutoExamStudio from './AutoExamStudio.jsx';
+import ExamImporter from './ExamImporter.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -24,6 +25,14 @@ const IcoDoc = ({ size = 16 }) => (
     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
     <path d="M14 3v6h6M8 13h8M8 17h5" />
+  </svg>
+);
+const IcoUpload = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
   </svg>
 );
 const IcoSparkle = ({ size = 16 }) => (
@@ -140,7 +149,7 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
-        classId: classInfo.id,
+        classId: data.classId || classInfo.id,
         title: data.title,
         description: data.description,
         duration: data.duration,
@@ -151,6 +160,8 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
         opensAt: data.opensAt,
         closesAt: data.closesAt,
         proctor: data.proctor,
+        source: data.source || '',
+        kind: data.kind || '',
       });
       toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
       clearDraft(); // đề đã lưu → bỏ bản nháp AI cũ
@@ -186,6 +197,15 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
           onClick={() => setTab('manual')}
         >
           <IcoDoc size={15} /> Soạn thủ công
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'file'}
+          className={'cep-tab' + (tab === 'file' ? ' on' : '')}
+          onClick={() => setTab('file')}
+        >
+          <IcoUpload size={15} /> Nhập từ file
         </button>
       </div>
 
@@ -226,6 +246,30 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
           onSave={handleSave}
           onCancel={onCancel}
           saving={saving}
+        />
+      </div>
+
+      <div hidden={tab !== 'file'}>
+        <ExamImporter
+          variant="page"
+          classInfo={classInfo}
+          classes={classes.length ? classes : classInfo ? [classInfo] : []}
+          allowBank={false}
+          allowSoftExam
+          onCreateSoftExam={async ({ title, duration, classId, subject, grade, questions, sourceFile }) => {
+            await handleSave({
+              title,
+              description: sourceFile ? `Nhập từ file ${sourceFile}` : 'Đề mềm nhập từ file',
+              duration,
+              questions: questions.map((q) => ({ ...q, subject, grade })),
+              showAnswerAfter: true,
+              allowRetry: false,
+              shuffle: false,
+              source: 'file-import',
+              kind: 'soft',
+              classId: classId || classInfo?.id,
+            });
+          }}
         />
       </div>
     </div>

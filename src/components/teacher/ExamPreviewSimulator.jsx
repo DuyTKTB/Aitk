@@ -1,30 +1,22 @@
 /* ============================================================
-   ExamPreviewSimulator.jsx — Bộ Xem Trước & Mô Phỏng Đề Thi Đa Môn
+   ExamPreviewSimulator.jsx — Bộ Xem Trước & Mô Phỏng Đề Thi (v5)
    ------------------------------------------------------------
-   HỖ TRỢ ĐA MÔN: Toán, Lý, Hóa, Sinh, Văn, Anh, Sử, Địa, GDCD,
-                  Tin, Công nghệ, KHTN + môn tự đặt tên.
-   ------------------------------------------------------------
-   4 chế độ: Mô phỏng thi | Bản in A4 | Đảo 4 mã đề | Bảng đặc tả
-   ------------------------------------------------------------
-   v2 (đa môn + fix):
-     • FIX #3: Đảo mã đề GIỮ NGUYÊN NHÓM ĐỘ KHÓ, chỉ xáo trong
-       từng nhóm NB/TH/VD/VDC → không làm lệch độ khó giữa các mã.
-     • MỚI: Hiển thị đúng 3 loại câu:
-       - single_choice: A/B/C/D
-       - true_false: 4 ý a/b/c/d Đ/S
-       - short_answer: ô nhập đáp án
-     • MỚI: In A4 hỗ trợ đa môn — MathText chỉ bật cho môn
-       getSubject(subject).math = true.
-     • MỚI: Chấm điểm đúng theo từng loại câu.
-     • MỚI: Bảng đặc tả hiển thị cột "Loại câu".
-     • MỚI: In A4 có header/footer chuẩn Bộ GD&ĐT (đa môn).
+   v5 (thêm Phiếu OMR):
+     • MỚI: Tab "Phiếu OMR" — in phiếu trả lời trắc nghiệm A4
+       tự động theo số câu (TN nhiều lựa chọn / Đúng-Sai / TLN).
+     • MỚI: In hàng loạt nhiều mã đề cùng lúc.
+     • FIX: Tên hàm printOmrSheetA4 nhận questions để tính layout.
+     • Giữ nguyên: mô phỏng, flag, phím tắt, chỉnh sửa, tải Word/PDF,
+       in A4, đảo mã, đặc tả.
    ============================================================ */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import MathText from '../MathText.jsx';
 import sound from '../../lib/gameSound.js';
 import { getSubject } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
-import { QUESTION_TYPES } from '../../lib/examAiUtils.js';
+import { exportToWord, exportToPDF } from '../../lib/examExport.js';
+import { printOmrSheetA4, printMultipleOmrSheets } from '../../lib/omrSheetGenerator.js';
+import '../../styles/exam-preview-simulator.css';
 
 /* ============ SVG ICONS ============ */
 const Svg = ({ size = 16, children }) => (
@@ -50,11 +42,24 @@ const IcoCheck = (p) => <Svg {...p}><polyline points="20 6 9 17 4 12" /></Svg>;
 const IcoTable = (p) => <Svg {...p}><path d="M3 3h18v18H3z" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" /></Svg>;
 const IcoSim = (p) => <Svg {...p}><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></Svg>;
 const IcoX = (p) => <Svg {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Svg>;
-const IcoSpark = (p) => <Svg {...p}><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" /></Svg>;
-const IcoPlay = (p) => <Svg {...p}><polygon points="5 3 19 12 5 21 5 3" /></Svg>;
+const IcoFlag = (p) => <Svg {...p}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></Svg>;
+const IcoRefresh = (p) => <Svg {...p}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></Svg>;
+const IcoChevronLeft = (p) => <Svg {...p}><polyline points="15 18 9 12 15 6" /></Svg>;
+const IcoChevronRight = (p) => <Svg {...p}><polyline points="9 18 15 12 9 6" /></Svg>;
+const IcoSend = (p) => <Svg {...p}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></Svg>;
+const IcoEdit = (p) => <Svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
+const IcoSave = (p) => <Svg {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></Svg>;
+const IcoFileWord = (p) => <Svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M8 13l1.5 4 1.5-4 1.5 4 1.5-4" /></Svg>;
+const IcoFilePdf = (p) => <Svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M9 15h1.5a1.5 1.5 0 0 0 0-3H9v6" /><path d="M14 18v-6h1.5a1.5 1.5 0 0 1 1.5 1.5v3A1.5 1.5 0 0 1 15.5 18H14z" /></Svg>;
+const IcoClipboard = (p) => (
+  <Svg {...p}>
+    <path d="M9 2h6a2 2 0 0 1 2 2v2H7V4a2 2 0 0 1 2-2z" />
+    <path d="M16 6h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2" />
+    <path d="M8 12h8M8 16h5" />
+  </Svg>
+);
 
 /* ============ PRNG ============ */
-/* Mulberry32 — xáo có hạt giống, tái tạo được */
 function mulberry32(a) {
   return function () {
     let t = (a += 0x6d2b79f5);
@@ -64,7 +69,6 @@ function mulberry32(a) {
   };
 }
 
-/* Fisher-Yates shuffle */
 function shuffleFisherYates(array, prng) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -75,17 +79,11 @@ function shuffleFisherYates(array, prng) {
 }
 
 /* ============================================================
-   FIX #3: ĐẢO MÃ ĐỀ GIỮ NGUYÊN NHÓM ĐỘ KHÓ
-   ------------------------------------------------------------
-   Trước: xáo thứ tự câu lung tung → mã 101 và 102 có độ khó
-           khác nhau ở đầu bài → không công bằng.
-   Sau:   chia câu theo 4 nhóm (NB/TH/VD/VDC), xáo TRONG từng
-           nhóm, rồi ghép theo thứ tự NB → TH → VD → VDC.
+   ĐẢO MÃ ĐỀ — GIỮ NGUYÊN NHÓM ĐỘ KHÓ
    ============================================================ */
 function generateShuffledVersions(questions = [], count = 4) {
   const codeList = ['101', '102', '103', '104'].slice(0, count);
 
-  // Chia câu theo nhóm độ khó (giữ thứ tự gốc trong mỗi nhóm)
   const groups = { nb: [], th: [], vd: [], vdc: [] };
   questions.forEach((q, idx) => {
     const lv = normLevel(q.level);
@@ -96,16 +94,12 @@ function generateShuffledVersions(questions = [], count = 4) {
     const seed = parseInt(code, 10) * 10007 + 37;
     const prng = mulberry32(seed);
 
-    // 1. Xáo thứ tự CÂU trong từng nhóm độ khó
     const shuffledByLevel = {};
     ['nb', 'th', 'vd', 'vdc'].forEach((lv) => {
       const group = groups[lv];
-      shuffledByLevel[lv] = codeIdx === 0
-        ? group
-        : shuffleFisherYates(group, prng);
+      shuffledByLevel[lv] = codeIdx === 0 ? group : shuffleFisherYates(group, prng);
     });
 
-    // 2. Ghép lại: NB → TH → VD → VDC
     const orderedWithOrig = [
       ...shuffledByLevel.nb,
       ...shuffledByLevel.th,
@@ -113,9 +107,7 @@ function generateShuffledVersions(questions = [], count = 4) {
       ...shuffledByLevel.vdc,
     ];
 
-    // 3. Xáo phương án A/B/C/D cho từng câu single_choice
     const finalQuestions = orderedWithOrig.map(({ q, origIdx }) => {
-      // true_false/short_answer: giữ nguyên
       if (q.type === 'true_false' || q.type === 'short_answer') {
         return { ...q, originalIndex: origIdx + 1, _origQuestion: q };
       }
@@ -126,9 +118,8 @@ function generateShuffledVersions(questions = [], count = 4) {
 
       const qPrng = mulberry32(seed + (origIdx + 1) * 313);
       const optIndices = origOpts.map((_, i) => i);
-      const shuffledOptIndices = codeIdx === 0
-        ? optIndices
-        : shuffleFisherYates(optIndices, qPrng);
+      const shuffledOptIndices =
+        codeIdx === 0 ? optIndices : shuffleFisherYates(optIndices, qPrng);
 
       const newOpts = shuffledOptIndices.map((i) => origOpts[i]);
       const newCorrect = newOpts.indexOf(correctText);
@@ -143,7 +134,6 @@ function generateShuffledVersions(questions = [], count = 4) {
       };
     });
 
-    // 4. Bản đồ ánh xạ 2 chiều
     const origToNew = {};
     const newToOrig = {};
     finalQuestions.forEach((q, newIdx) => {
@@ -162,17 +152,12 @@ function generateShuffledVersions(questions = [], count = 4) {
       }
     });
 
-    return {
-      code,
-      questions: finalQuestions,
-      origToNew,
-      newToOrig,
-    };
+    return { code, questions: finalQuestions, origToNew, newToOrig };
   });
 }
 
 /* ============================================================
-   CHẤM ĐIỂM THEO TỪNG LOẠI CÂU
+   CHẤM ĐIỂM
    ============================================================ */
 function gradeSimulation(questions, answers) {
   let correctCount = 0;
@@ -192,7 +177,6 @@ function gradeSimulation(questions, answers) {
       isCorrect = ans === q.correct;
       if (isCorrect) { correctCount++; earnedPoints += pts; }
     } else if (type === 'true_false') {
-      // Chấm lũy tiến: mỗi ý đúng = pts/4
       if (Array.isArray(ans) && q.statements?.length === 4) {
         const rightCount = ans.filter((v, k) => v === q.statements[k].answer).length;
         const partial = (rightCount / 4) * pts;
@@ -201,7 +185,8 @@ function gradeSimulation(questions, answers) {
         isCorrect = rightCount === 4;
       }
     } else if (type === 'short_answer') {
-      const norm = (s) => String(s || '').replace(/\s+/g, '').replace(/[.]/g, ',').toLowerCase();
+      const norm = (s) =>
+        String(s || '').replace(/\s+/g, '').replace(/[.]/g, ',').toLowerCase();
       const userAns = norm(ans);
       isCorrect = (q.accepted || []).some((a) => norm(a) === userAns);
       if (isCorrect) { correctCount++; earnedPoints += pts; }
@@ -212,6 +197,12 @@ function gradeSimulation(questions, answers) {
 
   const score10 = maxPoints > 0 ? Math.round((earnedPoints / maxPoints) * 100) / 10 : 0;
   return { correctCount, totalCount: questions.length, earnedPoints, maxPoints, score10, details };
+}
+
+function fmtTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 /* ============================================================
@@ -238,211 +229,381 @@ export default function ExamPreviewSimulator({
   const [simTimeLeft, setSimTimeLeft] = useState(duration * 60);
   const [simSubmitted, setSimSubmitted] = useState(false);
   const [simScore, setSimScore] = useState(null);
+  const [flagged, setFlagged] = useState({});
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // Shuffle state
   const [activeCode, setActiveCode] = useState('101');
-  const [shuffledExams, setShuffledExams] = useState(() => generateShuffledVersions(questions, 4));
+  const [shuffledExams, setShuffledExams] = useState(() =>
+    generateShuffledVersions(questions, 4)
+  );
+
+  // Edit state
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({
+    examTitle: exam.title || matrix?.title || 'Đề kiểm tra',
+    subject: exam.subject || matrix?.subject || 'Hóa học',
+    duration: exam.duration || matrix?.duration || 30,
+    questions: [...questions],
+  });
+  const [exporting, setExporting] = useState(null); // 'word' | 'pdf' | null
+  const paperRef = useRef(null);
+
+  const questionsRef = useRef(questions);
+  const durationRef = useRef(duration);
 
   useEffect(() => {
     setShuffledExams(generateShuffledVersions(questions, 4));
+    questionsRef.current = questions;
   }, [questions]);
 
   useEffect(() => {
-    if (simSubmitted || simTimeLeft <= 0) return undefined;
-    const t = setInterval(() => setSimTimeLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [simSubmitted, simTimeLeft]);
+    durationRef.current = duration;
+    setSimTimeLeft(duration * 60);
+  }, [duration]);
 
-  const handleSubmitSimulation = () => {
-    const result = gradeSimulation(questions, simAnswers);
+  /* ---------- TOAST ---------- */
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((message, type = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  /* ---------- TIMER ---------- */
+  useEffect(() => {
+    if (simSubmitted || simTimeLeft <= 0) return undefined;
+    const t = setInterval(() => {
+      setSimTimeLeft((s) => {
+        if (s <= 1) {
+          clearInterval(t);
+          setTimeout(() => {
+            const result = gradeSimulation(questionsRef.current, simAnswers);
+            setSimScore(result);
+            setSimSubmitted(true);
+            sound.cheer();
+          }, 0);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [simSubmitted, simTimeLeft, simAnswers]);
+
+  /* ---------- SUBMIT ---------- */
+  const handleSubmitSimulation = useCallback(() => {
+    const result = gradeSimulation(questionsRef.current, simAnswers);
     setSimScore(result);
     setSimSubmitted(true);
     sound.cheer();
+  }, [simAnswers]);
+
+  /* ---------- RESET ---------- */
+  const handleReset = useCallback(() => {
+    setSimAnswers({});
+    setSimActiveQ(0);
+    setSimTimeLeft(duration * 60);
+    setSimSubmitted(false);
+    setSimScore(null);
+    setFlagged({});
+    sound.ding();
+  }, [duration]);
+
+  /* ---------- FLAG ---------- */
+  const toggleFlag = useCallback((idx) => {
+    setFlagged((prev) => ({ ...prev, [idx]: !prev[idx] }));
+    sound.ding();
+  }, []);
+
+  /* ---------- KEYBOARD ---------- */
+  useEffect(() => {
+    if (tab !== 'sim' || simSubmitted || editMode) return undefined;
+    const handler = (e) => {
+      if (e.target.matches('input, textarea')) return;
+      const key = e.key;
+      if (['1', '2', '3', '4'].includes(key)) {
+        e.preventDefault();
+        const idx = parseInt(key, 10) - 1;
+        const q = questions[simActiveQ];
+        if (q && (q.type === 'single_choice' || !q.type) && q.options?.[idx] !== undefined) {
+          setSimAnswers((prev) => ({ ...prev, [simActiveQ]: idx }));
+          sound.ding();
+        }
+      }
+      if (key === 'ArrowLeft') {
+        e.preventDefault();
+        setSimActiveQ((i) => Math.max(0, i - 1));
+      }
+      if (key === 'ArrowRight') {
+        e.preventDefault();
+        setSimActiveQ((i) => Math.min(questions.length - 1, i + 1));
+      }
+      if (key === 'f' || key === 'F') {
+        e.preventDefault();
+        toggleFlag(simActiveQ);
+      }
+      if (key === ' ') {
+        e.preventDefault();
+        if (window.confirm('Nộp bài và chấm điểm?')) {
+          handleSubmitSimulation();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [tab, simSubmitted, simActiveQ, questions, toggleFlag, handleSubmitSimulation, editMode]);
+
+  /* ---------- EXPORT WORD/PDF ---------- */
+  const handleExportWord = async () => {
+    try {
+      setExporting('word');
+      await exportToWord({
+        examTitle: editData.examTitle,
+        subject: editData.subject,
+        duration: editData.duration,
+        code: activeCode,
+        questions: editData.questions,
+        includeAnswers: true,
+      });
+      sound.cheer();
+      showToast('Đã tải file Word', 'success');
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi xuất Word: ' + err.message);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setExporting('pdf');
+      await exportToPDF({
+        element: paperRef.current,
+        examTitle: editData.examTitle,
+        code: activeCode,
+      });
+      sound.cheer();
+      showToast('Đã tải file PDF', 'success');
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi xuất PDF: ' + err.message);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  /* ---------- OMR ---------- */
+  const handlePrintOMR = () => {
+    printOmrSheetA4({
+      questions: editData.questions,
+      title: 'PHIẾU TRẢ LỜI TRẮC NGHIỆM',
+      code: activeCode,
+      examTitle: editData.examTitle,
+      subject: editData.subject,
+      duration: editData.duration,
+    });
+    sound.cheer();
+  };
+
+  const handlePrintAllOMR = () => {
+    const variants = shuffledExams.map((ex) => ({
+      code: ex.code,
+      questions: ex.questions,
+    }));
+    if (variants.length === 0) {
+      showToast('Chưa có mã đề nào. Vào tab "Đảo mã" trước.', 'error');
+      return;
+    }
+    const ok = window.confirm(
+      `In ${variants.length} phiếu OMR cho các mã đề: ${variants.map((v) => v.code).join(', ')}?\n\n` +
+      `Mỗi mã sẽ mở 1 cửa sổ riêng. Bạn cần cho phép popup.`
+    );
+    if (!ok) return;
+    printMultipleOmrSheets(variants, {
+      title: 'PHIẾU TRẢ LỜI TRẮC NGHIỆM',
+      examTitle: editData.examTitle,
+      subject: editData.subject,
+      duration: editData.duration,
+    });
+    sound.cheer();
+  };
+
+  /* ---------- EDIT ---------- */
+  const handleSaveEdit = () => {
+    sound.cheer();
+    setEditMode(false);
+    showToast('Đã lưu thay đổi', 'success');
+  };
+
+  const handleCancelEdit = () => {
+    setEditData({
+      examTitle: exam.title || matrix?.title || 'Đề kiểm tra',
+      subject: exam.subject || matrix?.subject || 'Hóa học',
+      duration: exam.duration || matrix?.duration || 30,
+      questions: [...questions],
+    });
+    setEditMode(false);
   };
 
   const currentQ = questions[simActiveQ];
+  const answeredCount = Object.keys(simAnswers).filter((k) => {
+    const v = simAnswers[k];
+    if (Array.isArray(v)) return v.some((x) => x !== undefined);
+    return v !== undefined && v !== '';
+  }).length;
+
+  const timeClass = simTimeLeft < 60 ? 'critical' : simTimeLeft < 300 ? 'urgent' : '';
+
+  /* ---------- OMR stats ---------- */
+  const omrStats = useMemo(() => {
+    const questions = editData.questions || [];
+    const single = questions.filter((q) => (q.type || 'single_choice') === 'single_choice').length;
+    const tf = questions.filter((q) => q.type === 'true_false').length;
+    const sa = questions.filter((q) => q.type === 'short_answer').length;
+    return { single, tf, sa, total: questions.length };
+  }, [editData.questions]);
 
   return (
-    <div
-      style={{
-        position: embedded ? 'relative' : 'fixed',
-        inset: embedded ? 'auto' : 0,
-        width: '100%',
-        height: embedded ? '100%' : '100%',
-        minHeight: embedded ? '580px' : 'auto',
-        zIndex: embedded ? 1 : 99999,
-        background: embedded ? 'var(--t-surface-1, #0b132b)' : 'rgba(11, 19, 43, 0.85)',
-        backdropFilter: embedded ? 'none' : 'blur(16px)',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: embedded ? 18 : 0,
-        overflow: 'hidden',
-      }}
-    >
+    <div className={`eps-root ${embedded ? 'embedded' : 'fullscreen'}`}>
       {/* HEADER */}
-      <header style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.8rem 1.25rem',
-        background: '#0b132b',
-        borderBottom: '1px solid rgba(56, 189, 248, 0.2)',
-        color: '#fff',
-        flexWrap: 'wrap',
-        gap: '0.75rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-          <strong style={{ fontSize: '1.15rem', color: '#38bdf8', whiteSpace: 'nowrap' }}>
-            ELEC AI Exam Studio
-          </strong>
-          <span style={{ fontSize: '0.85rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {examTitle} · {subject} · {questions.length} câu · {duration} phút
+      <header className="eps-header">
+        <div className="eps-header-left">
+          <strong className="eps-brand">ELEC AI Exam Studio</strong>
+          <span className="eps-meta">
+            {editData.examTitle} · {editData.subject} · {editData.questions.length} câu · {editData.duration} phút
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.4rem', background: '#1c2541', padding: '0.3rem', borderRadius: 12, flexWrap: 'wrap' }}>
+        <div className="eps-tabs">
           <button
             type="button"
-            className={`vt-btn sm ${tab === 'sim' ? 'primary' : ''}`}
+            className={`eps-tab ${tab === 'sim' ? 'on' : ''}`}
             onClick={() => setTab('sim')}
           >
-            <IcoSim size={15} /> Mô phỏng thi
+            <IcoSim size={14} /> Mô phỏng
           </button>
           <button
             type="button"
-            className={`vt-btn sm ${tab === 'print' ? 'primary' : ''}`}
+            className={`eps-tab ${tab === 'print' ? 'on' : ''}`}
             onClick={() => setTab('print')}
           >
-            <IcoPrinter size={15} /> Bản in A4
+            <IcoPrinter size={14} /> In A4
           </button>
           <button
             type="button"
-            className={`vt-btn sm ${tab === 'shuffle' ? 'primary' : ''}`}
+            className={`eps-tab ${tab === 'omr' ? 'on' : ''}`}
+            onClick={() => setTab('omr')}
+          >
+            <IcoClipboard size={14} /> Phiếu OMR
+          </button>
+          <button
+            type="button"
+            className={`eps-tab ${tab === 'shuffle' ? 'on' : ''}`}
             onClick={() => setTab('shuffle')}
           >
-            <IcoShuffle size={15} /> Đảo 4 mã đề
+            <IcoShuffle size={14} /> Đảo mã
           </button>
           <button
             type="button"
-            className={`vt-btn sm ${tab === 'specs' ? 'primary' : ''}`}
+            className={`eps-tab ${tab === 'specs' ? 'on' : ''}`}
             onClick={() => setTab('specs')}
           >
-            <IcoTable size={15} /> Bảng đặc tả
+            <IcoTable size={14} /> Đặc tả
           </button>
         </div>
 
-        {onClose && (
+        <div className="eps-header-actions">
           <button
             type="button"
-            className="vt-btn sm"
-            onClick={onClose}
-            aria-label="Đóng"
+            className={`eps-edit-btn ${editMode ? 'on' : ''}`}
+            onClick={() => setEditMode((v) => !v)}
+            title="Chỉnh sửa nội dung đề"
           >
-            <IcoX size={14} /> Đóng
+            <IcoEdit size={14} /> {editMode ? 'Đang sửa' : 'Chỉnh sửa'}
           </button>
-        )}
+
+          {onClose && (
+            <button
+              type="button"
+              className="eps-close"
+              onClick={onClose}
+              aria-label="Đóng"
+            >
+              <IcoX size={14} /> Đóng
+            </button>
+          )}
+        </div>
       </header>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: 'var(--bg, #f8fafc)' }}>
+      <div className="eps-body">
         {/* ============================================================
-            TAB 1: MÔ PHỎNG THI
+            TAB 1: MÔ PHỎNG
            ============================================================ */}
         {tab === 'sim' && (
-          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '1.5rem' }}>
-            <div style={{
-              background: 'var(--panel, #fff)',
-              borderRadius: 20,
-              padding: '1.8rem',
-              border: '1px solid var(--line, rgba(0,0,0,0.1))',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.05)',
-            }}>
+          <div className="eps-sim-layout">
+            <div className="eps-q-card">
               {currentQ ? (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0284c7' }}>
+                  <div className="eps-q-head">
+                    <span className="eps-q-num">
                       Câu {simActiveQ + 1} / {questions.length} ({currentQ.points || 1} điểm)
                     </span>
-                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <span style={{
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: 8,
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        background: '#e0f2fe',
-                        color: '#0369a1',
-                      }}>
+                    <div className="eps-q-badges">
+                      <span className="eps-badge level">
                         {LEVEL_INFO[normLevel(currentQ.level)]?.label?.toUpperCase() || 'THÔNG HIỂU'}
                       </span>
                       {currentQ.type === 'true_false' && (
-                        <span style={{ padding: '0.2rem 0.6rem', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700, background: '#fce7f3', color: '#be185d' }}>
-                          ĐÚNG/SAI
-                        </span>
+                        <span className="eps-badge tf">ĐÚNG/SAI</span>
                       )}
                       {currentQ.type === 'short_answer' && (
-                        <span style={{ padding: '0.2rem 0.6rem', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700, background: '#e0e7ff', color: '#4f46e5' }}>
-                          TRẢ LỜI NGẮN
-                        </span>
+                        <span className="eps-badge sa">TRẢ LỜI NGẮN</span>
                       )}
+                      <button
+                        type="button"
+                        className={`eps-flag-btn ${flagged[simActiveQ] ? 'on' : ''}`}
+                        onClick={() => toggleFlag(simActiveQ)}
+                        title="Đánh dấu câu này (F)"
+                      >
+                        <IcoFlag size={13} />
+                        {flagged[simActiveQ] ? 'Bỏ đánh dấu' : 'Đánh dấu'}
+                      </button>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '1.05rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                  <div className="eps-q-text">
                     {useMath ? <MathText text={currentQ.q} /> : currentQ.q}
                   </div>
 
-                  {/* ===== single_choice ===== */}
                   {(currentQ.type === 'single_choice' || !currentQ.type) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className="eps-opts">
                       {(currentQ.options || []).map((opt, oIdx) => {
                         const isChosen = simAnswers[simActiveQ] === oIdx;
                         const isCorrect = currentQ.correct === oIdx;
-                        const letter = String.fromCharCode(65 + oIdx);
-                        let bg = 'var(--surface-2, #f8fafc)';
-                        let border = 'var(--line, rgba(0,0,0,0.1))';
-                        if (isChosen) { bg = '#e0f2fe'; border = '#0284c7'; }
-                        if (simSubmitted) {
-                          if (isCorrect) { bg = '#dcfce7'; border = '#16a34a'; }
-                          else if (isChosen && !isCorrect) { bg = '#fee2e2'; border = '#ef4444'; }
-                        }
+                        let cls = 'eps-opt';
+                        if (isChosen) cls += ' chosen';
+                        if (simSubmitted && isCorrect) cls += ' correct';
+                        else if (simSubmitted && isChosen && !isCorrect) cls += ' wrong';
+                        if (simSubmitted) cls += ' locked';
                         return (
                           <div
                             key={oIdx}
+                            className={cls}
                             onClick={() => {
                               if (!simSubmitted) {
                                 setSimAnswers((prev) => ({ ...prev, [simActiveQ]: oIdx }));
                                 sound.ding();
                               }
                             }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.8rem',
-                              padding: '0.85rem 1.1rem',
-                              borderRadius: 14,
-                              background: bg,
-                              border: `1.5px solid ${border}`,
-                              cursor: simSubmitted ? 'default' : 'pointer',
-                              fontSize: '0.95rem',
-                            }}
                           >
-                            <strong style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: 50,
-                              background: isChosen ? '#0284c7' : '#cbd5e1',
-                              color: '#fff',
-                              display: 'grid',
-                              placeItems: 'center',
-                              fontSize: '0.8rem',
-                              flexShrink: 0,
-                            }}>
-                              {letter}
+                            <strong className="eps-opt-key">
+                              {String.fromCharCode(65 + oIdx)}
                             </strong>
-                            <span style={{ flex: 1 }}>
+                            <span className="eps-opt-text">
                               {useMath ? <MathText text={opt} /> : opt}
                             </span>
                             {simSubmitted && isCorrect && (
-                              <span style={{ color: '#16a34a', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ color: '#16a34a', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                 <IcoCheck size={14} /> Đáp án đúng
                               </span>
                             )}
@@ -452,34 +613,22 @@ export default function ExamPreviewSimulator({
                     </div>
                   )}
 
-                  {/* ===== true_false ===== */}
                   {currentQ.type === 'true_false' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className="eps-opts">
                       {(currentQ.statements || []).map((st, sIdx) => {
                         const userAns = (simAnswers[simActiveQ] || [])[sIdx];
                         const correct = st.answer;
                         const letter = 'abcd'[sIdx];
                         return (
-                          <div
-                            key={sIdx}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.75rem',
-                              padding: '0.85rem 1.1rem',
-                              borderRadius: 14,
-                              background: 'var(--surface-2, #f8fafc)',
-                              border: '1px solid var(--line, rgba(0,0,0,0.1))',
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <strong style={{ color: '#0284c7' }}>{letter})</strong>
-                            <span style={{ flex: 1, minWidth: 160 }}>
+                          <div key={sIdx} className="eps-tf-row">
+                            <strong className="eps-tf-letter">{letter})</strong>
+                            <span className="eps-tf-text">
                               {useMath ? <MathText text={st.text} /> : st.text}
                             </span>
-                            <div style={{ display: 'flex', gap: '0.3rem' }}>
+                            <div className="eps-tf-actions">
                               <button
                                 type="button"
+                                className={`eps-tf-btn ${userAns === true ? 'on-true' : ''} ${simSubmitted && correct ? 'correct' : ''} ${simSubmitted && userAns === true && !correct ? 'wrong' : ''}`}
                                 onClick={() => {
                                   if (simSubmitted) return;
                                   const next = [...(simAnswers[simActiveQ] || [])];
@@ -487,23 +636,12 @@ export default function ExamPreviewSimulator({
                                   setSimAnswers((prev) => ({ ...prev, [simActiveQ]: next }));
                                   sound.ding();
                                 }}
-                                style={{
-                                  padding: '0.4rem 0.9rem',
-                                  borderRadius: 8,
-                                  fontWeight: 700,
-                                  fontSize: '0.82rem',
-                                  background: userAns === true
-                                    ? (simSubmitted ? (correct ? '#dcfce7' : '#fee2e2') : '#dcfce7')
-                                    : 'var(--panel, #fff)',
-                                  border: `1.5px solid ${userAns === true ? (simSubmitted ? (correct ? '#16a34a' : '#ef4444') : '#16a34a') : 'var(--line)'}`,
-                                  color: userAns === true ? (simSubmitted ? (correct ? '#16a34a' : '#dc2626') : '#16a34a') : 'var(--mut)',
-                                  cursor: simSubmitted ? 'default' : 'pointer',
-                                }}
                               >
                                 Đúng
                               </button>
                               <button
                                 type="button"
+                                className={`eps-tf-btn ${userAns === false ? 'on-false' : ''} ${simSubmitted && !correct ? 'correct' : ''} ${simSubmitted && userAns === false && correct ? 'wrong' : ''}`}
                                 onClick={() => {
                                   if (simSubmitted) return;
                                   const next = [...(simAnswers[simActiveQ] || [])];
@@ -511,31 +649,12 @@ export default function ExamPreviewSimulator({
                                   setSimAnswers((prev) => ({ ...prev, [simActiveQ]: next }));
                                   sound.ding();
                                 }}
-                                style={{
-                                  padding: '0.4rem 0.9rem',
-                                  borderRadius: 8,
-                                  fontWeight: 700,
-                                  fontSize: '0.82rem',
-                                  background: userAns === false
-                                    ? (simSubmitted ? (correct ? '#dcfce7' : '#fee2e2') : '#fee2e2')
-                                    : 'var(--panel, #fff)',
-                                  border: `1.5px solid ${userAns === false ? (simSubmitted ? (correct ? '#16a34a' : '#ef4444') : '#dc2626') : 'var(--line)'}`,
-                                  color: userAns === false ? (simSubmitted ? (correct ? '#16a34a' : '#dc2626') : '#dc2626') : 'var(--mut)',
-                                  cursor: simSubmitted ? 'default' : 'pointer',
-                                }}
                               >
                                 Sai
                               </button>
                             </div>
                             {simSubmitted && (
-                              <span style={{
-                                padding: '2px 8px',
-                                borderRadius: 6,
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                background: correct ? '#dcfce7' : '#fee2e2',
-                                color: correct ? '#16a34a' : '#dc2626',
-                              }}>
+                              <span className={`eps-tf-result ${correct ? 'correct' : 'wrong'}`}>
                                 {correct ? 'Đúng' : 'Sai'}
                               </span>
                             )}
@@ -545,11 +664,11 @@ export default function ExamPreviewSimulator({
                     </div>
                   )}
 
-                  {/* ===== short_answer ===== */}
                   {currentQ.type === 'short_answer' && (
                     <div>
                       <input
                         type="text"
+                        className="eps-input"
                         value={simAnswers[simActiveQ] || ''}
                         onChange={(e) => {
                           if (simSubmitted) return;
@@ -557,100 +676,88 @@ export default function ExamPreviewSimulator({
                         }}
                         placeholder="Nhập đáp án của bạn..."
                         disabled={simSubmitted}
-                        style={{
-                          width: '100%',
-                          padding: '0.9rem 1.1rem',
-                          borderRadius: 12,
-                          border: `1.5px solid ${simSubmitted ? (currentQ.accepted?.some((a) => String(a).replace(/\s+/g, '').toLowerCase() === String(simAnswers[simActiveQ] || '').replace(/\s+/g, '').toLowerCase()) ? '#16a34a' : '#ef4444') : 'var(--line, rgba(0,0,0,0.1))'}`,
-                          background: simSubmitted
-                            ? (currentQ.accepted?.some((a) => String(a).replace(/\s+/g, '').toLowerCase() === String(simAnswers[simActiveQ] || '').replace(/\s+/g, '').toLowerCase()) ? '#dcfce7' : '#fee2e2')
-                            : 'var(--panel, #fff)',
-                          fontSize: '1.1rem',
-                          fontWeight: 600,
-                          outline: 0,
-                          fontFamily: 'inherit',
-                        }}
                       />
                       {simSubmitted && (
-                        <div style={{ marginTop: '0.75rem', padding: '0.65rem 1rem', borderRadius: 10, background: '#f0fdf4', border: '1px solid #16a34a', color: '#15803d', fontWeight: 600, fontSize: '0.88rem' }}>
+                        <div className="eps-input-result">
                           Đáp án được chấp nhận: <strong>{(currentQ.accepted || []).join(' | ')}</strong>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Lời giải */}
                   {simSubmitted && currentQ.explain && (
-                    <div style={{
-                      marginTop: '1.5rem',
-                      padding: '1rem',
-                      background: '#f0fdf4',
-                      borderRadius: 12,
-                      borderLeft: '4px solid #16a34a',
-                      fontSize: '0.9rem',
-                      color: '#166534',
-                      lineHeight: 1.6,
-                    }}>
+                    <div className="eps-explain">
                       <strong>Lời giải chi tiết: </strong>
                       {useMath ? <MathText text={currentQ.explain} /> : currentQ.explain}
                     </div>
                   )}
 
-                  {/* Navigation */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
+                  <div className="eps-nav">
                     <button
                       type="button"
-                      className="vt-btn"
+                      className="eps-nav-btn"
                       disabled={simActiveQ === 0}
                       onClick={() => setSimActiveQ((i) => Math.max(0, i - 1))}
                     >
-                      Câu trước
+                      <IcoChevronLeft size={14} /> Câu trước
                     </button>
                     <button
                       type="button"
-                      className="vt-btn primary"
+                      className="eps-nav-btn primary"
                       disabled={simActiveQ === questions.length - 1}
                       onClick={() => setSimActiveQ((i) => Math.min(questions.length - 1, i + 1))}
                     >
-                      Câu tiếp theo
+                      Câu tiếp theo <IcoChevronRight size={14} />
                     </button>
                   </div>
                 </>
               ) : null}
             </div>
 
-            {/* SIDEBAR */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ background: '#0f172a', color: '#fff', borderRadius: 18, padding: '1.2rem', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-                  <IcoClock size={16} /> THỜI GIAN CÒN LẠI
+            <aside className={`eps-sidebar ${showSidebar ? 'open' : ''}`}>
+              <button
+                type="button"
+                className="eps-sidebar-toggle"
+                onClick={() => setShowSidebar((v) => !v)}
+              >
+                <IcoTable size={14} /> Bảng câu hỏi ({answeredCount}/{questions.length})
+              </button>
+
+              <div className="eps-timer-card">
+                <span className="eps-timer-label">
+                  <IcoClock size={14} /> Thời gian còn lại
                 </span>
-                <strong style={{ fontSize: '2.2rem', color: '#38bdf8', letterSpacing: '0.05em', fontFamily: 'monospace' }}>
-                  {Math.floor(simTimeLeft / 60)}:{(simTimeLeft % 60).toString().padStart(2, '0')}
+                <strong className={`eps-timer-value ${timeClass}`}>
+                  {fmtTime(simTimeLeft)}
                 </strong>
               </div>
 
-              <div style={{ background: 'var(--panel, #fff)', borderRadius: 18, padding: '1.2rem', border: '1px solid var(--line, rgba(0,0,0,0.1))' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--mut)', display: 'block', marginBottom: '0.8rem' }}>
-                  Bảng câu hỏi ({Object.keys(simAnswers).length}/{questions.length})
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.45rem' }}>
+              <div className="eps-answer-grid">
+                <div className="eps-answer-grid-head">
+                  <span>Bảng câu hỏi</span>
+                  <span>{answeredCount}/{questions.length}</span>
+                </div>
+
+                <div className="eps-answer-cells">
                   {questions.map((_, idx) => {
-                    const isAnswered = simAnswers[idx] !== undefined && simAnswers[idx] !== '';
+                    const ans = simAnswers[idx];
+                    const isAnswered = Array.isArray(ans)
+                      ? ans.some((x) => x !== undefined)
+                      : ans !== undefined && ans !== '';
                     const isCurrent = simActiveQ === idx;
+                    const isFlagged = flagged[idx];
+                    let cls = 'eps-answer-cell';
+                    if (isAnswered) cls += ' answered';
+                    if (isCurrent) cls += ' current';
+                    if (isFlagged) cls += ' flagged';
                     return (
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setSimActiveQ(idx)}
-                        style={{
-                          height: 38,
-                          borderRadius: 10,
-                          border: isCurrent ? '2px solid #0284c7' : '1px solid var(--line, rgba(0,0,0,0.1))',
-                          background: isAnswered ? '#0284c7' : 'var(--surface-2, #f8fafc)',
-                          color: isAnswered ? '#fff' : 'var(--ink, #0f172a)',
-                          fontWeight: 700,
-                          cursor: 'pointer',
+                        className={cls}
+                        onClick={() => {
+                          setSimActiveQ(idx);
+                          setShowSidebar(false);
                         }}
                       >
                         {idx + 1}
@@ -659,147 +766,148 @@ export default function ExamPreviewSimulator({
                   })}
                 </div>
 
+                <div className="eps-legend">
+                  <span><i className="eps-legend-dot answered" /> Đã làm</span>
+                  <span><i className="eps-legend-dot current" /> Đang xem</span>
+                  <span><i className="eps-legend-dot flagged" /> Đánh dấu</span>
+                </div>
+
                 {!simSubmitted ? (
                   <button
                     type="button"
-                    className="vt-btn primary"
-                    style={{ width: '100%', marginTop: '1.25rem', padding: '0.75rem', borderRadius: 12, fontWeight: 800 }}
+                    className="eps-submit-btn"
                     onClick={handleSubmitSimulation}
                   >
-                    Nộp Bài Chấm Thử
+                    <IcoSend size={14} /> Nộp bài chấm thử (Space)
                   </button>
                 ) : (
-                  <div style={{ marginTop: '1.25rem', padding: '1rem', background: '#dcfce7', borderRadius: 12, textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 700 }}>ĐIỂM SỐ ĐẠT ĐƯỢC</span>
-                    <strong style={{ fontSize: '2.4rem', color: '#15803d', display: 'block' }}>
-                      {simScore?.score10} / 10
-                    </strong>
-                    <small style={{ color: '#166534' }}>
-                      Đúng {simScore?.correctCount}/{simScore?.totalCount} câu
-                      {simScore?.earnedPoints !== simScore?.maxPoints && (
-                        <> · {Math.round(simScore?.earnedPoints * 10) / 10}/{simScore?.maxPoints} điểm</>
-                      )}
-                    </small>
+                  <>
+                    <div className="eps-result">
+                      <span className="eps-result-label">Điểm số đạt được</span>
+                      <strong className="eps-result-score">
+                        {simScore?.score10} / 10
+                      </strong>
+                      <small>
+                        Đúng {simScore?.correctCount}/{simScore?.totalCount} câu
+                        {simScore?.earnedPoints !== simScore?.maxPoints && (
+                          <> · {Math.round(simScore?.earnedPoints * 10) / 10}/{simScore?.maxPoints} điểm</>
+                        )}
+                      </small>
+                    </div>
+                    <button
+                      type="button"
+                      className="eps-reset-btn"
+                      onClick={handleReset}
+                    >
+                      <IcoRefresh size={14} /> Làm lại
+                    </button>
+                  </>
+                )}
+
+                {!simSubmitted && (
+                  <div className="eps-kbd-hint">
+                    <span><kbd>1</kbd>-<kbd>4</kbd> chọn đáp án</span>
+                    <span><kbd>←</kbd> <kbd>→</kbd> chuyển câu</span>
+                    <span><kbd>F</kbd> đánh dấu</span>
+                    <span><kbd>Space</kbd> nộp bài</span>
                   </div>
                 )}
               </div>
-            </div>
+            </aside>
+
+            {showSidebar && (
+              <div
+                className="eps-sidebar-backdrop"
+                onClick={() => setShowSidebar(false)}
+                aria-hidden="true"
+              />
+            )}
           </div>
         )}
 
         {/* ============================================================
-            TAB 2: BẢN IN A4
+            TAB 2: IN A4
            ============================================================ */}
         {tab === 'print' && (() => {
-          const activeExamVersion = shuffledExams.find((e) => e.code === activeCode) || { questions };
-          const printQuestions = activeExamVersion.questions || questions;
+          const activeExamVersion = shuffledExams.find((e) => e.code === activeCode) || { questions: editData.questions };
+          const printQuestions = activeExamVersion.questions || editData.questions;
 
           return (
-            <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div className="no-print" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'var(--t-surface-1, #18181c)',
-                padding: '0.85rem 1.25rem',
-                borderRadius: 16,
-                border: '1px solid var(--t-border, #2c2c34)',
-                flexWrap: 'wrap',
-                gap: '0.5rem',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--t-ink, #fff)' }}>
-                    Mã đề in:
-                  </span>
+            <div className="eps-print-layout">
+              <div className="eps-print-toolbar no-print">
+                <div className="eps-print-codes">
+                  <span>Mã đề in:</span>
                   {shuffledExams.map((ex) => (
                     <button
                       key={ex.code}
                       type="button"
-                      className={`vt-btn sm ${activeCode === ex.code ? 'primary' : ''}`}
+                      className={`eps-print-code-btn ${activeCode === ex.code ? 'on' : ''}`}
                       onClick={() => setActiveCode(ex.code)}
-                      style={{ padding: '0.35rem 0.85rem', borderRadius: 999 }}
                     >
                       Mã {ex.code}
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  className="vt-btn primary sm"
-                  onClick={() => window.print()}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', borderRadius: 999 }}
-                >
-                  <IcoPrinter size={15} /> In bản này (Ctrl + P)
-                </button>
+                <div className="eps-export-btns">
+                  <button
+                    type="button"
+                    className="eps-print-btn word"
+                    onClick={handleExportWord}
+                    disabled={exporting === 'word'}
+                  >
+                    <IcoFileWord size={15} /> {exporting === 'word' ? 'Đang tạo...' : 'Tải Word'}
+                  </button>
+                  <button
+                    type="button"
+                    className="eps-print-btn pdf"
+                    onClick={handleExportPDF}
+                    disabled={exporting === 'pdf'}
+                  >
+                    <IcoFilePdf size={15} /> {exporting === 'pdf' ? 'Đang tạo...' : 'Tải PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    className="eps-print-btn"
+                    onClick={() => window.print()}
+                  >
+                    <IcoPrinter size={15} /> In (Ctrl + P)
+                  </button>
+                </div>
               </div>
 
-              {/* TỜ ĐỀ A4 */}
-              <div className="a4-printable-paper" style={{
-                background: '#ffffff',
-                color: '#000000',
-                padding: '3.5rem 3rem',
-                borderRadius: 8,
-                boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-                fontFamily: '"Times New Roman", Times, serif',
-              }}>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '1rem',
-                  borderBottom: '2px solid #000',
-                  paddingBottom: '1rem',
-                  marginBottom: '1.5rem',
-                }}>
+              <div className="a4-printable-paper" ref={paperRef}>
+                <div className="a4-head">
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', textTransform: 'uppercase' }}>
-                      SỞ GD&ĐT TỈNH / TRƯỜNG THPT
-                    </p>
-                    <p style={{ margin: '0.2rem 0', fontWeight: 700, fontSize: '1.05rem' }}>
-                      {examTitle.toUpperCase()}
-                    </p>
-                    <p style={{ margin: 0, fontStyle: 'italic', fontSize: '0.9rem' }}>
-                      Môn: {subject}
-                    </p>
+                    <p className="a4-school">SỞ GD&ĐT TỈNH / TRƯỜNG THPT</p>
+                    <p className="a4-title">{editData.examTitle.toUpperCase()}</p>
+                    <p className="a4-subject">Môn: {editData.subject}</p>
                   </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '1.05rem' }}>
-                      KỲ THI ĐÁNH GIÁ NĂNG LỰC HỌC TẬP
-                    </p>
-                    <p style={{ margin: '0.2rem 0', fontWeight: 700 }}>NĂM HỌC 2025 - 2026</p>
-                    <p style={{ margin: 0, fontStyle: 'italic', fontSize: '0.9rem' }}>
-                      Thời gian làm bài: {duration} phút
-                    </p>
-                    <div style={{
-                      display: 'inline-block',
-                      border: '1.5px solid #000',
-                      padding: '0.2rem 1rem',
-                      marginTop: '0.4rem',
-                      fontWeight: 800,
-                    }}>
-                      MÃ ĐỀ: {activeCode}
-                    </div>
+                  <div className="a4-head-right">
+                    <p className="a4-kick">KỲ THI ĐÁNH GIÁ NĂNG LỰC HỌC TẬP</p>
+                    <p className="a4-year">NĂM HỌC 2025 - 2026</p>
+                    <p className="a4-duration">Thời gian làm bài: {editData.duration} phút</p>
+                    <div className="a4-code-box">MÃ ĐỀ: {activeCode}</div>
                   </div>
                 </div>
 
-                <p style={{ fontStyle: 'italic', fontSize: '0.92rem', marginBottom: '1.5rem' }}>
+                <p className="a4-student-line">
                   Họ và tên thí sinh: .................................................................... Số báo danh: ........................
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className="a4-questions">
                   {printQuestions.map((q, idx) => {
                     const type = q.type || 'single_choice';
                     return (
-                      <div key={idx} style={{ fontSize: '1.05rem', lineHeight: 1.6 }}>
-                        <p style={{ margin: '0 0 0.4rem', fontWeight: 700 }}>
-                          Câu {idx + 1}: <span style={{ fontWeight: 400 }}>
-                            {useMath ? <MathText text={q.q} /> : q.q}
-                          </span>
+                      <div key={idx} className="a4-q">
+                        <p className="a4-q-title">
+                          <strong>Câu {idx + 1}:</strong>{' '}
+                          <span>{useMath ? <MathText text={q.q} /> : q.q}</span>
                         </p>
 
                         {type === 'single_choice' && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem', paddingLeft: '1rem' }}>
+                          <div className="a4-opts">
                             {(q.options || []).map((opt, oIdx) => (
-                              <div key={oIdx}>
+                              <div key={oIdx} className="a4-opt">
                                 <strong>{String.fromCharCode(65 + oIdx)}. </strong>
                                 {useMath ? <MathText text={opt} /> : opt}
                               </div>
@@ -808,21 +916,21 @@ export default function ExamPreviewSimulator({
                         )}
 
                         {type === 'true_false' && (
-                          <div style={{ paddingLeft: '1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <div className="a4-tf">
                             {(q.statements || []).map((st, sIdx) => (
-                              <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                              <div key={sIdx} className="a4-tf-row">
                                 <span>
                                   <strong>{'abcd'[sIdx]}) </strong>
                                   {useMath ? <MathText text={st.text} /> : st.text}
                                 </span>
-                                <span style={{ whiteSpace: 'nowrap' }}>Đ/S: ____</span>
+                                <span className="a4-tf-ds">Đ/S: ____</span>
                               </div>
                             ))}
                           </div>
                         )}
 
                         {type === 'short_answer' && (
-                          <div style={{ paddingLeft: '1rem' }}>
+                          <div className="a4-sa">
                             <span>Trả lời: ...................................................</span>
                           </div>
                         )}
@@ -831,25 +939,19 @@ export default function ExamPreviewSimulator({
                   })}
                 </div>
 
-                {/* BẢNG ĐÁP ÁN */}
-                <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '2px dashed #666' }}>
-                  <h4 style={{ margin: '0 0 0.8rem', textAlign: 'center', textTransform: 'uppercase' }}>
-                    BẢNG ĐÁP ÁN THAM KHẢO (MÃ ĐỀ {activeCode})
-                  </h4>
+                <div className="a4-answers">
+                  <h4 className="a4-answers-title">BẢNG ĐÁP ÁN THAM KHẢO (MÃ ĐỀ {activeCode})</h4>
 
-                  {/* Single choice answers */}
                   {printQuestions.some((q) => (q.type || 'single_choice') === 'single_choice') && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-                        Phần trắc nghiệm:
-                      </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', border: '1px solid #000', textAlign: 'center' }}>
+                    <div className="a4-answers-block">
+                      <p className="a4-answers-sub">Phần trắc nghiệm:</p>
+                      <div className="a4-answers-grid">
                         {printQuestions.map((q, idx) => {
                           if ((q.type || 'single_choice') !== 'single_choice') return null;
                           return (
-                            <div key={idx} style={{ border: '1px solid #000', padding: '0.3rem' }}>
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{idx + 1}</div>
-                              <div style={{ fontWeight: 800, color: '#b91c1c' }}>
+                            <div key={idx} className="a4-answers-cell">
+                              <div className="a4-answers-num">{idx + 1}</div>
+                              <div className="a4-answers-letter">
                                 {String.fromCharCode(65 + (q.correct || 0))}
                               </div>
                             </div>
@@ -859,20 +961,17 @@ export default function ExamPreviewSimulator({
                     </div>
                   )}
 
-                  {/* True/False answers */}
                   {printQuestions.some((q) => q.type === 'true_false') && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-                        Phần đúng/sai:
-                      </p>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', border: '1px solid #000' }}>
+                    <div className="a4-answers-block">
+                      <p className="a4-answers-sub">Phần đúng/sai:</p>
+                      <table className="a4-tf-table">
                         <thead>
-                          <tr style={{ background: '#f0f0f0' }}>
-                            <th style={{ border: '1px solid #000', padding: '0.3rem' }}>Câu</th>
-                            <th style={{ border: '1px solid #000', padding: '0.3rem' }}>a</th>
-                            <th style={{ border: '1px solid #000', padding: '0.3rem' }}>b</th>
-                            <th style={{ border: '1px solid #000', padding: '0.3rem' }}>c</th>
-                            <th style={{ border: '1px solid #000', padding: '0.3rem' }}>d</th>
+                          <tr>
+                            <th>Câu</th>
+                            <th>a</th>
+                            <th>b</th>
+                            <th>c</th>
+                            <th>d</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -880,11 +979,9 @@ export default function ExamPreviewSimulator({
                             if (q.type !== 'true_false') return null;
                             return (
                               <tr key={idx}>
-                                <td style={{ border: '1px solid #000', padding: '0.3rem', textAlign: 'center', fontWeight: 700 }}>
-                                  {idx + 1}
-                                </td>
+                                <td className="a4-tf-num">{idx + 1}</td>
                                 {(q.statements || []).map((st, sIdx) => (
-                                  <td key={sIdx} style={{ border: '1px solid #000', padding: '0.3rem', textAlign: 'center', fontWeight: 700, color: '#b91c1c' }}>
+                                  <td key={sIdx} className="a4-tf-ans">
                                     {st.answer ? 'Đ' : 'S'}
                                   </td>
                                 ))}
@@ -896,13 +993,10 @@ export default function ExamPreviewSimulator({
                     </div>
                   )}
 
-                  {/* Short answer */}
                   {printQuestions.some((q) => q.type === 'short_answer') && (
-                    <div>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-                        Phần trả lời ngắn:
-                      </p>
-                      <ul style={{ paddingLeft: '1.5rem', fontSize: '0.85rem', lineHeight: 1.6 }}>
+                    <div className="a4-answers-block">
+                      <p className="a4-answers-sub">Phần trả lời ngắn:</p>
+                      <ul className="a4-sa-list">
                         {printQuestions.map((q, idx) => {
                           if (q.type !== 'short_answer') return null;
                           return (
@@ -915,49 +1009,98 @@ export default function ExamPreviewSimulator({
                     </div>
                   )}
                 </div>
-
-                <div className="no-print" style={{ textAlign: 'center', marginTop: '2.5rem' }}>
-                  <button
-                    type="button"
-                    className="vt-btn primary"
-                    style={{
-                      padding: '0.8rem 2.5rem',
-                      fontSize: '1.05rem',
-                      borderRadius: 999,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                    }}
-                    onClick={() => window.print()}
-                  >
-                    <IcoPrinter size={18} /> In Đề Thi Ngay (Mã {activeCode})
-                  </button>
-                </div>
               </div>
             </div>
           );
         })()}
 
         {/* ============================================================
-            TAB 3: ĐẢO 4 MÃ ĐỀ
+            TAB 3: PHIẾU OMR
+           ============================================================ */}
+        {tab === 'omr' && (
+          <div className="eps-omr-layout">
+            <div className="eps-omr-head">
+              <h3 className="eps-omr-title">Phiếu Trả Lời Trắc Nghiệm (OMR)</h3>
+              <p className="eps-omr-sub">
+                In phiếu A4 cho HS tô bút chì. Hệ thống tự align qua 4 fiducial marks khi chấm bằng
+                module PaperGrading.
+              </p>
+            </div>
+
+            <div className="eps-omr-info-grid">
+              <div className="eps-omr-info-card">
+                <div className="eps-omr-info-icon"><IcoCheck size={20} /></div>
+                <div>
+                  <b>{omrStats.total} câu</b>
+                  <small>
+                    {omrStats.single} TN · {omrStats.tf} Đ/S · {omrStats.sa} TLN
+                  </small>
+                </div>
+              </div>
+              <div className="eps-omr-info-card">
+                <div className="eps-omr-info-icon"><IcoClipboard size={20} /></div>
+                <div>
+                  <b>4 fiducial marks</b>
+                  <small>4 góc phiếu để máy scan align chính xác</small>
+                </div>
+              </div>
+              <div className="eps-omr-info-card">
+                <div className="eps-omr-info-icon"><IcoPrinter size={20} /></div>
+                <div>
+                  <b>Chuẩn A4</b>
+                  <small>In 1 mặt · SBD 6 chữ số · Mã đề 3 chữ số</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="eps-omr-actions">
+              <button
+                type="button"
+                className="eps-omr-btn primary"
+                onClick={handlePrintOMR}
+              >
+                <IcoPrinter size={16} /> In phiếu OMR (Mã {activeCode})
+              </button>
+
+              <button
+                type="button"
+                className="eps-omr-btn ghost"
+                onClick={handlePrintAllOMR}
+              >
+                <IcoPrinter size={16} /> In tất cả {shuffledExams.length} mã
+              </button>
+            </div>
+
+            <div className="eps-omr-note">
+              <b>💡 Hướng dẫn:</b>
+              <ol>
+                <li>In phiếu OMR ra giấy A4 (khuyến nghị <b>1 mặt</b>, giấy trắng mịn).</li>
+                <li>Phát cho HS kèm đề thi (HS làm bài trên đề, tô đáp án vào phiếu).</li>
+                <li>Thu phiếu → vào <b>Chấm phiếu A4</b> → upload ảnh/chụp ảnh.</li>
+                <li>Hệ thống tự align qua fiducial marks và chấm điểm.</li>
+              </ol>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 4: ĐẢO MÃ ĐỀ
            ============================================================ */}
         {tab === 'shuffle' && (
-          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div className="eps-shuffle-layout">
+            <div className="eps-shuffle-head">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
-                  Bộ 4 Mã Đề Thi Hoán Vị (101 - 104)
-                </h3>
-                <p style={{ margin: '0.2rem 0 0', color: 'var(--mut)', fontSize: '0.88rem' }}>
+                <h3 className="eps-shuffle-title">Bộ 4 Mã Đề Thi Hoán Vị (101 - 104)</h3>
+                <p className="eps-shuffle-sub">
                   Xáo thứ tự câu <strong>trong cùng nhóm độ khó</strong> — đảm bảo công bằng giữa các mã.
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div className="eps-shuffle-tabs">
                 {shuffledExams.map((ex) => (
                   <button
                     key={ex.code}
                     type="button"
-                    className={`vt-btn sm ${activeCode === ex.code ? 'primary' : ''}`}
+                    className={`eps-shuffle-tab ${activeCode === ex.code ? 'on' : ''}`}
                     onClick={() => setActiveCode(ex.code)}
                   >
                     Mã {ex.code}
@@ -966,60 +1109,47 @@ export default function ExamPreviewSimulator({
               </div>
             </div>
 
-            <div style={{
-              background: 'var(--panel, #fff)',
-              borderRadius: 16,
-              padding: '1.2rem',
-              border: '1px solid var(--line, rgba(0,0,0,0.1))',
-            }}>
-              <h4 style={{ margin: '0 0 0.8rem', fontSize: '1rem', fontWeight: 800, color: '#0284c7' }}>
-                Bảng Ma Trận Đối Chiếu Đáp Án
-              </h4>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: '0.88rem',
-                  textAlign: 'center',
-                }}>
+            <div className="eps-shuffle-card">
+              <h4 className="eps-shuffle-card-title">Bảng Ma Trận Đối Chiếu Đáp Án</h4>
+              <div className="eps-shuffle-table-wrap">
+                <table className="eps-shuffle-table">
                   <thead>
-                    <tr style={{
-                      background: 'var(--surface-2, #f8fafc)',
-                      borderBottom: '2px solid var(--line, rgba(0,0,0,0.1))',
-                    }}>
-                      <th style={{ padding: '0.6rem' }}>Câu Gốc</th>
-                      <th style={{ padding: '0.6rem', color: '#0284c7' }}>Mã 101</th>
-                      <th style={{ padding: '0.6rem', color: '#16a34a' }}>Mã 102</th>
-                      <th style={{ padding: '0.6rem', color: '#f59e0b' }}>Mã 103</th>
-                      <th style={{ padding: '0.6rem', color: '#dc2626' }}>Mã 104</th>
+                    <tr>
+                      <th>Câu Gốc</th>
+                      <th style={{ color: '#0284c7' }}>Mã 101</th>
+                      <th style={{ color: '#16a34a' }}>Mã 102</th>
+                      <th style={{ color: '#f59e0b' }}>Mã 103</th>
+                      <th style={{ color: '#dc2626' }}>Mã 104</th>
                     </tr>
                   </thead>
                   <tbody>
                     {questions.map((_, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid var(--line, rgba(0,0,0,0.06))' }}>
-                        <td style={{ padding: '0.6rem 0.5rem', fontWeight: 700 }}>Câu {idx + 1}</td>
+                      <tr key={idx}>
+                        <td className="eps-shuffle-orig">Câu {idx + 1}</td>
                         {shuffledExams.map((ex) => {
                           const mapping = ex.origToNew?.[idx + 1];
-                          if (!mapping) return <td key={ex.code} style={{ padding: '0.6rem' }}>—</td>;
+                          if (!mapping) return <td key={ex.code}>—</td>;
+                          const color =
+                            ex.code === '101'
+                              ? '#0284c7'
+                              : ex.code === '102'
+                              ? '#16a34a'
+                              : ex.code === '103'
+                              ? '#d97706'
+                              : '#dc2626';
                           return (
-                            <td key={ex.code} style={{ padding: '0.6rem 0.5rem' }}>
+                            <td key={ex.code}>
                               {mapping.type === 'single_choice' ? (
                                 <>
-                                  <strong style={{
-                                    fontSize: '0.96rem',
-                                    color: ex.code === '101' ? '#0284c7'
-                                      : ex.code === '102' ? '#16a34a'
-                                      : ex.code === '103' ? '#d97706'
-                                      : '#dc2626',
-                                  }}>
+                                  <strong style={{ fontSize: '0.96rem', color }}>
                                     {mapping.newLetter}
                                   </strong>
-                                  <span style={{ fontSize: '0.74rem', color: 'var(--mut)', marginLeft: '0.4rem', fontWeight: 600 }}>
+                                  <span className="eps-shuffle-mapping">
                                     (Câu {mapping.newNum})
                                   </span>
                                 </>
                               ) : (
-                                <span style={{ fontSize: '0.78rem', color: 'var(--mut)' }}>
+                                <span className="eps-shuffle-mapping">
                                   {mapping.type === 'true_false' ? 'Đ/S' : 'TLN'} · Câu {mapping.newNum}
                                 </span>
                               )}
@@ -1031,7 +1161,7 @@ export default function ExamPreviewSimulator({
                   </tbody>
                 </table>
               </div>
-              <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: 'var(--mut)', fontStyle: 'italic' }}>
+              <p className="eps-shuffle-note">
                 * Câu trong cùng nhóm NB/TH/VD/VDC chỉ hoán vị trong nhóm — giữ nguyên độ khó giữa các mã.
               </p>
             </div>
@@ -1039,81 +1169,56 @@ export default function ExamPreviewSimulator({
         )}
 
         {/* ============================================================
-            TAB 4: BẢNG ĐẶC TẢ
+            TAB 5: ĐẶC TẢ
            ============================================================ */}
         {tab === 'specs' && (
-          <div style={{
-            maxWidth: 1100,
-            margin: '0 auto',
-            background: 'var(--panel, #fff)',
-            borderRadius: 18,
-            padding: '1.5rem',
-            border: '1px solid var(--line, rgba(0,0,0,0.1))',
-          }}>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 800, color: '#0284c7' }}>
-              Bảng Đặc Tả Đề Thi & Yêu Cầu Cần Đạt (Chuẩn GDPT 2018)
-            </h3>
-            <p style={{ margin: '0 0 1.25rem', color: 'var(--mut)', fontSize: '0.88rem' }}>
-              Môn {subject} · Lớp {matrix?.grade || '—'} · {questions.length} câu · {duration} phút
+          <div className="eps-specs-layout">
+            <h3 className="eps-specs-title">Bảng Đặc Tả Đề Thi & Yêu Cầu Cần Đạt (Chuẩn GDPT 2018)</h3>
+            <p className="eps-specs-sub">
+              Môn {editData.subject} · Lớp {matrix?.grade || '—'} · {editData.questions.length} câu · {editData.duration} phút
             </p>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <div className="eps-specs-table-wrap">
+              <table className="eps-specs-table">
                 <thead>
-                  <tr style={{
-                    background: 'var(--surface-2, #f8fafc)',
-                    borderBottom: '2px solid var(--line, rgba(0,0,0,0.1))',
-                  }}>
-                    <th style={{ padding: '0.75rem', width: 60, textAlign: 'center' }}>Câu</th>
-                    <th style={{ padding: '0.75rem', width: 100 }}>Loại</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Chuyên Đề</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Mức Độ</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Yêu Cầu Cần Đạt</th>
-                    <th style={{ padding: '0.75rem', width: 80, textAlign: 'center' }}>Điểm</th>
+                  <tr>
+                    <th style={{ width: 60 }}>Câu</th>
+                    <th style={{ width: 110 }}>Loại</th>
+                    <th>Chuyên Đề</th>
+                    <th style={{ width: 130 }}>Mức Độ</th>
+                    <th>Yêu Cầu Cần Đạt</th>
+                    <th style={{ width: 80 }}>Điểm</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((q, idx) => {
+                  {editData.questions.map((q, idx) => {
                     const lvMeta = LEVEL_INFO[normLevel(q.level)] || LEVEL_INFO.nb;
                     const type = q.type || 'single_choice';
                     return (
-                      <tr key={idx} style={{ borderBottom: '1px solid var(--line, rgba(0,0,0,0.06))' }}>
-                        <td style={{ padding: '0.65rem', textAlign: 'center', fontWeight: 700 }}>{idx + 1}</td>
-                        <td style={{ padding: '0.65rem' }}>
-                          <span style={{
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: 6,
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            background: type === 'single_choice' ? '#e0f2fe'
-                              : type === 'true_false' ? '#fce7f3'
-                              : '#e0e7ff',
-                            color: type === 'single_choice' ? '#0369a1'
-                              : type === 'true_false' ? '#be185d'
-                              : '#4f46e5',
-                          }}>
-                            {type === 'single_choice' ? 'Trắc nghiệm'
-                              : type === 'true_false' ? 'Đúng/Sai'
+                      <tr key={idx}>
+                        <td className="eps-specs-num">{idx + 1}</td>
+                        <td>
+                          <span className={`eps-specs-type ${type}`}>
+                            {type === 'single_choice'
+                              ? 'Trắc nghiệm'
+                              : type === 'true_false'
+                              ? 'Đúng/Sai'
                               : 'Trả lời ngắn'}
                           </span>
                         </td>
-                        <td style={{ padding: '0.65rem', fontWeight: 600 }}>{q.topic || 'Kiến thức trọng tâm'}</td>
-                        <td style={{ padding: '0.65rem' }}>
-                          <span style={{
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: 6,
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            background: lvMeta.bg,
-                            color: lvMeta.color,
-                          }}>
+                        <td className="eps-specs-topic">{q.topic || 'Kiến thức trọng tâm'}</td>
+                        <td>
+                          <span
+                            className="eps-specs-level"
+                            style={{ background: lvMeta.bg, color: lvMeta.color }}
+                          >
                             {lvMeta.label}
                           </span>
                         </td>
-                        <td style={{ padding: '0.65rem', color: 'var(--mut)', lineHeight: 1.5 }}>
+                        <td className="eps-specs-desc">
                           Học sinh vận dụng kiến thức chuyên đề "{q.topic || 'trọng tâm'}" để giải quyết yêu cầu.
                         </td>
-                        <td style={{ padding: '0.65rem', textAlign: 'center', fontWeight: 800 }}>{q.points || 1}đ</td>
+                        <td className="eps-specs-points">{q.points || 1}đ</td>
                       </tr>
                     );
                   })}
@@ -1123,6 +1228,168 @@ export default function ExamPreviewSimulator({
           </div>
         )}
       </div>
+
+      {/* ============================================================
+          EDIT PANEL
+          ============================================================ */}
+      {editMode && (
+        <>
+          <div
+            className="eps-edit-backdrop"
+            onClick={handleCancelEdit}
+            aria-hidden="true"
+          />
+          <aside className="eps-edit-panel">
+            <header className="eps-edit-panel-head">
+              <h3>Chỉnh sửa nội dung đề</h3>
+              <button
+                type="button"
+                className="eps-edit-panel-close"
+                onClick={handleCancelEdit}
+                aria-label="Đóng"
+              >
+                <IcoX size={16} />
+              </button>
+            </header>
+
+            <div className="eps-edit-panel-body">
+              <div className="eps-edit-section">
+                <h4 className="eps-edit-section-title">Thông tin chung</h4>
+
+                <label className="eps-edit-field">
+                  <span>Tiêu đề đề thi</span>
+                  <input
+                    type="text"
+                    value={editData.examTitle}
+                    onChange={(e) => setEditData({ ...editData, examTitle: e.target.value })}
+                  />
+                </label>
+
+                <div className="eps-edit-row">
+                  <label className="eps-edit-field">
+                    <span>Môn học</span>
+                    <input
+                      type="text"
+                      value={editData.subject}
+                      onChange={(e) => setEditData({ ...editData, subject: e.target.value })}
+                    />
+                  </label>
+                  <label className="eps-edit-field">
+                    <span>Thời gian (phút)</span>
+                    <input
+                      type="number"
+                      value={editData.duration}
+                      onChange={(e) =>
+                        setEditData({ ...editData, duration: Number(e.target.value) || 30 })
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="eps-edit-section">
+                <h4 className="eps-edit-section-title">
+                  Câu hỏi ({editData.questions.length})
+                </h4>
+
+                {editData.questions.map((q, idx) => (
+                  <div key={idx} className="eps-edit-q">
+                    <div className="eps-edit-q-head">
+                      <strong>Câu {idx + 1}</strong>
+                      <span className="eps-edit-q-points">({q.points || 1}đ)</span>
+                    </div>
+
+                    <label className="eps-edit-field">
+                      <span>Nội dung câu hỏi</span>
+                      <textarea
+                        rows={3}
+                        value={q.q || ''}
+                        onChange={(e) => {
+                          const next = [...editData.questions];
+                          next[idx] = { ...next[idx], q: e.target.value };
+                          setEditData({ ...editData, questions: next });
+                        }}
+                      />
+                    </label>
+
+                    {(q.type || 'single_choice') === 'single_choice' &&
+                      Array.isArray(q.options) && (
+                        <div className="eps-edit-opts">
+                          {q.options.map((opt, oIdx) => (
+                            <div key={oIdx} className="eps-edit-opt">
+                              <label className="eps-edit-opt-radio">
+                                <input
+                                  type="radio"
+                                  name={`correct-${idx}`}
+                                  checked={q.correct === oIdx}
+                                  onChange={() => {
+                                    const next = [...editData.questions];
+                                    next[idx] = { ...next[idx], correct: oIdx };
+                                    setEditData({ ...editData, questions: next });
+                                  }}
+                                />
+                                <strong>{String.fromCharCode(65 + oIdx)}</strong>
+                              </label>
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => {
+                                  const next = [...editData.questions];
+                                  const opts = [...next[idx].options];
+                                  opts[oIdx] = e.target.value;
+                                  next[idx] = { ...next[idx], options: opts };
+                                  setEditData({ ...editData, questions: next });
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                    <label className="eps-edit-field">
+                      <span>Lời giải</span>
+                      <textarea
+                        rows={2}
+                        value={q.explain || ''}
+                        onChange={(e) => {
+                          const next = [...editData.questions];
+                          next[idx] = { ...next[idx], explain: e.target.value };
+                          setEditData({ ...editData, questions: next });
+                        }}
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <footer className="eps-edit-panel-foot">
+              <button
+                type="button"
+                className="eps-nav-btn"
+                onClick={handleCancelEdit}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="eps-nav-btn primary"
+                onClick={handleSaveEdit}
+              >
+                <IcoSave size={14} /> Lưu thay đổi
+              </button>
+            </footer>
+          </aside>
+        </>
+      )}
+
+      {/* LOCAL TOAST */}
+      {toast && (
+        <div className={`eps-toast ${toast.type}`}>
+          {toast.type === 'success' && <IcoCheck size={14} />}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

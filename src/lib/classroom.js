@@ -399,6 +399,10 @@ export async function createExam({
   showAnswerAfter, allowRetry, shuffle,
   opensAt = null, closesAt = null,
   proctor = null,
+  source = '',
+  kind = '',
+  subject = '',
+  grade = 0,
 }) {
   const totalPoints = (questions || []).reduce((s, q) => s + (q.points || 1), 0);
 
@@ -406,7 +410,7 @@ export async function createExam({
     token: generateExamToken(),
     teacherId,
     teacherName,
-    classId,
+    classId: classId || '',
     title: title || 'Đề kiểm tra',
     description: description || '',
     duration: Number(duration) || 15,
@@ -421,6 +425,10 @@ export async function createExam({
     createdAt: serverTimestamp(),
     active: true,
   };
+  if (source) data.source = source;
+  if (kind) data.kind = kind;
+  if (subject) data.subject = subject;
+  if (grade) data.grade = Number(grade) || 0;
   try {
     const ref = await addDoc(collection(db, 'exams'), data);
     return { id: ref.id, ...data };

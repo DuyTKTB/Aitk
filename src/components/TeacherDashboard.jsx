@@ -1833,7 +1833,7 @@ export default function TeacherDashboard({ onExit } = {}) {
          ============================================================ */}
       {section === 'bank' && (
         <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
-          <QuestionBank />
+          <QuestionBank classes={classes} onSoftExamCreated={() => refresh()} />
         </Suspense>
       )}
 

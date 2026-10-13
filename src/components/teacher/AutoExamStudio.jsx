@@ -1,12 +1,11 @@
 /* ============================================================
-   AutoExamStudio.jsx — AI Studio (v4, chat-first + split workspace)
+   AutoExamStudio.jsx — AI Studio (v5, chat-first + split workspace)
    ------------------------------------------------------------
-   Flow:
-     1. Chat-only: màn hình giữa, greeting + AIMark + composer (Photo 2 BeeBot)
-     2. Khi user gửi yêu cầu -> chat chạy bên trái, hiện interview
-     3. Khi có ma trận -> chia 2 panel với Draggable Resizer Bar (Photo 3 Glass)
-     4. Workspace phải: Ma trận (Bloom Visual) -> Bộ câu hỏi (AI Actions) ->
-        Mô phỏng / Bản in A4 / Đảo 4 mã đề (Mulberry32 PRNG)
+   v5 (fix + upgrade):
+     • MỚI: Lưu lịch sử chat + ma trận + câu hỏi vào localStorage
+     • MỚI: Nút "Xóa lịch sử" ở header
+     • FIX: Logo AIMark to hơn (140px), có mode động (think/orbit/idle)
+     • Giữ nguyên: chat-first flow, split workspace, resizer, AI actions
    ============================================================ */
 import React, { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import MathText from '../MathText.jsx';
@@ -73,7 +72,7 @@ const IcoBookmark = (p) => <Svg {...p}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h
 const IcoEdit = (p) => <Svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
 const IcoTrash = (p) => <Svg {...p}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></Svg>;
 
-/* ============ QUICK PROMPTS CAPSULES (Photo 2 BeeBot) ============ */
+/* ============ QUICK PROMPTS CAPSULES ============ */
 const QUICK_PROMPT_CHIPS = [
   {
     title: 'Kiểm tra 15 phút: Este & Lipit',
@@ -115,7 +114,7 @@ export default function AutoExamStudio({
   const [activeHubTab, setActiveHubTab] = useState('exam');
 
   // Interview flow
-  const [step, setStep] = useState(0); // 0 = chưa bắt đầu, 1-3 = hỏi, 4 = xong ma trận, 5 = có câu hỏi
+  const [step, setStep] = useState(0);
   const [selectedGrade, setSelectedGrade] = useState('11');
   const [selectedCount, setSelectedCount] = useState(10);
   const [selectedDuration, setSelectedDuration] = useState(30);
@@ -129,7 +128,7 @@ export default function AutoExamStudio({
   const [questions, setQuestions] = useState([]);
   const [workspaceTab, setWorkspaceTab] = useState('matrix');
 
-  // Draggable resizer state (Photo 3 Glass & Split view)
+  // Split resizer
   const [splitRatio, setSplitRatio] = useState(() => {
     try {
       const saved = localStorage.getItem('aes_split_ratio');
@@ -142,7 +141,7 @@ export default function AutoExamStudio({
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
   const splitContainerRef = useRef(null);
 
-  // Question AI actions state
+  // Question AI actions
   const [rewriteModalIdx, setRewriteModalIdx] = useState(null);
   const [rewritePrompt, setRewritePrompt] = useState('');
   const [isRewriting, setIsRewriting] = useState(false);
@@ -164,7 +163,7 @@ export default function AutoExamStudio({
   // Publish options
   const [publishTitle, setPublishTitle] = useState('');
   const [publishShuffle, setPublishShuffle] = useState(true);
-  const [publishCamera, setPublishCamera] = useState('off'); // off | optional | required
+  const [publishCamera, setPublishCamera] = useState('off');
   const [cameraChecks, setCameraChecks] = useState({
     noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true,
   });
@@ -182,7 +181,6 @@ export default function AutoExamStudio({
   const [slots, setSlots] = useState({ grade: null, count: null, duration: null });
   const notesRef = useRef('');
 
-  // Chia 2 panel khi đã có ma trận hoặc đang phân tích/sinh đề
   const showWorkspace = Boolean(matrixData || questions.length > 0 || analyzing || generating || chatMessages.length > 0 || step > 0);
   const insightText = classInsights?.forAi || '';
   const weakTopic = classInsights?.weakestTopics?.[0];
@@ -262,6 +260,62 @@ export default function AutoExamStudio({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  /* ============ ⭐ LƯU / LOAD LỊCH SỬ CHAT ============ */
+  // Load khi mount
+  useEffect(() => {
+    try {
+      const savedChat = localStorage.getItem('aes_chat_history');
+      const savedMatrix = localStorage.getItem('aes_matrix');
+      const savedQuestions = localStorage.getItem('aes_questions');
+      const savedTopic = localStorage.getItem('aes_topic');
+      const savedStep = localStorage.getItem('aes_step');
+      const savedSlots = localStorage.getItem('aes_slots');
+
+      if (savedChat) {
+        const parsed = JSON.parse(savedChat);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChatMessages(parsed.slice(-50));
+        }
+      }
+      if (savedMatrix) setMatrixData(JSON.parse(savedMatrix));
+      if (savedQuestions) {
+        const q = JSON.parse(savedQuestions);
+        if (Array.isArray(q) && q.length > 0) setQuestions(q);
+      }
+      if (savedTopic) setTopic(savedTopic);
+      if (savedStep) setStep(Number(savedStep) || 0);
+      if (savedSlots) setSlots(JSON.parse(savedSlots));
+    } catch (e) {
+      console.warn('[AutoExamStudio] Load lịch sử fail:', e);
+    }
+  }, []);
+
+  // Save khi có thay đổi (debounced 800ms)
+  useEffect(() => {
+    if (chatMessages.length === 0 && !matrixData && questions.length === 0) return;
+    const timer = setTimeout(() => {
+      try {
+        if (chatMessages.length > 0) {
+          localStorage.setItem('aes_chat_history', JSON.stringify(chatMessages.slice(-50)));
+        }
+        if (matrixData) {
+          localStorage.setItem('aes_matrix', JSON.stringify(matrixData));
+        }
+        if (questions.length > 0) {
+          localStorage.setItem('aes_questions', JSON.stringify(questions));
+        }
+        if (topic) localStorage.setItem('aes_topic', topic);
+        if (step > 0) localStorage.setItem('aes_step', String(step));
+        if (slots.grade || slots.count || slots.duration) {
+          localStorage.setItem('aes_slots', JSON.stringify(slots));
+        }
+      } catch (e) {
+        console.warn('[AutoExamStudio] Save lịch sử fail:', e);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [chatMessages, matrixData, questions, topic, step, slots]);
 
   /* ============ DRAGGABLE RESIZER ============ */
   const handleSplitPointerDown = (e) => {
@@ -359,7 +413,6 @@ export default function AutoExamStudio({
   };
 
   /* ============ CHỌN BƯỚC INTERVIEW ============ */
-  /* Quyết định bước tiếp theo từ những gì AI đã biết — chỉ hỏi phần còn thiếu */
   const proceedInterview = ({ grade, count, duration, topic: t, format }) => {
     const shape = inferExamShape({ count, duration });
     setSlots({ grade, count: shape.count, duration: shape.duration });
@@ -625,7 +678,6 @@ export default function AutoExamStudio({
     setInputMessage('');
     sound.ding();
 
-    // Đã có bộ câu hỏi: hiểu lệnh theo từng câu ("câu 3 khó hơn")
     if (questions.length > 0) {
       const cmd = parseQuestionCommand(text, questions.length);
       if (cmd) { handleChatQuestionEdit(cmd, text); return; }
@@ -639,7 +691,6 @@ export default function AutoExamStudio({
     const intent = parseExamIntent(text);
     setChatMessages((prev) => [...prev, { role: 'user', text }]);
 
-    // Đang giữa phần hỏi đáp: gộp thông tin mới, không làm mất chủ đề cũ
     const midInterview = step >= 1 && step <= 3 && topic;
     const hasSlot = intent.grade || intent.count || intent.duration;
     if (midInterview && !hasSlot) {
@@ -697,7 +748,6 @@ export default function AutoExamStudio({
   };
 
   /* ============ QUESTION AI ACTIONS ============ */
-  // 1. Rewrite question with AI
   const handleExecuteRewrite = async () => {
     if (rewriteModalIdx === null || !questions[rewriteModalIdx]) return;
     const targetQ = questions[rewriteModalIdx];
@@ -721,7 +771,6 @@ export default function AutoExamStudio({
     }
   };
 
-  // 2. Regenerate distractors with AI
   const handleRegenerateDistractors = async (idx) => {
     if (!questions[idx] || regeneratingDistractorsIdx !== null) return;
     setRegeneratingDistractorsIdx(idx);
@@ -741,7 +790,6 @@ export default function AutoExamStudio({
     }
   };
 
-  // 3. Toggle pedagogy insight for question
   const handleTogglePedagogy = async (idx) => {
     const q = questions[idx];
     if (!q) return;
@@ -788,7 +836,6 @@ export default function AutoExamStudio({
     }
   };
 
-  // 4. Save 1 question to Question Bank
   const handleSaveQuestionToBank = async (idx) => {
     if (!user?.uid || !questions[idx] || savingBankIdx !== null) return;
     const q = questions[idx];
@@ -810,7 +857,6 @@ export default function AutoExamStudio({
     }
   };
 
-  // 5. Save all questions to Question Bank
   const handleSaveAllToBank = async () => {
     if (!user?.uid || !questions.length || isSavingAllToBank) return;
     setIsSavingAllToBank(true);
@@ -834,7 +880,6 @@ export default function AutoExamStudio({
     }
   };
 
-  // 6. Inline manual edit
   const handleStartEdit = (idx) => {
     setEditingIdx(idx);
     setEditForm({ ...questions[idx] });
@@ -853,6 +898,29 @@ export default function AutoExamStudio({
     if (!window.confirm(`Xóa Câu ${idx + 1}?`)) return;
     setQuestions((prev) => prev.filter((_, i) => i !== idx));
     showToast(`Đã xóa Câu ${idx + 1}`, 'info');
+  };
+
+  /* ============ ⭐ XÓA LỊCH SỬ ============ */
+  const handleClearHistory = () => {
+    if (!window.confirm('Xóa toàn bộ lịch sử trò chuyện, ma trận và đề đang làm?')) return;
+    setChatMessages([]);
+    setMatrixData(null);
+    setQuestions([]);
+    setTopic('');
+    setStep(0);
+    setSlots({ grade: null, count: null, duration: null });
+    notesRef.current = '';
+    try {
+      localStorage.removeItem('aes_chat_history');
+      localStorage.removeItem('aes_matrix');
+      localStorage.removeItem('aes_questions');
+      localStorage.removeItem('aes_topic');
+      localStorage.removeItem('aes_step');
+      localStorage.removeItem('aes_slots');
+      localStorage.removeItem('aes_draft');
+    } catch (e) { /* */ }
+    sound.ding();
+    showToast('Đã xóa lịch sử. Sẵn sàng tạo đề mới!', 'success');
   };
 
   /* ============ XUẤT BẢN ============ */
@@ -896,14 +964,21 @@ export default function AutoExamStudio({
   };
 
   /* ============================================================
-     RENDER: MÀN HÌNH CHAT-ONLY (Ảnh 2 BeeBot)
+     RENDER: MÀN HÌNH CHAT-ONLY
      ============================================================ */
   if (!showWorkspace) {
     return (
       <div className="aes-chat-only">
         <div className="aes-chat-center">
           <div className="aes-chat-hero">
-            <div className="aes-hero-mark"><AIMark size={84} animate={analyzing || generating} /></div>
+            <div className="aes-hero-mark">
+              <AIMark
+                size={140}
+                mode={analyzing ? 'think' : generating ? 'orbit' : 'idle'}
+                look
+                animate
+              />
+            </div>
             <h1>
               {greetingData.timeGreeting}, thầy/cô{' '}
               <span className="aes-name-gradient">{greetingData.teacherName}</span>
@@ -1009,7 +1084,7 @@ export default function AutoExamStudio({
   }
 
   /* ============================================================
-     RENDER: MÀN HÌNH CHIA 2 PANEL VỚI RESIZER (Ảnh 1 Bento + Ảnh 3 Glass)
+     RENDER: MÀN HÌNH CHIA 2 PANEL VỚI RESIZER
      ============================================================ */
   return (
     <div
@@ -1027,11 +1102,23 @@ export default function AutoExamStudio({
             <AIMark size={26} animate={analyzing || generating} />
             <strong>AI Khảo thí</strong>
           </div>
-          {(analyzing || generating) && (
-            <button type="button" className="aes-btn-stop" onClick={handleCancelProcess}>
-              <IcoStop size={13} /> Dừng AI
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            {(chatMessages.length > 0 || matrixData || questions.length > 0) && (
+              <button
+                type="button"
+                className="aes-icon-btn"
+                onClick={handleClearHistory}
+                title="Xóa toàn bộ lịch sử và bắt đầu mới"
+              >
+                <IcoTrash size={14} />
+              </button>
+            )}
+            {(analyzing || generating) && (
+              <button type="button" className="aes-btn-stop" onClick={handleCancelProcess}>
+                <IcoStop size={13} /> Dừng AI
+              </button>
+            )}
+          </div>
         </header>
 
         <div className="aes-left-feed">
@@ -1230,7 +1317,7 @@ export default function AutoExamStudio({
           </div>
         )}
 
-        {/* Composer mini bên dưới cột chat */}
+        {/* Composer mini */}
         <div
           className={`aes-composer-mini ${isDraggingFile ? 'dragging' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
@@ -1296,7 +1383,7 @@ export default function AutoExamStudio({
         </div>
       </aside>
 
-      {/* DRAGGABLE RESIZER BAR (Pointer events + double-click 40/60 + keyboard arrows) */}
+      {/* DRAGGABLE RESIZER BAR */}
       <div
         className={`aes-resizer ${isDraggingSplit ? 'active' : ''}`}
         role="separator"
@@ -1403,6 +1490,7 @@ export default function AutoExamStudio({
               </dl>
             </div>
           )}
+
           {/* TAB 1: MA TRẬN */}
           {workspaceTab === 'matrix' && matrixData && (
             <div className="aes-matrix">
@@ -1413,7 +1501,6 @@ export default function AutoExamStudio({
                 </div>
               </div>
 
-              {/* BLOOM COGNITIVE VISUAL (Nhận thức 4 mức độ GDPT 2018) */}
               {bloomSummary && (
                 <div className="aes-bloom-visual">
                   <div className="aes-bloom-head">
@@ -1463,7 +1550,6 @@ export default function AutoExamStudio({
                 </div>
               )}
 
-              {/* BẢNG MA TRẬN */}
               <div className="aes-matrix-table-wrap">
                 <table className="aes-matrix-table">
                   <thead>
@@ -1525,10 +1611,9 @@ export default function AutoExamStudio({
             </div>
           )}
 
-          {/* TAB 2: CÂU HỎI & CÁC CHỨC NĂNG AI NÂNG CAO */}
+          {/* TAB 2: CÂU HỎI */}
           {workspaceTab === 'questions' && questions.length > 0 && (
             <div className="aes-questions">
-              {/* TOPBAR CỦA TAB CÂU HỎI */}
               <div className="aes-questions-topbar">
                 <div className="aes-questions-meta">
                   <span>Tổng số: <strong>{questions.length} câu</strong></span>
@@ -1551,7 +1636,6 @@ export default function AutoExamStudio({
                 </button>
               </div>
 
-              {/* DANH SÁCH CÂU HỎI */}
               {questions.map((q, idx) => {
                 const lvMeta = LEVEL_INFO[normLevel(q.level)] || LEVEL_INFO.nb;
                 const ped = pedagogyInsights[idx];
@@ -1584,7 +1668,6 @@ export default function AutoExamStudio({
                       </div>
                     </div>
 
-                    {/* NỘI DUNG CÂU HỎI (HOẶC FORM CHỈNH SỬA) */}
                     {isEditing ? (
                       <div className="aes-q-edit-box">
                         <label>
@@ -1682,7 +1765,6 @@ export default function AutoExamStudio({
                       </>
                     )}
 
-                    {/* PEDAGOGY INSIGHT DRAWER (Bẫy nhận thức & Mẹo dạy) */}
                     {ped?.open && (
                       <div className="aes-q-pedagogy">
                         <div className="aes-q-pedagogy-title">
@@ -1706,7 +1788,6 @@ export default function AutoExamStudio({
                       </div>
                     )}
 
-                    {/* ACTION BAR TRÊN TỪNG CÂU HỎI */}
                     <div className="aes-q-actions">
                       <button
                         type="button"
@@ -1779,7 +1860,7 @@ export default function AutoExamStudio({
             </div>
           )}
 
-          {/* TAB 3, 4, 5: MÔ PHỎNG / BẢN IN A4 / ĐẢO 4 MÃ ĐỀ (Nhúng Simulator với Mulberry32 PRNG) */}
+          {/* TAB 3, 4, 5: EMBEDDED SIMULATOR */}
           {(workspaceTab === 'sim' || workspaceTab === 'print' || workspaceTab === 'shuffle') && questions.length > 0 && (
             <div style={{ height: '100%', minHeight: 620 }}>
               <ExamPreviewSimulator
@@ -1798,7 +1879,7 @@ export default function AutoExamStudio({
         </div>
       </main>
 
-      {/* MODAL TOÀN MÀN HÌNH CHO SIMULATOR */}
+      {/* MODAL TOÀN MÀN HÌNH */}
       {showSimulator && (
         <ExamPreviewSimulator
           exam={{ title: publishTitle || topic, duration: selectedDuration }}
@@ -1878,7 +1959,7 @@ export default function AutoExamStudio({
         </div>
       )}
 
-      {/* MODAL XUẤT BẢN ĐỀ THI */}
+      {/* MODAL XUẤT BẢN */}
       {showPublishModal && (
         <div className="aes-modal-backdrop" onClick={() => setShowPublishModal(false)}>
           <div className="aes-modal" onClick={(e) => e.stopPropagation()}>
@@ -1934,7 +2015,6 @@ export default function AutoExamStudio({
                   />
                   <span>Cho học sinh xem lời giải chi tiết sau khi nộp bài</span>
                 </label>
-
               </div>
 
               <div className="aes-cam">
@@ -2010,7 +2090,7 @@ export default function AutoExamStudio({
         </div>
       )}
 
-      {/* TOAST THÔNG BÁO */}
+      {/* TOAST */}
       {toast && (
         <div className={`aes-toast ${toast.type}`}>
           {toast.type === 'success' && <IcoCheck size={15} />}

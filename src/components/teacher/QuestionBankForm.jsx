@@ -1,9 +1,15 @@
 /* ============================================================
-   QuestionBankForm.jsx — Modal thêm / sửa câu hỏi ngân hàng
+   QuestionBankForm.jsx — Modal thêm / sửa câu hỏi ngân hàng (v2)
+   ------------------------------------------------------------
+   v2: Chuyên đề đổi theo môn đã chọn
    ============================================================ */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import MathText from '../MathText.jsx';
-import { CHEM_TOPICS } from '../../data/chemTopics.js';
+import {
+  TOPICS_BY_SUBJECT,
+  getTopicsForSubject,
+  ALL_SUBJECTS_LIST,
+} from '../../data/topicsBySubject.js';
 import '../../styles/question-bank.css';
 
 const IcoX = ({ size = 16 }) => (
@@ -34,7 +40,7 @@ const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_OPTS = 6;
 
 const LEVELS = ['', 'nhận biết', 'thông hiểu', 'vận dụng', 'vận dụng cao'];
-const SUBJECTS = ['Hóa học', 'Toán', 'Vật lí', 'Sinh học', 'Ngữ văn', 'Tiếng Anh', 'Lịch sử', 'Địa lí'];
+const GRADES_OPT = [0, 6, 7, 8, 9, 10, 11, 12];
 
 export default function QuestionBankForm({
   initial = null,
@@ -49,7 +55,7 @@ export default function QuestionBankForm({
   const [correct, setCorrect] = useState(typeof initial?.correct === 'number' ? initial.correct : 0);
   const [explain, setExplain] = useState(initial?.explain || '');
   const [points, setPoints] = useState(initial?.points || 1);
-  const [subject, setSubject] = useState(initial?.subject || defaultSubject);
+  const [subject, setSubject] = useState(initial?.subject || defaultSubject || 'Hóa học');
   const [grade, setGrade] = useState(initial?.grade || defaultGrade || 0);
   const [topicId, setTopicId] = useState(initial?.topicId || '');
   const [level, setLevel] = useState(initial?.level || '');
@@ -58,6 +64,16 @@ export default function QuestionBankForm({
   const [error, setError] = useState('');
 
   const textareaRef = useRef(null);
+
+  /* ⭐ FIX: Chuyên đề đổi theo môn */
+  const availableTopics = useMemo(() => getTopicsForSubject(subject), [subject]);
+
+  /* Reset chuyên đề nếu không thuộc môn mới */
+  useEffect(() => {
+    if (topicId && !availableTopics.some((t) => t.id === topicId)) {
+      setTopicId('');
+    }
+  }, [subject, topicId, availableTopics]);
 
   useEffect(() => {
     if (!initial) textareaRef.current?.focus();
@@ -93,7 +109,6 @@ export default function QuestionBankForm({
 
   const removeTag = (t) => setTags((arr) => arr.filter((x) => x !== t));
 
-  /* another = true → lưu rồi giữ hộp mở để nhập câu tiếp (chỉ khi thêm mới) */
   const handleSubmit = (another = false) => {
     if (!q.trim()) { setError('Chưa có nội dung câu hỏi.'); return; }
     if (options.filter((o) => o.trim()).length < 2) { setError('Cần ít nhất 2 đáp án.'); return; }
@@ -139,21 +154,17 @@ export default function QuestionBankForm({
               <span>Môn</span>
               <select value={subject} onChange={(e) => setSubject(e.target.value)} disabled={saving}>
                 <option value="">Chưa chọn</option>
-                {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                {subject && !SUBJECTS.includes(subject) && <option value={subject}>{subject}</option>}
+                {ALL_SUBJECTS_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
+                {subject && !ALL_SUBJECTS_LIST.includes(subject) && <option value={subject}>{subject}</option>}
               </select>
             </label>
             <label className="qb-field">
               <span>Lớp</span>
-              <input
-                type="number"
-                min={6}
-                max={12}
-                value={grade || ''}
-                onChange={(e) => setGrade(Number(e.target.value) || 0)}
-                placeholder="0 = mọi lớp"
-                disabled={saving}
-              />
+              <select value={grade} onChange={(e) => setGrade(Number(e.target.value) || 0)} disabled={saving}>
+                {GRADES_OPT.map((g) => (
+                  <option key={g} value={g}>{g === 0 ? 'Mọi lớp' : `Lớp ${g}`}</option>
+                ))}
+              </select>
             </label>
             <label className="qb-field">
               <span>Độ khó</span>
@@ -165,16 +176,50 @@ export default function QuestionBankForm({
             </label>
           </div>
 
-          <label className="qb-field">
-            <span>Chuyên đề</span>
-            <select value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={saving}>
-              <option value="">Chưa phân loại</option>
-              {CHEM_TOPICS.map((tp) => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
-              {topicId && !CHEM_TOPICS.some((tp) => tp.id === topicId) && (
-                <option value={topicId}>{topicId} (mã cũ)</option>
+          {/* ⭐ Chuyên đề gọn: inline row */}
+          <div className="qb-row-2">
+            <label className="qb-field">
+              <span>Chuyên đề{subject && <small style={{ color: 'var(--acc)', marginLeft: 5 }}>· {subject}</small>}</span>
+              <select value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={saving}>
+                <option value="">Chưa phân loại</option>
+                {availableTopics.map((tp) => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
+                {topicId && !availableTopics.some((tp) => tp.id === topicId) && (
+                  <option value={topicId}>{topicId} (mã cũ)</option>
+                )}
+              </select>
+            </label>
+            <label className="qb-field">
+              <span>Tags (Enter để thêm)</span>
+              <div style={{ display: 'flex', gap: '.4rem' }}>
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                  placeholder="este, khó..."
+                  disabled={saving || tags.length >= 10}
+                  style={{ flex: 1, padding: '.62rem .85rem', border: '1.5px solid var(--soft)', borderRadius: 10, background: 'var(--bg)', color: 'var(--ink)', font: '500 .9rem var(--sans)', outline: 0 }}
+                />
+                <button type="button" className="qb-chip" onClick={addTag}
+                  disabled={saving || !tagInput.trim() || tags.length >= 10}
+                  style={{ flexShrink: 0 }}>
+                  <IcoPlus size={12} />
+                </button>
+              </div>
+              {tags.length > 0 && (
+                <div className="qb-tags" style={{ marginTop: '.3rem' }}>
+                  {tags.map((t) => (
+                    <span key={t} className="qb-tag">
+                      {t}
+                      <button type="button" onClick={() => removeTag(t)} disabled={saving} aria-label={`Xóa tag ${t}`}>
+                        <IcoX size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
-            </select>
-          </label>
+            </label>
+          </div>
 
           {/* Câu hỏi */}
           <label className="qb-field">
@@ -243,70 +288,30 @@ export default function QuestionBankForm({
             )}
           </div>
 
-          {/* Lời giải */}
-          <label className="qb-field">
-            <span>Lời giải (không bắt buộc)</span>
-            <textarea
-              value={explain}
-              onChange={(e) => setExplain(e.target.value)}
-              placeholder="Giải thích vì sao đáp án đúng..."
-              rows={2}
-              disabled={saving}
-            />
-          </label>
-
-          {/* Điểm */}
-          <label className="qb-field" style={{ maxWidth: 180 }}>
-            <span>Điểm câu này</span>
-            <input
-              type="number"
-              min={0.5}
-              step={0.5}
-              value={points}
-              onChange={(e) => setPoints(e.target.value)}
-              disabled={saving}
-            />
-          </label>
-
-          {/* Tags */}
-          <div className="qb-field">
-            <span>Tag (tối đa 10)</span>
-            <div style={{ display: 'flex', gap: '.4rem' }}>
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-                placeholder="VD: este, luyện tập, khó..."
-                disabled={saving || tags.length >= 10}
-                style={{ flex: 1 }}
+          {/* Lời giải + Điểm — gọn 2 cột */}
+          <div className="qb-row-2">
+            <label className="qb-field">
+              <span>Lời giải (không bắt buộc)</span>
+              <textarea
+                value={explain}
+                onChange={(e) => setExplain(e.target.value)}
+                placeholder="Giải thích vì sao đáp án đúng..."
+                rows={2}
+                disabled={saving}
               />
-              <button
-                type="button"
-                className="qb-chip"
-                onClick={addTag}
-                disabled={saving || !tagInput.trim() || tags.length >= 10}
-              >
-                <IcoPlus size={12} /> Thêm
-              </button>
-            </div>
-            {tags.length > 0 && (
-              <div className="qb-tags" style={{ marginTop: '.4rem' }}>
-                {tags.map((t) => (
-                  <span key={t} className="qb-tag">
-                    {t}
-                    <button type="button" onClick={() => removeTag(t)} disabled={saving} aria-label={`Xóa tag ${t}`}>
-                      <IcoX size={10} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+            </label>
+            <label className="qb-field">
+              <span>Điểm câu này</span>
+              <input
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={points}
+                onChange={(e) => setPoints(e.target.value)}
+                disabled={saving}
+                style={{ maxWidth: '100%' }}
+              />
+            </label>
           </div>
 
           {error && (

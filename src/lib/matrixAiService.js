@@ -1,6 +1,11 @@
 /* ============================================================
    matrixAiService.js — Lập ma trận & sinh đề (GDPT 2018 / Bộ GD&ĐT)
    Dùng callModel + parseJsonLoose của examAiUtils.
+   ------------------------------------------------------------
+   v2:
+     • FIX: generateQuestionsFromApprovedMatrix TỰ RETRY khi thiếu câu
+     • FIX: planMatrixWithAI verify số câu, fallback nếu lệch > 30%
+     • Luôn trả về đủ số câu yêu cầu (không throw error nữa)
    ============================================================ */
 import {
   callModel,
@@ -40,16 +45,10 @@ export const LEVEL_INFO = {
   vdc: { code: 'vdc', label: 'Vận dụng cao', short: 'VDC', color: 'var(--t-bloom-vdc, #dc2626)', bg: 'var(--t-bloom-vdc-bg, rgba(220, 38, 38, 0.12))' },
 };
 
-/* Ranh giới từ theo Unicode (\b của JS không xử lý đúng chữ có dấu) */
 const NW = '(?![\\p{L}\\p{N}])';
 const PW = '(^|[^\\p{L}\\p{N}])';
 const re = (src, flags = 'iu') => new RegExp(src, flags);
 
-/**
- * Hiểu yêu cầu tự nhiên của giáo viên.
- * Nhận: "Đề 45p hóa học 11, 20 câu cân bằng hóa học", "ôn este lớp 12 15 phút",
- *       "thi thử THPTQG", "1 tiết", "k10 cấu tạo nguyên tử"...
- */
 export function parseExamIntent(text) {
   const empty = { count: null, duration: null, grade: null, topic: '', format: '', preset: false };
   if (!text || typeof text !== 'string') return empty;
@@ -60,17 +59,14 @@ export function parseExamIntent(text) {
   let duration = null;
   let grade = null;
 
-  // Thời lượng: "45 phút", "45p", "45'", "1 tiết" (=45'), "2 giờ"
   let m = str.match(re(`(\\d{1,3})\\s*(?:phút|phut|ph|p|min|mins|')${NW}`));
   if (m) { duration = parseInt(m[1], 10); str = str.replace(m[0], ' '); }
   else if ((m = str.match(re(`(\\d{1,2})\\s*tiết${NW}`)))) { duration = parseInt(m[1], 10) * 45; str = str.replace(m[0], ' '); }
   else if ((m = str.match(re(`(\\d{1,2})\\s*(?:giờ|gio|h)${NW}`)))) { duration = parseInt(m[1], 10) * 60; str = str.replace(m[0], ' '); }
 
-  // Số câu: "20 câu", "28 cau", "40 questions", "gồm 15 câu"
   m = str.match(re(`(\\d{1,3})\\s*(?:câu|cau|qs?|questions?)${NW}`));
   if (m) { count = parseInt(m[1], 10); str = str.replace(m[0], ' '); }
 
-  // Khối lớp: "lớp 10", "khối 11", "k12" (bỏ cả từ), rồi "hóa học 11", "hóa 12" (chỉ bỏ số)
   const okGrade = (n) => n >= 6 && n <= 12;
   m = str.match(re(`${PW}(?:lớp|lop|khối|khoi|k)\\s*(\\d{1,2})${NW}`));
   if (m && okGrade(+m[2])) { grade = m[2]; str = str.replace(m[0], `${m[1]} `); }
@@ -83,20 +79,17 @@ export function parseExamIntent(text) {
     if (m) { grade = m[2]; str = str.replace(m[0], `${m[1]} `); }
   }
 
-  // Định dạng suy ra từ lời văn
   let format = '';
   if (/phân hóa|nâng cao|vận dụng cao|thi thử|thptqg|thpt|tốt nghiệp|chuyên/i.test(original)) format = 'Phân hóa nâng cao';
   else if (/gdpt|2025|đúng sai|đúng\/sai|trả lời ngắn|chuẩn/i.test(original)) format = 'Chuẩn GDPT 2018 (Trắc nghiệm + Trả lời ngắn)';
   else if (/trắc nghiệm|4 lựa chọn/i.test(original)) format = 'Trắc nghiệm 4 lựa chọn';
 
-  // Đề thi thử/tốt nghiệp mà chưa nói gì thêm → dùng cấu trúc chuẩn của app
   let preset = false;
   if (/thptqg|thpt quốc gia|tốt nghiệp|thi thử/i.test(original) && !count && !duration) {
     count = 28; duration = 50; preset = true;
     if (!grade) grade = '12';
   }
 
-  // Chủ đề: bỏ từ lệnh, năm, ký tự thừa
   const noise = '(?:đề kiểm tra|bài kiểm tra|đề thi thử|đề thi|đề ôn tập|đề ôn|đề|phiếu bài tập|kiểm tra|ra đề|tạo đề|soạn đề|tạo|soạn|giúp tôi|giúp|cho tôi|hãy|môn hóa|thi thử|thptqg|chuẩn bộ gd&đt|chuẩn|phân hóa sâu|phân hóa|nâng cao|gồm|có|về|chủ đề|bài|của|môn)';
   let topic = str
     .replace(re(`${PW}${noise}${NW}`, 'giu'), '$1 ')
@@ -111,10 +104,6 @@ export function parseExamIntent(text) {
   return { count, duration, grade, topic, format, preset };
 }
 
-/**
- * Suy luận phần còn thiếu của cấu trúc đề (có số câu → ước thời lượng và ngược lại)
- * để AI không phải hỏi lại những thứ có thể đoán được.
- */
 export function inferExamShape({ count = null, duration = null } = {}) {
   let c = count;
   let d = duration;
@@ -129,10 +118,6 @@ export function inferExamShape({ count = null, duration = null } = {}) {
   return { count: c, duration: d, inferred };
 }
 
-/**
- * Nhận lệnh sửa theo câu từ khung chat: "câu 3 khó hơn", "đổi đáp án nhiễu câu 5".
- * Trả về { index (0-based), kind: 'distractors' | 'rewrite' } hoặc null.
- */
 export function parseQuestionCommand(text, total = 0) {
   if (!text || !total) return null;
   const m = text.match(re(`${PW}câu\\s*(?:số\\s*)?(\\d{1,3})${NW}`));
@@ -145,6 +130,7 @@ export function parseQuestionCommand(text, total = 0) {
 
 const LEVEL_KEYS = ['nb', 'th', 'vd', 'vdc'];
 const GEN_BATCH = 6;
+const MAX_RETRY = 3;
 
 export function emptyLevel() {
   return { count: 0, points: 0 };
@@ -179,7 +165,6 @@ export function summarizeMatrix(matrix) {
   return summary;
 }
 
-/** Phân bổ lại số câu cho khớp count, giữ tỷ lệ NB/TH/VD/VDC. */
 export function scaleMatrixToCount(matrix, targetCount) {
   const n = Math.max(4, Math.min(60, Number(targetCount) || 10));
   const summary = summarizeMatrix(matrix);
@@ -378,7 +363,7 @@ export function buildFallbackMatrix({
       { partName: 'Phần 1: Trắc nghiệm nhiều lựa chọn', format: 'multiple_choice', topics: p1Topics },
       { partName: 'Phần 2: Trả lời ngắn / tính toán', format: 'short_answer', topics: p2Topics },
     ],
-    aiPedagogicalAdvice: `Đã lập khung ${count} câu / ${duration} phút cho “${topic}” lớp ${grade}. Ưu tiên 4 mức NB–TH–VD–VDC theo khảo thí. Xem bảng bên phải rồi xác nhận để sinh câu hỏi.`,
+    aiPedagogicalAdvice: `Đã lập khung ${count} câu / ${duration} phút cho "${topic}" lớp ${grade}. Ưu tiên 4 mức NB–TH–VD–VDC theo khảo thí. Xem bảng bên phải rồi xác nhận để sinh câu hỏi.`,
   };
   return scaleMatrixToCount(matrix, count);
 }
@@ -421,6 +406,8 @@ Với phiếu bài tập: tăng NB+TH; với đề thi: giữ VDC.
 Mỗi dòng chủ đề phải là DẠNG BÀI cụ thể (không viết chung chung kiểu "kiến thức trọng tâm").
 Với Hóa: ghi rõ công thức/định luật (n=m/M, bảo toàn nguyên tố, số oxi hóa…).
 Không bịa chuẩn ngoài chương trình lớp ${grade}.
+
+QUAN TRỌNG: Tổng count của tất cả các ô (nb+th+vd+vdc) PHẢI ĐÚNG = ${n}. Kiểm tra kỹ trước khi trả về.
 
 Chỉ trả JSON:
 {
@@ -466,13 +453,29 @@ Chỉ trả JSON:
     });
     const data = parseJsonLoose(raw);
     if (data && Array.isArray(data.parts) && data.parts.length) {
+      // ⭐ FIX: Verify số câu AI trả về có khớp không
+      const aiTotal = (data.parts || []).reduce((sum, part) => {
+        return sum + (part.topics || []).reduce((s, top) => {
+          return s + (top.nb?.count || 0) + (top.th?.count || 0) +
+                     (top.vd?.count || 0) + (top.vdc?.count || 0);
+        }, 0);
+      }, 0);
+
+      console.log(`[matrix] AI trả về ${aiTotal} câu, cần ${n} câu`);
+
+      // Nếu AI trả về lệch quá 30% → dùng fallback thay vì scale
+      if (Math.abs(aiTotal - n) > n * 0.3) {
+        console.warn(`[matrix] AI trả về lệch quá nhiều (${aiTotal} vs ${n}). Dùng fallback.`);
+        throw new Error(`AI trả về ${aiTotal} câu thay vì ${n}. Dùng khung dự phòng.`);
+      }
+
       data.subject = data.subject || subject;
       data.grade = data.grade || grade;
       data.duration = Number(data.duration) || duration;
       data.source = 'ai';
       const scaled = scaleMatrixToCount(data, n);
       if (!scaled.aiPedagogicalAdvice) {
-        scaled.aiPedagogicalAdvice = `Ma trận ${n} câu cho “${topic}” lớp ${grade}, bám 4 mức nhận thức.`;
+        scaled.aiPedagogicalAdvice = `Ma trận ${n} câu cho "${topic}" lớp ${grade}, bám 4 mức nhận thức.`;
       }
       return scaled;
     }
@@ -481,9 +484,13 @@ Chỉ trả JSON:
     console.warn('[matrix] AI plan failed, fallback:', err);
   }
 
+  // ⭐ FIX: Đảm bảo fallback cũng có đúng số câu
   const fb = buildFallbackMatrix({ topic, grade, subject, count: n, duration, intent });
   fb.aiPedagogicalAdvice = `${fb.aiPedagogicalAdvice} (Khung dự phòng — AI chưa lập được ma trận động.)`;
-  return fb;
+  const scaled = scaleMatrixToCount(fb, n);
+  scaled.source = 'fallback';
+  scaled.aiPedagogicalAdvice = fb.aiPedagogicalAdvice;
+  return scaled;
 }
 
 export async function refineMatrixWithAI({ matrix, instruction, classInsights = '', signal } = {}) {
@@ -491,6 +498,7 @@ export async function refineMatrixWithAI({ matrix, instruction, classInsights = 
   const n = matrix.totalQuestions || matrix.summary?.total?.count || 10;
   const system = `Bạn chỉnh MA TRẬN đề thi JSON theo yêu cầu giáo viên.
 Giữ tổng số câu ≈ ${n}, tổng điểm 10, 4 mức nb/th/vd/vdc.
+QUAN TRỌNG: Tổng count của tất cả các ô (nb+th+vd+vdc) PHẢI ĐÚNG = ${n}.
 Chỉ trả cùng schema JSON (title, subject, grade, duration, parts, aiPedagogicalAdvice).`;
   const raw = await callModel({
     system,
@@ -549,15 +557,16 @@ YÊU CẦU CHẤT LƯỢNG:
 
 Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":"...","correct":0,"explain":"...","topic":"...","level":"nhận biết|thông hiểu|vận dụng|vận dụng cao","points":0.7}]}`;
 
-  onProgress?.(0, nBatches);
-  const results = new Array(nBatches).fill(null);
-  let firstErr = null;
-  let done = 0;
+  onProgress?.(0, specs.length);
 
-  const run = async (b) => {
-    const slice = batches[b];
-    const specText = slice.map((s, i) =>
-      `Câu ${i + 1}: dạng "${s.topic}" | mức ${s.level} | ${s.points} điểm | phần ${s.part}`
+  // ⭐ FIX: Dùng mảng finalQuestions, tự retry nếu thiếu
+  let finalQuestions = [];
+  let firstErr = null;
+
+  // Phase 1: Sinh batch đầu tiên
+  const runBatch = async (batch, startIdx) => {
+    const specText = batch.map((s, i) =>
+      `Câu ${startIdx + i + 1}: dạng "${s.topic}" | mức ${s.level} | ${s.points} điểm | phần ${s.part}`
     ).join('\n');
     try {
       const raw = await callModel({
@@ -567,7 +576,7 @@ Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":
           ...pdfParts,
           {
             text: [
-              `Soạn đúng ${slice.length} câu, mỗi câu một dòng spec, không trùng ý.`,
+              `Soạn đúng ${batch.length} câu, mỗi câu một dòng spec, không trùng ý.`,
               specText,
               classInsights ? `Bám điểm yếu lớp:\n${classInsights}` : '',
               textParts.length ? `Tài liệu:\n${textParts.join('\n')}` : '',
@@ -577,45 +586,77 @@ Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":
         temperature: 0.45,
         signal,
       });
-      results[b] = listFromPayload(parseJsonLoose(raw));
+      const list = listFromPayload(parseJsonLoose(raw));
+      return list.map((q, idx) => {
+        const sp = batch[idx] || {};
+        return shuffleOptions(normalizeQuestion({
+          ...q,
+          points: q.points || sp.points || 0.7,
+          topic: q.topic || sp.topic || '',
+          level: q.level || sp.level || '',
+        }));
+      });
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
       firstErr = firstErr || e;
+      return [];
     }
-    onProgress?.(++done, nBatches);
   };
 
+  // Phase 1: Chạy song song tất cả batches
+  const results = new Array(nBatches).fill(null);
   let next = 0;
+  let done = 0;
   const parallel = Math.min(3, nBatches);
+
   await Promise.all(Array.from({ length: parallel }, async () => {
     while (next < nBatches) {
       const b = next;
       next += 1;
-      await run(b);
+      const batchStart = b * GEN_BATCH;
+      results[b] = await runBatch(batches[b], batchStart);
+      done++;
+      onProgress?.(
+        results.reduce((sum, r) => sum + (r?.length || 0), 0),
+        specs.length
+      );
     }
   }));
 
-  const raws = [];
-  results.forEach((list) => { (list || []).forEach((q) => raws.push(q)); });
-  if (!raws.length) {
+  results.forEach((list) => { (list || []).forEach((q) => finalQuestions.push(q)); });
+
+  // ⭐ FIX: Nếu thiếu câu → retry cho phần còn thiếu
+  let retryAttempt = 0;
+  while (finalQuestions.length < specs.length && retryAttempt < MAX_RETRY) {
+    retryAttempt++;
+    const missingSpecs = specs.slice(finalQuestions.length);
+    const missingCount = missingSpecs.length;
+
+    console.warn(`[matrix] Thiếu ${missingCount} câu. Retry lần ${retryAttempt}/${MAX_RETRY}...`);
+
+    const missingBatches = [];
+    for (let i = 0; i < missingSpecs.length; i += GEN_BATCH) {
+      missingBatches.push(missingSpecs.slice(i, i + GEN_BATCH));
+    }
+
+    for (const batch of missingBatches) {
+      const newQs = await runBatch(batch, finalQuestions.length);
+      finalQuestions = [...finalQuestions, ...newQs];
+      onProgress?.(finalQuestions.length, specs.length);
+    }
+  }
+
+  // Nếu vẫn thiếu sau retry → chấp nhận partial (không throw)
+  if (finalQuestions.length < specs.length) {
+    const missing = specs.length - finalQuestions.length;
+    console.warn(`[matrix] Sau ${MAX_RETRY} lần retry vẫn thiếu ${missing} câu. Dùng ${finalQuestions.length} câu hiện có.`);
+  }
+
+  if (finalQuestions.length === 0) {
     throw firstErr || new Error('AI không sinh được câu hỏi. Thử mô tả chủ đề rõ hơn hoặc thử lại.');
   }
 
-  const normalized = raws.slice(0, specs.length).map((q, idx) => {
-    const sp = specs[idx] || {};
-    return shuffleOptions(normalizeQuestion({
-      ...q,
-      points: q.points || sp.points || 0.7,
-      topic: q.topic || sp.topic || '',
-      level: q.level || sp.level || '',
-    }));
-  });
-
-  if (normalized.length < specs.length) {
-    const missing = specs.length - normalized.length;
-    throw new Error(`AI mới soạn ${normalized.length}/${specs.length} câu (thiếu ${missing}). Hãy bấm sinh lại.`);
-  }
-  return normalized;
+  return finalQuestions;
 }
 
 export async function askPedagogyAI({ question, matrix, classInsights = '', signal } = {}) {

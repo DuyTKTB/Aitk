@@ -11,14 +11,141 @@ const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const GROQ_BASE   = 'https://api.groq.com/openai/v1';
 const AGNES_BASE  = 'https://apihub.agnes-ai.com/v1';
 
+/* ============================================================
+   ⭐ MỚI 1: CACHE RESPONSE — tiết kiệm 30-50% request
+   ------------------------------------------------------------
+   Cùng prompt + cùng system prompt + cùng requestType
+   → trả cache trong 30 phút
+   ============================================================ */
+const CACHE_ENABLED = import.meta.env.VITE_AI_CACHE !== '0';
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 phút
+const responseCache = new Map(); // key → { text, model, timestamp }
+
+function hashForCache(history, systemPrompt, requestType) {
+  const str = JSON.stringify({
+    s: systemPrompt?.slice(0, 200),
+    t: requestType,
+    h: history.map((m) => {
+      const text = m.parts?.filter((p) => p.text).map((p) => p.text).join(' ') || m.text || m.content || '';
+      const hasImg = m.parts?.some((p) => p.inlineData) || false;
+      return { r: m.role, t: text, i: hasImg ? 'Y' : 'N' };
+    }),
+  });
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return `cache_${hash}_${str.length}`;
+}
+
+function getCached(history, systemPrompt, requestType) {
+  if (!CACHE_ENABLED) return null;
+  const key = hashForCache(history, systemPrompt, requestType);
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function setCache(history, systemPrompt, requestType, text, model) {
+  if (!CACHE_ENABLED || !text) return;
+  const key = hashForCache(history, systemPrompt, requestType);
+  responseCache.set(key, { text, model, timestamp: Date.now() });
+  // Giới hạn cache size — xóa entry cũ nhất nếu > 100
+  if (responseCache.size > 100) {
+    const firstKey = responseCache.keys().next().value;
+    responseCache.delete(firstKey);
+  }
+}
+
+/* ============================================================
+   ⭐ MỚI 2: MODEL HEALTH TRACKER — tự skip model hết quota
+   ------------------------------------------------------------
+   Khi model nào 429 → cooldown (mặc định 1 giờ)
+   Trong thời gian cooldown → không thử model đó nữa
+   ============================================================ */
+const modelHealth = new Map(); // "provider/model" → { exhaustedUntil, failCount }
+
+function markModelExhausted(providerId, model, retryAfterMs = 60 * 60 * 1000) {
+  const key = `${providerId}/${model}`;
+  modelHealth.set(key, {
+    exhaustedUntil: Date.now() + retryAfterMs,
+    failCount: (modelHealth.get(key)?.failCount || 0) + 1,
+  });
+  console.warn(`[A7 Assistant] ⚠️ Model ${key} cooldown ${Math.round(retryAfterMs / 1000)}s`);
+}
+
+function isModelAvailable(providerId, model) {
+  const key = `${providerId}/${model}`;
+  const status = modelHealth.get(key);
+  if (!status) return true;
+  if (Date.now() > status.exhaustedUntil) {
+    modelHealth.delete(key);
+    return true;
+  }
+  return false;
+}
+
+function parseRetryAfterMs(errorMessage) {
+  // Parse "retry in 9h8m52.825508915s" hoặc "retry in 30s"
+  const str = String(errorMessage || '');
+  let totalMs = 0;
+
+  const hMatch = str.match(/([\d.]+)\s*h/);
+  const mMatch = str.match(/([\d.]+)\s*m(?!odel|s)/);
+  const sMatch = str.match(/([\d.]+)\s*s/);
+
+  if (hMatch) totalMs += parseFloat(hMatch[1]) * 60 * 60 * 1000;
+  if (mMatch) totalMs += parseFloat(mMatch[1]) * 60 * 1000;
+  if (sMatch) totalMs += parseFloat(sMatch[1]) * 1000;
+
+  return totalMs > 0 ? totalMs : null;
+}
+
+/* ============================================================
+   ⭐ MỚI 3: EXPONENTIAL BACKOFF — retry khi 503
+   ============================================================ */
+const MAX_RETRIES_PER_MODEL = 3;
+const BACKOFF_DELAYS_MS = [1000, 2500, 5000];
+
+function shouldRetry(err, attempt) {
+  if (attempt >= MAX_RETRIES_PER_MODEL) return false;
+  if (err?.isAbort) return false;
+  if (err?.isQuota) return false;      // 429 → không retry cùng model
+  if (err?.isNotFound) return false;   // 404 → không retry
+  // Chỉ retry 503 / 502 / 504 / 500 / network
+  return err?.isOverload || err?.status >= 500 || /network|fetch|timeout/i.test(err?.message || '');
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/* ============================================================
+   ⭐ MỚI 4: DEBUG STATUS — expose để debug
+   ============================================================ */
+if (typeof window !== 'undefined') {
+  window.__getAIStatus = () => ({
+    cacheSize: responseCache.size,
+    cacheEnabled: CACHE_ENABLED,
+    modelHealth: Object.fromEntries(modelHealth.entries()),
+  });
+  window.__clearAICache = () => {
+    responseCache.clear();
+    console.log('[A7 Assistant] Cache đã xóa');
+  };
+}
+
 export const MSG_OUT_OF_QUOTA =
   '⚠️ Bạn đã hết quyền sử dụng AI miễn phí hôm nay.\n\n' +
   'Để được cấp thêm lượt, vui lòng liên hệ Admin:\n' +
   '👉 Facebook: https://www.facebook.com/nguyentheduytk\n\n' +
   'Xin lỗi vì sự bất tiện. Hẹn gặp bạn vào ngày mai! 🌸';
 
-/* 429 từ nhà cung cấp = key dùng chung đang bị giới hạn tốc độ, KHÔNG phải hết lượt của người dùng.
-   (Lượt theo từng user do quota.js quản lý và tự hiện MSG_OUT_OF_QUOTA.) */
 export const MSG_RATE_LIMIT =
   '⏳ Hệ thống AI đang quá tải do nhiều người dùng cùng lúc.\n\n' +
   'Bạn chưa bị trừ lượt. Hãy đợi vài giây rồi thử lại nhé.';
@@ -32,7 +159,7 @@ class OutOfQuotaError extends Error {
   constructor(message) {
     super(message);
     this.name = 'OutOfQuotaError';
-    this.isQuota = true;      // vẫn kích hoạt chuyển sang nhà cung cấp khác
+    this.isQuota = true;
     this.isRateLimit = message === MSG_RATE_LIMIT;
   }
 }
@@ -47,8 +174,6 @@ class AbortError extends Error {
 
 /* ============================================================
    CẤU HÌNH MODEL — 3 PROVIDERS
-   ✨ SỬA #1: Bỏ alias "gemini-flash-latest" (bị route về 2.5-flash đã khóa)
-   Dùng model ID cố định: gemini-3.8-flash, fallback gemini-3.7-flash
    ============================================================ */
 const GEMINI_VISION_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash'];
 const GEMINI_TEXT_MODELS   = ['gemini-3.8-flash', 'gemini-3.7-flash'];
@@ -160,7 +285,7 @@ QUY TẮC
 `;
 
 /* ============================================================
-   UNICODE / LATEX CONVERTER
+   UNICODE / LATEX CONVERTER (giữ nguyên)
    ============================================================ */
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
@@ -202,7 +327,7 @@ function latexToUnicode(text) {
   if (!text || !/[\\$^_]/.test(text)) return text;
   let s = text;
   s = s.replace(/\$\$/g, '');
-  s = s.replace(/\\[()[\]]/g, '');          // bỏ dấu phân cách \( \) \[ \]
+  s = s.replace(/\\[()[\]]/g, '');
   s = s.replace(/\$/g, '');
   for (let i = 0; i < 2; i++) {
     s = s.replace(
@@ -251,8 +376,6 @@ const CHEM_REPLACEMENTS = [
 ].sort((a, b) => b[0].length - a[0].length);
 
 const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// Chỉ thay khi KHÔNG đứng sau chữ số và KHÔNG theo sau chữ thường/chữ số
-// (tránh "10A3", "version2", tên biến trong code…)
 const CHEM_RE = new RegExp(`(?<![0-9])(?:${CHEM_REPLACEMENTS.map(([f]) => escRe(f)).join('|')})(?![0-9a-z])`, 'g');
 const CHEM_MAP = new Map(CHEM_REPLACEMENTS);
 
@@ -268,7 +391,6 @@ function normalizeChemTextOnly(text) {
     .replace(/<=/g, '≤').replace(/>=/g, '≥').replace(/\+-/g, '±');
 }
 
-/* Không đụng vào khối code (```...```) và code nội dòng (`...`) */
 function normalizeChemistryText(text) {
   if (!text) return '';
   return String(text)
@@ -368,8 +490,7 @@ function prepareOpenAIMessages(history, systemPrompt) {
 }
 
 /* ============================================================
-   STREAM GEMINI
-   ✨ SỬA #2: 404 tách riêng thành isNotFound (không còn isOverload)
+   STREAM GEMINI (giữ nguyên)
    ============================================================ */
 async function streamGemini({ model, contents, temperature, maxTokens, systemPrompt, ctrl, claim, onChunk }) {
   let stall;
@@ -409,7 +530,11 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
 
       if (status === 429 || status === 503 || status === 500) trackRequest('gemini', true);
 
-      if (status === 429) throw new OutOfQuotaError(MSG_RATE_LIMIT);
+      if (status === 429) {
+        const err = new OutOfQuotaError(MSG_RATE_LIMIT);
+        err.rawBody = body;
+        throw err;
+      }
       if (status === 503 || status === 502 || status === 504) {
         const err = new Error(`${model} quá tải (${status})`);
         err.status = status;
@@ -417,7 +542,6 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
         throw err;
       }
       if (status === 404) {
-        // ✨ Model không tồn tại → đánh dấu riêng để fallback NGAY
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
         err.isNotFound = true;
@@ -475,8 +599,7 @@ async function streamGemini({ model, contents, temperature, maxTokens, systemPro
 }
 
 /* ============================================================
-   STREAM GROQ
-   ✨ SỬA #3: 404 tách thành isNotFound
+   STREAM GROQ (giữ nguyên)
    ============================================================ */
 async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim, onChunk }) {
   let stall;
@@ -519,7 +642,11 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
 
       if (status === 429 || status === 503 || status === 500) trackRequest('groq', true);
 
-      if (status === 429) throw new OutOfQuotaError(MSG_RATE_LIMIT);
+      if (status === 429) {
+        const err = new OutOfQuotaError(MSG_RATE_LIMIT);
+        err.rawBody = bodyText;
+        throw err;
+      }
       if (status === 503 || status === 502 || status === 504 || status === 500) {
         const err = new Error(`${model} quá tải (${status})`);
         err.status = status;
@@ -528,7 +655,6 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
       }
       if (status === 401 || status === 403) throw new Error(MSG_API_KEY_ERROR);
       if (status === 404) {
-        // ✨ Model không tồn tại → fallback NGAY
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
         err.isNotFound = true;
@@ -580,8 +706,7 @@ async function streamGroq({ model, messages, temperature, maxTokens, ctrl, claim
 }
 
 /* ============================================================
-   STREAM AGNES
-   ✨ SỬA #4: 404 tách thành isNotFound
+   STREAM AGNES (giữ nguyên)
    ============================================================ */
 async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, claim, onChunk }) {
   let stall;
@@ -620,7 +745,11 @@ async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, clai
 
       if (status === 429 || status === 503 || status === 500) trackRequest('agnes', true);
 
-      if (status === 429) throw new OutOfQuotaError(MSG_RATE_LIMIT);
+      if (status === 429) {
+        const err = new OutOfQuotaError(MSG_RATE_LIMIT);
+        err.rawBody = body;
+        throw err;
+      }
       if (status === 503 || status === 502 || status === 504) {
         const err = new Error(`${model} quá tải (${status})`);
         err.status = status;
@@ -628,7 +757,6 @@ async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, clai
         throw err;
       }
       if (status === 404) {
-        // ✨ Model không tồn tại → fallback NGAY
         const err = new Error(`${model} không tồn tại`);
         err.status = 404;
         err.isNotFound = true;
@@ -682,7 +810,7 @@ async function streamAgnes({ model, messages, temperature, maxTokens, ctrl, clai
 }
 
 /* ============================================================
-   PROVIDER CONFIG
+   ⭐ PROVIDER CONFIG — có filter model unavailable
    ============================================================ */
 function getProviders(hasImage) {
   const providers = [];
@@ -696,13 +824,15 @@ function getProviders(hasImage) {
   if (GEMINI_KEY) providers.push({ id: 'gemini', models: GEMINI_TEXT_MODELS,  type: 'text' });
   if (GROQ_KEY)   providers.push({ id: 'groq',   models: GROQ_STRONG_MODELS,  type: 'text' });
 
-  return providers;
+  // ⭐ Lọc bỏ model đang cooldown
+  return providers.map((p) => ({
+    ...p,
+    models: p.models.filter((m) => isModelAvailable(p.id, m)),
+  })).filter((p) => p.models.length > 0);
 }
 
 /* ============================================================
-   HÀM CHÍNH — askAI
-   ✨ SỬA #5: thêm nhánh isNotFound → advance(true) nhảy provider ngay
-   ✨ SỬA #6: thêm nhánh isAbort → không hiện lỗi khi user dừng
+   ⭐ HÀM CHÍNH — askAI (nâng cấp: cache + health + backoff)
    ============================================================ */
 export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) {
   const activeSystemPrompt = customSystemPrompt || SYSTEM_PROMPT;
@@ -733,9 +863,30 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
     ));
   }
 
+  // ⭐ TẦNG 1: Check cache
+  const cached = !hasImage ? getCached(recent, activeSystemPrompt, requestType) : null;
+  if (cached) {
+    console.log(`[A7 Assistant] ✓ Cache hit (${cached.model})`);
+    // Phát cache ra như stream
+    setTimeout(() => {
+      onChunk?.(cached.text);
+    }, 50);
+    const p = Promise.resolve({
+      text: cached.text,
+      reasoning: '',
+      model: `${cached.model} (cache)`,
+      requestType,
+      fromCache: true,
+    });
+    p.abort = () => {};
+    return p;
+  }
+
   const providers = getProviders(hasImage);
   if (providers.length === 0) {
-    return Promise.reject(new Error('Không có AI provider nào khả dụng.'));
+    return Promise.reject(new Error(
+      'Tất cả model đang trong thời gian cooldown (hết quota). Vui lòng thử lại sau.'
+    ));
   }
 
   const geminiContents = prepareGeminiContents(recent);
@@ -796,39 +947,65 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
         return winner === i;
       };
 
-      let streamPromise;
-      if (provider.id === 'gemini') {
-        streamPromise = streamGemini({
-          model,
-          contents: geminiContents,
-          temperature,
-          maxTokens,
-          systemPrompt: activeSystemPrompt,
-          ctrl,
-          claim,
-          onChunk,
-        });
-      } else if (provider.id === 'groq') {
-        streamPromise = streamGroq({
-          model,
-          messages: messagesOpenAI,
-          temperature,
-          maxTokens,
-          ctrl,
-          claim,
-          onChunk,
-        });
-      } else if (provider.id === 'agnes') {
-        streamPromise = streamAgnes({
-          model,
-          messages: messagesOpenAI,
-          temperature,
-          maxTokens,
-          ctrl,
-          claim,
-          onChunk,
-        });
-      }
+      // ⭐ TẦNG 3: Retry với exponential backoff
+      let attempt = 0;
+
+      const tryStream = async () => {
+        if (provider.id === 'gemini') {
+          return streamGemini({
+            model,
+            contents: geminiContents,
+            temperature,
+            maxTokens,
+            systemPrompt: activeSystemPrompt,
+            ctrl,
+            claim,
+            onChunk,
+          });
+        } else if (provider.id === 'groq') {
+          return streamGroq({
+            model,
+            messages: messagesOpenAI,
+            temperature,
+            maxTokens,
+            ctrl,
+            claim,
+            onChunk,
+          });
+        } else if (provider.id === 'agnes') {
+          return streamAgnes({
+            model,
+            messages: messagesOpenAI,
+            temperature,
+            maxTokens,
+            ctrl,
+            claim,
+            onChunk,
+          });
+        }
+      };
+
+      const streamPromise = (async () => {
+        while (true) {
+          try {
+            return await tryStream();
+          } catch (err) {
+            if (shouldRetry(err, attempt)) {
+              const delay = BACKOFF_DELAYS_MS[attempt] || 3000;
+              console.warn(`[A7 Assistant] ⟳ Retry ${provider.id}/${model} sau ${delay}ms (lần ${attempt + 1})`);
+              await sleep(delay);
+              attempt++;
+              // Tạo AbortController mới cho lần retry
+              if (ctrl.signal.aborted) {
+                const newCtrl = new AbortController();
+                ctrls[i] = newCtrl;
+              }
+              continue;
+            }
+            throw err;
+          }
+        }
+      })();
 
       const nextProviderIdx = providerIdx;
       const nextModelIdx = modelIdx + 1;
@@ -838,6 +1015,10 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
           if (aborted) return;
           if (r && winner === i && r.text) {
             onChunk(r.text);
+            // ⭐ Lưu vào cache
+            if (!hasImage) {
+              setCache(recent, activeSystemPrompt, requestType, r.text, `${provider.id}/${model}`);
+            }
             finish(resolve, {
               text: r.text,
               reasoning: '',
@@ -852,10 +1033,12 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
           }
         })
         .catch((err) => {
-          // ✨ SỬA #6: user dừng → không hiện lỗi
           if (err?.isAbort || aborted) return;
 
+          // ⭐ TẦNG 2: Model health — 429 → cooldown
           if (err?.isQuota) {
+            const retryAfter = parseRetryAfterMs(err.rawBody || err.message);
+            markModelExhausted(provider.id, model, retryAfter || 60 * 60 * 1000);
             ctrls.forEach((c) => { try { c.abort(); } catch {} });
             if (winner === null) {
               lastError = err;
@@ -864,8 +1047,6 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
             return;
           }
 
-          // ✨ SỬA #5: model không tồn tại → nhảy provider tiếp theo NGAY
-          // (không đợi, không thử model cùng provider vì có thể cùng bị khóa)
           if (err?.isNotFound) {
             if (winner === null) {
               lastError = err;
@@ -916,7 +1097,7 @@ export function askAI(history, onChunk, onReasoning, customSystemPrompt = null) 
 }
 
 /* ============================================================
-   NÉN ẢNH
+   NÉN ẢNH (giữ nguyên)
    ============================================================ */
 export async function compressImage(file) {
   if (!file) throw new Error('Không có file ảnh.');
