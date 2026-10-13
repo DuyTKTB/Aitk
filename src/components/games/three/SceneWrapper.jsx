@@ -26,10 +26,10 @@ export default function SceneWrapper({
         onCreated={({ gl }) => {
           gl.domElement.addEventListener('webglcontextlost', (e) => {
             e.preventDefault();
-            console.warn('[ChemStudy] WebGL context lost — thử reload trang');
+            console.warn('[ELEC AI] WebGL context lost — thử reload trang');
           });
           gl.domElement.addEventListener('webglcontextrestored', () => {
-            console.info('[ChemStudy] WebGL context restored');
+            console.info('[ELEC AI] WebGL context restored');
           });
         }}
         onPointerMissed={onPointerMissed}

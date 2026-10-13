@@ -5,29 +5,54 @@
    ============================================================ */
 
 .cd-backdrop {
+  position: fixed;
+  inset: 0;
   z-index: 10000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
 }
 .cd-backdrop-2 {
+  position: fixed;
+  inset: 0;
   z-index: 10100;
 }
 .cd-backdrop-3 {
+  position: fixed;
+  inset: 0;
   z-index: 10200;
 }
 
 .cd-modal {
-  width: min(1080px, 96vw);
-  max-height: 92vh;
+  width: min(880px, 94vw);
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 26px;
-  background: var(--panel, #fff);
+  border-radius: 28px 0 0 28px;
+  background: var(--t-surface-1, var(--panel, #fff));
+  color: var(--t-ink, var(--ink, #fff));
+  border-left: 1px solid var(--t-border, var(--soft));
+  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.6);
+  animation: cd-slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .cd-modal.md {
-  width: min(640px, 96vw);
+  width: min(640px, 94vw);
 }
 .cd-modal.lg {
-  width: min(820px, 96vw);
+  width: min(820px, 94vw);
+}
+
+@keyframes cd-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 /* ============ HEADER ============ */

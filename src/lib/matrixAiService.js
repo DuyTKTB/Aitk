@@ -18,6 +18,131 @@ export const BLOOM_MAPPING = {
   vdc: { vn: 'Vận dụng cao', en: 'Analyzing', desc: 'Tổng hợp, biện luận, nhiều bước' },
 };
 
+export function normLevel(str) {
+  if (!str) return 'nb';
+  const s = String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .trim();
+  if (s.includes('cao') || s === 'vdc') return 'vdc';
+  if (s.includes('dung') || s === 'vd') return 'vd';
+  if (s.includes('hieu') || s === 'th') return 'th';
+  if (s.includes('biet') || s === 'nb') return 'nb';
+  return 'nb';
+}
+
+export const LEVEL_INFO = {
+  nb: { code: 'nb', label: 'Nhận biết', short: 'NB', color: 'var(--t-bloom-nb, #22c55e)', bg: 'var(--t-bloom-nb-bg, rgba(34, 197, 94, 0.12))' },
+  th: { code: 'th', label: 'Thông hiểu', short: 'TH', color: 'var(--t-bloom-th, #0284c7)', bg: 'var(--t-bloom-th-bg, rgba(2, 132, 199, 0.12))' },
+  vd: { code: 'vd', label: 'Vận dụng', short: 'VD', color: 'var(--t-bloom-vd, #d97706)', bg: 'var(--t-bloom-vd-bg, rgba(217, 119, 6, 0.12))' },
+  vdc: { code: 'vdc', label: 'Vận dụng cao', short: 'VDC', color: 'var(--t-bloom-vdc, #dc2626)', bg: 'var(--t-bloom-vdc-bg, rgba(220, 38, 38, 0.12))' },
+};
+
+/* Ranh giới từ theo Unicode (\b của JS không xử lý đúng chữ có dấu) */
+const NW = '(?![\\p{L}\\p{N}])';
+const PW = '(^|[^\\p{L}\\p{N}])';
+const re = (src, flags = 'iu') => new RegExp(src, flags);
+
+/**
+ * Hiểu yêu cầu tự nhiên của giáo viên.
+ * Nhận: "Đề 45p hóa học 11, 20 câu cân bằng hóa học", "ôn este lớp 12 15 phút",
+ *       "thi thử THPTQG", "1 tiết", "k10 cấu tạo nguyên tử"...
+ */
+export function parseExamIntent(text) {
+  const empty = { count: null, duration: null, grade: null, topic: '', format: '', preset: false };
+  if (!text || typeof text !== 'string') return empty;
+
+  const original = text.normalize('NFC').trim();
+  let str = ` ${original} `;
+  let count = null;
+  let duration = null;
+  let grade = null;
+
+  // Thời lượng: "45 phút", "45p", "45'", "1 tiết" (=45'), "2 giờ"
+  let m = str.match(re(`(\\d{1,3})\\s*(?:phút|phut|ph|p|min|mins|')${NW}`));
+  if (m) { duration = parseInt(m[1], 10); str = str.replace(m[0], ' '); }
+  else if ((m = str.match(re(`(\\d{1,2})\\s*tiết${NW}`)))) { duration = parseInt(m[1], 10) * 45; str = str.replace(m[0], ' '); }
+  else if ((m = str.match(re(`(\\d{1,2})\\s*(?:giờ|gio|h)${NW}`)))) { duration = parseInt(m[1], 10) * 60; str = str.replace(m[0], ' '); }
+
+  // Số câu: "20 câu", "28 cau", "40 questions", "gồm 15 câu"
+  m = str.match(re(`(\\d{1,3})\\s*(?:câu|cau|qs?|questions?)${NW}`));
+  if (m) { count = parseInt(m[1], 10); str = str.replace(m[0], ' '); }
+
+  // Khối lớp: "lớp 10", "khối 11", "k12" (bỏ cả từ), rồi "hóa học 11", "hóa 12" (chỉ bỏ số)
+  const okGrade = (n) => n >= 6 && n <= 12;
+  m = str.match(re(`${PW}(?:lớp|lop|khối|khoi|k)\\s*(\\d{1,2})${NW}`));
+  if (m && okGrade(+m[2])) { grade = m[2]; str = str.replace(m[0], `${m[1]} `); }
+  if (!grade) {
+    m = str.match(re(`${PW}(?:hóa học|hoa hoc|hóa|hoa|học|hoc)\\s*(\\d{1,2})${NW}`));
+    if (m && okGrade(+m[2])) { grade = m[2]; str = str.replace(m[0], `${m[1]} `); }
+  }
+  if (!grade) {
+    m = str.match(re(`${PW}(1[0-2])${NW}`));
+    if (m) { grade = m[2]; str = str.replace(m[0], `${m[1]} `); }
+  }
+
+  // Định dạng suy ra từ lời văn
+  let format = '';
+  if (/phân hóa|nâng cao|vận dụng cao|thi thử|thptqg|thpt|tốt nghiệp|chuyên/i.test(original)) format = 'Phân hóa nâng cao';
+  else if (/gdpt|2025|đúng sai|đúng\/sai|trả lời ngắn|chuẩn/i.test(original)) format = 'Chuẩn GDPT 2018 (Trắc nghiệm + Trả lời ngắn)';
+  else if (/trắc nghiệm|4 lựa chọn/i.test(original)) format = 'Trắc nghiệm 4 lựa chọn';
+
+  // Đề thi thử/tốt nghiệp mà chưa nói gì thêm → dùng cấu trúc chuẩn của app
+  let preset = false;
+  if (/thptqg|thpt quốc gia|tốt nghiệp|thi thử/i.test(original) && !count && !duration) {
+    count = 28; duration = 50; preset = true;
+    if (!grade) grade = '12';
+  }
+
+  // Chủ đề: bỏ từ lệnh, năm, ký tự thừa
+  const noise = '(?:đề kiểm tra|bài kiểm tra|đề thi thử|đề thi|đề ôn tập|đề ôn|đề|phiếu bài tập|kiểm tra|ra đề|tạo đề|soạn đề|tạo|soạn|giúp tôi|giúp|cho tôi|hãy|môn hóa|thi thử|thptqg|chuẩn bộ gd&đt|chuẩn|phân hóa sâu|phân hóa|nâng cao|gồm|có|về|chủ đề|bài|của|môn)';
+  let topic = str
+    .replace(re(`${PW}${noise}${NW}`, 'giu'), '$1 ')
+    .replace(re(`${PW}${noise}${NW}`, 'giu'), '$1 ')
+    .replace(/\b(19|20)\d{2}\b/g, ' ')
+    .replace(/[,;:·|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (topic.length < 2 || /^(hóa học|hóa|môn hóa học)$/i.test(topic)) topic = '';
+  else topic = topic.charAt(0).toUpperCase() + topic.slice(1);
+
+  return { count, duration, grade, topic, format, preset };
+}
+
+/**
+ * Suy luận phần còn thiếu của cấu trúc đề (có số câu → ước thời lượng và ngược lại)
+ * để AI không phải hỏi lại những thứ có thể đoán được.
+ */
+export function inferExamShape({ count = null, duration = null } = {}) {
+  let c = count;
+  let d = duration;
+  let inferred = false;
+  if (c && !d) {
+    d = c <= 10 ? 15 : c <= 15 ? 25 : c <= 20 ? 45 : c <= 28 ? 50 : 90;
+    inferred = true;
+  } else if (d && !c) {
+    c = d <= 15 ? 10 : d <= 25 ? 15 : d <= 45 ? 20 : d <= 50 ? 28 : d <= 60 ? 30 : 40;
+    inferred = true;
+  }
+  return { count: c, duration: d, inferred };
+}
+
+/**
+ * Nhận lệnh sửa theo câu từ khung chat: "câu 3 khó hơn", "đổi đáp án nhiễu câu 5".
+ * Trả về { index (0-based), kind: 'distractors' | 'rewrite' } hoặc null.
+ */
+export function parseQuestionCommand(text, total = 0) {
+  if (!text || !total) return null;
+  const m = text.match(re(`${PW}câu\\s*(?:số\\s*)?(\\d{1,3})${NW}`));
+  if (!m) return null;
+  const n = parseInt(m[2], 10);
+  if (n < 1 || n > total) return null;
+  const kind = /nhiễu|phương án sai|đáp án sai|distractor/i.test(text) ? 'distractors' : 'rewrite';
+  return { index: n - 1, kind };
+}
+
 const LEVEL_KEYS = ['nb', 'th', 'vd', 'vdc'];
 const GEN_BATCH = 6;
 
@@ -514,6 +639,124 @@ Chỉ trả JSON: {"answer":"..."}.`,
   } catch {
     return String(raw || '').trim() || 'Chưa nhận được gợi ý.';
   }
+}
+
+export async function rewriteQuestionWithAI({
+  question,
+  instruction = '',
+  subject = 'Hóa học',
+  grade = '11',
+  signal,
+} = {}) {
+  const system = `Bạn là chuyên gia khảo thí môn ${subject} lớp ${grade} THPT Việt Nam (chương trình GDPT 2018).
+Nhiệm vụ: Viết lại/hoàn thiện câu hỏi trắc nghiệm dưới đây theo yêu cầu của giáo viên.
+Giữ nguyên định dạng trắc nghiệm 4 lựa chọn (A, B, C, D) với 1 đáp án đúng duy nhất.
+Công thức Hóa học/Toán viết bằng ký hiệu chuẩn hoặc LaTeX $...$.
+Lời giải chi tiết ngắn gọn (<= 300 từ).
+Trả về duy nhất JSON:
+{
+  "q": "Nội dung câu hỏi mới",
+  "options": ["A", "B", "C", "D"],
+  "correct": 0,
+  "explain": "Lời giải chi tiết",
+  "topic": "${question.topic || ''}",
+  "level": "${question.level || 'nhận biết'}",
+  "points": ${question.points || 0.5}
+}`;
+
+  const prompt = [
+    `CÂU HỎI GỐC:\n${JSON.stringify({ q: question.q, options: question.options, correct: question.correct, explain: question.explain }, null, 2)}`,
+    instruction ? `YÊU CẦU CỤ THỂ CỦA GIÁO VIÊN: ${instruction}` : 'YÊU CẦU: Tinh chỉnh câu hỏi mạch lạc, chuẩn ngữ cảnh thực tế, phương án phân hóa tốt hơn.',
+  ].join('\n\n');
+
+  const raw = await callModel({
+    system,
+    parts: [{ text: prompt }],
+    temperature: 0.4,
+    signal,
+  });
+
+  const parsed = parseJsonLoose(raw);
+  if (!parsed?.q || !Array.isArray(parsed?.options) || parsed.options.length !== 4) {
+    throw new Error('AI không trả về cấu trúc câu hỏi hợp lệ.');
+  }
+
+  return normalizeQuestion({
+    ...question,
+    ...parsed,
+    id: question.id || rid(),
+  });
+}
+
+export async function regenerateDistractorsWithAI({
+  question,
+  subject = 'Hóa học',
+  grade = '11',
+  signal,
+} = {}) {
+  const correctText = question.options?.[question.correct] || '';
+  const system = `Bạn là chuyên gia ra đề thi môn ${subject} lớp ${grade}.
+Dưới đây là một câu hỏi trắc nghiệm và ĐÁP ÁN ĐÚNG.
+Nhiệm vụ: Giữ nguyên câu hỏi và đáp án đúng, nhưng TẠO MỚI 3 PHƯƠNG ÁN NHIỄU (distractors) dựa trên các lỗi sai kinh điển của học sinh (nhầm công thức, quên cân bằng, nhầm tỉ lệ mol, bẫy đơn vị, nhầm lẫn khái niệm).
+Viết lại lời giải giải thích rõ vì sao 3 phương án đó sai.
+
+Trả về duy nhất JSON:
+{
+  "options": ["Đáp án 1", "Đáp án 2", "Đáp án 3", "Đáp án 4"],
+  "correct": 0,
+  "explain": "Lời giải mới chỉ ra lỗi sai của từng phương án nhiễu"
+}`;
+
+  const prompt = `CÂU HỎI: ${question.q}\nĐÁP ÁN ĐÚNG: ${correctText}\nLời giải hiện tại: ${question.explain || ''}`;
+
+  const raw = await callModel({
+    system,
+    parts: [{ text: prompt }],
+    temperature: 0.4,
+    signal,
+  });
+
+  const parsed = parseJsonLoose(raw);
+  if (!parsed?.options || parsed.options.length !== 4 || typeof parsed.correct !== 'number') {
+    throw new Error('AI không tạo được phương án nhiễu hợp lệ.');
+  }
+
+  return {
+    ...question,
+    options: parsed.options,
+    correct: parsed.correct,
+    explain: parsed.explain || question.explain,
+  };
+}
+
+export async function getPedagogicalInsightForQuestion({
+  question,
+  subject = 'Hóa học',
+  signal,
+} = {}) {
+  const system = `Bạn là cố vấn sư phạm môn ${subject} THPT.
+Phân tích câu hỏi trắc nghiệm sau và chỉ ra:
+1. "trap": Bẫy nhận thức hoặc sai lầm học sinh dễ mắc nhất (1-2 câu ngắn).
+2. "teachingTip": Mẹo sư phạm hoặc câu hỏi gợi mở thầy cô nên hỏi trên lớp để học sinh tự nhận ra (1-2 câu ngắn).
+
+Trả về duy nhất JSON:
+{
+  "trap": "...",
+  "teachingTip": "..."
+}`;
+
+  const raw = await callModel({
+    system,
+    parts: [{ text: `Câu hỏi: ${question.q}\nĐáp án: ${JSON.stringify(question.options)}\nĐáp án đúng: ${question.options?.[question.correct]}\nLời giải: ${question.explain || ''}` }],
+    temperature: 0.3,
+    signal,
+  });
+
+  const parsed = parseJsonLoose(raw);
+  return {
+    trap: parsed?.trap || 'Học sinh dễ nhầm lẫn công thức và điều kiện phản ứng.',
+    teachingTip: parsed?.teachingTip || 'Yêu cầu học sinh viết nhẩm phương trình ion thu gọn trước khi bấm máy tính.',
+  };
 }
 
 export const ridMatrix = rid;

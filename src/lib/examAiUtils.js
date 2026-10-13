@@ -1,38 +1,55 @@
 /* ============================================================
-   examAiUtils.js — Logic AI tạo đề cho MỌI MÔN (v3)
+   examAiUtils.js — Logic AI tạo đề cho MỌI MÔN (v5)
    ------------------------------------------------------------
+   HỖ TRỢ ĐA MÔN: Toán, Lý, Hóa, Sinh, Văn, Anh, Sử, Địa, GDCD,
+                  Tin, Công nghệ, KHTN + môn tự đặt tên.
    Chức năng:
-     • generateExam      tạo đề mới (tự chia đợt nếu > 15 câu)
+     • generateExam      tạo đề mới (tự chia đợt nếu > 8 câu)
      • digitizeExam      số hóa đề có sẵn từ ảnh/PDF/Word/Excel
      • refineExam        chỉnh đề hiện tại theo lời nhắn
      • regenerateQuestion viết lại 1 câu
      • verifyExam        AI giải lại độc lập để bắt đáp án sai
-   Chuẩn hóa/kiểm tra:
+   Chuẩn hóa:
      • sửa LaTeX bị hỏng trong JSON (\frac, \text, \beta…)
      • xáo vị trí đáp án (AI hay đặt đáp án đúng ở B/C)
      • bắt câu trùng, thiếu đáp án, công thức chưa đóng $
-   Kết nối AI: mặc định gọi Gemini bằng VITE_GEMINI_API_KEY (chỉ nên
-   dùng khi chạy thử). Muốn dùng hàm AI có sẵn của app, gọi:
-       setModelCaller(async ({ system, parts, temperature, signal }) => text)
-   — hàm phải trả về CHUỖI JSON do AI sinh ra.
+   ------------------------------------------------------------
+   v5 (đa môn):
+     • MỌI prompt gọi buildSubjectGuide(subject) để có hướng dẫn
+       riêng cho từng môn. Không còn giả định "Hóa học".
+     • mathRule động: LaTeX cho môn math=true, văn bản thuần cho
+       Văn/Sử/Địa/GDCD.
+     • detectRequestType mở rộng cho mọi môn (Văn, Sử, Anh).
+     • suggestExamFromClass không giả định môn Hóa.
+     • normalizeQuestion hỗ trợ 3 loại: single_choice, true_false,
+       short_answer.
+     • callAndParse tự RETRY 2 lần khi AI trả JSON lỗi.
+     • shuffleSingleChoiceOnly() — chỉ xáo câu single_choice.
    ============================================================ */
-import { buildSubjectGuide, getSubject } from './subjects.js';
+import { buildSubjectGuide, getSubject, SUBJECTS, GENERIC_SUBJECT } from './subjects.js';
 import { buildFileContext } from './fileReader.js';
 
 /* ============ HẰNG SỐ ============ */
 export const LEVELS = ['nhận biết', 'thông hiểu', 'vận dụng', 'vận dụng cao'];
 export const DIFFICULTIES = [
-  { key: 'easy', label: 'Dễ', mix: '60% nhận biết, 30% thông hiểu, 10% vận dụng' },
+  { key: 'easy',   label: 'Dễ',         mix: '60% nhận biết, 30% thông hiểu, 10% vận dụng' },
   { key: 'medium', label: 'Trung bình', mix: '30% nhận biết, 40% thông hiểu, 30% vận dụng' },
-  { key: 'hard', label: 'Khó', mix: '10% nhận biết, 30% thông hiểu, 40% vận dụng, 20% vận dụng cao' },
-  { key: 'mixed', label: 'Phân hóa', mix: '40% nhận biết, 30% thông hiểu, 20% vận dụng, 10% vận dụng cao' },
+  { key: 'hard',   label: 'Khó',        mix: '10% nhận biết, 30% thông hiểu, 40% vận dụng, 20% vận dụng cao' },
+  { key: 'mixed',  label: 'Phân hóa',   mix: '40% nhận biết, 30% thông hiểu, 20% vận dụng, 10% vận dụng cao' },
 ];
+export const QUESTION_TYPES = {
+  SINGLE_CHOICE: 'single_choice',
+  TRUE_FALSE:    'true_false',
+  SHORT_ANSWER:  'short_answer',
+};
 export const VERIFY_PREFIX = 'AI giải lại';
 export const DUP_PREFIX = 'Gần giống';
-const BATCH = 15;        // số câu mỗi lượt kiểm tra đáp án
-const GEN_BATCH = 8;     // tối đa số câu mỗi lượt soạn (soạn song song nhiều lượt)
-const GEN_PARALLEL = 3;  // số lượt soạn chạy cùng lúc
+export const QUALITY_PREFIX = 'Chất lượng';
+const BATCH = 15;
+const GEN_BATCH = 8;
+const GEN_PARALLEL = 3;
 const DRAFT_KEY = 'cs-exam-ai-draft:v2';
+const RETRY_JSON = 2;
 
 /* ============ TIỆN ÍCH ============ */
 export const rid = () => Math.random().toString(36).slice(2, 10);
@@ -57,15 +74,15 @@ const chunk = (arr, n) => {
 
 const EXAMPLES = {
   toan: 'Tạo 10 câu về hàm số bậc hai, độ khó trung bình',
-  ly: 'Tạo 10 câu về dao động điều hòa, có 3 câu tính toán',
-  hoa: 'Tạo 10 câu về axit nitric, độ khó trung bình',
+  ly:   'Tạo 10 câu về dao động điều hòa, có 3 câu tính toán',
+  hoa:  'Tạo 10 câu về axit nitric, độ khó trung bình',
   sinh: 'Tạo 10 câu về quang hợp và hô hấp tế bào',
-  van: 'Tạo 8 câu đọc hiểu về một đoạn thơ lục bát',
-  anh: 'Tạo 10 câu về thì hiện tại hoàn thành và câu bị động',
-  su: 'Tạo 10 câu về cuộc kháng chiến chống Mỹ cứu nước',
-  dia: 'Tạo 10 câu về vùng Đồng bằng sông Cửu Long',
+  van:  'Tạo 8 câu đọc hiểu về một đoạn thơ lục bát',
+  anh:  'Tạo 10 câu về thì hiện tại hoàn thành và câu bị động',
+  su:   'Tạo 10 câu về cuộc kháng chiến chống Mỹ cứu nước',
+  dia:  'Tạo 10 câu về vùng Đồng bằng sông Cửu Long',
   gdcd: 'Tạo 10 câu về quyền và nghĩa vụ của công dân',
-  tin: 'Tạo 10 câu về vòng lặp trong Python',
+  tin:  'Tạo 10 câu về vòng lặp trong Python',
   congnghe: 'Tạo 10 câu về quy trình trồng trọt',
   khtn: 'Tạo 10 câu về lực và chuyển động',
 };
@@ -75,16 +92,12 @@ export const examplePrompt = (subject) =>
 /* ============================================================
    GỌI AI
    ============================================================ */
-// Chấp nhận cả VITE_GEMINI_API_KEY và VITE_GEMINI_KEY (tên đang dùng trong .env của app)
 const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || import.meta.env?.VITE_GEMINI_KEY;
-// gemini-2.5-flash đã bị Google khóa với người dùng mới → dùng cùng danh sách model với ai.js.
-// Có thể ghi đè trong .env: VITE_GEMINI_MODEL=gemini-3.8-flash,gemini-3.7-flash (thứ tự ưu tiên)
 const MODELS = (import.meta.env?.VITE_GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.7-flash')
   .split(',').map((s) => s.trim()).filter(Boolean);
-let goodModelIdx = 0; // nhớ model đang chạy tốt để lần sau khỏi thử lại model hỏng
+let goodModelIdx = 0;
 let customCaller = null;
 
-/** Gắn hàm gọi AI có sẵn của app (khuyên dùng khi lên production). */
 export function setModelCaller(fn) {
   customCaller = typeof fn === 'function' ? fn : null;
 }
@@ -119,7 +132,7 @@ export async function callModel({ system, parts, temperature = 0.7, signal }) {
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
       lastErr = new Error(`Không kết nối được AI: ${e.message}`);
-      continue; // lỗi mạng → thử model kế
+      continue;
     }
     if (!res.ok) {
       let msg = `Lỗi AI (${res.status})`;
@@ -128,7 +141,6 @@ export async function callModel({ system, parts, temperature = 0.7, signal }) {
         if (j?.error?.message) msg += `: ${j.error.message}`;
       } catch { /* bỏ qua */ }
       lastErr = new Error(msg);
-      // 404 (model bị khóa/không tồn tại), 429, 5xx → thử model kế tiếp; lỗi khác (400, 403 key sai) dừng luôn
       if ([404, 429, 500, 502, 503, 504].includes(res.status) && k < MODELS.length - 1) continue;
       throw lastErr;
     }
@@ -157,7 +169,6 @@ export function parseJsonLoose(text) {
   const attempt = (str) => {
     try { return JSON.parse(str); } catch { return undefined; }
   };
-  // Nhân đôi dấu \ không hợp lệ (\sqrt, \ce…) nhưng giữ các cặp \\ , \" , \/ , \uXXXX
   const repair = (str) =>
     str.replace(/\\(\\|"|\/|u[0-9a-fA-F]{4}|[\s\S])/g, (m, g) =>
       g === '\\' || g === '"' || g === '/' || /^u[0-9a-fA-F]{4}$/.test(g) ? m : '\\\\' + g
@@ -165,9 +176,11 @@ export function parseJsonLoose(text) {
 
   const candidates = [s];
   const a = s.search(/[[{]/);
-  const closeCh = s[a] === '[' ? ']' : '}';
-  const b = s.lastIndexOf(closeCh);
-  if (a >= 0 && b > a) candidates.push(s.slice(a, b + 1));
+  if (a >= 0) {
+    const closeCh = s[a] === '[' ? ']' : '}';
+    const b = s.lastIndexOf(closeCh);
+    if (b > a) candidates.push(s.slice(a, b + 1));
+  }
 
   for (const c of candidates) {
     let v = attempt(c);
@@ -178,14 +191,32 @@ export function parseJsonLoose(text) {
   throw new Error('Không đọc được phản hồi của AI (có thể đề quá dài). Hãy giảm số câu hoặc thử lại.');
 }
 
+/* ============================================================
+   callAndParse — tự RETRY khi AI trả JSON lỗi
+   ============================================================ */
 async function callAndParse(args) {
-  return parseJsonLoose(await callModel(args));
+  let lastErr = null;
+  for (let attempt = 0; attempt <= RETRY_JSON; attempt++) {
+    try {
+      const raw = await callModel({
+        ...args,
+        temperature: (args.temperature ?? 0.7) + attempt * 0.05,
+      });
+      return parseJsonLoose(raw);
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      lastErr = e;
+      const isJsonErr = /Không đọc được phản hồi/.test(e.message || '');
+      if (!isJsonErr || attempt === RETRY_JSON) throw e;
+      console.warn(`[examAiUtils] JSON lỗi lần ${attempt + 1}, retry với temperature cao hơn...`);
+    }
+  }
+  throw lastErr || new Error('Không gọi được AI.');
 }
 
 /* ============================================================
    CHUẨN HÓA CÂU HỎI
    ============================================================ */
-/* JSON.parse biến "\frac" thành [form feed]+"rac", "\text" thành [tab]+"ext"… → sửa lại */
 const fixLatex = (s) =>
   typeof s !== 'string'
     ? s
@@ -210,12 +241,81 @@ function normalizeLevel(v) {
   return '';
 }
 
-export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true } = {}) {
+function normalizeType(v) {
+  const t = String(v || '').toLowerCase().trim();
+  if (t === 'true_false' || t === 'tf' || t === 'true-false' || t === 'dung_sai') return QUESTION_TYPES.TRUE_FALSE;
+  if (t === 'short_answer' || t === 'sa' || t === 'short-answer' || t === 'tra_loi_ngan') return QUESTION_TYPES.SHORT_ANSWER;
+  return QUESTION_TYPES.SINGLE_CHOICE;
+}
+
+/* ============================================================
+   normalizeQuestion — 3 loại câu
+   ------------------------------------------------------------
+   - single_choice: { q, options[], correct, explain }
+   - true_false:    { q, statements:[{text,answer}], explain }
+   - short_answer:  { q, accepted:[...], explain }
+   ============================================================ */
+export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true, type: forceType } = {}) {
   const r = raw || {};
   const warns = [];
 
+  const type = forceType || normalizeType(r.type);
   const q = fixLatex(String(r.q ?? r.question ?? r.content ?? '').trim());
+  const explain = wantExplain ? fixLatex(String(r.explain ?? r.explanation ?? '').trim()) : '';
+  const topic = String(r.topic || '').trim().slice(0, 80);
+  const level = normalizeLevel(r.level);
 
+  if (!q) warns.push('Thiếu nội dung câu hỏi');
+  if (wantExplain && !explain) warns.push('Chưa có lời giải');
+  if (typeof r.flag === 'string' && r.flag.trim()) warns.push(`AI lưu ý: ${r.flag.trim()}`);
+
+  /* ===== true_false ===== */
+  if (type === QUESTION_TYPES.TRUE_FALSE) {
+    let statements = r.statements || r.subquestions || [];
+    if (!Array.isArray(statements)) statements = [];
+    statements = statements.map((s) => ({
+      text: fixLatex(String(s?.text ?? s?.content ?? s?.q ?? '').trim()),
+      answer: typeof s?.answer === 'boolean'
+        ? s.answer
+        : ['true', 'đúng', 'd'].includes(String(s?.answer ?? '').toLowerCase().trim()),
+    }));
+    if (statements.length !== 4) warns.push(`Cần đúng 4 ý a-d, có ${statements.length}`);
+    if (statements.some((s) => !s.text)) warns.push('Có ý để trống');
+    if ([q, explain, ...statements.map((s) => s.text)].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
+    return {
+      id: rid(),
+      type,
+      q,
+      statements,
+      points: Number(r.points) > 0 ? Number(r.points) : 1,
+      explain,
+      topic,
+      level,
+      warns,
+    };
+  }
+
+  /* ===== short_answer ===== */
+  if (type === QUESTION_TYPES.SHORT_ANSWER) {
+    let accepted = r.accepted || r.answers || r.correct_answers || [];
+    if (!Array.isArray(accepted)) accepted = [accepted];
+    accepted = accepted.map((a) => fixLatex(String(a ?? '').trim())).filter(Boolean);
+    if (!accepted.length) warns.push('Chưa có đáp án chấp nhận');
+    if ([q, explain, ...accepted].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
+    return {
+      id: rid(),
+      type,
+      q,
+      accepted,
+      points: Number(r.points) > 0 ? Number(r.points) : 1,
+      explain,
+      topic,
+      level,
+      warns,
+    };
+  }
+
+  /* ===== single_choice (mặc định) ===== */
   let opts = r.options ?? r.choices ?? r.answers ?? [];
   if (opts && !Array.isArray(opts) && typeof opts === 'object') opts = Object.values(opts);
   opts = (Array.isArray(opts) ? opts : []).map((o) =>
@@ -232,9 +332,6 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true } 
   }
   if (correct < 0 || correct >= opts.length) correct = -1;
 
-  const explain = wantExplain ? fixLatex(String(r.explain ?? r.explanation ?? '').trim()) : '';
-
-  if (!q) warns.push('Thiếu nội dung câu hỏi');
   if (opts.length < 2) warns.push('Thiếu đáp án');
   else {
     if (opts.length !== optionsCount) warns.push(`Có ${opts.length} đáp án (yêu cầu ${optionsCount})`);
@@ -242,31 +339,31 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true } 
     if (new Set(opts.map(plain)).size < opts.length) warns.push('Có đáp án trùng nhau');
   }
   if ([q, explain, ...opts].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
-  if (wantExplain && !explain) warns.push('Chưa có lời giải');
-  if (typeof r.flag === 'string' && r.flag.trim()) warns.push(`AI lưu ý: ${r.flag.trim()}`);
 
   return {
     id: rid(),
+    type: QUESTION_TYPES.SINGLE_CHOICE,
     q,
     options: opts,
     correct,
     points: Number(r.points) > 0 ? Number(r.points) : 1,
     explain,
-    topic: String(r.topic || '').trim().slice(0, 80),
-    level: normalizeLevel(r.level),
+    topic,
+    level,
     warns,
   };
 }
 
-/* ---------- Xáo vị trí đáp án ---------- */
+/* ============================================================
+   XÁO VỊ TRÍ ĐÁP ÁN (chỉ single_choice)
+   ============================================================ */
 const STEM_REF = /(?:đáp án|phương án|mệnh đề|ý)\s*[A-E]\b|\bcả\s+[A-E]\b/i;
 const OPT_REF = /(?:đáp án|phương án|mệnh đề|ý)\s*[A-E]\b|\bcả\s+[A-E]\b|\b[A-E]\s*(?:và|,|&)\s*[A-E]\b|tất cả|cả hai|không có đáp án/i;
-
 const EXPLAIN_REF = /(?:đáp án|phương án|chọn|ý)\s*[A-E]\b|\b[A-E]\s*(?:đúng|sai)\b/i;
 
 export function shuffleOptions(q, rng = Math.random) {
-  if (q.correct < 0 || q.options.length < 2) return q;
-  // Lời giải nhắc chữ cái ("Chọn B…") → trộn sẽ làm lời giải sai, nên giữ nguyên
+  if (q.type && q.type !== QUESTION_TYPES.SINGLE_CHOICE) return q;
+  if (q.correct < 0 || !Array.isArray(q.options) || q.options.length < 2) return q;
   if (EXPLAIN_REF.test(q.explain || '') || STEM_REF.test(q.q) || q.options.some((o) => OPT_REF.test(o))) return q;
   const idx = q.options.map((_, i) => i);
   for (let i = idx.length - 1; i > 0; i--) {
@@ -277,6 +374,10 @@ export function shuffleOptions(q, rng = Math.random) {
 }
 export const shuffleAllOptions = (qs) => qs.map((q) => shuffleOptions(q));
 
+export function shuffleSingleChoiceOnly(qs) {
+  return qs.map((q) => (q.type === QUESTION_TYPES.SINGLE_CHOICE || !q.type ? shuffleOptions(q) : q));
+}
+
 export function shuffleQuestionOrder(qs) {
   const a = [...qs];
   for (let i = a.length - 1; i > 0; i--) {
@@ -286,9 +387,21 @@ export function shuffleQuestionOrder(qs) {
   return markDuplicates(a);
 }
 
-/* ---------- Bắt câu trùng ---------- */
+/* ============================================================
+   BẮT CÂU TRÙNG
+   ============================================================ */
+function textOf(q) {
+  if (q.type === QUESTION_TYPES.TRUE_FALSE) {
+    return `${q.q} ${(q.statements || []).map((s) => s.text).join(' ')}`;
+  }
+  if (q.type === QUESTION_TYPES.SHORT_ANSWER) {
+    return `${q.q} ${(q.accepted || []).join(' ')}`;
+  }
+  return `${q.q} ${(q.options || []).join(' ')}`;
+}
+
 export function markDuplicates(qs) {
-  const toks = qs.map((q) => new Set(plain(q.q).split(/[^a-z0-9]+/).filter((w) => w.length > 1)));
+  const toks = qs.map((q) => new Set(plain(textOf(q)).split(/[^a-z0-9]+/).filter((w) => w.length > 1)));
   return qs.map((q, i) => {
     const warns = (q.warns || []).filter((w) => !w.startsWith(DUP_PREFIX));
     for (let j = 0; j < i; j++) {
@@ -307,7 +420,7 @@ export function markDuplicates(qs) {
 
 function finalize(list, opts, { shuffle }) {
   let qs = list.filter(Boolean).map((r) => normalizeQuestion(r, opts));
-  if (shuffle) qs = qs.map((q) => shuffleOptions(q));
+  if (shuffle) qs = shuffleSingleChoiceOnly(qs);
   return markDuplicates(qs);
 }
 
@@ -327,32 +440,49 @@ const listOf = (p) => (Array.isArray(p) ? p : p?.questions || p?.data || []);
    ============================================================ */
 export function getFlags(q) {
   const f = [...(q.warns || [])];
-  if (q.correct < 0) f.unshift('Chưa chọn đáp án đúng');
+  if (q.type === QUESTION_TYPES.SINGLE_CHOICE || !q.type) {
+    if (q.correct < 0) f.unshift('Chưa chọn đáp án đúng');
+  } else if (q.type === QUESTION_TYPES.TRUE_FALSE) {
+    if (!q.statements?.length) f.unshift('Chưa có ý đúng/sai');
+  } else if (q.type === QUESTION_TYPES.SHORT_ANSWER) {
+    if (!q.accepted?.length) f.unshift('Chưa có đáp án chấp nhận');
+  }
   return f;
 }
+
 export const collectWarnings = (qs) =>
   qs.map((q, i) => ({ index: i, messages: getFlags(q) })).filter((w) => w.messages.length);
-export const countUnanswered = (qs) => qs.filter((q) => q.correct < 0).length;
+
+export const countUnanswered = (qs) =>
+  qs.filter((q) => {
+    if (q.type === QUESTION_TYPES.TRUE_FALSE) return !q.statements?.length;
+    if (q.type === QUESTION_TYPES.SHORT_ANSWER) return !q.accepted?.length;
+    return q.correct < 0;
+  }).length;
 
 export function summarizeDraft(qs) {
   const levels = {};
+  const types = { single_choice: 0, true_false: 0, short_answer: 0 };
   let points = 0;
   qs.forEach((q) => {
     if (q.level) levels[q.level] = (levels[q.level] || 0) + 1;
     points += q.points || 1;
+    const t = q.type || QUESTION_TYPES.SINGLE_CHOICE;
+    types[t] = (types[t] || 0) + 1;
   });
   return {
     total: qs.length,
     unanswered: countUnanswered(qs),
     flagged: qs.filter((q) => getFlags(q).length > 0).length,
     levels,
+    types,
     points,
   };
 }
 
-/* ---------- Lưu nháp (khôi phục khi tải lại trang) ---------- */
+/* ---------- Lưu nháp ---------- */
 export function saveDraft(d) {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...d, savedAt: Date.now() })); } catch { /* đầy bộ nhớ */ }
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...d, savedAt: Date.now() })); } catch { /* */ }
 }
 export function loadDraft() {
   try {
@@ -361,33 +491,191 @@ export function loadDraft() {
   } catch { return null; }
 }
 export function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY); } catch { /* bỏ qua */ }
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* */ }
 }
 
 /* ============================================================
-   PROMPT
+   applyBloomIntent
+   ============================================================ */
+export function applyBloomIntent(mix, count) {
+  const total = Math.max(1, Number(count) || 10);
+  const keys = ['nb', 'th', 'vd', 'vdc'];
+  const out = {};
+  let sum = 0;
+  keys.forEach((k) => {
+    out[k] = Math.round((mix?.[k] || 0) * total);
+    sum += out[k];
+  });
+  let diff = total - sum;
+  const order = keys.slice().sort((a, b) => (mix?.[b] || 0) - (mix?.[a] || 0));
+  let i = 0;
+  while (diff !== 0 && i < 200) {
+    const k = order[i % order.length];
+    if (diff > 0) { out[k] += 1; diff -= 1; }
+    else if (out[k] > 0) { out[k] -= 1; diff += 1; }
+    i += 1;
+  }
+  return out;
+}
+
+/* ============================================================
+   detectRequestType — đa môn
+   ------------------------------------------------------------
+   Bổ sung: từ khóa Văn, Sử, Địa, Anh, Tin.
+   ============================================================ */
+export function detectRequestType(history) {
+  const lastUser = [...(history || [])].reverse().find((m) => m.role === 'user');
+  if (!lastUser) return 'general';
+
+  let text = '';
+  if (lastUser.parts) {
+    text = lastUser.parts.filter((p) => p.text).map((p) => p.text).join(' ');
+  } else {
+    text = lastUser.text || '';
+  }
+  const value = text.toLowerCase();
+  const hasImage = Boolean(lastUser.parts?.some((p) => p.inlineData));
+
+  if (hasImage) return 'problem';
+
+  // Môn tự nhiên — toán/hóa/lý
+  if (/giải|tính|mol|nồng độ|\bph\b|khối lượng|thể tích|phương trình|cân bằng|oxi hóa|oxi hoá|khử|điện phân|hiệu suất|bảo toàn|hỗn hợp|đốt cháy|thủy phân|thuỷ phân|xác định|bao nhiêu|tìm|\d+\s?(g|gam|ml|lít|l|m)\b/.test(value)) {
+    return 'problem';
+  }
+
+  // Tạo câu hỏi
+  if (/tạo.*câu hỏi|trắc nghiệm|quiz|trả lời ngắn|đúng sai|đề kiểm tra|đề thi/.test(value)) {
+    return 'quiz';
+  }
+
+  // Giải thích lý thuyết (mọi môn)
+  if (/giải thích|lý thuyết|lí thuyết|bản chất|tại sao|vì sao|so sánh|khác nhau|cơ chế|phân biệt|nhận biết|đặc điểm|đặc trưng|nêu|trình bày|khái niệm|định nghĩa/.test(value)) {
+    return 'theory';
+  }
+
+  // Văn — đọc hiểu
+  if (/đọc hiểu|doc hieu|phân tích|phân tich|cảm nhận|nghị luận|nghi luan|biện pháp tu từ|nhân vật/.test(value)) {
+    return 'reading';
+  }
+
+  return 'general';
+}
+
+function getTemperature(type) {
+  switch (type) {
+    case 'problem': return 0.1;
+    case 'quiz':    return 0.2;
+    case 'theory':  return 0.2;
+    case 'reading': return 0.3;
+    default:        return 0.3;
+  }
+}
+
+const maxTokensFor = (type) =>
+  type === 'problem' ? 8192 : type === 'theory' || type === 'reading' ? 4096 : 2048;
+
+/* ============================================================
+   PREPARE (dùng cho Groq/OpenAI-style)
+   ============================================================ */
+function prepareGeminiContents(history) {
+  return (history || []).map((message) => {
+    if (message.role === 'model') {
+      return {
+        role: 'model',
+        parts: [{ text: message.parts?.[0]?.text || message.text || '' }],
+      };
+    }
+
+    const parts = message.parts || [];
+    const textParts = parts.filter((p) => p.text).map((p) => p.text);
+    const text = textParts.join('\n') || message.text || '';
+    const imageParts = parts.filter((p) => p.inlineData);
+
+    const geminiParts = [];
+    if (text) geminiParts.push({ text });
+    for (const img of imageParts) {
+      geminiParts.push({
+        inline_data: {
+          mime_type: img.inlineData.mimeType,
+          data: img.inlineData.data,
+        },
+      });
+    }
+    if (geminiParts.length === 0) geminiParts.push({ text: '' });
+
+    return { role: 'user', parts: geminiParts };
+  });
+}
+
+function prepareOpenAIMessages(history, systemPrompt) {
+  const messages = [{ role: 'system', content: systemPrompt }];
+
+  for (const message of history || []) {
+    const role = message.role === 'model' ? 'assistant' : 'user';
+
+    if (role === 'assistant') {
+      let text = '';
+      if (typeof message.content === 'string') text = message.content;
+      else if (Array.isArray(message.parts)) {
+        text = message.parts.filter((p) => p.text).map((p) => p.text).join('\n');
+      } else if (typeof message.text === 'string') text = message.text;
+      messages.push({ role, content: text || '' });
+      continue;
+    }
+
+    const parts = Array.isArray(message.parts) ? message.parts : [];
+    const textParts = parts.filter((p) => p.text).map((p) => p.text);
+    const text = textParts.join('\n') || message.text || '';
+    messages.push({ role, content: text || '' });
+  }
+
+  return messages;
+}
+
+/* ============================================================
+   PROMPT — ĐA MÔN
    ============================================================ */
 const JSON_FORMAT = `ĐỊNH DẠNG TRẢ VỀ: chỉ MỘT đối tượng JSON, không markdown, không văn bản ngoài JSON:
-{"meta":{"title":"...","description":"...","duration":45},"questions":[{"q":"...","options":["...","...","...","..."],"work":"...","correct":0,"explain":"...","topic":"...","level":"nhận biết|thông hiểu|vận dụng|vận dụng cao","points":1}]}
-- "work": bản nháp giải NGẮN (≤ 200 ký tự), CHỈ cho câu tính toán (giải từng bước rồi đối chiếu đáp án); câu lý thuyết để "". Phải điền "work" TRƯỚC khi chốt "correct".
+{"meta":{"title":"...","description":"...","duration":45},"questions":[{"type":"single_choice","q":"...","options":["...","...","...","..."],"work":"...","correct":0,"explain":"...","topic":"...","level":"nhận biết|thông hiểu|vận dụng|vận dụng cao","points":1}]}
+
+- "type" có thể là:
+  • "single_choice" (trắc nghiệm 1 đáp án)
+  • "true_false" (đúng/sai 4 ý)
+  • "short_answer" (trả lời ngắn)
+- Với "true_false": thay "options"+"correct" bằng "statements": [{"text":"...","answer":true|false}, ...] đúng 4 ý.
+- Với "short_answer": thay "options"+"correct" bằng "accepted": ["0,5","0.5","1/2"] — danh sách đáp án chấp nhận.
+- "work": bản nháp giải NGẮN (≤ 200 ký tự), CHỈ cho câu tính toán. Phải điền "work" TRƯỚC khi chốt đáp án.
 - "correct" là chỉ số BẮT ĐẦU TỪ 0 của đáp án đúng trong "options".
 - "options" KHÔNG có tiền tố A./B./C./D.
 - Trong JSON, mỗi dấu gạch chéo ngược của LaTeX phải viết thành HAI dấu: "\\\\frac{1}{2}", "\\\\ce{H2O}", "\\\\text{m/s}".
-- Thêm trường "flag" (chuỗi ngắn) CHỈ khi bạn không chắc chắn về đề hoặc đáp án của câu đó; nếu chắc chắn thì bỏ trường này.`;
+- Thêm trường "flag" (chuỗi ngắn) CHỈ khi bạn không chắc chắn về đề hoặc đáp án của câu đó.`;
 
+/* Đa môn: dùng buildSubjectGuide + mathRule động */
 function baseSystem({ subject, grade, optionsCount, explain }) {
+  const subjectInfo = getSubject(subject);
+  const mathRule = subjectInfo.math
+    ? 'Công thức viết bằng LaTeX đặt trong $...$ (VD: $\\frac{a}{b}$, $\\sqrt{3}$, $\\ce{H2SO4}$).'
+    : 'KHÔNG dùng LaTeX. Viết văn bản thuần, không ký hiệu $...$.';
+
   return [
-    'Bạn là giáo viên giàu kinh nghiệm, chuyên ra đề kiểm tra trắc nghiệm theo chương trình giáo dục phổ thông Việt Nam.',
-    `Mỗi câu có đúng ${optionsCount} đáp án và đúng 1 đáp án đúng. Dùng tiếng Việt (trừ nội dung môn ngoại ngữ).`,
-    grade ? `Khối lớp: ${gradeLabel(grade)}.` : '',
+    `Bạn là giáo viên giàu kinh nghiệm, chuyên ra đề kiểm tra theo chương trình giáo dục phổ thông Việt Nam.`,
+    `MÔN: ${subject}. KHỐI LỚP: ${gradeLabel(grade)}.`,
+    `Mỗi câu trắc nghiệm có đúng ${optionsCount} đáp án và đúng 1 đáp án đúng.`,
+    subjectInfo.id === 'anh'
+      ? 'Câu hỏi và đáp án viết bằng tiếng Anh, lời giải bằng tiếng Việt.'
+      : 'Dùng tiếng Việt.',
     buildSubjectGuide(subject),
     [
       'CHẤT LƯỢNG ĐỀ:',
-      '- Giải câu hỏi xong (trong "work") rồi mới viết đáp án; không chọn đáp án đúng trước rồi chế số cho khớp.',
-      '- Đáp án nhiễu phải là kết quả của sai lầm THƯỜNG GẶP (nhầm công thức, sai dấu, quên đổi đơn vị, nhầm khái niệm gần giống), độ dài và hình thức tương đương đáp án đúng.',
-      '- Mỗi câu kiểm tra một kỹ năng/ý khác nhau; phân bố vị trí đáp án đúng đều; không để đáp án đúng dài hơn hẳn các đáp án khác.',
-      '- Lời giải chỉ ra vì sao đáp án đúng, KHÔNG nhắc chữ cái đáp án (A/B/C/D) vì đáp án sẽ được trộn thứ tự.',
+      '- Với câu tính toán: giải xong (trong "work") rồi mới viết đáp án.',
+      '- Với môn Văn/Sử/Địa: câu hỏi bám sát ngữ liệu, sự kiện, số liệu chính xác. Không bịa.',
+      '- Với môn Tiếng Anh: ngữ pháp chuẩn, trình độ phù hợp lớp.',
+      '- Với môn Tin: code phải chạy đúng, kiểm tra đáp án bằng cách chạy tay.',
+      '- Đáp án nhiễu = sai lầm THƯỜNG GẶP của học sinh.',
+      '- Mỗi câu kiểm tra một kỹ năng/ý khác nhau; phân bố vị trí đáp án đúng đều.',
+      '- Lời giải chỉ ra vì sao đáp án đúng, KHÔNG nhắc chữ cái A/B/C/D.',
     ].join('\n'),
+    mathRule,
     explain
       ? 'Mỗi câu phải có "explain" (lời giải 1–4 câu).'
       : 'Để "explain" là chuỗi rỗng.',
@@ -395,11 +683,20 @@ function baseSystem({ subject, grade, optionsCount, explain }) {
   ].filter(Boolean).join('\n\n');
 }
 
-const slim = (q) => ({
-  q: q.q, options: q.options, correct: q.correct, explain: q.explain,
-  topic: q.topic, level: q.level, points: q.points,
-  ...(getFlags(q).length ? { warns: getFlags(q) } : {}),
-});
+const slim = (q) => {
+  const base = {
+    type: q.type,
+    q: q.q,
+    explain: q.explain,
+    topic: q.topic,
+    level: q.level,
+    points: q.points,
+    ...(getFlags(q).length ? { warns: getFlags(q) } : {}),
+  };
+  if (q.type === QUESTION_TYPES.TRUE_FALSE) return { ...base, statements: q.statements };
+  if (q.type === QUESTION_TYPES.SHORT_ANSWER) return { ...base, accepted: q.accepted };
+  return { ...base, options: q.options, correct: q.correct };
+};
 
 /* ============================================================
    1) TẠO ĐỀ MỚI
@@ -407,12 +704,12 @@ const slim = (q) => ({
 export async function generateExam({
   subject, grade, difficulty = 'medium', count = 10, optionsCount = 4,
   duration = 45, explain = true, prompt = '', files = [], signal, onProgress,
+  questionTypes = ['single_choice'],
 }) {
   const diff = DIFFICULTIES.find((d) => d.key === difficulty) || DIFFICULTIES[1];
-  const { textParts, imageParts, pdfParts } = buildFileContext(files);
+  const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
   const system = baseSystem({ subject, grade, optionsCount, explain });
   const total = Math.max(1, Math.min(60, Number(count) || 10));
-  // Chia đều thành các lượt nhỏ rồi chạy SONG SONG: thời gian chờ ≈ 1 lượt thay vì cộng dồn
   const nBatches = Math.ceil(total / GEN_BATCH);
   const sizes = Array.from({ length: nBatches }, (_, b) =>
     Math.floor(total / nBatches) + (b < total % nBatches ? 1 : 0));
@@ -424,15 +721,20 @@ export async function generateExam({
   let done = 0;
   onProgress?.(0, nBatches);
 
+  const subjectInfo = getSubject(subject);
+
   const runBatch = async (b) => {
     const userText = [
-      `Hãy soạn ${sizes[b]} câu trắc nghiệm môn ${subject}, ${gradeLabel(grade)}.`,
+      `Hãy soạn ${sizes[b]} câu môn ${subject}, ${gradeLabel(grade)}.`,
       `Độ khó: ${diff.label} (${diff.mix}).`,
+      questionTypes.length > 1
+        ? `ĐA DẠNG LOẠI CÂU: ${questionTypes.join(', ')}. Trộn tỷ lệ hợp lý.`
+        : `Loại câu hỏi: ${questionTypes[0] || 'single_choice'}.`,
       prompt
         ? `Yêu cầu của giáo viên: ${prompt}`
         : 'Giáo viên không nêu chủ đề cụ thể: hãy bao quát các nội dung trọng tâm của chương trình.',
       nBatches > 1
-        ? `Đề được chia thành ${nBatches} phần soạn độc lập cùng lúc. Bạn soạn PHẦN ${b + 1}/${nBatches}: chỉ chọn các nội dung/dạng bài thuộc nhóm kiến thức thứ ${b + 1} trên ${nBatches} của phạm vi yêu cầu, để không trùng với các phần khác.`
+        ? `Đề được chia thành ${nBatches} phần soạn độc lập. Bạn soạn PHẦN ${b + 1}/${nBatches}: chỉ chọn nhóm kiến thức thứ ${b + 1}/${nBatches}, để không trùng các phần khác.`
         : '',
       files.length ? 'Dùng tài liệu đính kèm làm căn cứ nội dung.' : '',
       `Thời gian làm bài ${duration} phút; đặt "meta.title" ngắn gọn.`,
@@ -441,12 +743,12 @@ export async function generateExam({
       results[b] = await callAndParse({
         system,
         parts: [...imageParts, ...pdfParts, { text: [...textParts, userText].join('\n\n') }],
-        temperature: getSubject(subject).math ? 0.5 : 0.8,
+        temperature: subjectInfo.math ? 0.5 : 0.75,
         signal,
       });
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
-      firstErr = firstErr || e; // một lượt lỗi → vẫn giữ các lượt còn lại
+      firstErr = firstErr || e;
     }
     onProgress?.(++done, nBatches);
   };
@@ -473,7 +775,7 @@ export async function generateExam({
 }
 
 /* ============================================================
-   2) SỐ HÓA ĐỀ CÓ SẴN (ảnh / PDF / Word / Excel)
+   2) SỐ HÓA ĐỀ CÓ SẴN
    ============================================================ */
 export async function digitizeExam({
   files, subject, grade, optionsCount = 4, duration = 45, explain = true, note = '', signal,
@@ -483,17 +785,17 @@ export async function digitizeExam({
   const system = [
     baseSystem({ subject, grade, optionsCount, explain }),
     `NHIỆM VỤ SỐ HÓA:
-- Chuyển ĐÚNG NGUYÊN VĂN các câu trắc nghiệm có trong tài liệu sang JSON; không sáng tác thêm, không bỏ sót, giữ nguyên thứ tự.
-- Nếu tài liệu có đáp án (bảng đáp án, in đậm, gạch chân, tô màu) thì dùng đáp án đó.
-- Nếu tài liệu KHÔNG có đáp án: tự giải để chọn đáp án và thêm "flag": "Tài liệu không có đáp án, AI tự giải".
-- Công thức/ký hiệu trong ảnh phải chuyển sang LaTeX ($...$).
-- Câu tự luận hoặc câu không đủ 2 đáp án thì bỏ qua và ghi số thứ tự các câu bỏ qua vào "meta.description".`,
+- Chuyển ĐÚNG NGUYÊN VĂN các câu trong tài liệu sang JSON; không sáng tác thêm, không bỏ sót, giữ nguyên thứ tự.
+- Nếu tài liệu có đáp án → dùng đáp án đó.
+- Nếu KHÔNG có đáp án → tự giải và thêm "flag": "Tài liệu không có đáp án, AI tự giải".
+- Công thức trong ảnh phải chuyển sang LaTeX ($...$) nếu là môn tự nhiên.
+- Câu tự luận hoặc không đủ đáp án → bỏ qua, ghi số thứ tự câu bỏ qua vào "meta.description".`,
   ].join('\n\n');
 
   const userText = [
     `Số hóa đề môn ${subject}, ${gradeLabel(grade)} từ tài liệu đính kèm.`,
-    note ? `Ghi chú của giáo viên: ${note}` : '',
-    `Thời gian làm bài ${duration} phút.`,
+    note ? `Ghi chú: ${note}` : '',
+    `Thời gian: ${duration} phút.`,
   ].filter(Boolean).join('\n');
 
   const p = await callAndParse({
@@ -503,7 +805,7 @@ export async function digitizeExam({
     signal,
   });
   const list = listOf(p);
-  if (!list.length) throw new Error('Không tìm thấy câu trắc nghiệm nào trong file. Hãy thử file rõ nét hơn.');
+  if (!list.length) throw new Error('Không tìm thấy câu nào trong file. Hãy thử file rõ nét hơn.');
   return {
     meta: normalizeMeta(p?.meta, { title: `Đề ${subject} ${gradeLabel(grade)}`, duration }),
     questions: finalize(list, { optionsCount, wantExplain: explain }, { shuffle: false }),
@@ -511,21 +813,22 @@ export async function digitizeExam({
 }
 
 /* ============================================================
-   3) CHỈNH ĐỀ HIỆN TẠI THEO LỜI NHẮN
+   3) CHỈNH ĐỀ HIỆN TẠI
    ============================================================ */
 export async function refineExam({ draft, instruction, subject, grade, optionsCount = 4, explain = true, signal }) {
   const system = [
     baseSystem({ subject, grade, optionsCount, explain }),
     `NHIỆM VỤ CHỈNH SỬA:
-- Áp dụng yêu cầu của giáo viên lên đề hiện tại, rồi trả về TOÀN BỘ danh sách câu hỏi sau chỉnh sửa.
-- Câu không bị yêu cầu ảnh hưởng thì GIỮ NGUYÊN y hệt và đúng thứ tự.
-- Nếu yêu cầu thêm câu, thêm vào cuối. Nếu có "warns" trên câu nào, hãy xem xét sửa các lỗi đó.`,
+- Áp dụng yêu cầu của giáo viên lên đề hiện tại, trả về TOÀN BỘ danh sách câu hỏi sau chỉnh sửa.
+- Câu không bị ảnh hưởng thì GIỮ NGUYÊN y hệt và đúng thứ tự.
+- Nếu yêu cầu thêm câu → thêm vào cuối.
+- Nếu có "warns" trên câu nào → xem xét sửa lỗi đó.`,
   ].join('\n\n');
 
   const p = await callAndParse({
     system,
     parts: [{
-      text: `Yêu cầu chỉnh sửa: ${instruction}\n\nĐề hiện tại (JSON):\n${JSON.stringify({
+      text: `Yêu cầu: ${instruction}\n\nĐề hiện tại:\n${JSON.stringify({
         meta: draft.meta,
         questions: draft.questions.map(slim),
       })}`,
@@ -534,7 +837,7 @@ export async function refineExam({ draft, instruction, subject, grade, optionsCo
     signal,
   });
   const list = listOf(p);
-  if (!list.length) throw new Error('AI không trả về câu hỏi nào. Hãy nói rõ hơn yêu cầu chỉnh sửa.');
+  if (!list.length) throw new Error('AI không trả về câu hỏi nào. Hãy nói rõ hơn.');
   return {
     meta: normalizeMeta(p?.meta, draft.meta),
     questions: finalize(list, { optionsCount, wantExplain: explain }, { shuffle: false }),
@@ -550,31 +853,42 @@ export async function regenerateQuestion({
   const system = baseSystem({ subject, grade, optionsCount, explain });
   const text = [
     'Viết lại DUY NHẤT câu hỏi sau và trả về {"questions":[câu mới]}.',
-    `Giữ cùng chủ đề (${question.topic || 'như cũ'}) và mức độ (${question.level || 'như cũ'}) nếu giáo viên không yêu cầu khác.`,
+    `Giữ cùng chủ đề (${question.topic || 'như cũ'}) và mức độ (${question.level || 'như cũ'}).`,
+    `Giữ cùng loại câu hỏi (${question.type || 'single_choice'}).`,
     `Yêu cầu: ${instruction.trim() || 'Viết câu mới khác hoàn toàn nhưng cùng chủ đề và mức độ.'}`,
     `Câu hiện tại: ${JSON.stringify(slim(question))}`,
   ].join('\n');
 
   const p = await callAndParse({ system, parts: [{ text }], temperature: 0.8, signal });
   const first = listOf(p)[0];
-  if (!first) throw new Error('AI không viết lại được câu này. Hãy thử lại.');
+  if (!first) throw new Error('AI không viết lại được câu này.');
   const [nq] = finalize([first], { optionsCount, wantExplain: explain }, { shuffle: true });
   return { ...nq, points: question.points || nq.points };
 }
 
 /* ============================================================
-   5) KIỂM TRA ĐÁP ÁN — AI tự giải lại độc lập
+   5) KIỂM TRA ĐÁP ÁN
    ============================================================ */
 export async function verifyExam({ questions, subject, signal, onProgress }) {
   const system = [
-    `Môn học: ${subject}. Bạn là giáo viên thẩm định đề.`,
-    'Với mỗi câu trắc nghiệm, hãy TỰ GIẢI ĐỘC LẬP từng bước rồi chọn đáp án đúng.',
-    'Trả về JSON: {"answers":[{"i":0,"answer":2,"note":""}]}.',
-    '"i" là số thứ tự được cho; "answer" là chỉ số đáp án đúng bắt đầu từ 0; đặt -1 nếu câu thiếu dữ kiện, không có đáp án đúng hoặc có nhiều đáp án đúng, và ghi lý do ngắn vào "note".',
+    `Môn: ${subject}. Bạn là giáo viên thẩm định đề.`,
+    'Với mỗi câu, TỰ GIẢI ĐỘC LẬP từng bước rồi chọn đáp án.',
+    'Với câu đúng/sai, tự đánh giá từng ý.',
+    'Với câu trả lời ngắn, tự tính đáp án.',
+    'Trả JSON: {"answers":[{"i":0,"answer":2,"note":""}]}.',
+    'single_choice: "answer" là chỉ số đáp án (0-based); -1 nếu thiếu dữ kiện.',
+    'true_false: "answer" là mảng boolean [true,false,true,false] cho 4 ý.',
+    'short_answer: "answer" là chuỗi đáp án.',
   ].join('\n');
 
   const answers = new Map();
-  const batches = chunk(questions.map((q, i) => ({ i, q: q.q, options: q.options })), BATCH);
+  const batches = chunk(questions.map((q, i) => ({
+    i,
+    q: q.q,
+    type: q.type || 'single_choice',
+    options: q.options,
+    statements: q.statements,
+  })), BATCH);
   let vDone = 0;
   await Promise.all(batches.map(async (bt) => {
     const p = await callAndParse({
@@ -588,18 +902,27 @@ export async function verifyExam({ questions, subject, signal, onProgress }) {
     onProgress?.(++vDone, batches.length);
   }));
 
-  /* Phản biện lần 2: câu nào lệch đáp án thì giải lại bằng cách khác để tránh báo động giả */
   const disputed = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q, i }) => {
       const a = answers.get(i);
-      return a && Number.isInteger(a.answer) && a.answer >= 0 && q.correct >= 0 && a.answer !== q.correct;
+      if (!a) return false;
+      const t = q.type || 'single_choice';
+      if (t === 'single_choice') {
+        return Number.isInteger(a.answer) && a.answer >= 0 && q.correct >= 0 && a.answer !== q.correct;
+      }
+      if (t === 'true_false') {
+        return Array.isArray(a.answer) && a.answer.length === 4 && q.statements?.length === 4
+          && a.answer.some((v, k) => v !== q.statements[k].answer);
+      }
+      return false;
     });
+
   if (disputed.length) {
     try {
       const p2 = await callAndParse({
-        system: system + '\nĐây là lượt phản biện: hãy giải bằng MỘT CÁCH KHÁC với cách thông thường (thử thế ngược từng đáp án, hoặc dùng phương pháp khác), đối chiếu kỹ rồi mới trả lời.',
-        parts: [{ text: `Các câu cần giải:\n${JSON.stringify(disputed.map(({ q, i }) => ({ i, q: q.q, options: q.options })))}` }],
+        system: system + '\nĐây là lượt phản biện: giải bằng MỘT CÁCH KHÁC.',
+        parts: [{ text: `Các câu cần giải:\n${JSON.stringify(disputed.map(({ q, i }) => ({ i, q: q.q, type: q.type, options: q.options, statements: q.statements })))}` }],
         temperature: 0.3,
         signal,
       });
@@ -607,11 +930,11 @@ export async function verifyExam({ questions, subject, signal, onProgress }) {
       list2.forEach((a2) => {
         if (!a2 || !Number.isInteger(a2.i)) return;
         const orig = questions[a2.i];
-        // Lần 2 đồng ý với đáp án gốc của đề → coi là đúng (lần 1 là nhầm)
-        if (orig && a2.answer === orig.correct) answers.set(a2.i, { ...a2, answer: orig.correct });
+        if (!orig) return;
+        if (a2.answer === orig.correct) answers.set(a2.i, { ...a2, answer: orig.correct });
       });
     } catch (e) {
-      if (e?.name === 'AbortError') throw e; // lỗi khác: giữ kết quả lần 1
+      if (e?.name === 'AbortError') throw e;
     }
   }
 
@@ -620,25 +943,104 @@ export async function verifyExam({ questions, subject, signal, onProgress }) {
     const base = { ...q, warns: (q.warns || []).filter((w) => !w.startsWith(VERIFY_PREFIX)) };
     const a = answers.get(i);
     if (!a) return { ...base, verified: undefined };
-    const ans = Number.isInteger(a.answer) ? a.answer : -1;
-    if (ans < 0 || ans >= q.options.length) {
-      unsure++;
-      const why = a.note ? ` (${String(a.note).slice(0, 120)})` : '';
-      return { ...base, verified: 'unsure', warns: [...base.warns, `${VERIFY_PREFIX}: không xác định được đáp án duy nhất${why}`] };
+
+    const t = q.type || 'single_choice';
+
+    if (t === 'single_choice') {
+      const ans = Number.isInteger(a.answer) ? a.answer : -1;
+      if (ans < 0 || ans >= (q.options || []).length) {
+        unsure++;
+        const why = a.note ? ` (${String(a.note).slice(0, 120)})` : '';
+        return { ...base, verified: 'unsure', warns: [...base.warns, `${VERIFY_PREFIX}: không xác định được đáp án${why}`] };
+      }
+      if (q.correct < 0) {
+        return { ...base, verified: 'unsure', warns: [...base.warns, `${VERIFY_PREFIX} gợi ý đáp án ${letter(ans)}`] };
+      }
+      if (ans !== q.correct) {
+        diff++;
+        return {
+          ...base,
+          verified: 'diff',
+          warns: [...base.warns, `${VERIFY_PREFIX} ra đáp án ${letter(ans)}, khác đáp án đang chọn (${letter(q.correct)}) — hãy kiểm tra`],
+        };
+      }
+      ok++;
+      return { ...base, verified: 'ok' };
     }
-    if (q.correct < 0) {
-      return { ...base, verified: 'unsure', warns: [...base.warns, `${VERIFY_PREFIX} gợi ý đáp án ${letter(ans)}`] };
-    }
-    if (ans !== q.correct) {
+
+    if (t === 'true_false') {
+      if (!Array.isArray(a.answer) || a.answer.length !== 4) {
+        unsure++;
+        return { ...base, verified: 'unsure', warns: [...base.warns, `${VERIFY_PREFIX}: không xác định được 4 ý đúng/sai`] };
+      }
+      const matchCount = a.answer.filter((v, k) => v === q.statements?.[k]?.answer).length;
+      if (matchCount === 4) { ok++; return { ...base, verified: 'ok' }; }
       diff++;
-      return {
-        ...base,
-        verified: 'diff',
-        warns: [...base.warns, `${VERIFY_PREFIX} ra đáp án ${letter(ans)}, khác đáp án đang chọn (${letter(q.correct)}) — hãy kiểm tra`],
-      };
+      return { ...base, verified: 'diff', warns: [...base.warns, `${VERIFY_PREFIX}: khớp ${matchCount}/4 ý — hãy kiểm tra`] };
     }
+
     ok++;
     return { ...base, verified: 'ok' };
   });
   return { questions: out, ok, diff, unsure };
 }
+
+/* ============================================================
+   6) suggestExamFromClass — đa môn
+   ============================================================ */
+export function suggestExamFromClass({ insights, exams = [], subject = 'Hóa học' } = {}) {
+  const out = [];
+  const subjectInfo = getSubject(subject);
+
+  if (insights?.weakestTopics?.length > 0) {
+    const weak = insights.weakestTopics[0];
+    out.push({
+      icon: 'target',
+      title: `Ôn bù: ${weak.topic}`,
+      sub: `Lớp chỉ đạt ${weak.rate}% · Đề xuất 10 câu củng cố`,
+      prompt: `Đề ôn bù chuyên đề "${weak.topic}" môn ${subject} 10 câu, 70% nhận biết + 30% thông hiểu`,
+      priority: 'high',
+      intent: 'basic',
+    });
+  }
+
+  if (insights?.hardest?.length >= 3) {
+    out.push({
+      icon: 'warn',
+      title: `Luyện dạng câu sai nhiều`,
+      sub: `${insights.hardest.length} câu có tỷ lệ đúng thấp`,
+      prompt: `Tạo 12 câu cùng dạng với: "${insights.hardest[0].text.slice(0, 80)}", môn ${subject}`,
+      priority: 'high',
+      intent: 'practice',
+    });
+  }
+
+  if (exams.length >= 3) {
+    const recent = exams[0];
+    out.push({
+      icon: 'repeat',
+      title: `Đề tương tự: ${recent.title?.slice(0, 40)}`,
+      sub: 'Cùng chủ đề, câu mới 100%',
+      prompt: `Tạo đề tương tự "${recent.title}" môn ${subject} nhưng câu hỏi hoàn toàn mới`,
+      priority: 'medium',
+      intent: 'practice',
+    });
+  }
+
+  if (insights?.passRate >= 80) {
+    out.push({
+      icon: 'star',
+      title: 'Thử thách nâng cao',
+      sub: `Lớp đạt ${insights.passRate}% — sẵn sàng cho VDC`,
+      prompt: `Tạo đề phân hóa nâng cao môn ${subject}, 15 câu, 50% vận dụng + 30% vận dụng cao`,
+      priority: 'low',
+      intent: 'rank',
+    });
+  }
+
+  return out.slice(0, 4);
+}
+
+/* Export các sub để matrixAiService dùng */
+export { callAndParse as _callAndParse };
+export { SUBJECTS, GENERIC_SUBJECT };

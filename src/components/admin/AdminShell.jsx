@@ -56,12 +56,14 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
   const extraNav = (
     <button
       type="button"
-      className="vt-nav-item"
+      className="t-rail-btn"
       onClick={goTeacher}
       title="Sang trang quản lý lớp học"
     >
-      <IconUserCheck size={18} />
-      <span>Quản lý lớp</span>
+      <span className="t-rail-btn-icon">
+        <IconUserCheck size={20} />
+      </span>
+      <span className="t-rail-btn-label">Quản lý lớp</span>
     </button>
   );
 

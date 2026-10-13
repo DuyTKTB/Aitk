@@ -28,8 +28,9 @@ export const hasMath = (s) => typeof s === 'string' && /\$[^$]+\$/.test(s);
 export const stripMath = (s) =>
   String(s ?? '').replace(/\$\$?([^$]+)\$\$?/g, '$1');
 
-export default function MathText({ children, as: Tag = 'span', className }) {
-  const text = children == null ? '' : String(children);
+export default function MathText({ children, text: propText, as: Tag = 'span', className }) {
+  const raw = propText != null ? propText : children;
+  const text = raw == null ? '' : String(raw);
   const parts = useMemo(() => text.split(MATH_RE).filter((p) => p !== ''), [text]);
   const needKatex = useMemo(() => hasMath(text), [text]);
   const [katex, setKatex] = useState(null);

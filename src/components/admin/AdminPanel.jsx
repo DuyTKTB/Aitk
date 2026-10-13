@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { isAdmin } from '../../lib/isAdmin.js';
 import { fetchGrades, fetchSubjects } from '../../lib/examApi.js';
 import { supabase } from '../../lib/supabase.js';
 import { IconLock, IconBack, IconRefresh } from './AdminIcons.jsx';
@@ -15,6 +16,8 @@ import CreateExam from './CreateExam.jsx';
 import GuidePage from './GuidePage.jsx';
 import KeyManager from './KeyManager.jsx';
 import ProUserManager from './ProUserManager.jsx';
+import '../../styles/dash-vitality.css';
+import '../../styles/teacher-ds.css';
 
 /* ============================================================
    ROUTING: hash = #admin/<sub>
@@ -46,7 +49,12 @@ function AdminGate() {
   const uid = user?.uid || user?.id;
 
   const check = useCallback(async () => {
-    if (!uid) { setState({ status: 'denied', error: null }); return; }
+    if (!user) { setState({ status: 'denied', error: null }); return; }
+    // Nguồn xác thực Firebase claims / admin email
+    if (isAdmin(user)) {
+      setState({ status: 'admin', error: null });
+      return;
+    }
     setState({ status: 'checking', error: null });
     try {
       const { data, error } = await supabase
@@ -58,9 +66,13 @@ function AdminGate() {
       setState({ status: data?.role === 'admin' ? 'admin' : 'denied', error: null });
     } catch (e) {
       console.error(e);
-      setState({ status: 'error', error: friendlyError(e) });
+      if (isAdmin(user)) {
+        setState({ status: 'admin', error: null });
+      } else {
+        setState({ status: 'error', error: friendlyError(e) });
+      }
     }
-  }, [uid]);
+  }, [uid, user]);
 
   useEffect(() => { check(); }, [check]);
 

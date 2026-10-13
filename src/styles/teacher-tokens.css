@@ -1,0 +1,177 @@
+/* ============================================================
+   teacher-tokens.css — Design Tokens Duy Nhất Khu Vực Giáo Viên
+   ELEC AI Teacher Workspace (HubSpot Dark Bento + Light Glass)
+   ============================================================ */
+
+@layer tokens {
+  :root,
+  [data-theme='dark'] {
+    /* --- BẢNG MÀU DARK BENTO (ẢNH 1: HUBSPOT CRM WORKSPACE) --- */
+    --t-bg: #0e0e10;
+    --t-surface-0: #121215;
+    --t-surface-1: #18181c;
+    --t-surface-2: #202025;
+    --t-surface-3: #28282f;
+    --t-surface-glass: rgba(24, 24, 28, 0.78);
+    --t-border: #2c2c34;
+    --t-border-subtle: rgba(255, 255, 255, 0.08);
+    --t-border-strong: rgba(255, 255, 255, 0.18);
+
+    /* Màu Nhấn Xanh Chanh Nổi Bật (Ảnh 1) */
+    --t-accent: #c8f542;
+    --t-accent-hover: #b4e62a;
+    --t-accent-subtle: rgba(200, 245, 66, 0.12);
+    --t-accent-glow: rgba(200, 245, 66, 0.35);
+    --t-accent-ink: #0e0e10;
+
+    /* Màu Nhấn Phụ Tím / Xanh Cyber */
+    --t-accent-2: #8b5cf6;
+    --t-accent-2-subtle: rgba(139, 92, 246, 0.14);
+    --t-accent-3: #06b6d4;
+
+    /* Chữ & Độ Tương Phản (Contrast ≥ 4.5:1) */
+    --t-ink: #ffffff;
+    --t-ink-2: #d4d4d8;
+    --t-ink-muted: #a1a1aa;
+    --t-ink-faint: #71717a;
+
+    /* Tương thích ngược & Cầu nối Vitality Admin (Dark Bento) */
+    --ts-ink: var(--t-ink);
+    --ts-ink-2: var(--t-ink-2);
+    --ts-ink-3: var(--t-ink-muted);
+    --ts-danger: var(--t-status-err);
+    --ts-surface-1: var(--t-surface-1);
+    --ts-surface-2: var(--t-surface-2);
+    --ts-surface-3: var(--t-surface-3);
+    --ts-border: var(--t-border);
+    --panel: var(--t-surface-1);
+    --ink: var(--t-ink);
+    --acc: var(--t-accent);
+    --mut: var(--t-ink-muted);
+    --soft: var(--t-border-subtle);
+    --line: var(--t-border);
+
+    /* Trạng Thái Nghiệp Vụ */
+    --t-status-ok: #22c55e;
+    --t-status-ok-subtle: rgba(34, 197, 94, 0.14);
+    --t-status-warn: #f59e0b;
+    --t-status-warn-subtle: rgba(245, 158, 11, 0.14);
+    --t-status-err: #ef4444;
+    --t-status-err-subtle: rgba(239, 68, 68, 0.14);
+
+    /* 4 Mức Độ Nhận Thức GDPT 2018 */
+    --t-bloom-nb: #22c55e;
+    --t-bloom-nb-bg: rgba(34, 197, 94, 0.12);
+    --t-bloom-th: #0284c7;
+    --t-bloom-th-bg: rgba(2, 132, 199, 0.12);
+    --t-bloom-vd: #d97706;
+    --t-bloom-vd-bg: rgba(217, 119, 6, 0.12);
+    --t-bloom-vdc: #dc2626;
+    --t-bloom-vdc-bg: rgba(220, 38, 38, 0.12);
+
+    /* Đa Tầng Shadow */
+    --t-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --t-shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.08);
+    --t-shadow-float: 0 20px 48px -12px rgba(0, 0, 0, 0.7);
+    --t-shadow-lime: 0 0 24px rgba(200, 245, 66, 0.3);
+    --t-shadow-glow: 0 0 32px rgba(139, 92, 246, 0.25);
+  }
+
+  [data-theme='light'] {
+    /* --- BẢNG MÀU LIGHT GLASS (ẢNH 2 & 3: BEEBOT & APP THỞ) --- */
+    --t-bg: #f4f6fb;
+    --t-surface-0: #ffffff;
+    --t-surface-1: rgba(255, 255, 255, 0.82);
+    --t-surface-2: #ffffff;
+    --t-surface-3: #eef2f9;
+    --t-surface-glass: rgba(255, 255, 255, 0.72);
+    --t-border: rgba(100, 120, 180, 0.16);
+    --t-border-subtle: rgba(100, 120, 180, 0.08);
+    --t-border-strong: rgba(91, 108, 255, 0.28);
+
+    /* Màu Nhấn Xanh Tím Sư Phạm */
+    --t-accent: #5b6cff;
+    --t-accent-hover: #4859f0;
+    --t-accent-subtle: rgba(91, 108, 255, 0.1);
+    --t-accent-glow: rgba(91, 108, 255, 0.25);
+    --t-accent-ink: #ffffff;
+
+    --t-accent-2: #8b5cf6;
+    --t-accent-2-subtle: rgba(139, 92, 246, 0.1);
+    --t-accent-3: #06b6d4;
+
+    /* Chữ Light Mode */
+    --t-ink: #0f172a;
+    --t-ink-2: #334155;
+    --t-ink-muted: #64748b;
+    --t-ink-faint: #94a3b8;
+
+    /* Tương thích ngược & Cầu nối Vitality Admin (Light Glass) */
+    --ts-ink: var(--t-ink);
+    --ts-ink-2: var(--t-ink-2);
+    --ts-ink-3: var(--t-ink-muted);
+    --ts-danger: var(--t-status-err);
+    --ts-surface-1: var(--t-surface-1);
+    --ts-surface-2: var(--t-surface-2);
+    --ts-surface-3: var(--t-surface-3);
+    --ts-border: var(--t-border);
+    --panel: var(--t-surface-0);
+    --ink: var(--t-ink);
+    --acc: var(--t-accent);
+    --mut: var(--t-ink-muted);
+    --soft: var(--t-border-subtle);
+    --line: var(--t-border);
+
+    /* Trạng Thái */
+    --t-status-ok: #16a34a;
+    --t-status-ok-subtle: rgba(22, 163, 74, 0.1);
+    --t-status-warn: #d97706;
+    --t-status-warn-subtle: rgba(217, 119, 6, 0.1);
+    --t-status-err: #dc2626;
+    --t-status-err-subtle: rgba(220, 38, 38, 0.1);
+
+    /* Bloom GDPT 2018 */
+    --t-bloom-nb: #16a34a;
+    --t-bloom-nb-bg: #dcfce7;
+    --t-bloom-th: #0284c7;
+    --t-bloom-th-bg: #e0f2fe;
+    --t-bloom-vd: #d97706;
+    --t-bloom-vd-bg: #fef3c7;
+    --t-bloom-vdc: #dc2626;
+    --t-bloom-vdc-bg: #fee2e2;
+
+    /* Shadows Light */
+    --t-shadow-sm: 0 2px 8px rgba(91, 108, 255, 0.05);
+    --t-shadow-card: 0 12px 32px -8px rgba(100, 120, 180, 0.12), 0 0 1px rgba(100, 120, 180, 0.2);
+    --t-shadow-float: 0 24px 50px -12px rgba(100, 120, 180, 0.22);
+    --t-shadow-lime: 0 0 20px rgba(91, 108, 255, 0.2);
+    --t-shadow-glow: 0 0 32px rgba(139, 92, 246, 0.18);
+  }
+
+  /* --- TOKENS CHUNG CHO CẢ 2 THEME --- */
+  :root {
+    /* Bo Góc */
+    --t-r-card: 28px;
+    --t-r-card-lg: 32px;
+    --t-r-pill: 999px;
+    --t-r-lg: 20px;
+    --t-r-md: 14px;
+    --t-r-sm: 10px;
+    --t-r-xs: 6px;
+
+    /* Font Chữ */
+    --t-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --t-font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+
+    /* Chuyển Động & Easing */
+    --t-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --t-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+    --t-dur-fast: 140ms;
+    --t-dur-norm: 240ms;
+    --t-dur-slow: 400ms;
+
+    /* Kính Mờ */
+    --t-blur: blur(28px);
+    --t-blur-subtle: blur(14px);
+  }
+}

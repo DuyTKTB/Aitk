@@ -1,17 +1,24 @@
 /* ============================================================
-   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v4
+   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v6
    ------------------------------------------------------------
-   v4:
-     • Thêm tab "Ngân hàng" — QuestionBank
-     • exportClassCsv: Điểm TB tính trung bình cộng thật
-     • exportClassCsv: thêm cột "Cao nhất"
-     • refresh() surface lỗi ra UI (toast), không nuốt lỗi
-     • handleDeleteSession xóa chỉ khi Firestore OK
-     • Toast có tone (info / success / error)
-     • Ô ghi chú khi duyệt/từ chối thi lại
-     • Chỉ dùng SVG, không emoji
+   HỖ TRỢ ĐA MÔN: filter theo môn, hiển thị badge môn, cột môn
+                  trong danh sách đề.
+   ------------------------------------------------------------
+   v6 (đa môn + fix):
+     • FIX #5: refresh insights (subsCacheRef) trước khi mở AI
+       Studio → AI dùng dữ liệu mới nhất, không dùng cache cũ.
+     • FIX #7: clear subsCacheRef khi tạo đề mới → tab "Đề thi"
+       hiển thị đầy đủ.
+     • MỚI: Filter theo môn trong tab Đề thi.
+     • MỚI: Badge "AI tạo" cho đề sinh bằng AI (dựa meta.source).
+     • MỚI: Nút "Sinh 3 đề phân hóa" cho lớp (mở AutoExamStudio
+       chế độ phân hóa).
+     • MỚI: Hiển thị môn trong thẻ đề + Bento lớp.
+     • MỚI: Cảnh báo khi AI sinh thiếu câu (nối với onPartial).
+     • Giữ nguyên v5: tab "Xin thi lại" có ô ghi chú; lazy-load
+       bài nộp; SVG icons.
    ============================================================ */
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { isAdmin as checkAdmin } from '../lib/isAdmin.js';
 import { buildClassInsights } from '../lib/classInsights.js';
@@ -46,37 +53,114 @@ import {
   timeRemaining,
 } from '../lib/examSession.js';
 import ExamCreate from './ExamCreate.jsx';
-import LiveProctorView from './LiveProctorView.jsx';
-import CreateExamPage from './teacher/CreateExamPage.jsx';
 import ClassDetailModal from './ClassDetailModal.jsx';
-import QuestionBank from './teacher/QuestionBank.jsx';
-import PaperGrading from './teacher/PaperGrading.jsx';
-import TeacherSimulatorHub from './teacher/TeacherSimulatorHub.jsx';
-import ExamPreviewSimulator from './teacher/ExamPreviewSimulator.jsx';
+import {
+  BentoCard,
+  StatBig,
+  SchedulePill,
+  RatingDots,
+  AvatarStack,
+  SidePanel,
+  PillTabs,
+  Chip,
+} from './teacher/ui/index.js';
 
-const IcoScan = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
-    <line x1="4" y1="12" x2="20" y2="12" />
+const LiveProctorView = lazy(() => import('./LiveProctorView.jsx'));
+const CreateExamPage = lazy(() => import('./teacher/CreateExamPage.jsx'));
+const QuestionBank = lazy(() => import('./teacher/QuestionBank.jsx'));
+const PaperGrading = lazy(() => import('./teacher/PaperGrading.jsx'));
+const TeacherSimulatorHub = lazy(() => import('./teacher/TeacherSimulatorHub.jsx'));
+const ExamPreviewSimulator = lazy(() => import('./teacher/ExamPreviewSimulator.jsx'));
+const InsightPanel = lazy(() => import('./teacher/InsightPanel.jsx'));
+
+/* ============ SVG ICONS (NO EMOJI) ============ */
+const Svg = ({ size = 18, sw = 2, children }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={sw}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {children}
   </svg>
 );
 
-const IcoShuffle = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const IcoScan = (p) => (
+  <Svg {...p}>
+    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+  </Svg>
+);
+
+const IcoShuffle = (p) => (
+  <Svg {...p}>
     <polyline points="16 3 21 3 21 8" />
     <line x1="4" y1="20" x2="21" y2="3" />
     <polyline points="21 16 21 21 16 21" />
     <line x1="15" y1="15" x2="21" y2="21" />
     <line x1="4" y1="4" x2="9" y2="9" />
-  </svg>
+  </Svg>
 );
 
-const IcoEye = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const IcoEye = (p) => (
+  <Svg {...p}>
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
     <circle cx="12" cy="12" r="3" />
-  </svg>
+  </Svg>
 );
+
+const IcoSparkles = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" />
+  </Svg>
+);
+
+const IcoPin = (p) => (
+  <Svg {...p} sw={1.8}>
+    <line x1="12" y1="17" x2="12" y2="22" />
+    <path d="M5 17h14v-2l-2-2V5a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v8l-2 2z" />
+  </Svg>
+);
+
+const IcoSun = (p) => (
+  <Svg {...p} sw={2}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </Svg>
+);
+
+const IcoMoon = (p) => (
+  <Svg {...p} sw={2}>
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </Svg>
+);
+
+const IcoBolt = (p) => (
+  <Svg {...p} sw={2}>
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </Svg>
+);
+
+const IcoTarget = (p) => (
+  <Svg {...p} sw={1.8}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+  </Svg>
+);
+
+const IcoSubject = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M4 4h16v16H4z" />
+    <path d="M4 9h16M9 4v16" />
+  </Svg>
+);
+
 import {
   DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
   tsMs, fmtMMSS, fmtClock, downloadCsv,
@@ -87,22 +171,7 @@ import {
   IcoDownload, IcoChevronRight, IcoAlert, IcoUserPlus, IcoKey, IcoMonitor,
   IcoBell, IcoLibrary,
 } from '../lib/sessionIcons.jsx';
-import '../styles/classroom.css';
-import '../styles/teacher-apple.css';
-import '../styles/teacher-fullscreen-blue.css';
-
-const IcoSparkles = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" />
-  </svg>
-);
-
-const IcoPin = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <line x1="12" y1="17" x2="12" y2="22" />
-    <path d="M5 17h14v-2l-2-2V5a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v8l-2 2z" />
-  </svg>
-);
+import '../styles/teacher-ds.css';
 
 /* ============================================================
    HELPERS
@@ -131,6 +200,23 @@ function exportExamCsv(exam, subs) {
   downloadCsv(`diem-${safe}.csv`, rows);
 }
 
+/* MỚI: Detect môn của đề dựa vào câu hỏi hoặc meta */
+function detectExamSubject(exam) {
+  if (exam.subject) return exam.subject;
+  // Fallback: đọc từ topic câu hỏi đầu tiên
+  const q = exam.questions?.[0];
+  if (q?.subject) return q.subject;
+  return '—';
+}
+
+/* MỚI: Kiểm tra đề có phải do AI tạo không (dựa vào meta.source hoặc flag) */
+function isAiGeneratedExam(exam) {
+  if (exam.source === 'ai' || exam.aiGenerated) return true;
+  // Fallback: nếu câu hỏi có trường topic + level → có thể từ AI Studio
+  const firstQ = exam.questions?.[0];
+  return Boolean(firstQ?.topic && firstQ?.level && firstQ?.qualityScore !== undefined);
+}
+
 /* ============================================================
    MAIN
    ============================================================ */
@@ -141,6 +227,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [search, setSearch] = useState('');
   const [range, setRange] = useState('30');
   const [chartMode, setChartMode] = useState('line');
+  const [subjectFilter, setSubjectFilter] = useState('');
 
   const [classes, setClasses] = useState([]);
   const [exams, setExams] = useState([]);
@@ -171,15 +258,15 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [toastTone, setToastTone] = useState('info');
   const [startingId, setStartingId] = useState(null);
 
-  /* Retry requests realtime */
   const [allRetryRequests, setRetryRequests] = useState([]);
   const retryRequests = useMemo(
     () => allRetryRequests.filter((r) => classes.some((c) => c.id === r.classId)),
     [allRetryRequests, classes]
   );
 
-  /* Allowances cho lớp đang chọn */
   const [allowances, setAllowances] = useState({});
+  const [retryNotes, setRetryNotes] = useState({});
+  const [retryActioning, setRetryActioning] = useState(null);
 
   const toastTimer = useRef(null);
   const say = useCallback((text, tone = 'info') => {
@@ -205,6 +292,22 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   /* ---------- LOAD ---------- */
+  const subsCacheRef = useRef({});
+
+  const ensureExamSubmissions = useCallback(async (examId) => {
+    if (!examId) return [];
+    if (subsCacheRef.current[examId]) return subsCacheRef.current[examId];
+    try {
+      const subs = await getSubmissionsByExam(examId);
+      subsCacheRef.current[examId] = subs;
+      setSubmissionsMap((prev) => ({ ...prev, [examId]: subs }));
+      return subs;
+    } catch (err) {
+      console.warn('[TeacherDashboard] load subs lỗi cho đề', examId, err);
+      return [];
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!user?.uid) return;
     setLoadError('');
@@ -218,16 +321,42 @@ export default function TeacherDashboard({ onExit } = {}) {
       setExams(ex);
       setSessions(sess);
 
-      const subsMap = {};
-      await Promise.all(ex.map(async (e) => {
-        try {
-          subsMap[e.id] = await getSubmissionsByExam(e.id);
-        } catch (err) {
-          subsMap[e.id] = [];
-          console.warn('[TeacherDashboard] load subs lỗi cho đề', e.id, err);
+      const priorityExams = ex.slice(0, 8);
+      const subsMap = { ...subsCacheRef.current };
+      await Promise.all(priorityExams.map(async (e) => {
+        if (!subsMap[e.id]) {
+          try {
+            const s = await getSubmissionsByExam(e.id);
+            subsMap[e.id] = s;
+            subsCacheRef.current[e.id] = s;
+          } catch {
+            subsMap[e.id] = [];
+          }
         }
       }));
-      setSubmissionsMap(subsMap);
+      setSubmissionsMap({ ...subsMap });
+
+      if (ex.length > 8) {
+        const remaining = ex.slice(8);
+        Promise.all(remaining.map(async (e) => {
+          if (!subsCacheRef.current[e.id]) {
+            try {
+              const s = await getSubmissionsByExam(e.id);
+              subsCacheRef.current[e.id] = s;
+              return { id: e.id, subs: s };
+            } catch {
+              return { id: e.id, subs: [] };
+            }
+          }
+          return { id: e.id, subs: subsCacheRef.current[e.id] };
+        })).then((results) => {
+          setSubmissionsMap((prev) => {
+            const next = { ...prev };
+            results.forEach((r) => { next[r.id] = r.subs; });
+            return next;
+          });
+        });
+      }
     } catch (err) {
       console.error('[TeacherDashboard] load error:', err);
       setLoadError(err.message || 'Không tải được dữ liệu lớp học.');
@@ -252,7 +381,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     return () => unsubs.forEach((u) => u && u());
   }, [liveIdsKey]);
 
-  /* Realtime retry requests — chỉ các lớp của giáo viên này */
+  /* Realtime retry requests */
   const classIdsKey = classes.map((c) => c.id).sort().join(',');
   useEffect(() => {
     if (!user?.uid) return undefined;
@@ -282,6 +411,48 @@ export default function TeacherDashboard({ onExit } = {}) {
       }
     })();
   }, [selectedClass?.id]);
+
+  /* ============================================================
+     FIX #5: Refresh trước khi mở AI Studio
+     ------------------------------------------------------------
+     Đảm bảo classInsights dùng dữ liệu mới nhất, không cache cũ.
+     ============================================================ */
+  const openNewExam = async () => {
+    if (classes.length === 0) {
+      say('Hãy tạo lớp trước khi tạo đề', 'error');
+      goSection('classes');
+      return;
+    }
+
+    // FIX #5: refresh subsCache + state trước khi mở AI Studio
+    try {
+      subsCacheRef.current = {};
+      const freshExams = await getExamsByTeacher(user.uid);
+      const freshSubs = {};
+      await Promise.all(
+        freshExams.slice(0, 8).map(async (e) => {
+          try {
+            const subs = await getSubmissionsByExam(e.id);
+            freshSubs[e.id] = subs;
+            subsCacheRef.current[e.id] = subs;
+          } catch {
+            freshSubs[e.id] = [];
+          }
+        })
+      );
+      setExams(freshExams);
+      setSubmissionsMap(freshSubs);
+    } catch (e) {
+      console.warn('[TeacherDashboard] refresh trước AI Studio lỗi:', e);
+    }
+
+    if (classes.length === 1) {
+      setSelectedClass(classes[0]);
+      goSection('create');
+      return;
+    }
+    setShowClassPicker(true);
+  };
 
   /* ---------- ACTIONS ---------- */
   const copyText = useCallback(async (text, keyId, msg = 'Đã sao chép') => {
@@ -383,6 +554,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         try {
           await deleteExamFs(exam.id);
           setExams((prev) => prev.filter((e) => e.id !== exam.id));
+          delete subsCacheRef.current[exam.id];
           say('Đã xóa đề', 'success');
         } catch (e) {
           say('Lỗi: ' + e.message, 'error');
@@ -410,7 +582,6 @@ export default function TeacherDashboard({ onExit } = {}) {
     });
   };
 
-  /* ============ DUYỆT THÀNH VIÊN ============ */
   const reloadClass = async (id) => {
     const fresh = await getClassById(id);
     setSelectedClass(fresh);
@@ -491,7 +662,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const handleDeleteClass = (cls) => {
     setConfirmState({
       title: 'Xóa lớp?',
-      body: `Lớp “${cls.name}”, đề và bài nộp của lớp sẽ bị xóa. Không hoàn tác được.`,
+      body: `Lớp "${cls.name}", đề và bài nộp của lớp sẽ bị xóa. Không hoàn tác được.`,
       okLabel: 'Xóa lớp',
       danger: true,
       onOk: async () => {
@@ -505,22 +676,42 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   /* ============ DUYỆT THI LẠI ============ */
-  const handleApproveRetry = async (req, note = '') => {
+  const handleApproveRetry = async (req) => {
+    const note = (retryNotes[req.id] || '').trim();
+    setRetryActioning(req.id);
     const r = await approveRetry({
       permitId: req.id,
       teacherId: user.uid,
       note,
     });
     say(r.ok ? `Đã duyệt cho ${req.studentName} thi lại` : r.error, r.ok ? 'success' : 'error');
+    if (r.ok) {
+      setRetryNotes((prev) => {
+        const next = { ...prev };
+        delete next[req.id];
+        return next;
+      });
+    }
+    setRetryActioning(null);
   };
 
-  const handleDenyRetry = async (req, note = '') => {
+  const handleDenyRetry = async (req) => {
+    const note = (retryNotes[req.id] || '').trim();
+    setRetryActioning(req.id);
     const r = await denyRetry({
       permitId: req.id,
       teacherId: user.uid,
       note,
     });
     say(r.ok ? `Đã từ chối ${req.studentName}` : r.error, r.ok ? 'success' : 'error');
+    if (r.ok) {
+      setRetryNotes((prev) => {
+        const next = { ...prev };
+        delete next[req.id];
+        return next;
+      });
+    }
+    setRetryActioning(null);
   };
 
   const handleToggleAllowance = async (cls, m, allowed) => {
@@ -613,7 +804,6 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const classById = useMemo(() => Object.fromEntries(classes.map((c) => [c.id, c])), [classes]);
 
-  /* Tổng số yêu cầu chờ duyệt */
   const totalPendingMembers = useMemo(
     () => classes.reduce((sum, c) => sum + (c.pendingMembers?.length || 0), 0),
     [classes]
@@ -627,11 +817,15 @@ export default function TeacherDashboard({ onExit } = {}) {
     return retryRequests.filter((r) => r.classId === selectedClass.id);
   }, [retryRequests, selectedClass?.id]);
 
-  const openNewExam = () => {
-    if (classes.length === 0) { say('Hãy tạo lớp trước khi tạo đề', 'error'); goSection('classes'); return; }
-    if (classes.length === 1) { setSelectedClass(classes[0]); goSection('create'); return; }
-    setShowClassPicker(true);
-  };
+  /* MỚI: Danh sách môn có trong đề để làm filter */
+  const availableSubjects = useMemo(() => {
+    const set = new Set();
+    exams.forEach((e) => {
+      const s = detectExamSubject(e);
+      if (s && s !== '—') set.add(s);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [exams]);
 
   const exportAllCsv = () => {
     if (subsInRange.length === 0) { say('Chưa có bài nộp để xuất', 'error'); return; }
@@ -645,7 +839,6 @@ export default function TeacherDashboard({ onExit } = {}) {
     say('Đã xuất bảng điểm', 'success');
   };
 
-  /* FIX: Điểm TB = trung bình cộng; có thêm cột Cao nhất */
   const exportClassCsv = useCallback((cls, clsExams, subsMap) => {
     if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất', 'error'); return; }
     const members = cls.members || [];
@@ -682,12 +875,14 @@ export default function TeacherDashboard({ onExit } = {}) {
     const vs = sessions.find((s) => s.id === viewingSessionId);
     const vExam = exams.find((e) => e.id === vs?.examId);
     return (
-      <LiveProctorView
-        sessionId={viewingSessionId}
-        className={classById[vs?.classId]?.name}
-        totalQuestions={vExam?.questions?.length || 0}
-        onBack={() => setViewingSessionId(null)}
-      />
+      <Suspense fallback={<div className="vt"><div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải phòng giám sát...</p></div></div>}>
+        <LiveProctorView
+          sessionId={viewingSessionId}
+          className={classById[vs?.classId]?.name}
+          totalQuestions={vExam?.questions?.length || 0}
+          onBack={() => setViewingSessionId(null)}
+        />
+      </Suspense>
     );
   }
 
@@ -737,12 +932,14 @@ export default function TeacherDashboard({ onExit } = {}) {
   const extraNav = showAdminLink ? (
     <button
       type="button"
-      className="vt-nav-item"
+      className="t-rail-btn"
       onClick={() => { window.location.hash = 'admin'; }}
       title="Sang trang quản trị hệ thống"
     >
-      <IcoMonitor size={18} />
-      <span>Quản trị</span>
+      <span className="t-rail-btn-icon">
+        <IcoMonitor size={20} />
+      </span>
+      <span className="t-rail-btn-label">Quản trị</span>
     </button>
   ) : null;
 
@@ -786,11 +983,11 @@ export default function TeacherDashboard({ onExit } = {}) {
     },
     create: {
       title: 'AutoExam AI Studio',
-      subtitle: 'Trợ lý AI tạo đề thông minh & Lập ma trận chuẩn Bộ GD&ĐT 2025',
+      subtitle: 'Trợ lý AI tạo đề đa môn & Lập ma trận chuẩn Bộ GD&ĐT 2025',
     },
     simulator: {
       title: 'Bộ Xem Trước, Mô Phỏng & Đảo Đề',
-      subtitle: 'Trải nghiệm thi như học sinh, xuất bản in A4 chuẩn Bộ GD&ĐT và tự động hoán vị 4 mã đề',
+      subtitle: 'Trải nghiệm thi như học sinh, xuất bản in A4 và tự động hoán vị 4 mã đề',
     },
     bank: {
       title: 'Ngân hàng câu hỏi',
@@ -820,7 +1017,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       active={section}
       onChange={goSection}
       fullscreen
-      exitLabel="← Về ChemStudy"
+      exitLabel="Về ELEC AI"
       onExit={() => {
         if (onExit) onExit();
         else window.location.hash = 'home';
@@ -846,209 +1043,334 @@ export default function TeacherDashboard({ onExit } = {}) {
       />
 
       {/* ============================================================
-          TỔNG QUAN
+          TỔNG QUAN — 12-COL DARK BENTO
          ============================================================ */}
       {section === 'overview' && (
-        <>
-          <div className="vt-row-hero">
-            <div className="vt-hero">
-              <div className="vt-hero-left">
-                <span className="vt-hero-label">Phòng thi LIVE</span>
-                <div className="vt-hero-num">
-                  <b>{liveSessions.length}</b>
-                  <span>phiên</span>
+        <div className="t-bento-12">
+          <div className="t-col-12" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem' }}>
+            <SchedulePill
+              time={liveSessions.length > 0 ? `${liveSessions.length} PHÒNG THI ĐANG MỞ` : 'Lịch thi hôm nay'}
+              title={liveSessions[0]?.title || (recentExams[0]?.title ? `Gần nhất: ${recentExams[0].title}` : 'Sẵn sàng khảo thí')}
+              avatars={classes.slice(0, 4).map((c) => ({ name: c.name }))}
+              live={liveSessions.length > 0}
+              onClick={() => goSection('sessions')}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <button
+                type="button"
+                onClick={openNewExam}
+                style={{
+                  padding: '0.55rem 1.25rem',
+                  borderRadius: 'var(--t-r-pill)',
+                  background: 'var(--t-accent)',
+                  color: 'var(--t-accent-ink)',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  boxShadow: 'var(--t-shadow-lime)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <IcoSparkles size={16} /> Tạo đề mới cùng AI
+              </button>
+            </div>
+          </div>
+
+          <div className="t-col-4">
+            <BentoCard interactive onClick={() => goSection('exams')}>
+              <StatBig
+                value={exams.length}
+                label="Đề thi đã biên soạn"
+                suffix=" đề"
+                delta={countBy('ready')}
+                deltaLabel="sẵn sàng mở"
+              />
+            </BentoCard>
+          </div>
+
+          <div className="t-col-4">
+            <BentoCard interactive onClick={exportAllCsv}>
+              <StatBig
+                value={subsInRange.length}
+                label="Bài kiểm tra đã nộp"
+                suffix=" bài"
+                delta={passRate}
+                deltaLabel="% đạt chuẩn (≥5.0)"
+              />
+            </BentoCard>
+          </div>
+
+          <div className="t-col-4">
+            <BentoCard
+              interactive
+              tone={atRiskStudents.length > 0 ? 'dark' : 'default'}
+              onClick={() => goSection('classes')}
+            >
+              <StatBig
+                value={atRiskStudents.length}
+                label="Học sinh cần kèm thêm"
+                suffix=" HS"
+                delta={atRiskStudents.length > 0 ? -atRiskStudents.length : 0}
+                deltaLabel="dưới 50% điểm"
+              />
+            </BentoCard>
+          </div>
+
+          <div className="t-col-8">
+            <BentoCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--t-ink)' }}>
+                    Lớp học của tôi
+                  </h3>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--t-ink-muted)' }}>
+                    {classes.length} lớp học · Quản lý học sinh và tiến độ học tập
+                  </p>
                 </div>
-                <dl className="vt-hero-facts">
-                  <div><dt>Đang làm bài</dt><dd>{roomStudents} HS</dd></div>
-                  <div><dt>Vi phạm</dt><dd>{roomViol}</dd></div>
-                </dl>
-                {liveSessions.length > 0 && (
-                  <button type="button" className="vt-hero-btn" onClick={goBell}>
-                    <IcoVideo size={14} /> Vào giám sát
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={() => goSection('classes')}
+                  style={{ borderRadius: 'var(--t-r-pill)', fontSize: '0.78rem' }}
+                >
+                  Xem tất cả ({classes.length})
+                </button>
               </div>
-              <div className="vt-hero-right">
-                <div className="vt-hero-chart-head">
-                  <b>Xu hướng điểm TB theo đề</b>
-                  <div className="vt-seg" role="group">
-                    <button type="button" className={chartMode === 'line' ? 'on' : ''} onClick={() => setChartMode('line')}>
-                      <IcoChart size={14} />
-                    </button>
-                    <button type="button" className={chartMode === 'bar' ? 'on' : ''} onClick={() => setChartMode('bar')}>
-                      <IcoGrid size={14} />
-                    </button>
+
+              {classes.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--t-ink-muted)' }}>
+                  <p>Chưa có lớp học nào. Hãy bấm "Tạo lớp mới" để bắt đầu.</p>
+                  <button
+                    type="button"
+                    className="vt-btn sm primary"
+                    onClick={() => { goSection('classes'); setShowCreateClass(true); }}
+                  >
+                    + Tạo lớp đầu tiên
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem' }}>
+                  {classes.slice(0, 4).map((c) => {
+                    const membersCount = c.members?.length || 0;
+                    const classExams = exams.filter((e) => e.classId === c.id);
+                    const dotLevel = Math.min(5, Math.max(1, Math.round((membersCount > 0 ? 3 : 1) + (classExams.length > 0 ? 1 : 0))));
+
+                    return (
+                      <BentoCard
+                        key={c.id}
+                        notch
+                        onNotchClick={() => setSelectedClass(c)}
+                        style={{
+                          background: 'var(--t-surface-2)',
+                          border: '1px solid var(--t-border)',
+                          padding: '1.15rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                          <Avatar name={c.name} size={42} />
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: 'var(--t-ink)' }}>
+                              {c.name}
+                            </h4>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--t-ink-muted)' }}>
+                              Key: <code style={{ color: 'var(--t-accent)', fontWeight: 700 }}>{c.key}</code>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--t-border-subtle)' }}>
+                          <span style={{ fontSize: '0.76rem', color: 'var(--t-ink-muted)' }}>
+                            {membersCount} học sinh · {classExams.length} đề
+                          </span>
+                          <RatingDots count={5} filled={dotLevel} tone="lime" />
+                        </div>
+                      </BentoCard>
+                    );
+                  })}
+                </div>
+              )}
+            </BentoCard>
+          </div>
+
+          <div className="t-col-4">
+            <BentoCard tone="dark">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--t-ink)' }}>
+                  Điểm trung bình
+                </h3>
+                <span style={{ fontSize: '0.74rem', color: 'var(--t-ink-muted)', background: 'var(--t-surface-2)', padding: '0.15rem 0.5rem', borderRadius: 999 }}>
+                  {range === 'all' ? 'Tất cả' : `${range} ngày`}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '0.85rem 0' }}>
+                <Donut value={avgPct} size={132} stroke={12}>
+                  <strong style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--t-ink)' }}>
+                    {avgPct}<sup>%</sup>
+                  </strong>
+                  <small style={{ fontSize: '0.75rem', color: 'var(--t-ink-muted)' }}>{subsInRange.length} bài nộp</small>
+                </Donut>
+              </div>
+
+              <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--t-border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--t-ink-muted)' }}>Xếp loại năng lực:</span>
+                <strong style={{ color: 'var(--t-accent)' }}>{classHealthGrade.grade} ({classHealthGrade.label})</strong>
+              </div>
+            </BentoCard>
+          </div>
+
+          <div className="t-col-8">
+            <BentoCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--t-ink)' }}>
+                    Xu hướng điểm thi theo đề
+                  </h3>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                    {trend.length} đề thi gần nhất có học sinh nộp bài
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button
+                    type="button"
+                    className={`vt-btn sm ${chartMode === 'line' ? 'primary' : ''}`}
+                    onClick={() => setChartMode('line')}
+                    style={{ borderRadius: 8, padding: '0.3rem 0.6rem' }}
+                  >
+                    <IcoChart size={13} /> Đường
+                  </button>
+                  <button
+                    type="button"
+                    className={`vt-btn sm ${chartMode === 'bar' ? 'primary' : ''}`}
+                    onClick={() => setChartMode('bar')}
+                    style={{ borderRadius: 8, padding: '0.3rem 0.6rem' }}
+                  >
+                    <IcoGrid size={13} /> Cột
+                  </button>
+                </div>
+              </div>
+
+              <TrendChart points={trend} mode={chartMode} max={100} height={150} />
+            </BentoCard>
+          </div>
+
+          <div className="t-col-4">
+            <BentoCard tone={liveSessions.length > 0 ? 'lime' : 'default'}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: liveSessions.length > 0 ? 'var(--t-accent-ink)' : 'var(--t-ink)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {liveSessions.length > 0 ? (
+                  <>
+                    <IcoBolt size={16} />
+                    Phòng thi LIVE đang mở
+                  </>
+                ) : (
+                  'Nhiệm vụ cần xử lý'
+                )}
+              </h3>
+
+              {liveSessions.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--t-accent-ink)', fontWeight: 600 }}>
+                    <strong>{liveSessions[0].title}</strong>
+                    <div style={{ fontSize: '0.78rem', marginTop: '0.2rem' }}>
+                      {roomStudents} học sinh đang làm bài · {roomViol} cảnh báo vi phạm
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={goBell}
+                    style={{
+                      marginTop: '0.5rem',
+                      padding: '0.55rem 1rem',
+                      borderRadius: 'var(--t-r-pill)',
+                      background: '#0e0e10',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Vào giám sát camera ngay
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 12,
+                      background: 'var(--t-surface-2)',
+                      border: '1px solid var(--t-border)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => goSection('classes')}
+                  >
+                    <span style={{ fontSize: '0.84rem', color: 'var(--t-ink)' }}>Học sinh chờ duyệt vào lớp</span>
+                    <span style={{ fontWeight: 800, color: totalPendingMembers > 0 ? 'var(--t-status-warn)' : 'var(--t-ink-muted)' }}>
+                      {totalPendingMembers}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 12,
+                      background: 'var(--t-surface-2)',
+                      border: '1px solid var(--t-border)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => goSection('retry')}
+                  >
+                    <span style={{ fontSize: '0.84rem', color: 'var(--t-ink)' }}>Yêu cầu xin thi lại</span>
+                    <span style={{ fontWeight: 800, color: totalPendingRetry > 0 ? 'var(--t-status-warn)' : 'var(--t-ink-muted)' }}>
+                      {totalPendingRetry}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 12,
+                      background: 'var(--t-surface-2)',
+                      border: '1px solid var(--t-border)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={exportAllCsv}
+                  >
+                    <span style={{ fontSize: '0.84rem', color: 'var(--t-ink)' }}>Xuất bảng điểm tổng hợp</span>
+                    <span style={{ color: 'var(--t-accent)', fontSize: '0.84rem', fontWeight: 700 }}>CSV</span>
                   </div>
                 </div>
-                <TrendChart points={trend} mode={chartMode} max={100} />
-                <p className="vt-hero-foot">{trend.length} đề gần nhất có bài nộp</p>
-              </div>
-            </div>
-
-            <div className="vt-card vt-ring-card">
-              <header><b>Điểm trung bình</b><small>{range === 'all' ? 'Tất cả' : `${range} ngày`}</small></header>
-              <Donut value={avgPct} size={138} stroke={13}>
-                <strong>{avgPct}<sup>%</sup></strong>
-                <small>{subsInRange.length} bài</small>
-              </Donut>
-              <footer>
-                <span>Đạt từ 50% trở lên</span><b>{passRate}%</b>
-              </footer>
-            </div>
-          </div>
-
-          {/* ELEC AI CLASS INSIGHTS & DIAGNOSTICS */}
-          <div className="ap-ai-insight-box">
-            <div className="ap-ai-insight-head">
-              <div className="ap-ai-insight-badge">
-                <IcoSparkles size={14} /> ELEC AI Class Insights & Diagnostics
-              </div>
-              <span style={{ fontSize: '0.78rem', color: 'var(--mut)' }}>
-                Dựa trên {subsInRange.length} bài nộp của {classes.length} lớp học
-              </span>
-            </div>
-
-            <div className="ap-ai-insight-grid">
-              <div className="ap-ai-insight-card">
-                <b>Chỉ số tiếp thu bài học</b>
-                <p>
-                  Xếp loại: <strong style={{ color: 'var(--acc)', fontSize: '1.05rem' }}>{classInsights.health.grade}</strong> ({classInsights.health.label}).
-                  Điểm TB {classInsights.avgPct}% · đạt từ 50% là {classInsights.passRate}% trên {classInsights.submissionCount} bài.
-                </p>
-              </div>
-
-              <div className="ap-ai-insight-card">
-                <b>Chẩn đoán từ bài nộp</b>
-                <p>{classInsights.diagnosis}</p>
-                {classInsights.weakestTopics[0] && (
-                  <p style={{ marginTop: '0.45rem' }}>
-                    Chuyên đề yếu nhất: <strong>{classInsights.weakestTopics[0].topic}</strong> ({classInsights.weakestTopics[0].rate}% đúng).
-                  </p>
-                )}
-              </div>
-
-              <div className="ap-ai-insight-card">
-                <b>Học sinh cần kèm thêm ({classInsights.atRisk.length})</b>
-                <p>
-                  {classInsights.atRisk.length > 0
-                    ? `${classInsights.atRisk.length} học sinh dưới 50% (${classInsights.atRisk.slice(0, 3).map((s) => `${s.studentName} ${s.pct}%`).join(', ')}${classInsights.atRisk.length > 3 ? '…' : ''}). Nên mở quyền thi lại.`
-                    : classInsights.submissionCount
-                      ? 'Không có học sinh dưới 50% trong khoảng đang xem.'
-                      : 'Chưa có bài nộp để thống kê học sinh yếu.'}
-                </p>
-              </div>
-
-              <div className="ap-ai-insight-card">
-                <b>Gợi ý tiết tới</b>
-                <p>{classInsights.nextLesson}</p>
-                {classInsights.hardest[0] && (
-                  <p style={{ marginTop: '0.45rem' }}>
-                    Câu sai nhiều: đề “{classInsights.hardest[0].examTitle}”, câu {classInsights.hardest[0].index + 1} ({classInsights.hardest[0].rate}% đúng).
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="vt-range">
-            <h2>Xem theo thời gian</h2>
-            <div className="vt-pills">
-              {[['7', '7 ngày'], ['30', '30 ngày'], ['all', 'Tất cả']].map(([k, l]) => (
-                <button key={k} type="button" className={'vt-pill' + (range === k ? ' on' : '')} onClick={() => setRange(k)}>{l}</button>
-              ))}
-            </div>
-          </div>
-
-          <div className="vt-cols">
-            <div className="vt-col">
-              <div className="vt-card soft">
-                <h3 className="vt-card-title">Tạo nhanh</h3>
-                <div className="vt-quick">
-                  <button type="button" className="vt-qa" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
-                    <span><IcoUserPlus size={22} /></span><small>Lớp mới</small>
-                  </button>
-                  <button type="button" className="vt-qa" onClick={openNewExam}>
-                    <span><IcoBook size={22} /></span><small>Tạo đề</small>
-                  </button>
-                  <button type="button" className="vt-qa" onClick={() => goSection('sessions')}>
-                    <span><IcoVideo size={22} /></span><small>Phòng thi</small>
-                  </button>
-                  <button type="button" className="vt-qa" onClick={exportAllCsv}>
-                    <span><IcoDownload size={22} /></span><small>Xuất điểm</small>
-                  </button>
-                  <button type="button" className="vt-fab" onClick={openNewExam} aria-label="Tạo đề mới">+</button>
-                </div>
-              </div>
-
-              <div className="vt-card soft">
-                <header className="vt-card-head">
-                  <h3 className="vt-card-title">Đề thi gần đây</h3>
-                  <button type="button" className="vt-link" onClick={() => goSection('exams')}>
-                    Xem tất cả <IcoChevronRight size={12} />
-                  </button>
-                </header>
-                {recentExams.length === 0 ? (
-                  <p className="vt-muted">Chưa có đề nào. Bấm dấu + để tạo đề đầu tiên.</p>
-                ) : (
-                  <ul className="vt-list">
-                    {recentExams.map((ex) => {
-                      const subs = submissionsMap[ex.id] || [];
-                      const live = sessions.find((s) => s.examId === ex.id && s.status === 'live');
-                      return (
-                        <li key={ex.id}>
-                          <span className="vt-list-ico"><IcoBook size={18} /></span>
-                          <div className="vt-list-main">
-                            <b>{ex.title}</b>
-                            <small>Lớp {classById[ex.classId]?.name || '—'} · {subs.length} bài nộp</small>
-                          </div>
-                          {live ? (
-                            <button type="button" className="vt-btn sm primary" onClick={() => setViewingSessionId(live.id)}>
-                              <IcoVideo size={13} /> Giám sát
-                            </button>
-                          ) : (
-                            <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
-                              <IcoChart size={13} /> Thống kê
-                            </button>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            <aside className="vt-col side">
-              <header className="vt-group-head">
-                <h2>Lớp của tôi</h2>
-                <button type="button" className="vt-icon-btn" onClick={() => goSection('classes')}>
-                  <IcoChevronRight size={14} />
-                </button>
-              </header>
-              {classes.length === 0 ? (
-                <p className="vt-muted">Chưa có lớp nào.</p>
-              ) : (
-                <ul className="vt-group">
-                  {[...classes]
-                    .sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0))
-                    .slice(0, 6)
-                    .map((c) => (
-                      <li key={c.id}>
-                        <button type="button" onClick={() => setSelectedClass(c)}>
-                          <Avatar name={c.name} size={46} />
-                          <div>
-                            <b>{c.name}</b>
-                            <small>Key {c.key}</small>
-                          </div>
-                          <i className="vt-count">{c.members?.length || 0}</i>
-                        </button>
-                      </li>
-                    ))}
-                </ul>
               )}
-            </aside>
+            </BentoCard>
           </div>
-        </>
+
+          <div className="t-col-12" style={{ marginTop: '0.5rem' }}>
+            <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang chuẩn bị báo cáo AI sư phạm…</p></div>}>
+              <InsightPanel
+                insightsData={classInsights}
+                className={classes[0]?.name || 'Toàn bộ lớp học'}
+                subject="Hóa học"
+                onOpenAiStudio={() => openNewExam()}
+              />
+            </Suspense>
+          </div>
+        </div>
       )}
 
       {/* ============================================================
@@ -1177,12 +1499,16 @@ export default function TeacherDashboard({ onExit } = {}) {
       )}
 
       {/* ============================================================
-          ĐỀ THI
+          ĐỀ THI — CÓ FILTER MÔN + BADGE AI
          ============================================================ */}
       {section === 'exams' && (() => {
-        const list = examsWithStatus.filter(({ ex, st }) =>
-          (subTab === 'all' || st.key === subTab) && (!q || ex.title?.toLowerCase().includes(q))
-        );
+        const list = examsWithStatus.filter(({ ex, st }) => {
+          if (subTab !== 'all' && st.key !== subTab) return false;
+          if (subjectFilter && detectExamSubject(ex) !== subjectFilter) return false;
+          if (q && !ex.title?.toLowerCase().includes(q)) return false;
+          return true;
+        });
+
         if (exams.length === 0) {
           return (
             <div className="vt-empty">
@@ -1193,113 +1519,197 @@ export default function TeacherDashboard({ onExit } = {}) {
             </div>
           );
         }
-        if (list.length === 0) {
-          return (
-            <div className="vt-empty">
-              <span><IcoBook size={30} /></span>
-              <h3>Không có đề phù hợp</h3>
-              <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
-            </div>
-          );
-        }
+
         return (
-          <div className="vt-stackcards">
-            {list.map(({ ex, liveSession, st }) => {
-              const cls = classById[ex.classId];
-              const subs = submissionsMap[ex.id] || [];
-              const pcts = subs.map(pctOf);
-              const avg = subs.length ? Math.round(avgOf(pcts)) : null;
-              const best = subs.length ? Math.round(Math.max(...pcts)) : null;
-              const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
-              const memberCount = cls?.members?.length || 0;
-              return (
-                <article key={ex.id} className={'vt-card vt-exam' + (st.key === 'live' ? ' live' : '')}>
-                  <div className="vt-exam-main">
-                    <span className={'vt-chip ' + st.key}>
-                      {st.key === 'live' && <IcoDot size={7} />} {st.label}
-                    </span>
-                    <h3>{ex.title}</h3>
-                    <small>Lớp {cls?.name || '—'} · {ex.questions.length} câu · {ex.duration} phút</small>
-                    <div className="vt-linkbox">
-                      <code title={link}>{link}</code>
-                      <button
-                        type="button"
-                        className="vt-icon-btn"
-                        onClick={() => copyText(link, ex.id, 'Đã chép link đề')}
-                        title="Sao chép link"
-                      >
-                        {copiedKey === ex.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
-                      </button>
-                    </div>
-                  </div>
+          <>
+            {/* Filter môn */}
+            {availableSubjects.length > 1 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Môn:
+                </span>
+                <button
+                  type="button"
+                  className={'vt-chip' + (!subjectFilter ? ' active' : '')}
+                  onClick={() => setSubjectFilter('')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: 999,
+                    border: '1.5px solid ' + (!subjectFilter ? 'var(--acc)' : 'var(--soft)'),
+                    background: !subjectFilter ? 'var(--acc)' : 'var(--panel)',
+                    color: !subjectFilter ? '#fff' : 'var(--ink)',
+                    cursor: 'pointer',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Tất cả ({exams.length})
+                </button>
+                {availableSubjects.map((s) => {
+                  const count = exams.filter((e) => detectExamSubject(e) === s).length;
+                  const active = subjectFilter === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={'vt-chip' + (active ? ' active' : '')}
+                      onClick={() => setSubjectFilter(s)}
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: 999,
+                        border: '1.5px solid ' + (active ? 'var(--acc)' : 'var(--soft)'),
+                        background: active ? 'var(--acc)' : 'var(--panel)',
+                        color: active ? '#fff' : 'var(--ink)',
+                        cursor: 'pointer',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {s} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-                  <div className="vt-exam-stats">
-                    <div>
-                      <Donut value={memberCount ? subs.length : 0} max={memberCount || 1} size={74} stroke={8}>
-                        <strong className="sm">{subs.length}</strong>
-                      </Donut>
-                      <small>{memberCount ? `/${memberCount} đã nộp` : 'bài nộp'}</small>
-                    </div>
-                    <div>
-                      <b>{avg == null ? '—' : `${avg}%`}</b>
-                      <small>điểm TB</small>
-                    </div>
-                    <div>
-                      <b>{best == null ? '—' : `${best}%`}</b>
-                      <small>cao nhất</small>
-                    </div>
-                  </div>
+            {list.length === 0 ? (
+              <div className="vt-empty">
+                <span><IcoBook size={30} /></span>
+                <h3>Không có đề phù hợp</h3>
+                <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                {subjectFilter && (
+                  <button type="button" className="vt-btn" onClick={() => setSubjectFilter('')}>
+                    Xóa bộ lọc môn
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="vt-stackcards">
+                {list.map(({ ex, liveSession, st }) => {
+                  const cls = classById[ex.classId];
+                  const subs = submissionsMap[ex.id] || [];
+                  const pcts = subs.map(pctOf);
+                  const avg = subs.length ? Math.round(avgOf(pcts)) : null;
+                  const best = subs.length ? Math.round(Math.max(...pcts)) : null;
+                  const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
+                  const memberCount = cls?.members?.length || 0;
+                  const subject = detectExamSubject(ex);
+                  const isAi = isAiGeneratedExam(ex);
+                  const typeCount = (() => {
+                    const t = { single_choice: 0, true_false: 0, short_answer: 0 };
+                    (ex.questions || []).forEach((q) => {
+                      const k = q.type || 'single_choice';
+                      t[k] = (t[k] || 0) + 1;
+                    });
+                    return t;
+                  })();
 
-                  <div className="vt-exam-actions">
-                    {liveSession ? (
-                      <button type="button" className="vt-btn primary" onClick={() => setViewingSessionId(liveSession.id)}>
-                        <IcoVideo size={14} /> Giám sát
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="vt-btn primary"
-                        onClick={() => handleStartSession(ex)}
-                        disabled={startingId === ex.id || st.key === 'closed'}
-                      >
-                        {startingId === ex.id ? 'Đang tạo...' : <><IcoPlay size={14} /> Bắt đầu thi</>}
-                      </button>
-                    )}
-                    <div className="vt-exam-actions-row">
-                      <button
-                        type="button"
-                        className="vt-btn sm"
-                        style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
-                        onClick={() => setPreviewExam(ex)}
-                        title="Mô phỏng thi, bản in A4 và đảo 4 mã đề"
-                      >
-                        <IcoEye size={13} /> Xem trước & In A4
-                      </button>
-                      <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
-                        <IcoChart size={13} /> Thống kê
-                      </button>
-                      <button
-                        type="button"
-                        className="vt-icon-btn"
-                        onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
-                        title="Xuất điểm CSV"
-                      >
-                        <IcoDownload size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className="vt-icon-btn danger"
-                        onClick={() => handleDeleteExam(ex)}
-                        title="Xóa đề"
-                      >
-                        <IcoTrash size={15} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  return (
+                    <article key={ex.id} className={'vt-card vt-exam' + (st.key === 'live' ? ' live' : '')}>
+                      <div className="vt-exam-main">
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <span className={'vt-chip ' + st.key}>
+                            {st.key === 'live' && <IcoDot size={7} />} {st.label}
+                          </span>
+                          {subject && subject !== '—' && (
+                            <span className="vt-chip" style={{ background: 'color-mix(in srgb, #8b5cf6 12%, transparent)', color: '#7c3aed' }}>
+                              <IcoSubject size={11} /> {subject}
+                            </span>
+                          )}
+                          {isAi && (
+                            <span className="vt-chip" style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309' }}>
+                              <IcoSparkles size={11} /> AI tạo
+                            </span>
+                          )}
+                        </div>
+                        <h3>{ex.title}</h3>
+                        <small>
+                          Lớp {cls?.name || '—'} · {ex.questions.length} câu · {ex.duration} phút
+                          {typeCount.true_false > 0 && ` · ${typeCount.true_false} Đ/S`}
+                          {typeCount.short_answer > 0 && ` · ${typeCount.short_answer} TLN`}
+                        </small>
+                        <div className="vt-linkbox">
+                          <code title={link}>{link}</code>
+                          <button
+                            type="button"
+                            className="vt-icon-btn"
+                            onClick={() => copyText(link, ex.id, 'Đã chép link đề')}
+                            title="Sao chép link"
+                          >
+                            {copiedKey === ex.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="vt-exam-stats">
+                        <div>
+                          <Donut value={memberCount ? subs.length : 0} max={memberCount || 1} size={74} stroke={8}>
+                            <strong className="sm">{subs.length}</strong>
+                          </Donut>
+                          <small>{memberCount ? `/${memberCount} đã nộp` : 'bài nộp'}</small>
+                        </div>
+                        <div>
+                          <b>{avg == null ? '—' : `${avg}%`}</b>
+                          <small>điểm TB</small>
+                        </div>
+                        <div>
+                          <b>{best == null ? '—' : `${best}%`}</b>
+                          <small>cao nhất</small>
+                        </div>
+                      </div>
+
+                      <div className="vt-exam-actions">
+                        {liveSession ? (
+                          <button type="button" className="vt-btn primary" onClick={() => setViewingSessionId(liveSession.id)}>
+                            <IcoVideo size={14} /> Giám sát
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="vt-btn primary"
+                            onClick={() => handleStartSession(ex)}
+                            disabled={startingId === ex.id || st.key === 'closed'}
+                          >
+                            {startingId === ex.id ? 'Đang tạo...' : <><IcoPlay size={14} /> Bắt đầu thi</>}
+                          </button>
+                        )}
+                        <div className="vt-exam-actions-row">
+                          <button
+                            type="button"
+                            className="vt-btn sm"
+                            style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                            onClick={() => setPreviewExam(ex)}
+                            title="Mô phỏng thi, bản in A4 và đảo 4 mã đề"
+                          >
+                            <IcoEye size={13} /> Xem trước & In A4
+                          </button>
+                          <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
+                            <IcoChart size={13} /> Thống kê
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-icon-btn"
+                            onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
+                            title="Xuất điểm CSV"
+                          >
+                            <IcoDownload size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-icon-btn danger"
+                            onClick={() => handleDeleteExam(ex)}
+                            title="Xóa đề"
+                          >
+                            <IcoTrash size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
         );
       })()}
 
@@ -1407,24 +1817,34 @@ export default function TeacherDashboard({ onExit } = {}) {
       })()}
 
       {/* ============================================================
-          MÔ PHỎNG, BẢN IN A4 & ĐẢO 4 MÃ ĐỀ (STUDIO SUITE)
+          MÔ PHỎNG, BẢN IN A4 & ĐẢO 4 MÃ ĐỀ
          ============================================================ */}
       {section === 'simulator' && (
-        <TeacherSimulatorHub
-          teacherExams={exams}
-          classes={classes}
-        />
+        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải bộ mô phỏng...</p></div>}>
+          <TeacherSimulatorHub
+            teacherExams={exams}
+            classes={classes}
+          />
+        </Suspense>
       )}
 
       {/* ============================================================
           NGÂN HÀNG
          ============================================================ */}
-      {section === 'bank' && <QuestionBank />}
+      {section === 'bank' && (
+        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
+          <QuestionBank />
+        </Suspense>
+      )}
 
       {/* ============================================================
           CHẤM PHIẾU A4 (OMR)
          ============================================================ */}
-      {section === 'paper' && <PaperGrading classes={classes} exams={exams} />}
+      {section === 'paper' && (
+        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải chấm phiếu A4...</p></div>}>
+          <PaperGrading classes={classes} exams={exams} />
+        </Suspense>
+      )}
 
       {/* ============================================================
           XIN THI LẠI
@@ -1451,6 +1871,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 {pending.map((r) => {
                   const exam = exams.find((e) => e.id === r.examId);
                   const cls = classById[r.classId];
+                  const isActing = retryActioning === r.id;
                   return (
                     <article key={r.id} className="vt-card">
                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1477,12 +1898,42 @@ export default function TeacherDashboard({ onExit } = {}) {
                           <p style={{ margin: '.5rem 0 0', color: 'var(--mut)', font: '500 .74rem var(--sans)' }}>
                             Gửi cách đây {Math.round((Date.now() - (r.requestedAtMs || tsMs(r.requestedAt))) / 60000)} phút
                           </p>
+
+                          <input
+                            type="text"
+                            placeholder="Ghi chú gửi học sinh (không bắt buộc)"
+                            value={retryNotes[r.id] || ''}
+                            onChange={(e) => setRetryNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                            maxLength={200}
+                            disabled={isActing}
+                            style={{
+                              marginTop: '.7rem',
+                              width: '100%',
+                              padding: '.55rem .85rem',
+                              borderRadius: 10,
+                              border: '1.5px solid var(--soft)',
+                              background: 'var(--vt-tint)',
+                              color: 'var(--ink)',
+                              font: '500 .82rem var(--sans)',
+                              outline: 0,
+                            }}
+                          />
                         </div>
-                        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                          <button type="button" className="vt-btn primary" onClick={() => handleApproveRetry(r)}>
-                            <IcoCheckCircle size={14} /> Duyệt
+                        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="vt-btn primary"
+                            onClick={() => handleApproveRetry(r)}
+                            disabled={isActing}
+                          >
+                            <IcoCheckCircle size={14} /> {isActing ? 'Đang xử lý...' : 'Duyệt'}
                           </button>
-                          <button type="button" className="vt-btn danger" onClick={() => handleDenyRetry(r)}>
+                          <button
+                            type="button"
+                            className="vt-btn danger"
+                            onClick={() => handleDenyRetry(r)}
+                            disabled={isActing}
+                          >
                             Từ chối
                           </button>
                         </div>
@@ -1500,22 +1951,26 @@ export default function TeacherDashboard({ onExit } = {}) {
           TẠO ĐỀ (AUTOEXAM AI STUDIO)
          ============================================================ */}
       {section === 'create' && (
-        <CreateExamPage
-          classInfo={selectedClass || classes[0]}
-          classes={classes}
-          classInsights={classInsights}
-          grades={[]}
-          subjects={[]}
-          onDone={async () => {
-            await refresh();
-            setSelectedClass(null);
-            goSection('exams');
-          }}
-          onCancel={() => {
-            setSelectedClass(null);
-            goSection('overview');
-          }}
-        />
+        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải AI Studio...</p></div>}>
+          <CreateExamPage
+            classInfo={selectedClass || classes[0]}
+            classes={classes}
+            classInsights={classInsights}
+            grades={[]}
+            subjects={[]}
+            onDone={async () => {
+              // FIX #7: clear subsCache để tab Đề thi hiển thị đầy đủ
+              subsCacheRef.current = {};
+              await refresh();
+              setSelectedClass(null);
+              goSection('exams');
+            }}
+            onCancel={() => {
+              setSelectedClass(null);
+              goSection('overview');
+            }}
+          />
+        </Suspense>
       )}
 
       {/* ============ TOAST ============ */}
@@ -1624,6 +2079,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           classInfo={selectedClass}
           onClose={() => { setShowExamCreate(false); setSelectedClass(null); }}
           onCreated={async () => {
+            subsCacheRef.current = {};
             await refresh();
             setShowExamCreate(false);
             setSelectedClass(null);
@@ -1683,7 +2139,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         <Modal title={`Ghim thông báo: ${noticeClass.name}`} size="sm" onClose={() => setNoticeClass(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '0.2rem 0' }}>
             <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--mut)', lineHeight: 1.45 }}>
-              Thông báo này sẽ được ghim nổi bật ngay đầu trang &ldquo;Lớp học của tôi&rdquo; của toàn bộ học sinh trong lớp {noticeClass.name}.
+              Thông báo này sẽ được ghim nổi bật ngay đầu trang "Lớp học của tôi" của toàn bộ học sinh trong lớp {noticeClass.name}.
             </p>
             <textarea
               autoFocus
@@ -1739,13 +2195,16 @@ export default function TeacherDashboard({ onExit } = {}) {
           fn?.();
         }}
       />
-      {/* ============ MODAL XEM TRƯỚC / MÔ PHỎNG / BẢN IN A4 / ĐẢO 4 MÃ ĐỀ ============ */}
+
+      {/* ============ MODAL XEM TRƯỚC ============ */}
       {previewExam && (
-        <ExamPreviewSimulator
-          exam={previewExam}
-          questions={previewExam.questions || []}
-          onClose={() => setPreviewExam(null)}
-        />
+        <Suspense fallback={null}>
+          <ExamPreviewSimulator
+            exam={previewExam}
+            questions={previewExam.questions || []}
+            onClose={() => setPreviewExam(null)}
+          />
+        </Suspense>
       )}
     </DashFrame>
   );
@@ -1769,7 +2228,7 @@ function ExamStats({ exam, subs, onExport }) {
   const perQ = (exam.questions || []).map((qq, i) => {
     const rated = subs.filter((s) => s.detail?.[i]);
     const ok = rated.filter((s) => s.detail[i].isCorrect).length;
-    return { i, text: qq.q, rate: rated.length ? Math.round((ok / rated.length) * 100) : null };
+    return { i, text: qq.q, type: qq.type || 'single_choice', rate: rated.length ? Math.round((ok / rated.length) * 100) : null };
   }).filter((x) => x.rate != null);
   const hardest = [...perQ].sort((a, b) => a.rate - b.rate).slice(0, 5);
 

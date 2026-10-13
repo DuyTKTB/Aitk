@@ -26,6 +26,7 @@ import {
 } from '../../lib/paperStore.js';
 import sound from '../../lib/gameSound.js';
 import { downloadCsv } from '../DashShell.jsx';
+import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
 import '../../styles/paper-grading.css';
 
 /* ============ ICONS ============ */
@@ -121,9 +122,9 @@ export default function PaperGrading({ classes = [], exams = [] }) {
   };
 
   const handlePrintSheet = () => {
-    // Mở trang tài liệu hoặc tải mẫu phiếu A4
-    window.open('https://moet.gov.vn/', '_blank');
-    say('Đang mở thông tin mẫu phiếu thi trắc nghiệm A4 chuẩn Bộ GD&ĐT 2025');
+    sound.pop?.();
+    printOmrSheetA4({ title: 'PHIẾU TRẢ LỜI TRẮC NGHIỆM' });
+    say('Đã mở cửa sổ in mẫu phiếu A4 chuẩn Bộ GD&ĐT 2025');
   };
 
   return (

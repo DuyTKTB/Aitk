@@ -1,35 +1,33 @@
 /* ============================================================
-   DashShell.jsx — Bộ khung dùng chung (v2)
+   DashShell.jsx — Bộ khung Studio cho Giáo viên (v5)
    ------------------------------------------------------------
-   v2:
-     • Toast có tone (info/success/error) — dùng CSS variable
-     • Modal backdrop click đóng chính xác, không đóng khi click
-       vào nội dung con.
-     • Chỉ dùng SVG, không emoji.
-   ============================================================ */
-import { useEffect, useId, useRef } from 'react';
+   v5:
+     • Nav rail 56px, chỉ icon, giống SuperGrok
+     • Tooltip khi hover
+     • Dùng AIMark của app (không phải logo giả)
+     • Import React đầy đủ   ============================================================ */
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { IcoArrowLeft, IcoSearch, IcoClose, IcoBell } from '../lib/sessionIcons.jsx';
 import '../styles/dash-vitality.css';
+import '../styles/teacher-ds.css';
 
-const markMods = import.meta.glob('./AIMark*.jsx', { eager: true });
-const AIMarkComp = (() => {
-  const m = Object.values(markMods)[0];
-  return m ? (m.default || m.AIMark || null) : null;
-})();
+/* ---------- DÙNG AIMARK CỦA APP ---------- */
+import AIMark from './AIMark.jsx';
 
-export function BrandMark({ size = 34 }) {
-  return (
-    <div className="vt-brand">
-      <span className="vt-brand-mark" aria-hidden="true">
-        {AIMarkComp ? <AIMarkComp size={size} /> : <i className="vt-brand-fallback" />}
-      </span>
-      <span className="vt-brand-text">
-        <b>ELEC AI</b>
-        <small>Góc giáo viên</small>
-      </span>
-    </div>
-  );
-}
+const IcoSun = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </svg>
+);
+
+const IcoMoon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
 
 export const tsMs = (t) => {
   if (!t) return 0;
@@ -56,7 +54,6 @@ export const fmtClock = (ms) => {
 export function downloadCsv(filename, rows) {
   const esc = (v) => {
     let s = v == null ? '' : String(v);
-    // v3: chống CSV/Excel formula injection — tên HS như "=HYPERLINK(...)" sẽ bị Excel chạy
     if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = "'" + s;
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
@@ -67,7 +64,7 @@ export function downloadCsv(filename, rows) {
   a.href = url;
   a.download = filename;
   a.style.display = 'none';
-  document.body.appendChild(a); // một số trình duyệt chỉ tải khi thẻ <a> nằm trong DOM
+  document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -86,7 +83,7 @@ export function Avatar({ name = '?', size = 44 }) {
         width: size,
         height: size,
         fontSize: Math.round(size * 0.4),
-        background: `linear-gradient(145deg, hsl(${hue} 88% 70%), hsl(${hue + 18} 80% 52%))`,
+        background: `linear-gradient(145deg, hsl(${hue} 70% 55%), hsl(${hue + 18} 65% 42%))`,
       }}
       aria-hidden="true"
     >
@@ -120,7 +117,7 @@ export function Donut({ value = 0, max = 100, size = 120, stroke = 12, tone = 'a
   );
 }
 
-export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', height = 130 }) {
+export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', height = 140 }) {
   const gid = useId().replace(/:/g, '');
   const W = 360;
   const H = height;
@@ -147,8 +144,8 @@ export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', 
     <svg className="vt-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Biểu đồ">
       <defs>
         <linearGradient id={`g${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity=".38" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0" stopColor="var(--ts-accent)" stopOpacity=".25" />
+          <stop offset="1" stopColor="var(--ts-accent)" stopOpacity="0" />
         </linearGradient>
       </defs>
       {[0.25, 0.5, 0.75].map((f) => (
@@ -190,7 +187,6 @@ export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', 
   );
 }
 
-/* v3: ngăn xếp modal — Esc chỉ đóng modal trên cùng (trước đây đóng tất cả cùng lúc). */
 const modalStack = [];
 
 export function Modal({ title, onClose, size = 'md', children, foot }) {
@@ -202,7 +198,7 @@ export function Modal({ title, onClose, size = 'md', children, foot }) {
     modalStack.push(token);
     const opener = document.activeElement;
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden'; // khóa cuộn trang nền
+    document.body.style.overflow = 'hidden';
 
     const h = (e) => {
       if (e.key === 'Escape' && modalStack[modalStack.length - 1] === token) closeRef.current?.();
@@ -213,15 +209,13 @@ export function Modal({ title, onClose, size = 'md', children, foot }) {
       const i = modalStack.indexOf(token);
       if (i >= 0) modalStack.splice(i, 1);
       document.body.style.overflow = prevOverflow;
-      if (opener && typeof opener.focus === 'function') opener.focus(); // trả focus về nút đã mở
+      if (opener && typeof opener.focus === 'function') opener.focus();
     };
   }, []);
 
   return (
     <div
       className="vt-backdrop"
-      /* onMouseDown thay cho onClick: bôi đen chữ trong hộp rồi thả chuột ra ngoài
-         không còn làm đóng hộp thoại ngoài ý muốn. */
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
       role="presentation"
     >
@@ -260,72 +254,127 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
         </>
       }
     >
-      <p className="vt-confirm-text">{body}</p>
+      <p className="vt-muted">{body}</p>
     </Modal>
   );
 }
 
 export function Topbar({
   title, subtitle, tabs, active, onTab, search, onSearch,
-  placeholder = 'Tìm kiếm...', bell,
+  placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme,
 }) {
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <header className="vt-top">
-      {tabs && tabs.length > 0 ? (
-        <div className="vt-tabs" role="tablist">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={active === t.key}
-              className={'vt-tab' + (active === t.key ? ' on' : '')}
-              onClick={() => onTab(t.key)}
-            >
-              {t.label}
-              {typeof t.count === 'number' && <em>{t.count}</em>}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="vt-title">
-          <h1>{title}</h1>
-          {subtitle && <p>{subtitle}</p>}
-        </div>
-      )}
+    <header className="t-topbar-slim">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: 1 }}>
+        {tabs && tabs.length > 0 ? (
+          <div className="vt-tabs" role="tablist">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={active === t.key}
+                className={'vt-tab' + (active === t.key ? ' on' : '')}
+                onClick={() => onTab(t.key)}
+              >
+                {t.label}
+                {typeof t.count === 'number' && <em>{t.count}</em>}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+            <h1 style={{
+              margin: 0, fontSize: 18, fontWeight: 700,
+              color: 'var(--ts-ink)', letterSpacing: '-0.02em',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {title}
+            </h1>
+            {subtitle && (
+              <p style={{
+                margin: 0, fontSize: 12, color: 'var(--ts-ink-2)',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
-      {onSearch && (
-        <label className="vt-search">
-          <IcoSearch size={16} />
-          <input
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder={placeholder}
-            aria-label={placeholder}
-          />
-          {search && (
-            <button type="button" onClick={() => onSearch('')} aria-label="Xóa tìm kiếm">
-              <IcoClose size={12} />
-            </button>
-          )}
-        </label>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {onSearch && (
+          <div className="t-search-pill">
+            <IcoSearch size={14} />
+            <input
+              ref={searchInputRef}
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder={placeholder}
+              aria-label={placeholder}
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => onSearch('')}
+                style={{ border: 0, background: 'none', color: 'var(--ts-ink-3)', cursor: 'pointer', padding: 0 }}
+                aria-label="Xóa tìm kiếm"
+              >
+                <IcoClose size={11} />
+              </button>
+            ) : (
+              <span className="t-search-kbd">⌘K</span>
+            )}
+          </div>
+        )}
 
-      {bell && (
-        <button
-          type="button"
-          className={'vt-bell' + (bell.on ? ' on' : '')}
-          onClick={bell.onClick}
-          title={bell.title}
-          aria-label={bell.title}
-          aria-pressed={bell.pressed}
-        >
-          {bell.Icon ? <bell.Icon size={19} /> : <IcoBell size={19} />}
-        </button>
-      )}
+        {bell && (
+          <button
+            type="button"
+            className="vt-icon-btn"
+            onClick={bell.onClick}
+            title={bell.title}
+            aria-label={bell.title}
+            style={{
+              background: bell.on ? 'color-mix(in srgb, var(--ts-danger) 15%, transparent)' : 'var(--ts-surface-2)',
+              color: bell.on ? 'var(--ts-danger)' : 'var(--ts-ink-2)',
+              borderColor: bell.on ? 'color-mix(in srgb, var(--ts-danger) 30%, transparent)' : 'var(--ts-border)',
+            }}
+          >
+            {bell.Icon ? <bell.Icon size={16} /> : <IcoBell size={16} />}
+          </button>
+        )}
+
+        {onToggleTheme && (
+          <button
+            type="button"
+            className="vt-icon-btn"
+            onClick={onToggleTheme}
+            title={theme === 'light' ? 'Chuyển sang tối' : 'Chuyển sang sáng'}
+            aria-label="Đổi giao diện"
+          >
+            {theme === 'light' ? <IcoMoon size={16} /> : <IcoSun size={16} />}
+          </button>
+        )}
+      </div>
     </header>
   );
 }
+Topbar.isTopbar = true;
 
 export function DashFrame({
   items,
@@ -339,39 +388,96 @@ export function DashFrame({
   className = '',
   children,
 }) {
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('elec_teacher_theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const handleToggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try {
+      localStorage.setItem('elec_teacher_theme', next);
+    } catch { /* */ }
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const isTopbarElem = (child) =>
+    React.isValidElement(child) && (child.type === Topbar || child.type?.isTopbar);
+
   return (
-    <div className={`vt ${fullscreen ? 'vt-fullscreen' : ''} ${className}`}>
-      <div className="vt-frame">
-        <aside className="vt-side">
-          <BrandMark />
-          <nav className="vt-nav" aria-label="Điều hướng">
-            {items.map((it) => {
-              const I = it.Icon;
-              const on = active === it.key;
-              return (
-                <button
-                  key={it.key}
-                  type="button"
-                  className={'vt-nav-item' + (on ? ' on' : '')}
-                  onClick={() => onChange(it.key)}
-                  aria-current={on ? 'page' : undefined}
-                >
-                  <I size={18} />
-                  <span>{it.label}</span>
-                  {it.badge ? <i className={'vt-nav-badge' + (it.live ? ' live' : '')}>{it.badge}</i> : null}
-                </button>
-              );
-            })}
-            {extraNav}
-          </nav>
-          {sideNote}
-          <button type="button" className="vt-exit" onClick={onExit}>
-            <IcoArrowLeft size={14} />
-            <span>{exitLabel}</span>
+    <div className={`t-shell ${className}`} data-theme={theme}>
+      <aside className="t-rail-sidebar">
+        {/* Logo AIMark của app — dùng size nhỏ, không có chữ */}
+        <div className="t-rail-logo" onClick={onExit} title="ELEC AI">
+          <AIMark size={32} animate={false} />
+          <span className="t-rail-logo-text">ELEC AI</span>
+        </div>
+
+        <nav className="t-rail-nav" aria-label="Điều hướng giáo viên">
+          {items.map((it) => {
+            const I = it.Icon;
+            const on = active === it.key;
+            return (
+              <button
+                key={it.key}
+                type="button"
+                className={`t-rail-btn ${on ? 'active' : ''}`}
+                onClick={() => onChange(it.key)}
+                title={it.label}
+                aria-current={on ? 'page' : undefined}
+              >
+                <span className="t-rail-btn-icon">
+                  <I size={20} />
+                </span>
+                <span className="t-rail-btn-label">{it.label}</span>
+                {it.badge ? <span className="t-rail-btn-badge">{it.badge}</span> : null}
+              </button>
+            );
+          })}
+          {extraNav}
+        </nav>
+
+        <div className="t-rail-footer">
+          <button
+            type="button"
+            className="t-rail-btn"
+            onClick={onExit}
+            title={exitLabel}
+          >
+            <span className="t-rail-btn-icon">
+              <IcoArrowLeft size={20} />
+            </span>
+            <span className="t-rail-btn-label">{exitLabel}</span>
           </button>
-        </aside>
-        <section className="vt-main">{children}</section>
-      </div>
+        </div>
+      </aside>
+
+      <section className="t-main-area">
+        {React.Children.map(children, (child) => {
+          if (isTopbarElem(child)) {
+            return React.cloneElement(child, {
+              theme,
+              onToggleTheme: handleToggleTheme,
+            });
+          }
+          return null;
+        })}
+        <div className="t-viewport">
+          {React.Children.map(children, (child) => {
+            if (isTopbarElem(child)) {
+              return null;
+            }
+            return child;
+          })}
+        </div>
+      </section>
     </div>
   );
 }
