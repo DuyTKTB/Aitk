@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { isAdmin } from './lib/isAdmin.js';   // nguồn duy nhất (claims), thay cho bản cũ đọc VITE_ADMIN_EMAILS
 import { initSubmitQueue } from './lib/submitQueue.js';
@@ -59,6 +59,8 @@ import LiveSessionBanner from './components/LiveSessionBanner.jsx';
 import { useAuth } from './hooks/useAuth.jsx';
 import { useTeacherPro } from './hooks/useTeacherPro.js';
 import { getUserRole } from './lib/userRole.js';
+import { getCredits, onCreditsChange } from './lib/creditService.js';
+import { setExamAiUserId } from './lib/examAiUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase.js';
 
@@ -222,6 +224,19 @@ export default function App() {
   const navRef = useRef(null);
   const progRef = useRef(null);
   const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
+  const [credits, setCredits] = useState(null);
+
+  /* ============ LOAD CREDITS ============ */
+  useEffect(() => {
+    if (!user?.uid) { setCredits(null); setExamAiUserId(null); return; }
+    setExamAiUserId(user.uid); // Cho exam AI cũng trừ credits
+    getCredits(user.uid).then((c) => setCredits(c.balance)).catch(() => {});
+    const unsub = onCreditsChange(user.uid, (data) => setCredits(data.balance));
+    // Lắng nghe event từ creditService khi trừ điểm
+    const onCreditEvt = (e) => { if (e.detail?.balance != null) setCredits(e.detail.balance); };
+    window.addEventListener('cs-credit-update', onCreditEvt);
+    return () => { unsub(); window.removeEventListener('cs-credit-update', onCreditEvt); };
+  }, [user?.uid]);
 
   /* ============ LOAD ROLE ============ */
   useEffect(() => {
@@ -504,6 +519,7 @@ export default function App() {
         isAdmin={isAdmin(user)}
         isPro={pro.isPro}
         userRole={userRole}
+        credits={credits}
         toolOpen={toolOpen}
         onToolOpen={setToolOpen}
         tools={NAV_TOOLS_GROUPS}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocalStorage, liveStreak, dayKey } from '../hooks.js';
 import Pet, { STAGES } from './Pet.jsx';
-import { IcePet, LeafPet, WaterPet, PET_SKINS } from './PetSkins.jsx';
+import { SkinPet, PET_SKINS } from './PetSkins.jsx';
 import {
   IconGem, IconFire, IconBook, IconApple, IconX,
   IconInfo, IconChat, IconHeart, IconCake, IconTrend, IconSparkle,
@@ -28,41 +28,43 @@ const DIALOGUES = {
 
 const CHAT_RESPONSES = {
   happy: {
-    'chào': 'Chào bạn! Hôm nay vui quá',
-    'khỏe': 'Mình khỏe lắm! Cảm ơn bạn',
-    'học': 'Học đi nào! Mình sẽ cổ vũ bạn',
-    'đói': 'Mình no rồi, cảm ơn bạn!',
-    'chơi': 'Học xong rồi chơi nha!',
-    default: 'Hihi, mình vui lắm! Hỏi gì nữa không?',
+    'chào': ['Chào bạn! Hôm nay vui quá', 'Chào chào! Mình đang phấn khích nè'],
+    'khỏe': ['Mình khỏe lắm! Cảm ơn bạn', 'Khỏe re luôn, bạn thì sao?'],
+    'học': ['Học đi nào! Mình sẽ cổ vũ bạn', 'Mình ở đây cổ vũ bạn học nè!'],
+    'đói': ['Mình no rồi, cảm ơn bạn!', 'No căng bụng luôn á!'],
+    'chơi': ['Học xong rồi chơi nha!', 'Chơi game cũng là học mà, đúng không?'],
+    default: ['Hihi, mình vui lắm! Hỏi gì nữa không?', 'Hỏi tiếp đi, mình thích trò chuyện với bạn!'],
   },
   normal: {
-    'chào': 'Chào bạn! Hôm nay học gì thế?',
-    'khỏe': 'Mình ổn. Bạn khỏe không?',
-    'học': 'Học là tốt! Cùng nhau cố gắng nhé',
-    'đói': 'Hơi đói đó... có gì ăn không?',
-    'chơi': 'Ừ, thư giãn chút cũng tốt!',
-    default: 'Mình đang đợi bạn học cùng nè~',
+    'chào': ['Chào bạn! Hôm nay học gì thế?', 'Chào! Hôm nay thế nào?'],
+    'khỏe': ['Mình ổn. Bạn khỏe không?', 'Bình thường thôi, còn bạn?'],
+    'học': ['Học là tốt! Cùng nhau cố gắng nhé', 'Chọn một môn rồi bắt đầu nào!'],
+    'đói': ['Hơi đói đó... có gì ăn không?', 'Bụng mình hơi réo rồi...'],
+    'chơi': ['Ừ, thư giãn chút cũng tốt!', 'Chơi một ván rồi học tiếp nhé!'],
+    default: ['Mình đang đợi bạn học cùng nè~', 'Ừm... kể mình nghe thêm đi!'],
   },
   sleepy: {
-    'chào': 'Zzz... chào bạn...',
-    'khỏe': 'Hơi mệt... cần năng lượng',
-    'học': 'Học đi cho mình tỉnh táo với!',
-    'đói': 'Đói lắm rồi! Cho ăn đi bạn',
-    'chơi': 'Không chơi đâu... buồn ngủ lắm',
-    default: 'Zzz... hmm... bạn nói gì?',
+    'chào': ['Zzz... chào bạn...', 'Hmm... ai đó chào mình à...'],
+    'khỏe': ['Hơi mệt... cần năng lượng', 'Mệt quá... cho mình ăn đi'],
+    'học': ['Học đi cho mình tỉnh táo với!', 'Làm một quiz nhỏ đánh thức mình nhé'],
+    'đói': ['Đói lắm rồi! Cho ăn đi bạn', 'Bụng kêu ọc ọc rồi nè...'],
+    'chơi': ['Không chơi đâu... buồn ngủ lắm', 'Để mình ngủ thêm chút đã...'],
+    default: ['Zzz... hmm... bạn nói gì?', 'Hả... mình lơ mơ quá...'],
   },
   sad: {
-    'chào': 'Hic... bạn đến rồi à?',
-    'khỏe': 'Mình buồn lắm... lâu rồi không thấy bạn',
-    'học': 'Bạn học lại đi, mình đợi',
-    'đói': 'Buồn quá nên không muốn ăn...',
-    'chơi': 'Không muốn chơi gì hết...',
-    default: 'Hic... mình buồn quá...',
+    'chào': ['Hic... bạn đến rồi à?', 'Bạn đến rồi... mình mừng lắm'],
+    'khỏe': ['Mình buồn lắm... lâu rồi không thấy bạn', 'Không khỏe lắm... mình nhớ bạn'],
+    'học': ['Bạn học lại đi, mình đợi', 'Học cùng mình đi, mình sẽ vui lên'],
+    'đói': ['Buồn quá nên không muốn ăn...', 'Chưa muốn ăn đâu...'],
+    'chơi': ['Không muốn chơi gì hết...', 'Học một chút thôi cũng được...'],
+    default: ['Hic... mình buồn quá...', 'Bạn ở lại với mình nhé...'],
   },
   hibernating: {
-    default: 'Zzz... (không phản hồi)',
+    default: ['Zzz... (không phản hồi)'],
   },
 };
+
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
 function getMood(streak, fedToday) {
   if (streak === 0) return 'hibernating';
@@ -76,9 +78,9 @@ function matchResponse(input, mood) {
   const t = input.toLowerCase().trim();
   const bank = CHAT_RESPONSES[mood] || CHAT_RESPONSES.normal;
   for (const key of Object.keys(bank)) {
-    if (key !== 'default' && t.includes(key)) return bank[key];
+    if (key !== 'default' && t.includes(key)) return pick(bank[key]);
   }
-  return bank.default;
+  return pick(bank.default);
 }
 
 /* ============================================================
@@ -95,18 +97,13 @@ function SkinPicker({ current, onPick }) {
             type="button"
             className={'pet-skin-card' + (current === s.key ? ' on' : '')}
             onClick={() => onPick(s.key)}
-            style={{
-              '--skin-color': s.color,
-              '--skin-bg': s.bg,
-            }}
+            style={{ '--skin-color': s.color, '--skin-bg': s.bg }}
             aria-pressed={current === s.key}
             title={s.desc}
           >
             <span className="pet-skin-emoji" aria-hidden="true">{s.emoji}</span>
             <span className="pet-skin-name">{s.name}</span>
-            {current === s.key && (
-              <span className="pet-skin-check" aria-hidden="true">✓</span>
-            )}
+            {current === s.key && <span className="pet-skin-check" aria-hidden="true">✓</span>}
           </button>
         ))}
       </div>
@@ -116,6 +113,9 @@ function SkinPicker({ current, onPick }) {
     </div>
   );
 }
+
+/* Tên mặc định của mọi skin — để biết người dùng chưa tự đặt tên */
+const DEFAULT_NAMES = Object.values(PET_SKINS).map((s) => s.defaultName);
 
 /* ============================================================
    MAIN
@@ -129,6 +129,7 @@ export default function PetWidget() {
   const [open, setOpen] = useState(false);
   const [bubble, setBubble] = useState('');
   const [tab, setTab] = useState('info');
+  const [justLeveledUp, setJustLeveledUp] = useState(false);
 
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState([]);
@@ -140,24 +141,35 @@ export default function PetWidget() {
   });
 
   const bubbleTimer = useRef(null);
+  const levelTimer = useRef(null);
+  const prevStage = useRef(null);
   const chatEnd = useRef(null);
+  const paneRef = useRef(null);
+  const petRef = useRef(null);
 
-  /* FIX: Theo dõi window size để panel không bị lệch khi resize */
   const [windowSize, setWindowSize] = useState(() => ({
     w: typeof window !== 'undefined' ? window.innerWidth : 1024,
     h: typeof window !== 'undefined' ? window.innerHeight : 768,
   }));
 
   useEffect(() => {
-    const onResize = () => {
-      setWindowSize({ w: window.innerWidth, h: window.innerHeight });
-    };
+    const onResize = () => setWindowSize({ w: window.innerWidth, h: window.innerHeight });
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  /* dọn timer khi unmount */
+  useEffect(() => () => {
+    clearTimeout(bubbleTimer.current);
+    clearTimeout(levelTimer.current);
+  }, []);
+
   const isMobile = windowSize.w <= 720;
   const fixedPos = useMemo(() => getFixedPos(windowSize.w), [windowSize.w]);
+
+  const skinInfo = PET_SKINS[skin] || PET_SKINS.fire;
+  /* Chưa tự đặt tên → hiện tên riêng của skin */
+  const displayName = DEFAULT_NAMES.includes(name) ? skinInfo.defaultName : name;
 
   const total = Math.max(s.total || 0, s.n || 0);
 
@@ -170,23 +182,51 @@ export default function PetWidget() {
   const live = liveStreak(s);
   const mood = getMood(live, fed);
 
-  useEffect(() => {
-    if (!milestones.firstDay) setMilestones({ ...milestones, firstDay: dayKey() });
-  }, []);
+  /* Tên cấp theo skin (lửa dùng tên gốc) */
+  const stageName = (i) => skinInfo.stages?.[i] || STAGES[i][1];
 
+  /* ---- Cột mốc: GỘP 1 effect, không ghi đè lẫn nhau ---- */
   useEffect(() => {
-    if (live > milestones.maxStreak) setMilestones({ ...milestones, maxStreak: live });
-  }, [live]);
+    const nextM = { ...milestones };
+    let changed = false;
+    if (!nextM.firstDay) { nextM.firstDay = dayKey(); changed = true; }
+    if (live > (nextM.maxStreak || 0)) { nextM.maxStreak = live; changed = true; }
+    const lv = nextM.levelUps || [];
+    if (st > 0 && !lv.includes(st)) { nextM.levelUps = [...lv, st]; changed = true; }
+    if (changed) setMilestones(nextM);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, st]);
 
+  /* ---- Phát hiện lên cấp → hiệu ứng ---- */
   useEffect(() => {
-    if (st > 0 && !milestones.levelUps.includes(st)) {
-      setMilestones({ ...milestones, levelUps: [...milestones.levelUps, st] });
+    if (prevStage.current !== null && st > prevStage.current) {
+      setJustLeveledUp(true);
+      clearTimeout(levelTimer.current);
+      levelTimer.current = setTimeout(() => setJustLeveledUp(false), 2200);
     }
+    prevStage.current = st;
   }, [st]);
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatLog]);
+
+  /* Bấm ra ngoài hoặc nhấn Esc để đóng panel */
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => {
+      if (paneRef.current?.contains(e.target)) return;
+      if (petRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onKey = (e) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   const showBubble = useCallback((text) => {
     setBubble(text);
@@ -195,9 +235,11 @@ export default function PetWidget() {
   }, []);
 
   const randomDialogue = useCallback(() => {
-    const list = DIALOGUES[mood] || DIALOGUES.normal;
-    return list[Math.floor(Math.random() * list.length)];
-  }, [mood]);
+    const base = DIALOGUES[mood] || DIALOGUES.normal;
+    /* thêm câu đặc trưng của skin khi pet đang vui/bình thường */
+    const extra = mood === 'happy' || mood === 'normal' ? skinInfo.lines || [] : [];
+    return pick([...base, ...extra]);
+  }, [mood, skinInfo]);
 
   const feed = () => {
     if (food <= 0) {
@@ -228,7 +270,6 @@ export default function PetWidget() {
     setOpen((o) => !o);
   };
 
-  /* Vị trí panel — tính lại khi window resize */
   const panelWidth = isMobile ? Math.min(320, windowSize.w - 24) : 340;
   const panelLeft = fixedPos.left;
   const panelBottom = fixedPos.bottom + SIZE + 8;
@@ -247,15 +288,14 @@ export default function PetWidget() {
     : 100;
 
   const renderPet = () => {
-    if (skin === 'ice') return <IcePet />;
-    if (skin === 'leaf') return <LeafPet />;
-    if (skin === 'water') return <WaterPet />;
-    return <Pet mini />;
+    if (skin === 'fire') return <Pet mini />;
+    return <SkinPet skin={skin} mood={mood} justLeveledUp={justLeveledUp} />;
   };
 
   return (
     <>
       <div
+        ref={petRef}
         className={'petw petw-' + mood + ' petw-skin-' + skin}
         style={{
           position: 'fixed',
@@ -272,24 +312,30 @@ export default function PetWidget() {
         onMouseEnter={() => !bubble && showBubble(randomDialogue())}
         role="button"
         tabIndex={0}
-        aria-label={`${name} — bấm để xem thông tin`}
+        aria-label={`${displayName} — bấm để xem thông tin`}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
       >
         {renderPet()}
-        {bubble && <div className={'pet-bubble pet-bubble-' + mood}>{bubble}</div>}
+        {bubble && !open && <div className={'pet-bubble pet-bubble-' + mood}>{bubble}</div>}
       </div>
 
       {open && (
-        <div className="card pane pet-pane pet-pane-compact" style={paneStyle}>
+        <div
+          className="card pane pet-pane pet-pane-compact"
+          style={paneStyle}
+          ref={(el) => {
+            paneRef.current = el;
+            /* CSS cũ đặt z-index: 46 !important nên main (z-index 100) đè lên panel.
+               Inline !important thắng stylesheet !important. */
+            if (el) el.style.setProperty('z-index', '9996', 'important');
+          }}
+        >
           <div className="pet-head">
             <div className="pet-head-left">
-              <span
-                className="pet-head-icon"
-                style={{ background: PET_SKINS[skin]?.bg, color: PET_SKINS[skin]?.color }}
-              >
-                {PET_SKINS[skin]?.emoji || '🔥'}
+              <span className="pet-head-icon" style={{ background: skinInfo.bg, color: skinInfo.color }}>
+                {skinInfo.emoji}
               </span>
-              <h3 className="pet-head-name">{name}</h3>
+              <h3 className="pet-head-name">{displayName}</h3>
             </div>
             <button className="pet-head-close" onClick={() => setOpen(false)} aria-label="Đóng" type="button">
               <IconX size={16} />
@@ -298,34 +344,31 @@ export default function PetWidget() {
 
           <div className="pet-tabs">
             <button className={'pet-tab' + (tab === 'info' ? ' on' : '')} onClick={() => setTab('info')} type="button">
-              <IconInfo size={12} />
-              <span>Thông tin</span>
+              <IconInfo size={12} /><span>Thông tin</span>
             </button>
             <button className={'pet-tab' + (tab === 'skins' ? ' on' : '')} onClick={() => setTab('skins')} type="button">
-              <IconSparkle size={12} />
-              <span>Nhân vật</span>
+              <IconSparkle size={12} /><span>Nhân vật</span>
             </button>
             <button className={'pet-tab' + (tab === 'chat' ? ' on' : '')} onClick={() => setTab('chat')} type="button">
-              <IconChat size={12} />
-              <span>Nói chuyện</span>
+              <IconChat size={12} /><span>Nói chuyện</span>
             </button>
             <button className={'pet-tab' + (tab === 'memories' ? ' on' : '')} onClick={() => setTab('memories')} type="button">
-              <IconHeart size={12} />
-              <span>Kỷ niệm</span>
+              <IconHeart size={12} /><span>Kỷ niệm</span>
             </button>
           </div>
 
           {tab === 'info' && (
             <div className="pet-tab-body pet-tab-body-compact">
               <div className="pet-field">
-                <label className="pet-field-label">Đổi tên</label>
+                <label className="pet-field-label" htmlFor="pet-name">Đổi tên</label>
                 <input
+                  id="pet-name"
                   className="pet-field-input"
-                  value={name}
+                  value={displayName}
                   maxLength={16}
                   onChange={(e) => setName(e.target.value)}
-                  onBlur={() => !name.trim() && setName('Ember')}
-                  placeholder="Ember"
+                  onBlur={() => !name.trim() && setName(skinInfo.defaultName)}
+                  placeholder={skinInfo.defaultName}
                 />
               </div>
 
@@ -354,19 +397,17 @@ export default function PetWidget() {
                 type="button"
               >
                 <IconApple size={14} />
-                <span>
-                  {lastFed === dayKey() ? 'Đã ăn hôm nay' : food > 0 ? 'Cho ăn' : 'Hết thức ăn'}
-                </span>
+                <span>{lastFed === dayKey() ? 'Đã ăn hôm nay' : food > 0 ? 'Cho ăn' : 'Hết thức ăn'}</span>
               </button>
 
               <div className="pet-progress-block">
                 <div className="pet-progress-head">
                   <span className="pet-progress-label"><IconSparkle size={11} />Cấp</span>
-                  <span className="pet-progress-value">{STAGES[st][1]}</span>
+                  <span className="pet-progress-value">{stageName(st)}</span>
                 </div>
                 <div className="pet-progress-bar"><i style={{ width: pct + '%' }} /></div>
                 <div className="pet-progress-hint">
-                  {next ? `Còn ${next[0] - total} ngày → "${next[1]}"` : 'Đã đạt cấp cao nhất!'}
+                  {next ? `Còn ${next[0] - total} ngày → "${stageName(st + 1)}"` : 'Đã đạt cấp cao nhất!'}
                 </div>
               </div>
             </div>
@@ -383,7 +424,7 @@ export default function PetWidget() {
               <div className="pet-chat-msgs">
                 {chatLog.length === 0 && (
                   <p className="hint center" style={{ padding: '.6rem 0', fontSize: '.75rem' }}>
-                    Hỏi {name} gì đó đi! Thử "chào", "khỏe không"...
+                    Hỏi {displayName} gì đó đi! Thử "chào", "khỏe không"...
                   </p>
                 )}
                 {chatLog.map((m, i) => (
@@ -411,7 +452,7 @@ export default function PetWidget() {
                 <input
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder={`Nhắn cho ${name}...`}
+                  placeholder={`Nhắn cho ${displayName}...`}
                   maxLength={80}
                 />
                 <button className="btn primary sm" type="submit">Gửi</button>
@@ -431,11 +472,11 @@ export default function PetWidget() {
               </div>
               <div className="pet-memory">
                 <span className="pet-memory-icon"><IconGem size={14} /></span>
-                <div><b>Cấp hiện tại</b><small>{STAGES[st][1]}</small></div>
+                <div><b>Cấp hiện tại</b><small>{stageName(st)}</small></div>
               </div>
               <div className="pet-memory">
                 <span className="pet-memory-icon"><IconTrend size={14} /></span>
-                <div><b>Số lần lên cấp</b><small>{milestones.levelUps.length} lần</small></div>
+                <div><b>Số lần lên cấp</b><small>{(milestones.levelUps || []).length} lần</small></div>
               </div>
             </div>
           )}

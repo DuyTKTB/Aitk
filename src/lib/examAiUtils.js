@@ -3,6 +3,7 @@
    ------------------------------------------------------------
    HỖ TRỢ ĐA MÔN: Toán, Lý, Hóa, Sinh, Văn, Anh, Sử, Địa, GDCD,
                   Tin, Công nghệ, KHTN + môn tự đặt tên.
+import { useCredit } from './creditService.js';
    Chức năng:
      • generateExam      tạo đề mới (tự chia đợt nếu > 8 câu)
      • digitizeExam      số hóa đề có sẵn từ ảnh/PDF/Word/Excel
@@ -92,17 +93,34 @@ export const examplePrompt = (subject) =>
 /* ============================================================
    GỌI AI
    ============================================================ */
+import { useCredit } from './creditService.js';
+
 const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || import.meta.env?.VITE_GEMINI_KEY;
 const MODELS = (import.meta.env?.VITE_GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.7-flash')
   .split(',').map((s) => s.trim()).filter(Boolean);
 let goodModelIdx = 0;
 let customCaller = null;
 
+/** Đặt userId cho hệ thống credits — gọi 1 lần khi login */
+let _creditUserId = null;
+export function setExamAiUserId(uid) { _creditUserId = uid; }
+
 export function setModelCaller(fn) {
   customCaller = typeof fn === 'function' ? fn : null;
 }
 
 export async function callModel({ system, parts, temperature = 0.7, signal }) {
+  // ⚡ Trừ credits trước khi gọi AI
+  if (_creditUserId) {
+    const hasImg = parts?.some((p) => p.inlineData);
+    const cr = await useCredit(_creditUserId, hasImg);
+    if (!cr.ok) {
+      try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+      throw new Error(`Hết điểm! Còn ${cr.balance} điểm, cần ${cr.needed}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
+    }
+    try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+  }
+
   if (customCaller) return customCaller({ system, parts, temperature, signal });
   if (!API_KEY) {
     throw new Error('Chưa cấu hình AI. Thêm VITE_GEMINI_API_KEY (hoặc VITE_GEMINI_KEY) vào file .env rồi khởi động lại npm run dev (hoặc dùng setModelCaller).');

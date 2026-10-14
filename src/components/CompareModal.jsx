@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { askAI, COMPARE_SYSTEM_PROMPT } from '../lib/ai.js';
+import { useCredit } from '../lib/creditService.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 import { MarkdownLike } from './ChatMarkdown.jsx';
 import { HOT_AI } from './hotData.js';
 import AIMark from './AIMark.jsx';
@@ -10,6 +12,7 @@ import { IcoClose, IcoRefresh, IcoCopy, IcoCheck } from './Icons.jsx';
    ============================================================ */
 export default function CompareModal({ tools, onClose }) {
   const ref = useRef(null);
+  const { user } = useAuth();
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -64,6 +67,18 @@ YÊU CẦU:
     setErr('');
     setResult('');
     try {
+      // ⚡ Trừ credits
+      if (user?.uid) {
+        const cr = await useCredit(user.uid, false);
+        if (!cr.ok) {
+          setErr(`Hết điểm! Còn ${cr.balance}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
+          setLoading(false);
+          try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+          return;
+        }
+        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+      }
+
       const history = [{ role: 'user', parts: [{ text: buildPrompt() }] }];
       await askAI(
         history,

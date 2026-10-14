@@ -13,6 +13,8 @@ import {
 } from '../lib/aiChatApi.js';
 import AIMark from './AIMark.jsx';
 import { getQuota, canSend, consumeQuota } from '../lib/quota.js';
+import { spendCredit, refundCredit } from '../lib/creditService.js';
+import { isVipActive } from '../lib/vipService.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import VerifiedBadge from './VerifiedBadge.jsx';
 import { MarkdownLike, CollapsibleText, ReasoningSteps } from './ChatMarkdown.jsx';
@@ -26,6 +28,7 @@ import {
   PromptIcon, IcoMic, IcoDownload, IcoEdit, IcoArrowDown, IcoUploadCloud,
   IcoChevL, IcoChevR, IcoPlusSm, IcoLoader,
 } from './AIChatIcons.jsx';
+import '../styles/aichat-apple-intelligence.css';
 import './AIChat.css';
 import '../AIChat-glass.css';
 import '../AIChat-pro.css';
@@ -33,7 +36,6 @@ import '../AIChat-fix.css';
 import '../AIChat-glass-v2.css';
 import '../AIChat-mobile.css';
 import '../AIChat-futuristic.css';
-import '../styles/aichat-apple-intelligence.css';
 
 /* ============================================================
    ICONS CỤC BỘ
@@ -506,14 +508,9 @@ export default function AIChat({ onExit }) {
   const [ttsSupported, setTtsSupported] = useState(false);
   const [autoSpeak, setAutoSpeak] = useLocalStorage('cs-ai-autospeak', false);
 
-  /* Sidebar folder state */
   const [sidebarView, setSidebarView] = useState('folders');
   const [selectedFolderKey, setSelectedFolderKey] = useState(null);
-
-  /* Attach dropdown */
   const [attachOpen, setAttachOpen] = useState(false);
-
-  /* More menu cho từng tin nhắn */
   const [moreMenuId, setMoreMenuId] = useState(null);
 
   const lastSeenLenRef = useRef(0);
@@ -528,6 +525,7 @@ export default function AIChat({ onExit }) {
   const stopRef = useRef(null);
   const aiPromiseRef = useRef(null);
   const stickRef = useRef(true);
+  const sendingRef = useRef(false);
   const visibleRef = useRef(visible);
   const chatsRef = useRef(chats);
   const qTimer = useRef(null);
@@ -546,7 +544,6 @@ export default function AIChat({ onExit }) {
   const lastMsg = messages[messages.length - 1];
   const canRetry = !loading && lastMsg?.role === 'user';
 
-  /* TTS */
   useEffect(() => {
     setTtsSupported(tts.isSupported());
     return () => tts.stop();
@@ -1197,7 +1194,7 @@ export default function AIChat({ onExit }) {
       }
 
       if (!finalText && !finalReasoning) {
-        if (stopped) return;
+        if (stopped) return { ok: true, reason: 'user_stopped' };
         throw new Error('AI trả về rỗng. Thử gửi lại câu hỏi.');
       }
 
@@ -1211,6 +1208,8 @@ export default function AIChat({ onExit }) {
           stopped,
         }],
       }));
+
+      return { ok: true };
     } catch (e) {
       if (e?.isAbort || stopped) {
         if (finalText) {
@@ -1225,8 +1224,9 @@ export default function AIChat({ onExit }) {
             }],
           }));
         }
-        return;
+        return { ok: true, reason: 'user_stopped' };
       }
+
       if (e?.isQuota) {
         updateChat(chatId, (c) => ({
           ...c,
@@ -1237,6 +1237,7 @@ export default function AIChat({ onExit }) {
             isQuotaError: true,
           }],
         }));
+        return { ok: false, reason: 'quota' };
       } else if (finalText) {
         updateChat(chatId, (c) => ({
           ...c,
@@ -1249,8 +1250,10 @@ export default function AIChat({ onExit }) {
           }],
         }));
         setErr(e.message || 'Kết nối bị gián đoạn.');
+        return { ok: true, reason: 'partial' };
       } else {
         setErr(e.message || 'Lỗi gọi AI.');
+        return { ok: false, reason: e.message || 'error' };
       }
     } finally {
       stopRef.current = null;
@@ -1261,95 +1264,158 @@ export default function AIChat({ onExit }) {
   };
 
   const send = async (overrideText) => {
-    const text = (typeof overrideText === 'string' ? overrideText : input).trim();
-    if ((!text && images.length === 0) || loading || processing > 0) return;
+    if (sendingRef.current) return;
+    sendingRef.current = true;
 
-    const hasImg = images.length > 0;
-    if (denyQuota(hasImg)) return;
-    setQuotaError('');
-    const nq = consumeQuota(uid, tier, hasImg);
-    if (nq) setQuota(nq);
+    try {
+      const text = (typeof overrideText === 'string' ? overrideText : input).trim();
+      if ((!text && images.length === 0) || loading || processing > 0) return;
 
-    let chatId = activeId;
-    let current = activeChat;
-    if (!chatId || !current) {
-      const newId = rid();
-      const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
-      current = {
-        id: newId,
-        title: text ? text.slice(0, 40) : fallbackTitle,
-        messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      const created = current;
-      setChats((prev) => [created, ...prev].slice(0, MAX_CHATS));
-      setActiveId(newId);
-      chatId = newId;
+      const imgCount = images.length;
 
-      if (uid) {
-        createChatServer(uid, created).catch(() => {});
+      const vipActive = uid ? await isVipActive() : false;
+
+      let charged = 0;
+      if (uid && !vipActive) {
+        const cr = await spendCredit(uid, imgCount);
+        if (!cr.ok) {
+          setQuotaError(
+            `Bạn đã hết điểm! Còn ${cr.balance} điểm, cần ${cr.needed} điểm. Vào Trang cá nhân → Gói dùng để nạp thêm.`
+          );
+          clearTimeout(qTimer.current);
+          qTimer.current = setTimeout(() => setQuotaError(''), 8000);
+          try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+          return;
+        }
+        charged = cr.cost;
+        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+      } else if (!uid) {
+        if (denyQuota(imgCount > 0)) return;
+        setQuotaError('');
+        const nq = consumeQuota(uid, tier, imgCount > 0);
+        if (nq) setQuota(nq);
       }
+
+      let chatId = activeId;
+      let current = activeChat;
+      if (!chatId || !current) {
+        const newId = rid();
+        const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
+        current = {
+          id: newId,
+          title: text ? text.slice(0, 40) : fallbackTitle,
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        const created = current;
+        setChats((prev) => [created, ...prev].slice(0, MAX_CHATS));
+        setActiveId(newId);
+        chatId = newId;
+
+        if (uid) {
+          createChatServer(uid, created).catch(() => {});
+        }
+      }
+
+      const parts = [];
+      const defaultText = images.length > 1 ? 'Phân tích các ảnh này.' : 'Phân tích ảnh này.';
+      const userText = (text || (images.length > 0 ? defaultText : ''))
+        + `\n\nTrình độ: ${grade}. KHÔNG dùng LaTeX.`;
+      parts.push({ text: userText });
+
+      for (const img of images) {
+        parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+      }
+
+      const userMsg = {
+        role: 'user',
+        parts,
+        preview: {
+          text,
+          images: images.map((img) => ({
+            dataUrl: img.thumb || img.dataUrl,
+            width: img.width,
+            height: img.height,
+          })),
+        },
+      };
+
+      const baseMessages = [...current.messages, userMsg];
+      const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
+
+      updateChat(chatId, (c) => ({
+        ...c,
+        messages: slim(baseMessages),
+        title: c.messages.length === 0 ? (text ? text.slice(0, 40) : fallbackTitle) : c.title,
+      }));
+
+      recRef.current?.stop?.();
+      setInput('');
+      setImages([]);
+      setShowQuickPrompts(false);
+      setAttachOpen(false);
+      stickRef.current = true;
+
+      const result = await run(chatId, baseMessages);
+
+      if (charged > 0 && result && result.ok === false) {
+        try {
+          await refundCredit(uid, charged, `Hoàn điểm: ${result.reason || 'AI lỗi'}`);
+        } catch (e) {
+          console.warn('[AIChat] refund fail:', e);
+        }
+      }
+    } finally {
+      sendingRef.current = false;
     }
-
-    const parts = [];
-    const defaultText = images.length > 1 ? 'Phân tích các ảnh này.' : 'Phân tích ảnh này.';
-    const userText = (text || (images.length > 0 ? defaultText : ''))
-      + `\n\nTrình độ: ${grade}. KHÔNG dùng LaTeX.`;
-    parts.push({ text: userText });
-
-    for (const img of images) {
-      parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
-    }
-
-    const userMsg = {
-      role: 'user',
-      parts,
-      preview: {
-        text,
-        images: images.map((img) => ({
-          dataUrl: img.thumb || img.dataUrl,
-          width: img.width,
-          height: img.height,
-        })),
-      },
-    };
-
-    const baseMessages = [...current.messages, userMsg];
-    const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
-
-    updateChat(chatId, (c) => ({
-      ...c,
-      messages: slim(baseMessages),
-      title: c.messages.length === 0 ? (text ? text.slice(0, 40) : fallbackTitle) : c.title,
-    }));
-
-    recRef.current?.stop?.();
-    setInput('');
-    setImages([]);
-    setShowQuickPrompts(false);
-    setAttachOpen(false);
-    stickRef.current = true;
-    await run(chatId, baseMessages);
   };
   sendRef.current = send;
 
-  const regenerate = (free = false) => {
+  const regenerate = async (free = false) => {
     if (loading || !activeChat) return;
+
     const msgs = activeChat.messages;
     let i = msgs.length - 1;
     while (i >= 0 && msgs[i].role !== 'user') i--;
     if (i < 0) return;
-    if (!free) {
-      const hasImg = msgs[i].parts?.some((p) => p.inlineData) || (msgs[i].preview?.images?.length > 0);
+
+    const imgList = msgs[i].preview?.images || [];
+    const hasImg = msgs[i].parts?.some((p) => p.inlineData) || imgList.length > 0;
+    const imgCount = imgList.length || (hasImg ? 1 : 0);
+
+    const vipActive = uid ? await isVipActive() : false;
+
+    let charged = 0;
+    if (!free && uid && !vipActive) {
+      const cr = await spendCredit(uid, imgCount);
+      if (!cr.ok) {
+        setQuotaError(`Hết điểm! Còn ${cr.balance}, cần ${cr.needed}. Nạp thêm tại Gói dùng.`);
+        clearTimeout(qTimer.current);
+        qTimer.current = setTimeout(() => setQuotaError(''), 8000);
+        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+        return;
+      }
+      charged = cr.cost;
+      try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+    } else if (!free && !uid) {
       if (denyQuota(hasImg)) return;
       const nq = consumeQuota(uid, tier, hasImg);
       if (nq) setQuota(nq);
     }
+
     const base = msgs.slice(0, i + 1).map((m, k) => (k === i ? withImages(m) : m));
     updateChat(activeChat.id, (c) => ({ ...c, messages: slim(base) }));
     stickRef.current = true;
-    run(activeChat.id, base);
+    const result = await run(activeChat.id, base);
+
+    if (charged > 0 && result && result.ok === false) {
+      try {
+        await refundCredit(uid, charged, `Hoàn điểm: ${result.reason || 'AI lỗi'}`);
+      } catch (e) {
+        console.warn('[AIChat] refund fail:', e);
+      }
+    }
   };
 
   const stop = () => {
@@ -1370,7 +1436,6 @@ export default function AIChat({ onExit }) {
     }
   };
 
-  /* Lưu vào sổ tay lỗi */
   const saveToNotebook = (msgText, msgIdx) => {
     try {
       const key = 'cs-wrong-notebook';
@@ -1389,7 +1454,6 @@ export default function AIChat({ onExit }) {
     }
   };
 
-  /* Tạo bài tương tự */
   const practiceSimilar = (msgText) => {
     const prompt = `Dựa vào bài toán sau, hãy tạo 3 bài tập tương tự (có đáp án):\n\n${stripMarkdown(msgText).slice(0, 500)}`;
     send(prompt);
@@ -1869,18 +1933,17 @@ export default function AIChat({ onExit }) {
 
                           {!m.isQuotaError && m.text && (
                             <div className="ds-msg-actions">
-                              {/* Nút chính — Sao chép */}
                               <button
                                 className={'ds-action-btn accent' + (copied === 'm' + i ? ' on' : '')}
                                 onClick={() => copyMsg(m.text || '', 'm' + i)}
                                 type="button"
-                                aria-label="Sao chép"
+                                aria-label={copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
+                                title={copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
                               >
                                 {copied === 'm' + i ? <IcoCheck size={15} /> : <IcoCopy size={15} />}
-                                <span>{copied === 'm' + i ? 'Đã chép' : 'Sao chép'}</span>
+                                <span className="ds-btn-text">{copied === 'm' + i ? 'Đã chép' : 'Sao chép'}</span>
                               </button>
 
-                              {/* Đọc to — icon only */}
                               {ttsSupported && (
                                 <button
                                   className={'ds-action-icon-btn' + (speakingId === 'msg-' + i ? ' on' : '')}
@@ -1893,7 +1956,6 @@ export default function AIChat({ onExit }) {
                                 </button>
                               )}
 
-                              {/* Sổ tay lỗi — icon only */}
                               <button
                                 className={'ds-action-icon-btn' + (copied === 'saved-' + i ? ' on' : '')}
                                 onClick={() => saveToNotebook(m.text, i)}
@@ -1904,7 +1966,6 @@ export default function AIChat({ onExit }) {
                                 <IcoNote size={16} />
                               </button>
 
-                              {/* Desktop-only */}
                               <button
                                 className="ds-action-btn ds-action-desktop-only"
                                 onClick={() => practiceSimilar(m.text)}
@@ -1912,7 +1973,7 @@ export default function AIChat({ onExit }) {
                                 title="Tạo bài tập tương tự"
                               >
                                 <IcoPractice size={15} />
-                                <span>Bài tương tự</span>
+                                <span className="ds-btn-text">Bài tương tự</span>
                               </button>
 
                               {isLast && !loading && (
@@ -1923,11 +1984,10 @@ export default function AIChat({ onExit }) {
                                   title="Tạo lại câu trả lời"
                                 >
                                   <IcoRefresh size={15} />
-                                  <span>Tạo lại</span>
+                                  <span className="ds-btn-text">Tạo lại</span>
                                 </button>
                               )}
 
-                              {/* Menu ... — mobile only */}
                               <div className="ds-more-wrap ds-action-mobile-only">
                                 <button
                                   className="ds-action-icon-btn"

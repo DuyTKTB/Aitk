@@ -78,6 +78,7 @@ export default function DesktopNav({
   isAdmin,
   isPro,
   userRole,
+  credits,
   onSearch,
   onToggleTheme,
   onLogout,
@@ -226,6 +227,29 @@ export default function DesktopNav({
         </div>
 
         <div className="nav-actions">
+          {/* Số điểm (credits) */}
+          {credits != null && (
+            <a
+              href="#profile"
+              className="nav-credit-pill"
+              title="Số điểm AI của bạn"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 14px', borderRadius: 20,
+                background: '#f0f9ff', border: '1px solid #bfdbfe',
+                color: '#2563eb', fontWeight: 600, fontSize: '0.82rem',
+                textDecoration: 'none', whiteSpace: 'nowrap',
+                transition: 'background .2s',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              {credits.toLocaleString('vi-VN')} điểm
+            </a>
+          )}
+
           {/* Tìm kiếm */}
           <button
             type="button"

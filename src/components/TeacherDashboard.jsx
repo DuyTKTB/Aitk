@@ -172,6 +172,7 @@ import {
   IcoBell, IcoLibrary,
 } from '../lib/sessionIcons.jsx';
 import '../styles/teacher-ds.css';
+import '../styles/teacher-mobile-fix.css';
 
 /* ============================================================
    HELPERS
@@ -203,16 +204,14 @@ function exportExamCsv(exam, subs) {
 /* MỚI: Detect môn của đề dựa vào câu hỏi hoặc meta */
 function detectExamSubject(exam) {
   if (exam.subject) return exam.subject;
-  // Fallback: đọc từ topic câu hỏi đầu tiên
   const q = exam.questions?.[0];
   if (q?.subject) return q.subject;
   return '—';
 }
 
-/* MỚI: Kiểm tra đề có phải do AI tạo không (dựa vào meta.source hoặc flag) */
+/* MỚI: Kiểm tra đề có phải do AI tạo không */
 function isAiGeneratedExam(exam) {
   if (exam.source === 'ai' || exam.aiGenerated) return true;
-  // Fallback: nếu câu hỏi có trường topic + level → có thể từ AI Studio
   const firstQ = exam.questions?.[0];
   return Boolean(firstQ?.topic && firstQ?.level && firstQ?.qualityScore !== undefined);
 }
@@ -414,8 +413,6 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   /* ============================================================
      FIX #5: Refresh trước khi mở AI Studio
-     ------------------------------------------------------------
-     Đảm bảo classInsights dùng dữ liệu mới nhất, không cache cũ.
      ============================================================ */
   const openNewExam = async () => {
     if (classes.length === 0) {
@@ -424,7 +421,6 @@ export default function TeacherDashboard({ onExit } = {}) {
       return;
     }
 
-    // FIX #5: refresh subsCache + state trước khi mở AI Studio
     try {
       subsCacheRef.current = {};
       const freshExams = await getExamsByTeacher(user.uid);
@@ -817,7 +813,6 @@ export default function TeacherDashboard({ onExit } = {}) {
     return retryRequests.filter((r) => r.classId === selectedClass.id);
   }, [retryRequests, selectedClass?.id]);
 
-  /* MỚI: Danh sách môn có trong đề để làm filter */
   const availableSubjects = useMemo(() => {
     const set = new Set();
     exams.forEach((e) => {
@@ -904,7 +899,13 @@ export default function TeacherDashboard({ onExit } = {}) {
     );
   }
 
-  /* ---------- NAV ---------- */
+  /* ============================================================
+     NAV ITEMS — 5 MỤC CHÍNH CHO BOTTOM NAV MOBILE
+     ------------------------------------------------------------
+     Thứ tự: Tổng quan - Lớp học - Đề thi - Phòng thi - AI Tạo đề
+     Các mục còn lại (Mô phỏng, Ngân hàng, Chấm phiếu, Xin thi lại,
+     Quản trị) nằm trong extraNav — chỉ hiển thị trên desktop.
+     ============================================================ */
   const navItems = [
     { key: 'overview', label: 'Tổng quan', Icon: IcoGrid },
     {
@@ -915,33 +916,69 @@ export default function TeacherDashboard({ onExit } = {}) {
       live: totalPendingMembers > 0,
     },
     { key: 'exams', label: 'Đề thi', Icon: IcoBook },
-    { key: 'sessions', label: 'Phòng thi', Icon: IcoVideo, badge: liveSessions.length || null, live: true },
-    { key: 'create', label: 'AI Tạo đề & Ma trận', Icon: IcoSparkles },
-    { key: 'simulator', label: 'Mô phỏng & Đảo đề', Icon: IcoShuffle },
-    { key: 'bank', label: 'Ngân hàng', Icon: IcoLibrary },
-    { key: 'paper', label: 'Chấm phiếu A4', Icon: IcoScan },
     {
-      key: 'retry',
-      label: 'Xin thi lại',
-      Icon: IcoBell,
-      badge: totalPendingRetry > 0 ? totalPendingRetry : null,
-      live: totalPendingRetry > 0,
+      key: 'sessions',
+      label: 'Phòng thi',
+      Icon: IcoVideo,
+      badge: liveSessions.length || null,
+      live: true,
     },
+    { key: 'create', label: 'AI Tạo đề', Icon: IcoSparkles },
   ];
 
-  const extraNav = showAdminLink ? (
-    <button
-      type="button"
-      className="t-rail-btn"
-      onClick={() => { window.location.hash = 'admin'; }}
-      title="Sang trang quản trị hệ thống"
-    >
-      <span className="t-rail-btn-icon">
-        <IcoMonitor size={20} />
-      </span>
-      <span className="t-rail-btn-label">Quản trị</span>
-    </button>
-  ) : null;
+  /* Các mục phụ — chỉ hiển thị trên desktop */
+  const extraNav = (
+    <>
+      <button
+        type="button"
+        className="t-rail-btn"
+        onClick={() => goSection('simulator')}
+        title="Mô phỏng & Đảo đề"
+      >
+        <span className="t-rail-btn-icon"><IcoShuffle size={20} /></span>
+        <span className="t-rail-btn-label">Mô phỏng & Đảo đề</span>
+      </button>
+      <button
+        type="button"
+        className="t-rail-btn"
+        onClick={() => goSection('bank')}
+        title="Ngân hàng câu hỏi"
+      >
+        <span className="t-rail-btn-icon"><IcoLibrary size={20} /></span>
+        <span className="t-rail-btn-label">Ngân hàng</span>
+      </button>
+      <button
+        type="button"
+        className="t-rail-btn"
+        onClick={() => goSection('paper')}
+        title="Chấm phiếu A4"
+      >
+        <span className="t-rail-btn-icon"><IcoScan size={20} /></span>
+        <span className="t-rail-btn-label">Chấm phiếu A4</span>
+      </button>
+      <button
+        type="button"
+        className="t-rail-btn"
+        onClick={() => goSection('retry')}
+        title="Xin thi lại"
+      >
+        <span className="t-rail-btn-icon"><IcoBell size={20} /></span>
+        <span className="t-rail-btn-label">Xin thi lại</span>
+        {totalPendingRetry > 0 && <span className="t-rail-btn-badge">{totalPendingRetry}</span>}
+      </button>
+      {showAdminLink && (
+        <button
+          type="button"
+          className="t-rail-btn"
+          onClick={() => { window.location.hash = 'admin'; }}
+          title="Sang trang quản trị hệ thống"
+        >
+          <span className="t-rail-btn-icon"><IcoMonitor size={20} /></span>
+          <span className="t-rail-btn-label">Quản trị</span>
+        </button>
+      )}
+    </>
+  );
 
   const examsWithStatus = exams.map((ex) => {
     const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live');
@@ -1522,7 +1559,6 @@ export default function TeacherDashboard({ onExit } = {}) {
 
         return (
           <>
-            {/* Filter môn */}
             {availableSubjects.length > 1 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -1959,7 +1995,6 @@ export default function TeacherDashboard({ onExit } = {}) {
             grades={[]}
             subjects={[]}
             onDone={async () => {
-              // FIX #7: clear subsCache để tab Đề thi hiển thị đầy đủ
               subsCacheRef.current = {};
               await refresh();
               setSelectedClass(null);

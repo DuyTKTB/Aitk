@@ -18,6 +18,7 @@ import KeyManager from './KeyManager.jsx';
 import ProUserManager from './ProUserManager.jsx';
 import '../../styles/dash-vitality.css';
 import '../../styles/teacher-ds.css';
+import '../../styles/admin-apple.css'; 
 
 /* ============================================================
    ROUTING: hash = #admin/<sub>

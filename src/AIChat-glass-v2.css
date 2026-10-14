@@ -4,6 +4,7 @@
    Bao gồm: glass message, gradient user, reasoning timeline,
             pin chat, preview, bento suggestions, quota ring,
             scroll button + badge, AI typing wave.
+   ĐÃ FIX: nút gọn cho mobile
    ============================================================ */
 
 /* ============================================================
@@ -542,6 +543,7 @@
     transform: translateX(-50%) !important;
   }
 }
+
 /* ============================================================
    MESSAGE ACTION BUTTONS — Sao chép / Tạo lại
    ============================================================ */
@@ -666,12 +668,25 @@
   height: 13px;
 }
 
-/* Khoảng cách giữa các nút */
+/* Khoảng cách giữa các nút — FIX GỌN MOBILE */
 .ds-page .ds-msg-actions {
   display: flex;
-  gap: .4rem;
+  gap: .35rem;
   flex-wrap: wrap;
-  margin-top: .8rem;
+  margin-top: .6rem;
+}
+
+@media (max-width: 720px) {
+  .ds-page .ds-msg-actions {
+    gap: .3rem;
+    margin-top: .5rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .ds-page .ds-msg-actions::-webkit-scrollbar { display: none; }
 }
 
 /* Nút của user (copy/edit trong umsg-actions) */
@@ -716,6 +731,7 @@
   margin-top: .4rem;
   justify-content: flex-end;
 }
+
 /* ============================================================
    SIDEBAR PREVIEW — Logo AI + icon user thay emoji
    ============================================================ */
@@ -786,6 +802,7 @@
   background: rgba(30, 50, 120, .08);
   color: rgba(10, 18, 48, .6);
 }
+
 /* ============================================================
    CHAT ITEM INFO — wrapper cho title + preview
    ============================================================ */

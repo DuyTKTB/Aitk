@@ -63,6 +63,8 @@ import LiveSessionBanner from './components/LiveSessionBanner.jsx';
 import { useAuth } from './hooks/useAuth.jsx';
 import { useTeacherPro } from './hooks/useTeacherPro.js';
 import { getUserRole } from './lib/userRole.js';
+import { getCredits, onCreditsChange } from './lib/creditService.js';
+import { setExamAiUserId } from './lib/examAiUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase.js';
 
@@ -231,6 +233,18 @@ export default function App() {
   const navRef = useRef(null);
   const progRef = useRef(null);
   const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
+  const [credits, setCredits] = useState(null);
+
+  /* ============ LOAD CREDITS ============ */
+  useEffect(() => {
+    if (!user?.uid) { setCredits(null); setExamAiUserId(null); return; }
+    setExamAiUserId(user.uid);
+    getCredits(user.uid).then((c) => setCredits(c.balance)).catch(() => {});
+    const unsub = onCreditsChange(user.uid, (data) => setCredits(data.balance));
+    const onCreditEvt = (e) => { if (e.detail?.balance != null) setCredits(e.detail.balance); };
+    window.addEventListener('cs-credit-update', onCreditEvt);
+    return () => { unsub(); window.removeEventListener('cs-credit-update', onCreditEvt); };
+  }, [user?.uid]);
 
   /* ============ LOAD ROLE ============ */
   useEffect(() => {
@@ -540,6 +554,7 @@ export default function App() {
         isAdmin={isAdmin(user)}
         isPro={pro.isPro}
         userRole={userRole}
+        credits={credits}
         toolOpen={toolOpen}
         onToolOpen={setToolOpen}
         tools={NAV_TOOLS_GROUPS}

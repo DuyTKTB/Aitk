@@ -2,7 +2,7 @@
    AIChat-futuristic.css — Lớp giao diện tương lai (nạp CUỐI CÙNG)
    Kính iOS · Viền sáng AI · Lịch sử thư mục · Nền động ·
    Thẻ Hôm nay · Thanh nhập viên thuốc · Tin nhắn đẹp hơn ·
-   Action buttons kiểu Apple
+   Action buttons kiểu Apple — ĐÃ FIX NÚT GỌN TRÊN MOBILE
    ============================================================ */
 
 .ds-page {
@@ -805,32 +805,78 @@
   background: rgba(255, 69, 58, 0.12);
 }
 
-/* Responsive hiển thị nút */
+/* ============================================================
+   MOBILE — NÚT ACTION THU GỌN THÀNH ICON TRÒN
+   ============================================================ */
 @media (max-width: 720px) {
-  .ds-msg-actions {
-    gap: 0.4rem;
-    margin-top: 0.5rem;
+  /* Ẩn chữ trong mọi nút hành động */
+  body .ds-page .ds-msg-actions .ds-btn-text {
+    display: none !important;
   }
 
-  .ds-action-btn {
-    min-height: 40px;
-    padding: 0.55rem 1rem;
-    font-size: 0.8rem;
+  /* Nút "Sao chép" (accent) — thành icon tròn 32px */
+  body .ds-page .ds-msg-actions .ds-action-btn.accent,
+  body .ds-page .ds-msg-actions .ds-action-btn.on {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    gap: 0 !important;
   }
 
-  .ds-action-icon-btn {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+  body .ds-page .ds-msg-actions .ds-action-btn.accent svg,
+  body .ds-page .ds-msg-actions .ds-action-btn.on svg {
+    width: 15px !important;
+    height: 15px !important;
+    margin: 0 !important;
   }
 
-  .ds-action-btn svg {
-    width: 16px;
-    height: 16px;
+  /* Nút có chữ khác (nếu lọt qua desktop-only) — cũng thành icon tròn */
+  body .ds-page .ds-msg-actions .ds-action-btn:not(.ds-action-desktop-only) {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    gap: 0 !important;
   }
 
-  .ds-msg-actions .ds-action-desktop-only {
-    display: none;
+  body .ds-page .ds-msg-actions .ds-action-btn:not(.ds-action-desktop-only) svg {
+    width: 15px !important;
+    height: 15px !important;
+    margin: 0 !important;
+  }
+
+  /* Nút icon-only — đồng đều 32px */
+  body .ds-page .ds-msg-actions .ds-action-icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    flex-shrink: 0 !important;
+  }
+
+  body .ds-page .ds-msg-actions .ds-action-icon-btn svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  /* Hàng action — đều nhau, gap 6px */
+  body .ds-page .ds-msg-actions {
+    gap: 6px !important;
+    margin-top: .5rem !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+  }
+
+  /* Ẩn nút desktop-only */
+  body .ds-page .ds-msg-actions .ds-action-desktop-only {
+    display: none !important;
   }
 }
 

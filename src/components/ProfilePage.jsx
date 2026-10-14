@@ -8,6 +8,8 @@ import ProfileStats from './ProfileStats.jsx';
 import ProfileAchievements from './ProfileAchievements.jsx';
 import TeacherProPanel from './TeacherProPanel.jsx';
 import PaymentPanel from './PaymentPanel.jsx';
+import CreditTopUp from './CreditTopUp.jsx';
+import { getCredits } from '../lib/creditService.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { IcoCamera, IcoSpinner } from './ProfileIcons.jsx';
 import './ProfileFB.css';
@@ -122,6 +124,7 @@ export default function ProfilePage() {
   const [askLogout, setAskLogout] = useState(false);
   const [pickedColor, setPickedColor] = useState(() => ls.get('cs-avatar-color', ''));
   const [showPayment, setShowPayment] = useState(false);
+  const [credits, setCredits] = useState(null);
   const toastTimer = useRef(null);
   const dlg = useRef(null);
 
@@ -151,6 +154,12 @@ export default function ProfilePage() {
   const err = (e) => fail(e.code ? translateAuthError(e.code) : e.message);
 
   useEffect(() => { ls.set('cs-profile-tab', tab); }, [tab]);
+
+  /* Load credits khi có user */
+  useEffect(() => {
+    if (!user?.uid) return;
+    getCredits(user.uid).then((c) => setCredits(c.balance)).catch(() => {});
+  }, [user?.uid]);
   useEffect(() => {
     if (!dirty) return undefined;
     const h = (e) => { e.preventDefault(); e.returnValue = ''; };
@@ -230,8 +239,7 @@ export default function ProfilePage() {
   const handlePaymentSuccess = useCallback(async () => {
     await refreshTier();
     await refreshUser();
-    // Đọc tier từ closure hiện tại — sẽ được update bởi useEffect
-    return { isVip: false };
+    return { isVip: true };
   }, [refreshTier, refreshUser]);
 
   const TABS = [
@@ -410,42 +418,30 @@ export default function ProfilePage() {
             {tab === 'upgrade' && (
               <>
                 <h2>Gói sử dụng</h2>
-                <p className="pf-sub-text">Đang dùng <b style={{ color: tier?.color }}>{tier?.name}</b> — {tier?.desc}</p>
-                <div className="pf-tiers">
-                  {Object.values(TIERS).map((t) => {
-                    const cur = t.key === tier?.key;
-                    return (
-                      <article key={t.key} className={'pf-tier' + (cur ? ' current' : '') + (t.key === 'vip' ? ' vip' : '')} style={{ '--tier': t.color }}>
-                        <header>
-                          <span><Glyph name={t.key === 'vip' ? 'crown' : 'flask'} size={20} /></span>
-                          <div><h3>{t.name}</h3><p>{t.desc}</p></div>
-                          {cur && <em>Đang dùng</em>}
-                        </header>
-                        <ul>
-                          <li>{t.unlimitedText ? 'Chat không giới hạn' : `${t.quotaText} tin nhắn / ngày`}</li>
-                          <li>{t.quotaImage} ảnh / ngày</li>
-                          <li>Trợ lý AI Hóa học</li>
-                          <li>Phân tích bài tập</li>
-                          {t.key === 'vip' && <li>Ưu tiên phản hồi</li>}
-                        </ul>
-                        {cur ? <button className="pf-btn" disabled type="button">Gói hiện tại</button>
-                          : t.key === 'free' ? <button className="pf-btn" disabled type="button">Miễn phí</button>
-                          : <button
-                              className="pf-btn primary"
-                              type="button"
-                              onClick={() => setShowPayment(true)}
-                            >
-                              <Glyph name="crown" size={15} />
-                              Thanh toán tự động
-                            </button>}
-                      </article>
-                    );
-                  })}
-                </div>
-                <div className="pf-note">
+                <p className="pf-sub-text">
+                  Đang dùng <b style={{ color: tier?.color }}>{tier?.name}</b> — {tier?.desc}
+                </p>
+
+                {/* Hệ thống điểm + VIP status — component tự hiện trạng thái */}
+                {user?.uid && (
+                  <CreditTopUp
+                    userId={user.uid}
+                    onCreditUpdate={(newBal) => setCredits(newBal)}
+                    onUpgrade={() => setShowPayment(true)}
+                  />
+                )}
+
+                <div className="pf-note" style={{ marginTop: '0.75rem' }}>
                   <Glyph name="info" size={18} />
-                  <div><b>Thanh toán tự động qua QR</b><p>Chuyển khoản đúng nội dung, hệ thống sẽ tự động nâng VIP trong 1-2 phút.</p>
-                    <div className="pf-actions flat"><button type="button" className="pf-btn" onClick={syncTier} disabled={loading}><Glyph name="refresh" size={15} />Làm mới trạng thái gói</button></div></div>
+                  <div>
+                    <b>Thanh toán tự động qua QR</b>
+                    <p>Chuyển khoản đúng nội dung, hệ thống sẽ tự động cộng điểm trong 1-2 phút.</p>
+                    <div className="pf-actions flat">
+                      <button type="button" className="pf-btn" onClick={syncTier} disabled={loading}>
+                        <Glyph name="refresh" size={15} />Làm mới trạng thái gói
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
