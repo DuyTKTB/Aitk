@@ -281,7 +281,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onUpgrade }) {
               {balance?.toLocaleString('vi-VN') ?? 0}
               <span className="ctu-balance-unit">điểm</span>
             </div>
-            <div className="ctu-balance-sub">1.000đ = 10 điểm · 1 điểm = 1 câu hỏi</div>
+            <div className="ctu-balance-sub">1.000đ = 10 điểm · Chat: 1đ/lần · Tạo đề: 5–20đ</div>
           </div>
         </div>
         <button
@@ -313,9 +313,10 @@ export default function CreditTopUp({ userId, onCreditUpdate, onUpgrade }) {
               <button
                 key={p.amount}
                 type="button"
-                className={'ctu-pkg' + (selectedPkg === p.amount ? ' on' : '')}
+                className={'ctu-pkg' + (selectedPkg === p.amount ? ' on' : '') + (p.popular ? ' popular' : '')}
                 onClick={() => setSelectedPkg(p.amount)}
               >
+                {p.popular && <span className="ctu-pkg-popular">⭐ Phổ biến</span>}
                 {p.badge && <span className="ctu-pkg-badge">{p.badge}</span>}
                 <b className="ctu-pkg-amount">{p.label}</b>
                 <span className="ctu-pkg-credits">

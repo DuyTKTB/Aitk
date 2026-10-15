@@ -9,6 +9,37 @@
    ============================================================ */
 import { supabase } from './supabase.js';
 import { topicName } from '../data/chemTopics.js';
+import { db as fsDb } from './firebase.js';
+import { collection as fsCollection, query as fsQuery, where as fsWhere, getDocs as fsGetDocs, limit as fsLimit } from 'firebase/firestore';
+
+/* ============================================================
+   Lấy câu hỏi từ NGÂN HÀNG CÁ NHÂN (Firestore questionBank) của giáo viên
+   — chuyển sang định dạng game: { question, correct, wrong[], difficulty }
+   ============================================================ */
+export async function fetchMyBankQuestions(teacherId, { max = 200 } = {}) {
+  if (!teacherId) return [];
+  try {
+    const snap = await fsGetDocs(
+      fsQuery(fsCollection(fsDb, 'questionBank'), fsWhere('teacherId', '==', teacherId), fsLimit(max))
+    );
+    return snap.docs.map((d) => {
+      const x = d.data();
+      const opts = (x.options || []).map((o) => String(o || '').trim()).filter(Boolean);
+      const ci = typeof x.correct === 'number' ? x.correct : 0;
+      return {
+        question: x.q || '',
+        correct: opts[ci] || '',
+        wrong: opts.filter((_, i) => i !== ci),
+        difficulty: x.level || '',
+        explanation: x.explain || '',
+        source: 'bank',
+      };
+    }).filter((q) => q.question && q.correct && q.wrong.length >= 1);
+  } catch (e) {
+    console.warn('[gameQuestionBank] Lỗi đọc ngân hàng cá nhân:', e.code, e.message);
+    return [];
+  }
+}
 
 export const GAME_DIFFICULTIES = [
   { id: 'easy', name: 'Nhận biết' },
@@ -23,6 +54,7 @@ const DIFF_RANK = { easy: 0, medium: 1, hard: 2, extreme: 3 };
 const stripLabel = (s) => String(s ?? '').replace(/^\s*[A-Da-d][.)]\s+/, '').trim();
 
 function shuffle(arr) {
+  if (!Array.isArray(arr)) return [];
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -31,7 +63,7 @@ function shuffle(arr) {
   return a;
 }
 
-export const pickRandom = (list, count) => shuffle(list).slice(0, count);
+export const pickRandom = (list, count) => shuffle(Array.isArray(list) ? list : []).slice(0, count);
 
 /**
  * @param topicIds       mảng topic_id; rỗng = lấy từ mọi chuyên đề
@@ -63,6 +95,7 @@ export async function fetchBankQuestions({
 
   const { data, error } = await q;
   if (error) throw error;
+  if (!Array.isArray(data)) return [];
 
   const eligible = [];
   let skipped = 0;

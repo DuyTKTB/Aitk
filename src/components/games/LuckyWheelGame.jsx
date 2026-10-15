@@ -39,7 +39,7 @@ const DEFAULT_STUDENTS = [
 const DEFAULT_QUESTIONS = [
   {
     q: 'Kim loại nào sau đây phản ứng mãnh liệt với nước ở nhiệt độ thường?',
-    options: ['Natri (Na)', 'Đồng (Cu)', 'Bạc (Ag)', 'Sắt (Fe)'],
+    options: ['Sodium (Na)', 'Copper (Cu)', 'Silver (Ag)', 'Iron (Fe)'],
     correct: 0,
     explain: 'Natri tác dụng với nước sinh ra NaOH và khí H₂, phản ứng tỏa nhiều nhiệt.',
   },

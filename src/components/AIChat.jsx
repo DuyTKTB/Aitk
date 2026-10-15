@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { askAI, compressImage, AI_READY } from '../lib/ai.js';
+import { MODE_LIST } from '../lib/aiPrompts.js';
 import {
   fetchChats as fetchChatsServer,
   createChat as createChatServer,
@@ -27,74 +28,13 @@ import {
 import {
   PromptIcon, IcoMic, IcoDownload, IcoEdit, IcoArrowDown, IcoUploadCloud,
   IcoChevL, IcoChevR, IcoPlusSm, IcoLoader,
+  IcoSunSm, IcoMoonSm, IcoCalendarSm, IcoArchive, IcoCalc, IcoShieldCheck,
+  IcoWand, IcoPin, IcoSpeaker, IcoSpeakerOff, IcoNote, IcoPractice, IcoMore,
 } from './AIChatIcons.jsx';
-import '../styles/aichat-apple-intelligence.css';
-import './AIChat.css';
-import '../AIChat-glass.css';
-import '../AIChat-pro.css';
-import '../AIChat-fix.css';
-import '../AIChat-glass-v2.css';
-import '../AIChat-mobile.css';
-import '../AIChat-futuristic.css';
-
-/* ============================================================
-   ICONS CỤC BỘ
-   ============================================================ */
-const IcoAIStar = ({ size = 18 }) => (
-  <svg className="ds-sparkle" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M10 3.2c.5 3.9 2.4 6.1 6.3 6.8-3.9.7-5.8 2.9-6.3 6.8-.5-3.9-2.4-6.1-6.3-6.8C7.6 9.3 9.5 7.1 10 3.2Z" />
-    <path className="s2" d="M18.4 13.6c.25 1.9 1.2 3 3.1 3.4-1.9.35-2.85 1.45-3.1 3.4-.25-1.95-1.2-3.05-3.1-3.4 1.9-.4 2.85-1.5 3.1-3.4Z" />
-  </svg>
-);
-
-const IcoWand = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M15 9h0M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5" />
-  </svg>
-);
-
-const IcoPin = ({ size = 13, filled = false }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24"
-    fill={filled ? 'currentColor' : 'none'} stroke="currentColor"
-    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
-  </svg>
-);
-
-const IcoSpeaker = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M11 5L6 9H2v6h4l5 4V5z" />
-    <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />
-  </svg>
-);
-
-const IcoSpeakerOff = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M11 5L6 9H2v6h4l5 4V5z" />
-    <path d="m23 9-6 6M17 9l6 6" />
-  </svg>
-);
-
-const IcoNote = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 4h12l4 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
-    <path d="M16 4v4h4M8 12h8M8 16h6" />
-  </svg>
-);
-
-const IcoPractice = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-  </svg>
-);
-
-const IcoMore = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <circle cx="5" cy="12" r="2" />
-    <circle cx="12" cy="12" r="2" />
-    <circle cx="19" cy="12" r="2" />
-  </svg>
-);
+/* CSS: 8 lớp cũ đã gộp thành 1 file (giữ nguyên thứ tự cascade);
+   ai-intelligence.css là lớp cuối để tinh chỉnh giao diện AI. */
+import '../styles/aichat.css';
+import '../styles/ai-intelligence.css';
 
 /* ============================================================
    CONSTANTS
@@ -112,7 +52,7 @@ const QUICK_PROMPTS = [
 
 const TODAY_FACTS = [
   { type: 'Phương trình', content: '2H₂ + O₂ → 2H₂O', hint: 'Phản ứng tạo nước — nền tảng của nhiều phản ứng.' },
-  { type: 'Sự thật', content: 'Vàng (Au) có thể kéo thành sợi mỏng đến mức 1 gram kéo dài 2.4 km.', hint: 'Kim loại quý có tính dẻo cao nhất.' },
+  { type: 'Sự thật', content: 'Gold (Au) có thể kéo thành sợi mỏng đến mức 1 gram kéo dài 2.4 km.', hint: 'Kim loại quý có tính dẻo cao nhất.' },
   { type: 'Mẹo', content: 'Cân bằng phương trình: bắt đầu với nguyên tố xuất hiện ít nhất.', hint: 'Kỹ thuật cân bằng nhanh và chính xác.' },
   { type: 'Sự thật', content: 'Kim cương và than chì đều là Carbon (C) nhưng cấu trúc khác nhau.', hint: 'Ví dụ điển hình về thù hình.' },
   { type: 'Phương trình', content: 'Fe + 2HCl → FeCl₂ + H₂', hint: 'Phản ứng thế — kim loại + axit.' },
@@ -225,7 +165,12 @@ const SpeechRec = typeof window !== 'undefined'
   : null;
 
 const GROUP_LABELS = { today: 'Hôm nay', yesterday: 'Hôm qua', week: '7 ngày qua', older: 'Cũ hơn' };
-const GROUP_ICONS = { today: '☀️', yesterday: '🌙', week: '📅', older: '📦' };
+/* Icon nhóm lịch sử: SVG (không dùng emoji) */
+const GROUP_ICONS = { today: IcoSunSm, yesterday: IcoMoonSm, week: IcoCalendarSm, older: IcoArchive };
+const GroupIcon = ({ name, size = 22 }) => {
+  const Cmp = GROUP_ICONS[name];
+  return Cmp ? <Cmp size={size} /> : null;
+};
 
 /* ============================================================
    HELPERS
@@ -480,6 +425,8 @@ export default function AIChat({ onExit }) {
   const [sugSeed, setSugSeed] = useState(() => Date.now() % 100000);
   const [images, setImages] = useState([]);
   const [grade, setGrade] = useState('Lớp 11');
+  /* Chế độ học: điều khiển cách AI trả lời (giải chi tiết / gợi ý từng bước / kiểm tra đáp án...) */
+  const [mode, setMode] = useLocalStorage('cs-ai-mode', 'auto');
   const [busyId, setBusyId] = useState(null);
   const [streaming, setStreaming] = useState('');
   const [reasoning, setReasoning] = useState('');
@@ -1123,6 +1070,7 @@ export default function AIChat({ onExit }) {
 
     let finalText = '';
     let finalReasoning = '';
+    let finalMeta = null;   // citations / toolHits / verification do động cơ AI trả về
     let timedOut = false;
     let stopped = false;
 
@@ -1182,11 +1130,20 @@ export default function AIChat({ onExit }) {
             pendReason = part;
             schedule();
             finalReasoning = part;
+          },
+          {
+            grade,
+            mode,
+            uid,
+            /* VIP không giới hạn lượt → bật thêm lượt thẩm định bằng model khác */
+            deepVerify: tier?.key === 'vip',
           }
         );
         aiPromiseRef.current = aiPromise;
 
-        await Promise.race([aiPromise, watchdog, stopPromise]);
+        const raced = await Promise.race([aiPromise, watchdog, stopPromise]);
+        if (raced && typeof raced === 'object') finalMeta = raced;
+        if (finalMeta?.reasoning && !finalReasoning) finalReasoning = finalMeta.reasoning;
       } finally {
         clearTimeout(timer);
         cancelAnimationFrame(raf);
@@ -1205,6 +1162,10 @@ export default function AIChat({ onExit }) {
           parts: [{ text: finalText }],
           text: finalText,
           reasoning: finalReasoning,
+          citations: finalMeta?.citations || undefined,
+          toolHits: finalMeta?.toolHits || undefined,
+          verification: finalMeta?.verification || undefined,
+          modelUsed: finalMeta?.model,
           stopped,
         }],
       }));
@@ -1611,7 +1572,7 @@ export default function AIChat({ onExit }) {
                   className="ds-folder"
                   onClick={() => openFolder(key)}
                 >
-                  <span className="ds-folder-icon">{GROUP_ICONS[key]}</span>
+                  <span className="ds-folder-icon"><GroupIcon name={key} /></span>
                   <div className="ds-folder-name">{GROUP_LABELS[key]}</div>
                   <div className="ds-folder-count">{list.length} cuộc trò chuyện</div>
                   {preview.text && (
@@ -1812,6 +1773,18 @@ export default function AIChat({ onExit }) {
               {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
 
+            <select
+              className="ds-mode-select"
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              aria-label="Chế độ trả lời"
+              title={MODE_LIST.find((m) => m.id === mode)?.hint || ''}
+            >
+              {MODE_LIST.map((mo) => (
+                <option key={mo.id} value={mo.id}>{mo.label}</option>
+              ))}
+            </select>
+
             {ttsSupported && (
               <button
                 className={'ds-hbtn' + (autoSpeak ? ' on' : '')}
@@ -1837,7 +1810,7 @@ export default function AIChat({ onExit }) {
           </div>
         </header>
 
-        <main className="ds-main">
+        <main className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
           {!AI_READY && (
             <div className="ds-warning">
               <b>Chưa cấu hình API</b>
@@ -1851,10 +1824,10 @@ export default function AIChat({ onExit }) {
 
           {messages.length === 0 && !(showLive && (streaming || reasoning)) ? (
             <div className="ds-empty">
-              <AIMark size={180} look mode={markMode} animate={visible} />
+              <AIMark size={132} look mode={markMode} animate={visible} />
               <h1 className="ds-empty-title">
                 {firstName
-                  ? (<><span className="ds-hello">Chào {firstName},</span><span>hôm nay bạn muốn hỏi gì về Hóa?</span></>)
+                  ? (<><span className="ds-hello">Chào {firstName},</span>{' '}<span>hôm nay bạn muốn hỏi gì về Hóa?</span></>)
                   : <span>Hôm nay bạn muốn hỏi gì về Hóa?</span>}
               </h1>
               <p className="ds-empty-sub">
@@ -1862,6 +1835,31 @@ export default function AIChat({ onExit }) {
               </p>
 
               <TodayCard onAsk={send} />
+
+              {/* Gợi ý câu hỏi mẫu — trước đây dữ liệu này có sẵn trong code nhưng chưa từng hiển thị */}
+              <div className="ds-suggest">
+                {suggestions.map((s) => (
+                  <button
+                    key={s.text}
+                    type="button"
+                    className="ds-suggest-chip"
+                    onClick={() => send(s.text)}
+                    title={s.text}
+                  >
+                    <PromptIcon name={s.icon} size={15} />
+                    <span>{s.text}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="ds-suggest-refresh"
+                  onClick={() => setSugSeed(Date.now() % 100000)}
+                  aria-label="Gợi ý khác"
+                  title="Gợi ý khác"
+                >
+                  <IcoRefresh size={15} />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="ds-chat">
@@ -1930,6 +1928,29 @@ export default function AIChat({ onExit }) {
                           </div>
 
                           {m.stopped && <span className="ds-stopped">đã dừng — câu trả lời chưa đầy đủ</span>}
+
+                          {!m.isQuotaError && (m.toolHits?.length > 0 || m.verification || m.citations?.length > 0) && (
+                            <div className="ds-ai-meta">
+                              {m.toolHits?.length > 0 && (
+                                <span className="ds-ai-badge" title={m.toolHits.map((h) => h.title).join(' · ')}>
+                                  <IcoCalc size={13} /> Đã tính bằng công cụ
+                                </span>
+                              )}
+                              {m.verification?.aiVerdict && (
+                                <span
+                                  className={'ds-ai-badge' + (/KẾT LUẬN:\s*(ĐÚNG|DUNG)/i.test(m.verification.aiVerdict) ? ' ok' : ' warn')}
+                                  title={m.verification.aiVerdict}
+                                >
+                                  <IcoShieldCheck size={13} /> Đã thẩm định lại
+                                </span>
+                              )}
+                              {m.citations?.map((c) => (
+                                <span key={c.n} className="ds-ai-cite" title={`Nguồn nội bộ: ${c.kind}`}>
+                                  [{c.n}] {c.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
 
                           {!m.isQuotaError && m.text && (
                             <div className="ds-msg-actions">
@@ -2228,7 +2249,7 @@ export default function AIChat({ onExit }) {
               </button>
             ) : (
               <button className="ds-send" onClick={() => send()} disabled={!hasInput} type="button" aria-label="Gửi">
-                {hasInput ? <IcoSend size={18} /> : <IcoAIStar size={18} />}
+                <IcoSend size={18} />
               </button>
             )}
           </div>

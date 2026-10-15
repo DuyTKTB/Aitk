@@ -21,14 +21,14 @@ const INITIAL_TEAMS = [
 const DEFAULT_QUESTIONS = [
   { q: 'Khí nào là nguyên nhân chính gây ra hiệu ứng nhà kính toàn cầu?', options: ['CO₂', 'O₂', 'N₂', 'H₂'], correct: 0, explain: 'Khí cacbonic (CO₂) hấp thụ bức xạ nhiệt hồng ngoại gây hiệu ứng nhà kính.' },
   { q: 'Chất nào làm mất tính cứng của nước cứng tạm thời khi đun sôi?', options: ['Ca(HCO₃)₂', 'CaCl₂', 'CaSO₄', 'MgCl₂'], correct: 0, explain: 'Ca(HCO₃)₂ nhiệt phân tạo CaCO₃ kết tủa lắng xuống.' },
-  { q: 'Kim loại nào có tính khử mạnh nhất trong dãy điện hóa?', options: ['Kali (K)', 'Natri (Na)', 'Liti (Li)', 'Canxi (Ca)'], correct: 2, explain: 'Liti (Li) có thế điện cực chuẩn âm nhất (-3.04V).' },
-  { q: 'Phân bón đạm cung cấp nguyên tố dinh dưỡng nào cho cây trồng?', options: ['Photpho (P)', 'Kali (K)', 'Nitơ (N)', 'Canxi (Ca)'], correct: 2, explain: 'Phân đạm cung cấp Nitơ thúc đẩy sự phát triển thân lá.' },
+  { q: 'Kim loại nào có tính khử mạnh nhất trong dãy điện hóa?', options: ['Potassium (K)', 'Sodium (Na)', 'Lithium (Li)', 'Calcium (Ca)'], correct: 2, explain: 'Lithium (Li) có thế điện cực chuẩn âm nhất (-3.04V).' },
+  { q: 'Phân bón đạm cung cấp nguyên tố dinh dưỡng nào cho cây trồng?', options: ['Phosphorus (P)', 'Potassium (K)', 'Nitrogen (N)', 'Calcium (Ca)'], correct: 2, explain: 'Phân đạm cung cấp Nitơ thúc đẩy sự phát triển thân lá.' },
   { q: 'Dung dịch saccarozơ có phản ứng tráng bạc không?', options: ['Có', 'Không', 'Chỉ khi đun nóng với kiềm', 'Tùy nhiệt độ'], correct: 1, explain: 'Saccarozơ là đisaccarit không có nhóm -CHO tự do nên không tráng bạc.' },
   { q: 'Thành phần chính của khí thiên nhiên là gì?', options: ['Metan (CH₄)', 'Etylen (C₂H₄)', 'Axetylen (C₂H₂)', 'Propan (C₃H₈)'], correct: 0, explain: 'Metan chiếm từ 85 - 95% thể tích khí thiên nhiên.' },
   { q: 'Liên kết hóa học trong phân tử NaCl là liên kết gì?', options: ['Cộng hóa trị phân cực', 'Cộng hóa trị không phân cực', 'Liên kết ion', 'Liên kết kim loại'], correct: 2, explain: 'Na⁺ và Cl⁻ hút nhau bằng lực hút tĩnh điện liên kết ion.' },
   { q: 'Dung dịch iot (I₂) dùng để nhận biết chất nào tạo màu xanh tím?', options: ['Glucozơ', 'Tinh bột', 'Xenlulozơ', 'Protein'], correct: 1, explain: 'Iot chui vào cấu trúc xoắn của amilozơ tạo phức xanh tím đặc trưng.' },
   { q: 'Axit sunfuric đặc nguội thụ động hóa với những kim loại nào?', options: ['Cu, Ag', 'Fe, Al, Cr', 'Zn, Mg', 'Na, K'], correct: 1, explain: 'Fe, Al, Cr bị thụ động hóa trong H₂SO₄ đặc nguội và HNO₃ đặc nguội.' },
-  { q: 'Kim loại nhẹ nhất có khối lượng riêng 0.534 g/cm³ là gì?', options: ['Nhôm', 'Liti', 'Magie', 'Natri'], correct: 1, explain: 'Liti là kim loại có khối lượng riêng nhỏ nhất.' },
+  { q: 'Kim loại nhẹ nhất có khối lượng riêng 0.534 g/cm³ là gì?', options: ['Aluminium', 'Lithium', 'Magnesium', 'Sodium'], correct: 1, explain: 'Liti là kim loại có khối lượng riêng nhỏ nhất.' },
 ];
 
 const WIN_PROGRESS = 100;

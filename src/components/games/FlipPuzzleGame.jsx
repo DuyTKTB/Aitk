@@ -40,13 +40,13 @@ const SECRET_PACKS = [
 ];
 
 const DEFAULT_QUESTIONS_9 = [
-  { q: 'Số hiệu nguyên tử của Cacbon (C) là mấy?', options: ['4', '6', '12', '14'], correct: 1 },
+  { q: 'Số hiệu nguyên tử của Carbon (C) là mấy?', options: ['4', '6', '12', '14'], correct: 1 },
   { q: 'Khí cười dùng trong y tế là hợp chất nào?', options: ['NO', 'NO₂', 'N₂O', 'NH₃'], correct: 2 },
   { q: 'Nước đá khô là trạng thái rắn của chất nào?', options: ['H₂O', 'CO₂', 'CH₄', 'SO₂'], correct: 1 },
   { q: 'Dung dịch Brom (Br₂) có màu gì đặc trưng?', options: ['Xanh lam', 'Tím', 'Da cam / Nâu đỏ', 'Vàng chanh'], correct: 2 },
   { q: 'Axit trong dạ dày người hỗ trợ tiêu hóa là gì?', options: ['H₂SO₄', 'HCl', 'HNO₃', 'CH₃COOH'], correct: 1 },
-  { q: 'Nguyên tố nhẹ nhất trong vũ trụ là gì?', options: ['Heli', 'Hidro', 'Liti', 'Cacbon'], correct: 1 },
-  { q: 'Kim loại nào cứng nhất thế giới?', options: ['Titan', 'Vonfram', 'Crom', 'Sắt'], correct: 2 },
+  { q: 'Nguyên tố nhẹ nhất trong vũ trụ là gì?', options: ['Helium', 'Hydrogen', 'Lithium', 'Carbon'], correct: 1 },
+  { q: 'Kim loại nào cứng nhất thế giới?', options: ['Titanium', 'Tungsten', 'Chromium', 'Iron'], correct: 2 },
   { q: 'Dung dịch CuSO₄ trong nước có màu gì?', options: ['Xanh lam', 'Đỏ thẫm', 'Xanh lá mạ', 'Không màu'], correct: 0 },
   { q: 'Đơn vị đo lượng chất trong hóa học là gì?', options: ['Gam (g)', 'Lít (L)', 'Mol', 'Độ C'], correct: 2 },
 ];

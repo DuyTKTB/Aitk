@@ -1,24 +1,15 @@
 /* ============================================================
-   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v6
+   TeacherDashboard.jsx — Quản lý lớp học (Vitality) v7
    ------------------------------------------------------------
-   HỖ TRỢ ĐA MÔN: filter theo môn, hiển thị badge môn, cột môn
-                  trong danh sách đề.
-   ------------------------------------------------------------
-   v6 (đa môn + fix):
-     • FIX #5: refresh insights (subsCacheRef) trước khi mở AI
-       Studio → AI dùng dữ liệu mới nhất, không dùng cache cũ.
-     • FIX #7: clear subsCacheRef khi tạo đề mới → tab "Đề thi"
-       hiển thị đầy đủ.
-     • MỚI: Filter theo môn trong tab Đề thi.
-     • MỚI: Badge "AI tạo" cho đề sinh bằng AI (dựa meta.source).
-     • MỚI: Nút "Sinh 3 đề phân hóa" cho lớp (mở AutoExamStudio
-       chế độ phân hóa).
-     • MỚI: Hiển thị môn trong thẻ đề + Bento lớp.
-     • MỚI: Cảnh báo khi AI sinh thiếu câu (nối với onPartial).
-     • Giữ nguyên v5: tab "Xin thi lại" có ô ghi chú; lazy-load
-       bài nộp; SVG icons.
+   v7 (fix + tối ưu):
+     • FIX #1: Nút "Xem trước & In A4" chuẩn hóa dữ liệu exam
+       trước khi truyền vào ExamPreviewSimulator.
+     • FIX: classInsights không tính lại mỗi giây khi có live session.
+     • FIX: Bọc Suspense trong ErrorBoundary.
+     • MỚI: Skeleton loading.
+     • MỚI: Memo cho các component nặng.
    ============================================================ */
-import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense, memo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { isAdmin as checkAdmin } from '../lib/isAdmin.js';
 import { buildClassInsights } from '../lib/classInsights.js';
@@ -42,6 +33,7 @@ import {
   denyRetry,
   setStudentRetryAllowance,
   listenRetryRequestsByClasses,
+  listenRetryRequestsByTeacher,
   getClassAllowances,
 } from '../lib/classroom.js';
 import {
@@ -64,6 +56,8 @@ import {
   PillTabs,
   Chip,
 } from './teacher/ui/index.js';
+import ExamEditModal from './teacher/ExamEditModal.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
 
 const LiveProctorView = lazy(() => import('./LiveProctorView.jsx'));
 const CreateExamPage = lazy(() => import('./teacher/CreateExamPage.jsx'));
@@ -127,30 +121,9 @@ const IcoPin = (p) => (
   </Svg>
 );
 
-const IcoSun = (p) => (
-  <Svg {...p} sw={2}>
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-  </Svg>
-);
-
-const IcoMoon = (p) => (
-  <Svg {...p} sw={2}>
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </Svg>
-);
-
 const IcoBolt = (p) => (
   <Svg {...p} sw={2}>
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </Svg>
-);
-
-const IcoTarget = (p) => (
-  <Svg {...p} sw={1.8}>
-    <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="5" />
-    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
   </Svg>
 );
 
@@ -168,7 +141,7 @@ import {
 import {
   IcoPlay, IcoStop, IcoRefresh, IcoUsers, IcoBook, IcoChart, IcoClock,
   IcoCheckCircle, IcoCopy, IcoTrash, IcoVideo, IcoDot, IcoGrid,
-  IcoDownload, IcoChevronRight, IcoAlert, IcoUserPlus, IcoKey, IcoMonitor,
+  IcoDownload, IcoChevronRight, IcoAlert, IcoKey, IcoMonitor,
   IcoBell, IcoLibrary,
 } from '../lib/sessionIcons.jsx';
 import '../styles/teacher-ds.css';
@@ -187,6 +160,31 @@ function examStatus(ex, liveSession, now) {
   return { key: 'ready', label: 'Sẵn sàng' };
 }
 
+/**
+ * FIX #1: Chuẩn hóa cấu trúc exam trước khi truyền vào ExamPreviewSimulator.
+ */
+function normalizeExamForPreview(exam) {
+  if (!exam) return null;
+  const questions = (exam.questions || []).map((q) => ({
+    ...q,
+    q: q.q ?? q.content ?? '',
+    options: q.options ?? q.answers?.map((o) => (typeof o === 'string' ? o : o.content || '')) ?? [],
+    correct: typeof q.correct === 'number' ? q.correct : -1,
+    explain: q.explain ?? q.explanation ?? '',
+    points: q.points ?? 1,
+    level: q.level || '',
+    topic: q.topic || '',
+    type: q.type || 'single_choice',
+  }));
+  return {
+    ...exam,
+    title: exam.title || 'Đề kiểm tra',
+    duration: exam.duration || 45,
+    subject: exam.subject || 'Hóa học',
+    questions,
+  };
+}
+
 function exportExamCsv(exam, subs) {
   const sorted = [...subs].sort((a, b) => b.score - a.score);
   const rows = [['Hạng', 'Họ tên', 'Điểm', 'Tổng điểm', '%', 'Câu đúng', 'Tổng câu', 'Thời gian (phút)', 'Số vi phạm', 'Tự động nộp']];
@@ -201,7 +199,6 @@ function exportExamCsv(exam, subs) {
   downloadCsv(`diem-${safe}.csv`, rows);
 }
 
-/* MỚI: Detect môn của đề dựa vào câu hỏi hoặc meta */
 function detectExamSubject(exam) {
   if (exam.subject) return exam.subject;
   const q = exam.questions?.[0];
@@ -209,11 +206,40 @@ function detectExamSubject(exam) {
   return '—';
 }
 
-/* MỚI: Kiểm tra đề có phải do AI tạo không */
 function isAiGeneratedExam(exam) {
   if (exam.source === 'ai' || exam.aiGenerated) return true;
   const firstQ = exam.questions?.[0];
   return Boolean(firstQ?.topic && firstQ?.level && firstQ?.qualityScore !== undefined);
+}
+
+/* ============================================================
+   MEMOIZED COMPONENTS
+   ============================================================ */
+const MemoAvatar = memo(Avatar);
+const MemoBentoCard = memo(BentoCard);
+const MemoStatBig = memo(StatBig);
+
+/* ============================================================
+   SKELETON LOADERS
+   ============================================================ */
+function DashboardSkeleton() {
+  return (
+    <div className="vt" style={{ padding: '2rem' }}>
+      <div className="t-skeleton" style={{ height: 60, marginBottom: 20, borderRadius: 16 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        <div className="t-skeleton" style={{ height: 140, borderRadius: 20 }} />
+        <div className="t-skeleton" style={{ height: 140, borderRadius: 20 }} />
+        <div className="t-skeleton" style={{ height: 140, borderRadius: 20 }} />
+        <div className="t-skeleton" style={{ height: 140, borderRadius: 20 }} />
+      </div>
+    </div>
+  );
+}
+
+function InsightSkeleton() {
+  return (
+    <div className="t-skeleton" style={{ height: 320, borderRadius: 24 }} />
+  );
 }
 
 /* ============================================================
@@ -227,6 +253,14 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [range, setRange] = useState('30');
   const [chartMode, setChartMode] = useState('line');
   const [subjectFilter, setSubjectFilter] = useState('');
+  /* ❗ MỚI: xem đề dạng NHÓM THEO LỚP (thư mục gập/mở) hay danh sách phẳng */
+  const [examGroupMode, setExamGroupMode] = useState('class');
+  const [openGroups, setOpenGroups] = useState(() => new Set());
+  const toggleGroup = (key) => setOpenGroups((prev) => {
+    const n = new Set(prev);
+    if (n.has(key)) n.delete(key); else n.add(key);
+    return n;
+  });
 
   const [classes, setClasses] = useState([]);
   const [exams, setExams] = useState([]);
@@ -258,10 +292,18 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [startingId, setStartingId] = useState(null);
 
   const [allRetryRequests, setRetryRequests] = useState([]);
-  const retryRequests = useMemo(
-    () => allRetryRequests.filter((r) => classes.some((c) => c.id === r.classId)),
-    [allRetryRequests, classes]
-  );
+  /* Yêu cầu theo NGƯỜI TẠO ĐỀ (bắt cả đề không gắn lớp — trước đây bị mất) */
+  const [teacherRetryRequests, setTeacherRetryRequests] = useState([]);
+  const retryRequests = useMemo(() => {
+    const byId = new Map();
+    for (const r of [...allRetryRequests, ...teacherRetryRequests]) byId.set(r.id, r);
+    return [...byId.values()].filter(
+      (r) => r.teacherId === user?.uid || classes.some((c) => c.id === r.classId)
+    );
+  }, [allRetryRequests, teacherRetryRequests, classes, user?.uid]);
+
+  /* ❗ MỚI: sửa đề đã tạo (thông tin + câu hỏi + camera/chống gian lận) */
+  const [editingExam, setEditingExam] = useState(null);
 
   const [allowances, setAllowances] = useState({});
   const [retryNotes, setRetryNotes] = useState({});
@@ -277,12 +319,16 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const showAdminLink = checkAdmin(user);
 
+  /* Live timer — chỉ chạy khi có session live */
+  const hasLiveSessions = useMemo(
+    () => sessions.some((s) => s.status === 'live'),
+    [sessions]
+  );
   useEffect(() => {
-    const hasLive = sessions.some((s) => s.status === 'live');
-    if (!hasLive) return undefined;
+    if (!hasLiveSessions) return undefined;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [sessions]);
+  }, [hasLiveSessions]);
 
   const goSection = (key) => {
     setSection(key);
@@ -292,20 +338,6 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   /* ---------- LOAD ---------- */
   const subsCacheRef = useRef({});
-
-  const ensureExamSubmissions = useCallback(async (examId) => {
-    if (!examId) return [];
-    if (subsCacheRef.current[examId]) return subsCacheRef.current[examId];
-    try {
-      const subs = await getSubmissionsByExam(examId);
-      subsCacheRef.current[examId] = subs;
-      setSubmissionsMap((prev) => ({ ...prev, [examId]: subs }));
-      return subs;
-    } catch (err) {
-      console.warn('[TeacherDashboard] load subs lỗi cho đề', examId, err);
-      return [];
-    }
-  }, []);
 
   const refresh = useCallback(async () => {
     if (!user?.uid) return;
@@ -394,6 +426,18 @@ export default function TeacherDashboard({ onExit } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, classIdsKey]);
 
+  /* ❗ MỚI: lắng nghe yêu cầu theo NGƯỜI TẠO ĐỀ — đề Supabase không có classId,
+     nên trước đây mọi yêu cầu thi lại của loại đề này không bao giờ tới giáo viên */
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const unsub = listenRetryRequestsByTeacher(
+      user.uid,
+      (list) => setTeacherRetryRequests(list || []),
+      (err) => say(`Không đọc được yêu cầu thi lại (${err.code || 'lỗi'}).`, 'error')
+    );
+    return () => unsub?.();
+  }, [user?.uid]);
+
   /* Load allowances khi chọn lớp */
   useEffect(() => {
     if (!selectedClass?.id) {
@@ -411,9 +455,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     })();
   }, [selectedClass?.id]);
 
-  /* ============================================================
-     FIX #5: Refresh trước khi mở AI Studio
-     ============================================================ */
+  /* FIX #5: Refresh trước khi mở AI Studio */
   const openNewExam = async () => {
     if (classes.length === 0) {
       say('Hãy tạo lớp trước khi tạo đề', 'error');
@@ -559,6 +601,11 @@ export default function TeacherDashboard({ onExit } = {}) {
     });
   }, [say]);
 
+  const reloadClass = async (id) => {
+    const fresh = await getClassById(id);
+    setSelectedClass(fresh);
+  };
+
   const handleRemoveMember = (cls, m) => {
     setConfirmState({
       title: 'Xóa khỏi lớp?',
@@ -576,11 +623,6 @@ export default function TeacherDashboard({ onExit } = {}) {
         }
       },
     });
-  };
-
-  const reloadClass = async (id) => {
-    const fresh = await getClassById(id);
-    setSelectedClass(fresh);
   };
 
   const handleApprove = async (cls, sid) => {
@@ -771,9 +813,15 @@ export default function TeacherDashboard({ onExit } = {}) {
     return Object.values(map);
   }, [subsInRange]);
 
+  /* FIX: classInsights dùng Date.now() thay vì `now` để tránh recalc mỗi giây */
   const classInsights = useMemo(
-    () => buildClassInsights({ exams, submissionsMap, rangeDays: range, now }),
-    [exams, submissionsMap, range, now]
+    () => buildClassInsights({
+      exams,
+      submissionsMap,
+      rangeDays: range,
+      now: Date.now(),
+    }),
+    [exams, submissionsMap, range]
   );
 
   const trend = useMemo(() => {
@@ -870,24 +918,21 @@ export default function TeacherDashboard({ onExit } = {}) {
     const vs = sessions.find((s) => s.id === viewingSessionId);
     const vExam = exams.find((e) => e.id === vs?.examId);
     return (
-      <Suspense fallback={<div className="vt"><div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải phòng giám sát...</p></div></div>}>
-        <LiveProctorView
-          sessionId={viewingSessionId}
-          className={classById[vs?.classId]?.name}
-          totalQuestions={vExam?.questions?.length || 0}
-          onBack={() => setViewingSessionId(null)}
-        />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<DashboardSkeleton />}>
+          <LiveProctorView
+            sessionId={viewingSessionId}
+            className={classById[vs?.classId]?.name}
+            totalQuestions={vExam?.questions?.length || 0}
+            onBack={() => setViewingSessionId(null)}
+          />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
   if (loading) {
-    return (
-      <div className="vt"><div className="vt-loading">
-        <div className="page-loader-spinner" />
-        <p>Đang tải...</p>
-      </div></div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (loadError) {
@@ -900,11 +945,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   }
 
   /* ============================================================
-     NAV ITEMS — 5 MỤC CHÍNH CHO BOTTOM NAV MOBILE
-     ------------------------------------------------------------
-     Thứ tự: Tổng quan - Lớp học - Đề thi - Phòng thi - AI Tạo đề
-     Các mục còn lại (Mô phỏng, Ngân hàng, Chấm phiếu, Xin thi lại,
-     Quản trị) nằm trong extraNav — chỉ hiển thị trên desktop.
+     NAV ITEMS
      ============================================================ */
   const navItems = [
     { key: 'overview', label: 'Tổng quan', Icon: IcoGrid },
@@ -926,53 +967,29 @@ export default function TeacherDashboard({ onExit } = {}) {
     { key: 'create', label: 'AI Tạo đề', Icon: IcoSparkles },
   ];
 
-  /* Các mục phụ — chỉ hiển thị trên desktop */
+  /* ❗ FIX: các nút extraNav trước đây KHÔNG có class active → bấm vào không bao giờ
+     sáng như 5 nút đầu (DashFrame chỉ tự gắn active cho `items`). Nay gắn theo `section`. */
   const extraNav = (
     <>
-      <button
-        type="button"
-        className="t-rail-btn"
-        onClick={() => goSection('simulator')}
-        title="Mô phỏng & Đảo đề"
-      >
+      <button type="button" className={`t-rail-btn ${section === 'simulator' ? 'active' : ''}`} onClick={() => goSection('simulator')} title="Mô phỏng & Đảo đề">
         <span className="t-rail-btn-icon"><IcoShuffle size={20} /></span>
         <span className="t-rail-btn-label">Mô phỏng & Đảo đề</span>
       </button>
-      <button
-        type="button"
-        className="t-rail-btn"
-        onClick={() => goSection('bank')}
-        title="Ngân hàng câu hỏi"
-      >
+      <button type="button" className={`t-rail-btn ${section === 'bank' ? 'active' : ''}`} onClick={() => goSection('bank')} title="Ngân hàng câu hỏi">
         <span className="t-rail-btn-icon"><IcoLibrary size={20} /></span>
         <span className="t-rail-btn-label">Ngân hàng</span>
       </button>
-      <button
-        type="button"
-        className="t-rail-btn"
-        onClick={() => goSection('paper')}
-        title="Chấm phiếu A4"
-      >
+      <button type="button" className={`t-rail-btn ${section === 'paper' ? 'active' : ''}`} onClick={() => goSection('paper')} title="Chấm phiếu A4">
         <span className="t-rail-btn-icon"><IcoScan size={20} /></span>
         <span className="t-rail-btn-label">Chấm phiếu A4</span>
       </button>
-      <button
-        type="button"
-        className="t-rail-btn"
-        onClick={() => goSection('retry')}
-        title="Xin thi lại"
-      >
+      <button type="button" className={`t-rail-btn ${section === 'retry' ? 'active' : ''}`} onClick={() => goSection('retry')} title="Xin thi lại">
         <span className="t-rail-btn-icon"><IcoBell size={20} /></span>
         <span className="t-rail-btn-label">Xin thi lại</span>
         {totalPendingRetry > 0 && <span className="t-rail-btn-badge">{totalPendingRetry}</span>}
       </button>
       {showAdminLink && (
-        <button
-          type="button"
-          className="t-rail-btn"
-          onClick={() => { window.location.hash = 'admin'; }}
-          title="Sang trang quản trị hệ thống"
-        >
+        <button type="button" className="t-rail-btn" onClick={() => { window.location.hash = 'admin'; }} title="Sang trang quản trị hệ thống">
           <span className="t-rail-btn-icon"><IcoMonitor size={20} /></span>
           <span className="t-rail-btn-label">Quản trị</span>
         </button>
@@ -1119,47 +1136,47 @@ export default function TeacherDashboard({ onExit } = {}) {
           </div>
 
           <div className="t-col-4">
-            <BentoCard interactive onClick={() => goSection('exams')}>
-              <StatBig
+            <MemoBentoCard interactive onClick={() => goSection('exams')}>
+              <MemoStatBig
                 value={exams.length}
                 label="Đề thi đã biên soạn"
                 suffix=" đề"
                 delta={countBy('ready')}
                 deltaLabel="sẵn sàng mở"
               />
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-4">
-            <BentoCard interactive onClick={exportAllCsv}>
-              <StatBig
+            <MemoBentoCard interactive onClick={exportAllCsv}>
+              <MemoStatBig
                 value={subsInRange.length}
                 label="Bài kiểm tra đã nộp"
                 suffix=" bài"
                 delta={passRate}
                 deltaLabel="% đạt chuẩn (≥5.0)"
               />
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-4">
-            <BentoCard
+            <MemoBentoCard
               interactive
               tone={atRiskStudents.length > 0 ? 'dark' : 'default'}
               onClick={() => goSection('classes')}
             >
-              <StatBig
+              <MemoStatBig
                 value={atRiskStudents.length}
                 label="Học sinh cần kèm thêm"
                 suffix=" HS"
                 delta={atRiskStudents.length > 0 ? -atRiskStudents.length : 0}
                 deltaLabel="dưới 50% điểm"
               />
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-8">
-            <BentoCard>
+            <MemoBentoCard>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--t-ink)' }}>
@@ -1198,7 +1215,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     const dotLevel = Math.min(5, Math.max(1, Math.round((membersCount > 0 ? 3 : 1) + (classExams.length > 0 ? 1 : 0))));
 
                     return (
-                      <BentoCard
+                      <MemoBentoCard
                         key={c.id}
                         notch
                         onNotchClick={() => setSelectedClass(c)}
@@ -1209,7 +1226,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                          <Avatar name={c.name} size={42} />
+                          <MemoAvatar name={c.name} size={42} />
                           <div>
                             <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: 'var(--t-ink)' }}>
                               {c.name}
@@ -1224,18 +1241,18 @@ export default function TeacherDashboard({ onExit } = {}) {
                           <span style={{ fontSize: '0.76rem', color: 'var(--t-ink-muted)' }}>
                             {membersCount} học sinh · {classExams.length} đề
                           </span>
-                          <RatingDots count={5} filled={dotLevel} tone="lime" />
+                          <RatingDots value={dotLevel} max={5} tone="lime" size={7} />
                         </div>
-                      </BentoCard>
+                      </MemoBentoCard>
                     );
                   })}
                 </div>
               )}
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-4">
-            <BentoCard tone="dark">
+            <MemoBentoCard tone="dark">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--t-ink)' }}>
                   Điểm trung bình
@@ -1258,11 +1275,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <span style={{ color: 'var(--t-ink-muted)' }}>Xếp loại năng lực:</span>
                 <strong style={{ color: 'var(--t-accent)' }}>{classHealthGrade.grade} ({classHealthGrade.label})</strong>
               </div>
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-8">
-            <BentoCard>
+            <MemoBentoCard>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--t-ink)' }}>
@@ -1294,11 +1311,11 @@ export default function TeacherDashboard({ onExit } = {}) {
               </div>
 
               <TrendChart points={trend} mode={chartMode} max={100} height={150} />
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-4">
-            <BentoCard tone={liveSessions.length > 0 ? 'lime' : 'default'}>
+            <MemoBentoCard tone={liveSessions.length > 0 ? 'lime' : 'default'}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: liveSessions.length > 0 ? 'var(--t-accent-ink)' : 'var(--t-ink)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {liveSessions.length > 0 ? (
                   <>
@@ -1394,18 +1411,20 @@ export default function TeacherDashboard({ onExit } = {}) {
                   </div>
                 </div>
               )}
-            </BentoCard>
+            </MemoBentoCard>
           </div>
 
           <div className="t-col-12" style={{ marginTop: '0.5rem' }}>
-            <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang chuẩn bị báo cáo AI sư phạm…</p></div>}>
-              <InsightPanel
-                insightsData={classInsights}
-                className={classes[0]?.name || 'Toàn bộ lớp học'}
-                subject="Hóa học"
-                onOpenAiStudio={() => openNewExam()}
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<InsightSkeleton />}>
+                <InsightPanel
+                  insightsData={classInsights}
+                  className={classes[0]?.name || 'Toàn bộ lớp học'}
+                  subject="Hóa học"
+                  onOpenAiStudio={() => openNewExam()}
+                />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </div>
       )}
@@ -1430,7 +1449,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               return (
                 <article key={cls.id} className="vt-card vt-class">
                   <header>
-                    <Avatar name={cls.name} size={52} />
+                    <MemoAvatar name={cls.name} size={52} />
                     <div>
                       <h3>{cls.name}</h3>
                       <small>{cls.subject} · {classExams.length} đề</small>
@@ -1501,7 +1520,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   )}
 
                   <div className="vt-stack">
-                    {members.slice(0, 5).map((m) => <Avatar key={m.id} name={m.name} size={30} />)}
+                    {members.slice(0, 5).map((m) => <MemoAvatar key={m.id} name={m.name} size={30} />)}
                     {members.length > 5 && <span className="vt-stack-more">+{members.length - 5}</span>}
                     {members.length === 0 && <small className="vt-muted">Chưa có học sinh tham gia</small>}
                   </div>
@@ -1545,83 +1564,9 @@ export default function TeacherDashboard({ onExit } = {}) {
           if (q && !ex.title?.toLowerCase().includes(q)) return false;
           return true;
         });
+        /* ❗ Thẻ đề bóc thành hàm dùng chung — nhóm theo lớp và danh sách phẳng cùng dùng */
+        const renderExamCard = ({ ex, liveSession, st }) => {
 
-        if (exams.length === 0) {
-          return (
-            <div className="vt-empty">
-              <span><IcoBook size={30} /></span>
-              <h3>Chưa có đề nào</h3>
-              <p>Tạo đề cho một lớp để giao bài và mở phòng thi.</p>
-              <button type="button" className="vt-btn primary" onClick={openNewExam}>Tạo đề đầu tiên</button>
-            </div>
-          );
-        }
-
-        return (
-          <>
-            {availableSubjects.length > 1 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Môn:
-                </span>
-                <button
-                  type="button"
-                  className={'vt-chip' + (!subjectFilter ? ' active' : '')}
-                  onClick={() => setSubjectFilter('')}
-                  style={{
-                    padding: '0.35rem 0.85rem',
-                    borderRadius: 999,
-                    border: '1.5px solid ' + (!subjectFilter ? 'var(--acc)' : 'var(--soft)'),
-                    background: !subjectFilter ? 'var(--acc)' : 'var(--panel)',
-                    color: !subjectFilter ? '#fff' : 'var(--ink)',
-                    cursor: 'pointer',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  Tất cả ({exams.length})
-                </button>
-                {availableSubjects.map((s) => {
-                  const count = exams.filter((e) => detectExamSubject(e) === s).length;
-                  const active = subjectFilter === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      className={'vt-chip' + (active ? ' active' : '')}
-                      onClick={() => setSubjectFilter(s)}
-                      style={{
-                        padding: '0.35rem 0.85rem',
-                        borderRadius: 999,
-                        border: '1.5px solid ' + (active ? 'var(--acc)' : 'var(--soft)'),
-                        background: active ? 'var(--acc)' : 'var(--panel)',
-                        color: active ? '#fff' : 'var(--ink)',
-                        cursor: 'pointer',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {s} ({count})
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {list.length === 0 ? (
-              <div className="vt-empty">
-                <span><IcoBook size={30} /></span>
-                <h3>Không có đề phù hợp</h3>
-                <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
-                {subjectFilter && (
-                  <button type="button" className="vt-btn" onClick={() => setSubjectFilter('')}>
-                    Xóa bộ lọc môn
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="vt-stackcards">
-                {list.map(({ ex, liveSession, st }) => {
                   const cls = classById[ex.classId];
                   const subs = submissionsMap[ex.id] || [];
                   const pcts = subs.map(pctOf);
@@ -1633,8 +1578,8 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const isAi = isAiGeneratedExam(ex);
                   const typeCount = (() => {
                     const t = { single_choice: 0, true_false: 0, short_answer: 0 };
-                    (ex.questions || []).forEach((q) => {
-                      const k = q.type || 'single_choice';
+                    (ex.questions || []).forEach((question) => {
+                      const k = question.type || 'single_choice';
                       t[k] = (t[k] || 0) + 1;
                     });
                     return t;
@@ -1724,6 +1669,15 @@ export default function TeacherDashboard({ onExit } = {}) {
                           </button>
                           <button
                             type="button"
+                            className="vt-btn sm"
+                            onClick={() => setEditingExam(ex)}
+                            title="Sửa thông tin, câu hỏi, cấu hình camera & chống gian lận"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
+                            Chỉnh sửa
+                          </button>
+                          <button
+                            type="button"
                             className="vt-icon-btn"
                             onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
                             title="Xuất điểm CSV"
@@ -1742,8 +1696,180 @@ export default function TeacherDashboard({ onExit } = {}) {
                       </div>
                     </article>
                   );
+                
+        };
+        /* ❗ MỚI: gom đề theo LỚP → môn (thư mục). Nhóm có phòng LIVE tự mở. */
+        const groups = (() => {
+          const map = new Map();
+          for (const item of list) {
+            const cid = item.ex.classId || '__none__';
+            if (!map.has(cid)) map.set(cid, { key: cid, cls: classById[cid] || null, items: [], mons: [] });
+            map.get(cid).items.push(item);
+          }
+          const arr = [...map.values()];
+          for (const g of arr) {
+            const monMap = new Map();
+            for (const it of g.items) {
+              const mon = detectExamSubject(it.ex) || 'Khác';
+              if (!monMap.has(mon)) monMap.set(mon, []);
+              monMap.get(mon).push(it);
+            }
+            g.mons = [...monMap.entries()].map(([name, items]) => ({ name, items }));
+            g.live = g.items.filter((it) => it.liveSession).length;
+          }
+          arr.sort((a, b) => (b.live - a.live)
+            || ((a.key === '__none__') - (b.key === '__none__'))
+            || String(a.cls?.name || '').localeCompare(String(b.cls?.name || ''), 'vi'));
+          return arr;
+})();
+
+        if (exams.length === 0) {
+          return (
+            <div className="vt-empty">
+              <span><IcoBook size={30} /></span>
+              <h3>Chưa có đề nào</h3>
+              <p>Tạo đề cho một lớp để giao bài và mở phòng thi.</p>
+              <button type="button" className="vt-btn primary" onClick={openNewExam}>Tạo đề đầu tiên</button>
+            </div>
+          );
+        }
+
+        return (
+          <>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.55rem' }}>
+              <div style={{ display: 'inline-flex', background: 'var(--vt-tint)', borderRadius: 999, padding: '.25rem', gap: '.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setExamGroupMode('class')}
+                  style={{ padding: '.35rem .8rem', borderRadius: 999, border: 'none', cursor: 'pointer', font: '700 .76rem var(--t-font-sans)', background: examGroupMode === 'class' ? 'var(--acc)' : 'transparent', color: examGroupMode === 'class' ? '#fff' : 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" /></svg>
+                  Nhóm theo lớp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExamGroupMode('flat')}
+                  style={{ padding: '.35rem .8rem', borderRadius: 999, border: 'none', cursor: 'pointer', font: '700 .76rem var(--t-font-sans)', background: examGroupMode === 'flat' ? 'var(--acc)' : 'transparent', color: examGroupMode === 'flat' ? '#fff' : 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+                  Danh sách
+                </button>
+              </div>
+            </div>
+{availableSubjects.length > 1 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Môn:
+                </span>
+                <button
+                  type="button"
+                  className={'vt-chip' + (!subjectFilter ? ' active' : '')}
+                  onClick={() => setSubjectFilter('')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: 999,
+                    border: '1.5px solid ' + (!subjectFilter ? 'var(--acc)' : 'var(--soft)'),
+                    background: !subjectFilter ? 'var(--acc)' : 'var(--panel)',
+                    color: !subjectFilter ? '#fff' : 'var(--ink)',
+                    cursor: 'pointer',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Tất cả ({exams.length})
+                </button>
+                {availableSubjects.map((s) => {
+                  const count = exams.filter((e) => detectExamSubject(e) === s).length;
+                  const active = subjectFilter === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={'vt-chip' + (active ? ' active' : '')}
+                      onClick={() => setSubjectFilter(s)}
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: 999,
+                        border: '1.5px solid ' + (active ? 'var(--acc)' : 'var(--soft)'),
+                        background: active ? 'var(--acc)' : 'var(--panel)',
+                        color: active ? '#fff' : 'var(--ink)',
+                        cursor: 'pointer',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {s} ({count})
+                    </button>
+                  );
                 })}
               </div>
+            )}
+
+            {list.length === 0 ? (
+              <div className="vt-empty">
+                <span><IcoBook size={30} /></span>
+                <h3>Không có đề phù hợp</h3>
+                <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                {subjectFilter && (
+                  <button type="button" className="vt-btn" onClick={() => setSubjectFilter('')}>
+                    Xóa bộ lọc môn
+                  </button>
+                )}
+              </div>
+            ) : (
+              examGroupMode === 'flat' ? (
+                <div className="vt-stackcards">
+                  {list.map(renderExamCard)}
+                </div>
+) : (
+                <div style={{ display: 'grid', gap: '.6rem' }}>
+                  {groups.map((g) => {
+                    const open = openGroups.has(g.key) || g.live > 0;
+                    return (
+                      <div key={g.key} style={{ display: 'grid', gap: '.55rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(g.key)}
+                          className="vt-card"
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.8rem', padding: '.7rem .95rem', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <span style={{ width: 42, height: 42, borderRadius: 13, background: 'var(--t-accent-subtle)', color: 'var(--t-accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" /></svg>
+                          </span>
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <b style={{ font: '800 .95rem var(--t-font-sans)', color: 'var(--t-ink)', display: 'block' }}>{g.cls?.name || 'Chưa gắn lớp'}</b>
+                            <small style={{ color: 'var(--t-ink-muted)', font: '600 .74rem var(--t-font-sans)', display: 'block' }}>
+                              {g.items.length} đề · {g.mons.length} môn{g.cls?.members?.length ? ` · ${g.cls.members.length} HS` : ''}
+                            </small>
+                          </span>
+                          {g.live > 0 && (
+                            <span style={{ padding: '.25rem .6rem', borderRadius: 999, background: 'var(--t-status-ok-subtle)', color: 'var(--t-status-ok)', font: '800 .7rem var(--t-font-sans)' }}>● LIVE {g.live}</span>
+                          )}
+                          <span style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease', color: 'var(--t-ink-muted)', display: 'grid' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                          </span>
+                        </button>
+                        {open && (
+                          <div style={{ display: 'grid', gap: '.7rem', paddingLeft: '.3rem' }}>
+                            {g.mons.map((m) => (
+                              <div key={m.name}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '.55rem', margin: '.1rem 0 .45rem' }}>
+                                  <b style={{ font: '800 .7rem var(--t-font-sans)', letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--t-ink-muted)' }}>{m.name}</b>
+                                  <span style={{ height: 1, flex: 1, background: 'var(--soft)' }} />
+                                  <small style={{ color: 'var(--t-ink-muted)', font: '600 .72rem var(--t-font-sans)' }}>{m.items.length} đề</small>
+                                </div>
+                                <div className="vt-stackcards">
+                                  {m.items.map(renderExamCard)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+)
             )}
           </>
         );
@@ -1853,33 +1979,39 @@ export default function TeacherDashboard({ onExit } = {}) {
       })()}
 
       {/* ============================================================
-          MÔ PHỎNG, BẢN IN A4 & ĐẢO 4 MÃ ĐỀ
+          MÔ PHỎNG
          ============================================================ */}
       {section === 'simulator' && (
-        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải bộ mô phỏng...</p></div>}>
-          <TeacherSimulatorHub
-            teacherExams={exams}
-            classes={classes}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải bộ mô phỏng...</p></div>}>
+            <TeacherSimulatorHub
+              teacherExams={exams}
+              classes={classes}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* ============================================================
           NGÂN HÀNG
          ============================================================ */}
       {section === 'bank' && (
-        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
-          <QuestionBank classes={classes} onSoftExamCreated={() => refresh()} />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
+            <QuestionBank classes={classes} onSoftExamCreated={() => refresh()} />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* ============================================================
           CHẤM PHIẾU A4 (OMR)
          ============================================================ */}
       {section === 'paper' && (
-        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải chấm phiếu A4...</p></div>}>
-          <PaperGrading classes={classes} exams={exams} />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải chấm phiếu A4...</p></div>}>
+            <PaperGrading classes={classes} exams={exams} />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* ============================================================
@@ -1911,7 +2043,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   return (
                     <article key={r.id} className="vt-card">
                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                        <Avatar name={r.studentName} size={48} />
+                        <MemoAvatar name={r.studentName} size={48} />
                         <div style={{ flex: 1, minWidth: 200 }}>
                           <h3 style={{ margin: 0, font: '800 1.05rem var(--sans)', letterSpacing: '-.02em' }}>
                             {r.studentName}
@@ -1987,25 +2119,27 @@ export default function TeacherDashboard({ onExit } = {}) {
           TẠO ĐỀ (AUTOEXAM AI STUDIO)
          ============================================================ */}
       {section === 'create' && (
-        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải AI Studio...</p></div>}>
-          <CreateExamPage
-            classInfo={selectedClass || classes[0]}
-            classes={classes}
-            classInsights={classInsights}
-            grades={[]}
-            subjects={[]}
-            onDone={async () => {
-              subsCacheRef.current = {};
-              await refresh();
-              setSelectedClass(null);
-              goSection('exams');
-            }}
-            onCancel={() => {
-              setSelectedClass(null);
-              goSection('overview');
-            }}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải AI Studio...</p></div>}>
+            <CreateExamPage
+              classInfo={selectedClass || classes[0]}
+              classes={classes}
+              classInsights={classInsights}
+              grades={[]}
+              subjects={[]}
+              onDone={async () => {
+                subsCacheRef.current = {};
+                await refresh();
+                setSelectedClass(null);
+                goSection('exams');
+              }}
+              onCancel={() => {
+                setSelectedClass(null);
+                goSection('overview');
+              }}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* ============ TOAST ============ */}
@@ -2069,7 +2203,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     goSection('create');
                   }}
                 >
-                  <Avatar name={c.name} size={44} />
+                  <MemoAvatar name={c.name} size={44} />
                   <div><b>{c.name}</b><small>{c.members?.length || 0} học sinh</small></div>
                   <IcoChevronRight size={14} />
                 </button>
@@ -2231,15 +2365,30 @@ export default function TeacherDashboard({ onExit } = {}) {
         }}
       />
 
-      {/* ============ MODAL XEM TRƯỚC ============ */}
+      {/* ============ MODAL XEM TRƯỚC — FIX #1 ============ */}
       {previewExam && (
-        <Suspense fallback={null}>
-          <ExamPreviewSimulator
-            exam={previewExam}
-            questions={previewExam.questions || []}
-            onClose={() => setPreviewExam(null)}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <ExamPreviewSimulator
+              exam={normalizeExamForPreview(previewExam)}
+              questions={normalizeExamForPreview(previewExam)?.questions || []}
+              onClose={() => setPreviewExam(null)}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+
+      {/* ❗ MỚI: modal sửa đề (thông tin + câu hỏi + camera/chống gian lận) */}
+      {editingExam && (
+        <ExamEditModal
+          exam={editingExam}
+          classes={classes}
+          onClose={() => setEditingExam(null)}
+          onSaved={(updated) => {
+            setExams((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+            say('Đã lưu thay đổi đề thi.');
+          }}
+        />
       )}
     </DashFrame>
   );
@@ -2315,7 +2464,7 @@ function ExamStats({ exam, subs, onExport }) {
           <ul className="vt-flag">
             {flagged.map((s) => (
               <li key={s.id}>
-                <Avatar name={s.studentName} size={30} />
+                <MemoAvatar name={s.studentName} size={30} />
                 <b>{s.studentName}</b>
                 <span>{s.violationCount || 0} vi phạm{s.autoSubmitted ? ' · tự động nộp' : ''}</span>
               </li>
@@ -2335,7 +2484,7 @@ function ExamStats({ exam, subs, onExport }) {
           {sorted.map((s, i) => (
             <li key={s.id}>
               <span className={'vt-rank-n r' + (i < 3 ? i + 1 : 0)}>{i + 1}</span>
-              <Avatar name={s.studentName} size={32} />
+              <MemoAvatar name={s.studentName} size={32} />
               <b>{s.studentName}</b>
               <small>{s.correctCount}/{s.totalQuestions} đúng</small>
               <span className="vt-rank-score">{s.score}/{s.totalPoints}</span>

@@ -92,7 +92,7 @@ export default function ElementModal({ e, compare, onClose, vip, fav, onToggleFa
         <div className="emodal" role="dialog" aria-modal="true" aria-label="So sánh nguyên tố" tabIndex={-1} ref={ref}>
           <header className="em-head">
             <button className="em-pill em-back" onClick={onClose}><Icon name="back" /><span>Quay lại</span></button>
-            <h2 className="em-title">So sánh {a.vietnameseName} ({a.symbol}) và {b.vietnameseName} ({b.symbol})</h2>
+            <h2 className="em-title">So sánh {a.name} ({a.symbol}) và {b.name} ({b.symbol})</h2>
             <button className="em-pill em-x" onClick={onClose} aria-label="Đóng"><Icon name="close" /></button>
           </header>
           <div className="em-grid two">
@@ -102,7 +102,7 @@ export default function ElementModal({ e, compare, onClose, vip, fav, onToggleFa
                   <div key={x.atomicNumber} className="em-card sm" style={{ '--cat': `var(--${x.category})` }}>
                     <span className="em-z">{x.atomicNumber}</span>
                     <div className="em-sym">{x.symbol}</div>
-                    <div className="em-name">{x.vietnameseName}</div>
+                    <div className="em-name">{x.name}</div>
                     <div className="em-en">{x.name}</div>
                   </div>
                 ))}
@@ -143,11 +143,11 @@ export default function ElementModal({ e, compare, onClose, vip, fav, onToggleFa
   const rows = ROWS(e).filter(([k]) => k !== 'Electron hóa trị');
   return (
     <div className="backdrop" onMouseDown={backdropClose}>
-      <div className="emodal" role="dialog" aria-modal="true" aria-label={e.vietnameseName} tabIndex={-1} ref={ref}
+      <div className="emodal" role="dialog" aria-modal="true" aria-label={e.name} tabIndex={-1} ref={ref}
         style={{ '--cat': `var(--${e.category})` }}>
         <header className="em-head">
           <button className="em-pill em-back" onClick={onClose}><Icon name="back" /><span>Quay lại</span></button>
-          <h2 className="em-title">{e.vietnameseName} ({e.symbol}) · Z={e.atomicNumber}</h2>
+          <h2 className="em-title">{e.name} ({e.symbol}) · Z={e.atomicNumber}</h2>
           <button className={'em-pill em-fav' + (fav ? ' on' : '')} onClick={onToggleFav} aria-pressed={!!fav}>
             <Icon name="star" fill={!!fav} /><span>{fav ? 'Đã yêu thích' : 'Yêu thích'}</span>
           </button>
@@ -160,7 +160,7 @@ export default function ElementModal({ e, compare, onClose, vip, fav, onToggleFa
               <span className="em-z">{e.atomicNumber}</span>
               <span className="em-mass">{e.atomicMass}</span>
               <div className="em-sym">{e.symbol}</div>
-              <div className="em-name">{e.vietnameseName}</div>
+              <div className="em-name">{e.name}</div>
               <div className="em-en">{e.name}</div>
             </div>
             <div>

@@ -7,7 +7,7 @@ import { askAI as callModel, compressImage } from '../lib/ai.js';
 export const UPGRADE_URL = '/vip';
 
 const ELEMENT_SYSTEM =
-  'Bạn là "A7 Assistant", trợ lý Hóa học THPT Việt Nam (lớp 10-12) của lớp ELEC AI. ' +
+  'Bạn là "ELEC AI Assistant", trợ lý Hóa học THPT Việt Nam (lớp 10-12) của lớp ELEC AI. ' +
   'Giải thích rõ ràng, đúng bản chất, có ví dụ, tối đa khoảng 150 từ, mỗi ý một dòng. ' +
   'Không dùng LaTeX; viết công thức bằng Unicode (H₂O, Fe³⁺, 3d⁶). Khi được yêu cầu trả JSON thì chỉ trả JSON thuần.';
 

@@ -1,11 +1,13 @@
 /* ============================================================
    matrixAiService.js — Lập ma trận & sinh đề (GDPT 2018 / Bộ GD&ĐT)
-   Dùng callModel + parseJsonLoose của examAiUtils.
    ------------------------------------------------------------
-   v2:
-     • FIX: generateQuestionsFromApprovedMatrix TỰ RETRY khi thiếu câu
-     • FIX: planMatrixWithAI verify số câu, fallback nếu lệch > 30%
-     • Luôn trả về đủ số câu yêu cầu (không throw error nữa)
+   v4 (FIX gộp câu + hết token + 404):
+     • FIX: GEN_BATCH 6 → 3 để AI không quá tải token
+     • FIX: KHÔNG nhét toàn bộ textParts — chỉ 1500 ký tự đầu
+     • FIX: prompt system cấm gộp câu (PHẦN I/II/III, Câu 1/2...)
+     • FIX: BATCH_QUESTION_SCHEMA cho Gemini
+     • FIX: validateBatchOutput() — cắt câu bị gộp
+     • FIX: retry song song phần thiếu (Promise.all)
    ============================================================ */
 import {
   callModel,
@@ -129,7 +131,9 @@ export function parseQuestionCommand(text, total = 0) {
 }
 
 const LEVEL_KEYS = ['nb', 'th', 'vd', 'vdc'];
-const GEN_BATCH = 6;
+
+/* ⭐ FIX: GEN_BATCH 6 → 3 */
+const GEN_BATCH = 3;
 const MAX_RETRY = 3;
 
 export function emptyLevel() {
@@ -198,13 +202,8 @@ export function scaleMatrixToCount(matrix, targetCount) {
   let i = 0;
   while (diff !== 0 && scaled.length) {
     const cell = scaled[i % scaled.length];
-    if (diff > 0) {
-      cell.count += 1;
-      diff -= 1;
-    } else if (cell.count > 0) {
-      cell.count -= 1;
-      diff += 1;
-    }
+    if (diff > 0) { cell.count += 1; diff -= 1; }
+    else if (cell.count > 0) { cell.count -= 1; diff += 1; }
     i += 1;
     if (i > 400) break;
   }
@@ -441,7 +440,7 @@ Chỉ trả JSON:
     `Lập ma trận ${n} câu, ${duration} phút, chủ đề: ${topic}.`,
     customPrompt ? `Yêu cầu thêm: ${customPrompt}` : '',
     classInsights ? `Phân tích lớp (bám vào đây khi phân bổ VDC/NB):\n${classInsights}` : '',
-    textParts.length ? textParts.join('\n\n') : '',
+    textParts.length ? textParts.join('\n\n').slice(0, 3000) : '',
   ].filter(Boolean).join('\n\n');
 
   try {
@@ -453,7 +452,6 @@ Chỉ trả JSON:
     });
     const data = parseJsonLoose(raw);
     if (data && Array.isArray(data.parts) && data.parts.length) {
-      // ⭐ FIX: Verify số câu AI trả về có khớp không
       const aiTotal = (data.parts || []).reduce((sum, part) => {
         return sum + (part.topics || []).reduce((s, top) => {
           return s + (top.nb?.count || 0) + (top.th?.count || 0) +
@@ -463,7 +461,6 @@ Chỉ trả JSON:
 
       console.log(`[matrix] AI trả về ${aiTotal} câu, cần ${n} câu`);
 
-      // Nếu AI trả về lệch quá 30% → dùng fallback thay vì scale
       if (Math.abs(aiTotal - n) > n * 0.3) {
         console.warn(`[matrix] AI trả về lệch quá nhiều (${aiTotal} vs ${n}). Dùng fallback.`);
         throw new Error(`AI trả về ${aiTotal} câu thay vì ${n}. Dùng khung dự phòng.`);
@@ -484,7 +481,6 @@ Chỉ trả JSON:
     console.warn('[matrix] AI plan failed, fallback:', err);
   }
 
-  // ⭐ FIX: Đảm bảo fallback cũng có đúng số câu
   const fb = buildFallbackMatrix({ topic, grade, subject, count: n, duration, intent });
   fb.aiPedagogicalAdvice = `${fb.aiPedagogicalAdvice} (Khung dự phòng — AI chưa lập được ma trận động.)`;
   const scaled = scaleMatrixToCount(fb, n);
@@ -527,6 +523,51 @@ function listFromPayload(p) {
   return [];
 }
 
+/* ⭐ Schema riêng cho batch câu hỏi */
+const BATCH_QUESTION_SCHEMA = {
+  type: 'object',
+  properties: {
+    questions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          q: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          work: { type: 'string' },
+          correct: { type: 'number' },
+          explain: { type: 'string' },
+          topic: { type: 'string' },
+          level: { type: 'string' },
+          points: { type: 'number' },
+        },
+        required: ['q', 'options', 'correct'],
+      },
+    },
+  },
+  required: ['questions'],
+};
+
+/* ⭐ Validate output batch — cắt câu bị gộp */
+function validateBatchOutput(list, expected) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const q of list) {
+    if (!q || typeof q !== 'object') continue;
+    const qText = String(q.q || '').trim();
+    if (!qText) continue;
+
+    const multiPartMatch = qText.match(/(?:^|\n)\s*(PHẦN\s+[IVX]+|CÂU\s+HỎI\s+TRẮC)/i);
+    if (multiPartMatch && multiPartMatch.index > 30) {
+      console.warn(`[validate] Bỏ câu bị gộp (q index ${multiPartMatch.index})`);
+      continue;
+    }
+    out.push(q);
+    if (out.length >= expected) break;
+  }
+  return out;
+}
+
 export async function generateQuestionsFromApprovedMatrix({
   matrix,
   files = [],
@@ -544,30 +585,39 @@ export async function generateQuestionsFromApprovedMatrix({
   const batches = [];
   for (let i = 0; i < specs.length; i += GEN_BATCH) batches.push(specs.slice(i, i + GEN_BATCH));
 
+  /* ⭐ prompt system cấm gộp câu */
   const system = `Bạn là giáo viên ${subject} lớp ${grade}, ra đề theo ma trận khảo thí Việt Nam.
-Mỗi câu trắc nghiệm đúng 4 phương án, đúng 1 đáp án.
-YÊU CẦU CHẤT LƯỢNG:
-- Giải trong "work" (nháp ≤ 200 ký tự) TRƯỚC khi chốt "correct".
-- Đáp án nhiễu = sai lầm thật (nhầm công thức, quên đổi đơn vị, nhầm khái niệm gần).
-- Không để đáp án đúng dài hơn hẳn; không dùng "tất cả đều đúng".
-- Lời giải không nhắc A/B/C/D (đáp án sẽ bị trộn).
-- Công thức LaTeX trong $...$; trong JSON viết \\\\frac, \\\\ce.
-- Đúng chương trình lớp ${grade}; số liệu phải tính ra khớp đáp án.
-- Câu trả lời ngắn: options vẫn 4 lựa chọn (giá trị số / biểu thức), học sinh chọn 1.
+
+⚠️ QUY TẮC BẮT BUỘC (KHÔNG ĐƯỢC VI PHẠM):
+1. Trả về JSON: {"questions":[...]} với ĐÚNG số phần tử được yêu cầu.
+2. Mỗi phần tử trong mảng CHỈ chứa MỘT câu hỏi duy nhất.
+3. TUYỆT ĐỐI KHÔNG gộp nhiều câu vào 1 phần tử.
+4. TUYỆT ĐỐI KHÔNG chèn tiêu đề "PHẦN I", "PHẦN II", "PHẦN III", "Câu 1:", "Câu 2:" vào trong "q" hoặc "options".
+5. Mỗi câu có ĐÚNG 4 phương án (options), đúng 1 đáp án.
+6. "correct" là SỐ NGUYÊN 0-3 (0=A, 1=B, 2=C, 3=D). KHÔNG để null/undefined/-1.
+7. "work": bản nháp giải NGẮN (≤ 200 ký tự) cho câu tính toán.
+8. Đáp án nhiễu = sai lầm thật của học sinh (nhầm công thức, quên đổi đơn vị).
+9. Lời giải không nhắc A/B/C/D.
+10. Công thức LaTeX trong $...$; trong JSON viết \\\\frac, \\\\ce.
+11. Đúng chương trình lớp ${grade}; số liệu phải tính ra khớp đáp án.
 
 Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":"...","correct":0,"explain":"...","topic":"...","level":"nhận biết|thông hiểu|vận dụng|vận dụng cao","points":0.7}]}`;
 
   onProgress?.(0, specs.length);
 
-  // ⭐ FIX: Dùng mảng finalQuestions, tự retry nếu thiếu
   let finalQuestions = [];
   let firstErr = null;
 
-  // Phase 1: Sinh batch đầu tiên
   const runBatch = async (batch, startIdx) => {
     const specText = batch.map((s, i) =>
       `Câu ${startIdx + i + 1}: dạng "${s.topic}" | mức ${s.level} | ${s.points} điểm | phần ${s.part}`
     ).join('\n');
+
+    /* ⭐ chỉ 1500 ký tự tài liệu, ghi rõ CHỈ tham khảo */
+    const safeText = textParts.length
+      ? `Tài liệu tham khảo (CHỈ để tham khảo nội dung, TUYỆT ĐỐI KHÔNG chèn vào câu hỏi):\n${textParts.join('\n').slice(0, 1500)}`
+      : '';
+
     try {
       const raw = await callModel({
         system,
@@ -576,18 +626,26 @@ Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":
           ...pdfParts,
           {
             text: [
-              `Soạn đúng ${batch.length} câu, mỗi câu một dòng spec, không trùng ý.`,
-              specText,
+              `Soạn ĐÚNG ${batch.length} câu theo ${batch.length} spec sau. Mỗi spec = 1 câu hỏi riêng biệt. KHÔNG gộp.`,
+              `=== DANH SÁCH SPEC ===\n${specText}\n=== HẾT SPEC ===`,
               classInsights ? `Bám điểm yếu lớp:\n${classInsights}` : '',
-              textParts.length ? `Tài liệu:\n${textParts.join('\n')}` : '',
+              safeText,
+              `⚠️ NHẮC LẠI: Trả về JSON có ĐÚNG ${batch.length} phần tử, mỗi phần tử = 1 câu hỏi riêng biệt. KHÔNG chèn tiêu đề PHẦN/Câu vào trong "q" hoặc "options".`,
             ].filter(Boolean).join('\n\n'),
           },
         ],
         temperature: 0.45,
         signal,
+        schema: BATCH_QUESTION_SCHEMA,
       });
-      const list = listFromPayload(parseJsonLoose(raw));
-      return list.map((q, idx) => {
+      const rawList = listFromPayload(parseJsonLoose(raw));
+      const cleanList = validateBatchOutput(rawList, batch.length);
+
+      if (cleanList.length < batch.length) {
+        console.warn(`[matrix] Batch trả ${cleanList.length}/${batch.length} câu hợp lệ.`);
+      }
+
+      return cleanList.map((q, idx) => {
         const sp = batch[idx] || {};
         return shuffleOptions(normalizeQuestion({
           ...q,
@@ -603,7 +661,7 @@ Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":
     }
   };
 
-  // Phase 1: Chạy song song tất cả batches
+  /* Phase 1: chạy song song */
   const results = new Array(nBatches).fill(null);
   let next = 0;
   let done = 0;
@@ -625,7 +683,7 @@ Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":
 
   results.forEach((list) => { (list || []).forEach((q) => finalQuestions.push(q)); });
 
-  // ⭐ FIX: Nếu thiếu câu → retry cho phần còn thiếu
+  /* ⭐ retry song song phần thiếu */
   let retryAttempt = 0;
   while (finalQuestions.length < specs.length && retryAttempt < MAX_RETRY) {
     retryAttempt++;
@@ -639,14 +697,23 @@ Trả JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"work":
       missingBatches.push(missingSpecs.slice(i, i + GEN_BATCH));
     }
 
-    for (const batch of missingBatches) {
-      const newQs = await runBatch(batch, finalQuestions.length);
-      finalQuestions = [...finalQuestions, ...newQs];
-      onProgress?.(finalQuestions.length, specs.length);
-    }
+    const retryResults = await Promise.all(
+      missingBatches.map((batch, bi) =>
+        runBatch(batch, finalQuestions.length + bi * GEN_BATCH)
+      )
+    );
+
+    retryResults.forEach((list) => {
+      list.forEach((q) => {
+        if (finalQuestions.length < specs.length) {
+          finalQuestions.push(q);
+        }
+      });
+    });
+
+    onProgress?.(finalQuestions.length, specs.length);
   }
 
-  // Nếu vẫn thiếu sau retry → chấp nhận partial (không throw)
   if (finalQuestions.length < specs.length) {
     const missing = specs.length - finalQuestions.length;
     console.warn(`[matrix] Sau ${MAX_RETRY} lần retry vẫn thiếu ${missing} câu. Dùng ${finalQuestions.length} câu hiện có.`);

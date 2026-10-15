@@ -444,6 +444,7 @@ export default function MyClasses() {
       const res = await requestRetry({
         examId: retryExam.id,
         classId: retryExam.classId,
+        teacherId: retryExam.created_by || retryExam.teacherId || null,
         student: { id: user.uid, name: user.displayName || user.email },
         reason,
       });

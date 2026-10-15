@@ -5,7 +5,7 @@ import AIMark from './AIMark.jsx';
 import Icon from './Icon.jsx';
 
 const describe = (e) =>
-  `${e.name} (${e.vietnameseName}), Z=${e.atomicNumber}, ký hiệu ${e.symbol}, nhóm ${e.group ?? 'khối f'}, chu kỳ ${e.period}, ` +
+  `${e.name}, Z=${e.atomicNumber}, ký hiệu ${e.symbol}, nhóm ${e.group ?? 'khối f'}, chu kỳ ${e.period}, ` +
   `cấu hình ${e.shortConfiguration}, độ âm điện ${e.electronegativity ?? 'không có'}, ` +
   `số oxi hóa ${e.oxidationStates?.join(', ') || 'không có'}, bán kính ${e.atomicRadius ?? '?'} pm, nóng chảy ${e.meltingPoint ?? '?'} K`;
 

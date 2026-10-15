@@ -140,7 +140,7 @@ export default function ProfilePage() {
   const createdAt = created ? created.toLocaleDateString('vi-VN') : '—';
   const lastLogin = user?.metadata?.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleString('vi-VN') : '—';
   const daysJoined = created ? Math.max(1, Math.ceil((Date.now() - created.getTime()) / 864e5)) : 0;
-  const identCode = useMemo(() => 'A7-' + hashStr(email).toString(16).slice(0, 6).toUpperCase(), [email]);
+  const identCode = useMemo(() => 'ELEC AI-' + hashStr(email).toString(16).slice(0, 6).toUpperCase(), [email]);
   const pwScore = pwStrength(newPw);
 
   const say = useCallback((type, text) => {

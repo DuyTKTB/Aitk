@@ -21,6 +21,26 @@ function useIn(th = 0.25) {
 }
 
 /* ---------------------------------------------------------------
+   Ảnh minh họa (đặt trong public/img/landing/)
+   --------------------------------------------------------------- */
+const SHOTS = {
+  analytics: { src: '/img/landing/analytics.avif', w: 1080, h: 608, alt: 'Trang thống kê Elo THPT hiển thị điểm theo môn và theo chuyên đề', cap: 'Thống kê Elo theo môn và chuyên đề' },
+  roadmap: { src: '/img/landing/roadmap.avif', w: 1080, h: 608, alt: 'Thống kê học tập với đếm ngược kỳ thi, điểm dự đoán và kế hoạch ôn', cap: 'Đếm ngược kỳ thi, điểm dự đoán và kế hoạch ôn' },
+  practice: { src: '/img/landing/practice.avif', w: 1080, h: 608, alt: 'Màn hình làm bài thi có bộ đếm giờ và danh sách câu hỏi', cap: 'Màn hình làm bài của học sinh, có đếm giờ' },
+  career: { src: '/img/landing/career.avif', w: 1080, h: 663, alt: 'Gợi ý ngành và trường đại học kèm mức độ phù hợp', cap: 'Gợi ý ngành và trường kèm mức độ phù hợp' },
+};
+
+function Shot({ k }) {
+  const s = SHOTS[k];
+  return (
+    <figure className="lm-shot">
+      <img src={s.src} width={s.w} height={s.h} alt={s.alt} loading="lazy" decoding="async" />
+      <figcaption>{s.cap}</figcaption>
+    </figure>
+  );
+}
+
+/* ---------------------------------------------------------------
    1. DÀNH CHO AI
    --------------------------------------------------------------- */
 const WHO = [
@@ -39,6 +59,7 @@ const WHO = [
       ['Mười phút sau', 'Làm vài câu quiz cùng chuyên đề để kiểm tra mình đã hiểu chưa.'],
       ['Cuối tuần', 'Mở Sổ câu sai, ôn lại đúng những câu hay nhầm.'],
     ],
+    shot: 'analytics',
     cta: ['Tạo tài khoản học sinh', 'register'],
   },
   {
@@ -74,6 +95,7 @@ const WHO = [
       ['Chiều', 'Làm một đề trong kho đề, chạy Pomodoro để giữ tập trung.'],
       ['Tối', 'Xem lại câu sai, ghi chú lý do sai vào sổ tay.'],
     ],
+    shot: 'roadmap',
     cta: ['Bắt đầu ôn thi', 'register'],
   },
 ];
@@ -101,6 +123,7 @@ export function Audience({ kit }) {
             <MagBtn as="a" className="lp-btn pri" href={'#' + w.cta[1]}>{w.cta[0]} <IcoArrow size={16} /></MagBtn>
           </div>
           {w.note && <small>{w.note}</small>}
+          {w.shot && <Shot k={w.shot} />}
         </div>
         <ul className="lm-items">
           {w.items.map(([ic, t, d]) => (
@@ -273,6 +296,7 @@ export function ExamFlow({ kit }) {
           </ul>
         </div>
         <p className="lm-cap">Minh họa giao diện theo dõi của giáo viên</p>
+        <Shot k="practice" />
       </div>
     </section>
   );
@@ -295,6 +319,13 @@ export function Beyond({ kit }) {
         <div className="lm-ring">
           {CATS.map((c, i) => (<span key={c} style={{ '--a': i * (360 / CATS.length) + 'deg' }}>{c}</span>))}
         </div>
+      </div>
+      <div className="lm-career">
+        <div className="lm-career-copy">
+          <h3>Còn phân vân chọn ngành?</h3>
+          <p>Xem gợi ý ngành và trường phù hợp, kèm mức độ phù hợp để bạn so sánh trước khi quyết định.</p>
+        </div>
+        <Shot k="career" />
       </div>
     </section>
   );

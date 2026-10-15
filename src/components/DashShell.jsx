@@ -395,6 +395,9 @@ export function DashFrame({
       return 'dark';
     }
   });
+  /* ❗ MỚI: ghim rail (CSS .expanded/.pinned đã có sẵn trong teacher-ds.css nhưng
+     JSX chưa nối → trước đây rail chỉ mở khi hover) */
+  const [pinned, setPinned] = useState(false);
 
   const handleToggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -413,7 +416,7 @@ export function DashFrame({
 
   return (
     <div className={`t-shell ${className}`} data-theme={theme}>
-      <aside className="t-rail-sidebar">
+      <aside className={`t-rail-sidebar ${pinned ? 'pinned expanded' : ''}`}>
         {/* Logo AIMark của app — dùng size nhỏ, không có chữ */}
         <div className="t-rail-logo" onClick={onExit} title="ELEC AI">
           <AIMark size={32} animate={false} />
@@ -445,6 +448,23 @@ export function DashFrame({
         </nav>
 
         <div className="t-rail-footer">
+          {/* ❗ MỚI: ghim menu — CSS (.expanded/.pinned) có sẵn từ trước nhưng JSX
+              chưa từng nối → rail chỉ mở khi hover, tablet/không có hover không bao giờ
+              thấy chữ. Nay thêm nút ghim. */}
+          <button
+            type="button"
+            className={`t-rail-btn ${pinned ? 'active' : ''}`}
+            onClick={() => setPinned((v) => !v)}
+            title={pinned ? 'Thu gọn menu' : 'Ghim menu — luôn hiện chữ'}
+            aria-pressed={pinned}
+          >
+            <span className="t-rail-btn-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
+              </svg>
+            </span>
+            <span className="t-rail-btn-label">Ghim menu</span>
+          </button>
           <button
             type="button"
             className="t-rail-btn"

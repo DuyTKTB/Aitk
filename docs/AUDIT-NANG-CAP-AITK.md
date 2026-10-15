@@ -111,7 +111,7 @@ Nhiều component dùng `setInterval`, gồm Home, HomePlus, ClockHub, Pet, AI m
 ### Vấn đề
 
 - Nhiều ngôn ngữ thị giác cùng tồn tại: editorial/brutalist, glass, Apple, neo, Sandra, upgrade. Điều này làm giảm cảm giác sản phẩm thống nhất.
-- README và tên package còn là `chem-study`, trong khi sản phẩm đã là Aitk/A7 Assistant.
+- README và tên package còn là `chem-study`, trong khi sản phẩm đã là Aitk/ELEC AI Assistant.
 - H1 uppercase/cỡ rất lớn và font mono nhiều nơi có thể làm giảm khả năng đọc dài trên mobile.
 - Một số `<img>` thiếu `alt` theo static scan: `DocsLibrary.jsx`, `MobileHeader.jsx`, `AIChat.jsx`, `ToolsKit.jsx`, `PromptLibrary.jsx`.
 - Có sử dụng `dangerouslySetInnerHTML` trong `ChatMarkdown.jsx` và `NotebookGuide.jsx`; cần bảo đảm sanitizer không bỏ sót HTML từ nội dung AI/user.

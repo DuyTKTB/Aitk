@@ -1,11 +1,14 @@
 /* ============================================================
-   AutoExamStudio.jsx — AI Studio (v5, chat-first + split workspace)
+   AutoExamStudio.jsx — AI Studio (v6.1, chat-first + split workspace)
    ------------------------------------------------------------
-   v5 (fix + upgrade):
-     • MỚI: Lưu lịch sử chat + ma trận + câu hỏi vào localStorage
-     • MỚI: Nút "Xóa lịch sử" ở header
-     • FIX: Logo AIMark to hơn (140px), có mode động (think/orbit/idle)
-     • Giữ nguyên: chat-first flow, split workspace, resizer, AI actions
+   v6.1 (fix + tích hợp):
+     • MỚI: Nhận prop `onGenerated` để đẩy dữ liệu sang form thủ công
+       (khi được nhúng trong CreateExamPage).
+     • FIX #4: Phân biệt rõ lệnh sửa câu hỏi vs. lệnh sửa ma trận.
+       Có fallback thông báo khi không hiểu lệnh.
+     • FIX: Disable hoàn toàn textarea + nút gửi khi AI đang xử lý.
+     • Giữ nguyên: lưu lịch sử chat + ma trận + câu hỏi vào localStorage,
+       logo AIMark động, resizer, AI actions.
    ============================================================ */
 import React, { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import MathText from '../MathText.jsx';
@@ -96,6 +99,9 @@ const QUICK_PROMPT_CHIPS = [
   },
 ];
 
+/* Regex phát hiện lệnh sửa ma trận */
+const MATRIX_REFINE_RE = /ma trận|matrix|cấu trúc|tỷ lệ|mức độ|thêm\s+\d+\s+câu|bớt\s+\d+\s+câu|giảm\s+\d+\s+câu|tăng\s+\d+\s+câu|nhận biết|thông hiểu|vận dụng/i;
+
 /* ============================================================
    MAIN
    ============================================================ */
@@ -103,6 +109,7 @@ export default function AutoExamStudio({
   classes = [],
   initialClass = null,
   classInsights,
+  onGenerated,   // ⭐ Prop mới: đẩy dữ liệu sang form thủ công
   onDone,
   onCancel,
 }) {
@@ -111,7 +118,7 @@ export default function AutoExamStudio({
   const [selectedClassId, setSelectedClassId] = useState(initialClass?.id || classes[0]?.id || '');
   const [topic, setTopic] = useState('');
   const [inputMessage, setInputMessage] = useState('');
-  const [activeHubTab, setActiveHubTab] = useState('exam');
+  const [activeHubTab] = useState('exam');
 
   // Interview flow
   const [step, setStep] = useState(0);
@@ -184,6 +191,7 @@ export default function AutoExamStudio({
   const showWorkspace = Boolean(matrixData || questions.length > 0 || analyzing || generating || chatMessages.length > 0 || step > 0);
   const insightText = classInsights?.forAi || '';
   const weakTopic = classInsights?.weakestTopics?.[0];
+  const isBusy = analyzing || generating;
 
   const showToast = (message, type = 'info') => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -261,8 +269,7 @@ export default function AutoExamStudio({
     inputRef.current?.focus();
   }, []);
 
-  /* ============ ⭐ LƯU / LOAD LỊCH SỬ CHAT ============ */
-  // Load khi mount
+  /* ============ LƯU / LOAD LỊCH SỬ CHAT ============ */
   useEffect(() => {
     try {
       const savedChat = localStorage.getItem('aes_chat_history');
@@ -366,14 +373,14 @@ export default function AutoExamStudio({
       e.preventDefault();
       setSplitRatio((r) => {
         const next = Math.max(0.25, r - 0.02);
-        try { localStorage.setItem('aes_split_ratio', next.toFixed(3)); } catch {}
+        try { localStorage.setItem('aes_split_ratio', next.toFixed(3)); } catch { /* ignore */ }
         return next;
       });
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       setSplitRatio((r) => {
         const next = Math.min(0.65, r + 0.02);
-        try { localStorage.setItem('aes_split_ratio', next.toFixed(3)); } catch {}
+        try { localStorage.setItem('aes_split_ratio', next.toFixed(3)); } catch { /* ignore */ }
         return next;
       });
     }
@@ -552,7 +559,7 @@ export default function AutoExamStudio({
     setChatMessages((prev) => [
       ...prev,
       { role: 'user', text: instruction },
-      { role: 'trace_loading', text: `Đang điều chỉnh ma trận theo yêu cầu...` },
+      { role: 'trace_loading', text: 'Đang điều chỉnh ma trận theo yêu cầu...' },
     ]);
 
     try {
@@ -666,23 +673,45 @@ export default function AutoExamStudio({
     }
   };
 
-  /* ============ GỬI TIN NHẮN ============ */
+  /* ============ GỬI TIN NHẮN (FIX #4) ============ */
   const handleSendMessage = async (overrideText) => {
     const text = (typeof overrideText === 'string' ? overrideText : inputMessage).trim();
     if (!text) return;
-    if (analyzing || generating) {
-      showToast('AI đang xử lý. Bấm "Dừng AI" nếu muốn hủy rồi gửi lại.', 'info');
+
+    if (isBusy) {
+      showToast('AI đang xử lý. Vui lòng đợi hoặc bấm "Dừng AI".', 'info');
       return;
     }
 
     setInputMessage('');
     sound.ding();
 
+    // Ưu tiên lệnh sửa câu hỏi khi đã có questions
     if (questions.length > 0) {
       const cmd = parseQuestionCommand(text, questions.length);
-      if (cmd) { handleChatQuestionEdit(cmd, text); return; }
+      if (cmd) {
+        handleChatQuestionEdit(cmd, text);
+        return;
+      }
+      if (matrixData && MATRIX_REFINE_RE.test(text)) {
+        handleRefineMatrix(text);
+        return;
+      }
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'user', text },
+        {
+          role: 'ai',
+          text: 'Tôi chưa hiểu yêu cầu. Thầy/cô có thể:\n'
+            + '• Sửa câu hỏi: "viết lại câu 3", "đổi phương án nhiễu câu 2", "câu 1 khó hơn"\n'
+            + '• Sửa ma trận: "tăng 2 câu vận dụng", "giảm 2 câu nhận biết"\n'
+            + '• Hoặc bấm "Xóa lịch sử" để tạo đề mới.',
+        },
+      ]);
+      return;
     }
 
+    // Chưa có questions nhưng có ma trận → refine ma trận
     if (matrixData) {
       handleRefineMatrix(text);
       return;
@@ -823,7 +852,7 @@ export default function AutoExamStudio({
         ...prev,
         [idx]: { ...insight, loading: false, open: true },
       }));
-    } catch (err) {
+    } catch {
       setPedagogyInsights((prev) => ({
         ...prev,
         [idx]: {
@@ -900,7 +929,7 @@ export default function AutoExamStudio({
     showToast(`Đã xóa Câu ${idx + 1}`, 'info');
   };
 
-  /* ============ ⭐ XÓA LỊCH SỬ ============ */
+  /* ============ XÓA LỊCH SỬ ============ */
   const handleClearHistory = () => {
     if (!window.confirm('Xóa toàn bộ lịch sử trò chuyện, ma trận và đề đang làm?')) return;
     setChatMessages([]);
@@ -918,7 +947,7 @@ export default function AutoExamStudio({
       localStorage.removeItem('aes_step');
       localStorage.removeItem('aes_slots');
       localStorage.removeItem('aes_draft');
-    } catch (e) { /* */ }
+    } catch { /* ignore */ }
     sound.ding();
     showToast('Đã xóa lịch sử. Sẵn sàng tạo đề mới!', 'success');
   };
@@ -934,6 +963,24 @@ export default function AutoExamStudio({
     if (!selectedClassId || !questions.length) return;
     setIsPublishing(true);
     try {
+      // ⭐ FIX: Nếu có onGenerated → đẩy dữ liệu sang form thủ công
+      if (typeof onGenerated === 'function') {
+        onGenerated({
+          questions,
+          meta: {
+            title: publishTitle || matrixData?.title || `Đề ${topic} Lớp ${selectedGrade}`,
+            description: `Đề ${questions.length} câu phân hóa 4 mức độ GDPT 2018.`,
+            duration: selectedDuration,
+          },
+          warnings: questions.filter((q) => (q.warns || []).length > 0),
+        });
+        sound.cheer();
+        setShowPublishModal(false);
+        showToast('Đã chuyển sang tab Thủ công — kiểm tra và lưu đề', 'success');
+        return;
+      }
+
+      // Fallback: gọi createExam trực tiếp (nếu không có onGenerated)
       const targetClass = classes.find((c) => c.id === selectedClassId);
       await createExam({
         teacherId: user.uid,
@@ -993,7 +1040,12 @@ export default function AutoExamStudio({
                 rows={2}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Nhập yêu cầu tạo đề (VD: Đề 20 câu 45p lớp 10 cấu tạo nguyên tử)..."
+                placeholder={
+                  isBusy
+                    ? 'AI đang xử lý...'
+                    : 'Nhập yêu cầu tạo đề (VD: Đề 20 câu 45p lớp 10 cấu tạo nguyên tử)...'
+                }
+                disabled={isBusy}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) {
                     e.preventDefault();
@@ -1007,6 +1059,7 @@ export default function AutoExamStudio({
                   className="aes-composer-btn"
                   onClick={() => fileInputRef.current?.click()}
                   title="Đính kèm tài liệu (PDF, Word, ảnh đề thi)"
+                  disabled={isBusy}
                 >
                   <IcoPaperclip size={16} />
                 </button>
@@ -1018,6 +1071,7 @@ export default function AutoExamStudio({
                     if (preset) handleLoadSampleExam(preset);
                   }}
                   title="Nạp đề mẫu chuẩn Bộ GD&ĐT"
+                  disabled={isBusy}
                 >
                   <IcoTemplate size={16} />
                 </button>
@@ -1026,7 +1080,7 @@ export default function AutoExamStudio({
                   type="button"
                   className="aes-composer-send"
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim()}
+                  disabled={!inputMessage.trim() || isBusy}
                   aria-label="Gửi yêu cầu"
                 >
                   <IcoSend size={15} />
@@ -1048,6 +1102,7 @@ export default function AutoExamStudio({
                   type="button"
                   className="aes-quick-chip"
                   onClick={() => handleSendMessage(chip.prompt)}
+                  disabled={isBusy}
                 >
                   <div className="aes-quick-chip-icon">
                     <IcoSpark size={16} />
@@ -1109,6 +1164,7 @@ export default function AutoExamStudio({
                 className="aes-icon-btn"
                 onClick={handleClearHistory}
                 title="Xóa toàn bộ lịch sử và bắt đầu mới"
+                aria-label="Xóa lịch sử"
               >
                 <IcoTrash size={14} />
               </button>
@@ -1171,9 +1227,13 @@ export default function AutoExamStudio({
               return (
                 <div key={i} className="aes-msg-chips">
                   {msg.items.map((it) => (
-                    <button key={it} type="button" className="aes-chip-suggest"
-                      disabled={analyzing || generating}
-                      onClick={() => handleSendMessage(it)}>
+                    <button
+                      key={it}
+                      type="button"
+                      className="aes-chip-suggest"
+                      disabled={isBusy}
+                      onClick={() => handleSendMessage(it)}
+                    >
                       <IcoSpark size={12} /> {it}
                     </button>
                   ))}
@@ -1287,6 +1347,7 @@ export default function AutoExamStudio({
                 <input
                   type="text"
                   placeholder="Hoặc yêu cầu chỉnh sửa: Thêm 2 câu nhận biết..."
+                  disabled={isBusy}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const val = e.currentTarget.value;
@@ -1344,6 +1405,7 @@ export default function AutoExamStudio({
             className="aes-icon-btn"
             onClick={() => fileInputRef.current?.click()}
             title="Đính kèm tài liệu"
+            disabled={isBusy}
           >
             <IcoPaperclip size={16} />
           </button>
@@ -1355,6 +1417,7 @@ export default function AutoExamStudio({
               if (preset) handleLoadSampleExam(preset);
             }}
             title="Kho đề mẫu"
+            disabled={isBusy}
           >
             <IcoTemplate size={16} />
           </button>
@@ -1363,7 +1426,14 @@ export default function AutoExamStudio({
             rows={1}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={matrixData ? 'Chỉnh sửa ma trận (VD: Tăng 2 câu vận dụng)...' : 'Nhập yêu cầu...'}
+            placeholder={
+              isBusy
+                ? 'AI đang xử lý...'
+                : matrixData
+                ? 'Chỉnh sửa ma trận (VD: Tăng 2 câu vận dụng)...'
+                : 'Nhập yêu cầu...'
+            }
+            disabled={isBusy}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing) {
                 e.preventDefault();
@@ -1376,7 +1446,7 @@ export default function AutoExamStudio({
             type="button"
             className="aes-composer-send"
             onClick={() => handleSendMessage()}
-            disabled={analyzing || generating || !inputMessage.trim()}
+            disabled={isBusy || !inputMessage.trim()}
           >
             <IcoSend size={14} />
           </button>
@@ -1964,7 +2034,7 @@ export default function AutoExamStudio({
         <div className="aes-modal-backdrop" onClick={() => setShowPublishModal(false)}>
           <div className="aes-modal" onClick={(e) => e.stopPropagation()}>
             <div className="aes-modal-head">
-              <h3>Xuất bản đề thi vào Lớp</h3>
+              <h3>{typeof onGenerated === 'function' ? 'Chuyển đề sang tab Thủ công' : 'Xuất bản đề thi vào Lớp'}</h3>
               <button type="button" className="aes-modal-close" onClick={() => setShowPublishModal(false)}>
                 <IcoClose size={16} />
               </button>
@@ -1998,74 +2068,87 @@ export default function AutoExamStudio({
                 <span>Thang điểm: <strong>10.0đ</strong></span>
               </div>
 
-              <div className="aes-modal-checks">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={publishShuffle}
-                    onChange={(e) => setPublishShuffle(e.target.checked)}
-                  />
-                  <span>Tự động đảo thứ tự câu & đáp án theo thuật toán PRNG</span>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={publishShowAnswer}
-                    onChange={(e) => setPublishShowAnswer(e.target.checked)}
-                  />
-                  <span>Cho học sinh xem lời giải chi tiết sau khi nộp bài</span>
-                </label>
-              </div>
+              {typeof onGenerated !== 'function' && (
+                <>
+                  <div className="aes-modal-checks">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={publishShuffle}
+                        onChange={(e) => setPublishShuffle(e.target.checked)}
+                      />
+                      <span>Tự động đảo thứ tự câu & đáp án theo thuật toán PRNG</span>
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={publishShowAnswer}
+                        onChange={(e) => setPublishShowAnswer(e.target.checked)}
+                      />
+                      <span>Cho học sinh xem lời giải chi tiết sau khi nộp bài</span>
+                    </label>
+                  </div>
 
-              <div className="aes-cam">
-                <span className="aes-cam-title">Camera giám sát khi thi</span>
-                <div className="aes-cam-opts" role="radiogroup" aria-label="Camera giám sát">
-                  {[
-                    ['off', 'Không dùng'],
-                    ['optional', 'Khuyến khích'],
-                    ['required', 'Bắt buộc'],
-                  ].map(([val, label]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      role="radio"
-                      aria-checked={publishCamera === val}
-                      className={`aes-cam-opt ${publishCamera === val ? 'on' : ''}`}
-                      onClick={() => setPublishCamera(val)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {publishCamera !== 'off' && (
-                  <>
-                    <div className="aes-cam-checks">
+                  <div className="aes-cam">
+                    <span className="aes-cam-title">Camera giám sát khi thi</span>
+                    <div className="aes-cam-opts" role="radiogroup" aria-label="Camera giám sát">
                       {[
-                        ['noFace', 'Không thấy mặt'],
-                        ['multiFace', 'Nhiều người'],
-                        ['lookAway', 'Nhìn ra ngoài'],
-                        ['handRaise', 'Giơ tay'],
-                        ['phoneLike', 'Có điện thoại'],
-                      ].map(([k, label]) => (
-                        <label key={k}>
-                          <input
-                            type="checkbox"
-                            checked={!!cameraChecks[k]}
-                            onChange={(e) => setCameraChecks((c) => ({ ...c, [k]: e.target.checked }))}
-                          />
-                          <span>{label}</span>
-                        </label>
+                        ['off', 'Không dùng'],
+                        ['optional', 'Khuyến khích'],
+                        ['required', 'Bắt buộc'],
+                      ].map(([val, label]) => (
+                        <button
+                          key={val}
+                          type="button"
+                          role="radio"
+                          aria-checked={publishCamera === val}
+                          className={`aes-cam-opt ${publishCamera === val ? 'on' : ''}`}
+                          onClick={() => setPublishCamera(val)}
+                        >
+                          {label}
+                        </button>
                       ))}
                     </div>
-                    <p className="aes-cam-note">
-                      {publishCamera === 'required'
-                        ? 'Học sinh phải cho phép camera mới vào làm bài được. '
-                        : 'Học sinh có thể từ chối camera và vẫn làm bài. '}
-                      Không ghi video, chỉ chụp ảnh nhỏ khi có sự kiện bất thường.
-                    </p>
-                  </>
-                )}
-              </div>
+                    {publishCamera !== 'off' && (
+                      <>
+                        <div className="aes-cam-checks">
+                          {[
+                            ['noFace', 'Không thấy mặt'],
+                            ['multiFace', 'Nhiều người'],
+                            ['lookAway', 'Nhìn ra ngoài'],
+                            ['handRaise', 'Giơ tay'],
+                            ['phoneLike', 'Có điện thoại'],
+                          ].map(([k, label]) => (
+                            <label key={k}>
+                              <input
+                                type="checkbox"
+                                checked={!!cameraChecks[k]}
+                                onChange={(e) => setCameraChecks((c) => ({ ...c, [k]: e.target.checked }))}
+                              />
+                              <span>{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="aes-cam-note">
+                          {publishCamera === 'required'
+                            ? 'Học sinh phải cho phép camera mới vào làm bài được. '
+                            : 'Học sinh có thể từ chối camera và vẫn làm bài. '}
+                          Không ghi video, chỉ chụp ảnh nhỏ khi có sự kiện bất thường.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {typeof onGenerated === 'function' && (
+                <div className="aes-modal-info" style={{ background: 'rgba(59, 130, 246, 0.08)', borderRadius: 10, padding: '0.75rem 1rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                    ℹ️ Đề sẽ được chuyển sang tab <b>"Soạn thủ công"</b> để thầy/cô kiểm tra,
+                    chỉnh sửa và cấu hình giám sát camera trước khi lưu chính thức vào lớp.
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="aes-modal-foot">
@@ -2083,7 +2166,12 @@ export default function AutoExamStudio({
                 onClick={handleExecutePublish}
                 disabled={isPublishing}
               >
-                <IcoRocket size={14} /> {isPublishing ? 'Đang xuất bản...' : 'Xuất bản ngay'}
+                <IcoRocket size={14} />{' '}
+                {isPublishing
+                  ? 'Đang xử lý...'
+                  : typeof onGenerated === 'function'
+                  ? 'Chuyển sang Thủ công'
+                  : 'Xuất bản ngay'}
               </button>
             </div>
           </div>

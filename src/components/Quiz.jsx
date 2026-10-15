@@ -65,7 +65,7 @@ const ELIGIBLE = {
 
 const VALUE = {
   sym: (e) => e.symbol,
-  name: (e) => e.vietnameseName,
+  name: (e) => e.name,
   z: (e) => e.atomicNumber,
   group: (e) => e.group,
   period: (e) => e.period,
@@ -91,7 +91,7 @@ function distractors(kind, e) {
     case 'mass': { const b = massNum(e); return others.filter((x) => Math.abs(massNum(x) - b) / b < 0.4).map((x) => x.atomicMass); }
     case 'config': return others.filter((x) => Math.abs(x.atomicNumber - e.atomicNumber) <= 6).map((x) => x.shortConfiguration);
     case 'en': return others.map((x) => x.electronegativity.toFixed(2));
-    case 'name': return others.map((x) => x.vietnameseName);
+    case 'name': return others.map((x) => x.name);
     default: return others.map((x) => x.symbol);
   }
 }
@@ -139,9 +139,9 @@ function makeQuestion({ topic, list, records, lastZ, rng }) {
 
 function questionText(q) {
   const { e } = q;
-  const n = `${e.vietnameseName} (${e.symbol})`;
+  const n = `${e.name} (${e.symbol})`;
   switch (q.kind) {
-    case 'sym': return `Ký hiệu hóa học của ${e.vietnameseName} (${e.name})?`;
+    case 'sym': return `Ký hiệu hóa học của ${e.name}?`;
     case 'name': return `Nguyên tố có ký hiệu ${e.symbol} tên là gì?`;
     case 'z': return `Số hiệu nguyên tử của ${n}?`;
     case 'group': return `${n} ở nhóm nào?`;
@@ -162,7 +162,7 @@ function hintText(q) {
   const { e } = q;
   switch (q.kind) {
     case 'sym': return `Số hiệu ${e.atomicNumber}, bắt đầu bằng chữ "${e.symbol[0]}"`;
-    case 'name': return `Số hiệu ${e.atomicNumber}, tên bắt đầu bằng "${e.vietnameseName.slice(0, 2)}…"`;
+    case 'name': return `Số hiệu ${e.atomicNumber}, tên bắt đầu bằng "${e.name.slice(0, 2)}…"`;
     case 'z': return `Nằm ở chu kỳ ${e.period}`;
     case 'group': case 'period': case 'block': case 'valence': case 'config': return `Cấu hình: ${e.shortConfiguration}`;
     case 'cmp': return q.prop === 'electronegativity' ? 'Độ âm điện tăng dần từ trái sang phải, giảm dần từ trên xuống dưới' : 'Bán kính tăng dần từ phải sang trái, từ trên xuống dưới';
@@ -194,7 +194,7 @@ function ElementCard({ e }) {
         <b>{e.symbol}</b>
       </div>
       <dl>
-        <div><dt>Tên</dt><dd>{e.vietnameseName} · {e.name}</dd></div>
+        <div><dt>Tên</dt><dd>{e.name}</dd></div>
         <div><dt>Nguyên tử khối</dt><dd>{e.atomicMass}</dd></div>
         <div><dt>Vị trí</dt><dd>{e.group ? `Nhóm ${e.group}` : 'Họ f'} · Chu kỳ {e.period} · Khối {blockOf(e)}</dd></div>
         <div><dt>Cấu hình</dt><dd className="qz-mono">{e.shortConfiguration}</dd></div>
@@ -807,7 +807,7 @@ export default function Quiz() {
               const e = ELEMENTS.find((x) => x.atomicNumber === z);
               return e && (
                 <div key={z} style={{ '--c': `var(--${e.category})` }}>
-                  <small>{e.atomicNumber}</small><b>{e.symbol}</b><span>{e.vietnameseName}</span>
+                  <small>{e.atomicNumber}</small><b>{e.symbol}</b><span>{e.name}</span>
                 </div>
               );
             })}

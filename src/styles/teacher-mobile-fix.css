@@ -30,7 +30,7 @@
     width: 100vw !important;
     height: 64px !important;
     flex-direction: row !important;
-    justify-content: space-around !important;
+    justify-content: flex-start !important;
     align-items: center !important;
     padding: 0 4px !important;
     padding-bottom: env(safe-area-inset-bottom, 0) !important;
@@ -58,23 +58,33 @@
   }
 
   /* ============================================================
-     3. NAV — DÀN ĐỀU 5 NÚT
-     ============================================================ */
+     3. NAV — ❗ FIX: trước đây ẨN từ nút thứ 6 (mua thời menu chỉ có 5 mục).
+        Giờ menu có 10-11 mục (Mô phỏng, Ngân hàng, Chấm phiếu A4, Xin thi lại,
+        Quản trị) → ẩn là GV MẤT CÁC CHỨC NĂNG NÀY trên mobile.
+        Nay: hiện TẤT CẢ, cuộn ngang, nút cố định chiều rộng. */
   .t-rail-nav {
     display: flex !important;
     flex-direction: row !important;
+    flex-wrap: nowrap !important;
     gap: 2px !important;
     width: 100% !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     align-items: center !important;
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Ẩn các mục phụ — chỉ giữ 5 mục chính */
-  .t-rail-nav .t-rail-btn:nth-child(n+6) {
+  .t-rail-nav::-webkit-scrollbar {
     display: none !important;
+  }
+
+  /* ❗ BỎ lệnh ẩn cũ — hiện TẤT CẢ các nút */
+  .t-rail-nav .t-rail-btn:nth-child(n+6) {
+    display: flex !important;
   }
 
   /* ============================================================
@@ -83,8 +93,10 @@
   .t-rail-btn,
   .t-rail-sidebar.expanded .t-rail-btn,
   .t-rail-sidebar:not(.pinned):hover .t-rail-btn {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
+    /* ❗ FIX: flex 1 1 0 + min-width 0 ép 11 nút vào màn hình → mỗi nút 34px
+       không đọc được. Nay: nút cố định 64px, cuộn ngang khi nhiều. */
+    flex: 0 0 auto !important;
+    min-width: 64px !important;
     max-width: none !important;
     width: auto !important;
     display: flex !important;

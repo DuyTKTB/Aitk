@@ -1,16 +1,16 @@
 /* ============================================================
-   ExamPreviewSimulator.jsx — Bộ Xem Trước & Mô Phỏng Đề Thi (v5)
+   ExamPreviewSimulator.jsx — Bộ Xem Trước & Mô Phỏng Đề Thi (v5.1)
    ------------------------------------------------------------
-   v5 (thêm Phiếu OMR):
-     • MỚI: Tab "Phiếu OMR" — in phiếu trả lời trắc nghiệm A4
-       tự động theo số câu (TN nhiều lựa chọn / Đúng-Sai / TLN).
-     • MỚI: In hàng loạt nhiều mã đề cùng lúc.
-     • FIX: Tên hàm printOmrSheetA4 nhận questions để tính layout.
-     • Giữ nguyên: mô phỏng, flag, phím tắt, chỉnh sửa, tải Word/PDF,
-       in A4, đảo mã, đặc tả.
+   v5.1 (cleanup):
+     • XÓA 3 hàm trùng lặp mulberry32, shuffleFisherYates,
+       generateShuffledVersions khỏi file — nay import từ
+       ../../lib/examShuffle.js để đảm bảo single source of truth.
+     • Giữ nguyên: tab Mô phỏng, In A4, Phiếu OMR, Đảo mã, Đặc tả,
+       chỉnh sửa, phím tắt, tải Word/PDF.
    ============================================================ */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import MathText from '../MathText.jsx';
+import { generateShuffledVersions } from '../../lib/examShuffle.js';
 import sound from '../../lib/gameSound.js';
 import { getSubject } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
@@ -59,102 +59,8 @@ const IcoClipboard = (p) => (
   </Svg>
 );
 
-/* ============ PRNG ============ */
-function mulberry32(a) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffleFisherYates(array, prng) {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(prng() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-/* ============================================================
-   ĐẢO MÃ ĐỀ — GIỮ NGUYÊN NHÓM ĐỘ KHÓ
-   ============================================================ */
-function generateShuffledVersions(questions = [], count = 4) {
-  const codeList = ['101', '102', '103', '104'].slice(0, count);
-
-  const groups = { nb: [], th: [], vd: [], vdc: [] };
-  questions.forEach((q, idx) => {
-    const lv = normLevel(q.level);
-    groups[lv].push({ q, origIdx: idx });
-  });
-
-  return codeList.map((code, codeIdx) => {
-    const seed = parseInt(code, 10) * 10007 + 37;
-    const prng = mulberry32(seed);
-
-    const shuffledByLevel = {};
-    ['nb', 'th', 'vd', 'vdc'].forEach((lv) => {
-      const group = groups[lv];
-      shuffledByLevel[lv] = codeIdx === 0 ? group : shuffleFisherYates(group, prng);
-    });
-
-    const orderedWithOrig = [
-      ...shuffledByLevel.nb,
-      ...shuffledByLevel.th,
-      ...shuffledByLevel.vd,
-      ...shuffledByLevel.vdc,
-    ];
-
-    const finalQuestions = orderedWithOrig.map(({ q, origIdx }) => {
-      if (q.type === 'true_false' || q.type === 'short_answer') {
-        return { ...q, originalIndex: origIdx + 1, _origQuestion: q };
-      }
-
-      const origOpts = [...(q.options || [])];
-      const origCorrectIdx = q.correct ?? 0;
-      const correctText = origOpts[origCorrectIdx];
-
-      const qPrng = mulberry32(seed + (origIdx + 1) * 313);
-      const optIndices = origOpts.map((_, i) => i);
-      const shuffledOptIndices =
-        codeIdx === 0 ? optIndices : shuffleFisherYates(optIndices, qPrng);
-
-      const newOpts = shuffledOptIndices.map((i) => origOpts[i]);
-      const newCorrect = newOpts.indexOf(correctText);
-
-      return {
-        ...q,
-        options: newOpts,
-        correct: newCorrect >= 0 ? newCorrect : 0,
-        origCorrect: origCorrectIdx,
-        originalIndex: origIdx + 1,
-        _origQuestion: q,
-      };
-    });
-
-    const origToNew = {};
-    const newToOrig = {};
-    finalQuestions.forEach((q, newIdx) => {
-      const origNum = q.originalIndex;
-      const newNum = newIdx + 1;
-      const type = q.type || 'single_choice';
-
-      if (type === 'single_choice') {
-        const newLetter = String.fromCharCode(65 + q.correct);
-        const origLetter = String.fromCharCode(65 + (q.origCorrect ?? 0));
-        origToNew[origNum] = { newNum, newLetter, origLetter, type };
-        newToOrig[newNum] = { origNum, newLetter, origLetter, type };
-      } else {
-        origToNew[origNum] = { newNum, type };
-        newToOrig[newNum] = { origNum, type };
-      }
-    });
-
-    return { code, questions: finalQuestions, origToNew, newToOrig };
-  });
-}
+/* NOTE: mulberry32, shuffleFisherYates, generateShuffledVersions
+   nay được import từ ../../lib/examShuffle.js (single source of truth). */
 
 /* ============================================================
    CHẤM ĐIỂM
@@ -246,7 +152,7 @@ export default function ExamPreviewSimulator({
     duration: exam.duration || matrix?.duration || 30,
     questions: [...questions],
   });
-  const [exporting, setExporting] = useState(null); // 'word' | 'pdf' | null
+  const [exporting, setExporting] = useState(null);
   const paperRef = useRef(null);
 
   const questionsRef = useRef(questions);
@@ -537,9 +443,7 @@ export default function ExamPreviewSimulator({
       </header>
 
       <div className="eps-body">
-        {/* ============================================================
-            TAB 1: MÔ PHỎNG
-           ============================================================ */}
+        {/* TAB 1: MÔ PHỎNG */}
         {tab === 'sim' && (
           <div className="eps-sim-layout">
             <div className="eps-q-card">
@@ -825,9 +729,7 @@ export default function ExamPreviewSimulator({
           </div>
         )}
 
-        {/* ============================================================
-            TAB 2: IN A4
-           ============================================================ */}
+        {/* TAB 2: IN A4 */}
         {tab === 'print' && (() => {
           const activeExamVersion = shuffledExams.find((e) => e.code === activeCode) || { questions: editData.questions };
           const printQuestions = activeExamVersion.questions || editData.questions;
@@ -1014,9 +916,7 @@ export default function ExamPreviewSimulator({
           );
         })()}
 
-        {/* ============================================================
-            TAB 3: PHIẾU OMR
-           ============================================================ */}
+        {/* TAB 3: PHIẾU OMR */}
         {tab === 'omr' && (
           <div className="eps-omr-layout">
             <div className="eps-omr-head">
@@ -1083,9 +983,7 @@ export default function ExamPreviewSimulator({
           </div>
         )}
 
-        {/* ============================================================
-            TAB 4: ĐẢO MÃ ĐỀ
-           ============================================================ */}
+        {/* TAB 4: ĐẢO MÃ ĐỀ */}
         {tab === 'shuffle' && (
           <div className="eps-shuffle-layout">
             <div className="eps-shuffle-head">
@@ -1168,9 +1066,7 @@ export default function ExamPreviewSimulator({
           </div>
         )}
 
-        {/* ============================================================
-            TAB 5: ĐẶC TẢ
-           ============================================================ */}
+        {/* TAB 5: ĐẶC TẢ */}
         {tab === 'specs' && (
           <div className="eps-specs-layout">
             <h3 className="eps-specs-title">Bảng Đặc Tả Đề Thi & Yêu Cầu Cần Đạt (Chuẩn GDPT 2018)</h3>
@@ -1229,9 +1125,7 @@ export default function ExamPreviewSimulator({
         )}
       </div>
 
-      {/* ============================================================
-          EDIT PANEL
-          ============================================================ */}
+      {/* EDIT PANEL */}
       {editMode && (
         <>
           <div

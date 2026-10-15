@@ -69,6 +69,7 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
 
   return (
     <DashFrame
+      className="ad-scope"
       items={items}
       active={active}
       onChange={onChange}

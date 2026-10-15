@@ -22,9 +22,9 @@ const CHANNELS = [
     label: '# bảng-tuần-hoàn',
     members: '1,850 học sinh',
     qa: [
-      { q: 'Nguyên tố nào có độ âm điện lớn nhất?', a: { steps: '1 bước · 2s', text: 'Flo (F) có độ âm điện lớn nhất — 3,98 theo thang Pauling. Kế tiếp là Oxi (3,44) và Clo (3,16).' } },
+      { q: 'Nguyên tố nào có độ âm điện lớn nhất?', a: { steps: '1 bước · 2s', text: 'Fluorine (F) có độ âm điện lớn nhất — 3,98 theo thang Pauling. Kế tiếp là Oxygen (3,44) và Chlorine (3,16).' } },
       { q: 'Vì sao kim loại kiềm hoạt động mạnh?', a: { steps: '2 bước · 4s', text: 'Kim loại kiềm (Li, Na, K…) có 1 electron lớp ngoài cùng, dễ nhường để đạt cấu hình bền → tính khử rất mạnh.' } },
-      { q: 'Sắt thuộc nhóm nào trong bảng tuần hoàn?', a: { steps: '1 bước · 1s', text: 'Fe (Z=26) thuộc nhóm VIIIB, chu kỳ 4, là kim loại chuyển tiếp. Cấu hình: [Ar]3d⁶4s².' } },
+      { q: 'Iron thuộc nhóm nào trong bảng tuần hoàn?', a: { steps: '1 bước · 1s', text: 'Fe (Z=26) thuộc nhóm VIIIB, chu kỳ 4, là kim loại chuyển tiếp. Cấu hình: [Ar]3d⁶4s².' } },
     ],
   },
   {

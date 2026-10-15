@@ -13508,3 +13508,51 @@ body.on-ai-page .ds-header {
 }
 @media (max-width: 900px) { .nav-mega-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 720px) { .nav-mega-grid { grid-template-columns: 1fr; } }
+
+/* ---- ELEC AI linh vật — hiệu ứng lên cấp ---- */
+.elec-levelup {
+  animation: elec-levelup-pop 2.2s ease;
+}
+/* ---- ELEC AI — 12 kiểu chuyển động khi bấm ---- */
+.elec-act { position: absolute; inset: 0; transform-origin: center bottom; }
+.elec-anim-bob    { animation: elec-bob 1.3s ease-in-out 2; }
+.elec-anim-bounce { animation: elec-bounce 1.5s ease-in-out 2; }
+.elec-anim-shake  { animation: elec-shake .9s ease-in-out 3; }
+.elec-anim-spin   { animation: elec-spin 1.6s ease-in-out 1; }
+.elec-anim-jump   { animation: elec-jump 1.1s ease-in-out 2; }
+.elec-anim-wiggle { animation: elec-wiggle 1.2s ease-in-out 2; }
+.elec-anim-nod    { animation: elec-nod .8s ease-in-out 3; }
+.elec-anim-tilt   { animation: elec-tilt 1.2s ease-in-out 2; }
+.elec-anim-pulse  { animation: elec-pulse .8s ease-in-out 3; }
+.elec-anim-dance  { animation: elec-dance 1.8s ease-in-out 1; }
+.elec-anim-sway   { animation: elec-sway 1.3s ease-in-out 2; }
+.elec-anim-zoom   { animation: elec-zoom 1.2s ease-in-out 2; }
+@keyframes elec-bob    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes elec-bounce { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-14px); } 55% { transform: translateY(-4px); } 75% { transform: translateY(-9px); } }
+@keyframes elec-shake  { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+@keyframes elec-spin   { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes elec-jump   { 0%, 100% { transform: translateY(0) scaleY(1); } 15% { transform: translateY(0) scaleY(.9); } 45% { transform: translateY(-22px) scaleY(1.06); } 70% { transform: translateY(0) scaleY(1); } 85% { transform: translateY(0) scaleY(.94); } }
+@keyframes elec-wiggle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-5deg); } 40% { transform: rotate(5deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(4deg); } }
+@keyframes elec-nod    { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(4px) rotate(2deg); } }
+@keyframes elec-tilt   { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-11deg); } }
+@keyframes elec-pulse  { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+@keyframes elec-dance  { 0% { transform: rotate(-7deg) translateY(0); } 25% { transform: rotate(0) translateY(-7px); } 50% { transform: rotate(7deg) translateY(0); } 75% { transform: rotate(0) translateY(-7px); } 100% { transform: rotate(-7deg) translateY(0); } }
+@keyframes elec-sway   { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+@keyframes elec-zoom   { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+/* ---- Hiệu ứng bay quanh (SVG) ---- */
+.elec-fx { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.elec-fx-item { position: absolute; opacity: 0; animation: elec-fx-float 1.7s ease-out infinite; }
+@keyframes elec-fx-float {
+  0% { opacity: 0; transform: translateY(8px) scale(.5); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(1.15); }
+}
+
+@keyframes elec-levelup-pop {
+  0% { filter: drop-shadow(0 0 0 rgba(250, 204, 21, 0)); transform: scale(var(--elec-scale, 1)) translateY(0); }
+  25% { filter: drop-shadow(0 0 14px rgba(250, 204, 21, .9)); transform: scale(calc(var(--elec-scale, 1) * 1.12)) translateY(-6px); }
+  50% { filter: drop-shadow(0 0 8px rgba(250, 204, 21, .5)); transform: scale(var(--elec-scale, 1)) translateY(0); }
+  75% { filter: drop-shadow(0 0 12px rgba(250, 204, 21, .7)); transform: scale(calc(var(--elec-scale, 1) * 1.06)) translateY(-3px); }
+  100% { filter: drop-shadow(0 0 0 rgba(250, 204, 21, 0)); transform: scale(var(--elec-scale, 1)) translateY(0); }
+}

@@ -909,6 +909,9 @@ export default function ExamJoin({ token, onExit }) {
       const res = await requestRetry({
         examId: exam.id,
         classId: exam.classId,
+        /* đề Supabase không có classId → phải kèm teacherId (người tạo đề)
+           để yêu cầu đến đúng giáo viên */
+        teacherId: exam.created_by || exam.teacherId || null,
         student: { id: user.uid, name: user.displayName || user.email },
         reason,
       });

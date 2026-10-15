@@ -21,6 +21,98 @@ const Svg = ({ size = 18, children, fill = 'none', sw = 1.8, ...rest }) => (
   </svg>
 );
 
+/* ---------- Icon riêng của trang chat (trước đây khai báo rải trong AIChat.jsx) ---------- */
+export const IcoWand = (p) => (
+  <Svg {...p}>
+    <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5" />
+  </Svg>
+);
+
+export const IcoPin = ({ size = 13, filled = false, ...rest }) => (
+  <Svg size={size} fill={filled ? 'currentColor' : 'none'} {...rest}>
+    <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
+  </Svg>
+);
+
+export const IcoSpeaker = (p) => (
+  <Svg {...p}>
+    <path d="M11 5 6 9H2v6h4l5 4V5z" />
+    <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />
+  </Svg>
+);
+
+/* Loa tắt: GẠCH CHÉO (không dùng dấu X) để không bị nhầm với nút đóng */
+export const IcoSpeakerOff = (p) => (
+  <Svg {...p}>
+    <path d="M11 5 6 9H2v6h4l5 4V5z" />
+    <path d="M20.5 9.5 17 13" />
+  </Svg>
+);
+
+export const IcoNote = (p) => (
+  <Svg {...p}>
+    <path d="M4 4h12l4 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+    <path d="M16 4v4h4M8 12h8M8 16h6" />
+  </Svg>
+);
+
+export const IcoPractice = (p) => (
+  <Svg {...p}>
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+  </Svg>
+);
+
+export const IcoMore = ({ size = 16, ...rest }) => (
+  <Svg size={size} fill="currentColor" sw={0} {...rest}>
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="19" cy="12" r="2" />
+  </Svg>
+);
+
+/* ---------- Icon nhóm lịch sử (thay emoji ☀️🌙📅📦) ---------- */
+export const IcoSunSm = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+  </Svg>
+);
+
+export const IcoMoonSm = (p) => (
+  <Svg {...p}>
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+  </Svg>
+);
+
+export const IcoCalendarSm = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M8 3v4M16 3v4M3 11h18" />
+  </Svg>
+);
+
+export const IcoArchive = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="18" height="4" rx="1" />
+    <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" />
+  </Svg>
+);
+
+/* ---------- Badge "đã tính bằng công cụ / đã thẩm định" (thay emoji 🧮⚖️) ---------- */
+export const IcoCalc = (p) => (
+  <Svg {...p}>
+    <rect x="4" y="3" width="16" height="18" rx="2" />
+    <path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" />
+  </Svg>
+);
+
+export const IcoShieldCheck = (p) => (
+  <Svg {...p}>
+    <path d="M12 3l7 3v6c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6l7-3Z" />
+    <path d="m9 12 2 2 4-4" />
+  </Svg>
+);
+
 /* ---------- Icon thao tác ---------- */
 export const IcoMic = (p) => (
   <Svg {...p}>

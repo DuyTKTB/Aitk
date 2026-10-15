@@ -39,6 +39,8 @@ const LuckyWheelGame = lazy(() => import('./components/games/LuckyWheelGame.jsx'
 const FlipPuzzleGame = lazy(() => import('./components/games/FlipPuzzleGame.jsx'));
 const MillionaireGame = lazy(() => import('./components/games/MillionaireGame.jsx'));
 const QuizRacingGame = lazy(() => import('./components/games/QuizRacingGame.jsx'));
+const CameraGame = lazy(() => import('./components/games/CameraGame.jsx'));
+const MinesweeperQuiz = lazy(() => import('./components/games/MinesweeperQuiz.jsx'));
 
 /* ============ CLASSROOM ============ */
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.jsx'));
@@ -166,9 +168,17 @@ const PAGES = [
   ['my-classes', 'Lớp học của tôi', IconClass],
 ];
 
+/* ❗ MỚI: 9 trò chơi CAMERA — 1 component duy nhất (CameraGame) chạy cả 9 cấu hình */
+const CAMERA_GAME_IDS = [
+  'cam-fingers', 'cam-look', 'cam-point', 'cam-lean', 'cam-smile',
+  'cam-freeze', 'cam-hide', 'cam-duo', 'cam-race',
+];
+
 const GAME_ROUTES = [
   'chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku',
   'tugofwar', 'wheel', 'flip', 'millionaire', 'racing',
+  ...CAMERA_GAME_IDS,
+  'mines',
 ].map((g) => 'games/' + g);
 
 /* ============ PAGE ROUTING HELPERS ============ */
@@ -467,6 +477,8 @@ export default function App() {
     if (page === 'games/flip') return <FlipPuzzleGame />;
     if (page === 'games/millionaire') return <MillionaireGame />;
     if (page === 'games/racing') return <QuizRacingGame />;
+    if (page.startsWith('games/cam-')) return <CameraGame gameId={page.replace('games/', '')} />;
+    if (page === 'games/mines') return <MinesweeperQuiz />;
 
     if (page === 'admin' && isAdmin(user)) {
       return <AdminPanel />;

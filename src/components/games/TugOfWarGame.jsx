@@ -14,9 +14,9 @@ import '../../styles/classroom-games.css';
 const DEFAULT_QUESTIONS = [
   {
     q: 'Kim loại nào dẫn điện tốt nhất trong các kim loại sau?',
-    options: ['Đồng (Cu)', 'Bạc (Ag)', 'Vàng (Au)', 'Nhôm (Al)'],
+    options: ['Copper (Cu)', 'Silver (Ag)', 'Gold (Au)', 'Aluminium (Al)'],
     correct: 1,
-    explain: 'Bạc (Ag) là kim loại có độ dẫn điện và dẫn nhiệt cao nhất.',
+    explain: 'Silver (Ag) là kim loại có độ dẫn điện và dẫn nhiệt cao nhất.',
   },
   {
     q: 'Khí nào chiếm thể tích lớn nhất trong không khí quyển Trái Đất?',
@@ -38,9 +38,9 @@ const DEFAULT_QUESTIONS = [
   },
   {
     q: 'Chất nào sau đây là kim loại kiềm nhóm IA?',
-    options: ['Magie (Mg)', 'Canxi (Ca)', 'Natri (Na)', 'Nhôm (Al)'],
+    options: ['Magnesium (Mg)', 'Calcium (Ca)', 'Sodium (Na)', 'Aluminium (Al)'],
     correct: 2,
-    explain: 'Natri (Na) thuộc nhóm IA (kim loại kiềm).',
+    explain: 'Sodium (Na) thuộc nhóm IA (kim loại kiềm).',
   },
   {
     q: 'Phản ứng tỏa nhiệt là phản ứng có đặc điểm gì?',
@@ -56,9 +56,9 @@ const DEFAULT_QUESTIONS = [
   },
   {
     q: 'Kim loại duy nhất ở thể lỏng ở nhiệt độ phòng là gì?',
-    options: ['Chì (Pb)', 'Thủy ngân (Hg)', 'Kẽm (Zn)', 'Thiếc (Sn)'],
+    options: ['Lead (Pb)', 'Mercury (Hg)', 'Zinc (Zn)', 'Tin (Sn)'],
     correct: 1,
-    explain: 'Thủy ngân (Hg) nóng chảy ở -38.83°C nên ở thể lỏng ở nhiệt độ thường.',
+    explain: 'Mercury (Hg) nóng chảy ở -38.83°C nên ở thể lỏng ở nhiệt độ thường.',
   },
   {
     q: 'Chất nào làm quỳ tím chuyển sang màu xanh?',
@@ -68,7 +68,7 @@ const DEFAULT_QUESTIONS = [
   },
   {
     q: 'Nguyên tố phổ biến nhất trong vỏ Trái Đất là gì?',
-    options: ['Silic (Si)', 'Oxy (O)', 'Sắt (Fe)', 'Nhôm (Al)'],
+    options: ['Silicon (Si)', 'Oxy (O)', 'Iron (Fe)', 'Aluminium (Al)'],
     correct: 1,
     explain: 'Oxy chiếm gần 47% khối lượng vỏ Trái Đất.',
   },

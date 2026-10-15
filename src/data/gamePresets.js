@@ -7,8 +7,8 @@ export const GAME_PRESETS = {
     },
     {
       question: 'Nguyên tố nào có ký hiệu "Fe"?',
-      correct: 'Sắt',
-      wrong: ['Flo', 'Franxi', 'Fosfor'],
+      correct: 'Iron',
+      wrong: ['Fluorine', 'Francium', 'Phosphorus'],
     },
     {
       question: 'Công thức hóa học của nước?',
@@ -22,8 +22,8 @@ export const GAME_PRESETS = {
     },
     {
       question: 'Khí nào chiếm ~21% không khí?',
-      correct: 'Oxi',
-      wrong: ['Nitơ', 'Cacbonic', 'Hiđro'],
+      correct: 'Oxygen',
+      wrong: ['Nitrogen', 'Carbon dioxide', 'Hydrogen'],
     },
     {
       question: 'Công thức của axit sunfuric?',
@@ -32,13 +32,13 @@ export const GAME_PRESETS = {
     },
     {
       question: 'Nguyên tố nhẹ nhất?',
-      correct: 'Hiđro',
-      wrong: ['Heli', 'Liti', 'Cacbon'],
+      correct: 'Hydrogen',
+      wrong: ['Helium', 'Lithium', 'Carbon'],
     },
     {
       question: 'Kim loại nào là chất lỏng ở nhiệt độ phòng?',
-      correct: 'Thủy ngân',
-      wrong: ['Sắt', 'Nhôm', 'Đồng'],
+      correct: 'Mercury',
+      wrong: ['Iron', 'Aluminium', 'Copper'],
     },
     {
       question: 'Công thức của muối ăn?',

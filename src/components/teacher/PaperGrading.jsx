@@ -1,14 +1,12 @@
 /* ============================================================
    PaperGrading.jsx — Chấm phiếu trả lời trắc nghiệm giấy A4 (OMR)
-   PHIÊN BẢN NÂNG CẤP TOÀN DIỆN & ĐẦY ĐỦ NHẤT:
-   - Live Webcam / Phone Camera Scanner (Khung ngắm A4 Finder + Laser)
-   - Chấm hàng loạt file ảnh (Batch drag & drop)
-   - SheetEditor: Đối chiếu ảnh phiếu thật với kết quả đọc, sửa tay trực quan
-   - Phổ điểm Histogram 10 khoảng & ELEC AI Chẩn đoán sư phạm
-   - Tự động ghép nối SBD với học sinh của Lớp học
-   - Quản lý nhiều mã đề, thang điểm chuẩn THPT 2025
-   - In / Tải mẫu phiếu trắc nghiệm A4 chuẩn Bộ GD&ĐT 2025
-   - Xuất file bảng điểm Excel CSV UTF-8 có BOM
+   v3 (fix + optimize):
+     • FIX #2: matchStudent tôn trọng cờ `studentManual` —
+       không ghi đè khi giáo viên đã chọn thủ công.
+     • FIX: updateItem đánh dấu `studentManual` khi sửa thông tin HS.
+     • FIX: Cleanup camera stream khi unmount.
+     • FIX: stopCamera reset cameraFeedback.
+     • MỚI: A11y cho camera modal.
    ============================================================ */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -131,13 +129,15 @@ export default function PaperGrading({ classes = [], exams = [] }) {
     <div className="pg">
       {/* Toast thông báo góc màn hình */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 999999,
-          padding: '0.75rem 1.25rem', borderRadius: 14,
-          background: toast.tone === 'error' ? '#ef4444' : toast.tone === 'warn' ? '#f59e0b' : '#10b981',
-          color: '#ffffff', fontWeight: 700, fontSize: '0.9rem',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-        }}>
+        <div
+          style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 999999,
+            padding: '0.75rem 1.25rem', borderRadius: 14,
+            background: toast.tone === 'error' ? '#ef4444' : toast.tone === 'warn' ? '#f59e0b' : '#10b981',
+            color: '#ffffff', fontWeight: 700, fontSize: '0.9rem',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          }}
+        >
           {toast.text}
         </div>
       )}
@@ -593,7 +593,7 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
    SUB-COMPONENT: PHIÊN CHẤM BÀI (UPLOAD & LIVE CAMERA SCANNER)
    ============================================================ */
 function PaperGrade({
-  paper, classInfo, onBack, onEditSetup, onOpenAnalytics, onPrintSheet, onPaperChange, say,
+  paper, classInfo, onBack, onEditSetup, onOpenAnalytics, onPrintSheet, say,
 }) {
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -629,8 +629,13 @@ function PaperGrade({
     return { ...it, grade };
   }, [keys, counts, scoring]);
 
+  /* FIX #2: Tôn trọng studentManual */
   const matchStudent = useCallback((it) => {
+    // Nếu giáo viên đã chọn thủ công → KHÔNG ghi đè
     if (it.studentManual) return it;
+    // Nếu đã có studentId (đã match) → giữ nguyên
+    if (it.studentId) return it;
+    // Chỉ match khi có sbdMap
     const s = paper.sbdMap?.[it.sbd];
     if (s) return { ...it, studentId: s.id || null, studentName: s.name || '' };
     return it;
@@ -664,10 +669,23 @@ function PaperGrade({
     return () => { alive = false; };
   }, [paper.id, say]);
 
-  const graded = useMemo(() => items.map((it) => regrade(matchStudent(it))), [items, regrade, matchStudent]);
+  const graded = useMemo(
+    () => items.map((it) => regrade(matchStudent(it))),
+    [items, regrade, matchStudent]
+  );
 
   useEffect(() => () => {
     itemsRef.current.forEach((it) => it.url && URL.revokeObjectURL(it.url));
+  }, []);
+
+  /* FIX: Cleanup camera stream khi unmount */
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
   }, []);
 
   // Xử lý nạp nhiều file ảnh
@@ -740,13 +758,15 @@ function PaperGrade({
     }
   };
 
-  const stopCamera = () => {
+  /* FIX: stopCamera reset feedback + dọn stream */
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     setCameraOpen(false);
-  };
+    setCameraFeedback(null);
+  }, []);
 
   const captureAndScan = async () => {
     const video = videoRef.current;
@@ -763,7 +783,7 @@ function PaperGrade({
       const read = readSheet(imgData);
 
       if (!read.ok) {
-        sound.wrong();
+        sound.wrong?.();
         setCameraFeedback({ ok: false, msg: read.error || 'Chưa nhận diện được 4 góc A4. Hãy căn phiếu ngay ngắn!' });
         return;
       }
@@ -796,22 +816,36 @@ function PaperGrade({
       const key = keys[code] || { p1: [], p2: [], p3: [] };
       const grade = gradeSheet(read, key, counts, scoring);
 
-      sound.cheer();
+      sound.cheer?.();
       setCameraFeedback({
         ok: true,
         msg: `✓ SBD: ${read.sbd || '---'} · Mã đề: ${code || '---'} · Điểm: ${fmt(grade?.score10)}/10`,
       });
     } catch (e) {
-      sound.wrong();
+      sound.wrong?.();
       setCameraFeedback({ ok: false, msg: 'Lỗi: ' + e.message });
     }
   };
 
-  const updateItem = (id, patch) => setItems((cur) => cur.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  /* FIX: updateItem đánh dấu studentManual khi sửa thông tin HS */
+  const updateItem = useCallback((id, patch) => {
+    setItems((cur) => cur.map((c) => {
+      if (c.id !== id) return c;
+      const next = { ...c, ...patch };
+      if ('studentId' in patch || 'studentName' in patch) {
+        next.studentManual = true;
+      }
+      if ('read' in patch || 'code' in patch || 'sbd' in patch) {
+        next.edited = true;
+      }
+      return next;
+    }));
+  }, []);
+
   const removeItem = (id) => {
     setItems((cur) => {
       const it = cur.find((c) => c.id === id);
-      if (it?.url) URL.revokeObjectURL(it.url);
+      if (it?.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url);
       return cur.filter((c) => c.id !== id);
     });
     if (editId === id) setEditId(null);
@@ -1027,7 +1061,7 @@ function PaperGrade({
           codes={codeList}
           members={members}
           counts={counts}
-          onChange={(patch) => updateItem(editing.id, { ...patch, edited: true })}
+          onChange={(patch) => updateItem(editing.id, patch)}
           onApprove={() => updateItem(editing.id, { needsReview: false, edited: true })}
           onClose={() => setEditId(null)}
         />
@@ -1035,7 +1069,12 @@ function PaperGrade({
 
       {/* MODAL LIVE CAMERA SCANNER */}
       {cameraOpen && (
-        <div className="pg-cam-modal animate-pop">
+        <div
+          className="pg-cam-modal animate-pop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Camera chấm phiếu A4"
+        >
           <header className="pg-cam-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <IcoCamera size={22} color="#38bdf8" />
@@ -1181,7 +1220,7 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
                   value={item.studentId || ''}
                   onChange={(e) => {
                     const m = members.find((x) => x.id === e.target.value);
-                    onChange({ studentId: m?.id || null, studentName: m?.name || '', studentManual: true });
+                    onChange({ studentId: m?.id || null, studentName: m?.name || '' });
                   }}
                 >
                   <option value="">{item.studentName && !item.studentId ? item.studentName : '-- Chưa chọn --'}</option>

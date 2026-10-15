@@ -1,14 +1,12 @@
 /* ============================================================
    CreateExamPage.jsx — Trang tạo đề cho giáo viên
-   ------------------------------------------------------------
-   2 tab: Thủ công | AI
-   Sau khi AI sinh → tự chuyển sang tab Thủ công với dữ liệu
-   ------------------------------------------------------------
-   v2: AI trả câu hỏi đã chuẩn hóa (q, options, correct, explain…) nên
-       không cần đoán đáp án ở đây nữa. Sửa 2 lỗi cũ:
-         • key={'ai-result-' + Date.now()} làm form remount mỗi lần render
-           (mất sạch dữ liệu đang nhập khi bấm Lưu / đổi tab)
-         • đổi tab làm mất cuộc trò chuyện AI (nay giữ mounted)
+   v3 (fix):
+     • FIX #3: Không remount form khi AI tạo đề. Dùng `ref`
+       để merge dữ liệu AI vào form mà không mất state.
+     • FIX: Cảnh báo nếu đang có dữ liệu chưa lưu trước khi
+       ghi đè.
+     • FIX: Bỏ `key={'form-' + formVersion}` (nguyên nhân chính
+       gây warning và remount).
    ============================================================ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
@@ -67,19 +65,34 @@ const fmtAgo = (t) => {
 /* ============================================================
    MAIN
    ============================================================ */
-export default function CreateExamPage({ classInfo, classes = [], classInsights, grades = [], subjects = [], onDone, onCancel }) {
+export default function CreateExamPage({
+  classInfo,
+  classes = [],
+  classInsights,
+  grades = [],
+  subjects = [],
+  onDone,
+  onCancel,
+}) {
   const { user } = useAuth();
   const toast = useToast();
-  const [tab, setTab] = useState('ai'); // Mặc định mở AutoExam AI Studio
+  const [tab, setTab] = useState('ai');
   const [initialData, setInitialData] = useState(null);
-  const [formVersion, setFormVersion] = useState(0); // đổi khi nạp đề mới từ AI
   const [saving, setSaving] = useState(false);
-  const dirtyRef = useRef(false); // form thủ công đang có nội dung
+  const dirtyRef = useRef(false);
   const [pendingDraft, setPendingDraft] = useState(() => readManualDraft(classInfo?.id));
+
+  /* FIX #3: Ref tới form instance để gọi replaceContent() thay vì remount */
+  const formRef = useRef(null);
 
   /* Cảnh báo khi đóng/tải lại tab lúc còn nội dung chưa lưu */
   useEffect(() => {
-    const h = (e) => { if (dirtyRef.current && !saving) { e.preventDefault(); e.returnValue = ''; } };
+    const h = (e) => {
+      if (dirtyRef.current && !saving) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
   }, [saving]);
@@ -87,47 +100,54 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
   const restoreDraft = () => {
     if (!pendingDraft) return;
     setInitialData(pendingDraft);
-    setFormVersion((v) => v + 1);
     setPendingDraft(null);
     setTab('manual');
     toast.success('Đã khôi phục bản nháp');
   };
-  const discardDraft = () => { clearManualDraft(classInfo?.id); setPendingDraft(null); };
 
-  /* Form báo bản chụp → lưu nháp (chỉ khi đang có nội dung) */
+  const discardDraft = () => {
+    clearManualDraft(classInfo?.id);
+    setPendingDraft(null);
+  };
+
+  /* Form báo bản chụp → lưu nháp */
   const handleSnapshot = useCallback((snap) => {
     const has = snap.title?.trim() || snap.questions?.some((q) => q.q?.trim());
     if (has) writeManualDraft(classInfo?.id, snap);
   }, [classInfo?.id]);
 
-  /* AI sinh đề xong → chuyển sang tab thủ công với dữ liệu điền sẵn */
+  /* FIX #3: AI sinh đề xong → gọi form API để thay thế nội dung,
+     KHÔNG remount (giữ state khác như proctor settings, opensAt...) */
   const handleAIGenerated = useCallback((payload) => {
     const { questions, meta, warnings = [] } = payload;
 
-    // Đã nạp đề AI trước đó → hỏi trước khi ghi đè phần đang sửa
-    if ((formVersion > 0 || dirtyRef.current) && !window.confirm('Thay nội dung đang soạn ở tab Thủ công bằng đề AI này?')) {
-      return;
+    // Cảnh báo nếu đang có dữ liệu chưa lưu
+    if (dirtyRef.current) {
+      const ok = window.confirm(
+        'Tab "Soạn thủ công" đang có nội dung chưa lưu. Thay bằng đề AI này?'
+      );
+      if (!ok) return;
     }
 
-    setInitialData({
-      title: meta.title || `Đề AI tạo ${new Date().toLocaleDateString('vi-VN')}`,
-      description: meta.description || '',
-      duration: meta.duration || 45,
-      questions: questions.map((q) => ({
-        q: q.q ?? q.content ?? '',
-        options: q.options || [],
-        correct: typeof q.correct === 'number' ? q.correct : -1,
-        points: q.points || 1,
-        explain: q.explain || '',
-        topic: q.topic || '',
-        level: q.level || '',
-        warns: q.warns || [],
-      })),
-      showAnswerAfter: true,
-      allowRetry: false,
-      shuffle: false,
-    });
-    setFormVersion((v) => v + 1);
+    // Truyền dữ liệu vào form qua ref thay vì remount
+    if (formRef.current?.replaceContent) {
+      formRef.current.replaceContent({
+        title: meta.title || `Đề AI tạo ${new Date().toLocaleDateString('vi-VN')}`,
+        description: meta.description || '',
+        duration: meta.duration || 45,
+        questions: questions.map((q) => ({
+          q: q.q ?? q.content ?? '',
+          options: q.options || [],
+          correct: typeof q.correct === 'number' ? q.correct : -1,
+          points: q.points || 1,
+          explain: q.explain || '',
+          topic: q.topic || '',
+          level: q.level || '',
+          warns: q.warns || [],
+        })),
+      });
+    }
+
     setTab('manual');
 
     const needReview = warnings.length;
@@ -136,7 +156,7 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
         ? `AI đã tạo ${questions.length} câu — ${needReview} câu cần xem lại trước khi lưu`
         : `AI đã tạo ${questions.length} câu — bấm "Lưu đề" để hoàn tất`
     );
-  }, [toast, formVersion]);
+  }, [toast]);
 
   /* Lưu đề */
   const handleSave = async (data) => {
@@ -164,7 +184,7 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
         kind: data.kind || '',
       });
       toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
-      clearDraft(); // đề đã lưu → bỏ bản nháp AI cũ
+      clearDraft();
       clearManualDraft(classInfo.id);
       dirtyRef.current = false;
       onDone?.(exam);
@@ -215,7 +235,7 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
           <div>
             <b>Có bản nháp chưa lưu</b>
             <span>
-              “{pendingDraft.title?.trim() || 'Đề chưa đặt tên'}” · {pendingDraft.questions?.length || 0} câu · {fmtAgo(pendingDraft.savedAt)}
+              "{pendingDraft.title?.trim() || 'Đề chưa đặt tên'}" · {pendingDraft.questions?.length || 0} câu · {fmtAgo(pendingDraft.savedAt)}
             </span>
           </div>
           <div className="cep-draft-actions">
@@ -225,20 +245,22 @@ export default function CreateExamPage({ classInfo, classes = [], classInsights,
         </div>
       )}
 
-      {/* ===== NỘI DUNG — cả 2 tab luôn mounted để không mất dữ liệu ===== */}
+      {/* ===== NỘI DUNG — cả 3 tab luôn mounted ===== */}
       <div hidden={tab !== 'ai'}>
         <AutoExamStudio
           classes={classes.length ? classes : classInfo ? [classInfo] : []}
           initialClass={classInfo}
           classInsights={classInsights}
+          onGenerated={handleAIGenerated}
           onDone={onDone}
           onCancel={onCancel}
         />
       </div>
 
       <div hidden={tab !== 'manual'}>
+        {/* FIX #3: KHÔNG dùng key để tránh remount. Dùng ref để expose API. */}
         <ExamCreateForm
-          key={'form-' + formVersion}
+          ref={formRef}
           initial={initialData}
           onDirty={(d) => { dirtyRef.current = d; }}
           onSnapshot={handleSnapshot}

@@ -208,7 +208,7 @@ export const PRESET_SAMPLE_EXAMS = [
     questions: [
       {
         q: 'Phần 1: Trong các kim loại sau, kim loại có tính dẫn điện tốt nhất là:',
-        options: ['Bạc (Ag)', 'Đồng (Cu)', 'Vàng (Au)', 'Nhôm (Al)'],
+        options: ['Silver (Ag)', 'Copper (Cu)', 'Gold (Au)', 'Aluminium (Al)'],
         correct: 0,
         level: 'nb',
         topic: 'Tính chất vật lí kim loại',

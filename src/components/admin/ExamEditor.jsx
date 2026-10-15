@@ -45,36 +45,34 @@ export default function ExamEditor({ examId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  if (loading || loadError) {
+  /* ❗ BUG CŨ ĐÃ SỬA: khi loading=true, wrapper trả về spinner INSTEAD OF
+     ExamEditorInner — mà Inner mới là nơi gọi load() và tắt loading
+     → load() không bao giờ chạy → kẹt "Đang tải đề…" vĩnh viễn.
+     Nay: Inner luôn được mount, tự hiển thị spinner khi loading. */
+
+  if (loadError) {
     return (
       <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
-        <Topbar
-          title="Sửa đề"
-          subtitle={loadError ? 'Không tải được' : 'Đang tải…'}
-        />
-        {loadError ? (
-          <div className="vt-empty">
-            <span><IconQuestion size={30} /></span>
-            <h3>Không tải được đề</h3>
-            <p>{loadError}</p>
-            <button type="button" className="vt-btn primary" onClick={onBack}>
-              <IconBack size={14} /> Quay lại danh sách
-            </button>
-          </div>
-        ) : (
-          <div className="vt-loading">
-            <div className="page-loader-spinner" />
-            <p>Đang tải đề…</p>
-          </div>
-        )}
+        <Topbar title="Sửa đề" subtitle="Không tải được" />
+        <div className="vt-empty">
+          <span><IconQuestion size={30} /></span>
+          <h3>Không tải được đề</h3>
+          <p>{loadError}</p>
+          <button type="button" className="vt-btn primary" onClick={onBack}>
+            <IconBack size={14} /> Quay lại danh sách
+          </button>
+        </div>
       </AdminShell>
     );
   }
 
+  /* ❗ KHÔNG bọc AdminShell ở đây — ExamEditorInner tự bọc (có Topbar riêng cho
+     từng trạng thái). Bọc 2 lần → 2 thanh sidebar lồng nhau. */
   return (
     <ExamEditorInner
       examId={examId}
       onBack={onBack}
+      loading={loading}
       onLoadingChange={setLoading}
       onError={setLoadError}
     />
@@ -84,7 +82,7 @@ export default function ExamEditor({ examId, onBack }) {
 /* ============================================================
    INNER — logic chính
    ============================================================ */
-function ExamEditorInner({ examId, onBack, onLoadingChange, onError }) {
+function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) {
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [grades, setGrades] = useState([]);
@@ -97,6 +95,12 @@ function ExamEditorInner({ examId, onBack, onLoadingChange, onError }) {
 
   const [toast, setToast] = useState(null);
   const [confirm, setConfirm] = useState(null);
+  /* DB cũ có cột questions.topic_id là SỐ NGUYÊN trong khi app dùng id chuyên đề dạng CHỮ
+     ('c11-este' từ chemTopics). Khi lưu có chọn chuyên đề, Supabase trả
+     "invalid input syntax for type integer" → tự lưu lại không chuyên đề + hiện banner
+     hướng dẫn chạy migration (supabase/migrations/003_topic_id_text.sql). */
+  const [topicUnsupported, setTopicUnsupported] = useState(false);
+  const isTopicIntError = (e) => /invalid input syntax for type integer/i.test(String(e?.message || ''));
   const say = useCallback((t) => {
     setToast(t);
     setTimeout(() => setToast((cur) => (cur === t ? null : cur)), 2400);
@@ -261,15 +265,29 @@ function ExamEditorInner({ examId, onBack, onLoadingChange, onError }) {
       };
 
       if (q._new) {
-        const { data, error } = await supabase
+        let res = await supabase
           .from('questions')
           .insert({ ...fields, exam_id: examId, question_number: q.question_number })
           .select('id')
           .single();
+        if (res.error && fields.topic_id != null && isTopicIntError(res.error)) {
+          setTopicUnsupported(true);
+          res = await supabase
+            .from('questions')
+            .insert({ ...fields, topic_id: null, exam_id: examId, question_number: q.question_number })
+            .select('id')
+            .single();
+        }
+        const { data, error } = res;
         if (error) throw error;
         qid = data.id;
       } else {
-        const { error } = await supabase.from('questions').update(fields).eq('id', q.id);
+        let res = await supabase.from('questions').update(fields).eq('id', q.id);
+        if (res.error && fields.topic_id != null && isTopicIntError(res.error)) {
+          setTopicUnsupported(true);
+          res = await supabase.from('questions').update({ ...fields, topic_id: null }).eq('id', q.id);
+        }
+        const { error } = res;
         if (error) throw error;
       }
 
@@ -385,6 +403,20 @@ function ExamEditorInner({ examId, onBack, onLoadingChange, onError }) {
           <button type="button" className="vt-btn primary" onClick={onBack}>
             <IconBack size={14} /> Quay lại danh sách
           </button>
+        </div>
+      </AdminShell>
+    );
+  }
+
+  /* Spinner khi đang tải (loading do wrapper quản — Inner luôn được mount nên
+     load() chạy được và tắt loading) */
+  if (loading || !exam) {
+    return (
+      <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
+        <Topbar title="Sửa đề" subtitle="Đang tải…" />
+        <div className="vt-loading">
+          <div className="page-loader-spinner" />
+          <p>Đang tải đề…</p>
         </div>
       </AdminShell>
     );
@@ -569,6 +601,25 @@ function ExamEditorInner({ examId, onBack, onLoadingChange, onError }) {
           )}
         </div>
       </div>
+
+      {/* ===== CẢNH BÁO CHUYÊN ĐỀ ===== */}
+      {topicUnsupported && (
+        <div className="vt-card" style={{
+          borderLeft: '3px solid var(--vt-amber)',
+          padding: '.9rem 1.1rem',
+          fontSize: '.85rem',
+          lineHeight: 1.55,
+          color: 'var(--ink)',
+        }}>
+          <b>Chuyên đề chưa lưu được vào database.</b>
+          {' '}Cột <code>questions.topic_id</code> đang là <b>số nguyên</b> trong khi app dùng id
+          chuyên đề dạng chữ (vd <code>c11-este</code>). Câu hỏi vẫn được lưu bình thường, chỉ thiếu chuyên đề.
+          <div style={{ marginTop: '.4rem' }}>
+            Cách sửa vĩnh viễn: chạy file{' '}
+            <code>supabase/migrations/003_topic_id_text.sql</code> trong Supabase SQL Editor, sau đó tải lại trang.
+          </div>
+        </div>
+      )}
 
       {/* ===== CÂU HỎI ===== */}
       <div className="vt-card">

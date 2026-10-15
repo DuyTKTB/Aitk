@@ -26,7 +26,7 @@ function ElementCard({ e, on, onSelect, trend, trendInfo, study, revealed, selec
       style={style}
       data-tip={`${e.name}\n${e.symbol}\nSố hiệu: ${e.atomicNumber}`}
       onClick={(ev) => onSelect(e, ev)}
-      aria-label={`${e.vietnameseName}, ký hiệu ${e.symbol}, số hiệu ${e.atomicNumber}${fav ? ', đã yêu thích' : ''}`}
+      aria-label={`${e.name}, ký hiệu ${e.symbol}, số hiệu ${e.atomicNumber}${fav ? ', đã yêu thích' : ''}`}
       aria-pressed={selected || undefined}
     >
       <span className="n">{e.atomicNumber}</span>

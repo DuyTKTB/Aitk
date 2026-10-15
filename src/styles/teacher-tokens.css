@@ -35,7 +35,11 @@
     --t-ink-muted: #a1a1aa;
     --t-ink-faint: #71717a;
 
-    /* Tương thích ngược & Cầu nối Vitality Admin (Dark Bento) */
+    /* Tương thích ngược & Cầu nối Vitality Admin (Dark Bento)
+       ⚠️ ĐÂY LÀ NGUỒN DUY NHẤT của nhóm biến --ts-* dùng bởi DashShell (khung giáo viên
+       + khung quản trị). Trước đây nhóm này chỉ nằm trong teacher-studio.css (một file
+       không được import) nên 23 chỗ dùng --ts-accent bị undefined → biểu đồ xu hướng
+       mất đường vẽ và chỉ còn vệt xám, nút/badge mất màu. */
     --ts-ink: var(--t-ink);
     --ts-ink-2: var(--t-ink-2);
     --ts-ink-3: var(--t-ink-muted);
@@ -44,6 +48,25 @@
     --ts-surface-2: var(--t-surface-2);
     --ts-surface-3: var(--t-surface-3);
     --ts-border: var(--t-border);
+    --ts-border-soft: var(--t-border-subtle);
+    --ts-bg: var(--t-bg);
+    --ts-accent: var(--t-accent);
+    --ts-accent-hover: var(--t-accent-hover);
+    --ts-accent-subtle: var(--t-accent-subtle);
+    --ts-success: var(--t-status-ok);
+    --ts-warn: var(--t-status-warn);
+    /* Bộ biến "apple" mà giáo viên/admin dùng lại (trước đây nằm trong tools-apple.css) */
+    --t-glass: rgba(255, 255, 255, 0.05);
+    --t-glass-strong: rgba(255, 255, 255, 0.09);
+    --t-glass-hover: rgba(255, 255, 255, 0.08);
+    --t-glass-border: rgba(255, 255, 255, 0.12);
+    --t-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --t-line-1: rgba(255, 255, 255, 0.08);
+    --t-line-2: rgba(255, 255, 255, 0.14);
+    --t-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --t-shadow-2: 0 8px 24px -8px rgba(0, 0, 0, 0.45);
+    --t-shadow-3: 0 20px 48px -12px rgba(0, 0, 0, 0.6);
+    --t-shadow-hover: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -10px rgba(0, 0, 0, 0.4);
     --panel: var(--t-surface-1);
     --ink: var(--t-ink);
     --acc: var(--t-accent);
@@ -115,6 +138,24 @@
     --ts-surface-2: var(--t-surface-2);
     --ts-surface-3: var(--t-surface-3);
     --ts-border: var(--t-border);
+    --ts-border-soft: var(--t-border-subtle);
+    --ts-bg: var(--t-bg);
+    --ts-accent: var(--t-accent);
+    --ts-accent-hover: var(--t-accent-hover);
+    --ts-accent-subtle: var(--t-accent-subtle);
+    --ts-success: var(--t-status-ok);
+    --ts-warn: var(--t-status-warn);
+    --t-glass: rgba(255, 255, 255, 0.48);
+    --t-glass-strong: rgba(255, 255, 255, 0.72);
+    --t-glass-hover: rgba(255, 255, 255, 0.62);
+    --t-glass-border: rgba(100, 120, 180, 0.18);
+    --t-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    --t-line-1: color-mix(in srgb, var(--t-ink) 8%, transparent);
+    --t-line-2: color-mix(in srgb, var(--t-ink) 14%, transparent);
+    --t-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.03);
+    --t-shadow-2: 0 8px 24px -10px rgba(100, 120, 180, 0.16);
+    --t-shadow-3: 0 20px 44px -14px rgba(100, 120, 180, 0.22);
+    --t-shadow-hover: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px -10px rgba(0, 0, 0, 0.14);
     --panel: var(--t-surface-0);
     --ink: var(--t-ink);
     --acc: var(--t-accent);
@@ -173,5 +214,14 @@
     /* Kính Mờ */
     --t-blur: blur(28px);
     --t-blur-subtle: blur(14px);
+
+    /* Kích thước dùng chung cho khung giáo viên + quản trị (nhóm --ts-* hình học) */
+    --ts-radius: var(--t-r-lg);
+    --ts-radius-sm: var(--t-r-sm);
+    --ts-radius-lg: var(--t-r-card);
+    --ts-ease: var(--t-ease-smooth);
+    --ts-shadow-sm: var(--t-shadow-sm);
+    --ts-shadow: var(--t-shadow-card);
+    --ts-shadow-lg: var(--t-shadow-float);
   }
 }

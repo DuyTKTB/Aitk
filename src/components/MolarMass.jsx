@@ -1,97 +1,6 @@
 import { useState, useMemo } from 'react';
-import { ELEMENTS, SGK_MASS } from '../data/elements.js';
-const MASS = Object.fromEntries(
-  ELEMENTS.map((e) => [
-    e.symbol,
-    parseFloat(e.atomicMass.replace(/[[\]]/g, '')),
-  ])
-);
-const isValidSymbol = (s) => s in MASS;
-
-/**
- * Parse công thức hóa học.
- * Hỗ trợ:
- *   - H2O, H2SO4, Ca(OH)2, Al2(SO4)3
- *   - Co (Cobalt) vs CO (Carbon + Oxygen) — phân biệt đúng
- *   - Dấu chấm ngậm nước: CuSO4.5H2O
- *
- * @param {string} f - công thức (không có khoảng trắng)
- * @returns {Record<string, number>}
- * @throws {Error} khi công thức không hợp lệ
- */
-function parse(f) {
-  const stack = [{}];
-  let i = 0;
-  const readNumber = () => {
-    let s = '';
-    while (i < f.length && /\d/.test(f[i])) s += f[i++];
-    return s ? parseInt(s, 10) : 1;
-  };
-
-  const add = (group, sym, n) => {
-    group[sym] = (group[sym] || 0) + n;
-  };
-  const mergeIntoParent = (child, mult) => {
-    const parent = stack[stack.length - 1];
-    for (const k in child) add(parent, k, child[k] * mult);
-  };
-
-  while (i < f.length) {
-    const c = f[i];
-    if (c === '(' || c === '[') {
-      stack.push({});
-      i++;
-      continue;
-    }
-    if (c === ')' || c === ']') {
-      if (stack.length < 2) throw new Error('Ngoặc không cân đối');
-      i++;
-      const top = stack.pop();
-      const mult = readNumber();
-      mergeIntoParent(top, mult);
-      continue;
-    }
-    if (c === '·' || c === '.' || c === '*') {
-      i++;
-      const mult = readNumber();
-      const sub = {};
-      const rest = f.slice(i);
-      const subParsed = parse(rest);
-      for (const k in subParsed) add(sub, k, subParsed[k] * mult);
-      for (const k in sub) add(stack[stack.length - 1], k, sub[k]);
-      return stack[0]; // đã xử lý hết phần còn lại
-    }
-    if (!/[A-Za-z]/.test(c)) throw new Error(`Ký tự không hợp lệ: "${c}"`);
-    const two = f.slice(i, i + 2);
-    const one = f[i];
-
-    let sym;
-    if (two.length === 2 && /^[A-Z][a-z]$/.test(two) && isValidSymbol(two)) {
-      sym = two;
-      i += 2;
-    } else if (isValidSymbol(one)) {
-      sym = one;
-      i += 1;
-    } else {
-      if (two.length === 2 && /^[A-Z][a-z]$/.test(two)) {
-        if (isValidSymbol(one)) {
-          sym = one;
-          i += 1;
-        } else {
-          throw new Error(`Nguyên tố không tồn tại: "${two}"`);
-        }
-      } else {
-        throw new Error(`Nguyên tố không tồn tại: "${one}"`);
-      }
-    }
-
-    const n = readNumber();
-    add(stack[stack.length - 1], sym, n);
-  }
-
-  if (stack.length !== 1) throw new Error('Ngoặc không cân đối');
-  return stack[0];
-}
+/* Lõi tính toán dùng chung với lớp công cụ AI (aiTools.js) — một nguồn sự thật duy nhất */
+import { parseFormula, molarMass } from '../lib/chemBalance.js';
 
 const fmt = (n, digits = 4) => {
   if (isNaN(n) || !isFinite(n)) return '—';
@@ -109,27 +18,19 @@ export default function MolarMass() {
   const result = useMemo(() => {
     const t = f.replace(/\s/g, '');
     if (!t) return { ok: false, empty: true };
-
-    let parts;
     try {
-      parts = parse(t);
+      const mm = molarMass(t, { sgk: useSGK });
+      if (mm.unknown.length) {
+        return { ok: false, err: `Chưa có khối lượng nguyên tử cho: ${mm.unknown.join(', ')}` };
+      }
+      if (!mm.value) return { ok: false, err: 'Không tính được khối lượng mol.' };
+      return { ok: true, parts: parseFormula(t), M: mm.value, breakdown: mm.breakdown };
     } catch (err) {
       return { ok: false, err: err.message };
     }
-
-    const getMass = (sym) => {
-      if (useSGK && SGK_MASS[sym] !== undefined) return SGK_MASS[sym];
-      return MASS[sym];
-    };
-
-    const M = Object.entries(parts).reduce(
-      (a, [k, n]) => a + getMass(k) * n,
-      0
-    );
-    return { ok: true, parts, M };
   }, [f, useSGK]);
 
-  const { ok, parts, M, err, empty } = result;
+  const { ok, M, err, empty, breakdown } = result;
   const x = parseFloat(v);
   const mol =
     !ok || isNaN(x)
@@ -169,12 +70,7 @@ export default function MolarMass() {
               <small>g/mol</small>
             </p>
             <p className="hint center">
-              {Object.entries(parts)
-                .map(([k, n]) => {
-                  const m = useSGK && SGK_MASS[k] !== undefined ? SGK_MASS[k] : MASS[k];
-                  return `${k}×${n} (${m})`;
-                })
-                .join(' + ')}
+              {breakdown.map((b) => `${b.symbol}×${b.count} (${b.mass})`).join(' + ')}
             </p>
 
             <label className="row" style={{ marginTop: '.5rem', cursor: 'pointer' }}>

@@ -175,7 +175,7 @@ export function ElementStamp({ show = false, color = '#ffb020' }) {
           letterSpacing="1.5"
         >
           <textPath href="#stamp-arc" startOffset="0">
-            ★ ELECAI · VIP · CHEMISTRY · A7-K60-DTA · 
+            ★ ELECAI · VIP · CHEMISTRY · ELEC AI-K60-DTA · 
           </textPath>
         </text>
         {/* Trung tâm */}

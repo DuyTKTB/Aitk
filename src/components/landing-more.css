@@ -157,11 +157,24 @@
 .lm-steps b { font: 700 .98rem var(--disp); }
 .lm-steps span { color: var(--mut); font-size: .86rem; }
 
+/* ---------- Ảnh minh họa ---------- */
+.lm-shot { margin: 0; }
+.lm-shot img { display: block; width: 100%; height: auto; }
+.lm-shot figcaption { margin-top: .6rem; color: var(--mut); font-size: .8rem; }
+.lm-who-copy .lm-shot, .lm-live-wrap .lm-shot { margin-top: 1.6rem; }
+.lm-career {
+  display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center; margin-top: clamp(2rem, 5vw, 3.5rem);
+}
+.lm-career h3 { font-size: clamp(1.5rem, 3vw, 2.2rem); line-height: 1.1; }
+.lm-career p { margin-top: 1rem; color: var(--mut); max-width: 30em; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
   .lm-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bt-ai { grid-row: auto; }
   .lm-exam { grid-template-columns: 1fr; }
+  .lm-career { grid-template-columns: 1fr; }
   .lm-trust { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {

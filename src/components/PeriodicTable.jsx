@@ -76,7 +76,7 @@ export default function PeriodicTable({ preview = false }) {
   const matches = useMemo(() => {
     const isOn = (e) =>
       (cat === 'all' || e.category === cat) &&
-      (!nq || (/^\d+$/.test(nq) ? e.atomicNumber === +nq : e.s.symbol === nq || e.s.name.includes(nq) || e.s.vn.includes(nq))) &&
+      (!nq || (/^\d+$/.test(nq) ? e.atomicNumber === +nq : e.s.symbol === nq || e.s.name.includes(nq))) &&
       (!hl || (hl.t === 'g' ? e.group === hl.v : e.period === hl.v)) &&
       (!onlyFav || favs.has(e.atomicNumber)) &&
       (!stateF || e.stateAtRoomTemp === stateF);

@@ -6,7 +6,7 @@ export default function CompareBar({ elements, onOpen, onClear }) {
       {elements.map((e) => (
         <div key={e.atomicNumber} className="compare-mini" style={{ background: `var(--${e.category})` }}>
           <b>{e.symbol}</b>
-          <small>{e.vietnameseName}</small>
+          <small>{e.name}</small>
         </div>
       ))}
       <button className="btn primary" onClick={onOpen}>So sánh</button>

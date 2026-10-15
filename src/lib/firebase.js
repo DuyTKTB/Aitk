@@ -21,6 +21,8 @@ import {
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   doc, setDoc, getDoc,
+  collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit,
+  serverTimestamp, increment, arrayUnion, arrayRemove, writeBatch, Timestamp,
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -263,3 +265,10 @@ export function translateAuthError(code) {
   };
   return map[code] || `Lỗi: ${code || 'không xác định'}`;
 }
+
+/* Re-export Firestore functions — để các module khác import từ firebase.js
+   thay vì từ 'firebase/firestore' trực tiếp (giảm số import path) */
+export {
+  collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit,
+  serverTimestamp, increment, arrayUnion, arrayRemove, writeBatch, Timestamp,
+};

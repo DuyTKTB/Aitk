@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
+import { CAMERA_GAMES } from '../../lib/cameraGames.js';
+import { CAMERA_ICONS } from '../../lib/cameraIcons.jsx';
 import GameStudioSettingsModal from './GameStudioSettingsModal.jsx';
 
 const GAMES = [
@@ -291,6 +293,57 @@ const GAMES = [
       'Bật "Ghi chú" để đánh dấu khả năng.',
     ],
   },
+
+  /* ❗ MỚI: 9 TRÒ CHƠI CAMERA — chạy trên engine chung (CameraGame.jsx),
+     AI nhận diện mặt/tay để điều khiển lối chơi. */
+  /* ❗ Thêm: DÒ MÌN KIẾN THỨC — thể loại dò mìn kinh điển */
+  {
+    id: 'mines',
+    num: '21',
+    category: 'practice',
+    badge: 'MỚI · DÒ MÌN',
+    title: 'Dò mìn',
+    titleEm: 'kiến thức',
+    desc: 'Lưới 4×4 có mìn ẩn. Ô an toàn → câu thường; dính ô mìn → phải gỡ bằng câu hỏi độ khó cao! Dọn sạch bảng để qua ván mới, mìn nhiều hơn.',
+    route: '#games/mines',
+    tag: 'Thử thách · 5–15 phút',
+    color: '#10b981',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 7a5 5 0 0 1 5 5c0 2-1 3-1 4H8c0-1-1-2-1-4a5 5 0 0 1 5-5z" />
+        <path d="M12 3v2M5 12H3M21 12h-2M12 20v2" />
+      </svg>
+    ),
+    steps: [
+      'Bấm 1 ô chưa dò trên lưới 4×4.',
+      'Ô an toàn → trả lời câu hỏi thường (+100).',
+      'Dính ô mìn → trả lời câu KHÓ để gỡ (+150) — sai là nổ!',
+      'Dọn sạch ô an toàn → +300 và qua ván mới, mìn nhiều hơn.',
+    ],
+  },
+  ...CAMERA_GAMES.map((g) => ({
+    id: g.id,
+    num: g.num,
+    category: 'camera',
+    badge: g.badge,
+    title: g.name,
+    titleEm: g.titleEm,
+    desc: g.desc,
+    route: `#games/${g.id}`,
+    tag: g.tag,
+    color: g.color,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        {CAMERA_ICONS[g.iconKey]}
+      </svg>
+    ),
+    steps: [
+      'Cho phép quyền camera khi trình duyệt hỏi.',
+      'Đọc câu hỏi và thực hiện hành động theo chế độ chơi (giơ tay / nhìn / nghiêng / cười…).',
+      'Giữ tư thế đủ lâu để chốt đáp án — trả lời sai mất 1 mạng.',
+      'Hết 3 mạng là kết thúc — điểm cao nhất của phiên được lưu.',
+    ],
+  })),
 ];
 
 export default function GameHub() {
@@ -375,24 +428,35 @@ export default function GameHub() {
           </button>
           <button
             type="button"
+            className={`cg-tab-btn ${filter === 'camera' ? 'active' : ''}`}
+            onClick={() => setFilter('camera')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>
+            Camera ({CAMERA_GAMES.length})
+          </button>
+          <button
+            type="button"
             className={`cg-tab-btn ${filter === 'team' ? 'active' : ''}`}
             onClick={() => setFilter('team')}
           >
-            🏆 Đối kháng & Đua tốc độ
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><path d="M4 12h16M12 9v6M7 7l-3 5 3 5M17 7l3 5-3 5" /></svg>
+            Đối kháng & Đua tốc độ
           </button>
           <button
             type="button"
             className={`cg-tab-btn ${filter === 'gameshow' ? 'active' : ''}`}
             onClick={() => setFilter('gameshow')}
           >
-            📺 Gameshow & May mắn
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+            Gameshow & May mắn
           </button>
           <button
             type="button"
             className={`cg-tab-btn ${filter === 'practice' ? 'active' : ''}`}
             onClick={() => setFilter('practice')}
           >
-            🧪 Rèn luyện & Thí nghiệm
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><path d="M9 3h6M10 3v5L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8V3" /></svg>
+            Rèn luyện & Thí nghiệm
           </button>
         </div>
       </header>

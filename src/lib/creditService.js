@@ -11,11 +11,11 @@ import { supabase } from './supabase.js';
    ============================================================ */
 export const CREDIT_PACKAGES = [
   { amount: 10000,  credits: 100,  bonus: 0,    total: 100,  label: '10.000đ' },
-  { amount: 20000,  credits: 200,  bonus: 10,   total: 210,  label: '20.000đ', badge: '+5%' },
-  { amount: 50000,  credits: 500,  bonus: 50,   total: 550,  label: '50.000đ', badge: '+10%' },
-  { amount: 100000, credits: 1000, bonus: 150,  total: 1150, label: '100.000đ', badge: '+15%' },
-  { amount: 200000, credits: 2000, bonus: 400,  total: 2400, label: '200.000đ', badge: '+20%' },
-  { amount: 500000, credits: 5000, bonus: 1500, total: 6500, label: '500.000đ', badge: '+30%' },
+  { amount: 25000,  credits: 250,  bonus: 25,   total: 275,  label: '25.000đ', badge: '+10%' },
+  { amount: 50000,  credits: 500,  bonus: 100,  total: 600,  label: '50.000đ', badge: '+20%', popular: true },
+  { amount: 100000, credits: 1000, bonus: 300,  total: 1300, label: '100.000đ', badge: '+30%' },
+  { amount: 200000, credits: 2000, bonus: 800,  total: 2800, label: '200.000đ', badge: '+40%' },
+  { amount: 500000, credits: 5000, bonus: 2500, total: 7500, label: '500.000đ', badge: '+50%' },
 ];
 
 export const BANK_INFO = {
@@ -80,11 +80,13 @@ export async function getCredits(userId) {
    imageCount: số ảnh gửi kèm (0 = chỉ text)
    Giá: 1 điểm text + 1 điểm mỗi ảnh
    ============================================================ */
-export async function spendCredit(userId, imageCount = 0) {
+export async function spendCredit(userId, imageCount = 0, creditCost = null) {
   if (!userId) return { ok: false, balance: 0, needed: 1 };
 
   const imgCount = Math.max(0, Number(imageCount) || 0);
-  const cost = 1 + imgCount;
+  // Nếu creditCost được chỉ định rõ (vd: tạo đề, ma trận) → dùng luôn
+  // Nếu không → tính theo công thức: 1 + số ảnh
+  const cost = creditCost !== null ? Math.max(1, Number(creditCost)) : 1 + imgCount;
 
   const credits = await getCredits(userId);
 
@@ -92,11 +94,15 @@ export async function spendCredit(userId, imageCount = 0) {
     return { ok: false, balance: credits.balance, needed: cost };
   }
 
+  const typeLabel = creditCost !== null
+    ? (imgCount > 0 ? 'ai_image' : 'ai_text')
+    : (imgCount > 0 ? 'ai_image' : 'ai_text');
+
   try {
     const { data: newBalance, error } = await supabase.rpc('add_credits', {
       p_user_id: userId,
       p_amount: -cost,
-      p_type: imgCount > 0 ? 'ai_image' : 'ai_text',
+      p_type: typeLabel,
       p_description: imgCount > 0
         ? `Hỏi AI kèm ${imgCount} ảnh (-${cost})`
         : `Hỏi AI (-${cost})`,

@@ -1,15 +1,15 @@
-const RAW = `H,Hydrogen,Hiđro,1.008;He,Helium,Heli,4.0026;Li,Lithium,Liti,6.94;Be,Beryllium,Beri,9.0122;B,Boron,Bo,10.81;C,Carbon,Cacbon,12.011;N,Nitrogen,Nitơ,14.007;O,Oxygen,Oxi,15.999;F,Fluorine,Flo,18.998;Ne,Neon,Neon,20.180;
-Na,Sodium,Natri,22.990;Mg,Magnesium,Magie,24.305;Al,Aluminium,Nhôm,26.982;Si,Silicon,Silic,28.085;P,Phosphorus,Photpho,30.974;S,Sulfur,Lưu huỳnh,32.06;Cl,Chlorine,Clo,35.45;Ar,Argon,Agon,39.948;K,Potassium,Kali,39.098;Ca,Calcium,Canxi,40.078;
-Sc,Scandium,Scanđi,44.956;Ti,Titanium,Titan,47.867;V,Vanadium,Vanađi,50.942;Cr,Chromium,Crom,51.996;Mn,Manganese,Mangan,54.938;Fe,Iron,Sắt,55.845;Co,Cobalt,Coban,58.933;Ni,Nickel,Niken,58.693;Cu,Copper,Đồng,63.546;Zn,Zinc,Kẽm,65.38;
-Ga,Gallium,Gali,69.723;Ge,Germanium,Gecmani,72.630;As,Arsenic,Asen,74.922;Se,Selenium,Selen,78.971;Br,Bromine,Brom,79.904;Kr,Krypton,Kripton,83.798;Rb,Rubidium,Rubidi,85.468;Sr,Strontium,Stronti,87.62;Y,Yttrium,Ytri,88.906;Zr,Zirconium,Zirconi,91.224;
-Nb,Niobium,Niobi,92.906;Mo,Molybdenum,Molipđen,95.95;Tc,Technetium,Tecneti,[98];Ru,Ruthenium,Rutheni,101.07;Rh,Rhodium,Rhodi,102.91;Pd,Palladium,Paladi,106.42;Ag,Silver,Bạc,107.87;Cd,Cadmium,Cadimi,112.41;In,Indium,Indi,114.82;Sn,Tin,Thiếc,118.71;
-Sb,Antimony,Antimon,121.76;Te,Tellurium,Telu,127.60;I,Iodine,Iot,126.90;Xe,Xenon,Xenon,131.29;Cs,Caesium,Xesi,132.91;Ba,Barium,Bari,137.33;La,Lanthanum,Lantan,138.91;Ce,Cerium,Xeri,140.12;Pr,Praseodymium,Praseođim,140.91;Nd,Neodymium,Neođim,144.24;
-Pm,Promethium,Prometi,[145];Sm,Samarium,Samari,150.36;Eu,Europium,Europi,151.96;Gd,Gadolinium,Gadolini,157.25;Tb,Terbium,Terbi,158.93;Dy,Dysprosium,Dysprosi,162.50;Ho,Holmium,Honmi,164.93;Er,Erbium,Erbi,167.26;Tm,Thulium,Tuli,168.93;Yb,Ytterbium,Ytecbi,173.05;
-Lu,Lutetium,Luteti,174.97;Hf,Hafnium,Hafni,178.49;Ta,Tantalum,Tantan,180.95;W,Tungsten,Vonfram,183.84;Re,Rhenium,Reni,186.21;Os,Osmium,Osmi,190.23;Ir,Iridium,Iridi,192.22;Pt,Platinum,Bạch kim,195.08;Au,Gold,Vàng,196.97;Hg,Mercury,Thủy ngân,200.59;
-Tl,Thallium,Tali,204.38;Pb,Lead,Chì,207.2;Bi,Bismuth,Bismut,208.98;Po,Polonium,Poloni,[209];At,Astatine,Astatin,[210];Rn,Radon,Radon,[222];Fr,Francium,Franxi,[223];Ra,Radium,Radi,[226];Ac,Actinium,Actini,[227];Th,Thorium,Thori,232.04;
-Pa,Protactinium,Protactini,231.04;U,Uranium,Urani,238.03;Np,Neptunium,Neptuni,[237];Pu,Plutonium,Plutoni,[244];Am,Americium,Amerixi,[243];Cm,Curium,Curi,[247];Bk,Berkelium,Berkeli,[247];Cf,Californium,Californi,[251];Es,Einsteinium,Einsteini,[252];Fm,Fermium,Fermi,[257];
-Md,Mendelevium,Menđelevi,[258];No,Nobelium,Nobeli,[259];Lr,Lawrencium,Lorenxi,[266];Rf,Rutherfordium,Rutherfordi,[267];Db,Dubnium,Dubni,[268];Sg,Seaborgium,Seaborgi,[269];Bh,Bohrium,Bohri,[270];Hs,Hassium,Hassi,[277];Mt,Meitnerium,Meitneri,[278];Ds,Darmstadtium,Darmstadti,[281];
-Rg,Roentgenium,Roentgeni,[282];Cn,Copernicium,Copernixi,[285];Nh,Nihonium,Nihoni,[286];Fl,Flerovium,Flerovi,[289];Mc,Moscovium,Moscovi,[290];Lv,Livermorium,Livermori,[293];Ts,Tennessine,Tennessin,[294];Og,Oganesson,Oganesson,[294]`;
+const RAW = `H,Hydrogen,1.008;He,Helium,4.0026;Li,Lithium,6.94;Be,Beryllium,9.0122;B,Boron,10.81;C,Carbon,12.011;N,Nitrogen,14.007;O,Oxygen,15.999;F,Fluorine,18.998;Ne,Neon,20.180;
+Na,Sodium,22.990;Mg,Magnesium,24.305;Al,Aluminium,26.982;Si,Silicon,28.085;P,Phosphorus,30.974;S,Sulfur,32.06;Cl,Chlorine,35.45;Ar,Argon,39.948;K,Potassium,39.098;Ca,Calcium,40.078;
+Sc,Scandium,44.956;Ti,Titanium,47.867;V,Vanadium,50.942;Cr,Chromium,51.996;Mn,Manganese,54.938;Fe,Iron,55.845;Co,Cobalt,58.933;Ni,Nickel,58.693;Cu,Copper,63.546;Zn,Zinc,65.38;
+Ga,Gallium,69.723;Ge,Germanium,72.630;As,Arsenic,74.922;Se,Selenium,78.971;Br,Bromine,79.904;Kr,Krypton,83.798;Rb,Rubidium,85.468;Sr,Strontium,87.62;Y,Yttrium,88.906;Zr,Zirconium,91.224;
+Nb,Niobium,92.906;Mo,Molybdenum,95.95;Tc,Technetium,[98];Ru,Ruthenium,101.07;Rh,Rhodium,102.91;Pd,Palladium,106.42;Ag,Silver,107.87;Cd,Cadmium,112.41;In,Indium,114.82;Sn,Tin,118.71;
+Sb,Antimony,121.76;Te,Tellurium,127.60;I,Iodine,126.90;Xe,Xenon,131.29;Cs,Caesium,132.91;Ba,Barium,137.33;La,Lanthanum,138.91;Ce,Cerium,140.12;Pr,Praseodymium,140.91;Nd,Neodymium,144.24;
+Pm,Promethium,[145];Sm,Samarium,150.36;Eu,Europium,151.96;Gd,Gadolinium,157.25;Tb,Terbium,158.93;Dy,Dysprosium,162.50;Ho,Holmium,164.93;Er,Erbium,167.26;Tm,Thulium,168.93;Yb,Ytterbium,173.05;
+Lu,Lutetium,174.97;Hf,Hafnium,178.49;Ta,Tantalum,180.95;W,Tungsten,183.84;Re,Rhenium,186.21;Os,Osmium,190.23;Ir,Iridium,192.22;Pt,Platinum,195.08;Au,Gold,196.97;Hg,Mercury,200.59;
+Tl,Thallium,204.38;Pb,Lead,207.2;Bi,Bismuth,208.98;Po,Polonium,[209];At,Astatine,[210];Rn,Radon,[222];Fr,Francium,[223];Ra,Radium,[226];Ac,Actinium,[227];Th,Thorium,232.04;
+Pa,Protactinium,231.04;U,Uranium,238.03;Np,Neptunium,[237];Pu,Plutonium,[244];Am,Americium,[243];Cm,Curium,[247];Bk,Berkelium,[247];Cf,Californium,[251];Es,Einsteinium,[252];Fm,Fermium,[257];
+Md,Mendelevium,[258];No,Nobelium,[259];Lr,Lawrencium,[266];Rf,Rutherfordium,[267];Db,Dubnium,[268];Sg,Seaborgium,[269];Bh,Bohrium,[270];Hs,Hassium,[277];Mt,Meitnerium,[278];Ds,Darmstadtium,[281];
+Rg,Roentgenium,[282];Cn,Copernicium,[285];Nh,Nihonium,[286];Fl,Flerovium,[289];Mc,Moscovium,[290];Lv,Livermorium,[293];Ts,Tennessine,[294];Og,Oganesson,[294]`;
 
 export const CATS = [
   ['alkali', 'Kim loại kiềm'], ['alkaline', 'Kim loại kiềm thổ'], ['transition', 'Kim loại chuyển tiếp'],
@@ -103,19 +103,19 @@ export const SGK_MASS = {
 };
 
 export const ELEMENTS = RAW.replace(/\n/g, '').split(';').map((row, i) => {
-  const [symbol, name, vietnameseName, atomicMass] = row.split(',');
+  const [symbol, name, atomicMass] = row.split(',');
   const z = i + 1;
   const [period, group] = position(z);
   const isF = group === null;
   const extra = EXTRA[symbol] || { en: null, ox: null };
   return {
-    atomicNumber: z, symbol, name, vietnameseName, atomicMass, group, period,
+    atomicNumber: z, symbol, name, atomicMass, group, period,
     category: category(z), electronConfiguration: config(z), shortConfiguration: shortConfig(z),
     valenceElectrons: valenceElectrons(z, group), stateAtRoomTemp: stateAtRoomTemp(symbol),
     electronegativity: extra.en, oxidationStates: extra.ox,
     row: isF ? (z <= 71 ? 10 : 11) : period + 1,
     col: isF ? (z <= 71 ? z - 57 : z - 89) + 4 : group + 1,
-    s: { symbol: norm(symbol), name: norm(name), vn: norm(vietnameseName) },
+    s: { symbol: norm(symbol), name: norm(name) },
   };
 });
 const RADIUS = {

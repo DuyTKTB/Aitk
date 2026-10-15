@@ -1,73 +1,67 @@
 /* ============================================================
-   ExamCreateForm.jsx — Form tạo đề thủ công (v3)
-   ------------------------------------------------------------
+   ExamCreateForm.jsx — Form tạo đề thủ công
    v3:
-     • Nút "Chọn từ ngân hàng" — mở ExamPickerFromBank
-     • Autosave nháp vào localStorage mỗi 2 giây
-     • Khôi phục nháp khi mở lại
-     • Cảnh báo beforeunload nếu có dữ liệu chưa lưu
-     • Chỉ dùng SVG, không emoji
+     • FIX #3: Expose `replaceContent` qua ref để nhận dữ liệu
+       từ AI mà KHÔNG remount, giữ nguyên các state khác.
+     • forwardRef + useImperativeHandle.
    ============================================================ */
-import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../hooks/useAuth.jsx';
-import ExamPickerFromBank from './teacher/ExamPickerFromBank.jsx';
-import { bumpUsage } from '../lib/questionBank.js';
+import {
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 
-const DRAFT_KEY = 'cs-exam-manual-draft:v1';
-
+/* ============ SVG ICONS ============ */
 const IcoPlus = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <line x1="12" y1="5" x2="12" y2="19" />
     <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 const IcoX = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <line x1="18" y1="6" x2="6" y2="18" />
     <line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
 const IcoCheck = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 const IcoShield = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 2L4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4z" />
   </svg>
 );
 const IcoCam = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" />
     <circle cx="12" cy="12.5" r="3.5" />
   </svg>
 );
 const IcoDoc = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
     <path d="M14 3v6h6M8 13h8M8 17h5" />
   </svg>
 );
 const IcoWarn = ({ size = 12 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 3l10 18H2z" />
     <path d="M12 10v5M12 18v.5" />
   </svg>
 );
-const IcoSave = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-    <polyline points="17 21 17 13 7 13 7 21" />
-    <polyline points="7 3 7 8 15 8" />
-  </svg>
-);
-const IcoLibrary = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 4h6v16H4zM14 4h6v16h-6z" />
-  </svg>
-);
 
+/* ============ DATA HELPERS ============ */
 const emptyQuestion = () => ({
   q: '',
   options: ['', '', '', ''],
@@ -78,8 +72,6 @@ const emptyQuestion = () => ({
 });
 
 const MAX_OPTS = 6;
-const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
-
 const toFormQuestion = (q) => {
   const raw = q.options || q.answers || [];
   const options = raw.map((o) => (typeof o === 'string' ? o : o.content || ''));
@@ -96,56 +88,40 @@ const toFormQuestion = (q) => {
     warns: Array.isArray(q.warns) ? q.warns : [],
     topic: q.topic || '',
     level: q.level || '',
-    _bankId: q._bankId || q.id || null,
   };
 };
 
 const localToIso = (v) => (v ? new Date(v).toISOString() : null);
+const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-function loadManualDraft() {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw);
-    if (!d || !d.questions?.length) return null;
-    return d;
-  } catch { return null; }
-}
-
-function clearManualDraft() {
-  try { localStorage.removeItem(DRAFT_KEY); } catch { /* */ }
-}
-
-export default function ExamCreateForm({
+/* ============================================================
+   MAIN COMPONENT (forwardRef)
+   ============================================================ */
+const ExamCreateForm = forwardRef(function ExamCreateForm({
   initial = null,
   onDirty,
+  onSnapshot,
   classInfo,
   onSave,
   onCancel,
   saving = false,
-}) {
-  const { user } = useAuth();
-  const saved = useRef(loadManualDraft()).current;
-  const startData = initial || saved;
-
-  const [title, setTitle] = useState(startData?.title || '');
-  const [description, setDescription] = useState(startData?.description || '');
-  const [duration, setDuration] = useState(startData?.duration || 15);
+}, ref) {
+  const [title, setTitle] = useState(initial?.title || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [duration, setDuration] = useState(initial?.duration || 15);
   const [questions, setQuestions] = useState(
-    startData?.questions?.length
-      ? startData.questions.map(toFormQuestion)
+    initial?.questions?.length
+      ? initial.questions.map(toFormQuestion)
       : [emptyQuestion()]
   );
-  const [showAnswerAfter, setShowAnswerAfter] = useState(startData?.showAnswerAfter ?? true);
-  const [allowRetry, setAllowRetry] = useState(startData?.allowRetry ?? false);
-  const [shuffle, setShuffle] = useState(startData?.shuffle ?? false);
-  const [opensAt, setOpensAt] = useState(startData?.opensAt || '');
-  const [closesAt, setClosesAt] = useState(startData?.closesAt || '');
+  const [showAnswerAfter, setShowAnswerAfter] = useState(initial?.showAnswerAfter ?? true);
+  const [allowRetry, setAllowRetry] = useState(initial?.allowRetry ?? false);
+  const [shuffle, setShuffle] = useState(initial?.shuffle ?? false);
+  const [opensAt, setOpensAt] = useState(initial?.opensAt || '');
+  const [closesAt, setClosesAt] = useState(initial?.closesAt || '');
   const [error, setError] = useState('');
-  const [restoredBanner, setRestoredBanner] = useState(!!saved && !initial);
-  const [showPicker, setShowPicker] = useState(false);
 
-  const [proctor, setProctor] = useState(startData?.proctor || {
+  const [proctor, setProctor] = useState(initial?.proctor || {
     fullscreenLock: true,
     tabSwitchLimit: 3,
     blockCopyPaste: true,
@@ -162,40 +138,44 @@ export default function ExamCreateForm({
     retentionDays: 30,
   });
 
-  const autosaveTimer = useRef(null);
+  /* FIX #3: API cho parent gọi thay thế nội dung mà không remount */
+  useImperativeHandle(ref, () => ({
+    replaceContent(newContent) {
+      if (!newContent) return;
+      if (newContent.title !== undefined) setTitle(newContent.title);
+      if (newContent.description !== undefined) setDescription(newContent.description);
+      if (newContent.duration !== undefined) setDuration(newContent.duration);
+      if (newContent.questions) {
+        setQuestions(newContent.questions.map(toFormQuestion));
+      }
+      setError('');
+    },
+    getContent() {
+      return {
+        title, description, duration, questions,
+        showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor,
+      };
+    },
+  }), [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor]);
 
+  /* Báo cho trang cha biết form đang có nội dung */
   useEffect(() => {
-    const isDirty = !!title.trim() || questions.some((q) => q.q.trim() || q.options.some((o) => o.trim()));
-    onDirty?.(isDirty);
+    onDirty?.(!!title.trim() || questions.some((q) => q.q.trim() || q.options.some((o) => o.trim())));
+  }, [title, questions]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    clearTimeout(autosaveTimer.current);
-    if (!isDirty) return;
-
-    autosaveTimer.current = setTimeout(() => {
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          title, description, duration, questions,
-          showAnswerAfter, allowRetry, shuffle,
-          opensAt, closesAt, proctor,
-          savedAt: Date.now(),
-        }));
-      } catch { /* */ }
-    }, 2000);
-
-    return () => clearTimeout(autosaveTimer.current);
-  }, [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor, onDirty]);
-
+  /* Autosave: báo bản chụp form cho trang cha sau 800ms */
   useEffect(() => {
-    const onBeforeUnload = (e) => {
-      const isDirty = !!title.trim() || questions.some((q) => q.q.trim() || q.options.some((o) => o.trim()));
-      if (!isDirty || saving) return;
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [title, questions, saving]);
+    if (!onSnapshot) return undefined;
+    const t = setTimeout(() => {
+      onSnapshot({
+        title, description, duration, questions,
+        showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor,
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ============ QUESTION ACTIONS ============ */
   const updateQ = (i, patch) => {
     setQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
   };
@@ -248,27 +228,7 @@ export default function ExamCreateForm({
   const setProctorField = (k, v) => setProctor((p) => ({ ...p, [k]: v }));
   const setCameraCheck = (k, v) => setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, [k]: v } }));
 
-  /* ============ PICK FROM BANK ============ */
-  const handlePickFromBank = (selected) => {
-    if (!selected?.length) return;
-    const newOnes = selected.map((q) => ({
-      q: q.q,
-      options: [...q.options],
-      correct: q.correct,
-      points: q.points || 1,
-      explain: q.explain || '',
-      warns: [],
-      topic: q.topicId || '',
-      level: q.level || '',
-      _bankId: q.id,
-    }));
-    setQuestions((qs) => {
-      const cleaned = qs.filter((q) => q.q.trim() || q.options.some((o) => o.trim()));
-      return [...cleaned, ...newOnes];
-    });
-    setShowPicker(false);
-  };
-
+  /* ============ VALIDATE ============ */
   const validate = () => {
     if (!title.trim()) return 'Vui lòng nhập tên đề.';
     if (!questions.length) return 'Cần ít nhất 1 câu hỏi.';
@@ -307,17 +267,10 @@ export default function ExamCreateForm({
       };
     });
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     const err = validate();
     if (err) return setError(err);
     setError('');
-    clearManualDraft();
-
-    const bankIds = questions.map((q) => q._bankId).filter(Boolean);
-    if (bankIds.length > 0 && user?.uid) {
-      bumpUsage(bankIds).catch(() => {});
-    }
-
     onSave?.({
       title: title.trim(),
       description: description.trim(),
@@ -332,39 +285,10 @@ export default function ExamCreateForm({
     });
   };
 
-  const handleCancel = () => {
-    const isDirty = !!title.trim() || questions.some((q) => q.q.trim() || q.options.some((o) => o.trim()));
-    if (isDirty && !saving) {
-      const ok = window.confirm('Bạn có nội dung chưa lưu. Vẫn hủy?');
-      if (!ok) return;
-    }
-    clearManualDraft();
-    onCancel?.();
-  };
-
-  const handleClearDraft = () => {
-    if (!window.confirm('Xóa toàn bộ nội dung đang soạn?')) return;
-    clearManualDraft();
-    setTitle('');
-    setDescription('');
-    setQuestions([emptyQuestion()]);
-    setRestoredBanner(false);
-  };
-
+  /* ============ RENDER ============ */
   return (
     <div className="cep">
-      {restoredBanner && (
-        <div className="cep-alert info">
-          <IcoSave size={16} />
-          <span>
-            Đã khôi phục bản nháp trước đó. Bấm <b>Lưu đề</b> để hoàn tất hoặc <b>Xóa nháp</b> để bắt đầu lại.
-          </span>
-          <button type="button" className="cep-add-btn" onClick={handleClearDraft} style={{ marginLeft: 'auto' }}>
-            <IcoX size={12} /> Xóa nháp
-          </button>
-        </div>
-      )}
-
+      {/* ===== THÔNG TIN ĐỀ ===== */}
       <div className="cep-card">
         <header className="cep-card-head">
           <h3 className="cep-card-title">
@@ -400,7 +324,7 @@ export default function ExamCreateForm({
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="VD: Ôn tập chương 1, sự điện li"
+              placeholder="VD: Ôn tập chương 1 — sự điện li"
               maxLength={120}
             />
           </label>
@@ -453,6 +377,7 @@ export default function ExamCreateForm({
         </div>
       </div>
 
+      {/* ===== GIÁM SÁT ===== */}
       <div className="cep-card">
         <header className="cep-card-head">
           <h3 className="cep-card-title">
@@ -476,7 +401,7 @@ export default function ExamCreateForm({
                 checked={proctor.blockCopyPaste}
                 onChange={(e) => setProctorField('blockCopyPaste', e.target.checked)}
               />
-              Chặn sao chép và dán
+              Chặn sao chép / dán
             </label>
           </div>
 
@@ -539,26 +464,19 @@ export default function ExamCreateForm({
                 </label>
               </div>
               <p className="cep-alert info" style={{ marginTop: '.3rem' }}>
-                <span>Camera chỉ bật khi học sinh đồng ý. Không ghi video, chỉ chụp ảnh nhỏ khi có sự kiện, tự xóa sau {proctor.retentionDays} ngày.</span>
+                <span>Camera chỉ bật khi học sinh đồng ý. Không ghi video — chỉ chụp ảnh nhỏ khi có sự kiện, tự xóa sau {proctor.retentionDays} ngày.</span>
               </p>
             </div>
           )}
         </div>
       </div>
 
+      {/* ===== CÂU HỎI ===== */}
       <div className="cep-card">
         <header className="cep-card-head">
           <h3 className="cep-card-title">
             Câu hỏi ({questions.length})
           </h3>
-          <button
-            type="button"
-            className="cep-add-btn"
-            onClick={() => setShowPicker(true)}
-            style={{ alignSelf: 'center' }}
-          >
-            <IcoLibrary size={14} /> Chọn từ ngân hàng
-          </button>
         </header>
 
         <div className="cep-qlist">
@@ -566,10 +484,9 @@ export default function ExamCreateForm({
             <div key={qi} className={'cep-qitem' + (q.correct < 0 || q.warns.length ? ' invalid' : '')}>
               <div className="cep-qhead">
                 <span className="cep-qnum">Câu {qi + 1}</span>
-                {q._bankId && <span className="cep-qbadge" style={{ background: 'color-mix(in srgb, #22c55e 18%, var(--vt-tint2))', color: '#15803d' }}>Từ ngân hàng</span>}
                 {q.correct < 0 && <span className="cep-qbadge warn">Chưa chọn đáp án đúng</span>}
                 {q.warns.filter((w) => !/chưa xác định được đáp án/i.test(w)).map((w, wi) => (
-                  <span key={wi} className="cep-qbadge warn" title={w}><IcoWarn size={11} /> {w.length > 48 ? w.slice(0, 46) + '...' : w}</span>
+                  <span key={wi} className="cep-qbadge warn" title={w}><IcoWarn size={11} /> {w.length > 48 ? w.slice(0, 46) + '…' : w}</span>
                 ))}
                 {questions.length > 1 && (
                   <button
@@ -596,7 +513,7 @@ export default function ExamCreateForm({
 
               <div style={{ marginBottom: '.5rem' }}>
                 <span style={{ font: '700 .78rem var(--sans)', color: 'var(--mut)', display: 'block', marginBottom: '.4rem' }}>
-                  Đáp án, chọn nút tròn ở đáp án đúng
+                  Đáp án — chọn nút tròn ở đáp án đúng
                 </span>
                 {q.options.map((opt, oi) => (
                   <div key={oi} className={'cep-opt-row' + (q.correct === oi ? ' correct' : '')}>
@@ -636,9 +553,9 @@ export default function ExamCreateForm({
               </div>
 
               <label className="cep-field" style={{ marginBottom: '.6rem' }}>
-                <span>Lời giải (tùy chọn, hiện cho học sinh sau khi nộp nếu bật "Hiện đáp án")</span>
+                <span>Lời giải (tùy chọn — hiện cho học sinh sau khi nộp nếu bật "Hiện đáp án")</span>
                 <textarea
-                  placeholder="Giải thích vì sao đáp án đó đúng..."
+                  placeholder="Giải thích vì sao đáp án đó đúng…"
                   value={q.explain || ''}
                   onChange={(e) => updateQ(qi, { explain: e.target.value })}
                   rows={2}
@@ -673,26 +590,19 @@ export default function ExamCreateForm({
         </div>
       )}
 
+      {/* ===== ACTIONS ===== */}
       <div className="cep-actions">
         <div className="cep-actions-left">
-          <button type="button" className="vt-btn" onClick={handleCancel} disabled={saving}>
+          <button type="button" className="vt-btn" onClick={onCancel} disabled={saving}>
             Hủy
           </button>
         </div>
         <button type="button" className="vt-btn primary" onClick={handleSubmit} disabled={saving}>
-          {saving ? 'Đang lưu...' : (<><IcoCheck size={14} /> Lưu đề</>)}
+          {saving ? 'Đang lưu…' : (<><IcoCheck size={14} /> Lưu đề</>)}
         </button>
       </div>
-
-      {showPicker && (
-        <ExamPickerFromBank
-          teacherId={user?.uid}
-          defaultSubject={classInfo?.subject || ''}
-          defaultGrade={0}
-          onPick={handlePickFromBank}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
     </div>
   );
-}
+});
+
+export default ExamCreateForm;

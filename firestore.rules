@@ -83,6 +83,16 @@ service cloud.firestore {
       match /students/{studentId} {
         allow read, write, delete: if signedIn();
       }
+
+      // ❗ FIX: ẢNH CAMERA nằm ở subcollection RIÊNG này
+      //    (examSession.js: uploadThumbnailV2 + uploadBurst → examSessions/{sid}/media/{uid}).
+      //    Firestore KHÔNG kế thừa rule của doc cha nên trước đây thiếu rule này:
+      //    học sinh đẩy khung camera BỊ TỪ CHỐI (lỗi bị nuốt trong catch) và
+      //    giáo viên đọc cũng bị chặn → ô camera trong Live Proctor đen thui.
+      //    Đã xác minh bằng REST probe: write vào media trả 401/42501.
+      match /media/{studentId} {
+        allow read, write, delete: if signedIn();
+      }
     }
 
     // ===============================================================
@@ -117,6 +127,19 @@ service cloud.firestore {
     match /ai_chats/{chatId} {
       allow read, write: if signedIn() && resource.data.user_id == request.auth.uid;
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    // ===============================================================
+    // 11. QUESTION BANK — Ngân hàng câu hỏi CÁ NHÂN của giáo viên
+    //     ❗ FIX: trước đây thiếu rule cho collection 'questionBank' → mọi thao tác
+    //     (đọc/thêm/sửa/xoá + "Lưu ngân hàng" từ AutoExamStudio) đều permission-denied
+    //     → ngân hàng mãi trống. Mỗi GV chỉ đụng ngân hàng của chính mình (theo teacherId).
+    // ===============================================================
+    match /questionBank/{qid} {
+      allow read, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if signedIn() && resource.data.teacherId == request.auth.uid
+        && (!('teacherId' in request.resource.data) || request.resource.data.teacherId == request.auth.uid);
     }
 
     // ===============================================================

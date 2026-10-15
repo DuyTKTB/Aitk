@@ -1,10 +1,14 @@
 /* ============================================================
    examParser.js — Parse đề thi từ file → câu hỏi có cấu trúc
    ------------------------------------------------------------
-   Pipeline:
-     1. Client extract (pdfjs / mammoth / Tesseract / FileReader)
-     2. Regex parser (Câu 1…, A/B/C/D, đáp án)
-     3. ≥ 80% OK → preview nhanh; không → AI fallback (batch)
+   v4 (tối ưu tốc độ + độ chính xác):
+     • Regex đa dạng: 1/, 1-, 1), 1., 1:, Câu, Bài, Question
+     • Merge multi-line options (A. wrap dòng).
+     • AI fallback chạy SONG SONG (parallel) — nhanh gấp 3-5 lần.
+     • Chỉ gọi AI khi THỰC SỰ cần (successRate < 50% hoặc >3 câu lỗi).
+     • AI chỉ nhận phần text CHƯA parse được — tiết kiệm token.
+     • Merge thông minh: giữ regex nếu tốt, bổ sung AI nếu thiếu.
+     • Timeout 45s/call AI — không treo UI.
    Hỗ trợ tới 500 trang.
    ============================================================ */
 
@@ -12,20 +16,35 @@ import { callModel, parseJsonLoose } from './examAiUtils.js';
 
 const MAX_PAGES = 500;
 const OCR_PAGE_CAP = 40;
-const REGEX_OK_RATE = 0.8;
+const REGEX_OK_RATE = 0.8;        // >= 80% coi là OK, không gọi AI
+const REGEX_FALLBACK_RATE = 0.5;  // < 50% gọi AI toàn bộ
+const AI_TIMEOUT_MS = 45000;      // 45s cho mỗi call AI
 const MIN_STEM = 4;
 const MIN_OPTS = 2;
 
-const RE_Q_MARK = /(?:Câu|CÂU|Câu hỏi|Bài)\s*(\d+)\s*[.:)\-–]/gi;
-const RE_Q_SPLIT = /(?:^|\n)\s*(?:Câu|CÂU|Câu hỏi|Bài)\s*(\d+)\s*[.:)\-–]\s*/gi;
-const RE_NUM_SPLIT = /(?:^|\n)\s*(\d{1,3})\s*[.)]\s+(?=[A-ZÀ-Ỹ0-9$(])/g;
-const RE_OPT_LINE = /^\s*([A-Fa-fĐđ])\s*[.:)\]]\s*(.+)$/;
-const RE_INLINE_OPT = /(?:^|\s)([A-D])\s*[.)]\s+/g;
-const RE_ANSWER_LINE = /(?:Đáp án|ĐA|ĐS|Trả lời)\s*[.:]?\s*([A-FĐ])/i;
-const RE_ANSWER_INLINE = /\(?\s*(?:Đáp án|ĐA)\s*[:.]?\s*([A-F])\s*\)?/i;
-const RE_EXPLAIN = /^(?:Lời giải|Giải thích|HD giải|Hướng dẫn)\s*[:.]?\s*/i;
-const RE_ANSWER_KEY_HEAD = /(?:^|\n)\s*(?:ĐÁP ÁN|Đáp án|BẢNG ĐÁP ÁN|ĐÁP ÁN GỢI Ý)\s*[:.]?\s*\n/i;
+/* ============================================================
+   REGEX PATTERNS
+   ============================================================ */
+const RE_Q_MARK = /(?:Câu|CÂU|Câu hỏi|Bài|BÀI|Question|QUESTION)\s*(\d+)\s*[.:)\-–]/gi;
 
+const RE_Q_SPLIT = /(?:^|\n)\s*(?:Câu|CÂU|Câu hỏi|Bài|BÀI|Question|QUESTION)\s*(\d+)\s*[.:)\-–]\s*/g;
+
+const RE_NUM_SPLIT = /(?:^|\n)\s*(\d{1,3})\s*[.):\-/]\s+(?=[A-ZÀ-ỸĐ0-9$(])/g;
+
+const RE_OPT_LINE = /^\s*\(?([A-Fa-fĐđ])\)?\s*[.:)\-\]]\s*(.+)$/;
+
+const RE_INLINE_OPT = /(?:^|\s)([A-D])\s*[.)]\s+/g;
+
+const RE_ANSWER_LINE = /(?:Đáp\s*án(?:\s*đúng)?|ĐA|ĐS|Đ\/A|Trả\s*lời)\s*[:.\-]?\s*([A-FĐ])/i;
+const RE_ANSWER_INLINE = /\(?\s*(?:Đáp\s*án(?:\s*đúng)?|ĐA|Đ\/A)\s*[:.]?\s*([A-FĐ])\s*\)?/i;
+
+const RE_EXPLAIN = /^(?:Lời\s*giải|Giải\s*thích|HD\s*giải|Hướng\s*dẫn\s*giải|Hướng\s*dẫn|HD)\s*[:.]?\s*/i;
+
+const RE_ANSWER_KEY_HEAD = /(?:^|\n)\s*(?:ĐÁP\s*ÁN|Đáp\s*án|BẢNG\s*ĐÁP\s*ÁN|ĐÁP\s*ÁN\s*GỢI\s*Ý|ANSWER\s*KEY)\s*[:.]?\s*\n/i;
+
+/* ============================================================
+   NORMALIZE
+   ============================================================ */
 function normalizeText(text) {
   return String(text || '')
     .replace(/\r\n/g, '\n')
@@ -69,8 +88,12 @@ function throwIfAborted(signal) {
 }
 
 function countQuestionMarkers(text) {
-  const marks = text.match(/(?:Câu|CÂU|Câu hỏi|Bài)\s*\d+\s*[.:)\-–]/gi) || [];
-  return new Set(marks.map((m) => m.replace(/\s+/g, ' ').toLowerCase())).size || marks.length;
+  const marks1 = text.match(/(?:Câu|CÂU|Câu hỏi|Bài|BÀI)\s*\d+\s*[.:)\-–]/gi) || [];
+  const marks2 = text.match(/(?:^|\n)\s*\d{1,3}\s*[.):\-/]\s+(?=[A-ZÀ-ỸĐ0-9$(])/g) || [];
+  const set = new Set();
+  marks1.forEach((m) => set.add(m.trim().toLowerCase()));
+  marks2.forEach((m) => set.add(m.trim().toLowerCase()));
+  return Math.max(set.size, marks1.length, marks2.length);
 }
 
 /* ============================================================
@@ -266,7 +289,7 @@ async function extractFromImage(file, onProgress, signal) {
   onProgress?.({ stage: 'ai', percent: 55 });
   const { compressImage } = await import('./ai.js');
   const compressed = await compressImage(file);
-  const raw = await callModel({
+  const raw = await callModelWithTimeout({
     system: `Bạn là OCR đề thi Việt Nam. Trả JSON {"text":"..."} gồm TOÀN BỘ chữ trong ảnh.
 Giữ nguyên format Câu 1 / A. B. C. D. / Đáp án.`,
     parts: [{ inlineData: { mimeType: compressed.mimeType, data: compressed.base64 } }],
@@ -279,6 +302,26 @@ Giữ nguyên format Câu 1 / A. B. C. D. / Đáp án.`,
 }
 
 /* ============================================================
+   AI HELPER — Timeout
+   ============================================================ */
+async function callModelWithTimeout(params, timeoutMs = AI_TIMEOUT_MS) {
+  let timeoutId;
+  try {
+    return await Promise.race([
+      callModel(params),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error(`AI timeout sau ${Math.round(timeoutMs / 1000)}s`)),
+          timeoutMs
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+/* ============================================================
    2. REGEX PARSER
    ============================================================ */
 function splitAnswerKey(text) {
@@ -287,7 +330,7 @@ function splitAnswerKey(text) {
   const body = text.slice(0, m.index);
   const keyPart = text.slice(m.index);
   const answerMap = {};
-  const re = /(\d{1,3})\s*[.:)\-–]\s*([A-FĐ])/gi;
+  const re = /(\d{1,3})\s*[.:)\-–\s]\s*([A-FĐ])/gi;
   let hit;
   while ((hit = re.exec(keyPart))) {
     answerMap[Number(hit[1])] = hit[2].toUpperCase();
@@ -299,8 +342,11 @@ function parseOptionsFromBlock(block) {
   const options = [];
   let leftoverExplain = '';
   const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  // Bước 1: Parse option theo dòng
   const lineOpts = [];
-  const rest = [];
+  let lastOptIdx = -1;
+  const restLines = [];
 
   for (const line of lines) {
     const om = line.match(RE_OPT_LINE);
@@ -308,22 +354,27 @@ function parseOptionsFromBlock(block) {
       const idx = letterIndex(om[1]);
       if (idx >= 0 && idx < 6) {
         lineOpts[idx] = cleanOption(om[2]);
+        lastOptIdx = idx;
         continue;
       }
     }
-    if (lineOpts.filter(Boolean).length >= 2) rest.push(line);
-    else rest.push(line);
-  }
-
-  if (lineOpts.filter(Boolean).length >= MIN_OPTS) {
-    for (let i = 0; i < 6; i++) {
-      if (lineOpts[i]) options.push(lineOpts[i]);
-      else if (lineOpts.slice(i).some(Boolean)) options.push('');
+    if (lastOptIdx >= 0 && lineOpts[lastOptIdx] !== undefined) {
+      lineOpts[lastOptIdx] += ' ' + line;
+      continue;
     }
-    leftoverExplain = rest.join(' ');
-    return { options: options.filter((o, i) => o || i < 2), leftoverExplain, stemLines: [] };
+    restLines.push(line);
   }
 
+  const filledOpts = lineOpts.filter(Boolean);
+  if (filledOpts.length >= MIN_OPTS) {
+    for (let i = 0; i < 6; i++) {
+      if (lineOpts[i] !== undefined) options.push(lineOpts[i]);
+    }
+    leftoverExplain = restLines.join(' ');
+    return { options, leftoverExplain, stemLines: [] };
+  }
+
+  // Bước 2: Fallback — option inline
   const joined = lines.join(' ');
   const positions = [];
   RE_INLINE_OPT.lastIndex = 0;
@@ -436,23 +487,69 @@ export function parseQuestionsFromText(text) {
   if (!normalized) return [];
   const { body, answerMap } = splitAnswerKey(normalized);
 
-  let questions = parseBySplit(body, RE_Q_SPLIT, answerMap);
-  const ok = questions.filter((q) => q._ok).length;
-  if (ok < 2) {
-    const numbered = parseBySplit(body, RE_NUM_SPLIT, answerMap);
-    if (numbered.filter((q) => q._ok).length > ok) questions = numbered;
-  }
+  const qSplits = parseBySplit(body, RE_Q_SPLIT, answerMap);
+  const ok1 = qSplits.filter((q) => q._ok).length;
 
+  const numSplits = parseBySplit(body, RE_NUM_SPLIT, answerMap);
+  const ok2 = numSplits.filter((q) => q._ok).length;
+
+  const questions = ok2 > ok1 ? numSplits : qSplits;
   return questions.filter((q) => q.q);
 }
 
 /* ============================================================
-   3. AI FALLBACK — chia batch
+   2b. LỌC TEXT CHƯA PARSE ĐƯỢC
    ============================================================ */
-export async function parseQuestionsWithAI(text, { onProgress, signal } = {}) {
+function extractUnparsedText(fullText, parsedQuestions) {
+  if (!parsedQuestions.length) return fullText;
+
+  const parsedNums = new Set(parsedQuestions.map((q) => q.num).filter(Boolean));
+  const lines = fullText.split('\n');
+  const unparsedLines = [];
+  let inParsedBlock = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const m = line.match(/(?:^|\s)(?:Câu|Bài|Câu hỏi)?\s*(\d{1,3})\s*[.:)\-–]/);
+    const num = m ? parseInt(m[1], 10) : null;
+
+    if (num !== null && parsedNums.has(num)) {
+      inParsedBlock = true;
+      continue;
+    }
+
+    if (inParsedBlock) {
+      const nextM = line.match(/(?:^|\s)(?:Câu|Bài|Câu hỏi)?\s*(\d{1,3})\s*[.:)\-–]/);
+      const nextNum = nextM ? parseInt(nextM[1], 10) : null;
+      if (nextNum !== null && !parsedNums.has(nextNum)) {
+        inParsedBlock = false;
+        unparsedLines.push(line);
+      }
+      continue;
+    }
+
+    unparsedLines.push(line);
+  }
+
+  return unparsedLines.join('\n').trim();
+}
+
+/* ============================================================
+   3. AI FALLBACK — SONG SONG
+   ============================================================ */
+export async function parseQuestionsWithAI(text, { onProgress, signal, existingQuestions = [] } = {}) {
   const MAX_CHUNK = 11000;
+
+  const textToParse = existingQuestions.length
+    ? extractUnparsedText(text, existingQuestions)
+    : text;
+
+  if (!textToParse || textToParse.trim().length < 20) {
+    return [];
+  }
+
   const chunks = [];
-  let remaining = text;
+  let remaining = textToParse;
   while (remaining.length > 0) {
     let chunk = remaining.slice(0, MAX_CHUNK);
     if (remaining.length > MAX_CHUNK) {
@@ -463,48 +560,107 @@ export async function parseQuestionsWithAI(text, { onProgress, signal } = {}) {
     remaining = remaining.slice(chunk.length);
   }
 
-  const allQuestions = [];
-  for (let i = 0; i < chunks.length; i++) {
-    throwIfAborted(signal);
-    onProgress?.({
-      stage: 'ai',
-      percent: 62 + Math.round((i / Math.max(chunks.length, 1)) * 32),
-      current: i + 1,
-      total: chunks.length,
-    });
-    try {
-      const raw = await callModel({
-        system: `Bạn parse đề thi Việt Nam thành JSON array.
+  // ⭐ Chạy SONG SONG với Promise.all
+  let done = 0;
+  const existingNums = existingQuestions.map((q) => q.num).filter(Boolean).join(', ');
+
+  onProgress?.({
+    stage: 'ai',
+    percent: 62,
+    current: 0,
+    total: chunks.length,
+    message: `Đang gọi AI song song ${chunks.length} chunks...`,
+  });
+
+  const results = await Promise.all(
+    chunks.map(async (chunk, i) => {
+      throwIfAborted(signal);
+      try {
+        const raw = await callModelWithTimeout({
+          system: `Bạn parse đề thi Việt Nam thành JSON array.
 Mỗi phần tử:
-{"q":"nội dung","options":["A","B","C","D"],"correct":0,"explain":"","level":"nhận biết"}
-correct là chỉ số 0-3. Không markdown. Nếu không có câu hỏi trả về [].`,
-        parts: [{ text: chunks[i] }],
-        temperature: 0.15,
-        signal,
-      });
-      const parsed = parseJsonLoose(raw);
-      const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.questions) ? parsed.questions : []);
-      list.forEach((q) => {
-        if (q?.q && Array.isArray(q.options) && q.options.length >= MIN_OPTS) {
-          allQuestions.push({
+{"num":1,"q":"nội dung","options":["A","B","C","D"],"correct":0,"explain":"","level":"nhận biết"}
+correct là chỉ số 0-3.
+${existingNums ? `Các câu sau ĐÃ TÁCH ĐƯỢC, KHÔNG trả lại: ${existingNums}` : ''}
+Chỉ trả về JSON array, không markdown. Nếu không có câu hỏi trả về [].`,
+          parts: [{ text: chunk }],
+          temperature: 0.15,
+          signal,
+        });
+        const parsed = parseJsonLoose(raw);
+        const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.questions) ? parsed.questions : []);
+
+        done++;
+        onProgress?.({
+          stage: 'ai',
+          percent: 62 + Math.round((done / chunks.length) * 32),
+          current: done,
+          total: chunks.length,
+          message: `AI đã xong ${done}/${chunks.length} chunks`,
+        });
+
+        return list
+          .filter((q) => q?.q && Array.isArray(q.options) && q.options.length >= MIN_OPTS)
+          .map((q) => ({
             q: String(q.q).trim(),
             options: q.options.map((o) => String(o || '').trim()).filter(Boolean),
             correct: Number.isInteger(q.correct) ? q.correct : 0,
             explain: String(q.explain || ''),
             level: q.level || detectLevelFromText(q.q),
+            num: Number.isInteger(q.num) ? q.num : undefined,
             points: 1,
             _source: 'ai',
             _ok: true,
             _needsAnswer: !Number.isInteger(q.correct),
-          });
-        }
-      });
-    } catch (e) {
-      if (e?.name === 'AbortError') throw e;
-      console.warn(`[examParser] AI chunk ${i + 1} fail:`, e.message);
+          }));
+      } catch (e) {
+        if (e?.name === 'AbortError') throw e;
+        console.warn(`[examParser] AI chunk ${i + 1} fail:`, e.message);
+        done++;
+        onProgress?.({
+          stage: 'ai',
+          percent: 62 + Math.round((done / chunks.length) * 32),
+          current: done,
+          total: chunks.length,
+          message: `AI lỗi chunk ${i + 1}, tiếp tục...`,
+        });
+        return [];
+      }
+    })
+  );
+
+  return results.flat();
+}
+
+/* ============================================================
+   4. MERGE
+   ============================================================ */
+function mergeQuestions(regexQ, aiQ) {
+  const byNum = new Map();
+
+  for (const q of regexQ) {
+    if (q.num) byNum.set(q.num, q);
+  }
+
+  for (const aq of aiQ) {
+    if (!aq.num || !byNum.has(aq.num)) {
+      if (!aq.num) byNum.set(`ai-${byNum.size}`, aq);
+      else byNum.set(aq.num, aq);
+      continue;
+    }
+    const existing = byNum.get(aq.num);
+    const existingScore = (existing.options?.length || 0) * 10 + (existing._needsAnswer ? 0 : 5) + (existing.q?.length || 0);
+    const aiScore = (aq.options?.length || 0) * 10 + (aq._needsAnswer ? 0 : 5) + (aq.q?.length || 0);
+    if (aiScore > existingScore) {
+      byNum.set(aq.num, aq);
     }
   }
-  return allQuestions;
+
+  return [...byNum.values()].sort((a, b) => {
+    const an = a.num ?? 9999;
+    const bn = b.num ?? 9999;
+    return an - bn;
+  });
 }
 
 function qualityRate(questions, expected) {
@@ -515,9 +671,11 @@ function qualityRate(questions, expected) {
 }
 
 /* ============================================================
-   4. HYBRID
+   5. HYBRID — MAIN PIPELINE
    ============================================================ */
 export async function parseExamFile(file, { onProgress, signal } = {}) {
+  const t0 = performance.now();
+
   onProgress?.({ stage: 'extracting', percent: 4 });
   const { text, pages, imagePages, kind } = await extractTextFromFile(file, onProgress, signal);
 
@@ -534,22 +692,37 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
   let usedAI = false;
   let warning = '';
 
-  const needAI = successRate < REGEX_OK_RATE || regexQuestions.filter((q) => q._ok).length === 0 || kind === 'scanned-pdf' && successRate < 0.9;
+  // Điều kiện needAI tối ưu:
+  // - < 50% → cần AI đọc lại toàn bộ
+  // - Có 0 câu OK → cần AI
+  // - Có > 3 câu nghi hỏng (thiếu đáp án hoặc < 4 options) → AI check
+  // - PDF scan + < 90% → AI
+  const lowQuality = regexQuestions.filter(
+    (q) => q._needsAnswer || (q.options || []).length < 4
+  );
+
+  const needAI =
+    successRate < REGEX_FALLBACK_RATE ||
+    regexQuestions.filter((q) => q._ok).length === 0 ||
+    lowQuality.length > 3 ||
+    (kind === 'scanned-pdf' && successRate < 0.9);
 
   if (needAI) {
     onProgress?.({ stage: 'ai', percent: 62 });
     try {
-      const aiQuestions = await parseQuestionsWithAI(text, { onProgress, signal });
+      const aiQuestions = await parseQuestionsWithAI(text, {
+        onProgress,
+        signal,
+        existingQuestions: regexQuestions,
+      });
       usedAI = aiQuestions.length > 0;
-      if (aiQuestions.length > regexQuestions.filter((q) => q._ok).length) {
-        finalQuestions = aiQuestions;
-      } else if (regexQuestions.length) {
-        const nums = new Set(regexQuestions.map((q) => q.num).filter(Boolean));
-        aiQuestions.forEach((q, idx) => {
-          if (q.num ? !nums.has(q.num) : !nums.has(idx + 1)) finalQuestions.push(q);
-        });
-      } else {
-        finalQuestions = aiQuestions;
+
+      finalQuestions = mergeQuestions(regexQuestions, aiQuestions);
+
+      if (aiQuestions.length === 0 && regexQuestions.length > 0) {
+        warning = `Regex tách được ${regexQuestions.length}/${expectedCount} câu, AI không tìm thêm.`;
+      } else if (aiQuestions.length > 0) {
+        warning = `Regex tách ${regexQuestions.length} câu, AI bổ sung ${aiQuestions.length} câu. Tổng: ${finalQuestions.length}/${expectedCount}.`;
       }
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
@@ -567,6 +740,9 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
     throw new Error('Không tách được câu hỏi. File nên có dạng: Câu 1: ... / A. ... / B. ... / Đáp án: A');
   }
 
+  const elapsedMs = Math.round(performance.now() - t0);
+  console.log(`[examParser] Xử lý xong trong ${elapsedMs}ms: ${cleaned.length}/${expectedCount} câu`);
+
   return {
     questions: cleaned.map((q, i) => ({ ...q, num: q.num || i + 1 })),
     stats: {
@@ -580,6 +756,7 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
       imagePages,
       warning,
       kind,
+      elapsedMs,
     },
   };
 }

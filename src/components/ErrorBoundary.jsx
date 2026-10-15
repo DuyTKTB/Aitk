@@ -1,68 +1,97 @@
 /* ============================================================
-   ErrorBoundary.jsx — Bắt lỗi render + lỗi tải chunk sau khi deploy
-   ------------------------------------------------------------
-   Sau deploy với service worker, file JS cũ không còn → import() lỗi
-   → màn hình trắng. Component này hiện thông báo và tự reload 1 lần.
+   ErrorBoundary.jsx — Bọc các component có thể crash để tránh
+   làm sập toàn bộ ứng dụng.
    ============================================================ */
-import { Component } from 'react';
+import React from 'react';
 
-const RELOAD_FLAG = 'cs-chunk-reloaded';
-const isChunkError = (e) =>
-  /Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i
-    .test(String(e?.message || e));
-
-export default class ErrorBoundary extends Component {
-  state = { error: null };
-
-  static getDerivedStateFromError(error) { return { error }; }
-
-  componentDidCatch(error, info) {
-    console.error('[ErrorBoundary]', error, info?.componentStack);
-    if (isChunkError(error) && !sessionStorage.getItem(RELOAD_FLAG)) {
-      sessionStorage.setItem(RELOAD_FLAG, '1');
-      // xóa cache của service worker rồi tải lại bản mới
-      (async () => {
-        try {
-          const keys = await caches?.keys?.();
-          await Promise.all((keys || []).map((k) => caches.delete(k)));
-          const regs = await navigator.serviceWorker?.getRegistrations?.();
-          await Promise.all((regs || []).map((r) => r.update().catch(() => {})));
-        } catch { /* bỏ qua */ }
-        location.reload();
-      })();
-    }
+export default class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  componentDidUpdate(prev) {
-    // đổi trang (resetKey đổi) → thử render lại
-    if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null });
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
   }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[ErrorBoundary]', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
 
   render() {
-    if (!this.state.error) {
-      try { sessionStorage.removeItem(RELOAD_FLAG); } catch { /* */ }
-      return this.props.children;
-    }
-    const chunk = isChunkError(this.state.error);
-    return (
-      <div role="alert" style={{ maxWidth: 480, margin: '18vh auto', padding: '1.6rem', textAlign: 'center', font: '500 .95rem/1.6 var(--sans, system-ui)' }}>
-        <h2 style={{ margin: '0 0 .5rem', font: '800 1.3rem var(--sans, system-ui)' }}>
-          {chunk ? 'Đã có bản cập nhật mới' : 'Có lỗi xảy ra'}
-        </h2>
-        <p style={{ margin: '0 0 1.2rem', color: 'var(--mut, #6b7280)' }}>
-          {chunk ? 'Hãy tải lại trang để dùng phiên bản mới nhất.' : 'Trang này gặp sự cố. Bạn thử tải lại nhé — dữ liệu đang làm bài đã được lưu tự động.'}
-        </p>
-        <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
-          <button type="button" onClick={() => location.reload()}
-            style={{ padding: '.6rem 1.2rem', border: 0, borderRadius: 999, background: 'var(--acc, #2f6bff)', color: '#fff', font: '700 .88rem var(--sans, system-ui)', cursor: 'pointer' }}>
-            Tải lại trang
-          </button>
-          <button type="button" onClick={() => { this.setState({ error: null }); location.hash = ''; }}
-            style={{ padding: '.6rem 1.2rem', border: '1.5px solid var(--soft, #e5e7eb)', borderRadius: 999, background: 'transparent', color: 'inherit', font: '700 .88rem var(--sans, system-ui)', cursor: 'pointer' }}>
-            Về trang chủ
-          </button>
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '3rem 1.5rem',
+            minHeight: 320,
+            background: 'var(--t-surface-1, #fff)',
+            borderRadius: 20,
+            gap: '1rem',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '2.5rem' }} aria-hidden="true">⚠️</div>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--t-ink, #111)' }}>
+            Có lỗi xảy ra trong thành phần này
+          </h2>
+          <p style={{ margin: 0, color: 'var(--t-ink-muted, #666)', maxWidth: 480, fontSize: '0.9rem', lineHeight: 1.5 }}>
+            {this.state.error?.message || 'Lỗi không xác định. Vui lòng thử lại hoặc tải lại trang.'}
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={this.handleReset}
+              style={{
+                padding: '0.6rem 1.2rem',
+                borderRadius: 999,
+                background: 'var(--t-accent, #2f6bff)',
+                color: '#fff',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              Thử lại
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '0.6rem 1.2rem',
+                borderRadius: 999,
+                background: 'transparent',
+                color: 'var(--t-ink, #111)',
+                border: '1.5px solid var(--t-border, #ddd)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              Tải lại trang
+            </button>
+          </div>
+          {import.meta.env?.DEV && this.state.errorInfo && (
+            <details style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#999', textAlign: 'left', maxWidth: 600, width: '100%' }}>
+              <summary style={{ cursor: 'pointer' }}>Chi tiết lỗi (dev)</summary>
+              <pre style={{ overflow: 'auto', padding: '0.5rem', background: '#f5f5f5', borderRadius: 8 }}>
+                {this.state.errorInfo.componentStack}
+              </pre>
+            </details>
+          )}
         </div>
-      </div>
-    );
+      );
+    }
+    return this.props.children;
   }
 }

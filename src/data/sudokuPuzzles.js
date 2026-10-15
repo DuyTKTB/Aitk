@@ -1,13 +1,13 @@
 export const SUDOKU_ELEMENTS = [
-  { key: 'H',  symbol: 'H',  name: 'Hiđro',    color: '#e8f5e9' },
-  { key: 'C',  symbol: 'C',  name: 'Cacbon',   color: '#263238' },
-  { key: 'N',  symbol: 'N',  name: 'Nitơ',     color: '#bbdefb' },
-  { key: 'O',  symbol: 'O',  name: 'Oxi',      color: '#ffcdd2' },
-  { key: 'Na', symbol: 'Na', name: 'Natri',    color: '#ffcc80' },
-  { key: 'Mg', symbol: 'Mg', name: 'Magie',    color: '#c8e6c9' },
-  { key: 'Al', symbol: 'Al', name: 'Nhôm',     color: '#d7ccc8' },
-  { key: 'Cl', symbol: 'Cl', name: 'Clo',      color: '#dcedc8' },
-  { key: 'Fe', symbol: 'Fe', name: 'Sắt',      color: '#cfd8dc' },
+  { key: 'H',  symbol: 'H',  name: 'Hydrogen',    color: '#e8f5e9' },
+  { key: 'C',  symbol: 'C',  name: 'Carbon',   color: '#263238' },
+  { key: 'N',  symbol: 'N',  name: 'Nitrogen',     color: '#bbdefb' },
+  { key: 'O',  symbol: 'O',  name: 'Oxygen',      color: '#ffcdd2' },
+  { key: 'Na', symbol: 'Na', name: 'Sodium',    color: '#ffcc80' },
+  { key: 'Mg', symbol: 'Mg', name: 'Magnesium',    color: '#c8e6c9' },
+  { key: 'Al', symbol: 'Al', name: 'Aluminium',     color: '#d7ccc8' },
+  { key: 'Cl', symbol: 'Cl', name: 'Chlorine',      color: '#dcedc8' },
+  { key: 'Fe', symbol: 'Fe', name: 'Iron',      color: '#cfd8dc' },
 ];
 export const SUDOKU_PUZZLES = {
   easy: [

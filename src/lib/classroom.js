@@ -462,6 +462,21 @@ export function defaultProctor() {
   };
 }
 
+/* ❗ MỚI: GV sửa đề đã tạo (thông tin + câu hỏi + cấu hình giám sát camera...) */
+export async function updateTeacherExam(examId, patch) {
+  if (!examId) throw new Error('Thiếu examId.');
+  try {
+    await updateDoc(doc(db, 'exams', examId), {
+      ...patch,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (e) {
+    console.error('[updateTeacherExam] Lỗi:', e.code, e.message);
+    throw new Error(friendlyFirestoreError(e, 'lưu đề'));
+  }
+}
+
 export async function getExamsByTeacher(teacherId) {
   if (!teacherId) return [];
   try {
@@ -868,19 +883,21 @@ export async function getAllSubmissionsForStudent(examId, studentId) {
    ============================================================ */
 
 /* ------ HS: gửi yêu cầu xin thi lại ------ */
-export async function requestRetry({ examId, classId, student, reason = '' }) {
+export async function requestRetry({ examId, classId, teacherId, student, reason = '' }) {
   if (!examId || !student?.id) {
     return { ok: false, error: 'Thiếu thông tin.' };
   }
   try {
     // Kiểm tra xem đã có yêu cầu pending chưa
-    const q = query(
-      collection(db, 'examRetryPermits'),
+    /* ❗ Kiểm tra trùng lặp theo CẢ teacherId: yêu cầu cũ (lưu trước khi có teacherId,
+       classId=null) sẽ không chặn việc gửi lại yêu cầu mới đã định tuyến đúng */
+    const conds = [
       where('examId', '==', examId),
       where('studentId', '==', student.id),
-      where('status', '==', 'pending')
-    );
-    const snap = await getDocs(q);
+      where('status', '==', 'pending'),
+    ];
+    if (teacherId) conds.push(where('teacherId', '==', teacherId));
+    const snap = await getDocs(query(collection(db, 'examRetryPermits'), ...conds));
     if (!snap.empty) {
       return { ok: false, error: 'Bạn đã gửi yêu cầu rồi. Chờ giáo viên duyệt nhé.', duplicate: true };
     }
@@ -888,6 +905,10 @@ export async function requestRetry({ examId, classId, student, reason = '' }) {
     const data = {
       examId,
       classId: classId || null,
+      /* ❗ FIX: đề trong hệ chính (Supabase) KHÔNG có trường classId — trước đây
+         classId luôn null → giáo viên chỉ lắng nghe theo classId nên KHÔNG BAO GIỜ
+         thấy yêu cầu. Giờ lưu thêm teacherId (người tạo đề) để định tuyến đúng. */
+      teacherId: teacherId || null,
       studentId: student.id,
       studentName: student.name || 'Học sinh',
       status: 'pending',
@@ -1069,6 +1090,20 @@ export function listenRetryRequestsByClasses(classIds, cb, onError) {
     }
   ));
   return () => unsubs.forEach((u) => u && u());
+}
+
+/* GV: lắng nghe yêu cầu theo NGƯỜI TẠO ĐỀ — bắt cả yêu cầu từ đề không gắn lớp
+   (đề Supabase không có classId nên trước đây những yêu cầu này biến mất). */
+export function listenRetryRequestsByTeacher(teacherId, cb, onError) {
+  if (!teacherId) { cb([]); return () => {}; }
+  return onSnapshot(
+    query(collection(db, 'examRetryPermits'), where('teacherId', '==', teacherId)),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.warn('[listenRetryRequestsByTeacher] Lỗi:', err.code, err.message);
+      onError?.(err);
+    }
+  );
 }
 
 /* ------ GV: lắng nghe realtime ------ */

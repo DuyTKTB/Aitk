@@ -694,6 +694,30 @@
   border: 1px solid rgba(255, 255, 255, .2);
 }
 
+/* Badge "Phổ biến" */
+.ctu-pkg-popular {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #fff;
+  font: 700 .65rem inherit;
+  font-family: inherit;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px -3px rgba(22, 163, 74, .6);
+  border: 1px solid rgba(255, 255, 255, .3);
+  z-index: 2;
+}
+
+/* Highlight viền gói popular */
+.ctu-pkg.popular {
+  border-color: rgba(22, 163, 74, .5);
+  box-shadow: 0 0 0 1.5px rgba(22, 163, 74, .3), 0 8px 24px -6px rgba(22, 163, 74, .2);
+}
+
 /* ============================================================
    RECEIVE summary — kính xanh nhạt
    ============================================================ */
@@ -1297,4 +1321,4 @@
 [data-theme='dark'] .vsc-free .vsc-highlight {
   color: #93c5fd;
   border-color: color-mix(in srgb, var(--ctu-blue) 45%, transparent);
-}
+}

@@ -1,22 +1,20 @@
 /* ============================================================
-   QuestionBank.jsx — Trang ngân hàng câu hỏi giáo viên (v2)
+   QuestionBank.jsx — Trang ngân hàng câu hỏi giáo viên (v3)
    ------------------------------------------------------------
-   v2:
-     • MỚI: Đa môn — chuyên đề đổi theo môn
-     • FIX: Bố cục filter đẹp (grid chuyên đề, divider giữa tầng)
-     • FIX: Empty state có gợi ý + 2 nút
-     • MỚI: Đếm câu trên mỗi chip filter
-     • MỚI: Multi-select môn (chọn nhiều môn cùng lúc)
-     • MỚI: Sticky filter bar khi scroll
+   v3 (fix + optimize):
+     • MỚI: useDeferredValue cho search — không lag khi gõ.
+     • MỚI: Phân trang 50 câu/lần — không render hết nếu danh sách dài.
+     • MỚI: Reset visibleCount khi filter thay đổi.
+     • Giữ nguyên: đa môn, đếm câu trên chip, sticky filter bar.
    ============================================================ */
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import MathText from '../MathText.jsx';
 import QuestionBankForm from './QuestionBankForm.jsx';
 import ExamImporter from './ExamImporter.jsx';
 import { downloadCsv } from '../DashShell.jsx';
 import {
-  getQuestions, deleteQuestion, addQuestion, updateQuestion, addQuestionsBatch,
+  getQuestions, deleteQuestion, deleteQuestionsBatch, addQuestion, updateQuestion, addQuestionsBatch,
   getAllTags, findDuplicate, norm,
 } from '../../lib/questionBank.js';
 import { createExam } from '../../lib/classroom.js';
@@ -56,8 +54,6 @@ const IcoRefresh = (p) => (
     <polyline points="21 4 21 10 15 10" />
   </Svg>
 );
-const IcoCheck = (p) => <Svg {...p} sw={2.5}><polyline points="20 6 9 17 4 12" /></Svg>;
-const IcoSpark = (p) => <Svg {...p}><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" /></Svg>;
 const IcoRocket = (p) => <Svg {...p}><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /></Svg>;
 const IcoUpload = (p) => <Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></Svg>;
 
@@ -65,6 +61,11 @@ const LEVELS = ['', 'nhận biết', 'thông hiểu', 'vận dụng', 'vận d�
 const LEVEL_SHORT = { '': 'Tất cả', 'nhận biết': 'NB', 'thông hiểu': 'TH', 'vận dụng': 'VD', 'vận dụng cao': 'VDC' };
 const GRADES = [0, 6, 7, 8, 9, 10, 11, 12];
 
+const PAGE_SIZE = 50;
+
+/* ============================================================
+   MAIN
+   ============================================================ */
 export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
   const { user } = useAuth();
   const [list, setList] = useState([]);
@@ -86,7 +87,11 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
   const [topicQuery, setTopicQuery] = useState('');
   const [toast, setToast] = useState('');
   const [formKey, setFormKey] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const toastTimer = useRef(null);
+
+  /* Deferred search để không lag khi gõ */
+  const deferredSearch = useDeferredValue(search);
 
   const say = useCallback((msg) => {
     setToast(msg);
@@ -114,6 +119,11 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
   }, [user?.uid, say]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  /* Reset pagination khi filter thay đổi */
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [deferredSearch, filterSubject, filterGrade, filterTopic, filterLevel, filterTag]);
 
   const availableTopics = useMemo(() => {
     if (filterSubject) return getTopicsForSubject(filterSubject);
@@ -157,12 +167,18 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
     if (filterTopic) arr = arr.filter((q) => q.topicId === filterTopic);
     if (filterLevel) arr = arr.filter((q) => q.level === filterLevel);
     if (filterTag) arr = arr.filter((q) => (q.tags || []).includes(filterTag));
-    if (search.trim()) {
-      const needle = norm(search);
+    if (deferredSearch.trim()) {
+      const needle = norm(deferredSearch);
       arr = arr.filter((q) => norm(q.q).includes(needle) || norm(q.explain).includes(needle));
     }
     return arr;
-  }, [list, filterSubject, filterGrade, filterTopic, filterLevel, filterTag, search]);
+  }, [list, filterSubject, filterGrade, filterTopic, filterLevel, filterTag, deferredSearch]);
+
+  /* Chỉ render 50 câu đầu */
+  const visibleItems = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount]
+  );
 
   const stats = useMemo(() => {
     const byLevel = {};
@@ -215,7 +231,7 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
       const opts = [0, 1, 2, 3, 4, 5].map((i) => q.options?.[i] ?? '');
       const topicName = q.topicId || '';
       rows.push([
-        q.subject || '', q.grade || '', topicName, q.level || '', q.q,
+        q.subject || '', q.grade || '', q.topicId ? getTopicName(q.topicId, q.subject) : '', q.level || '', q.q,
         ...opts, String.fromCharCode(65 + (q.correct || 0)), q.explain || '', q.points || 1,
         (q.tags || []).join('; '), q.usageCount || 0,
       ]);
@@ -255,7 +271,7 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
       subject,
       grade,
     });
-    say(`Đã tạo đề mềm “${exam.title}” (${qs.length} câu)`);
+    say(`Đã tạo đề mềm "${exam.title}" (${qs.length} câu)`);
     setShowImporter(false);
     onSoftExamCreated?.(exam);
   };
@@ -268,6 +284,34 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
       say('Đã xóa');
     } catch (e) {
       say(e.message || 'Lỗi xóa');
+    }
+  };
+
+  /* ❗ MỚI: chọn nhiều + xoá hàng loạt (lib có deleteQuestionsBatch từ trước nhưng
+     UI chưa từng nối) */
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const toggleSelect = (id) => setSelectedIds((prev) => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+  const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((q) => selectedIds.has(q.id));
+  const toggleSelectAll = () => setSelectedIds(allVisibleSelected ? new Set() : new Set(visibleItems.map((q) => q.id)));
+  const handleDeleteSelected = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (!window.confirm(`Xóa ${ids.length} câu đã chọn khỏi ngân hàng? Không thể hoàn tác.`)) return;
+    setBulkBusy(true);
+    try {
+      await deleteQuestionsBatch(ids);
+      setList((arr) => arr.filter((x) => !selectedIds.has(x.id)));
+      setSelectedIds(new Set());
+      say(`Đã xóa ${ids.length} câu`);
+    } catch (e) {
+      say(e.message || 'Lỗi xóa hàng loạt');
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -575,49 +619,107 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
           </div>
         </div>
       ) : (
-        <div className="qb-list">
-          {filtered.map((q) => (
-            <article key={q.id} className="qb-item">
-              <div className="qb-item-body">
-                <MathText as="p" className="qb-item-q">{q.q}</MathText>
-                <div className="qb-item-opts">
-                  {q.options.map((opt, i) => (
-                    <span key={i} className={'qb-item-opt' + (i === q.correct ? ' correct' : '')}>
-                      <b>{String.fromCharCode(65 + i)}.</b>
-                      <MathText>{opt}</MathText>
-                    </span>
-                  ))}
+        <>
+          {selectedIds.size > 0 && (
+            <div style={{
+              position: 'sticky', top: 0, zIndex: 5, display: 'flex', gap: '.6rem', alignItems: 'center',
+              flexWrap: 'wrap', padding: '.55rem .8rem', marginBottom: '.6rem',
+              borderRadius: 'var(--t-r-md)',
+              background: 'color-mix(in srgb, var(--acc) 12%, var(--panel))',
+              border: '1px solid color-mix(in srgb, var(--acc) 35%, transparent)',
+            }}>
+              <b style={{ font: '700 .84rem var(--sans)', color: 'var(--ink)' }}>Đã chọn {selectedIds.size} câu</b>
+              <button
+                type="button"
+                className="qb-icon-btn danger"
+                disabled={bulkBusy}
+                onClick={handleDeleteSelected}
+                title="Xoá các câu đã chọn"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', opacity: bulkBusy ? 0.5 : 1 }}
+              >
+                <IcoTrash size={14} /> Xoá
+              </button>
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--acc)', font: '600 .8rem var(--sans)' }}
+              >
+                {allVisibleSelected ? 'Bỏ chọn trang này' : 'Chọn tất cả trang này'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--mut)', font: '600 .8rem var(--sans)' }}
+              >
+                Bỏ chọn
+              </button>
+            </div>
+          )}
+          <div className="qb-list">
+            {visibleItems.map((q) => (
+              <article key={q.id} className="qb-item">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(q.id)}
+                  onChange={() => toggleSelect(q.id)}
+                  aria-label="Chọn câu"
+                  style={{ width: 16, height: 16, marginTop: 3, flexShrink: 0, accentColor: 'var(--acc)', cursor: 'pointer' }}
+                />
+                <div className="qb-item-body">
+                  <MathText as="p" className="qb-item-q">{q.q}</MathText>
+                  <div className="qb-item-opts">
+                    {q.options.map((opt, i) => (
+                      <span key={i} className={'qb-item-opt' + (i === q.correct ? ' correct' : '')}>
+                        <b>{String.fromCharCode(65 + i)}.</b>
+                        <MathText>{opt}</MathText>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="qb-item-meta">
+                    {q.subject && <span className="qb-meta-pill">{q.subject}</span>}
+                    {q.grade > 0 && <span className="qb-meta-pill">Lớp {q.grade}</span>}
+                    {q.topicId && <span className="qb-meta-pill acc">{getTopicName(q.topicId, q.subject)}</span>}
+                    {q.level && <span className="qb-meta-pill">{q.level}</span>}
+                    {q.usageCount > 0 && <span className="qb-meta-pill">Dùng {q.usageCount} lần</span>}
+                    {q.tags?.map((t) => <span key={t} className="qb-meta-pill">#{t}</span>)}
+                  </div>
                 </div>
-                <div className="qb-item-meta">
-                  {q.subject && <span className="qb-meta-pill">{q.subject}</span>}
-                  {q.grade > 0 && <span className="qb-meta-pill">Lớp {q.grade}</span>}
-                  {q.topicId && <span className="qb-meta-pill acc">{getTopicName(q.topicId, q.subject)}</span>}
-                  {q.level && <span className="qb-meta-pill">{q.level}</span>}
-                  {q.usageCount > 0 && <span className="qb-meta-pill">Dùng {q.usageCount} lần</span>}
-                  {q.tags?.map((t) => <span key={t} className="qb-meta-pill">#{t}</span>)}
+                <div className="qb-item-actions">
+                  <button
+                    type="button"
+                    className="qb-icon-btn"
+                    onClick={() => { setEditing(q); setShowForm(true); }}
+                    title="Sửa"
+                  >
+                    <IcoEdit size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="qb-icon-btn danger"
+                    onClick={() => handleDelete(q)}
+                    title="Xóa"
+                  >
+                    <IcoTrash size={14} />
+                  </button>
                 </div>
-              </div>
-              <div className="qb-item-actions">
-                <button
-                  type="button"
-                  className="qb-icon-btn"
-                  onClick={() => { setEditing(q); setShowForm(true); }}
-                  title="Sửa"
-                >
-                  <IcoEdit size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="qb-icon-btn danger"
-                  onClick={() => handleDelete(q)}
-                  title="Xóa"
-                >
-                  <IcoTrash size={14} />
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Nút "Tải thêm" nếu còn câu chưa hiển thị */}
+          {visibleCount < filtered.length && (
+            <div style={{ textAlign: 'center', padding: '1rem 0 1.5rem' }}>
+              <button
+                type="button"
+                className="vt-btn"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              >
+                Tải thêm {Math.min(PAGE_SIZE, filtered.length - visibleCount)} câu
+                ({visibleCount}/{filtered.length})
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {toast && (

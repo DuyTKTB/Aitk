@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocalStorage, liveStreak, dayKey } from '../hooks.js';
-import Pet, { STAGES } from './Pet.jsx';
-import { SkinPet, PET_SKINS } from './PetSkins.jsx';
+import { STAGES } from './Pet.jsx';
+import { SkinPet, PET_SKINS, LEGACY_DEFAULT_NAMES } from './PetSkins.jsx';
+import { rankReply } from '../lib/petRank.js';
+import { randomAction } from '../lib/elecActions.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 import {
   IconGem, IconFire, IconBook, IconApple, IconX,
   IconInfo, IconChat, IconHeart, IconCake, IconTrend, IconSparkle,
@@ -66,6 +69,44 @@ const CHAT_RESPONSES = {
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
+/* ---- Hiệu ứng bay quanh linh vật (SVG-only) ---- */
+function FxGlyph({ fx }) {
+  switch (fx) {
+    case 'hearts': return <path d="M12 20.5C8.2 17 4 13.6 4 9.7A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 3.9-4.2 7.3-8 10.8z" fill="#f472b6" stroke="none" />;
+    case 'sparkles': return <path d="M12 2l2.2 5.8L20 10l-5.8 2.2L12 18l-2.2-5.8L4 10l5.8-2.2z" fill="#fbbf24" stroke="none" />;
+    case 'sweat': return <path d="M12 3s6 7.2 6 11a6 6 0 0 1-12 0c0-3.8 6-11 6-11z" fill="#60a5fa" stroke="none" />;
+    case 'zzz': return <text x="3" y="18" fontSize="16" fontWeight="800" fill="#64748b" stroke="none">Z</text>;
+    case 'notes': return <path d="M9 19V6.5L19 4v11.5M9 19a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM19 15.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z" fill="none" stroke="#8b5cf6" strokeWidth="1.8" />;
+    case 'bolts': return <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#facc15" stroke="none" />;
+    case 'question': return <text x="5" y="18" fontSize="16" fontWeight="800" fill="#2563eb" stroke="none">?</text>;
+    case 'stars': return <path d="M12 3l2.4 5.4 5.6.6-4.2 3.9 1.2 5.6L12 15.6 7.4 18.5l1.2-5.6L4.4 9l5.6-.6z" fill="#fbbf24" stroke="none" />;
+    case 'exclaim': return <text x="8" y="18" fontSize="16" fontWeight="800" fill="#ef4444" stroke="none">!</text>;
+    case 'bulb': return <path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 3.5 10.9c-.6.5-1 1.3-1 2.1h-5c0-.8-.4-1.6-1-2.1A6 6 0 0 1 12 3z" fill="none" stroke="#facc15" strokeWidth="1.8" />;
+    default: return null;
+  }
+}
+
+const FX_SPOTS = [
+  { left: '6%', top: '18%', delay: 0 },
+  { left: '78%', top: '10%', delay: 0.35 },
+  { left: '82%', top: '52%', delay: 0.7 },
+  { left: '10%', top: '58%', delay: 1.05 },
+];
+
+function ActionFx({ fx }) {
+  if (!fx) return null;
+  return (
+    <div className="elec-fx" aria-hidden="true">
+      {FX_SPOTS.map((s, i) => (
+        <svg key={i} className="elec-fx-item" viewBox="0 0 24 24" width="20" height="20"
+          style={{ left: s.left, top: s.top, animationDelay: s.delay + 's' }}>
+          <FxGlyph fx={fx} />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 function getMood(streak, fedToday) {
   if (streak === 0) return 'hibernating';
   if (streak >= 7 && fedToday) return 'happy';
@@ -83,46 +124,19 @@ function matchResponse(input, mood) {
   return pick(bank.default);
 }
 
-/* ============================================================
-   SKIN PICKER
-   ============================================================ */
-function SkinPicker({ current, onPick }) {
-  return (
-    <div className="pet-skins">
-      <p className="pet-skins-hint">Chọn nhân vật đồng hành cùng bạn</p>
-      <div className="pet-skins-grid">
-        {Object.values(PET_SKINS).map((s) => (
-          <button
-            key={s.key}
-            type="button"
-            className={'pet-skin-card' + (current === s.key ? ' on' : '')}
-            onClick={() => onPick(s.key)}
-            style={{ '--skin-color': s.color, '--skin-bg': s.bg }}
-            aria-pressed={current === s.key}
-            title={s.desc}
-          >
-            <span className="pet-skin-emoji" aria-hidden="true">{s.emoji}</span>
-            <span className="pet-skin-name">{s.name}</span>
-            {current === s.key && <span className="pet-skin-check" aria-hidden="true">✓</span>}
-          </button>
-        ))}
-      </div>
-      <p className="pet-skins-current">
-        Đang dùng: <b>{PET_SKINS[current]?.name || 'Lửa'}</b>
-      </p>
-    </div>
-  );
-}
-
-/* Tên mặc định của mọi skin — để biết người dùng chưa tự đặt tên */
-const DEFAULT_NAMES = Object.values(PET_SKINS).map((s) => s.defaultName);
+/* Tên mặc định (hiện tại + cũ) — để biết người dùng chưa tự đặt tên */
+const DEFAULT_NAMES = [
+  ...Object.values(PET_SKINS).map((s) => s.defaultName),
+  ...LEGACY_DEFAULT_NAMES,
+];
 
 /* ============================================================
    MAIN
    ============================================================ */
 export default function PetWidget() {
-  const [name, setName] = useLocalStorage('cs-petname', 'Ember');
-  const [skin, setSkin] = useLocalStorage('cs-pet-skin', 'fire');
+  const { user } = useAuth();
+  const [name, setName] = useLocalStorage('cs-petname', 'Elec');
+  const skin = 'elec'; /* ELEC AI là linh vật duy nhất — vĩnh viễn */
   const [s] = useLocalStorage('cs-streak', { last: '', n: 0, total: 0 });
   const [food, setFood] = useLocalStorage('cs-pet-food', 0);
   const [lastFed, setLastFed] = useLocalStorage('cs-pet-lastfed', '');
@@ -130,6 +144,8 @@ export default function PetWidget() {
   const [bubble, setBubble] = useState('');
   const [tab, setTab] = useState('info');
   const [justLeveledUp, setJustLeveledUp] = useState(false);
+  const [action, setAction] = useState(null);
+  const actionTimer = useRef(null);
 
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState([]);
@@ -162,12 +178,13 @@ export default function PetWidget() {
   useEffect(() => () => {
     clearTimeout(bubbleTimer.current);
     clearTimeout(levelTimer.current);
+    clearTimeout(actionTimer.current);
   }, []);
 
   const isMobile = windowSize.w <= 720;
   const fixedPos = useMemo(() => getFixedPos(windowSize.w), [windowSize.w]);
 
-  const skinInfo = PET_SKINS[skin] || PET_SKINS.fire;
+  const skinInfo = PET_SKINS[skin] || PET_SKINS.elec;
   /* Chưa tự đặt tên → hiện tên riêng của skin */
   const displayName = DEFAULT_NAMES.includes(name) ? skinInfo.defaultName : name;
 
@@ -255,18 +272,31 @@ export default function PetWidget() {
     showBubble('Ngon quá! Cảm ơn bạn');
   };
 
+  /* ---- Chat nối bảng xếp hạng: hỏi về hạng → ELEC AI đọc điểm game trả lời ---- */
+  const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : '') || displayName;
+  const replyFor = (text) => {
+    const t = text.toLowerCase().trim();
+    if (/(xếp hạng|thứ hạng|hạng mấy|bảng xếp hạng|top|rank|điểm cao)/.test(t)) return rankReply(userName);
+    return matchResponse(text, mood);
+  };
+
   const sendChat = (e) => {
     e.preventDefault();
     const text = chatInput.trim();
     if (!text) return;
-    const reply = matchResponse(text, mood);
+    const reply = replyFor(text);
     setChatLog((c) => [...c, { role: 'user', text }, { role: 'pet', text: reply }]);
     setChatInput('');
     showBubble(reply);
   };
 
+  /* Bấm → ELEC AI diễn 1 trong 40 biểu cảm/hành động ngẫu nhiên */
   const onClick = () => {
-    showBubble(randomDialogue());
+    const a = randomAction(action?.id);
+    setAction(a);
+    showBubble(a ? pick(a.say) : randomDialogue());
+    clearTimeout(actionTimer.current);
+    actionTimer.current = setTimeout(() => setAction(null), 3000);
     setOpen((o) => !o);
   };
 
@@ -287,10 +317,11 @@ export default function PetWidget() {
     ? Math.min(100, Math.max(0, ((total - STAGES[st][0]) / (next[0] - STAGES[st][0])) * 100))
     : 100;
 
-  const renderPet = () => {
-    if (skin === 'fire') return <Pet mini />;
-    return <SkinPet skin={skin} mood={mood} justLeveledUp={justLeveledUp} />;
-  };
+  const renderPet = () => (
+    <div className={'elec-act' + (action ? ' elec-anim-' + action.anim : '')}>
+      <SkinPet mood={mood} imgKey={action?.img} justLeveledUp={justLeveledUp} />
+    </div>
+  );
 
   return (
     <>
@@ -316,6 +347,7 @@ export default function PetWidget() {
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
       >
         {renderPet()}
+        {action && <ActionFx fx={action.fx} />}
         {bubble && !open && <div className={'pet-bubble pet-bubble-' + mood}>{bubble}</div>}
       </div>
 
@@ -333,7 +365,7 @@ export default function PetWidget() {
           <div className="pet-head">
             <div className="pet-head-left">
               <span className="pet-head-icon" style={{ background: skinInfo.bg, color: skinInfo.color }}>
-                {skinInfo.emoji}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={skinInfo.icon} /></svg>
               </span>
               <h3 className="pet-head-name">{displayName}</h3>
             </div>
@@ -345,9 +377,6 @@ export default function PetWidget() {
           <div className="pet-tabs">
             <button className={'pet-tab' + (tab === 'info' ? ' on' : '')} onClick={() => setTab('info')} type="button">
               <IconInfo size={12} /><span>Thông tin</span>
-            </button>
-            <button className={'pet-tab' + (tab === 'skins' ? ' on' : '')} onClick={() => setTab('skins')} type="button">
-              <IconSparkle size={12} /><span>Nhân vật</span>
             </button>
             <button className={'pet-tab' + (tab === 'chat' ? ' on' : '')} onClick={() => setTab('chat')} type="button">
               <IconChat size={12} /><span>Nói chuyện</span>
@@ -413,18 +442,12 @@ export default function PetWidget() {
             </div>
           )}
 
-          {tab === 'skins' && (
-            <div className="pet-tab-body pet-tab-body-compact">
-              <SkinPicker current={skin} onPick={setSkin} />
-            </div>
-          )}
-
           {tab === 'chat' && (
             <div className="pet-chat pet-chat-compact">
               <div className="pet-chat-msgs">
                 {chatLog.length === 0 && (
                   <p className="hint center" style={{ padding: '.6rem 0', fontSize: '.75rem' }}>
-                    Hỏi {displayName} gì đó đi! Thử "chào", "khỏe không"...
+                    Hỏi {displayName} gì đó đi! Thử "chào", "xếp hạng của tôi"...
                   </p>
                 )}
                 {chatLog.map((m, i) => (
@@ -434,12 +457,12 @@ export default function PetWidget() {
               </div>
 
               <div className="pet-chat-suggest">
-                {['Chào', 'Khỏe không', 'Học bài'].map((q) => (
+                {['Chào', 'Xếp hạng của tôi', 'Học bài'].map((q) => (
                   <button
                     key={q}
                     className="pet-chat-chip"
                     onClick={() => {
-                      const reply = matchResponse(q, mood);
+                      const reply = replyFor(q);
                       setChatLog((c) => [...c, { role: 'user', text: q }, { role: 'pet', text: reply }]);
                       showBubble(reply);
                     }}

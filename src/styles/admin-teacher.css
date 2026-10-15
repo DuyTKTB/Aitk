@@ -1,0 +1,136 @@
+/* ============================================================
+   admin-teacher.css — Đồng bộ giao diện QUẢN TRỊ với giao diện GIÁO VIÊN
+   ------------------------------------------------------------
+   Nạp SAU admin-apple.css trong AdminPanel.jsx.
+   Chỉ MAP token: các component .adl-* vẫn dùng --apl-* như cũ, nhưng giá trị
+   lấy từ design tokens của giáo viên (teacher-tokens.css) → cùng màu nền,
+   viền, bo góc, bóng đổ, màu nhấn; tự theo dark/light của giáo viên.
+   ============================================================ */
+
+.adl,
+.adl-main {
+  /* Nền & card theo giáo viên */
+  --apl-card-bg: var(--t-surface-2);
+  --apl-card-bg-2: var(--t-surface-3);
+  --apl-glass: var(--t-surface-glass);
+  --apl-glass-2: var(--t-surface-3);
+
+  /* Viền */
+  --apl-edge: var(--t-border);
+  --apl-edge-soft: var(--t-border-subtle);
+  --apl-edge-strong: var(--t-border-strong);
+  --apl-highlight: var(--t-accent-subtle);
+
+  /* Bóng đổ */
+  --apl-shadow-sm: var(--t-shadow-sm);
+  --apl-shadow-md: var(--t-shadow-card);
+  --apl-shadow-lg: var(--t-shadow-float);
+  --apl-shadow-focus: 0 0 0 4px var(--t-accent-glow);
+
+  /* Màu nhấn: xanh tím sư phạm (light) / xanh chanh (dark) — giống giáo viên */
+  --apl-blue: var(--t-accent);
+  --apl-blue-hover: var(--t-accent-hover);
+  --apl-green: var(--t-status-ok);
+  --apl-red: var(--t-status-err);
+  --apl-orange: var(--t-status-warn);
+
+  --apl-ease: var(--t-ease-smooth);
+  --apl-ease-spring: var(--t-ease-spring);
+  --apl-blur: var(--t-blur-subtle);
+  --apl-blur-heavy: var(--t-blur);
+
+  /* Nền trang: bỏ màu cứng #f5f5f7 / #0a0a0c */
+  background: var(--t-bg) !important;
+}
+
+/* ============================================================
+   HERO & CÁC KHỐI DÙNG CHUNG (.vt-*) — theo PHONG CÁCH GIÁO VIÊN
+   Giáo viên = thẻ trắng sạch trên nền sáng, KHÔNG có khối gradient to.
+   Trước đây admin-apple.css làm hero thành thẻ trắng nhưng SAI TƯƠNG PHẢN
+   (chữ trắng trên pill trắng → vô hình). Nay làm đúng: thẻ sáng + chữ đậm.
+   ============================================================ */
+
+.ad-scope .vt-hero {
+  background: var(--t-surface-2) !important;
+  color: var(--t-ink) !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: var(--t-r-lg) !important;
+  box-shadow: var(--t-shadow-card) !important;
+}
+
+.ad-scope .vt-hero-label {
+  color: var(--t-accent) !important;
+  font-style: normal !important;
+  font-weight: 800 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  font-size: .72rem !important;
+}
+
+.ad-scope .vt-hero-num b { color: var(--t-ink) !important; }
+.ad-scope .vt-hero-num span { color: var(--t-ink-muted) !important; }
+
+.ad-scope .vt-hero-facts div { border-top-color: var(--t-border-subtle) !important; }
+.ad-scope .vt-hero-facts dt { color: var(--t-ink-muted) !important; opacity: 1 !important; }
+.ad-scope .vt-hero-facts dd { color: var(--t-ink) !important; }
+
+.ad-scope .vt-hero-btn {
+  background: var(--t-accent) !important;
+  color: var(--t-accent-ink) !important;
+  box-shadow: var(--t-shadow-sm) !important;
+}
+
+/* Hàng "Tăng trưởng 7 ngày": pill sáng + chữ đậm — hết cảnh chữ trắng trên pill trắng */
+.ad-scope .vt-rank li {
+  background: var(--t-surface-3) !important;
+  color: var(--t-ink) !important;
+  border-radius: var(--t-r-md) !important;
+}
+.ad-scope .vt-rank li b { color: var(--t-ink) !important; }
+.ad-scope .vt-rank li small { color: var(--t-ink-muted) !important; }
+.ad-scope .vt-rank-score { color: var(--t-ink) !important; }
+.ad-scope .vt-hero-chart-head b { color: var(--t-ink) !important; }
+
+.ad-scope .vt-rank-n {
+  background: var(--t-accent-subtle) !important;
+  color: var(--t-accent) !important;
+}
+.ad-scope .vt-rank-n.r1 { background: var(--vt-amber) !important; color: #1a1300 !important; }
+.ad-scope .vt-rank-n.r2 { background: #cbd5e1 !important; color: #1e293b !important; }
+.ad-scope .vt-rank-n.r3 { background: #f0b27a !important; color: #3b1d00 !important; }
+
+/* Các khối icon/nút gradient khác → về tông nhấn của giáo viên */
+.ad-scope .vt-btn.primary {
+  background: var(--t-accent) !important;
+  color: var(--t-accent-ink) !important;
+  box-shadow: var(--t-shadow-sm) !important;
+}
+.ad-scope .vt-btn.primary:hover:not(:disabled) {
+  background: var(--t-accent-hover) !important;
+}
+.ad-scope .vt-qa span,
+.ad-scope .vt-list-ico,
+.ad-scope .vt-count {
+  background: var(--t-accent-subtle) !important;
+  color: var(--t-accent) !important;
+  box-shadow: none !important;
+}
+.ad-scope .vt-bar i { background: var(--t-accent) !important; }
+
+/* Card thống kê: bo góc + viền + bóng giống card giáo viên */
+.ad-scope .vt-card {
+  border-radius: var(--t-r-lg) !important;
+  background: var(--t-surface-2) !important;
+  border: 1px solid var(--t-border) !important;
+  box-shadow: var(--t-shadow-card) !important;
+}
+
+/* Bo góc lớn kiểu giáo viên cho các card thống kê */
+.adl-panel,
+.adl-stat,
+.adl-exam-card,
+.adl-pb-card,
+.adl-review-card,
+.adl-guide-sec {
+  border-radius: var(--t-r-lg) !important;
+}

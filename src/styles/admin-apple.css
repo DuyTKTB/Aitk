@@ -269,14 +269,12 @@
 /* ============================================================
    CARD — TRẮNG ĐẶC, VIỀN RÕ, SHADOW ĐẬM
    ============================================================ */
-.vt-card,
 .adl-panel,
 .adl-stat,
 .adl-exam-card,
 .adl-pb-card,
 .adl-review-card,
-.adl-guide-sec,
-.vt-calm {
+.adl-guide-sec {
   background: #ffffff !important;
   border: 1px solid var(--apl-edge) !important;
   border-radius: 16px !important;
@@ -286,7 +284,6 @@
   transition: all .2s var(--apl-ease) !important;
 }
 
-[data-theme='dark'] .vt-card,
 [data-theme='dark'] .adl-panel,
 [data-theme='dark'] .adl-stat,
 [data-theme='dark'] .adl-exam-card,
@@ -296,18 +293,15 @@
   background: #1c1c1e !important;
 }
 
-.vt-card.soft,
 .adl-panel.soft {
   background: #fafafa !important;
   box-shadow: none !important;
 }
 
-[data-theme='dark'] .vt-card.soft,
 [data-theme='dark'] .adl-panel.soft {
   background: #232328 !important;
 }
 
-.vt-card:hover,
 .adl-stat:hover,
 .adl-exam-card:hover {
   border-color: var(--apl-edge-strong) !important;
@@ -316,44 +310,6 @@
 }
 
 /* Hero */
-.vt-hero {
-  background: linear-gradient(135deg, #eff4ff 0%, #f5f0ff 100%) !important;
-  border: 1px solid var(--apl-edge-soft) !important;
-  border-radius: 16px !important;
-  box-shadow: var(--apl-shadow-sm) !important;
-  backdrop-filter: none !important;
-}
-
-[data-theme='dark'] .vt-hero {
-  background: linear-gradient(135deg, #1a1d2e 0%, #1d1a2e 100%) !important;
-}
-
-.vt-hero-label {
-  color: var(--mut) !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: .06em !important;
-  font-size: .72rem !important;
-}
-
-.vt-hero-num b {
-  color: var(--ink) !important;
-  font-weight: 700 !important;
-  letter-spacing: -.04em !important;
-}
-
-.vt-hero-facts dt {
-  color: var(--mut) !important;
-  font-weight: 500 !important;
-  text-transform: none !important;
-  letter-spacing: -.005em !important;
-  font-size: .8rem !important;
-}
-
-.vt-hero-facts dd {
-  color: var(--ink) !important;
-  font-weight: 600 !important;
-}
 
 /* ============================================================
    STATS — icon màu đậm hơn
@@ -386,7 +342,6 @@
 /* ============================================================
    TABS
    ============================================================ */
-.vt-tabs,
 .adl-tabs,
 .ad-tabs {
   background: #f0f0f2 !important;
@@ -396,13 +351,11 @@
   backdrop-filter: none !important;
 }
 
-[data-theme='dark'] .vt-tabs,
 [data-theme='dark'] .adl-tabs,
 [data-theme='dark'] .ad-tabs {
   background: #232328 !important;
 }
 
-.vt-tab,
 .adl-tab,
 .ad-tab {
   border-radius: 999px !important;
@@ -412,12 +365,10 @@
   transition: all .15s var(--apl-ease) !important;
 }
 
-.vt-tab:hover,
 .adl-tab:hover {
   color: var(--ink) !important;
 }
 
-.vt-tab.on,
 .adl-tab.on,
 .ad-tab.on {
   background: #ffffff !important;
@@ -426,7 +377,6 @@
   font-weight: 600 !important;
 }
 
-[data-theme='dark'] .vt-tab.on,
 [data-theme='dark'] .adl-tab.on,
 [data-theme='dark'] .ad-tab.on {
   background: #3a3a3c !important;
@@ -436,7 +386,6 @@
 /* ============================================================
    BUTTON
    ============================================================ */
-.vt-btn,
 .adl-btn-outline,
 .pb-btn-ghost,
 .ad-btn {
@@ -451,14 +400,12 @@
   transition: all .15s var(--apl-ease) !important;
 }
 
-[data-theme='dark'] .vt-btn,
 [data-theme='dark'] .adl-btn-outline,
 [data-theme='dark'] .pb-btn-ghost,
 [data-theme='dark'] .ad-btn {
   background: #2c2c2e !important;
 }
 
-.vt-btn:hover:not(:disabled),
 .adl-btn-outline:hover:not(:disabled),
 .pb-btn-ghost:hover:not(:disabled),
 .ad-btn:hover:not(:disabled) {
@@ -467,12 +414,10 @@
   transform: translateY(-1px);
 }
 
-[data-theme='dark'] .vt-btn:hover:not(:disabled),
 [data-theme='dark'] .adl-btn-outline:hover:not(:disabled) {
   background: #3a3a3c !important;
 }
 
-.vt-btn.primary,
 .adl-btn-primary,
 .ad-btn.primary,
 .pb-btn-primary,
@@ -485,7 +430,6 @@
     inset 0 1px 0 rgba(255, 255, 255, .2) !important;
 }
 
-.vt-btn.primary:hover:not(:disabled),
 .adl-btn-primary:hover:not(:disabled),
 .ad-btn.primary:hover:not(:disabled) {
   background: var(--apl-blue-hover) !important;
@@ -495,7 +439,6 @@
     inset 0 1px 0 rgba(255, 255, 255, .25) !important;
 }
 
-.vt-btn.primary svg,
 .adl-btn-primary svg,
 .ad-btn.primary svg {
   color: #fff !important;
@@ -550,9 +493,6 @@
 .ad-field input,
 .ad-field select,
 .ad-field textarea,
-.vt-field input,
-.vt-field select,
-.vt-field textarea,
 .adl-search input {
   background: #ffffff !important;
   border: 1px solid var(--apl-edge) !important;
@@ -582,10 +522,7 @@
 .pb-field textarea:focus,
 .ad-field input:focus,
 .ad-field select:focus,
-.ad-field textarea:focus,
-.vt-field input:focus,
-.vt-field select:focus,
-.vt-field textarea:focus {
+.ad-field textarea:focus {
   border-color: var(--apl-blue) !important;
   box-shadow: 0 0 0 3px rgba(0, 113, 227, .15) !important;
   outline: 0 !important;
@@ -593,8 +530,7 @@
 
 .adl-field > span,
 .pb-field > span,
-.ad-field > span,
-.vt-field > span {
+.ad-field > span {
   color: var(--mut) !important;
   font-weight: 600 !important;
   font-size: .78rem !important;
@@ -607,7 +543,6 @@
 /* ============================================================
    TABLE
    ============================================================ */
-.vt-table-wrap,
 .adl-table-wrap {
   border-radius: 12px !important;
   border: 1px solid var(--apl-edge-soft) !important;
@@ -615,12 +550,10 @@
   background: #ffffff;
 }
 
-[data-theme='dark'] .vt-table-wrap,
 [data-theme='dark'] .adl-table-wrap {
   background: #1c1c1e;
 }
 
-.vt-table th,
 .adl-table th {
   background: #fafafa !important;
   color: var(--mut) !important;
@@ -633,12 +566,10 @@
   font-family: inherit !important;
 }
 
-[data-theme='dark'] .vt-table th,
 [data-theme='dark'] .adl-table th {
   background: #232328 !important;
 }
 
-.vt-table td,
 .adl-table td {
   padding: .85rem 1rem !important;
   border-bottom: 1px solid var(--apl-edge-soft) !important;
@@ -646,23 +577,13 @@
   font-weight: 500;
 }
 
-.vt-table tbody tr:hover td,
 .adl-table tbody tr:hover td {
   background: #fafafa !important;
-}
-
-[data-theme='dark'] .vt-table tbody tr:hover td {
-  background: #232328 !important;
-}
-
-.vt-table tbody tr:last-child td {
-  border-bottom: 0 !important;
 }
 
 /* ============================================================
    CHIP
    ============================================================ */
-.vt-chip,
 .adl-chip,
 .adl-tag {
   background: #f0f0f2 !important;
@@ -675,26 +596,9 @@
   backdrop-filter: none !important;
 }
 
-[data-theme='dark'] .vt-chip,
 [data-theme='dark'] .adl-chip,
 [data-theme='dark'] .adl-tag {
   background: #2c2c2e !important;
-}
-
-.vt-chip.ready {
-  background: rgba(34, 197, 94, .15) !important;
-  color: #16a34a !important;
-}
-
-.vt-chip.soon {
-  background: rgba(245, 158, 11, .15) !important;
-  color: #b45309 !important;
-}
-
-.vt-chip.kicked,
-.vt-chip.closed {
-  background: rgba(239, 68, 68, .12) !important;
-  color: #dc2626 !important;
 }
 
 /* ============================================================
@@ -785,20 +689,6 @@
 /* ============================================================
    DONUT / CHART — viền rõ
    ============================================================ */
-.vt-ring-card,
-.vt-calm {
-  background: #ffffff !important;
-}
-
-.vt-ring-card header b {
-  color: var(--ink) !important;
-  font-weight: 700 !important;
-}
-
-.vt-ring-card small {
-  color: var(--mut) !important;
-  font-weight: 500 !important;
-}
 
 /* ============================================================
    EXAM CARD
@@ -834,27 +724,6 @@
 /* ============================================================
    LIST (key/pro users)
    ============================================================ */
-.vt-list li {
-  border-radius: 10px !important;
-  transition: background .12s var(--apl-ease) !important;
-}
-
-.vt-list li:hover {
-  background: #fafafa !important;
-}
-
-[data-theme='dark'] .vt-list li:hover {
-  background: #232328 !important;
-}
-
-.vt-list-main b {
-  color: var(--ink) !important;
-  font-weight: 600 !important;
-}
-
-.vt-list-main small {
-  color: var(--mut) !important;
-}
 
 /* ============================================================
    SEARCH
@@ -935,16 +804,14 @@ select {
    ============================================================ */
 .adl-main::-webkit-scrollbar,
 .adl-content::-webkit-scrollbar,
-.adl-side::-webkit-scrollbar,
-.vt-table-wrap::-webkit-scrollbar {
+.adl-side::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .adl-main::-webkit-scrollbar-thumb,
 .adl-content::-webkit-scrollbar-thumb,
-.adl-side::-webkit-scrollbar-thumb,
-.vt-table-wrap::-webkit-scrollbar-thumb {
+.adl-side::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, .15);
   border-radius: 999px;
 }
@@ -960,18 +827,6 @@ select {
 /* ============================================================
    EMPTY STATE
    ============================================================ */
-.vt-empty {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: 0 !important;
-}
-
-.vt-empty span {
-  background: #f0f0f2 !important;
-  border-radius: 16px !important;
-  color: var(--mut) !important;
-  box-shadow: none !important;
-}
 
 /* ============================================================
    MOBILE
@@ -989,7 +844,6 @@ select {
 }
 
 @media (max-width: 640px) {
-  .vt-card,
   .adl-panel,
   .adl-stat,
   .adl-exam-card {
@@ -1005,10 +859,8 @@ select {
     animation: none !important;
     transition: none !important;
   }
-  .vt-card:hover,
   .adl-stat:hover,
-  .adl-exam-card:hover,
-  .vt-btn:hover:not(:disabled) {
+  .adl-exam-card:hover {
     transform: none !important;
   }
 }
