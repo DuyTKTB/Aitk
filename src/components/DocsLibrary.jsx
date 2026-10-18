@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+// 🎨 Import CSS để giao diện lưới tài liệu hiển thị đúng
+import './tools-neo.css';
 import { GRADES, SUBJECTS, SUBJ, KINDS, DOCS } from './docsData.js';
 import { IcoStar, IcoClose, norm, useStored } from './ToolsKit.jsx';
 import { IconArrowUpRight } from './AIIcons.jsx';
 import { SubjectIcon, subjectColor } from './SubjectIcons.jsx';
+
 function LazyCover({ src, alt, fallbackIcon }) {
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -48,6 +51,7 @@ function LazyCover({ src, alt, fallbackIcon }) {
     </span>
   );
 }
+
 const Pdf = ({ doc, onClose }) => {
   const ref = useRef(null);
   useEffect(() => { ref.current?.showModal(); }, []);
@@ -65,6 +69,7 @@ const Pdf = ({ doc, onClose }) => {
     </dialog>
   );
 };
+
 const BookList = ({ doc, onClose }) => {
   const ref = useRef(null);
   useEffect(() => { ref.current?.showModal(); }, []);
@@ -118,6 +123,7 @@ const BookList = ({ doc, onClose }) => {
     </dialog>
   );
 };
+
 const PAGE_SIZE = 12;
 
 export default function DocsLibrary({ query = '', grade: gProp, onGrade }) {
@@ -219,36 +225,38 @@ export default function DocsLibrary({ query = '', grade: gProp, onGrade }) {
               <SubjectIcon subject={d.subject} grade={d.grade} size={26} />
             </span>
           );
-          return (
-            <article key={d.id} className="tn-card">
-              <button type="button" className={'tn-ib tn-star' + (fav ? ' on' : '')}
-                aria-pressed={fav}
-                aria-label={(fav ? 'Bỏ lưu ' : 'Lưu ') + d.title}
-                onClick={() => toggleFav(d.id)}>
-                <IcoStar size={15} on={fav} />
-              </button>
+           return (
+             <article key={d.id} className="tn-card">
+               <button type="button" className={'tn-ib tn-star' + (fav ? ' on' : '')}
+                 aria-pressed={fav}
+                 aria-label={(fav ? 'Bỏ lưu ' : 'Lưu ') + d.title}
+                 onClick={() => toggleFav(d.id)}>
+                 <IcoStar size={15} on={fav} />
+               </button>
 
-              <LazyCover src={d.img} alt={d.title} fallbackIcon={fallback} />
+               <LazyCover src={d.img} alt={d.title} fallbackIcon={fallback} />
 
-              <h3>
-                {d.title}
-                {d.hot && <span className="tn-badge hot">Hot</span>}
-                {bookCount > 1 && <span className="tn-badge new">{bookCount} sách</span>}
-                {d.file && <span className="tn-badge new">PDF</span>}
-              </h3>
+               <div className="tn-card-content">
+                 <h3>
+                   {d.title}
+                   {d.hot && <span className="tn-badge hot">Hot</span>}
+                   {bookCount > 1 && <span className="tn-badge new">{bookCount} sách</span>}
+                   {d.file && <span className="tn-badge new">PDF</span>}
+                 </h3>
 
-              <div className="tn-meta">
-                <span>Lớp {d.grade}</span>
-                <span>{SUBJ[d.subject]}</span>
-                <span>{KINDS[d.kind]}</span>
-              </div>
+                 <div className="tn-meta">
+                   <span>Lớp {d.grade}</span>
+                   <span>{SUBJ[d.subject]}</span>
+                   <span>{KINDS[d.kind]}</span>
+                 </div>
 
-              <button type="button" className="tn-foot" onClick={() => open(d)}>
-                <span><small>Nguồn</small>{d.source}{d.sub ? ' · ' + d.sub : ''}</span>
-                <span className="tn-go"><IconArrowUpRight size={14} /></span>
-              </button>
-            </article>
-          );
+                 <button type="button" className="tn-foot" onClick={() => open(d)}>
+                   <span><small>Nguồn</small>{d.source}{d.sub ? ' · ' + d.sub : ''}</span>
+                   <span className="tn-go"><IconArrowUpRight size={14} /></span>
+                 </button>
+               </div>
+             </article>
+           );
         })}
       </div>
 

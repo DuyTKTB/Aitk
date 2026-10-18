@@ -1,0 +1,59 @@
+/* ============================================================
+   elec-crew.css — lớp hiển thị cho "đội linh vật" (elecRig.js)
+   Chỉ dùng token sẵn có của dự án, có giá trị dự phòng.
+   ============================================================ */
+
+.ec-layer {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 0;
+  z-index: 45;                      /* trên dải mờ đáy trang (40), dưới thanh nav (60) */
+  pointer-events: none;
+}
+.ec-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.ec-walker {
+  position: absolute; left: 0; bottom: 4px;
+  width: calc(var(--ec-w, 124px) * var(--ec-k, 1));
+  will-change: transform;
+  pointer-events: none;
+}
+.ec-walker[data-talk] { z-index: 5; }
+
+.ec-svg { display: block; width: 100%; height: auto; overflow: visible; pointer-events: none; }
+/* chỉ phần thân được bấm/hover, vùng trong suốt xung quanh không chặn chuột */
+.ec-svg .ec-hit { pointer-events: auto; cursor: pointer; }
+
+/* biểu cảm: mỗi bộ phận khai báo data-f="…", chỉ hiện đúng biểu cảm hiện tại */
+.ec-svg [data-f] { display: none; }
+.ec-svg[data-face='default'] [data-f~='default'],
+.ec-svg[data-face='happy'] [data-f~='happy'],
+.ec-svg[data-face='think'] [data-f~='think'],
+.ec-svg[data-face='wink'] [data-f~='wink'] { display: inline; }
+
+/* ---------- bong bóng thoại ---------- */
+.ec-bubble {
+  position: absolute; left: 50%; bottom: calc(100% + 8px);
+  width: max-content; max-width: 190px; padding: .5rem .75rem;
+  border-radius: 16px; text-align: center;
+  background: var(--surface, #fff); color: var(--ink, #10223f);
+  border: 1px solid var(--line, rgba(30, 80, 200, .18));
+  box-shadow: var(--sh-2, 0 10px 28px -10px rgba(20, 60, 160, .35));
+  font: 500 .8rem/1.4 var(--sans, system-ui, sans-serif);
+  opacity: 0; transform: translate(-50%, 6px) scale(.92); transform-origin: 50% 100%;
+  transition: opacity .22s ease, transform .28s cubic-bezier(.2, .8, .2, 1.2);
+  pointer-events: none;
+}
+.ec-bubble[data-show='1'] { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.ec-bubble::after {
+  content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px;
+  background: inherit; border: inherit; border-top: 0; border-left: 0; border-radius: 0 0 3px 0;
+  transform: translateX(-50%) rotate(45deg);
+}
+/* đang nhảy thì bong bóng nâng lên, khỏi bị che */
+.ec-walker[data-pose='jump'] .ec-bubble[data-show='1'] { transform: translate(-50%, -32px) scale(1); }
+
+@media (max-width: 640px) {
+  .ec-walker { bottom: calc(var(--bottom-nav-h, 0px) + 4px); }
+  .ec-bubble { max-width: 160px; font-size: .74rem; }
+}
+@media (prefers-reduced-motion: reduce) { .ec-bubble { transition: none; } }
+@media print { .ec-layer { display: none; } }

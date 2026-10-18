@@ -21,11 +21,6 @@ const AIChat = lazy(() => import('./components/AIChat.jsx'));
 const ProfilePage = lazy(() => import('./components/ProfilePage.jsx'));
 const ToolsPage = lazy(() => import('./components/ToolsPage.jsx'));
 const WrongNotebook = lazy(() => import('./components/WrongNotebook.jsx'));
-const CareerPath = lazy(() => import('./components/CareerPath.jsx'));
-const AdmissionLookup = lazy(() => import('./components/AdmissionLookup.jsx'));
-const DocStudio = lazy(() => import('./components/DocStudio.jsx'));
-const QuizDuel = lazy(() => import('./components/games/QuizDuel.jsx'));
-const Lab3D = lazy(() => import('./features/lab3d/Lab3D.jsx'));
 const StatsPage = lazy(() => import('./components/StatsPage.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Feedback = lazy(() => import('./pages/Feedback.jsx'));
@@ -39,17 +34,11 @@ const JeopardyGame = lazy(() => import('./components/games/JeopardyGame.jsx'));
 const VirtualLab = lazy(() => import('./components/games/VirtualLab.jsx'));
 const ElementBattle = lazy(() => import('./components/games/ElementBattle.jsx'));
 const ChemSudoku = lazy(() => import('./components/games/ChemSudoku.jsx'));
-const TugOfWarGame = lazy(() => import('./components/games/TugOfWarGame.jsx'));
-const LuckyWheelGame = lazy(() => import('./components/games/LuckyWheelGame.jsx'));
-const FlipPuzzleGame = lazy(() => import('./components/games/FlipPuzzleGame.jsx'));
-const MillionaireGame = lazy(() => import('./components/games/MillionaireGame.jsx'));
-const QuizRacingGame = lazy(() => import('./components/games/QuizRacingGame.jsx'));
-const CameraGame = lazy(() => import('./components/games/CameraGame.jsx'));
-const MinesweeperQuiz = lazy(() => import('./components/games/MinesweeperQuiz.jsx'));
 
 /* ============ CLASSROOM ============ */
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.jsx'));
 const ExamJoin = lazy(() => import('./components/ExamJoin.jsx'));
+const StudentClass = lazy(() => import('./components/StudentClass.jsx'));
 const MyClasses = lazy(() => import('./components/MyClasses.jsx'));
 
 /* ============ ADMIN ============ */
@@ -57,6 +46,7 @@ const AdminPanel = lazy(() => import('./components/admin/AdminPanel.jsx'));
 
 /* ============ WIDGETS ============ */
 import PetWidget from './components/PetWidget.jsx';
+import ElecCrew from './components/ElecCrew.jsx';
 import ChatWidget from './components/ChatWidget.jsx';
 import MobileHeader from './components/MobileHeader.jsx';
 import BottomNav from './components/BottomNav.jsx';
@@ -75,12 +65,19 @@ import { setExamAiUserId } from './lib/examAiUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase.js';
 
+/* ============ CSS ============ */
+import './app-extra.css';
+import './stats.css';
+import './admin-dashboard.css';
+import './admin-upgrade.css';
+import './styles/classroom.css';
+import './styles/teacher-pro.css';
 
 /* ============ ICONS ============ */
 import {
   IconHome, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
-  IconTools, IconUser, IconBook,
+  IconTools, IconUser,
 } from './components/Icons.jsx';
 
 /* ============ LOCAL ICONS ============ */
@@ -126,9 +123,6 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Học tập',
     tools: [
-      { id: 'doc-studio', label: 'Doc Studio', desc: 'Tải PDF → AI sinh flashcard + quiz (VIP)', Icon: IconBook },
-      { id: 'career', label: 'Định hướng nghề', desc: 'Test RIASEC + AI gợi ý 3 nhóm ngành', Icon: IconCalc },
-      { id: 'admission', label: 'Tra cứu điểm chuẩn', desc: 'Điểm chuẩn các trường trọng tâm', Icon: IconTarget },
       { id: 'formulas', label: 'Công thức nhanh', desc: 'Tra cứu công thức theo chủ đề', Icon: IconCalc },
       { id: 'analyze', label: 'Phân tích hợp chất', desc: 'Nhận diện loại, tính chất, phản ứng', Icon: IconMicroscope },
       { id: 'balance', label: 'Cân bằng PTHH', desc: 'Cân bằng bằng đại số tuyến tính', Icon: IconScale },
@@ -149,8 +143,7 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Giải trí',
     tools: [
-      { id: 'games', label: 'Trò chơi', desc: 'Hàng chục game tương tác lớp học', Icon: IconGamepad },
-      { id: 'games/duel', label: 'Thách đấu Quiz', desc: 'Đấu quiz 1-1 realtime với bạn bè', Icon: IconGamepad },
+      { id: 'games', label: 'Trò chơi', desc: '7 game học Hóa', Icon: IconGamepad },
       { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác', Icon: IconHome },
     ],
   },
@@ -168,23 +161,9 @@ const PAGES = [
   ['feedback', 'Phản hồi', null],
   ['classroom', 'Lớp học', null],
   ['my-classes', 'Lớp học của tôi', IconClass],
-  ['doc-studio', 'Doc Studio', null],
-  ['career', 'Định hướng nghề', null],
-  ['admission', 'Tra cứu điểm chuẩn', null],
 ];
 
-/* ❗ MỚI: 9 trò chơi CAMERA — 1 component duy nhất (CameraGame) chạy cả 9 cấu hình */
-const CAMERA_GAME_IDS = [
-  'cam-fingers', 'cam-look', 'cam-point', 'cam-lean', 'cam-smile',
-  'cam-freeze', 'cam-hide', 'cam-duo', 'cam-race',
-];
-
-const GAME_ROUTES = [
-  'chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku',
-  'tugofwar', 'wheel', 'flip', 'millionaire', 'racing',
-  ...CAMERA_GAME_IDS,
-  'mines', 'duel', 'lab-3d',
-].map((g) => 'games/' + g);
+const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
 
 /* ============ PAGE ROUTING HELPERS ============ */
 const readPage = () => {
@@ -193,8 +172,6 @@ const readPage = () => {
   if (h === 'login' || h === 'register') return h;
   if (GAME_ROUTES.includes(h)) return h;
   if (h.startsWith('exam/')) return h;
-  if (h.startsWith('join/')) return 'my-classes';
-  if (h.startsWith('my-classes/')) return 'my-classes';
   if (h === 'admin' || h.startsWith('admin/')) return 'admin';
   if (h === '' || h === 'main') return 'home';
   return PAGES.some((p) => p[0] === h) ? h : '404';
@@ -253,9 +230,10 @@ export default function App() {
   /* ============ LOAD CREDITS ============ */
   useEffect(() => {
     if (!user?.uid) { setCredits(null); setExamAiUserId(null); return; }
-    setExamAiUserId(user.uid);
+    setExamAiUserId(user.uid); // Cho exam AI cũng trừ credits
     getCredits(user.uid).then((c) => setCredits(c.balance)).catch(() => {});
     const unsub = onCreditsChange(user.uid, (data) => setCredits(data.balance));
+    // Lắng nghe event từ creditService khi trừ điểm
     const onCreditEvt = (e) => { if (e.detail?.balance != null) setCredits(e.detail.balance); };
     window.addEventListener('cs-credit-update', onCreditEvt);
     return () => { unsub(); window.removeEventListener('cs-credit-update', onCreditEvt); };
@@ -439,10 +417,10 @@ export default function App() {
     /* ============ CLASSROOM ROUTES ============ */
     if (page === 'classroom') {
       if (pro.isPro || isAdmin(user)) return <TeacherDashboard />;
-      return <MyClasses />;
+      return <StudentClass />;
     }
     if (page === 'my-classes') {
-      return <MyClasses />;
+      return <MyClasses onNavigate={navigate} />;
     }
 
     /* ============ EXAM MODE ============ */
@@ -463,10 +441,6 @@ export default function App() {
     if (page === 'exam') return <ExamCountdown />;
     if (page === 'notes') return <Notes />;
     if (page === 'notebook') return <WrongNotebook />;
-    if (page === 'doc-studio') return <DocStudio />;
-    if (page === 'career') return <CareerPath />;
-    if (page === 'admission') return <AdmissionLookup />;
-    if (page === 'games/duel') return <QuizDuel />;
     if (page === 'grade') return <GradeCalculator />;
     if (page === 'quiz') return <Quiz />;
     if (page === 'stats') return <StatsPage />;
@@ -479,16 +453,8 @@ export default function App() {
     if (page === 'games/slingshot') return <SlingshotGame />;
     if (page === 'games/jeopardy') return <JeopardyGame />;
     if (page === 'games/lab') return <VirtualLab />;
-    if (page === 'games/lab-3d') return <Lab3D />;
     if (page === 'games/battle') return <ElementBattle />;
     if (page === 'games/sudoku') return <ChemSudoku />;
-    if (page === 'games/tugofwar') return <TugOfWarGame />;
-    if (page === 'games/wheel') return <LuckyWheelGame />;
-    if (page === 'games/flip') return <FlipPuzzleGame />;
-    if (page === 'games/millionaire') return <MillionaireGame />;
-    if (page === 'games/racing') return <QuizRacingGame />;
-    if (page.startsWith('games/cam-')) return <CameraGame gameId={page.replace('games/', '')} />;
-    if (page === 'games/mines') return <MinesweeperQuiz />;
 
     if (page === 'admin' && isAdmin(user)) {
       return <AdminPanel />;
@@ -503,28 +469,6 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         {renderPage()}
       </Suspense>
-    );
-  }
-
-  /* ============ AI CHAT — TRANG RIÊNG TOÀN MÀN HÌNH (như ChatGPT) ============ */
-  if (page === 'ai') {
-    return (
-      <ErrorBoundary resetKey={hashTick}>
-        <Suspense fallback={<PageLoader />}>
-          <AIChat onExit={() => { window.location.hash = 'home'; }} />
-        </Suspense>
-      </ErrorBoundary>
-    );
-  }
-
-  /* ============ TEACHER STUDIO — TRANG RIÊNG TOÀN MÀN HÌNH ELEC AI (CHỦ ĐẠO MÀU XANH) ============ */
-  if (page === 'classroom' && (pro.isPro || isAdmin(user))) {
-    return (
-      <ErrorBoundary resetKey={hashTick}>
-        <Suspense fallback={<PageLoader />}>
-          <TeacherDashboard onExit={() => { window.location.hash = 'home'; }} />
-        </Suspense>
-      </ErrorBoundary>
     );
   }
 
@@ -549,6 +493,7 @@ export default function App() {
 
       <PetWidget />
       <ChatWidget />
+      {page === 'home' && <ElecCrew />}
 
       <LiveSessionBanner />
 
