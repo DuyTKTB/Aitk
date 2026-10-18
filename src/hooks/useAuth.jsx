@@ -15,6 +15,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, uploadAvatar as fbUploadAvatar } from '../lib/firebase.js';
+import { supabase } from '../lib/supabase.js';
 import { getTier } from '../lib/tier.js';
 
 const AuthContext = createContext(null);
@@ -59,6 +60,15 @@ export function AuthProvider({ children }) {
       if (!mountedRef.current) return;
 
       if (u) {
+        // Điền email vào Supabase profiles (RLS: tự ghi dòng của mình) — fire-and-forget
+        if (u.email) {
+          supabase
+            .from('profiles')
+            .upsert({ id: u.uid, email: u.email }, { onConflict: 'id' })
+            .then(({ error }) => {
+              if (error) console.warn('[profiles] Điền email lỗi:', error.message);
+            });
+        }
         const enriched = await enrichUser(u);
         if (!mountedRef.current) return;
         setUser(enriched ? { ...enriched } : u);

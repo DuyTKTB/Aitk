@@ -1,0 +1,57 @@
+/* home-features.css — các khối thêm vào Home (import sau home-dashboard.css). Chỉ dùng token. */
+
+/* ---- Vào lớp ---- */
+.db-class form { margin: 0; }
+.db-class-row { display: flex; align-items: center; gap: var(--s-2); padding: .3rem .3rem .3rem var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); color: var(--mut); transition: border-color var(--dur-1), box-shadow var(--dur-1); }
+.db-class-row:focus-within { border-color: var(--acc); box-shadow: var(--ring); }
+.db-class-row svg { flex: none; }
+.db-class-row input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ink); font: var(--fw-reg) var(--fs-sm) var(--sans); padding: .5rem 0; }
+.db-class-row input::placeholder { color: var(--mut); }
+.db-class-err { margin: var(--s-2) 0 0; color: var(--streak); font-size: var(--fs-xs); line-height: 1.45; }
+.db-class-join { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-3); padding: var(--s-3); border-radius: var(--r-md); color: var(--ink); transition: background var(--dur-1); }
+.db-class-join:hover { background: var(--soft); }
+.db-class-join:focus-visible { outline: 0; box-shadow: var(--ring); }
+.db-class-join svg { flex: none; color: var(--acc-soft); }
+.db-class-join span { display: grid; min-width: 0; }
+.db-class-join b { font: var(--fw-med) var(--fs-sm)/1.3 var(--sans); }
+.db-class-join small { color: var(--mut); font-size: var(--fs-xs); }
+
+/* ---- Ôn tập thông minh ---- */
+.db-modes ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.db-modes a { display: grid; gap: 2px; height: 100%; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--ink); background: var(--surface-2); transition: border-color var(--dur-1), transform var(--dur-1); }
+.db-modes a:hover { border-color: var(--acc); transform: translateY(-2px); }
+.db-modes a:focus-visible { outline: 0; box-shadow: var(--ring); }
+.db-modes b { font: var(--fw-med) var(--fs-sm)/1.3 var(--sans); }
+.db-modes small { color: var(--mut); font-size: var(--fs-xs); line-height: 1.4; }
+
+/* ---- Lộ trình ---- */
+.db-tabs { display: flex; gap: var(--s-1); padding: 3px; width: fit-content; max-width: 100%; overflow-x: auto; border-radius: var(--r-pill); background: var(--surface-3); scrollbar-width: none; }
+.db-tabs::-webkit-scrollbar { display: none; }
+.db-tabs button { flex: none; padding: .4rem .9rem; border: 0; border-radius: var(--r-pill); background: none; color: var(--mut); font: var(--fw-med) var(--fs-sm) var(--sans); cursor: pointer; transition: background var(--dur-1), color var(--dur-1); }
+.db-tabs button:hover { color: var(--ink); }
+.db-tabs button.on { background: var(--acc); color: #fff; }
+.db-tabs button:focus-visible { outline: 0; box-shadow: var(--ring); }
+.db-road-goal { margin: var(--s-3) 0; color: var(--mut); font-size: var(--fs-sm); line-height: 1.5; }
+.db-road-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.db-road-topics button { display: flex; align-items: center; gap: var(--s-3); width: 100%; padding: .55rem var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); text-align: left; font: var(--fs-sm)/1.35 var(--sans); cursor: pointer; transition: border-color var(--dur-1), transform var(--dur-1); }
+.db-road-topics button:hover { border-color: var(--acc); transform: translateY(-1px); }
+.db-road-topics button:focus-visible { outline: 0; box-shadow: var(--ring); }
+.db-road-topics .num { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--soft); color: var(--acc-soft); font-size: var(--fs-xs); }
+
+/* ---- Trò chơi + công cụ: chip lưới ---- */
+.db-games ul, .db-tools ul { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.db-games ul { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.db-tools ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.db-games a, .db-tools a { display: block; padding: .6rem var(--s-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font: var(--fw-med) var(--fs-sm)/1.3 var(--sans); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: border-color var(--dur-1), transform var(--dur-1); }
+.db-tools a { text-align: left; }
+.db-games a:hover, .db-tools a:hover { border-color: var(--acc); transform: translateY(-1px); }
+.db-games a:focus-visible, .db-tools a:focus-visible { outline: 0; box-shadow: var(--ring); }
+
+@media (max-width: 640px) {
+  .db-modes ul, .db-road-topics { grid-template-columns: 1fr; }
+  .db-games ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .db-class-row .ui-btn { flex: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .db-modes a, .db-road-topics button, .db-games a, .db-tools a { transition: none; transform: none; }
+}

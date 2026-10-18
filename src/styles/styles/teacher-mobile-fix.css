@@ -1,0 +1,462 @@
+/* ============================================================
+   teacher-mobile-fix.css — Bottom Nav giống Home
+   PHẢI import SAU CÙNG trong TeacherDashboard.jsx
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+  /* ============================================================
+     1. WRAPPER CHÍNH
+     ============================================================ */
+  .t-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  /* ============================================================
+     2. BOTTOM NAV — GIỐNG HOME
+     ============================================================ */
+  .t-rail-sidebar,
+  .t-rail-sidebar.expanded,
+  .t-rail-sidebar:not(.pinned):hover {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100vw !important;
+    height: 64px !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 0 4px !important;
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+    background: var(--t-surface-1, #ffffff) !important;
+    border-top: 1px solid var(--t-border, rgba(0,0,0,0.08)) !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    z-index: 9999 !important;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06) !important;
+    overflow: visible !important;
+    transition: none !important;
+  }
+
+  [data-theme='dark'] .t-rail-sidebar {
+    background: #18181c !important;
+    border-top-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Ẩn logo và footer */
+  .t-rail-logo,
+  .t-rail-logo-text,
+  .t-rail-footer {
+    display: none !important;
+  }
+
+  /* ============================================================
+     3. NAV — ❗ FIX: trước đây ẨN từ nút thứ 6 (mua thời menu chỉ có 5 mục).
+        Giờ menu có 10-11 mục (Mô phỏng, Ngân hàng, Chấm phiếu A4, Xin thi lại,
+        Quản trị) → ẩn là GV MẤT CÁC CHỨC NĂNG NÀY trên mobile.
+        Nay: hiện TẤT CẢ, cuộn ngang, nút cố định chiều rộng. */
+  .t-rail-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .t-rail-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* ❗ BỎ lệnh ẩn cũ — hiện TẤT CẢ các nút */
+  .t-rail-nav .t-rail-btn:nth-child(n+6) {
+    display: flex !important;
+  }
+
+  /* ============================================================
+     4. NÚT NAV — KIỂU HOME
+     ============================================================ */
+  .t-rail-btn,
+  .t-rail-sidebar.expanded .t-rail-btn,
+  .t-rail-sidebar:not(.pinned):hover .t-rail-btn {
+    /* ❗ FIX: flex 1 1 0 + min-width 0 ép 11 nút vào màn hình → mỗi nút 34px
+       không đọc được. Nay: nút cố định 64px, cuộn ngang khi nhiều. */
+    flex: 0 0 auto !important;
+    min-width: 64px !important;
+    max-width: none !important;
+    width: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 6px 2px !important;
+    border-radius: 10px !important;
+    height: 56px !important;
+    text-align: center !important;
+    border: none !important;
+    background: transparent !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: none !important;
+  }
+
+  .t-rail-btn-icon,
+  .t-rail-sidebar.expanded .t-rail-btn-icon {
+    width: 24px !important;
+    height: 24px !important;
+    display: grid !important;
+    place-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .t-rail-btn-icon svg {
+    width: 22px !important;
+    height: 22px !important;
+    stroke-width: 1.8 !important;
+  }
+
+  /* Label — cho phép hiển thị đầy đủ hơn */
+  .t-rail-btn-label,
+  .t-rail-sidebar.expanded .t-rail-btn-label,
+  .t-rail-sidebar:not(.pinned):hover .t-rail-btn-label {
+    display: block !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    font-size: 0.68rem !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    line-height: 1.1 !important;
+    color: var(--t-ink-muted, #666) !important;
+    margin: 0 !important;
+    letter-spacing: -0.01em !important;
+    padding: 0 !important;
+  }
+
+  /* Active state */
+  .t-rail-btn.active,
+  .t-rail-sidebar.expanded .t-rail-btn.active {
+    background: transparent !important;
+    color: var(--t-accent, #0071e3) !important;
+    box-shadow: none !important;
+  }
+
+  .t-rail-btn.active .t-rail-btn-label {
+    color: var(--t-accent, #0071e3) !important;
+    font-weight: 700 !important;
+  }
+
+  .t-rail-btn.active .t-rail-btn-icon {
+    color: var(--t-accent, #0071e3) !important;
+  }
+
+  /* Badge */
+  .t-rail-btn-badge,
+  .t-rail-sidebar.expanded .t-rail-btn-badge {
+    position: absolute !important;
+    top: 2px !important;
+    right: calc(50% - 16px) !important;
+    margin: 0 !important;
+    padding: 0 5px !important;
+    font-size: 0.6rem !important;
+    min-width: 16px !important;
+    height: 16px !important;
+    line-height: 16px !important;
+    border-radius: 999px !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border: 2px solid var(--t-surface-1, #ffffff) !important;
+  }
+
+  [data-theme='dark'] .t-rail-btn-badge {
+    border-color: #18181c !important;
+  }
+
+  /* ============================================================
+     5. MAIN AREA
+     ============================================================ */
+  .t-main-area {
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: 64px !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .t-viewport {
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+    padding-bottom: calc(64px + 12px) !important;
+  }
+
+  /* ============================================================
+     6. TOPBAR
+     ============================================================ */
+  .t-topbar-slim {
+    height: auto !important;
+    min-height: 56px !important;
+    padding: 10px 14px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid var(--t-border, rgba(0,0,0,0.08)) !important;
+  }
+
+  .t-topbar-slim h1 {
+    font-size: 1rem !important;
+  }
+
+  .t-topbar-slim p {
+    font-size: 0.72rem !important;
+  }
+
+  .t-search-pill {
+    min-width: unset !important;
+    flex: 1 !important;
+    min-width: 160px !important;
+  }
+
+  /* ============================================================
+     7. BENTO GRID
+     ============================================================ */
+  .t-bento-12 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .t-col-12, .t-col-8, .t-col-6, .t-col-4, .t-col-3 {
+    grid-column: span 1 !important;
+  }
+
+  /* ============================================================
+     8. CARDS & BUTTONS
+     ============================================================ */
+  .t-bento-card,
+  .vt-card {
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .vt-btn {
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .vt-icon-btn {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* ============================================================
+     9. EXAM LIST
+     ============================================================ */
+  .vt-exam {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .vt-exam-stats {
+    justify-content: space-around !important;
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .vt-exam-actions {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+
+  .vt-exam-actions-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* ============================================================
+     10. MODAL
+     ============================================================ */
+  .vt-modal {
+    width: 96vw !important;
+    max-height: 90dvh !important;
+    margin: 1rem auto !important;
+    border-radius: 16px !important;
+  }
+
+  .vt-modal-body {
+    padding: 16px !important;
+  }
+
+  /* ============================================================
+     11. AI STUDIO
+     ============================================================ */
+  .aes-studio-split {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    grid-template-columns: none !important;
+  }
+
+  .aes-left {
+    flex: 1 !important;
+    min-height: 0 !important;
+    border-right: none !important;
+    width: 100% !important;
+  }
+
+  .aes-resizer {
+    display: none !important;
+  }
+
+  .aes-right {
+    display: none !important;
+  }
+
+  /* ============================================================
+     12. QUESTION BANK
+     ============================================================ */
+  .qb-toolbar {
+    position: static !important;
+  }
+
+  .qb-filter-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  .qb-filter-chips {
+    width: 100% !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+  }
+
+  .qb-filter-chips::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .qb-chip {
+    flex-shrink: 0 !important;
+  }
+
+  /* ============================================================
+     13. PAPER GRADING
+     ============================================================ */
+  .pg-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .pg-head-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .pg-tablewrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .pg-table {
+    min-width: 700px !important;
+  }
+
+  /* ============================================================
+     14. SIMULATOR HUB
+     ============================================================ */
+  .tsh-hero {
+    padding: 16px !important;
+  }
+
+  .tsh-hero-title {
+    font-size: 1.15rem !important;
+  }
+
+  .tsh-modes-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .tsh-exam-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* ============================================================
+     15. TREND CHART
+     ============================================================ */
+  .vt-chart {
+    height: 180px !important;
+    min-height: 180px !important;
+    width: 100% !important;
+  }
+
+  .vt-chart-empty {
+    height: 180px !important;
+    min-height: 180px !important;
+  }
+}
+
+/* ============================================================
+   MÀN HÌNH RẤT NHỎ (dưới 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+  .t-viewport {
+    padding: 8px !important;
+    padding-bottom: calc(64px + 8px) !important;
+  }
+
+  .t-bento-card,
+  .vt-card {
+    padding: 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .vt-btn {
+    font-size: 0.8rem !important;
+    padding: 9px 14px !important;
+  }
+
+  .tsh-modes-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .tsh-exam-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .t-rail-btn-label {
+    font-size: 0.62rem !important;
+  }
+
+  .t-rail-btn-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}

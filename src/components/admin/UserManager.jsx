@@ -4,10 +4,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
-import AdminShell, { Topbar, ConfirmDialog, Avatar, Donut } from './AdminShell.jsx';
+import AdminShell, { Topbar, Avatar, Donut } from './AdminShell.jsx';
+import { ConfirmDialog } from './AdminUI.jsx';
 import {
-  IconUsers, IconSearch, IconRefresh, IconCrown, IconUserCheck,
-  IconEdit, IconShield, IconCheckCircle,
+  IconUsers, IconRefresh,
 } from './AdminIcons.jsx';
 import { ROLES } from './adminConstants.js';
 import { formatDate, friendlyError } from './adminUtils.js';
@@ -189,27 +189,15 @@ export default function UserManager() {
             <div className="vt-hero-chart-head">
               <b>Phân bổ vai trò</b>
             </div>
-            <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', marginTop: '.5rem' }}>
+            <div className="vt-donut-row">
               <Donut value={roleCounts.user} max={Math.max(counts.all, 1)} size={130} stroke={12}>
                 <strong>{counts.all ? Math.round((roleCounts.user / counts.all) * 100) : 0}<sup>%</sup></strong>
                 <small>học sinh</small>
               </Donut>
               <ul className="vt-rank" style={{ flex: 1 }}>
-                <li>
-                  <span className="vt-rank-n">👤</span>
-                  <b>Học sinh</b>
-                  <span className="vt-rank-score">{roleCounts.user}</span>
-                </li>
-                <li>
-                  <span className="vt-rank-n r2">📚</span>
-                  <b>Giáo viên</b>
-                  <span className="vt-rank-score">{roleCounts.teacher}</span>
-                </li>
-                <li>
-                  <span className="vt-rank-n r1">👑</span>
-                  <b>Quản trị</b>
-                  <span className="vt-rank-score">{roleCounts.admin}</span>
-                </li>
+                <li><span className="vt-rank-n">👤</span><b>Học sinh</b><span className="vt-rank-score">{roleCounts.user}</span></li>
+                <li><span className="vt-rank-n r2">📚</span><b>Giáo viên</b><span className="vt-rank-score">{roleCounts.teacher}</span></li>
+                <li><span className="vt-rank-n r1">👑</span><b>Quản trị</b><span className="vt-rank-score">{roleCounts.admin}</span></li>
               </ul>
             </div>
           </div>
@@ -264,13 +252,13 @@ export default function UserManager() {
                   return (
                     <tr key={u.id}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+                        <div className="vt-user-cell">
                           {u.avatar_url ? (
                             <img
                               src={u.avatar_url}
                               alt=""
                               referrerPolicy="no-referrer"
-                              style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+                              className="vt-avatar-img"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : (
@@ -279,9 +267,7 @@ export default function UserManager() {
                           <div style={{ minWidth: 0 }}>
                             <b style={{ display: 'block', fontSize: '.9rem' }}>
                               {u.display_name || 'Chưa đặt tên'}
-                              {isMe && (
-                                <span className="vt-chip" style={{ marginLeft: '.4rem', fontSize: '.62rem' }}>Bạn</span>
-                              )}
+                              {isMe && <span className="vt-chip" style={{ marginLeft: '.4rem', fontSize: '.62rem' }}>Bạn</span>}
                             </b>
                           </div>
                         </div>
@@ -290,20 +276,12 @@ export default function UserManager() {
                         {String(u.id).slice(0, 14)}…
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                        <div className="vt-user-role-cell">
                           <select
                             value={u.role || 'user'}
                             onChange={(e) => changeRole(u, e.target.value)}
                             disabled={isMe || savingId === u.id}
-                            style={{
-                              padding: '.35rem .7rem',
-                              borderRadius: 999,
-                              border: '1px solid var(--soft)',
-                              background: isMe ? 'var(--vt-tint)' : 'var(--bg)',
-                              color: 'var(--ink)',
-                              fontSize: '.82rem',
-                              cursor: isMe ? 'not-allowed' : 'pointer',
-                            }}
+                            className="vt-select-pill"
                           >
                             {ROLES.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                           </select>

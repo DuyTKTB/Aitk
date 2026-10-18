@@ -51,21 +51,12 @@ export default function Dashboard({ onNavigate }) {
         ]);
 
       const [topRes, recentRes, emptyRes] = await Promise.all([
-        supabase
-          .from('exams')
-          .select('id, title, attempt_count, grade:grades(name), subject:subjects(name)')
-          .order('attempt_count', { ascending: false, nullsFirst: false })
-          .limit(5),
-        supabase
-          .from('exams')
-          .select('id, title, attempt_count, created_at, grade:grades(name), subject:subjects(name)')
-          .order('created_at', { ascending: false })
-          .limit(5),
-        supabase
-          .from('exams')
-          .select('id, title, is_published, questions(count)')
-          .eq('is_published', true)
-          .limit(300),
+        supabase.from('exams').select('id, title, attempt_count, grade:grades(name), subject:subjects(name)')
+          .order('attempt_count', { ascending: false, nullsFirst: false }).limit(5),
+        supabase.from('exams').select('id, title, attempt_count, created_at, grade:grades(name), subject:subjects(name)')
+          .order('created_at', { ascending: false }).limit(5),
+        supabase.from('exams').select('id, title, is_published, questions(count)')
+          .eq('is_published', true).limit(300),
       ]);
 
       if (topRes.error && recentRes.error) throw topRes.error;
@@ -83,7 +74,6 @@ export default function Dashboard({ onNavigate }) {
         emptyExams: (emptyRes.data || []).filter((e) => !e.questions?.[0]?.count).slice(0, 5),
       });
 
-      /* ---- load key stats ---- */
       await loadKeyStats();
     } catch (e) {
       console.error(e);
@@ -103,7 +93,6 @@ export default function Dashboard({ onNavigate }) {
       const keys = keysRes.data || [];
       const proUsers = proRes.data || [];
 
-      const now = Date.now();
       const unused = keys.filter((k) => !k.used_by && !k.revoked).length;
       const active = keys.filter((k) => k.used_by && !k.revoked).length;
       const revoked = keys.filter((k) => k.revoked).length;
@@ -115,24 +104,16 @@ export default function Dashboard({ onNavigate }) {
         .sort((a, b) => new Date(a.expiry) - new Date(b.expiry))
         .slice(0, 5);
 
-      // load profiles cho proUsers đang active
       const activeIds = proActive.slice(0, 30).map((u) => u.user_id).filter(Boolean);
       let profilesMap = {};
       if (activeIds.length) {
         const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, display_name, email, avatar_url')
-          .in('id', activeIds);
-        if (profilesData) {
-          profilesMap = Object.fromEntries(profilesData.map((p) => [p.id, p]));
-        }
+          .from('profiles').select('id, display_name, email, avatar_url').in('id', activeIds);
+        if (profilesData) profilesMap = Object.fromEntries(profilesData.map((p) => [p.id, p]));
       }
 
       setKeyStats({
-        total: keys.length,
-        unused,
-        active,
-        revoked,
+        total: keys.length, unused, active, revoked,
         proActive: proActive.length,
         proExpired: proExpired.length,
         soon: soon.map((u) => ({
@@ -194,7 +175,7 @@ export default function Dashboard({ onNavigate }) {
 
       {partial && (
         <div className="vt-card soft" style={{ borderLeft: '4px solid var(--vt-amber)' }}>
-          <p className="vt-muted">
+          <p className="vt-muted" style={{ margin: 0 }}>
             Một số số liệu không tải được (thiếu quyền hoặc bảng chưa có cột <code>created_at</code>).
             Phần còn lại vẫn hiển thị bình thường.
           </p>
@@ -257,31 +238,10 @@ export default function Dashboard({ onNavigate }) {
 
       {/* ===== STATS GRID ===== */}
       <div className="vt-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-        <StatCard
-          Icon={IconExam}
-          label="Đề thi"
-          value={stats.exams}
-          delta={week.exams}
-          onClick={() => onNavigate('exams')}
-        />
-        <StatCard
-          Icon={IconQuestion}
-          label="Câu hỏi"
-          value={stats.questions}
-          delta={week.questions}
-          onClick={() => onNavigate('questions')}
-        />
-        <StatCard
-          Icon={IconKey}
-          label="Key PRO"
-          value={keyStats?.total}
-          sub={`${keyStats?.unused ?? 0} chưa dùng`}
-          onClick={() => onNavigate('keys')}
-        />
-        <StatCard
-          Icon={IconCrown}
-          label="Giáo viên PRO"
-          value={keyStats?.proActive}
+        <StatCard Icon={IconExam} label="Đề thi" value={stats.exams} delta={week.exams} onClick={() => onNavigate('exams')} />
+        <StatCard Icon={IconQuestion} label="Câu hỏi" value={stats.questions} delta={week.questions} onClick={() => onNavigate('questions')} />
+        <StatCard Icon={IconKey} label="Key PRO" value={keyStats?.total} sub={`${keyStats?.unused ?? 0} chưa dùng`} onClick={() => onNavigate('keys')} />
+        <StatCard Icon={IconCrown} label="Giáo viên PRO" value={keyStats?.proActive}
           sub={keyStats?.soon?.length ? `${keyStats.soon.length} sắp hết` : 'tất cả còn hạn'}
           onClick={() => onNavigate('pro-users')}
           danger={keyStats?.soon?.length > 0}
@@ -293,7 +253,7 @@ export default function Dashboard({ onNavigate }) {
         <div className="vt-card" style={{ borderLeft: '4px solid var(--vt-amber)' }}>
           <header className="vt-card-head">
             <h3 className="vt-card-title">
-              <IconHourglass size={16} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              <IconHourglass size={16} className="vt-title-ico" />
               Key sắp hết hạn (≤7 ngày)
             </h3>
             <button type="button" className="vt-link" onClick={() => onNavigate('pro-users')}>
@@ -310,11 +270,7 @@ export default function Dashboard({ onNavigate }) {
                   <b>{u.name}</b>
                   <small>{u.email} · key {u.key_code} · còn <b>{u.left}</b> ngày</small>
                 </div>
-                <button
-                  type="button"
-                  className="vt-btn sm primary"
-                  onClick={() => onNavigate('pro-users')}
-                >
+                <button type="button" className="vt-btn sm primary" onClick={() => onNavigate('pro-users')}>
                   Gia hạn
                 </button>
               </li>
@@ -328,7 +284,7 @@ export default function Dashboard({ onNavigate }) {
         <div className="vt-card soft">
           <header className="vt-card-head">
             <h3 className="vt-card-title">
-              <IconWarning size={16} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              <IconWarning size={16} className="vt-title-ico" style={{ color: 'var(--vt-amber)' }} />
               Đề đang hiện nhưng chưa có câu hỏi
             </h3>
           </header>
@@ -340,11 +296,7 @@ export default function Dashboard({ onNavigate }) {
                   <b>{e.title}</b>
                   <small>Học sinh sẽ thấy đề trống</small>
                 </div>
-                <button
-                  type="button"
-                  className="vt-btn sm"
-                  onClick={() => onNavigate('exams', { editId: e.id })}
-                >
+                <button type="button" className="vt-btn sm" onClick={() => onNavigate('exams', { editId: e.id })}>
                   <IconEdit size={13} /> Thêm câu hỏi
                 </button>
               </li>
@@ -418,43 +370,23 @@ function StatCard({ Icon, label, value, delta, sub, onClick, danger }) {
   return (
     <button
       type="button"
-      className={'vt-card' + (danger ? ' soft' : '')}
+      className={'vt-card vt-stat-card' + (danger ? ' danger' : '')}
       onClick={onClick}
-      style={{
-        textAlign: 'left',
-        display: 'flex',
-        gap: '.9rem',
-        alignItems: 'center',
-        cursor: 'pointer',
-        border: 0,
-        boxShadow: danger ? '0 0 0 2px color-mix(in srgb, var(--vt-red) 45%, transparent)' : undefined,
-      }}
     >
-      <span
-        className="vt-list-ico"
-        style={{
-          width: 46,
-          height: 46,
-          background: danger
-            ? 'linear-gradient(135deg, #f87171, #ef4444)'
-            : 'var(--vt-hero)',
-        }}
-      >
+      <span className={'vt-stat-ico' + (danger ? ' danger' : '')}>
         <Icon size={22} />
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>{label}</small>
-        <div style={{ font: '800 1.4rem var(--sans)', letterSpacing: '-.03em' }}>
+      <div className="vt-stat-body">
+        <small className="vt-stat-label">{label}</small>
+        <div className="vt-stat-value">
           {value == null ? '—' : value.toLocaleString('vi-VN')}
         </div>
         {delta != null && delta > 0 && (
-          <small style={{ color: '#16a34a', fontSize: '.7rem' }}>
-            <IconTrendUp size={11} style={{ verticalAlign: '-1px' }} /> +{delta} trong 7 ngày
+          <small className="vt-stat-delta">
+            <IconTrendUp size={11} /> +{delta} trong 7 ngày
           </small>
         )}
-        {sub && (
-          <small style={{ color: 'var(--mut)', fontSize: '.7rem', display: 'block' }}>{sub}</small>
-        )}
+        {sub && <small className="vt-stat-sub">{sub}</small>}
       </div>
     </button>
   );
@@ -464,7 +396,10 @@ function ExamListPanel({ title, Icon, exams, ranked, onAll }) {
   return (
     <div className="vt-card">
       <header className="vt-card-head">
-        <h3 className="vt-card-title"><Icon size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />{title}</h3>
+        <h3 className="vt-card-title">
+          <Icon size={16} className="vt-title-ico" />
+          {title}
+        </h3>
         <button type="button" className="vt-link" onClick={onAll}>Xem tất cả</button>
       </header>
       {exams.length === 0 ? (

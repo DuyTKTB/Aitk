@@ -142,10 +142,9 @@ import {
   IcoPlay, IcoStop, IcoRefresh, IcoUsers, IcoBook, IcoChart, IcoClock,
   IcoCheckCircle, IcoCopy, IcoTrash, IcoVideo, IcoDot, IcoGrid,
   IcoDownload, IcoChevronRight, IcoAlert, IcoKey, IcoMonitor,
-  IcoBell, IcoLibrary,
+   IcoBell, IcoLibrary,
 } from '../lib/sessionIcons.jsx';
-import '../styles/teacher-ds.css';
-import '../styles/teacher-mobile-fix.css';
+/* 🎨 CSS bây giờ lazy-loaded trong useEffect. */
 
 /* ============================================================
    HELPERS
@@ -247,6 +246,9 @@ function InsightSkeleton() {
    ============================================================ */
 export default function TeacherDashboard({ onExit } = {}) {
   const { user } = useAuth();
+
+
+
   const [section, setSection] = useState('overview');
   const [subTab, setSubTab] = useState('all');
   const [search, setSearch] = useState('');

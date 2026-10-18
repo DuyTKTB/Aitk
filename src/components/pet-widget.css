@@ -1,0 +1,511 @@
+/* ============================================================
+   PetWidget — Apple-style overlay panel
+   File: pet-widget.css
+   Prefix: pet- / petw- / elec-
+   ============================================================ */
+
+/* ── Font shorthand ── */
+:root {
+  --pw-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  --pw-accent: #007aff;
+  --pw-green: #34c759;
+  --pw-orange: #ff9f0a;
+  --pw-red: #ff3b30;
+  --pw-surface: rgba(255, 255, 255, .92);
+  --pw-surface2: rgba(248, 248, 250, 1);
+  --pw-surface3: rgba(118, 118, 128, .1);
+  --pw-border: rgba(0, 0, 0, .09);
+  --pw-ink: #0f0f0f;
+  --pw-ink2: rgba(0, 0, 0, .5);
+  --pw-ink3: rgba(0, 0, 0, .35);
+}
+[data-theme="dark"] {
+  --pw-surface: rgba(30, 30, 36, .94);
+  --pw-surface2: rgba(36, 36, 42, 1);
+  --pw-surface3: rgba(255, 255, 255, .08);
+  --pw-border: rgba(255, 255, 255, .1);
+  --pw-ink: rgba(255, 255, 255, .95);
+  --pw-ink2: rgba(255, 255, 255, .5);
+  --pw-ink3: rgba(255, 255, 255, .3);
+}
+
+/* ── Panel container ── */
+.pet-pane {
+  background: var(--pw-surface) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  border: 1px solid rgba(255,255,255,.55) !important;
+  border-radius: 22px !important;
+  box-shadow:
+    0 28px 64px rgba(0,0,0,.2),
+    0 8px 20px rgba(0,0,0,.1),
+    0 0 0 0.5px rgba(0,0,0,.07) !important;
+  overflow: hidden !important;
+  animation: pw-pop .28s cubic-bezier(.34,1.56,.64,1) !important;
+  font-family: var(--pw-font) !important;
+  color: var(--pw-ink) !important;
+  padding: 0 !important;
+}
+[data-theme="dark"] .pet-pane {
+  border-color: rgba(255,255,255,.12) !important;
+}
+@keyframes pw-pop {
+  from { opacity: 0; transform: translateY(12px) scale(.95); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Header ── */
+.pet-head {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: .85rem 1rem .8rem !important;
+  border-bottom: 1px solid var(--pw-border) !important;
+  background: rgba(255,255,255,.45) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+[data-theme="dark"] .pet-head { background: rgba(36,36,42,.45) !important; }
+
+.pet-head-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: .6rem !important;
+}
+.pet-head-icon {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+  border: none !important;
+  box-shadow: none !important;
+  /* Gradient set dynamically by skinInfo.bg */
+}
+.pet-head-name {
+  margin: 0 !important;
+  font: 700 1rem var(--pw-font) !important;
+  letter-spacing: -.02em !important;
+  color: var(--pw-ink) !important;
+}
+.pet-head-close {
+  display: grid !important;
+  place-items: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(118,118,128,.14) !important;
+  color: var(--pw-ink2) !important;
+  cursor: pointer !important;
+  transition: background .14s, transform .14s !important;
+  box-shadow: none !important;
+}
+.pet-head-close:hover {
+  background: rgba(118,118,128,.24) !important;
+  transform: scale(1.06) !important;
+  color: var(--pw-ink) !important;
+}
+
+/* ── Tabs — iOS-style segmented look ── */
+.pet-tabs {
+  display: flex !important;
+  gap: 0 !important;
+  padding: .5rem .75rem 0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid var(--pw-border) !important;
+}
+.pet-tab {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: .28rem !important;
+  padding: .5rem .3rem !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  border-radius: 0 !important;
+  font: 600 .68rem var(--pw-font) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--pw-ink3) !important;
+  transition: color .15s !important;
+  position: relative !important;
+}
+.pet-tab:hover { color: var(--pw-ink2) !important; background: transparent !important; }
+.pet-tab.on { color: var(--pw-accent) !important; background: transparent !important; }
+.pet-tab.on::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -1px !important;
+  left: 15% !important;
+  right: 15% !important;
+  height: 2.5px !important;
+  background: var(--pw-accent) !important;
+  border-radius: 2px 2px 0 0 !important;
+}
+.pet-tab svg { flex-shrink: 0 !important; }
+
+/* ── Tab body ── */
+.pet-tab-body {
+  padding: .85rem 1rem 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .75rem !important;
+  max-height: calc(70vh - 140px) !important;
+  overflow-y: auto !important;
+}
+.pet-tab-body::-webkit-scrollbar { width: 3px; }
+.pet-tab-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 2px; }
+
+/* ── Name field ── */
+.pet-field { display: flex !important; flex-direction: column !important; gap: .28rem !important; }
+.pet-field-label {
+  font: 600 .62rem var(--pw-font) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  color: var(--pw-ink3) !important;
+}
+.pet-field-input {
+  width: 100% !important;
+  padding: .52rem .85rem !important;
+  border: 1.5px solid var(--pw-border) !important;
+  border-radius: 12px !important;
+  background: var(--pw-surface2) !important;
+  font: 600 .9rem var(--pw-font) !important;
+  color: var(--pw-ink) !important;
+  transition: border-color .15s, box-shadow .15s !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.pet-field-input:focus {
+  border-color: var(--pw-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0,122,255,.15) !important;
+}
+
+/* ── Stat grid ── */
+.pet-stat-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: .45rem !important;
+}
+.pet-stat-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: .18rem !important;
+  padding: .75rem .35rem !important;
+  border: none !important;
+  border-radius: 16px !important;
+  background: var(--pw-surface3) !important;
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), background .12s !important;
+  box-shadow: none !important;
+}
+.pet-stat-card:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  background: rgba(0,122,255,.08) !important;
+}
+.pet-stat-card-icon {
+  display: grid !important;
+  place-items: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 10px !important;
+  margin-bottom: .1rem !important;
+}
+/* Pastel icon backgrounds */
+.pet-stat-icon-fire  { background: rgba(255,59,48,.12) !important; color: #ff3b30 !important; }
+.pet-stat-icon-book  { background: rgba(0,122,255,.12) !important; color: #007aff !important; }
+.pet-stat-icon-apple { background: rgba(52,199,89,.12) !important; color: #34c759 !important; }
+
+.pet-stat-card-num {
+  font: 700 1.4rem var(--pw-font) !important;
+  letter-spacing: -.04em !important;
+  color: var(--pw-ink) !important;
+  line-height: 1 !important;
+}
+.pet-stat-card-label {
+  font: 500 .58rem var(--pw-font) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .06em !important;
+  color: var(--pw-ink3) !important;
+}
+
+/* ── Feed button ── */
+.pet-feed-btn-v2 {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: .45rem !important;
+  width: 100% !important;
+  padding: .7rem 1rem !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, var(--pw-green), #30d158) !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  font: 700 .82rem var(--pw-font) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  box-shadow: 0 2px 10px rgba(52,199,89,.35) !important;
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s !important;
+}
+.pet-feed-btn-v2:hover:not(:disabled) {
+  transform: scale(1.03) !important;
+  box-shadow: 0 4px 16px rgba(52,199,89,.45) !important;
+}
+.pet-feed-btn-v2:active:not(:disabled) { transform: scale(.97) !important; }
+.pet-feed-btn-v2:disabled {
+  background: var(--pw-surface3) !important;
+  color: var(--pw-ink3) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+/* ── Quick link grid ── */
+.pet-quick-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: .4rem !important;
+}
+.pet-quick {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  padding: .65rem .3rem !important;
+  border: none !important;
+  border-radius: 16px !important;
+  background: var(--pw-surface3) !important;
+  color: var(--pw-ink2) !important;
+  cursor: pointer !important;
+  font: 600 .7rem var(--pw-font) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  transition: background .14s, transform .18s cubic-bezier(.34,1.56,.64,1), color .14s !important;
+}
+.pet-quick:hover {
+  background: rgba(0,122,255,.1) !important;
+  color: var(--pw-accent) !important;
+  transform: translateY(-2px) !important;
+}
+.pet-quick svg { width: 18px !important; height: 18px !important; color: var(--pw-accent) !important; }
+
+/* ── Rank card ── */
+.pet-rank-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: .65rem !important;
+  width: 100% !important;
+  padding: .7rem .85rem !important;
+  border: none !important;
+  border-radius: 16px !important;
+  background: rgba(255,159,10,.1) !important;
+  cursor: pointer !important;
+  font-family: var(--pw-font) !important;
+  text-align: left !important;
+  transition: background .14s, transform .15s !important;
+}
+.pet-rank-card:hover { background: rgba(255,159,10,.16) !important; transform: translateY(-1px) !important; }
+.pet-rank-icon {
+  width: 32px !important; height: 32px !important;
+  display: grid !important; place-items: center !important;
+  border-radius: 10px !important;
+  background: rgba(255,159,10,.18) !important;
+  color: var(--pw-orange) !important;
+  flex-shrink: 0 !important;
+}
+.pet-rank-text {
+  flex: 1 !important; min-width: 0 !important;
+  display: flex !important; flex-direction: column !important; gap: .08rem !important;
+}
+.pet-rank-text b { font: 700 .82rem var(--pw-font) !important; color: var(--pw-ink) !important; }
+.pet-rank-text small { font: 500 .68rem var(--pw-font) !important; color: var(--pw-ink2) !important; }
+.pet-rank-go { font: 600 .68rem var(--pw-font) !important; color: var(--pw-accent) !important; flex-shrink: 0 !important; }
+
+/* ── Progress ── */
+.pet-progress-block {
+  padding: .75rem .9rem !important;
+  border: none !important;
+  border-radius: 16px !important;
+  background: var(--pw-surface3) !important;
+}
+.pet-progress-head {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: .5rem !important;
+}
+.pet-progress-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .28rem !important;
+  font: 600 .63rem var(--pw-font) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .07em !important;
+  color: var(--pw-ink3) !important;
+}
+.pet-progress-value {
+  font: 700 .8rem var(--pw-font) !important;
+  letter-spacing: -.01em !important;
+  color: var(--pw-ink) !important;
+}
+.pet-progress-bar {
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: rgba(118,118,128,.15) !important;
+  overflow: hidden !important;
+}
+.pet-progress-bar i {
+  display: block !important;
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, var(--pw-accent), #5856d6) !important;
+  transition: width .6s cubic-bezier(.4,0,.2,1) !important;
+  font-style: normal !important;
+}
+.pet-progress-hint {
+  margin-top: .4rem !important;
+  font: 500 .65rem var(--pw-font) !important;
+  color: var(--pw-ink3) !important;
+}
+
+/* ── Chat tab ── */
+.pet-chat {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .5rem !important;
+  min-height: 180px !important;
+}
+.pet-chat-msgs {
+  flex: 1 !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .35rem !important;
+  padding: .35rem .15rem !important;
+}
+.pet-chat-msgs::-webkit-scrollbar { width: 3px; }
+.pet-chat-msgs::-webkit-scrollbar-thumb { background: rgba(0,0,0,.1); border-radius: 2px; }
+
+.pet-chat-msg {
+  max-width: 85% !important;
+  padding: .48rem .78rem !important;
+  font: 400 .82rem var(--pw-font) !important;
+  line-height: 1.42 !important;
+  border-radius: 16px !important;
+  animation: pw-msg-in .22s cubic-bezier(.34,1.56,.64,1) !important;
+}
+@keyframes pw-msg-in { from { opacity: 0; transform: scale(.9) translateY(4px); } }
+
+.pet-chat-user {
+  align-self: flex-end !important;
+  background: var(--pw-accent) !important;
+  color: #fff !important;
+  border-radius: 16px 16px 4px 16px !important;
+}
+.pet-chat-pet {
+  align-self: flex-start !important;
+  background: var(--pw-surface3) !important;
+  color: var(--pw-ink) !important;
+  border-radius: 16px 16px 16px 4px !important;
+}
+
+.pet-chat-suggest {
+  display: flex !important;
+  gap: .28rem !important;
+  flex-wrap: wrap !important;
+}
+.pet-chat-chip {
+  padding: .3rem .7rem !important;
+  background: var(--pw-surface3) !important;
+  border: none !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  font: 500 .72rem var(--pw-font) !important;
+  color: var(--pw-ink2) !important;
+  transition: background .12s, color .12s !important;
+}
+.pet-chat-chip:hover {
+  background: rgba(0,122,255,.12) !important;
+  color: var(--pw-accent) !important;
+}
+
+.pet-chat-form {
+  display: flex !important;
+  gap: .4rem !important;
+}
+.pet-chat-form input {
+  flex: 1 !important;
+  font: 400 .82rem var(--pw-font) !important;
+  padding: .48rem .85rem !important;
+  border: 1.5px solid var(--pw-border) !important;
+  border-radius: 999px !important;
+  background: var(--pw-surface2) !important;
+  color: var(--pw-ink) !important;
+  outline: none !important;
+  transition: border-color .15s, box-shadow .15s !important;
+}
+.pet-chat-form input:focus {
+  border-color: var(--pw-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0,122,255,.15) !important;
+}
+/* Override "btn primary sm" for send button inside pet-chat-form */
+.pet-chat-form .btn.primary.sm {
+  padding: .46rem .9rem !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, var(--pw-accent), #5856d6) !important;
+  color: #fff !important;
+  font: 600 .76rem var(--pw-font) !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 8px rgba(0,122,255,.3) !important;
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+.pet-chat-form .btn.primary.sm:hover { transform: scale(1.06) !important; }
+
+/* ── Memories tab ── */
+.pet-memories {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: .45rem !important;
+}
+.pet-memory {
+  display: flex !important;
+  align-items: center !important;
+  gap: .7rem !important;
+  padding: .65rem .85rem !important;
+  background: var(--pw-surface3) !important;
+  border-radius: 14px !important;
+  transition: background .12s !important;
+}
+.pet-memory:hover { background: rgba(0,122,255,.08) !important; }
+.pet-memory-icon {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 10px !important;
+  background: rgba(0,122,255,.1) !important;
+  color: var(--pw-accent) !important;
+  flex-shrink: 0 !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+}
+.pet-memory > div {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .08rem !important;
+  min-width: 0 !important;
+}
+.pet-memory b { font: 600 .82rem var(--pw-font) !important; color: var(--pw-ink) !important; }
+.pet-memory small { font: 500 .7rem var(--pw-font) !important; color: var(--pw-ink2) !important; }
+
+/* ── Compact variant overrides ── */
+.pet-tab-body-compact { padding: .75rem .9rem .9rem !important; gap: .65rem !important; }
+.pet-chat-compact { padding: .65rem .9rem .75rem !important; }
+.pet-memories-compact { padding: .65rem .9rem .75rem !important; gap: .35rem !important; }

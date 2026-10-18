@@ -1,9 +1,5 @@
 /* ============================================================
    ProUserManager.jsx — Danh sách giáo viên PRO
-   ------------------------------------------------------------
-   • Hiển thị: tên, email, key, ngày hết hạn, số ngày còn lại
-   • Filter: tất cả / còn hạn / sắp hết (≤7 ngày) / đã hết
-   • Actions: gia hạn (+7/+30/+90/+180), thu hồi, export CSV
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
@@ -14,13 +10,10 @@ import {
   isProActive,
   daysLeft,
 } from '../../lib/proKeyApi.js';
-import AdminShell, {
-  Topbar, Modal, ConfirmDialog, Avatar, Donut,
-  downloadCsv,
-} from './AdminShell.jsx';
+import AdminShell, { Topbar, Avatar, Donut, downloadCsv } from './AdminShell.jsx';
+import { Modal, ConfirmDialog } from './AdminUI.jsx';
 import {
-  IconCrown, IconTrash, IconRefresh, IconExtend, IconCalendar,
-  IconHourglass, IconUserCheck, IconSearch,
+  IconCrown, IconTrash, IconRefresh, IconExtend, IconHourglass, IconUserCheck,
 } from './AdminIcons.jsx';
 
 const EXTEND_OPTIONS = [7, 30, 90, 180, 365];
@@ -43,7 +36,7 @@ export default function ProUserManager() {
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [rows, setRows] = useState([]);
-  const [profiles, setProfiles] = useState({}); // uid → profile
+  const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [extendTarget, setExtendTarget] = useState(null);
@@ -57,17 +50,14 @@ export default function ProUserManager() {
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  /* ---------- LOAD ---------- */
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const list = await adminGetProUsers();
       setRows(list);
 
-      // load profiles cho các user
       const ids = [...new Set(list.map((r) => r.user_id).filter(Boolean))];
       if (ids.length) {
-        // chia batch 100 để tránh giới hạn
         const chunks = [];
         for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
         const allProfiles = {};
@@ -91,7 +81,6 @@ export default function ProUserManager() {
 
   useEffect(() => { load(); }, [load]);
 
-  /* ---------- DERIVED ---------- */
   const enriched = useMemo(() => {
     return rows.map((r) => {
       const p = profiles[r.user_id] || {};
@@ -144,7 +133,6 @@ export default function ProUserManager() {
     expired: stats.expired,
   }), [stats]);
 
-  /* ---------- ACTIONS ---------- */
   const handleExtend = (row, days) => {
     setExtendTarget({ row, days });
   };
@@ -201,7 +189,6 @@ export default function ProUserManager() {
     say('Đã xuất ' + filtered.length + ' dòng');
   };
 
-  /* ---------- RENDER ---------- */
   const tabs = STATUS_TABS.map((t) => ({ ...t, count: tabCounts[t.key] || 0 }));
 
   const badges = {
@@ -246,7 +233,7 @@ export default function ProUserManager() {
             <div className="vt-hero-chart-head">
               <b>Tổng quan</b>
             </div>
-            <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', marginTop: '.5rem' }}>
+            <div className="vt-donut-row">
               <Donut value={stats.active} max={Math.max(stats.total, 1)} size={130} stroke={12}>
                 <strong>{stats.total ? Math.round((stats.active / stats.total) * 100) : 0}<sup>%</sup></strong>
                 <small>còn hạn</small>
@@ -264,7 +251,10 @@ export default function ProUserManager() {
       {/* ===== LIST ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
-          <h3 className="vt-card-title">Danh sách ({filtered.length})</h3>
+          <h3 className="vt-card-title">
+            <IconCrown size={16} className="vt-title-ico" />
+            Danh sách ({filtered.length})
+          </h3>
           <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
             <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
           </button>
@@ -292,7 +282,7 @@ export default function ProUserManager() {
                 {filtered.map((r) => (
                   <tr key={r.user_id}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+                      <div className="vt-user-cell">
                         <Avatar name={r.name} size={34} />
                         <div style={{ minWidth: 0 }}>
                           <b style={{ display: 'block', fontSize: '.9rem' }}>{r.name}</b>
@@ -301,7 +291,7 @@ export default function ProUserManager() {
                       </div>
                     </td>
                     <td>
-                      <code style={{ fontSize: '.82rem' }}>{r.key_code || '—'}</code>
+                      <code className="vt-key-code">{r.key_code || '—'}</code>
                     </td>
                     <td>
                       <div style={{ fontSize: '.85rem' }}>{fmtDate(r.expiry)}</div>
@@ -317,7 +307,7 @@ export default function ProUserManager() {
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                      <div className="vt-row-actions">
                         <button
                           type="button"
                           className="vt-icon-btn"
@@ -344,7 +334,6 @@ export default function ProUserManager() {
         )}
       </div>
 
-      {/* ===== MODAL GIA HẠN ===== */}
       {extendTarget && (
         <Modal
           title={`Gia hạn cho ${extendTarget.row.name}`}
@@ -390,7 +379,6 @@ export default function ProUserManager() {
         </Modal>
       )}
 
-      {/* ===== CONFIRM ===== */}
       <ConfirmDialog
         open={!!confirm}
         title={confirm?.title}

@@ -1,0 +1,221 @@
+/* ============================================================
+   TOOLS HEADER + MENU BUTTON + BOTTOM SHEET
+   ============================================================ */
+
+/* ============ 1. HEADER ROW — h1 + nút Menu ============ */
+.tools-page .tools-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tools-page .tools-header-row h1 {
+  margin: 0;
+}
+
+/* ============ 2. NÚT MENU — chỉ hiện trên mobile ============ */
+.tools-page .tools-menu-btn {
+  display: none;
+  align-items: center;
+  gap: .45rem;
+  padding: .55rem 1rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--acc);
+  color: var(--acc-ink);
+  cursor: pointer;
+  font: 700 .78rem var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform .15s var(--ease), box-shadow .15s var(--ease);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tools-page .tools-menu-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.tools-page .tools-menu-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+/* ============ 3. BOTTOM SHEET — ẩn mặc định ============ */
+.ss-backdrop,
+.ss-sheet {
+  display: none;
+}
+
+/* ============ 4. MOBILE — hiện nút Menu + sheet ============ */
+@media (max-width: 720px) {
+  .tools-page .tools-menu-btn {
+    display: inline-flex;
+  }
+
+  /* Backdrop */
+  .ss-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: rgba(0, 0, 0, .55);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    animation: ss-fade-in .2s ease;
+  }
+
+  @keyframes ss-fade-in {
+    from { opacity: 0; }
+  }
+
+  /* Bottom Sheet */
+  .ss-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99999;
+
+    max-height: 80dvh;
+
+    background: var(--bg);
+    border-top: 2px solid var(--ink);
+    border-radius: 24px 24px 0 0;
+
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, .25);
+    animation: ss-slide-up .3s var(--ease);
+    overflow: hidden;
+  }
+
+  @keyframes ss-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* Thanh grabber */
+  .ss-grabber {
+    width: 44px;
+    height: 5px;
+    margin: 10px auto 0;
+    border-radius: 999px;
+    background: var(--soft);
+    flex-shrink: 0;
+  }
+
+  /* Header sheet */
+  .ss-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px 14px;
+    border-bottom: 1.5px solid var(--ink);
+    flex-shrink: 0;
+  }
+
+  .ss-head h2 {
+    margin: 0;
+    font: 700 1.05rem var(--sans);
+    letter-spacing: -.02em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .ss-close {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--soft);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .ss-close:active {
+    background: var(--acc);
+    color: var(--acc-ink);
+  }
+
+  /* Danh sách 13 mục — 2 cột */
+  .ss-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mỗi mục */
+  .ss-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+
+    border: 1.5px solid var(--soft);
+    border-radius: 14px;
+    background: var(--bg);
+    color: var(--ink);
+
+    text-decoration: none;
+    transition: all .18s var(--ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ss-item:active {
+    background: var(--soft);
+    transform: scale(.97);
+    border-color: var(--ink);
+  }
+
+  .ss-item-ico {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--soft);
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+
+  .ss-item-name {
+    font: 600 .8rem var(--sans);
+    letter-spacing: -.01em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ============ 5. CỰC NHỎ — 1 cột ============ */
+@media (max-width: 380px) {
+  .ss-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============ 6. GIẢM CHUYỂN ĐỘNG ============ */
+@media (prefers-reduced-motion: reduce) {
+  .ss-sheet,
+  .ss-backdrop {
+    animation: none !important;
+  }
+  .tools-page .tools-menu-btn {
+    transition: none !important;
+  }
+}

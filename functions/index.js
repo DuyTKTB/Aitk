@@ -4,6 +4,11 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const db = admin.firestore();
 
+// 🤖 Import AI Proxy functions
+const aiProxy = require('./aiProxy');
+exports.askAI = aiProxy.askAI;
+exports.askAIBatch = aiProxy.askAIBatch;
+
 /* ============================================================
    CẤU HÌNH
    ============================================================ */
@@ -98,6 +103,27 @@ exports.elecaiWebhook = functions.https.onRequest(async (req, res) => {
   } catch (error) {
     console.error('[Webhook] Lỗi:', error);
     return res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+/* ============================================================
+   AUTH onCreate — Gán claim role:'authenticated' cho user mới.
+   Bắt buộc cho Supabase Third-Party Auth + RLS: JWT Firebase mặc định
+   không có claim role → Supabase coi là 'anon' → policy RLS chặn hết.
+   (docs: supabase.com/docs/guides/auth/third-party/firebase-auth)
+   Lưu ý: onCreate chạy bất đồng bộ — client phải force-refresh token
+   ngay sau đăng ký (useAuth đã làm qua enrichUser + supabaseAuth).
+   ============================================================ */
+exports.processSignUp = functions.auth.user().onCreate(async (user) => {
+  try {
+    const existing = await admin.auth().getUser(user.uid);
+    await admin.auth().setCustomUserClaims(user.uid, {
+      ...existing.customClaims,
+      role: 'authenticated',
+    });
+    console.log('[Auth] Đã gán role authenticated cho:', user.uid);
+  } catch (error) {
+    console.error('[Auth] Gán role thất bại:', user.uid, error);
   }
 });
 

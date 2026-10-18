@@ -1,0 +1,361 @@
+/* ============================================================
+   ai-intelligence.css — giao diện cho lớp AI nâng cấp
+   (chọn chế độ học, trích dẫn nguồn nội bộ, badge tự kiểm tra)
+   ============================================================ */
+
+/* ---- Chọn chế độ trả lời (trong header AIChat) ----
+   Trước đây là <select> mặc định của trình duyệt: viền xám + mũi tên xám, lệch hẳn với
+   các chip bo tròn cạnh nó. Giờ: bỏ giao diện gốc, dùng mũi tên SVG cùng tông. */
+.ds-mode-select {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 11.5rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 2rem 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 179, 255, 0.28);
+  background-color: rgba(10, 18, 48, 0.55);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237db3ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 0.95rem;
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.ds-mode-select:hover,
+.ds-mode-select:focus-visible {
+  border-color: rgba(125, 179, 255, 0.6);
+  background-color: rgba(20, 34, 78, 0.7);
+}
+
+html[data-theme='light'] .ds-mode-select {
+  border-color: rgba(47, 107, 255, 0.25);
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232f6bff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  color: #1a2547;
+}
+
+/* ---- Chip gợi ý câu hỏi trong màn hình trống ---- */
+.ds-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  max-width: 46rem;
+  margin: 1.1rem auto 0;
+}
+
+.ds-suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 179, 255, 0.26);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cfdcf7;
+  font-size: 0.8rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.ds-suggest-chip:hover,
+.ds-suggest-chip:focus-visible {
+  border-color: rgba(125, 179, 255, 0.6);
+  background: rgba(125, 179, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.ds-suggest-chip svg {
+  color: #7db3ff;
+  flex-shrink: 0;
+}
+
+.ds-suggest-refresh {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(125, 179, 255, 0.32);
+  background: transparent;
+  color: #9dc0ff;
+  cursor: pointer;
+}
+
+html[data-theme='light'] .ds-suggest-chip {
+  background: #fff;
+  border-color: rgba(47, 107, 255, 0.22);
+  color: #253356;
+}
+
+html[data-theme='light'] .ds-suggest-chip svg {
+  color: #2f6bff;
+}
+
+/* ---- Hàng chip chế độ (dùng khi hiển thị dạng nút thay vì select) ---- */
+.ds-mode {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ds-mode-btn {
+  border: 1px solid rgba(125, 179, 255, 0.22);
+  background: rgba(10, 18, 48, 0.45);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.ds-mode-btn:hover {
+  border-color: rgba(125, 179, 255, 0.5);
+}
+
+.ds-mode-btn.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(47, 107, 255, 0.35);
+}
+
+/* ============================================================
+   BỐ CỤC & SIDEBAR
+   ============================================================ */
+
+/* 1. Một cột nội dung duy nhất: ô nhập khớp với header/nội dung (900px).
+      Cần !important vì lớp Apple cũ (nay nằm trong aichat.css) đặt 860px !important. */
+.ds-input-inner {
+  max-width: 900px !important;
+}
+
+/* 2. Màn hình trống: căn giữa theo chiều dọc thay vì dồn lên trên */
+.ds-main-empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding-bottom: 90px !important;
+}
+
+.ds-main-empty .ds-empty {
+  padding-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* 3. Nút X của sidebar: ở desktop sidebar luôn hiện nên X này KHÔNG có tác dụng
+      (nút chết) → ẩn; chỉ giữ ở mobile khi sidebar là ngăn kéo. */
+@media (min-width: 901px) {
+  .ds-sidebar-close {
+    display: none !important;
+  }
+}
+
+/* 4. Thư mục lịch sử: đổi từ "card to" sang hàng gọn 2 dòng
+      (dòng 1: icon + tên + số lượng, dòng 2: preview 1 dòng nếu có) */
+.ds-folder-grid {
+  gap: 0.3rem !important;
+}
+
+.ds-folder {
+  display: grid !important;
+  grid-template-columns: 22px 1fr auto !important;
+  grid-template-areas: 'icon name count' 'icon prev prev' !important;
+  align-items: center !important;
+  gap: 0 0.6rem !important;
+  padding: 0.55rem 0.6rem !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.ds-folder:hover {
+  background: rgba(125, 179, 255, 0.09) !important;
+  border-color: rgba(125, 179, 255, 0.22) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.ds-folder:hover::before,
+.ds-folder::before {
+  opacity: 0 !important;
+}
+
+.ds-folder-icon {
+  grid-area: icon;
+  margin-bottom: 0 !important;
+  flex-shrink: 0;
+}
+
+.ds-folder-name {
+  grid-area: name;
+  margin-bottom: 0 !important;
+  font-size: 0.85rem !important;
+  line-height: 1.25;
+}
+
+.ds-folder-count {
+  grid-area: count;
+  margin-bottom: 0 !important;
+  font-size: 0.72rem !important;
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+.ds-folder-preview {
+  grid-area: prev;
+  margin-top: 0.15rem !important;
+  font-size: 0.72rem !important;
+  opacity: 0.75;
+}
+
+.ds-folder-preview span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+html[data-theme='light'] .ds-folder:hover {
+  background: rgba(47, 107, 255, 0.06) !important;
+  border-color: rgba(47, 107, 255, 0.18) !important;
+}
+
+/* ---- Icon nhóm lịch sử giờ là SVG (trước đây là emoji cỡ font) ---- */
+.ds-folder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7db3ff;
+}
+
+.ds-folder-icon svg {
+  display: block;
+}
+
+html[data-theme='light'] .ds-folder-icon {
+  color: #2f6bff;
+}
+
+/* ---- Meta của câu trả lời: công cụ / thẩm định / trích dẫn ---- */
+.ds-ai-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.ds-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(125, 179, 255, 0.12);
+  border: 1px solid rgba(125, 179, 255, 0.28);
+  color: #9dc0ff;
+  cursor: help;
+}
+
+.ds-ai-badge.ok {
+  background: rgba(46, 158, 91, 0.14);
+  border-color: rgba(46, 158, 91, 0.4);
+  color: #6fd39a;
+}
+
+.ds-ai-badge.warn {
+  background: rgba(255, 176, 32, 0.14);
+  border-color: rgba(255, 176, 32, 0.4);
+  color: #ffcc70;
+}
+
+.ds-ai-cite {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(125, 179, 255, 0.3);
+  color: #b9c8e8;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Sáng (light theme) ---- */
+html[data-theme='light'] .ds-mode-select,
+html[data-theme='light'] .ds-mode-btn {
+  background: #fff;
+  border-color: rgba(47, 107, 255, 0.25);
+  color: #1a2547;
+}
+
+html[data-theme='light'] .ds-ai-badge {
+  background: rgba(47, 107, 255, 0.08);
+  color: #2f5fd0;
+}
+
+html[data-theme='light'] .ds-ai-cite {
+  background: rgba(47, 107, 255, 0.05);
+  color: #46577f;
+}
+
+/* ---- Mobile: gọn lại ---- */
+@media (max-width: 720px) {
+  .ds-mode-select {
+    max-width: 8.5rem;
+    min-height: 2.5rem;
+    font-size: 0.72rem;
+  }
+
+  .ds-ai-cite {
+    max-width: 12rem;
+  }
+
+  .ds-suggest {
+    gap: 0.4rem;
+  }
+}
+
+/* Thiết bị cảm ứng: nút chính phải đủ 44px để bấm chính xác */
+@media (pointer: coarse) {
+  .ds-send {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .ds-suggest-chip {
+    min-height: 44px;
+    padding-block: 0.6rem;
+  }
+
+  .ds-suggest-refresh {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-mode-select,
+  .ds-mode-btn {
+    transition: none;
+  }
+}

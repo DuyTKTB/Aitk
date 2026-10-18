@@ -1,0 +1,216 @@
+/* ============================================================
+   landing-faq-fix.css — Fix bố cục FAQ
+   ============================================================ */
+
+/* ============ FAQ SECTION ============ */
+.lp-faq {
+  display: grid;
+  gap: 16px;
+  padding: 20px 0;
+}
+
+.lp-faq-title {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--txt);
+}
+
+/* ============ FAQ ITEMS LAYOUT ============ */
+.lp-faq-items {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.lp-faq-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.lp-faq-item:hover {
+  border-color: var(--acc);
+  box-shadow: 0 4px 12px rgba(79, 125, 255, 0.1);
+}
+
+.lp-faq-item.open {
+  border-color: var(--acc);
+  box-shadow: 0 4px 16px rgba(79, 125, 255, 0.15);
+}
+
+/* ============ FAQ QUESTION ============ */
+.lp-faq-q {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.lp-faq-q:hover {
+  background: var(--bg);
+}
+
+.lp-faq-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.lp-faq-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lp-faq-cat {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--acc);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lp-faq-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--txt);
+  line-height: 1.4;
+}
+
+.lp-faq-toggle {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mut);
+  transition: all 0.3s ease;
+  margin-top: 2px;
+}
+
+.lp-faq-item.open .lp-faq-toggle {
+  transform: rotate(180deg);
+  color: var(--acc);
+}
+
+/* ============ FAQ ANSWER ============ */
+.lp-faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.lp-faq-item.open .lp-faq-a {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.lp-faq-a-inner {
+  padding: 12px;
+  font-size: 0.9rem;
+  color: var(--mut);
+  line-height: 1.6;
+}
+
+/* ============ FAQ RESPONSIVE ============ */
+@media (max-width: 768px) {
+  .lp-faq-items {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-faq-title {
+    font-size: 1.5rem;
+  }
+
+  .lp-faq-q {
+    padding: 12px;
+  }
+
+  .lp-faq-a-inner {
+    padding: 12px;
+  }
+}
+
+/* ============ FAQ CATEGORIES ============ */
+.lp-faq-filter {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.lp-faq-filter-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--txt);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.lp-faq-filter-btn:hover {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+.lp-faq-filter-btn.active {
+  background: var(--acc);
+  color: #fff;
+  border-color: var(--acc);
+}
+
+/* ============ ANIMATIONS ============ */
+.lp-faq-item.in {
+  animation: faq-fade-in 0.4s ease-out forwards;
+}
+
+@keyframes faq-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============ SCROLLBAR ============ */
+.lp-faq-a::-webkit-scrollbar {
+  width: 4px;
+}
+
+.lp-faq-a::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.lp-faq-a::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 2px;
+}
+
+.lp-faq-a::-webkit-scrollbar-thumb:hover {
+  background: var(--acc);
+}

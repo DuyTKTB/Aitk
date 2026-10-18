@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useSettings } from '../../contexts/SettingsContext.jsx';
-import AdminShell, { Topbar, Modal, ConfirmDialog } from './AdminShell.jsx';
+import AdminShell, { Topbar } from './AdminShell.jsx';
+import { ConfirmDialog } from './AdminUI.jsx';
 import {
   IconSettings, IconTrash, IconSave, IconRefresh, IconDownload, IconUpload,
   IconDatabase, IconShield, IconWarning, IconInfo, IconCheck,
 } from './AdminIcons.jsx';
 import { chunk, downloadFile, fetchAllRows, friendlyError } from './adminUtils.js';
 
-/* Bảng được sao lưu. profiles chỉ để lưu trữ — KHÔNG BAO GIỜ bị xóa/ghi đè khi khôi phục. */
 const BACKUP_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers', 'profiles'];
 const RESTORE_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers'];
 const DELETE_ORDER = ['answers', 'questions', 'exams', 'topics'];
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const [busy, setBusy] = useState(null); // 'backup' | 'restore' | 'attempts' | 'exams'
+  const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState('');
   const [restoreMode, setRestoreMode] = useState('merge');
   const fileRef = useRef(null);
@@ -59,7 +59,6 @@ export default function SettingsPage() {
   };
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  /* ============ CẤU HÌNH ============ */
   const handleSave = async () => {
     if (!form.siteName.trim()) return say('Tên website không được để trống.');
     if (form.maintenanceMode && !initial.maintenanceMode) {
@@ -96,7 +95,6 @@ export default function SettingsPage() {
     });
   };
 
-  /* ============ SAO LƯU ============ */
   const buildBackup = async () => {
     const tables = {};
     const warnings = [];
@@ -132,7 +130,6 @@ export default function SettingsPage() {
     }
   };
 
-  /* ============ KHÔI PHỤC ============ */
   const readBackupFile = async (file) => {
     if (file.size > 100 * 1024 * 1024) throw new Error('File quá lớn (tối đa 100 MB).');
     let json;
@@ -212,7 +209,6 @@ export default function SettingsPage() {
     }
   };
 
-  /* ============ VÙNG NGUY HIỂM ============ */
   const deleteAttempts = () => {
     setConfirm({
       title: 'Xóa tất cả lượt làm bài',
@@ -268,10 +264,12 @@ export default function SettingsPage() {
         subtitle="Tên website, bật/tắt tính năng, sao lưu và khôi phục"
       />
 
-      {/* ===== THÔNG TIN WEBSITE ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
-          <h3 className="vt-card-title">Thông tin website</h3>
+          <h3 className="vt-card-title">
+            <IconSettings size={16} className="vt-title-ico" />
+            Thông tin website
+          </h3>
         </header>
         <div style={{ display: 'grid', gap: '1rem' }}>
           <label className="vt-field">
@@ -295,7 +293,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ===== BẬT/TẮT TÍNH NĂNG ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
           <h3 className="vt-card-title">Bật / tắt tính năng</h3>
@@ -315,10 +312,7 @@ export default function SettingsPage() {
         </div>
 
         {form.maintenanceMode && (
-          <div
-            className="vt-card soft"
-            style={{ marginTop: '1rem', borderLeft: '4px solid var(--vt-amber)' }}
-          >
+          <div className="vt-card soft" style={{ marginTop: '1rem', borderLeft: '4px solid var(--vt-amber)' }}>
             <p className="vt-muted" style={{ margin: 0 }}>
               Chế độ bảo trì đang được bật: học sinh sẽ thấy trang bảo trì thay vì web.
             </p>
@@ -342,10 +336,12 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* ===== SAO LƯU / KHÔI PHỤC ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
-          <h3 className="vt-card-title">Sao lưu và khôi phục</h3>
+          <h3 className="vt-card-title">
+            <IconDatabase size={16} className="vt-title-ico" />
+            Sao lưu và khôi phục
+          </h3>
         </header>
 
         <p className="vt-muted" style={{ marginTop: 0 }}>
@@ -388,11 +384,10 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* ===== VÙNG NGUY HIỂM ===== */}
       <div className="vt-card" style={{ borderLeft: '4px solid var(--vt-red)' }}>
         <header className="vt-card-head">
           <h3 className="vt-card-title">
-            <IconWarning size={16} style={{ verticalAlign: '-2px', marginRight: 6, color: 'var(--vt-red)' }} />
+            <IconWarning size={16} className="vt-title-ico" style={{ color: 'var(--vt-red)' }} />
             Vùng nguy hiểm
           </h3>
         </header>
@@ -409,7 +404,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ===== CONFIRM ===== */}
       <ConfirmDialog
         open={!!confirm}
         title={confirm?.title}
@@ -499,9 +493,7 @@ function RestoreModeCard({ active, onSelect, title, desc, danger }) {
         alignItems: 'flex-start',
         padding: '.9rem 1rem',
         borderRadius: 14,
-        border: active
-          ? `2px solid ${danger ? 'var(--vt-red)' : 'var(--acc)'}`
-          : '2px solid transparent',
+        border: active ? `2px solid ${danger ? 'var(--vt-red)' : 'var(--acc)'}` : '2px solid transparent',
         background: active
           ? `color-mix(in srgb, ${danger ? 'var(--vt-red)' : 'var(--acc)'} 8%, var(--vt-tint))`
           : 'var(--vt-tint)',

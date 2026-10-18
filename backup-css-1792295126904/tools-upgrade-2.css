@@ -1,0 +1,261 @@
+/* ============================================================
+   tools-upgrade-2.css — Tinh chỉnh chi tiết
+   Màu theo môn + icon mới + fix pet + badge đẹp hơn
+   Đặt SAU tools-upgrade.css trong main.jsx
+   ============================================================ */
+
+/* ============ 1. DẢI MÀU TRÊN THẺ THEO MÔN ============ */
+
+/* Mặc định — nếu không match môn nào */
+.tools-page .tn-card {
+  --card-tint: var(--acc);
+}
+
+/* Toán */
+.tools-page .tn-card:has(.tn-meta span:nth-child(2):is([class]:contains("Toán"))) {
+  --card-tint: var(--transition);
+}
+
+/* Vì CSS không có :contains, dùng data-attr — JS sẽ gắn. Fallback: hover sáng lên */
+.tools-page .tn-card:hover {
+  --card-tint: var(--acc);
+}
+
+/* ============ 2. ICON Ô VUÔNG — TO HƠN, SẮC NÉT HƠN ============ */
+.tools-page .tn-ico {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  border: 1.5px solid var(--ink) !important;
+  box-shadow: 2px 2px 0 var(--ink) !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #111 !important;
+  transition: transform .25s var(--ease), box-shadow .25s var(--ease) !important;
+}
+
+.tools-page .tn-card:hover .tn-ico {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 4px 4px 0 var(--ink) !important;
+}
+
+.tools-page .tn-ico svg {
+  width: 26px !important;
+  height: 26px !important;
+  color: #111 !important;
+}
+
+/* ============ 3. BADGE "HOT" / "NEW" — VIÊN THUỐC ĐẸP ============ */
+.tools-page .tn-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .3rem !important;
+  padding: .22rem .6rem !important;
+  border-radius: 999px !important;
+  font: 800 .62rem var(--mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  color: #fff !important;
+  border: 1.5px solid var(--ink) !important;
+  box-shadow: 1.5px 1.5px 0 var(--ink) !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+.tools-page .tn-badge.hot {
+  background: linear-gradient(135deg, #ff4d1a, #ff8a1a) !important;
+}
+
+.tools-page .tn-badge.hot::before {
+  content: '' !important;
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  box-shadow: 0 0 6px #fff !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tn-badge.new {
+  background: linear-gradient(135deg, #2f6bff, #6a9bff) !important;
+}
+
+.tools-page .tn-badge.new::before {
+  content: '✦' !important;
+  font-size: .55rem !important;
+  color: #fff !important;
+  line-height: 1 !important;
+}
+
+/* ============ 4. THẺ TÀI LIỆU — THÊM HIỆU ỨNG ============ */
+.tools-page .tn-card {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.tools-page .tn-card::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: radial-gradient(
+    360px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--card-tint, var(--acc)) 14%, transparent),
+    transparent 70%
+  ) !important;
+  opacity: 0 !important;
+  transition: opacity .3s var(--ease) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.tools-page .tn-card:hover::after {
+  opacity: 1 !important;
+}
+
+.tools-page .tn-card > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* ============ 5. FIX PET — ĐẨY SANG PHẢI ============ */
+/* Pet widget (con lửa) — đẩy sang phải, không đè sidebar */
+@media (min-width: 900px) {
+  .petw {
+    /* Nếu pet đang ở góc trái, đẩy sang phải */
+    left: auto !important;
+    right: 20px !important;
+  }
+}
+
+/* Trên mobile — pet ở góc phải dưới, nhỏ hơn */
+@media (max-width: 899px) {
+  .petw {
+    width: 72px !important;
+    height: 72px !important;
+    left: auto !important;
+    right: 12px !important;
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ============ 6. SIDEBAR — THÊM ICON MÀU ============ */
+.tools-page .tn-side-item {
+  position: relative !important;
+}
+
+.tools-page .tn-side-item::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 3px !important;
+  height: 0 !important;
+  background: var(--acc) !important;
+  border-radius: 0 3px 3px 0 !important;
+  transition: height .2s var(--ease) !important;
+}
+
+.tools-page .tn-side-item:hover::before {
+  height: 60% !important;
+}
+
+.tools-page .tn-side-item.on::before {
+  height: 100% !important;
+}
+
+/* ============ 7. TAB BAR — THÊM ICON NHỎ CHO TỪNG TAB ============ */
+.tools-page .tools-tab::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: currentColor !important;
+  opacity: .35 !important;
+  transition: opacity .2s, box-shadow .2s !important;
+  margin-right: .1rem !important;
+}
+
+.tools-page .tools-tab.on::before {
+  opacity: 1 !important;
+  box-shadow: 0 0 8px currentColor !important;
+  background: var(--acc) !important;
+}
+
+/* ============ 8. SEARCH BAR — HIỆU ỨNG FOCUS ĐẸP HƠN ============ */
+.tools-page .tools-search {
+  transition: box-shadow .25s var(--ease), border-color .25s !important;
+}
+
+.tools-page .tools-search:focus-within {
+  box-shadow: 4px 4px 0 var(--acc), inset 0 0 0 1px var(--acc) !important;
+}
+
+/* ============ 9. THẺ AI / HOT — THÊM VIỀN GRADIENT KHI HOVER ============ */
+.tools-page .tc-cell:hover,
+.tools-page .tk-card:hover,
+.tools-page .hot-card:hover {
+  border-color: var(--acc) !important;
+  background: color-mix(in srgb, var(--acc) 4%, var(--bg)) !important;
+}
+
+/* ============ 10. HIỆU ỨNG MƯỢT HƠN ============ */
+.tools-page .tn-card,
+.tools-page .tc-cell,
+.tools-page .tk-card,
+.tools-page .hot-card,
+.tools-page .tn-side-item,
+.tools-page .tools-cat,
+.tools-page .eb-chip,
+.tools-page .tools-tab {
+  transition-timing-function: cubic-bezier(.22, 1, .36, 1) !important;
+}
+
+/* ============ 11. FIX DIỆN TÍCH HEADER — ĐẨY NÚT "MỞ HUB" NẾU CÒN ============ */
+.tools-page .tools-header > a[href="#hub"] {
+  /* Nếu bạn đã xóa Hub, dòng này không ảnh hưởng gì */
+  display: inline-flex !important;
+}
+
+/* ============ 12. MOBILE — TỐI ƯU LẠI ============ */
+@media (max-width: 720px) {
+  .tools-page .tn-ico {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .tools-page .tn-ico svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .tools-page .tn-card {
+    padding: 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  .tools-page .tn-card::before {
+    height: 4px !important;
+  }
+
+  .tools-page .tools-tab::before {
+    width: 5px !important;
+    height: 5px !important;
+  }
+
+  /* Ẩn effect tỏa sáng trên mobile cho đỡ lag */
+  .tools-page .tn-card::after {
+    display: none !important;
+  }
+}
+
+/* ============ 13. GIẢM CHUYỂN ĐỘNG ============ */
+@media (prefers-reduced-motion: reduce) {
+  .tools-page *,
+  .tools-page *::before,
+  .tools-page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

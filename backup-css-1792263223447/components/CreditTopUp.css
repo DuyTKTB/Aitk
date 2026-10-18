@@ -1,0 +1,1324 @@
+/* ============================================================
+   CreditTopUp.css — Liquid Glass (Apple iOS 26 style)
+   • Kính trong suốt, viền mảnh, highlight cạnh trên
+   • Tự đổi theo data-theme (sáng/tối)
+   • Icon SVG nét, không dùng emoji
+   • Mobile: blur nhẹ hơn để mượt
+   ============================================================ */
+
+/* ============================================================
+   TOKEN — LIGHT (mặc định)
+   ============================================================ */
+.ctu-wrap {
+  /* Nền kính */
+  --ctu-glass-1: rgba(255, 255, 255, .55);
+  --ctu-glass-2: rgba(255, 255, 255, .30);
+  --ctu-glass-3: rgba(255, 255, 255, .15);
+  --ctu-glass-solid: rgba(255, 255, 255, .85);
+
+  /* Viền kính */
+  --ctu-edge: rgba(255, 255, 255, .70);
+  --ctu-edge-soft: rgba(255, 255, 255, .45);
+
+  /* Highlight + shadow */
+  --ctu-highlight: rgba(255, 255, 255, .85);
+  --ctu-shadow-low: rgba(0, 0, 0, .08);
+  --ctu-shadow-mid: rgba(0, 0, 0, .12);
+  --ctu-shadow-high: rgba(0, 0, 0, .18);
+
+  /* Text */
+  --ctu-ink: #0a1230;
+  --ctu-mut: #5d6a94;
+
+  /* Accent */
+  --ctu-blue: #0071e3;
+  --ctu-blue-2: #0066cc;
+  --ctu-gold-1: #f59e0b;
+  --ctu-gold-2: #f97316;
+  --ctu-green: #16a34a;
+  --ctu-red: #dc2626;
+
+  /* Blur */
+  --ctu-blur-strong: 30px;
+  --ctu-blur-mid: 20px;
+  --ctu-blur-soft: 12px;
+
+  /* Ease */
+  --ctu-ease: cubic-bezier(.32, .72, 0, 1);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  color: var(--ctu-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  isolation: isolate;
+}
+
+/* ============================================================
+   TOKEN — DARK
+   ============================================================ */
+[data-theme='dark'] .ctu-wrap,
+.ctu-wrap.dark {
+  --ctu-glass-1: rgba(30, 35, 60, .55);
+  --ctu-glass-2: rgba(30, 35, 60, .35);
+  --ctu-glass-3: rgba(255, 255, 255, .08);
+  --ctu-glass-solid: rgba(20, 25, 45, .85);
+
+  --ctu-edge: rgba(255, 255, 255, .16);
+  --ctu-edge-soft: rgba(255, 255, 255, .10);
+
+  --ctu-highlight: rgba(255, 255, 255, .35);
+  --ctu-shadow-low: rgba(0, 0, 0, .35);
+  --ctu-shadow-mid: rgba(0, 0, 0, .45);
+  --ctu-shadow-high: rgba(0, 0, 0, .55);
+
+  --ctu-ink: #eef1ff;
+  --ctu-mut: rgba(255, 255, 255, .55);
+
+  --ctu-blue: #3b82f6;
+  --ctu-blue-2: #2563eb;
+}
+
+/* ============================================================
+   LỚP NỀN GRADIENT PHÍA SAU — làm kính nổi bật
+   Tự đổi theo theme
+   ============================================================ */
+.ctu-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -32px;
+  z-index: -1;
+  border-radius: 40px;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 60% at 15% 15%,
+      color-mix(in srgb, var(--ctu-blue) 22%, transparent),
+      transparent 70%),
+    radial-gradient(60% 60% at 85% 25%,
+      color-mix(in srgb, #8b5cf6 18%, transparent),
+      transparent 70%),
+    radial-gradient(50% 50% at 50% 90%,
+      color-mix(in srgb, #ec4899 12%, transparent),
+      transparent 70%);
+  opacity: .55;
+  filter: blur(50px);
+}
+
+[data-theme='dark'] .ctu-wrap::before,
+.ctu-wrap.dark::before {
+  opacity: .35;
+}
+
+/* ============================================================
+   CAPSULE KÍNH — lớp cơ bản
+   ============================================================ */
+.ctu-balance,
+.ctu-card,
+.vsc-card {
+  position: relative;
+  border-radius: 24px;
+  background: var(--ctu-glass-1);
+  -webkit-backdrop-filter: blur(var(--ctu-blur-strong)) saturate(180%);
+  backdrop-filter: blur(var(--ctu-blur-strong)) saturate(180%);
+  border: 1px solid var(--ctu-edge);
+  box-shadow:
+    /* highlight cạnh trên */
+    inset 0 1px 0 var(--ctu-highlight),
+    /* shadow cạnh dưới tạo khối */
+    inset 0 -1px 0 var(--ctu-shadow-low),
+    /* bóng nổi mềm bên ngoài */
+    0 20px 50px -20px var(--ctu-shadow-mid);
+  overflow: hidden;
+}
+
+/* Vệt sáng chéo như ánh sáng phản chiếu trên thủy tinh */
+.ctu-balance::after,
+.ctu-card::after,
+.vsc-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--ctu-highlight) 40%, transparent) 50%,
+    transparent 80%);
+  opacity: .5;
+  pointer-events: none;
+  transform: skewX(-15deg);
+}
+
+/* ============================================================
+   VIP STATUS CARD
+   ============================================================ */
+.vsc-card {
+  padding: 1.25rem 1.4rem;
+}
+
+.vsc-loading {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--ctu-mut);
+  font-size: .88rem;
+  padding: 1.25rem 1.4rem;
+}
+
+.vsc-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ctu-edge);
+  border-top-color: var(--ctu-blue);
+  border-radius: 50%;
+  animation: vsc-spin .8s linear infinite;
+}
+@keyframes vsc-spin { to { transform: rotate(360deg); } }
+
+/* VIP active — viền vàng nhạt */
+.vsc-active {
+  border-color: color-mix(in srgb, var(--ctu-gold-1) 45%, var(--ctu-edge));
+}
+.vsc-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--ctu-gold-1) 80%, transparent),
+    transparent);
+  pointer-events: none;
+}
+
+.vsc-glow {
+  position: absolute;
+  top: -60%;
+  right: -20%;
+  width: 70%;
+  height: 220%;
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--ctu-gold-1) 35%, transparent),
+    transparent 70%);
+  transform: rotate(20deg);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.vsc-head {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.vsc-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, var(--ctu-gold-1), var(--ctu-gold-2));
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    inset 0 -1px 0 rgba(0, 0, 0, .15),
+    0 6px 20px -6px color-mix(in srgb, var(--ctu-gold-1) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, .2);
+}
+.vsc-icon.warning {
+  background: linear-gradient(135deg, #f59e0b, #dc2626);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 6px 20px -6px rgba(220, 38, 38, .5);
+}
+.vsc-icon.muted {
+  background: var(--ctu-glass-2);
+  color: var(--ctu-mut);
+  box-shadow:
+    inset 0 1px 0 var(--ctu-highlight),
+    inset 0 -1px 0 var(--ctu-shadow-low);
+  border: 1px solid var(--ctu-edge);
+}
+
+.vsc-head-text { flex: 1; min-width: 0; }
+
+.vsc-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--ctu-ink);
+  margin-bottom: .15rem;
+}
+
+.vsc-status {
+  font-size: .82rem;
+  color: var(--ctu-mut);
+  font-weight: 500;
+}
+
+.vsc-active .vsc-status {
+  color: color-mix(in srgb, var(--ctu-gold-1) 75%, var(--ctu-ink));
+  font-weight: 600;
+}
+
+.vsc-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem .9rem;
+  margin-bottom: 1.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.vsc-feat {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .84rem;
+  color: var(--ctu-ink);
+}
+
+.vsc-feat svg {
+  color: var(--ctu-green);
+  flex-shrink: 0;
+}
+
+.vsc-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding-top: .9rem;
+  border-top: 1px solid var(--ctu-edge-soft);
+  position: relative;
+  z-index: 1;
+}
+
+.vsc-expiry {
+  font-size: .8rem;
+  color: var(--ctu-mut);
+  font-weight: 500;
+}
+
+/* ============================================================
+   BUTTON KÍNH — pill trong suốt
+   ============================================================ */
+.vsc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .55rem 1.1rem;
+  border: 1px solid var(--ctu-edge);
+  border-radius: 999px;
+  background: var(--ctu-glass-2);
+  -webkit-backdrop-filter: blur(var(--ctu-blur-mid)) saturate(180%);
+  backdrop-filter: blur(var(--ctu-blur-mid)) saturate(180%);
+  color: var(--ctu-ink);
+  font: 600 .82rem inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s var(--ctu-ease);
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 0 var(--ctu-highlight),
+    inset 0 -1px 0 var(--ctu-shadow-low),
+    0 4px 16px -6px var(--ctu-shadow-mid);
+}
+.vsc-btn:hover {
+  background: var(--ctu-glass-3);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 var(--ctu-highlight),
+    inset 0 -1px 0 var(--ctu-shadow-low),
+    0 8px 24px -6px var(--ctu-shadow-high);
+}
+.vsc-btn:active { transform: translateY(0) scale(.97); }
+
+.vsc-btn.primary {
+  background: linear-gradient(135deg, var(--ctu-blue), var(--ctu-blue-2));
+  color: #fff;
+  border-color: color-mix(in srgb, var(--ctu-blue) 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 8px 24px -6px color-mix(in srgb, var(--ctu-blue) 60%, transparent);
+}
+.vsc-btn.primary:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 12px 28px -6px color-mix(in srgb, var(--ctu-blue) 70%, transparent);
+}
+
+.vsc-btn.warning {
+  background: linear-gradient(135deg, var(--ctu-gold-1), var(--ctu-gold-2));
+  color: #fff;
+  border-color: transparent;
+  width: 100%;
+  justify-content: center;
+  padding: .7rem 1.2rem;
+  font-size: .88rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 8px 24px -6px color-mix(in srgb, var(--ctu-gold-1) 60%, transparent);
+}
+
+/* VIP expired */
+.vsc-expired {
+  border-color: color-mix(in srgb, var(--ctu-gold-1) 50%, var(--ctu-edge));
+}
+.vsc-expired-msg {
+  margin: 0 0 1rem;
+  font-size: .85rem;
+  line-height: 1.55;
+  color: var(--ctu-mut);
+  position: relative;
+  z-index: 1;
+}
+
+/* VIP free */
+.vsc-upgrade-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: .9rem 1rem;
+  border-radius: 16px;
+  background: var(--ctu-glass-2);
+  border: 1px solid var(--ctu-edge-soft);
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+}
+
+.vsc-upgrade-info {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  min-width: 0;
+}
+.vsc-upgrade-info b {
+  font-size: .9rem;
+  color: var(--ctu-ink);
+}
+.vsc-upgrade-info span {
+  font-size: .76rem;
+  color: var(--ctu-mut);
+  line-height: 1.35;
+}
+
+/* ============================================================
+   BALANCE CARD — capsule kính
+   ============================================================ */
+.ctu-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.3rem;
+  border-radius: 26px;
+}
+
+.ctu-balance-content {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+/* Icon chìm trong khối kính */
+.ctu-balance-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--ctu-blue), #6366f1);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    inset 0 -1px 0 rgba(0, 0, 0, .2),
+    0 8px 24px -8px color-mix(in srgb, var(--ctu-blue) 70%, transparent);
+  border: 1px solid rgba(255, 255, 255, .15);
+}
+
+.ctu-balance-info { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+
+.ctu-balance-num {
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+  color: var(--ctu-ink);
+}
+
+.ctu-balance-unit {
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--ctu-mut);
+  letter-spacing: 0;
+}
+
+.ctu-balance-sub {
+  font-size: .78rem;
+  color: var(--ctu-mut);
+  line-height: 1.35;
+}
+
+/* Nút nhận điểm — pill kính */
+.ctu-daily {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .6rem 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ctu-blue), var(--ctu-blue-2));
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--ctu-blue) 60%, transparent);
+  font: 600 .82rem inherit;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s var(--ctu-ease);
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .3),
+    0 8px 24px -8px color-mix(in srgb, var(--ctu-blue) 70%, transparent);
+}
+.ctu-daily:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 12px 30px -8px color-mix(in srgb, var(--ctu-blue) 80%, transparent);
+}
+.ctu-daily:active:not(:disabled) { transform: translateY(0) scale(.97); }
+
+.ctu-daily:disabled {
+  opacity: .55;
+  cursor: default;
+  background: var(--ctu-glass-2);
+  color: var(--ctu-mut);
+  border-color: var(--ctu-edge);
+  box-shadow:
+    inset 0 1px 0 var(--ctu-highlight),
+    inset 0 -1px 0 var(--ctu-shadow-low);
+}
+.ctu-daily.claimed {
+  background: color-mix(in srgb, var(--ctu-green) 18%, transparent);
+  color: var(--ctu-green);
+  border-color: color-mix(in srgb, var(--ctu-green) 40%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ctu-green) 25%, transparent),
+    0 4px 16px -6px color-mix(in srgb, var(--ctu-green) 40%, transparent);
+}
+
+/* ============================================================
+   CARD chung
+   ============================================================ */
+.ctu-card {
+  padding: 1.25rem 1.4rem;
+}
+
+.ctu-card.success {
+  border-color: color-mix(in srgb, var(--ctu-green) 45%, var(--ctu-edge));
+  text-align: center;
+}
+
+.ctu-card-head { margin-bottom: 1rem; position: relative; z-index: 1; }
+.ctu-card-head.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+
+.ctu-title {
+  margin: 0 0 .25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--ctu-ink);
+}
+
+.ctu-desc {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--ctu-mut);
+  line-height: 1.45;
+}
+
+.ctu-head-badge {
+  padding: .35rem .85rem;
+  border-radius: 999px;
+  background: var(--ctu-glass-2);
+  border: 1px solid var(--ctu-edge);
+  color: var(--ctu-ink);
+  font: 600 .78rem inherit;
+  font-family: inherit;
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+}
+
+.ctu-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .4rem .8rem;
+  border: 1px solid var(--ctu-edge);
+  border-radius: 999px;
+  background: var(--ctu-glass-2);
+  -webkit-backdrop-filter: blur(var(--ctu-blur-soft));
+  backdrop-filter: blur(var(--ctu-blur-soft));
+  color: var(--ctu-mut);
+  font: 500 .78rem inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s var(--ctu-ease);
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+}
+.ctu-back:hover {
+  color: var(--ctu-ink);
+  background: var(--ctu-glass-3);
+  transform: translateX(-1px);
+}
+
+/* ============================================================
+   PACKAGE GRID — ô kính
+   ============================================================ */
+.ctu-pkg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .6rem;
+  margin-bottom: 1.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.ctu-pkg {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: .9rem .6rem;
+  border: 1px solid var(--ctu-edge);
+  border-radius: 16px;
+  background: var(--ctu-glass-2);
+  -webkit-backdrop-filter: blur(var(--ctu-blur-soft)) saturate(180%);
+  backdrop-filter: blur(var(--ctu-blur-soft)) saturate(180%);
+  color: var(--ctu-ink);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s var(--ctu-ease);
+  text-align: center;
+  min-height: 78px;
+  box-shadow:
+    inset 0 1px 0 var(--ctu-highlight),
+    inset 0 -1px 0 var(--ctu-shadow-low);
+}
+
+.ctu-pkg:hover {
+  background: var(--ctu-glass-3);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 var(--ctu-highlight),
+    inset 0 -1px 0 var(--ctu-shadow-low),
+    0 8px 24px -8px var(--ctu-shadow-mid);
+}
+
+.ctu-pkg.on {
+  border-color: color-mix(in srgb, var(--ctu-blue) 70%, transparent);
+  background: color-mix(in srgb, var(--ctu-blue) 12%, var(--ctu-glass-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .5),
+    inset 0 -1px 0 color-mix(in srgb, var(--ctu-blue) 30%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--ctu-blue) 20%, transparent),
+    0 12px 30px -10px color-mix(in srgb, var(--ctu-blue) 60%, transparent);
+}
+
+.ctu-pkg-amount {
+  font-size: .92rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  line-height: 1.1;
+}
+
+.ctu-pkg-credits {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--ctu-mut);
+  font-variant-numeric: tabular-nums;
+}
+.ctu-pkg.on .ctu-pkg-credits { color: var(--ctu-blue); }
+
+.ctu-pkg-badge {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ctu-gold-1), var(--ctu-gold-2));
+  color: #fff;
+  font: 600 .62rem inherit;
+  font-family: inherit;
+  letter-spacing: .02em;
+  box-shadow: 0 4px 12px -3px rgba(245, 158, 11, .7);
+  border: 1px solid rgba(255, 255, 255, .2);
+}
+
+/* Badge "Phổ biến" */
+.ctu-pkg-popular {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #fff;
+  font: 700 .65rem inherit;
+  font-family: inherit;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px -3px rgba(22, 163, 74, .6);
+  border: 1px solid rgba(255, 255, 255, .3);
+  z-index: 2;
+}
+
+/* Highlight viền gói popular */
+.ctu-pkg.popular {
+  border-color: rgba(22, 163, 74, .5);
+  box-shadow: 0 0 0 1.5px rgba(22, 163, 74, .3), 0 8px 24px -6px rgba(22, 163, 74, .2);
+}
+
+/* ============================================================
+   RECEIVE summary — kính xanh nhạt
+   ============================================================ */
+.ctu-receive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: .9rem 1.1rem;
+  margin-bottom: 1.1rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ctu-green) 10%, var(--ctu-glass-2));
+  border: 1px solid color-mix(in srgb, var(--ctu-green) 30%, var(--ctu-edge));
+  -webkit-backdrop-filter: blur(var(--ctu-blur-soft));
+  backdrop-filter: blur(var(--ctu-blur-soft));
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+  position: relative;
+  z-index: 1;
+}
+
+.ctu-receive-l {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.ctu-receive-label {
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--ctu-mut);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.ctu-receive-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ctu-green);
+  font-variant-numeric: tabular-nums;
+}
+
+.ctu-receive-bonus {
+  padding: .25rem .7rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ctu-gold-1), var(--ctu-gold-2));
+  color: #fff;
+  font: 600 .72rem inherit;
+  font-family: inherit;
+  border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: 0 4px 12px -4px rgba(245, 158, 11, .5);
+}
+
+/* ============================================================
+   BUTTON chính — capsule kính
+   ============================================================ */
+.ctu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  width: 100%;
+  min-height: 50px;
+  padding: .75rem 1.4rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: 600 .92rem inherit;
+  font-family: inherit;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  transition: all .25s var(--ctu-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ctu-btn.primary {
+  background: linear-gradient(135deg, var(--ctu-blue), var(--ctu-blue-2));
+  color: #fff;
+  border-color: color-mix(in srgb, var(--ctu-blue) 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    inset 0 -1px 0 rgba(0, 0, 0, .15),
+    0 12px 32px -10px color-mix(in srgb, var(--ctu-blue) 75%, transparent);
+}
+
+.ctu-btn.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .45),
+    inset 0 -1px 0 rgba(0, 0, 0, .15),
+    0 18px 40px -10px color-mix(in srgb, var(--ctu-blue) 85%, transparent);
+}
+
+.ctu-btn.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ctu-btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+/* ============================================================
+   QR box
+   ============================================================ */
+.ctu-qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  padding: 1.1rem;
+  margin-bottom: 1.1rem;
+  border-radius: 18px;
+  background: var(--ctu-glass-2);
+  border: 1px solid var(--ctu-edge);
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+  position: relative;
+  z-index: 1;
+}
+
+.ctu-qr-img {
+  width: 220px;
+  height: 220px;
+  border-radius: 14px;
+  background: #fff;
+  padding: .5rem;
+  box-shadow:
+    0 8px 24px -10px var(--ctu-shadow-mid),
+    inset 0 0 0 1px rgba(0, 0, 0, .04);
+}
+
+.ctu-qr-hint {
+  font-size: .78rem;
+  color: var(--ctu-mut);
+  font-weight: 500;
+}
+
+/* ============================================================
+   INFO list — ô kính
+   ============================================================ */
+.ctu-info-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--ctu-glass-2);
+  border: 1px solid var(--ctu-edge);
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+  overflow: hidden;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.ctu-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--ctu-edge-soft);
+  font-size: .85rem;
+}
+.ctu-info-row:last-child { border-bottom: 0; }
+
+.ctu-info-label {
+  color: var(--ctu-mut);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.ctu-info-value {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-weight: 600;
+  color: var(--ctu-ink);
+  text-align: right;
+  word-break: break-word;
+}
+.ctu-info-value.highlight {
+  color: var(--ctu-green);
+  font-size: 1rem;
+}
+
+.ctu-code {
+  padding: .25rem .65rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ctu-blue) 15%, transparent);
+  color: var(--ctu-blue);
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  border: 1px solid color-mix(in srgb, var(--ctu-blue) 25%, transparent);
+}
+
+.ctu-copy {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ctu-edge);
+  border-radius: 50%;
+  background: var(--ctu-glass-2);
+  color: var(--ctu-blue);
+  cursor: pointer;
+  transition: all .2s var(--ctu-ease);
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+}
+.ctu-copy:hover {
+  background: var(--ctu-blue);
+  color: #fff;
+  border-color: var(--ctu-blue);
+  transform: scale(1.08);
+}
+.ctu-copy.copied {
+  background: var(--ctu-green);
+  color: #fff;
+  border-color: var(--ctu-green);
+}
+
+/* ============================================================
+   Warning — kính vàng
+   ============================================================ */
+.ctu-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .85rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, #f59e0b 12%, var(--ctu-glass-2));
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--ctu-edge));
+  -webkit-backdrop-filter: blur(var(--ctu-blur-soft));
+  backdrop-filter: blur(var(--ctu-blur-soft));
+  color: #92400e;
+  font-size: .8rem;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='dark'] .ctu-warning { color: #fbbf24; }
+
+.ctu-warning-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+  margin-top: .1rem;
+}
+
+.ctu-warning b {
+  display: block;
+  margin-bottom: .15rem;
+  font-weight: 600;
+  color: #78350f;
+}
+[data-theme='dark'] .ctu-warning b { color: #fcd34d; }
+
+.ctu-warning p {
+  margin: 0;
+  color: inherit;
+}
+
+/* ============================================================
+   Countdown
+   ============================================================ */
+.ctu-countdown {
+  margin-top: .75rem;
+  text-align: center;
+  font-size: .78rem;
+  color: var(--ctu-mut);
+  position: relative;
+  z-index: 1;
+}
+.ctu-countdown b {
+  color: var(--ctu-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Waiting state
+   ============================================================ */
+.ctu-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.ctu-waiting-title {
+  margin: .5rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ctu-ink);
+  letter-spacing: -.02em;
+}
+
+.ctu-waiting-desc {
+  margin: 0;
+  font-size: .85rem;
+  line-height: 1.55;
+  color: var(--ctu-mut);
+}
+
+.ctu-waiting-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .45rem .9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ctu-blue) 12%, var(--ctu-glass-2));
+  border: 1px solid color-mix(in srgb, var(--ctu-blue) 30%, var(--ctu-edge));
+  color: var(--ctu-blue);
+  font: 500 .78rem inherit;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 0 var(--ctu-highlight);
+}
+
+.ctu-help {
+  margin: .75rem 0 0;
+  font-size: .78rem;
+  color: var(--ctu-mut);
+  line-height: 1.55;
+}
+.ctu-help a {
+  color: var(--ctu-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+.ctu-help a:hover { text-decoration: underline; }
+
+/* ============================================================
+   Success
+   ============================================================ */
+.ctu-success-emoji {
+  display: flex;
+  justify-content: center;
+  margin-bottom: .75rem;
+  color: var(--ctu-green);
+  animation: ctu-pop .5s var(--ctu-ease);
+}
+@keyframes ctu-pop {
+  from { opacity: 0; transform: scale(.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.ctu-success-title {
+  margin: 0 0 .5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ctu-green);
+  letter-spacing: -.02em;
+}
+
+.ctu-success-amount {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -.03em;
+  color: var(--ctu-green);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: .35rem;
+}
+
+.ctu-success-sub {
+  margin: 0 0 1.25rem;
+  font-size: .85rem;
+  color: var(--ctu-mut);
+}
+.ctu-success-sub b {
+  color: var(--ctu-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   History
+   ============================================================ */
+.ctu-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .85rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ctu-blue);
+  font: 500 .85rem inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+  position: relative;
+  z-index: 1;
+}
+.ctu-history-toggle:hover {
+  background: color-mix(in srgb, var(--ctu-blue) 10%, transparent);
+}
+
+.ctu-history-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: .75rem;
+  border-top: 1px solid var(--ctu-edge-soft);
+  position: relative;
+  z-index: 1;
+}
+
+.ctu-history-empty {
+  padding: 1.25rem .5rem;
+  text-align: center;
+  font-size: .82rem;
+  color: var(--ctu-mut);
+}
+
+.ctu-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .7rem .25rem;
+  border-bottom: 1px solid var(--ctu-edge-soft);
+}
+.ctu-history-item:last-child { border-bottom: 0; }
+
+.ctu-history-info {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.ctu-history-type {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--ctu-ink);
+}
+.ctu-history-type svg {
+  flex-shrink: 0;
+  opacity: .7;
+}
+
+.ctu-history-date {
+  font-size: .72rem;
+  color: var(--ctu-mut);
+  font-variant-numeric: tabular-nums;
+}
+
+.ctu-history-amt {
+  font-size: .92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.ctu-history-amt.pos { color: var(--ctu-green); }
+.ctu-history-amt.neg { color: var(--ctu-red); }
+
+/* ============================================================
+   Loading
+   ============================================================ */
+.ctu-loading {
+  display: grid;
+  place-items: center;
+  gap: .75rem;
+  padding: 3rem 1rem;
+  color: var(--ctu-mut);
+  font-size: .88rem;
+}
+
+.ctu-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--ctu-edge);
+  border-top-color: var(--ctu-blue);
+  border-radius: 50%;
+  animation: vsc-spin .8s linear infinite;
+}
+.ctu-spinner.sm { width: 16px; height: 16px; border-width: 2px; }
+.ctu-spinner.lg { width: 40px; height: 40px; border-width: 3.5px; }
+
+/* ============================================================
+   MOBILE — blur nhẹ hơn để mượt
+   ============================================================ */
+@media (max-width: 720px) {
+  .ctu-wrap {
+    --ctu-blur-strong: 16px;
+    --ctu-blur-mid: 12px;
+    --ctu-blur-soft: 8px;
+    gap: .8rem;
+  }
+
+  .ctu-wrap::before { inset: -16px; filter: blur(30px); opacity: .4; }
+
+  .ctu-balance,
+  .ctu-card,
+  .vsc-card { border-radius: 20px; }
+
+  .ctu-balance,
+  .ctu-card,
+  .vsc-card { padding: 1rem 1.1rem; }
+
+  .vsc-icon { width: 42px; height: 42px; }
+  .vsc-title { font-size: .98rem; }
+  .vsc-features { grid-template-columns: 1fr; gap: .45rem; }
+  .vsc-foot { padding-top: .8rem; }
+
+  .ctu-balance-icon { width: 46px; height: 46px; }
+  .ctu-balance-num { font-size: 1.45rem; }
+
+  .ctu-pkg-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ctu-pkg { padding: .75rem .5rem; min-height: 72px; }
+
+  .ctu-qr-img { width: 180px; height: 180px; }
+  .ctu-info-row { padding: .65rem .85rem; font-size: .8rem; }
+  .ctu-btn { min-height: 46px; font-size: .88rem; }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .ctu-spinner,
+  .vsc-spinner,
+  .ctu-success-emoji {
+    animation: none;
+  }
+  .ctu-pkg:hover,
+  .ctu-btn.primary:hover:not(:disabled),
+  .ctu-daily:hover:not(:disabled),
+  .ctu-copy:hover,
+  .vsc-btn:hover {
+    transform: none;
+  }
+}
+/* ============================================================
+   VIP HIGHLIGHT — dòng nổi bật "dùng thoải mái"
+   ============================================================ */
+.vsc-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .5rem .85rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--ctu-gold-1) 18%, transparent),
+    color-mix(in srgb, var(--ctu-gold-2) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--ctu-gold-1) 45%, transparent);
+  color: color-mix(in srgb, var(--ctu-gold-1) 80%, var(--ctu-ink));
+  font: 600 .8rem inherit;
+  font-family: inherit;
+  letter-spacing: -.005em;
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    0 4px 14px -6px color-mix(in srgb, var(--ctu-gold-1) 50%, transparent);
+}
+
+[data-theme='dark'] .vsc-highlight {
+  color: #fcd34d;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--ctu-gold-1) 22%, transparent),
+    color-mix(in srgb, var(--ctu-gold-2) 12%, transparent));
+  border-color: color-mix(in srgb, var(--ctu-gold-1) 55%, transparent);
+}
+
+.vsc-highlight svg {
+  flex-shrink: 0;
+  color: currentColor;
+  opacity: .9;
+}
+
+/* ---------- Free card cũng có highlight nền xanh nhạt ---------- */
+.vsc-free .vsc-highlight {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--ctu-blue) 12%, transparent),
+    color-mix(in srgb, #8b5cf6 8%, transparent));
+  border-color: color-mix(in srgb, var(--ctu-blue) 35%, transparent);
+  color: color-mix(in srgb, var(--ctu-blue) 85%, var(--ctu-ink));
+  margin-top: -.25rem;
+}
+
+[data-theme='dark'] .vsc-free .vsc-highlight {
+  color: #93c5fd;
+  border-color: color-mix(in srgb, var(--ctu-blue) 45%, transparent);
+}

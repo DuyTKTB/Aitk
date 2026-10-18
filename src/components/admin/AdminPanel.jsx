@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase.js';
 import { IconLock, IconBack, IconRefresh } from './AdminIcons.jsx';
 import { AdminUIProvider, ErrorBoundary, InlineAlert, PageLoader } from './AdminUI.jsx';
 import { friendlyError } from './adminUtils.js';
+import AdminShell, { Topbar } from './AdminShell.jsx';
 import Dashboard from './Dashboard.jsx';
 import ExamManager from './ExamManager.jsx';
 import QuestionManager from './QuestionManager.jsx';
@@ -19,12 +20,12 @@ import ProUserManager from './ProUserManager.jsx';
 import '../../styles/dash-vitality.css';
 import '../../styles/teacher-ds.css';
 import '../../styles/admin-apple.css';
-import '../../styles/admin-teacher.css';   // map token admin → token giáo viên (đồng bộ giao diện)
+import '../../styles/admin-teacher.css';
+import '../../styles/admin-polish.css';
+import '../../styles/admin-enhance.css';
 
 /* ============================================================
    ROUTING: hash = #admin/<sub>
-   sub ∈ { dashboard, exams, create, questions, keys, pro-users,
-           users, activity, settings, guide }
    ============================================================ */
 const VIEWS = ['dashboard', 'exams', 'create', 'questions', 'keys', 'pro-users', 'users', 'activity', 'settings', 'guide'];
 
@@ -47,32 +48,20 @@ export default function AdminPanel() {
 function AdminGate() {
   const { user } = useAuth();
   const [state, setState] = useState({ status: 'checking', error: null });
-
   const uid = user?.uid || user?.id;
 
   const check = useCallback(async () => {
     if (!user) { setState({ status: 'denied', error: null }); return; }
-    // Nguồn xác thực Firebase claims / admin email
-    if (isAdmin(user)) {
-      setState({ status: 'admin', error: null });
-      return;
-    }
+    if (isAdmin(user)) { setState({ status: 'admin', error: null }); return; }
     setState({ status: 'checking', error: null });
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', uid)
-        .maybeSingle();
+      const { data, error } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
       if (error) throw error;
       setState({ status: data?.role === 'admin' ? 'admin' : 'denied', error: null });
     } catch (e) {
       console.error(e);
-      if (isAdmin(user)) {
-        setState({ status: 'admin', error: null });
-      } else {
-        setState({ status: 'error', error: friendlyError(e) });
-      }
+      if (isAdmin(user)) setState({ status: 'admin', error: null });
+      else setState({ status: 'error', error: friendlyError(e) });
     }
   }, [uid, user]);
 
@@ -107,7 +96,6 @@ function AdminApp() {
   const [subjects, setSubjects] = useState([]);
   const [catalogError, setCatalogError] = useState(null);
 
-  /* Đồng bộ view <-> hash */
   useEffect(() => {
     const onHash = () => {
       const v = parseHash();
@@ -121,12 +109,8 @@ function AdminApp() {
   const navigate = useCallback((id, opts = {}) => {
     if (!VIEWS.includes(id)) return;
     const nextHash = id === 'dashboard' ? '#admin' : `#admin/${id}`;
-    if (window.location.hash === nextHash) {
-      // đã đúng hash → chỉ đổi state
-      setView(id);
-    } else {
-      window.location.hash = nextHash;
-    }
+    if (window.location.hash === nextHash) setView(id);
+    else window.location.hash = nextHash;
     setEditId(opts.editId ?? null);
   }, []);
 
@@ -134,10 +118,7 @@ function AdminApp() {
     let alive = true;
     Promise.all([fetchGrades(), fetchSubjects()])
       .then(([g, s]) => {
-        if (alive) {
-          setGrades(g || []);
-          setSubjects(s || []);
-        }
+        if (alive) { setGrades(g || []); setSubjects(s || []); }
       })
       .catch((e) => {
         console.error(e);
@@ -161,7 +142,7 @@ function AdminApp() {
       <ErrorBoundary resetKey={view + ':' + editId}>
         {view === 'dashboard'  && <Dashboard onNavigate={navigate} />}
         {view === 'exams'      && <ExamManager key={editId || 'list'} initialEditId={editId} onCreate={() => navigate('create')} />}
-        {view === 'create'     && <CreateExamWrapper grades={grades} subjects={subjects} onDone={(id) => (id ? openExam(id) : navigate('exams'))} />}
+        {view === 'create'     && <CreateExamWithShell grades={grades} subjects={subjects} onDone={(id) => (id ? openExam(id) : navigate('exams'))} />}
         {view === 'questions'  && <QuestionManager onOpenExam={openExam} />}
         {view === 'keys'       && <KeyManager />}
         {view === 'pro-users'  && <ProUserManager />}
@@ -174,17 +155,6 @@ function AdminApp() {
   );
 }
 
-/* CreateExam cần khung riêng để có shell */
-function CreateExamWrapper({ grades, subjects, onDone }) {
-  // CreateExam tự render nội dung, cần bọc trong AdminShell qua ExamManager hoặc dùng trực tiếp
-  // Vì CreateExam không tự có shell, ta dùng component ExamManager-like
-  return (
-    <CreateExamWithShell grades={grades} subjects={subjects} onDone={onDone} />
-  );
-}
-
-/* Bọc CreateExam trong AdminShell */
-import AdminShell, { Topbar } from './AdminShell.jsx';
 function CreateExamWithShell({ grades, subjects, onDone }) {
   return (
     <AdminShell active="create" onChange={(k) => { window.location.hash = `admin/${k}`; }}>

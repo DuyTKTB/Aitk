@@ -1,0 +1,12 @@
+/* app-extra.css — style bổ sung cho App.jsx (thay inline style + confirm()) */
+.sheet-btn { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 12px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--soft) 50%, transparent); color: var(--ink); font: 500 .84rem var(--sans); cursor: pointer; }
+.sheet-btn.danger { color: var(--acc); }
+.sheet-btn > span { display: inline-flex; font-size: 1.05rem; }
+.app-dialog { width: min(92vw, 380px); padding: 1.4rem; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--bg); color: var(--ink); }
+.app-dialog::backdrop { background: rgba(0, 0, 0, .5); }
+.app-dialog h3 { margin: 0 0 .4rem; font: 700 1.15rem var(--sans); }
+.app-dialog p { margin: 0 0 1.1rem; font: 400 .88rem/1.5 var(--sans); color: var(--mut); }
+.app-dialog-actions { display: flex; gap: .6rem; justify-content: flex-end; }
+.app-dialog-actions button { padding: .6rem 1.1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--bg); color: var(--ink); font: 700 .82rem var(--sans); cursor: pointer; }
+.app-dialog-actions .danger { border-color: var(--acc); background: var(--acc); color: var(--acc-ink); }
+#main:focus { outline: none; }

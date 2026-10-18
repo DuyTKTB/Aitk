@@ -21,6 +21,11 @@ const AIChat = lazy(() => import('./components/AIChat.jsx'));
 const ProfilePage = lazy(() => import('./components/ProfilePage.jsx'));
 const ToolsPage = lazy(() => import('./components/ToolsPage.jsx'));
 const WrongNotebook = lazy(() => import('./components/WrongNotebook.jsx'));
+const CareerPath = lazy(() => import('./components/CareerPath.jsx'));
+const AdmissionLookup = lazy(() => import('./components/AdmissionLookup.jsx'));
+const DocStudio = lazy(() => import('./components/DocStudio.jsx'));
+const QuizDuel = lazy(() => import('./components/games/QuizDuel.jsx'));
+const Lab3D = lazy(() => import('./features/lab3d/Lab3D.jsx'));
 const StatsPage = lazy(() => import('./components/StatsPage.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Feedback = lazy(() => import('./pages/Feedback.jsx'));
@@ -70,19 +75,12 @@ import { setExamAiUserId } from './lib/examAiUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase.js';
 
-/* ============ CSS ============ */
-import './app-extra.css';
-import './stats.css';
-import './admin-dashboard.css';
-import './admin-upgrade.css';
-import './styles/classroom.css';
-import './styles/teacher-pro.css';
 
 /* ============ ICONS ============ */
 import {
   IconHome, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
-  IconTools, IconUser,
+  IconTools, IconUser, IconBook,
 } from './components/Icons.jsx';
 
 /* ============ LOCAL ICONS ============ */
@@ -128,6 +126,9 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Học tập',
     tools: [
+      { id: 'doc-studio', label: 'Doc Studio', desc: 'Tải PDF → AI sinh flashcard + quiz (VIP)', Icon: IconBook },
+      { id: 'career', label: 'Định hướng nghề', desc: 'Test RIASEC + AI gợi ý 3 nhóm ngành', Icon: IconCalc },
+      { id: 'admission', label: 'Tra cứu điểm chuẩn', desc: 'Điểm chuẩn các trường trọng tâm', Icon: IconTarget },
       { id: 'formulas', label: 'Công thức nhanh', desc: 'Tra cứu công thức theo chủ đề', Icon: IconCalc },
       { id: 'analyze', label: 'Phân tích hợp chất', desc: 'Nhận diện loại, tính chất, phản ứng', Icon: IconMicroscope },
       { id: 'balance', label: 'Cân bằng PTHH', desc: 'Cân bằng bằng đại số tuyến tính', Icon: IconScale },
@@ -148,7 +149,8 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Giải trí',
     tools: [
-      { id: 'games', label: 'Trò chơi', desc: '11 game tương tác lớp học', Icon: IconGamepad },
+      { id: 'games', label: 'Trò chơi', desc: 'Hàng chục game tương tác lớp học', Icon: IconGamepad },
+      { id: 'games/duel', label: 'Thách đấu Quiz', desc: 'Đấu quiz 1-1 realtime với bạn bè', Icon: IconGamepad },
       { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác', Icon: IconHome },
     ],
   },
@@ -166,6 +168,9 @@ const PAGES = [
   ['feedback', 'Phản hồi', null],
   ['classroom', 'Lớp học', null],
   ['my-classes', 'Lớp học của tôi', IconClass],
+  ['doc-studio', 'Doc Studio', null],
+  ['career', 'Định hướng nghề', null],
+  ['admission', 'Tra cứu điểm chuẩn', null],
 ];
 
 /* ❗ MỚI: 9 trò chơi CAMERA — 1 component duy nhất (CameraGame) chạy cả 9 cấu hình */
@@ -178,7 +183,7 @@ const GAME_ROUTES = [
   'chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku',
   'tugofwar', 'wheel', 'flip', 'millionaire', 'racing',
   ...CAMERA_GAME_IDS,
-  'mines',
+  'mines', 'duel', 'lab-3d',
 ].map((g) => 'games/' + g);
 
 /* ============ PAGE ROUTING HELPERS ============ */
@@ -458,6 +463,10 @@ export default function App() {
     if (page === 'exam') return <ExamCountdown />;
     if (page === 'notes') return <Notes />;
     if (page === 'notebook') return <WrongNotebook />;
+    if (page === 'doc-studio') return <DocStudio />;
+    if (page === 'career') return <CareerPath />;
+    if (page === 'admission') return <AdmissionLookup />;
+    if (page === 'games/duel') return <QuizDuel />;
     if (page === 'grade') return <GradeCalculator />;
     if (page === 'quiz') return <Quiz />;
     if (page === 'stats') return <StatsPage />;
@@ -470,6 +479,7 @@ export default function App() {
     if (page === 'games/slingshot') return <SlingshotGame />;
     if (page === 'games/jeopardy') return <JeopardyGame />;
     if (page === 'games/lab') return <VirtualLab />;
+    if (page === 'games/lab-3d') return <Lab3D />;
     if (page === 'games/battle') return <ElementBattle />;
     if (page === 'games/sudoku') return <ChemSudoku />;
     if (page === 'games/tugofwar') return <TugOfWarGame />;

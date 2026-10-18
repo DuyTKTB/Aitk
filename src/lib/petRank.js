@@ -82,3 +82,26 @@ export function rankReply(displayName) {
   }
   return 'Bảng xếp hạng đang trống — bạn lên hàng đầu luôn đi!';
 }
+
+/* ============================================================
+   HÀM MỚI: myBestRank 
+   Lấy thứ hạng cao nhất của người dùng (dùng cho PetWidget.jsx)
+   ============================================================ */
+export function myBestRank(displayName) {
+  const boards = getAllLeaderboards();
+  const mine = [];
+  
+  for (const b of boards) {
+    const r = findRank(b.entries, displayName);
+    if (r) mine.push({ ...r, label: b.label });
+  }
+  
+  // Nếu không có tên trong bảng xếp hạng nào
+  if (mine.length === 0) return null;
+  
+  // Sắp xếp để lấy thứ hạng tốt nhất (số rank nhỏ nhất)
+  mine.sort((a, b) => a.rank - b.rank);
+  
+  // Trả về object chứa thông tin hạng cao nhất
+  return mine[0]; 
+}

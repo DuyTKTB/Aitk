@@ -1,0 +1,149 @@
+/* =========================================================================
+   landing-fx.css — hiệu ứng chuột + nâng cấp giao diện
+   Import CUỐI CÙNG (sau landing.css). Thay thế landing-enhance.css (đừng import cả hai).
+   Dùng `transform` cho tilt, `translate`/`opacity` cho reveal & nam châm
+   => các hiệu ứng không ghi đè lẫn nhau.
+   ========================================================================= */
+
+/* ---------- 1. Con trỏ: quầng sáng + vòng + chấm ---------- */
+.lp .lp-cursor { opacity: 0; z-index: 0; }
+.lp.fx-on .lp-cursor { opacity: 1; }
+
+.fx-ring, .fx-dot {
+  position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none;
+  opacity: 0; transition: opacity .25s;
+}
+.lp.fx-on .fx-ring, .lp.fx-on .fx-dot { opacity: 1; }
+.fx-ring.is-hidden { opacity: 0 !important; }
+
+.fx-ring {
+  width: 0; height: 0; margin: 0;
+}
+.fx-ring::before {
+  content: ''; position: absolute; left: -19px; top: -19px; width: 38px; height: 38px; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--acc2, #7db9ff) 70%, transparent);
+  background: transparent;
+  transition: width .3s var(--ease), height .3s var(--ease), left .3s var(--ease), top .3s var(--ease),
+              background .3s, border-color .3s, border-radius .3s;
+}
+.fx-ring.is-link::before { left: -30px; top: -30px; width: 60px; height: 60px; background: color-mix(in srgb, var(--acc) 14%, transparent); border-color: var(--acc); }
+.fx-ring.is-down::before { left: -13px; top: -13px; width: 26px; height: 26px; background: color-mix(in srgb, var(--acc) 30%, transparent); }
+.fx-ring.is-text::before { left: -1px; top: -14px; width: 2px; height: 28px; border-radius: 2px; background: var(--acc); border-color: var(--acc); }
+.fx-ring.has-label::before { left: -38px; top: -38px; width: 76px; height: 76px; background: color-mix(in srgb, var(--acc) 88%, transparent); border-color: transparent; }
+.fx-ring span {
+  position: absolute; left: -60px; top: -9px; width: 120px; text-align: center;
+  color: #fff; font: 700 .72rem var(--body, system-ui); letter-spacing: .04em; text-transform: uppercase;
+  opacity: 0; transition: opacity .2s;
+}
+.fx-ring.has-label span { opacity: 1; }
+
+.fx-dot::before {
+  content: ''; position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--acc); box-shadow: 0 0 12px var(--acc);
+  transition: transform .2s var(--ease), opacity .2s;
+}
+.fx-ring.has-label ~ .fx-dot::before, .fx-ring.is-text ~ .fx-dot::before { opacity: 0; }
+
+/* ---------- 2. Spotlight + viền sáng trên thẻ ---------- */
+.fx-card { position: relative; }
+.fx-glow {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  transition: opacity .35s;
+  background: radial-gradient(380px circle at var(--sx, 50%) var(--sy, 50%),
+    color-mix(in srgb, var(--acc2, #7db9ff) 20%, transparent), transparent 62%);
+}
+.fx-glow::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px;
+  background: radial-gradient(260px circle at var(--sx, 50%) var(--sy, 50%), var(--acc2, #7db9ff), transparent 65%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.fx-card:hover > .fx-glow { opacity: 1; }
+[data-theme='light'] .fx-glow { background: radial-gradient(380px circle at var(--sx, 50%) var(--sy, 50%), color-mix(in srgb, var(--acc) 12%, transparent), transparent 62%); }
+[data-theme='light'] .fx-glow::before { background: radial-gradient(260px circle at var(--sx, 50%) var(--sy, 50%), var(--acc), transparent 65%); }
+
+/* ---------- 3. Tilt 3D ---------- */
+.lp [data-tilt] {
+  transform: perspective(900px) rotateX(var(--trx, 0deg)) rotateY(var(--try, 0deg)) translateY(var(--lift, 0px));
+  transition: transform .25s var(--ease), border-color .3s, box-shadow .4s;
+  will-change: transform;
+}
+.lp [data-tilt]:hover { --lift: -5px; }
+.lp .bt[data-tilt]:hover { transform: perspective(900px) rotateX(var(--trx, 0deg)) rotateY(var(--try, 0deg)) translateY(-5px); }
+
+/* ---------- 4. Ripple trên nút ---------- */
+.lp .lp-btn { position: relative; overflow: hidden; isolation: isolate; }
+.fx-ripple {
+  position: absolute; z-index: -1; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 65%);
+  transform: scale(0); animation: fx-rip .65s var(--ease) forwards;
+}
+@keyframes fx-rip { to { transform: scale(1); opacity: 0; } }
+
+/* ---------- 5. Nút nổi hút nhẹ về phía chuột (dùng `translate`, không đụng transform) ---------- */
+.lp-fab, .lp-ico, .lp-expand { translate: var(--fmx, 0px) var(--fmy, 0px); transition: translate .25s var(--ease); }
+
+/* ---------- 6. Xuất hiện lần lượt ---------- */
+.fx-rv { opacity: 0; translate: 0 26px; }
+.fx-rv.fx-in {
+  opacity: 1; translate: 0 0;
+  transition: opacity .7s var(--ease) calc(var(--i, 0) * 70ms), translate .8s var(--ease) calc(var(--i, 0) * 70ms);
+}
+
+/* ---------- 7. Menu: mục đang xem (scrollspy) ---------- */
+.lp .lp-links button { position: relative; }
+.lp .lp-links button::after {
+  content: ''; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
+  background: var(--acc); transform: scale(0); transition: transform .3s var(--ease);
+}
+.lp .lp-links button.on { color: var(--ink); }
+.lp .lp-links button.on::after { transform: scale(1); }
+
+/* ---------- 8. Khung ảnh minh họa (kiểu cửa sổ trình duyệt) + phóng to ---------- */
+.lm-shot-frame {
+  position: relative; display: block; width: 100%; padding: 0; margin: 0; cursor: zoom-in; text-align: left;
+  border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--solid);
+  box-shadow: 0 30px 60px -36px var(--acc), 0 2px 0 rgba(255, 255, 255, .04) inset;
+  color: inherit; font: inherit;
+}
+.lm-shot-bar { display: flex; align-items: center; gap: .35rem; padding: .55rem .8rem; border-bottom: 1px solid var(--line); background: var(--soft); }
+.lm-shot-bar i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.lm-shot-bar i:nth-child(1) { background: #ff6b6b; opacity: .8; }
+.lm-shot-bar i:nth-child(2) { background: #ffd166; opacity: .8; }
+.lm-shot-bar i:nth-child(3) { background: #4cd98a; opacity: .8; }
+.lm-shot-frame img { transition: transform .8s var(--ease); }
+.lm-shot-frame:hover img { transform: scale(1.025); }
+.lm-shot-frame:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+
+.lm-zoom {
+  width: min(1200px, 94vw); max-height: 92vh; padding: 0; border: 1px solid var(--line); border-radius: 20px;
+  background: var(--solid); color: var(--ink); overflow: auto;
+}
+.lm-zoom::backdrop { background: rgba(3, 6, 20, .78); backdrop-filter: blur(6px); }
+.lm-zoom[open] { animation: fx-zoom .35s var(--ease); }
+.lm-zoom img { display: block; width: 100%; height: auto; }
+.lm-zoom p { margin: 0; padding: .8rem 1.1rem; color: var(--mut); font-size: .9rem; }
+.lm-zoom button {
+  position: absolute; top: .7rem; right: .7rem; width: 36px; height: 36px; border-radius: 50%; border: 0;
+  background: rgba(0, 0, 0, .55); color: #fff; font-size: 1.2rem; cursor: pointer;
+}
+@keyframes fx-zoom { from { opacity: 0; transform: scale(.96) translateY(10px); } }
+
+/* ---------- 9. Tinh chỉnh nhỏ ---------- */
+.lp .lm-tabs button.on { box-shadow: 0 6px 18px -8px var(--acc); }
+.lp .lm-item .lm-ico, .lp .bt .lm-ico { transition: transform .35s var(--ease), background .3s, box-shadow .3s; }
+.lp .lm-item:hover .lm-ico, .lp .bt:hover .lm-ico { box-shadow: 0 0 0 6px color-mix(in srgb, var(--acc) 10%, transparent); }
+.lp :focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+
+/* ---------- Giảm chuyển động / màn cảm ứng ---------- */
+@media (hover: none), (pointer: coarse) {
+  .fx-ring, .fx-dot, .fx-glow { display: none; }
+  .lp [data-tilt] { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-rv { opacity: 1; translate: none; }
+  .fx-ring, .fx-dot { display: none; }
+  .lp [data-tilt] { transform: none !important; }
+  .fx-ripple { display: none; }
+  .lm-zoom[open] { animation: none; }
+}

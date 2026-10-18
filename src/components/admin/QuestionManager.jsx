@@ -3,7 +3,8 @@
    ============================================================ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import AdminShell, { Topbar, Modal, ConfirmDialog } from './AdminShell.jsx';
+import AdminShell, { Topbar } from './AdminShell.jsx';
+import { Modal, ConfirmDialog, useDebounced } from './AdminUI.jsx';
 import {
   IconQuestion, IconSearch, IconRefresh, IconTrash, IconEye, IconEdit,
   IconChevron, IconBack, IconClose, IconCheck,
@@ -13,7 +14,6 @@ import { escapeLike, friendlyError } from './adminUtils.js';
 
 const PAGE_SIZE = 20;
 
-/* Style dùng chung cho đoạn văn bản bị cắt 2 dòng */
 const clamp2 = {
   display: '-webkit-box',
   WebkitLineClamp: 2,
@@ -131,20 +131,12 @@ export default function QuestionManager({ onOpenExam }) {
 
       {/* Filter bar */}
       <div className="vt-card soft">
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select
-            value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
+        <div className="vt-filter-bar">
+          <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="vt-select-pill">
             <option value="all">Tất cả môn</option>
             {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <select
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
+          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="vt-select-pill">
             <option value="all">Mọi độ khó</option>
             {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
@@ -167,9 +159,17 @@ export default function QuestionManager({ onOpenExam }) {
           <button type="button" className="vt-btn primary" onClick={load}>Thử lại</button>
         </div>
       ) : loading && rows.length === 0 ? (
-        <div className="vt-loading">
-          <div className="page-loader-spinner" />
-          <p>Đang tải câu hỏi…</p>
+        <div className="vt-card">
+          <div className="vt-skeleton-list">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="vt-skeleton-row">
+                <div className="vt-skeleton-line" style={{ width: '8%' }} />
+                <div className="vt-skeleton-line" style={{ width: '50%' }} />
+                <div className="vt-skeleton-line" style={{ width: '20%' }} />
+                <div className="vt-skeleton-line" style={{ width: '12%' }} />
+              </div>
+            ))}
+          </div>
         </div>
       ) : rows.length === 0 ? (
         <div className="vt-empty">
@@ -209,15 +209,12 @@ export default function QuestionManager({ onOpenExam }) {
                       </small>
                     </td>
                     <td>
-                      <span
-                        className="vt-chip"
-                        style={{ background: diffColor(q.difficulty), color: '#fff' }}
-                      >
+                      <span className="vt-chip" style={{ background: diffColor(q.difficulty), color: '#fff' }}>
                         {diffName(q.difficulty)}
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                      <div className="vt-row-actions">
                         <button type="button" className="vt-icon-btn" onClick={() => setDetail(q)} title="Xem chi tiết">
                           <IconEye size={14} />
                         </button>
@@ -323,14 +320,4 @@ export default function QuestionManager({ onOpenExam }) {
       {toast && <div className="vt-toast" role="status">{toast}</div>}
     </AdminShell>
   );
-}
-
-/* Hook useDebounced nội bộ */
-function useDebounced(value, ms = 250) {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return v;
 }

@@ -1,0 +1,211 @@
+/* ============================================================
+   HOME GLASS ADDON — Chỉ THÊM hiệu ứng, KHÔNG ghi đè layout
+   An toàn: dùng selector cụ thể, không phá class gốc
+   Import SAU cùng trong main.jsx
+   ============================================================ */
+
+/* ============================================================
+   1. AMBIENT BACKGROUND (không ảnh hưởng layout)
+   ============================================================ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 12%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 10%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #22d3ee 8%, transparent),
+      transparent 60%);
+  opacity: .85;
+}
+
+[data-theme='dark'] body::before {
+  background:
+    radial-gradient(60% 50% at 12% 15%,
+      color-mix(in srgb, #3b82f6 8%, transparent),
+      transparent 55%),
+    radial-gradient(50% 45% at 88% 10%,
+      color-mix(in srgb, #8b5cf6 6%, transparent),
+      transparent 55%),
+    radial-gradient(65% 55% at 50% 100%,
+      color-mix(in srgb, #0891b2 6%, transparent),
+      transparent 60%);
+}
+
+/* ============================================================
+   2. STACK CARDS — Chỉ thêm glass effect, KHÔNG đổi padding/margin
+   ============================================================ */
+.stack-card {
+  position: relative;
+  /* Chỉ thêm backdrop-filter, KHÔNG dùng !important lên background */
+  isolation: isolate;
+}
+
+.stack-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  opacity: 0.5;
+}
+
+.stack-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Chỉ áp dụng glass khi browser hỗ trợ */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .stack-card::before {
+    background: color-mix(in srgb, var(--bg) 75%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  }
+}
+
+/* ============================================================
+   3. MASCOT CHIPS — CHỈ thêm glass effect
+   QUAN TRỌNG: Không dùng !important lên animation/position
+   ============================================================ */
+.hero-mascot .hx-chip {
+  position: absolute;
+  /* Giữ nguyên top/left/right/bottom từ CSS gốc */
+}
+
+/* Chỉ override visual, không override position */
+.hx-chip {
+  border-radius: 14px;
+}
+
+.hx-chip.acc {
+  /* Chỉ đổi màu, giữ nguyên vị trí */
+}
+
+/* ============================================================
+   4. TILE (Today section) — CHỈ visual, không layout
+   ============================================================ */
+.hp-tile {
+  /* KHÔNG override padding, display, grid */
+  /* Chỉ thêm transition cho hover */
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1),
+              box-shadow .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.hp-tile:hover {
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   5. BENTO TOOLS — CHỈ visual
+   QUAN TRỌNG: KHÔNG override grid-template-columns
+   ============================================================ */
+.hp-bt {
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1),
+              box-shadow .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.hp-bt:hover {
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   6. CTA GRID — CHỈ visual
+   ============================================================ */
+.cta-side {
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1),
+              box-shadow .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.cta-side:hover {
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   7. STATS — CHỈ visual
+   ============================================================ */
+.hm-stat {
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1),
+              box-shadow .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.hm-stat:hover {
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   8. QUOTE — CHỈ visual
+   ============================================================ */
+.fx-quote {
+  transition: box-shadow .25s;
+}
+
+/* ============================================================
+   9. FAQ details — CHỈ visual
+   ============================================================ */
+.hp-faq details {
+  transition: border-color .2s, background-color .2s;
+}
+
+/* ============================================================
+   10. Word marquee — KHÔNG override animation
+   ============================================================ */
+.hp-words-row span {
+  /* Giữ nguyên kích thước và animation từ file gốc */
+  will-change: transform;
+}
+
+/* ============================================================
+   11. HP-ED-C (Everyday cards) — CHỈ visual
+   KHÔNG override grid-template-columns
+   ============================================================ */
+.hp-ed-c {
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1),
+              box-shadow .25s cubic-bezier(.32, .72, 0, 1);
+}
+
+.hp-ed-c:hover {
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   12. FALLBACK an toàn
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .stack-card::before {
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ============================================================
+   13. REDUCED MOTION — tắt animation
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .hp-tile,
+  .hp-bt,
+  .cta-side,
+  .hm-stat,
+  .hp-ed-c {
+    transition: none;
+  }
+
+  .hp-tile:hover,
+  .hp-bt:hover,
+  .cta-side:hover,
+  .hm-stat:hover,
+  .hp-ed-c:hover {
+    transform: none;
+  }
+}

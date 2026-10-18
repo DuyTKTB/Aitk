@@ -2,13 +2,15 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocalStorage, liveStreak, dayKey } from '../hooks.js';
 import { STAGES } from './Pet.jsx';
 import { SkinPet, PET_SKINS, LEGACY_DEFAULT_NAMES } from './PetSkins.jsx';
-import { rankReply } from '../lib/petRank.js';
+import { rankReply, myBestRank } from '../lib/petRank.js';
 import { randomAction } from '../lib/elecActions.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
   IconGem, IconFire, IconBook, IconApple, IconX,
   IconInfo, IconChat, IconHeart, IconCake, IconTrend, IconSparkle,
 } from './PetIcons.jsx';
+import './pet-widget.css';
+
 
 const SIZE = 96;
 
@@ -274,6 +276,15 @@ export default function PetWidget() {
 
   /* ---- Chat nối bảng xếp hạng: hỏi về hạng → ELEC AI đọc điểm game trả lời ---- */
   const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : '') || displayName;
+  const bestRank = myBestRank(userName);
+
+  /* Liên kết nhanh tới các phần của web */
+  const QUICK_LINKS = [
+    { h: '#quiz', label: 'Ôn tập', d: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20' },
+    { h: '#games', label: 'Trò chơi', d: 'M6 12h4M8 10v4M15.5 13h.01M18.5 11h.01M17.3 5H6.7a4.7 4.7 0 0 0-4.62 5.6l1 5.4a2.4 2.4 0 0 0 4.1 1.1L9 15h6l1.82 2.1a2.4 2.4 0 0 0 4.1-1.1l1-5.4A4.7 4.7 0 0 0 17.3 5z' },
+    { h: '#ai', label: 'Hỏi AI', d: 'M12 8V4M8 4h8M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zM9 13h.01M15 13h.01' },
+  ];
+  const go = (h) => { window.location.hash = h; setOpen(false); };
   const replyFor = (text) => {
     const t = text.toLowerCase().trim();
     if (/(xếp hạng|thứ hạng|hạng mấy|bảng xếp hạng|top|rank|điểm cao)/.test(t)) return rankReply(userName);
@@ -429,6 +440,29 @@ export default function PetWidget() {
                 <span>{lastFed === dayKey() ? 'Đã ăn hôm nay' : food > 0 ? 'Cho ăn' : 'Hết thức ăn'}</span>
               </button>
 
+              {/* Liên kết nhanh tới các phần của web */}
+              <div className="pet-quick-grid">
+                {QUICK_LINKS.map((q) => (
+                  <button key={q.h} type="button" className="pet-quick" onClick={() => go(q.h)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={q.d} /></svg>
+                    <span>{q.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {bestRank && (
+                <button type="button" className="pet-rank-card" onClick={() => go('#games')} title="Xem bảng xếp hạng">
+                  <span className="pet-rank-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z" /></svg>
+                  </span>
+                  <span className="pet-rank-text">
+                    <b>Hạng #{bestRank.rank}/{bestRank.total}</b>
+                    <small>{bestRank.label} — {bestRank.score} điểm</small>
+                  </span>
+                  <small className="pet-rank-go">Xem</small>
+                </button>
+              )}
+
               <div className="pet-progress-block">
                 <div className="pet-progress-head">
                   <span className="pet-progress-label"><IconSparkle size={11} />Cấp</span>
@@ -486,19 +520,19 @@ export default function PetWidget() {
           {tab === 'memories' && (
             <div className="pet-memories pet-memories-compact">
               <div className="pet-memory">
-                <span className="pet-memory-icon"><IconCake size={14} /></span>
+                <span className="pet-memory-icon" style={{ background: 'rgba(255,159,10,.12)', color: '#ff9f0a' }}><IconCake size={16} /></span>
                 <div><b>Ngày bắt đầu</b><small>{milestones.firstDay || 'Chưa có'}</small></div>
               </div>
               <div className="pet-memory">
-                <span className="pet-memory-icon"><IconFire size={14} /></span>
+                <span className="pet-memory-icon" style={{ background: 'rgba(255,59,48,.12)', color: '#ff3b30' }}><IconFire size={16} /></span>
                 <div><b>Streak cao nhất</b><small>{milestones.maxStreak} ngày</small></div>
               </div>
               <div className="pet-memory">
-                <span className="pet-memory-icon"><IconGem size={14} /></span>
+                <span className="pet-memory-icon" style={{ background: 'rgba(88,86,214,.12)', color: '#5856d6' }}><IconGem size={16} /></span>
                 <div><b>Cấp hiện tại</b><small>{stageName(st)}</small></div>
               </div>
               <div className="pet-memory">
-                <span className="pet-memory-icon"><IconTrend size={14} /></span>
+                <span className="pet-memory-icon" style={{ background: 'rgba(52,199,89,.12)', color: '#34c759' }}><IconTrend size={16} /></span>
                 <div><b>Số lần lên cấp</b><small>{(milestones.levelUps || []).length} lần</small></div>
               </div>
             </div>

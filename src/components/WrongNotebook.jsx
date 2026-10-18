@@ -1,17 +1,16 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
-import { markMastered, unsaveQuestion, saveQuestion } from '../lib/examApi.js';
+import { markMastered, markWrong, unsaveQuestion, saveQuestion } from '../lib/examApi.js';
 import {
   IcoBookOpen, IcoBookMark, IcoX, IcoCheck, IcoCheckCircle, IcoSearch,
   IcoClose, IcoTrash, IcoStar, IcoCopy, IcoDownload, IcoUpload, IcoSort,
   IcoGrid, IcoList, IcoShuffle, IcoPlay, IcoArrowUp, IcoSparkle,
-  IcoBulb, IcoStats, IcoFire, IcoTag, IcoEye, IcoInfo,
+  IcoBulb, IcoStats, IcoFire, IcoTag, IcoEye, IcoInfo, IcoRefresh,
 } from './NotebookIcons.jsx';
 import NotebookGuide from './NotebookGuide.jsx';
 import { topicName, UNCLASSIFIED } from '../data/chemTopics.js';
-import './notebook-v2.css';
-import './notebook-guide.css';
+/* 🎨 CSS bây giờ lazy-loaded trong useEffect. */
 
 const DIFFICULTIES = [
   { id: 'all', label: 'Tất cả' },
@@ -25,13 +24,15 @@ const DIFF_LABELS = { easy: 'Dễ', medium: 'TB', hard: 'Khó', extreme: 'Rất 
 const DIFF_COLORS = { easy: '#b7dc9a', medium: '#ffc46b', hard: '#ff9b85', extreme: '#f2b6c6' };
 
 export default function WrongNotebook() {
-  const { user } = useAuth();
-  const [wrongQs, setWrongQs] = useState([]);
-  const [savedQs, setSavedQs] = useState([]);
-  const [tab, setTab] = useState('wrong');
-  const [loading, setLoading] = useState(true);
+   const { user } = useAuth();
+   const [wrongQs, setWrongQs] = useState([]);
+   const [savedQs, setSavedQs] = useState([]);
+   const [tab, setTab] = useState('wrong');
+   const [loading, setLoading] = useState(true);
 
-  // Filters
+
+
+   // Filters
   const [search, setSearch] = useState('');
   const [filterDiff, setFilterDiff] = useState('all');
   const [filterTopic, setFilterTopic] = useState('all');
@@ -289,7 +290,12 @@ export default function WrongNotebook() {
     if (quizPicked) return;
     setQuizPicked(answerId);
     const correct = quizCurrent.question.answers.find((a) => a.is_correct);
-    if (answerId === correct?.id) setQuizScore((s) => s + 1);
+    if (answerId === correct?.id) {
+      setQuizScore((s) => s + 1);
+    } else if (uid && quizCurrent.question?.id) {
+      /* Sai trong phiên luyện → ghi lại vào sổ sai (tăng lần sai) */
+      markWrong(uid, quizCurrent.question.id, null).catch(() => {});
+    }
   };
 
   const nextQuiz = () => {
@@ -352,6 +358,16 @@ export default function WrongNotebook() {
           >
             <IcoPlay size={16} />
             <span>Luyện tập</span>
+          </button>
+
+          <button
+            type="button"
+            className="nb-btn"
+            onClick={() => { window.location.hash = '#quiz'; }}
+            title="Ôn lặp lại ngắt quãng — hệ SRS của Ôn tập thông minh"
+          >
+            <IcoRefresh size={16} />
+            <span>Luyện SRS</span>
           </button>
         </div>
       </header>
@@ -539,10 +555,16 @@ export default function WrongNotebook() {
           <p>
             {items.length === 0
               ? (tab === 'wrong'
-                  ? 'Làm bài để hệ thống ghi lại câu sai giúp bạn ôn lại.'
+                  ? 'Làm 1 đề trắc nghiệm và trả lời sai vài câu — hệ thống tự ghi vào đây.'
                   : 'Bấm biểu tượng ngôi sao trên câu hỏi để lưu vào đây.')
               : 'Thử xóa bộ lọc hoặc tìm từ khóa khác.'}
           </p>
+          {items.length === 0 && tab === 'wrong' && (
+            <small style={{ display: 'block', marginTop: '.5rem', color: 'var(--mut, #86868b)', fontSize: '.72rem', lineHeight: 1.6 }}>
+              Lưu ý: chỉ <b>đề thi trắc nghiệm chấm tự động</b> mới ghi câu sai vào đây.
+              Nếu đã làm mà vẫn trống → chạy file <code>supabase/migrations/004_wrong_questions.sql</code> trong Supabase SQL Editor (thiếu bảng/policy RLS sẽ chặn ghi).
+            </small>
+          )}
           {items.length > 0 && (
             <button
               className="nb-btn nb-btn-ghost"

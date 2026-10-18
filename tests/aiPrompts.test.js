@@ -3,8 +3,8 @@ import { buildSystemPrompt, STUDY_MODES, MODE_LIST, VERIFY_SYSTEM_PROMPT } from 
 import { buildRequestPlan } from '../src/lib/ai.js';
 
 describe('STUDY_MODES', () => {
-  it('có đủ 6 chế độ học', () => {
-    expect(MODE_LIST).toHaveLength(6);
+  it('có đủ 7 chế độ học', () => {
+    expect(MODE_LIST).toHaveLength(7);
     expect(Object.keys(STUDY_MODES)).toEqual(
       expect.arrayContaining(['auto', 'detail', 'steps', 'check', 'theory', 'similar'])
     );

@@ -1,0 +1,722 @@
+/* =========================================================================
+   home-apple-bento.css — BENTO GRID DASHBOARD CHUẨN APPLE KEYNOTE
+   Thiết kế giao diện đẳng cấp Apple Vision Pro & iOS/macOS Sequoia:
+   • Cấu trúc Bento Grid 12 cột với tỉ lệ vàng
+   • Vật liệu kính mờ Frosted Glass đa tầng (Thick & Thin Materials)
+   • Phản quang mép trên (Inner Specular Highlight)
+   • Dải sáng Apple Intelligence Aura (xanh sapphire, tím, hồng)
+   • Bo góc Squircle 24px mượt mà & Typography chuẩn SF Pro
+   ========================================================================= */
+
+/* ---- NỀN AMBIENT LIGHT TOÀN TRANG ---- */
+.db-bento-wrap {
+  position: relative;
+  width: min(var(--page-w), 100% - 2.5rem);
+  margin: 0 auto;
+  padding: calc(var(--nav-h) + 1.75rem) 0 var(--s-8);
+}
+
+.db-bento-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(800px 500px at 15% 10%, rgba(0, 113, 227, 0.08), transparent 65%),
+    radial-gradient(700px 550px at 85% 15%, rgba(168, 85, 247, 0.07), transparent 60%),
+    radial-gradient(900px 600px at 50% 95%, rgba(0, 209, 255, 0.05), transparent 65%);
+  transition: opacity var(--dur-3) var(--ease);
+}
+
+[data-theme='dark'] .db-bento-ambient {
+  background:
+    radial-gradient(800px 500px at 15% 10%, rgba(10, 132, 255, 0.12), transparent 65%),
+    radial-gradient(700px 550px at 85% 15%, rgba(168, 85, 247, 0.09), transparent 60%),
+    radial-gradient(900px 600px at 50% 95%, rgba(14, 165, 233, 0.07), transparent 65%);
+}
+
+/* ---- LƯỚI BENTO CHÍNH (12 CỘT) ---- */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+/* ---- THẺ BENTO CARD CƠ BẢN ---- */
+.bento-card {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--sh-1), var(--glass-specular);
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+  overflow: hidden;
+  transition: transform var(--dur-2) var(--ease),
+              box-shadow var(--dur-2) var(--ease),
+              border-color var(--dur-2) var(--ease);
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-card:hover {
+  transform: translateY(-2.5px);
+  box-shadow: var(--sh-2), var(--glass-specular);
+  border-color: color-mix(in srgb, var(--acc) 28%, var(--glass-border));
+}
+
+.bento-card:active {
+  transform: scale(0.995);
+}
+
+/* Thẻ kính dày hơn cho các vị trí nổi bật */
+.bento-card-thick {
+  background: var(--glass-thick);
+}
+
+/* Phân chia kích thước cột trong lưới Bento */
+.col-span-12 { grid-column: span 12; }
+.col-span-8  { grid-column: span 8; }
+.col-span-7  { grid-column: span 7; }
+.col-span-6  { grid-column: span 6; }
+.col-span-5  { grid-column: span 5; }
+.col-span-4  { grid-column: span 4; }
+.col-span-3  { grid-column: span 3; }
+
+/* ============================================================
+   1. HERO BENTO: APPLE INTELLIGENCE BANNER & COMPOSER
+   ============================================================ */
+.bento-hero {
+  grid-column: span 8;
+  position: relative;
+  padding: 2rem 2.25rem;
+  background:
+    radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--acc) 10%, transparent) 0%, transparent 60%),
+    var(--glass);
+  border: 1px solid var(--glass-border);
+}
+
+.bento-hero-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.bento-ai-avatar {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(0, 113, 227, 0.2);
+  flex-shrink: 0;
+}
+
+.bento-ai-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--ai-gradient);
+  z-index: -1;
+  opacity: 0.75;
+  filter: blur(4px);
+  animation: ai-pulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes ai-pulse {
+  0% { transform: scale(0.95); opacity: 0.6; }
+  100% { transform: scale(1.08); opacity: 0.9; }
+}
+
+.bento-hero-title h1 {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.bento-hero-bubble {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--mut);
+  line-height: 1.45;
+  max-width: 54ch;
+}
+
+/* Khung nhập liệu Capsule Bar (Apple Intelligence Search Pill) */
+.bento-composer {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 0.85rem 1rem 0.65rem;
+  box-shadow: var(--sh-1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color var(--dur-2) var(--ease),
+              box-shadow var(--dur-2) var(--ease);
+}
+
+.bento-composer:focus-within {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 18%, transparent), var(--sh-1);
+}
+
+.bento-composer textarea {
+  width: 100%;
+  min-height: 48px;
+  max-height: 120px;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--ink);
+  caret-color: var(--acc);
+}
+
+.bento-composer textarea::placeholder {
+  color: var(--mut);
+  opacity: 0.75;
+}
+
+.bento-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line-soft);
+  margin-top: 0.35rem;
+}
+
+.bento-chips-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.bento-chip {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  color: var(--mut);
+  border-radius: var(--r-pill);
+  padding: 0.3rem 0.75rem;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.bento-chip:hover {
+  background: var(--soft);
+  color: var(--acc);
+  border-color: color-mix(in srgb, var(--acc) 30%, transparent);
+}
+
+.bento-send-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--acc);
+  color: #ffffff;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+  flex-shrink: 0;
+}
+
+.bento-send-btn:hover {
+  background: var(--acc-hover);
+  transform: scale(1.08);
+}
+
+.bento-send-btn:active {
+  transform: scale(0.94);
+}
+
+/* ============================================================
+   2. FITNESS & GOAL WIDGET (Bento 4 cột cạnh Hero)
+   ============================================================ */
+.bento-today-widget {
+  grid-column: span 4;
+  justify-content: space-between;
+}
+
+.bento-widget-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.75rem;
+}
+
+.bento-widget-title a {
+  font-size: var(--fs-xs);
+  color: var(--acc);
+  text-transform: none;
+  letter-spacing: normal;
+  text-decoration: none;
+}
+
+.bento-today-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.bento-today-score b {
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--ink);
+  line-height: 1;
+}
+
+.bento-today-score span {
+  font-size: var(--fs-md);
+  color: var(--mut);
+}
+
+.bento-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.bento-progress-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--acc);
+  transition: width 0.6s var(--ease);
+}
+
+.bento-progress-fill.done {
+  background: linear-gradient(90deg, #34c759, #30d158);
+}
+
+/* 7 ngày chấm tròn Apple Activity */
+.bento-week-dots {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bento-week-dot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bento-dot-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid var(--line-soft);
+  transition: all var(--dur-2) var(--ease);
+}
+
+.bento-week-dot-item.active .bento-dot-circle {
+  background: var(--acc);
+  box-shadow: 0 0 8px rgba(0, 113, 227, 0.4);
+}
+
+.bento-week-dot-item.today .bento-dot-circle {
+  border: 2px solid var(--acc);
+}
+
+.bento-week-dot-item small {
+  font-size: 0.7rem;
+  color: var(--mut);
+  font-weight: 500;
+}
+
+/* ============================================================
+   3. STATS STRIP (4 Ô VUÔNG NHỎ TIỆN ÍCH)
+   ============================================================ */
+.bento-stats-strip {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.bento-stat-box {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--sh-1), var(--glass-specular);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all var(--dur-2) var(--ease);
+}
+
+.bento-stat-box:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-2), var(--glass-specular);
+}
+
+.bento-stat-label {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bento-stat-val {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--ink);
+  margin: 0.35rem 0 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bento-stat-val.streak {
+  color: #ff9500;
+}
+
+.bento-stat-sub {
+  font-size: var(--fs-xs);
+  color: var(--mut);
+}
+
+/* ============================================================
+   4. QUICK SHORTCUTS (4 SQUIRCLE CAPSULES)
+   ============================================================ */
+.bento-shortcuts-row {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.bento-shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.35rem;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--sh-1), var(--glass-specular);
+  border-radius: var(--r-lg);
+  color: var(--ink);
+  text-decoration: none;
+  transition: all var(--dur-2) var(--ease);
+}
+
+.bento-shortcut-item:hover {
+  transform: translateY(-2px);
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--acc) 35%, var(--glass-border));
+  box-shadow: var(--sh-2), var(--glass-specular);
+}
+
+.bento-shortcut-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--soft);
+  color: var(--acc);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: transform var(--dur-2) var(--ease);
+}
+
+.bento-shortcut-item:hover .bento-shortcut-icon {
+  transform: scale(1.1) rotate(-3deg);
+  background: var(--acc);
+  color: #ffffff;
+}
+
+.bento-shortcut-info b {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.bento-shortcut-info small {
+  font-size: var(--fs-xs);
+  color: var(--mut);
+}
+
+/* ============================================================
+   5. ROADMAP BENTO: LỘ TRÌNH THEO LỚP (IOS SEGMENTED CONTROL)
+   ============================================================ */
+.bento-roadmap {
+  grid-column: span 7;
+}
+
+.bento-segmented-control {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  gap: 2px;
+  margin: 1rem 0 1.25rem;
+  border: 1px solid var(--line-soft);
+}
+
+.bento-segmented-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--r-pill);
+  font-family: var(--sans);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--mut);
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.bento-segmented-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.bento-topic-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.bento-topic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.bento-topic-btn:hover {
+  background: var(--soft);
+  border-color: color-mix(in srgb, var(--acc) 35%, transparent);
+  color: var(--acc);
+  transform: translateY(-1px);
+}
+
+.bento-topic-btn span.num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--acc);
+}
+
+/* ============================================================
+   6. ELEMENT OF THE DAY (APPLE CARD TITANIUM STYLE)
+   ============================================================ */
+.bento-element-card {
+  grid-column: span 5;
+  background:
+    radial-gradient(130% 100% at 90% 10%, rgba(0, 113, 227, 0.09), transparent 60%),
+    var(--glass);
+  border: 1px solid var(--glass-border);
+}
+
+.bento-el-badge {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.bento-el-symbol-box {
+  width: 68px;
+  height: 68px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--sh-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bento-el-symbol-box small {
+  font-size: 0.65rem;
+  color: var(--mut);
+  font-weight: 600;
+}
+
+.bento-el-symbol-box b {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--acc);
+  line-height: 1;
+}
+
+.bento-el-symbol-box span {
+  font-size: 0.65rem;
+  color: var(--mut);
+}
+
+.bento-el-details h3 {
+  margin: 0 0 0.25rem;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.bento-el-details p {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--mut);
+  line-height: 1.45;
+}
+
+/* ============================================================
+   7. CLASSROOM & EXAM CARD
+   ============================================================ */
+.bento-classroom {
+  grid-column: span 6;
+}
+
+.bento-input-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 0.35rem 0.5rem 0.35rem 1rem;
+  margin: 1rem 0 0.75rem;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.bento-input-pill input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+
+.bento-input-pill button {
+  padding: 0.45rem 1rem;
+  border-radius: var(--r-pill);
+  background: var(--acc);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease);
+}
+
+.bento-input-pill button:hover {
+  background: var(--acc-hover);
+  transform: scale(1.02);
+}
+
+/* ============================================================
+   8. GAME HUB & LAB BENTO
+   ============================================================ */
+.bento-games {
+  grid-column: span 6;
+}
+
+.bento-games-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.bento-game-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.bento-game-pill:hover {
+  background: var(--soft);
+  color: var(--acc);
+  border-color: color-mix(in srgb, var(--acc) 30%, transparent);
+  transform: translateY(-1.5px);
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   ============================================================ */
+@media (max-width: 1024px) {
+  .bento-hero { grid-column: span 12; }
+  .bento-today-widget { grid-column: span 12; }
+  .bento-stats-strip { grid-template-columns: repeat(2, 1fr); }
+  .bento-shortcuts-row { grid-template-columns: repeat(2, 1fr); }
+  .bento-roadmap { grid-column: span 12; }
+  .bento-element-card { grid-column: span 12; }
+  .bento-classroom { grid-column: span 12; }
+  .bento-games { grid-column: span 12; }
+}
+
+@media (max-width: 640px) {
+  .db-bento-wrap {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .bento-stats-strip { grid-template-columns: 1fr; }
+  .bento-shortcuts-row { grid-template-columns: 1fr; }
+  .bento-games-grid { grid-template-columns: repeat(2, 1fr); }
+}

@@ -1,0 +1,9 @@
+/* landing-class.css — thêm cho mục Lớp học (import sau landing-ocean.css) */
+.lp-class-lead { margin: 1rem 0 0; max-width: 36em; color: var(--mut); font-size: 1.02rem; line-height: 1.6; }
+.lp-class .lp-vpoints { width: 100%; margin-inline: 0; padding-inline: 0; }
+.lp-class .lp-cta-btns { display: flex; flex-wrap: wrap; gap: .7rem; }
+@media (max-width: 900px) {
+  .lp-class { padding-inline: 1rem; }
+  .lp-class .lp-cta-btns { flex-direction: column; }
+  .lp-class .lp-cta-btns > * { width: 100%; }
+}

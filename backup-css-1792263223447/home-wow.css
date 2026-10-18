@@ -1,0 +1,90 @@
+/* ============================================================
+   home-wow.css — trang chủ công khai cho khách + hiệu ứng nổi bật
+   Import CUỐI CÙNG trong App.jsx (đã thêm sẵn) hoặc main.jsx:
+     import './home-wow.css';
+   ============================================================ */
+
+:root { --nav-h: 56px; }
+
+/* ---------- Thanh điều hướng khách ---------- */
+.gb {
+  position: fixed; inset: 0 0 auto 0; z-index: 60; height: var(--nav-h);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0 clamp(1rem, 4vw, 2.2rem);
+  border-bottom: 1px solid transparent;
+  transition: background .3s, border-color .3s, backdrop-filter .3s;
+}
+.gb.sc {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  border-color: var(--line);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+}
+.gb-logo { display: inline-flex; align-items: center; gap: .55rem; color: var(--ink); text-decoration: none; font: 600 1rem var(--sans); letter-spacing: -.02em; }
+.gb-logo i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; font-style: normal; background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; box-shadow: 0 0 20px rgba(47, 107, 255, .5); }
+.gb-nav { display: flex; gap: .3rem; }
+.gb-nav button { padding: .45rem .9rem; border: 0; border-radius: 999px; background: none; color: var(--mut); font: 500 .9rem var(--sans); cursor: pointer; transition: color .2s, background .2s; }
+.gb-nav button:hover { color: var(--ink); background: var(--soft); }
+.gb-actions { display: flex; align-items: center; gap: .6rem; }
+.gb-theme { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--glass); color: var(--ink); cursor: pointer; font-size: 1rem; }
+.gb-login { padding: .5rem 1.2rem; text-decoration: none; }
+@media (max-width: 560px) { .gb-nav { display: none; } }
+
+/* Trang chủ khách cần chừa chỗ cho thanh cố định */
+.gb + main { padding-top: 0; }
+.gb + .scroll-progress, .scroll-progress + .gb { z-index: 61; }
+
+/* Nút quay về trên trang đăng nhập */
+.gate-back {
+  position: fixed; top: 1rem; left: 1rem; z-index: 80; padding: .5rem 1rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--glass); color: var(--ink); text-decoration: none; font: 500 .88rem var(--sans);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: transform .2s, border-color .2s;
+}
+.gate-back:hover { transform: translateX(-3px); border-color: var(--acc); }
+
+/* ---------- Nút phát sáng ---------- */
+.wow-glow { position: relative; overflow: hidden; box-shadow: 0 0 26px rgba(47, 107, 255, .55); }
+.wow-glow::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-120%);
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .45) 50%, transparent 70%);
+  animation: wow-sweep 3.4s ease-in-out infinite;
+}
+@keyframes wow-sweep { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+
+/* ---------- Khối kêu gọi dưới hero (khách) ---------- */
+.wow-guest { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin-top: 1.4rem; }
+.wow-guest small { flex-basis: 100%; color: var(--mut); font: 400 .82rem var(--sans); }
+
+/* ---------- Lưới tính năng cho khách ---------- */
+.wow-perks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.wow-perk {
+  --mx: 50%; --my: 50%;
+  position: relative; display: flex; flex-direction: column; gap: .5rem; padding: 1.5rem; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 24px; background: var(--glass); color: var(--ink); text-decoration: none;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  animation: wow-up .7s var(--ease, cubic-bezier(.2, .7, .2, 1)) both; animation-delay: calc(var(--i) * 80ms);
+  transition: transform .3s, border-color .3s, box-shadow .3s;
+}
+.wow-perk::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .3s; background: radial-gradient(280px circle at var(--mx) var(--my), color-mix(in srgb, var(--acc) 26%, transparent), transparent 70%); }
+.wow-perk > * { position: relative; }
+.wow-perk:hover { transform: translateY(-5px); border-color: var(--acc); box-shadow: var(--glow); }
+.wow-perk:hover::before { opacity: 1; }
+.wow-perk-sym { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: .6rem; border-radius: 16px; background: var(--soft); color: var(--acc-soft); font: 700 1.2rem var(--sans); transition: transform .4s; }
+.wow-perk:hover .wow-perk-sym { transform: rotate(-8deg) scale(1.1); }
+.wow-perk b { font: 600 1.1rem/1.3 var(--sans); letter-spacing: -.02em; }
+.wow-perk p { margin: 0; color: var(--mut); font: 400 .9rem/1.5 var(--sans); }
+.wow-perk-go { display: inline-flex; align-items: center; gap: .3rem; margin-top: auto; padding-top: .8rem; color: var(--acc-soft); font: 500 .85rem var(--sans); opacity: .65; transition: opacity .25s, gap .25s; }
+.wow-perk:hover .wow-perk-go { opacity: 1; gap: .6rem; }
+@keyframes wow-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) { .wow-perks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .wow-perks { grid-template-columns: 1fr; } }
+
+/* ---------- Hero: điểm nhấn ---------- */
+.hm-hero { padding-top: calc(var(--nav-h) + 1rem); }
+.hm-h1 .fx-shimmer { filter: drop-shadow(0 0 22px color-mix(in srgb, var(--acc) 50%, transparent)); }
+.hero-mascot { animation: wow-float 6s ease-in-out infinite; }
+@keyframes wow-float { 50% { transform: translateY(-14px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wow-glow::after, .hero-mascot { animation: none; }
+  .wow-perk { animation: none; }
+}

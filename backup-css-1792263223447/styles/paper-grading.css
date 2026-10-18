@@ -1,0 +1,675 @@
+/* ============================================================
+   paper-grading.css — Giao diện Chấm phiếu trắc nghiệm A4 (OMR)
+   Chuẩn Apple HIG & visionOS Studio (Prefix: pg-)
+   Hỗ trợ Camera Live Scanner, Biểu đồ phổ điểm & Dark/Light Mode
+   ============================================================ */
+
+.pg {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, sans-serif);
+  color: var(--ink, #0f172a);
+}
+
+/* HEADER CỦA MODULE */
+.pg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+.pg-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.pg-head p {
+  margin: 0.25rem 0 0;
+  color: var(--mut, #64748b);
+  font-size: 0.88rem;
+}
+
+.pg-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* BADGES & NOTICES */
+.pg-muted { color: var(--mut, #64748b); }
+.pg-note {
+  margin: 0;
+  color: var(--mut, #64748b);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.pg-note code, .pg-field span code {
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
+  font-family: ui-monospace, monospace;
+}
+
+.pg-warn {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.pg-error {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* EMPTY STATE */
+.pg-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  color: var(--mut, #64748b);
+  background: var(--panel, #ffffff);
+  border: 1.5px dashed var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 20px;
+}
+
+.pg-empty h3 {
+  margin: 0;
+  color: var(--ink, #0f172a);
+  font-size: 1.15rem;
+}
+
+/* CARDS LIST */
+.pg-cards {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pg-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1.35rem;
+  border-radius: 18px;
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.pg-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.pg-card b {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.pg-card small {
+  color: var(--mut, #64748b);
+  font-size: 0.82rem;
+}
+
+.pg-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pg-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2, #f1f5f9);
+  color: var(--mut, #64748b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pg-icon:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.pg-icon.danger:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* SETUP FORM */
+.pg-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pg-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem 1.45rem;
+  border-radius: 20px;
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+
+.pg-block h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.pg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+}
+
+.pg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pg-field.wide { grid-column: span 2; }
+
+.pg-field > span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--mut, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pg-field input, .pg-field select, .pg-field textarea, .pg-roster, .pg-addcode input {
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 12px;
+  background: var(--surface-2, #f8fafc);
+  color: var(--ink, #0f172a);
+  font-size: 0.88rem;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.pg-field textarea, .pg-roster {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  resize: vertical;
+}
+
+.pg-field input:focus, .pg-field select:focus, .pg-field textarea:focus, .pg-roster:focus {
+  border-color: #0284c7;
+  background: var(--panel, #ffffff);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.pg-field input.sus, .pg-field select.sus, .pg-field.sus input {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: #f59e0b;
+}
+
+/* CODES TAGS */
+.pg-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.pg-code {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--surface-2, #f1f5f9);
+  overflow: hidden;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+
+.pg-code button {
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.85rem;
+  color: var(--ink, #0f172a);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.pg-code .x {
+  padding: 0.35rem 0.6rem 0.35rem 0;
+  display: grid;
+  place-items: center;
+  color: var(--mut, #64748b);
+  cursor: pointer;
+}
+
+.pg-code.on {
+  background: #0284c7;
+  border-color: #0284c7;
+}
+
+.pg-code.on button, .pg-code.on .x {
+  color: #ffffff;
+}
+
+/* DROPZONE & STATS */
+.pg-drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 20px;
+  border: 2px dashed rgba(2, 132, 199, 0.3);
+  background: rgba(2, 132, 199, 0.03);
+}
+
+.pg-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  color: var(--mut, #64748b);
+}
+
+.pg-stats b {
+  color: var(--ink, #0f172a);
+  font-weight: 800;
+}
+
+.pg-stats .warn {
+  color: #f59e0b;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* TABLE KẾT QUẢ CHẤM */
+.pg-tablewrap {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--panel, #ffffff);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+
+.pg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.pg-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  color: var(--mut, #64748b);
+  font-weight: 700;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+  white-space: nowrap;
+}
+
+.pg-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.06));
+  white-space: nowrap;
+}
+
+.pg-table tr:last-child td { border-bottom: 0; }
+.pg-table tr.review { background: rgba(245, 158, 11, 0.08); }
+.pg-table .mono { font-family: ui-monospace, monospace; font-weight: 700; }
+
+.pg-tag {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pg-tag.ok { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.pg-tag.warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.pg-tag.bad { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+/* ============================================================
+   NÂNG CẤP 1: LIVE WEBCAM SCANNER MODAL (CHẤM TỰ ĐỘNG)
+   ============================================================ */
+.pg-cam-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.pg-cam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  color: #ffffff;
+}
+
+.pg-cam-body {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.pg-cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 20px;
+}
+
+.pg-cam-viewfinder {
+  position: absolute;
+  width: min(75vw, 480px);
+  aspect-ratio: 1 / 1.414; /* Tỷ lệ khổ giấy A4 */
+  border: 2px dashed rgba(56, 189, 248, 0.6);
+  border-radius: 16px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+
+.pg-cam-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #38bdf8;
+  border-style: solid;
+}
+
+.pg-cam-corner.tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 12px; }
+.pg-cam-corner.tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 12px; }
+.pg-cam-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 12px; }
+.pg-cam-corner.br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 12px; }
+
+.pg-cam-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+  box-shadow: 0 0 15px #38bdf8;
+  animation: cam-scan 2.2s infinite ease-in-out alternate;
+}
+
+@keyframes cam-scan {
+  from { top: 5%; }
+  to { top: 95%; }
+}
+
+.pg-cam-hud {
+  position: absolute;
+  bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 10;
+}
+
+/* ============================================================
+   NÂNG CẤP 2: PHÂN TÍCH PHỔ ĐIỂM HISTOGRAM
+   ============================================================ */
+.pg-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.pg-hist-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 160px;
+  padding-top: 1.5rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+}
+
+.pg-hist-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.pg-hist-bar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #0284c7, #38bdf8);
+  transition: height 0.4s ease;
+  min-height: 4px;
+}
+
+.pg-hist-lbl {
+  font-size: 0.7rem;
+  color: var(--mut, #64748b);
+  white-space: nowrap;
+}
+
+.pg-hist-val {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+/* ============================================================
+   TRÌNH SỬA PHIẾU CHI TIẾT (SHEET EDITOR)
+   ============================================================ */
+.pg-editor {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 96vw);
+  max-height: 92vh;
+  border-radius: 24px;
+  background: var(--panel, #ffffff);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+}
+
+.pg-ed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+
+.pg-ed-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.pg-ed-head small {
+  margin-left: 0.6rem;
+  color: var(--mut, #64748b);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.pg-ed-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 1.25rem;
+  padding: 1.25rem 1.4rem;
+  overflow-y: auto;
+}
+
+.pg-ed-img {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 75vh;
+  overflow: auto;
+  border-radius: 16px;
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  background: #000;
+}
+
+.pg-ed-img img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+}
+
+.pg-ed-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.pg-ed-form h4 {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.pg-p1grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 0.4rem;
+}
+
+.pg-p1cell, .pg-p2cell label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 10px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pg-p1cell span {
+  min-width: 1.4rem;
+  color: var(--mut, #64748b);
+}
+
+.pg-p1cell select, .pg-p2cell select {
+  border: 0;
+  background: transparent;
+  color: var(--ink, #0f172a);
+  font-weight: 800;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.pg-p1cell.sus, .pg-p2cell label.sus {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+}
+
+.pg-p2grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+.pg-p2cell {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+}
+
+.pg-p2cell b {
+  grid-column: span 2;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.pg-p3grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+
+.pg-ed-score {
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink, #0f172a);
+}
+
+.pg-editor .pg-foot {
+  padding: 0.9rem 1.4rem;
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  background: var(--surface-2, #f8fafc);
+}
+
+@media (max-width: 820px) {
+  .pg-ed-body { grid-template-columns: 1fr; }
+  .pg-ed-img { position: static; max-height: 45vh; }
+  .pg-field.wide { grid-column: auto; }
+}

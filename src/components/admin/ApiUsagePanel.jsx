@@ -3,7 +3,7 @@
    ============================================================ */
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getUsage, resetUsage, API_LIMITS } from '../../services/apiTracker.js';
-import { ConfirmDialog } from './AdminShell.jsx';
+import { ConfirmDialog } from './AdminUI.jsx';
 import {
   IconActivity, IconRefresh, IconCheckCircle, IconWarning, IconAlert, IconBulb,
 } from './AdminIcons.jsx';
@@ -71,7 +71,7 @@ export default function ApiUsagePanel() {
       <div className="vt-card">
         <header className="vt-card-head">
           <h3 className="vt-card-title">
-            <IconActivity size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+            <IconActivity size={16} className="vt-title-ico" />
             Hạn mức API hôm nay ({usage.day})
           </h3>
           <button type="button" className="vt-btn sm" onClick={() => handleReset()} disabled={!entries.length}>
@@ -80,9 +80,10 @@ export default function ApiUsagePanel() {
         </header>
 
         {entries.length === 0 ? (
-          <div className="vt-calm">
-            <IconBulb size={22} />
-            <p>Chưa có lượt gọi API nào được ghi nhận trên trình duyệt này.</p>
+          <div className="vt-empty" style={{ padding: '2rem 1rem' }}>
+            <span><IconBulb size={30} /></span>
+            <h3 style={{ fontSize: '1rem' }}>Chưa có lượt gọi API nào</h3>
+            <p>Bộ đếm ghi nhận trên trình duyệt này. Khi bạn dùng tính năng AI, số liệu sẽ hiển thị ở đây.</p>
           </div>
         ) : (
           <div className="vt-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>

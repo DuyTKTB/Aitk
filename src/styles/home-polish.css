@@ -1,0 +1,148 @@
+/* ============================================================
+   home-polish.css — sửa lỗi + nâng cấp giao diện trang chủ
+   Import CUỐI CÙNG trong main.jsx (sau home-stack.css):
+     import './home-polish.css';
+   ============================================================ */
+
+/* ---------- 1. HERO ---------- */
+.hero-home { --hx: 50%; --hy: 40%; }
+.hero-home-spot {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(520px circle at var(--hx) var(--hy), color-mix(in srgb, var(--acc) 20%, transparent), transparent 65%);
+}
+.hero-home-slogan { font-size: .8rem; color: var(--ink); box-shadow: 0 0 24px color-mix(in srgb, var(--acc) 22%, transparent); }
+.hero-home-dot { display: inline-grid; place-items: center; animation: none; }
+
+/* Ô chat: viền sáng chạy quanh khi focus */
+@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.hero-input-wrap { position: relative; padding: 1rem 1.1rem .7rem; }
+.hero-input-wrap::before {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--ang), transparent 0 55%, var(--acc) 72%, #8fd3ff 85%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .45; animation: hp-spin 6s linear infinite; transition: opacity .3s;
+}
+.hero-input-wrap:focus-within::before { opacity: 1; animation-duration: 3s; }
+@keyframes hp-spin { to { --ang: 360deg; } }
+.hero-input-btn { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--mut); }
+.hero-input-btn:hover { color: var(--acc-soft); background: var(--soft); }
+.hero-input-send { display: grid; place-items: center; }
+.hero-input-send:disabled { opacity: .4; box-shadow: none; }
+
+.hero-quick-btn { display: inline-flex; align-items: center; gap: .55rem; transition: transform .2s, border-color .2s, box-shadow .2s; }
+.hero-quick-btn:hover { transform: translateY(-2px); }
+.hero-quick-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: var(--soft); color: var(--acc-soft); }
+
+/* Bong bóng thoại: bỏ kiểu brutalist (bóng cứng), dùng kính */
+.hx-bubble {
+  border: 1px solid var(--line); border-radius: 16px; background: var(--glass);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: var(--glow); color: var(--ink); font: 500 .82rem/1.4 var(--sans);
+}
+.hx-bubble::after { background: var(--bg); border-color: var(--line); }
+.hx-chip { font-family: var(--sans); box-shadow: var(--glow); }
+.hx-chip.acc { background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; border-color: transparent; }
+.hero-mascot::before { background: radial-gradient(circle, color-mix(in srgb, var(--acc) 45%, transparent), transparent 68%); }
+
+/* ---------- 2. MARQUEE ---------- */
+.fx-marqs { margin: 2.5rem 0 0; padding: 1.2rem 0; border-block: 1px solid var(--line); }
+
+/* ---------- 3. STACK CARD: sửa lỗi hiệu ứng ngược chiều + cắt đáy ---------- */
+.stack-cards { background: transparent; }
+.stack-cards > .stack-card {
+  top: calc(var(--nav-h, 52px) + 8px);            /* JS ghi đè theo chiều cao từng card */
+  padding: 3.5rem 1.5rem 4.5rem;
+  border-radius: 32px 32px 0 0;
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(70% 45% at 50% 0%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 70%),
+    var(--bg);
+  box-shadow: 0 -28px 60px -24px rgba(0, 0, 0, .4);
+  transform: scale(calc(1 - var(--p, 0) * .045));
+  transform-origin: 50% 0;
+  animation: none; filter: none; opacity: 1; will-change: transform;
+}
+.stack-cards > .stack-card:first-child { padding-top: 3.5rem; }
+.stack-cards > .stack-card::after { display: none; }           /* bỏ dải mờ làm tối đáy nội dung */
+.stack-cards > .stack-card::before {                            /* card bị đè thì tối dần */
+  content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: inherit;
+  background: var(--bg); opacity: calc(var(--p, 0) * .6);
+}
+
+/* ---------- 4. ĐẦU MỤC ---------- */
+.fx-head .slogan, .quotes-section .slogan {
+  display: inline-flex; align-items: center; gap: .6rem; padding: .3rem .85rem .3rem .35rem;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--glass);
+  font: 500 .78rem var(--sans); color: var(--mut);
+}
+.fx-idx {
+  display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 .4rem; border-radius: 999px;
+  background: var(--soft); color: var(--acc-soft); font: 600 .72rem var(--sans); font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 5. MANIFESTO ---------- */
+.manifesto-card { position: relative; overflow: hidden; transition: transform .3s, box-shadow .3s, border-color .3s; }
+.manifesto-card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--acc-soft), transparent); opacity: .6;
+}
+.manifesto-card:hover { transform: translateY(-4px); }
+.manifesto-title { font-family: var(--sans); letter-spacing: -.03em; }
+
+/* ---------- 6. BẢNG TUẦN HOÀN ---------- */
+.featured-table { overflow: hidden; padding: .4rem; }
+
+/* ---------- 7. BENTO ---------- */
+.fx-tool { border-radius: 24px; }
+.fx-tool.feat::after {
+  content: ''; position: absolute; right: -60px; top: -60px; width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--acc) 45%, transparent), transparent 68%); filter: blur(10px); pointer-events: none;
+}
+.fx-tool-n { position: absolute; top: 1.3rem; right: 3.2rem; font: 500 .72rem var(--sans); color: var(--mut); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.fx-tool.feat .fx-tool-n { right: 3.6rem; }
+.fx-tool-cta { transition: transform .2s, box-shadow .2s; }
+.fx-tool:hover .fx-tool-cta { transform: translateX(4px); }
+
+/* ---------- 8. THỐNG KÊ (sửa viền đen cũ trên mobile) ---------- */
+.stat-card { text-align: center; padding: 2.2rem 1rem; transition: background .3s; }
+.stat-num { display: block; font: 600 clamp(2.4rem, 5vw, 3.6rem)/1 var(--sans); letter-spacing: -.05em; }
+.stat-label { font: 600 .95rem var(--sans); }
+.stat-sub { color: var(--mut); }
+@media (max-width: 768px) {
+  .stat-card { border-right: 1px solid var(--line); }
+  .stat-card:nth-child(2n) { border-right: 0; }
+  .stat-card:nth-child(1), .stat-card:nth-child(2) { border-bottom: 1px solid var(--line); }
+}
+
+/* ---------- 9. TRÍCH DẪN ---------- */
+.fx-quote { box-shadow: var(--glow); }
+.fx-quote-text span { margin-right: 0; }                       /* khoảng trắng đã nằm trong JSX */
+.fx-quote-tabs button { font-family: var(--sans); }
+
+/* ---------- 10. CTA ---------- */
+.cta-card {
+  position: relative; margin-block: 3rem 5rem; padding: clamp(2rem, 5vw, 4rem) clamp(1.2rem, 4vw, 3rem);
+  border: 1px solid var(--line); border-radius: 32px; overflow: hidden; text-align: center;
+  background:
+    radial-gradient(60% 70% at 50% 110%, color-mix(in srgb, var(--acc) 40%, transparent), transparent 70%),
+    var(--glass);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: var(--glow);
+}
+.cta-card .cta-actions { gap: .7rem; flex-wrap: wrap; }
+
+/* ---------- 11. MOBILE ---------- */
+@media (max-width: 720px) {
+  .stack-cards > .stack-card {
+    position: relative; top: auto !important; padding: 2.5rem 1rem 3rem;
+    border-radius: 28px 28px 0 0; transform: none; box-shadow: none;
+  }
+  .stack-cards > .stack-card::before { display: none; }
+  .fx-tool-n { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-input-wrap::before { animation: none; }
+  .stack-cards > .stack-card { position: relative; top: auto !important; transform: none; }
+  .stack-cards > .stack-card::before { display: none; }
+}

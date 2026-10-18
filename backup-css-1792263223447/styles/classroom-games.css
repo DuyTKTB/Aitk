@@ -1,0 +1,1414 @@
+/* ============================================================
+   classroom-games.css — Hệ thống giao diện trò chơi tương tác lớp học
+   Chuẩn Apple HIG & visionOS Glassmorphism
+   Tương thích 100% Dark/Light Mode, màn hình máy chiếu lớp học
+   Không dùng emoji, layout responsive tuyệt đối không bị vỡ.
+   ============================================================ */
+
+/* CONTAINER CHÍNH CĂN GIỮA */
+.classroom-game-container {
+  width: min(1080px, 94vw);
+  margin: 1.5rem auto 5rem;
+  padding: 0;
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  color: var(--ink, #0f172a);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-sizing: border-box;
+}
+
+/* TOP CONTROLLER BAR */
+.classroom-game-container .game-top-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: -0.5rem;
+}
+
+/* HEADER CĂN GIỮA THANH THOÁT */
+.cg-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.cg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+[data-theme='dark'] .cg-badge {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.cg-title {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink, #0f172a);
+  line-height: 1.2;
+}
+
+.cg-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--mut, #64748b);
+  max-width: 650px;
+  line-height: 1.5;
+}
+
+/* TABS CHUYỂN CHẾ ĐỘ */
+.cg-tab-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cg-tab-btn {
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  background: var(--panel, #ffffff);
+  color: var(--mut, #64748b);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cg-tab-btn:hover {
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+  transform: translateY(-1px);
+}
+
+.cg-tab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+}
+
+/* THANH THỐNG KÊ / SCOREBOARD APPLE HIG */
+.cg-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
+}
+
+[data-theme='dark'] .cg-stats-row {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.cg-team-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 14px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid transparent;
+  transition: all 0.25s ease;
+}
+
+[data-theme='dark'] .cg-team-pill {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cg-team-pill.team-red.active-turn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.cg-team-pill.team-blue.active-turn {
+  background: rgba(2, 132, 199, 0.1);
+  border-color: rgba(2, 132, 199, 0.4);
+}
+
+.team-avatar-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .team-avatar-icon {
+  background: #1e293b;
+}
+
+.team-avatar-icon.icon-red { color: #ef4444; border: 2px solid #ef4444; }
+.team-avatar-icon.icon-blue { color: #0284c7; border: 2px solid #0284c7; }
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.team-info.text-right {
+  text-align: right;
+}
+
+.team-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+.team-pts {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mut, #64748b);
+}
+
+.turn-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: #ef4444;
+  color: #ffffff;
+  margin-left: 0.5rem;
+}
+
+.cg-team-pill.team-blue .turn-tag {
+  background: #0284c7;
+}
+
+.cg-timer-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+  font-weight: 700;
+}
+
+[data-theme='dark'] .cg-timer-pill {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.timer-num {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-num.urgent {
+  color: #ef4444;
+  animation: pulse-urgent 0.8s infinite alternate;
+}
+
+@keyframes pulse-urgent {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
+/* ============================================================
+   GAME 1: KÉO CO (TUG OF WAR)
+   ============================================================ */
+.tow-arena-card {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 2.2rem 1.5rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .tow-arena-card {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.tow-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: 160px;
+}
+
+.tow-squad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 140px;
+}
+
+.squad-figures-svg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 18px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1.5px solid rgba(239, 68, 68, 0.2);
+  transition: transform 0.25s ease;
+}
+
+.squad-blue .squad-figures-svg {
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.2);
+}
+
+.tow-squad.pulling .squad-figures-svg {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+.squad-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--mut, #64748b);
+}
+
+.tow-rope-wrapper {
+  flex: 1;
+  position: relative;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tow-rope-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker {
+  position: absolute;
+  width: 2px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='dark'] .marker {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.marker-center {
+  background: #f59e0b !important;
+  width: 3px;
+  height: 48px;
+}
+
+.marker-red { left: 15%; background: rgba(239, 68, 68, 0.5); }
+.marker-blue { right: 15%; background: rgba(2, 132, 199, 0.5); }
+
+.tow-rope {
+  position: relative;
+  width: 90%;
+  height: 16px;
+  background: linear-gradient(90deg, #ef4444, #f59e0b, #0284c7);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.tow-rope.rope-strain {
+  animation: rope-shake 0.3s ease infinite;
+}
+
+@keyframes rope-shake {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.rope-ribbon {
+  position: absolute;
+  top: -16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* THƯỚC ĐO KÉO CO GAUGE */
+.tow-gauge-bar {
+  height: 8px;
+  background: var(--surface-2, #e2e8f0);
+  border-radius: 999px;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .tow-gauge-bar {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gauge-progress.red-gauge {
+  background: #ef4444;
+  height: 100%;
+  margin-left: auto;
+  transition: width 0.3s ease;
+}
+
+.gauge-center-notch {
+  width: 4px;
+  height: 100%;
+  background: #f59e0b;
+  z-index: 2;
+}
+
+.gauge-progress.blue-gauge {
+  background: #0284c7;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.tow-gauge-text {
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--mut, #64748b);
+}
+
+/* ============================================================
+   BẢNG CÂU HỎI TRẮC NGHIỆM CHUNG (CHUẨN APPLE HIG)
+   ============================================================ */
+.cg-question-box {
+  background: var(--panel, #ffffff);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+[data-theme='dark'] .cg-question-box {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.cg-question-box.turn-border-red {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 8px 30px rgba(239, 68, 68, 0.08);
+}
+
+.cg-question-box.turn-border-blue {
+  border-color: rgba(2, 132, 199, 0.4);
+  box-shadow: 0 8px 30px rgba(2, 132, 199, 0.08);
+}
+
+.cg-q-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.q-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+}
+
+[data-theme='dark'] .q-badge {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.q-turn-announce {
+  font-size: 0.9rem;
+  color: var(--mut, #64748b);
+}
+
+.cg-question-text {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.45rem);
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--ink, #0f172a);
+}
+
+/* LƯỚI ĐÁP ÁN BENTO 2 CỘT */
+.cg-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .cg-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cg-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  background: var(--surface-2, #f8fafc);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.08));
+  color: var(--ink, #0f172a);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] .cg-option-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.cg-option-btn:hover:not(:disabled) {
+  background: var(--surface-3, #e2e8f0);
+  border-color: #0284c7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+}
+
+[data-theme='dark'] .cg-option-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #38bdf8;
+}
+
+.opt-letter {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .opt-letter {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.opt-label {
+  flex: 1;
+}
+
+.cg-option-btn.opt-correct {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+}
+
+.cg-option-btn.opt-wrong {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+}
+
+.cg-option-btn.opt-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* HỘP GIẢI THÍCH CHI TIẾT */
+.cg-explain-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: var(--ink, #0f172a);
+}
+
+.explain-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   GAME 2: VÒNG QUAY MAY MẮN (LUCKY WHEEL)
+   ============================================================ */
+.lw-stage-card {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 2.5rem 1.5rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  position: relative;
+}
+
+[data-theme='dark'] .lw-stage-card {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.lw-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.badge-lbl {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--mut, #64748b);
+}
+
+.badge-val {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.lw-wheel-wrapper {
+  position: relative;
+  width: min(440px, 85vw);
+  height: min(440px, 85vw);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.lw-pointer-arrow {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.lw-canvas-rotator {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lw-wheel-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.lw-spin-center-action {
+  margin-top: 0.5rem;
+}
+
+.lw-spin-btn {
+  padding: 0.9rem 2.5rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lw-spin-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 25px rgba(2, 132, 199, 0.45);
+}
+
+.lw-spin-btn.is-spinning {
+  background: #64748b;
+  cursor: wait;
+}
+
+.lw-result-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 16px;
+  background: var(--surface-2, #f1f5f9);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+
+[data-theme='dark'] .lw-result-card {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.res-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.res-title {
+  font-size: 0.78rem;
+  color: var(--mut, #64748b);
+  text-transform: uppercase;
+}
+
+.res-bold {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+/* ============================================================
+   GAME 3: LẬT MẢNH GHÉP (FLIP PUZZLE)
+   ============================================================ */
+.fp-stage-card {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  justify-content: center;
+}
+
+[data-theme='dark'] .fp-stage-card {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.fp-puzzle-board {
+  position: relative;
+  width: min(600px, 90vw);
+  aspect-ratio: 4 / 3;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.fp-secret-image {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.fp-image-overlay {
+  width: 100%;
+  padding: 1.5rem;
+  background: linear-gradient(0deg, rgba(15, 23, 42, 0.95), transparent);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.overlay-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+}
+
+.overlay-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.overlay-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.fp-tiles-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px;
+}
+
+.fp-tile {
+  cursor: pointer;
+  perspective: 1000px;
+  position: relative;
+}
+
+.tile-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+.fp-tile.flipped .tile-inner {
+  transform: rotateY(180deg);
+}
+
+.tile-front, .tile-back {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 10px;
+}
+
+.tile-front {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.tile-front:hover {
+  background: linear-gradient(135deg, #334155, #1e293b);
+  border-color: #38bdf8;
+  transform: scale(0.98);
+}
+
+.tile-number {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.tile-back {
+  background: transparent;
+  transform: rotateY(180deg);
+}
+
+.fp-guess-btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s ease;
+}
+
+.fp-guess-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+}
+
+/* ============================================================
+   GAME 4: AI LÀ TRIỆU PHÚ (CHEM MILLIONAIRE)
+   ============================================================ */
+.mil-studio-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.5rem;
+}
+
+@media (max-width: 860px) {
+  .mil-studio-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mil-main-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.mil-lifelines-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lifeline-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 14px;
+  background: var(--panel, #ffffff);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  color: var(--ink, #0f172a);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .lifeline-btn {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.lifeline-btn:hover:not(:disabled) {
+  border-color: #f59e0b;
+  transform: translateY(-2px);
+}
+
+.lifeline-btn.used {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.btn-lbl {
+  font-size: 0.85rem;
+}
+
+.mil-question-card {
+  background: var(--panel, #ffffff);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+[data-theme='dark'] .mil-question-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.mil-q-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--mut, #64748b);
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.06));
+  padding-bottom: 0.75rem;
+}
+
+.mil-question-text {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.mil-options-diamond {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .mil-options-diamond {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mil-opt-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 16px;
+  background: var(--surface-2, #f8fafc);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.08));
+  color: var(--ink, #0f172a);
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .mil-opt-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.mil-opt-btn:hover:not(:disabled) {
+  background: var(--surface-3, #e2e8f0);
+  border-color: #f59e0b;
+}
+
+.mil-opt-btn.opt-selected {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+}
+
+.mil-opt-btn.opt-locked {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+  animation: pulse-lock 0.8s infinite alternate;
+}
+
+@keyframes pulse-lock {
+  from { opacity: 0.85; }
+  to { opacity: 1; }
+}
+
+.mil-opt-btn.opt-correct {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #10b981 !important;
+}
+
+.mil-opt-btn.opt-wrong {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+}
+
+.mil-opt-btn.opt-hidden {
+  visibility: hidden;
+}
+
+.mil-lock-action {
+  display: flex;
+  justify-content: center;
+}
+
+.mil-lock-btn {
+  padding: 0.85rem 2.2rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s ease;
+}
+
+.mil-lock-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.45);
+}
+
+/* THANG TIỀN THƯỞNG BÊN PHẢI */
+.mil-ladder-card {
+  background: var(--panel, #ffffff);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: fit-content;
+}
+
+[data-theme='dark'] .mil-ladder-card {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ladder-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mut, #64748b);
+  text-align: center;
+}
+
+.ladder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ladder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mut, #64748b);
+}
+
+.ladder-row.milestone {
+  color: #f59e0b;
+  font-weight: 800;
+}
+
+.ladder-row.current-row {
+  background: #f59e0b;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+}
+
+.ladder-row.past-row {
+  color: #10b981;
+}
+
+/* ============================================================
+   GAME 5: ĐUA XE TỐC ĐỘ (QUIZ RACING)
+   ============================================================ */
+.race-arena-card {
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 24px;
+  padding: 1.75rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+[data-theme='dark'] .race-arena-card {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.race-tracks-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.race-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lane-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.lane-road {
+  position: relative;
+  height: 48px;
+  background: var(--surface-2, #f1f5f9);
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .lane-road {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.race-lane.lane-active .lane-road {
+  border-color: var(--team-color, #0284c7);
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.2);
+}
+
+.road-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .road-marker {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.road-marker.marker-25 { left: 25%; }
+.road-marker.marker-50 { left: 50%; }
+.road-marker.marker-75 { left: 75%; }
+
+.road-finish-line {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  background: repeating-linear-gradient(45deg, #000, #000 6px, #fff 6px, #fff 12px);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.race-car {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 5;
+}
+
+.race-car.car-nitro {
+  animation: car-boost 0.4s ease;
+}
+
+@keyframes car-boost {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2) translateY(-2px); }
+  100% { transform: scale(1); }
+}
+
+.race-team-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.race-cnt-btn {
+  padding: 0.35rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.race-cnt-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+/* ============================================================
+   MODAL VICTORY & FOOTER
+   ============================================================ */
+.cg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.cg-victory-modal {
+  background: var(--panel, #ffffff);
+  border: 1.5px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 28px;
+  padding: 2.5rem 2rem;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+[data-theme='dark'] .cg-victory-modal {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.victory-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.victory-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--mut, #64748b);
+  line-height: 1.5;
+}
+
+.victory-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.cg-btn-primary {
+  flex: 1;
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cg-btn-primary:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.cg-btn-secondary {
+  flex: 1;
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
+  background: var(--surface-2, #f1f5f9);
+  color: var(--ink, #0f172a);
+  font-weight: 700;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cg-btn-secondary:hover {
+  background: var(--surface-3, #e2e8f0);
+}
+
+.cg-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.cg-action-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  color: var(--ink, #0f172a);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .cg-action-btn {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.cg-action-btn:hover {
+  background: var(--surface-2, #f1f5f9);
+  transform: translateY(-1px);
+}
+
+.cg-action-btn.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--mut, #64748b);
+}
+
+/* ANIMATIONS */
+.animate-pop {
+  animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

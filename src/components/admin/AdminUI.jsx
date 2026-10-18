@@ -80,10 +80,44 @@ export function AdminUIProvider({ children }) {
   );
 }
 
-function ConfirmDialog({ dialog, onClose }) {
-  const {
-    title = 'Xác nhận', message, confirmText = 'Đồng ý', cancelText = 'Hủy', danger = false, requireText,
-  } = dialog;
+/* ============================================================
+   CONFIRM DIALOG — hỗ trợ 2 kiểu gọi:
+   (1) qua useConfirm(): <ConfirmDialog dialog={...} onClose={fn} />
+   (2) trực tiếp: <ConfirmDialog open title body okLabel danger onCancel onConfirm />
+   ============================================================ */
+export function ConfirmDialog({ dialog, onClose, open, title, body, okLabel, danger, onCancel, onConfirm }) {
+  if (dialog) {
+    const {
+      title: t = 'Xác nhận', message, confirmText = 'Đồng ý', cancelText = 'Hủy',
+      danger: d = false, requireText,
+    } = dialog;
+    return (
+      <ConfirmDialogInner
+        title={t}
+        message={message}
+        okLabel={confirmText}
+        cancelLabel={cancelText}
+        danger={d}
+        requireText={requireText}
+        onCancel={() => onClose(false)}
+        onConfirm={() => onClose(true)}
+      />
+    );
+  }
+  if (!open) return null;
+  return (
+    <ConfirmDialogInner
+      title={title || 'Xác nhận'}
+      message={body}
+      okLabel={okLabel || 'Đồng ý'}
+      danger={!!danger}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function ConfirmDialogInner({ title, message, okLabel, cancelLabel = 'Hủy', danger, requireText, onCancel, onConfirm }) {
   const [typed, setTyped] = useState('');
   const ok = !requireText || typed.trim().toUpperCase() === requireText.toUpperCase();
   const okRef = useRef(null);
@@ -92,18 +126,16 @@ function ConfirmDialog({ dialog, onClose }) {
   useEffect(() => {
     const prev = document.activeElement;
     (inputRef.current || okRef.current)?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose(false);
-    };
+    const onKey = (e) => { if (e.key === 'Escape') onCancel?.(); };
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
       prev?.focus?.();
     };
-  }, [onClose]);
+  }, [onCancel]);
 
   return (
-    <div className="adl-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
+    <div className="adl-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel?.()}>
       <div className={'adl-confirm' + (danger ? ' danger' : '')} role="alertdialog" aria-modal="true" aria-labelledby="adl-cf-title">
         <div className="adl-confirm-ico">{danger ? <IconWarning size={22} /> : <IconInfo size={22} />}</div>
         <h3 id="adl-cf-title">{title}</h3>
@@ -115,15 +147,15 @@ function ConfirmDialog({ dialog, onClose }) {
           </label>
         )}
         <div className="adl-confirm-actions">
-          <button type="button" className="adl-btn-outline" onClick={() => onClose(false)}>{cancelText}</button>
+          <button type="button" className="adl-btn-outline" onClick={onCancel}>{cancelLabel}</button>
           <button
             ref={okRef}
             type="button"
             className={danger ? 'adl-btn-danger' : 'adl-btn-primary'}
             disabled={!ok}
-            onClick={() => onClose(true)}
+            onClick={onConfirm}
           >
-            {confirmText}
+            {okLabel}
           </button>
         </div>
       </div>
@@ -134,17 +166,16 @@ function ConfirmDialog({ dialog, onClose }) {
 /* ============================================================
    MODAL
    ============================================================ */
-export function Modal({ title, subtitle, onClose, children, wide = false }) {
+export function Modal({ title, subtitle, onClose, children, size, wide = false, foot }) {
   const boxRef = useRef(null);
+  const isWide = wide || size === 'lg';
 
   useEffect(() => {
     const prev = document.activeElement;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     boxRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
@@ -154,11 +185,11 @@ export function Modal({ title, subtitle, onClose, children, wide = false }) {
   }, [onClose]);
 
   return (
-    <div className="adl-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="adl-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div
         ref={boxRef}
         tabIndex={-1}
-        className={'adl-modal' + (wide ? ' wide' : '')}
+        className={'adl-modal' + (isWide ? ' wide' : '') + (size === 'sm' ? ' sm' : '')}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : 'Chi tiết'}
@@ -173,6 +204,7 @@ export function Modal({ title, subtitle, onClose, children, wide = false }) {
           </button>
         </header>
         <div className="adl-modal-body">{children}</div>
+        {foot && <footer className="adl-modal-foot">{foot}</footer>}
       </div>
     </div>
   );
@@ -230,26 +262,18 @@ export const InlineAlert = ({ type = 'error', children }) => (
 );
 
 /* ============================================================
-   ERROR BOUNDARY — một màn hình lỗi không làm sập cả trang quản trị
+   ERROR BOUNDARY
    ============================================================ */
 export class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { error: null };
   }
-
-  static getDerivedStateFromError(error) {
-    return { error };
-  }
-
-  componentDidCatch(error, info) {
-    console.error('[Admin] Lỗi giao diện:', error, info?.componentStack);
-  }
-
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[Admin] Lỗi giao diện:', error, info?.componentStack); }
   componentDidUpdate(prev) {
     if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null });
   }
-
   render() {
     if (this.state.error) {
       return (
@@ -276,14 +300,10 @@ export function useDebounced(value, ms = 250) {
   return v;
 }
 
-/* Cảnh báo khi đóng tab với dữ liệu chưa lưu */
 export function useUnsavedWarning(dirty) {
   useEffect(() => {
     if (!dirty) return undefined;
-    const h = (e) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
+    const h = (e) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);

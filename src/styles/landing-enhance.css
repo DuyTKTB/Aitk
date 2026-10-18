@@ -1,0 +1,342 @@
+/* ============================================================
+   landing-enhance.css — Nâng cấp hiệu ứng Landing
+   ============================================================ */
+
+/* ============ SMOOTH SCROLL ============ */
+html {
+  scroll-behavior: smooth;
+}
+
+.lp {
+  animation: fade-in 0.6s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============ HERO SECTION ============ */
+.lp-hero {
+  perspective: 1200px;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-hero-content {
+  position: relative;
+  z-index: 1;
+  animation: hero-slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes hero-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lp-hero h1 {
+  animation: text-shimmer 2s ease-in-out infinite;
+  background: linear-gradient(90deg, #4aa3ff, #1f6fe6, #7db9ff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes text-shimmer {
+  0%, 100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+/* ============ SCROLL ANIMATIONS ============ */
+[data-scroll] {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-scroll].in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============ CARD HOVER EFFECTS ============ */
+.lp-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.lp-card:hover::before {
+  transform: translateX(100%);
+}
+
+.lp-card:hover {
+  border-color: var(--acc);
+  box-shadow: 0 8px 32px rgba(79, 125, 255, 0.2);
+  transform: translateY(-4px);
+}
+
+/* ============ BUTTON EFFECTS ============ */
+.lp-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.lp-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.lp-btn.pri {
+  background: linear-gradient(135deg, #4aa3ff, #2f6bff);
+  box-shadow: 0 4px 16px rgba(79, 125, 255, 0.3);
+  border: none;
+}
+
+.lp-btn.pri:hover {
+  box-shadow: 0 8px 24px rgba(79, 125, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.lp-btn.pri:active {
+  transform: translateY(0);
+}
+
+/* ============ NAV TRANSITIONS ============ */
+.lp-nav {
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.lp-nav.collapsed {
+  background: rgba(10, 16, 48, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.lp-nav a,
+.lp-nav button {
+  transition: all 0.2s ease;
+}
+
+.lp-nav a:hover,
+.lp-nav button:hover {
+  color: var(--acc);
+  transform: translateY(-2px);
+}
+
+/* ============ SECTION REVEALS ============ */
+.lp-section {
+  animation: section-fade-in 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.lp-section:nth-child(1) { animation-delay: 0s; }
+.lp-section:nth-child(2) { animation-delay: 0.1s; }
+.lp-section:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes section-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============ FLOATING ELEMENTS ============ */
+.lp-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.lp-float:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.lp-float:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ============ PARALLAX EFFECT ============ */
+.lp-parallax {
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+/* ============ GRADIENT TEXT ============ */
+.lp-gradient-text {
+  background: linear-gradient(135deg, #4aa3ff, #1f6fe6, #7db9ff, #ff7ab6);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+/* ============ STAGGER LIST ITEMS ============ */
+.lp-list-item {
+  animation: list-item-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.lp-list-item:nth-child(1) { animation-delay: 0s; }
+.lp-list-item:nth-child(2) { animation-delay: 0.1s; }
+.lp-list-item:nth-child(3) { animation-delay: 0.2s; }
+.lp-list-item:nth-child(4) { animation-delay: 0.3s; }
+.lp-list-item:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes list-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ============ PULSE ANIMATION ============ */
+.lp-pulse {
+  animation: pulse-effect 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-effect {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ============ GLOW EFFECT ============ */
+.lp-glow {
+  filter: drop-shadow(0 0 8px rgba(79, 125, 255, 0.6));
+  transition: filter 0.3s ease;
+}
+
+.lp-glow:hover {
+  filter: drop-shadow(0 0 16px rgba(79, 125, 255, 0.8));
+}
+
+/* ============ SMOOTH SCROLL ON MOBILE ============ */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ============ DARK MODE ENHANCEMENTS ============ */
+[data-theme="dark"] {
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --btn-shadow: 0 4px 16px rgba(79, 125, 255, 0.25);
+}
+
+[data-theme="light"] {
+  --card-shadow: 0 8px 24px rgba(79, 125, 255, 0.15);
+  --btn-shadow: 0 4px 12px rgba(79, 125, 255, 0.2);
+}
+
+/* ============ PERFORMANCE: GPU ACCELERATION ============ */
+.lp-hero,
+.lp-card,
+.lp-btn,
+.lp-parallax,
+[data-scroll],
+.lp-float {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ============ SCROLLBAR STYLING ============ */
+.lp::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lp::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.lp::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4aa3ff, #2f6bff);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.lp::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7db9ff, #4aa3ff);
+}
+
+/* ============ REDUCE MOTION SUPPORT ============ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

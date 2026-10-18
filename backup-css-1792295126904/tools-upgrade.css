@@ -1,0 +1,685 @@
+/* ============================================================
+   tools-upgrade.css — Nâng cấp giao diện trang Công cụ
+   Giữ phong cách Brutalist gốc. Ghi đè lên các style cũ.
+   Đặt SAU tất cả các file CSS khác trong main.jsx.
+   ============================================================ */
+
+/* ============ 1. HEADER — bỏ 2 hàng dư ============ */
+.tools-page .tn-top,
+.tools-page .tn-crumb {
+  display: none !important;
+}
+
+.tools-page .tools-header {
+  margin: 0 0 1.2rem !important;
+  padding: 0 !important;
+  border-bottom: 1px solid var(--ink) !important;
+  padding-bottom: 1rem !important;
+  position: relative;
+}
+
+.tools-page .tools-header::before {
+  display: none !important;  /* bỏ quầng sáng blur cũ */
+}
+
+.tools-page .tools-header h1 {
+  font: 700 clamp(2.2rem, 5vw, 3.4rem) / 1 var(--sans) !important;
+  letter-spacing: -.055em !important;
+  margin: 0 0 .8rem !important;
+  text-transform: uppercase;
+}
+
+.tools-page .tools-header h1 em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  color: var(--acc);
+}
+
+/* Nút "Mở Hub mới" nếu có — style lại cho đẹp */
+.tools-page .tools-header > a[href="#hub"],
+.tools-page .tools-header > button {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: 1rem !important;
+  padding: .65rem 1.2rem !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 999px !important;
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+  font: 700 .82rem var(--mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink) !important;
+  transition: transform .15s var(--ease), box-shadow .15s var(--ease) !important;
+}
+
+.tools-page .tools-header > a[href="#hub"]:hover,
+.tools-page .tools-header > button:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 5px 5px 0 var(--ink) !important;
+}
+
+/* ============ 2. TAB BAR — gọn hơn, có điểm nhấn ============ */
+.tools-page .tools-tabs {
+  display: flex !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 0 1.2rem !important;
+  border-bottom: 2px solid var(--ink) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  width: 100% !important;
+}
+
+.tools-page .tools-tabs::-webkit-scrollbar { display: none !important; }
+
+.tools-page .tools-tab {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  padding: .85rem 1.4rem !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 3px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  font: 700 .84rem var(--mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+
+.tools-page .tools-tab:hover {
+  color: var(--ink) !important;
+  background: var(--soft) !important;
+}
+
+.tools-page .tools-tab.on {
+  color: var(--ink) !important;
+  border-bottom-color: var(--acc) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tools-page .tools-tab .tc-n {
+  display: inline-grid !important;
+  place-items: center !important;
+  min-width: 22px !important;
+  height: 20px !important;
+  padding: 0 .4rem !important;
+  margin-left: .3rem !important;
+  border-radius: 999px !important;
+  background: var(--soft) !important;
+  font: 700 .7rem var(--mono) !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tools-tab.on .tc-n {
+  background: var(--acc) !important;
+  color: var(--acc-ink) !important;
+}
+
+/* ============ 3. SEARCH BAR — to hơn, có viền rõ ============ */
+.tools-page .tools-search {
+  padding: .85rem 1.2rem !important;
+  margin: 0 0 1.2rem !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 14px !important;
+  background: var(--bg) !important;
+  box-shadow: none !important;
+  transition: box-shadow .2s !important;
+}
+
+.tools-page .tools-search::before {
+  display: none !important;
+}
+
+.tools-page .tools-search:focus-within {
+  box-shadow: 4px 4px 0 var(--acc) !important;
+  border-color: var(--ink) !important;
+}
+
+.tools-page .tools-search input {
+  font: 500 1rem var(--sans) !important;
+}
+
+.tools-page .tools-search-clear {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: var(--soft) !important;
+  color: var(--ink) !important;
+  font-size: 1.2rem !important;
+  border: 0 !important;
+  cursor: pointer !important;
+}
+
+.tools-page .tools-search-clear:hover {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+}
+
+.tools-page .tc-kbd {
+  display: grid !important;
+  place-items: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 6px !important;
+  font: 700 .75rem var(--mono) !important;
+  color: var(--mut) !important;
+  background: var(--bg) !important;
+}
+
+/* ============ 4. BỘ LỌC — gom vào 1 khung ============ */
+.tools-page .tn-stats {
+  display: none !important;  /* ẩn stats dư */
+}
+
+.tools-page .tn-chips,
+.tools-page .tools-cats,
+.tools-page .eb-filters,
+.tools-page .eb-filter-row {
+  margin: 0 0 .5rem !important;
+  padding: 0 !important;
+}
+
+/* Nhóm chip lọc — bo tròn từng hàng */
+.tools-page .tools-cats {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .35rem !important;
+  padding: .9rem 1rem !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 14px !important;
+  background: var(--bg) !important;
+  margin-bottom: 1rem !important;
+}
+
+.tools-page .tools-cat {
+  padding: .5rem .9rem !important;
+  border: 1.5px solid var(--soft) !important;
+  border-radius: 999px !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  font: 600 .78rem var(--sans) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  cursor: pointer;
+  transition: all .18s var(--ease) !important;
+  box-shadow: none !important;
+}
+
+.tools-page .tools-cat:hover {
+  border-color: var(--ink) !important;
+  transform: translateY(-1px) !important;
+}
+
+.tools-page .tools-cat.on {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+  border-color: var(--ink) !important;
+  box-shadow: 2px 2px 0 var(--acc) !important;
+  font-weight: 700 !important;
+}
+
+.tools-page .tools-cat svg {
+  width: 14px !important;
+  height: 14px !important;
+  opacity: .85 !important;
+}
+
+/* Nhóm chip cho Exam Bank / filter rows */
+.tools-page .eb-filter-row {
+  padding: .7rem 0 !important;
+  border-bottom: 1px solid var(--soft) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}
+
+.tools-page .eb-filter-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.tools-page .eb-filter-label {
+  font: 700 .72rem var(--mono) !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+  min-width: 70px !important;
+}
+
+.tools-page .eb-chip {
+  padding: .4rem .85rem !important;
+  border: 1.5px solid var(--soft) !important;
+  border-radius: 999px !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  font: 500 .78rem var(--sans) !important;
+  cursor: pointer;
+  transition: all .15s var(--ease) !important;
+}
+
+.tools-page .eb-chip:hover {
+  border-color: var(--ink) !important;
+}
+
+.tools-page .eb-chip.on {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+  border-color: var(--ink) !important;
+  box-shadow: 2px 2px 0 var(--acc) !important;
+}
+
+/* ============ 5. THẺ TÀI LIỆU — mỗi môn 1 màu ============ */
+.tools-page .tn-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+  gap: 1rem !important;
+}
+
+.tools-page .tn-card {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .7rem !important;
+  padding: 1.1rem !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 14px !important;
+  background: var(--bg) !important;
+  transition: all .22s var(--ease) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.tools-page .tn-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 5px !important;
+  background: var(--card-tint, var(--acc)) !important;
+  z-index: 1;
+}
+
+.tools-page .tn-card:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 5px 5px 0 var(--ink) !important;
+  border-color: var(--ink) !important;
+}
+
+/* Icon ô vuông — dùng màu theo môn */
+.tools-page .tn-ico {
+  display: grid !important;
+  place-items: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  background: var(--card-tint, var(--acc)) !important;
+  color: #111 !important;
+  font: 700 .85rem var(--mono) !important;
+  box-shadow: 2px 2px 0 var(--ink) !important;
+  border: 1.5px solid var(--ink) !important;
+}
+
+.tools-page .tn-card h3 {
+  margin: 0 !important;
+  font: 700 1rem var(--sans) !important;
+  letter-spacing: -.02em !important;
+  color: var(--ink) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .4rem !important;
+  align-items: center !important;
+}
+
+.tools-page .tn-badge {
+  padding: .15rem .5rem !important;
+  border-radius: 4px !important;
+  font: 800 .6rem var(--mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .05em !important;
+  color: #fff !important;
+  border: 0 !important;
+}
+
+.tools-page .tn-badge.hot {
+  background: linear-gradient(135deg, #ff4d1a, #ff8a1a) !important;
+  box-shadow: 1px 1px 0 var(--ink) !important;
+}
+
+.tools-page .tn-badge.new {
+  background: linear-gradient(135deg, #2f6bff, #6a9bff) !important;
+  box-shadow: 1px 1px 0 var(--ink) !important;
+}
+
+.tools-page .tn-meta {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: .3rem !important;
+}
+
+.tools-page .tn-meta span {
+  padding: .25rem .55rem !important;
+  border: 1px solid var(--soft) !important;
+  border-radius: 6px !important;
+  background: var(--bg) !important;
+  font: 600 .65rem var(--mono) !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-foot {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: .5rem !important;
+  margin-top: auto !important;
+  padding: .7rem 0 0 !important;
+  border: 0 !important;
+  border-top: 1px solid var(--soft) !important;
+  background: none !important;
+  color: var(--ink) !important;
+  font: inherit !important;
+  cursor: pointer;
+  text-align: left !important;
+}
+
+.tools-page .tn-foot small {
+  display: block !important;
+  font: 600 .6rem var(--mono) !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-go {
+  display: grid !important;
+  place-items: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  background: var(--card-tint, var(--acc)) !important;
+  color: #111 !important;
+  border: 1.5px solid var(--ink) !important;
+  flex-shrink: 0 !important;
+  transition: transform .2s !important;
+}
+
+.tools-page .tn-card:hover .tn-go {
+  transform: translate(2px, -2px) !important;
+}
+
+/* ============ 6. THẺ AI / HOT / STUDY — bo tròn, rõ hơn ============ */
+.tools-page .tc-cell,
+.tools-page .tk-card,
+.tools-page .hot-card {
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 14px !important;
+  background: var(--bg) !important;
+  box-shadow: none !important;
+  transition: all .22s var(--ease) !important;
+}
+
+.tools-page .tc-cell:hover,
+.tools-page .tk-card:hover,
+.tools-page .hot-card:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 5px 5px 0 var(--ink) !important;
+  border-color: var(--ink) !important;
+}
+
+/* Thanh "dải màu" đầu thẻ */
+.tools-page .tc-tile {
+  height: 60px !important;
+  padding: .5rem .8rem !important;
+  background: var(--c, var(--acc)) !important;
+  border-bottom: 1.5px solid var(--ink) !important;
+  color: #111 !important;
+}
+
+.tools-page .tc-sym {
+  font: 700 1.6rem var(--sans) !important;
+  letter-spacing: -.05em !important;
+}
+
+.tools-page .tc-no {
+  font: 600 .7rem var(--mono) !important;
+  opacity: .8 !important;
+}
+
+/* ============ 7. SIDEBAR — gọn hơn, có icon màu ============ */
+.tools-page .tn-side {
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 16px !important;
+  background: var(--bg) !important;
+  padding: 1rem .8rem !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.tools-page .tn-side-brand {
+  padding: 0 0 .8rem !important;
+  margin: 0 0 .6rem !important;
+  border-bottom: 1.5px solid var(--ink) !important;
+}
+
+.tools-page .tn-side-brand b {
+  font: 700 1.05rem var(--sans) !important;
+  letter-spacing: -.02em !important;
+  text-transform: uppercase !important;
+}
+
+.tools-page .tn-side-brand small {
+  font: 500 .62rem var(--mono) !important;
+  letter-spacing: .18em !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-side-label {
+  margin: .9rem .3rem .4rem !important;
+  font: 700 .62rem var(--mono) !important;
+  letter-spacing: .18em !important;
+  text-transform: uppercase !important;
+  color: var(--mut) !important;
+}
+
+.tools-page .tn-side-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: .55rem !important;
+  padding: .55rem .7rem !important;
+  border: 1.5px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--ink) !important;
+  font: 600 .84rem var(--sans) !important;
+  text-align: left !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all .15s var(--ease) !important;
+  box-shadow: none !important;
+}
+
+.tools-page .tn-side-item span {
+  flex: 1 !important;
+}
+
+.tools-page .tn-side-item i {
+  font: 700 .68rem var(--mono) !important;
+  color: var(--mut) !important;
+  font-style: normal !important;
+  padding: .1rem .5rem !important;
+  border-radius: 999px !important;
+  background: var(--soft) !important;
+  min-width: 26px !important;
+  text-align: center !important;
+}
+
+.tools-page .tn-side-item:hover {
+  background: var(--soft) !important;
+  border-color: var(--soft) !important;
+}
+
+.tools-page .tn-side-item.on {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+  border-color: var(--ink) !important;
+  box-shadow: 3px 3px 0 var(--acc) !important;
+}
+
+.tools-page .tn-side-item.on i {
+  background: var(--acc) !important;
+  color: #111 !important;
+}
+
+.tools-page .tn-side-item svg {
+  width: 17px !important;
+  height: 17px !important;
+  color: var(--acc) !important;
+  flex-shrink: 0 !important;
+}
+
+.tools-page .tn-side-item.on svg {
+  color: var(--acc) !important;
+}
+
+/* ============ 8. ĐẾM + NÚT "Xem thêm" ============ */
+.tools-page .tools-count {
+  font: 500 .85rem var(--mono) !important;
+  color: var(--mut) !important;
+  margin: 0 0 1rem !important;
+}
+
+.tools-page .tools-count b {
+  color: var(--ink) !important;
+  font-weight: 700 !important;
+}
+
+.tools-page .tk-more button,
+.tools-page .eb-more button,
+.tools-page .tc-more button {
+  padding: .7rem 1.5rem !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 999px !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  font: 700 .8rem var(--mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .06em !important;
+  cursor: pointer !important;
+  transition: all .15s var(--ease) !important;
+}
+
+.tools-page .tk-more button:hover,
+.tools-page .eb-more button:hover,
+.tools-page .tc-more button:hover {
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 3px 3px 0 var(--acc) !important;
+}
+
+/* ============ 9. MOBILE — gọn gàng, dễ dùng ============ */
+@media (max-width: 720px) {
+  .tools-page {
+    padding: 1rem 1rem calc(120px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .tools-page .tn-shell {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .tools-page .tn-side {
+    display: none !important;
+  }
+
+  .tools-page .tools-header {
+    padding-bottom: .8rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .tools-page .tools-header h1 {
+    font-size: 1.6rem !important;
+  }
+
+  .tools-page .tools-tabs {
+    margin-bottom: 1rem !important;
+  }
+
+  .tools-page .tools-tab {
+    padding: .7rem 1rem !important;
+    font-size: .75rem !important;
+  }
+
+  .tools-page .tools-cat,
+  .tools-page .eb-chip {
+    padding: .45rem .8rem !important;
+    font-size: .75rem !important;
+  }
+
+  .tools-page .eb-filter-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: .4rem !important;
+  }
+
+  .tools-page .eb-filter-label {
+    min-width: 0 !important;
+  }
+
+  .tools-page .eb-chips {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: .25rem !important;
+    scrollbar-width: none !important;
+  }
+
+  .tools-page .eb-chips::-webkit-scrollbar { display: none !important; }
+
+  .tools-page .tn-grid,
+  .tools-page .tc-grid,
+  .tools-page .tk-grid,
+  .tools-page .hot-grid {
+    grid-template-columns: 1fr !important;
+    gap: .8rem !important;
+  }
+
+  .tools-page .tn-card,
+  .tools-page .tc-cell,
+  .tools-page .tk-card,
+  .tools-page .hot-card {
+    padding: 1rem !important;
+  }
+
+  .tools-page .tn-card h3 {
+    font-size: .95rem !important;
+  }
+}
+
+/* ============ 10. GIẢM CHUYỂN ĐỘNG ============ */
+@media (prefers-reduced-motion: reduce) {
+  .tools-page *,
+  .tools-page *::before,
+  .tools-page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

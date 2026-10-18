@@ -1,0 +1,587 @@
+/* ============================================================
+   teacher-simulator-hub.css — Trung tâm mô phỏng & đảo đề
+   Prefix: tsh-
+   Chuẩn Apple HIG + visionOS Glassmorphism
+   ============================================================ */
+
+.tsh-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  color: var(--ink, #1d1d1f);
+  font-family: var(--sans, system-ui);
+}
+
+/* ============ HERO BANNER ============ */
+.tsh-hero {
+  position: relative;
+  padding: 1.75rem 2rem;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 100% at 0% 0%,
+      color-mix(in srgb, var(--acc, #0071e3) 15%, transparent) 0%,
+      transparent 60%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--acc, #0071e3) 12%, var(--panel, #fff)),
+      color-mix(in srgb, #6366f1 6%, var(--panel, #fff)));
+  border: 1px solid color-mix(in srgb, var(--acc, #0071e3) 25%, transparent);
+  box-shadow:
+    0 16px 40px -20px color-mix(in srgb, var(--acc, #0071e3) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow: hidden;
+}
+
+.tsh-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--acc, #0071e3) 12%, transparent),
+    transparent 70%);
+  pointer-events: none;
+}
+
+.tsh-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.tsh-hero-text {
+  flex: 1;
+  min-width: 260px;
+}
+
+.tsh-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--acc, #0071e3) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc, #0071e3) 35%, transparent);
+  color: var(--acc, #0071e3);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+}
+
+.tsh-hero-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink, #1d1d1f);
+  line-height: 1.2;
+}
+
+.tsh-hero-desc {
+  margin: 0.55rem 0 0;
+  color: var(--mut, #86868b);
+  font-size: 0.92rem;
+  max-width: 750px;
+  line-height: 1.55;
+}
+
+.tsh-hero-stats {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.tsh-stat-pill {
+  padding: 0.7rem 1.1rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel, #fff) 70%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--acc, #0071e3) 20%, transparent);
+  text-align: center;
+  min-width: 100px;
+}
+
+.tsh-stat-num {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--acc, #0071e3);
+  line-height: 1.1;
+}
+
+.tsh-stat-pill.cyan .tsh-stat-num {
+  color: #06b6d4;
+}
+
+.tsh-stat-label {
+  font-size: 0.72rem;
+  color: var(--mut, #86868b);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ============ MODES GRID ============ */
+.tsh-modes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
+  position: relative;
+  z-index: 1;
+}
+
+.tsh-mode-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel, #fff) 60%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--acc, #0071e3) 15%, transparent);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tsh-mode-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--acc, #0071e3) 40%, transparent);
+  box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--acc, #0071e3) 30%, transparent);
+}
+
+.tsh-mode-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.2);
+}
+
+.tsh-mode-icon.blue {
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+}
+.tsh-mode-icon.green {
+  background: linear-gradient(135deg, #0d9488, #059669);
+}
+.tsh-mode-icon.purple {
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+}
+.tsh-mode-icon.orange {
+  background: linear-gradient(135deg, #d97706, #ea580c);
+}
+
+.tsh-mode-title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink, #1d1d1f);
+  line-height: 1.3;
+}
+
+.tsh-mode-desc {
+  font-size: 0.75rem;
+  color: var(--mut, #86868b);
+  line-height: 1.3;
+}
+
+/* ============ TAB SWITCHER ============ */
+.tsh-tab-switcher {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.tsh-tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink, #000) 5%, transparent);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.06));
+}
+
+.tsh-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--mut, #86868b);
+  font: 600 0.85rem var(--sans, system-ui);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tsh-tab:hover {
+  color: var(--ink, #1d1d1f);
+}
+
+.tsh-tab.on {
+  background: var(--panel, #fff);
+  color: var(--ink, #1d1d1f);
+  font-weight: 700;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* ============ EMPTY STATE ============ */
+.tsh-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--acc, #0071e3) 5%, transparent);
+  border: 1.5px dashed color-mix(in srgb, var(--acc, #0071e3) 30%, transparent);
+}
+
+.tsh-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--acc, #0071e3) 12%, transparent);
+  display: grid;
+  place-items: center;
+  color: var(--acc, #0071e3);
+  margin-bottom: 0.25rem;
+}
+
+.tsh-empty-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink, #1d1d1f);
+}
+
+.tsh-empty-desc {
+  margin: 0;
+  color: var(--mut, #86868b);
+  font-size: 0.88rem;
+  max-width: 480px;
+  line-height: 1.5;
+}
+
+/* ============ GRID ĐỀ ============ */
+.tsh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ============ EXAM CARD ============ */
+.tsh-exam-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem;
+  border-radius: 18px;
+  background: var(--panel, #fff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.03),
+    0 12px 30px -16px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tsh-exam-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--acc, #0071e3) 40%, transparent);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 20px 45px -18px color-mix(in srgb, var(--acc, #0071e3) 30%, transparent);
+}
+
+.tsh-exam-card.preset {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--acc, #0071e3) 5%, var(--panel, #fff)),
+    var(--panel, #fff));
+  border-color: color-mix(in srgb, var(--acc, #0071e3) 22%, transparent);
+}
+
+.tsh-exam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.tsh-exam-class {
+  padding: 0.22rem 0.6rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--acc, #0071e3) 12%, transparent);
+  color: var(--acc, #0071e3);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.tsh-exam-class.primary {
+  background: linear-gradient(135deg, var(--acc, #0071e3), #6366f1);
+  color: #fff;
+  font-weight: 800;
+}
+
+.tsh-exam-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  color: var(--mut, #86868b);
+  font-weight: 600;
+}
+
+.tsh-exam-duration.preset {
+  color: var(--acc, #0071e3);
+  font-weight: 700;
+}
+
+.tsh-exam-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink, #1d1d1f);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.tsh-exam-desc {
+  margin: 0;
+  color: var(--mut, #86868b);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* ============ ACTION BUTTONS ============ */
+.tsh-exam-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06));
+  margin-top: auto;
+}
+
+.tsh-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: 600 0.78rem var(--sans, system-ui);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  white-space: nowrap;
+}
+
+.tsh-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.tsh-action-btn.primary {
+  background: linear-gradient(135deg, var(--acc, #0071e3), #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--acc, #0071e3) 60%, transparent);
+}
+
+.tsh-action-btn.primary:hover {
+  box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--acc, #0071e3) 70%, transparent);
+}
+
+.tsh-action-btn.info {
+  background: color-mix(in srgb, #0284c7 10%, transparent);
+  color: #0284c7;
+  border-color: color-mix(in srgb, #0284c7 25%, transparent);
+}
+
+.tsh-action-btn.info:hover {
+  background: color-mix(in srgb, #0284c7 18%, transparent);
+}
+
+.tsh-action-btn.purple {
+  background: color-mix(in srgb, #9333ea 10%, transparent);
+  color: #9333ea;
+  border-color: color-mix(in srgb, #9333ea 25%, transparent);
+}
+
+.tsh-action-btn.purple:hover {
+  background: color-mix(in srgb, #9333ea 18%, transparent);
+}
+
+.tsh-action-btn.orange {
+  background: color-mix(in srgb, #ea580c 10%, transparent);
+  color: #ea580c;
+  border-color: color-mix(in srgb, #ea580c 25%, transparent);
+}
+
+.tsh-action-btn.orange:hover {
+  background: color-mix(in srgb, #ea580c 18%, transparent);
+}
+
+/* ============ BUTTON PRIMARY (dùng chung) ============ */
+.tsh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: 12px;
+  border: 0;
+  font: 700 0.85rem var(--sans, system-ui);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tsh-btn.primary {
+  background: linear-gradient(135deg, var(--acc, #0071e3), #6366f1);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--acc, #0071e3) 60%, transparent);
+}
+
+.tsh-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--acc, #0071e3) 70%, transparent);
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 720px) {
+  .tsh-hero {
+    padding: 1.25rem;
+    border-radius: 20px;
+  }
+
+  .tsh-hero-stats {
+    width: 100%;
+  }
+
+  .tsh-stat-pill {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tsh-tabs {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tsh-tabs::-webkit-scrollbar { display: none; }
+
+  .tsh-tab {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .tsh-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tsh-exam-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============ DARK MODE ============ */
+[data-theme='dark'] .tsh-hero {
+  background:
+    radial-gradient(120% 100% at 0% 0%,
+      color-mix(in srgb, var(--acc, #0071e3) 20%, transparent) 0%,
+      transparent 60%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--acc, #0071e3) 18%, var(--panel, #1c1c1e)),
+      color-mix(in srgb, #6366f1 10%, var(--panel, #1c1c1e)));
+  border-color: color-mix(in srgb, var(--acc, #0071e3) 35%, transparent);
+  box-shadow:
+    0 16px 40px -20px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='dark'] .tsh-mode-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .tsh-stat-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .tsh-exam-card {
+  background: #1c1c1e;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .tsh-exam-card.preset {
+  background: linear-gradient(180deg,
+    rgba(10, 132, 255, 0.08),
+    #1c1c1e);
+}
+
+[data-theme='dark'] .tsh-tabs {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .tsh-tab.on {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='dark'] .tsh-empty {
+  background: rgba(10, 132, 255, 0.06);
+  border-color: rgba(10, 132, 255, 0.3);
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  .tsh-root *,
+  .tsh-root *::before,
+  .tsh-root *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .tsh-mode-card:hover,
+  .tsh-exam-card:hover,
+  .tsh-action-btn:hover {
+    transform: none;
+  }
+}
+
+/* ============ FALLBACK ============ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tsh-stat-pill,
+  .tsh-mode-card {
+    background: var(--panel, #fff);
+  }
+  [data-theme='dark'] .tsh-stat-pill,
+  [data-theme='dark'] .tsh-mode-card {
+    background: #1c1c1e;
+  }
+}

@@ -1,0 +1,233 @@
+/* ============================================================
+   home-fx.css — hiệu ứng chữ + bố cục trang chủ
+   Import SAU theme-sandra.css (cuối main.jsx):
+     import './home-fx.css';
+   ============================================================ */
+
+.fx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- 1. Chữ trượt lên từng từ (mask) ---------- */
+.fx-wm { display: inline-block; overflow: hidden; vertical-align: top; padding: .24em .04em .16em; margin: -.24em -.04em -.16em; }
+.fx-s { display: inline-block; opacity: 0; transform: translateY(105%) rotate(4deg); transform-origin: 0 100%; }
+.fx-split.on .fx-s {
+  animation: fx-rise .9s var(--ease, cubic-bezier(.2, .7, .2, 1)) both;
+  animation-delay: calc(var(--base, 0ms) + var(--i, 0) * var(--step, 55ms));
+}
+@keyframes fx-rise {
+  from { opacity: 0; transform: translateY(105%) rotate(4deg); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* Tiêu đề: bỏ nền gradient của theme (background-clip làm hỏng chữ con có transform) */
+h1.fx-h1, h2.fx-title,
+[data-theme='dark'] h1.fx-h1, [data-theme='dark'] h2.fx-title {
+  background: none; -webkit-text-fill-color: currentColor; color: var(--ink);
+}
+.fx-title {
+  font-family: var(--sans); font-weight: 500; letter-spacing: -.04em; line-height: 1.06;
+  font-size: clamp(2rem, 5.2vw, 3.8rem); margin: .5rem 0 0;
+}
+.fx-hl { color: var(--acc-soft); text-shadow: 0 0 30px color-mix(in srgb, var(--acc) 55%, transparent); }
+
+/* ---------- 2. Chữ chuyển sắc chạy ánh sáng ---------- */
+.fx-shimmer {
+  display: inline-block;
+  background: linear-gradient(100deg, var(--acc) 25%, #38bdf8 45%, #8fd3ff 50%, #38bdf8 55%, var(--acc) 75%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: fx-shine 5s ease-in-out infinite alternate;
+}
+@keyframes fx-shine { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+
+/* ---------- 3. Từ xoay vòng ---------- */
+.fx-roll { display: inline-grid; overflow: hidden; vertical-align: bottom; text-align: left; padding: .24em .05em .16em; margin: -.24em -.05em -.16em; }
+.fx-roll-w { grid-area: 1 / 1; white-space: nowrap; opacity: 0; transform: translateY(110%); color: var(--acc-soft); }
+.fx-roll-w.in { animation: fx-in .7s var(--ease, cubic-bezier(.2, .7, .2, 1)) both; }
+.fx-roll-w.out { animation: fx-out .7s var(--ease, cubic-bezier(.2, .7, .2, 1)) both; }
+@keyframes fx-in { from { opacity: 0; transform: translateY(110%); } to { opacity: 1; transform: none; } }
+@keyframes fx-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-110%); } }
+
+/* ---------- 4. Gõ chữ + con trỏ nhấp nháy ---------- */
+.fx-typed { display: inline-grid; }
+.fx-typed > * { grid-area: 1 / 1; }
+.fx-ghost { visibility: hidden; }
+.fx-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -.15em; background: var(--acc); animation: fx-blink 1s steps(1) infinite; }
+@keyframes fx-blink { 50% { opacity: 0; } }
+.hx-bubble { font-family: var(--sans); }
+
+/* ---------- 5. Đoạn chữ sáng dần theo cuộn trang ---------- */
+.fx-fill { margin: 0; font: 500 clamp(1.15rem, 2.2vw, 1.6rem)/1.45 var(--sans); letter-spacing: -.02em; color: var(--ink); max-width: 34em; }
+.fx-fill span { transition: opacity .2s linear; }
+
+/* ---------- 6. Marquee 2 hàng ngược chiều, chữ rỗng xen kẽ ---------- */
+.fx-marqs {
+  display: grid; gap: .3rem; margin: 3rem 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.fx-marq > div { display: flex; width: max-content; font: 600 clamp(2.2rem, 6.5vw, 5rem)/1.1 var(--sans); letter-spacing: -.045em; animation: marq 55s linear infinite; }
+.fx-marq.rev > div { animation-direction: reverse; animation-duration: 70s; }
+.fx-marq span { display: inline-flex; align-items: center; color: var(--ink); }
+.fx-marq span::after { content: '✦'; margin: 0 1.6rem; font-size: .35em; color: var(--acc); -webkit-text-stroke: 0; }
+.fx-marq span:nth-child(even) { color: transparent; -webkit-text-stroke: 1.5px var(--acc-soft); }
+.fx-marq.rev span { color: var(--mut); }
+.fx-marq.rev span:nth-child(odd) { color: transparent; -webkit-text-stroke: 1.5px var(--line); }
+
+/* ---------- 7. Đầu mục chia 2 cột ---------- */
+.fx-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem 4rem; align-items: end; margin-bottom: 2.5rem; }
+.fx-head.solo { grid-template-columns: 1fr; }
+.fx-lead { margin: 0; max-width: 34em; font-size: 1rem; }
+.fx-head .slogan { margin-bottom: .2rem; }
+
+/* Manifesto: 3 thẻ bậc thang */
+.fx-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.fx-step:nth-child(2) { margin-top: 2rem; }
+.fx-step:nth-child(3) { margin-top: 4rem; }
+.fx-step .manifesto-num { font-size: 3.2rem; color: transparent; -webkit-text-stroke: 1.5px var(--acc-soft); }
+
+/* ---------- 8. Công cụ dạng bento ---------- */
+.fx-bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(150px, auto); gap: 1rem; }
+.fx-tool {
+  --mx: 50%; --my: 50%;
+  position: relative; display: flex; flex-direction: column; gap: .35rem; padding: 1.3rem; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 22px; background: var(--glass); color: var(--ink); text-decoration: none;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  transition: border-color .25s, box-shadow .25s, transform .25s;
+}
+.fx-tool::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .25s; background: radial-gradient(260px circle at var(--mx) var(--my), color-mix(in srgb, var(--acc) 26%, transparent), transparent 70%); }
+.fx-tool:hover { transform: translateY(-3px); border-color: var(--acc); box-shadow: var(--glow); }
+.fx-tool:hover::before { opacity: 1; }
+.fx-tool > * { position: relative; }
+.fx-tool.feat { grid-column: span 2; grid-row: span 2; padding: 1.8rem; justify-content: flex-end; background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 22%, var(--glass)), var(--glass) 70%); }
+.fx-tool-ico { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: auto; border-radius: 14px; background: var(--soft); color: var(--acc-soft); }
+.fx-tool.feat .fx-tool-ico { width: 60px; height: 60px; border-radius: 18px; }
+.fx-tool h3 { margin: .8rem 0 0; font: 600 1.15rem/1.25 var(--sans); letter-spacing: -.02em; }
+.fx-tool.feat h3 { font-size: 2rem; letter-spacing: -.035em; }
+.fx-tool p { margin: 0; font: 400 .86rem/1.45 var(--sans); color: var(--mut); }
+.fx-tool.feat p { font-size: 1rem; max-width: 24em; }
+.fx-tool-cta { margin-top: .8rem; align-self: flex-start; padding: .5rem 1.1rem; border-radius: 999px; background: linear-gradient(180deg, #4d86ff, #1f4fe6); color: #fff; font: 500 .85rem var(--sans); box-shadow: 0 0 22px rgba(47, 107, 255, .5); }
+.fx-tool-go { position: absolute; top: 1.2rem; right: 1.3rem; color: var(--acc-soft); opacity: .5; transition: transform .25s, opacity .25s; }
+.fx-tool:hover .fx-tool-go { opacity: 1; transform: translate(3px, -3px); }
+
+/* Hover: tên công cụ cuộn lên, hiện bản sao màu xanh */
+.fx-hr { position: relative; display: block; height: 1.3em; overflow: hidden; line-height: 1.3; }
+.fx-hr > span { display: block; transition: transform .45s var(--ease, cubic-bezier(.2, .7, .2, 1)); }
+.fx-hr::after { content: attr(data-text); position: absolute; left: 0; top: 100%; color: var(--acc-soft); transition: transform .45s var(--ease, cubic-bezier(.2, .7, .2, 1)); }
+.fx-tool:hover .fx-hr > span, .fx-tool:hover .fx-hr::after { transform: translateY(-100%); }
+
+/* ---------- 9. Trích dẫn xoay vòng ---------- */
+.fx-quote { position: relative; padding: clamp(1.6rem, 4vw, 3rem); border: 1px solid var(--line); border-radius: 28px; background: var(--glass); overflow: hidden; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.fx-quote-mark { position: absolute; top: -.2em; left: .15em; font: 700 12rem/1 var(--sans); color: var(--acc); opacity: .12; pointer-events: none; }
+.fx-quote-body { position: relative; margin: 0; min-height: 11rem; }
+.fx-quote-text { margin: 0 0 1.4rem; max-width: 30em; font: 500 clamp(1.4rem, 3.4vw, 2.3rem)/1.25 var(--sans); letter-spacing: -.03em; }
+.fx-quote-text span {
+  display: inline-block;
+  opacity: 0;
+  animation: fx-word .6s var(--ease, cubic-bezier(.2, .7, .2, 1)) both;
+  animation-delay: calc(var(--i) * 45ms);
+  margin-right: 0.28em;      /* ← THÊM DÒNG NÀY */
+}
+@keyframes fx-word { from { opacity: 0; transform: translateY(.5em); filter: blur(5px); } to { opacity: 1; transform: none; filter: blur(0); } }
+.fx-quote-body footer { display: flex; flex-direction: column; gap: .15rem; animation: fx-word .6s .5s both; }
+.fx-quote-body footer b { font: 600 1rem var(--sans); }
+.fx-quote-body footer span { font: 400 .85rem var(--sans); color: var(--mut); }
+.fx-quote-tabs { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1.6rem; }
+.fx-quote-tabs button { position: relative; padding: .8rem 0 0; border: 0; background: none; color: var(--mut); font: 500 .85rem var(--sans); text-align: left; cursor: pointer; transition: color .2s; }
+.fx-quote-tabs button.on, .fx-quote-tabs button:hover { color: var(--ink); }
+.fx-bar { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--line); }
+.fx-bar::after { content: ''; position: absolute; inset: 0; background: var(--acc); transform: scaleX(0); transform-origin: 0 50%; }
+.fx-quote-tabs .on .fx-bar::after { animation: fx-fill 7s linear forwards; }
+.fx-quote.paused .on .fx-bar::after { animation-play-state: paused; }
+@keyframes fx-fill { to { transform: scaleX(1); } }
+
+/* ---------- 10. CTA ---------- */
+.fx-cta { font-size: clamp(2.2rem, 6.5vw, 4.6rem); margin-bottom: 1.2rem; }
+
+/* ---------- 11. Hero: chỉnh bố cục ---------- */
+main .hero-home.split .hero-home-title { font-size: clamp(2.6rem, 6vw, 5rem); line-height: 1.04; margin-bottom: 1.2rem; }
+main .hero-home.split .hero-home-inner { gap: clamp(1.5rem, 4vw, 4rem); }
+main .hero-home.split .hero-home-lead { max-width: 30em; font-size: 1.05rem; margin-bottom: 1.6rem; }
+main .hero-home.split .hero-home-meta { gap: 0; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+main .hero-home.split .hero-home-meta span { padding: 0 1.4rem; border-left: 1px solid var(--line); font: 400 .8rem var(--sans); }
+main .hero-home.split .hero-home-meta span:first-child { padding-left: 0; border-left: 0; }
+main .hero-home.split .hero-home-meta b { display: block; margin: 0 0 .1rem; font: 600 1.35rem var(--sans); color: var(--ink); }
+main .hero-home-slogan { font-family: var(--sans); }
+
+/* Thống kê: số chuyển sắc */
+.stat-num { background: linear-gradient(180deg, var(--ink) 30%, var(--acc-soft)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .fx-head { grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1.8rem; }
+  .fx-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fx-steps { grid-template-columns: 1fr; }
+  .fx-step:nth-child(n) { margin-top: 0; }
+  main .hero-home.split .hero-home-meta { justify-content: center; }
+}
+@media (max-width: 560px) {
+  .fx-tool.feat { grid-column: span 2; grid-row: auto; min-height: 220px; }
+  .fx-tool.feat h3 { font-size: 1.6rem; }
+  .fx-quote-tabs { grid-template-columns: 1fr; gap: .2rem; }
+  .fx-quote-body { min-height: 14rem; }
+  .fx-quote-tabs button { padding-top: .6rem; }
+  main .hero-home.split .hero-home-meta span { padding: 0 .8rem; }
+}
+
+/* ---------- Giảm chuyển động ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .fx-s, .fx-quote-text span, .fx-quote-body footer { opacity: 1 !important; transform: none !important; filter: none !important; }
+  .fx-roll-w.in { opacity: 1 !important; transform: none !important; }
+  .fx-bar::after { transform: scaleX(1) !important; }
+}
+/* ============================================================
+   STACK / PANEL cho useScrollMotion
+   ============================================================ */
+.stack { position: relative; }
+
+.panel {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem 0;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.panel-inner { transform-origin: 50% 50%; will-change: transform, opacity, filter; }
+.panel-skew { will-change: transform; transform: translateZ(0); }
+
+/* Class hook thêm vào DOM */
+.sm-p { translate: var(--px, 0) var(--py, 0); }
+.sm-r { translate: 0 var(--ry, 0); }
+.sm-m { translate: var(--mgx, 0) var(--mgy, 0); }
+
+/* Hiệu ứng glow bám con trỏ cho panel */
+.panel[data-glow] { position: relative; }
+.panel[data-glow]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .35s var(--ease);
+  background: radial-gradient(
+    600px circle at var(--gx, 50%) var(--gy, 50%),
+    color-mix(in srgb, var(--acc) 10%, transparent),
+    transparent 60%
+  );
+}
+.panel[data-glow].glow-on::before { opacity: 1; }
+
+/* Khi không bật stack (mobile hoặc reduced-motion), panel về dòng chảy thường */
+html:not(.has-stack) .panel {
+  position: relative;
+  min-height: auto;
+  padding: 0;
+}
+
+@media (max-width: 720px) {
+  .panel { min-height: auto; padding: 2rem 0; }
+}

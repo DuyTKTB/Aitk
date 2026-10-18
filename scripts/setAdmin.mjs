@@ -49,7 +49,13 @@ try {
   const user = await auth.getUser(UID);
   console.log(`✅ Tìm thấy: ${user.email || '(no email)'}`);
 
-  await auth.setCustomUserClaims(UID, { admin: true });
+  // Merge: giữ nguyên claim cũ + role 'authenticated' cho Supabase Third-Party Auth RLS
+  // (setCustomUserClaims GHI ĐÈ toàn bộ claims nếu không merge!)
+  await auth.setCustomUserClaims(UID, {
+    ...user.customClaims,
+    admin: true,
+    role: 'authenticated',
+  });
 
   const updated = await auth.getUser(UID);
   console.log(`\n✨ Đã set claim admin`);

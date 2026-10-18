@@ -220,9 +220,9 @@ const GAMES = [
     id: 'lab',
     num: '09',
     category: 'practice',
-    badge: 'THÍ NGHIỆM',
-    title: 'Phòng thí nghiệm',
-    titleEm: 'ảo',
+    badge: '2D · CỔ ĐIỂN',
+    title: 'Phòng Lab 2D',
+    titleEm: 'cổ điển',
     desc: 'Kéo hóa chất vào bàn thí nghiệm, bấm "Trộn" để quan sát phản ứng trực quan. Khám phá 12+ phản ứng thú vị.',
     route: '#games/lab',
     tag: 'Thí nghiệm · 10–15 phút',
@@ -344,6 +344,55 @@ const GAMES = [
       'Hết 3 mạng là kết thúc — điểm cao nhất của phiên được lưu.',
     ],
   })),
+  /* ❗ THÁCH ĐẤU QUIZ 1-1 REALTIME — đấu trực tiếp với bạn bè qua mã phòng */
+  {
+    id: 'duel',
+    num: '22',
+    category: 'versus',
+    badge: 'PVP · REALTIME',
+    title: 'Thách đấu Quiz',
+    titleEm: '1-1 ai nhanh hơn',
+    desc: 'Tạo phòng, gửi mã cho bạn — cả hai làm cùng 5 câu, 20 giây/câu. Đúng nhanh ăn thêm điểm tốc độ. Thắng - thua - hòa vào bảng thành tích!',
+    route: '#games/duel',
+    tag: 'Đối kháng · 3–5 phút',
+    color: '#f43f5e',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l-2 2 5 5 2-2" />
+      </svg>
+    ),
+    steps: [
+      'Tạo phòng → nhận mã 6 ký tự.',
+      'Gửi mã cho bạn bè (hoặc vào phòng ai đó đang chờ).',
+      'Cả hai trả lời cùng 5 câu — 20 giây mỗi câu.',
+      'Đúng nhanh hơn ăn thêm điểm tốc độ (+50 tối đa).',
+    ],
+  },
+  /* ❗ PHÒNG LAB 3D — Immersive Chemistry Lab (Three.js) */
+  {
+    id: 'lab-3d',
+    num: '23',
+    category: 'simulation',
+    badge: '3D · IMMERSIVE',
+    title: 'Phòng Lab 3D',
+    titleEm: 'thực hành nhập vai',
+    desc: 'Bước vào phòng thí nghiệm 3D chân thực: di chuyển, rót hóa chất thật theo mL, quan sát kết tủa - khí - đổi màu, đo pH và làm nhiệm vụ có hướng dẫn.',
+    route: '#games/lab-3d',
+    tag: 'Mô phỏng · 10–30 phút',
+    color: '#0ea5e9',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3" />
+        <path d="M7.5 15h9M8 3h8" />
+      </svg>
+    ),
+    steps: [
+      'Mở phòng lab 3D — chọn chế độ quan sát hoặc đi lại (WASD).',
+      'Chọn hóa chất từ kho → chọn dụng cụ trên bàn → rót số mL mong muốn.',
+      'Quan sát hiện tượng thật: kết tủa, khí sủi, đổi màu, pH thay đổi.',
+      'Làm nhiệm vụ có hướng dẫn và lưu phiên vào sổ thí nghiệm.',
+    ],
+  },
 ];
 
 export default function GameHub() {

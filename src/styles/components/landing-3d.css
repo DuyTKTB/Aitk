@@ -1,0 +1,132 @@
+/* =========================================================================
+   landing-3d.css — cảnh 3D thuần CSS/SVG cho trang chủ ELEC AI
+   Import SAU landing-class.css. Không cần thư viện, chỉ đọc biến cuộn:
+     --p (từng khối) · --px/--py (con trỏ ở hero)
+   ========================================================================= */
+
+/* ---------- Khung 3D ---------- */
+.s3 { position: absolute; z-index: 0; pointer-events: none; perspective: 1100px; --rx: 0deg; --ry: 0deg; --k: 1; --R: 120px; }
+.s3-world {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  transform-style: preserve-3d;
+  transform: scale(var(--k)) rotateX(var(--rx)) rotateY(var(--ry));
+  will-change: transform;
+}
+
+/* Quả cầu luôn quay mặt về người xem (xoay ngược với thế giới) */
+.s3-ball {
+  position: absolute; left: 0; top: 0;
+  width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+  margin: calc(var(--r) * -1) 0 0 calc(var(--r) * -1);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff 0, color-mix(in srgb, var(--c) 62%, #fff) 16%, var(--c) 52%, color-mix(in srgb, var(--c) 52%, #000) 100%);
+  box-shadow: inset -4px -6px 10px rgba(0, 0, 0, .28), 0 10px 20px -8px color-mix(in srgb, var(--c) 70%, transparent);
+  transform: translate3d(var(--x), var(--y), var(--z)) rotateY(calc(var(--ry) * -1)) rotateX(calc(var(--rx) * -1));
+}
+
+/* Liên kết: hai tấm vuông góc tạo hình trụ */
+.s3-bond {
+  position: absolute; left: 0; top: 0;
+  width: var(--L); height: var(--w, 8px);
+  margin: calc(var(--w, 8px) / -2) 0 0 calc(var(--L) / -2);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .95), #aab6cd 38%, #596885);
+  transform: translate3d(var(--x), var(--y), var(--z)) rotateY(var(--ba)) rotateZ(var(--bz));
+}
+.s3-bond.b2 { transform: translate3d(var(--x), var(--y), var(--z)) rotateY(var(--ba)) rotateZ(var(--bz)) rotateX(90deg); }
+
+/* ---------- HERO: nguyên tử quanh linh vật ---------- */
+.s3-atom { inset: 0; --R: clamp(105px, 21vh, 195px); --rx: calc(var(--py, 0) * -9deg + var(--p, 0) * 22deg); --ry: calc(var(--px, 0) * 12deg + var(--p, 0) * 140deg); }
+.orb {
+  position: absolute; left: calc(var(--R) * -1); top: calc(var(--R) * -1);
+  width: calc(var(--R) * 2); height: calc(var(--R) * 2);
+  transform-style: preserve-3d;
+  transform: rotateX(72deg) rotateZ(var(--off));
+}
+.orb-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--acc) 58%, transparent);
+  box-shadow: 0 0 24px -4px var(--acc), inset 0 0 24px -8px var(--acc);
+}
+.orb-spin { position: absolute; inset: 0; transform-style: preserve-3d; animation: cs-spin var(--t) linear infinite; }
+.orb-e {
+  position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff, #a9d4ff 30%, var(--acc) 62%, #12408f);
+  box-shadow: 0 0 16px 3px color-mix(in srgb, var(--acc) 70%, transparent);
+  animation: cs-cnt var(--t) linear infinite;
+}
+@keyframes cs-spin { to { transform: rotateZ(360deg); } }
+/* Electron xoay ngược để luôn nhìn thẳng vào màn hình */
+@keyframes cs-cnt {
+  from { transform: translateX(var(--R)) rotateZ(calc(var(--off) * -1)) rotateX(-72deg) rotateY(calc(var(--ry) * -1)) rotateX(calc(var(--rx) * -1)); }
+  to   { transform: translateX(var(--R)) rotateZ(calc(var(--off) * -1 - 360deg)) rotateX(-72deg) rotateY(calc(var(--ry) * -1)) rotateX(calc(var(--rx) * -1)); }
+}
+
+/* ---------- MANIFESTO: phân tử xoay theo tiến độ đoạn văn ---------- */
+.lp-mani p { position: relative; z-index: 1; }
+.mol { width: var(--sz, 200px); height: var(--sz, 200px); --rx: calc(-16deg + var(--p, 0) * 70deg); --ry: calc(var(--p, 0) * 320deg); }
+.mol-a { --sz: 210px; right: 2vw; top: calc(var(--nav-h) + 2vh); }
+.mol-b { --sz: 190px; left: 1vw; bottom: 5vh; --ry: calc(var(--p, 0) * -260deg + 40deg); }
+.mol-c { --sz: 170px; right: 8vw; bottom: 7vh; --rx: calc(10deg + var(--p, 0) * -50deg); }
+
+/* ---------- VIDEO: khung nghiêng dựng lên + tinh thể NaCl ---------- */
+.lp-vstage { position: relative; perspective: 1600px; }
+.lp-vframe { transform: rotateX(calc((1 - var(--p, 0)) * 20deg)); transform-origin: 50% 100%; will-change: transform; }
+.cry { width: var(--sz, 190px); height: var(--sz, 190px); --rx: calc(-24deg + var(--p, 0) * 30deg); --ry: calc(var(--p, 0) * 400deg - 30deg); z-index: 2; }
+.cry-l { --sz: 190px; left: 0; top: -9%; }
+.cry-r { --sz: 170px; right: 0; bottom: -7%; --ry: calc(var(--p, 0) * -380deg + 20deg); }
+
+/* ---------- CÔNG CỤ: bình tam giác đầy dần khi cuộn ngang ---------- */
+.lp-flask {
+  position: absolute; z-index: 3; top: calc(var(--nav-h) + .8rem); right: clamp(1rem, 3vw, 2.4rem);
+  width: 78px; height: auto; pointer-events: none; overflow: visible;
+  transform: perspective(520px) rotateY(calc(-20deg + var(--p, 0) * 40deg));
+  filter: drop-shadow(0 14px 18px color-mix(in srgb, var(--acc) 35%, transparent));
+}
+.fl-sh { fill: rgba(0, 0, 0, .16); }
+.fl-liq { transform: translateY(calc(118px - var(--p, 0) * 62px)); }
+.fl-fill { fill: hsl(calc(var(--p, 0) * 210) 86% 56%); }
+.fl-wave { animation: cs-wave 2.6s linear infinite; }
+@keyframes cs-wave { to { transform: translateX(-60px); } }
+.fl-b { fill: rgba(255, 255, 255, .7); animation: cs-rise 3.4s ease-in infinite; }
+.fl-b.b2 { animation-delay: -1.2s; }
+.fl-b.b3 { animation-delay: -2.2s; }
+@keyframes cs-rise { from { transform: translateY(40px); opacity: .9; } to { transform: translateY(-34px); opacity: 0; } }
+.fl-glass { fill: url(#cs-fl-g); stroke: color-mix(in srgb, var(--ink) 38%, transparent); stroke-width: 2; }
+.fl-hi { fill: none; stroke: rgba(255, 255, 255, .8); stroke-width: 3; stroke-linecap: round; }
+
+/* ---------- LỚP HỌC: xoắn kép ADN quay theo cuộn ---------- */
+.lp-class > :not(.s3) { position: relative; z-index: 1; }
+.hx { width: 160px; height: 520px; right: -.5rem; top: 4%; --rx: 6deg; --ry: calc(var(--p, 0) * 560deg); }
+
+/* ---------- CTA: nguyên tử + nhân ---------- */
+.lp-cta { position: relative; }
+.lp-cta > * { position: relative; z-index: 1; }
+.lp-cta > .s3 { position: absolute; z-index: 0; }
+.s3.cta-atom { inset: auto; right: 5%; top: 50%; width: 260px; height: 260px; margin-top: -130px; --R: 100px; --rx: calc(-12deg + var(--p, 0) * 28deg); --ry: calc(var(--p, 0) * 260deg); }
+
+/* ---------- Icon FAQ (SVG thay emoji) ---------- */
+.lp-faq-icon svg { display: block; width: 22px; height: 22px; }
+.cs-fi .d { fill: var(--acc); fill-opacity: .18; }
+.lp-faq-item.open .lp-faq-icon .cs-fi { stroke: #fff; }
+.lp-faq-item.open .lp-faq-icon .cs-fi .d { fill: #fff; fill-opacity: .25; }
+
+/* ---------- Màn hình nhỏ ---------- */
+@media (max-width: 1000px) {
+  .hx { opacity: .35; --k: .6; }
+}
+@media (max-width: 720px) {
+  .mol, .cry { --k: .55; }
+  .mol-c { display: none; }
+  .cry-l { left: -2%; top: -14%; }
+  .cry-r { right: -2%; bottom: -10%; }
+  .lp-flask { width: 54px; }
+  .s3.cta-atom { display: none; }
+}
+
+/* ---------- Giảm chuyển động ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .orb-spin, .orb-e, .fl-wave, .fl-b { animation: none; }
+  .lp-vframe { transform: none; }
+}
+.lp.is-static .lp-vframe { transform: none; }

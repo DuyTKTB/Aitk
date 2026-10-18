@@ -109,7 +109,7 @@ const SECTIONS = [
         <li><b>Thao tác hàng loạt:</b> tích chọn nhiều đề rồi hiện, ẩn hoặc xóa cùng lúc.</li>
         <li><b>Nhân bản</b> tạo bản sao ở trạng thái ẩn, kèm toàn bộ câu hỏi và đáp án.</li>
         <li><b>Sửa đề:</b> chỉnh thông tin, thêm, sửa, xóa câu hỏi và đáp án. Câu thay đổi có nhãn "Chưa lưu"; bấm <i>Lưu tất cả</i>.</li>
-        <li>Đề đã có lượt làm bài không xóa được nếu có ràng buộc khóa ngoại; hãy <b>ẩn</b> thề thay vì xóa.</li>
+        <li>Đề đã có lượt làm bài không xóa được nếu có ràng buộc khóa ngoại; hãy <b>ẩn</b> đề thay vì xóa.</li>
       </ul>
     ),
   },

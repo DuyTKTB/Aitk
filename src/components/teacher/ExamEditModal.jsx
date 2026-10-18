@@ -175,7 +175,6 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
   const [proctor, setProctor] = useState(() => ({
     fullscreenLock: true, tabSwitchLimit: 3, blockCopyPaste: true, strictMode: true,
     camera: 'off',
-    cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
     snapshotOnEvent: true, maxSnapshots: 10, retentionDays: 30,
     blockDevTools: true, blockPrintScreen: true, blockLongBlur: true, allowPauseByTeacher: true,
     ...(exam.proctor || {}),

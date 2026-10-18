@@ -1,17 +1,13 @@
 /* ============================================================
    AdminShell.jsx — Khung Vitality cho khu quản trị
    ------------------------------------------------------------
-   Dùng lại DashFrame / Topbar / Modal / ConfirmDialog / Avatar /
-   Donut / TrendChart từ DashShell để đồng bộ với TeacherDashboard.
-   Sidebar có thêm nút "Sang quản lý lớp" để nhảy tab.
+   Dùng lại DashFrame từ DashShell. Topbar re-export từ DashShell.
+   Modal/ConfirmDialog/Toast → lấy từ AdminUI.jsx (nguồn duy nhất).
    ============================================================ */
-import {
-  DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
-  tsMs, fmtMMSS, fmtClock, downloadCsv,
-} from '../DashShell.jsx';
+import { DashFrame, Topbar, Donut, TrendChart, Avatar, tsMs, fmtMMSS, fmtClock, downloadCsv } from '../DashShell.jsx';
 import {
   IconDashboard, IconExam, IconQuestion, IconUsers, IconActivity, IconSettings,
-  IconBook, IconSparkle, IconKey, IconCrown, IconUserCheck, IconHome,
+  IconBook, IconSparkle, IconKey, IconCrown, IconUserCheck,
 } from './AdminIcons.jsx';
 
 /* ============================================================
@@ -31,14 +27,7 @@ export const ADMIN_MENU = [
 ];
 
 /* ============================================================
-   ADMIN SHELL — bọc content trong DashFrame
-   props:
-     active       key đang chọn
-     onChange     callback khi đổi tab
-     badges       { key: number, pro: number } — số lượng hiển thị
-     user         user object (để hiện tên + check admin)
-     sideNote     JSX phụ (tuỳ chọn)
-     children     nội dung chính
+   ADMIN SHELL
    ============================================================ */
 export default function AdminShell({ active, onChange, badges = {}, sideNote, children }) {
   const items = ADMIN_MENU.map((m) => ({
@@ -49,20 +38,14 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
     live: false,
   }));
 
-  const goTeacher = () => {
-    window.location.hash = 'classroom';
-  };
-
   const extraNav = (
     <button
       type="button"
       className="t-rail-btn"
-      onClick={goTeacher}
+      onClick={() => { window.location.hash = 'classroom'; }}
       title="Sang trang quản lý lớp học"
     >
-      <span className="t-rail-btn-icon">
-        <IconUserCheck size={20} />
-      </span>
+      <span className="t-rail-btn-icon"><IconUserCheck size={20} /></span>
       <span className="t-rail-btn-label">Quản lý lớp</span>
     </button>
   );
@@ -83,8 +66,5 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
   );
 }
 
-/* Re-export để component con dùng luôn */
-export {
-  Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
-  tsMs, fmtMMSS, fmtClock, downloadCsv,
-};
+/* Re-export — KHÔNG re-export Modal/ConfirmDialog (dùng từ AdminUI.jsx) */
+export { Topbar, Donut, TrendChart, Avatar, tsMs, fmtMMSS, fmtClock, downloadCsv };

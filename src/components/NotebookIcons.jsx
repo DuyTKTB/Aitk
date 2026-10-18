@@ -206,4 +206,9 @@ export const IcoInfo = (p) => (
     <circle cx="12" cy="12" r="9" />
     <path d="M12 8v.01M11 12h1v4h1" />
   </Svg>
+);export const IcoRefresh = (p) => (
+  <Svg {...p}>
+    <path d="M21 12a9 9 0 1 1-2.6-6.3" />
+    <path d="M21 3v6h-6" />
+  </Svg>
 );

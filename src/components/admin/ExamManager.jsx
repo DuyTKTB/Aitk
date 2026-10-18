@@ -4,7 +4,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import ExamEditor from './ExamEditor.jsx';
-import AdminShell, { Topbar, Modal, ConfirmDialog, Donut, Avatar } from './AdminShell.jsx';
+import AdminShell, { Topbar, Donut, downloadCsv } from './AdminShell.jsx';
+import { ConfirmDialog } from './AdminUI.jsx';
 import {
   IconEdit, IconTrash, IconEye, IconEyeOff, IconPlus, IconExam, IconSearch, IconRefresh,
   IconClock, IconTrophy, IconQuestion, IconGrid, IconList, IconCopy, IconExternal,
@@ -85,7 +86,6 @@ function ExamList({ onEdit, onCreate }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setVisible(PAGE); }, [search, filterSubject, filterGrade, filterStatus, sortBy, viewMode]);
 
-  /* Bộ lọc */
   const subjects = useMemo(() => {
     const m = new Map();
     exams.forEach((e) => e.subject?.id != null && m.set(e.subject.id, e.subject.name));
@@ -124,7 +124,6 @@ function ExamList({ onEdit, onCreate }) {
     questions: exams.reduce((s, e) => s + questionCount(e), 0),
   }), [exams]);
 
-  /* Thao tác */
   const patchExam = (id, patch) => setExams((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
 
   const handleDelete = (exam) => {
@@ -270,11 +269,8 @@ function ExamList({ onEdit, onCreate }) {
       questionCount(e), e.attempt_count || 0,
       e.is_published ? 'Đang hiện' : 'Đã ẩn', formatDate(e.created_at),
     ]));
-    // dùng downloadCsv từ AdminShell
-    import('./AdminShell.jsx').then(({ downloadCsv }) => {
-      downloadCsv(`de-thi-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-      say('Đã xuất ' + filtered.length + ' đề');
-    });
+    downloadCsv(`de-thi-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    say('Đã xuất ' + filtered.length + ' đề');
   };
 
   const tabs = [
@@ -284,7 +280,6 @@ function ExamList({ onEdit, onCreate }) {
     { key: 'empty', label: 'Chưa có câu', count: exams.filter((e) => questionCount(e) === 0).length },
   ];
 
-  /* ============ RENDER ============ */
   return (
     <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
       <Topbar
@@ -322,7 +317,7 @@ function ExamList({ onEdit, onCreate }) {
             <div className="vt-hero-chart-head">
               <b>Trạng thái</b>
             </div>
-            <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', marginTop: '.5rem' }}>
+            <div className="vt-donut-row">
               <Donut value={stats.published} max={Math.max(stats.total, 1)} size={130} stroke={12}>
                 <strong>{stats.total ? Math.round((stats.published / stats.total) * 100) : 0}<sup>%</sup></strong>
                 <small>đang hiện</small>
@@ -339,38 +334,22 @@ function ExamList({ onEdit, onCreate }) {
 
       {/* ===== FILTER BAR ===== */}
       <div className="vt-card soft">
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select
-            value={filterSubject}
-            onChange={(e) => setFilterSubject(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
+        <div className="vt-filter-bar">
+          <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} className="vt-select-pill">
             <option value="all">Tất cả môn</option>
             {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <select
-            value={filterGrade}
-            onChange={(e) => setFilterGrade(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
+          <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)} className="vt-select-pill">
             <option value="all">Tất cả lớp</option>
             {grades.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="vt-select-pill">
             <option value="all">Mọi trạng thái</option>
             <option value="published">Đang hiện</option>
             <option value="draft">Đã ẩn</option>
             <option value="empty">Chưa có câu hỏi</option>
           </select>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="vt-select-pill">
             <option value="newest">Mới nhất</option>
             <option value="oldest">Cũ nhất</option>
             <option value="popular">Nhiều lượt làm</option>
@@ -388,8 +367,8 @@ function ExamList({ onEdit, onCreate }) {
         </div>
 
         {selected.size > 0 && (
-          <div style={{ marginTop: '.8rem', display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '.85rem' }}>Đã chọn <b>{selected.size}</b> đề</span>
+          <div className="vt-bulk-bar">
+            <span>Đã chọn <b>{selected.size}</b> đề</span>
             <button type="button" className="vt-btn sm" disabled={busy} onClick={() => handleBulkPublish(true)}>
               <IconEye size={13} /> Hiện
             </button>
@@ -415,9 +394,14 @@ function ExamList({ onEdit, onCreate }) {
           <button type="button" className="vt-btn primary" onClick={load}>Thử lại</button>
         </div>
       ) : loading && exams.length === 0 ? (
-        <div className="vt-loading">
-          <div className="page-loader-spinner" />
-          <p>Đang tải đề thi…</p>
+        <div className="vt-grid">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="vt-card vt-skeleton-card">
+              <div className="vt-skeleton-line" style={{ width: '40%' }} />
+              <div className="vt-skeleton-line" style={{ width: '80%', height: 20 }} />
+              <div className="vt-skeleton-line" style={{ width: '60%' }} />
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="vt-empty">
@@ -483,10 +467,8 @@ function ExamList({ onEdit, onCreate }) {
               </thead>
               <tbody>
                 {shown.map((e) => (
-                  <tr key={e.id} style={selected.has(e.id) ? { background: 'var(--vt-tint)' } : undefined}>
-                    <td>
-                      <input type="checkbox" checked={selected.has(e.id)} onChange={() => toggleSelect(e.id)} />
-                    </td>
+                  <tr key={e.id} className={selected.has(e.id) ? 'vt-row-selected' : ''}>
+                    <td><input type="checkbox" checked={selected.has(e.id)} onChange={() => toggleSelect(e.id)} /></td>
                     <td>
                       <b style={{ display: 'block', fontSize: '.92rem' }}>{e.title}</b>
                       {e.description && <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>{e.description}</small>}
@@ -506,19 +488,11 @@ function ExamList({ onEdit, onCreate }) {
                       </button>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button type="button" className="vt-icon-btn" onClick={() => onEdit(e.id)} title="Sửa">
-                          <IconEdit size={14} />
-                        </button>
-                        <button type="button" className="vt-icon-btn" onClick={() => handleDuplicate(e)} disabled={duplicatingId === e.id} title="Nhân bản">
-                          <IconCopy size={14} />
-                        </button>
-                        <a className="vt-icon-btn" href={`#exam/${e.id}`} target="_blank" rel="noopener noreferrer" title="Xem trước">
-                          <IconExternal size={14} />
-                        </a>
-                        <button type="button" className="vt-icon-btn danger" onClick={() => handleDelete(e)} title="Xóa">
-                          <IconTrash size={14} />
-                        </button>
+                      <div className="vt-row-actions">
+                        <button type="button" className="vt-icon-btn" onClick={() => onEdit(e.id)} title="Sửa"><IconEdit size={14} /></button>
+                        <button type="button" className="vt-icon-btn" onClick={() => handleDuplicate(e)} disabled={duplicatingId === e.id} title="Nhân bản"><IconCopy size={14} /></button>
+                        <a className="vt-icon-btn" href={`#exam/${e.id}`} target="_blank" rel="noopener noreferrer" title="Xem trước"><IconExternal size={14} /></a>
+                        <button type="button" className="vt-icon-btn danger" onClick={() => handleDelete(e)} title="Xóa"><IconTrash size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -580,12 +554,8 @@ function ExamCard({
         boxShadow: selected ? '0 0 0 2px var(--acc)' : undefined,
       }}
     >
-      {/* Header với diff + toggle hiện/ẩn */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
-        <span
-          className="vt-chip"
-          style={{ background: color, color: '#fff' }}
-        >
+        <span className="vt-chip" style={{ background: color, color: '#fff' }}>
           {diff?.short || exam.difficulty || '—'}
         </span>
         <button
@@ -600,7 +570,6 @@ function ExamCard({
         </button>
       </div>
 
-      {/* Checkbox chọn */}
       <input
         type="checkbox"
         checked={selected}
@@ -609,7 +578,6 @@ function ExamCard({
         aria-label={`Chọn ${exam.title}`}
       />
 
-      {/* Tiêu đề */}
       {editing ? (
         <input
           ref={quickRef}
@@ -650,14 +618,12 @@ function ExamCard({
         </p>
       )}
 
-      {/* Meta */}
       <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', fontSize: '.72rem', color: 'var(--mut)' }}>
         {[exam.grade?.name, exam.subject?.name, `${exam.duration || '—'} phút`].filter(Boolean).map((t, i) => (
           <span key={i} style={{ padding: '.15rem .5rem', background: 'var(--vt-tint)', borderRadius: 999 }}>{t}</span>
         ))}
       </div>
 
-      {/* Stats */}
       <div style={{ display: 'flex', gap: '1rem', paddingTop: '.5rem', borderTop: '1px solid var(--soft)' }}>
         <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center', flex: 1 }}>
           <IconQuestion size={13} style={{ color: qCount === 0 ? 'var(--vt-amber)' : 'var(--acc)' }} />
@@ -675,7 +641,6 @@ function ExamCard({
         </div>
       </div>
 
-      {/* Actions */}
       <div style={{ display: 'flex', gap: '.4rem', marginTop: 'auto' }}>
         <button type="button" className="vt-btn sm primary" onClick={onEdit} style={{ flex: 1 }}>
           <IconEdit size={13} /> Sửa

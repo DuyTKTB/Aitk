@@ -1,13 +1,10 @@
 /* ============================================================
    ExamEditor.jsx — Sửa đề thi (Vitality)
-   ------------------------------------------------------------
-   Logic giữ nguyên từ bản cũ, chỉ đổi:
-     • Bọc trong AdminShell
-     • Đổi class .adl-* → .vt-* cho giao diện đồng bộ
    ============================================================ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import AdminShell, { Topbar, ConfirmDialog } from './AdminShell.jsx';
+import AdminShell, { Topbar } from './AdminShell.jsx';
+import { ConfirmDialog } from './AdminUI.jsx';
 import {
   IconBack, IconPlus, IconTrash, IconEdit, IconSave, IconQuestion, IconCheck, IconWarning,
 } from './AdminIcons.jsx';
@@ -39,16 +36,11 @@ function validateQuestion(q) {
 }
 
 /* ============================================================
-   WRAPPER — xử lý loading / error / empty
+   WRAPPER
    ============================================================ */
 export default function ExamEditor({ examId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-
-  /* ❗ BUG CŨ ĐÃ SỬA: khi loading=true, wrapper trả về spinner INSTEAD OF
-     ExamEditorInner — mà Inner mới là nơi gọi load() và tắt loading
-     → load() không bao giờ chạy → kẹt "Đang tải đề…" vĩnh viễn.
-     Nay: Inner luôn được mount, tự hiển thị spinner khi loading. */
 
   if (loadError) {
     return (
@@ -66,8 +58,6 @@ export default function ExamEditor({ examId, onBack }) {
     );
   }
 
-  /* ❗ KHÔNG bọc AdminShell ở đây — ExamEditorInner tự bọc (có Topbar riêng cho
-     từng trạng thái). Bọc 2 lần → 2 thanh sidebar lồng nhau. */
   return (
     <ExamEditorInner
       examId={examId}
@@ -95,10 +85,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
 
   const [toast, setToast] = useState(null);
   const [confirm, setConfirm] = useState(null);
-  /* DB cũ có cột questions.topic_id là SỐ NGUYÊN trong khi app dùng id chuyên đề dạng CHỮ
-     ('c11-este' từ chemTopics). Khi lưu có chọn chuyên đề, Supabase trả
-     "invalid input syntax for type integer" → tự lưu lại không chuyên đề + hiện banner
-     hướng dẫn chạy migration (supabase/migrations/003_topic_id_text.sql). */
   const [topicUnsupported, setTopicUnsupported] = useState(false);
   const isTopicIntError = (e) => /invalid input syntax for type integer/i.test(String(e?.message || ''));
   const say = useCallback((t) => {
@@ -110,7 +96,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
   const unclassifiedCount = useMemo(() => questions.filter((q) => !q.topic_id).length, [questions]);
   const anyDirty = examDirty || dirtyQuestions.length > 0;
 
-  /* Cảnh báo rời trang */
   useEffect(() => {
     if (!anyDirty) return undefined;
     const h = (e) => { e.preventDefault(); e.returnValue = ''; };
@@ -159,7 +144,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
 
   useEffect(() => { load(); }, [load]);
 
-  /* ============ THAO TÁC TRÊN STATE ============ */
   const patchExam = (patch) => { setExam((e) => ({ ...e, ...patch })); setExamDirty(true); };
 
   const patchQuestion = (id, fn) =>
@@ -211,7 +195,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
     say(`Đã gán chuyên đề cho ${unclassifiedCount} câu — bấm "Lưu tất cả" để ghi.`);
   };
 
-  /* ============ LƯU ============ */
   const handleSaveExam = async () => {
     const title = exam.title?.trim();
     const duration = Number(exam.duration);
@@ -408,8 +391,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
     );
   }
 
-  /* Spinner khi đang tải (loading do wrapper quản — Inner luôn được mount nên
-     load() chạy được và tắt loading) */
   if (loading || !exam) {
     return (
       <AdminShell active="exams" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
@@ -457,7 +438,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
         }
       />
 
-      {/* ===== NÚT QUAY LẠI ===== */}
       <button
         type="button"
         className="vt-btn sm"
@@ -467,11 +447,10 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
         <IconBack size={14} /> Danh sách đề
       </button>
 
-      {/* ===== THÔNG TIN ĐỀ ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
           <h3 className="vt-card-title">
-            <IconEdit size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+            <IconEdit size={16} className="vt-title-ico" />
             Thông tin đề
           </h3>
           <button
@@ -602,7 +581,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
         </div>
       </div>
 
-      {/* ===== CẢNH BÁO CHUYÊN ĐỀ ===== */}
       {topicUnsupported && (
         <div className="vt-card" style={{
           borderLeft: '3px solid var(--vt-amber)',
@@ -621,11 +599,10 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
         </div>
       )}
 
-      {/* ===== CÂU HỎI ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
           <h3 className="vt-card-title">
-            <IconQuestion size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+            <IconQuestion size={16} className="vt-title-ico" />
             Câu hỏi ({questions.length})
           </h3>
           <button type="button" className="vt-btn sm primary" onClick={addQuestion}>
@@ -633,7 +610,6 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
           </button>
         </header>
 
-        {/* Bulk topic assign */}
         {unclassifiedCount > 0 && (
           <div style={{
             display: 'flex',
@@ -754,16 +730,8 @@ function ExamEditorInner({ examId, onBack, loading, onLoadingChange, onError }) 
                     />
                   </label>
 
-                  <fieldset style={{
-                    border: 0,
-                    padding: 0,
-                    margin: '.7rem 0',
-                  }}>
-                    <legend style={{
-                      font: '600 .72rem var(--sans)',
-                      color: 'var(--mut)',
-                      marginBottom: '.4rem',
-                    }}>
+                  <fieldset style={{ border: 0, padding: 0, margin: '.7rem 0' }}>
+                    <legend style={{ font: '600 .72rem var(--sans)', color: 'var(--mut)', marginBottom: '.4rem' }}>
                       Đáp án — chọn nút tròn ở đáp án đúng
                     </legend>
                     <div style={{ display: 'grid', gap: '.35rem' }}>

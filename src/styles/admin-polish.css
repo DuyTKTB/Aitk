@@ -1,0 +1,212 @@
+/* ============================================================
+   admin-polish.css — LỚP TINH CHỈNH GIAO DIỆN QUẢN TRỊ
+   Nạp SAU admin-apple.css + admin-teacher.css trong AdminPanel.jsx
+   Mục tiêu: đồng bộ phong cách Apple với phần còn lại của web —
+   sidebar gọn, card mềm, nút pill, bảng sạch, input pill.
+   ============================================================ */
+
+/* ---------- SIDEBAR ---------- */
+.adl-side {
+  background: rgba(255, 255, 255, .72) !important;
+  border-right: 1px solid var(--apl-edge-soft, rgba(0,0,0,.06)) !important;
+  backdrop-filter: saturate(180%) blur(20px) !important;
+}
+[data-theme='dark'] .adl-side {
+  background: rgba(20, 20, 22, .78) !important;
+}
+
+.adl-brand { padding: 14px 14px 12px !important; }
+.adl-brand b {
+  font: 700 1rem var(--apl-font, -apple-system, 'Segoe UI', sans-serif) !important;
+  letter-spacing: -.02em !important;
+}
+
+.adl-menu-item {
+  border-radius: 10px !important;
+  padding: 9px 12px !important;
+  font: 500 .84rem var(--apl-font, -apple-system, sans-serif) !important;
+  color: var(--apl-ink, #1d1d1f) !important;
+  transition: background .15s var(--apl-ease, ease), color .15s !important;
+}
+.adl-menu-item:hover { background: color-mix(in srgb, var(--menu-color, #0071e3) 10%, transparent) !important; }
+[data-theme='dark'] .adl-menu-item:hover { background: rgba(255, 255, 255, .06) !important; }
+.adl-menu-item.on {
+  background: var(--menu-color, var(--apl-blue, #0071e3)) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--menu-color, var(--apl-blue, #0071e3)) 35%, transparent) !important;
+}
+
+.adl-user, .adl-logout { border-radius: 12px !important; }
+
+/* ---------- TOPBAR ---------- */
+.adl-topbar {
+  background: transparent !important;
+  border-bottom: none !important;
+  padding: 14px 22px 10px !important;
+}
+.adl-crumb {
+  font: 700 1.15rem -apple-system, 'Segoe UI', sans-serif !important;
+  letter-spacing: -.02em !important;
+  color: var(--apl-ink, #1d1d1f) !important;
+}
+
+/* ---------- MAIN + CARD ---------- */
+.adl-main { padding: 4px 22px 40px !important; }
+
+.adl-panel, .adl-exam-card {
+  border-radius: 16px !important;
+  border: 1px solid var(--apl-edge-soft, rgba(0,0,0,.06)) !important;
+  box-shadow: var(--apl-shadow-md, 0 4px 12px rgba(0,0,0,.08)) !important;
+  transition: box-shadow .2s var(--apl-ease, ease), transform .2s var(--apl-ease, ease) !important;
+}
+.adl-exam-card:hover { transform: translateY(-2px) !important; }
+
+/* ---------- STAT CARDS ---------- */
+.adl-stat { border-radius: 16px !important; }
+.adl-stat b, .adl-stat strong {
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: -.02em !important;
+}
+
+/* ---------- BUTTONS ---------- */
+.adl-btn-primary, .adl-btn-outline {
+  border-radius: 999px !important;
+  font: 600 .82rem var(--apl-font, -apple-system, sans-serif) !important;
+  padding: 8px 16px !important;
+  transition: transform .15s var(--apl-ease, ease), box-shadow .15s, background .15s !important;
+}
+.adl-btn-primary {
+  background: var(--apl-blue, #0071e3) !important;
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--apl-blue, #0071e3) 30%, transparent) !important;
+}
+.adl-btn-primary:hover { background: var(--apl-blue-hover, #0077ed) !important; transform: translateY(-1px) !important; }
+.adl-btn-primary:active { transform: scale(.97) !important; }
+.adl-btn-outline:hover { background: rgba(0, 113, 227, .06) !important; }
+
+.adl-icon-btn, .adl-icon-btn-sm {
+  border-radius: 50% !important;
+  transition: background .15s, transform .15s !important;
+}
+.adl-icon-btn:hover, .adl-icon-btn-sm:hover { transform: scale(1.06) !important; }
+
+/* ---------- INPUT / SEARCH ---------- */
+.adl-field, .adl-search {
+  border-radius: 12px !important;
+  border: 1px solid var(--apl-edge, rgba(0,0,0,.12)) !important;
+  background: var(--apl-card-bg, #fff) !important;
+  font: 500 .84rem var(--apl-font, -apple-system, sans-serif) !important;
+  transition: border-color .15s, box-shadow .15s !important;
+}
+.adl-field:focus, .adl-search:focus {
+  border-color: var(--apl-blue, #0071e3) !important;
+  box-shadow: var(--apl-shadow-focus, 0 0 0 4px rgba(0,113,227,.15)) !important;
+  outline: none !important;
+}
+.adl-search { border-radius: 999px !important; padding-left: 34px !important; }
+
+/* ---------- TABS — segmented pill ---------- */
+.adl-tabs {
+  display: inline-flex !important;
+  gap: 3px !important;
+  padding: 3px !important;
+  border-radius: 999px !important;
+  background: var(--apl-card-bg-2, #f5f5f7) !important;
+  border: 1px solid var(--apl-edge-soft, rgba(0,0,0,.05)) !important;
+}
+.adl-tab {
+  border-radius: 999px !important;
+  font: 600 .76rem var(--apl-font, -apple-system, sans-serif) !important;
+  padding: 6px 14px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--apl-ink-2, #515154) !important;
+  transition: background .18s, color .18s, box-shadow .18s !important;
+}
+.adl-tab.on {
+  background: var(--apl-blue, #0071e3) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--apl-blue, #0071e3) 35%, transparent) !important;
+}
+
+/* ---------- TABLE ---------- */
+.adl-table { border-collapse: separate !important; border-spacing: 0 !important; }
+.adl-table th {
+  font: 700 .66rem var(--apl-font, -apple-system, sans-serif) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .07em !important;
+  color: var(--apl-ink-3, #86868b) !important;
+  border-bottom: 1px solid var(--apl-edge-soft, rgba(0,0,0,.08)) !important;
+  padding: 10px 12px !important;
+}
+.adl-table td {
+  padding: 11px 12px !important;
+  font: 500 .82rem var(--apl-font, -apple-system, sans-serif) !important;
+  border-bottom: 1px solid var(--apl-edge-soft, rgba(0,0,0,.05)) !important;
+}
+.adl-table tr:hover td { background: color-mix(in srgb, var(--apl-blue, #0071e3) 4%, transparent) !important; }
+
+/* ---------- TAGS ---------- */
+.adl-tag {
+  border-radius: 999px !important;
+  font: 600 .68rem var(--apl-font, -apple-system, sans-serif) !important;
+  padding: 3px 10px !important;
+}
+
+/* ---------- SCROLLBAR mảnh ---------- */
+.adl-side ::-webkit-scrollbar, .adl-main ::-webkit-scrollbar { width: 8px; height: 8px; }
+.adl-side ::-webkit-scrollbar-thumb, .adl-main ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, .18); border-radius: 99px;
+}
+[data-theme='dark'] .adl-side ::-webkit-scrollbar-thumb,
+[data-theme='dark'] .adl-main ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .2); }
+
+/* ============================================================
+   DASHBOARD — MỞ RỘNG KHÔNG GIAN THỞ (bố cục thoáng hơn)
+   ============================================================ */
+.adl .vt-row-hero { gap: 18px !important; margin-bottom: 18px !important; }
+.adl .vt-hero { padding: 22px 26px !important; gap: 22px !important; }
+.adl .vt-hero-num {
+  font-size: 2.6rem !important;
+  line-height: 1.05 !important;
+  letter-spacing: -.03em !important;
+}
+.adl .vt-hero-num small { font-size: .85rem !important; color: var(--vt-muted, #6e6e73) !important; margin-left: 6px !important; }
+.adl .vt-hero-label { font-size: .72rem !important; letter-spacing: .08em !important; color: var(--vt-muted, #6e6e73) !important; }
+.adl .vt-hero-facts { gap: 20px !important; }
+.adl .vt-hero-facts dt { font-size: .64rem !important; letter-spacing: .07em !important; color: var(--vt-muted, #86868b) !important; }
+.adl .vt-hero-facts dd { font-size: 1.15rem !important; font-weight: 700 !important; margin-top: 2px !important; }
+.adl .vt-hero-btns { margin-top: 14px !important; }
+
+/* Lưới thẻ thống kê: gap thoáng + card cao đều */
+.adl .vt-grid { gap: 16px !important; margin-top: 16px !important; }
+.adl .vt-grid > .vt-card { padding: 18px 20px !important; }
+
+/* Card chung */
+.adl .vt-card { padding: 18px 20px !important; }
+.adl .vt-card-head { margin-bottom: 12px !important; }
+.adl .vt-card-title { font-size: .95rem !important; letter-spacing: -.01em !important; }
+
+/* Bảng tăng trưởng: hàng mềm, bo tròn, không chạm mép */
+.adl .vt-rank { gap: 8px !important; }
+.adl .vt-rank li {
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  background: var(--vt-soft, #f5f5f7) !important;
+}
+.adl .vt-rank-n {
+  width: 26px !important; height: 26px !important;
+  border-radius: 50% !important; font-size: .7rem !important;
+}
+
+/* Vòng Key PRO + cột phải: thở hơn */
+.adl .vt-ring-card { padding: 20px !important; }
+
+/* Giới hạn nội dung trên màn rộng — không bị giãn vô tận */
+.adl .adl-main { max-width: 1320px; margin: 0 auto !important; }
+
+/* ---------- TOAST ---------- */
+.adl-toast-item {
+  border-radius: 14px !important;
+  box-shadow: var(--apl-shadow-lg, 0 12px 32px rgba(0,0,0,.14)) !important;
+}

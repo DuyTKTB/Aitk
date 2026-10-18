@@ -3,10 +3,11 @@
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import AdminShell, { Topbar, Modal, Avatar, Donut } from './AdminShell.jsx';
+import AdminShell, { Topbar, Donut } from './AdminShell.jsx';
+import { Modal } from './AdminUI.jsx';
 import {
   IconActivity, IconClock, IconEye, IconTrophy, IconRefresh,
-  IconCheck, IconClose, IconUserCheck, IconChart,
+  IconCheck, IconClose, IconChart, IconTrendUp, IconWarning,
 } from './AdminIcons.jsx';
 import { formatDateTime, friendlyError } from './adminUtils.js';
 
@@ -103,7 +104,8 @@ export default function ActivityPage() {
     const today = attempts.filter((a) => new Date(a.started_at) >= startOfToday).length;
     const avg = attempts.length ? attempts.reduce((s, a) => s + scoreNum(a.score), 0) / attempts.length : 0;
     const passed = attempts.filter((a) => scoreNum(a.score) >= 5).length;
-    return { today, total: attempts.length, avg, passed };
+    const excellent = attempts.filter((a) => scoreNum(a.score) >= 8).length;
+    return { today, total: attempts.length, avg, passed, excellent };
   }, [attempts]);
 
   const openDetail = async (attempt) => {
@@ -152,13 +154,14 @@ export default function ActivityPage() {
               <div><dt>Hôm nay</dt><dd>{stats.today}</dd></div>
               <div><dt>Điểm TB</dt><dd>{stats.avg.toFixed(1)}</dd></div>
               <div><dt>Đạt ≥5</dt><dd>{stats.passed}</dd></div>
+              <div><dt>Xuất sắc ≥8</dt><dd>{stats.excellent}</dd></div>
             </dl>
           </div>
           <div className="vt-hero-right">
             <div className="vt-hero-chart-head">
               <b>Tỷ lệ đạt</b>
             </div>
-            <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', marginTop: '.5rem' }}>
+            <div className="vt-donut-row">
               <Donut
                 value={stats.passed}
                 max={Math.max(stats.total, 1)}
@@ -172,6 +175,7 @@ export default function ActivityPage() {
               <ul className="vt-rank" style={{ flex: 1 }}>
                 <li><span className="vt-rank-n r1">✓</span><b>Đạt</b><span className="vt-rank-score">{stats.passed}</span></li>
                 <li><span className="vt-rank-n">×</span><b>Chưa đạt</b><span className="vt-rank-score">{stats.total - stats.passed}</span></li>
+                <li><span className="vt-rank-n r2">★</span><b>Xuất sắc</b><span className="vt-rank-score">{stats.excellent}</span></li>
               </ul>
             </div>
           </div>
@@ -180,25 +184,23 @@ export default function ActivityPage() {
 
       {/* ===== FILTER ===== */}
       <div className="vt-card soft">
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select
-            value={filterDays}
-            onChange={(e) => setFilterDays(Number(e.target.value))}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
-            <option value={1}>Hôm nay</option>
-            <option value={7}>7 ngày qua</option>
-            <option value={30}>30 ngày qua</option>
-            <option value={90}>90 ngày qua</option>
-          </select>
-          <select
-            value={filterSubject}
-            onChange={(e) => setFilterSubject(e.target.value)}
-            style={{ padding: '.5rem .9rem', borderRadius: 999, border: '1px solid var(--soft)', background: 'var(--bg)', color: 'var(--ink)' }}
-          >
-            <option value="all">Tất cả môn</option>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+        <div className="vt-filter-bar">
+          <div className="vt-filter-group">
+            <IconClock size={14} className="vt-filter-ico" />
+            <select value={filterDays} onChange={(e) => setFilterDays(Number(e.target.value))}>
+              <option value={1}>Hôm nay</option>
+              <option value={7}>7 ngày qua</option>
+              <option value={30}>30 ngày qua</option>
+              <option value={90}>90 ngày qua</option>
+            </select>
+          </div>
+          <div className="vt-filter-group">
+            <IconChart size={14} className="vt-filter-ico" />
+            <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)}>
+              <option value="all">Tất cả môn</option>
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
           <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
             <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
           </button>
@@ -208,15 +210,24 @@ export default function ActivityPage() {
       {/* ===== LIST ===== */}
       {error ? (
         <div className="vt-empty">
-          <span><IconActivity size={30} /></span>
+          <span><IconWarning size={30} /></span>
           <h3>Không tải được dữ liệu</h3>
           <p>{error}</p>
           <button type="button" className="vt-btn primary" onClick={load}>Thử lại</button>
         </div>
       ) : loading && attempts.length === 0 ? (
-        <div className="vt-loading">
-          <div className="page-loader-spinner" />
-          <p>Đang tải hoạt động…</p>
+        <div className="vt-card">
+          <div className="vt-skeleton-list">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="vt-skeleton-row">
+                <div className="vt-skeleton-line" style={{ width: '12%' }} />
+                <div className="vt-skeleton-line" style={{ width: '38%' }} />
+                <div className="vt-skeleton-line" style={{ width: '10%' }} />
+                <div className="vt-skeleton-line" style={{ width: '8%' }} />
+                <div className="vt-skeleton-line" style={{ width: '10%' }} />
+              </div>
+            ))}
+          </div>
         </div>
       ) : attempts.length === 0 ? (
         <div className="vt-empty">
@@ -227,7 +238,10 @@ export default function ActivityPage() {
       ) : (
         <div className="vt-card">
           <header className="vt-card-head">
-            <h3 className="vt-card-title">Nhật ký ({attempts.length})</h3>
+            <h3 className="vt-card-title">
+              <IconActivity size={16} className="vt-title-ico" />
+              Nhật ký ({attempts.length})
+            </h3>
           </header>
           <div className="vt-table-wrap">
             <table className="vt-table">
@@ -257,10 +271,7 @@ export default function ActivityPage() {
                         </small>
                       </td>
                       <td>
-                        <span className="vt-chip" style={{
-                          background: a.mode === 'exam' ? 'color-mix(in srgb, #16a34a 15%, var(--vt-tint))' : 'var(--vt-tint)',
-                          color: a.mode === 'exam' ? '#16a34a' : 'var(--mut)',
-                        }}>
+                        <span className={'vt-chip ' + (a.mode === 'exam' ? 'ready' : 'closed')}>
                           {a.mode === 'exam' ? 'Thi thử' : 'Luyện tập'}
                         </span>
                       </td>
@@ -305,11 +316,20 @@ export default function ActivityPage() {
           size="lg"
           onClose={() => setDetail(null)}
         >
-          <div style={{ marginBottom: '1rem', padding: '.7rem 1rem', background: 'var(--vt-tint)', borderRadius: 12 }}>
-            <div style={{ font: '600 .9rem var(--sans)' }}>
-              Điểm <b style={{ color: scoreColor(scoreNum(detail.attempt.score)) }}>{scoreNum(detail.attempt.score).toFixed(1)}</b>
-              {' · '}{detail.attempt.correct_count ?? 0}/{detail.attempt.total_questions ?? 0} đúng
-              {' · '}{formatTime(detail.attempt.time_spent)}
+          <div className="vt-detail-summary">
+            <div className="vt-detail-score">
+              <small>Điểm</small>
+              <b style={{ color: scoreColor(scoreNum(detail.attempt.score)) }}>
+                {scoreNum(detail.attempt.score).toFixed(1)}
+              </b>
+            </div>
+            <div className="vt-detail-stat">
+              <small>Đúng</small>
+              <b>{detail.attempt.correct_count ?? 0}/{detail.attempt.total_questions ?? 0}</b>
+            </div>
+            <div className="vt-detail-stat">
+              <small>Thời gian</small>
+              <b>{formatTime(detail.attempt.time_spent)}</b>
             </div>
           </div>
 
@@ -321,58 +341,41 @@ export default function ActivityPage() {
           ) : detail.answers.length === 0 ? (
             <p className="vt-muted">Không có dữ liệu chi tiết cho lượt làm này.</p>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '.7rem' }}>
+            <ul className="vt-answer-list">
               {detail.answers.map((ans, i) => {
                 const right = ans.question?.answers?.find((x) => x.is_correct);
                 return (
                   <li
                     key={ans.id}
-                    style={{
-                      padding: '.9rem 1rem',
-                      borderRadius: 14,
-                      background: 'var(--vt-tint)',
-                      borderLeft: `3px solid ${ans.is_correct ? '#16a34a' : '#ef4444'}`,
-                    }}
+                    className={'vt-answer-item ' + (ans.is_correct ? 'ok' : 'bad')}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.5rem' }}>
-                      <b style={{ fontSize: '.88rem' }}>Câu {ans.question?.question_number || i + 1}</b>
-                      <span className="vt-chip" style={{
-                        background: ans.is_correct ? 'color-mix(in srgb, #16a34a 15%, var(--vt-tint))' : 'color-mix(in srgb, #ef4444 12%, var(--vt-tint))',
-                        color: ans.is_correct ? '#16a34a' : '#ef4444',
-                      }}>
+                    <div className="vt-answer-head">
+                      <b>Câu {ans.question?.question_number || i + 1}</b>
+                      <span className={'vt-chip ' + (ans.is_correct ? 'ready' : 'kicked')}>
                         {ans.is_correct ? <IconCheck size={12} /> : <IconClose size={12} />}
                         {ans.is_correct ? 'Đúng' : ans.selected_answer ? 'Sai' : 'Bỏ trống'}
                       </span>
                     </div>
-                    <p style={{ margin: '0 0 .7rem', fontSize: '.9rem', lineHeight: 1.5 }}>
-                      {ans.question?.content}
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
+                    <p className="vt-answer-q">{ans.question?.content}</p>
+                    <div className="vt-answer-cols">
                       <div>
-                        <small style={{ color: 'var(--mut)', fontSize: '.72rem', display: 'block' }}>Học sinh chọn</small>
-                        <b style={{ fontSize: '.85rem', color: ans.is_correct ? '#16a34a' : '#ef4444' }}>
+                        <small className="vt-answer-label">Học sinh chọn</small>
+                        <b style={{ color: ans.is_correct ? '#16a34a' : '#ef4444' }}>
                           {ans.selected_answer ? `${ans.selected_answer.label}. ${ans.selected_answer.content}` : 'Bỏ trống'}
                         </b>
                       </div>
                       {!ans.is_correct && right && (
                         <div>
-                          <small style={{ color: 'var(--mut)', fontSize: '.72rem', display: 'block' }}>Đáp án đúng</small>
-                          <b style={{ fontSize: '.85rem', color: '#16a34a' }}>
+                          <small className="vt-answer-label">Đáp án đúng</small>
+                          <b style={{ color: '#16a34a' }}>
                             {right.label}. {right.content}
                           </b>
                         </div>
                       )}
                     </div>
                     {!ans.is_correct && ans.question?.explanation && (
-                      <div style={{
-                        marginTop: '.7rem',
-                        padding: '.6rem .8rem',
-                        background: 'var(--panel)',
-                        borderRadius: 10,
-                        fontSize: '.82rem',
-                        lineHeight: 1.5,
-                      }}>
-                        <small style={{ color: 'var(--mut)', fontSize: '.7rem', display: 'block', marginBottom: '.2rem', fontWeight: 700, textTransform: 'uppercase' }}>Lời giải</small>
+                      <div className="vt-answer-explain">
+                        <small>Lời giải</small>
                         {ans.question.explanation}
                       </div>
                     )}

@@ -153,5 +153,65 @@ service cloud.firestore {
       }
     }
 
+    // ===============================================================
+    // 12. SOCIAL — Kết bạn / Lời mời / Tin nhắn riêng / Chat lớp
+    // ===============================================================
+    match /users/{uid}/friends/{friendId} {
+      allow read: if isOwner(uid);
+      allow create, delete: if isOwner(uid) || friendId == request.auth.uid;
+    }
+
+    match /users/{uid}/friendRequests/{fromUid} {
+      /* Chủ hộ đọc/xóa hộp mời của mình; NGƯỜI GỬI được phép đọc lại lời mời mình đã gửi
+         (dùng để kiểm tra "họ đã mời mình trước chưa" trong friendStatus) */
+      allow read, delete: if isOwner(uid) || fromUid == request.auth.uid;
+      allow create: if signedIn() && fromUid == request.auth.uid;
+    }
+
+    match /dms/{dmId} {
+      /* Doc CHƯA TỒN TẠI (mở hội thoại mới) → resource.data là null → phải cho phép get
+         để client kiểm tra rồi mới tạo */
+      allow read, update, delete: if signedIn()
+        && (!exists(/databases/$(database)/documents/dms/$(dmId))
+            || request.auth.uid in resource.data.members);
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members.size() <= 20;
+
+      match /messages/{msgId} {
+        allow read: if signedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/dms/$(dmId)).data.members;
+        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+        allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+    }
+
+    match /classes/{classId}/chat/{msgId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ===============================================================
+    // 13. DUELS — Thách đấu quiz 1-1 realtime
+    // ===============================================================
+    match /duels/{duelId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    // ===============================================================
+    // 14. LAB 3D — Phiên thực hành phòng lab 3D (chỉ chủ sở hữu)
+    // ===============================================================
+    match /users/{uid}/lab3dSessions/{sessionId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ===============================================================
+    // 15. DOC STUDIO — Thư viện tài liệu (chỉ chủ sở hữu)
+    // ===============================================================
+    match /users/{uid}/docStudioDocs/{docId} {
+      allow read, write: if isOwner(uid);
+    }
+
   }
 }

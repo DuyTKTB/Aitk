@@ -1,11 +1,5 @@
 /* ============================================================
    KeyManager.jsx — Quản lý Key PRO cho giáo viên
-   ------------------------------------------------------------
-   • Tạo key đơn / hàng loạt
-   • Danh sách key: mã, hạn, người dùng, trạng thái
-   • Filter: tất cả / chưa dùng / đang dùng / thu hồi
-   • Search theo mã
-   • Actions: copy, revoke, delete, copy nhiều
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -16,10 +10,8 @@ import {
   adminDeleteKey,
   adminRevokeKey,
 } from '../../lib/proKeyApi.js';
-import AdminShell, {
-  Topbar, Modal, ConfirmDialog, Avatar, Donut,
-  tsMs, downloadCsv,
-} from './AdminShell.jsx';
+import AdminShell, { Topbar, Donut, downloadCsv } from './AdminShell.jsx';
+import { Modal, ConfirmDialog } from './AdminUI.jsx';
 import {
   IconKey, IconCrown, IconPlus, IconTrash, IconCopy, IconCheck,
   IconCalendar, IconSearch, IconRefresh, IconRevoke, IconUserCheck,
@@ -34,7 +26,6 @@ const STATUS_TABS = [
   { key: 'revoked',  label: 'Đã thu hồi' },
 ];
 
-/* ---------- HELPERS ---------- */
 const fmtDate = (v) => {
   if (!v) return '—';
   const d = new Date(v);
@@ -65,7 +56,6 @@ const copyToClipboard = async (text) => {
 
 export default function KeyManager() {
   const { user } = useAuth();
-  const [section, setSection] = useState('keys');
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [keys, setKeys] = useState([]);
@@ -84,7 +74,6 @@ export default function KeyManager() {
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  /* ---------- LOAD ---------- */
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -99,9 +88,7 @@ export default function KeyManager() {
 
   useEffect(() => { load(); }, [load]);
 
-  /* ---------- DERIVED ---------- */
   const stats = useMemo(() => {
-    const now = Date.now();
     const total = keys.length;
     const unused = keys.filter((k) => !k.used_by && !k.revoked).length;
     const active = keys.filter((k) => k.used_by && !k.revoked).length;
@@ -116,7 +103,6 @@ export default function KeyManager() {
     revoked: stats.revoked,
   }), [stats]);
 
-  /* ---------- ACTIONS ---------- */
   const handleCopy = async (code, id) => {
     const ok = await copyToClipboard(code);
     if (ok) {
@@ -185,7 +171,6 @@ export default function KeyManager() {
     say('Đã xuất ' + keys.length + ' key');
   };
 
-  /* ---------- RENDER ---------- */
   const tabs = STATUS_TABS.map((t) => ({ ...t, count: tabCounts[t.key] || 0 }));
 
   const topProps = {
@@ -217,6 +202,7 @@ export default function KeyManager() {
             <dl className="vt-hero-facts">
               <div><dt>Chưa dùng</dt><dd>{stats.unused}</dd></div>
               <div><dt>Đang dùng</dt><dd>{stats.active}</dd></div>
+              <div><dt>Đã thu hồi</dt><dd>{stats.revoked}</dd></div>
             </dl>
             <div className="vt-hero-btns">
               <button type="button" className="vt-hero-btn" onClick={() => setShowCreate(true)}>
@@ -234,7 +220,7 @@ export default function KeyManager() {
                 Xuất CSV
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', marginTop: '.5rem' }}>
+            <div className="vt-donut-row">
               <Donut value={stats.total} max={Math.max(stats.total, 1)} size={130} stroke={12}>
                 <strong>{stats.total}</strong>
                 <small>tổng key</small>
@@ -264,12 +250,13 @@ export default function KeyManager() {
       {/* ===== LIST ===== */}
       <div className="vt-card">
         <header className="vt-card-head">
-          <h3 className="vt-card-title">Danh sách key ({keys.length})</h3>
-          <div className="vt-pills">
-            <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
-              <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
-            </button>
-          </div>
+          <h3 className="vt-card-title">
+            <IconKey size={16} className="vt-title-ico" />
+            Danh sách key ({keys.length})
+          </h3>
+          <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
+            <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
+          </button>
         </header>
 
         {keys.length === 0 ? (
@@ -300,8 +287,8 @@ export default function KeyManager() {
                   return (
                     <tr key={k.id}>
                       <td>
-                        <code style={{ fontSize: '.92rem', fontWeight: 700 }}>{k.code}</code>
-                        <div style={{ fontSize: '.7rem', color: 'var(--mut)', marginTop: 2 }}>
+                        <code className="vt-key-code">{k.code}</code>
+                        <div className="vt-key-meta">
                           {k.duration_days} ngày
                           {k.note ? ` · ${k.note}` : ''}
                         </div>
@@ -327,7 +314,7 @@ export default function KeyManager() {
                         <span className={'vt-chip ' + status.cls}>{status.label}</span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <div className="vt-row-actions">
                           <button
                             type="button"
                             className="vt-icon-btn"
@@ -365,7 +352,6 @@ export default function KeyManager() {
         )}
       </div>
 
-      {/* ===== MODAL TẠO ĐƠN ===== */}
       {showCreate && (
         <CreateKeyModal
           onClose={() => setShowCreate(false)}
@@ -377,7 +363,6 @@ export default function KeyManager() {
         />
       )}
 
-      {/* ===== MODAL TẠO HÀNG LOẠT ===== */}
       {showBatch && (
         <CreateBatchModal
           onClose={() => setShowBatch(false)}
@@ -389,7 +374,6 @@ export default function KeyManager() {
         />
       )}
 
-      {/* ===== CONFIRM ===== */}
       <ConfirmDialog
         open={!!confirm}
         title={confirm?.title}
@@ -423,7 +407,7 @@ function CreateKeyModal({ onClose, onDone }) {
   const finalDays = customDays ? Math.max(1, Math.min(3650, Number(customDays) || 0)) : days;
 
   const submit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setErr('');
     if (!finalDays || finalDays < 1) {
       setErr('Số ngày không hợp lệ.');
@@ -526,7 +510,7 @@ function CreateBatchModal({ onClose, onDone }) {
   const [err, setErr] = useState('');
 
   const submit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setErr('');
     const n = Math.max(1, Math.min(100, Number(count) || 0));
     const d = Math.max(1, Math.min(3650, Number(days) || 0));
