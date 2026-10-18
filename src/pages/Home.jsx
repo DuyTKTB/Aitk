@@ -4,7 +4,7 @@ import { askAI, useGreeting } from './HomePlus.jsx';
 import { Badge, Button, EmptyState } from '../ui/index.jsx';
 import { timeAgo, useProgress } from '../lib/progress.js';
 import { elementOfDay } from '../lib/elementOfDay.js';
-import ElecCrew from './ElecCrew.jsx';
+import ElecCrew from '../components/ElecCrew.jsx';
 import '../styles/home-apple-bento.css';
 
 /* ============================================================

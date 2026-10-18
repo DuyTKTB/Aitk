@@ -6,7 +6,9 @@ import CompareBar from './CompareBar.jsx';
 import TrendLegend from './TrendLegend.jsx';
 import AiQuiz from './AiQuiz.jsx';
 import useVip from '../hooks/useVip.js';
-/* 🎨 3 CSS files: lazy-loaded trong useEffect. */
+import './periodic-table.css';
+import './ai-features.css';
+import './element-modal.css';
 import Icon from './Icon.jsx';
 
 const loadFavs = () => {
@@ -49,11 +51,8 @@ export default function PeriodicTable({ preview = false }) {
   const [onlyFav, setOnlyFav] = useState(false);
   const [stateF, setStateF] = useState('');
   const [quizOpen, setQuizOpen] = useState(false);
-   const gridRef = useRef(null);
-   
-
-
-   useEffect(() => {
+  const gridRef = useRef(null);
+  useEffect(() => {
     try { localStorage.setItem('pt-favs', JSON.stringify([...favs])); } catch { /* bỏ qua */ }
   }, [favs]);
   const toggleFav = (z) => setFavs((f) => { const n = new Set(f); if (n.has(z)) n.delete(z); else n.add(z); return n; });
