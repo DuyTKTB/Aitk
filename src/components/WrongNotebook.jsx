@@ -6,11 +6,14 @@ import {
   IcoBookOpen, IcoBookMark, IcoX, IcoCheck, IcoCheckCircle, IcoSearch,
   IcoClose, IcoTrash, IcoStar, IcoCopy, IcoDownload, IcoUpload, IcoSort,
   IcoGrid, IcoList, IcoShuffle, IcoPlay, IcoArrowUp, IcoSparkle,
-  IcoBulb, IcoStats, IcoFire, IcoTag, IcoEye, IcoInfo, IcoRefresh,
+  IcoBulb, IcoStats, IcoFire, IcoTag, IcoEye, IcoInfo, IcoRefresh, 
 } from './NotebookIcons.jsx';
 import NotebookGuide from './NotebookGuide.jsx';
 import { topicName, UNCLASSIFIED } from '../data/chemTopics.js';
-/* 🎨 CSS bây giờ lazy-loaded trong useEffect. */
+
+// 🎨 Import CSS chuẩn xác (đã sửa tên file)
+import './notebook-v2.css';
+import './notebook-guide.css';
 
 const DIFFICULTIES = [
   { id: 'all', label: 'Tất cả' },
@@ -24,15 +27,13 @@ const DIFF_LABELS = { easy: 'Dễ', medium: 'TB', hard: 'Khó', extreme: 'Rất 
 const DIFF_COLORS = { easy: '#b7dc9a', medium: '#ffc46b', hard: '#ff9b85', extreme: '#f2b6c6' };
 
 export default function WrongNotebook() {
-   const { user } = useAuth();
-   const [wrongQs, setWrongQs] = useState([]);
-   const [savedQs, setSavedQs] = useState([]);
-   const [tab, setTab] = useState('wrong');
-   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [wrongQs, setWrongQs] = useState([]);
+  const [savedQs, setSavedQs] = useState([]);
+  const [tab, setTab] = useState('wrong');
+  const [loading, setLoading] = useState(true);
 
-
-
-   // Filters
+  // Filters
   const [search, setSearch] = useState('');
   const [filterDiff, setFilterDiff] = useState('all');
   const [filterTopic, setFilterTopic] = useState('all');
@@ -96,10 +97,22 @@ export default function WrongNotebook() {
           .order('saved_at', { ascending: false }),
       ]);
 
-      setWrongQs(wrongRes.data || []);
-      setSavedQs(savedRes.data || []);
+      if (wrongRes.error) {
+        console.error("Lỗi tải wrong_questions:", wrongRes.error);
+        showToast('Lỗi tải câu sai. Kiểm tra Console!', 'err');
+      } else {
+        setWrongQs(wrongRes.data || []);
+      }
+
+      if (savedRes.error) {
+        console.error("Lỗi tải saved_questions:", savedRes.error);
+        showToast('Lỗi tải câu đã lưu. Kiểm tra Console!', 'err');
+      } else {
+        setSavedQs(savedRes.data || []);
+      }
+
     } catch (e) {
-      console.error(e);
+      console.error("Lỗi hệ thống:", e);
       showToast('Lỗi tải dữ liệu', 'err');
     } finally {
       setLoading(false);
@@ -111,7 +124,6 @@ export default function WrongNotebook() {
   /* ============ FILTER + SORT ============ */
   const items = tab === 'wrong' ? wrongQs : savedQs;
 
-  /* Các chuyên đề có trong danh sách hiện tại, nhiều câu nhất lên đầu */
   const topicCounts = useMemo(() => {
     const m = new Map();
     for (const it of items) {
@@ -293,7 +305,6 @@ export default function WrongNotebook() {
     if (answerId === correct?.id) {
       setQuizScore((s) => s + 1);
     } else if (uid && quizCurrent.question?.id) {
-      /* Sai trong phiên luyện → ghi lại vào sổ sai (tăng lần sai) */
       markWrong(uid, quizCurrent.question.id, null).catch(() => {});
     }
   };
@@ -330,67 +341,28 @@ export default function WrongNotebook() {
         </div>
 
         <div className="nb-head-r">
-          <button
-            type="button"
-            className="nb-btn nb-btn-ghost"
-            onClick={() => setGuideOpen(true)}
-            title="Xem hướng dẫn sử dụng"
-          >
-            <IcoInfo size={16} />
-            <span>Hướng dẫn</span>
+          <button type="button" className="nb-btn nb-btn-ghost" onClick={() => setGuideOpen(true)} title="Xem hướng dẫn sử dụng">
+            <IcoInfo size={16} /><span>Hướng dẫn</span>
           </button>
-
-          <button
-            type="button"
-            className="nb-btn nb-btn-ghost"
-            onClick={exportJSON}
-            title="Tải backup JSON"
-          >
-            <IcoDownload size={16} />
-            <span>Backup</span>
+          <button type="button" className="nb-btn nb-btn-ghost" onClick={exportJSON} title="Tải backup JSON">
+            <IcoDownload size={16} /><span>Backup</span>
           </button>
-
-          <button
-            type="button"
-            className="nb-btn nb-btn-primary"
-            onClick={startQuiz}
-            disabled={filtered.length === 0}
-          >
-            <IcoPlay size={16} />
-            <span>Luyện tập</span>
+          <button type="button" className="nb-btn nb-btn-primary" onClick={startQuiz} disabled={filtered.length === 0}>
+            <IcoPlay size={16} /><span>Luyện tập</span>
           </button>
-
-          <button
-            type="button"
-            className="nb-btn"
-            onClick={() => { window.location.hash = '#quiz'; }}
-            title="Ôn lặp lại ngắt quãng — hệ SRS của Ôn tập thông minh"
-          >
-            <IcoRefresh size={16} />
-            <span>Luyện SRS</span>
+          <button type="button" className="nb-btn" onClick={() => { window.location.hash = '#quiz'; }} title="Ôn lặp lại ngắt quãng — hệ SRS của Ôn tập thông minh">
+            <IcoRefresh size={16} /><span>Luyện SRS</span>
           </button>
         </div>
       </header>
 
       {/* ============ TABS ============ */}
       <nav className="nb-tabs">
-        <button
-          type="button"
-          className={'nb-tab' + (tab === 'wrong' ? ' on' : '')}
-          onClick={() => { setTab('wrong'); setSelected(new Set()); setFilterTopic('all'); }}
-        >
-          <IcoX size={16} />
-          <span>Câu sai</span>
-          <em>{wrongQs.length}</em>
+        <button type="button" className={'nb-tab' + (tab === 'wrong' ? ' on' : '')} onClick={() => { setTab('wrong'); setSelected(new Set()); setFilterTopic('all'); }}>
+          <IcoX size={16} /><span>Câu sai</span><em>{wrongQs.length}</em>
         </button>
-        <button
-          type="button"
-          className={'nb-tab' + (tab === 'saved' ? ' on' : '')}
-          onClick={() => { setTab('saved'); setSelected(new Set()); setFilterTopic('all'); }}
-        >
-          <IcoStar size={16} filled />
-          <span>Đã lưu</span>
-          <em>{savedQs.length}</em>
+        <button type="button" className={'nb-tab' + (tab === 'saved' ? ' on' : '')} onClick={() => { setTab('saved'); setSelected(new Set()); setFilterTopic('all'); }}>
+          <IcoStar size={16} filled /><span>Đã lưu</span><em>{savedQs.length}</em>
         </button>
       </nav>
 
@@ -398,31 +370,19 @@ export default function WrongNotebook() {
       <div className="nb-stats">
         <div className="nb-stat">
           <span className="nb-stat-ico"><IcoBookOpen size={18} /></span>
-          <div>
-            <b>{stats.totalWrong}</b>
-            <small>Câu sai</small>
-          </div>
+          <div><b>{stats.totalWrong}</b><small>Câu sai</small></div>
         </div>
         <div className="nb-stat">
           <span className="nb-stat-ico"><IcoBookMark size={18} filled /></span>
-          <div>
-            <b>{stats.totalSaved}</b>
-            <small>Đã lưu</small>
-          </div>
+          <div><b>{stats.totalSaved}</b><small>Đã lưu</small></div>
         </div>
         <div className="nb-stat">
           <span className="nb-stat-ico"><IcoFire size={18} /></span>
-          <div>
-            <b>{stats.totalWrongCount}</b>
-            <small>Lần sai</small>
-          </div>
+          <div><b>{stats.totalWrongCount}</b><small>Lần sai</small></div>
         </div>
         <div className="nb-stat">
           <span className="nb-stat-ico"><IcoStats size={18} /></span>
-          <div>
-            <b>{filtered.length}</b>
-            <small>Đang xem</small>
-          </div>
+          <div><b>{filtered.length}</b><small>Đang xem</small></div>
         </div>
       </div>
 
@@ -430,19 +390,9 @@ export default function WrongNotebook() {
       <div className="nb-toolbar">
         <label className="nb-search">
           <IcoSearch size={16} />
-          <input
-            type="search"
-            placeholder="Tìm câu hỏi, lời giải, tên đề…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button type="button" onClick={() => setSearch('')} aria-label="Xóa">
-              <IcoClose size={14} />
-            </button>
-          )}
+          <input type="search" placeholder="Tìm câu hỏi, lời giải, tên đề…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          {search && (<button type="button" onClick={() => setSearch('')} aria-label="Xóa"><IcoClose size={14} /></button>)}
         </label>
-
         <label className="nb-select">
           <IcoSort size={14} />
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -452,37 +402,16 @@ export default function WrongNotebook() {
             <option value="difficulty">Độ khó cao</option>
           </select>
         </label>
-
         <div className="nb-seg">
-          <button
-            type="button"
-            className={viewMode === 'list' ? 'on' : ''}
-            onClick={() => setViewMode('list')}
-            title="Danh sách"
-          >
-            <IcoList size={15} />
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'grid' ? 'on' : ''}
-            onClick={() => setViewMode('grid')}
-            title="Lưới"
-          >
-            <IcoGrid size={15} />
-          </button>
+          <button type="button" className={viewMode === 'list' ? 'on' : ''} onClick={() => setViewMode('list')} title="Danh sách"><IcoList size={15} /></button>
+          <button type="button" className={viewMode === 'grid' ? 'on' : ''} onClick={() => setViewMode('grid')} title="Lưới"><IcoGrid size={15} /></button>
         </div>
       </div>
 
       {/* ============ DIFFICULTY FILTERS ============ */}
       <div className="nb-filters">
         {DIFFICULTIES.map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            className={'nb-chip' + (filterDiff === d.id ? ' on' : '')}
-            style={filterDiff === d.id && d.color ? { background: d.color, color: '#111', borderColor: 'transparent' } : undefined}
-            onClick={() => setFilterDiff(d.id)}
-          >
+          <button key={d.id} type="button" className={'nb-chip' + (filterDiff === d.id ? ' on' : '')} style={filterDiff === d.id && d.color ? { background: d.color, color: '#111', borderColor: 'transparent' } : undefined} onClick={() => setFilterDiff(d.id)}>
             {d.label}
           </button>
         ))}
@@ -491,22 +420,9 @@ export default function WrongNotebook() {
       {/* ============ TOPIC FILTERS ============ */}
       {topicCounts.some(([id]) => id !== UNCLASSIFIED) && (
         <div className="nb-filters" aria-label="Lọc theo chuyên đề">
-          <button
-            type="button"
-            className={'nb-chip' + (filterTopic === 'all' ? ' on' : '')}
-            onClick={() => setFilterTopic('all')}
-          >
-            Mọi chuyên đề
-          </button>
+          <button type="button" className={'nb-chip' + (filterTopic === 'all' ? ' on' : '')} onClick={() => setFilterTopic('all')}>Mọi chuyên đề</button>
           {topicCounts.map(([id, n]) => (
-            <button
-              key={id}
-              type="button"
-              className={'nb-chip' + (filterTopic === id ? ' on' : '')}
-              onClick={() => setFilterTopic(id)}
-            >
-              {topicName(id)} · {n}
-            </button>
+            <button key={id} type="button" className={'nb-chip' + (filterTopic === id ? ' on' : '')} onClick={() => setFilterTopic(id)}>{topicName(id)} · {n}</button>
           ))}
         </div>
       )}
@@ -514,29 +430,11 @@ export default function WrongNotebook() {
       {/* ============ BULK ACTIONS ============ */}
       {selected.size > 0 && (
         <div className="nb-bulk">
-          <span className="nb-bulk-info">
-            Đã chọn <b>{selected.size}</b> câu
-          </span>
+          <span className="nb-bulk-info">Đã chọn <b>{selected.size}</b> câu</span>
           <div className="nb-bulk-actions">
-            {tab === 'wrong' && (
-              <button className="nb-btn nb-btn-ghost" onClick={handleBulkMastered}>
-                <IcoCheckCircle size={15} />
-                Đã hiểu
-              </button>
-            )}
-            {tab === 'saved' && (
-              <button className="nb-btn nb-btn-ghost" onClick={handleBulkUnsave}>
-                <IcoTrash size={15} />
-                Bỏ lưu
-              </button>
-            )}
-            <button
-              className="nb-btn nb-btn-ghost"
-              onClick={() => setSelected(new Set())}
-            >
-              <IcoClose size={15} />
-              Bỏ chọn
-            </button>
+            {tab === 'wrong' && (<button className="nb-btn nb-btn-ghost" onClick={handleBulkMastered}><IcoCheckCircle size={15} />Đã hiểu</button>)}
+            {tab === 'saved' && (<button className="nb-btn nb-btn-ghost" onClick={handleBulkUnsave}><IcoTrash size={15} />Bỏ lưu</button>)}
+            <button className="nb-btn nb-btn-ghost" onClick={() => setSelected(new Set())}><IcoClose size={15} />Bỏ chọn</button>
           </div>
         </div>
       )}
@@ -544,46 +442,22 @@ export default function WrongNotebook() {
       {/* ============ LIST ============ */}
       {filtered.length === 0 ? (
         <div className="nb-empty">
-          <span className="nb-empty-ico">
-            <IcoBookOpen size={32} />
-          </span>
-          <h3>
-            {items.length === 0
-              ? (tab === 'wrong' ? 'Chưa có câu sai nào' : 'Chưa có câu nào được lưu')
-              : 'Không tìm thấy câu nào phù hợp'}
-          </h3>
+          <span className="nb-empty-ico"><IcoBookOpen size={32} /></span>
+          <h3>{items.length === 0 ? (tab === 'wrong' ? 'Chưa có câu sai nào' : 'Chưa có câu nào được lưu') : 'Không tìm thấy câu nào phù hợp'}</h3>
           <p>
             {items.length === 0
-              ? (tab === 'wrong'
-                  ? 'Làm 1 đề trắc nghiệm và trả lời sai vài câu — hệ thống tự ghi vào đây.'
-                  : 'Bấm biểu tượng ngôi sao trên câu hỏi để lưu vào đây.')
+              ? (tab === 'wrong' ? 'Làm 1 đề trắc nghiệm và trả lời sai vài câu — hệ thống tự ghi vào đây.' : 'Bấm biểu tượng ngôi sao trên câu hỏi để lưu vào đây.')
               : 'Thử xóa bộ lọc hoặc tìm từ khóa khác.'}
           </p>
-          {items.length === 0 && tab === 'wrong' && (
-            <small style={{ display: 'block', marginTop: '.5rem', color: 'var(--mut, #86868b)', fontSize: '.72rem', lineHeight: 1.6 }}>
-              Lưu ý: chỉ <b>đề thi trắc nghiệm chấm tự động</b> mới ghi câu sai vào đây.
-              Nếu đã làm mà vẫn trống → chạy file <code>supabase/migrations/004_wrong_questions.sql</code> trong Supabase SQL Editor (thiếu bảng/policy RLS sẽ chặn ghi).
-            </small>
-          )}
           {items.length > 0 && (
-            <button
-              className="nb-btn nb-btn-ghost"
-              onClick={() => { setSearch(''); setFilterDiff('all'); setFilterTopic('all'); }}
-            >
-              <IcoClose size={15} />
-              Xóa bộ lọc
-            </button>
+            <button className="nb-btn nb-btn-ghost" onClick={() => { setSearch(''); setFilterDiff('all'); setFilterTopic('all'); }}><IcoClose size={15} />Xóa bộ lọc</button>
           )}
         </div>
       ) : (
         <>
           <div className="nb-selectall">
             <label>
-              <input
-                type="checkbox"
-                checked={selected.size === filtered.length && filtered.length > 0}
-                onChange={selectAll}
-              />
+              <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={selectAll} />
               <span>Chọn tất cả ({filtered.length})</span>
             </label>
           </div>
@@ -595,127 +469,37 @@ export default function WrongNotebook() {
               const diff = q.difficulty || 'medium';
 
               return (
-                <li
-                  key={item.id}
-                  className={'nb-card' + (isSelected ? ' selected' : '')}
-                  style={{ '--nb-diff': DIFF_COLORS[diff] || '#c9c5b8' }}
-                >
+                <li key={item.id} className={'nb-card' + (isSelected ? ' selected' : '')} style={{ '--nb-diff': DIFF_COLORS[diff] || '#c9c5b8' }}>
                   <header className="nb-card-head">
-                    <label className="nb-check">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(q.id)}
-                      />
-                    </label>
-
+                    <label className="nb-check"><input type="checkbox" checked={isSelected} onChange={() => toggleSelect(q.id)} /></label>
                     <div className="nb-card-badges">
-                      {tab === 'wrong' && item.wrong_count > 0 && (
-                        <span className="nb-badge wrong">
-                          <IcoX size={12} />
-                          Sai {item.wrong_count} lần
-                        </span>
-                      )}
-                      {tab === 'saved' && (
-                        <span className="nb-badge saved">
-                          <IcoStar size={12} filled />
-                          Đã lưu
-                        </span>
-                      )}
-                      <span className="nb-badge diff" style={{ background: DIFF_COLORS[diff] }}>
-                        {DIFF_LABELS[diff] || diff}
-                      </span>
-                      {q.exam?.subject?.name && (
-                        <span className="nb-badge subject">
-                          {q.exam.subject.name}
-                        </span>
-                      )}
-                      {q.topic_id && (
-                        <span className="nb-badge subject">
-                          {topicName(q.topic_id)}
-                        </span>
-                      )}
+                      {tab === 'wrong' && item.wrong_count > 0 && (<span className="nb-badge wrong"><IcoX size={12} />Sai {item.wrong_count} lần</span>)}
+                      {tab === 'saved' && (<span className="nb-badge saved"><IcoStar size={12} filled />Đã lưu</span>)}
+                      <span className="nb-badge diff" style={{ background: DIFF_COLORS[diff] }}>{DIFF_LABELS[diff] || diff}</span>
+                      {q.exam?.subject?.name && (<span className="nb-badge subject">{q.exam.subject.name}</span>)}
+                      {q.topic_id && (<span className="nb-badge subject">{topicName(q.topic_id)}</span>)}
                     </div>
-
                     <div className="nb-card-actions">
-                      <button
-                        type="button"
-                        className="nb-icon"
-                        onClick={() => setDetail(item)}
-                        title="Xem chi tiết"
-                      >
-                        <IcoEye size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="nb-icon"
-                        onClick={() => copyItem(item)}
-                        title="Sao chép"
-                      >
-                        <IcoCopy size={14} />
-                      </button>
-                      {tab === 'wrong' && (
-                        <button
-                          type="button"
-                          className="nb-icon success"
-                          onClick={() => handleMastered(q.id)}
-                          title="Đã hiểu"
-                        >
-                          <IcoCheckCircle size={14} />
-                        </button>
-                      )}
-                      {tab === 'saved' && (
-                        <button
-                          type="button"
-                          className="nb-icon danger"
-                          onClick={() => handleUnsave(q.id)}
-                          title="Bỏ lưu"
-                        >
-                          <IcoTrash size={14} />
-                        </button>
-                      )}
+                      <button type="button" className="nb-icon" onClick={() => setDetail(item)} title="Xem chi tiết"><IcoEye size={14} /></button>
+                      <button type="button" className="nb-icon" onClick={() => copyItem(item)} title="Sao chép"><IcoCopy size={14} /></button>
+                      {tab === 'wrong' && (<button type="button" className="nb-icon success" onClick={() => handleMastered(q.id)} title="Đã hiểu"><IcoCheckCircle size={14} /></button>)}
+                      {tab === 'saved' && (<button type="button" className="nb-icon danger" onClick={() => handleUnsave(q.id)} title="Bỏ lưu"><IcoTrash size={14} /></button>)}
                     </div>
                   </header>
-
-                  <div
-                    className="nb-card-body"
-                    onClick={() => setDetail(item)}
-                  >
+                  <div className="nb-card-body" onClick={() => setDetail(item)}>
                     <p className="nb-q">{q.content}</p>
-
                     <div className="nb-answers">
                       {q.answers?.map((a) => (
-                        <div
-                          key={a.id}
-                          className={'nb-answer' + (a.is_correct ? ' correct' : '')}
-                        >
-                          <b>{a.label}.</b>
-                          <span>{a.content}</span>
-                          {a.is_correct && (
-                            <span className="nb-answer-check">
-                              <IcoCheck size={12} />
-                            </span>
-                          )}
+                        <div key={a.id} className={'nb-answer' + (a.is_correct ? ' correct' : '')}>
+                          <b>{a.label}.</b><span>{a.content}</span>
+                          {a.is_correct && (<span className="nb-answer-check"><IcoCheck size={12} /></span>)}
                         </div>
                       ))}
                     </div>
-
                     {q.explanation && (
-                      <div className="nb-explain">
-                        <IcoBulb size={14} />
-                        <div>
-                          <b>Lời giải</b>
-                          <p>{q.explanation}</p>
-                        </div>
-                      </div>
+                      <div className="nb-explain"><IcoBulb size={14} /><div><b>Lời giải</b><p>{q.explanation}</p></div></div>
                     )}
-
-                    {q.exam?.title && (
-                      <div className="nb-source">
-                        <IcoTag size={13} />
-                        {q.exam.title}
-                      </div>
-                    )}
+                    {q.exam?.title && (<div className="nb-source"><IcoTag size={13} />{q.exam.title}</div>)}
                   </div>
                 </li>
               );
@@ -730,103 +514,29 @@ export default function WrongNotebook() {
           <div className="nb-detail">
             <header className="nb-detail-head">
               <div className="nb-detail-badges">
-                <span className="nb-badge diff" style={{ background: DIFF_COLORS[detail.question.difficulty] }}>
-                  {DIFF_LABELS[detail.question.difficulty] || 'TB'}
-                </span>
-                {tab === 'wrong' && detail.wrong_count > 0 && (
-                  <span className="nb-badge wrong">
-                    <IcoX size={12} /> Sai {detail.wrong_count} lần
-                  </span>
-                )}
-                {tab === 'saved' && (
-                  <span className="nb-badge saved">
-                    <IcoStar size={12} filled /> Đã lưu
-                  </span>
-                )}
+                <span className="nb-badge diff" style={{ background: DIFF_COLORS[detail.question.difficulty] }}>{DIFF_LABELS[detail.question.difficulty] || 'TB'}</span>
+                {tab === 'wrong' && detail.wrong_count > 0 && (<span className="nb-badge wrong"><IcoX size={12} />Sai {detail.wrong_count} lần</span>)}
+                {tab === 'saved' && (<span className="nb-badge saved"><IcoStar size={12} filled />Đã lưu</span>)}
               </div>
-              <button
-                type="button"
-                className="nb-icon"
-                onClick={() => setDetail(null)}
-                aria-label="Đóng"
-              >
-                <IcoClose size={16} />
-              </button>
+              <button type="button" className="nb-icon" onClick={() => setDetail(null)} aria-label="Đóng"><IcoClose size={16} /></button>
             </header>
-
             <div className="nb-detail-body">
               <h2 className="nb-detail-q">{detail.question.content}</h2>
-
               <div className="nb-answers">
                 {detail.question.answers?.map((a) => (
-                  <div
-                    key={a.id}
-                    className={'nb-answer' + (a.is_correct ? ' correct' : '')}
-                  >
-                    <b>{a.label}.</b>
-                    <span>{a.content}</span>
-                    {a.is_correct && (
-                      <span className="nb-answer-check">
-                        <IcoCheck size={12} />
-                      </span>
-                    )}
+                  <div key={a.id} className={'nb-answer' + (a.is_correct ? ' correct' : '')}>
+                    <b>{a.label}.</b><span>{a.content}</span>
+                    {a.is_correct && (<span className="nb-answer-check"><IcoCheck size={12} /></span>)}
                   </div>
                 ))}
               </div>
-
-              {detail.question.explanation && (
-                <div className="nb-explain">
-                  <IcoBulb size={16} />
-                  <div>
-                    <b>Lời giải</b>
-                    <p>{detail.question.explanation}</p>
-                  </div>
-                </div>
-              )}
-
-              {detail.question.exam?.title && (
-                <div className="nb-source">
-                  <IcoTag size={14} />
-                  {detail.question.exam.title}
-                </div>
-              )}
+              {detail.question.explanation && (<div className="nb-explain"><IcoBulb size={16} /><div><b>Lời giải</b><p>{detail.question.explanation}</p></div></div>)}
+              {detail.question.exam?.title && (<div className="nb-source"><IcoTag size={14} />{detail.question.exam.title}</div>)}
             </div>
-
             <footer className="nb-detail-foot">
-              <button
-                type="button"
-                className="nb-btn nb-btn-ghost"
-                onClick={() => copyItem(detail)}
-              >
-                <IcoCopy size={15} />
-                Sao chép
-              </button>
-              {tab === 'wrong' && (
-                <button
-                  type="button"
-                  className="nb-btn nb-btn-primary"
-                  onClick={() => {
-                    handleMastered(detail.question.id);
-                    setDetail(null);
-                  }}
-                >
-                  <IcoCheckCircle size={15} />
-                  Đã hiểu
-                </button>
-              )}
-              {tab === 'saved' && (
-                <button
-                  type="button"
-                  className="nb-btn nb-btn-danger"
-                  onClick={() => {
-                    handleUnsave(detail.question.id);
-                    setDetail(null);
-                  }}
-                >
-                  <IcoTrash size={15} />
-                  Bỏ lưu
-                </button>
-              )}
+              <button type="button" className="nb-btn nb-btn-ghost" onClick={() => copyItem(detail)}><IcoCopy size={15} />Sao chép</button>
+              {tab === 'wrong' && (<button type="button" className="nb-btn nb-btn-primary" onClick={() => { handleMastered(detail.question.id); setDetail(null); }}><IcoCheckCircle size={15} />Đã hiểu</button>)}
+              {tab === 'saved' && (<button type="button" className="nb-btn nb-btn-danger" onClick={() => { handleUnsave(detail.question.id); setDetail(null); }}><IcoTrash size={15} />Bỏ lưu</button>)}
             </footer>
           </div>
         </div>
@@ -838,24 +548,12 @@ export default function WrongNotebook() {
           <div className="nb-quiz">
             {quizDone ? (
               <div className="nb-quiz-result">
-                <span className="nb-quiz-result-ico">
-                  <IcoSparkle size={48} />
-                </span>
+                <span className="nb-quiz-result-ico"><IcoSparkle size={48} /></span>
                 <h2>Hoàn thành!</h2>
-                <p className="nb-quiz-score">
-                  Bạn trả lời đúng <b>{quizScore}</b> / <b>{quizMode.length}</b> câu
-                </p>
+                <p className="nb-quiz-score">Bạn trả lời đúng <b>{quizScore}</b> / <b>{quizMode.length}</b> câu</p>
                 <div className="nb-quiz-actions">
-                  <button className="nb-btn nb-btn-ghost" onClick={closeQuiz}>
-                    Đóng
-                  </button>
-                  <button
-                    className="nb-btn nb-btn-primary"
-                    onClick={startQuiz}
-                  >
-                    <IcoShuffle size={15} />
-                    Làm lại
-                  </button>
+                  <button className="nb-btn nb-btn-ghost" onClick={closeQuiz}>Đóng</button>
+                  <button className="nb-btn nb-btn-primary" onClick={startQuiz}><IcoShuffle size={15} />Làm lại</button>
                 </div>
               </div>
             ) : (
@@ -863,23 +561,12 @@ export default function WrongNotebook() {
                 <header className="nb-quiz-head">
                   <div className="nb-quiz-progress">
                     <span>Câu {quizIdx + 1} / {quizMode.length}</span>
-                    <div className="nb-quiz-bar">
-                      <i style={{ width: `${((quizIdx + 1) / quizMode.length) * 100}%` }} />
-                    </div>
+                    <div className="nb-quiz-bar"><i style={{ width: `${((quizIdx + 1) / quizMode.length) * 100}%` }} /></div>
                   </div>
-                  <button
-                    type="button"
-                    className="nb-icon"
-                    onClick={closeQuiz}
-                    aria-label="Đóng"
-                  >
-                    <IcoClose size={16} />
-                  </button>
+                  <button type="button" className="nb-icon" onClick={closeQuiz} aria-label="Đóng"><IcoClose size={16} /></button>
                 </header>
-
                 <div className="nb-quiz-body">
                   <p className="nb-quiz-q">{quizCurrent.question.content}</p>
-
                   <div className="nb-quiz-answers">
                     {quizCurrent.question.answers?.map((a) => {
                       const isCorrect = a.is_correct;
@@ -891,48 +578,19 @@ export default function WrongNotebook() {
                         else cls += ' dim';
                       }
                       return (
-                        <button
-                          key={a.id}
-                          type="button"
-                          className={cls}
-                          disabled={!!quizPicked}
-                          onClick={() => handleQuizPick(a.id)}
-                        >
-                          <b>{a.label}.</b>
-                          <span>{a.content}</span>
-                          {quizPicked && isCorrect && (
-                            <span className="nb-quiz-answer-check">
-                              <IcoCheck size={14} />
-                            </span>
-                          )}
-                          {quizPicked && isPicked && !isCorrect && (
-                            <span className="nb-quiz-answer-check wrong">
-                              <IcoX size={14} />
-                            </span>
-                          )}
+                        <button key={a.id} type="button" className={cls} disabled={!!quizPicked} onClick={() => handleQuizPick(a.id)}>
+                          <b>{a.label}.</b><span>{a.content}</span>
+                          {quizPicked && isCorrect && (<span className="nb-quiz-answer-check"><IcoCheck size={14} /></span>)}
+                          {quizPicked && isPicked && !isCorrect && (<span className="nb-quiz-answer-check wrong"><IcoX size={14} /></span>)}
                         </button>
                       );
                     })}
                   </div>
-
-                  {quizPicked && quizCurrent.question.explanation && (
-                    <div className="nb-explain">
-                      <IcoBulb size={16} />
-                      <div>
-                        <b>Lời giải</b>
-                        <p>{quizCurrent.question.explanation}</p>
-                      </div>
-                    </div>
-                  )}
+                  {quizPicked && quizCurrent.question.explanation && (<div className="nb-explain"><IcoBulb size={16} /><div><b>Lời giải</b><p>{quizCurrent.question.explanation}</p></div></div>)}
                 </div>
-
                 {quizPicked && (
                   <footer className="nb-quiz-foot">
-                    <button
-                      type="button"
-                      className="nb-btn nb-btn-primary"
-                      onClick={nextQuiz}
-                    >
+                    <button type="button" className="nb-btn nb-btn-primary" onClick={nextQuiz}>
                       {quizIdx === quizMode.length - 1 ? 'Xem kết quả' : 'Câu tiếp theo'}
                       <IcoArrowUp size={15} style={{ transform: 'rotate(90deg)' }} />
                     </button>
