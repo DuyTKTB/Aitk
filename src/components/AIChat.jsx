@@ -31,10 +31,16 @@ import {
   IcoSunSm, IcoMoonSm, IcoCalendarSm, IcoArchive, IcoCalc, IcoShieldCheck,
   IcoWand, IcoPin, IcoSpeaker, IcoSpeakerOff, IcoNote, IcoPractice, IcoMore,
 } from './AIChatIcons.jsx';
+import {
+  CgChat, CgCompose, CgClose, CgDots, CgPin, CgPencil, CgTrash, CgHome, CgGift,
+} from './ChatGptIcons.jsx';
 /* CSS: 8 lớp cũ đã gộp thành 1 file (giữ nguyên thứ tự cascade);
-   ai-intelligence.css là lớp cuối để tinh chỉnh giao diện AI. */
+   ai-intelligence.css tinh chỉnh giao diện AI; ai-fullscreen.css là lớp CUỐI
+   (phủ kín màn hình + giao diện điện thoại kiểu ChatGPT) nên phải import sau cùng. */
 import '../styles/aichat.css';
 import '../styles/ai-intelligence.css';
+import '../styles/ai-fullscreen.css';
+import '../styles/styles/ai-chatgpt.css';
 
 /* ============================================================
    CONSTANTS
@@ -458,7 +464,10 @@ export default function AIChat({ onExit }) {
   const [sidebarView, setSidebarView] = useState('folders');
   const [selectedFolderKey, setSelectedFolderKey] = useState(null);
   const [attachOpen, setAttachOpen] = useState(false);
+  /* Menu header trên điện thoại: 'study' = trình độ + chế độ, 'more' = tùy chọn, null = đóng */
+  const [hmenu, setHmenu] = useState(null);
   const [moreMenuId, setMoreMenuId] = useState(null);
+  const [rowMenuId, setRowMenuId] = useState(null);   // menu ⋯ của dòng lịch sử (sidebar)
 
   const lastSeenLenRef = useRef(0);
   const end = useRef(null);
@@ -655,6 +664,16 @@ export default function AIChat({ onExit }) {
     const t = setTimeout(() => document.addEventListener('click', close), 0);
     return () => { clearTimeout(t); document.removeEventListener('click', close); };
   }, [attachOpen]);
+
+  useEffect(() => {
+    if (!rowMenuId) return undefined;
+    const close = (e) => {
+      if (e.target.closest('.cg-row-menu') || e.target.closest('.cg-row-more')) return;
+      setRowMenuId(null);
+    };
+    const t = setTimeout(() => document.addEventListener('click', close), 0);
+    return () => { clearTimeout(t); document.removeEventListener('click', close); };
+  }, [rowMenuId]);
 
   useEffect(() => {
     if (!moreMenuId) return undefined;
@@ -1460,7 +1479,9 @@ export default function AIChat({ onExit }) {
   const hasInput = (Boolean(input.trim()) || images.length > 0) && processing === 0;
   const placeholder = images.length > 0
     ? `Đã chọn ${images.length} ảnh — thêm mô tả (không bắt buộc)…`
-    : 'Hỏi về Hóa học, hoặc dán ảnh đề bài…';
+    : (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches
+      ? 'Hỏi gì về Hóa cũng được…'
+      : 'Hỏi về Hóa học, hoặc dán ảnh đề bài…');
 
   /* ============================================================
      RENDER SIDEBAR
@@ -1549,56 +1570,95 @@ export default function AIChat({ onExit }) {
     );
   };
 
+  /* Dòng lịch sử kiểu ChatGPT: [icon chat] Tên ......... [⋯] */
+  const renderCgRow = (c) => {
+    const isPinned = pinnedIds.includes(c.id);
+    const menuOpen = rowMenuId === c.id;
+    return (
+      <div
+        key={c.id}
+        className={'cg-row' + (c.id === activeId ? ' active' : '') + (menuOpen ? ' menu-open' : '')}
+      >
+        <div
+          className="cg-row-main"
+          role="button"
+          tabIndex={0}
+          onClick={() => openChat(c.id)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChat(c.id); } }}
+        >
+          <span className="cg-row-ico">{isPinned ? <CgPin size={18} /> : <CgChat size={20} />}</span>
+          {renamingId === c.id ? (
+            <input
+              className="ds-rename-input cg-rename"
+              value={renameVal}
+              autoFocus
+              maxLength={60}
+              onChange={(e) => setRenameVal(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                if (e.key === 'Escape') setRenamingId(null);
+              }}
+              aria-label="Tên cuộc trò chuyện"
+            />
+          ) : (
+            <span className="cg-row-title" onDoubleClick={(e) => startRename(c, e)}>{c.title}</span>
+          )}
+        </div>
+        <button
+          type="button"
+          className="cg-row-more"
+          aria-label="Tùy chọn đoạn chat"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={(e) => { e.stopPropagation(); setRowMenuId((v) => (v === c.id ? null : c.id)); }}
+        >
+          <CgDots size={18} />
+        </button>
+        {menuOpen && (
+          <div className="cg-row-menu" role="menu" onClick={(e) => e.stopPropagation()}>
+            <button type="button" role="menuitem" onClick={() => { setRowMenuId(null); togglePin(c.id); }}>
+              <CgPin size={18} /><span>{isPinned ? 'Bỏ ghim đoạn chat' : 'Ghim đoạn chat'}</span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => { setRowMenuId(null); startRename(c); }}>
+              <CgPencil size={18} /><span>Đổi tên</span>
+            </button>
+            <div className="cg-sep" />
+            <button type="button" role="menuitem" className="danger" onClick={() => { setRowMenuId(null); deleteChat(c.id); }}>
+              <CgTrash size={18} /><span>Xóa</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderSidebarContent = () => {
     if (chats.length === 0) {
       return <p className="ds-sidebar-empty">Chưa có cuộc trò chuyện nào.</p>;
     }
-
-    if (sidebarView === 'folders') {
-      const folderEntries = Object.entries(groups).filter(([, list]) => list.length > 0);
-      if (folderEntries.length === 0) {
-        return <p className="ds-sidebar-empty">Không có kết quả cho "{query}".</p>;
-      }
-      return (
-        <div className="ds-sidebar-main">
-          <div className="ds-folder-grid">
-            {folderEntries.map(([key, list]) => {
-              const first = list[0];
-              const preview = first ? getChatPreview(first) : { text: '' };
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className="ds-folder"
-                  onClick={() => openFolder(key)}
-                >
-                  <span className="ds-folder-icon"><GroupIcon name={key} /></span>
-                  <div className="ds-folder-name">{GROUP_LABELS[key]}</div>
-                  <div className="ds-folder-count">{list.length} cuộc trò chuyện</div>
-                  {preview.text && (
-                    <div className="ds-folder-preview">
-                      <span>{preview.text}</span>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
+    const pinnedList = filtered.filter((c) => pinnedIds.includes(c.id));
+    const sections = Object.entries(groups)
+      .map(([key, list]) => [key, list.filter((c) => !pinnedIds.includes(c.id))])
+      .filter(([, list]) => list.length > 0);
+    if (pinnedList.length === 0 && sections.length === 0) {
+      return <p className="ds-sidebar-empty">Không có kết quả cho "{query}".</p>;
     }
-
-    const list = groups[selectedFolderKey] || [];
     return (
-      <div className="ds-sidebar-folder-view">
-        <div className="ds-folder-header">
-          <button className="ds-folder-back" onClick={closeFolder} type="button" aria-label="Quay lại">
-            <IcoChevL size={16} />
-          </button>
-          <span className="ds-folder-title">{GROUP_LABELS[selectedFolderKey]}</span>
-          <span className="ds-folder-title-count">{list.length}</span>
-        </div>
-        {list.map((c) => renderChatItem(c))}
+      <div className="cg-list">
+        {pinnedList.length > 0 && (
+          <section className="cg-section">
+            <h3 className="cg-section-title">Đã ghim</h3>
+            {pinnedList.map(renderCgRow)}
+          </section>
+        )}
+        {sections.map(([key, list]) => (
+          <section key={key} className="cg-section">
+            <h3 className="cg-section-title">{GROUP_LABELS[key]}</h3>
+            {list.map(renderCgRow)}
+          </section>
+        ))}
       </div>
     );
   };
@@ -1643,15 +1703,22 @@ export default function AIChat({ onExit }) {
 
       {/* ============ SIDEBAR ============ */}
       <aside className={'ds-sidebar' + (sidebarOpen ? ' open' : '')}>
-        <div className="ds-sidebar-head">
-          <button className="ds-new-btn" onClick={newChat} type="button">
-            <IcoPlus size={16} />
-            <span>Trò chuyện mới</span>
-          </button>
-          <button className="ds-sidebar-close" onClick={() => setSidebarOpen(false)} type="button" aria-label="Đóng">
-            <IcoClose size={18} />
+        <div className="cg-head">
+          <AIMark size={32} animate={false} className="cg-brand" />
+          <span className="cg-spacer" />
+          <button className="cg-icon-btn ds-sidebar-close" onClick={() => setSidebarOpen(false)} type="button" aria-label="Đóng">
+            <CgClose size={20} />
           </button>
         </div>
+
+        <nav className="cg-nav" aria-label="Điều hướng">
+          <button type="button" className="cg-nav-item primary" onClick={newChat}>
+            <CgCompose size={20} /><span>Đoạn chat mới</span>
+          </button>
+          <button type="button" className="cg-nav-item" onClick={exitChat}>
+            <CgHome size={20} /><span>Về trang chủ</span>
+          </button>
+        </nav>
 
         {chats.length > 4 && (
           <label className="ds-search">
@@ -1714,6 +1781,12 @@ export default function AIChat({ onExit }) {
           </button>
         </div>
 
+        {tier?.key !== 'vip' && (
+          <button type="button" className="cg-pill" onClick={goUpgrade}>
+            <CgGift size={18} /><span>Nâng cấp VIP</span>
+          </button>
+        )}
+
         {chats.length > 0 && (
           <div className="ds-sidebar-foot">
             <button className="ds-delete-all" onClick={deleteAll} type="button">
@@ -1744,6 +1817,22 @@ export default function AIChat({ onExit }) {
                 <span className="ds-status" data-s={loading ? 'busy' : 'idle'} aria-live="polite">{statusText}</span>
               </div>
             </div>
+
+            <button
+              type="button"
+              className="ds-m-only ds-m-title"
+              onClick={() => setHmenu((v) => (v === 'study' ? null : 'study'))}
+              aria-haspopup="menu"
+              aria-expanded={hmenu === 'study'}
+            >
+              <span className="ds-m-title-main">
+                <span>Trợ lý Hóa học</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+              </span>
+              <span className="ds-m-title-sub">
+                {loading ? statusText : `${grade} · ${MODE_LIST.find((m) => m.id === mode)?.label || 'Tự động'}`}
+              </span>
+            </button>
 
             <div className="ds-quota">
               {tier.key === 'vip' ? (
@@ -1799,7 +1888,7 @@ export default function AIChat({ onExit }) {
             )}
 
             <button className="ds-hbtn ds-newchat-btn" type="button" onClick={newChat} title="Trò chuyện mới" aria-label="Trò chuyện mới">
-              <IcoPlus size={17} />
+              <IcoEdit size={17} />
             </button>
 
             {messages.length > 0 && (
@@ -1807,7 +1896,94 @@ export default function AIChat({ onExit }) {
                 <IcoDownload size={17} />
               </button>
             )}
+
+            <button
+              type="button"
+              className="ds-hbtn ds-m-only ds-m-more"
+              onClick={() => setHmenu((v) => (v === 'more' ? null : 'more'))}
+              aria-label="Tùy chọn"
+              aria-haspopup="menu"
+              aria-expanded={hmenu === 'more'}
+            >
+              <IcoMore size={18} />
+            </button>
           </div>
+
+          {hmenu && <div className="ds-m-backdrop" onClick={() => setHmenu(null)} />}
+
+          {hmenu === 'study' && (
+            <div className="ds-m-pop ds-m-pop-study" role="menu">
+              <p className="ds-m-pop-label">Trình độ</p>
+              <div className="ds-m-seg" role="radiogroup" aria-label="Trình độ">
+                {CLASSES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={grade === c}
+                    className={'ds-m-seg-btn' + (grade === c ? ' on' : '')}
+                    onClick={() => setGrade(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <p className="ds-m-pop-label">Chế độ trả lời</p>
+              {MODE_LIST.map((mo) => (
+                <button
+                  key={mo.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mode === mo.id}
+                  className={'ds-m-item' + (mode === mo.id ? ' on' : '')}
+                  onClick={() => { setMode(mo.id); setHmenu(null); }}
+                >
+                  <span className="ds-m-item-text">
+                    <b>{mo.label}</b>
+                    <small>{mo.hint}</small>
+                  </span>
+                  {mode === mo.id && <IcoCheck size={16} />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {hmenu === 'more' && (
+            <div className="ds-m-pop ds-m-pop-more" role="menu">
+              <button type="button" role="menuitem" className="ds-m-item" onClick={() => { setHmenu(null); exitChat(); }}>
+                <IcoChevL size={18} /><span className="ds-m-item-text"><b>Về trang chủ</b></span>
+              </button>
+              {messages.length > 0 && (
+                <button type="button" role="menuitem" className="ds-m-item" onClick={() => { setHmenu(null); exportChat(); }}>
+                  <IcoDownload size={18} /><span className="ds-m-item-text"><b>Tải cuộc trò chuyện</b></span>
+                </button>
+              )}
+              {ttsSupported && (
+                <button type="button" role="menuitemcheckbox" aria-checked={autoSpeak} className="ds-m-item" onClick={() => setAutoSpeak((v) => !v)}>
+                  {autoSpeak ? <IcoSpeaker size={18} /> : <IcoSpeakerOff size={18} />}
+                  <span className="ds-m-item-text">
+                    <b>Tự động đọc câu trả lời</b>
+                    <small>{autoSpeak ? 'Đang bật' : 'Đang tắt'}</small>
+                  </span>
+                </button>
+              )}
+              {activeId && messages.length > 0 && (
+                <>
+                  <div className="ds-m-sep" />
+                  <button type="button" role="menuitem" className="ds-m-item" onClick={() => { setHmenu(null); togglePin(activeId); }}>
+                    <IcoPin size={18} filled={pinnedIds.includes(activeId)} />
+                    <span className="ds-m-item-text"><b>{pinnedIds.includes(activeId) ? 'Bỏ ghim đoạn chat' : 'Ghim đoạn chat'}</b></span>
+                  </button>
+                  <button type="button" role="menuitem" className="ds-m-item danger" onClick={() => { setHmenu(null); deleteChat(activeId); }}>
+                    <IcoTrash size={18} /><span className="ds-m-item-text"><b>Xóa đoạn chat</b></span>
+                  </button>
+                </>
+              )}
+              <p className="ds-m-pop-foot">
+                Lượt ảnh còn {quota.imageLeft}/{quota.quotaImage === Infinity ? '∞' : quota.quotaImage}
+              </p>
+            </div>
+          )}
         </header>
 
         <main className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
@@ -2134,6 +2310,14 @@ export default function AIChat({ onExit }) {
               >
                 <IcoCamera size={16} />
                 <span>Chụp ảnh mới</span>
+              </button>
+              <button
+                type="button"
+                className="ds-attach-btn ds-m-only"
+                onClick={() => { setShowQuickPrompts(true); setAttachOpen(false); }}
+              >
+                <IcoWand size={16} />
+                <span>Prompt mẫu nhanh</span>
               </button>
             </div>
           )}

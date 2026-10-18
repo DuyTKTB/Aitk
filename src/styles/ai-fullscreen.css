@@ -1,0 +1,685 @@
+/* ============================================================
+   ai-fullscreen.css — LỚP CUỐI CHO TRANG AI CHAT (mọi thiết bị)
+   ------------------------------------------------------------
+   Import SAU ai-intelligence.css trong AIChat.jsx:
+     import '../styles/ai-fullscreen.css';
+   Kết hợp với App.jsx đã vá: trang AI không còn nav trên/dưới,
+   mascot, nút chat nổi và footer.
+
+   1. Phủ KÍN màn hình (.ds-page: position fixed; inset 0).
+   2. Bố cục cột: header + ô nhập đứng yên, chỉ .ds-main cuộn →
+      nội dung không bị ô nhập che, bàn phím điện thoại không đẩy vỡ layout.
+   3. Máy tính: cột rộng hơn, sidebar cao đủ, chip gợi ý dạng lưới.
+   4. Điện thoại: header 2 hàng (không còn bị tràn ngang), gợi ý 1 cột.
+   ============================================================ */
+
+/* ============ 1. PHỦ KÍN MÀN HÌNH ============ */
+body.on-ai-page {
+  overflow: hidden !important;
+  --fx-nav-clear: 0px;                 /* nav dưới đã bị bỏ, không cần chừa chỗ */
+}
+
+/* #main của App có thể còn padding để chừa nav cũ */
+body.on-ai-page main#main {
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+}
+
+body.on-ai-page .ds-page {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  z-index: 1000 !important;
+}
+
+/* ============ 2. BỐ CỤC CỘT: CHỈ .ds-main CUỘN ============ */
+body.on-ai-page .ds-page .ds-header,
+body.on-ai-page .ds-page .ds-header-inner,
+body.on-ai-page .ds-page .ds-main,
+body.on-ai-page .ds-page .ds-input-wrap,
+body.on-ai-page .ds-page .ds-empty {
+  box-sizing: border-box;
+}
+
+body.on-ai-page .ds-page .ds-content {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.on-ai-page .ds-page .ds-header {
+  position: relative !important;
+  top: 0 !important;
+  flex: 0 0 auto;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: color-mix(in srgb, var(--bg) 62%, transparent) !important;
+  border-bottom: 1px solid var(--fm-edge, rgba(125, 179, 255, 0.18)) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+
+body.on-ai-page .ds-page .ds-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scroll-padding-bottom: 1rem;
+  padding: 0.75rem 1rem 1rem !important;
+}
+
+/* Màn hình chào: căn giữa khi còn chỗ, dồn lên đầu khi thiếu chỗ (không bị cắt) */
+body.on-ai-page .ds-page .ds-main.ds-main-empty {
+  display: flex;
+  flex-direction: column;
+}
+
+body.on-ai-page .ds-page .ds-main-empty .ds-empty {
+  width: 100%;
+  margin-block: auto !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Ô nhập nằm trong luồng, không còn fixed đè lên nội dung */
+body.on-ai-page .ds-page .ds-input-wrap {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  flex: 0 0 auto;
+  width: 100% !important;
+  z-index: 5 !important;
+  box-shadow: none !important;
+}
+
+/* ============ 3. MÁY TÍNH & TABLET NGANG (≥ 901px) ============ */
+@media (min-width: 901px) {
+  body.on-ai-page .ds-page .ds-sidebar {
+    position: relative !important;
+    top: 0 !important;
+    height: 100% !important;
+    width: 280px;
+    flex: 0 0 280px;
+    background: color-mix(in srgb, var(--panel) 78%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    backdrop-filter: blur(20px) saturate(1.3);
+  }
+
+  body.on-ai-page .ds-page .ds-header {
+    padding-top: 0;
+    background: color-mix(in srgb, var(--bg) 62%, transparent) !important;
+  }
+
+  body.on-ai-page .ds-page .ds-header-inner {
+    max-width: 1240px !important;
+    padding: 0.7rem 2rem !important;
+  }
+
+  /* cột chữ rộng tối đa 1040px, thanh cuộn nằm sát mép phải */
+  body.on-ai-page .ds-page .ds-main {
+    scrollbar-gutter: stable;
+    padding: 1.75rem max(2rem, calc((100% - 1040px) / 2)) 1.25rem !important;
+  }
+
+  body.on-ai-page .ds-page .ds-input-wrap {
+    padding: 0.35rem 2rem calc(0.8rem + env(safe-area-inset-bottom, 0px)) !important;
+    background: transparent !important;
+    border: 0 !important;
+  }
+
+  body.on-ai-page .ds-page .ds-input-inner {
+    max-width: 1000px !important;
+  }
+
+  body.on-ai-page .ds-page .ds-empty-title {
+    font-size: clamp(2rem, 3.1vw, 2.9rem);
+    line-height: 1.14;
+    margin-bottom: 0.7rem;
+  }
+
+  body.on-ai-page .ds-page .ds-empty-sub {
+    max-width: 52ch;
+    margin-bottom: 1.4rem;
+  }
+
+  body.on-ai-page .ds-page .ds-today-card {
+    max-width: 680px;
+    margin-top: 0.4rem;
+  }
+
+  /* Gợi ý: lưới 2 cột cùng bề rộng với thẻ "Sự thật hôm nay" */
+  body.on-ai-page .ds-page .ds-suggest {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    width: 100%;
+    max-width: 680px;
+    margin: 1rem auto 0;
+  }
+
+  body.on-ai-page .ds-page .ds-suggest-chip {
+    justify-content: flex-start;
+    min-height: 3rem;
+    padding: 0.65rem 0.95rem;
+    border-radius: 14px;
+    text-align: left;
+    line-height: 1.3;
+    white-space: normal;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  body.on-ai-page .ds-page .ds-suggest-chip svg {
+    box-sizing: content-box;
+    padding: 0.4rem;
+    border-radius: 10px;
+    background: rgba(125, 179, 255, 0.16);
+  }
+
+  body.on-ai-page .ds-page .ds-suggest-refresh {
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+
+  body.on-ai-page .ds-page .ds-main::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  body.on-ai-page .ds-page .ds-main::-webkit-scrollbar-thumb {
+    background: rgba(125, 179, 255, 0.28);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  body.on-ai-page .ds-page .ds-main::-webkit-scrollbar-thumb:hover {
+    background: rgba(125, 179, 255, 0.5);
+    background-clip: content-box;
+  }
+}
+
+/* Màn hình thấp (laptop 768px): thu gọn để màn hình chào vừa một màn */
+@media (min-width: 901px) and (max-height: 860px) {
+  body.on-ai-page .ds-page .ds-empty .ai-mark {
+    zoom: 0.78;
+  }
+
+  body.on-ai-page .ds-page .ds-empty-sub {
+    margin-bottom: 0.9rem;
+  }
+
+  body.on-ai-page .ds-page .ds-today-card {
+    padding: 1rem 1.2rem;
+  }
+}
+
+/* Màn hình rất rộng (≥ 1600px) */
+@media (min-width: 1600px) {
+  body.on-ai-page .ds-page .ds-main {
+    padding-inline: max(2rem, calc((100% - 1160px) / 2)) !important;
+  }
+
+  body.on-ai-page .ds-page .ds-input-inner {
+    max-width: 1120px !important;
+  }
+
+  body.on-ai-page .ds-page .ds-today-card,
+  body.on-ai-page .ds-page .ds-suggest {
+    max-width: 760px;
+  }
+}
+
+/* ============ 4. ĐIỆN THOẠI (≤ 720px) — KIỂU CHATGPT ============
+   Header 1 hàng NỔI trên nội dung (nền mờ dần), gồm:
+     [lịch sử]  Trợ lý Hóa học ˅ / Lớp 11 · Chế độ   [VIP]  [chat mới]  [⋯]
+   - Bấm tiêu đề  → menu Trình độ + Chế độ trả lời
+   - Bấm ⋯        → Về trang chủ, tải, tự đọc, ghim, xóa
+   Cần AIChat.jsx đã vá (các phần tử .ds-m-*). */
+
+/* phần tử chỉ dành cho điện thoại: ẩn mặc định, bật trong media query */
+.ds-m-only {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  body.on-ai-page {
+    --ds-hh: calc(54px + env(safe-area-inset-top, 0px));
+  }
+
+  body.on-ai-page .ds-page .ds-content {
+    position: relative;
+  }
+
+  /* ---------- Header nổi ---------- */
+  body.on-ai-page .ds-page .ds-header {
+    position: absolute !important;
+    inset: 0 0 auto 0 !important;
+    z-index: 40 !important;
+    height: calc(var(--ds-hh) + 16px);
+    padding-top: env(safe-area-inset-top, 0px);
+    background: linear-gradient(to bottom, rgba(5, 11, 38, 0.94) 0%, rgba(5, 11, 38, 0.72) 62%, rgba(5, 11, 38, 0) 100%) !important;
+    border: 0 !important;
+    -webkit-backdrop-filter: none !important;   /* không tạo containing block cho backdrop fixed */
+    backdrop-filter: none !important;
+    pointer-events: none;
+  }
+
+  [data-theme='light'] body.on-ai-page .ds-page .ds-header {
+    background: linear-gradient(to bottom, rgba(214, 227, 255, 0.96) 0%, rgba(214, 227, 255, 0.75) 62%, rgba(214, 227, 255, 0) 100%) !important;
+  }
+
+  body.on-ai-page .ds-page .ds-header::after {
+    display: none !important;        /* bỏ đường kẻ sáng dưới header */
+  }
+
+  body.on-ai-page .ds-page .ds-header-inner {
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 0.4rem !important;
+    height: 54px;
+    padding: 0 0.7rem !important;
+    max-width: none !important;
+  }
+
+  body.on-ai-page .ds-page .ds-header-inner > *,
+  body.on-ai-page .ds-page .ds-m-pop,
+  body.on-ai-page .ds-page .ds-m-backdrop {
+    pointer-events: auto;
+  }
+
+  /* Ẩn những thứ đã được gom vào 2 menu */
+  body.on-ai-page .ds-page .ds-exit-btn,
+  body.on-ai-page .ds-page .ds-title-block,
+  body.on-ai-page .ds-page .ds-grade,
+  body.on-ai-page .ds-page .ds-grade-select,
+  body.on-ai-page .ds-page .ds-mode-select,
+  body.on-ai-page .ds-page .ds-hbtn[aria-label='Toggle đọc tự động'],
+  body.on-ai-page .ds-page .ds-hbtn[aria-label='Tải cuộc trò chuyện'],
+  body.on-ai-page .ds-page .ds-quota > :nth-child(2) {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page .ds-m-only {
+    display: flex;
+  }
+
+  /* Nút tròn kính 38px */
+  body.on-ai-page .ds-page .ds-menu-btn,
+  body.on-ai-page .ds-page .ds-hbtn {
+    display: grid;
+    place-items: center;
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important;
+  }
+
+  /* Tiêu đề bấm được */
+  body.on-ai-page .ds-page .ds-m-title {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.1rem 0.35rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body.on-ai-page .ds-page .ds-m-title-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 100%;
+    font: 700 1rem/1.2 var(--sans);
+    letter-spacing: -0.01em;
+  }
+
+  body.on-ai-page .ds-page .ds-m-title-main > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.on-ai-page .ds-page .ds-m-title-main svg {
+    flex: 0 0 auto;
+    opacity: 0.6;
+  }
+
+  body.on-ai-page .ds-page .ds-m-title-sub {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 500 0.7rem/1.2 var(--sans);
+    color: color-mix(in srgb, var(--ink) 55%, transparent);
+  }
+
+  body.on-ai-page .ds-page .ds-quota {
+    margin: 0 !important;
+    flex: 0 0 auto;
+  }
+
+  body.on-ai-page .ds-page .ds-quota-item {
+    padding: 0.28rem 0.6rem;
+  }
+
+  /* ---------- Menu popover (Trình độ/Chế độ, Tùy chọn) ---------- */
+  body.on-ai-page .ds-page .ds-m-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: rgba(0, 4, 24, 0.28);
+  }
+
+  body.on-ai-page .ds-page .ds-m-pop {
+    position: absolute;
+    top: calc(var(--ds-hh) - 2px);
+    z-index: 2;
+    width: min(320px, calc(100vw - 1.4rem));
+    max-height: min(72dvh, 560px);
+    overflow-y: auto;
+    padding: 0.5rem;
+    border-radius: 22px;
+    background: rgba(14, 20, 44, 0.985);
+    border: 1px solid var(--fm-edge);
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    backdrop-filter: blur(26px) saturate(1.4);
+    box-shadow: 0 28px 64px -18px rgba(0, 0, 0, 0.75);
+    transform-origin: top left;
+    animation: ds-m-pop-in 0.16s ease-out;
+  }
+
+  [data-theme='light'] body.on-ai-page .ds-page .ds-m-pop {
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 56px -20px rgba(30, 60, 160, 0.4);
+  }
+
+  body.on-ai-page .ds-page .ds-m-pop-study {
+    left: 0.7rem;
+  }
+
+  body.on-ai-page .ds-page .ds-m-pop-more {
+    right: 0.7rem;
+    width: min(280px, calc(100vw - 1.4rem));
+    transform-origin: top right;
+  }
+
+  @keyframes ds-m-pop-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+    to { opacity: 1; transform: none; }
+  }
+
+  body.on-ai-page .ds-page .ds-m-pop-label {
+    margin: 0.35rem 0.5rem 0.4rem;
+    font: 600 0.74rem var(--sans);
+    color: color-mix(in srgb, var(--ink) 55%, transparent);
+  }
+
+  body.on-ai-page .ds-page .ds-m-seg {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.2rem;
+    margin: 0 0.25rem 0.4rem;
+    padding: 0.2rem;
+    border-radius: 14px;
+    background: var(--fm-glass);
+  }
+
+  body.on-ai-page .ds-page .ds-m-seg-btn {
+    min-height: 36px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--ink);
+    font: 600 0.78rem var(--sans);
+    white-space: nowrap;
+  }
+
+  body.on-ai-page .ds-page .ds-m-seg-btn.on {
+    color: #fff;
+    background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+    box-shadow: 0 4px 14px rgba(47, 107, 255, 0.35);
+  }
+
+  body.on-ai-page .ds-page .ds-m-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 46px;
+    padding: 0.6rem 0.75rem;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body.on-ai-page .ds-page .ds-m-item:active,
+  body.on-ai-page .ds-page .ds-m-item.on {
+    background: var(--fm-glass);
+  }
+
+  body.on-ai-page .ds-page .ds-m-item > svg:first-child {
+    flex: 0 0 auto;
+    opacity: 0.85;
+  }
+
+  body.on-ai-page .ds-page .ds-m-item > svg:last-child:not(:first-child) {
+    margin-left: auto;
+    color: #7db3ff;
+    flex: 0 0 auto;
+  }
+
+  body.on-ai-page .ds-page .ds-m-item-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  body.on-ai-page .ds-page .ds-m-item-text b {
+    font: 600 0.9rem/1.3 var(--sans);
+  }
+
+  body.on-ai-page .ds-page .ds-m-item-text small {
+    font: 500 0.74rem/1.35 var(--sans);
+    color: color-mix(in srgb, var(--ink) 55%, transparent);
+  }
+
+  body.on-ai-page .ds-page .ds-m-item.danger {
+    color: #ff6b6b;
+  }
+
+  body.on-ai-page .ds-page .ds-m-sep {
+    height: 1px;
+    margin: 0.3rem 0.5rem;
+    background: var(--fm-edge);
+  }
+
+  body.on-ai-page .ds-page .ds-m-pop-foot {
+    margin: 0.35rem 0.5rem 0.2rem;
+    font: 500 0.72rem var(--sans);
+    color: color-mix(in srgb, var(--ink) 50%, transparent);
+  }
+
+  /* ---------- Nội dung cuộn dưới header nổi ---------- */
+  body.on-ai-page .ds-page .ds-main {
+    padding: calc(var(--ds-hh) + 4px) 1rem 1rem !important;
+    /* Luôn nằm DƯỚI header nổi, kể cả khi CSS toàn cục gán z-index cho thẻ <main> */
+    position: relative !important;
+    z-index: 0 !important;
+  }
+
+  /* Câu trả lời của AI: phẳng, rộng hết cột (như ChatGPT) — không còn khung bong bóng */
+  body.on-ai-page .ds-page .ds-msg-model .ds-msg-content {
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  body.on-ai-page .ds-page .ds-msg-model .ds-msg-content::before,
+  body.on-ai-page .ds-page .ds-msg-model .ds-msg-content::after {
+    display: none !important;
+  }
+
+  /* ---------- Ô nhập: + | ô chữ | mic | gửi ---------- */
+  body.on-ai-page .ds-page .ds-input-wrap {
+    padding: 0.45rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.on-ai-page .ds-page .ds-icon-wand {
+    display: none !important;      /* đã chuyển vào menu "+" */
+  }
+
+  body.on-ai-page .ds-page .ds-input-bar {
+    min-height: 52px;
+    border-radius: 28px !important;
+  }
+
+  body.on-ai-page .ds-page .ds-icon-attach {
+    background: var(--fm-glass-2) !important;
+  }
+
+  /* Nút cuộn xuống: giữa, phía trên ô nhập */
+  body.on-ai-page .ds-page .ds-jump {
+    left: 50%;
+    right: auto;
+    top: -50px;
+    width: 38px;
+    height: 38px;
+    margin-left: -19px;
+  }
+
+  /* Menu "+": popover kính, mỗi dòng có icon tròn */
+  body.on-ai-page .ds-page .ds-attach-menu {
+    left: 0;
+    bottom: calc(100% + 10px);
+    width: min(290px, 100%);
+    gap: 0;
+    padding: 0.4rem;
+    border-radius: 24px;
+    background: rgba(14, 20, 44, 0.985);
+    border: 1px solid var(--fm-edge);
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    backdrop-filter: blur(26px) saturate(1.4);
+    box-shadow: 0 28px 64px -18px rgba(0, 0, 0, 0.75);
+  }
+
+  [data-theme='light'] body.on-ai-page .ds-page .ds-attach-menu {
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 24px 56px -20px rgba(30, 60, 160, 0.4);
+  }
+
+  body.on-ai-page .ds-page .ds-attach-btn {
+    width: 100%;
+    gap: 0.85rem;
+    padding: 0.5rem 0.6rem;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink);
+    font: 600 0.92rem var(--sans);
+  }
+
+  body.on-ai-page .ds-page .ds-attach-btn:active {
+    background: var(--fm-glass);
+  }
+
+  body.on-ai-page .ds-page .ds-attach-btn > svg {
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    padding: 0.6rem;
+    border-radius: 50%;
+    background: var(--fm-glass-2);
+  }
+
+  /* ---------- Màn hình chào ---------- */
+  body.on-ai-page .ds-page .ds-empty {
+    padding-inline: 0.25rem !important;
+  }
+
+  body.on-ai-page .ds-page .ds-empty-sub {
+    margin-bottom: 1rem !important;
+  }
+
+  body.on-ai-page .ds-page .ds-today-card {
+    max-width: none;
+    margin: 0 0 0.75rem;
+    padding: 1rem 1.1rem;
+    border-radius: 20px;
+  }
+
+  body.on-ai-page .ds-page .ds-today-card::after {
+    width: 34px;
+    height: 34px;
+  }
+
+  body.on-ai-page .ds-page .ds-today-content {
+    padding-right: 0.6rem;
+  }
+
+  /* Gợi ý: danh sách 1 cột, căn trái cùng mép với tiêu đề */
+  body.on-ai-page .ds-page .ds-suggest {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  body.on-ai-page .ds-page .ds-suggest-chip {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.6rem 0.9rem;
+    border-radius: 16px;
+    text-align: left;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  body.on-ai-page .ds-page .ds-suggest-chip svg {
+    box-sizing: content-box;
+    padding: 0.38rem;
+    border-radius: 10px;
+    background: rgba(125, 179, 255, 0.16);
+  }
+
+  body.on-ai-page .ds-page .ds-suggest-refresh {
+    justify-self: start;
+    margin-top: 0.15rem;
+  }
+}
+
+/* Điện thoại ngang / màn hình thấp: bỏ bớt trang trí */
+@media (max-width: 900px) and (max-height: 480px) {
+  body.on-ai-page .ds-page .ds-today-card {
+    display: none;
+  }
+}

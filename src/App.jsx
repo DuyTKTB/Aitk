@@ -482,8 +482,12 @@ export default function App() {
   }
 
   /* ============ LAYOUT CHÍNH ============ */
+  /* Trang AI Chat chạy toàn màn hình: ẩn nav trên/dưới, mascot, nút chat nổi, footer.
+     AIChat đã có sẵn nút "Về trang chủ" (ds-exit-btn) nên không bị kẹt trong trang. */
+  const isAiPage = page === 'ai';
+
   return (
-    <>
+    <div data-page={page}>
       <a
         className="skip-link"
         href="#main"
@@ -491,8 +495,8 @@ export default function App() {
       >Bỏ qua điều hướng</a>
       <div className="scroll-progress" ref={progRef} aria-hidden="true" />
 
-      <PetWidget />
-      <ChatWidget />
+      {!isAiPage && <PetWidget />}
+      {!isAiPage && <ChatWidget />}
       {page === 'home' && <ElecCrew />}
 
       <LiveSessionBanner />
@@ -501,6 +505,7 @@ export default function App() {
         <span>ELEC AI</span>
       </div>
 
+      {!isAiPage && (
       <MobileHeader
         page={page}
         theme={theme}
@@ -513,7 +518,9 @@ export default function App() {
         onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         onMenu={() => setMenu(true)}
       />
+      )}
 
+      {!isAiPage && (
       <DesktopNav
         page={page}
         theme={theme}
@@ -533,6 +540,7 @@ export default function App() {
         onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         onLogout={() => setAskLogout(true)}
       />
+      )}
 
       <StudySheet open={menu} onClose={() => setMenu(false)} />
 
@@ -558,11 +566,11 @@ export default function App() {
         </div>
       </dialog>
 
-      <SiteFooter />
+      {!isAiPage && <SiteFooter />}
 
-      <BottomNav page={page} userRole={userRole} isPro={pro.isPro} />
+      {!isAiPage && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} />}
 
-      <CommandPalette />
-    </>
-  );
+       <CommandPalette />
+     </div>
+   );
 }
