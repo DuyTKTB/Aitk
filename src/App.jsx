@@ -46,7 +46,7 @@ const AdminPanel = lazy(() => import('./components/admin/AdminPanel.jsx'));
 
 /* ============ WIDGETS ============ */
 import PetWidget from './components/PetWidget.jsx';
-import ElecCrew from './components/ElecCrew.jsx';
+import ElecBuddies from './components/ElecBuddies.jsx';
 import ChatWidget from './components/ChatWidget.jsx';
 import MobileHeader from './components/MobileHeader.jsx';
 import BottomNav from './components/BottomNav.jsx';
@@ -497,7 +497,8 @@ export default function App() {
 
       {!isAiPage && <PetWidget />}
       {!isAiPage && <ChatWidget />}
-      {page === 'home' && <ElecCrew />}
+      {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
+      {page === 'home' && <ElecBuddies />}
 
       <LiveSessionBanner />
 
@@ -570,7 +571,7 @@ export default function App() {
 
       {!isAiPage && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} />}
 
-       <CommandPalette />
-     </div>
-   );
+      <CommandPalette />
+    </div>
+  );
 }
