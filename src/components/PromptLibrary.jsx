@@ -5,7 +5,7 @@ import {
   copyText, norm, useStored, useToast,
 } from './ToolsKit.jsx';
 import { IconArrowUpRight } from './AIIcons.jsx';
-
+import './prompt-library.css';
 const VAR_RE = /\{\{([^}]+)\}\}/g;
 const LONG_VAR = /code|css|van ban|doan|de bai|noi dung|ghi chu|tin nhan|bai lam|boi canh|thong bao loi/i;
 const CATS = Object.fromEntries(PROMPT_CATS.map((c) => [c.id, c]));

@@ -1,6 +1,7 @@
 
 export const PROMPT_CATS = [
   { id: 'huong-dan', name: 'Hướng dẫn dùng', hue: 200, kind: 'guide', guide: true },
+  { id: 'prompt-free', name: 'Prompt Free', hue: 280, kind: 'blobs', chat: true },
   { id: 'hoc',      name: 'Học Hóa',           hue: 165, kind: 'molecule', chat: true },
   { id: 'toan',     name: 'Toán học',          hue: 210, kind: 'chart',    chat: true },
   { id: 'ly',       name: 'Vật lý',            hue: 190, kind: 'molecule', chat: true },
