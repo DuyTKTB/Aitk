@@ -3,8 +3,36 @@
    Import SAU exam-join-v6.css:  import '../styles/exam-paper.css';
    -------------------------------------------------------------------------- */
 
-.ep-main.paper { padding: 1rem clamp(.6rem, 3vw, 2rem) 3rem; }
-.pp-wrap { max-width: 1200px; margin: 0 auto; display: grid; gap: 1.1rem; }
+/* FIX điện thoại: .ep-main (flex/grid) làm .pp-wrap co về min-content (1 ký tự/dòng).
+   Ép đầy chiều rộng + cột minmax(0,1fr) + min-width:0 cho mọi tầng. */
+.ep-main.paper {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1rem clamp(.6rem, 3vw, 2rem) 3rem;
+}
+.pp-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.1rem;
+  box-sizing: border-box;
+}
+.pp-block, .pp-qs, .pp-q, .pp-passage, .pp-opts, .pp-opt { min-width: 0; box-sizing: border-box; }
+
+/* Chống gian lận trên điện thoại: không bôi đen / không menu giữ-chạm / không zoom bằng 2 ngón */
+.ep-exam {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-x pan-y;
+}
+.ep-exam textarea, .ep-exam input { -webkit-user-select: text; user-select: text; }
 
 /* ---------- Khối = (bài đọc) + (các câu con) ---------- */
 .pp-block {
@@ -102,7 +130,8 @@
 @media (max-width: 900px) {
   .ep-main.paper { padding: .5rem .5rem 3rem; }
   .pp-block { padding: .6rem; border-radius: 12px; }
-  .pp-block.has-passage { grid-template-columns: 1fr; }
+  .pp-block.has-passage { grid-template-columns: minmax(0, 1fr); }
+  .pp-opts { grid-template-columns: minmax(0, 1fr); }
 
   /* Bài đọc: mặc định chảy theo trang; bật "Ghim" thì dính trên đầu, cuộn riêng, câu hỏi cuộn bên dưới */
   .pp-block.has-passage .pp-passage { position: static; max-height: none; overflow: visible; }

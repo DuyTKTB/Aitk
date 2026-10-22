@@ -27,6 +27,7 @@ import {
   timeRemaining,
 } from '../lib/examSession.js';
 import { useExamGuard } from '../hooks/useExamGuard.js';
+import useMobileGuard from '../hooks/useMobileGuard.js';
 import { useProctorCamera } from '../hooks/useProctorCamera.js';
 import ExamResult from './ExamResult.jsx';
 import ViolationOverlay from './ViolationOverlay.jsx';
@@ -409,6 +410,15 @@ export default function ExamJoin({ token, onExit }) {
     answeredRef.current = Object.keys(answers).length;
   }, [answers]);
 
+  // Vào phòng thi trên màn hình nhỏ (hoặc xoay/đổi cỡ) → thu camera thành nút tròn, khỏi che bài
+  useEffect(() => {
+    if (stage !== 'exam') return undefined;
+    const fit = () => { if (window.innerWidth < 768) setCamMinimized(true); };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [stage]);
+
   const proctorConfig = useMemo(() => exam?.proctor || null, [exam?.id]); // eslint-disable-line
 
   // [1.2] Thay thế logic đảo câu cũ bằng buildLayout
@@ -567,6 +577,13 @@ export default function ExamJoin({ token, onExit }) {
   });
 
   guardRef.current = guard;
+
+  // Chống gian lận bổ sung trên điện thoại / máy tính bảng (xoay màn hình, split view, zoom, Back, giữ-chạm…)
+  useMobileGuard({
+    active: stage === 'exam' && !paused,
+    pushEvent: guard.pushEvent,
+    trackHidden: false, // đổi thành true nếu useExamGuard chưa tự bắt visibilitychange
+  });
 
   const cameraEnabled =
     stage === 'exam' &&

@@ -81,6 +81,10 @@
 @media (max-width: 900px) {
   .ep-mprog { display: block; }
 
+  /* FIX: bỏ cột 320px của thanh bên (thanh bên là ngăn kéo trên điện thoại) → phần câu hỏi chiếm đủ 100% */
+  .ep-body { grid-template-columns: minmax(0, 1fr); }
+  .ep-main { min-width: 0; width: 100%; }
+
   /* Header gọn */
   .ep-header { padding: .5rem .7rem; gap: .4rem; box-shadow: none; }
   .ep-header:before { display: none; }
@@ -151,6 +155,10 @@
   }
   .ep-sidebar-grid { grid-template-columns: repeat(5, 1fr); gap: .5rem; padding: .9rem 1rem; }
   .ep-sidebar-cell { font-size: .95rem; border-radius: 10px; }
+
+  /* Camera luôn nằm TRÊN nội dung (khối câu hỏi / bài đọc ghim không được che) */
+  .ep-cam, .ep-cam-mini { z-index: 2000 !important; }
+  .ep-cam-mini { bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important; }
 
   /* Camera nhỏ gọn, không che đáp án / nút điều hướng */
   .ep-cam { width: 92px; box-shadow: none; }
