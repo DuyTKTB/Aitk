@@ -1,25 +1,11 @@
 /* ============================================================
-   ExamEditModal.jsx — GV chỉnh sửa đề ĐÃ TẠO
-   ------------------------------------------------------------
-   Sửa được:
-     • Thông tin: tiêu đề, mô tả, thời gian, lớp, hạn mở/đóng,
-       hiện đáp án sau thi, cho thi lại, xáo trộn câu hỏi
-     • Câu hỏi: nội dung, các phương án, đáp án đúng, điểm — thêm/xoá câu
-     • Giám sát: BẮT BUỘC CAMERA hay không, phát hiện rời mặt/nhiều mặt/
-       nhìn xa/nâng tay/điện thoại, khoá toàn màn hình, giới hạn chuyển tab,
-       chặn copy, chặn DevTools, chụp ảnh khi vi phạm...
-   Lưu vào Firestore exam doc (proctor: defaultProctor() shape).
+   ExamEditModal.jsx — GV chỉnh sửa đề ĐÃ TẠO (v2 - Theo HD)
    ============================================================ */
 import { useMemo, useRef, useState } from 'react';
 import { updateTeacherExam } from '../../lib/classroom.js';
 
-/* ============================================================
-   THANH KÝ HIỆU — chèn dấu/đoạn công thức vào vị trí con trỏ
-   • Nhóm "LaTeX" tự bọc $...$ (nội dung đề render bằng MathText)
-   • Nhóm Unicode dùng được mọi nơi (cả câu hỏi Hóa: → ⇌ ↑ ↓ ²⁺ ₂)
-   • Chèn vào Ô ĐƯỢC FOCUS CUỐI (nội dung câu hoặc bất kỳ phương án nào)
-   ============================================================ */
 const SYM_GROUPS = [
+  // ... (Giữ nguyên toàn bộ mảng SYM_GROUPS trong file gốc của bạn)
   {
     name: 'Công thức (LaTeX $…$)',
     items: [
@@ -31,7 +17,7 @@ const SYM_GROUPS = [
       { l: '(a;b)', t: '$\\left(a; b\\right)$', a: 8, b: 8, title: 'Khoảng' },
       { l: 'sin', t: '$\\sin x$', a: 6, b: 6, title: 'Sin' },
       { l: 'cos', t: '$\\cos x$', a: 6, b: 6, title: 'Cos' },
-      { l: 'lim', t: '$\\lim\_{x\\to 0}$', a: 6, b: 6, title: 'Giới hạn' },
+      { l: 'lim', t: '$\\lim_{x\\to 0}$', a: 6, b: 6, title: 'Giới hạn' },
     ],
   },
   {
@@ -140,7 +126,7 @@ function SymbolBar({ onInsert }) {
   );
 }
 
-const P = { /* style dùng chung */
+const P = {
   card: { background: 'var(--t-surface-2)', border: '1px solid var(--t-border)', borderRadius: 'var(--t-r-lg)', padding: '1rem 1.1rem' },
   label: { display: 'block', font: '700 .68rem var(--t-font-sans)', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--t-ink-muted)', margin: '0 0 .35rem' },
   input: { width: '100%', padding: '.6rem .75rem', borderRadius: 'var(--t-r-md)', border: '1px solid var(--t-border)', background: 'var(--t-surface-3)', color: 'var(--t-ink)', font: '600 .9rem var(--t-font-sans)' },
@@ -169,6 +155,9 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
   const [showAnswerAfter, setShowAnswerAfter] = useState(exam.showAnswerAfter ?? true);
   const [allowRetry, setAllowRetry] = useState(exam.allowRetry ?? false);
   const [shuffle, setShuffle] = useState(exam.shuffle ?? false);
+  // [2.1] Thêm state displayMode
+  const [displayMode, setDisplayMode] = useState(exam.displayMode || 'auto');
+
   const [opensAt, setOpensAt] = useState(exam.opensAt?.seconds ? toLocalInput(exam.opensAt) : '');
   const [closesAt, setClosesAt] = useState(exam.closesAt?.seconds ? toLocalInput(exam.closesAt) : '');
 
@@ -186,7 +175,6 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
-  /* ===== THANH KÝ HIỆU: nhớ Ô ĐƯỢC FOCUS CUỐI (nội dung câu hoặc 1 phương án) ===== */
   const fieldRef = useRef(null);
   const targetRef = useRef({ type: 'q', i: 0 });
   const insertSym = (it) => {
@@ -237,12 +225,19 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
     setSaving(true);
     setErr('');
     try {
+      // [2.4] LỖI QUAN TRỌNG: Fix lỗi xóa bài đọc (passage)
       const cleaned = questions.map((q) => ({
         q: String(q.q || '').trim(),
         options: (q.options || []).map((o) => String(o).trim()).filter(Boolean),
         correct: Math.max(0, Math.min(Number(q.correct) || 0, (q.options || []).length - 1)),
         points: Number(q.points) || 1,
+        // Giữ nguyên bài đọc/hướng dẫn gốc (nếu có) — KHÔNG được bỏ, nếu không
+        // màn làm bài (buildLayout) sẽ mất khối bài đọc và xáo trộn lung tung các câu.
+        ...(q.passage ? { passage: q.passage } : {}),
+        ...(q.instruction ? { instruction: q.instruction } : {}),
+        ...(q.passageId != null ? { passageId: q.passageId } : {}),
       }));
+
       await updateTeacherExam(exam.id, {
         title: title.trim(),
         description: description.trim(),
@@ -251,6 +246,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
         showAnswerAfter,
         allowRetry,
         shuffle,
+        displayMode, // [2.3] Lưu displayMode
         opensAt: opensAt ? new Date(opensAt) : null,
         closesAt: closesAt ? new Date(closesAt) : null,
         proctor,
@@ -260,7 +256,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
       onSaved?.({
         ...exam,
         title: title.trim(), description: description.trim(), duration: Number(duration),
-        classId: classId || '', showAnswerAfter, allowRetry, shuffle, proctor,
+        classId: classId || '', showAnswerAfter, allowRetry, shuffle, displayMode, proctor,
         questions: cleaned, totalPoints,
       });
       onClose?.();
@@ -327,6 +323,17 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
               <input type="datetime-local" style={P.input} value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
             </div>
           </Row>
+
+          {/* [2.2] Ô chọn chế độ */}
+          <div style={{ marginTop: '.7rem' }}>
+            <label style={P.label}>Giao diện làm bài của học sinh</label>
+            <select style={P.input} value={displayMode} onChange={(e) => setDisplayMode(e.target.value)}>
+              <option value="auto">Tự động (có bài đọc → đề giấy, ngược lại → từng câu)</option>
+              <option value="single">Từng câu A, B, C, D (mỗi lần 1 câu, có Trước / Tiếp)</option>
+              <option value="paper">Đề giấy — cuộn liên tục, chọn đáp án liên tục</option>
+            </select>
+          </div>
+
           <div style={{ display: 'grid', gap: '.45rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginTop: '.7rem' }}>
             <Switch label="Hiện đáp án sau khi nộp" checked={showAnswerAfter} onChange={setShowAnswerAfter} />
             <Switch label="Cho phép xin thi lại" checked={allowRetry} onChange={setAllowRetry} />
@@ -401,11 +408,38 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
                   <span style={{ flex: 1, font: '600 .84rem var(--t-font-sans)', color: 'var(--t-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {String(q.q || '(câu trống)').slice(0, 80)}
                   </span>
+                  {(q.passage || q.instruction) && (
+                    <small
+                      title="Câu này thuộc 1 bài đọc/đoạn văn chung — giữ nguyên khi sửa để màn làm bài không bị xáo trộn"
+                      style={{ color: 'var(--t-accent)', font: '700 .66rem var(--t-font-sans)', background: 'color-mix(in srgb, var(--t-accent) 14%, transparent)', padding: '.15rem .45rem', borderRadius: 999, whiteSpace: 'nowrap' }}
+                    >
+                      📖 Bài đọc
+                    </small>
+                  )}
                   <small style={{ color: 'var(--t-ink-muted)', font: '600 .72rem var(--t-font-sans)' }}>{q.points || 1} đ</small>
                 </button>
 
                 {openQ === i && (
                   <div style={{ padding: '.75rem' }}>
+                    {(q.passage || q.instruction) && (
+                      <div style={{ border: '1px dashed var(--t-accent)', borderRadius: 'var(--t-r-md)', padding: '.6rem .7rem', marginBottom: '.7rem', background: 'color-mix(in srgb, var(--t-accent) 6%, transparent)' }}>
+                        <label style={P.label}>Hướng dẫn chung (instruction)</label>
+                        <textarea
+                          style={{ ...P.input, minHeight: 36, marginBottom: '.5rem', resize: 'vertical' }}
+                          value={q.instruction || ''}
+                          onChange={(e) => patchQ(i, { instruction: e.target.value })}
+                        />
+                        <label style={P.label}>Bài đọc / đoạn văn dùng chung</label>
+                        <textarea
+                          style={{ ...P.input, minHeight: 80, resize: 'vertical' }}
+                          value={q.passage || ''}
+                          onChange={(e) => patchQ(i, { passage: e.target.value })}
+                        />
+                        <small style={{ display: 'block', marginTop: '.35rem', color: 'var(--t-ink-muted)', font: '500 .68rem var(--t-font-sans)' }}>
+                          Các câu liền nhau có cùng nội dung bài đọc này sẽ tự gom chung 1 khối ở màn làm bài. Để tách câu này khỏi bài đọc, xoá trống cả 2 ô trên.
+                        </small>
+                      </div>
+                    )}
                     <label style={P.label}>Nội dung câu hỏi</label>
                     <SymbolBar onInsert={insertSym} />
                     <textarea
@@ -490,7 +524,6 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved }) 
   );
 }
 
-/* datetime-local ↔ Firestore Timestamp */
 function toLocalInput(ts) {
   try {
     const d = typeof ts?.toMillis === 'function' ? new Date(ts.toMillis()) : new Date(ts);

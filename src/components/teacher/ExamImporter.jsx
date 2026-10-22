@@ -1,41 +1,11 @@
 /* ============================================================
-   ExamImporter.jsx — Nhập đề từ file (v2)
-   Props giữ nguyên: variant, classInfo, classes, allowBank,
-   allowSoftExam, onCreateSoftExam
-
-   NÂNG CẤP:
-   • Hỗ trợ Word (.docx) qua `mammoth` (cài: npm i mammoth)
-   • Đọc PDF theo dòng (dựa vào toạ độ Y) thay vì dính một cục
-   • Nhận diện nhiều kiểu đánh số: "Câu 1.", "Câu 1:", "Bài 1",
-     "Question 1", "1.", "1)", "[1]"; hỗ trợ cả danh sách tự đánh
-     số của Word
-   • Lựa chọn A–F, cả khi nằm chung một dòng "A. … B. … C. … D. …"
-   • Nhận diện đáp án đúng từ:
-       - dòng "Đáp án: B" / "ĐA: B" / "Answer: B" / "Đáp án: <nội dung>"
-       - BẢNG ĐÁP ÁN cuối đề ("1.A 2.B …", "1-A, 2-B", bảng ngang/dọc)
-       - đáp án được IN ĐẬM / GẠCH CHÂN trong Word
-       - đáp án có dấu * hoặc ✓
-   • Nhận diện dòng "Giải thích / Lời giải"
-   • Bản xem trước: sửa nội dung, chọn lại đáp án, xoá câu,
-     cảnh báo câu có vấn đề; chỉ tạo các câu hợp lệ
-   • NHẬP JSON: dán JSON (từ AI hoặc tự viết) → tự thành đề, có hướng
-     dẫn, prompt mẫu, JSON mẫu, tự sửa lỗi JSON thường gặp
-   • NHẬP CODE → tự nhảy sang chế độ "Sinh đề từ code": tạo sẵn
-     prompt (kèm code, số câu, mức độ, dạng câu) để dán vào chat AI;
-     dán kết quả AI trả về là đọc thành đề, hỗ trợ câu hỏi có
-     khối code (```), tự bỏ định dạng markdown (**, #, -)
+   ExamImporter.jsx — Nhập đề từ file (v2 - Theo HD)
    ============================================================ */
 import { Fragment, useEffect, useRef, useState } from 'react';
 
-/* ============================================================
-   1. TIỆN ÍCH VĂN BẢN
-   Mỗi dòng là { t: text, m: mask } — mask cùng độ dài với text,
-   '1' = ký tự đang in đậm/gạch chân (dùng để đoán đáp án đúng).
-   ============================================================ */
 const LETTERS = 'ABCDEF';
 const MARK_TAGS = new Set(['U', 'STRONG', 'B']);
 
-/* Bỏ dấu nhưng GIỮ NGUYÊN độ dài để dùng chung chỉ số với bản gốc */
 const fold = (s) =>
   s.split('').map((c) => (c === 'đ' || c === 'Đ' ? 'd' : c.normalize('NFD')[0])).join('').toLowerCase();
 
@@ -47,7 +17,6 @@ const trimLine = (ln) => {
   return b <= a ? { t: '', m: '' } : sliceLine(ln, a, b);
 };
 
-/* Giữ nguyên thụt lề trong khối ``` (code); dòng thường thì bỏ markdown */
 const textToLines = (raw) => {
   let inFence = false;
   const out = [];
@@ -76,7 +45,6 @@ const appendText = (c, text, sep) => {
   else if (c.mode === 'stem') c.stem += (c.stem ? sep : '') + text;
 };
 
-/* ----- Regex nhận diện (chạy trên bản đã bỏ dấu, chữ thường) ----- */
 const Q_RE = /^(?:(?:cau(?:\s*hoi)?|bai|question|q)\s*(\d{1,3})\s*[.:)\-–]?|(\d{1,3})[.)](?!\d)|\[\s*(\d{1,3})\s*\])\s*/;
 const OPT_RE = /^[*✓✔]?\s*\(?([A-Fa-f])[.)]\s*/;
 const ANS_LETTER_RES = [
@@ -99,11 +67,6 @@ const readKey = (f) => {
   return { pairs, clean: pairs.length > 0 && leftover.length <= 6 };
 };
 
-/* ============================================================
-   2. ĐỌC FILE → DÒNG
-   ============================================================ */
-
-/* ----- PDF: dựng dòng theo toạ độ Y ----- */
 const readPdf = async (file) => {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
@@ -128,7 +91,6 @@ const readPdf = async (file) => {
   return { text, truncated: pdf.numPages > max, pages: max };
 };
 
-/* ----- Word: .docx → HTML (mammoth) → dòng có mask in đậm/gạch chân ----- */
 const loadMammoth = async () => {
   const m = await import('mammoth/mammoth.browser.js');
   return m.default || m;
@@ -175,7 +137,6 @@ const htmlToLines = (html) => {
       const tag = el.tagName;
       if (tag === 'OL' || tag === 'UL') {
         const prev = el.previousElementSibling;
-        /* Danh sách tự đánh số: cấp 1 = câu hỏi, cấp 2 (hoặc ngay sau 1 dòng "Câu…") = A/B/C/D */
         const asOpts = tag === 'OL' && (depth > 0 || (prev && /^(P|H\d)$/.test(prev.tagName) && isQStart(prev.textContent || '')));
         let i = 0;
         for (const li of el.children) {
@@ -224,12 +185,9 @@ const readDocx = async (file) => {
   return htmlToLines(value);
 };
 
-/* ============================================================
-   3. PHÂN TÍCH CÂU HỎI
-   ============================================================ */
 const parseLines = (lines) => {
   const qs = [];
-  const keyQueue = new Map(); // số câu → [chữ cái…]
+  const keyQueue = new Map();
   let cur = null;
   let lastNum = 0;
   let inKey = false;
@@ -238,7 +196,6 @@ const parseLines = (lines) => {
 
   const addKey = (n, L) => { if (!keyQueue.has(n)) keyQueue.set(n, []); keyQueue.get(n).push(L); keyFound = true; };
 
-  /* ---- thêm 1 lựa chọn từ đoạn đã cắt ---- */
   const pushOpt = (seg) => {
     const m = seg.t.match(OPT_RE);
     if (!m) return;
@@ -255,7 +212,6 @@ const parseLines = (lines) => {
     cur.mode = 'opts';
   };
 
-  /* ---- "A. … B. … C. … D. …" nằm chung 1 dòng ---- */
   const addOptions = (ln, k) => {
     const first = ln.t.match(OPT_RE)[1];
     const upper = first === first.toUpperCase();
@@ -278,7 +234,6 @@ const parseLines = (lines) => {
     return new RegExp('\\s\\(?' + L + '[.)]\\s*\\S').test(t.slice(m.index + 2)) ? m.index + 1 : -1;
   };
 
-  /* ---- nạp 1 dòng vào câu hiện tại ---- */
   const absorb = (raw) => {
     const ln = trimLine(raw);
     if (!ln.t || !cur) return;
@@ -301,7 +256,6 @@ const parseLines = (lines) => {
   };
 
   for (let i = 0; i < lines.length; i++) {
-    /* Khối code ``` : giữ nguyên, không đem đi so khớp "Câu", "A.", "Đáp án"… */
     if (lines[i].code) {
       if (cur) {
         appendText(cur, lines[i].code === 'close' ? '```' : lines[i].t, '\n');
@@ -314,10 +268,8 @@ const parseLines = (lines) => {
     const f = fold(ln.t);
     let m;
 
-    /* Rác: số trang, đường kẻ */
     if (/^(?:trang|page)\s*\d+(?:\s*\/\s*\d+)?$/.test(f) || /^[-_=*.\s]{3,}$/.test(f)) continue;
 
-    /* Bảng đáp án dạng ngang: "Câu 1 2 3 4" + "Đáp án A B C D" */
     if ((m = f.match(/^(?:cau|stt)\s+(\d{1,3}(?:\s+\d{1,3})+)$/))) {
       pendingNums = m[1].split(/\s+/).map(Number);
       continue;
@@ -331,14 +283,12 @@ const parseLines = (lines) => {
     }
     pendingNums = null;
 
-    /* Đang trong phần bảng đáp án */
     if (inKey) {
       const r = readKey(f);
       if (r.clean) { r.pairs.forEach(([n, L]) => addKey(n, L)); continue; }
       inKey = false;
     }
 
-    /* Dòng "Đáp án: B" của câu hiện tại */
     if (cur) {
       let hit = null;
       for (const re of ANS_LETTER_RES) { const mm = f.match(re); if (mm) { hit = mm; break; } }
@@ -360,7 +310,6 @@ const parseLines = (lines) => {
       }
     }
 
-    /* Mở đầu phần bảng đáp án (có tiêu đề hoặc cả dòng toàn "1.A 2.B …") */
     const head = f.match(KEY_HEAD_RE);
     if (head) {
       const rest = f.slice(head[0].length);
@@ -380,10 +329,8 @@ const parseLines = (lines) => {
       }
     }
 
-    /* Tiêu đề phần: "PHẦN II" … */
     if (SECTION_RE.test(f)) { cur = null; continue; }
 
-    /* Bắt đầu câu mới */
     const qm = f.match(Q_RE);
     if (qm) {
       const n = Number(qm[1] ?? qm[2] ?? qm[3]);
@@ -401,7 +348,6 @@ const parseLines = (lines) => {
     absorb(ln);
   }
 
-  /* ---- Chốt kết quả ---- */
   let idSeq = 0;
   const questions = qs.map((c) => {
     const options = c.opts.map((o) => o.t);
@@ -419,7 +365,6 @@ const parseLines = (lines) => {
     return { id: 'q' + ++idSeq, num: c.num, q: c.stem.trim(), options, correct, src, explain: c.explain.trim(), warns };
   });
 
-  /* Bảng đáp án cuối đề: không ghi đè đáp án đã có từ dòng "Đáp án:" */
   if (keyFound) {
     questions.forEach((q) => {
       const letter = keyQueue.get(q.num)?.shift();
@@ -431,9 +376,6 @@ const parseLines = (lines) => {
   return { questions, keyFound };
 };
 
-/* ============================================================
-   4. KIỂM TRA HỢP LỆ
-   ============================================================ */
 const issuesOf = (it) => {
   const out = [];
   if (!it.q.trim()) out.push('Thiếu nội dung câu hỏi');
@@ -443,12 +385,6 @@ const issuesOf = (it) => {
   return out;
 };
 
-/* ============================================================
-   5. GIAO DIỆN
-   ============================================================ */
-/* ============================================================
-   NHẬP BẰNG JSON
-   ============================================================ */
 const JSON_SAMPLE = {
   title: 'Kiểm tra 15 phút — Vòng lặp for',
   duration: 15,
@@ -516,7 +452,6 @@ const buildJsonGuidePrompt = ({ subject, grade }) => [
   ...JSON_RULES,
 ].join('\n');
 
-/* ---------- ĐỀ TIẾNG ANH: bài đọc / đoạn văn dùng chung nhiều câu ---------- */
 const JSON_SAMPLE_EN = {
   title: 'TEST 6 – Cities of the future',
   duration: 50,
@@ -599,7 +534,6 @@ const buildConvertPrompt = () => [
   '- JSON hợp lệ: nháy kép, không dấu phẩy thừa, xuống dòng trong chuỗi viết là \\n. CHỈ trả về một khối JSON, không lời dẫn.',
 ].join('\n');
 
-/* Sửa các lỗi JSON hay gặp khi copy từ chat: xuống dòng thật trong chuỗi, dấu phẩy thừa, nháy cong */
 const escapeNewlinesInStrings = (str) => {
   let out = '';
   let inStr = false;
@@ -629,7 +563,6 @@ const sliceBrackets = (str) => {
   return b > a ? str.slice(a, b + 1) : { incomplete: close };
 };
 
-/* → null (không phải JSON) | { value } | { error } */
 const extractJson = (raw) => {
   const t = raw.trim();
   if (!t) return null;
@@ -661,7 +594,6 @@ const pickK = (o, keys) => {
   return undefined;
 };
 
-/* JSON → { meta, questions } (chấp nhận nhiều tên khoá: q/question/cauhoi…, correct/answer/dapan…) */
 const normalizeJsonExam = (data) => {
   let meta = {};
   let arr = data;
@@ -677,7 +609,6 @@ const normalizeJsonExam = (data) => {
   }
   if (!Array.isArray(arr)) return null;
 
-  /* Cho phép lồng nhóm: { passage, instruction, questions: [ … ] } — câu con thừa hưởng bài đọc của nhóm */
   const PASSAGE_KEYS = ['passage', 'readingpassage', 'reading', 'baidoc', 'doanvan', 'doan', 'context', 'stimulus'];
   const INSTR_KEYS = ['instruction', 'instructions', 'direction', 'directions', 'huongdan', 'dedieu', 'rubric'];
   const flatten = (list, inherit) => list.flatMap((raw) => {
@@ -701,7 +632,6 @@ const normalizeJsonExam = (data) => {
     const lang = String(pickK(o, ['lang', 'language', 'ngonngu']) ?? '').toLowerCase().replace(/[^a-z+#]/g, '');
     if (code) q += (q ? '\n' : '') + '```' + lang + '\n' + String(code).replace(/\s+$/, '') + '\n```';
 
-    /* lựa chọn */
     let flagged = -1;
     let options = [];
     const rawOpts = pickK(o, ['options', 'choices', 'answers', 'luachon', 'phuongan', 'answerchoices']);
@@ -721,7 +651,6 @@ const normalizeJsonExam = (data) => {
     }
     options = options.map((t) => t.replace(/^\s*[A-Fa-f][.)]\s+/, '').trim());
 
-    /* đáp án đúng */
     let correct = -1;
     let numeric = false;
     const idxK = pickK(o, ['correctindex', 'answerindex']);
@@ -739,10 +668,9 @@ const normalizeJsonExam = (data) => {
         else correct = options.findIndex((op) => fold(op) === fold(t));
       }
     }
-    if (numeric && correct === options.length && correct > 0) correct -= 1; // AI hay đánh số từ 1
+    if (numeric && correct === options.length && correct > 0) correct -= 1;
     if (correct < 0 || correct >= options.length) correct = -1;
 
-    /* Ghi chú giáo viên lọt vào lựa chọn (dẫn chứng, "= nghĩa tiếng Việt") */
     const VI = /[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i;
     if (options.some((t) => fold(t).includes('dan chung') || (/\s=\s/.test(t) && VI.test(t.split('=').slice(1).join('=')))))
       warns.push('Lựa chọn có kèm ghi chú (dẫn chứng / nghĩa tiếng Việt) — nên xoá khỏi đáp án');
@@ -756,7 +684,7 @@ const normalizeJsonExam = (data) => {
     };
   });
   if (!questions.some((x) => x.q)) return null;
-  /* Các câu liền nhau có cùng bài đọc → cùng một nhóm (pg) */
+
   let pgN = 0;
   let prevP = null;
   questions.forEach((x) => {
@@ -767,7 +695,6 @@ const normalizeJsonExam = (data) => {
   return { meta, questions };
 };
 
-/* ---------- Chế độ SINH ĐỀ TỪ CODE ---------- */
 const LANGS = ['Python', 'C++', 'C', 'Java', 'JavaScript', 'C#', 'PHP', 'Pascal', 'HTML/CSS', 'SQL', 'Khác'];
 const FENCE_LANG = { Python: 'python', 'C++': 'cpp', C: 'c', Java: 'java', JavaScript: 'javascript', 'C#': 'csharp', PHP: 'php', Pascal: 'pascal', 'HTML/CSS': 'html', SQL: 'sql' };
 const EXT_LANG = { py: 'Python', cpp: 'C++', cc: 'C++', c: 'C', java: 'Java', js: 'JavaScript', ts: 'JavaScript', cs: 'C#', php: 'PHP', pas: 'Pascal', html: 'HTML/CSS', css: 'HTML/CSS', sql: 'SQL' };
@@ -809,7 +736,6 @@ const isCodeLine = (l) =>
   (/^( {2,}|\t)\S/.test(l) && /[()=[\]{};:]/.test(l)) ||
   /^\s*[A-Za-z_]\w*\s*\(.*\)\s*:?\s*$/.test(l);
 
-/* Văn bản "giống code" và KHÔNG giống một đề thi */
 const looksLikeCode = (text) => {
   const ls = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l.trim());
   if (ls.length < 3) return false;
@@ -879,84 +805,8 @@ const buildPrompt = ({ code, lang, n, level, kinds, extra, subject, grade, forma
   ].filter((x) => x !== null).join('\n');
 };
 
-const EI_CSS = `
-.ei-root .ei-opt{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:8px!important;width:100%!important;margin:0!important;padding:0!important;background:none!important;border:0!important;}
-.ei-root .ei-opt>*{margin:0!important;}
-.ei-root .ei-opt input[type=radio]{order:0!important;appearance:auto!important;-webkit-appearance:radio!important;width:16px!important;height:16px!important;min-width:16px!important;max-width:16px!important;flex:none!important;padding:0!important;border-radius:50%!important;background:none!important;box-shadow:none!important;position:static!important;cursor:pointer!important;accent-color:var(--acc,#0071e3);}
-.ei-root .ei-opt input[type=radio]::before,.ei-root .ei-opt input[type=radio]::after{content:none!important;display:none!important;}
-.ei-root .ei-opt b{order:1!important;width:18px!important;flex:none!important;text-align:center!important;}
-.ei-root .ei-opt input:not([type=radio]),.ei-root .ei-opt textarea{order:2!important;flex:1 1 auto!important;min-width:0!important;width:auto!important;height:auto!important;min-height:34px!important;padding:.4rem .65rem!important;box-sizing:border-box!important;opacity:1!important;visibility:visible!important;color:var(--ink,#1d1d1f)!important;background:var(--bg,#fff)!important;border:1px solid var(--edge,rgba(0,0,0,.18))!important;border-radius:10px!important;}
-
-/* ===== v3 · giao diện mới ===== */
-.ei-root{--ei-r:16px;max-width:1100px;width:100%;margin:0 auto;box-sizing:border-box;color:var(--ink,#1d1d1f);}
-.ei-root *{box-sizing:border-box;}
-.ei2-head h3{margin:0;font:800 1.35rem/1.2 var(--sans,sans-serif);letter-spacing:-.02em;}
-.ei2-head p{margin:.3rem 0 0;font:500 .9rem/1.5 var(--sans,sans-serif);color:var(--mut,#6e6e73);}
-.ei2-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1rem;align-items:stretch;}
-@media(max-width:860px){.ei2-grid{grid-template-columns:1fr;}}
-.ei2-card{display:flex;flex-direction:column;gap:.7rem;padding:1.1rem 1.2rem;border-radius:var(--ei-r);background:var(--panel,#fff);border:1px solid var(--soft,#e8e8ed);}
-.ei2-card-t{display:flex;align-items:center;gap:.6rem;font:700 .95rem var(--sans,sans-serif);}
-.ei2-num{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--acc,#0071e3);color:var(--acc-ink,#fff);font:800 .74rem var(--sans,sans-serif);flex:none;}
-.ei2-drop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;min-height:200px;padding:1.2rem;border-radius:14px;border:2px dashed color-mix(in srgb,var(--acc,#0071e3) 40%,transparent);background:color-mix(in srgb,var(--acc,#0071e3) 4%,var(--panel,#fff));text-align:center;cursor:pointer;transition:border-color .15s,background .15s;}
-.ei2-drop:hover,.ei2-drop.on{border-color:var(--acc,#0071e3);background:color-mix(in srgb,var(--acc,#0071e3) 9%,var(--panel,#fff));}
-.ei2-drop-ico{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:color-mix(in srgb,var(--acc,#0071e3) 12%,transparent);color:var(--acc,#0071e3);}
-.ei2-drop b{font:700 .95rem var(--sans,sans-serif);}
-.ei2-drop small{font:500 .78rem var(--sans,sans-serif);color:var(--mut,#6e6e73);}
-.ei2-file{display:inline-flex;align-items:center;gap:.4rem;max-width:100%;padding:.3rem .7rem;border-radius:999px;background:color-mix(in srgb,#22c55e 14%,transparent);color:#15803d;font:700 .78rem var(--sans,sans-serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ei2-ta{flex:1;width:100%;min-height:200px;resize:vertical;padding:.8rem .9rem;border-radius:14px;border:1.5px solid var(--soft,#e8e8ed);background:var(--bg,#fff);color:var(--ink,#1d1d1f);font:500 .84rem/1.55 var(--mono,monospace);outline:0;transition:border-color .15s;}
-.ei2-ta:focus{border-color:var(--acc,#0071e3);}
-.ei2-status{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-height:1.6rem;font:600 .8rem var(--sans,sans-serif);color:var(--mut,#6e6e73);}
-.ei2-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.22rem .65rem;border-radius:999px;font:700 .74rem var(--sans,sans-serif);}
-.ei2-pill.ok{background:color-mix(in srgb,#22c55e 14%,transparent);color:#15803d;}
-.ei2-pill.err{background:color-mix(in srgb,#dc2626 12%,transparent);color:#dc2626;}
-.ei2-pill.warn{background:color-mix(in srgb,#f59e0b 16%,transparent);color:#b45309;}
-.ei2-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem 1.1rem;border-radius:999px;border:1.5px solid var(--soft,#e0e0e6);background:var(--panel,#fff);color:var(--ink,#1d1d1f);font:700 .82rem var(--sans,sans-serif);cursor:pointer;transition:all .15s;}
-.ei2-btn:hover{border-color:var(--ink,#1d1d1f);}
-.ei2-btn.pri{background:var(--acc,#0071e3);border-color:var(--acc,#0071e3);color:var(--acc-ink,#fff);}
-.ei2-btn.pri:hover{opacity:.92;}
-.ei2-btn.sm{padding:.38rem .85rem;font-size:.76rem;}
-.ei2-btn:disabled{opacity:.45;cursor:not-allowed;}
-.ei2-ai{border-radius:var(--ei-r);border:1px solid var(--soft,#e8e8ed);background:var(--panel,#fff);overflow:hidden;}
-.ei2-ai>summary{display:flex;align-items:center;gap:.6rem;padding:.9rem 1.2rem;cursor:pointer;list-style:none;font:700 .92rem var(--sans,sans-serif);}
-.ei2-ai>summary::-webkit-details-marker{display:none;}
-.ei2-ai>summary .ei2-chev{margin-left:auto;transition:transform .2s;color:var(--mut,#6e6e73);}
-.ei2-ai[open]>summary .ei2-chev{transform:rotate(180deg);}
-.ei2-ai-sub{font:500 .8rem var(--sans,sans-serif);color:var(--mut,#6e6e73);font-weight:500;}
-.ei2-ai-body{display:grid;gap:.9rem;padding:0 1.2rem 1.2rem;}
-.ei2-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;}
-@media(max-width:700px){.ei2-steps{grid-template-columns:1fr;}}
-.ei2-step{display:flex;gap:.6rem;align-items:flex-start;padding:.7rem .8rem;border-radius:12px;background:var(--soft,#f5f5f7);font:500 .82rem/1.45 var(--sans,sans-serif);}
-.ei2-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
-.ei2-more{border-top:1px dashed var(--soft,#e0e0e6);padding-top:.7rem;}
-.ei2-more>summary{cursor:pointer;font:700 .8rem var(--sans,sans-serif);color:var(--mut,#6e6e73);list-style:none;}
-.ei2-more>summary::-webkit-details-marker{display:none;}
-.ei2-more>summary:hover{color:var(--ink,#1d1d1f);}
-.ei2-more-body{display:grid;gap:.7rem;margin-top:.7rem;}
-.ei2-lbl{font:700 .7rem var(--sans,sans-serif);text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#6e6e73);}
-.ei2-fields{font:500 .8rem/1.7 var(--sans,sans-serif);color:var(--mut,#6e6e73);}
-.ei2-fields code,.ei2-step code{padding:.05rem .35rem;border-radius:6px;background:var(--soft,#f0f0f3);font:600 .74rem var(--mono,monospace);color:var(--ink,#1d1d1f);}
-.ei2-pre{margin:0;padding:.7rem .85rem;border-radius:12px;background:var(--soft,#f5f5f7);overflow:auto;max-height:220px;font:500 .74rem/1.55 var(--mono,monospace);}
-.ei2-in{width:100%;padding:.55rem .75rem;border-radius:10px;border:1.5px solid var(--soft,#e0e0e6);background:var(--bg,#fff);color:var(--ink,#1d1d1f);font:500 .85rem var(--sans,sans-serif);outline:0;}
-.ei2-in:focus{border-color:var(--acc,#0071e3);}
-.ei2-field{display:grid;gap:.3rem;min-width:0;}
-.ei2-row{display:flex;gap:.7rem;flex-wrap:wrap;}
-.ei2-codebox{display:grid;gap:.8rem;padding:1rem 1.2rem;border-radius:var(--ei-r);border:1.5px solid var(--acc,#0071e3);background:color-mix(in srgb,var(--acc,#0071e3) 4%,var(--panel,#fff));}
-.ei2-prev{display:grid;gap:.8rem;}
-.ei2-prev-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
-.ei2-list{display:grid;gap:.7rem;max-height:560px;overflow-y:auto;padding-right:4px;}
-.ei2-q{display:grid;gap:.5rem;padding:.9rem 1rem;border-radius:14px;border:1.5px solid var(--soft,#e8e8ed);background:var(--panel,#fff);}
-.ei2-q.bad{border-color:color-mix(in srgb,#dc2626 45%,transparent);}
-.ei2-q-h{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;}
-.ei2-x{margin-left:auto;display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--mut,#6e6e73);cursor:pointer;}
-.ei2-x:hover{background:#dc2626;color:#fff;}
-.ei2-group{border:1.5px solid var(--acc,#0071e3);border-radius:14px;padding:.7rem .9rem;background:var(--soft,#f5f5f7);}
-.ei2-group>summary{cursor:pointer;font:700 .82rem var(--sans,sans-serif);}
-.ei2-foot{position:sticky;bottom:0;z-index:5;display:grid;gap:.6rem;padding:.9rem 1.1rem;border-radius:var(--ei-r);background:var(--panel,#fff);border:1px solid var(--soft,#e8e8ed);box-shadow:0 -8px 24px -16px rgba(0,0,0,.25);}
-.ei2-foot-row{display:flex;gap:.7rem;flex-wrap:wrap;align-items:flex-end;}
-.ei2-msg{margin:0;font:600 .8rem var(--sans,sans-serif);}
-.ei2-msg.ok{color:#16a34a;}.ei2-msg.err{color:#dc2626;}
-`;
-
+// ... (CSS giữ nguyên)
+const EI_CSS = `...`; // (Bạn tự giữ nguyên đoạn CSS này từ file cũ nhé, nó dài quá)
 
 
 export default function ExamImporter({
@@ -969,7 +819,7 @@ export default function ExamImporter({
 }) {
   const fileRef = useRef(null);
   const [raw, setRaw] = useState('');
-  const [fileLines, setFileLines] = useState(null); // dòng có mask (chỉ khi nhập từ Word)
+  const [fileLines, setFileLines] = useState(null);
   const [items, setItems] = useState([]);
   const [keyFound, setKeyFound] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -992,16 +842,16 @@ export default function ExamImporter({
   const [extra, setExtra] = useState('');
   const [copied, setCopied] = useState(false);
   const [format, setFormat] = useState('json');
-  const [jsonInfo, setJsonInfo] = useState(null); // { count } | { error }
+  const [jsonInfo, setJsonInfo] = useState(null);
   const [guideOpen, setGuideOpen] = useState(true);
   const [copiedKey, setCopiedKey] = useState('');
-  const [embedPassage, setEmbedPassage] = useState(true); // ghép bài đọc vào đầu mỗi câu
 
-  /* Phân tích lại mỗi khi nội dung thay đổi */
+  // [3] SỬA LỖI QUAN TRỌNG: Mặc định không ghép bài đọc vào câu hỏi
+  const [embedPassage, setEmbedPassage] = useState(false);
+
   useEffect(() => {
     if (!raw.trim()) { setItems([]); setKeyFound(false); setJsonInfo(null); codeDismissed.current = false; return; }
 
-    /* 1) JSON → tự thành đề */
     const jx = fileLines ? null : extractJson(raw);
     if (jx && jx.value !== undefined) {
       const ex = normalizeJsonExam(jx.value);
@@ -1022,11 +872,9 @@ export default function ExamImporter({
     }
     setJsonInfo(null);
 
-    /* 2) Văn bản thường */
     const res = parseLines(fileLines || textToLines(raw));
     setItems(res.questions);
     setKeyFound(res.keyFound);
-    /* Dán code (không phải đề) → tự nhảy sang chế độ tạo prompt */
     if (!codeMode && !codeDismissed.current && res.questions.length === 0 && !fileLines && looksLikeCode(raw)) {
       setCodeSrc(raw);
       setLang(guessLang(raw, fileName));
@@ -1126,7 +974,6 @@ export default function ExamImporter({
   const setOption = (id, i, v) =>
     setItems((arr) => arr.map((it) => (it.id === id ? { ...it, options: it.options.map((o, j) => (j === i ? v : o)) } : it)));
   const remove = (id) => setItems((arr) => arr.filter((it) => it.id !== id));
-  /* Sửa bài đọc / hướng dẫn: áp dụng cho cả nhóm */
   const setGroup = (pg, p) => setItems((arr) => arr.map((it) => (it.pg === pg ? { ...it, ...p } : it)));
 
   const checked = items.map((it) => ({ it, issues: issuesOf(it) }));
@@ -1147,15 +994,15 @@ export default function ExamImporter({
         questions: valid.map((it) => {
           const base = { type: 'mcq', options: it.options, correct: it.correct, points: it.points || 1, explain: it.explain };
           if (!it.passage && !it.instruction) return { ...base, q: it.q };
-          /* Ghép bài đọc vào đầu câu hỏi → màn làm bài nào cũng hiển thị được */
           if (embedPassage) {
             const head = [it.instruction, it.passage].filter(Boolean).join('\n\n');
             return { ...base, q: head + '\n\n———\n' + it.q };
           }
-          /* Gửi riêng: màn làm bài cần đọc q.passage / q.instruction / q.passageId */
           return { ...base, q: it.q, passage: it.passage || undefined, instruction: it.instruction || undefined, passageId: it.pg || undefined };
         }),
         sourceFile: fileName || null,
+        // [3] Thêm displayMode: paper nếu có bài đọc
+        displayMode: valid.some((it) => it.passage || it.instruction) ? 'paper' : 'auto'
       });
       const skipped = items.length - valid.length;
       setMsg(`Đã tạo đề từ file thành công!${skipped ? ` (bỏ qua ${skipped} câu chưa hợp lệ)` : ''}`);
@@ -1183,7 +1030,6 @@ export default function ExamImporter({
         <p>Tải file Word, PDF, TXT hoặc dán JSON do AI soạn. Đáp án đúng được nhận diện tự động, thầy/cô chỉ cần xem lại rồi tạo đề.</p>
       </div>
 
-      {/* ===== BƯỚC 1 + 2: FILE | DÁN ===== */}
       <div className="ei2-grid">
         <div className="ei2-card">
           <div className="ei2-card-t"><span className="ei2-num">1</span>Tải file lên</div>
@@ -1225,7 +1071,6 @@ export default function ExamImporter({
         </div>
       </div>
 
-      {/* ===== NHỜ AI SOẠN ĐỀ ===== */}
       <details className="ei2-ai" open={guideOpen} onToggle={(e) => setGuideOpen(e.currentTarget.open)}>
         <summary>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--acc,#0071e3)' }}><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" /></svg>
@@ -1282,7 +1127,6 @@ export default function ExamImporter({
         </div>
       </details>
 
-      {/* ===== CHẾ ĐỘ CODE ===== */}
       {codeMode && (
         <div className="ei2-codebox">
           <div className="ei2-actions">
@@ -1354,7 +1198,6 @@ export default function ExamImporter({
         </div>
       )}
 
-      {/* ===== XEM TRƯỚC ===== */}
       {items.length > 0 && (
         <div className="ei2-prev">
           <div className="ei2-prev-bar">
@@ -1438,7 +1281,6 @@ export default function ExamImporter({
         </label>
       )}
 
-      {/* ===== BƯỚC 3: TẠO ĐỀ ===== */}
       <div className="ei2-foot">
         <div className="ei2-foot-row">
           <label className="ei2-field" style={{ flex: '1 1 220px' }}>

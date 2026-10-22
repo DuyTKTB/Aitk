@@ -1,13 +1,7 @@
 /* ============================================================
-   ExamJoin.jsx — Phòng thi học sinh (v5)
-   ------------------------------------------------------------
-   v5:
-     • Dùng MathText cho câu hỏi và đáp án (AI sinh LaTeX).
-     • Sử dụng guard.fsSupported để ẩn gợi ý fullscreen nếu
-       thiết bị không hỗ trợ (tránh hiểu nhầm).
-     • Chỉ dùng SVG, không emoji.
+   ExamJoin.jsx — Phòng thi học sinh (v6 - Theo HUONG_DAN_TICH_HOP)
    ============================================================ */
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
   getExamByToken,
@@ -38,8 +32,14 @@ import ExamResult from './ExamResult.jsx';
 import ViolationOverlay from './ViolationOverlay.jsx';
 import MathText from './MathText.jsx';
 import RetryRequestModal from './RetryRequestModal.jsx';
+
+// [1.1] Import theo hướng dẫn
+import ExamPaperView, { PassageBox } from './ExamPaperView.jsx';
+import { buildLayout, resolveMode } from '../lib/examLayout.js';
 import '../styles/classroom.css';
 import '../styles/exam-pro.css';
+import '../styles/exam-join-v6.css';
+import '../styles/exam-paper.css'; // <-- File CSS mới
 
 const IcoWarning = ({ size = 48 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -98,6 +98,80 @@ const IcoPanel = ({ size = 18 }) => (
     <line x1="15" y1="4" x2="15" y2="20" />
   </svg>
 );
+
+const QuestionCard = memo(function QuestionCard({ q, qi, num, picked, flagged, paused, onPick, onFlag }) {
+  const longOpts = q.options.some((o) => String(o ?? '').length > 48);
+  return (
+    <div className="ep-q-card">
+      <div className="ep-q-head">
+        <span className="ep-q-num">Câu {num}</span>
+        <button
+          className={'ep-flag-btn' + (flagged ? ' on' : '')}
+          onClick={() => onFlag(qi)}
+          type="button"
+          aria-pressed={flagged}
+          disabled={paused}
+        >
+          <IcoFlag size={13} filled={flagged} />
+          {flagged ? 'Bỏ đánh dấu' : 'Đánh dấu'}
+        </button>
+      </div>
+
+      {/* [1.3] Hiện bài đọc trong QuestionCard */}
+      {(q.passage || q.instruction) && <PassageBox instruction={q.instruction} passage={q.passage} />}
+
+      <MathText as="p" className="ep-q-text">{q.q}</MathText>
+
+      <div className={'ep-opts' + (longOpts ? ' one' : '')}>
+        {q.options.map((opt, i) => (
+          <button
+            key={i}
+            type="button"
+            className={'ep-opt' + (picked === i ? ' picked' : '')}
+            onClick={() => onPick(qi, i)}
+            aria-pressed={picked === i}
+            disabled={paused}
+          >
+            <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
+            <span className="ep-opt-text"><MathText>{opt}</MathText></span>
+            {picked === i && <span className="ep-opt-check"><IcoCheck /></span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const QuestionGrid = memo(function QuestionGrid({ total, order, answers, flags, currentQ, paused, onJump }) {
+  return (
+    <div className="ep-sidebar-grid">
+      {Array.from({ length: total }, (_, i) => {
+        const oi = order[i] ?? i;
+        const isAnswered = answers[oi] !== undefined;
+        const isFlagged = !!flags[oi];
+        const cls =
+          'ep-sidebar-cell' +
+          (isAnswered ? ' done' : '') +
+          (isFlagged ? ' flagged' : '') +
+          (i === currentQ ? ' cur' : '');
+        return (
+          <button
+            key={i}
+            type="button"
+            className={cls}
+            onClick={() => onJump(i)}
+            aria-label={`Câu ${i + 1}`}
+            disabled={paused}
+          >
+            {i + 1}
+            {isFlagged && <span className="ep-sidebar-flag" aria-hidden="true" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+
 const IcoMinimize = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <line x1="5" y1="12" x2="19" y2="12" />
@@ -291,7 +365,7 @@ export default function ExamJoin({ token, onExit }) {
   const [cameraConsent, setCameraConsent] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [camMinimized, setCamMinimized] = useState(false);
+  const [camMinimized, setCamMinimized] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const [camPos, setCamPos] = useState({ x: 16, y: null });
 
   const [session, setSession] = useState(null);
@@ -337,29 +411,10 @@ export default function ExamJoin({ token, onExit }) {
 
   const proctorConfig = useMemo(() => exam?.proctor || null, [exam?.id]); // eslint-disable-line
 
-  const order = useMemo(() => {
-    const n = exam?.questions?.length || 0;
-    const idx = Array.from({ length: n }, (_, i) => i);
-    if (!exam?.shuffle || !user?.uid) return idx;
-    let h = 2166136261;
-    for (const ch of `${exam?.id || ''}:${user.uid || ''}`) {
-      h ^= ch.charCodeAt(0);
-      h = Math.imul(h, 16777619);
-    }
-    let s = h >>> 0;
-    const rnd = () => {
-      s = (s + 0x6d2b79f5) >>> 0;
-      let t = s;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-    for (let i = n - 1; i > 0; i--) {
-      const j = Math.floor(rnd() * (i + 1));
-      [idx[i], idx[j]] = [idx[j], idx[i]];
-    }
-    return idx;
-  }, [exam?.id, exam?.shuffle, user?.uid]);
+  // [1.2] Thay thế logic đảo câu cũ bằng buildLayout
+  const mode = useMemo(() => resolveMode(exam), [exam]);
+  const layout = useMemo(() => buildLayout(exam, user?.uid), [exam, user?.uid]);
+  const order = layout.order;
 
   useEffect(() => {
     (async () => {
@@ -887,19 +942,61 @@ export default function ExamJoin({ token, onExit }) {
     guard.enterFullscreen();
   };
 
-  const pickAnswer = (qIdx, optIdx) => {
+  const pickAnswer = useCallback((qIdx, optIdx) => {
     if (paused) return;
     setAnswers((a) => {
+      if (a[qIdx] === optIdx) return a;
       const next = { ...a, [qIdx]: optIdx };
       persistAnswers(next);
       return next;
     });
-  };
+  }, [paused, persistAnswers]);
 
-  const toggleFlag = (qIdx) => {
+  const toggleFlag = useCallback((qIdx) => {
     if (paused) return;
     setFlags((f) => ({ ...f, [qIdx]: !f[qIdx] }));
-  };
+  }, [paused]);
+
+  const mainRef = useRef(null);
+  const swipeRef = useRef(null);
+  const totalQ = exam?.questions?.length || 0;
+
+  // [1.4] Nâng cấp hàm jumpTo
+  const jumpTo = useCallback((i) => {
+    if (paused) return;
+    setSidebarOpen(false);
+    if (mode === 'paper') {
+      document.getElementById(`pq-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setCurrentQ(i);
+  }, [paused, mode]);
+
+  // [1.5] Tắt vuốt chuyển câu ở chế độ đề giấy
+  const onTouchStart = useCallback((e) => {
+    if (mode === 'paper') { swipeRef.current = null; return; }
+    if (e.touches.length !== 1) { swipeRef.current = null; return; }
+    if (e.target.closest?.('.katex-display, .ep-scrollx')) { swipeRef.current = null; return; }
+    const t = e.touches[0];
+    swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }, [mode]);
+
+  const onTouchEnd = useCallback((e) => {
+    if (mode === 'paper') return;
+    const st = swipeRef.current;
+    swipeRef.current = null;
+    if (!st || paused) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - st.x;
+    const dy = t.clientY - st.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - st.t > 700) return;
+    setCurrentQ((c) => (dx < 0 ? Math.min(c + 1, totalQ - 1) : Math.max(c - 1, 0)));
+  }, [paused, totalQ, mode]);
+
+  // [1.5] Tắt cuộn lên đầu khi ở chế độ đề giấy
+  useEffect(() => {
+    if (mode === 'paper') return;
+    mainRef.current?.scrollTo?.({ top: 0 });
+  }, [currentQ, mode]);
 
   const openRetryModal = () => setRetryModalOpen(true);
 
@@ -909,8 +1006,6 @@ export default function ExamJoin({ token, onExit }) {
       const res = await requestRetry({
         examId: exam.id,
         classId: exam.classId,
-        /* đề Supabase không có classId → phải kèm teacherId (người tạo đề)
-           để yêu cầu đến đúng giáo viên */
         teacherId: exam.created_by || exam.teacherId || null,
         student: { id: user.uid, name: user.displayName || user.email },
         reason,
@@ -1139,6 +1234,7 @@ export default function ExamJoin({ token, onExit }) {
       <ExamResult
         exam={exam}
         result={result}
+        order={order} // [1.8] Truyền order vào ExamResult
         showAnswer={exam.showAnswerAfter}
         onExit={onExit}
       />
@@ -1286,72 +1382,86 @@ export default function ExamJoin({ token, onExit }) {
           </div>
         )}
 
+        <div className="ep-mprog" aria-hidden="true">
+          <i style={{ width: `${progress}%` }} />
+        </div>
+
         <div className="ep-body">
-          <main className="ep-main">
-            <div className="ep-q-card">
-              <div className="ep-q-head">
-                <span className="ep-q-num">Câu {currentQ + 1}</span>
-                <button
-                  className={'ep-flag-btn' + (flags[qi] ? ' on' : '')}
-                  onClick={() => toggleFlag(qi)}
-                  type="button"
-                  aria-pressed={!!flags[qi]}
-                  disabled={paused}
-                >
-                  <IcoFlag size={13} filled={!!flags[qi]} />
-                  {flags[qi] ? 'Bỏ đánh dấu' : 'Đánh dấu'}
-                </button>
-              </div>
+          {/* [1.6] Thay thế nội dung thẻ main bằng logic chia mode */}
+          <main
+            className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
+            ref={mainRef}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            {mode === 'paper' ? (
+              <ExamPaperView
+                layout={layout}
+                questions={exam.questions}
+                answers={answers}
+                flags={flags}
+                paused={paused}
+                onPick={pickAnswer}
+                onFlag={toggleFlag}
+                onVisible={setCurrentQ}
+                onSubmit={() => setConfirmOpen(true)}
+                rootRef={mainRef}
+              />
+            ) : (
+              <>
+                <QuestionCard
+                  q={q}
+                  qi={qi}
+                  num={currentQ + 1}
+                  picked={answers[qi]}
+                  flagged={!!flags[qi]}
+                  paused={paused}
+                  onPick={pickAnswer}
+                  onFlag={toggleFlag}
+                />
 
-              <MathText as="p" className="ep-q-text">{q.q}</MathText>
-
-              <div className="ep-opts">
-                {q.options.map((opt, i) => (
+                <div className="ep-nav">
                   <button
-                    key={i}
+                    className="ep-nav-btn"
+                    disabled={currentQ === 0 || paused}
+                    onClick={() => setCurrentQ((i) => i - 1)}
                     type="button"
-                    className={'ep-opt' + (answers[qi] === i ? ' picked' : '')}
-                    onClick={() => pickAnswer(qi, i)}
-                    aria-pressed={answers[qi] === i}
-                    disabled={paused}
                   >
-                    <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
-                    <span className="ep-opt-text"><MathText>{opt}</MathText></span>
-                    {answers[qi] === i && <span className="ep-opt-check"><IcoCheck /></span>}
+                    Câu trước
                   </button>
-                ))}
-              </div>
-            </div>
 
-            <div className="ep-nav">
-              <button
-                className="ep-nav-btn"
-                disabled={currentQ === 0 || paused}
-                onClick={() => setCurrentQ((i) => i - 1)}
-                type="button"
-              >
-                Câu trước
-              </button>
-              {currentQ < exam.questions.length - 1 ? (
-                <button
-                  className="ep-nav-btn primary"
-                  onClick={() => setCurrentQ((i) => i + 1)}
-                  type="button"
-                  disabled={paused}
-                >
-                  Câu tiếp
-                </button>
-              ) : (
-                <button
-                  className="ep-nav-btn primary"
-                  onClick={() => setConfirmOpen(true)}
-                  type="button"
-                  disabled={paused}
-                >
-                  <IcoSend size={14} /> Nộp bài
-                </button>
-              )}
-            </div>
+                  <button
+                    className="ep-nav-list"
+                    onClick={() => setSidebarOpen(true)}
+                    type="button"
+                    aria-label="Mở danh sách câu"
+                  >
+                    {currentQ + 1}/{exam.questions.length}
+                  </button>
+
+                  {currentQ < exam.questions.length - 1 ? (
+                    <button
+                      className="ep-nav-btn primary"
+                      onClick={() => setCurrentQ((i) => i + 1)}
+                      type="button"
+                      disabled={paused}
+                    >
+                      Câu tiếp
+                    </button>
+                  ) : (
+                    <button
+                      className="ep-nav-btn primary"
+                      onClick={() => setConfirmOpen(true)}
+                      type="button"
+                      disabled={paused}
+                    >
+                      <IcoSend size={14} /> Nộp bài
+                    </button>
+                  )}
+                </div>
+                <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
+              </>
+            )}
           </main>
 
           <aside className={'ep-sidebar' + (sidebarOpen ? ' open' : '')}>
@@ -1373,36 +1483,15 @@ export default function ExamJoin({ token, onExit }) {
               <span><i className="dot todo" /> Chưa làm <b>{exam.questions.length - answered}</b></span>
             </div>
 
-            <div className="ep-sidebar-grid">
-              {exam.questions.map((_, i) => {
-                const oi = order[i] ?? i;
-                const isAnswered = answers[oi] !== undefined;
-                const isFlagged = !!flags[oi];
-                const isCurrent = i === currentQ;
-                const cls =
-                  'ep-sidebar-cell' +
-                  (isAnswered ? ' done' : '') +
-                  (isFlagged ? ' flagged' : '') +
-                  (isCurrent ? ' cur' : '');
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    className={cls}
-                    onClick={() => {
-                      if (paused) return;
-                      setCurrentQ(i);
-                      setSidebarOpen(false);
-                    }}
-                    aria-label={`Câu ${i + 1}`}
-                    disabled={paused}
-                  >
-                    {i + 1}
-                    {isFlagged && <span className="ep-sidebar-flag" aria-hidden="true" />}
-                  </button>
-                );
-              })}
-            </div>
+            <QuestionGrid
+              total={exam.questions.length}
+              order={order}
+              answers={answers}
+              flags={flags}
+              currentQ={currentQ}
+              paused={paused}
+              onJump={jumpTo}
+            />
           </aside>
 
           {sidebarOpen && <div className="ep-sidebar-overlay" onClick={() => setSidebarOpen(false)} />}

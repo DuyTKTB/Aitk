@@ -1,0 +1,183 @@
+/* ============================================================
+   exam-join-v6.css — Phòng thi: rộng hơn, nhẹ hơn, dễ dùng trên điện thoại
+   ------------------------------------------------------------
+   Import SAU exam-pro.css (đã thêm trong ExamJoin.jsx):
+     import '../styles/exam-pro.css';
+     import '../styles/exam-join-v6.css';
+   Chỉ ghi đè, không cần sửa exam-pro.css.
+   ============================================================ */
+
+/* ---------- Nền: bỏ gradient fixed (rất nặng trên mobile) ---------- */
+.ep-exam {
+  background: var(--bg);
+  background-attachment: scroll;
+  height: 100vh;
+  height: 100dvh;           /* tránh thanh địa chỉ trình duyệt điện thoại che nút */
+  overscroll-behavior: none;
+}
+.ep-exam button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.ep-exam .ep-opt,
+.ep-exam .ep-sidebar-cell,
+.ep-exam .ep-nav-btn { transition: background-color .12s, border-color .12s, box-shadow .12s; }
+
+/* ---------- Thanh tiến độ mobile (header-center bị ẩn trên mobile) ---------- */
+.ep-mprog { display: none; height: 3px; background: var(--soft); flex-shrink: 0; }
+.ep-mprog i { display: block; height: 100%; background: var(--acc); transition: width .25s; }
+
+/* ---------- Nút giữa thanh điều hướng + gợi ý vuốt: chỉ hiện trên mobile ---------- */
+.ep-nav-list, .ep-swipe-hint { display: none; }
+
+/* ============================================================
+   DESKTOP / TABLET NGANG — khung câu hỏi RỘNG HƠN
+   ============================================================ */
+.ep-body { grid-template-columns: minmax(0, 1fr) 320px; }
+.ep-main {
+  padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 2rem;
+  gap: 1rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom;
+}
+.ep-q-card {
+  max-width: min(1120px, 100%);
+  padding: clamp(1.3rem, 2.6vw, 2.2rem) clamp(1.3rem, 3vw, 2.6rem);
+  box-shadow: 0 1px 2px #00000010, 0 6px 20px -12px #00000026;
+}
+.ep-nav { max-width: min(1120px, 100%); }
+.ep-q-text { font-size: clamp(1.15rem, 1.9vw, 1.5rem); line-height: 1.6; }
+
+/* 2 cột khi đáp án ngắn, 1 cột khi đáp án dài (class .one tự thêm từ JSX) */
+.ep-opts { gap: .8rem; }
+.ep-opts.one { grid-template-columns: 1fr; }
+.ep-opt { padding: 1.1rem 1.25rem; font-size: 1.02rem; min-height: 64px; }
+.ep-opt-key { width: 36px; height: 36px; }
+
+/* Lưới câu hỏi to hơn, dễ bấm */
+.ep-sidebar-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: .5rem; }
+
+/* Bỏ hiệu ứng blur / nhảy khi hover — gây giật máy yếu */
+.ep-header, .ep-sidebar, .ep-sidebar-overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.ep-header { background: var(--panel); }
+.ep-sidebar { background: var(--panel); }
+.ep-sidebar-overlay { background: #0000006b; }
+.ep-opt:hover, .ep-nav-btn:hover:not(:disabled),
+.ep-nav-btn.primary:hover:not(:disabled), .ep-sidebar-cell:hover,
+.ep-submit-btn:hover { transform: none; }
+.ep-opt.picked .ep-opt-key { transform: none; }
+.ep-opt:before { display: none; }
+
+/* Màn hình thật lớn: thêm chỗ cho câu hỏi dài / có hình */
+@media (min-width: 1500px) {
+  .ep-body { grid-template-columns: minmax(0, 1fr) 340px; }
+  .ep-q-card, .ep-nav { max-width: 1240px; }
+}
+
+/* ============================================================
+   ĐIỆN THOẠI / MÁY TÍNH BẢNG DỌC (≤ 900px)
+   ============================================================ */
+@media (max-width: 900px) {
+  .ep-mprog { display: block; }
+
+  /* Header gọn */
+  .ep-header { padding: .5rem .7rem; gap: .4rem; box-shadow: none; }
+  .ep-header:before { display: none; }
+  .ep-header-btn { width: 36px; height: 36px; }
+  .ep-timer { padding: .4rem .7rem; font-size: .82rem; box-shadow: none; }
+  .ep-timer.critical { animation: none; }
+  .ep-submit-btn { padding: .42rem .8rem; box-shadow: none; }
+
+  /* Nội dung chiếm gần hết màn hình, bớt viền/padding */
+  .ep-main { padding: .6rem .6rem 5.5rem; gap: .6rem; }
+  .ep-q-card {
+    max-width: 100%;
+    padding: .9rem .85rem 1rem;
+    border-radius: 14px;
+    box-shadow: none;
+    border: 1px solid var(--soft);
+    contain: layout paint;
+  }
+  .ep-q-card:before { display: none; }
+  .ep-q-head { margin-bottom: .7rem; padding-bottom: .6rem; }
+  .ep-q-text { font-size: 1.08rem; line-height: 1.55; margin-bottom: .9rem; }
+
+  /* Đáp án: 1 cột, to, dễ chạm (≥ 56px) */
+  .ep-opts, .ep-opts.one { grid-template-columns: 1fr; gap: .5rem; }
+  .ep-opt {
+    padding: .75rem .8rem;
+    min-height: 56px;
+    border-width: 1.5px;
+    border-radius: 12px;
+    font-size: 1rem;
+    box-shadow: none;
+  }
+  .ep-opt.picked { box-shadow: none; border-width: 2px; }
+  .ep-opt.picked .ep-opt-key { box-shadow: none; }
+  .ep-opt-key { width: 32px; height: 32px; }
+
+  /* Thanh điều hướng dính đáy màn hình — luôn thấy nút Trước / Tiếp */
+  .ep-nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    max-width: none;
+    padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px));
+    background: var(--panel);
+    border-top: 1px solid var(--soft);
+    gap: .5rem;
+  }
+  .ep-nav-btn { flex: 1; padding: .8rem .5rem; font-size: .9rem; box-shadow: none; }
+  .ep-nav-btn.primary { box-shadow: none; }
+  .ep-nav-list {
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: 0 0 auto; min-width: 74px; padding: .8rem .8rem;
+    border: 1.5px solid var(--soft); border-radius: 999px;
+    background: var(--bg); color: var(--ink);
+    font: 700 .85rem var(--mono); cursor: pointer;
+  }
+  .ep-swipe-hint {
+    display: block; margin: .2rem 0 0; text-align: center;
+    font: 500 .72rem var(--sans); color: var(--mut);
+  }
+
+  /* Ngăn danh sách câu: kéo ra mượt hơn, bỏ blur */
+  .ep-sidebar {
+    width: min(340px, 92vw);
+    box-shadow: -8px 0 24px #00000033;
+    will-change: transform;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .ep-sidebar-grid { grid-template-columns: repeat(5, 1fr); gap: .5rem; padding: .9rem 1rem; }
+  .ep-sidebar-cell { font-size: .95rem; border-radius: 10px; }
+
+  /* Camera nhỏ gọn, không che đáp án / nút điều hướng */
+  .ep-cam { width: 92px; box-shadow: none; }
+  .ep-cam-mini { width: 40px; height: 40px; box-shadow: none; opacity: .92; }
+  .ep-cam-mini svg { width: 16px; height: 16px; }
+}
+
+/* Điện thoại nhỏ */
+@media (max-width: 400px) {
+  .ep-header-title h2 { font-size: .8rem; }
+  .ep-q-text { font-size: 1.02rem; }
+  .ep-sidebar-grid { grid-template-columns: repeat(5, 1fr); gap: .4rem; }
+}
+
+/* Điện thoại nằm ngang (chiều cao thấp): bớt đệm dọc */
+@media (max-height: 480px) and (max-width: 900px) {
+  .ep-main { padding-bottom: 4.2rem; }
+  .ep-q-text { margin-bottom: .6rem; }
+  .ep-opts { grid-template-columns: 1fr 1fr; }
+  .ep-opts.one { grid-template-columns: 1fr; }
+  .ep-opt { min-height: 48px; padding: .5rem .7rem; }
+}
+
+/* Người dùng bật "giảm chuyển động" hoặc máy cảm ứng: tắt mọi animation nặng */
+@media (hover: none) {
+  .ep-opt:hover, .ep-sidebar-cell:hover { border-color: var(--soft); box-shadow: none; }
+  .ep-opt.picked:hover { border-color: var(--acc); }
+  .ep-monitor-chip.live { animation: none; }
+  .ep-cam.ok .ep-cam-dot, .ep-cam-mini-dot { animation: none; }
+}

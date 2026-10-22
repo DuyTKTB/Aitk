@@ -1,0 +1,126 @@
+/* exam-paper.css — chế độ đề giấy + hộp bài đọc
+   Đặt tại: src/styles/exam-paper.css
+   Import SAU exam-join-v6.css:  import '../styles/exam-paper.css';
+   -------------------------------------------------------------------------- */
+
+.ep-main.paper { padding: 1rem clamp(.6rem, 3vw, 2rem) 3rem; }
+.pp-wrap { max-width: 1200px; margin: 0 auto; display: grid; gap: 1.1rem; }
+
+/* ---------- Khối = (bài đọc) + (các câu con) ---------- */
+.pp-block {
+  background: var(--panel);
+  border: 1px solid var(--soft);
+  border-radius: 16px;
+  padding: clamp(.8rem, 2vw, 1.4rem);
+  display: grid;
+  gap: 1rem;
+}
+/* Desktop: bài đọc bên trái (cuộn riêng), câu hỏi bên phải */
+.pp-block.has-passage { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; }
+.pp-block.has-passage .pp-passage {
+  position: sticky; top: 0;
+  max-height: calc(100dvh - 150px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ---------- Bài đọc ---------- */
+.pp-passage {
+  background: var(--soft);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 12px;
+  padding: .9rem 1.1rem;
+}
+.pp-instr { margin: 0 0 .6rem; font-style: italic; font-weight: 600; font-size: .95rem; color: var(--ink); }
+.pp-passage-text {
+  white-space: pre-line;          /* giữ xuống dòng \n của bài đọc */
+  line-height: 1.75;
+  font-size: 1.04rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.pp-pin {
+  display: none;                  /* chỉ hiện trên điện thoại */
+  align-items: center; gap: .35rem;
+  margin: 0 0 .5rem; padding: .3rem .7rem;
+  border: 1.5px solid var(--soft); border-radius: 999px;
+  background: var(--bg); color: var(--mut);
+  font: 700 .74rem var(--sans); cursor: pointer;
+}
+.pp-pin.on { border-color: var(--acc); color: var(--acc); }
+
+/* ---------- Câu hỏi kiểu đề giấy ---------- */
+.pp-qs { display: grid; gap: .9rem; }
+.pp-q {
+  padding: .8rem .9rem 1rem;
+  border: 1px solid var(--soft);
+  border-radius: 12px;
+  background: var(--bg);
+  scroll-margin-top: 12px;
+}
+.pp-q-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .35rem; }
+.pp-q-num { font: 800 .8rem var(--mono); color: var(--acc); letter-spacing: .02em; }
+.pp-flag {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1.5px solid var(--soft); border-radius: 8px;
+  background: transparent; color: var(--mut); cursor: pointer;
+}
+.pp-flag.on { color: #f59e0b; border-color: #f59e0b; }
+.pp-q-text { margin: 0 0 .65rem; font-size: 1.04rem; line-height: 1.6; color: var(--ink); }
+
+.pp-opts { display: grid; gap: .4rem; grid-template-columns: 1fr; }
+.pp-opts.row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pp-opt {
+  display: flex; align-items: center; gap: .6rem;
+  min-height: 48px; padding: .5rem .7rem;
+  border: 1.5px solid var(--soft); border-radius: 10px;
+  background: var(--panel); color: var(--ink);
+  font: 500 1rem var(--sans); text-align: left; cursor: pointer;
+  transition: background-color .12s, border-color .12s;
+}
+.pp-opt:disabled { opacity: .6; cursor: not-allowed; }
+.pp-bubble {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--mut); color: var(--mut);
+  font: 700 .85rem var(--mono);
+}
+.pp-opt.picked { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, var(--panel)); }
+.pp-opt.picked .pp-bubble { background: var(--acc); border-color: var(--acc); color: #fff; }
+.pp-opt-text { min-width: 0; overflow-wrap: anywhere; }
+
+.pp-end { display: flex; justify-content: center; padding: 1rem 0 2rem; }
+.pp-end .ep-submit-btn { padding: .8rem 2.4rem; font-size: 1rem; }
+
+/* ---------- Chế độ "từng câu" có bài đọc: bài đọc nằm trên câu hỏi, thu gọn được ---------- */
+.ep-q-card .pp-passage { margin-bottom: .9rem; max-height: 42dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* ============================================================
+   ĐIỆN THOẠI / MÁY TÍNH BẢNG DỌC (≤ 900px)
+   ============================================================ */
+@media (max-width: 900px) {
+  .ep-main.paper { padding: .5rem .5rem 3rem; }
+  .pp-block { padding: .6rem; border-radius: 12px; }
+  .pp-block.has-passage { grid-template-columns: 1fr; }
+
+  /* Bài đọc: mặc định chảy theo trang; bật "Ghim" thì dính trên đầu, cuộn riêng, câu hỏi cuộn bên dưới */
+  .pp-block.has-passage .pp-passage { position: static; max-height: none; overflow: visible; }
+  .pp-pin { display: inline-flex; }
+  .pp-block.has-passage .pp-passage.pinned {
+    position: sticky; top: 0; z-index: 5;
+    max-height: 40dvh; overflow-y: auto;
+    box-shadow: 0 6px 14px -8px #00000055;
+  }
+  .pp-block.has-passage .pp-q { scroll-margin-top: 44dvh; }
+
+  .pp-passage-text { font-size: 1rem; line-height: 1.7; }
+  .pp-q { padding: .7rem .65rem .8rem; }
+  .pp-opts.row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pp-opt { min-height: 52px; }
+}
+
+@media (hover: none) {
+  .pp-opt:hover { border-color: var(--soft); }
+  .pp-opt.picked:hover { border-color: var(--acc); }
+}
