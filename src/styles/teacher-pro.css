@@ -332,3 +332,15 @@
   .tpp-btn { width: 100%; }
   .tpp-info-grid { grid-template-columns: 1fr; }
 }
+/* Khu giáo viên toàn màn hình: bỏ chỗ chừa cho nav */
+[data-page="classroom"],
+[data-page="classroom"] main,
+[data-page="classroom"] #main {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  min-height: 100vh;
+}
+[data-page="classroom"] main > *:first-child {
+  margin-top: 0 !important;
+  top: 0 !important;
+}

@@ -16,6 +16,7 @@ import { getSubject } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
 import { exportToWord, exportToPDF } from '../../lib/examExport.js';
 import { printOmrSheetA4, printMultipleOmrSheets } from '../../lib/omrSheetGenerator.js';
+import { scoreExam } from '../../lib/examScoring.js';
 import '../../styles/exam-preview-simulator.css';
 
 /* ============ SVG ICONS ============ */
@@ -66,41 +67,17 @@ const IcoClipboard = (p) => (
    CHẤM ĐIỂM
    ============================================================ */
 function gradeSimulation(questions, answers) {
-  let correctCount = 0;
   let earnedPoints = 0;
   let maxPoints = 0;
   const details = [];
-
+  const { detail, correctCount } = scoreExam(questions, answers);
   questions.forEach((q, idx) => {
+    const d = detail[idx];
     const pts = Number(q.points) || 1;
     maxPoints += pts;
-
-    const type = q.type || 'single_choice';
-    const ans = answers[idx];
-    let isCorrect = false;
-
-    if (type === 'single_choice') {
-      isCorrect = ans === q.correct;
-      if (isCorrect) { correctCount++; earnedPoints += pts; }
-    } else if (type === 'true_false') {
-      if (Array.isArray(ans) && q.statements?.length === 4) {
-        const rightCount = ans.filter((v, k) => v === q.statements[k].answer).length;
-        const partial = (rightCount / 4) * pts;
-        earnedPoints += partial;
-        if (rightCount === 4) correctCount++;
-        isCorrect = rightCount === 4;
-      }
-    } else if (type === 'short_answer') {
-      const norm = (s) =>
-        String(s || '').replace(/\s+/g, '').replace(/[.]/g, ',').toLowerCase();
-      const userAns = norm(ans);
-      isCorrect = (q.accepted || []).some((a) => norm(a) === userAns);
-      if (isCorrect) { correctCount++; earnedPoints += pts; }
-    }
-
-    details.push({ idx, type, isCorrect, points: isCorrect ? pts : 0 });
+    earnedPoints += d.earned;
+    details.push({ idx, type: d.type, isCorrect: d.isCorrect, partial: d.partial, points: d.earned });
   });
-
   const score10 = maxPoints > 0 ? Math.round((earnedPoints / maxPoints) * 100) / 10 : 0;
   return { correctCount, totalCount: questions.length, earnedPoints, maxPoints, score10, details };
 }

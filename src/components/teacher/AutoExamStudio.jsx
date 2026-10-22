@@ -26,6 +26,14 @@ import {
   rewriteQuestionWithAI,
   regenerateDistractorsWithAI,
   getPedagogicalInsightForQuestion,
+  parseLocalCommand,
+  verifyQuestionsWithAI,
+  applyVerifySuggestion,
+  suggestFormat,
+  THPT_GRADES,
+  FORMAT_GDPT,
+  FORMAT_GDPT_ADV,
+  FORMAT_MCQ,
 } from '../../lib/matrixAiService.js';
 import { addQuestion, addQuestionsBatch } from '../../lib/questionBank.js';
 import { PRESET_SAMPLE_EXAMS } from '../../lib/sampleExamsData.js';
@@ -122,14 +130,15 @@ export default function AutoExamStudio({
 
   // Interview flow
   const [step, setStep] = useState(0);
-  const [selectedGrade, setSelectedGrade] = useState('11');
+  const [selectedGrade, setSelectedGrade] = useState('12');
   const [selectedCount, setSelectedCount] = useState(10);
   const [selectedDuration, setSelectedDuration] = useState(30);
-  const [selectedFormat, setSelectedFormat] = useState('Chuẩn GDPT 2018 (Trắc nghiệm + Trả lời ngắn)');
+  const [selectedFormat, setSelectedFormat] = useState(FORMAT_GDPT);
 
   // AI state
   const [analyzing, setAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [genProgress, setGenProgress] = useState({ done: 0, total: 0 });
   const [matrixData, setMatrixData] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -463,7 +472,7 @@ export default function AutoExamStudio({
     setChatMessages((prev) => [
       ...prev,
       { role: 'summary', text: `Đề gồm: ${cnt} câu · Thời lượng: ${dur} phút` },
-      { role: 'ai', text: 'Thầy/cô muốn cấu trúc đề theo định dạng nào?' },
+      { role: 'ai', text: `Thầy/cô muốn cấu trúc đề theo định dạng nào? (Gợi ý cho ${cnt} câu: ${suggestFormat(cnt).startsWith('Chuẩn') ? 'chuẩn thi 3 phần' : 'trắc nghiệm'})` },
     ]);
     setStep(3);
   };
@@ -611,6 +620,10 @@ export default function AutoExamStudio({
         files: attachedFiles,
         classInsights: insightText,
         onProgress: (done, total) => setGenProgress({ done, total }),
+        onPartial: (part) => {
+          setQuestions(part);
+          setWorkspaceTab('questions');
+        },
         signal: abortControllerRef.current.signal,
       });
 
@@ -619,6 +632,7 @@ export default function AutoExamStudio({
       setWorkspaceTab('questions');
       sound.cheer();
       showToast(`Đã hoàn thành biên soạn ${qList.length} câu hỏi!`, 'success');
+      runVerify(qList, { silent: true });
 
       setChatMessages((prev) => [
         ...prev.filter((m) => m.role !== 'trace_loading'),
@@ -626,7 +640,7 @@ export default function AutoExamStudio({
           role: 'ai',
           text: `Đã hoàn tất ${qList.length} câu hỏi theo ma trận đã duyệt! Thầy/cô có thể kiểm tra từng câu bên phải, nhờ AI đổi phương án nhiễu hoặc xuất bản vào Lớp.`,
         },
-        { role: 'chips', items: ['Viết lại câu 1 khó hơn', 'Đổi phương án nhiễu câu 2', 'Viết lại câu 3 súc tích hơn'] },
+        { role: 'chips', items: ['Viết lại câu 1 khó hơn', 'Đổi phương án nhiễu câu 2', 'Kiểm tra lại đáp án'] },
       ]);
     } catch (e) {
       if (e?.name === 'AbortError') return;
@@ -638,6 +652,55 @@ export default function AutoExamStudio({
       ]);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  /* ============ SOÁT ĐÁP ÁN BẰNG AI (chạy nền) ============ */
+  const runVerify = async (list = questions, { silent = false } = {}) => {
+    if (!list.length || verifying) return;
+    setVerifying(true);
+    try {
+      const res = await verifyQuestionsWithAI({ questions: list, grade: selectedGrade, subject: 'Hóa học' });
+      const byId = new Map(res.questions.map((q) => [q.id, q.verify]));
+      setQuestions((prev) => prev.map((q) => (byId.has(q.id) ? { ...q, verify: byId.get(q.id) } : q)));
+      const n = res.mismatches.length;
+      if (n) {
+        showToast(`AI nghi ngờ đáp án ${n} câu: ${res.mismatches.map((i) => i + 1).join(', ')}. Kiểm tra huy hiệu cảnh báo.`, 'error');
+      } else if (!silent || res.checked) {
+        showToast(`Đã soát ${res.checked}/${list.length} câu — đáp án khớp.`, 'success');
+      }
+      return res;
+    } catch (e) {
+      if (!silent) showToast(e.message || 'Không soát được đáp án', 'error');
+      return null;
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  /* ============ LỆNH NHANH (không gọi AI) ============ */
+  const handleLocalCommand = async (cmd, text) => {
+    setChatMessages((prev) => [...prev, { role: 'user', text }]);
+    const say = (t) => setChatMessages((prev) => [...prev, { role: 'ai', text: t }]);
+    if (cmd.type === 'outOfRange') { say(`Đề chỉ có ${questions.length} câu, không có câu ${cmd.n}.`); return; }
+    if (cmd.type === 'delete') {
+      setQuestions((prev) => prev.filter((_, i) => i !== cmd.index));
+      say(`Đã xóa Câu ${cmd.index + 1}.`);
+    } else if (cmd.type === 'setCorrect') {
+      const q = questions[cmd.index];
+      if ((q.type || 'single_choice') !== 'single_choice') { say(`Câu ${cmd.index + 1} không phải câu trắc nghiệm 4 lựa chọn.`); return; }
+      setQuestions((prev) => prev.map((it, i) => (i === cmd.index ? { ...it, correct: cmd.option, verify: { status: 'unchecked' } } : it)));
+      say(`Đã đặt đáp án đúng Câu ${cmd.index + 1} là ${'ABCD'[cmd.option]}.`);
+    } else if (cmd.type === 'verify') {
+      say('Đang cho AI giải lại từng câu để đối chiếu đáp án...');
+      const res = await runVerify(questions);
+      if (res) say(res.mismatches.length ? `AI không đồng ý đáp án ở: ${res.mismatches.map((i) => `Câu ${i + 1}`).join(', ')}. Mở tab Câu hỏi để xem và bấm "Theo AI" nếu thấy AI đúng.` : 'Tất cả đáp án đã khớp với lời giải độc lập của AI.');
+    } else if (cmd.type === 'bank') {
+      handleSaveAllToBank();
+    } else if (cmd.type === 'publish') {
+      handleOpenPublishModal();
+    } else if (cmd.type === 'tab') {
+      setWorkspaceTab(cmd.tab);
     }
   };
 
@@ -688,6 +751,11 @@ export default function AutoExamStudio({
 
     // Ưu tiên lệnh sửa câu hỏi khi đã có questions
     if (questions.length > 0) {
+      const local = parseLocalCommand(text, questions.length);
+      if (local) {
+        handleLocalCommand(local, text);
+        return;
+      }
       const cmd = parseQuestionCommand(text, questions.length);
       if (cmd) {
         handleChatQuestionEdit(cmd, text);
@@ -704,6 +772,7 @@ export default function AutoExamStudio({
           role: 'ai',
           text: 'Tôi chưa hiểu yêu cầu. Thầy/cô có thể:\n'
             + '• Sửa câu hỏi: "viết lại câu 3", "đổi phương án nhiễu câu 2", "câu 1 khó hơn"\n'
+            + '• Lệnh nhanh: "xóa câu 5", "câu 2 đáp án là C", "kiểm tra lại đáp án", "xem bản in A4"\n'
             + '• Sửa ma trận: "tăng 2 câu vận dụng", "giảm 2 câu nhận biết"\n'
             + '• Hoặc bấm "Xóa lịch sử" để tạo đề mới.',
         },
@@ -719,6 +788,13 @@ export default function AutoExamStudio({
 
     const intent = parseExamIntent(text);
     setChatMessages((prev) => [...prev, { role: 'user', text }]);
+    if (intent.invalidGrade) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: `Công cụ này chỉ dành cho THPT (lớp 10, 11, 12). Lớp ${intent.invalidGrade} nằm ngoài phạm vi — thầy/cô chọn lại lớp 10, 11 hoặc 12 nhé.` },
+      ]);
+      if (!intent.grade) { setStep(1); return; }
+    }
 
     const midInterview = step >= 1 && step <= 3 && topic;
     const hasSlot = intent.grade || intent.count || intent.duration;
@@ -764,7 +840,7 @@ export default function AutoExamStudio({
   const handleLoadSampleExam = (sample) => {
     if (!sample) return;
     setTopic(sample.title);
-    setSelectedGrade(sample.grade || '11');
+    setSelectedGrade(THPT_GRADES.includes(String(sample.grade)) ? String(sample.grade) : '12');
     setSelectedDuration(sample.duration || 45);
     setQuestions(sample.questions || []);
     setWorkspaceTab('questions');
@@ -868,13 +944,17 @@ export default function AutoExamStudio({
   const handleSaveQuestionToBank = async (idx) => {
     if (!user?.uid || !questions[idx] || savingBankIdx !== null) return;
     const q = questions[idx];
+    if ((q.type || 'single_choice') !== 'single_choice') {
+      showToast('Ngân hàng hiện chỉ lưu câu trắc nghiệm 4 lựa chọn.', 'info');
+      return;
+    }
     setSavingBankIdx(idx);
     try {
       await addQuestion({
         teacherId: user.uid,
         ...q,
         subject: 'Hóa học',
-        grade: Number(selectedGrade) || 11,
+        grade: Number(selectedGrade) || 12,
       });
       sound.cheer();
       setSavedBankKeys((prev) => new Set([...prev, idx]));
@@ -888,20 +968,23 @@ export default function AutoExamStudio({
 
   const handleSaveAllToBank = async () => {
     if (!user?.uid || !questions.length || isSavingAllToBank) return;
+    const mcq = questions.filter((q) => (q.type || 'single_choice') === 'single_choice');
+    if (!mcq.length) { showToast('Không có câu trắc nghiệm 4 lựa chọn để lưu.', 'info'); return; }
     setIsSavingAllToBank(true);
     try {
       const res = await addQuestionsBatch({
         teacherId: user.uid,
-        questions: questions.map((q) => ({
+        questions: mcq.map((q) => ({
           ...q,
           subject: 'Hóa học',
-          grade: Number(selectedGrade) || 11,
+          grade: Number(selectedGrade) || 12,
         })),
         skipDuplicates: true,
       });
       sound.cheer();
-      showToast(`Đã lưu ${res.count} câu vào Ngân hàng (bỏ qua ${res.skipped} câu trùng)`, 'success');
-      setSavedBankKeys(new Set(questions.map((_, i) => i)));
+      const skippedTypes = questions.length - mcq.length;
+      showToast(`Đã lưu ${res.count} câu vào Ngân hàng (bỏ qua ${res.skipped} câu trùng${skippedTypes ? `, ${skippedTypes} câu Đúng/Sai–Trả lời ngắn chưa hỗ trợ` : ''})`, 'success');
+      setSavedBankKeys(new Set(questions.map((q, i) => ((q.type || 'single_choice') === 'single_choice' ? i : -1)).filter((i) => i >= 0)));
     } catch (err) {
       showToast(err.message || 'Lỗi lưu ngân hàng', 'error');
     } finally {
@@ -916,7 +999,12 @@ export default function AutoExamStudio({
 
   const handleSaveEdit = (idx) => {
     if (!editForm) return;
-    setQuestions((prev) => prev.map((item, i) => (i === idx ? editForm : item)));
+    let next = { ...editForm, verify: { status: 'unchecked' } };
+    if (next.type === 'short_answer') {
+      const vi = String(next.answer || '').trim().replace('.', ',');
+      next = { ...next, answer: vi, accepted: [...new Set([vi, vi.replace(',', '.')])].filter(Boolean) };
+    }
+    setQuestions((prev) => prev.map((item, i) => (i === idx ? next : item)));
     setEditingIdx(null);
     setEditForm(null);
     sound.ding();
@@ -969,7 +1057,7 @@ export default function AutoExamStudio({
           questions,
           meta: {
             title: publishTitle || matrixData?.title || `Đề ${topic} Lớp ${selectedGrade}`,
-            description: `Đề ${questions.length} câu phân hóa 4 mức độ GDPT 2018.`,
+            description: `Đề ${questions.length} câu phân hóa 4 mức độ GDPT 2018 (THPT lớp ${selectedGrade}).`,
             duration: selectedDuration,
           },
           warnings: questions.filter((q) => (q.warns || []).length > 0),
@@ -1256,7 +1344,7 @@ export default function AutoExamStudio({
                 <span className="aes-step">1/3</span>
               </div>
               <div className="aes-interview-opts">
-                {['8', '9', '10', '11', '12'].map((g) => (
+                {THPT_GRADES.map((g) => (
                   <button key={g} type="button" className="aes-opt-btn" onClick={() => handleSelectGrade(g)}>
                     <span>Lớp {g}</span>
                     <span className="aes-opt-arrow">&rsaquo;</span>
@@ -1301,15 +1389,15 @@ export default function AutoExamStudio({
                 <button
                   type="button"
                   className="aes-opt-btn"
-                  onClick={() => { setSelectedFormat('Chuẩn GDPT 2018'); handlePlanMatrix({ format: 'Chuẩn GDPT 2018' }); }}
+                  onClick={() => { setSelectedFormat(FORMAT_GDPT); handlePlanMatrix({ format: FORMAT_GDPT }); }}
                 >
-                  <span>Chuẩn GDPT 2018 (Trắc nghiệm + Trả lời ngắn)</span>
+                  <span>Chuẩn thi THPT 2025 (Trắc nghiệm + Đúng/Sai + Trả lời ngắn)</span>
                   <span className="aes-opt-arrow">&rsaquo;</span>
                 </button>
                 <button
                   type="button"
                   className="aes-opt-btn"
-                  onClick={() => { setSelectedFormat('Trắc nghiệm 4 lựa chọn'); handlePlanMatrix({ format: 'Trắc nghiệm 4 lựa chọn' }); }}
+                  onClick={() => { setSelectedFormat(FORMAT_MCQ); handlePlanMatrix({ format: FORMAT_MCQ }); }}
                 >
                   <span>100% Trắc nghiệm 4 lựa chọn</span>
                   <span className="aes-opt-arrow">&rsaquo;</span>
@@ -1317,9 +1405,9 @@ export default function AutoExamStudio({
                 <button
                   type="button"
                   className="aes-opt-btn"
-                  onClick={() => { setSelectedFormat('Phân hóa nâng cao'); handlePlanMatrix({ format: 'Phân hóa nâng cao' }); }}
+                  onClick={() => { setSelectedFormat(FORMAT_GDPT_ADV); handlePlanMatrix({ format: FORMAT_GDPT_ADV }); }}
                 >
-                  <span>Phân hóa rèn luyện tư duy sâu</span>
+                  <span>Chuẩn 2025 · Phân hóa nâng cao (nhiều VD/VDC)</span>
                   <span className="aes-opt-arrow">&rsaquo;</span>
                 </button>
               </div>
@@ -1697,6 +1785,16 @@ export default function AutoExamStudio({
                 <button
                   type="button"
                   className="aes-btn-batch-save"
+                  onClick={() => runVerify(questions)}
+                  disabled={verifying}
+                  title="AI tự giải lại từng câu (không nhìn đáp án) để phát hiện đáp án sai"
+                >
+                  <IcoCheck size={14} />
+                  {verifying ? 'Đang soát đáp án...' : 'Soát đáp án bằng AI'}
+                </button>
+                <button
+                  type="button"
+                  className="aes-btn-batch-save"
                   onClick={handleSaveAllToBank}
                   disabled={isSavingAllToBank}
                   title="Lưu toàn bộ danh sách câu hỏi vào Ngân hàng cá nhân"
@@ -1729,6 +1827,26 @@ export default function AutoExamStudio({
                           />
                           {lvMeta.label}
                         </span>
+                        {(q.type === 'true_false' || q.type === 'short_answer') && (
+                          <span className="aes-badge">{q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}</span>
+                        )}
+                        {q.verify?.status === 'ok' && (
+                          <span className="aes-badge" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#16a34a' }} title="AI giải độc lập cho cùng đáp án">
+                            <IcoCheck size={11} /> AI xác nhận
+                          </span>
+                        )}
+                        {q.verify?.status === 'mismatch' && (
+                          <span className="aes-badge" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#dc2626' }} title={q.verify.note || 'AI giải ra đáp án khác'}>
+                            ⚠ AI giải khác đáp án
+                            <button
+                              type="button"
+                              style={{ marginLeft: 6, border: 0, background: 'transparent', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', fontSize: 11 }}
+                              onClick={() => { setQuestions((prev) => prev.map((it, i) => (i === idx ? applyVerifySuggestion(it) : it))); showToast(`Đã đổi đáp án Câu ${idx + 1} theo AI`, 'info'); }}
+                            >
+                              Theo AI
+                            </button>
+                          </span>
+                        )}
                         {q.topic && <span className="aes-badge">{q.topic}</span>}
                         {isSaved && (
                           <span className="aes-badge" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#16a34a' }}>
@@ -1748,8 +1866,47 @@ export default function AutoExamStudio({
                             onChange={(e) => setEditForm({ ...editForm, q: e.target.value })}
                           />
                         </label>
+                        {editForm.type === 'true_false' && (
+                          <div className="aes-q-edit-opts">
+                            {(editForm.statements || []).map((st, k) => (
+                              <div key={k} className="aes-q-edit-opt-item">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <strong>{'abcd'[k]})</strong>
+                                  <select
+                                    value={st.answer ? 'Đ' : 'S'}
+                                    onChange={(e) => {
+                                      const next = editForm.statements.map((x, j) => (j === k ? { ...x, answer: e.target.value === 'Đ' } : x));
+                                      setEditForm({ ...editForm, statements: next });
+                                    }}
+                                  >
+                                    <option value="Đ">Đúng</option>
+                                    <option value="S">Sai</option>
+                                  </select>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={st.text}
+                                  onChange={(e) => {
+                                    const next = editForm.statements.map((x, j) => (j === k ? { ...x, text: e.target.value } : x));
+                                    setEditForm({ ...editForm, statements: next });
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {editForm.type === 'short_answer' && (
+                          <label>
+                            <small style={{ fontWeight: 600, color: 'var(--mut)' }}>Đáp án (một số, dấu phẩy thập phân):</small>
+                            <input
+                              type="text"
+                              value={editForm.answer || ''}
+                              onChange={(e) => setEditForm({ ...editForm, answer: e.target.value })}
+                            />
+                          </label>
+                        )}
                         <div className="aes-q-edit-opts">
-                          {(editForm.options || []).map((opt, oIdx) => (
+                          {(editForm.type === 'true_false' || editForm.type === 'short_answer' ? [] : (editForm.options || [])).map((opt, oIdx) => (
                             <div key={oIdx} className="aes-q-edit-opt-item">
                               <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <input
@@ -1803,8 +1960,35 @@ export default function AutoExamStudio({
                           <MathText text={q.q} />
                         </div>
 
+                        {q.type === 'true_false' && (
+                          <div className="aes-q-opts">
+                            {(q.statements || []).map((st, k) => (
+                              <div
+                                key={k}
+                                className={`aes-q-opt ${st.answer ? 'correct' : ''}`}
+                                onClick={() => setQuestions((prev) => prev.map((it, i) => (i === idx
+                                  ? { ...it, statements: it.statements.map((x, j) => (j === k ? { ...x, answer: !x.answer } : x)), verify: { status: 'unchecked' } }
+                                  : it)))}
+                                title="Nhấp để đổi Đúng/Sai"
+                              >
+                                <strong>{'abcd'[k]})</strong>
+                                <MathText text={st.text} />
+                                <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{st.answer ? 'Đúng' : 'Sai'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {q.type === 'short_answer' && (
+                          <div className="aes-q-opts">
+                            <div className="aes-q-opt correct">
+                              <strong>Đáp án:</strong>
+                              <span>{q.answer}</span>
+                              <IcoCheck size={14} />
+                            </div>
+                          </div>
+                        )}
                         <div className="aes-q-opts">
-                          {(q.options || []).map((opt, oIdx) => {
+                          {(q.type === 'true_false' || q.type === 'short_answer' ? [] : (q.options || [])).map((opt, oIdx) => {
                             const isCorrect = q.correct === oIdx;
                             return (
                               <div
@@ -1812,7 +1996,7 @@ export default function AutoExamStudio({
                                 className={`aes-q-opt ${isCorrect ? 'correct' : ''}`}
                                 onClick={() => {
                                   setQuestions((prev) =>
-                                    prev.map((item, i2) => (i2 === idx ? { ...item, correct: oIdx } : item))
+                                    prev.map((item, i2) => (i2 === idx ? { ...item, correct: oIdx, verify: { status: 'unchecked' } } : item))
                                   );
                                   showToast(`Đã chọn đáp án ${String.fromCharCode(65 + oIdx)} cho Câu ${idx + 1}`, 'info');
                                 }}
@@ -1872,6 +2056,7 @@ export default function AutoExamStudio({
                         <span>AI Viết lại</span>
                       </button>
 
+                      {(q.type || 'single_choice') === 'single_choice' && (
                       <button
                         type="button"
                         className="aes-q-action-btn"
@@ -1882,6 +2067,7 @@ export default function AutoExamStudio({
                         <IcoRefresh size={13} className={regeneratingDistractorsIdx === idx ? 'aes-pulse' : ''} />
                         <span>{regeneratingDistractorsIdx === idx ? 'Đang đổi...' : 'Đổi 3 phương án nhiễu'}</span>
                       </button>
+                      )}
 
                       <button
                         type="button"

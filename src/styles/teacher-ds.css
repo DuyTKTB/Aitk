@@ -500,6 +500,17 @@
     align-items: stretch;
   }
 
+  /* ❗ MỚI: ẩn sidebar hoàn toàn */
+  .t-rail-sidebar.hidden {
+    width: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    border-right: none !important;
+    overflow: hidden !important;
+    display: none !important;
+  }
+
   .t-rail-logo {
     display: flex;
     align-items: center;

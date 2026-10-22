@@ -1073,6 +1073,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       active={section}
       onChange={goSection}
       fullscreen
+      autoHideNav={true}
       exitLabel="Về ELEC AI"
       onExit={() => {
         if (onExit) onExit();

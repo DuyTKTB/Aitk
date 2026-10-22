@@ -29,6 +29,22 @@ const IcoMoon = ({ size = 16 }) => (
   </svg>
 );
 
+const IcoEye = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const IcoEyeOff = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
 export const tsMs = (t) => {
   if (!t) return 0;
   if (typeof t === 'number') return t;
@@ -260,9 +276,9 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
 }
 
 export function Topbar({
-  title, subtitle, tabs, active, onTab, search, onSearch,
-  placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme,
-}) {
+   title, subtitle, tabs, active, onTab, search, onSearch,
+   placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme, onToggleNav, navHidden,
+ }) {
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -359,6 +375,18 @@ export function Topbar({
           </button>
         )}
 
+        {onToggleNav && (
+          <button
+            type="button"
+            className="vt-icon-btn"
+            onClick={onToggleNav}
+            title={navHidden ? 'Hiển thị menu' : 'Ẩn menu'}
+            aria-label="Bật/tắt menu điều hướng"
+          >
+            {navHidden ? <IcoEye size={16} /> : <IcoEyeOff size={16} />}
+          </button>
+        )}
+
         {onToggleTheme && (
           <button
             type="button"
@@ -377,27 +405,41 @@ export function Topbar({
 Topbar.isTopbar = true;
 
 export function DashFrame({
-  items,
-  active,
-  onChange,
-  onExit,
-  exitLabel = 'Về trang chủ',
-  sideNote,
-  extraNav,
-  fullscreen = false,
-  className = '',
-  children,
-}) {
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem('elec_teacher_theme') || 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
-  /* ❗ MỚI: ghim rail (CSS .expanded/.pinned đã có sẵn trong teacher-ds.css nhưng
-     JSX chưa nối → trước đây rail chỉ mở khi hover) */
-  const [pinned, setPinned] = useState(false);
+   items,
+   active,
+   onChange,
+   onExit,
+   exitLabel = 'Về trang chủ',
+   sideNote,
+   extraNav,
+   fullscreen = false,
+   autoHideNav = false,
+   className = '',
+   children,
+ }) {
+   const [theme, setTheme] = useState(() => {
+     try {
+       return localStorage.getItem('elec_teacher_theme') || 'dark';
+     } catch {
+       return 'dark';
+     }
+   });
+   /* ❗ MỚI: ghim rail (CSS .expanded/.pinned đã có sẵn trong teacher-ds.css nhưng
+      JSX chưa nối → trước đây rail chỉ mở khi hover) */
+   const [pinned, setPinned] = useState(false);
+   /* ❗ MỚI: ẩn nav rail */
+   const [hidden, setHidden] = useState(() => {
+     try {
+       // Nếu autoHideNav = true, mặc định ẩn; ngược lại dùng localStorage
+       if (autoHideNav) {
+         console.log('🔍 DashFrame: autoHideNav=true → hidden=true');
+         return true;
+       }
+       return localStorage.getItem('elec_teacher_nav_hidden') === 'true';
+     } catch {
+       return autoHideNav ? true : false;
+     }
+   });
 
   const handleToggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -407,16 +449,22 @@ export function DashFrame({
     } catch { /* */ }
   };
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+   useEffect(() => {
+     document.documentElement.setAttribute('data-theme', theme);
+   }, [theme]);
+
+   useEffect(() => {
+     try {
+       localStorage.setItem('elec_teacher_nav_hidden', hidden);
+     } catch { /* */ }
+   }, [hidden]);
 
   const isTopbarElem = (child) =>
     React.isValidElement(child) && (child.type === Topbar || child.type?.isTopbar);
 
-  return (
-    <div className={`t-shell ${className}`} data-theme={theme}>
-      <aside className={`t-rail-sidebar ${pinned ? 'pinned expanded' : ''}`}>
+   return (
+     <div className={`t-shell ${className}`} data-theme={theme}>
+       <aside className={`t-rail-sidebar ${pinned ? 'pinned expanded' : ''} ${hidden ? 'hidden' : ''}`}>
         {/* Logo AIMark của app — dùng size nhỏ, không có chữ */}
         <div className="t-rail-logo" onClick={onExit} title="ELEC AI">
           <AIMark size={32} animate={false} />
@@ -448,44 +496,58 @@ export function DashFrame({
         </nav>
 
         <div className="t-rail-footer">
-          {/* ❗ MỚI: ghim menu — CSS (.expanded/.pinned) có sẵn từ trước nhưng JSX
-              chưa từng nối → rail chỉ mở khi hover, tablet/không có hover không bao giờ
-              thấy chữ. Nay thêm nút ghim. */}
-          <button
-            type="button"
-            className={`t-rail-btn ${pinned ? 'active' : ''}`}
-            onClick={() => setPinned((v) => !v)}
-            title={pinned ? 'Thu gọn menu' : 'Ghim menu — luôn hiện chữ'}
-            aria-pressed={pinned}
-          >
-            <span className="t-rail-btn-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
-              </svg>
-            </span>
-            <span className="t-rail-btn-label">Ghim menu</span>
-          </button>
-          <button
-            type="button"
-            className="t-rail-btn"
-            onClick={onExit}
-            title={exitLabel}
-          >
-            <span className="t-rail-btn-icon">
-              <IcoArrowLeft size={20} />
-            </span>
-            <span className="t-rail-btn-label">{exitLabel}</span>
-          </button>
-        </div>
+           {/* ❗ MỚI: ghim menu — CSS (.expanded/.pinned) có sẵn từ trước nhưng JSX
+               chưa từng nối → rail chỉ mở khi hover, tablet/không có hover không bao giờ
+               thấy chữ. Nay thêm nút ghim. */}
+           <button
+             type="button"
+             className={`t-rail-btn ${pinned ? 'active' : ''}`}
+             onClick={() => setPinned((v) => !v)}
+             title={pinned ? 'Thu gọn menu' : 'Ghim menu — luôn hiện chữ'}
+             aria-pressed={pinned}
+           >
+             <span className="t-rail-btn-icon">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                 <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
+               </svg>
+             </span>
+             <span className="t-rail-btn-label">Ghim menu</span>
+           </button>
+           <button
+             type="button"
+             className={`t-rail-btn ${hidden ? 'active' : ''}`}
+             onClick={() => setHidden((v) => !v)}
+             title={hidden ? 'Hiển thị menu' : 'Ẩn menu'}
+             aria-pressed={hidden}
+           >
+             <span className="t-rail-btn-icon">
+               {hidden ? <IcoEye size={20} /> : <IcoEyeOff size={20} />}
+             </span>
+             <span className="t-rail-btn-label">{hidden ? 'Hiện menu' : 'Ẩn menu'}</span>
+           </button>
+           <button
+             type="button"
+             className="t-rail-btn"
+             onClick={onExit}
+             title={exitLabel}
+           >
+             <span className="t-rail-btn-icon">
+               <IcoArrowLeft size={20} />
+             </span>
+             <span className="t-rail-btn-label">{exitLabel}</span>
+           </button>
+         </div>
       </aside>
 
-      <section className="t-main-area">
-        {React.Children.map(children, (child) => {
-          if (isTopbarElem(child)) {
-            return React.cloneElement(child, {
-              theme,
-              onToggleTheme: handleToggleTheme,
-            });
+        <section className="t-main-area">
+          {React.Children.map(children, (child) => {
+            if (isTopbarElem(child)) {
+              return React.cloneElement(child, {
+                theme,
+                onToggleTheme: handleToggleTheme,
+                onToggleNav: () => setHidden((v) => !v),
+                navHidden: hidden,
+              });
           }
           return null;
         })}

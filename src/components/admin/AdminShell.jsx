@@ -50,19 +50,20 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
     </button>
   );
 
-  return (
-    <DashFrame
-      className="ad-scope"
-      items={items}
-      active={active}
-      onChange={onChange}
-      onExit={() => { window.location.hash = ''; }}
-      exitLabel="Về trang chủ"
-      sideNote={sideNote}
-      extraNav={extraNav}
-    >
-      {children}
-    </DashFrame>
+   return (
+     <DashFrame
+       className="ad-scope"
+       items={items}
+       active={active}
+       onChange={onChange}
+       onExit={() => { window.location.hash = ''; }}
+       exitLabel="Về trang chủ"
+       autoHideNav={true}
+       sideNote={sideNote}
+       extraNav={extraNav}
+     >
+       {children}
+     </DashFrame>
   );
 }
 

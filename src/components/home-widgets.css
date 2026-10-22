@@ -1,0 +1,175 @@
+/* ============================================================
+   HOME WIDGETS — Style cho Pomodoro & Schedule mini
+   ============================================================ */
+
+/* ---- Pomodoro Widget ---- */
+.bento-pomodoro-widget {
+  grid-column: span 6;
+}
+
+.widget-pomo-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.widget-pomo-ring {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+.widget-pomo-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.widget-pomo-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.widget-pomo-time b {
+  font: 700 1.8rem var(--sans);
+  color: var(--ink);
+  letter-spacing: -.04em;
+}
+
+.widget-pomo-time small {
+  font: 500 .8rem var(--sans);
+  color: var(--mut);
+}
+
+.widget-pomo-info {
+  flex: 1;
+}
+
+.widget-pomo-info p {
+  margin: 0 0 .75rem;
+  font: 500 .9rem/1.4 var(--sans);
+  color: var(--mut);
+}
+
+.widget-pomo-info p b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.widget-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .55rem 1.1rem;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  border-radius: 999px;
+  color: #fff;
+  font: 600 .82rem var(--sans);
+  text-decoration: none;
+  box-shadow: 0 4px 12px -4px rgba(31, 79, 230, .4);
+  transition: all .2s;
+}
+
+.widget-btn:hover {
+  background: linear-gradient(180deg, #6a9bff, #2f62ff);
+  transform: translateY(-1px);
+}
+
+/* ---- Schedule Widget ---- */
+.bento-schedule-widget {
+  grid-column: span 6;
+}
+
+.widget-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-top: .5rem;
+}
+
+.widget-schedule-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .75rem;
+  background: var(--surface-2);
+  border-radius: 12px;
+  border-left: 3px solid transparent;
+  transition: all .2s;
+}
+
+.widget-schedule-item.ongoing {
+  border-left-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 8%, var(--surface-2));
+}
+
+.widget-schedule-item.past {
+  opacity: .5;
+}
+
+.widget-schedule-time {
+  font: 600 .75rem var(--sans);
+  color: var(--mut);
+  font-variant-numeric: tabular-nums;
+  min-width: 42px;
+}
+
+.widget-schedule-title {
+  flex: 1;
+  font: 500 .85rem var(--sans);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-schedule-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 6px var(--acc);
+  flex-shrink: 0;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  50% { opacity: 0.4; }
+}
+
+.widget-empty {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  font: 500 .82rem var(--sans);
+  color: var(--mut);
+}
+
+.widget-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .5rem;
+  font: 600 .78rem var(--sans);
+  color: var(--acc);
+  text-decoration: none;
+  transition: gap .2s;
+}
+
+.widget-link:hover {
+  gap: .55rem;
+}
+
+@media (max-width: 1024px) {
+  .bento-pomodoro-widget,
+  .bento-schedule-widget {
+    grid-column: span 12;
+  }
+}

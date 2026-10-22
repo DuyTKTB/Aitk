@@ -12,6 +12,7 @@ import {
   query, where, serverTimestamp, arrayUnion, arrayRemove, onSnapshot,
   orderBy, limit, writeBatch,
 } from 'firebase/firestore';
+import { scoreExam, qType } from './examScoring.js';
 import { db } from './firebase.js';
 
 /* ============ HELPERS ============ */
@@ -726,17 +727,7 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
   }
 
   // Chấm điểm
-  let correctCount = 0;
-  let score = 0;
-  const detail = exam.questions.map((q, i) => {
-    const picked = typeof answers[i] === 'number' ? answers[i] : -1;
-    const isCorrect = picked === q.correct;
-    if (isCorrect) {
-      correctCount++;
-      score += q.points || 1;
-    }
-    return { index: i, picked, correct: q.correct, isCorrect };
-  });
+  const { detail, correctCount, score } = scoreExam(exam.questions, answers);
 
   const data = {
     examId,
@@ -1211,15 +1202,7 @@ export async function extendExam(examId, minutes = 15) {
 
 /** Điểm một bài theo đáp án hiện tại của đề. */
 export function gradeAnswers(questions, answers = {}) {
-  let correctCount = 0;
-  let score = 0;
-  const detail = questions.map((q, i) => {
-    const picked = typeof answers[i] === 'number' ? answers[i] : -1;
-    const isCorrect = picked === q.correct;
-    if (isCorrect) { correctCount += 1; score += q.points || 1; }
-    return { index: i, picked, correct: q.correct, isCorrect };
-  });
-  return { detail, correctCount, score };
+  return scoreExam(questions, answers);
 }
 
 /**
@@ -1273,14 +1256,17 @@ export function analyzeSubmissions(exam, subs = []) {
   const n = subs.length;
   const scores = subs.map((s) => Number(s.score) || 0);
   const questions = (exam?.questions || []).map((q, qi) => {
-    const counts = new Array((q.options || []).length).fill(0);
+    const isMC = qType(q) === 'single_choice';
+    const counts = new Array(isMC ? (q.options || []).length : 0).fill(0);
     let skipped = 0;
     subs.forEach((s) => {
       const p = s.detail?.[qi]?.picked ?? s.answers?.[qi];
       if (typeof p === 'number' && p >= 0 && p < counts.length) counts[p] += 1;
       else skipped += 1;
     });
-    const correctRate = n ? counts[q.correct] / n : 0;
+    const correctRate = n
+      ? (isMC ? counts[q.correct] / n : subs.filter((s) => s.detail?.[qi]?.isCorrect).length / n)
+      : 0;
     const topWrong = counts
       .map((c, oi) => ({ oi, c }))
       .filter((x) => x.oi !== q.correct)

@@ -135,16 +135,27 @@ export default function CreateExamPage({
         title: meta.title || `Đề AI tạo ${new Date().toLocaleDateString('vi-VN')}`,
         description: meta.description || '',
         duration: meta.duration || 45,
-        questions: questions.map((q) => ({
-          q: q.q ?? q.content ?? '',
-          options: q.options || [],
-          correct: typeof q.correct === 'number' ? q.correct : -1,
-          points: q.points || 1,
-          explain: q.explain || '',
-          topic: q.topic || '',
-          level: q.level || '',
-          warns: q.warns || [],
-        })),
+        questions: questions.map((q) => {
+          const type = q.type || 'single_choice';
+          const base = {
+            q: q.q ?? q.content ?? '',
+            type,
+            points: q.points || 1,
+            explain: q.explain || '',
+            topic: q.topic || '',
+            level: q.level || '',
+            levelKey: q.levelKey,
+            warns: q.warns || [],
+          };
+          /* Giữ đủ dữ liệu cho câu Đúng/Sai và Trả lời ngắn (trước đây bị cắt mất) */
+          if (type === 'true_false') return { ...base, statements: q.statements || [] };
+          if (type === 'short_answer') return { ...base, answer: q.answer ?? '', accepted: q.accepted || [] };
+          return {
+            ...base,
+            options: q.options || [],
+            correct: typeof q.correct === 'number' ? q.correct : -1,
+          };
+        }),
       });
     }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { isAdmin } from './lib/isAdmin.js';   // nguồn duy nhất (claims), thay cho bản cũ đọc VITE_ADMIN_EMAILS
+import { CAMERA_GAMES } from './lib/cameraGames.js';
 import { initSubmitQueue } from './lib/submitQueue.js';
 import { initServerClock } from './lib/serverClock.js';
 import { useLocalStorage } from './hooks.js';
@@ -34,6 +35,16 @@ const JeopardyGame = lazy(() => import('./components/games/JeopardyGame.jsx'));
 const VirtualLab = lazy(() => import('./components/games/VirtualLab.jsx'));
 const ElementBattle = lazy(() => import('./components/games/ElementBattle.jsx'));
 const ChemSudoku = lazy(() => import('./components/games/ChemSudoku.jsx'));
+/* ❗ Game mới bổ sung route (trước đây bị thiếu, bấm vào ra 404) */
+const TugOfWarGame = lazy(() => import('./components/games/TugOfWarGame.jsx'));
+const LuckyWheelGame = lazy(() => import('./components/games/LuckyWheelGame.jsx'));
+const FlipPuzzleGame = lazy(() => import('./components/games/FlipPuzzleGame.jsx'));
+const MillionaireGame = lazy(() => import('./components/games/MillionaireGame.jsx'));
+const QuizRacingGame = lazy(() => import('./components/games/QuizRacingGame.jsx'));
+const MinesweeperQuiz = lazy(() => import('./components/games/MinesweeperQuiz.jsx'));
+const QuizDuel = lazy(() => import('./components/games/QuizDuel.jsx'));
+const CameraGame = lazy(() => import('./components/games/CameraGame.jsx'));
+const Lab3D = lazy(() => import('./features/lab3d/Lab3D.jsx'));
 
 /* ============ CLASSROOM ============ */
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.jsx'));
@@ -163,7 +174,11 @@ const PAGES = [
   ['my-classes', 'Lớp học của tôi', IconClass],
 ];
 
-const GAME_ROUTES = ['chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku'].map((g) => 'games/' + g);
+const GAME_ROUTES = [
+  'chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku',
+  'tugofwar', 'wheel', 'flip', 'millionaire', 'racing', 'mines', 'duel', 'lab-3d',
+  ...CAMERA_GAMES.map((g) => g.id),
+].map((g) => 'games/' + g);
 
 /* ============ PAGE ROUTING HELPERS ============ */
 const readPage = () => {
@@ -455,6 +470,17 @@ export default function App() {
     if (page === 'games/lab') return <VirtualLab />;
     if (page === 'games/battle') return <ElementBattle />;
     if (page === 'games/sudoku') return <ChemSudoku />;
+    if (page === 'games/tugofwar') return <TugOfWarGame />;
+    if (page === 'games/wheel') return <LuckyWheelGame />;
+    if (page === 'games/flip') return <FlipPuzzleGame />;
+    if (page === 'games/millionaire') return <MillionaireGame />;
+    if (page === 'games/racing') return <QuizRacingGame />;
+    if (page === 'games/mines') return <MinesweeperQuiz onExit={() => navigate('games')} />;
+    if (page === 'games/duel') return <QuizDuel />;
+    if (page === 'games/lab-3d') return <Lab3D />;
+    if (page.startsWith('games/cam-')) {
+      return <CameraGame gameId={page.replace('games/', '')} onExit={() => navigate('games')} />;
+    }
 
     if (page === 'admin' && isAdmin(user)) {
       return <AdminPanel />;
@@ -485,6 +511,10 @@ export default function App() {
   /* Trang AI Chat chạy toàn màn hình: ẩn nav trên/dưới, mascot, nút chat nổi, footer.
      AIChat đã có sẵn nút "Về trang chủ" (ds-exit-btn) nên không bị kẹt trong trang. */
   const isAiPage = page === 'ai';
+  /* Khu giáo viên (Lớp học + AutoExam Studio...) cũng chạy toàn màn hình, không có nav chính.
+     Học sinh vào #classroom vẫn thấy giao diện thường. */
+  const isTeacherPage = page === 'classroom' && (pro.isPro || isAdmin(user));
+  const isFullPage = isAiPage || isTeacherPage;
 
   return (
     <div data-page={page}>
@@ -495,8 +525,8 @@ export default function App() {
       >Bỏ qua điều hướng</a>
       <div className="scroll-progress" ref={progRef} aria-hidden="true" />
 
-      {!isAiPage && <PetWidget />}
-      {!isAiPage && <ChatWidget />}
+      {!isFullPage && <PetWidget />}
+      {!isFullPage && <ChatWidget />}
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
       {page === 'home' && <ElecBuddies />}
 
@@ -506,7 +536,7 @@ export default function App() {
         <span>ELEC AI</span>
       </div>
 
-      {!isAiPage && (
+      {!isFullPage && (
       <MobileHeader
         page={page}
         theme={theme}
@@ -521,7 +551,7 @@ export default function App() {
       />
       )}
 
-      {!isAiPage && (
+      {!isFullPage && (
       <DesktopNav
         page={page}
         theme={theme}
@@ -567,9 +597,9 @@ export default function App() {
         </div>
       </dialog>
 
-      {!isAiPage && <SiteFooter />}
+      {!isFullPage && <SiteFooter />}
 
-      {!isAiPage && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} />}
+      {!isFullPage && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} />}
 
       <CommandPalette />
     </div>

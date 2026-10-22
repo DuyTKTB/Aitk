@@ -639,6 +639,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
       active={view}
       onChange={setView}
       onExit={onBack}
+      autoHideNav={true}
       exitLabel="Về quản lý lớp"
       sideNote={sideNote}
     >
