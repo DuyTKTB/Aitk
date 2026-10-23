@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { AuthProvider } from './hooks/useAuth.jsx';
 import { SettingsProvider } from './contexts/SettingsContext.jsx';
 import { ToastProvider } from './ui/index.jsx';
+import { Analytics } from '@vercel/analytics/react';
 
 /* ============ CSS NỀN ============ */
 import './index.css';
@@ -136,6 +137,7 @@ createRoot(document.getElementById('root')).render(
         <AuthProvider>
           <ToastProvider>
             <App />
+            <Analytics />
           </ToastProvider>
         </AuthProvider>
       </SettingsProvider>
