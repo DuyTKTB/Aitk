@@ -35,10 +35,15 @@ import './styles/tools-apple.css';
 import './styles/violation-overlay.css';
 import './styles/round-polish.css';
 
+/* Chế độ nhẹ cho máy yếu — phải import SAU các file CSS khác để ghi đè */
+import './perf-lite.css';
+
 import App from './App.jsx';
 import { applySettings } from './lib/settings.js';
 import { initFeedbackQueue } from './lib/feedback.js';
+import { applyPerfMode } from './lib/perf.js';
 
+applyPerfMode();
 applySettings();
 initFeedbackQueue();
 

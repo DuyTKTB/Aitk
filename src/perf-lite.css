@@ -1,0 +1,53 @@
+/* ============================================================
+   perf-lite.css — chế độ nhẹ cho máy yếu (iPhone 8 trở xuống…)
+   ------------------------------------------------------------
+   Bật bằng <html class="perf-lite"> — xem src/lib/perf.js.
+   Nguyên tắc: chỉ tắt thứ tốn GPU khi cuộn/vẽ (blur nền, animation
+   vô hạn, bóng đổ nhiều lớp). KHÔNG đổi bố cục, cỡ chữ, màu sắc.
+   ============================================================ */
+
+/* 1) Blur nền (backdrop-filter) — tốn GPU nhất trên máy cũ.
+      Toàn bộ app có ~2.000 khai báo loại này, mỗi panel kính mờ buộc
+      Safari render lại từng frame khi cuộn. */
+html.perf-lite *,
+html.perf-lite *::before,
+html.perf-lite *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  will-change: auto !important;
+}
+
+/* 2) Lớp trang trí động: tắt animation vô hạn + blur/glow */
+html.perf-lite [class*="orb"],
+html.perf-lite [class*="blob"],
+html.perf-lite [class*="aurora"],
+html.perf-lite [class*="particle"],
+html.perf-lite [class*="spark"],
+html.perf-lite [class*="glow"],
+html.perf-lite [class*="cloud"],
+html.perf-lite [class*="fx-"],
+html.perf-lite [class*="marquee"],
+html.perf-lite .crystal,
+html.perf-lite .field-cloud {
+  animation: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* 3) Nền cố định + cuộn mượt = repaint liên tục trên iOS cũ */
+html.perf-lite {
+  scroll-behavior: auto !important;
+}
+html.perf-lite * {
+  background-attachment: scroll !important;
+}
+
+/* 4) Bóng đổ nhiều lớp → 1 lớp mỏng (vẫn giữ phân cấp thị giác) */
+html.perf-lite [class*="card"],
+html.perf-lite [class*="modal"],
+html.perf-lite [class*="panel"],
+html.perf-lite [class*="sheet"],
+html.perf-lite [class*="dialog"],
+html.perf-lite [class*="popover"] {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
