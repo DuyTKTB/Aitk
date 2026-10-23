@@ -293,7 +293,11 @@ const CHEM_REPLACEMENTS = [
 ].sort((a, b) => b[0].length - a[0].length);
 
 const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const CHEM_RE = new RegExp(`(?<![0-9])(?:${CHEM_REPLACEMENTS.map(([f]) => escRe(f)).join('|')})(?![0-9a-z])`, 'g');
+/* KHÔNG dùng lookbehind (?<!...) ở đây: Safari/iOS < 16.4 (iPhone 8 trở xuống)
+   ném "Invalid regular expression: invalid group specifier name" ngay khi nạp
+   module → cả trang AI trắng. Thay bằng cách bắt ký tự đứng trước vào group 1
+   rồi ghép lại khi thay thế. */
+const CHEM_RE = new RegExp(`(^|[^0-9])(${CHEM_REPLACEMENTS.map(([f]) => escRe(f)).join('|')})(?![0-9a-z])`, 'g');
 const CHEM_MAP = new Map(CHEM_REPLACEMENTS);
 
 function normalizeChemTextOnly(text) {
@@ -301,7 +305,7 @@ function normalizeChemTextOnly(text) {
     .replace(/\^3\+/g, '³⁺').replace(/\^2\+/g, '²⁺').replace(/\^1\+/g, '⁺')
     .replace(/\^\+/g, '⁺').replace(/\^3-/g, '³⁻').replace(/\^2-/g, '²⁻')
     .replace(/\^1-/g, '⁻').replace(/\^-/g, '⁻');
-  result = result.replace(CHEM_RE, (m) => CHEM_MAP.get(m) ?? m);
+  result = result.replace(CHEM_RE, (m, prefix, chem) => prefix + (CHEM_MAP.get(chem) ?? chem));
   return result
     .replace(/<=>/g, '⇌').replace(/<->/g, '⇌')
     .replace(/-->/g, '→').replace(/->/g, '→').replace(/=>/g, '→')
