@@ -11,6 +11,7 @@ const Home = lazy(() => import('./components/Home.jsx'));
 const Landing = lazy(() => import('./components/Landing.jsx'));
 const PeriodicTable = lazy(() => import('./components/PeriodicTable.jsx'));
 const ClockHub = lazy(() => import('./components/ClockHub.jsx'));
+const Schedule = lazy(() => import('./components/Schedule.jsx'));
 const ExamCountdown = lazy(() => import('./components/ExamCountdown.jsx'));
 const Notes = lazy(() => import('./components/Notes.jsx'));
 const Quiz = lazy(() => import('./components/Quiz.jsx'));
@@ -145,6 +146,7 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Tiện ích',
     tools: [
+      { id: 'schedule', label: 'Thời khóa biểu', desc: 'Tự lập lịch học, nhắc đúng giờ', Icon: IconCalendar },
       { id: 'pomodoro', label: 'Clock Hub', desc: 'Pomodoro, hẹn giờ, báo thức', Icon: IconTimer },
       { id: 'exam', label: 'Kỳ thi', desc: 'Đếm ngược kỳ thi', Icon: IconCalendar },
       { id: 'grade', label: 'Tính điểm', desc: 'Tính GPA, xét tuyển', Icon: IconTarget },
@@ -211,6 +213,7 @@ const pageMeta = (page) => {
     balance: 'Cân bằng phương trình hóa học chính xác bằng đại số tuyến tính.',
     analyze: 'Phân tích hợp chất — nhận diện loại, tính chất, phản ứng đặc trưng.',
     pomodoro: 'Clock Hub — Đồng hồ tổng hợp: Pomodoro, hẹn giờ, báo thức, bấm giây, đồng hồ thế giới.',
+    schedule: 'Thời khóa biểu — tự lập lịch học, nhắc đúng giờ và theo dõi tiến độ mỗi ngày.',
     quiz: 'Ôn tập Hóa học với quiz thông minh, lặp lại ngắt quãng.',
     games: 'Học Hóa qua trò chơi: bắt gà, bắn súng, phòng lab ảo, đấu nguyên tố.',
     profile: 'Trang cá nhân — quản lý tài khoản, thống kê học tập.',
@@ -453,6 +456,7 @@ export default function App() {
     if (page === 'analyze') return <CompoundAnalyzer />;
     if (page === 'balance') return <EquationBalancer />;
     if (page === 'pomodoro') return <ClockHub />;
+    if (page === 'schedule') return <Schedule />;
     if (page === 'exam') return <ExamCountdown />;
     if (page === 'notes') return <Notes />;
     if (page === 'notebook') return <WrongNotebook />;
@@ -528,7 +532,7 @@ export default function App() {
       {!isFullPage && <PetWidget />}
       {!isFullPage && <ChatWidget />}
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
-      {page === 'home' && <ElecBuddies />}
+      {/* {page === 'home' && <ElecBuddies />} */}
 
       <LiveSessionBanner />
 

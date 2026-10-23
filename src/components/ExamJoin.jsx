@@ -29,6 +29,7 @@ import {
 import { useExamGuard } from '../hooks/useExamGuard.js';
 import useMobileGuard from '../hooks/useMobileGuard.js';
 import { useProctorCamera } from '../hooks/useProctorCamera.js';
+import useMotionGuard, { requestMotionPermission } from '../hooks/useMotionGuard.js';
 import ExamResult from './ExamResult.jsx';
 import ViolationOverlay from './ViolationOverlay.jsx';
 import MathText from './MathText.jsx';
@@ -36,8 +37,11 @@ import RetryRequestModal from './RetryRequestModal.jsx';
 
 // [1.1] Import theo hướng dẫn
 import ExamPaperView, { PassageBox } from './ExamPaperView.jsx';
+import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.jsx';
+import { isAnswered, countAnswered, packAnswers } from '../lib/examScoring.js';
 import { buildLayout, resolveMode } from '../lib/examLayout.js';
 import '../styles/classroom.css';
+import '../styles/exam-types.css';
 import '../styles/exam-pro.css';
 import '../styles/exam-join-v6.css';
 import '../styles/exam-paper.css'; // <-- File CSS mới
@@ -101,7 +105,7 @@ const IcoPanel = ({ size = 18 }) => (
 );
 
 const QuestionCard = memo(function QuestionCard({ q, qi, num, picked, flagged, paused, onPick, onFlag }) {
-  const longOpts = q.options.some((o) => String(o ?? '').length > 48);
+  const longOpts = (q.options || []).some((o) => String(o ?? '').length > 48);
   return (
     <div className="ep-q-card">
       <div className="ep-q-head">
@@ -122,7 +126,10 @@ const QuestionCard = memo(function QuestionCard({ q, qi, num, picked, flagged, p
       {(q.passage || q.instruction) && <PassageBox instruction={q.instruction} passage={q.passage} />}
 
       <MathText as="p" className="ep-q-text">{q.q}</MathText>
+      <QuestionImage q={q} />
 
+      {!isChoiceType(q) && <QuestionAnswer q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />}
+      {isChoiceType(q) && (
       <div className={'ep-opts' + (longOpts ? ' one' : '')}>
         {q.options.map((opt, i) => (
           <button
@@ -139,20 +146,21 @@ const QuestionCard = memo(function QuestionCard({ q, qi, num, picked, flagged, p
           </button>
         ))}
       </div>
+      )}
     </div>
   );
 });
 
-const QuestionGrid = memo(function QuestionGrid({ total, order, answers, flags, currentQ, paused, onJump }) {
+const QuestionGrid = memo(function QuestionGrid({ total, order, questions, answers, flags, currentQ, paused, onJump }) {
   return (
     <div className="ep-sidebar-grid">
       {Array.from({ length: total }, (_, i) => {
         const oi = order[i] ?? i;
-        const isAnswered = answers[oi] !== undefined;
+        const done = isAnswered(questions?.[oi], answers[oi]);
         const isFlagged = !!flags[oi];
         const cls =
           'ep-sidebar-cell' +
-          (isAnswered ? ' done' : '') +
+          (done ? ' done' : '') +
           (isFlagged ? ' flagged' : '') +
           (i === currentQ ? ' cur' : '');
         return (
@@ -333,7 +341,7 @@ function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sen
   );
 }
 
-const makeThumbnail = (video, max = 160) => {
+const makeThumbnail = (video, max = 160, quality = 0.55) => {
   if (!video || !video.videoWidth || video.readyState < 2) return null;
   try {
     const scale = Math.min(1, max / Math.max(video.videoWidth, video.videoHeight));
@@ -345,7 +353,7 @@ const makeThumbnail = (video, max = 160) => {
     const ctx = c.getContext('2d');
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, w, h);
-    return c.toDataURL('image/jpeg', 0.55);
+    return c.toDataURL('image/jpeg', quality);
   } catch {
     return null;
   }
@@ -376,6 +384,8 @@ export default function ExamJoin({ token, onExit }) {
   const [teacherWarning, setTeacherWarning] = useState(null);
   const [kickReason, setKickReason] = useState('');
   const [paused, setPaused] = useState(false);
+  const [typing, setTyping] = useState(false); // đang gõ vào ô trả lời → bàn phím ảo đang mở
+  const typingUntilRef = useRef(0);
 
   const [prevSubmission, setPrevSubmission] = useState(null);
   const [retryPermit, setRetryPermit] = useState(null);
@@ -407,8 +417,8 @@ export default function ExamJoin({ token, onExit }) {
   useEffect(() => { pausedRef.current = paused; }, [paused]);
   useEffect(() => { joinReadyRef.current = joinReady; }, [joinReady]);
   useEffect(() => {
-    answeredRef.current = Object.keys(answers).length;
-  }, [answers]);
+    answeredRef.current = countAnswered(exam?.questions, answers);
+  }, [answers, exam]);
 
   // Vào phòng thi trên màn hình nhỏ (hoặc xoay/đổi cỡ) → thu camera thành nút tròn, khỏi che bài
   useEffect(() => {
@@ -480,8 +490,9 @@ export default function ExamJoin({ token, onExit }) {
   const finishExam = useCallback(async (opts = {}) => {
     if (!exam || !user || submittedRef.current) return;
     submittedRef.current = true;
+    if (opts.auto) console.warn('[ExamJoin] TỰ ĐỘNG NỘP — lý do:', opts.reason || 'violation', opts);
 
-    const arr = exam.questions.map((_, i) => answersRef.current[i] ?? -1);
+    const arr = packAnswers(exam.questions, answersRef.current);
     try {
       const res = await submitExam({
         examId: exam.id,
@@ -503,7 +514,7 @@ export default function ExamJoin({ token, onExit }) {
 
       guardRef.current?.exitFullscreen?.();
       if (res.ok) {
-        setResult({ ...res, autoSubmitted: !!opts.auto });
+        setResult({ ...res, autoSubmitted: !!opts.auto, autoReason: opts.auto ? (opts.reason || 'violation') : '' });
         setStage('result');
       } else {
         setResult({
@@ -514,6 +525,7 @@ export default function ExamJoin({ token, onExit }) {
           detail: [],
           saveError: res.error || 'Không lưu được bài',
           autoSubmitted: !!opts.auto,
+          autoReason: opts.auto ? (opts.reason || 'violation') : '',
         });
         setStage('result');
       }
@@ -527,23 +539,25 @@ export default function ExamJoin({ token, onExit }) {
         detail: [],
         saveError: e.message || 'Lỗi không xác định',
         autoSubmitted: !!opts.auto,
+        autoReason: opts.auto ? (opts.reason || 'violation') : '',
       });
       setStage('result');
     }
   }, [exam, user, sessionId, retryPermit, prevSubmission]);
 
   const handleAutoSubmit = useCallback((count) => {
-    finishExam({ auto: true, violationCount: count ?? guardRef.current?.violations ?? 0 });
+    finishExam({ auto: true, reason: 'violation', violationCount: count ?? guardRef.current?.violations ?? 0 });
   }, [finishExam]);
 
   const guard = useExamGuard({
     active: stage === 'exam',
     onAutoSubmit: handleAutoSubmit,
+    /* Mặc định bật, nhưng NẾU giáo viên đã tắt trong "Chỉnh sửa đề" thì tôn trọng lựa chọn đó */
     config: proctorConfig ? {
-      ...proctorConfig,
       strictMode: true,
       fullscreenLock: true,
       blockCopyPaste: true,
+      ...proctorConfig,
     } : null,
     onEvent: (evt) => {
       if (!exam || !user?.uid) return;
@@ -579,9 +593,22 @@ export default function ExamJoin({ token, onExit }) {
   guardRef.current = guard;
 
   // Chống gian lận bổ sung trên điện thoại / máy tính bảng (xoay màn hình, split view, zoom, Back, giữ-chạm…)
+  /* Bàn phím ảo (khi gõ câu Trả lời ngắn) làm thay đổi kích thước viewport → KHÔNG được tính là vi phạm */
+  const mobilePush = useCallback((type, severity, meta) => {
+    const typingNow = Date.now() < typingUntilRef.current;
+    if (typingNow && /resize|viewport|orient|zoom|split|keyboard|layout|size/i.test(String(type))) return undefined;
+    return guardRef.current?.pushEvent?.(type, severity, meta);
+  }, []);
+
+  /* Nhấc / giơ / lắc điện thoại → ghi vi phạm 'hard' → tự chụp ảnh camera gửi giáo viên xem xét */
+  useMotionGuard({
+    active: stage === 'exam' && !paused && proctorConfig?.motionGuard !== false,
+    onLift: (info) => guardRef.current?.pushEvent?.('device_lifted', 'hard', info),
+  });
+
   useMobileGuard({
     active: stage === 'exam' && !paused,
-    pushEvent: guard.pushEvent,
+    pushEvent: mobilePush,
     trackHidden: false, // đổi thành true nếu useExamGuard chưa tự bắt visibilitychange
   });
 
@@ -617,14 +644,112 @@ export default function ExamJoin({ token, onExit }) {
   useEffect(() => {
     if (stage !== 'exam') return undefined;
     if (paused) return undefined;
-    const timer = setInterval(() => setTimeLeft((t) => (t > 0 ? t - 1 : 0)), 1000);
-    return () => clearInterval(timer);
+    /* Tính theo đồng hồ thật: khoá màn hình / chuyển tab trên điện thoại làm setInterval bị đóng băng,
+       nếu chỉ trừ 1 giây mỗi nhịp thì học sinh được "lời" thời gian. */
+    let last = Date.now();
+    const tick = () => {
+      const d = Math.floor((Date.now() - last) / 1000);
+      if (d <= 0) return;
+      last += d * 1000;
+      setTimeLeft((t) => (t > 0 ? Math.max(0, t - d) : 0));
+    };
+    const timer = setInterval(tick, 500);
+    document.addEventListener('visibilitychange', tick);
+    window.addEventListener('focus', tick);
+    window.addEventListener('pageshow', tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('focus', tick);
+      window.removeEventListener('pageshow', tick);
+    };
   }, [stage, paused]);
+
+  /* Giữ màn hình sáng: màn hình tự tắt = tab bị ẩn = bị tính vi phạm oan */
+  useEffect(() => {
+    if (stage !== 'exam' || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return undefined;
+    let lock = null;
+    let dead = false;
+    const acquire = async () => {
+      try {
+        if (dead || document.visibilityState !== 'visible') return;
+        lock = await navigator.wakeLock.request('screen');
+      } catch { /* trình duyệt từ chối — bỏ qua */ }
+    };
+    const onVis = () => { if (document.visibilityState === 'visible') acquire(); };
+    acquire();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      dead = true;
+      document.removeEventListener('visibilitychange', onVis);
+      try { lock?.release?.(); } catch { /* */ }
+    };
+  }, [stage]);
+
+  /* Lưu ngay bài làm khi ẩn tab / đóng trang (điện thoại hay tự đóng tab nền) + hỏi lại khi vô tình thoát */
+  useEffect(() => {
+    if (stage !== 'exam' || !exam || !user?.uid) return undefined;
+    const flush = () => {
+      if (submittedRef.current) return;
+      clearTimeout(saveTimerRef.current);
+      saveAttemptAnswers({ examId: exam.id, studentId: user.uid, answers: answersRef.current }).catch(() => {});
+    };
+    const onVis = () => { if (document.visibilityState === 'hidden') flush(); };
+    const onUnload = (e) => {
+      if (submittedRef.current) return;
+      flush();
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('beforeunload', onUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('beforeunload', onUnload);
+    };
+  }, [stage, exam, user?.uid]);
+
+  /* Chống kéo-để-tải-lại (pull-to-refresh) làm mất bài khi đang cuộn trên điện thoại */
+  useEffect(() => {
+    if (stage !== 'exam') return undefined;
+    const h = document.documentElement;
+    const b = document.body;
+    const prev = [h.style.overscrollBehaviorY, b.style.overscrollBehaviorY];
+    h.style.overscrollBehaviorY = 'none';
+    b.style.overscrollBehaviorY = 'none';
+    return () => { h.style.overscrollBehaviorY = prev[0]; b.style.overscrollBehaviorY = prev[1]; };
+  }, [stage]);
+
+  /* Theo dõi ô nhập đang focus → ẩn thanh điều hướng dưới đáy khi bàn phím mở */
+  useEffect(() => {
+    if (stage !== 'exam') return undefined;
+    const isField = (el) => el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !['checkbox', 'radio', 'button'].includes(el.type);
+    const onIn = (e) => {
+      if (!isField(e.target)) return;
+      typingUntilRef.current = Date.now() + 3600000;
+      setTyping(true);
+    };
+    const onOut = (e) => {
+      if (!isField(e.target)) return;
+      typingUntilRef.current = Date.now() + 1500; // bàn phím đóng lại cũng gây resize
+      setTyping(false);
+    };
+    document.addEventListener('focusin', onIn);
+    document.addEventListener('focusout', onOut);
+    return () => {
+      document.removeEventListener('focusin', onIn);
+      document.removeEventListener('focusout', onOut);
+    };
+  }, [stage]);
 
   useEffect(() => {
     if (stage === 'exam' && timeLeft === 0 && exam && !paused) {
       finishExam({
         auto: true,
+        /* resume_expired: mở lại một lần làm bài cũ chưa nộp (đã quá giờ từ lâu) */
+        reason: attemptRef.current?.restored ? 'resume_expired' : 'time',
         violationCount: guardRef.current?.violations ?? 0,
         cameraStatus: proctor.status,
       });
@@ -707,8 +832,13 @@ export default function ExamJoin({ token, onExit }) {
     return listenSession(session.id, (s) => {
       if (!s) return;
       if (s.status === 'ended') {
-        if (!submittedRef.current) {
-          finishExam({ auto: true, violationCount: guardRef.current?.violations ?? 0 });
+        /* Phòng đã đóng TRƯỚC khi em vào (bản ghi cũ) → không nộp bài trắng thay em */
+        const endedBeforeJoin = first && !attemptRef.current?.restored && Date.now() - (startTimeRef.current || 0) < 15000;
+        first = false;
+        if (!submittedRef.current && !endedBeforeJoin) {
+          finishExam({ auto: true, reason: 'teacher_ended', violationCount: guardRef.current?.violations ?? 0 });
+        } else if (endedBeforeJoin) {
+          console.warn('[ExamJoin] Phòng thi đã kết thúc từ trước — bỏ qua tín hiệu tự nộp.');
         }
         return;
       }
@@ -752,7 +882,7 @@ export default function ExamJoin({ token, onExit }) {
       studentId: user.uid,
       studentName: user.displayName || user.email,
       currentQuestion: currentQ,
-      answered: Object.keys(answers).length,
+      answered: countAnswered(exam?.questions, answers),
       status: paused ? 'paused' : 'examining',
     }).catch(() => {});
   }, [currentQ, answers, stage, sessionId, user?.uid, paused, joinReady]);
@@ -854,15 +984,23 @@ export default function ExamJoin({ token, onExit }) {
     if (!cameraEnabled) return undefined;
     if (!joinReady) return undefined;
 
+    let lastBurstAt = 0;
     const handler = (evt) => {
       if (evt?.severity !== 'hard') return;
       if (!joinReadyRef.current) return;
       const video = proctor.videoRef?.current;
       if (!video || video.readyState < 2) return;
+      /* Giơ/nhấc điện thoại, phát hiện điện thoại… cần ảnh rõ: 400px, chụp ngay khung đầu tiên */
+      const now = Date.now();
+      if (now - lastBurstAt < 3000) return; // tránh gửi dồn dập
+      lastBurstAt = now;
 
       const frames = [];
       let i = 0;
       const snap = () => {
+        const dataUrl = makeThumbnail(video, 400, 0.65);
+        if (dataUrl) frames.push(dataUrl);
+        i++;
         if (i >= 5) {
           uploadBurst({
             sessionId,
@@ -872,10 +1010,7 @@ export default function ExamJoin({ token, onExit }) {
           }).catch(() => {});
           return;
         }
-        const dataUrl = makeThumbnail(video, 160);
-        if (dataUrl) frames.push(dataUrl);
-        i++;
-        setTimeout(snap, 400);
+        setTimeout(snap, 350);
       };
       snap();
     };
@@ -911,11 +1046,17 @@ export default function ExamJoin({ token, onExit }) {
     };
 
     check();
-    const id = setInterval(check, 800);
-    return () => clearInterval(id);
+    const evs = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange'];
+    evs.forEach((n) => document.addEventListener(n, check));
+    const id = setInterval(check, 3000); // dự phòng
+    return () => {
+      evs.forEach((n) => document.removeEventListener(n, check));
+      clearInterval(id);
+    };
   }, [stage, proctorConfig, overlayOpen, paused, guard.fsSupported]);
 
   const startExam = async () => {
+    requestMotionPermission(); // iOS: phải gọi trong lúc bấm nút (không await để không mất quyền vào fullscreen)
     const fsOk = await guard.enterFullscreen();
     if (!fsOk) {
       console.warn('[ExamJoin] Không vào fullscreen ngay, banner sẽ nhắc lại');
@@ -992,7 +1133,7 @@ export default function ExamJoin({ token, onExit }) {
   const onTouchStart = useCallback((e) => {
     if (mode === 'paper') { swipeRef.current = null; return; }
     if (e.touches.length !== 1) { swipeRef.current = null; return; }
-    if (e.target.closest?.('.katex-display, .ep-scrollx')) { swipeRef.current = null; return; }
+    if (e.target.closest?.('.katex-display, .ep-scrollx, input, textarea, .ep-tf, .ep-sa')) { swipeRef.current = null; return; }
     const t = e.touches[0];
     swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
   }, [mode]);
@@ -1247,14 +1388,27 @@ export default function ExamJoin({ token, onExit }) {
   }
 
   if (stage === 'result' && result) {
+    const REASONS = {
+      time: 'Hết giờ làm bài.',
+      resume_expired: 'Lần làm bài trước chưa được nộp và đã quá thời gian — hệ thống nộp bài đã lưu.',
+      violation: `Đạt ngưỡng vi phạm tối đa (${guardRef.current?.violations ?? '?'}/${guardRef.current?.maxViolations ?? '?'}).`,
+      teacher_ended: 'Giáo viên đã kết thúc phòng thi.',
+    };
     return (
-      <ExamResult
-        exam={exam}
-        result={result}
-        order={order} // [1.8] Truyền order vào ExamResult
-        showAnswer={exam.showAnswerAfter}
-        onExit={onExit}
-      />
+      <>
+        {result.autoSubmitted && REASONS[result.autoReason] && (
+          <div style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fef3c7', color: '#92400e', padding: '.6rem 1rem', font: '600 .85rem system-ui, sans-serif', textAlign: 'center', borderBottom: '1px solid #f59e0b' }}>
+            Bài được nộp tự động — lý do: {REASONS[result.autoReason]}
+          </div>
+        )}
+        <ExamResult
+          exam={exam}
+          result={result}
+          order={order} // [1.8] Truyền order vào ExamResult
+          showAnswer={exam.showAnswerAfter}
+          onExit={onExit}
+        />
+      </>
     );
   }
 
@@ -1262,7 +1416,7 @@ export default function ExamJoin({ token, onExit }) {
   const q = exam.questions[qi];
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
-  const answered = Object.keys(answers).length;
+  const answered = countAnswered(exam.questions, answers);
   const flaggedCount = Object.values(flags).filter(Boolean).length;
   const progress = (exam.questions.length > 0) ? (answered / exam.questions.length) * 100 : 0;
 
@@ -1285,7 +1439,7 @@ export default function ExamJoin({ token, onExit }) {
 
   return (
     <>
-      <div className="ep-exam">
+      <div className={'ep-exam' + (typing ? ' kbd' : '') + (mode === 'paper' ? ' is-paper' : '')}>
         {showFsBanner && (
           <div className="ep-warning danger" role="alert" style={{
             background: '#dc2626',
@@ -1339,7 +1493,10 @@ export default function ExamJoin({ token, onExit }) {
             </button>
             <div className="ep-header-title">
               <h2>{exam.title}</h2>
-              <span className="ep-header-sub">Câu {currentQ + 1} / {exam.questions.length}</span>
+              <span className="ep-header-sub">
+                Câu {currentQ + 1} / {exam.questions.length}
+                {showMonitor && <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>}
+              </span>
             </div>
           </div>
 
@@ -1481,6 +1638,17 @@ export default function ExamJoin({ token, onExit }) {
             )}
           </main>
 
+          {mode === 'paper' && (
+            <div className="ep-pbar">
+              <button type="button" className="ep-pbar-list" onClick={() => setSidebarOpen(true)} disabled={paused}>
+                <IcoPanel size={16} /> {answered}/{exam.questions.length} câu
+              </button>
+              <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)} disabled={paused}>
+                <IcoSend size={14} /> Nộp bài
+              </button>
+            </div>
+          )}
+
           <aside className={'ep-sidebar' + (sidebarOpen ? ' open' : '')}>
             <div className="ep-sidebar-head">
               <b>Danh sách câu</b>
@@ -1503,6 +1671,7 @@ export default function ExamJoin({ token, onExit }) {
             <QuestionGrid
               total={exam.questions.length}
               order={order}
+              questions={exam.questions}
               answers={answers}
               flags={flags}
               currentQ={currentQ}

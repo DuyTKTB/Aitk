@@ -1,0 +1,363 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap&subset=vietnamese');
+
+/* =========================================================================
+   home-aurora.css — TRANG CHỦ "AURORA GLASS"
+   Nạp SAU home-apple-bento.css. Không đổi logic, chỉ đổi lớp giao diện.
+
+   Bảng màu
+     Mist     #e9f0ff  nền sáng
+     Sky      #6ea8ff  cực quang xanh
+     Lilac    #c9b8ff  cực quang tím
+     Navy     #0f1b3d  chữ (không dùng đen thuần)
+     Slate    #5d6b8c  chữ phụ
+     Cobalt   #2f6bff  màu nhấn duy nhất cho nút chính
+   Bo góc phân cấp: hero 40 · thẻ 30 · ô tính năng 30 · ô nhỏ 20 · nút pill
+   Điểm nhấn duy nhất: quả cầu kính + icon 3D "cắm" vào góc thẻ
+   ========================================================================= */
+
+/* ---- 1. Token cục bộ: ghi đè biến mà file cũ đang dùng ---- */
+.db-bento-wrap {
+  --sans: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ink: #0f1b3d;
+  --mut: #5d6b8c;
+  --acc: #2f6bff;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-2: rgba(120, 140, 255, 0.1);
+  --soft: rgba(47, 107, 255, 0.1);
+  --line-soft: rgba(90, 110, 180, 0.14);
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.92);
+  --glass-blur: blur(22px) saturate(150%);
+  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(120, 140, 255, 0.08);
+  --sh-1: 0 12px 36px -8px rgba(70, 100, 255, 0.16), 0 2px 6px rgba(70, 100, 255, 0.05);
+  --sh-2: 0 20px 50px -8px rgba(70, 100, 255, 0.26), 0 3px 8px rgba(70, 100, 255, 0.07);
+  font-family: var(--sans);
+  color: var(--ink);
+}
+[data-theme='dark'] .db-bento-wrap {
+  --ink: #eef2ff;
+  --mut: #9aa7cf;
+  --acc: #6ea0ff;
+  --surface: rgba(34, 43, 92, 0.86);
+  --surface-2: rgba(130, 150, 255, 0.14);
+  --soft: rgba(110, 160, 255, 0.16);
+  --line-soft: rgba(160, 180, 255, 0.16);
+  --glass: rgba(24, 31, 70, 0.58);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  --sh-1: 0 14px 38px -10px rgba(0, 0, 0, 0.5);
+  --sh-2: 0 22px 54px -10px rgba(0, 0, 0, 0.62);
+}
+
+/* ---- 2. Nền cực quang + lưới mờ + hạt noise ---- */
+.db-bento-ambient {
+  background:
+    radial-gradient(900px 560px at 6% 0%, rgba(120, 170, 255, 0.5), transparent 62%),
+    radial-gradient(800px 560px at 98% 4%, rgba(190, 160, 255, 0.45), transparent 60%),
+    radial-gradient(720px 520px at 90% 62%, rgba(150, 225, 255, 0.34), transparent 62%),
+    radial-gradient(780px 560px at 2% 80%, rgba(205, 190, 255, 0.36), transparent 62%),
+    linear-gradient(180deg, #e9f0ff 0%, #f1f0ff 55%, #f7f9ff 100%);
+}
+[data-theme='dark'] .db-bento-ambient {
+  background:
+    radial-gradient(900px 560px at 6% 0%, rgba(60, 110, 255, 0.34), transparent 62%),
+    radial-gradient(800px 560px at 98% 4%, rgba(130, 90, 255, 0.3), transparent 60%),
+    radial-gradient(720px 520px at 90% 62%, rgba(40, 150, 220, 0.18), transparent 62%),
+    linear-gradient(180deg, #0b1030 0%, #0d1236 60%, #0a0e2a 100%);
+}
+.db-bento-ambient::before,
+.db-bento-ambient::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.db-bento-ambient::before {
+  background-image:
+    linear-gradient(rgba(90, 110, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 110, 255, 0.07) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+}
+.db-bento-ambient::after {
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---- 3. Thẻ kính + vòng kính "cắm" ở góc ---- */
+.db-bento-wrap .bento-grid { gap: 1.2rem; }
+.db-bento-wrap .bento-card,
+.db-bento-wrap .bento-stat-box {
+  border-radius: 30px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(var(--t), 0.16) 0%, transparent 60%),
+    var(--glass);
+}
+.db-bento-wrap .bento-card:hover,
+.db-bento-wrap .bento-stat-box:hover { transform: translateY(-2px); }
+.db-bento-wrap .bento-card::after,
+.db-bento-wrap .bento-stat-box::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -44px;
+  top: -44px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.85), rgba(var(--t), 0.24) 52%, rgba(var(--t), 0) 72%);
+}
+[data-theme='dark'] .db-bento-wrap .bento-card::after,
+[data-theme='dark'] .db-bento-wrap .bento-stat-box::after {
+  background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.18), rgba(var(--t), 0.3) 52%, rgba(var(--t), 0) 72%);
+}
+
+/* ---- 4. Icon kính 3D dùng chung ---- */
+.db-bento-wrap .bento-wt-ico,
+.db-bento-wrap .bento-feature-ico,
+.db-bento-wrap .bento-qbtn i,
+.db-bento-wrap .bento-focus-time {
+  position: relative;
+  color: #fff;
+  background:
+    radial-gradient(120% 80% at 28% 6%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 46%),
+    linear-gradient(155deg, color-mix(in srgb, rgb(var(--t)) 52%, #fff) 0%, rgb(var(--t)) 100%);
+  box-shadow:
+    0 10px 22px -6px rgba(var(--t), 0.5),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -5px 10px rgba(var(--t), 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+.db-bento-wrap .bento-wt-ico { width: 32px; height: 32px; border-radius: 11px; }
+.db-bento-wrap .bento-qbtn i { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 6px 12px -4px rgba(var(--t), 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -3px 6px rgba(var(--t), 0.4); }
+
+.db-bento-wrap .bento-wt { font-weight: 700; letter-spacing: -0.015em; }
+.db-bento-wrap .bento-widget-title a { color: var(--acc); font-weight: 600; }
+
+/* ---- 5. Hero: quả cầu kính + nhãn nổi ---- */
+.db-bento-wrap .bento-hero {
+  border-radius: 40px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.8), rgba(232, 238, 255, 0.58));
+}
+[data-theme='dark'] .db-bento-wrap .bento-hero { background: linear-gradient(160deg, rgba(40, 50, 110, 0.6), rgba(22, 28, 66, 0.55)); }
+.db-bento-wrap .bento-hero::after { display: none; }
+.db-bento-wrap .bento-hero-orbs i:nth-child(1) { background: #7fb2ff; }
+.db-bento-wrap .bento-hero-orbs i:nth-child(2) { background: #c9b0ff; }
+.db-bento-wrap .bento-hero-orbs i:nth-child(3) { background: #9fe3ff; opacity: 0.45; }
+.db-bento-wrap .bento-ai-avatar { box-shadow: 0 12px 28px -6px rgba(47, 107, 255, 0.4), 0 0 0 6px rgba(255, 255, 255, 0.55); }
+.db-bento-wrap .bento-date { color: var(--mut); font-weight: 600; }
+.db-bento-wrap .bento-hero-title h1 {
+  font-size: clamp(2rem, 3.6vw, 2.9rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+  color: var(--ink);
+}
+.db-bento-wrap .bento-hero-bubble { color: var(--mut); }
+
+.bento-hero-floats { position: absolute; top: 1.4rem; right: 2.2rem; width: 250px; height: 190px; pointer-events: none; }
+.bento-orb {
+  position: absolute;
+  right: 20px;
+  top: 6px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, #fff 0, rgba(255, 255, 255, 0.25) 24%, transparent 40%),
+    radial-gradient(circle at 62% 72%, #6ea8ff 0%, #8f86ff 55%, #d6c5ff 100%);
+  box-shadow:
+    inset -12px -16px 30px rgba(80, 90, 255, 0.38),
+    inset 8px 10px 22px rgba(255, 255, 255, 0.65),
+    0 26px 50px -12px rgba(110, 110, 255, 0.55);
+  animation: au-float 7s ease-in-out infinite alternate;
+}
+.bento-orb::before {
+  content: '';
+  position: absolute;
+  inset: -16px -38px;
+  border-radius: 50%;
+  border: 8px solid rgba(255, 255, 255, 0.6);
+  transform: rotate(-22deg) scaleY(0.3);
+  box-shadow: 0 0 22px rgba(160, 170, 255, 0.5), inset 0 0 14px rgba(255, 255, 255, 0.7);
+}
+.bento-float {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem 0.4rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--ink);
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px -8px rgba(70, 100, 255, 0.3);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+[data-theme='dark'] .bento-float { background: rgba(40, 50, 110, 0.7); border-color: rgba(255, 255, 255, 0.14); }
+.bento-float svg { padding: 4px; width: 22px; height: 22px; border-radius: 50%; color: #fff; background: linear-gradient(155deg, #7fb2ff, #2f6bff); box-sizing: border-box; }
+.bento-float.f1 { left: 0; top: 92px; animation: au-float 6s ease-in-out -2s infinite alternate; }
+.bento-float.f2 { right: 0; top: 142px; animation: au-float 8s ease-in-out -4s infinite alternate; }
+.bento-float.f2 svg { background: linear-gradient(155deg, #c9a6ff, #8b5cf6); }
+@keyframes au-float {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-9px); }
+}
+
+/* Ô hỏi + nút chính */
+.db-bento-wrap .bento-composer {
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 14px 40px -12px rgba(70, 100, 255, 0.25);
+}
+[data-theme='dark'] .db-bento-wrap .bento-composer { background: rgba(30, 38, 84, 0.7); border-color: rgba(255, 255, 255, 0.12); }
+.db-bento-wrap .bento-chip { background: rgba(120, 140, 255, 0.12); color: var(--mut); font-weight: 600; }
+.db-bento-wrap .bento-chip:hover { background: rgba(47, 107, 255, 0.14); color: var(--acc); }
+
+.db-bento-wrap .bento-send-btn,
+.db-bento-wrap .bento-pill-btn.primary,
+.db-bento-wrap .bento-input-pill button {
+  color: #fff;
+  background: linear-gradient(180deg, #5aa2ff, #2f6bff);
+  box-shadow: 0 8px 22px rgba(47, 107, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.db-bento-wrap .bento-pill-btn.primary:hover { filter: brightness(1.07); background: linear-gradient(180deg, #5aa2ff, #2f6bff); }
+.db-bento-wrap .bento-pill-btn {
+  height: 42px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 14px -6px rgba(70, 100, 255, 0.2);
+}
+[data-theme='dark'] .db-bento-wrap .bento-pill-btn { background: rgba(40, 50, 110, 0.6); border-color: rgba(255, 255, 255, 0.12); }
+.db-bento-wrap .bento-pill-btn.primary { border-color: transparent; }
+
+/* ---- 6. Mục tiêu hôm nay ---- */
+.db-bento-wrap .bento-ring {
+  background:
+    radial-gradient(closest-side, var(--surface) 80%, transparent 82%),
+    conic-gradient(from 0deg, rgb(var(--t)) calc(var(--p) * 1%), rgba(var(--t), 0.16) 0);
+  filter: drop-shadow(0 10px 18px rgba(var(--t), 0.28));
+}
+.db-bento-wrap .bento-ring b { font-weight: 800; }
+.db-bento-wrap .bento-week-dots { border-top-color: var(--line-soft); }
+.db-bento-wrap .bento-week-dot-item.active .bento-dot-circle {
+  background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.8), transparent 40%), rgb(var(--t));
+  box-shadow: 0 4px 10px -2px rgba(var(--t), 0.55);
+}
+
+/* ---- 7. Bốn tính năng: ô to, icon 3D cắm ở góc phải ---- */
+.db-bento-wrap .bento-features { gap: 1.2rem; }
+.db-bento-wrap .bento-feature {
+  min-height: 188px;
+  padding: 1.35rem 1.4rem;
+  border-radius: 30px;
+  background:
+    radial-gradient(90% 80% at 100% 0%, rgba(var(--t), 0.22), transparent 62%),
+    linear-gradient(165deg, rgba(var(--t), 0.1), rgba(var(--t), 0.02) 70%),
+    var(--glass);
+}
+.db-bento-wrap .bento-feature-ico {
+  position: absolute;
+  top: -16px;
+  right: -14px;
+  width: 92px;
+  height: 92px;
+  border-radius: 30px;
+  transform: rotate(10deg);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.db-bento-wrap .bento-feature-ico svg { width: 38px; height: 38px; position: relative; top: 10px; right: 8px; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.18)); }
+.db-bento-wrap .bento-feature:hover .bento-feature-ico { transform: rotate(4deg) scale(1.06) translate(-2px, 2px); }
+.db-bento-wrap .bento-feature-text { margin-top: auto; padding-top: 5.5rem; }
+.db-bento-wrap .bento-feature-text b { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.025em; }
+.db-bento-wrap .bento-feature-text small { font-size: var(--fs-sm); color: var(--mut); }
+.db-bento-wrap .bento-feature-go { top: auto; bottom: 1.1rem; right: 1.1rem; }
+
+/* ---- 8. Hàng truy cập nhanh ---- */
+.db-bento-wrap .bento-qbtn { height: 48px; border-radius: 999px; font-weight: 650; background: rgba(255, 255, 255, 0.66); }
+[data-theme='dark'] .db-bento-wrap .bento-qbtn { background: rgba(30, 38, 84, 0.6); }
+
+/* ---- 9. Lịch + Tập trung ---- */
+.db-bento-wrap .bento-sch-text h3 { font-weight: 800; letter-spacing: -0.03em; }
+.db-bento-wrap .bento-sch-list li { border-radius: 18px; background: rgba(255, 255, 255, 0.66); }
+[data-theme='dark'] .db-bento-wrap .bento-sch-list li { background: rgba(40, 50, 110, 0.5); }
+.db-bento-wrap .bento-sch-list li.live { background: rgba(var(--t), 0.18); }
+.db-bento-wrap .bento-sch-ring { filter: drop-shadow(0 6px 12px rgba(48, 209, 88, 0.3)); }
+.db-bento-wrap .bento-focus-time { width: 92px; height: 92px; border-radius: 30px; transform: rotate(-4deg); }
+.db-bento-wrap .bento-focus-time b { font-weight: 800; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
+.db-bento-wrap .bento-focus-body h3 { font-weight: 750; }
+
+/* ---- 10. Số liệu: ô pastel ---- */
+.db-bento-wrap .bento-stat-box {
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(var(--t), 0.2) 0%, transparent 62%),
+    linear-gradient(160deg, rgba(var(--t), 0.1), rgba(var(--t), 0.02) 64%),
+    var(--glass);
+}
+.db-bento-wrap .bento-stat-box::after { width: 110px; height: 110px; right: -30px; top: -30px; }
+.db-bento-wrap .bento-stat-val { font-weight: 800; letter-spacing: -0.04em; }
+.db-bento-wrap .bento-stat-val svg { filter: drop-shadow(0 4px 8px rgba(var(--t), 0.4)); }
+
+/* ---- 11. Lộ trình, nguyên tố, học tiếp, phòng thi, game ---- */
+.db-bento-wrap .bento-segmented-control { background: rgba(var(--t), 0.12); border: 1px solid rgba(255, 255, 255, 0.7); }
+.db-bento-wrap .bento-segmented-btn.active { background: var(--surface); box-shadow: 0 4px 12px -2px rgba(var(--t), 0.35); }
+.db-bento-wrap .bento-topic-btn { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.95); font-weight: 600; }
+[data-theme='dark'] .db-bento-wrap .bento-topic-btn { background: rgba(40, 50, 110, 0.55); border-color: rgba(255, 255, 255, 0.1); }
+.db-bento-wrap .bento-topic-btn span.num { background: linear-gradient(155deg, color-mix(in srgb, rgb(var(--t)) 55%, #fff), rgb(var(--t))); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+
+.db-bento-wrap .bento-el-symbol-box {
+  border-radius: 28px;
+  background:
+    radial-gradient(120% 80% at 28% 6%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.3) 60%),
+    rgba(var(--t), 0.12);
+  box-shadow: 0 14px 28px -10px rgba(var(--t), 0.45), inset 0 1.5px 0 #fff;
+  transform: rotate(-4deg);
+}
+.db-bento-wrap .bento-el-symbol-box b { font-weight: 800; }
+.db-bento-wrap .bento-el-details h3 { font-weight: 800; letter-spacing: -0.03em; }
+
+.db-bento-wrap .bento-recent-list a { border-radius: 20px; background: rgba(255, 255, 255, 0.66); border: 1px solid rgba(255, 255, 255, 0.9); }
+[data-theme='dark'] .db-bento-wrap .bento-recent-list a { background: rgba(40, 50, 110, 0.5); border-color: rgba(255, 255, 255, 0.08); }
+.db-bento-wrap .bento-input-pill { background: rgba(255, 255, 255, 0.78); border-color: rgba(255, 255, 255, 0.95); box-shadow: 0 8px 22px -10px rgba(70, 100, 255, 0.25); }
+[data-theme='dark'] .db-bento-wrap .bento-input-pill { background: rgba(30, 38, 84, 0.7); border-color: rgba(255, 255, 255, 0.12); }
+
+.db-bento-wrap .bento-game-pill {
+  border-radius: 22px;
+  padding: 1rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background:
+    linear-gradient(160deg, rgba(var(--t), 0.2), rgba(var(--t), 0.05)),
+    rgba(255, 255, 255, 0.6);
+}
+[data-theme='dark'] .db-bento-wrap .bento-game-pill {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(160deg, rgba(var(--t), 0.28), rgba(var(--t), 0.08)), rgba(30, 38, 84, 0.5);
+}
+.db-bento-wrap .bento-game-pill i {
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 32% 28%, #fff 0, rgba(255, 255, 255, 0.2) 34%, transparent 44%), rgb(var(--t));
+  box-shadow: 0 4px 8px -2px rgba(var(--t), 0.6), inset 0 -2px 4px rgba(0, 0, 0, 0.12);
+}
+.db-bento-wrap .bento-game-pill:hover { transform: translateY(-3px); box-shadow: 0 12px 24px -10px rgba(var(--t), 0.5); }
+
+/* ---- 12. Responsive ---- */
+@media (min-width: 1025px) and (max-width: 1220px) { .bento-hero-floats { display: none; } }
+@media (max-width: 640px) {
+  .bento-hero-floats { display: none; }
+  .db-bento-wrap { --glass-blur: blur(12px) saturate(140%); }
+  .db-bento-wrap .bento-card,
+  .db-bento-wrap .bento-stat-box { border-radius: 26px; }
+  .db-bento-wrap .bento-hero { border-radius: 32px; }
+  .db-bento-wrap .bento-feature { min-height: 160px; }
+  .db-bento-wrap .bento-feature-ico { width: 76px; height: 76px; border-radius: 26px; }
+  .db-bento-wrap .bento-feature-ico svg { width: 30px; height: 30px; }
+  .db-bento-wrap .bento-feature-text { padding-top: 4rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento-orb, .bento-float { animation: none !important; }
+  .db-bento-wrap .bento-feature-ico { transition: none; }
+}

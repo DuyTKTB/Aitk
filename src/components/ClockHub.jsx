@@ -11,7 +11,15 @@ import {
   IcoStar, IcoHeart, IcoCalendar, IcoFilter, IcoSearch,
   IcoChart, IcoInfo, IcoClipboard, IcoDownload, IcoUpload,
 } from './ClockIcons.jsx';
+import {
+  IcoTomato, IcoBrain, IcoBolt, IcoSprout,
+  IcoCloudRain, IcoWaves, IcoTree, IcoNoiseRing, IcoNoiseFill,
+  IcoChime, IcoAlarmClock,
+  IcoPencil, IcoGradCap, IcoEnvelope, IcoCake, IcoPlane, IcoRing,
+  IcoBulb, IcoSave, IcoHeadphones,
+} from './ClockIcons2.jsx';
 import './clock-hub.css';
+import './clock-hub-aurora.css';
 
 const TABS = [
   { id: 'focus',     label: 'Phiên tập trung',  Icon: IcoFocus,      color: '#4d86ff' },
@@ -71,10 +79,10 @@ function notify(title, body) {
    TAB 1: FOCUS — Pomodoro nâng cao
    ============================================================ */
 const FOCUS_PRESETS = [
-  { name: 'Cổ điển',   focus: 25, short: 5,  long: 15, icon: '🍅' },
-  { name: 'Deep Work', focus: 50, short: 10, long: 20, icon: '🧠' },
-  { name: 'Sprint',    focus: 90, short: 15, long: 30, icon: '⚡' },
-  { name: 'Nhẹ nhàng', focus: 15, short: 3,  long: 10, icon: '🌱' },
+  { name: 'Cổ điển',   focus: 25, short: 5,  long: 15, Icon: IcoTomato },
+  { name: 'Deep Work', focus: 50, short: 10, long: 20, Icon: IcoBrain },
+  { name: 'Sprint',    focus: 90, short: 15, long: 30, Icon: IcoBolt },
+  { name: 'Nhẹ nhàng', focus: 15, short: 3,  long: 10, Icon: IcoSprout },
 ];
 
 function FocusTab({ soundPreset }) {
@@ -113,14 +121,14 @@ function FocusTab({ soundPreset }) {
           setHistory((h) => ({ ...h, [k]: (h[k] || 0) + 1 }));
           const newCycle = cycle + 1;
           setCycle(newCycle);
-          notify('🎉 Hết giờ Focus', 'Nghỉ ngơi nào!');
+          notify('Hết giờ Focus', 'Nghỉ ngơi nào!');
           setNoteModal(true);
           if (autoNext) {
             const next = newCycle % 4 === 0 ? 'long' : 'short';
             setTimeout(() => { setMode(next); setLeft(cfg[next] * 60); }, 1500);
           }
         } else {
-          notify('⏰ Hết giờ nghỉ', 'Quay lại Focus thôi!');
+          notify('Hết giờ nghỉ', 'Quay lại Focus thôi!');
           if (autoNext) setTimeout(() => { setMode('focus'); setLeft(cfg.focus * 60); }, 1500);
         }
       }
@@ -189,7 +197,7 @@ function FocusTab({ soundPreset }) {
               className={'ch-preset-chip' + (on ? ' on' : '')}
               onClick={() => applyPreset(p)}
             >
-              <span className="ch-preset-emoji">{p.icon}</span>
+              <span className="ch-preset-emoji"><p.Icon size={22} /></span>
               <b>{p.name}</b>
               <small>{p.focus}/{p.short}/{p.long}</small>
             </button>
@@ -296,7 +304,7 @@ function FocusTab({ soundPreset }) {
           <div className="ch-stat-body">
             <small>Tổng phiên hôm nay</small>
             <b>{todayN * cfg.focus} phút</b>
-            <em>{todayN >= dailyGoal ? '🎉 Đạt mục tiêu!' : `Còn ${dailyGoal - todayN} phiên`}</em>
+            <em>{todayN >= dailyGoal ? <><IcoTrophy size={13} /> Đạt mục tiêu!</> : `Còn ${dailyGoal - todayN} phiên`}</em>
           </div>
         </div>
       </div>
@@ -315,7 +323,7 @@ function FocusTab({ soundPreset }) {
             return (
               <div key={d.key} className={'ch-chart-col' + (isToday ? ' today' : '')}>
                 <div className="ch-chart-bar-wrap">
-                  {isGoal && <span className="ch-chart-crown">👑</span>}
+                  {isGoal && <span className="ch-chart-crown"><IcoTrophy size={12} /></span>}
                   <div className={'ch-chart-bar' + (isGoal ? ' goal' : '')} style={{ height: `${Math.max(4, h)}%` }}>
                     {d.n > 0 && <span>{d.n}</span>}
                   </div>
@@ -346,7 +354,7 @@ function FocusTab({ soundPreset }) {
           </button>
         </div>
         {tasks.length === 0 ? (
-          <p className="ch-empty">Chưa có task nào. Thêm task để bắt đầu! 🎯</p>
+          <p className="ch-empty">Chưa có task nào. Thêm task để bắt đầu!</p>
         ) : (
           <ul className="ch-tasks">
             {tasks.map((t) => (
@@ -355,7 +363,7 @@ function FocusTab({ soundPreset }) {
                   {t.done && <IcoCheck size={13} />}
                 </button>
                 <span className="ch-task-text">{t.text}</span>
-                <span className="ch-task-pomos">🍅 {t.pomos}</span>
+                <span className="ch-task-pomos"><IcoTomato size={13} /> {t.pomos}</span>
                 {!t.done && (
                   <button className="ch-task-inc" onClick={() => incTask(t.id)} title="+1 phiên">
                     <IcoPlus size={12} />
@@ -450,7 +458,7 @@ function TimerCard({ timer, onRemove }) {
         clearInterval(id);
         setRun(false);
         SOUND_PRESETS.classic();
-        notify('⏰ Hết giờ', label);
+        notify('Hết giờ', label);
       }
     }, 250);
     return () => clearInterval(id);
@@ -607,7 +615,7 @@ function AlarmTab() {
     alarms.forEach((a) => {
       if (a.time + ':00' === hhmm && a.enabled) {
         SOUND_PRESETS.classic();
-        notify('🔔 Báo thức!', a.label || a.time);
+        notify('Báo thức!', a.label || a.time);
       }
     });
   }, [now, alarms]);
@@ -674,7 +682,7 @@ function AlarmTab() {
         </header>
 
         {alarms.length === 0 ? (
-          <p className="ch-empty">Chưa có báo thức nào. Nhấn "Thêm" để tạo! ⏰</p>
+          <p className="ch-empty">Chưa có báo thức nào. Nhấn "Thêm" để tạo!</p>
         ) : (
           <ul className="ch-alarms">
             {alarms.map((a) => (
@@ -890,18 +898,18 @@ function StopwatchTab() {
    TAB 5: WORLD CLOCK
    ============================================================ */
 const WORLD_CITIES = [
-  { name: 'Hà Nội',   tz: 'Asia/Ho_Chi_Minh',    flag: '🇻🇳', local: true },
-  { name: 'Tokyo',    tz: 'Asia/Tokyo',          flag: '🇯🇵' },
-  { name: 'Singapore', tz: 'Asia/Singapore',     flag: '🇸🇬' },
-  { name: 'Seoul',    tz: 'Asia/Seoul',          flag: '🇰🇷' },
-  { name: 'Bắc Kinh', tz: 'Asia/Shanghai',       flag: '🇨🇳' },
-  { name: 'Dubai',    tz: 'Asia/Dubai',          flag: '🇦🇪' },
-  { name: 'Moscow',   tz: 'Europe/Moscow',       flag: '🇷🇺' },
-  { name: 'Paris',    tz: 'Europe/Paris',        flag: '🇫🇷' },
-  { name: 'London',   tz: 'Europe/London',       flag: '🇬🇧' },
-  { name: 'New York', tz: 'America/New_York',    flag: '🇺🇸' },
-  { name: 'Redmond',  tz: 'America/Los_Angeles', flag: '🇺🇸' },
-  { name: 'Sydney',   tz: 'Australia/Sydney',    flag: '🇦🇺' },
+  { name: 'Hà Nội',   tz: 'Asia/Ho_Chi_Minh',    code: 'VN', local: true },
+  { name: 'Tokyo',    tz: 'Asia/Tokyo',          code: 'JP' },
+  { name: 'Singapore', tz: 'Asia/Singapore',     code: 'SG' },
+  { name: 'Seoul',    tz: 'Asia/Seoul',          code: 'KR' },
+  { name: 'Bắc Kinh', tz: 'Asia/Shanghai',       code: 'CN' },
+  { name: 'Dubai',    tz: 'Asia/Dubai',          code: 'AE' },
+  { name: 'Moscow',   tz: 'Europe/Moscow',       code: 'RU' },
+  { name: 'Paris',    tz: 'Europe/Paris',        code: 'FR' },
+  { name: 'London',   tz: 'Europe/London',       code: 'GB' },
+  { name: 'New York', tz: 'America/New_York',    code: 'US' },
+  { name: 'Redmond',  tz: 'America/Los_Angeles', code: 'US' },
+  { name: 'Sydney',   tz: 'Australia/Sydney',    code: 'AU' },
 ];
 
 function WorldClockTab() {
@@ -965,7 +973,7 @@ function WorldClockTab() {
           return (
             <div key={c.name} className={'ch-world-card' + (c.local ? ' local' : '') + (isNight ? ' night' : '')}>
               <div className="ch-world-card-head">
-                <span className="ch-world-flag">{c.flag}</span>
+                <span className="ch-world-flag">{c.code}</span>
                 <b>{c.name}</b>
                 {c.local && <span className="ch-world-badge">Bạn</span>}
               </div>
@@ -974,7 +982,7 @@ function WorldClockTab() {
               <div className="ch-world-bar">
                 <i style={{ width: `${(hour / 24) * 100}%` }} />
               </div>
-              <span className="ch-world-sun">{isNight ? '🌙' : '☀️'}</span>
+              <span className="ch-world-sun">{isNight ? <IcoMoon size={16} /> : <IcoSun size={16} />}</span>
             </div>
           );
         })}
@@ -987,14 +995,14 @@ function WorldClockTab() {
    TAB 6: MUSIC — Nhạc tập trung (Web Audio API)
    ============================================================ */
 const MUSIC_TRACKS = [
-  { id: 'rain',     name: 'Mưa rơi',      icon: '🌧️', desc: 'Tiếng mưa nhẹ nhàng' },
-  { id: 'waves',    name: 'Sóng biển',    icon: '🌊', desc: 'Sóng vỗ bờ êm dịu' },
-  { id: 'forest',   name: 'Rừng xanh',    icon: '🌲', desc: 'Tiếng chim hót' },
-  { id: 'cafe',     name: 'Quán cafe',    icon: '☕', desc: 'Ồn ào nhẹ nhàng' },
-  { id: 'fire',     name: 'Lò sưởi',      icon: '🔥', desc: 'Lửa cháy tí tách' },
-  { id: 'wind',     name: 'Gió nhẹ',      icon: '🍃', desc: 'Gió thổi vi vu' },
-  { id: 'white',    name: 'White noise',  icon: '⚪', desc: 'Tiếng ồn trắng' },
-  { id: 'brown',    name: 'Brown noise',  icon: '🟤', desc: 'Tiếng ồn nâu' },
+  { id: 'rain',     name: 'Mưa rơi',      Icon: IcoCloudRain, desc: 'Tiếng mưa nhẹ nhàng' },
+  { id: 'waves',    name: 'Sóng biển',    Icon: IcoWaves, desc: 'Sóng vỗ bờ êm dịu' },
+  { id: 'forest',   name: 'Rừng xanh',    Icon: IcoTree, desc: 'Tiếng chim hót' },
+  { id: 'cafe',     name: 'Quán cafe',    Icon: IcoCoffee, desc: 'Ồn ào nhẹ nhàng' },
+  { id: 'fire',     name: 'Lò sưởi',      Icon: IcoFire, desc: 'Lửa cháy tí tách' },
+  { id: 'wind',     name: 'Gió nhẹ',      Icon: IcoLeaf, desc: 'Gió thổi vi vu' },
+  { id: 'white',    name: 'White noise',  Icon: IcoNoiseRing, desc: 'Tiếng ồn trắng' },
+  { id: 'brown',    name: 'Brown noise',  Icon: IcoNoiseFill, desc: 'Tiếng ồn nâu' },
 ];
 
 function MusicTab() {
@@ -1107,7 +1115,7 @@ function MusicTab() {
               className={'ch-music-card' + (playing === t.id ? ' on' : '')}
               onClick={() => playing === t.id ? stopSound() : startSound(t.id)}
             >
-              <span className="ch-music-icon">{t.icon}</span>
+              <span className="ch-music-icon"><t.Icon size={24} /></span>
               <b>{t.name}</b>
               <small>{t.desc}</small>
               <span className="ch-music-play">
@@ -1244,7 +1252,7 @@ function BreathingTab() {
         </div>
 
         <div className="ch-breath-info">
-          <p>💡 <b>Hít vào</b> {pattern.inhale}s → {pattern.hold1 > 0 && <><b>Giữ</b> {pattern.hold1}s → </>}<b>Thở ra</b> {pattern.exhale}s{pattern.hold2 > 0 && <> → <b>Giữ</b> {pattern.hold2}s</>}</p>
+          <p><IcoBulb size={14} /> <b>Hít vào</b> {pattern.inhale}s → {pattern.hold1 > 0 && <><b>Giữ</b> {pattern.hold1}s → </>}<b>Thở ra</b> {pattern.exhale}s{pattern.hold2 > 0 && <> → <b>Giữ</b> {pattern.hold2}s</>}</p>
         </div>
       </div>
     </div>
@@ -1254,10 +1262,25 @@ function BreathingTab() {
 /* ============================================================
    TAB 8: COUNTDOWN — Đếm ngược đến sự kiện
    ============================================================ */
+const EVENT_ICONS = [
+  { key: 'target',   emoji: '🎯', Icon: IcoTarget,   label: 'Mục tiêu' },
+  { key: 'note',     emoji: '📝', Icon: IcoPencil,   label: 'Bài thi' },
+  { key: 'gradcap',  emoji: '🎓', Icon: IcoGradCap,  label: 'Tốt nghiệp' },
+  { key: 'envelope', emoji: '🧧', Icon: IcoEnvelope, label: 'Lễ Tết' },
+  { key: 'cake',     emoji: '🎂', Icon: IcoCake,     label: 'Sinh nhật' },
+  { key: 'plane',    emoji: '✈️', Icon: IcoPlane,    label: 'Chuyến đi' },
+  { key: 'ring',     emoji: '💍', Icon: IcoRing,     label: 'Lễ cưới' },
+  { key: 'trophy',   emoji: '🏆', Icon: IcoTrophy,   label: 'Cuộc thi' },
+  { key: 'calendar', emoji: '📅', Icon: IcoCalendar, label: 'Lịch hẹn' },
+  { key: 'heart',    emoji: '❤️', Icon: IcoHeart,    label: 'Kỷ niệm' },
+];
+/* Nhận cả key mới lẫn emoji cũ đã lưu, nên sự kiện đã tạo trước đó vẫn hiện đúng icon */
+const eventIconOf = (v) => (EVENT_ICONS.find((o) => o.key === v || o.emoji === v) || EVENT_ICONS[0]).Icon;
+
 const DEFAULT_EVENTS = [
-  { id: 1, name: 'Thi giữa kỳ Hóa', date: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10), icon: '📝', color: '#ef4444' },
-  { id: 2, name: 'Thi cuối kỳ',      date: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10), icon: '🎓', color: '#8b5cf6' },
-  { id: 3, name: 'Tết Nguyên Đán',   date: `${new Date().getFullYear() + 1}-01-29`, icon: '🧧', color: '#f59e0b' },
+  { id: 1, name: 'Thi giữa kỳ Hóa', date: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10), icon: 'note', color: '#ef4444' },
+  { id: 2, name: 'Thi cuối kỳ',      date: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10), icon: 'gradcap', color: '#8b5cf6' },
+  { id: 3, name: 'Tết Nguyên Đán',   date: `${new Date().getFullYear() + 1}-01-29`, icon: 'envelope', color: '#f59e0b' },
 ];
 
 function CountdownTab() {
@@ -1266,7 +1289,7 @@ function CountdownTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
-  const [icon, setIcon] = useState('🎯');
+  const [icon, setIcon] = useState('target');
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -1276,7 +1299,7 @@ function CountdownTab() {
   const addEvent = () => {
     if (!name.trim() || !date) return;
     setEvents([...events, { id: Date.now(), name: name.trim(), date, icon, color: '#4d86ff' }]);
-    setName(''); setDate(''); setIcon('🎯'); setShowAdd(false);
+    setName(''); setDate(''); setIcon('target'); setShowAdd(false);
   };
 
   const delEvent = (id) => setEvents((es) => es.filter((e) => e.id !== id));
@@ -1292,8 +1315,6 @@ function CountdownTab() {
     return { past: false, days, hours, min, sec };
   };
 
-  const EMOJIS = ['🎯', '📝', '🎓', '🧧', '🎂', '✈️', '💍', '🏆', '📅', '❤️'];
-
   return (
     <div className="ch-countdown-v2">
       <div className="ch-card">
@@ -1305,7 +1326,7 @@ function CountdownTab() {
         </header>
 
         {events.length === 0 ? (
-          <p className="ch-empty">Chưa có sự kiện nào. Nhấn "Thêm" để tạo! 📅</p>
+          <p className="ch-empty">Chưa có sự kiện nào. Nhấn "Thêm" để tạo!</p>
         ) : (
           <div className="ch-events-grid">
             {events.map((e) => {
@@ -1315,13 +1336,13 @@ function CountdownTab() {
                   <button className="ch-event-del" onClick={() => delEvent(e.id)}>
                     <IcoTrash size={13} />
                   </button>
-                  <span className="ch-event-icon">{e.icon}</span>
+                  <span className="ch-event-icon">{(() => { const EIcon = eventIconOf(e.icon); return <EIcon size={22} />; })()}</span>
                   <h3>{e.name}</h3>
                   <small className="ch-event-date">
                     {new Date(e.date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
                   </small>
                   {d.past ? (
-                    <div className="ch-event-past">Đã qua 🎉</div>
+                    <div className="ch-event-past"><IcoCheck size={13} /> Đã qua</div>
                   ) : (
                     <div className="ch-event-countdown">
                       <div className="ch-event-num">
@@ -1366,14 +1387,16 @@ function CountdownTab() {
               <div className="ch-field">
                 <span>Icon</span>
                 <div className="ch-emoji-picker">
-                  {EMOJIS.map((em) => (
+                  {EVENT_ICONS.map((o) => (
                     <button
-                      key={em}
+                      key={o.key}
                       type="button"
-                      className={'ch-emoji-btn' + (icon === em ? ' on' : '')}
-                      onClick={() => setIcon(em)}
+                      className={'ch-emoji-btn' + (eventIconOf(icon) === o.Icon ? ' on' : '')}
+                      onClick={() => setIcon(o.key)}
+                      title={o.label}
+                      aria-label={o.label}
                     >
-                      {em}
+                      <o.Icon size={18} />
                     </button>
                   ))}
                 </div>
@@ -1396,12 +1419,12 @@ function CountdownTab() {
    TAB 9: SOUNDS — Chọn âm thanh + Test
    ============================================================ */
 const SOUND_OPTIONS = [
-  { id: 'classic', name: 'Cổ điển',      icon: '🔔', desc: '3 nốt tăng dần' },
-  { id: 'soft',    name: 'Nhẹ nhàng',    icon: '🎵', desc: '2 nốt êm dịu' },
-  { id: 'chime',   name: 'Chuông gió',   icon: '🎐', desc: '3 nốt cao' },
-  { id: 'bell',    name: 'Chuông',       icon: '🔕', desc: 'Nốt dài trầm' },
-  { id: 'digital', name: 'Digital',      icon: '⏰', desc: '3 tiếng bíp' },
-  { id: 'none',    name: 'Không',        icon: '🔇', desc: 'Im lặng' },
+  { id: 'classic', name: 'Cổ điển',      Icon: IcoBell, desc: '3 nốt tăng dần' },
+  { id: 'soft',    name: 'Nhẹ nhàng',    Icon: IcoMusic, desc: '2 nốt êm dịu' },
+  { id: 'chime',   name: 'Chuông gió',   Icon: IcoChime, desc: '3 nốt cao' },
+  { id: 'bell',    name: 'Chuông',       Icon: IcoBellOff, desc: 'Nốt dài trầm' },
+  { id: 'digital', name: 'Digital',      Icon: IcoAlarmClock, desc: '3 tiếng bíp' },
+  { id: 'none',    name: 'Không',        Icon: IcoVolumeOff, desc: 'Im lặng' },
 ];
 
 function SoundsTab({ soundPreset, setSoundPreset }) {
@@ -1423,7 +1446,7 @@ function SoundsTab({ soundPreset, setSoundPreset }) {
               className={'ch-sound-card' + (soundPreset === s.id ? ' on' : '')}
               onClick={() => { setSoundPreset(s.id); SOUND_PRESETS[s.id]?.(); }}
             >
-              <span className="ch-sound-icon">{s.icon}</span>
+              <span className="ch-sound-icon"><s.Icon size={24} /></span>
               <b>{s.name}</b>
               <small>{s.desc}</small>
               {soundPreset === s.id && <span className="ch-sound-check"><IcoCheck size={14} /></span>}
@@ -1437,10 +1460,10 @@ function SoundsTab({ soundPreset, setSoundPreset }) {
           <h2><IcoInfo size={16} /> Thông tin</h2>
         </header>
         <ul className="ch-info-list">
-          <li>🔔 Âm thanh được tạo bằng Web Audio API — không cần tải file</li>
-          <li>💾 Lựa chọn được lưu vào localStorage</li>
-          <li>🔕 Chọn "Không" nếu bạn muốn im lặng</li>
-          <li>🎧 Bật âm lượng thiết bị trước khi nghe thử</li>
+          <li><IcoBell size={14} /> Âm thanh được tạo bằng Web Audio API — không cần tải file</li>
+          <li><IcoSave size={14} /> Lựa chọn được lưu vào localStorage</li>
+          <li><IcoBellOff size={14} /> Chọn "Không" nếu bạn muốn im lặng</li>
+          <li><IcoHeadphones size={14} /> Bật âm lượng thiết bị trước khi nghe thử</li>
         </ul>
       </div>
     </div>

@@ -1,11 +1,43 @@
 /* ============================================================
-   ExamImporter.jsx — Nhập đề từ file (v2 - Theo HD)
+   ExamImporter.jsx — Nhập đề từ file (v2)
+   Props giữ nguyên: variant, classInfo, classes, allowBank,
+   allowSoftExam, onCreateSoftExam
+
+   NÂNG CẤP:
+   • Hỗ trợ Word (.docx) qua `mammoth` (cài: npm i mammoth)
+   • Đọc PDF theo dòng (dựa vào toạ độ Y) thay vì dính một cục
+   • Nhận diện nhiều kiểu đánh số: "Câu 1.", "Câu 1:", "Bài 1",
+     "Question 1", "1.", "1)", "[1]"; hỗ trợ cả danh sách tự đánh
+     số của Word
+   • Lựa chọn A–F, cả khi nằm chung một dòng "A. … B. … C. … D. …"
+   • Nhận diện đáp án đúng từ:
+       - dòng "Đáp án: B" / "ĐA: B" / "Answer: B" / "Đáp án: <nội dung>"
+       - PHẦN II (đúng/sai): nhận định a) b) c) d) + "Đáp án: a-Đ, b-S, c-S, d-Đ" (hoặc ĐSSĐ)
+       - PHẦN III (trả lời ngắn): "Đáp án: 8,8"; bảng đáp án cuối đề cũng được nhận
+       - BẢNG ĐÁP ÁN cuối đề ("1.A 2.B …", "1-A, 2-B", bảng ngang/dọc)
+       - đáp án được IN ĐẬM / GẠCH CHÂN trong Word
+       - đáp án có dấu * hoặc ✓
+   • Nhận diện dòng "Giải thích / Lời giải"
+   • Bản xem trước: sửa nội dung, chọn lại đáp án, xoá câu,
+     cảnh báo câu có vấn đề; chỉ tạo các câu hợp lệ
+   • NHẬP JSON: dán JSON (từ AI hoặc tự viết) → tự thành đề, có hướng
+     dẫn, prompt mẫu, JSON mẫu, tự sửa lỗi JSON thường gặp
+   • NHẬP CODE → tự nhảy sang chế độ "Sinh đề từ code": tạo sẵn
+     prompt (kèm code, số câu, mức độ, dạng câu) để dán vào chat AI;
+     dán kết quả AI trả về là đọc thành đề, hỗ trợ câu hỏi có
+     khối code (```), tự bỏ định dạng markdown (**, #, -)
    ============================================================ */
 import { Fragment, useEffect, useRef, useState } from 'react';
 
+/* ============================================================
+   1. TIỆN ÍCH VĂN BẢN
+   Mỗi dòng là { t: text, m: mask } — mask cùng độ dài với text,
+   '1' = ký tự đang in đậm/gạch chân (dùng để đoán đáp án đúng).
+   ============================================================ */
 const LETTERS = 'ABCDEF';
 const MARK_TAGS = new Set(['U', 'STRONG', 'B']);
 
+/* Bỏ dấu nhưng GIỮ NGUYÊN độ dài để dùng chung chỉ số với bản gốc */
 const fold = (s) =>
   s.split('').map((c) => (c === 'đ' || c === 'Đ' ? 'd' : c.normalize('NFD')[0])).join('').toLowerCase();
 
@@ -17,6 +49,7 @@ const trimLine = (ln) => {
   return b <= a ? { t: '', m: '' } : sliceLine(ln, a, b);
 };
 
+/* Giữ nguyên thụt lề trong khối ``` (code); dòng thường thì bỏ markdown */
 const textToLines = (raw) => {
   let inFence = false;
   const out = [];
@@ -45,6 +78,7 @@ const appendText = (c, text, sep) => {
   else if (c.mode === 'stem') c.stem += (c.stem ? sep : '') + text;
 };
 
+/* ----- Regex nhận diện (chạy trên bản đã bỏ dấu, chữ thường) ----- */
 const Q_RE = /^(?:(?:cau(?:\s*hoi)?|bai|question|q)\s*(\d{1,3})\s*[.:)\-–]?|(\d{1,3})[.)](?!\d)|\[\s*(\d{1,3})\s*\])\s*/;
 const OPT_RE = /^[*✓✔]?\s*\(?([A-Fa-f])[.)]\s*/;
 const ANS_LETTER_RES = [
@@ -67,6 +101,11 @@ const readKey = (f) => {
   return { pairs, clean: pairs.length > 0 && leftover.length <= 6 };
 };
 
+/* ============================================================
+   2. ĐỌC FILE → DÒNG
+   ============================================================ */
+
+/* ----- PDF: dựng dòng theo toạ độ Y ----- */
 const readPdf = async (file) => {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
@@ -91,6 +130,7 @@ const readPdf = async (file) => {
   return { text, truncated: pdf.numPages > max, pages: max };
 };
 
+/* ----- Word: .docx → HTML (mammoth) → dòng có mask in đậm/gạch chân ----- */
 const loadMammoth = async () => {
   const m = await import('mammoth/mammoth.browser.js');
   return m.default || m;
@@ -137,6 +177,7 @@ const htmlToLines = (html) => {
       const tag = el.tagName;
       if (tag === 'OL' || tag === 'UL') {
         const prev = el.previousElementSibling;
+        /* Danh sách tự đánh số: cấp 1 = câu hỏi, cấp 2 (hoặc ngay sau 1 dòng "Câu…") = A/B/C/D */
         const asOpts = tag === 'OL' && (depth > 0 || (prev && /^(P|H\d)$/.test(prev.tagName) && isQStart(prev.textContent || '')));
         let i = 0;
         for (const li of el.children) {
@@ -185,9 +226,44 @@ const readDocx = async (file) => {
   return htmlToLines(value);
 };
 
+/* ============================================================
+   3. PHÂN TÍCH CÂU HỎI
+   ============================================================ */
+/* Dạng câu theo tiêu đề phần: "PHẦN II. Câu trắc nghiệm đúng sai…" / "PHẦN III. Trả lời ngắn" */
+const sectType = (f) => {
+  if (/dung\s*(?:\/|-|hoac)?\s*sai|true\s*\/?\s*false/.test(f)) return 'tf';
+  if (/tra loi ngan|dien so|dien ket qua|short answer|ket qua bang so/.test(f)) return 'sa';
+  return 'mc';
+};
+/* Phần chỉ ghi số La Mã (dùng trong bảng đáp án cuối đề): I → trắc nghiệm, II → đúng/sai, III → trả lời ngắn */
+const bareSectType = (f) => {
+  const m = f.match(/^(?:phan|part|section)\s+(iii|ii|i|3|2|1)\b[^a-z]*$/);
+  return m ? ({ i: 'mc', 1: 'mc', ii: 'tf', 2: 'tf', iii: 'sa', 3: 'sa' })[m[1]] : null;
+};
+const TF_PAIR_RE = /([a-d])\s*[-:.)=]?\s*(dung|sai|d|s)(?![a-z])/g;
+/* "a-Đ b-S c-Đ d-S" | "a) đúng b) sai …" | "ĐSĐS" | "Đúng Sai Đúng Sai" → [true,false,true,false] | null */
+const readTf = (txt) => {
+  const t = String(txt || '').trim();
+  const pairs = {};
+  let m;
+  TF_PAIR_RE.lastIndex = 0;
+  while ((m = TF_PAIR_RE.exec(t))) pairs[m[1]] = m[2][0] === 'd';
+  if (['a', 'b', 'c', 'd'].every((k) => k in pairs)) return ['a', 'b', 'c', 'd'].map((k) => pairs[k]);
+  const tok = t.split(/[^a-z]+/).filter(Boolean);
+  if (tok.length === 4 && tok.every((x) => /^(?:dung|sai|d|s)$/.test(x))) return tok.map((x) => x[0] === 'd');
+  const comp = t.replace(/[^a-z]/g, '');
+  if (/^[ds]{4}$/.test(comp)) return comp.split('').map((x) => x === 'd');
+  return null;
+};
+const SA_NUM = '([+-]?\\d[\\d.,]*)(?![\\d])';
+
 const parseLines = (lines) => {
+  let sect = 'mc'; // dạng câu của phần đang đọc
+  let keySect = 'mc'; // dạng câu của phần trong bảng đáp án cuối đề
+  const tfKey = new Map();
+  const saKey = new Map();
   const qs = [];
-  const keyQueue = new Map();
+  const keyQueue = new Map(); // số câu → [chữ cái…]
   let cur = null;
   let lastNum = 0;
   let inKey = false;
@@ -196,6 +272,7 @@ const parseLines = (lines) => {
 
   const addKey = (n, L) => { if (!keyQueue.has(n)) keyQueue.set(n, []); keyQueue.get(n).push(L); keyFound = true; };
 
+  /* ---- thêm 1 lựa chọn từ đoạn đã cắt ---- */
   const pushOpt = (seg) => {
     const m = seg.t.match(OPT_RE);
     if (!m) return;
@@ -212,6 +289,7 @@ const parseLines = (lines) => {
     cur.mode = 'opts';
   };
 
+  /* ---- "A. … B. … C. … D. …" nằm chung 1 dòng ---- */
   const addOptions = (ln, k) => {
     const first = ln.t.match(OPT_RE)[1];
     const upper = first === first.toUpperCase();
@@ -234,6 +312,7 @@ const parseLines = (lines) => {
     return new RegExp('\\s\\(?' + L + '[.)]\\s*\\S').test(t.slice(m.index + 2)) ? m.index + 1 : -1;
   };
 
+  /* ---- nạp 1 dòng vào câu hiện tại ---- */
   const absorb = (raw) => {
     const ln = trimLine(raw);
     if (!ln.t || !cur) return;
@@ -256,6 +335,7 @@ const parseLines = (lines) => {
   };
 
   for (let i = 0; i < lines.length; i++) {
+    /* Khối code ``` : giữ nguyên, không đem đi so khớp "Câu", "A.", "Đáp án"… */
     if (lines[i].code) {
       if (cur) {
         appendText(cur, lines[i].code === 'close' ? '```' : lines[i].t, '\n');
@@ -268,8 +348,10 @@ const parseLines = (lines) => {
     const f = fold(ln.t);
     let m;
 
+    /* Rác: số trang, đường kẻ */
     if (/^(?:trang|page)\s*\d+(?:\s*\/\s*\d+)?$/.test(f) || /^[-_=*.\s]{3,}$/.test(f)) continue;
 
+    /* Bảng đáp án dạng ngang: "Câu 1 2 3 4" + "Đáp án A B C D" */
     if ((m = f.match(/^(?:cau|stt)\s+(\d{1,3}(?:\s+\d{1,3})+)$/))) {
       pendingNums = m[1].split(/\s+/).map(Number);
       continue;
@@ -283,12 +365,44 @@ const parseLines = (lines) => {
     }
     pendingNums = null;
 
+    /* Đang trong phần bảng đáp án */
     if (inKey) {
+      if (SECTION_RE.test(f)) { keySect = sectType(f) !== 'mc' ? sectType(f) : (bareSectType(f) || 'mc'); continue; }
+      if (keySect === 'tf' || keySect === 'sa') {
+        const k = f.match(/^(?:cau\s*)?(\d{1,2})\s*[.:)\-]?\s*(.+)$/);
+        if (k) {
+          if (keySect === 'tf') {
+            const arr = readTf(k[2]);
+            if (arr) { const n = Number(k[1]); if (!tfKey.has(n)) tfKey.set(n, []); tfKey.get(n).push(arr); continue; }
+          } else {
+            const v = k[2].match(new RegExp('^' + SA_NUM + '\\s*$'));
+            if (v) { const n = Number(k[1]); if (!saKey.has(n)) saKey.set(n, []); saKey.get(n).push(v[1].replace(/[.,]+$/, '')); continue; }
+          }
+        }
+      }
       const r = readKey(f);
       if (r.clean) { r.pairs.forEach(([n, L]) => addKey(n, L)); continue; }
       inKey = false;
     }
 
+    /* Câu đúng/sai và trả lời ngắn: dòng đáp án riêng */
+    if (cur && cur.mode !== 'explain') {
+      const mt = f.match(/^(?:dap an|da|answer|key)\s*(?:dung)?\s*[:\-.=]\s*(.+)$/);
+      if (mt && (cur.type === 'tf' || cur.type === 'mc')) {
+        const arr = readTf(mt[1]);
+        if (arr && (cur.type === 'tf' || cur.opts.length === 4)) {
+          cur.type = 'tf'; cur.tfAns = arr; cur.explicit = -2; cur.mode = 'skip';
+          continue;
+        }
+      }
+      const ms = f.match(new RegExp('^(?:dap an|da|answer|ket qua|kq)\\s*(?:dung)?\\s*[:\\-.=]\\s*' + SA_NUM));
+      if (ms && (cur.type === 'sa' || (cur.type === 'mc' && cur.opts.length === 0))) {
+        cur.type = 'sa'; cur.saAns = ms[1].replace(/[.,]+$/, ''); cur.explicit = -2; cur.mode = 'skip';
+        continue;
+      }
+    }
+
+    /* Dòng "Đáp án: B" của câu hiện tại */
     if (cur) {
       let hit = null;
       for (const re of ANS_LETTER_RES) { const mm = f.match(re); if (mm) { hit = mm; break; } }
@@ -310,13 +424,14 @@ const parseLines = (lines) => {
       }
     }
 
+    /* Mở đầu phần bảng đáp án (có tiêu đề hoặc cả dòng toàn "1.A 2.B …") */
     const head = f.match(KEY_HEAD_RE);
     if (head) {
       const rest = f.slice(head[0].length);
       const here = readKey(rest);
       const nextF = lines[i + 1] ? fold(trimLine(lines[i + 1]).t) : '';
-      if (here.pairs.length >= 1 || readKey(nextF).pairs.length >= 2 || /^cau\s+\d/.test(nextF)) {
-        inKey = true; cur = null;
+      if (here.pairs.length >= 1 || readKey(nextF).pairs.length >= 2 || /^cau\s+\d/.test(nextF) || SECTION_RE.test(nextF)) {
+        inKey = true; cur = null; keySect = 'mc';
         here.pairs.forEach(([n, L]) => addKey(n, L));
         continue;
       }
@@ -329,15 +444,17 @@ const parseLines = (lines) => {
       }
     }
 
-    if (SECTION_RE.test(f)) { cur = null; continue; }
+    /* Tiêu đề phần: "PHẦN II" … */
+    if (SECTION_RE.test(f)) { cur = null; sect = sectType(f); continue; }
 
+    /* Bắt đầu câu mới */
     const qm = f.match(Q_RE);
     if (qm) {
       const n = Number(qm[1] ?? qm[2] ?? qm[3]);
       const keyword = qm[1] !== undefined;
       const sequential = n === lastNum + 1 || qs.length === 0 || (n === 1 && cur && cur.opts.length >= 2);
       if (keyword || sequential) {
-        cur = { num: n, stem: '', opts: [], explicit: null, explain: '', warns: [], mode: 'stem', nl: false };
+        cur = { num: n, type: sect, stem: '', opts: [], explicit: null, explain: '', warns: [], mode: 'stem', nl: false };
         qs.push(cur);
         lastNum = n;
         absorb(sliceLine(ln, qm[0].length));
@@ -348,8 +465,32 @@ const parseLines = (lines) => {
     absorb(ln);
   }
 
+  /* ---- Chốt kết quả ---- */
   let idSeq = 0;
   const questions = qs.map((c) => {
+    /* Đáp án đúng/sai & trả lời ngắn lấy từ bảng đáp án cuối đề nếu dòng đáp án không có */
+    if (c.type === 'tf' && !c.tfAns) { const a = tfKey.get(c.num)?.shift(); if (a) c.tfAns = a; }
+    if (c.type === 'sa' && !c.saAns) { const a = saKey.get(c.num)?.shift(); if (a) c.saAns = a; }
+    if (c.type === 'tf') {
+      const statements = c.opts.map((o, i) => {
+        let text = o.t;
+        let answer = c.tfAns ? c.tfAns[i] ?? null : null;
+        const tail = text.match(/\s*[-–:→(]+\s*(đúng|sai)\s*\)?\s*$/i);
+        if (tail) { text = text.slice(0, tail.index).trim(); if (answer === null) answer = /đúng/i.test(tail[1]); }
+        if (answer === null && o.star) answer = true;
+        return { text, answer };
+      });
+      return {
+        id: 'q' + (++idSeq), num: c.num, type: 'true_false', q: c.stem.trim(), statements, options: [], correct: -1,
+        src: c.tfAns ? 'dòng đáp án' : '', explain: c.explain.trim(), warns: [...c.warns],
+      };
+    }
+    if (c.type === 'sa') {
+      return {
+        id: 'q' + (++idSeq), num: c.num, type: 'short_answer', q: c.stem.trim(), answer: c.saAns || '', options: [], correct: -1,
+        src: c.saAns ? 'dòng đáp án' : '', explain: c.explain.trim(), warns: [...c.warns],
+      };
+    }
     const options = c.opts.map((o) => o.t);
     let correct = -1;
     let src = '';
@@ -365,6 +506,7 @@ const parseLines = (lines) => {
     return { id: 'q' + ++idSeq, num: c.num, q: c.stem.trim(), options, correct, src, explain: c.explain.trim(), warns };
   });
 
+  /* Bảng đáp án cuối đề: không ghi đè đáp án đã có từ dòng "Đáp án:" */
   if (keyFound) {
     questions.forEach((q) => {
       const letter = keyQueue.get(q.num)?.shift();
@@ -376,41 +518,77 @@ const parseLines = (lines) => {
   return { questions, keyFound };
 };
 
+/* ============================================================
+   4. KIỂM TRA HỢP LỆ
+   ============================================================ */
+const NUM_RE = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)$/;
 const issuesOf = (it) => {
   const out = [];
   if (!it.q.trim()) out.push('Thiếu nội dung câu hỏi');
+  if (it.type === 'true_false') {
+    const st = it.statements || [];
+    if (st.length !== 4) out.push(`Câu đúng/sai cần đúng 4 nhận định (đang có ${st.length})`);
+    else if (st.some((x) => !x.text.trim())) out.push('Có nhận định bị trống');
+    if (st.some((x) => x.answer !== true && x.answer !== false)) out.push('Có nhận định chưa chọn Đúng/Sai');
+    return out;
+  }
+  if (it.type === 'short_answer') {
+    if (!NUM_RE.test(String(it.answer || '').trim())) out.push('Đáp án trả lời ngắn phải là một số');
+    return out;
+  }
   if (it.options.length < 2) out.push(it.options.length ? 'Chỉ có 1 lựa chọn' : 'Không có lựa chọn (tự luận?)');
   else if (it.options.some((o) => !o.trim())) out.push('Có lựa chọn trống (hình/công thức?)');
   if (it.correct < 0 || it.correct >= it.options.length) out.push('Chưa có đáp án đúng');
   return out;
 };
 
+/* ============================================================
+   5. GIAO DIỆN
+   ============================================================ */
+/* ============================================================
+   NHẬP BẰNG JSON
+   ============================================================ */
 const JSON_SAMPLE = {
-  title: 'Kiểm tra 15 phút — Vòng lặp for',
+  title: 'Kiểm tra 15 phút — Este',
   duration: 15,
   questions: [
     {
-      q: 'Đoạn code sau in ra màn hình những giá trị nào?',
-      code: 'for i in range(3):\n    print(i)',
-      lang: 'python',
-      options: ['0 1 2', '1 2 3', '0 1 2 3', 'Báo lỗi'],
+      q: 'Chất nào sau đây là este?',
+      options: ['$\\ce{CH3COOH}$', '$\\ce{CH3COOC2H5}$', '$\\ce{C2H5OH}$', '$\\ce{CH3CHO}$'],
+      correct: 'B',
+      explain: 'Este có nhóm -COO- liên kết với gốc hiđrocacbon, chỉ có $\\ce{CH3COOC2H5}$ thỏa mãn.',
+      points: 0.5,
+    },
+    {
+      q: 'Thủy phân hoàn toàn 8,8 gam etyl axetat bằng dung dịch NaOH dư, khối lượng muối thu được là',
+      options: ['8,2 gam', '4,1 gam', '6,8 gam', '9,6 gam'],
       correct: 'A',
-      explain: 'range(3) sinh ra các số 0, 1, 2.',
+      explain: '$n_{este} = 8{,}8/88 = 0{,}1$ mol → $n_{\\ce{CH3COONa}} = 0{,}1$ mol → $m = 0{,}1 \\times 82 = 8{,}2$ gam.',
+    },
+    {
+      q: 'Số đồng phân este ứng với công thức phân tử $\\ce{C4H8O2}$ là',
+      options: ['2', '3', '4', '5'],
+      correct: 'C',
+      explain: 'Gồm: HCOOCH2CH2CH3, HCOOCH(CH3)2, CH3COOC2H5, C2H5COOCH3.',
+    },
+    {
+      type: 'true_false',
+      q: 'Thủy phân este X ($\\ce{C4H8O2}$) trong dung dịch NaOH, thu được ancol Y và muối Z. Biết Y bị oxi hóa thành anđehit.',
+      statements: [
+        { text: 'X là este no, đơn chức, mạch hở.', answer: true },
+        { text: 'Muối Z có thể là $\\ce{HCOONa}$.', answer: true },
+        { text: 'Y có thể là ancol bậc hai.', answer: false },
+        { text: 'X có đúng 4 đồng phân este.', answer: true },
+      ],
+      explain: 'a) Đúng. b) Đúng nếu X = HCOOC3H7. c) Sai: ancol bậc hai bị oxi hóa thành xeton. d) Đúng.',
       points: 1,
     },
     {
-      q: 'Từ khoá nào dùng để định nghĩa một hàm trong Python?',
-      options: ['func', 'def', 'function', 'define'],
-      correct: 'B',
-      explain: 'Python dùng từ khoá def.',
-    },
-    {
-      q: 'Đoạn code sau có lỗi gì?',
-      code: 'x = 5\nif x > 3\n    print(x)',
-      lang: 'python',
-      options: ['Thiếu dấu hai chấm sau điều kiện if', 'Sai thụt lề', 'print sai cú pháp', 'Không có lỗi'],
-      correct: 'A',
-      explain: 'Câu lệnh if phải kết thúc bằng dấu hai chấm.',
+      type: 'short_answer',
+      q: 'Xà phòng hóa hoàn toàn 17,8 gam tristearin bằng NaOH dư. Khối lượng muối thu được là bao nhiêu gam? (làm tròn đến hàng phần mười)',
+      answer: '18,4',
+      explain: '$n = 17{,}8/890 = 0{,}02$ mol → muối $\\ce{C17H35COONa}$ (306): $0{,}06 \\times 306 = 18{,}4$ gam.',
+      points: 0.25,
     },
   ],
 };
@@ -422,36 +600,243 @@ const JSON_SCHEMA_TEXT = `{
   "questions": [
     {
       "q": "Nội dung câu hỏi",
-      "code": "(tuỳ chọn) đoạn code, xuống dòng bằng \\n",
-      "lang": "(tuỳ chọn) python | cpp | java | javascript ...",
       "options": ["Lựa chọn 1", "Lựa chọn 2", "Lựa chọn 3", "Lựa chọn 4"],
       "correct": "B",
-      "explain": "Giải thích ngắn",
+      "explain": "Lời giải ngắn gọn",
       "points": 1
     }
   ]
 }`;
 
-const JSON_RULES = [
-  '- Dùng dấu nháy kép " cho mọi khoá và chuỗi; không có dấu phẩy thừa ở cuối.',
-  '- Xuống dòng trong chuỗi viết là \\n; dấu " bên trong chuỗi viết là \\".',
-  '- "correct" là chữ cái A, B, C hoặc D (chữ cái đứng đầu lựa chọn đúng).',
-  '- Không ghi sẵn "A.", "B." ở đầu các lựa chọn; công thức viết dạng chữ (vd: x^2).',
-  '- Chỉ thêm "code" và "lang" khi câu hỏi thật sự có đoạn code.',
+const JSON_SCHEMA_CODE = `{
+  "title": "Tên đề",
+  "duration": 15,
+  "questions": [
+    {
+      "q": "Nội dung câu hỏi",
+      "code": "(tuỳ chọn) đoạn code, xuống dòng bằng \\n",
+      "lang": "(tuỳ chọn) python | cpp | java | javascript ...",
+      "options": ["Lựa chọn 1", "Lựa chọn 2", "Lựa chọn 3", "Lựa chọn 4"],
+      "correct": "B",
+      "explain": "Lời giải ngắn gọn",
+      "points": 1
+    }
+  ]
+}`;
+
+/* Mức độ → tỉ lệ NB / TH / VD / VDC */
+const PROMPT_LEVELS = {
+  basic: { label: 'Cơ bản (ôn tập, kiểm tra 15 phút)', w: [50, 35, 15, 0] },
+  standard: { label: 'Chuẩn (kiểm tra 1 tiết, giữa/cuối kì)', w: [30, 30, 30, 10] },
+  adv: { label: 'Phân hóa (có nhiều câu vận dụng cao)', w: [15, 25, 35, 25] },
+  thithu: { label: 'Thi thử tốt nghiệp THPT', w: [25, 30, 30, 15] },
+};
+
+const splitByWeights = (n, w) => {
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  const raw = w.map((x) => (n * x) / sum);
+  const out = raw.map(Math.floor);
+  let rem = n - out.reduce((a, b) => a + b, 0);
+  raw.map((x, i) => ({ i, f: x - Math.floor(x) })).filter((o) => w[o.i] > 0).sort((a, b) => b.f - a.f)
+    .forEach((o) => { if (rem > 0) { out[o.i] += 1; rem -= 1; } });
+  return out;
+};
+
+const CHEM_BLOCK = [
+  'QUY ƯỚC MÔN HÓA HỌC (bắt buộc):',
+  '- Nguyên tử khối: H=1; C=12; N=14; O=16; Na=23; Mg=24; Al=27; P=31; S=32; Cl=35,5; K=39; Ca=40; Fe=56; Cu=64; Zn=65; Br=80; Ag=108; Ba=137.',
+  '- Thể tích mol chất khí ở điều kiện chuẩn (25 °C, 1 bar) là 24,79 L/mol.',
+  '- Phương trình hóa học phải cân bằng, ghi đúng điều kiện phản ứng; số liệu tính toán phải cho kết quả khớp CHÍNH XÁC một lựa chọn (làm tròn theo yêu cầu ghi trong đề).',
+  '- Công thức, phương trình, ion viết bằng LaTeX trong $...$, dùng \\ce{...}. Ví dụ: $\\ce{CH3COOH + C2H5OH <=> CH3COOC2H5 + H2O}$, ion $\\ce{Fe^{3+}}$, nồng độ $C_M$.',
 ];
 
-const buildJsonGuidePrompt = ({ subject, grade }) => [
-  `Bạn là giáo viên ${subject || '[MÔN HỌC]'} giàu kinh nghiệm. Hãy soạn đề trắc nghiệm gồm [SỐ CÂU] câu về: [CHỦ ĐỀ — hoặc dán nội dung bài học / đoạn code vào đây], mức độ [dễ / trung bình / khó], dành cho học sinh ${grade || '[LỚP]'}.`,
+/* Chia 3 phần chuẩn thi tốt nghiệp THPT 2025: 28 câu = 18 trắc nghiệm + 4 đúng/sai + 6 trả lời ngắn */
+const gdpt2025Split = (n) => {
+  if (n === 28) return { p1: 18, p2: 4, p3: 6 };
+  const p2 = Math.max(1, Math.round((n * 4) / 28));
+  const p3 = Math.max(1, Math.round((n * 6) / 28));
+  return { p1: Math.max(1, n - p2 - p3), p2, p3 };
+};
+
+const buildMasterPrompt = ({ subject, grade, topic, n, level, minutes, extra, structure = 'mcq', explain = true, withCode = false }) => {
+  const sj = (subject || 'Hóa học').trim();
+  const gr = String(grade || '12').replace(/^lớp\s*/i, '');
+  const num = Math.min(60, Math.max(4, Number(n) || 20));
+  const lv = PROMPT_LEVELS[level] || PROMPT_LEVELS.standard;
+  const isChem = /hóa|hoa|chem/i.test(sj);
+  const adv = level === 'adv';
+  const mins = Number(minutes) > 0 ? Number(minutes) : Math.max(15, num * 2);
+  const topicLine = (topic || '').trim() || '[ĐIỀN CHỦ ĐỀ / BÀI HỌC]';
+  const vn = (x) => String(x).replace('.', ',');
+  const lvLines = (cnt, w) => {
+    const [nb, th, vd, vdc] = splitByWeights(cnt, w);
+    return [nb && `${nb} Nhận biết`, th && `${th} Thông hiểu`, vd && `${vd} Vận dụng`, vdc && `${vdc} Vận dụng cao`].filter(Boolean).join(', ');
+  };
+
+  const gdpt = structure === 'gdpt2025';
+  let structBlock;
+  let schema;
+  let pointsRule;
+  if (gdpt) {
+    const { p1, p2, p3 } = gdpt2025Split(num);
+    const unit = 10 / (p1 + p2 * 4 + p3);
+    const ptMc = Math.round(unit * 100) / 100;
+    const ptTf = Math.round(unit * 4 * 100) / 100;
+    structBlock = [
+      `- Số câu: ${num} câu theo cấu trúc đề thi tốt nghiệp THPT 2025, thời gian ${mins} phút, tổng 10 điểm:`,
+      `  • PHẦN I — ${p1} câu trắc nghiệm nhiều lựa chọn (4 phương án, 1 đáp án đúng), mỗi câu ${vn(ptMc)} điểm. Phân bổ: ${lvLines(p1, adv ? [20, 30, 35, 15] : [40, 35, 25, 0])}.`,
+      `  • PHẦN II — ${p2} câu đúng/sai: mỗi câu có 1 đoạn dẫn (tình huống, thí nghiệm, số liệu) và ĐÚNG 4 nhận định a, b, c, d; học sinh xác định từng nhận định đúng hay sai; mỗi câu ${vn(ptTf)} điểm. Phân bổ: ${lvLines(p2, adv ? [0, 0, 50, 50] : [0, 25, 50, 25])}.`,
+      `  • PHẦN III — ${p3} câu trả lời ngắn: đáp án là MỘT SỐ (tối đa 4 ký tự, dấu phẩy thập phân), mỗi câu ${vn(ptMc)} điểm. Phân bổ: ${lvLines(p3, adv ? [0, 0, 40, 60] : [0, 15, 50, 35])}.`,
+      '- Xuất các câu theo đúng thứ tự Phần I → II → III; trong mỗi phần sắp xếp từ dễ đến khó.',
+    ].join('\n');
+    pointsRule = `Điểm: câu trắc nghiệm và trả lời ngắn ${vn(ptMc)}, câu đúng/sai ${vn(ptTf)} (tổng đúng 10 điểm).`;
+    schema = `{
+  "title": "Tên đề",
+  "duration": ${mins},
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "level": "Nhận biết",
+      "topic": "Dạng bài cụ thể",
+      "q": "Nội dung câu hỏi",
+      "options": ["Lựa chọn 1", "Lựa chọn 2", "Lựa chọn 3", "Lựa chọn 4"],
+      "correct": "B",
+      "explain": "Lời giải ngắn gọn",
+      "points": ${ptMc}
+    },
+    {
+      "type": "true_false",
+      "level": "Vận dụng",
+      "topic": "Dạng bài cụ thể",
+      "q": "Đoạn dẫn / tình huống / số liệu dùng chung cho 4 nhận định",
+      "statements": [
+        { "text": "Nhận định a", "answer": true },
+        { "text": "Nhận định b", "answer": false },
+        { "text": "Nhận định c", "answer": true },
+        { "text": "Nhận định d", "answer": false }
+      ],
+      "explain": "Giải thích lần lượt từng ý a, b, c, d",
+      "points": ${ptTf}
+    },
+    {
+      "type": "short_answer",
+      "level": "Vận dụng cao",
+      "topic": "Dạng bài cụ thể",
+      "q": "Nội dung câu hỏi, ghi rõ yêu cầu làm tròn và đơn vị cần tính",
+      "answer": "12,5",
+      "explain": "Lời giải ngắn gọn có phép tính",
+      "points": ${ptMc}
+    }
+  ]
+}`;
+  } else {
+    const [nb, th, vd, vdc] = splitByWeights(num, lv.w);
+    const levelLine = [nb && `${nb} câu Nhận biết`, th && `${th} câu Thông hiểu`, vd && `${vd} câu Vận dụng`, vdc && `${vdc} câu Vận dụng cao`].filter(Boolean).join(' · ');
+    structBlock = [
+      `- Số câu: ${num} câu trắc nghiệm 4 lựa chọn, chỉ 1 đáp án đúng · Thời gian: ${mins} phút`,
+      `- Mức độ: ${lv.label}. Phân bổ: ${levelLine}. Sắp xếp từ dễ đến khó.`,
+    ].join('\n');
+    pointsRule = `Điểm: mỗi câu ${vn(Math.round((10 / num) * 100) / 100)} (tổng 10 điểm).`;
+    schema = withCode ? JSON_SCHEMA_CODE : JSON_SCHEMA_TEXT;
+  }
+
+  const rules = [
+    `Đúng chương trình lớp ${gr} (GDPT 2018); không ra kiến thức ngoài chương trình, không ra câu cần nhìn hình vẽ (nếu cần số liệu thì cho bằng chữ hoặc bảng văn bản).`,
+    'Mỗi câu chỉ kiểm tra MỘT ý chính; câu hỏi rõ ràng, không đánh đố bằng câu chữ, tránh phủ định kép. Câu Vận dụng / Vận dụng cao nên đặt trong bối cảnh thực tiễn hoặc thí nghiệm cụ thể.',
+    'Ba đáp án sai của câu trắc nghiệm phải là sai lầm thật của học sinh (nhầm công thức, quên đổi đơn vị, nhầm tỉ lệ mol, nhầm khái niệm); bốn phương án cùng dạng, độ dài tương đương. TUYỆT ĐỐI không dùng "Cả A và B", "Tất cả đều đúng", "Không có đáp án nào đúng".',
+    `Vị trí đáp án đúng của câu trắc nghiệm phân bố đều A/B/C/D, không theo quy luật.`,
+    ...(gdpt ? [
+      'Câu đúng/sai: 4 nhận định độc lập (không suy ra lẫn nhau), xếp từ dễ đến khó, có cả nhận định đúng lẫn sai; không dùng từ tuyệt đối gợi ý như "luôn", "chỉ", "không bao giờ" một cách máy móc.',
+      'Câu trả lời ngắn: kết quả là MỘT số duy nhất, làm tròn theo yêu cầu ghi rõ trong đề; "answer" chỉ chứa số (vd "12,5"), không kèm đơn vị hay chữ.',
+    ] : []),
+    'Các câu không trùng ý, không trùng dạng; phủ đều chủ đề.',
+    'TỰ KIỂM TRA: trước khi xuất, giải lại TỪNG câu từ đầu và đối chiếu với đáp án. Chỉ xuất câu bạn chắc chắn đúng; nếu số liệu không khớp thì sửa đề cho đến khi khớp. Rà lại lần cuối: đúng số câu, đúng cấu trúc, đúng tổng điểm.',
+    explain ? '"explain": lời giải 1–3 câu nêu cách làm hoặc lý do loại các đáp án nhiễu (câu đúng/sai giải thích từng ý).' : 'Có thể bỏ trường "explain".',
+  ].map((t, i) => `${i + 1}. ${t}`);
+
+  return [
+    '# VAI TRÒ',
+    `Bạn là giáo viên ${sj} THPT nhiều năm kinh nghiệm, từng ra đề kiểm tra và đề thi tốt nghiệp THPT, nắm chắc chương trình GDPT 2018.`,
+    '',
+    '# YÊU CẦU ĐỀ',
+    `- Môn: ${sj} · Lớp: ${gr} · Chủ đề: ${topicLine}`,
+    structBlock,
+    extra && extra.trim() ? `- Yêu cầu thêm của giáo viên: ${extra.trim()}` : null,
+    '- Nếu tôi đính kèm tài liệu / ảnh / nội dung bài học: chỉ ra câu hỏi trong phạm vi tài liệu đó, bám sát số liệu và thuật ngữ trong tài liệu.',
+    `- ${pointsRule}`,
+    '',
+    '# NGUYÊN TẮC RA ĐỀ',
+    ...rules,
+    '',
+    ...(isChem ? [...CHEM_BLOCK, ''] : ['QUY ƯỚC CÔNG THỨC: công thức, ký hiệu toán/lý viết bằng LaTeX trong $...$.', '']),
+    '# ĐỊNH DẠNG ĐẦU RA',
+    'CHỈ trả về MỘT khối JSON hợp lệ đặt trong khối code ```json, không viết lời dẫn hay kết luận, theo đúng cấu trúc:',
+    schema,
+    '',
+    '# QUY TẮC JSON',
+    '- Dùng dấu nháy kép " cho mọi khóa và chuỗi; không có dấu phẩy thừa ở cuối; "answer" của nhận định đúng/sai là true hoặc false (không có nháy).',
+    '- Xuống dòng trong chuỗi viết là \\n; dấu " bên trong chuỗi viết là \\".',
+    '- Mọi dấu gạch chéo ngược của LaTeX phải viết GẤP ĐÔI trong JSON, ví dụ \\\\ce{H2O}, \\\\frac{a}{b}.',
+    '- "correct" của câu trắc nghiệm là chữ cái A, B, C hoặc D. Không ghi sẵn "A.", "B." ở đầu các lựa chọn hay "a)", "b)" ở đầu nhận định.',
+    '- Nếu bị giới hạn độ dài, hãy dừng ở câu hoàn chỉnh cuối cùng và đóng đủ dấu ] và }; tôi sẽ nhắn "tiếp tục" để bạn xuất phần còn lại.',
+  ].filter((x) => x !== undefined && x !== null).join('\n').replace(/\n{3,}/g, '\n\n');
+};
+
+/* Giữ tên cũ cho chỗ khác còn gọi */
+const buildJsonGuidePrompt = ({ subject, grade }) => buildMasterPrompt({ subject, grade, topic: '', n: 28, level: 'standard', minutes: 50, structure: 'gdpt2025' });
+
+/* Chuyển file đề có sẵn (Word/PDF) → JSON, dùng cho mọi môn */
+const buildConvertGeneralPrompt = ({ subject } = {}) => [
+  `Tôi đính kèm một file đề thi môn ${subject || 'Hóa học'} (Word/PDF). Hãy chuyển TOÀN BỘ đề thành JSON để nhập vào phần mềm: giữ đúng thứ tự câu, không bỏ sót, không tự ý sửa nội dung câu hỏi.`,
   '',
-  'Mỗi câu có 4 lựa chọn và chỉ 1 đáp án đúng; các đáp án sai phải hợp lý (là lỗi học sinh hay mắc); vị trí đáp án đúng phân bố đều; các câu không trùng ý.',
-  '',
-  'CHỈ TRẢ VỀ MỘT KHỐI JSON HỢP LỆ, không viết lời dẫn hay kết luận, theo đúng cấu trúc:',
+  'CẤU TRÚC:',
   JSON_SCHEMA_TEXT,
   '',
-  'Quy tắc JSON:',
-  ...JSON_RULES,
+  'QUY TẮC:',
+  '- Mỗi câu là MỘT phần tử trong "questions"; không gộp nhiều câu vào một.',
+  '- "options" chỉ chứa nội dung, không kèm "A.", "B.". Đề có hơn 4 lựa chọn thì giữ nguyên số lựa chọn.',
+  '- Đáp án đúng: lấy theo chữ cái được in đậm / tô màu / gạch chân hoặc bảng đáp án cuối đề. Nếu file không đánh dấu thì tự giải và điền, đồng thời ghi "(AI tự giải)" ở đầu "explain" để tôi kiểm tra lại.',
+  '- Công thức, phương trình viết bằng LaTeX trong $...$ (hóa học dùng \\ce{...}); trong JSON mọi dấu \\ phải viết gấp đôi: \\\\ce{H2O}.',
+  '- Câu có hình vẽ / bảng số liệu: mô tả ngắn bằng chữ trong "q" và thêm "[CÓ HÌNH]" ở cuối để tôi bổ sung.',
+  '- Ghi chú, lời giải của giáo viên trong file KHÔNG đưa vào "options" — đưa vào "explain".',
+  '- JSON hợp lệ: nháy kép, không dấu phẩy thừa, xuống dòng trong chuỗi viết là \\n. CHỈ trả về một khối JSON, không lời dẫn.',
 ].join('\n');
 
+const TEXT_SAMPLE = `Câu 1. Chất nào sau đây là este?
+A. CH3COOH
+B. CH3COOC2H5
+C. C2H5OH
+D. CH3CHO
+Đáp án: B
+Giải thích: Este có nhóm -COO- liên kết với gốc hiđrocacbon.
+
+Câu 2. Thủy phân hoàn toàn 8,8 gam etyl axetat bằng dung dịch NaOH dư, khối lượng muối thu được là
+A. 8,2 gam
+B. 4,1 gam
+C. 6,8 gam
+D. 9,6 gam
+Đáp án: A
+
+Câu 3. Số đồng phân este ứng với công thức C4H8O2 là
+A. 2
+B. 3
+C. 4
+D. 5
+Đáp án: C
+
+PHẦN II. Câu trắc nghiệm đúng sai
+Câu 1. Cho các phát biểu về este:
+a) Este no, đơn chức có công thức chung CnH2nO2.
+b) Este tan tốt trong nước.
+c) Phản ứng xà phòng hóa là phản ứng thuận nghịch.
+d) Etyl axetat có mùi thơm.
+Đáp án: a-Đ, b-S, c-S, d-Đ
+
+PHẦN III. Câu trắc nghiệm trả lời ngắn
+Câu 1. Đốt cháy hoàn toàn 0,1 mol este no, đơn chức thu được bao nhiêu gam CO2 (làm tròn 1 chữ số thập phân)?
+Đáp án: 8,8`;
+
+/* ---------- ĐỀ TIẾNG ANH: bài đọc / đoạn văn dùng chung nhiều câu ---------- */
 const JSON_SAMPLE_EN = {
   title: 'TEST 6 – Cities of the future',
   duration: 50,
@@ -534,6 +919,7 @@ const buildConvertPrompt = () => [
   '- JSON hợp lệ: nháy kép, không dấu phẩy thừa, xuống dòng trong chuỗi viết là \\n. CHỈ trả về một khối JSON, không lời dẫn.',
 ].join('\n');
 
+/* Sửa các lỗi JSON hay gặp khi copy từ chat: xuống dòng thật trong chuỗi, dấu phẩy thừa, nháy cong */
 const escapeNewlinesInStrings = (str) => {
   let out = '';
   let inStr = false;
@@ -563,6 +949,7 @@ const sliceBrackets = (str) => {
   return b > a ? str.slice(a, b + 1) : { incomplete: close };
 };
 
+/* → null (không phải JSON) | { value } | { error } */
 const extractJson = (raw) => {
   const t = raw.trim();
   if (!t) return null;
@@ -594,6 +981,7 @@ const pickK = (o, keys) => {
   return undefined;
 };
 
+/* JSON → { meta, questions } (chấp nhận nhiều tên khoá: q/question/cauhoi…, correct/answer/dapan…) */
 const normalizeJsonExam = (data) => {
   let meta = {};
   let arr = data;
@@ -609,6 +997,7 @@ const normalizeJsonExam = (data) => {
   }
   if (!Array.isArray(arr)) return null;
 
+  /* Cho phép lồng nhóm: { passage, instruction, questions: [ … ] } — câu con thừa hưởng bài đọc của nhóm */
   const PASSAGE_KEYS = ['passage', 'readingpassage', 'reading', 'baidoc', 'doanvan', 'doan', 'context', 'stimulus'];
   const INSTR_KEYS = ['instruction', 'instructions', 'direction', 'directions', 'huongdan', 'dedieu', 'rubric'];
   const flatten = (list, inherit) => list.flatMap((raw) => {
@@ -632,6 +1021,7 @@ const normalizeJsonExam = (data) => {
     const lang = String(pickK(o, ['lang', 'language', 'ngonngu']) ?? '').toLowerCase().replace(/[^a-z+#]/g, '');
     if (code) q += (q ? '\n' : '') + '```' + lang + '\n' + String(code).replace(/\s+$/, '') + '\n```';
 
+    /* lựa chọn */
     let flagged = -1;
     let options = [];
     const rawOpts = pickK(o, ['options', 'choices', 'answers', 'luachon', 'phuongan', 'answerchoices']);
@@ -651,6 +1041,7 @@ const normalizeJsonExam = (data) => {
     }
     options = options.map((t) => t.replace(/^\s*[A-Fa-f][.)]\s+/, '').trim());
 
+    /* đáp án đúng */
     let correct = -1;
     let numeric = false;
     const idxK = pickK(o, ['correctindex', 'answerindex']);
@@ -668,23 +1059,58 @@ const normalizeJsonExam = (data) => {
         else correct = options.findIndex((op) => fold(op) === fold(t));
       }
     }
-    if (numeric && correct === options.length && correct > 0) correct -= 1;
+    if (numeric && correct === options.length && correct > 0) correct -= 1; // AI hay đánh số từ 1
     if (correct < 0 || correct >= options.length) correct = -1;
 
+    /* Ghi chú giáo viên lọt vào lựa chọn (dẫn chứng, "= nghĩa tiếng Việt") */
     const VI = /[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i;
     if (options.some((t) => fold(t).includes('dan chung') || (/\s=\s/.test(t) && VI.test(t.split('=').slice(1).join('=')))))
       warns.push('Lựa chọn có kèm ghi chú (dẫn chứng / nghĩa tiếng Việt) — nên xoá khỏi đáp án');
 
+    /* Dạng câu: trắc nghiệm | đúng/sai | trả lời ngắn */
+    const typeRaw = fold(String(pickK(o, ['type', 'loai', 'dang', 'kind', 'format']) ?? ''));
+    const stRaw = pickK(o, ['statements', 'claims', 'nhandinh', 'menhde', 'ys', 'subquestions']);
+    let type = 'mcq';
+    if (Array.isArray(stRaw) || /true|dung|tf|boolean/.test(typeRaw)) type = 'true_false';
+    else if (/short|ngan|numeric|number|fill|tuluan/.test(typeRaw)) type = 'short_answer';
+    else if (!options.length && c !== undefined && String(Array.isArray(c) ? c[0] : c).trim() !== '' && correct < 0) type = 'short_answer';
+    const toB = (v) => {
+      if (typeof v === 'boolean') return v;
+      const t = fold(String(v ?? '')).trim();
+      if (['true', 'dung', 'd', '1', 'yes'].includes(t)) return true;
+      if (['false', 'sai', 's', '0', 'no'].includes(t)) return false;
+      return null;
+    };
+    let statements = [];
+    if (type === 'true_false') {
+      statements = (Array.isArray(stRaw) ? stRaw : []).map((x) => {
+        if (x && typeof x === 'object') {
+          const xo = normObj(x);
+          return { text: String(pickK(xo, ['text', 'content', 'statement', 'noidung', 'nhandinh', 'claim']) ?? '').replace(/^\s*[a-dA-D][.)]\s+/, '').trim(), answer: toB(pickK(xo, ['answer', 'correct', 'dung', 'dapan', 'value', 'isTrue'.toLowerCase()])) };
+        }
+        return { text: String(x), answer: null };
+      });
+    }
+    let answer = '';
+    if (type === 'short_answer') {
+      const av = pickK(o, ['answer', 'dapan', 'correct', 'correctanswer', 'key', 'result', 'ketqua']);
+      answer = String(Array.isArray(av) ? av[0] : av ?? '').trim().replace(/\s/g, '');
+      if (answer.replace(/[^0-9,.\-]/g, '').length > 4) warns.push('Đáp án dài hơn 4 ký tự (đề thi chuẩn chỉ cho tối đa 4 ký tự)');
+    }
+
     const pts = Number(pickK(o, ['points', 'score', 'diem']));
+    const topicV = String(pickK(o, ['topic', 'chude', 'dangbai']) ?? '').trim();
+    const levelV = String(pickK(o, ['level', 'mucdo', 'bloom']) ?? '').trim();
     return {
-      id: 'j' + (i + 1), num: i + 1, q, options, correct, src: 'JSON',
+      id: 'j' + (i + 1), num: i + 1, type, statements, answer, topic: topicV, level: levelV,
+      q, options, correct, src: 'JSON',
       passage: asText(ctx.passage), instruction: asText(ctx.instruction),
       explain: String(pickK(o, ['explain', 'explanation', 'giaithich', 'loigiai', 'solution', 'reason']) ?? '').trim(),
       warns, points: pts > 0 ? pts : undefined,
     };
   });
   if (!questions.some((x) => x.q)) return null;
-
+  /* Các câu liền nhau có cùng bài đọc → cùng một nhóm (pg) */
   let pgN = 0;
   let prevP = null;
   questions.forEach((x) => {
@@ -695,6 +1121,7 @@ const normalizeJsonExam = (data) => {
   return { meta, questions };
 };
 
+/* ---------- Chế độ SINH ĐỀ TỪ CODE ---------- */
 const LANGS = ['Python', 'C++', 'C', 'Java', 'JavaScript', 'C#', 'PHP', 'Pascal', 'HTML/CSS', 'SQL', 'Khác'];
 const FENCE_LANG = { Python: 'python', 'C++': 'cpp', C: 'c', Java: 'java', JavaScript: 'javascript', 'C#': 'csharp', PHP: 'php', Pascal: 'pascal', 'HTML/CSS': 'html', SQL: 'sql' };
 const EXT_LANG = { py: 'Python', cpp: 'C++', cc: 'C++', c: 'C', java: 'Java', js: 'JavaScript', ts: 'JavaScript', cs: 'C#', php: 'PHP', pas: 'Pascal', html: 'HTML/CSS', css: 'HTML/CSS', sql: 'SQL' };
@@ -736,6 +1163,7 @@ const isCodeLine = (l) =>
   (/^( {2,}|\t)\S/.test(l) && /[()=[\]{};:]/.test(l)) ||
   /^\s*[A-Za-z_]\w*\s*\(.*\)\s*:?\s*$/.test(l);
 
+/* Văn bản "giống code" và KHÔNG giống một đề thi */
 const looksLikeCode = (text) => {
   const ls = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l.trim());
   if (ls.length < 3) return false;
@@ -805,8 +1233,102 @@ const buildPrompt = ({ code, lang, n, level, kinds, extra, subject, grade, forma
   ].filter((x) => x !== null).join('\n');
 };
 
-// ... (CSS giữ nguyên)
-const EI_CSS = `...`; // (Bạn tự giữ nguyên đoạn CSS này từ file cũ nhé, nó dài quá)
+const EI_CSS = `
+.ei-root .ei-opt{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:8px!important;width:100%!important;margin:0!important;padding:0!important;background:none!important;border:0!important;}
+.ei-root .ei-opt>*{margin:0!important;}
+.ei-root .ei-opt input[type=radio]{order:0!important;appearance:auto!important;-webkit-appearance:radio!important;width:16px!important;height:16px!important;min-width:16px!important;max-width:16px!important;flex:none!important;padding:0!important;border-radius:50%!important;background:none!important;box-shadow:none!important;position:static!important;cursor:pointer!important;accent-color:var(--acc,#0071e3);}
+.ei-root .ei-opt input[type=radio]::before,.ei-root .ei-opt input[type=radio]::after{content:none!important;display:none!important;}
+.ei-root .ei-opt b{order:1!important;width:18px!important;flex:none!important;text-align:center!important;}
+.ei-root .ei-opt input:not([type=radio]),.ei-root .ei-opt textarea{order:2!important;flex:1 1 auto!important;min-width:0!important;width:auto!important;height:auto!important;min-height:34px!important;padding:.4rem .65rem!important;box-sizing:border-box!important;opacity:1!important;visibility:visible!important;color:var(--ink,#1d1d1f)!important;background:var(--bg,#fff)!important;border:1px solid var(--edge,rgba(0,0,0,.18))!important;border-radius:10px!important;}
+
+/* ===== v3 · giao diện mới ===== */
+.ei-root{--ei-r:16px;max-width:1100px;width:100%;margin:0 auto;box-sizing:border-box;color:var(--ink,#1d1d1f);}
+.ei-root *{box-sizing:border-box;}
+.ei2-head h3{margin:0;font:800 1.35rem/1.2 var(--sans,sans-serif);letter-spacing:-.02em;}
+.ei2-head p{margin:.3rem 0 0;font:500 .9rem/1.5 var(--sans,sans-serif);color:var(--mut,#6e6e73);}
+.ei2-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1rem;align-items:stretch;}
+@media(max-width:860px){.ei2-grid{grid-template-columns:1fr;}}
+.ei2-card{display:flex;flex-direction:column;gap:.7rem;padding:1.1rem 1.2rem;border-radius:var(--ei-r);background:var(--panel,#fff);border:1px solid var(--soft,#e8e8ed);}
+.ei2-card-t{display:flex;align-items:center;gap:.6rem;font:700 .95rem var(--sans,sans-serif);}
+.ei2-num{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--acc,#0071e3);color:var(--acc-ink,#fff);font:800 .74rem var(--sans,sans-serif);flex:none;}
+.ei2-drop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;min-height:200px;padding:1.2rem;border-radius:14px;border:2px dashed color-mix(in srgb,var(--acc,#0071e3) 40%,transparent);background:color-mix(in srgb,var(--acc,#0071e3) 4%,var(--panel,#fff));text-align:center;cursor:pointer;transition:border-color .15s,background .15s;}
+.ei2-drop:hover,.ei2-drop.on{border-color:var(--acc,#0071e3);background:color-mix(in srgb,var(--acc,#0071e3) 9%,var(--panel,#fff));}
+.ei2-drop-ico{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:color-mix(in srgb,var(--acc,#0071e3) 12%,transparent);color:var(--acc,#0071e3);}
+.ei2-drop b{font:700 .95rem var(--sans,sans-serif);}
+.ei2-drop small{font:500 .78rem var(--sans,sans-serif);color:var(--mut,#6e6e73);}
+.ei2-file{display:inline-flex;align-items:center;gap:.4rem;max-width:100%;padding:.3rem .7rem;border-radius:999px;background:color-mix(in srgb,#22c55e 14%,transparent);color:#15803d;font:700 .78rem var(--sans,sans-serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ei2-ta{flex:1;width:100%;min-height:200px;resize:vertical;padding:.8rem .9rem;border-radius:14px;border:1.5px solid var(--soft,#e8e8ed);background:var(--bg,#fff);color:var(--ink,#1d1d1f);font:500 .84rem/1.55 var(--mono,monospace);outline:0;transition:border-color .15s;}
+.ei2-ta:focus{border-color:var(--acc,#0071e3);}
+.ei2-status{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-height:1.6rem;font:600 .8rem var(--sans,sans-serif);color:var(--mut,#6e6e73);}
+.ei2-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.22rem .65rem;border-radius:999px;font:700 .74rem var(--sans,sans-serif);}
+.ei2-pill.ok{background:color-mix(in srgb,#22c55e 14%,transparent);color:#15803d;}
+.ei2-pill.err{background:color-mix(in srgb,#dc2626 12%,transparent);color:#dc2626;}
+.ei2-pill.warn{background:color-mix(in srgb,#f59e0b 16%,transparent);color:#b45309;}
+.ei2-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem 1.1rem;border-radius:999px;border:1.5px solid var(--soft,#e0e0e6);background:var(--panel,#fff);color:var(--ink,#1d1d1f);font:700 .82rem var(--sans,sans-serif);cursor:pointer;transition:all .15s;}
+.ei2-btn:hover{border-color:var(--ink,#1d1d1f);}
+.ei2-btn.pri{background:var(--acc,#0071e3);border-color:var(--acc,#0071e3);color:var(--acc-ink,#fff);}
+.ei2-btn.pri:hover{opacity:.92;}
+.ei2-btn.sm{padding:.38rem .85rem;font-size:.76rem;}
+.ei2-btn:disabled{opacity:.45;cursor:not-allowed;}
+.ei2-ai{border-radius:var(--ei-r);border:1px solid var(--soft,#e8e8ed);background:var(--panel,#fff);overflow:hidden;}
+.ei2-ai>summary{display:flex;align-items:center;gap:.6rem;padding:.9rem 1.2rem;cursor:pointer;list-style:none;font:700 .92rem var(--sans,sans-serif);}
+.ei2-ai>summary::-webkit-details-marker{display:none;}
+.ei2-ai>summary .ei2-chev{margin-left:auto;transition:transform .2s;color:var(--mut,#6e6e73);}
+.ei2-ai[open]>summary .ei2-chev{transform:rotate(180deg);}
+.ei2-ai-sub{font:500 .8rem var(--sans,sans-serif);color:var(--mut,#6e6e73);font-weight:500;}
+.ei2-ai-body{display:grid;gap:.9rem;padding:0 1.2rem 1.2rem;}
+.ei2-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;}
+@media(max-width:700px){.ei2-steps{grid-template-columns:1fr;}}
+.ei2-step{display:flex;gap:.6rem;align-items:flex-start;padding:.7rem .8rem;border-radius:12px;background:var(--soft,#f5f5f7);font:500 .82rem/1.45 var(--sans,sans-serif);}
+.ei2-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
+.ei2-more{border-top:1px dashed var(--soft,#e0e0e6);padding-top:.7rem;}
+.ei2-more>summary{cursor:pointer;font:700 .8rem var(--sans,sans-serif);color:var(--mut,#6e6e73);list-style:none;}
+.ei2-more>summary::-webkit-details-marker{display:none;}
+.ei2-more>summary:hover{color:var(--ink,#1d1d1f);}
+.ei2-more-body{display:grid;gap:.7rem;margin-top:.7rem;}
+.ei2-lbl{font:700 .7rem var(--sans,sans-serif);text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#6e6e73);}
+.ei2-fields{font:500 .8rem/1.7 var(--sans,sans-serif);color:var(--mut,#6e6e73);}
+.ei2-fields code,.ei2-step code{padding:.05rem .35rem;border-radius:6px;background:var(--soft,#f0f0f3);font:600 .74rem var(--mono,monospace);color:var(--ink,#1d1d1f);}
+.ei2-pre{margin:0;padding:.7rem .85rem;border-radius:12px;background:var(--soft,#f5f5f7);overflow:auto;max-height:220px;font:500 .74rem/1.55 var(--mono,monospace);}
+.ei2-in{width:100%;padding:.55rem .75rem;border-radius:10px;border:1.5px solid var(--soft,#e0e0e6);background:var(--bg,#fff);color:var(--ink,#1d1d1f);font:500 .85rem var(--sans,sans-serif);outline:0;}
+.ei2-in:focus{border-color:var(--acc,#0071e3);}
+.ei2-field{display:grid;gap:.3rem;min-width:0;}
+.ei2-row{display:flex;gap:.7rem;flex-wrap:wrap;}
+.ei2-codebox{display:grid;gap:.8rem;padding:1rem 1.2rem;border-radius:var(--ei-r);border:1.5px solid var(--acc,#0071e3);background:color-mix(in srgb,var(--acc,#0071e3) 4%,var(--panel,#fff));}
+.ei2-prev{display:grid;gap:.8rem;}
+.ei2-prev-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
+.ei2-list{display:grid;gap:.7rem;max-height:560px;overflow-y:auto;padding-right:4px;}
+.ei2-q{display:grid;gap:.5rem;padding:.9rem 1rem;border-radius:14px;border:1.5px solid var(--soft,#e8e8ed);background:var(--panel,#fff);}
+.ei2-q.bad{border-color:color-mix(in srgb,#dc2626 45%,transparent);}
+.ei2-q-h{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;}
+.ei2-x{margin-left:auto;display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--mut,#6e6e73);cursor:pointer;}
+.ei2-x:hover{background:#dc2626;color:#fff;}
+.ei2-group{border:1.5px solid var(--acc,#0071e3);border-radius:14px;padding:.7rem .9rem;background:var(--soft,#f5f5f7);}
+.ei2-group>summary{cursor:pointer;font:700 .82rem var(--sans,sans-serif);}
+.ei2-foot{position:sticky;bottom:0;z-index:5;display:grid;gap:.6rem;padding:.9rem 1.1rem;border-radius:var(--ei-r);background:var(--panel,#fff);border:1px solid var(--soft,#e8e8ed);box-shadow:0 -8px 24px -16px rgba(0,0,0,.25);}
+.ei2-foot-row{display:flex;gap:.7rem;flex-wrap:wrap;align-items:flex-end;}
+.ei2-msg{margin:0;font:600 .8rem var(--sans,sans-serif);}
+.ei2-stmt{display:flex;gap:.5rem;align-items:center;}
+.ei2-stmt>b{flex:none;width:22px;font:700 .8rem var(--sans,sans-serif);}
+.ei2-stmt>input.ei2-in{flex:1;}
+.ei2-sel{width:92px!important;flex:none;font-weight:700!important;}
+.ei2-sel.ok{color:#15803d;border-color:#22c55e;}
+.ei2-sel.no{color:#dc2626;border-color:#f87171;}
+.ei2-pbox{display:grid;gap:.8rem;padding:1rem 1.1rem;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--acc,#0071e3) 35%,var(--soft,#e8e8ed));background:color-mix(in srgb,var(--acc,#0071e3) 3%,var(--panel,#fff));}
+.ei2-pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;}
+.ei2-pgrid .ei2-wide{grid-column:span 2;}
+@media(max-width:860px){.ei2-pgrid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){.ei2-pgrid{grid-template-columns:1fr;}.ei2-pgrid .ei2-wide{grid-column:auto;}}
+.ei2-seg{display:flex;border:1.5px solid var(--soft,#e0e0e6);border-radius:10px;overflow:hidden;background:var(--bg,#fff);}
+.ei2-seg button{flex:1;padding:.5rem .6rem;border:0;background:transparent;color:var(--mut,#6e6e73);font:700 .76rem var(--sans,sans-serif);cursor:pointer;}
+.ei2-seg button.on{background:var(--acc,#0071e3);color:var(--acc-ink,#fff);}
+.ei2-tips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;}
+@media(max-width:760px){.ei2-tips{grid-template-columns:1fr;}}
+.ei2-tip{padding:.8rem 1rem;border-radius:12px;background:var(--soft,#f5f5f7);font:500 .8rem/1.55 var(--sans,sans-serif);}
+.ei2-tip ul{margin:.4rem 0 0;padding-left:1.1rem;display:grid;gap:.3rem;}
+.ei2-msg.ok{color:#16a34a;}.ei2-msg.err{color:#dc2626;}
+`;
+
 
 
 export default function ExamImporter({
@@ -819,7 +1341,7 @@ export default function ExamImporter({
 }) {
   const fileRef = useRef(null);
   const [raw, setRaw] = useState('');
-  const [fileLines, setFileLines] = useState(null);
+  const [fileLines, setFileLines] = useState(null); // dòng có mask (chỉ khi nhập từ Word)
   const [items, setItems] = useState([]);
   const [keyFound, setKeyFound] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -842,16 +1364,25 @@ export default function ExamImporter({
   const [extra, setExtra] = useState('');
   const [copied, setCopied] = useState(false);
   const [format, setFormat] = useState('json');
-  const [jsonInfo, setJsonInfo] = useState(null);
+  const [jsonInfo, setJsonInfo] = useState(null); // { count } | { error }
   const [guideOpen, setGuideOpen] = useState(true);
   const [copiedKey, setCopiedKey] = useState('');
+  const [embedPassage, setEmbedPassage] = useState(true); // ghép bài đọc vào đầu mỗi câu
+  const gradeInit = String(classInfo?.grade || '').replace(/\D/g, '');
+  const [pb, setPb] = useState({
+    subject: classInfo?.subject || 'Hóa học',
+    grade: ['10', '11', '12'].includes(gradeInit) ? gradeInit : '12',
+    topic: '', n: 28, minutes: 50, level: 'standard', structure: 'gdpt2025', extra: '',
+  });
+  const setPbv = (p) => setPb((o) => ({ ...o, ...p }));
+  const pbPrompt = buildMasterPrompt({ ...pb });
+  const pbSplit = gdpt2025Split(Math.min(60, Math.max(4, Number(pb.n) || 28)));
 
-  // [3] SỬA LỖI QUAN TRỌNG: Mặc định không ghép bài đọc vào câu hỏi
-  const [embedPassage, setEmbedPassage] = useState(false);
-
+  /* Phân tích lại mỗi khi nội dung thay đổi */
   useEffect(() => {
     if (!raw.trim()) { setItems([]); setKeyFound(false); setJsonInfo(null); codeDismissed.current = false; return; }
 
+    /* 1) JSON → tự thành đề */
     const jx = fileLines ? null : extractJson(raw);
     if (jx && jx.value !== undefined) {
       const ex = normalizeJsonExam(jx.value);
@@ -872,9 +1403,11 @@ export default function ExamImporter({
     }
     setJsonInfo(null);
 
+    /* 2) Văn bản thường */
     const res = parseLines(fileLines || textToLines(raw));
     setItems(res.questions);
     setKeyFound(res.keyFound);
+    /* Dán code (không phải đề) → tự nhảy sang chế độ tạo prompt */
     if (!codeMode && !codeDismissed.current && res.questions.length === 0 && !fileLines && looksLikeCode(raw)) {
       setCodeSrc(raw);
       setLang(guessLang(raw, fileName));
@@ -974,6 +1507,7 @@ export default function ExamImporter({
   const setOption = (id, i, v) =>
     setItems((arr) => arr.map((it) => (it.id === id ? { ...it, options: it.options.map((o, j) => (j === i ? v : o)) } : it)));
   const remove = (id) => setItems((arr) => arr.filter((it) => it.id !== id));
+  /* Sửa bài đọc / hướng dẫn: áp dụng cho cả nhóm */
   const setGroup = (pg, p) => setItems((arr) => arr.map((it) => (it.pg === pg ? { ...it, ...p } : it)));
 
   const checked = items.map((it) => ({ it, issues: issuesOf(it) }));
@@ -992,17 +1526,25 @@ export default function ExamImporter({
         subject: classInfo?.subject || '',
         grade: classInfo?.grade || '',
         questions: valid.map((it) => {
-          const base = { type: 'mcq', options: it.options, correct: it.correct, points: it.points || 1, explain: it.explain };
+          const meta = { ...(it.topic ? { topic: it.topic } : {}), ...(it.level ? { level: it.level } : {}) };
+          if (it.type === 'true_false') {
+            return { ...meta, type: 'true_false', q: it.q, statements: it.statements.map((x) => ({ text: x.text, answer: x.answer === true })), points: it.points || 1, explain: it.explain };
+          }
+          if (it.type === 'short_answer') {
+            const vi = String(it.answer).trim().replace('.', ',');
+            return { ...meta, type: 'short_answer', q: it.q, answer: vi, accepted: [...new Set([vi, vi.replace(',', '.')])], points: it.points || 0.25, explain: it.explain };
+          }
+          const base = { ...meta, type: 'single_choice', options: it.options, correct: it.correct, points: it.points || 1, explain: it.explain };
           if (!it.passage && !it.instruction) return { ...base, q: it.q };
+          /* Ghép bài đọc vào đầu câu hỏi → màn làm bài nào cũng hiển thị được */
           if (embedPassage) {
             const head = [it.instruction, it.passage].filter(Boolean).join('\n\n');
             return { ...base, q: head + '\n\n———\n' + it.q };
           }
+          /* Gửi riêng: màn làm bài cần đọc q.passage / q.instruction / q.passageId */
           return { ...base, q: it.q, passage: it.passage || undefined, instruction: it.instruction || undefined, passageId: it.pg || undefined };
         }),
         sourceFile: fileName || null,
-        // [3] Thêm displayMode: paper nếu có bài đọc
-        displayMode: valid.some((it) => it.passage || it.instruction) ? 'paper' : 'auto'
       });
       const skipped = items.length - valid.length;
       setMsg(`Đã tạo đề từ file thành công!${skipped ? ` (bỏ qua ${skipped} câu chưa hợp lệ)` : ''}`);
@@ -1030,6 +1572,7 @@ export default function ExamImporter({
         <p>Tải file Word, PDF, TXT hoặc dán JSON do AI soạn. Đáp án đúng được nhận diện tự động, thầy/cô chỉ cần xem lại rồi tạo đề.</p>
       </div>
 
+      {/* ===== BƯỚC 1 + 2: FILE | DÁN ===== */}
       <div className="ei2-grid">
         <div className="ei2-card">
           <div className="ei2-card-t"><span className="ei2-num">1</span>Tải file lên</div>
@@ -1071,26 +1614,90 @@ export default function ExamImporter({
         </div>
       </div>
 
+      {/* ===== NHỜ AI SOẠN ĐỀ ===== */}
       <details className="ei2-ai" open={guideOpen} onToggle={(e) => setGuideOpen(e.currentTarget.open)}>
         <summary>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--acc,#0071e3)' }}><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" /></svg>
-          Chưa có đề? Nhờ AI soạn rồi dán vào
+          Chưa có đề? Nhờ AI soạn đề chuẩn THPT rồi dán vào
           <span className="ei2-ai-sub">Claude, ChatGPT, Gemini…</span>
           <svg className="ei2-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
         </summary>
         <div className="ei2-ai-body">
+          {/* --- BƯỚC 1: FORM TẠO PROMPT --- */}
+          <div className="ei2-pbox">
+            <div className="ei2-card-t"><span className="ei2-num">1</span>Điền thông tin đề — prompt tự cập nhật theo</div>
+            <div className="ei2-pgrid">
+              <label className="ei2-field"><span className="ei2-lbl">Môn</span>
+                <input className="ei2-in" value={pb.subject} onChange={(e) => setPbv({ subject: e.target.value })} /></label>
+              <label className="ei2-field"><span className="ei2-lbl">Lớp</span>
+                <select className="ei2-in" value={pb.grade} onChange={(e) => setPbv({ grade: e.target.value })}>
+                  {['10', '11', '12'].map((g) => <option key={g} value={g}>Lớp {g}</option>)}
+                </select></label>
+              <label className="ei2-field ei2-wide"><span className="ei2-lbl">Chủ đề / bài học</span>
+                <input className="ei2-in" value={pb.topic} placeholder="VD: Este – Lipit (Hóa 12, chương 1)" onChange={(e) => setPbv({ topic: e.target.value })} /></label>
+              <label className="ei2-field"><span className="ei2-lbl">Số câu</span>
+                <input className="ei2-in" type="number" min={4} max={60} value={pb.n} onChange={(e) => setPbv({ n: e.target.value })} /></label>
+              <label className="ei2-field"><span className="ei2-lbl">Thời gian (phút)</span>
+                <input className="ei2-in" type="number" min={5} value={pb.minutes} onChange={(e) => setPbv({ minutes: e.target.value })} /></label>
+              <label className="ei2-field"><span className="ei2-lbl">Mức độ</span>
+                <select className="ei2-in" value={pb.level} onChange={(e) => setPbv({ level: e.target.value })}>
+                  {Object.entries(PROMPT_LEVELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select></label>
+              <div className="ei2-field"><span className="ei2-lbl">Cấu trúc đề</span>
+                <div className="ei2-seg">
+                  <button type="button" className={pb.structure === 'gdpt2025' ? 'on' : ''} onClick={() => setPbv({ structure: 'gdpt2025', n: 28, minutes: 50 })}>Chuẩn thi 2025 (3 phần)</button>
+                  <button type="button" className={pb.structure === 'mcq' ? 'on' : ''} onClick={() => setPbv({ structure: 'mcq', n: 20, minutes: 45 })}>100% trắc nghiệm</button>
+                </div></div>
+              <label className="ei2-field ei2-wide"><span className="ei2-lbl">Yêu cầu thêm (tùy chọn)</span>
+                <input className="ei2-in" value={pb.extra} placeholder="VD: nhiều câu thực tiễn, ưu tiên bài toán hỗn hợp, tránh dạng đã ra ở đề trước…" onChange={(e) => setPbv({ extra: e.target.value })} /></label>
+            </div>
+            <div className="ei2-actions">
+              <button type="button" className="ei2-btn pri" onClick={() => copyAny(pbPrompt, 'prompt')}>
+                {copiedKey === 'prompt' ? 'Đã sao chép ✓' : 'Sao chép prompt'}
+              </button>
+              {!pb.topic.trim() && <span className="ei2-pill warn">Nên điền chủ đề trước khi sao chép</span>}
+              {pb.structure === 'gdpt2025' && (
+                <span className="ei2-pill ok">{pbSplit.p1} trắc nghiệm · {pbSplit.p2} đúng/sai · {pbSplit.p3} trả lời ngắn</span>
+              )}
+            </div>
+            <details className="ei2-more">
+              <summary>Xem nội dung prompt ({pbPrompt.length.toLocaleString('vi-VN')} ký tự)</summary>
+              <textarea className="ei2-ta" style={{ minHeight: 220, marginTop: '.6rem', fontSize: '.76rem' }} readOnly value={pbPrompt} onFocus={(e) => e.target.select()} />
+            </details>
+          </div>
+
+          {/* --- CÁC BƯỚC CÒN LẠI --- */}
           <div className="ei2-steps">
-            <div className="ei2-step"><span className="ei2-num">1</span><span>Bấm <b>Sao chép prompt</b>, thay phần trong <code>[ngoặc vuông]</code> bằng chủ đề, số câu, mức độ.</span></div>
-            <div className="ei2-step"><span className="ei2-num">2</span><span>Dán vào chat AI, rồi copy toàn bộ khối JSON AI trả về.</span></div>
-            <div className="ei2-step"><span className="ei2-num">3</span><span>Dán vào ô <b>bước 2</b> phía trên, kiểm tra và bấm <b>Tạo đề</b>.</span></div>
+            <div className="ei2-step"><span className="ei2-num">2</span>
+              <div><b>Dán vào chat AI</b><br />Mở Claude, ChatGPT hoặc Gemini, dán prompt vào <i>tin nhắn mới</i>. Có tài liệu thì <b>đính kèm cùng lúc</b> (PDF, ảnh đề cương, trang SGK) để AI bám đúng số liệu.</div></div>
+            <div className="ei2-step"><span className="ei2-num">3</span>
+              <div><b>Chờ AI trả khối JSON</b><br />Bấm nút <b>Copy</b> ở góc khối code, hoặc bôi đen toàn bộ từ <code>{'{'}</code> đến <code>{'}'}</code>. AI có viết thêm lời dẫn cũng không sao, phần mềm tự cắt lấy khối JSON.</div></div>
+            <div className="ei2-step"><span className="ei2-num">4</span>
+              <div><b>Dán vào ô "bước 2" phía trên</b><br />Đề hiện ngay bên dưới. Các câu <span style={{ color: '#dc2626', fontWeight: 700 }}>cảnh báo đỏ</span> là câu thiếu đáp án hoặc sai cấu trúc; sửa trực tiếp rồi bấm <b>Tạo đề</b>.</div></div>
           </div>
-          <div className="ei2-actions">
-            <button type="button" className="ei2-btn pri"
-              onClick={() => copyAny(buildJsonGuidePrompt({ subject: classInfo?.subject, grade: classInfo?.grade }), 'prompt')}>
-              {copiedKey === 'prompt' ? 'Đã sao chép ✓' : 'Sao chép prompt cho AI'}
-            </button>
-            {sampleBtns}
+
+          <div className="ei2-tips">
+            <div className="ei2-tip">
+              <b>Mẹo để AI ra đề chuẩn</b>
+              <ul>
+                <li>Dùng mô hình mạnh và bật chế độ <b>suy nghĩ (Thinking / Extended thinking)</b> nếu có — bài tính toán Hóa chính xác hơn rõ rệt.</li>
+                <li>Chủ đề càng cụ thể càng tốt: "Este – Lipit, Hóa 12" tốt hơn "Hóa hữu cơ".</li>
+                <li>Đề trên 30 câu hay bị cắt giữa chừng: tạo 2 đề nhỏ (VD 15 + 15 câu) hoặc nhắn AI “Xuất lại toàn bộ JSON, rút lời giải còn 1 câu”.</li>
+                <li>Luôn tự giải thử 2–3 câu Vận dụng cao: AI vẫn có thể sai số liệu. Câu sai thì bấm chọn lại đáp án ngay trong phần xem lại.</li>
+              </ul>
+            </div>
+            <div className="ei2-tip">
+              <b>Gặp lỗi?</b>
+              <ul>
+                <li><b>"JSON chưa hợp lệ"</b>: copy thiếu phần cuối. Copy lại cả khối, hoặc nhắn AI “Trả lại đúng JSON hợp lệ, không giải thích thêm”.</li>
+                <li><b>Công thức hiện lỗi $\ce…</b>: AI quên viết gấp đôi dấu gạch chéo. Nhắn “Viết gấp đôi mọi dấu \ trong JSON”.</li>
+                <li><b>Thiếu câu / sai số câu</b>: nhắn “Đề đang có N câu, cần đúng M câu, bổ sung phần thiếu và xuất lại toàn bộ”.</li>
+                <li><b>Đã có file Word/PDF đề sẵn</b>: dùng mục “Thêm” bên dưới để chuyển thẳng sang JSON.</li>
+              </ul>
+            </div>
           </div>
+
+          <div className="ei2-actions">{sampleBtns}</div>
 
           <details className="ei2-more">
             <summary>Thêm: đề tiếng Anh có bài đọc, chuyển đề có sẵn sang JSON</summary>
@@ -1114,12 +1721,16 @@ export default function ExamImporter({
             <summary>Xem định dạng JSON và các trường được hỗ trợ</summary>
             <div className="ei2-more-body">
               <div className="ei2-fields">
-                <code>q</code> nội dung câu (bắt buộc) · <code>options</code> mảng 2–6 lựa chọn (bắt buộc) ·
+                <code>type</code> <code>multiple_choice</code> | <code>true_false</code> | <code>short_answer</code> (bỏ trống = trắc nghiệm) ·
+                <code> q</code> nội dung câu (bắt buộc) · <code>options</code> mảng 2–6 lựa chọn (trắc nghiệm) ·
                 <code> correct</code> chữ cái <code>"A"</code>–<code>"F"</code>, số thứ tự từ 0, hoặc đúng nội dung lựa chọn ·
-                <code> explain</code> giải thích · <code>code</code> + <code>lang</code> đoạn code · <code>points</code> điểm ·
-                <code> passage</code> bài đọc (các câu liền nhau cùng <code>passage</code> được gom một bài) · <code>instruction</code> dòng hướng dẫn.
-                Cũng nhận <code>question</code>, <code>choices</code>, <code>answer</code>, <code>cau_hoi</code>, <code>dap_an</code>, <code>giai_thich</code>.
+                <code> statements</code> đúng 4 nhận định <code>{'{ text, answer: true/false }'}</code> (đúng/sai) ·
+                <code> answer</code> một số, tối đa 4 ký tự (trả lời ngắn) ·
+                <code> level</code> mức độ · <code>topic</code> dạng bài · <code>explain</code> giải thích · <code>points</code> điểm ·
+                <code> code</code> + <code>lang</code> đoạn code · <code>passage</code> bài đọc dùng chung · <code>instruction</code> dòng hướng dẫn.
+                Cũng nhận <code>question</code>, <code>choices</code>, <code>cau_hoi</code>, <code>dap_an</code>, <code>giai_thich</code>.
                 JSON có thể là mảng <code>[ … ]</code> hoặc object có khóa <code>questions</code>, bọc trong <code>```json</code> cũng được.
+                Điểm tính theo từng câu; đề chuẩn 2025: 0,25 / 1 / 0,25 cho trắc nghiệm / đúng-sai / trả lời ngắn.
               </div>
               <pre className="ei2-pre">{JSON_SAMPLE_TEXT}</pre>
             </div>
@@ -1127,6 +1738,7 @@ export default function ExamImporter({
         </div>
       </details>
 
+      {/* ===== CHẾ ĐỘ CODE ===== */}
       {codeMode && (
         <div className="ei2-codebox">
           <div className="ei2-actions">
@@ -1198,6 +1810,7 @@ export default function ExamImporter({
         </div>
       )}
 
+      {/* ===== XEM TRƯỚC ===== */}
       {items.length > 0 && (
         <div className="ei2-prev">
           <div className="ei2-prev-bar">
@@ -1235,6 +1848,9 @@ export default function ExamImporter({
                   <div className={'ei2-q' + (issues.length ? ' bad' : '')}>
                     <div className="ei2-q-h">
                       <b style={{ fontSize: '.85rem' }}>Câu {it.num}</b>
+                      {it.type === 'true_false' && <span className="ei2-pill warn">Đúng/Sai</span>}
+                      {it.type === 'short_answer' && <span className="ei2-pill warn">Trả lời ngắn</span>}
+                      {it.level && <span className="ei2-pill ok">{it.level}</span>}
                       {issues.map((s) => <span key={s} className="ei2-pill err">{s}</span>)}
                       {it.warns.map((s) => <span key={s} className="ei2-pill warn">{s}</span>)}
                       {it.src && !issues.length && (
@@ -1247,7 +1863,29 @@ export default function ExamImporter({
                     <textarea className="ei2-in" value={it.q} rows={Math.min(14, Math.max(2, it.q.split('\n').length + 1))}
                       onChange={(e) => patch(it.id, { q: e.target.value })}
                       style={{ resize: 'vertical', ...(it.q.includes('```') ? { font: '500 .78rem/1.5 var(--mono, monospace)' } : {}) }} />
-                    {it.options.map((o, i) => (
+                    {it.type === 'true_false' && (it.statements || []).map((st, k) => (
+                      <div key={k} className="ei2-stmt">
+                        <b>{'abcd'[k] || k + 1})</b>
+                        <input className="ei2-in" value={st.text}
+                          onChange={(e) => patch(it.id, { statements: it.statements.map((x, j) => (j === k ? { ...x, text: e.target.value } : x)) })} />
+                        <select className={'ei2-in ei2-sel ' + (st.answer === true ? 'ok' : st.answer === false ? 'no' : '')}
+                          value={st.answer === true ? 'Đ' : st.answer === false ? 'S' : ''}
+                          onChange={(e) => patch(it.id, { statements: it.statements.map((x, j) => (j === k ? { ...x, answer: e.target.value === 'Đ' ? true : e.target.value === 'S' ? false : null } : x)) })}>
+                          <option value="">Chọn</option>
+                          <option value="Đ">Đúng</option>
+                          <option value="S">Sai</option>
+                        </select>
+                      </div>
+                    ))}
+                    {it.type === 'short_answer' && (
+                      <div className="ei2-stmt">
+                        <b style={{ whiteSpace: 'nowrap' }}>Đáp án</b>
+                        <input className="ei2-in" style={{ maxWidth: 160 }} value={it.answer} placeholder="vd 12,5"
+                          onChange={(e) => patch(it.id, { answer: e.target.value, src: 'bạn sửa' })} />
+                        <small style={{ color: 'var(--mut, #6e6e73)' }}>một số, dấu phẩy thập phân</small>
+                      </div>
+                    )}
+                    {(it.type === 'mcq' || !it.type) && it.options.map((o, i) => (
                       <div key={i} className="ei-opt">
                         <input type="radio" name={'ans-' + it.id} checked={it.correct === i}
                           onChange={() => patch(it.id, { correct: i, src: 'bạn chọn' })} title="Đặt làm đáp án đúng" />
@@ -1281,6 +1919,7 @@ export default function ExamImporter({
         </label>
       )}
 
+      {/* ===== BƯỚC 3: TẠO ĐỀ ===== */}
       <div className="ei2-foot">
         <div className="ei2-foot-row">
           <label className="ei2-field" style={{ flex: '1 1 220px' }}>

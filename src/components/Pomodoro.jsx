@@ -8,6 +8,7 @@ import {
   IcoHeadphones, IcoSettings,
 } from './PomodoroIcons.jsx';
 import './pomodoro-v2.css';
+import './pomodoro-aurora.css';
 
 /* ============================================================
    CONSTANTS

@@ -3,6 +3,7 @@
    -------------------------------------------------------------------------- */
 import { memo, useEffect, useState } from 'react';
 import MathText from './MathText.jsx';
+import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.jsx';
 
 const IcoPin = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -32,7 +33,7 @@ export const PassageBox = memo(function PassageBox({ instruction, passage, pinna
 });
 
 const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged, paused, onPick, onFlag }) {
-  const short = q.options.every((o) => String(o ?? '').length <= 22);
+  const short = (q.options || []).every((o) => String(o ?? '').length <= 22);
   return (
     <article className="pp-q" id={`pq-${pos}`} data-pos={pos}>
       <div className="pp-q-head">
@@ -49,6 +50,9 @@ const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged,
         </button>
       </div>
       <MathText as="p" className="pp-q-text">{q.q}</MathText>
+      <QuestionImage q={q} />
+      {!isChoiceType(q) && <QuestionAnswer q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />}
+      {isChoiceType(q) && (
       <div className={'pp-opts' + (short ? ' row' : '')} role="radiogroup">
         {q.options.map((opt, i) => (
           <button
@@ -65,6 +69,7 @@ const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged,
           </button>
         ))}
       </div>
+      )}
     </article>
   );
 });

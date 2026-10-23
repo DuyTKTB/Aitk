@@ -1,0 +1,110 @@
+/* exam-types.css — giao diện câu Đúng/Sai và Trả lời ngắn (phòng thi)
+   Đặt tại: src/styles/exam-types.css */
+
+/* ---------- Đúng / Sai ---------- */
+.ep-tf { display: grid; gap: .55rem; min-width: 0; }
+.ep-tf-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .7rem; align-items: center;
+  padding: .75rem .9rem; border: 1.5px solid var(--soft); border-radius: 12px;
+  background: var(--panel); box-sizing: border-box; min-width: 0;
+}
+.ep-tf-text { display: flex; gap: .55rem; min-width: 0; line-height: 1.55; color: var(--ink); overflow-wrap: anywhere; }
+.ep-tf-key { flex: 0 0 auto; font: 800 .9rem var(--mono); color: var(--acc); }
+.ep-tf-btns { display: flex; gap: .4rem; }
+.ep-tf-btn {
+  min-width: 76px; min-height: 44px; padding: .4rem 1rem;
+  border: 1.5px solid var(--soft); border-radius: 10px;
+  background: var(--bg); color: var(--ink); font: 700 .92rem var(--sans); cursor: pointer;
+  transition: background-color .12s, border-color .12s, color .12s;
+}
+.ep-tf-btn.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.ep-tf-btn.sai.on { background: #475569; border-color: #475569; }
+.ep-tf-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ---------- Trả lời ngắn ---------- */
+.ep-sa { display: grid; gap: .45rem; min-width: 0; }
+.ep-sa-label { font: 700 .8rem var(--mono); color: var(--mut); text-transform: uppercase; letter-spacing: .04em; }
+.ep-sa input {
+  width: 100%; max-width: 340px; box-sizing: border-box;
+  padding: .8rem 1rem; border: 2px solid var(--soft); border-radius: 12px;
+  background: var(--bg); color: var(--ink); font: 700 1.25rem var(--mono); outline: 0;
+}
+.ep-sa input:focus { border-color: var(--acc); }
+.ep-sa small { color: var(--mut); font: 500 .78rem var(--sans); }
+
+@media (max-width: 600px) {
+  .ep-tf-row { grid-template-columns: minmax(0, 1fr); }
+  .ep-tf-btns { display: grid; grid-template-columns: 1fr 1fr; }
+  .ep-sa input { max-width: none; }
+}
+
+/* ---------- Hình minh hoạ câu hỏi ---------- */
+.ep-q-fig { margin: .2rem 0 1rem; text-align: center; }
+.ep-q-fig img {
+  max-width: 100%; max-height: 440px; height: auto; object-fit: contain;
+  border-radius: 10px; border: 1px solid var(--soft); background: #fff;
+  -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none;
+}
+
+/* ============================================================
+   NÂNG CẤP PHÒNG THI TRÊN ĐIỆN THOẠI
+   ============================================================ */
+.ep-mviol, .ep-pbar { display: none; }
+
+@media (max-width: 900px) {
+  .ep-mviol { display: inline; color: var(--acc); font-weight: 700; }
+
+  /* Chế độ đề giấy: thanh dưới đáy (danh sách câu + nộp bài) */
+  .ep-pbar {
+    display: flex; gap: .5rem; align-items: center;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border-top: 1px solid var(--soft);
+  }
+  .ep-pbar-list, .ep-pbar-submit {
+    min-height: 46px; border-radius: 999px; font: 700 .9rem var(--sans); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  }
+  .ep-pbar-list { flex: 1; border: 1.5px solid var(--soft); background: var(--bg); color: var(--ink); }
+  .ep-pbar-submit { flex: 1; border: 0; background: var(--acc); color: #fff; }
+  .ep-pbar button:disabled { opacity: .5; }
+  .ep-exam.is-paper .ep-main.paper { padding-bottom: 5.5rem; }
+  .pp-end { display: none; } /* đã có nút Nộp bài ở thanh đáy */
+
+  /* Bàn phím ảo đang mở (đang gõ câu Trả lời ngắn): nhường chỗ cho bàn phím */
+  .ep-exam.kbd .ep-nav,
+  .ep-exam.kbd .ep-pbar,
+  .ep-exam.kbd .ep-swipe-hint,
+  .ep-exam.kbd .ep-cam,
+  .ep-exam.kbd .ep-cam-mini { display: none !important; }
+  .ep-exam.kbd .ep-main { padding-bottom: 1rem; }
+
+  /* Mục chạm ≥ 44px, chữ ô nhập ≥ 16px (iOS tự phóng to nếu nhỏ hơn) */
+  .ep-sa input { font-size: 1.15rem; min-height: 52px; }
+  .ep-tf-btn { min-height: 48px; }
+  .ep-tf-row { padding: .65rem .7rem; }
+  .ep-q-fig img { max-height: 300px; }
+}
+
+/* Điện thoại nằm ngang: ô Đúng/Sai xếp 2 cột cho đỡ dài */
+@media (max-width: 900px) and (max-height: 480px) {
+  .ep-tf { grid-template-columns: 1fr 1fr; }
+  .ep-pbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-inset-bottom, 0px)); }
+  .ep-pbar-list, .ep-pbar-submit { min-height: 40px; }
+}
+
+/* ============================================================
+   FIX: ngăn "Danh sách câu" bị câu hỏi đè lên / bị cắt trên điện thoại
+   ============================================================ */
+@media (max-width: 900px) {
+  .ep-exam .ep-main { position: relative; z-index: 0; isolation: isolate; }
+  .ep-exam .pp-block, .ep-exam .pp-q, .ep-exam .ep-q-card { position: relative; z-index: 0; }
+  .ep-exam .ep-sidebar-overlay { z-index: 60; }
+  .ep-exam .ep-sidebar {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    height: 100vh; height: 100dvh;
+    z-index: 61; display: flex; flex-direction: column;
+    background: var(--panel); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .ep-exam .ep-pbar { z-index: 30; }
+}

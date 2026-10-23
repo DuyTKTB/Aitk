@@ -92,3 +92,9 @@ export const IcoChevronLeft = (p) => <Svg {...p}><path d="M15 18l-6-6 6-6" /></S
 export const IcoChevronRight = (p) => <Svg {...p}><path d="M9 18l6-6-6-6" /></Svg>;
 export const IcoArrowRight = (p) => <Svg {...p}><path d="M5 12h14M12 5l7 7-7 7" /></Svg>;
 export const IcoHome = (p) => <Svg {...p}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></Svg>;
+export const IcoFire = (p) => (
+  <Svg {...p}><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2.2 1.4.9 2.2 1.7 2.7C10.4 8.6 10.6 5.6 12 3z" /></Svg>
+);
+export const IcoHeadphones = (p) => (
+  <Svg {...p}><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3" y="14" width="4" height="7" rx="2" /><rect x="17" y="14" width="4" height="7" rx="2" /></Svg>
+);

@@ -13,6 +13,7 @@ import {
   orderBy, limit, writeBatch,
 } from 'firebase/firestore';
 import { scoreExam, qType } from './examScoring.js';
+import { stripUndefined } from './examSubmit.js';
 import { db } from './firebase.js';
 
 /* ============ HELPERS ============ */
@@ -405,7 +406,7 @@ export async function createExam({
   subject = '',
   grade = 0,
 }) {
-  const totalPoints = (questions || []).reduce((s, q) => s + (q.points || 1), 0);
+  const totalPoints = Math.round((questions || []).reduce((s, q) => s + (Number(q.points) || 1), 0) * 100) / 100;
 
   const data = {
     token: generateExamToken(),
@@ -431,7 +432,7 @@ export async function createExam({
   if (subject) data.subject = subject;
   if (grade) data.grade = Number(grade) || 0;
   try {
-    const ref = await addDoc(collection(db, 'exams'), data);
+    const ref = await addDoc(collection(db, 'exams'), stripUndefined(data));
     return { id: ref.id, ...data };
   } catch (e) {
     console.error('[createExam] Lỗi:', e.code, e.message);
@@ -467,10 +468,10 @@ export function defaultProctor() {
 export async function updateTeacherExam(examId, patch) {
   if (!examId) throw new Error('Thiếu examId.');
   try {
-    await updateDoc(doc(db, 'exams', examId), {
+    await updateDoc(doc(db, 'exams', examId), stripUndefined({
       ...patch,
       updatedAt: serverTimestamp(),
-    });
+    }));
     return true;
   } catch (e) {
     console.error('[updateTeacherExam] Lỗi:', e.code, e.message);
@@ -585,7 +586,7 @@ export async function startAttempt({ examId, student, forceNew = false }) {
 
     const data = {
       studentId: student.id,
-      studentName: student.name,
+      studentName: student.name || student.email || 'Học sinh',
       startedAt: Date.now(),
       answers: {},
       submittedAt: null,
@@ -608,7 +609,7 @@ export async function saveAttemptAnswers({ examId, studentId, answers }) {
   const attemptId = `${examId}_${studentId}`;
   const ref = doc(db, 'exams', examId, 'attempts', attemptId);
   try {
-    await updateDoc(ref, { answers });
+    await updateDoc(ref, stripUndefined({ answers }));
   } catch (e) {
     if (e.code !== 'not-found') {
       console.warn('[saveAttemptAnswers] Lỗi:', e.code, e.message);
@@ -732,7 +733,7 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
   const data = {
     examId,
     studentId: student.id,
-    studentName: student.name,
+    studentName: student.name || student.email || 'Học sinh',
     answers,
     detail,
     score,
@@ -753,7 +754,7 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
   try {
     const att = await getAttempt({ examId, studentId: student.id });
     subId = `${examId}_${student.id}_${att?.startedAt || 'x'}`;
-    await setDoc(doc(db, 'submissions', subId), data);
+    await setDoc(doc(db, 'submissions', subId), stripUndefined(data));
   } catch (e) {
     console.error('[submitExam] Ghi submission lỗi:', e.code, e.message);
     return {
@@ -1146,7 +1147,7 @@ export function listenAttempts(examId, cb) {
 /* ============================================================
    QUẢN LÝ ĐỀ (v5): sửa / nhân bản / đóng-mở / gia hạn / chấm lại
    ============================================================ */
-const sumPoints = (qs = []) => qs.reduce((t, q) => t + (Number(q.points) || 1), 0);
+const sumPoints = (qs = []) => Math.round(qs.reduce((t, q) => t + (Number(q.points) || 1), 0) * 100) / 100;
 
 /** Sửa thông tin đề. Nếu đổi `questions` thì tự tính lại tổng điểm. */
 export async function updateExam(examId, patch = {}) {
@@ -1233,19 +1234,19 @@ export async function regradeExam(examId, changes = {}) {
       const g = gradeAnswers(questions, sub.answers || {});
       sum += g.score;
       if (g.score !== sub.score || g.correctCount !== sub.correctCount) changed += 1;
-      batch.update(doc(db, 'submissions', sub.id), {
+      batch.update(doc(db, 'submissions', sub.id), stripUndefined({
         detail: g.detail, score: g.score, correctCount: g.correctCount,
         totalPoints, regradedAt: serverTimestamp(),
-      });
+      }));
     });
     // eslint-disable-next-line no-await-in-loop
     await batch.commit();
   }
 
-  await updateDoc(doc(db, 'exams', examId), {
+  await updateDoc(doc(db, 'exams', examId), stripUndefined({
     questions, totalPoints, regradedAt: serverTimestamp(),
     stats: { submitted: subs.length, avg: subs.length ? +(sum / subs.length).toFixed(2) : 0 },
-  });
+  }));
   return { ok: true, changed, total: subs.length, avg: subs.length ? sum / subs.length : 0 };
 }
 

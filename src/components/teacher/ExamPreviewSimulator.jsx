@@ -455,6 +455,13 @@ export default function ExamPreviewSimulator({
                   <div className="eps-q-text">
                     {useMath ? <MathText text={currentQ.q} /> : currentQ.q}
                   </div>
+                  {currentQ.image && (
+                    <img
+                      src={currentQ.image}
+                      alt={currentQ.imageAlt || 'Hình minh hoạ'}
+                      style={{ display: 'block', maxWidth: '100%', maxHeight: 420, margin: '.4rem auto 1rem', objectFit: 'contain', borderRadius: 10, background: '#fff' }}
+                    />
+                  )}
 
                   {(currentQ.type === 'single_choice' || !currentQ.type) && (
                     <div className="eps-opts">
