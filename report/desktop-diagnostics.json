@@ -1,0 +1,57 @@
+{
+  "bodyBg": "rgb(0, 0, 0)",
+  "bodyClassName": "",
+  "bodyInnerTextHead": "Xem thử\nTính năng\nDành cho ai\nTất cả công cụ\nPhòng thi\nHỏi đáp\nBắt đầu\nĐăng nhập\nĐăng ký\nAI · TRỢ LÝ HÓA HỌC\nHọc\nHóa học\nhiệu quả hơn\n01\n02\n03\n/ 03\nAI · HÓA HỌC\nSCROLL\n01\n02\n03\nHÓA\nHỌC\nAI\nH₂O\nπ\nΣ\ne⁻\n1\nH\n6\nC\n8\nO\n26\nFe\n11\nNa\n\nELEC AI\n\nSuy luận\nTra cứu\nGiải bài từ ảnh\nTạo quiz\nTính pH\nCân bằng PTHH\n\nMi",
+  "bodyInnerTextLength": 12825,
+  "counts": {
+    "dsEmpty": 0,
+    "dsMsg": 0,
+    "dsPage": 0
+  },
+  "htmlBg": "rgba(0, 0, 0, 0)",
+  "htmlClassName": "",
+  "modals": [
+    {
+      "cls": "lp-login",
+      "disp": "block",
+      "tag": "A",
+      "vis": "visible"
+    },
+    {
+      "cls": "lp-dialog lp-dialog-auth",
+      "disp": "block",
+      "tag": "DIALOG",
+      "vis": "visible"
+    }
+  ],
+  "resourceCount": 120,
+  "resourcesFailed": [],
+  "rootChildElementCount": 2,
+  "rootExists": true,
+  "scroll": {
+    "bodyScrollHeight": 22958,
+    "htmlScrollHeight": 22958
+  },
+  "styles": {
+    ".ds-content": {
+      "present": false,
+      "selector": ".ds-content"
+    },
+    ".ds-input-wrap": {
+      "present": false,
+      "selector": ".ds-input-wrap"
+    },
+    ".ds-main": {
+      "present": false,
+      "selector": ".ds-main"
+    },
+    ".ds-page": {
+      "present": false,
+      "selector": ".ds-page"
+    }
+  },
+  "title": "ELEC AI · ELEC AI",
+  "url": "http://127.0.0.1:5177/#ai",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "viewport": "1440x900 dpr=1"
+}
