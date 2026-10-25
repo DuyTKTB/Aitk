@@ -13,6 +13,7 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
   const [timeLeft, setTimeLeft] = useState((exam?.duration || 45) * 60);
   const [startedAt] = useState(Date.now());
   const [submitted, setSubmitted] = useState(false);
+  const [saveError, setSaveError] = useState('');
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -21,9 +22,17 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
         const qs = await fetchExamQuestions(exam.id);
         if (!alive) return;
         setQuestions(qs);
-        const attempt = await createAttempt(exam.id, mode, user?.id || user?.uid);
-        if (!alive) return;
-        setAttemptId(attempt.id);
+        const uid = user?.uid || user?.id;
+        if (uid) {
+          try {
+            const attempt = await createAttempt(exam.id, mode, uid);
+            if (!alive) return;
+            setAttemptId(attempt.id);
+          } catch (err) {
+            console.error('Tạo lượt làm bài lỗi:', err);
+            if (alive) setSaveError('Chưa lưu được bài làm này vào thống kê. Bạn vẫn làm bài bình thường.');
+          }
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -68,6 +77,9 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
         await submitAttempt(attemptId, { score, correct, wrong, blank, total, timeSpent });
       } catch (e) {
         console.error('Nộp bài lỗi:', e);
+        setSaveError('Chưa lưu được kết quả. Kiểm tra mạng rồi bấm "Nộp bài" lại, hoặc thoát nếu không cần lưu.');
+        setSubmitted(false);
+        return;
       }
     }
 
@@ -134,6 +146,12 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
           {submitted ? 'Đang nộp…' : 'Nộp bài'}
         </button>
       </div>
+
+      {saveError && (
+        <div role="alert" style={{ margin: '.6rem 1rem 0', padding: '.6rem .9rem', borderRadius: 14, background: 'rgba(245,158,11,.14)', border: '1px solid rgba(245,158,11,.35)', color: '#92400e', fontSize: '.82rem', fontWeight: 600 }}>
+          {saveError}
+        </div>
+      )}
 
       <div className="et-progress">
         <div className="et-progress-bar">

@@ -1,0 +1,40 @@
+# -*- coding: utf-8 -*-
+"""Phụ lục N: đối chiếu yêu cầu với kịch bản kiểm thử."""
+
+BLOCKS = []
+BLOCKS += [
+    ('pagebreak',),
+    ('h1', 'PHỤ LỤC N. ĐỐI CHIẾU YÊU CẦU VỚI KỊCH BẢN KIỂM THỬ'),
+    ('p', 'Bảng dưới đây trả lời câu hỏi: mỗi yêu cầu chức năng đã có ít nhất một kịch bản kiểm thử chưa? Cột “kịch bản” trỏ tới số thứ tự trong bảng kiểm thử chức năng ở mục 7.2 và tới các kịch bản chi tiết ở phụ lục I. Nếu một yêu cầu không có kịch bản nào, đó là lỗ hổng trong kế hoạch kiểm thử, không phải lỗi của sản phẩm.'),
+    ('table', 'coverage', 'Đối chiếu 24 yêu cầu chức năng với kịch bản kiểm thử',
+     ['Mã', 'Yêu cầu', 'Kịch bản ở mục 7.2', 'Kịch bản chi tiết ở phụ lục I', 'Đã phủ'],
+     [
+        ['FR-01', 'Đăng ký, đăng nhập, đặt lại mật khẩu', '1, 2, 3', 'Kịch bản 1', 'Có'],
+        ['FR-02', 'Phân quyền ba vai trò', '35', 'Kịch bản 2', 'Có'],
+        ['FR-03', 'Cập nhật hồ sơ', '1 (phần kiểm tra hồ sơ)', '—', 'Một phần'],
+        ['FR-04', 'Hỏi đáp bằng văn bản, chọn khối lớp', '4, 7', 'Kịch bản 4, 6', 'Có'],
+        ['FR-05', 'Gửi ảnh đề bài', '5, 6', 'Kịch bản 5', 'Có'],
+        ['FR-06', 'Lưu và mở lại lịch sử hội thoại', '10', '—', 'Có'],
+        ['FR-07', 'Nhãn kết quả do công cụ tính', '11', 'Kịch bản 4', 'Có'],
+        ['FR-08', 'Tra cứu bảng tuần hoàn', '12', '—', 'Có'],
+        ['FR-09', 'Lọc nhóm, so sánh, xem chi tiết', '13, 14, 15', '—', 'Có'],
+        ['FR-10', 'Hỏi AI về nguyên tố đang xem', '15', '—', 'Có'],
+        ['FR-11', 'Cân bằng phương trình', '16, 17', 'Kịch bản 8', 'Có'],
+        ['FR-12', 'Tính khối lượng mol', '18', 'Kịch bản 9', 'Có'],
+        ['FR-13', 'Số mol, nồng độ, pH', '19', 'Kịch bản 10', 'Có'],
+        ['FR-14', 'Thư viện công thức', '—', '—', 'Chưa có'],
+        ['FR-15', 'Quiz theo chuyên đề', '20', 'Kịch bản 11', 'Có'],
+        ['FR-16', 'Sổ câu sai và lịch ôn', '21, 22', 'Kịch bản 11, 12', 'Có'],
+        ['FR-17', 'Thống kê tiến độ', '23', '—', 'Có'],
+        ['FR-18', 'Sinh câu hỏi từ tài liệu', '—', '—', 'Chưa có'],
+        ['FR-19', 'Tạo đề từ ảnh, PDF, Word', '24, 25, 26', 'Kịch bản 15', 'Có'],
+        ['FR-20', 'Ma trận bốn mức độ', '27, 28', 'Kịch bản 16', 'Có'],
+        ['FR-21', 'Tạo lớp, duyệt, giao đề, xem tiến độ', '29, 30', 'Kịch bản 17', 'Có'],
+        ['FR-22', 'Phòng thi có giám sát camera', '31, 32, 33', 'Kịch bản 18', 'Có'],
+        ['FR-23', 'Chấm phiếu trả lời A4', '34', 'Kịch bản 19', 'Có'],
+        ['FR-24', 'Gói sử dụng, điểm, lịch sử giao dịch', '—', '—', 'Chưa có'],
+     ], [1.8, 6.8, 4.0, 4.4, 2.4]),
+    ('p', 'Bảng cho thấy 20 trong 24 yêu cầu đã có kịch bản kiểm thử, một yêu cầu phủ một phần và ba yêu cầu chưa có kịch bản. Ba yêu cầu chưa phủ là FR-14 (thư viện công thức), FR-18 (sinh câu hỏi từ tài liệu) và FR-24 (gói sử dụng và điểm).'),
+    ('p', 'Việc ba yêu cầu này chưa có kịch bản có nguyên nhân rõ ràng: FR-14 là chức năng tra cứu tĩnh nên nhóm cho là ít rủi ro; FR-18 mới hoàn thiện ở mức cơ bản; FR-24 liên quan đến thanh toán nên nhóm chưa dám thử với tiền thật. Cả ba lí do đều không đủ để bỏ qua, và nhóm bổ sung vào danh mục cần làm: kiểm thử FR-14 bằng cách đối chiếu 20 công thức với sách giáo khoa, kiểm thử FR-18 với ba tài liệu khác nhau, và kiểm thử FR-24 bằng một giao dịch nhỏ với số tiền tối thiểu.'),
+    ('p', 'Bảng này cũng dùng để tránh một lỗi thường gặp khi viết báo cáo: trình bày nhiều kịch bản kiểm thử nhưng không cho thấy chúng phủ được bao nhiêu phần trăm yêu cầu. Một danh sách 36 kịch bản nghe có vẻ nhiều, nhưng chỉ có ý nghĩa khi đối chiếu với danh sách yêu cầu.'),
+]

@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocalStorage } from '../hooks.js';
 
 const EMPTY = { name: '', subject: '', date: '', time: '', notes: '' };
 const stamp = (x) => new Date(`${x.date}T${x.time || '23:59'}`).getTime();
+/* Một kỳ thi hợp lệ phải có id và ngày dạng YYYY-MM-DD. Dữ liệu cũ/nhập từ file thiếu các trường này
+   từng làm sập cả trang (x.date.split trên undefined), nên lọc ra trước khi dùng. */
+const isValid = (x) => !!x && x.id != null && typeof x.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date);
 
 const SUBJECT_TIPS = {
   'toán': 'Ôn lại công thức, làm đề thử, chú ý thời gian.',
@@ -40,15 +43,18 @@ export default function ExamCountdown() {
   const [notified, setNotified] = useLocalStorage('cs-exam-notified', {});
   const [notifyOn, setNotifyOn] = useLocalStorage('cs-exam-notify', false);
   const fileRef = useRef(null);
+  const list = Array.isArray(exams) ? exams : [];
+  const good = useMemo(() => list.filter(isValid), [list]);
+  const badCount = list.length - good.length;
   useEffect(() => {
-    const hasNear = exams.some((x) => stamp(x) - now < 864e5 && stamp(x) > now);
+    const hasNear = good.some((x) => stamp(x) - now < 864e5 && stamp(x) > now);
     const interval = hasNear ? 1000 : 15000;
     const id = setInterval(() => setNow(Date.now()), interval);
     return () => clearInterval(id);
   }, [exams, now]);
   useEffect(() => {
     if (!notifyOn || !('Notification' in window) || Notification.permission !== 'granted') return;
-    for (const x of exams) {
+    for (const x of good) {
       const diff = stamp(x) - now;
       if (diff <= 0) continue;
       const key1d = `${x.id}-1d`;
@@ -69,18 +75,18 @@ export default function ExamCountdown() {
   const submit = (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.date) return;
-    if (editId) setExams(exams.map((x) => (x.id === editId ? { ...x, ...form } : x)));
-    else setExams([...exams, { ...form, id: Date.now().toString(36), pinned: false, created: Date.now() }]);
+    if (editId) setExams(list.map((x) => (x.id === editId ? { ...x, ...form } : x)));
+    else setExams([...list, { ...form, id: Date.now().toString(36), pinned: false, created: Date.now() }]);
     cancel();
   };
 
   const past = (x) => stamp(x) <= now;
-  const sorted = [...exams].sort((a, b) =>
+  const sorted = [...good].sort((a, b) =>
     past(a) - past(b) ||
     (past(a) ? stamp(b) - stamp(a) : Number(b.pinned) - Number(a.pinned) || stamp(a) - stamp(b))
   );
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify({ exams, exported: Date.now() })], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ exams: good, exported: Date.now() })], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -96,8 +102,9 @@ export default function ExamCountdown() {
       try {
         const data = JSON.parse(ev.target.result);
         if (Array.isArray(data.exams)) {
-          setExams(data.exams);
-          alert(`Đã nhập ${data.exams.length} kỳ thi.`);
+          const ok = data.exams.filter(isValid);
+          setExams(ok);
+          alert(`Đã nhập ${ok.length} kỳ thi${ok.length < data.exams.length ? ` (bỏ qua ${data.exams.length - ok.length} mục thiếu ngày hoặc mã)` : ''}.`);
         }
       } catch { alert('File không hợp lệ.'); }
     };
@@ -124,7 +131,7 @@ export default function ExamCountdown() {
         <div className="row" style={{ gridColumn: '1 / -1' }}>
           <button className="btn primary" type="submit">{editId ? 'Lưu thay đổi' : '+ Thêm kỳ thi'}</button>
           {editId && <button className="btn" type="button" onClick={cancel}>Hủy</button>}
-          <button className="btn" type="button" onClick={exportJSON} disabled={!exams.length}>⬇ Xuất JSON</button>
+          <button className="btn" type="button" onClick={exportJSON} disabled={!good.length}>⬇ Xuất JSON</button>
           <label className="btn" style={{ cursor: 'pointer' }}>
             ⬆ Nhập JSON
             <input type="file" accept=".json" hidden onChange={importJSON} />
@@ -134,6 +141,13 @@ export default function ExamCountdown() {
           </button>
         </div>
       </form>
+
+      {badCount > 0 && (
+        <p className="hint center" role="alert">
+          Có {badCount} mục dữ liệu cũ thiếu ngày hoặc mã nên không hiển thị được.{' '}
+          <button className="btn sm" type="button" onClick={() => setExams(list.filter(isValid))}>Xóa các mục lỗi</button>
+        </p>
+      )}
 
       {sorted.length === 0 && (
         <p className="hint center">Chưa có kỳ thi nào. Thêm kỳ thi đầu tiên ở trên để bắt đầu đếm ngược.</p>
@@ -186,7 +200,7 @@ export default function ExamCountdown() {
               )}
 
               <div className="row">
-                <button className="btn sm" onClick={() => setExams(exams.map((y) => (y.id === x.id ? { ...y, pinned: !y.pinned } : y)))}>
+                <button className="btn sm" onClick={() => setExams(list.map((y) => (y.id === x.id ? { ...y, pinned: !y.pinned } : y)))}>
                   {x.pinned ? 'Bỏ ghim' : 'Ghim'}
                 </button>
                 <button className="btn sm" onClick={() => {
@@ -194,7 +208,7 @@ export default function ExamCountdown() {
                   setForm({ name: x.name, subject: x.subject || '', date: x.date, time: x.time || '', notes: x.notes || '' });
                   scrollTo({ top: 0, behavior: 'smooth' });
                 }}>Sửa</button>
-                <button className="btn sm" onClick={() => setExams(exams.filter((y) => y.id !== x.id))}>Xóa</button>
+                <button className="btn sm" onClick={() => setExams(list.filter((y) => y.id !== x.id))}>Xóa</button>
               </div>
             </article>
           );

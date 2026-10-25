@@ -1,0 +1,43 @@
+# -*- coding: utf-8 -*-
+"""Phụ lục M: quy trình tái lập phép đo độ chính xác."""
+
+BLOCKS = []
+BLOCKS += [
+    ('pagebreak',),
+    ('h1', 'PHỤ LỤC M. QUY TRÌNH TÁI LẬP PHÉP ĐO ĐỘ CHÍNH XÁC'),
+    ('p', 'Phép đo ở mục 7.3 là phần quan trọng nhất và cũng dễ bị làm sai nhất. Nếu hai người chấm theo hai cách khác nhau, kết quả không so sánh được với nhau. Phụ lục này ghi lại quy trình ở mức đủ chi tiết để một người khác làm lại và ra kết quả tương đương.'),
+    ('h2', '1. Chuẩn bị'),
+    ('numbered', 'In bộ 40 câu ở phụ lục G ra giấy, mỗi câu một dòng, kèm cột trống để ghi đáp án của AI.'),
+    ('numbered', 'Chuẩn bị hai bản chấm độc lập: mỗi người chấm có một bản riêng, không nhìn bản của người kia cho đến khi chấm xong.'),
+    ('numbered', 'Thống nhất trước ba định nghĩa: đúng hoàn toàn, đúng một phần, sai. Việc này phải làm trước khi chấm, không được sửa sau.'),
+    ('numbered', 'Ghi lại ngày, tên mô hình đang dùng và phiên bản mã nguồn, vì cùng một câu hỏi có thể cho kết quả khác khi nhà cung cấp cập nhật mô hình.'),
+    ('h2', '2. Chạy'),
+    ('numbered', 'Mở một cuộc trò chuyện mới cho mỗi câu. Không hỏi hai câu trong cùng một cuộc, trừ khi bộ câu quy định khác.'),
+    ('numbered', 'Chọn đúng khối lớp ghi trong bộ câu; không đổi khối lớp giữa chừng.'),
+    ('numbered', 'Chép nguyên văn câu hỏi, không thêm từ gợi ý, không sửa lỗi chính tả của đề.'),
+    ('numbered', 'Chờ đến khi câu trả lời kết thúc; không dừng giữa chừng.'),
+    ('numbered', 'Chụp lại toàn bộ câu trả lời và lưu theo số thứ tự câu, để sau này đối chiếu khi có tranh luận về cách chấm.'),
+    ('h2', '3. Chấm'),
+    ('p', 'Thứ tự chấm quan trọng: chấm đáp án cuối trước, sau đó mới chấm cách lập luận. Nếu làm ngược, người chấm dễ bị thuyết phục bởi lời giải dài và bỏ qua việc đáp án cuối sai.'),
+    ('table', 'scoring', 'Quy ước chấm điểm từng câu',
+     ['Kết quả', 'Điều kiện', 'Cách ghi'],
+     [
+        ['Đúng hoàn toàn', 'Đáp án cuối đúng và cách lập luận đúng, không có bước sai bản chất', '1'],
+        ['Đúng một phần', 'Đáp án cuối đúng nhưng thiếu bước quan trọng, hoặc lập luận đúng nhưng sai đơn vị', '0,5'],
+        ['Sai', 'Đáp án cuối sai, hoặc lập luận sai bản chất hóa học', '0'],
+        ['Không trả lời', 'Hệ thống báo lỗi hoặc không đưa ra nội dung', 'Ghi riêng, không tính vào mẫu'],
+     ], [3.6, 9.4, 3.0]),
+    ('p', 'Sau khi chấm xong hai bản, so sánh từng câu. Nếu hai người cùng cho điểm, giữ nguyên. Nếu lệch, thảo luận trong tối đa hai phút cho mỗi câu; nếu vẫn lệch thì ghi nhận giá trị trung bình và đánh dấu câu đó để xem lại sau. Không được tự ý lấy điểm của người này cho tất cả các câu lệch.'),
+    ('h2', '4. Tính chỉ số'),
+    ('p', 'Bốn chỉ số dưới đây được tính trên cùng một mẫu, với cùng cách xử lí câu không trả lời (loại khỏi mẫu và ghi rõ số câu bị loại).'),
+    ('bullet', 'Độ chính xác toàn phần bằng tổng điểm chia cho số câu được tính.'),
+    ('bullet', 'Độ chính xác phần số bằng số câu có đáp án cuối đúng chia cho số câu được tính; chỉ số này luôn lớn hơn hoặc bằng chỉ số thứ nhất.'),
+    ('bullet', 'Tỉ lệ lỗi đơn vị bằng số câu sai đơn vị chia cho số câu được tính.'),
+    ('bullet', 'Tỉ lệ lỗi hiểu đề bằng số câu thuộc nhóm “hiểu sai đề” chia cho số câu được tính.'),
+    ('p', 'Cách trình bày kết quả: ghi cả bốn chỉ số, kèm số câu của mẫu và khoảng tin cậy ước lượng. Với 40 câu, khoảng tin cậy của một tỉ lệ quanh 70 phần trăm là khoảng cộng trừ 14 điểm phần trăm, nên không nên kết luận về chênh lệch nhỏ hơn 10 điểm phần trăm giữa hai chế độ.'),
+    ('h2', '5. Ba lỗi thường gặp khi làm phép đo này'),
+    ('numbered', 'Hỏi nhiều câu trong một cuộc trò chuyện. Khi đó câu sau được hưởng ngữ cảnh của câu trước, kết quả cao hơn thực tế.'),
+    ('numbered', 'Chấm theo cảm giác “có vẻ đúng”. Cách chấm này làm kết quả không tái lập được và thường có lợi cho sản phẩm của mình.'),
+    ('numbered', 'Đổi mô hình giữa chừng mà không ghi lại. Khi đó kết quả là của hai mô hình khác nhau nhưng được trình bày như một.'),
+    ('p', 'Một lưu ý cuối: phép đo này đo chất lượng của hệ thống tại một thời điểm, không đo chất lượng lâu dài. Nếu nhà cung cấp đổi mô hình, phải đo lại. Vì vậy mỗi lần đo nên ghi kèm tên mô hình và ngày, như đã nêu ở bước chuẩn bị.'),
+]
