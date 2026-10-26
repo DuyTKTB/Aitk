@@ -62,11 +62,16 @@ export default function useMobileGuard({ active, pushEvent, trackHidden = false,
       }, 350);
     };
     window.addEventListener('orientationchange', onOrient);
+    // iOS mới bỏ dần 'orientationchange' → nghe thêm screen.orientation
+    try { window.screen?.orientation?.addEventListener?.('change', onOrient); } catch { /* */ }
 
     /* ----- 2. Split View / cửa sổ nổi / zoom ----- */
     const onResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
+      // Bàn phím ảo mở (đang gõ vào ô nhập) làm viewport co lại → KHÔNG phải gian lận
+      const ae = document.activeElement;
+      if (ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName)) return;
       const sameOrient = (h >= w) === base.portrait;
       // Thanh địa chỉ co giãn chỉ đổi chiều cao < ~20%; split view đổi chiều rộng hoặc cao rất nhiều
       if (sameOrient && (w < base.w * 0.8 || h < base.h * 0.6)) {
@@ -155,6 +160,7 @@ export default function useMobileGuard({ active, pushEvent, trackHidden = false,
       wakeStopped = true;
       wake?.release?.().catch(() => {});
       window.removeEventListener('orientationchange', onOrient);
+      try { window.screen?.orientation?.removeEventListener?.('change', onOrient); } catch { /* */ }
       window.removeEventListener('resize', onResize);
       vv?.removeEventListener('resize', onResize);
       document.removeEventListener('touchstart', onTouchStart);

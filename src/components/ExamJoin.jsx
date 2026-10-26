@@ -23,12 +23,13 @@ import {
   markStudentSubmitted,
   listenMySessionDoc,
   getLiveSessionForClass,
+  listenLiveSessionForClass,
   listenSession,
   timeRemaining,
 } from '../lib/examSession.js';
 import { useExamGuard } from '../hooks/useExamGuard.js';
 import useMobileGuard from '../hooks/useMobileGuard.js';
-import { useProctorCamera } from '../hooks/useProctorCamera.js';
+import { useProctorCamera, useCameraPreflight } from '../hooks/useProctorCamera.js';
 import useMotionGuard, { requestMotionPermission } from '../hooks/useMotionGuard.js';
 import ExamResult from './ExamResult.jsx';
 import ViolationOverlay from './ViolationOverlay.jsx';
@@ -341,6 +342,9 @@ function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sen
   );
 }
 
+/* Sự kiện camera/thiết bị lạ cần CHỤP LẠI cảnh (burst 5 khung) gửi giáo viên, kể cả khi mức nhẹ */
+const EVIDENCE_TYPES = new Set(['phone_like', 'phone_detected', 'hand_raise', 'multi_face', 'no_face', 'look_away', 'device_lifted', 'camera_lost']);
+
 const makeThumbnail = (video, max = 160, quality = 0.55) => {
   if (!video || !video.videoWidth || video.readyState < 2) return null;
   try {
@@ -386,6 +390,7 @@ export default function ExamJoin({ token, onExit }) {
   const [paused, setPaused] = useState(false);
   const [typing, setTyping] = useState(false); // đang gõ vào ô trả lời → bàn phím ảo đang mở
   const typingUntilRef = useRef(0);
+  const [camReady, setCamReady] = useState(undefined); // camera đã chạy ổn → guard rút ngắn thời gian miễn trừ
 
   const [prevSubmission, setPrevSubmission] = useState(null);
   const [retryPermit, setRetryPermit] = useState(null);
@@ -487,9 +492,17 @@ export default function ExamJoin({ token, onExit }) {
     })();
   }, [token, user?.uid]);
 
+  /* Giáo viên mở phòng thi SAU khi học sinh đã tải đề → vẫn tự nhận phòng (trước đây chỉ kiểm tra 1 lần lúc tải) */
+  useEffect(() => {
+    if (!exam?.classId || session || submittedRef.current) return undefined;
+    if (stage !== 'confirm' && stage !== 'exam') return undefined;
+    return listenLiveSessionForClass(exam.classId, (live) => { if (live) setSession(live); });
+  }, [exam?.classId, session, stage]);
+
   const finishExam = useCallback(async (opts = {}) => {
     if (!exam || !user || submittedRef.current) return;
     submittedRef.current = true;
+    guardRef.current?.stop?.(); // đã nộp → ngừng ghi vi phạm (thoát fullscreen sau nộp không bị tính)
     if (opts.auto) console.warn('[ExamJoin] TỰ ĐỘNG NỘP — lý do:', opts.reason || 'violation', opts);
 
     const arr = packAnswers(exam.questions, answersRef.current);
@@ -558,6 +571,7 @@ export default function ExamJoin({ token, onExit }) {
       fullscreenLock: true,
       blockCopyPaste: true,
       ...proctorConfig,
+      cameraReady: camReady,
     } : null,
     onEvent: (evt) => {
       if (!exam || !user?.uid) return;
@@ -583,7 +597,7 @@ export default function ExamJoin({ token, onExit }) {
           console.warn('[ExamJoin] reportViolation fail:', e.message);
         });
 
-        if (severity === 'hard' && burstHandlerRef.current) {
+        if ((severity === 'hard' || EVIDENCE_TYPES.has(evt.type)) && burstHandlerRef.current) {
           try { burstHandlerRef.current(evt); } catch { /* */ }
         }
       }
@@ -596,7 +610,7 @@ export default function ExamJoin({ token, onExit }) {
   /* Bàn phím ảo (khi gõ câu Trả lời ngắn) làm thay đổi kích thước viewport → KHÔNG được tính là vi phạm */
   const mobilePush = useCallback((type, severity, meta) => {
     const typingNow = Date.now() < typingUntilRef.current;
-    if (typingNow && /resize|viewport|orient|zoom|split|keyboard|layout|size/i.test(String(type))) return undefined;
+    if (typingNow && /resize|viewport|orient|zoom|split|keyboard|layout|size|shrunk|shrink/i.test(String(type))) return undefined;
     return guardRef.current?.pushEvent?.(type, severity, meta);
   }, []);
 
@@ -609,7 +623,9 @@ export default function ExamJoin({ token, onExit }) {
   useMobileGuard({
     active: stage === 'exam' && !paused,
     pushEvent: mobilePush,
-    trackHidden: false, // đổi thành true nếu useExamGuard chưa tự bắt visibilitychange
+    /* Bật dự phòng: webview (Zalo/Facebook/iOS) có thể nuốt visibilitychange,
+       lớp mobile vẫn bắt app_switch và vẫn ghi vi phạm. */
+    trackHidden: true,
   });
 
   const cameraEnabled =
@@ -628,10 +644,18 @@ export default function ExamJoin({ token, onExit }) {
     },
   });
 
+  /* TEST CAMERA trước khi vào thi: chỉ cho bắt đầu khi nhận diện được khuôn mặt */
+  const wantCamForPre = !!proctorConfig?.camera && proctorConfig.camera !== 'off';
+  const pre = useCameraPreflight({ active: stage === 'confirm' && wantCamForPre && cameraConsent && !!exam });
+
+  useEffect(() => {
+    setCamReady(cameraEnabled && proctor.status === 'ok' ? true : undefined);
+  }, [cameraEnabled, proctor.status]);
+
   const camBlocked =
     cameraEnabled &&
     proctorConfig?.camera === 'required' &&
-    ['denied', 'unavailable', 'error'].includes(proctor.status);
+    ['denied', 'unavailable', 'error', 'lost'].includes(proctor.status);
 
   useEffect(() => {
     if (!camBlocked) return undefined;
@@ -646,11 +670,16 @@ export default function ExamJoin({ token, onExit }) {
     if (paused) return undefined;
     /* Tính theo đồng hồ thật: khoá màn hình / chuyển tab trên điện thoại làm setInterval bị đóng băng,
        nếu chỉ trừ 1 giây mỗi nhịp thì học sinh được "lời" thời gian. */
-    let last = Date.now();
+    /* Chống chỉnh đồng hồ máy: lấy MAX(đồng hồ đơn điệu, đồng hồ hệ thống).
+       Lùi giờ hệ thống → performance.now vẫn chạy; máy ngủ/khoá màn hình → Date.now bù đủ. */
+    let lastD = Date.now();
+    let lastP = performance.now();
     const tick = () => {
-      const d = Math.floor((Date.now() - last) / 1000);
+      const elapsed = Math.max(Date.now() - lastD, performance.now() - lastP);
+      const d = Math.floor(elapsed / 1000);
       if (d <= 0) return;
-      last += d * 1000;
+      lastD += d * 1000;
+      lastP += d * 1000;
       setTimeLeft((t) => (t > 0 ? Math.max(0, t - d) : 0));
     };
     const timer = setInterval(tick, 500);
@@ -801,6 +830,7 @@ export default function ExamJoin({ token, onExit }) {
       if (doc.status === 'kicked') {
         setKickReason(doc.kickReason || '');
         submittedRef.current = true;
+        guardRef.current?.stop?.();
         guardRef.current?.exitFullscreen?.();
         setStage('kicked');
         return;
@@ -986,7 +1016,7 @@ export default function ExamJoin({ token, onExit }) {
 
     let lastBurstAt = 0;
     const handler = (evt) => {
-      if (evt?.severity !== 'hard') return;
+      if (evt?.severity !== 'hard' && !EVIDENCE_TYPES.has(evt?.type)) return;
       if (!joinReadyRef.current) return;
       const video = proctor.videoRef?.current;
       if (!video || video.readyState < 2) return;
@@ -1031,7 +1061,7 @@ export default function ExamJoin({ token, onExit }) {
       setShowFsBanner(false);
       return undefined;
     }
-    if (!proctorConfig?.fullscreenLock || !guard.fsSupported) {
+    if (!guard.fullscreenLock) {
       setShowFsBanner(false);
       return undefined;
     }
@@ -1053,11 +1083,14 @@ export default function ExamJoin({ token, onExit }) {
       evs.forEach((n) => document.removeEventListener(n, check));
       clearInterval(id);
     };
-  }, [stage, proctorConfig, overlayOpen, paused, guard.fsSupported]);
+  }, [stage, overlayOpen, paused, guard.fullscreenLock]);
 
+  const needCamForStart = proctorConfig?.camera === 'required';
   const startExam = async () => {
+    if (!(needCamForStart ? (cameraConsent && pre.ready) : (!cameraConsent || pre.ready))) return; // chưa qua test camera
+    pre.release(); // nhả camera test để phòng thi dùng lại
     requestMotionPermission(); // iOS: phải gọi trong lúc bấm nút (không await để không mất quyền vào fullscreen)
-    const fsOk = await guard.enterFullscreen();
+    const fsOk = guard.fullscreenLock ? await guard.enterFullscreen() : true;
     if (!fsOk) {
       console.warn('[ExamJoin] Không vào fullscreen ngay, banner sẽ nhắc lại');
     }
@@ -1291,7 +1324,7 @@ export default function ExamJoin({ token, onExit }) {
   if (stage === 'confirm') {
     const needCamera = proctorConfig?.camera === 'required';
     const wantCamera = proctorConfig?.camera && proctorConfig.camera !== 'off';
-    const canStart = !needCamera || cameraConsent;
+    const canStart = needCamera ? (cameraConsent && pre.ready) : (!cameraConsent || pre.ready);
 
     if (prevSubmission && !retryPermit?.canRetry) {
       return (
@@ -1341,7 +1374,7 @@ export default function ExamJoin({ token, onExit }) {
             <li><b>Thời gian:</b> {exam.duration} phút</li>
             <li><b>Số câu:</b> {exam.questions.length}</li>
             <li><b>Tổng điểm:</b> {exam.totalPoints}</li>
-            {proctorConfig?.fullscreenLock && guard.fsSupported && <li>Không thoát màn hình thi</li>}
+            {guard.fullscreenLock && <li>Không thoát màn hình thi</li>}
             <li>Chuyển tab hoặc thoát toàn màn hình bị tính vi phạm</li>
             <li><b>Chế độ nghiêm ngặt:</b> vi phạm 1 lần đã cảnh báo đỏ</li>
             <li>Vi phạm {proctorConfig?.tabSwitchLimit ?? 3} lần sẽ tự động nộp bài</li>
@@ -1366,6 +1399,19 @@ export default function ExamJoin({ token, onExit }) {
                 />
                 Tôi đồng ý bật camera trong lúc làm bài
               </label>
+              {cameraConsent && (
+                <div style={{ marginTop: '.7rem', display: 'grid', gap: '.5rem', justifyItems: 'center' }}>
+                  <div style={{ width: 'min(100%, 320px)', aspectRatio: '4 / 3', borderRadius: 12, overflow: 'hidden', background: '#000', border: '2px solid ' + (pre.ready ? '#16a34a' : '#f59e0b') }}>
+                    <video ref={pre.videoRef} muted playsInline autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                  </div>
+                  <p style={{ margin: 0, textAlign: 'center', fontWeight: 700, fontSize: '.88rem', color: pre.ready ? '#16a34a' : '#b45309' }}>
+                    {pre.message}
+                  </p>
+                  {['denied', 'unavailable', 'error'].includes(pre.status) && (
+                    <button className="td-btn" type="button" onClick={pre.retry}>Thử lại</button>
+                  )}
+                </div>
+              )}
               {needCamera && !cameraConsent && (
                 <p className="ej-privacy-warn">
                   Đề này yêu cầu bật camera. Bạn cần đồng ý để bắt đầu.
@@ -1782,12 +1828,28 @@ export default function ExamJoin({ token, onExit }) {
         <TeacherWarning warning={teacherWarning} onClose={() => setTeacherWarning(null)} />
       </div>
 
+      {/* iPhone Safari không có Fullscreen API → nói rõ đang dùng chế độ thay thế,
+          để học sinh không tưởng là không bị giám sát */}
+      {guard.noFullscreenFallback && stage === 'exam' && (
+        <div
+          style={{
+            position: 'fixed', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 9000, pointerEvents: 'none',
+            background: 'rgba(15, 23, 42, 0.92)', color: '#fff',
+            fontSize: '0.72rem', lineHeight: 1.4, padding: '0.35rem 0.75rem',
+            borderRadius: 999, maxWidth: '92vw', textAlign: 'center',
+          }}
+        >
+          Thiết bị này không hỗ trợ toàn màn hình — bài thi đang được giám sát bằng chế độ thay thế.
+        </div>
+      )}
+
       <ViolationOverlay
         warning={guard.warning}
         strict
         onDismiss={() => {
           guard.clearWarning();
-          if (proctorConfig?.fullscreenLock && guard.fsSupported && !guard.isFullscreen) {
+          if (guard.fullscreenLock && !guard.isFullscreen) {
             guard.enterFullscreen();
           }
         }}

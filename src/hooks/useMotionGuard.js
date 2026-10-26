@@ -72,7 +72,9 @@ export default function useMotionGuard({
       const now = Date.now();
       tilts.push({ t: now, b: e.beta });
       while (tilts.length && now - tilts[0].t > 1500) tilts.shift();
-      const delta = Math.abs(e.beta - tilts[0].b);
+      // beta nằm trong -180..180: xử lý vòng quanh để không báo nhầm khi máy gần úp mặt
+      let delta = Math.abs(e.beta - tilts[0].b);
+      if (delta > 180) delta = 360 - delta;
       if (delta >= tiltDeg) {
         tilts.length = 0;
         fire('raised', { tilt: Math.round(delta) });

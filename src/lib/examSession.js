@@ -345,7 +345,15 @@ export async function heartbeat({
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
 
   try {
-    await updateDoc(ref, patch);
+    // Transaction: heartbeat không được ghi đè trạng thái 'kicked' / 'submitted' thành 'examining'
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw Object.assign(new Error('not-found'), { code: 'not-found' });
+      const cur = snap.data()?.status;
+      const p = { ...patch };
+      if (cur === 'submitted' || cur === 'kicked') delete p.status;
+      tx.update(ref, p);
+    });
   } catch (e) {
     if (e.code === 'not-found') {
       console.warn('[examSession] heartbeat: doc không tồn tại, tự tạo lại.');

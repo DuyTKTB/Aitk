@@ -223,6 +223,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
     camera: 'off',
     snapshotOnEvent: true, maxSnapshots: 10, retentionDays: 30,
     blockDevTools: true, blockPrintScreen: true, blockLongBlur: true, allowPauseByTeacher: true,
+    motionGuard: true, softToHard: 8,
     ...(exam.proctor || {}),
     cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true, ...(exam.proctor?.cameraChecks || {}) },
   }));
@@ -524,13 +525,18 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
             <Switch label="Chặn màn hình mờ (che bài)" checked={proctor.blockLongBlur} onChange={(v) => setP({ blockLongBlur: v })} />
             <Switch label="Chụp ảnh khi có vi phạm" checked={proctor.snapshotOnEvent} onChange={(v) => setP({ snapshotOnEvent: v })} />
             <Switch label="Cho phép tạm dừng bởi GV" checked={proctor.allowPauseByTeacher} onChange={(v) => setP({ allowPauseByTeacher: v })} />
-            <Switch label="Chế độ nghiêm ngặt" checked={proctor.strictMode} onChange={(v) => setP({ strictMode: v })} hint="Vi phạm nặng sẽ bị đá khỏi phòng" />
+            <Switch label="Chế độ nghiêm ngặt" checked={proctor.strictMode} onChange={(v) => setP({ strictMode: v })} hint="Vi phạm đầu tiên hiện cảnh báo đỏ nghiêm trọng" />
+            <Switch label="Phát hiện nhấc / lắc điện thoại" checked={proctor.motionGuard !== false} onChange={(v) => setP({ motionGuard: v })} hint="Cảm biến chuyển động (chỉ thiết bị cảm ứng)" />
           </div>
 
           <Row>
             <div>
               <label style={P.label}>Giới hạn chuyển tab (lần)</label>
               <input type="number" min="1" max="20" style={P.input} value={proctor.tabSwitchLimit} onChange={(e) => setP({ tabSwitchLimit: Number(e.target.value) || 3 })} />
+            </div>
+            <div>
+              <label style={P.label}>Vi phạm nhẹ → 1 nặng (0 = tắt)</label>
+              <input type="number" min="0" max="30" style={P.input} value={proctor.softToHard ?? 8} onChange={(e) => setP({ softToHard: Math.max(0, Number(e.target.value) || 0) })} />
             </div>
             <div>
               <label style={P.label}>Số ảnh chụp tối đa</label>

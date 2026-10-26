@@ -29,6 +29,7 @@ const CAMERA_GRACE_MS = 12000;
 const UPLOAD_TIMEOUT_MS = 6000;
 const UPLOAD_MAX_FAILS = 2;
 const MODEL_RETRY_MS = 10000;
+const NEVER_SEEN_MS = 20000;
 
 /* Nên ghim đúng phiên bản đã cài (npm ls @mediapipe/tasks-vision), tránh @latest lệch bản */
 const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
@@ -41,6 +42,8 @@ if (storage) {
 /* Dùng chung toàn app */
 let sharedFaceDetector = null;
 let sharedHandDetector = null;
+let sharedObjectDetector = null; // tuỳ chọn: nhận diện 'cell phone' thật (cần /models/efficientdet_lite0.tflite)
+let objectTried = false;
 let sharedModelLoadPromise = null;
 let lastModelFailAt = 0;
 let uploadFails = 0; // circuit breaker, giữ qua các lần mount
@@ -68,7 +71,7 @@ function ensureModels() {
 
   console.log('[proctor] Bắt đầu load model MediaPipe...');
   sharedModelLoadPromise = (async () => {
-    const { FaceLandmarker, HandLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+    const { FaceLandmarker, HandLandmarker, ObjectDetector, FilesetResolver } = await import('@mediapipe/tasks-vision');
     const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
     if (!sharedFaceDetector) {
       sharedFaceDetector = await createWithFallback(
@@ -85,6 +88,19 @@ function ensureModels() {
         console.log('[proctor] HandLandmarker OK');
       } catch (e) {
         console.warn('[proctor] Không load được HandLandmarker, bỏ qua check tay:', e?.message);
+      }
+    }
+    // Nhận diện điện thoại bằng mô hình vật thể — tuỳ chọn: thiếu file model thì bỏ qua, không ảnh hưởng phần còn lại
+    if (!sharedObjectDetector && !objectTried && ObjectDetector) {
+      objectTried = true;
+      try {
+        sharedObjectDetector = await createWithFallback(
+          ObjectDetector, fileset, '/models/efficientdet_lite0.tflite',
+          { scoreThreshold: 0.45, maxResults: 5, categoryAllowlist: ['cell phone'] }
+        );
+        console.log('[proctor] ObjectDetector OK');
+      } catch (e) {
+        console.warn('[proctor] Không load được ObjectDetector (thiếu /models/efficientdet_lite0.tflite?):', e?.message);
       }
     }
     return true;
@@ -368,11 +384,13 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       } catch { /* bỏ qua lỗi từng frame */ }
 
       // no_face — chỉ báo khi đã từng thấy mặt
-      if (checks.noFace && everSawFaceRef.current && !grace) {
+      // Chưa từng thấy mặt sau NEVER_SEEN_MS (che/úp camera từ đầu) → báo mức NHẸ để GV xem xét
+      const neverSeen = !everSawFaceRef.current && nowMs - startTimeRef.current > NEVER_SEEN_MS;
+      if (checks.noFace && (everSawFaceRef.current || neverSeen) && !grace) {
         if (faceCount === 0) {
           if (!st.noFaceSince) st.noFaceSince = nowMs;
           else if (nowMs - st.noFaceSince >= NO_FACE_MS) {
-            fireEvent('no_face', 'hard', { duration: NO_FACE_MS });
+            fireEvent('no_face', neverSeen ? 'soft' : 'hard', { duration: NO_FACE_MS, neverSeen });
             st.noFaceSince = nowMs;
           }
         } else st.noFaceSince = 0;
@@ -399,6 +417,19 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
           }
         } else st.lookAwaySince = 0;
       } else st.lookAwaySince = 0;
+
+      // Điện thoại THẬT trong khung hình (mô hình vật thể) — 3 lần liên tiếp mới báo, tránh nhận nhầm
+      if (sharedObjectDetector && checks.phoneLike && !grace && nowMs - (st.lastObjAt || 0) > 1500) {
+        st.lastObjAt = nowMs;
+        try {
+          const dets = sharedObjectDetector.detectForVideo(v, now)?.detections || [];
+          const hit = dets.some((d) => (d.categories || []).some((c) => c.categoryName === 'cell phone' && c.score >= 0.5));
+          if (hit) {
+            st.phoneObjHits = (st.phoneObjHits || 0) + 1;
+            if (st.phoneObjHits >= 3) { fireEvent('phone_detected', 'hard', { source: 'object' }); st.phoneObjHits = 0; }
+          } else st.phoneObjHits = 0;
+        } catch { /* */ }
+      }
 
       // Tay gần mặt (dựa trên khung mặt thật)
       let handNearFace = false;
@@ -494,4 +525,109 @@ function isHandNearFace(hand, box) {
     }
   }
   return false;
+}
+/* ============================================================
+   useCameraPreflight — TEST CAMERA trước khi vào thi
+   • Bật camera, nhận diện khuôn mặt; thấy đúng 1 mặt liên tục (~1,6s) → ready = true
+   • Không tải được model nhận diện → degraded: vẫn cho vào (không chặn oan) nhưng báo rõ
+   • release() phải gọi trước khi vào phòng thi để nhả camera cho useProctorCamera
+   ============================================================ */
+export function useCameraPreflight({ active }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const okCountRef = useRef(0);
+  const runRef = useRef(0);
+  const [status, setStatus] = useState('idle');
+  const [faces, setFaces] = useState(0);
+  const [ready, setReady] = useState(false);
+  const [modelOk, setModelOk] = useState(null);
+
+  const release = useCallback(() => {
+    runRef.current += 1;
+    try { streamRef.current?.getTracks().forEach((t) => t.stop()); } catch { /* */ }
+    streamRef.current = null;
+    if (videoRef.current) { try { videoRef.current.srcObject = null; } catch { /* */ } }
+  }, []);
+
+  const start = useCallback(async () => {
+    release();
+    const myRun = runRef.current;
+    okCountRef.current = 0;
+    setReady(false);
+    setFaces(0);
+    setStatus('starting');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' }, audio: false,
+      });
+      if (myRun !== runRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+      streamRef.current = stream;
+      let v = null;
+      for (let i = 0; i < 60 && !v; i++) {
+        v = videoRef.current;
+        // eslint-disable-next-line no-await-in-loop
+        if (!v) await new Promise((r) => setTimeout(r, 50));
+      }
+      if (!v || myRun !== runRef.current) { release(); return; }
+      v.srcObject = stream;
+      v.muted = true;
+      v.playsInline = true;
+      try { await v.play(); } catch { /* */ }
+      setStatus('ok');
+    } catch (e) {
+      if (myRun !== runRef.current) return;
+      if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') setStatus('denied');
+      else if (e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError') setStatus('unavailable');
+      else setStatus('error');
+    }
+  }, [release]);
+
+  useEffect(() => {
+    if (active) start(); else { release(); setStatus('idle'); setReady(false); setFaces(0); }
+    return () => release();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    let alive = true;
+    ensureModels().then((ok) => { if (alive) setModelOk(!!ok && !!sharedFaceDetector); });
+    return () => { alive = false; };
+  }, [active]);
+
+  const degraded = status === 'ok' && modelOk === false;
+  useEffect(() => { if (degraded) setReady(true); }, [degraded]);
+
+  useEffect(() => {
+    if (!active || status !== 'ok') return undefined;
+    const id = setInterval(() => {
+      const v = videoRef.current;
+      if (!v || v.readyState < 2 || !v.videoWidth || !sharedFaceDetector) return;
+      try {
+        const n = sharedFaceDetector.detectForVideo(v, performance.now())?.faceLandmarks?.length || 0;
+        setFaces(n);
+        if (n === 1) {
+          okCountRef.current += 1;
+          if (okCountRef.current >= 4) setReady(true);
+        } else okCountRef.current = 0;
+      } catch { /* */ }
+    }, 400);
+    return () => clearInterval(id);
+  }, [active, status]);
+
+  let message = '';
+  if (status === 'starting') message = 'Đang bật camera…';
+  else if (status === 'denied') message = 'Bạn chưa cho phép camera. Bấm biểu tượng ổ khoá cạnh thanh địa chỉ → cho phép camera → bấm "Thử lại".';
+  else if (status === 'unavailable') message = 'Không tìm thấy camera trên thiết bị này.';
+  else if (status === 'error') message = 'Không mở được camera. Hãy đóng ứng dụng khác đang dùng camera rồi bấm "Thử lại".';
+  else if (status === 'ok') {
+    if (degraded) message = 'Không tải được bộ nhận diện khuôn mặt — tạm cho phép vào thi.';
+    else if (ready) message = '✅ Đã nhận diện được khuôn mặt — bạn có thể bắt đầu thi.';
+    else if (modelOk === null) message = 'Đang tải bộ nhận diện khuôn mặt…';
+    else if (faces > 1) message = 'Có nhiều hơn 1 khuôn mặt trong khung hình. Chỉ mình bạn được ngồi trước camera.';
+    else if (faces === 1) message = 'Đã thấy khuôn mặt — giữ yên một chút…';
+    else message = 'Chưa thấy khuôn mặt. Hãy ngồi thẳng, nhìn vào camera và đảm bảo đủ sáng.';
+  }
+
+  return { videoRef, status, faces, ready, degraded, message, retry: start, release };
 }
