@@ -604,14 +604,27 @@ Chỉ trả về JSON array, không markdown. Nếu không có câu hỏi trả 
           .map((q) => ({
             q: String(q.q).trim(),
             options: q.options.map((o) => String(o || '').trim()).filter(Boolean),
-            correct: Number.isInteger(q.correct) ? q.correct : 0,
+             /* ❗ KHÔNG mặc định 0: mặc định 0 nghĩa là "đáp án A", khiến mọi
+                đề nhập từ file mà không đọc được đáp án đều chấm sai toàn bộ
+                (học sinh chọn B/C/D đúng vẫn 0 điểm). -1 = chưa xác định,
+                ExamCreateForm sẽ bắt giáo viên chọn đáp án trước khi lưu. */
+             correct: (() => {
+               if (Number.isInteger(q.correct) && q.correct >= 0) return q.correct;
+               const raw = typeof q.correct === 'string' ? q.correct : q.answer;
+               if (typeof raw === 'string') {
+                 const idx = 'ABCDEF'.indexOf(raw.trim().toUpperCase()[0] || '');
+                 if (idx >= 0) return idx;
+               }
+               return -1;
+             })(),
             explain: String(q.explain || ''),
             level: q.level || detectLevelFromText(q.q),
             num: Number.isInteger(q.num) ? q.num : undefined,
             points: 1,
             _source: 'ai',
             _ok: true,
-            _needsAnswer: !Number.isInteger(q.correct),
+             _needsAnswer: !(Number.isInteger(q.correct) && q.correct >= 0)
+               && !(typeof q.answer === 'string' && 'ABCDEF'.indexOf(q.answer.trim().toUpperCase()[0] || '') >= 0),
           }));
       } catch (e) {
         if (e?.name === 'AbortError') throw e;

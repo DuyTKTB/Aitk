@@ -13,6 +13,7 @@ import {
   cancelJoinRequest,
 } from '../lib/classroom.js';
 import RetryRequestModal from './RetryRequestModal.jsx';
+import LeaderboardCard from './LeaderboardCard.jsx';
 import { classifyPct, bandLabel, resolveBands } from '../lib/learningAnalytics.js';
 import '../styles/class-apple.css';
 
@@ -713,6 +714,16 @@ export default function MyClasses() {
 
             {/* MAIN EXAM LIST SECTION */}
             <section className="ap-card">
+              {/* BẢNG XẾP HẠNG LỚP — thẻ riêng, nằm TRÊN thanh công cụ
+                  (trước đây chèn vào ap-toolbar nên bị bóp dẹt, không thấy) */}
+              {selectedClass && (
+                <LeaderboardCard
+                  classId={selectedClass.id}
+                  className={selectedClass.name}
+                  uid={user?.uid}
+                />
+              )}
+
               {classes.length > 0 && (
                 <div className="ap-toolbar">
                   <label className="ap-search">
@@ -771,6 +782,13 @@ export default function MyClasses() {
                   <p>{filter !== 'all' || search ? 'Thử đổi từ khóa hoặc bộ lọc.' : 'Lớp này hiện chưa có bài tập nào. Chờ giáo viên giao đề nhé!'}</p>
                 </div>
               ) : (
+                /*
+                  Bảng xếp hạng dành cho GIÁO VIÊN (tab Phân tích AI).
+                  Học sinh không tự đọc được bài của bạn cùng lớp: rules chỉ cho
+                  đọc bài của chính mình / đề mình tạo / lớp mình quản lý —
+                  nới ra sẽ làm hỏng truy vấn submissions (query theo examId).
+                */
+
                 /* CHIA MỤC THEO MÔN — mỗi môn một khối, kèm điểm TB + xếp loại học lực */
                 <div className="ap-subject-groups">
                   {subjectGroups.map((g) => (

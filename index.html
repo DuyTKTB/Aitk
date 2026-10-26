@@ -5,8 +5,18 @@
     <link rel="icon" type="image/png" href="/img/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#2f6bff" />
-    <meta name="description" content="ELEC AI — Nền tảng học Hóa với AI, bảng tuần hoàn, quiz và trò chơi." />
+    <meta
+      name="description"
+      content="ELEC AI (ELECAI) — trợ lý AI Hóa học cho học sinh THPT: giải bài từng bước, bảng tuần hoàn tương tác, tạo đề và chấm bài tự động, quản lý lớp, phân tích kết quả học tập."
+    />
     <meta name="author" content="Duy TK" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://aitk-ten.vercel.app/" />
+    <meta name="keywords" content="ELEC AI, ELECAI, Elec AI, học Hóa, trợ lý AI Hóa học, giải bài Hóa, bảng tuần hoàn, đề thi Hóa, chấm bài tự động, quản lý lớp học" />
+    <meta name="application-name" content="ELEC AI" />
+    <meta property="og:site_name" content="ELEC AI" />
+    <!-- ❗ Thay REPLACE-YOUR-DOMAIN bằng tên miền thật (vd: elecai.edu.vn) sau khi deploy -->
+    <meta property="og:url" content="https://aitk-ten.vercel.app/" />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
@@ -22,14 +32,19 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="ELEC AI — Học Hóa thông minh" />
     <meta property="og:description" content="Trợ lý AI Hóa học, bảng tuần hoàn tương tác, quiz thông minh, trò chơi giáo dục." />
-    <meta property="og:image" content="/img/og-image.png" />
+    <!-- Ảnh chia sẻ phải là URL tuyệt đối thì Facebook/Zalo mới hiện.
+         /img/og-image.png KHÔNG tồn tại trong repo → dùng logo thật đang có. -->
+    <meta property="og:image" content="https://aitk-ten.vercel.app/img/og-image.png" />
+    <meta property="og:image:alt" content="ELEC AI — trợ lý AI Hóa học" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="640" />
     <meta property="og:locale" content="vi_VN" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="ELEC AI — Học Hóa thông minh" />
     <meta name="twitter:description" content="Trợ lý AI Hóa học miễn phí cho học sinh THPT." />
-    <meta name="twitter:image" content="/img/og-image.png" />
+    <meta name="twitter:image" content="https://aitk-ten.vercel.app/img/og-image.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -39,7 +54,45 @@
       rel="stylesheet"
     />
 
-    <title>ELEC AI — Học Hóa thông minh</title>
+    <title>ELEC AI — Học Hóa cùng trợ lý AI | ELECAI</title>
+
+    <!-- Dữ liệu có cấu trúc: giúp Google hiểu "ELEC AI" là một sản phẩm/website,
+         không phải từ khoá chung. alternateName xử lý các cách gõ: elecai, elec ai, elec-ai. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://aitk-ten.vercel.app/#website",
+            "url": "https://aitk-ten.vercel.app/",
+            "name": "ELEC AI",
+            "alternateName": ["ELECAI", "Elec AI", "ELEC AI Hóa học"],
+            "inLanguage": "vi-VN",
+            "description": "Nền tảng học Hóa với trợ lý AI: giải bài từng bước, tạo đề, chấm bài tự động và phân tích kết quả học tập."
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://aitk-ten.vercel.app/#org",
+            "name": "ELEC AI",
+            "alternateName": "ELECAI",
+            "url": "https://aitk-ten.vercel.app/",
+            "logo": "https://aitk-ten.vercel.app/img/logo.png"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "ELEC AI",
+            "alternateName": "ELECAI",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web, Android, iOS",
+            "inLanguage": "vi-VN",
+            "url": "https://aitk-ten.vercel.app/",
+            "description": "Trợ lý AI Hóa học cho học sinh THPT và công cụ quản lý lớp, giao đề, chấm bài tự động cho giáo viên.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" }
+          }
+        ]
+      }
+    </script>
 
     <!-- ============================================================
          BOOT GUARD — hiện hộp lỗi thay vì màn hình trắng.
@@ -193,7 +246,72 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Nội dung tĩnh để Google đọc được ngay từ HTML gốc (app React sẽ thay thế
+         khi mount). Trước đây #root rỗng nên bot chỉ thấy trang trắng.
+         Không cần đẹp — chỉ cần đúng từ khoá và mô tả thật. -->
+    <div id="root">
+      <main style="max-width:720px;margin:40px auto;padding:0 16px;font:16px/1.6 system-ui,Arial,sans-serif;color:#0b1020">
+        <h1>ELEC AI — Học Hóa cùng trợ lý AI</h1>
+        <p>
+          <strong>ELEC AI</strong> (còn viết là <strong>ELECAI</strong>, <strong>Elec AI</strong>) là nền tảng
+          học Hóa cho học sinh THPT và công cụ quản lý lớp cho giáo viên.
+        </p>
+        <h2>Dành cho học sinh</h2>
+        <ul>
+          <li>Hỏi trợ lý AI Hóa học, giải bài từng bước thay vì chỉ đưa đáp án</li>
+          <li>Chụp đề, chụp vở để được đọc và hướng dẫn</li>
+          <li>Bảng tuần hoàn tương tác, quiz nhanh, trò chơi ghi nhớ</li>
+          <li>Làm bài, xem lại kết quả và bảng xếp hạng theo lớp</li>
+        </ul>
+        <h2>Dành cho giáo viên</h2>
+        <ul>
+          <li>Tạo lớp bằng key, quản lý thành viên và giáo viên bộ môn</li>
+          <li>Giao đề 3 cách: soạn tay, AI sinh đề, nhập từ ảnh/PDF</li>
+          <li>Chấm bài tự động, chấm phiếu trắc nghiệm A4, giám sát thi</li>
+          <li>Phân tích kết quả theo môn, xếp loại học sinh, cảnh báo sớm</li>
+        </ul>
+        <p><a href="/#/login">Đăng nhập</a> hoặc <a href="/#/login">tạo tài khoản miễn phí</a>.</p>
+      </main>
+    </div>
+    <noscript>
+      <p style="font:16px/1.6 system-ui,Arial,sans-serif;padding:16px">
+        ELEC AI — nền tảng học Hóa với trợ lý AI. Trình duyệt của bạn đang tắt JavaScript;
+        hãy bật JavaScript để sử dụng ứng dụng.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Chẩn đoán: nếu sau 4s app chưa mount được (lỗi JS), hiện lỗi thật thay vì
+         để khối nội dung tĩnh nằm trơ như thể trang bình thường. -->
+    <script>
+      (function () {
+        window.__bootErrors = [];
+        window.addEventListener('error', function (e) {
+          var msg = (e && (e.message || (e.error && e.error.message))) || 'unknown';
+          window.__bootErrors.push(msg);
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e && e.reason;
+          window.__bootErrors.push((r && (r.message || r)) || 'promise rejection');
+        });
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (!root || !root.hasAttribute('data-app-mounted')) {
+            var box = document.createElement('div');
+            box.style.cssText = 'max-width:680px;margin:24px auto;padding:14px 16px;border-radius:12px;'
+              + 'border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;font:14px/1.6 system-ui,Arial,sans-serif';
+            box.innerHTML = '<b>Ứng dụng chưa tải được (JavaScript lỗi).</b><br>'
+              + 'Mở DevTools → Console để xem chi tiết. Thử Ctrl+Shift+R, nếu vẫn lỗi thì khởi động lại dev server.';
+            if (window.__bootErrors.length) {
+              var pre = document.createElement('pre');
+              pre.style.cssText = 'margin:8px 0 0;white-space:pre-wrap;font-size:12px';
+              pre.textContent = window.__bootErrors.slice(0, 3).join('\n');
+              box.appendChild(pre);
+            }
+            root.parentNode.insertBefore(box, root);
+          }
+        }, 4000);
+      })();
+    </script>
   </body>
 </html>

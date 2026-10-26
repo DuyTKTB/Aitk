@@ -134,7 +134,13 @@ class ErrorBoundary extends Component {
 /* ============================================================
    RENDER
    ============================================================ */
-createRoot(document.getElementById('root')).render(
+const rootEl = document.getElementById('root');
+
+/* Đánh dấu đã mount để index.html biết app chạy bình thường (nếu không,
+   sau 4s trang sẽ hiện cảnh báo lỗi JS thay vì im lặng). */
+rootEl?.setAttribute('data-app-mounted', '1');
+
+createRoot(rootEl).render(
   <StrictMode>
     <ErrorBoundary>
       <SettingsProvider>

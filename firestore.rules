@@ -264,6 +264,22 @@ service cloud.firestore {
     }
 
     // ===============================================================
+    // 2f. CLASS LEADERBOARD — bản tổng hợp công bố cho học sinh
+    //     Chỉ chứa hạng + điểm TB (không có bài làm gốc).
+    //     Đọc: thành viên lớp hoặc chủ lớp. Ghi: chủ lớp.
+    // ===============================================================
+    match /class_leaderboard/{classId} {
+      allow read: if signedIn() && (
+        classOwner(classId)
+        || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.get('memberIds', [])
+      );
+
+      allow write: if signedIn()
+        && classOwner(classId)
+        && request.resource.data.classId == classId;
+    }
+
+    // ===============================================================
     // 3. EXAMS — Đề thi & bài làm dở
     // ===============================================================
     match /exams/{examId} {

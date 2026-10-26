@@ -1765,6 +1765,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                   })();
                   const isAi = isAiGeneratedExam(ex);
                   const isPublic = ex.visibility === 'public';
+                  /* Cảnh báo đáp án: đề nhập từ file mà không đọc được đáp án sẽ
+                     bị mọi câu = A → chấm sai toàn bộ. Phát hiện để giáo viên sửa. */
+                  const mcqAllA = (ex.questions || []).length >= 2
+                    && (ex.questions || []).every((q) => (q.type || 'single_choice') !== 'single_choice'
+                      || q.correct === 0);
                   const typeCount = (() => {
                     const t = { single_choice: 0, true_false: 0, short_answer: 0 };
                     (ex.questions || []).forEach((question) => {
@@ -1829,6 +1834,15 @@ export default function TeacherDashboard({ onExit } = {}) {
                           >
                             {ex.lockUntilStart ? 'Khoá bài' : 'Vào tự do'}
                           </button>
+                          {mcqAllA && (
+                            <span
+                              className="vt-chip"
+                              title="Mọi câu trắc nghiệm đang có đáp án A. Đề nhập từ file có thể chưa nhận được đáp án đúng — mở “Chỉnh sửa” để kiểm tra trước khi cho học sinh làm."
+                              style={{ background: 'rgba(220, 38, 38, 0.12)', color: '#b91c1c' }}
+                            >
+                              Kiểm tra đáp án
+                            </span>
+                          )}
                         </div>
                         <h3>{ex.title}</h3>
                         <small>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ❗ Thay REPLACE-YOUR-DOMAIN bằng tên miền thật sau khi deploy.
+     App dùng hash routing (#/home) nên chỉ có URL gốc là index được;
+     các trang con không tách URL cho Google. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://aitk-ten.vercel.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

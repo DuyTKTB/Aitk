@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Trang riêng tư / không cần index (SPA dùng hash nên chỉ cần chặn các path thật)
+Disallow: /api/
+Disallow: /admin
+
+# ❗ Thay REPLACE-YOUR-DOMAIN bằng tên miền thật sau khi deploy
+Sitemap: https://aitk-ten.vercel.app/sitemap.xml

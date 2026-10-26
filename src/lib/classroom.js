@@ -736,6 +736,8 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
 
   const data = {
     examId,
+    /* cần cho bảng xếp hạng theo lớp + rule đọc bài của bạn cùng lớp */
+    classId: exam.classId || '',
     studentId: student.id,
     studentName: student.name || student.email || 'Học sinh',
     answers,

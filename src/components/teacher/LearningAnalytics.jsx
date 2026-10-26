@@ -25,6 +25,8 @@ import {
   BANDS, bandLabel, resolveBands,
 } from '../../lib/learningAnalytics.js';
 import { updateClass } from '../../lib/classroom.js';
+import { buildLeaderboard, rankLabel } from '../../lib/leaderboard.js';
+import { publishClassLeaderboard } from '../../lib/classLeaderboardDoc.js';
 import { generateLearningReport } from '../../lib/learningAnalyticsAi.js';
 import {
   saveAnalyticsReport, getAnalyticsReport, savedReportStaleness,
@@ -168,11 +170,21 @@ export default function LearningAnalytics({
 
   const rangeInvalid = Boolean(range.invalid);
 
+  /* ---------- bảng xếp hạng lớp (chỉ giáo viên đọc được bài của cả lớp) ---------- */
+  const board = useMemo(() => buildLeaderboard({
+    members: classInfo?.members || [],
+    exams: exams || [],
+    submissionsByExam: submissionsMap || {},
+    uid: '',
+  }), [classInfo, exams, submissionsMap]);
+
   /* ---------- ngưỡng xếp loại riêng của lớp ---------- */
   const [bands, setBands] = useState(() => resolveBands(classInfo?.bandThresholds));
   const [bandDraft, setBandDraft] = useState(() => resolveBands(classInfo?.bandThresholds));
   const [savingBands, setSavingBands] = useState(false);
   const [bandMsg, setBandMsg] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState('');
 
   const saveBands = async () => {
     const next = resolveBands(bandDraft);
@@ -756,6 +768,71 @@ export default function LearningAnalytics({
         {subjects.length === 0 ? (
           <Empty>Chưa có môn nào có đề trong khoảng đang xem.</Empty>
         ) : (
+          <>
+          <div className="la-card">
+            <div className="la-ov-head">
+              <h4>Bảng xếp hạng lớp — theo điểm trung bình</h4>
+              <button
+                type="button"
+                className="la-btn"
+                disabled={publishing || board.rows.length === 0}
+                onClick={async () => {
+                  setPublishing(true);
+                  setPublishMsg('');
+                  try {
+                    await publishClassLeaderboard({
+                      classId,
+                      className: classInfo?.name || '',
+                      board,
+                      publishedBy: classInfo?.teacherId || '',
+                    });
+                    setPublishMsg('Đã công bố cho học sinh thấy trong mục Lớp học và Trang chủ.');
+                  } catch (e) {
+                    setPublishMsg(`Không công bố được: ${e?.message || e}`);
+                  } finally {
+                    setPublishing(false);
+                  }
+                }}
+              >
+                {publishing ? 'Đang công bố…' : 'Công bố cho học sinh'}
+              </button>
+            </div>
+            {publishMsg && <p className="la-note">{publishMsg}</p>}
+            {board.rows.length === 0 ? (
+              <Empty>Chưa có bài nào được chấm trong khoảng đang xem.</Empty>
+            ) : (
+              <div className="la-scroll">
+                <table className="la-table sm">
+                  <thead>
+                    <tr>
+                      <th>Hạng</th>
+                      <th>Học sinh</th>
+                      <th className="num">Bài đã làm</th>
+                      <th className="num">Điểm TB</th>
+                      <th className="num">Cao nhất</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {board.rows.slice(0, 10).map((r) => (
+                      <tr key={r.id}>
+                        <td><b>{rankLabel(r.rank)}</b></td>
+                        <td>{r.name}</td>
+                        <td className="num">{r.attempts}</td>
+                        <td className="num"><b>{r.avgPct}%</b></td>
+                        <td className="num">{r.bestPct}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="la-note">
+              Xếp theo điểm trung bình (%) các bài đã làm — không cộng dồn điểm thô vì mỗi đề một thang điểm.
+              {board.unranked.length > 0 && ` ${board.unranked.length} học sinh chưa làm bài nào nên chưa có hạng.`}
+              {' '}Đây là bảng tham khảo trong lớp, không phải đánh giá năng lực.
+            </p>
+          </div>
+
           <div className="la-card">
             <div className="la-ov-head">
               <h4>Tổng quan theo môn — điểm và xếp loại học sinh</h4>
@@ -854,6 +931,7 @@ export default function LearningAnalytics({
               Học sinh chưa làm bài nào được ghi “chưa có bài”, <b>không mặc định là Yếu</b>.
             </p>
           </div>
+          </>
         )}
 
         {!focusSubject ? (
