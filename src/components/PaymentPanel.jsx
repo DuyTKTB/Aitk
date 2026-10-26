@@ -111,9 +111,9 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose }) {
       {/* ============ BƯỚC 1: CHỌN GÓI ============ */}
       {step === 'select' && (
         <>
-          <h3 className="pf-payment-title">Nâng cấp ELECAI VIP</h3>
+          <h3 className="pf-payment-title">Học Hóa không còn bị chặn ở “hết lượt”</h3>
           <p className="pf-payment-sub">
-            Chat không giới hạn · 30 ảnh/ngày · Ưu tiên phản hồi
+            Hỏi AI thả ga, chụp đề là có lời giải từng bước — mở khoá ngay trong 1 phút.
           </p>
 
           <div className="pf-payment-options">
@@ -132,17 +132,21 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose }) {
           </div>
 
           <ul className="pf-payment-features">
-            <li><IcoCheck size={14} /> Chat không giới hạn</li>
-            <li><IcoCheck size={14} /> 30 ảnh / ngày</li>
-            <li><IcoCheck size={14} /> Trợ lý AI Hóa học</li>
-            <li><IcoCheck size={14} /> Phân tích bài tập</li>
-            <li><IcoCheck size={14} /> Ưu tiên phản hồi</li>
+            <li><IcoCheck size={14} /> Hỏi AI <b>không giới hạn lượt</b> — học lúc nào cũng có người trả lời</li>
+            <li><IcoCheck size={14} /> Chụp đề, chụp vở: <b>30 ảnh/ngày</b>, AI đọc và giải ngay</li>
+            <li><IcoCheck size={14} /> Giải thích <b>từng bước</b> và chỉ đúng chỗ bạn sai, không đưa đáp án trống</li>
+            <li><IcoCheck size={14} /> <b>Ưu tiên phản hồi</b> khi hệ thống đông người</li>
+            <li><IcoCheck size={14} /> Lưu toàn bộ hội thoại để <b>ôn lại trước khi thi</b></li>
           </ul>
 
           <button type="button" className="pf-btn primary" onClick={goToQr}>
             <IcoCrown size={16} />
-            Tiếp tục — {pkg.amount.toLocaleString('vi-VN')}đ
+            Mở khoá VIP — {pkg.amount.toLocaleString('vi-VN')}đ
           </button>
+
+          <p className="pf-payment-sub" style={{ marginTop: '0.55rem', textAlign: 'center' }}>
+            Chuyển khoản một lần · không tự động trừ tiền · cần tư vấn trước khi mua thì nhắn Admin
+          </p>
         </>
       )}
 

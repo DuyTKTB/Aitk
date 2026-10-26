@@ -10,6 +10,8 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { getSubmissionsByExam } from '../lib/classroom.js';
 import { Avatar, Donut, TrendChart } from './DashShell.jsx';
 import StudentModal from './StudentModal.jsx';
+import SubjectTeacherPanel from './teacher/SubjectTeacherPanel.jsx';
+import LearningAnalytics from './teacher/LearningAnalytics.jsx';
 import '../styles/class-detail.css';
 
 const Svg = ({ size = 18, sw = 1.8, children, title }) => (
@@ -178,6 +180,7 @@ const timeAgoShort = (t) => {
 export default function ClassDetailModal({
   classInfo,
   exams = [],
+  initialTab = 'overview',
   onClose,
   onExportCsv,
   onOpenExam,
@@ -196,7 +199,7 @@ export default function ClassDetailModal({
   onDeleteClass,
   onShareKey,
 }) {
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(initialTab);
   const [search, setSearch] = useState('');
   const [memberFilter, setMemberFilter] = useState('all');
   const [submissionsMap, setSubmissionsMap] = useState({});
@@ -359,7 +362,10 @@ export default function ClassDetailModal({
 
   const TABS = [
     { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
+    { key: 'analytics', label: 'Phân tích AI', Icon: IconTrendUp },
     { key: 'members', label: 'Thành viên', Icon: IconUsers, badge: members.length },
+    // Đặt cạnh "Thành viên" (cùng là quản lý con người) để không bị đẩy ra cuối dải tab
+    { key: 'teachers', label: 'Giáo viên bộ môn', Icon: IconUserPlus },
     { key: 'pending', label: 'Chờ duyệt', Icon: IconUserPlus, badge: pending.length, danger: true },
     { key: 'exams', label: 'Đề thi', Icon: IconBook, badge: exams.length },
     { key: 'scores', label: 'Bảng điểm', Icon: IconTable },
@@ -434,6 +440,26 @@ export default function ClassDetailModal({
         </nav>
 
         <div className="cd-body">
+          {tab === 'analytics' && (
+            <LearningAnalytics
+              classInfo={classInfo}
+              exams={exams}
+              submissionsMap={submissionsMap}
+              loadingSubmissions={loadingSubs}
+            />
+          )}
+
+          {tab === 'teachers' && (
+            <SubjectTeacherPanel
+              classInfo={classInfo}
+              classId={classInfo?.id}
+              className={classInfo?.name}
+              exams={exams}
+              submissionsMap={submissionsMap}
+              teacherId={classInfo?.teacherId}
+            />
+          )}
+
           {tab === 'overview' && (
             <div className="cd-overview">
               <div className="cd-stat-grid">

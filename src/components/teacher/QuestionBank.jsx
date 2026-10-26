@@ -78,6 +78,8 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
   const [filterTopic, setFilterTopic] = useState('');
   const [filterLevel, setFilterLevel] = useState('');
   const [filterTag, setFilterTag] = useState('');
+  /* Lọc theo mức sử dụng: câu chưa dùng bao giờ dễ bị lãng quên khi ra đề */
+  const [usageFilter, setUsageFilter] = useState('all');
 
   const [allTags, setAllTags] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -167,12 +169,14 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
     if (filterTopic) arr = arr.filter((q) => q.topicId === filterTopic);
     if (filterLevel) arr = arr.filter((q) => q.level === filterLevel);
     if (filterTag) arr = arr.filter((q) => (q.tags || []).includes(filterTag));
+    if (usageFilter === 'unused') arr = arr.filter((q) => !(q.usageCount > 0));
+    if (usageFilter === 'used') arr = arr.filter((q) => (q.usageCount || 0) > 0);
     if (deferredSearch.trim()) {
       const needle = norm(deferredSearch);
       arr = arr.filter((q) => norm(q.q).includes(needle) || norm(q.explain).includes(needle));
     }
     return arr;
-  }, [list, filterSubject, filterGrade, filterTopic, filterLevel, filterTag, deferredSearch]);
+  }, [list, filterSubject, filterGrade, filterTopic, filterLevel, filterTag, usageFilter, deferredSearch]);
 
   /* Chỉ render 50 câu đầu */
   const visibleItems = useMemo(
@@ -186,9 +190,11 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
     return { total: list.length, byLevel };
   }, [list]);
 
-  const hasActiveFilter = filterSubject || filterGrade || filterTopic || filterLevel || filterTag || search.trim();
+  const hasActiveFilter = filterSubject || filterGrade || filterTopic || filterLevel || filterTag
+    || usageFilter !== 'all' || search.trim();
 
   const handleClearFilters = () => {
+    setUsageFilter('all');
     setFilterSubject('');
     setFilterGrade(0);
     setFilterTopic('');
@@ -395,6 +401,27 @@ export default function QuestionBank({ classes = [], onSoftExamCreated } = {}) {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Filter theo mức sử dụng — câu chưa ra đề lần nào */}
+        <div className="qb-filter-row">
+          <span className="qb-filter-label">Sử dụng</span>
+          <div className="qb-filter-chips">
+            {[
+              { key: 'all', label: 'Tất cả' },
+              { key: 'unused', label: `Chưa dùng (${list.filter((q) => !(q.usageCount > 0)).length})` },
+              { key: 'used', label: `Đã dùng (${list.filter((q) => (q.usageCount || 0) > 0).length})` },
+            ].map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                className={'qb-chip' + (usageFilter === o.key ? ' on' : '')}
+                onClick={() => setUsageFilter(o.key)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Filter tầng 1: MÔN */}

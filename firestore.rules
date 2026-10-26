@@ -29,12 +29,24 @@ service cloud.firestore {
       );
     }
 
+    /* Chủ lớp = người tạo lớp (classes.teacherId). Khai báo ở đây để mọi
+       section (classes, keys, teachers, notices…) dùng chung. */
+    function classOwner(classId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/classes/$(classId)) &&
+        get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+
     // ===============================================================
     // 1. USERS — Hồ sơ người dùng
     // ===============================================================
     match /users/{uid} {
       allow read: if signedIn();
-      allow create: if isOwner(uid);
+
+      // Không cho tự tạo hồ sơ với vai trò ngoài student/teacher (chặn tự phong admin)
+      allow create: if isOwner(uid)
+        && request.resource.data.role in ['student', 'teacher']
+        && request.resource.data.email is string;
       allow update: if (isOwner(uid) && (
         !('role' in request.resource.data) ||
         request.resource.data.role == resource.data.role ||
@@ -45,20 +57,242 @@ service cloud.firestore {
 
     // ===============================================================
     // 2. CLASSES — Lớp học
+    //     • Đọc: giữ mở cho người đã đăng nhập vì luồng "nhập key để vào lớp"
+    //       phải tìm được lớp theo key trước khi trở thành thành viên.
+    //     • Ghi: chỉ chủ lớp; học sinh chỉ được tự thêm/gỡ CHÍNH MÌNH.
     // ===============================================================
+    function joinFieldsOnly() {
+      return request.resource.data.diff(resource.data)
+        .affectedKeys().hasOnly(['members', 'memberIds', 'pendingMembers', 'pendingIds']);
+    }
+
+    function sameCore() {
+      return request.resource.data.teacherId == resource.data.teacherId
+        && request.resource.data.key == resource.data.key;
+    }
+
+    /* Học sinh tự thêm mình vào lớp (hoặc vào danh sách chờ duyệt) */
+    function selfJoin() {
+      return joinFieldsOnly() && sameCore() && (
+        (request.auth.uid in request.resource.data.get('memberIds', [])
+          && resource.data.get('memberIds', []).size() + 1
+             == request.resource.data.get('memberIds', []).size())
+        || (request.auth.uid in request.resource.data.get('pendingIds', [])
+          && resource.data.get('pendingIds', []).size() + 1
+             == request.resource.data.get('pendingIds', []).size())
+      );
+    }
+
+    /* Học sinh tự rời lớp / tự huỷ yêu cầu chờ duyệt */
+    function selfLeave() {
+      return joinFieldsOnly() && sameCore() && (
+        (request.auth.uid in resource.data.get('memberIds', [])
+          && !(request.auth.uid in request.resource.data.get('memberIds', []))
+          && resource.data.get('memberIds', []).size()
+             == request.resource.data.get('memberIds', []).size() + 1)
+        || (request.auth.uid in resource.data.get('pendingIds', [])
+          && !(request.auth.uid in request.resource.data.get('pendingIds', []))
+          && resource.data.get('pendingIds', []).size()
+             == request.resource.data.get('pendingIds', []).size() + 1)
+      );
+    }
+
     match /classes/{classId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.teacherId == request.auth.uid;
+
+      allow update: if signedIn() && (classOwner(classId) || selfJoin() || selfLeave());
+
+      allow delete: if signedIn() && classOwner(classId);
+    }
+
+    // ===============================================================
+    // 2b. CLASS TEACHERS — Giáo viên bộ môn theo lớp (v2)
+    //     Key liên kết: docId CHÍNH LÀ key (vd: GV-8KQ3ZM)
+    //     Key v2: gắn môn bắt buộc, maxUses/uses, usedBy, tự vô hiệu
+    // ===============================================================
+    function keyState(key) {
+      return get(/databases/$(database)/documents/class_teacher_keys/$(key)).data;
+    }
+
+    /* Key cũ (tạo trước v2) không có uses/maxUses → coi như 1 lượt. */
+    function keyUses(key) {
+      return ('uses' in keyState(key)) ? keyState(key).uses : 0;
+    }
+
+    function keyMaxUses(key) {
+      return ('maxUses' in keyState(key)) ? keyState(key).maxUses : 1;
+    }
+
+    function keyUsable(key) {
+      return keyState(key).revoked == false
+        && keyState(key).expiresAt > request.time
+        && keyUses(key) < keyMaxUses(key);
+    }
+
+    match /class_teacher_keys/{key} {
+      // Cần đọc để giáo viên bộ môn nhập key và kiểm tra trạng thái;
+      // docId là key nên phải biết key mới đọc được.
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && classOwner(request.resource.data.classId)
+        && request.resource.data.revoked == false
+        && request.resource.data.expiresAt > request.time
+        // v2: môn học là bắt buộc và key mới bắt đầu với 0 lượt dùng
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() > 0
+        && request.resource.data.uses == 0
+        && request.resource.data.maxUses >= 1;
+
+      allow update: if signedIn() && (
+        // Chủ lớp: thu hồi / gia hạn (không đổi lớp, người tạo, môn)
+        (classOwner(resource.data.classId)
+          && request.resource.data.classId == resource.data.classId
+          && request.resource.data.createdBy == resource.data.createdBy
+          // không cho đổi môn của key (key cũ chưa có môn vẫn thu hồi được)
+          && (!('subject' in resource.data)
+              || !('subject' in request.resource.data)
+              || request.resource.data.subject == resource.data.subject))
+        ||
+        // Giáo viên bộ môn dùng key: CHỈ được tăng lượt dùng + tự vô hiệu
+        (request.auth.uid != resource.data.createdBy
+          && keyUsable(key)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['uses', 'usedBy', 'lastUsedAt', 'revoked', 'revokeReason', 'revokedAt'])
+          && request.resource.data.uses == keyUses(key) + 1
+          && request.auth.uid in request.resource.data.usedBy)
+      );
+
+      allow delete: if signedIn() && classOwner(resource.data.classId);
+    }
+
+    match /class_teachers/{linkId} {
+      allow read: if signedIn();
+
+      // Liên kết chỉ được tạo bởi chính giáo viên đó, bằng một key
+      // còn hiệu lực, còn lượt, đúng lớp, đúng môn — kiểm tra ở server.
+      // Ghi chú: keyState() trên doc không tồn tại sẽ lỗi → request bị từ chối,
+      // nên không cần exists() riêng (tiết kiệm lượt đọc tài liệu trong rules).
+      allow create: if signedIn()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.role == 'subject'
+        && request.resource.data.key is string
+        && keyUsable(request.resource.data.key)
+        && keyState(request.resource.data.key).classId == request.resource.data.classId
+        && keyState(request.resource.data.key).createdBy != request.auth.uid
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() > 0
+        && (!('subject' in keyState(request.resource.data.key))
+            || keyState(request.resource.data.key).subject == request.resource.data.subject)
+        && exists(/databases/$(database)/documents/classes/$(request.resource.data.classId));
+
+      allow update: if isAdmin();
+      allow delete: if signedIn()
+        && (resource.data.teacherId == request.auth.uid || classOwner(resource.data.classId));
+    }
+
+    // ===============================================================
+    // 2c. CLASS TEACHER AUDIT — Nhật ký thao tác quan trọng
+    //     Tạo key, thu hồi key, liên kết, gỡ liên kết, tạo báo cáo AI
+    // ===============================================================
+    match /class_teacher_audit/{logId} {
+      allow read: if signedIn()
+        && (classOwner(resource.data.classId) || resource.data.actorId == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.atMs is number;
+
+      allow update, delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 2d. CLASS ANALYTICS REPORTS — Báo cáo phân tích của chủ nhiệm
+    //     Chỉ chủ lớp đọc/ghi; không lộ dữ liệu lớp khác.
+    // ===============================================================
+    match /class_analytics_reports/{reportId} {
+      allow read: if signedIn() && classOwner(resource.data.classId);
+
+      allow create, update: if signedIn()
+        && classOwner(request.resource.data.classId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.classId is string;
+
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 2e. NOTICES — Thông báo trong ứng dụng (chuông)
+    //     Chỉ người nhận đọc/đánh dấu đã đọc; người tạo phải là chủ lớp
+    //     hoặc giáo viên bộ môn đã liên kết của chính lớp đó, và chỉ
+    //     được gửi cho chủ nhiệm của lớp ấy.
+    // ===============================================================
+    function linkedToClass(classId, uid) {
+      return exists(/databases/$(database)/documents/class_teachers/$(classId + '_' + uid));
+    }
+
+    match /notices/{noticeId} {
+      allow read: if signedIn() && resource.data.toUid == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid != request.auth.uid
+        && request.resource.data.classId is string
+        // người nhận phải là chủ nhiệm đúng lớp này (không gửi bừa cho người khác)
+        && exists(/databases/$(database)/documents/classes/$(request.resource.data.classId))
+        && get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.teacherId
+             == request.resource.data.toUid
+        // người gửi phải là chủ lớp hoặc GVBM đã liên kết của lớp
+        && (classOwner(request.resource.data.classId)
+            || linkedToClass(request.resource.data.classId, request.auth.uid))
+        && request.resource.data.read == false
+        && request.resource.data.createdAtMs is number
+        && request.resource.data.type in ['teacher_link', 'teacher_unlink', 'exam_assigned'];
+
+      // chỉ người nhận được đổi trạng thái đã đọc
+      allow update: if signedIn()
+        && resource.data.toUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt', 'createdAt']);
+
+      allow delete: if signedIn()
+        && (resource.data.toUid == request.auth.uid || isAdmin());
     }
 
     // ===============================================================
     // 3. EXAMS — Đề thi & bài làm dở
     // ===============================================================
     match /exams/{examId} {
-      allow read, create, update, delete: if signedIn();
+      // Đọc: giữ mở — học sinh vào thi bằng token/link trước khi biết classId
+      allow read: if signedIn();
 
-      // Đáp án riêng tư của đề
+      // Tạo đề: phải là chủ lớp, hoặc GVBM đã liên kết của chính lớp đó
+      allow create: if signedIn()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.classId is string
+        && (classOwner(request.resource.data.classId)
+            || exists(/databases/$(database)/documents/class_teachers/$(request.resource.data.classId + '_' + request.auth.uid)));
+
+      // Sửa: chỉ tác giả đề hoặc chủ lớp; không được đổi lớp / đổi tác giả
+      allow update: if signedIn()
+        && (resource.data.teacherId == request.auth.uid || classOwner(resource.data.classId))
+        && request.resource.data.classId == resource.data.classId
+        && request.resource.data.teacherId == resource.data.teacherId;
+
+      allow delete: if signedIn()
+        && (resource.data.teacherId == request.auth.uid
+            || classOwner(resource.data.classId)
+            || isAdmin());
+
+      // Đáp án riêng tư của đề — hiện không có client nào dùng
       match /private/{docId} {
-        allow read, write: if signedIn();
+        allow read, write: if signedIn()
+          && (get(/databases/$(database)/documents/exams/$(examId)).data.teacherId == request.auth.uid
+              || classOwner(get(/databases/$(database)/documents/exams/$(examId)).data.classId));
       }
 
       // Lần làm bài của học sinh
@@ -70,8 +304,43 @@ service cloud.firestore {
     // ===============================================================
     // 4. SUBMISSIONS — Bài nộp & Kết quả thi
     // ===============================================================
+    //     • Học sinh: đọc/ghi bài của CHÍNH MÌNH.
+    //     • Giáo viên: đọc/ghi/ xoá bài của đề mình tạo (chấm lại, xoá đề).
+    //     • Chủ lớp: đọc/ghi/xoá mọi bài trong lớp mình (bảng điểm, phân tích).
+    //     Chỉ số liệu phái sinh ở client (điểm) KHÔNG được chống sửa tuyệt đối;
+    //     muốn chống gian lận tuyệt đối phải chấm ở server — xem tài liệu §11.
+    function subExamAuthor() {
+      return get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.teacherId
+        == request.auth.uid;
+    }
+
+    function subClassOwner() {
+      return classOwner(
+        get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId
+      );
+    }
+
     match /submissions/{subId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn() && (
+        resource.data.studentId == request.auth.uid
+        || subExamAuthor()
+        || subClassOwner()
+      );
+
+      allow create: if signedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.examId is string
+        && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId));
+
+      /* Nộp lại cùng một lượt (setDoc trùng id) là update → vẫn cho chính chủ bài */
+      allow update: if signedIn() && (
+        (resource.data.studentId == request.auth.uid
+          && request.resource.data.studentId == request.auth.uid)
+        || subExamAuthor()
+        || subClassOwner()
+      );
+
+      allow delete: if signedIn() && (subExamAuthor() || subClassOwner() || isAdmin());
     }
 
     // ===============================================================

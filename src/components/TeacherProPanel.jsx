@@ -141,24 +141,26 @@ export default function TeacherProPanel() {
       <div className="tpp-hero">
         <div className="tpp-hero-ico"><IcoCrown size={44} /></div>
         <div>
-          <span className="tpp-label">NÂNG CẤP TÀI KHOẢN</span>
-          <h2 className="tpp-title">Trở thành Giáo viên PRO</h2>
+          <span className="tpp-label">GIÁO VIÊN PRO</span>
+          <h2 className="tpp-title">Soạn đề, chấm bài, thống kê — để hệ thống lo</h2>
           <p className="tpp-sub">
-            Mở khóa chức năng quản lý lớp, giao đề, chấm điểm tự động.
+            Kích hoạt một lần: tạo lớp bằng key, giao đề 3 cách (soạn tay · AI sinh đề · nạp từ
+            ảnh/PDF), chấm điểm ngay khi học sinh nộp và xếp loại Giỏi–Khá–TB–Yếu theo từng môn.
           </p>
         </div>
       </div>
 
       <ul className="tpp-features">
-        <li><IcoCheck /> Tạo lớp, sinh key lớp cho học sinh</li>
-        <li><IcoCheck /> Tạo đề thi, sinh link gửi nhóm lớp</li>
-        <li><IcoCheck /> Tự động chấm điểm, xem thống kê</li>
-        <li><IcoCheck /> Quản lý thành viên, gán chức vụ</li>
-        <li><IcoCheck /> Bảng xếp hạng học sinh theo lớp</li>
+        <li><IcoCheck /> <span><b>Tạo lớp bằng một cái tên</b> — học sinh nhập key là vào, không phải thêm từng em</span></li>
+        <li><IcoCheck /> <span><b>Giao đề 3 cách</b>: soạn tay, AI sinh đề theo ma trận, hoặc nạp từ ảnh/PDF</span></li>
+        <li><IcoCheck /> <span><b>Chấm tự động khi học sinh nộp</b> — điểm, câu sai, chủ đề yếu hiện ngay</span></li>
+        <li><IcoCheck /> <span><b>Giám sát thi trực tiếp</b>: camera, chặn chuyển tab, buộc toàn màn hình</span></li>
+        <li><IcoCheck /> <span><b>Biết lớp yếu chỗ nào</b> — bảng điểm, xếp loại theo môn, xuất CSV</span></li>
+        <li><IcoCheck /> <span><b>Chủ nhiệm + GVBM cùng một chỗ</b> — cấp key, theo dõi, cảnh báo sớm</span></li>
       </ul>
 
       <div className="tpp-activate">
-        <label className="tpp-label-input">Nhập KEY PRO</label>
+        <label className="tpp-label-input">Đã có key? Dán vào đây để mở khoá ngay</label>
         <div className="tpp-input-row">
           <div className="tpp-input-wrap">
             <IcoKey size={18} />
@@ -190,10 +192,11 @@ export default function TeacherProPanel() {
       </div>
 
       <div className="tpp-contact">
-        <b>Chưa có key?</b>
+        <b>Chưa có key? Nhắn Admin là có</b>
         <p>
-          Liên hệ Admin qua Facebook để được cấp key PRO.
-          Thời hạn: 1 tháng / 6 tháng / 1 năm.
+          1. Nhắn Admin qua Facebook, nói bạn dạy môn gì và cần hạn bao lâu.<br />
+          2. Nhận key dạng <b>PRO-XXXX-XXXX</b> (1 tháng / 6 tháng / 1 năm).<br />
+          3. Dán key vào ô phía trên → bấm <b>Kích hoạt</b> → dùng ngay, không cần chờ duyệt.
         </p>
         <a
           className="tpp-btn primary"
@@ -201,8 +204,12 @@ export default function TeacherProPanel() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Liên hệ Admin
+          Nhắn Admin nhận key
         </a>
+        <p className="tpp-note">
+          Hạn dùng tính từ lúc kích hoạt, cộng dồn nếu bạn đã có PRO — không tự động trừ tiền,
+          không tự gia hạn.
+        </p>
       </div>
     </div>
   );

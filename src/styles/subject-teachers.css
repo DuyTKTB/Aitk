@@ -1,0 +1,376 @@
+/* ============================================================
+   subject-teachers.css — Quản lý giáo viên bộ môn theo lớp
+   ============================================================ */
+
+.st {
+  --st-line: rgba(15, 23, 42, 0.1);
+  --st-soft: rgba(15, 23, 42, 0.04);
+  --st-ink: var(--ink, #0b1020);
+  --st-mut: var(--mut, #6b7280);
+  --st-card: #ffffff;
+  --st-ex: #0f9d76;
+  --st-good: #2563eb;
+  --st-mid: #d97706;
+  --st-bad: #dc2626;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--st-ink);
+}
+
+[data-theme='dark'] .st {
+  --st-line: rgba(255, 255, 255, 0.11);
+  --st-soft: rgba(255, 255, 255, 0.05);
+  --st-card: #1b1c22;
+}
+
+.st-state { padding: 1.6rem; text-align: center; color: var(--mut); font-size: 0.88rem; }
+
+.st-error {
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+/* ---------- KPI ---------- */
+.st-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.55rem;
+}
+
+.st-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--st-line);
+  border-radius: 16px;
+  background: var(--st-card);
+}
+
+.st-kpi small {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--st-mut);
+}
+
+.st-kpi b { font-size: 1.55rem; line-height: 1.1; letter-spacing: -0.02em; }
+.st-kpi span { font-size: 0.7rem; color: var(--st-mut); }
+
+/* ---------- Card ---------- */
+.st-card {
+  border: 1px solid var(--st-line);
+  border-radius: 18px;
+  background: var(--st-card);
+  padding: 0.9rem 1rem 1rem;
+}
+
+.st-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+
+.st-card-head h3 { margin: 0; font-size: 0.98rem; }
+.st-sub { font-size: 0.74rem; color: var(--st-mut); }
+
+/* ---------- Key maker ---------- */
+.st-keymaker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border-radius: 14px;
+  background: var(--st-soft);
+}
+
+.st-keymaker label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--st-mut);
+}
+
+.st-keymaker select,
+.st-keymaker input,
+.st-filters select,
+.st-search {
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--st-line);
+  background: var(--st-card);
+  color: var(--st-ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.st-keymaker input[type='email'] { font-weight: 500; min-width: 180px; }
+
+.st-search { min-width: 160px; font-weight: 500; }
+
+.st-req { color: #dc2626; font-style: normal; }
+
+/* ---------- Cảnh báo nghiệp vụ ---------- */
+.st-warn {
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.09);
+  color: #a45c05;
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* ---------- Meta trong danh sách key ---------- */
+.st-keymeta { font-size: 0.76rem; color: var(--st-ink); line-height: 1.4; }
+.st-keymeta small { color: var(--st-mut); font-size: 0.72rem; }
+
+/* ---------- Nhật ký ---------- */
+.st-audit summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  list-style: none;
+}
+
+.st-audit summary::-webkit-details-marker { display: none; }
+.st-audit summary::before { content: '▸ '; color: var(--st-mut); }
+.st-audit[open] summary::before { content: '▾ '; }
+
+.st-audit-list { list-style: none; margin: 0.7rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+
+.st-audit-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.5rem;
+  align-items: baseline;
+  font-size: 0.78rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--st-line);
+}
+
+.st-audit-list li:last-child { border-bottom: 0; }
+.st-audit-list small { color: var(--st-mut); flex: 1 1 160px; }
+.st-audit-list em { font-style: normal; color: var(--st-mut); font-size: 0.72rem; }
+
+.st-btn {
+  border: 1px solid var(--st-line);
+  background: var(--st-card);
+  color: var(--st-ink);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.st-btn:hover { transform: translateY(-1px); }
+.st-btn.primary { background: var(--acc, #2563eb); border-color: transparent; color: #fff; }
+.st-btn.primary:disabled { opacity: 0.6; cursor: wait; }
+.st-btn.ghost { background: transparent; border-color: transparent; color: var(--st-mut); padding: 0.3rem 0.5rem; }
+.st-btn.ghost:hover { color: var(--st-ink); background: var(--st-soft); }
+
+.st-newkey {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px dashed rgba(37, 99, 235, 0.45);
+}
+
+.st-newkey code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Key list ---------- */
+.st-keys { list-style: none; margin: 0.7rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+
+.st-keys li {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.2rem;
+  border-bottom: 1px solid var(--st-line);
+  font-size: 0.8rem;
+}
+
+.st-keys code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.st-keys small { color: var(--st-mut); font-size: 0.72rem; }
+
+.st-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: var(--st-soft);
+  color: var(--st-mut);
+  white-space: nowrap;
+}
+
+.st-badge.tone-ex { background: rgba(15, 157, 118, 0.14); color: #067a5b; }
+.st-badge.tone-mid { background: rgba(217, 119, 6, 0.15); color: #a45c05; }
+.st-badge.tone-bad { background: rgba(220, 38, 38, 0.13); color: #b91c1c; }
+.st-badge.tone-good { background: rgba(37, 99, 235, 0.13); color: #1d4ed8; }
+.st-badge.tone-na { background: var(--st-soft); color: var(--st-mut); }
+
+[data-theme='dark'] .st-badge.tone-ex { color: #34d399; }
+[data-theme='dark'] .st-badge.tone-mid { color: #fbbf24; }
+[data-theme='dark'] .st-badge.tone-bad { color: #f87171; }
+[data-theme='dark'] .st-badge.tone-good { color: #93b4ff; }
+
+/* ---------- Filters ---------- */
+.st-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+
+.st-ranges { display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--st-soft); }
+
+.st-range {
+  border: 0;
+  background: transparent;
+  color: var(--st-mut);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.32rem 0.62rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.st-range.on { background: var(--st-card); color: var(--st-ink); box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12); }
+
+/* ---------- Tables ---------- */
+.st-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.st-table, .st-exams { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 760px; }
+
+.st-table th, .st-exams th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--st-mut);
+  font-weight: 700;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--st-line);
+}
+
+.st-table td, .st-exams td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--st-line);
+  vertical-align: middle;
+}
+
+.st-table tfoot th {
+  border-top: 2px solid var(--st-line);
+  border-bottom: 0;
+  color: var(--st-ink);
+  font-size: 0.78rem;
+}
+
+.st-table tr.is-open { background: var(--st-soft); }
+.st-detail > td { background: var(--st-soft); padding: 0.5rem 0.6rem 0.8rem; }
+
+.st-name {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--st-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(37, 99, 235, 0.35);
+  text-underline-offset: 3px;
+}
+
+.st-name em {
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--st-mut);
+  background: var(--st-soft);
+  border-radius: 6px;
+  padding: 0.05rem 0.3rem;
+  margin-left: 0.35rem;
+}
+
+.st-mail { display: block; color: var(--st-mut); font-size: 0.7rem; }
+.st-muted { color: var(--st-mut); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.st-exams { min-width: 520px; background: var(--st-card); border-radius: 12px; }
+.st-exams th { text-transform: none; font-size: 0.7rem; }
+.st-exams td { font-size: 0.78rem; }
+
+.st-empty { font-size: 0.82rem; color: var(--st-mut); margin: 0.6rem 0 0; line-height: 1.5; }
+.st-empty.sm { margin: 0.2rem 0; }
+
+@media (max-width: 560px) {
+  .st-kpis { grid-template-columns: 1fr 1fr; }
+  .st-keymaker { align-items: stretch; }
+  .st-newkey { width: 100%; justify-content: space-between; }
+  .st-keys li { grid-template-columns: auto auto; row-gap: 0.25rem; }
+}
+
+/* Bảng → thẻ dọc trên điện thoại: mỗi dòng thành 1 card, nhãn lấy từ data-label
+   nên không phải kéo ngang để đọc cột. */
+@media (max-width: 560px) {
+  .st-table.mobile-cards { min-width: 0; display: block; }
+  .st-table.mobile-cards thead { display: none; }
+  .st-table.mobile-cards tbody, .st-table.mobile-cards tr { display: block; width: 100%; }
+
+  .st-table.mobile-cards tr {
+    border: 1px solid var(--st-line);
+    border-radius: 12px;
+    padding: 0.55rem 0.65rem;
+    margin-bottom: 0.5rem;
+    background: var(--st-card);
+  }
+
+  .st-table.mobile-cards td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    border: 0;
+    padding: 0.2rem 0;
+    text-align: left;
+  }
+
+  .st-table.mobile-cards td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--st-mut);
+    flex-shrink: 0;
+  }
+
+  .st-table.mobile-cards td:last-child { padding-top: 0.35rem; }
+  .st-table.mobile-cards td:last-child::before { content: ''; }
+}

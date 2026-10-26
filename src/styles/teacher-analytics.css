@@ -1,0 +1,684 @@
+/* ============================================================
+   teacher-analytics.css — khu "Số liệu lớp" (ClassAnalytics.jsx)
+   Bám token của app (--ink, --mut, --panel, --acc) và có biến
+   thể tối; mọi màu dự phòng đều cụ thể để máy cũ không trắng.
+   ============================================================ */
+
+.ta {
+  --ta-ink: var(--ink, #0b1020);
+  --ta-mut: var(--mut, #6b7280);
+  /* --panel của app là màu kính (alpha thấp) → không dùng cho bề mặt cần đọc chữ */
+  --ta-panel: #ffffff;
+  --ta-sheet: #ffffff;
+  --ta-line: rgba(15, 23, 42, 0.09);
+  --ta-soft: rgba(15, 23, 42, 0.04);
+  --ta-ex: #0f9d76;
+  --ta-good: #2563eb;
+  --ta-mid: #d97706;
+  --ta-bad: #dc2626;
+  padding: 1.1rem 1.15rem 2rem;
+  color: var(--ta-ink);
+  max-width: 1180px;
+}
+
+[data-theme='dark'] .ta {
+  --ta-line: rgba(255, 255, 255, 0.1);
+  --ta-soft: rgba(255, 255, 255, 0.05);
+  --ta-panel: #1b1c22;
+  --ta-sheet: #17181d;
+}
+
+/* ---------- Header ---------- */
+.ta-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ta-head-titles h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+
+.ta-head-titles p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ta-mut);
+}
+
+.ta-head-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ta-select {
+  appearance: none;
+  border: 1px solid var(--ta-line);
+  background: var(--ta-panel);
+  color: var(--ta-ink);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ta-ranges {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--ta-soft);
+}
+
+.ta-range {
+  border: 0;
+  background: transparent;
+  color: var(--ta-mut);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.ta-range.active {
+  background: var(--ta-panel);
+  color: var(--ta-ink);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+/* ---------- KPI ---------- */
+.ta-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.ta-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid var(--ta-line);
+  background: linear-gradient(160deg, var(--ta-panel), transparent 140%);
+}
+
+.ta-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ta-mut);
+  text-transform: uppercase;
+}
+
+.ta-kpi-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.ta-kpi-value small {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-left: 2px;
+  color: var(--ta-mut);
+}
+
+.ta-kpi-hint {
+  font-size: 0.7rem;
+  color: var(--ta-mut);
+}
+
+.ta-kpi.is-bad { border-color: rgba(220, 38, 38, 0.35); }
+.ta-kpi.is-bad .ta-kpi-value { color: var(--ta-bad); }
+.ta-kpi.is-mid { border-color: rgba(217, 119, 6, 0.3); }
+.ta-kpi.is-mid .ta-kpi-value { color: var(--ta-mid); }
+
+/* ---------- Card ---------- */
+.ta-card {
+  border: 1px solid var(--ta-line);
+  border-radius: 18px;
+  background: var(--ta-panel);
+  padding: 0.9rem 1rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.ta-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+
+.ta-card-head h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.ta-card-sub {
+  font-size: 0.74rem;
+  color: var(--ta-mut);
+}
+
+.ta-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+}
+
+/* ---------- Heatmap ---------- */
+.ta-legend {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+  color: var(--ta-mut);
+}
+
+.ta-legend span { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+.ta-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.ta-dot.ex { background: var(--ta-ex); }
+.ta-dot.good { background: var(--ta-good); }
+.ta-dot.mid { background: var(--ta-mid); }
+.ta-dot.bad { background: var(--ta-bad); }
+.ta-dot.na { background: rgba(148, 163, 184, 0.5); }
+
+.ta-heat-table {
+  border-collapse: separate;
+  border-spacing: 3px;
+  width: 100%;
+  min-width: 520px;
+  font-size: 0.76rem;
+}
+
+.ta-heat-table th {
+  font-weight: 600;
+  font-size: 0.68rem;
+  color: var(--ta-mut);
+  text-align: center;
+  padding: 0.35rem 0.3rem;
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ta-heat-table tbody th {
+  text-align: left;
+  color: var(--ta-ink);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ta-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--ta-sheet);
+}
+
+.ta-heat {
+  text-align: center;
+  padding: 0.4rem 0.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 46px;
+}
+
+.ta-heat-ex { background: rgba(15, 157, 118, 0.16); color: #067a5b; }
+.ta-heat-good { background: rgba(37, 99, 235, 0.14); color: #1d4ed8; }
+.ta-heat-mid { background: rgba(217, 119, 6, 0.16); color: #a45c05; }
+.ta-heat-bad { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
+.ta-heat-na { background: var(--ta-soft); color: var(--ta-mut); }
+
+[data-theme='dark'] .ta-heat-ex { color: #34d399; }
+[data-theme='dark'] .ta-heat-good { color: #93b4ff; }
+[data-theme='dark'] .ta-heat-mid { color: #fbbf24; }
+[data-theme='dark'] .ta-heat-bad { color: #f87171; }
+
+.ta-name-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: rgba(37, 99, 235, 0.35);
+  text-underline-offset: 3px;
+}
+
+/* ---------- Student table ---------- */
+.ta-student-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ta-student-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ta-mut);
+  font-weight: 700;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--ta-line);
+  white-space: nowrap;
+}
+
+.ta-student-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--ta-line);
+  vertical-align: middle;
+}
+
+.ta-student-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ta-student-table tbody tr:hover { background: var(--ta-soft); }
+.ta-student-table tbody tr:focus-visible { outline: 2px solid var(--acc, #2563eb); outline-offset: -2px; }
+
+.ta-strong { font-weight: 700; white-space: nowrap; }
+.ta-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- Mastery ---------- */
+.ta-mastery {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.ta-mastery-track {
+  display: block;
+  width: 72px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ta-soft);
+  overflow: hidden;
+}
+
+.ta-mastery-fill { display: block; height: 100%; border-radius: 999px; }
+.ta-mastery-fill.tone-ex { background: var(--ta-ex); }
+.ta-mastery-fill.tone-good { background: var(--ta-good); }
+.ta-mastery-fill.tone-mid { background: var(--ta-mid); }
+.ta-mastery-fill.tone-low { background: #ea580c; }
+.ta-mastery-fill.tone-bad { background: var(--ta-bad); }
+
+.ta-mastery b { font-variant-numeric: tabular-nums; }
+.ta-mastery em { font-style: normal; font-size: 0.7rem; color: var(--ta-mut); }
+
+.ta-mastery-na { font-size: 0.74rem; color: var(--ta-mut); }
+
+.tone-ex { color: var(--ta-ex); }
+.tone-good { color: var(--ta-good); }
+.tone-mid { color: var(--ta-mid); }
+.tone-low { color: #ea580c; }
+.tone-bad { color: var(--ta-bad); }
+.tone-na { color: var(--ta-mut); }
+
+/* ---------- Flags ---------- */
+.ta-flag {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 6px;
+  margin: 0 0.2rem 0.2rem 0;
+  background: var(--ta-soft);
+  color: var(--ta-mut);
+  white-space: nowrap;
+}
+
+.ta-flag.flag-down { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+.ta-flag.flag-weak { background: rgba(217, 119, 6, 0.14); color: #a45c05; }
+.ta-flag.flag-none { background: rgba(100, 116, 139, 0.16); color: #475569; }
+.ta-flag.flag-fast { background: rgba(124, 58, 237, 0.13); color: #6d28d9; }
+.ta-flag-ok { font-size: 0.72rem; color: var(--ta-mut); }
+
+/* ---------- Hardest questions ---------- */
+.ta-hardest { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+
+.ta-hardest li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem;
+  border-radius: 12px;
+  background: var(--ta-soft);
+}
+
+.ta-hard-rate {
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ta-hard-text { font-size: 0.82rem; line-height: 1.4; }
+.ta-hard-text small { display: block; color: var(--ta-mut); font-size: 0.7rem; margin-top: 0.15rem; }
+
+/* ---------- Empty / loading ---------- */
+.ta-state {
+  padding: 2rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--ta-line);
+  border-radius: 18px;
+  color: var(--ta-mut);
+  font-size: 0.86rem;
+}
+
+.ta-state b { display: block; color: var(--ta-ink); font-size: 0.95rem; margin-bottom: 0.3rem; }
+.ta-note { font-size: 0.78rem; color: var(--ta-mut); margin: 0.5rem 0 0; line-height: 1.5; }
+
+/* ---------- Drawer ---------- */
+.ta-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(6, 8, 20, 0.45);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ta-drawer {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--ta-sheet);
+  color: var(--ta-ink);
+  padding: 1rem 1.1rem 2rem;
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.25);
+  animation: ta-slide-in 0.22s ease-out;
+}
+
+@keyframes ta-slide-in {
+  from { transform: translateX(18px); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+
+.ta-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.ta-drawer-head b { display: block; font-size: 1rem; }
+.ta-drawer-head span { font-size: 0.76rem; color: var(--ta-mut); }
+
+.ta-drawer-x {
+  border: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ta-soft);
+  color: var(--ta-ink);
+  cursor: pointer;
+}
+
+.ta-drawer-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  background: var(--ta-soft);
+  margin-bottom: 0.4rem;
+}
+
+.ta-drawer-score strong { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+.ta-drawer-score span { font-size: 0.82rem; font-weight: 700; }
+
+.ta-drawer-title {
+  margin: 1rem 0 0.45rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ta-mut);
+}
+
+.ta-parts, .ta-topicbars, .ta-sublist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.ta-parts li, .ta-topicbars li {
+  display: grid;
+  grid-template-columns: 1fr 90px 34px;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.ta-parts-label { display: flex; align-items: baseline; gap: 0.3rem; }
+.ta-parts-label small { color: var(--ta-mut); font-size: 0.68rem; }
+
+.ta-parts-track, .ta-topicbars-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ta-soft);
+  overflow: hidden;
+}
+
+.ta-parts-track i, .ta-topicbars-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ta-good);
+}
+
+.ta-topicbars-track i.tone-ex { background: var(--ta-ex); }
+.ta-topicbars-track i.tone-good { background: var(--ta-good); }
+.ta-topicbars-track i.tone-mid { background: var(--ta-mid); }
+.ta-topicbars-track i.tone-bad { background: var(--ta-bad); }
+
+.ta-parts li b, .ta-topicbars li b { text-align: right; font-variant-numeric: tabular-nums; }
+
+.ta-topicbars span:first-child, .ta-sublist span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ta-topicbars small { display: block; color: var(--ta-mut); font-size: 0.66rem; }
+
+.ta-sublist li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.8rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--ta-line);
+}
+
+.ta-sublist b { font-variant-numeric: tabular-nums; }
+.ta-sublist small { color: var(--ta-mut); font-size: 0.7rem; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 720px) {
+  .ta { padding: 0.9rem 0.75rem 2rem; }
+  .ta-head { align-items: stretch; }
+  .ta-head-titles h2 { font-size: 1.15rem; }
+  .ta-kpis { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .ta-kpi-value { font-size: 1.35rem; }
+  .ta-drawer { width: 100%; }
+}
+
+/* ============================================================
+   GIÁO VIÊN BỘ MÔN — thẻ tổng hợp, ma trận, danh sách trong drawer
+   ============================================================ */
+
+.ta-teachers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.55rem;
+}
+
+.ta-tcard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-align: left;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ta-line);
+  border-radius: 14px;
+  background: var(--ta-soft);
+  color: var(--ta-ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.ta-tcard:hover { transform: translateY(-1px); }
+
+.ta-tcard.is-active {
+  border-color: var(--acc, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
+.ta-tcard-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.ta-tcard-top b { font-size: 0.88rem; }
+
+.ta-tcard-top em {
+  font-style: normal;
+  font-size: 0.66rem;
+  color: var(--ta-mut);
+  background: var(--ta-panel);
+  border: 1px solid var(--ta-line);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  white-space: nowrap;
+}
+
+.ta-tcard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+}
+
+.ta-tcard-grid span {
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ta-tcard-grid small {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ta-mut);
+}
+
+.ta-tcard-foot { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.ta-tcard-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ta-panel);
+  border: 1px solid var(--ta-line);
+  overflow: hidden;
+}
+
+.ta-tcard-track i { display: block; height: 100%; background: var(--ta-good); }
+
+.ta-tcard-foot small { font-size: 0.66rem; color: var(--ta-mut); }
+
+/* ---------- Ma trận học sinh × giáo viên ---------- */
+.ta-matrix {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 0.76rem;
+}
+
+.ta-matrix th {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ta-mut);
+  text-align: center;
+  padding: 0.35rem;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ta-matrix tbody th {
+  text-align: left;
+  color: var(--ta-ink);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ta-matrix td.ta-cell {
+  text-align: center;
+  padding: 0.32rem 0.25rem;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  min-width: 58px;
+}
+
+.ta-cell b { display: block; font-size: 0.78rem; line-height: 1.2; }
+.ta-cell small { display: block; font-size: 0.64rem; opacity: 0.9; }
+
+/* ---------- Drawer: theo giáo viên ---------- */
+.ta-tlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+
+.ta-tlist li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.8rem;
+  padding: 0.32rem 0;
+  border-bottom: 1px solid var(--ta-line);
+}
+
+.ta-tlist-name small { display: block; font-size: 0.66rem; color: var(--ta-mut); }
+.ta-tlist-num { font-size: 0.72rem; color: var(--ta-mut); }
+
+@media (max-width: 480px) {
+  .ta-teachers { grid-template-columns: 1fr; }
+}

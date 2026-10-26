@@ -12,6 +12,9 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { readSheet, fileToImageData } from '../../lib/omr.js';
 import {
+  measureImageQuality, duplicateSbdIds, duplicateSbdMessage,
+} from '../../lib/omrQuality.js';
+import {
   DEFAULT_SCORING, DEFAULT_COUNTS, MAX_COUNTS,
   parseKeyP1, parseKeyP2, parseKeyP3, keyToTextP1, keyToTextP2, keyToTextP3,
   keyToStored, keyFromStored, keyP1FromExam, gradeSheet, maxScore, checkKey,
@@ -674,6 +677,10 @@ function PaperGrade({
     [items, regrade, matchStudent]
   );
 
+  /* Trùng số báo danh: đánh dấu CẢ HAI phiếu để người dùng tự quyết định */
+  const dupIds = useMemo(() => duplicateSbdIds(items), [items]);
+  const dupMsg = useMemo(() => duplicateSbdMessage(items), [items]);
+
   useEffect(() => () => {
     itemsRef.current.forEach((it) => it.url && URL.revokeObjectURL(it.url));
   }, []);
@@ -703,9 +710,11 @@ function PaperGrade({
       const url = URL.createObjectURL(f);
       let item;
       try {
-        const img = await fileToImageData(f);
-        await tick();
-        const r = readSheet(img);
+         const img = await fileToImageData(f);
+         await tick();
+         /* Đo chất lượng ảnh TRƯỚC khi đọc: ảnh mờ/lóa vẫn "đọc ra" nhưng dễ sai ô */
+         const imgQ = measureImageQuality(img);
+         const r = readSheet(img);
         if (!r.ok) {
           item = { id, fileName: f.name, url, status: 'error', error: r.error, sbd: '', code: '', read: null, issues: [], needsReview: true };
         } else {
@@ -713,19 +722,21 @@ function PaperGrade({
           if (!keys[code] && codeList.length === 1) code = codeList[0];
           const codeKnown = !!keys[code];
           item = {
-            id, fileName: f.name, url, status: 'done', sbd: r.sbd, code, readCode: r.code,
-            read: { p1: r.p1, p2: r.p2, p3: r.p3 }, issues: r.issues, quality: r.quality,
-            needsReview: !codeKnown || r.issues.length > 0 || !!r.quality?.warn || r.sbd.includes('?'),
+             id, fileName: f.name, url, status: 'done', sbd: r.sbd, code, readCode: r.code,
+             read: { p1: r.p1, p2: r.p2, p3: r.p3 },
+             issues: [...(r.issues || []), ...imgQ.issues],
+             quality: { ...(r.quality || {}), image: imgQ, warn: r.quality?.warn || !imgQ.ok },
+             needsReview: !codeKnown || r.issues.length > 0 || !!r.quality?.warn
+               || !imgQ.ok || r.sbd.includes('?'),
           };
         }
       } catch (e) {
         item = { id, fileName: f.name, url, status: 'error', error: 'Không đọc được ảnh: ' + (e.message || e), sbd: '', code: '', read: null, issues: [], needsReview: true };
       }
 
-      setItems((cur) => {
-        const dup = item.sbd && !item.sbd.includes('?') ? cur.filter((c) => c.sbd !== item.sbd) : cur;
-        return [...dup, item];
-      });
+      /* Không xoá phiếu trùng SBD (trước đây xoá âm thầm → mất kết quả đã chấm).
+         Trùng được đánh dấu để giáo viên tự quyết định giữ phiếu nào. */
+      setItems((cur) => [...cur, item]);
       setProgress({ done: i + 1, total: list.length });
       await tick();
     }
@@ -780,6 +791,7 @@ function PaperGrade({
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const camQ = measureImageQuality(imgData);
       const read = readSheet(imgData);
 
       if (!read.ok) {
@@ -803,15 +815,14 @@ function PaperGrade({
         code,
         readCode: read.code,
         read: { p1: read.p1, p2: read.p2, p3: read.p3 },
-        issues: read.issues || [],
-        quality: read.quality || null,
-        needsReview: !codeKnown || (read.issues && read.issues.length > 0) || !read.sbd || read.sbd.includes('?'),
+        issues: [...(read.issues || []), ...camQ.issues],
+        quality: { ...(read.quality || {}), image: camQ, warn: read.quality?.warn || !camQ.ok },
+        needsReview: !codeKnown || (read.issues && read.issues.length > 0)
+          || !read.sbd || read.sbd.includes('?') || !camQ.ok,
       };
 
-      setItems((cur) => {
-        const dup = item.sbd && !item.sbd.includes('?') ? cur.filter((c) => c.sbd !== item.sbd) : cur;
-        return [...dup, item];
-      });
+      /* Giữ cả phiếu trùng SBD, chỉ đánh dấu — xem chú thích ở luồng chấm ảnh hàng loạt */
+      setItems((cur) => [...cur, item]);
 
       const key = keys[code] || { p1: [], p2: [], p3: [] };
       const grade = gradeSheet(read, key, counts, scoring);
@@ -972,6 +983,12 @@ function PaperGrade({
             </div>
           </div>
 
+          {dupMsg && (
+            <p className="pg-warn-line">
+              <IcoWarn size={14} /> {dupMsg}
+            </p>
+          )}
+
           <div className="pg-tablewrap">
             <table className="pg-table">
               <thead>
@@ -1013,10 +1030,12 @@ function PaperGrade({
                             {fmt(it.grade?.score10)}
                           </b>
                         </td>
-                        <td>
-                          {it.needsReview ? (
-                            <span className="pg-tag warn">Cần xem lại</span>
-                          ) : it.saved && !it.edited ? (
+                         <td>
+                           {dupIds.has(it.id) ? (
+                             <span className="pg-tag bad">Trùng SBD</span>
+                           ) : it.needsReview ? (
+                             <span className="pg-tag warn">Cần xem lại</span>
+                           ) : it.saved && !it.edited ? (
                             <span className="pg-tag ok">Đã lưu</span>
                           ) : (
                             <span className="pg-tag">Mới</span>

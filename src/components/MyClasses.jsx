@@ -13,6 +13,7 @@ import {
   cancelJoinRequest,
 } from '../lib/classroom.js';
 import RetryRequestModal from './RetryRequestModal.jsx';
+import { classifyPct, bandLabel, resolveBands } from '../lib/learningAnalytics.js';
 import '../styles/class-apple.css';
 
 /* ============ ICONS ============ */
@@ -390,6 +391,34 @@ export default function MyClasses() {
     return { total: enrichedExams.length, done, avg, pending: pendingCount, onTimePct };
   }, [enrichedExams]);
 
+  /* ============ CHIA MỤC THEO MÔN + XẾP LOẠI HỌC LỰC ============
+     Môn lấy từ đề; đề không ghi môn thì lấy môn của lớp.
+     Xếp loại chỉ dựa trên các bài ĐÃ LÀM (điểm %), ngưỡng dùng chung với
+     trang Phân tích của giáo viên: Giỏi ≥80 · Khá 65–79 · TB 50–64 · Yếu <50. */
+  const bandCfg = resolveBands(selectedClass?.bandThresholds);
+
+  const subjectGroups = useMemo(() => {
+    const map = new Map();
+    filteredExams.forEach((ex) => {
+      const name = ex.subject || ex.questions?.[0]?.subject || selectedClass?.subject || 'Khác';
+      if (!map.has(name)) map.set(name, { name, items: [], pcts: [] });
+      const g = map.get(name);
+      g.items.push(ex);
+      if (ex._sub?.totalPoints > 0) g.pcts.push((ex._sub.score / ex._sub.totalPoints) * 100);
+    });
+    return [...map.values()].map((g) => {
+      const avg = g.pcts.length ? Math.round(g.pcts.reduce((a, b) => a + b, 0) / g.pcts.length) : null;
+      return {
+        ...g,
+        avg,
+        band: avg === null ? null : classifyPct(avg, selectedClass?.bandThresholds),
+        done: g.items.filter((i) => i._sub).length,
+      };
+    });
+  }, [filteredExams, selectedClass?.subject, selectedClass?.bandThresholds]);
+
+  const overallBand = stats.avg === null ? null : classifyPct(stats.avg, bandCfg);
+
   /* ============ ELEC AI DIAGNOSTIC ============ */
   const aiDiagnostic = useMemo(() => {
     const completedSubs = enrichedExams.filter((e) => e._sub && e._sub.totalPoints > 0);
@@ -591,16 +620,25 @@ export default function MyClasses() {
                       </div>
                     </div>
 
-                    <div className="ap-foot-actions">
-                      <button
-                        type="button"
-                        className="ap-btn ghost sm danger"
-                        onClick={handleLeave}
-                        disabled={busyLeave}
-                      >
-                        Rời lớp
-                      </button>
-                    </div>
+                     <p className="ap-overall-band">
+                       Học lực tổng hợp: <b>{bandLabel(overallBand)}</b>
+                       <small>
+                         {stats.done > 0
+                           ? ` · ${stats.done} bài đã làm${stats.avg != null ? ` · TB ${stats.avg}%` : ''}`
+                           : ' · chưa có bài nào được chấm'}
+                       </small>
+                     </p>
+
+                     <div className="ap-foot-actions">
+                       <button
+                         type="button"
+                         className="ap-btn ghost sm danger"
+                         onClick={handleLeave}
+                         disabled={busyLeave}
+                       >
+                         Rời lớp
+                       </button>
+                     </div>
                   </div>
 
                   {/* BENTO CARD 2: ELEC AI DIAGNOSTIC RADAR */}
@@ -733,9 +771,23 @@ export default function MyClasses() {
                   <p>{filter !== 'all' || search ? 'Thử đổi từ khóa hoặc bộ lọc.' : 'Lớp này hiện chưa có bài tập nào. Chờ giáo viên giao đề nhé!'}</p>
                 </div>
               ) : (
-                /* TITANIUM BENTO EXAM CARDS */
-                <ul className="ap-exams">
-                  {filteredExams.map((ex) => {
+                /* CHIA MỤC THEO MÔN — mỗi môn một khối, kèm điểm TB + xếp loại học lực */
+                <div className="ap-subject-groups">
+                  {subjectGroups.map((g) => (
+                    <section key={g.name} className="ap-subject-group">
+                      <header className="ap-subject-head">
+                        <h3 className="ap-subject-name">{g.name}</h3>
+                        <span className="ap-subject-meta">{g.items.length} đề · {g.done} đã làm</span>
+                        {g.avg === null ? (
+                          <span className="ap-band band-na">Chưa có điểm</span>
+                        ) : (
+                          <span className={`ap-band band-${g.band}`}>
+                            {bandLabel(g.band)} · TB {g.avg}%
+                          </span>
+                        )}
+                      </header>
+                      <ul className="ap-exams">
+                  {g.items.map((ex) => {
                     const dl = fmtDeadline(ex.closesAt);
                     const st = ex._st;
                     const sub = ex._sub;
@@ -821,11 +873,20 @@ export default function MyClasses() {
                           )}
                         </div>
                       </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+                     );
+                   })}
+                      </ul>
+                    </section>
+                  ))}
+                  <p className="ap-band-note">
+                    Xếp loại tính trên điểm % của các bài <b>đã làm</b> trong môn đó
+                    (Giỏi ≥ {bandCfg.gioi} · Khá {bandCfg.kha}–{bandCfg.gioi - 1} ·
+                    Trung bình {bandCfg.tb}–{bandCfg.kha - 1} · Yếu &lt; {bandCfg.tb});
+                    môn chưa làm bài nào thì chưa xếp loại.
+                  </p>
+                </div>
+               )}
+             </section>
           </div>
         </>
       )}

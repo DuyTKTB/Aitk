@@ -137,6 +137,15 @@
   scrollbar-width: none;
 }
 .cd-tabs::-webkit-scrollbar { display: none; }
+
+/* ❗ Trước đây dải tab cuộn ngang nhưng GIẤU thanh cuộn → các tab cuối
+   ("Giáo viên bộ môn", "Cài đặt") bị cắt ngoài mép phải mà không có dấu hiệu,
+   người dùng tưởng tính năng không tồn tại. Màn rộng thì cho xuống dòng để
+   mọi tab luôn nhìn thấy; màn hẹp vẫn vuốt ngang cho gọn. */
+@media (min-width: 721px) {
+  .cd-tabs { flex-wrap: wrap; row-gap: .2rem; padding-bottom: 0; }
+}
+
 .cd-tab {
   display: inline-flex;
   align-items: center;

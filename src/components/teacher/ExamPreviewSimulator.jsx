@@ -10,7 +10,8 @@
    ============================================================ */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import MathText from '../MathText.jsx';
-import { generateShuffledVersions } from '../../lib/examShuffle.js';
+import { generateShuffledVersions, answerKeyRows, findCollisions } from '../../lib/examShuffle.js';
+import { downloadCsv } from '../DashShell.jsx';
 import sound from '../../lib/gameSound.js';
 import { getSubject } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
@@ -120,6 +121,9 @@ export default function ExamPreviewSimulator({
   const [shuffledExams, setShuffledExams] = useState(() =>
     generateShuffledVersions(questions, 4)
   );
+
+  /* Hai mã đề trùng nhau hoàn toàn là lỗi chí mạng khi thi — luôn kiểm tra */
+  const collisions = useMemo(() => findCollisions(shuffledExams), [shuffledExams]);
 
   // Edit state
   const [editMode, setEditMode] = useState(false);
@@ -719,21 +723,46 @@ export default function ExamPreviewSimulator({
           const printQuestions = activeExamVersion.questions || editData.questions;
 
           return (
-            <div className="eps-print-layout">
-              <div className="eps-print-toolbar no-print">
-                <div className="eps-print-codes">
-                  <span>Mã đề in:</span>
-                  {shuffledExams.map((ex) => (
-                    <button
-                      key={ex.code}
-                      type="button"
-                      className={`eps-print-code-btn ${activeCode === ex.code ? 'on' : ''}`}
-                      onClick={() => setActiveCode(ex.code)}
-                    >
-                      Mã {ex.code}
-                    </button>
-                  ))}
-                </div>
+             <div className="eps-print-layout">
+               {collisions.length > 0 && (
+                 <p
+                   className="no-print"
+                   style={{
+                     margin: '0 0 0.5rem', padding: '0.5rem 0.7rem', borderRadius: 10,
+                     border: '1px solid rgba(239, 68, 68, 0.35)', background: 'rgba(239, 68, 68, 0.08)',
+                     color: '#b91c1c', fontSize: '0.8rem', lineHeight: 1.5,
+                   }}
+                 >
+                   Cảnh báo: mã đề {collisions.map(([a, b]) => `${a} và ${b}`).join(', ')} trùng nhau
+                   hoàn toàn (cùng thứ tự câu và đáp án). Thêm câu hỏi hoặc bật đảo lựa chọn trước khi in.
+                 </p>
+               )}
+               <div className="eps-print-toolbar no-print">
+                 <div className="eps-print-codes">
+                   <span>Mã đề in:</span>
+                   {shuffledExams.map((ex) => (
+                     <button
+                       key={ex.code}
+                       type="button"
+                       className={`eps-print-code-btn ${activeCode === ex.code ? 'on' : ''}`}
+                       onClick={() => setActiveCode(ex.code)}
+                     >
+                       Mã {ex.code}
+                     </button>
+                   ))}
+                   <button
+                     type="button"
+                     className="eps-print-code-btn"
+                     style={{ borderStyle: 'dashed' }}
+                     onClick={() => {
+                       const rows = [['Mã đề', 'Câu', 'Đáp án', 'Câu gốc'], ...answerKeyRows(shuffledExams)];
+                       downloadCsv(`dap-an-${(exam.title || 'de').replace(/[^\p{L}\p{N}]+/gu, '-')}.csv`, rows);
+                     }}
+                     title="Tải bảng đáp án của tất cả mã đề (CSV)"
+                   >
+                     Đáp án tất cả mã
+                   </button>
+                 </div>
                 <div className="eps-export-btns">
                   <button
                     type="button"

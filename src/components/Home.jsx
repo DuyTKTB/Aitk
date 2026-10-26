@@ -1,10 +1,11 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AIMark from './AIMark.jsx';
 import { askAI, useGreeting } from './HomePlus.jsx';
 import { Badge, Button, EmptyState } from '../ui/index.jsx';
 import { timeAgo, useProgress } from '../lib/progress.js';
 import { elementOfDay } from '../lib/elementOfDay.js';
 import { colorOf, eventsOn, toMin, doneKey, fmtDur, useSchedule } from '../lib/schedule.js';
+import RoadmapCard from './RoadmapCard.jsx';
 import '../styles/home-apple-bento.css';
 import '../styles/home-aurora.css';
 
@@ -392,70 +393,6 @@ function StatsBento({ p }) {
 }
 
 /* ============================================================
-   7. LỘ TRÌNH THEO LỚP
-   ============================================================ */
-const ROAD = {
-  'Lớp 10': { goal: 'Vững nền tảng: Cấu tạo nguyên tử, bảng tuần hoàn, liên kết và phản ứng.', topics: ['Cấu tạo nguyên tử', 'Bảng tuần hoàn', 'Liên kết hóa học', 'Phản ứng oxi hóa – khử', 'Năng lượng hóa học', 'Tốc độ phản ứng', 'Nhóm halogen'] },
-  'Lớp 11': { goal: 'Mở rộng sang cân bằng hóa học, nitơ – lưu huỳnh và hóa hữu cơ.', topics: ['Cân bằng hóa học', 'Nitơ và lưu huỳnh', 'Đại cương hóa hữu cơ', 'Hiđrocacbon', 'Ancol và phenol', 'Anđehit – axit cacboxylic'] },
-  'Lớp 12': { goal: 'Về đích: Hệ thống kiến thức, luyện đề thi tốt nghiệp THPT Quốc gia.', topics: ['Este – lipit', 'Cacbohiđrat', 'Amin, protein', 'Polime', 'Pin điện & điện phân', 'Đại cương kim loại', 'Nhôm & kiềm thổ', 'Sắt & hợp chất'] },
-  'Đại học': { goal: 'Nâng lên tư duy định lượng: Nhiệt động, động hóa học và hóa phân tích.', topics: ['Hóa đại cương', 'Nhiệt động hóa học', 'Động hóa học', 'Cân bằng ion', 'Hóa phân tích'] },
-};
-const GRADE_KEY = 'cs-home-grade';
-function readGrade() {
-  try {
-    const g = localStorage.getItem(GRADE_KEY);
-    return ROAD[g] ? g : 'Lớp 11';
-  } catch {
-    return 'Lớp 11';
-  }
-}
-
-function RoadmapBento() {
-  const [grade, setGrade] = useState(readGrade);
-  const pick = (g) => {
-    setGrade(g);
-    try { localStorage.setItem(GRADE_KEY, g); } catch { /* */ }
-  };
-  const r = ROAD[grade];
-
-  return (
-    <article className="bento-card bento-roadmap tone-purple">
-      <WTitle Icon={IcoBook} title="Lộ trình kiến thức" />
-
-      <div className="bento-segmented-control" role="tablist">
-        {Object.keys(ROAD).map((g) => (
-          <button
-            key={g}
-            type="button"
-            role="tab"
-            aria-selected={g === grade}
-            className={`bento-segmented-btn ${g === grade ? 'active' : ''}`}
-            onClick={() => pick(g)}
-          >
-            {g}
-          </button>
-        ))}
-      </div>
-
-      <p className="bento-road-goal">{r.goal}</p>
-
-      <div className="bento-topic-pills">
-        {r.topics.map((t, i) => (
-          <button
-            key={t}
-            type="button"
-            className="bento-topic-btn"
-            onClick={() => askAI(`Tóm tắt kiến thức trọng tâm chương "${t}" Hóa học ${grade} kèm 3 câu hỏi trắc nghiệm ôn tập`, grade)}
-          >
-            <span className="num">{i + 1}</span> {t}
-          </button>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-/* ============================================================
    8. NGUYÊN TỐ CỦA NGÀY
    ============================================================ */
 function ElementBento() {
@@ -609,7 +546,7 @@ export default function Home() {
 
         <StatsBento p={p} />
 
-        <RoadmapBento />
+        <RoadmapCard />
         <ElementBento />
 
         <RecentBento p={p} />

@@ -39,6 +39,7 @@ export async function askAI(provider, model, messages, options = {}) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${idToken}`
     },
+    signal: options.signal,
     body: JSON.stringify({
       provider,
       model,

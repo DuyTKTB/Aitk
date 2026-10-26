@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import RegisterFlow from './RegisterFlow.jsx';
 import './login-page.css';
 
 /* ============================================================
@@ -182,6 +183,13 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
       {/* ===== Cột phải: form ===== */}
       <div className="lg-main">
         <div className="lg-card">
+          {mode === 'register' ? (
+            <RegisterFlow
+              onDone={onDone}
+              onBack={() => switchMode('login')}
+            />
+          ) : (
+            <>
           <header className="lg-head">
             <h1>
               {isForgot ? 'Đặt lại mật khẩu'
@@ -347,6 +355,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
               </p>
             )}
           </footer>
+            </>
+          )}
         </div>
       </div>
     </div>

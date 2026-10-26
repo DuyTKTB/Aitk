@@ -570,6 +570,69 @@
   cursor: pointer;
 }
 
+/* ============ CHIA MỤC THEO MÔN + XẾP LOẠI HỌC LỰC ============ */
+.ap-subject-groups { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.ap-subject-group { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.ap-subject-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.ap-subject-name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.ap-subject-meta { font-size: 0.76rem; font-weight: 600; color: var(--mut); }
+
+.ap-band {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ap-band.band-gioi { background: color-mix(in srgb, #22c55e 16%, transparent); color: #15803d; }
+.ap-band.band-kha { background: color-mix(in srgb, #3b82f6 15%, transparent); color: #1d4ed8; }
+.ap-band.band-tb { background: color-mix(in srgb, #f59e0b 17%, transparent); color: #b45309; }
+.ap-band.band-yeu { background: color-mix(in srgb, #ef4444 15%, transparent); color: #b91c1c; }
+.ap-band.band-na { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--mut); }
+
+[data-theme='dark'] .ap-band.band-gioi { color: #4ade80; }
+[data-theme='dark'] .ap-band.band-kha { color: #93c5fd; }
+[data-theme='dark'] .ap-band.band-tb { color: #fbbf24; }
+[data-theme='dark'] .ap-band.band-yeu { color: #fca5a5; }
+
+.ap-band-note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--mut);
+}
+
+.ap-overall-band {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ap-overall-band small { font-weight: 600; color: var(--mut); }
+
 /* ============ TITANIUM BENTO EXAM CARDS ============ */
 .ap-exams {
   list-style: none;

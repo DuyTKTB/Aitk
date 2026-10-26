@@ -185,7 +185,7 @@ const GAME_ROUTES = [
 /* ============ PAGE ROUTING HELPERS ============ */
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
-  const h = window.location.hash.slice(1);
+  const h = window.location.hash.slice(1).split('?')[0];
   if (h === 'login' || h === 'register') return h;
   if (GAME_ROUTES.includes(h)) return h;
   if (h.startsWith('exam/')) return h;

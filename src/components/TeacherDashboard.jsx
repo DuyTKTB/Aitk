@@ -13,6 +13,14 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense, memo
 import { useAuth } from '../hooks/useAuth.jsx';
 import { isAdmin as checkAdmin } from '../lib/isAdmin.js';
 import { buildClassInsights } from '../lib/classInsights.js';
+import { listMyLinkedClasses } from '../lib/classTeachers.js';
+import { notifyClassOwner } from '../lib/notices.js';
+import {
+  groupNotices, unreadCount, noticeSummary,
+} from '../lib/noticesCore.js';
+import {
+  subscribeNotices as watchNotices, markNoticeRead, markAllNoticesRead, deleteNotice,
+} from '../lib/notices.js';
 import {
   getClassesByTeacher,
   getExamsByTeacher,
@@ -35,6 +43,7 @@ import {
   listenRetryRequestsByClasses,
   listenRetryRequestsByTeacher,
   getClassAllowances,
+  findClassByKey,
 } from '../lib/classroom.js';
 import {
   createExamSession,
@@ -46,6 +55,7 @@ import {
 } from '../lib/examSession.js';
 import ExamCreate from './ExamCreate.jsx';
 import ClassDetailModal from './ClassDetailModal.jsx';
+import LinkedClassesPanel from './teacher/LinkedClassesPanel.jsx';
 import {
   BentoCard,
   StatBig,
@@ -57,6 +67,8 @@ import {
   Chip,
 } from './teacher/ui/index.js';
 import ExamEditModal from './teacher/ExamEditModal.jsx';
+import ClassAnalytics from './teacher/ClassAnalytics.jsx';
+import LinkClassPanel from './teacher/LinkClassPanel.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 
 const LiveProctorView = lazy(() => import('./LiveProctorView.jsx'));
@@ -265,6 +277,14 @@ export default function TeacherDashboard({ onExit } = {}) {
   });
 
   const [classes, setClasses] = useState([]);
+  /* Lớp đã liên kết (giáo viên bộ môn) — để thẻ đề hiện đúng tên lớp, môn, chủ nhiệm */
+  const [linkedClasses, setLinkedClasses] = useState([]);
+
+  /* Chuông thông báo (notices: liên kết mới / gỡ liên kết / đề mới) */
+  const [bellOpen, setBellOpen] = useState(false);
+  const [notices, setNotices] = useState([]);
+  const [noticesErr, setNoticesErr] = useState('');
+  const [detailTab, setDetailTab] = useState('overview');
   const [exams, setExams] = useState([]);
   const [submissionsMap, setSubmissionsMap] = useState({});
   const [sessions, setSessions] = useState([]);
@@ -282,6 +302,15 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [noticeSaving, setNoticeSaving] = useState(false);
 
   const [selectedClass, setSelectedClass] = useState(null);
+
+  /* Giáo viên bộ môn: giao đề vào lớp của chủ nhiệm khác bằng mã lớp */
+  const [extOpen, setExtOpen] = useState(false);
+  const [extKey, setExtKey] = useState('');
+  const [extBusy, setExtBusy] = useState(false);
+  const [extErr, setExtErr] = useState('');
+  const [extClass, setExtClass] = useState(null);
+  /* true = đang tạo đề cho lớp đã liên kết (dùng đúng trang 3 tab như mục "AI Tạo đề") */
+  const [extCreate, setExtCreate] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
   const [showExamCreate, setShowExamCreate] = useState(false);
   const [showClassPicker, setShowClassPicker] = useState(false);
@@ -332,10 +361,69 @@ export default function TeacherDashboard({ onExit } = {}) {
     return () => clearInterval(t);
   }, [hasLiveSessions]);
 
+  /* Thông báo: chỉ nghe đúng hộp thư của mình; lỗi quyền không làm hỏng dashboard */
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const unsub = watchNotices(
+      user.uid,
+      (list) => { setNotices(list); setNoticesErr(''); },
+      (err) => {
+        setNotices([]);
+        setNoticesErr(err?.code === 'permission-denied'
+          ? 'Chưa có quyền đọc thông báo — cần deploy firestore.rules (mục notices).'
+          : 'Không tải được thông báo.');
+      },
+    );
+    return () => unsub?.();
+  }, [user?.uid]);
+
+  const unreadNotices = useMemo(() => unreadCount(notices), [notices]);
+  const noticeGroups = useMemo(() => groupNotices(notices), [notices]);
+
+  const openNotice = async (n) => {
+    setBellOpen(false);
+    if (!n.read) { try { await markNoticeRead(n.id); } catch { /* bỏ qua */ } }
+    const cls = classById[n.classId];
+    if (!cls) {
+      say('Lớp này không còn trong danh sách của bạn (có thể đã bị xoá hoặc bạn đã gỡ liên kết).', 'error');
+      return;
+    }
+    setDetailTab(n.tab || 'teachers');
+    setSelectedClass(cls);
+  };
+
   const goSection = (key) => {
     setSection(key);
     setSubTab('all');
     setSearch('');
+    /* Rời trang tạo đề → bỏ khoá lớp của luồng "giao đề lớp khác",
+       tránh lần sau vào "AI Tạo đề" vẫn bị ghim vào lớp cũ. */
+    if (key !== 'create') {
+      setExtCreate(false);
+      setExtClass(null);
+    }
+  };
+
+  /* Tìm lớp theo mã để giao đề (dùng cho giáo viên bộ môn không phải chủ nhiệm) */
+  const findExternalClass = async () => {
+    const key = extKey.trim().toUpperCase();
+    if (!key) { setExtErr('Nhập mã lớp trước đã.'); return; }
+    setExtBusy(true);
+    setExtErr('');
+    try {
+      const found = await findClassByKey(key);
+      if (!found) {
+        setExtErr('Không tìm thấy lớp nào với mã này. Nhờ chủ nhiệm gửi lại mã lớp.');
+        return;
+      }
+      setExtClass(found);
+      setExtOpen(false);
+      setExtKey('');
+    } catch (e) {
+      setExtErr(e?.message || 'Không tìm được lớp.');
+    } finally {
+      setExtBusy(false);
+    }
   };
 
   /* ---------- LOAD ---------- */
@@ -353,6 +441,24 @@ export default function TeacherDashboard({ onExit } = {}) {
       setClasses(cls);
       setExams(ex);
       setSessions(sess);
+
+      /* Lớp đã liên kết bằng key (GVBM) — đề giao cho lớp đó cần tên lớp/môn/chủ nhiệm
+         để hiển thị đúng thay vì "Lớp —". Lỗi quyền (chưa deploy rules) không được
+         làm hỏng phần còn lại của dashboard. */
+      try {
+        const links = await listMyLinkedClasses(user.uid);
+        const docs = await Promise.all(links.map(async (l) => {
+          try {
+            const c = await getClassById(l.classId);
+            return c ? { ...c, _linked: true, _mySubject: l.subject || '' } : null;
+          } catch {
+            return null;
+          }
+        }));
+        setLinkedClasses(docs.filter(Boolean));
+      } catch {
+        setLinkedClasses([]);
+      }
 
       const priorityExams = ex.slice(0, 8);
       const subsMap = { ...subsCacheRef.current };
@@ -848,7 +954,14 @@ export default function TeacherDashboard({ onExit } = {}) {
     [exams]
   );
 
-  const classById = useMemo(() => Object.fromEntries(classes.map((c) => [c.id, c])), [classes]);
+  /* Gồm cả lớp đã liên kết (GVBM) để thẻ đề/phiên thi hiện đúng tên lớp + chủ nhiệm */
+  const classById = useMemo(() => {
+    const map = Object.fromEntries(classes.map((c) => [c.id, c]));
+    linkedClasses.forEach((c) => {
+      if (c?.id && !map[c.id]) map[c.id] = c;
+    });
+    return map;
+  }, [classes, linkedClasses]);
 
   const totalPendingMembers = useMemo(
     () => classes.reduce((sum, c) => sum + (c.pendingMembers?.length || 0), 0),
@@ -951,6 +1064,8 @@ export default function TeacherDashboard({ onExit } = {}) {
      ============================================================ */
   const navItems = [
     { key: 'overview', label: 'Tổng quan', Icon: IcoGrid },
+    { key: 'analytics', label: 'Số liệu lớp', Icon: IcoChart },
+    { key: 'link', label: 'Liên kết lớp', Icon: IcoKey },
     {
       key: 'classes',
       label: 'Lớp học',
@@ -989,6 +1104,15 @@ export default function TeacherDashboard({ onExit } = {}) {
         <span className="t-rail-btn-icon"><IcoBell size={20} /></span>
         <span className="t-rail-btn-label">Xin thi lại</span>
         {totalPendingRetry > 0 && <span className="t-rail-btn-badge">{totalPendingRetry}</span>}
+      </button>
+      <button
+        type="button"
+        className={`t-rail-btn ${extClass ? 'active' : ''}`}
+        onClick={() => setExtOpen(true)}
+        title="Giao đề vào lớp của giáo viên khác bằng mã lớp"
+      >
+        <span className="t-rail-btn-icon"><IcoBook size={20} /></span>
+        <span className="t-rail-btn-label">Giao đề lớp khác</span>
       </button>
       {showAdminLink && (
         <button type="button" className="t-rail-btn" onClick={() => { window.location.hash = 'admin'; }} title="Sang trang quản trị hệ thống">
@@ -1059,10 +1183,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     },
   }[section] || {};
 
-  const goBell = () => {
-    if (liveSessions.length === 1) setViewingSessionId(liveSessions[0].id);
-    else goSection('sessions');
-  };
+  const goBell = () => setBellOpen(true);
 
   /* ============================================================
      RENDER
@@ -1085,7 +1206,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         {...topProps}
         search={section !== 'create' && section !== 'simulator' && section !== 'retry' && section !== 'bank' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
-          on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0,
+          on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0 || unreadNotices > 0,
           onClick: () => {
             if (totalPendingRetry > 0) goSection('retry');
             else if (totalPendingMembers > 0) goSection('classes');
@@ -1435,6 +1556,17 @@ export default function TeacherDashboard({ onExit } = {}) {
       {/* ============================================================
           LỚP HỌC
          ============================================================ */}
+      {section === 'link' && <LinkClassPanel />}
+
+      {section === 'analytics' && (
+        <ClassAnalytics
+          classes={classes}
+          exams={exams}
+          submissionsMap={submissionsMap}
+          loading={loading}
+        />
+      )}
+
       {section === 'classes' && (
         <div className="vt-grid">
           <button type="button" className="vt-card vt-add-card" onClick={() => setShowCreateClass(true)}>
@@ -1577,7 +1709,12 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const best = subs.length ? Math.round(Math.max(...pcts)) : null;
                   const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
                   const memberCount = cls?.members?.length || 0;
-                  const subject = detectExamSubject(ex);
+                  /* Đề không tự ghi môn → lấy môn của lớp / môn đã gắn khi liên kết */
+                  const subject = (() => {
+                    const own = detectExamSubject(ex);
+                    if (own !== '—') return own;
+                    return cls?.subject || cls?._mySubject || '—';
+                  })();
                   const isAi = isAiGeneratedExam(ex);
                   const typeCount = (() => {
                     const t = { single_choice: 0, true_false: 0, short_answer: 0 };
@@ -1608,7 +1745,10 @@ export default function TeacherDashboard({ onExit } = {}) {
                         </div>
                         <h3>{ex.title}</h3>
                         <small>
-                          Lớp {cls?.name || '—'} · {ex.questions.length} câu · {ex.duration} phút
+                          <b>Lớp {cls?.name || '—'}</b>
+                          {subject && subject !== '—' ? <> · Môn <b>{subject}</b></> : null}
+                          {cls?.teacherName ? <> · GV chủ nhiệm: <b>{cls.teacherName}</b></> : null}
+                          {` · ${ex.questions.length} câu · ${ex.duration} phút`}
                           {typeCount.true_false > 0 && ` · ${typeCount.true_false} Đ/S`}
                           {typeCount.short_answer > 0 && ` · ${typeCount.short_answer} TLN`}
                         </small>
@@ -1841,9 +1981,12 @@ export default function TeacherDashboard({ onExit } = {}) {
                           </span>
                           <span style={{ flex: 1, minWidth: 0 }}>
                             <b style={{ font: '800 .95rem var(--t-font-sans)', color: 'var(--t-ink)', display: 'block' }}>{g.cls?.name || 'Chưa gắn lớp'}</b>
-                            <small style={{ color: 'var(--t-ink-muted)', font: '600 .74rem var(--t-font-sans)', display: 'block' }}>
-                              {g.items.length} đề · {g.mons.length} môn{g.cls?.members?.length ? ` · ${g.cls.members.length} HS` : ''}
-                            </small>
+                             <small style={{ color: 'var(--t-ink-muted)', font: '600 .74rem var(--t-font-sans)', display: 'block' }}>
+                               {g.mons.map((m) => m.name).join(', ') || '—'}
+                               {` · ${g.items.length} đề`}
+                               {g.cls?.teacherName ? ` · GV chủ nhiệm: ${g.cls.teacherName}` : ''}
+                               {g.cls?.members?.length ? ` · ${g.cls.members.length} HS` : ''}
+                             </small>
                           </span>
                           {g.live > 0 && (
                             <span style={{ padding: '.25rem .6rem', borderRadius: 999, background: 'var(--t-status-ok-subtle)', color: 'var(--t-status-ok)', font: '800 .7rem var(--t-font-sans)' }}>● LIVE {g.live}</span>
@@ -2124,26 +2267,126 @@ export default function TeacherDashboard({ onExit } = {}) {
       {section === 'create' && (
         <ErrorBoundary>
           <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải AI Studio...</p></div>}>
+            {extCreate && extClass && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem',
+                flexWrap: 'wrap', margin: '0 0 0.6rem', padding: '0.5rem 0.75rem', borderRadius: 12,
+                border: '1px solid rgba(37, 99, 235, 0.35)', background: 'rgba(37, 99, 235, 0.08)',
+                fontSize: '0.82rem', color: 'var(--ink)',
+              }}>
+                <span>
+                  Đang giao đề cho lớp <b>{extClass.name || extClass.id}</b>
+                  {extClass.teacherName ? <> · GV chủ nhiệm: <b>{extClass.teacherName}</b></> : null}
+                </span>
+                <button
+                  type="button"
+                  className="td-btn"
+                  onClick={() => { setExtCreate(false); setExtClass(null); goSection('overview'); }}
+                >
+                  Huỷ
+                </button>
+              </div>
+            )}
             <CreateExamPage
-              classInfo={selectedClass || classes[0]}
-              classes={classes}
+              /* Giáo viên bộ môn: khoá vào đúng lớp đã liên kết, không cho chọn lớp khác */
+              classInfo={extCreate && extClass ? extClass : (selectedClass || classes[0])}
+              classes={extCreate && extClass ? [extClass] : classes}
               classInsights={classInsights}
               grades={[]}
               subjects={[]}
-              onDone={async () => {
+              onDone={async (createdExam) => {
                 subsCacheRef.current = {};
                 await refresh();
+                if (extCreate && extClass) {
+                  /* Báo cho chủ nhiệm: có đề mới trong lớp của họ */
+                  await notifyClassOwner({
+                    type: 'exam_assigned',
+                    toUid: extClass.teacherId,
+                    actorId: user.uid,
+                    actorName: user.displayName || user.email || 'Giáo viên',
+                    classId: extClass.id,
+                    className: extClass.name,
+                    subject: createdExam?.subject || extClass.subject || '',
+                    title: createdExam?.title || 'Đề mới',
+                    body: `vừa giao đề “${createdExam?.title || 'Đề mới'}” cho lớp ${extClass.name || ''}.`,
+                    tab: 'exams',
+                  });
+                  say(`Đã giao đề cho lớp ${extClass.name || ''}`.trim(), 'success');
+                }
                 setSelectedClass(null);
+                setExtClass(null);
+                setExtCreate(false);
                 goSection('exams');
               }}
               onCancel={() => {
                 setSelectedClass(null);
+                setExtClass(null);
+                setExtCreate(false);
                 goSection('overview');
               }}
             />
           </Suspense>
         </ErrorBoundary>
       )}
+
+      {/* ============ GIAO ĐỀ CHO LỚP KHÁC (giáo viên bộ môn) ============ */}
+      {extOpen && (
+        <Modal title="Giao đề cho lớp khác" size="lg" onClose={() => { setExtOpen(false); setExtErr(''); }}>
+          <p style={{ margin: '0 0 0.7rem', fontSize: '0.86rem', color: 'var(--mut)' }}>
+            Đây là các lớp bạn đã liên kết bằng key của chủ nhiệm. Đề bạn tạo sẽ nằm trong lớp đó,
+            ghi tên <b>bạn</b> là người giao và chủ nhiệm theo dõi được trong mục “Phân tích AI”.
+          </p>
+
+          <LinkedClassesPanel
+            user={user}
+            onSay={say}
+            onAssign={(classInfo) => {
+              /* Mở đúng trang tạo đề 3 tab (AI / Soạn thủ công / Nhập từ file)
+                 của mục "AI Tạo đề", khoá lớp = lớp vừa chọn. */
+              setExtOpen(false);
+              setExtClass(classInfo);
+              setExtCreate(true);
+              goSection('create');
+            }}
+            onMonitor={(session) => {
+              setSessions((prev) => (
+                prev.some((s) => s.id === session.id) ? prev : [session, ...prev]
+              ));
+              setExtOpen(false);
+              setViewingSessionId(session.id);
+            }}
+          />
+
+          <details style={{ marginTop: '0.9rem' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: 'var(--mut)' }}>
+              Hoặc dùng mã lớp (không cần key)
+            </summary>
+            <p style={{ margin: '0.6rem 0', fontSize: '0.82rem', color: 'var(--mut)' }}>
+              Nhập mã lớp do giáo viên chủ nhiệm gửi để giao đề nhanh mà không cần liên kết.
+            </p>
+            <input
+              value={extKey}
+              onChange={(e) => { setExtKey(e.target.value.toUpperCase()); setExtErr(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') findExternalClass(); }}
+              placeholder="VD: 11A7-8KQ3ZM"
+              style={{
+                width: '100%', padding: '0.6rem 0.75rem', fontSize: '1rem', letterSpacing: '0.06em',
+                borderRadius: 12, border: '1.5px solid var(--soft)', background: 'var(--surface, #fff)',
+                color: 'var(--ink)', textTransform: 'uppercase',
+              }}
+            />
+            {extErr && <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--acc)' }}>{extErr}</p>}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.7rem' }}>
+              <button type="button" className="td-btn primary" onClick={findExternalClass} disabled={extBusy}>
+                {extBusy ? 'Đang tìm…' : 'Tìm lớp'}
+              </button>
+            </div>
+          </details>
+        </Modal>
+      )}
+
+      {/* Việc tạo đề cho lớp đã liên kết dùng chung trang CreateExamPage 3 tab
+          (section 'create'), nên không còn modal ExamCreate riêng ở đây. */}
 
       {/* ============ TOAST ============ */}
       {toast && (
@@ -2216,12 +2459,116 @@ export default function TeacherDashboard({ onExit } = {}) {
         </Modal>
       )}
 
+      {/* ============ THÔNG BÁO (chuông) ============ */}
+      {bellOpen && (
+        <Modal title="Thông báo" size="md" onClose={() => setBellOpen(false)}>
+          {noticesErr && <p className="st-error">{noticesErr}</p>}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--mut)' }}>
+              {unreadNotices} chưa đọc · {notices.length} thông báo
+            </span>
+            {unreadNotices > 0 && (
+              <button
+                type="button"
+                className="td-btn"
+                onClick={async () => {
+                  try { await markAllNoticesRead(notices); } catch { /* bỏ qua */ }
+                }}
+              >
+                Đánh dấu tất cả đã đọc
+              </button>
+            )}
+          </div>
+
+          {notices.length === 0 ? (
+            <p className="st-empty">
+              Chưa có thông báo nào. Khi giáo viên bộ môn liên kết hoặc giao đề, thông báo sẽ hiện ở đây.
+            </p>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.45rem', maxHeight: '55vh', overflowY: 'auto' }}>
+              {[...noticeGroups.unread, ...noticeGroups.read].map((n) => (
+                <li
+                  key={n.id}
+                  style={{
+                    border: '1px solid var(--soft)',
+                    borderRadius: 12,
+                    padding: '0.55rem 0.7rem',
+                    background: n.read ? 'transparent' : 'rgba(37, 99, 235, 0.07)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
+                    <b style={{ fontSize: '0.84rem' }}>{n.title || 'Thông báo'}</b>
+                    <small style={{ color: 'var(--mut)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                      {n.createdAtMs
+                        ? new Date(n.createdAtMs).toLocaleString('vi-VN', {
+                          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                        })
+                        : ''}
+                    </small>
+                  </div>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                    {noticeSummary(n)}
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                    <button type="button" className="td-btn" onClick={() => openNotice(n)}>Mở lớp</button>
+                    {!n.read && (
+                      <button
+                        type="button"
+                        className="td-btn"
+                        style={{ background: 'transparent', border: '1px solid var(--soft)', color: 'var(--mut)' }}
+                        onClick={async () => {
+                          try { await markNoticeRead(n.id); } catch { /* bỏ qua */ }
+                        }}
+                      >
+                        Đã đọc
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="td-btn"
+                      style={{ background: 'transparent', border: '1px solid var(--soft)', color: 'var(--mut)' }}
+                      onClick={async () => {
+                        try { await deleteNotice(n.id); } catch { /* bỏ qua */ }
+                      }}
+                    >
+                      Xoá
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {(liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0) && (
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid var(--soft)' }}>
+              {liveSessions.length > 0 && (
+                <button type="button" className="td-btn" onClick={() => { setBellOpen(false); goSection('sessions'); }}>
+                  {liveSessions.length} phòng thi đang mở
+                </button>
+              )}
+              {totalPendingRetry > 0 && (
+                <button type="button" className="td-btn" onClick={() => { setBellOpen(false); goSection('retry'); }}>
+                  {totalPendingRetry} đơn xin thi lại
+                </button>
+              )}
+              {totalPendingMembers > 0 && (
+                <button type="button" className="td-btn" onClick={() => { setBellOpen(false); goSection('classes'); }}>
+                  {totalPendingMembers} thành viên chờ duyệt
+                </button>
+              )}
+            </div>
+          )}
+        </Modal>
+      )}
+
       {/* ============ CHI TIẾT LỚP ============ */}
       {selectedClass && !showExamCreate && section !== 'create' && (
         <ClassDetailModal
           classInfo={selectedClass}
+          initialTab={detailTab}
           exams={exams.filter((e) => e.classId === selectedClass.id)}
-          onClose={() => setSelectedClass(null)}
+          onClose={() => { setSelectedClass(null); setDetailTab('overview'); }}
           onExportCsv={exportClassCsv}
           onOpenExam={(examId) => {
             setSelectedClass(null);

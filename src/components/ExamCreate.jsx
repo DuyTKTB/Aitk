@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { createExam, defaultProctor } from '../lib/classroom.js';
+import { ROADMAP_LEVELS } from '../data/roadmap.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 
 /* ============ SVG ICONS ============ */
 const IcoPlus = ({ size = 14 }) => (
@@ -47,7 +49,9 @@ const emptyQuestion = () => ({
 const localToIso = (v) => (v ? new Date(v).toISOString() : null);
 
 export default function ExamCreate({ classInfo, onClose, onCreated }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
+  const [subject, setSubject] = useState(classInfo?.subject || '');
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState(15);
   const [questions, setQuestions] = useState([emptyQuestion()]);
@@ -118,6 +122,8 @@ export default function ExamCreate({ classInfo, onClose, onCreated }) {
         options: kept,
         correct: newCorrect >= 0 ? newCorrect : 0,
         points: Number(q.points) || 1,
+        /* Giữ chương đã gắn — thiếu dòng này thì heatmap mất dữ liệu sau khi lưu */
+        topic: (q.topic || '').trim(),
       };
     });
 
@@ -130,8 +136,11 @@ export default function ExamCreate({ classInfo, onClose, onCreated }) {
     try {
       const cleaned = cleanQuestions();
       const exam = await createExam({
-        teacherId: classInfo.teacherId,
-        teacherName: classInfo.teacherName,
+        /* Người bấm lưu là người giao đề — không lấy chủ nhiệm lớp,
+           nếu không thì đề của giáo viên bộ môn bị ghi tên chủ nhiệm. */
+        teacherId: user?.uid || classInfo.teacherId,
+        teacherName: user?.displayName || user?.email || classInfo.teacherName || 'Giáo viên',
+        subject: subject.trim(),
         classId: classInfo.id,
         title: title.trim(),
         description: description.trim(),
@@ -166,6 +175,15 @@ export default function ExamCreate({ classInfo, onClose, onCreated }) {
           <label>
             Thời gian (phút)
             <input type="number" min="1" max="180" value={duration} onChange={(e) => setDuration(e.target.value)} />
+          </label>
+          <label>
+            Môn học
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="VD: Hóa học"
+              maxLength={40}
+            />
           </label>
         </div>
 
@@ -331,16 +349,37 @@ export default function ExamCreate({ classInfo, onClose, onCreated }) {
                 ))}
               </div>
 
-              <label className="ec-points">
-                Điểm:
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  value={q.points}
-                  onChange={(e) => updateQ(qi, { points: Number(e.target.value) || 1 })}
-                />
-              </label>
+              <div className="ec-q-meta">
+                <label className="ec-points">
+                  Điểm:
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    value={q.points}
+                    onChange={(e) => updateQ(qi, { points: Number(e.target.value) || 1 })}
+                  />
+                </label>
+
+                {/* Gắn chương → bật heatmap "lớp yếu chương nào" ở mục Số liệu lớp */}
+                <label className="ec-points ec-topic-wrap">
+                  Chương:
+                  <select
+                    className="ec-topic"
+                    value={q.topic || ''}
+                    onChange={(e) => updateQ(qi, { topic: e.target.value })}
+                  >
+                    <option value="">— chưa gắn —</option>
+                    {ROADMAP_LEVELS.map((lv) => (
+                      <optgroup key={lv.key} label={lv.key}>
+                        {lv.chapters.map((c) => (
+                          <option key={`${lv.key}-${c.id || c.name}`} value={c.name}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
           ))}
         </div>

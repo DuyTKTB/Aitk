@@ -375,6 +375,23 @@
 .pg-tag.warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .pg-tag.bad { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
+/* Cảnh báo trùng số báo danh / chất lượng ảnh */
+.pg-warn-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0 0 0.55rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.pg-warn-line svg { flex-shrink: 0; margin-top: 0.1rem; }
+
 /* ============================================================
    NÂNG CẤP 1: LIVE WEBCAM SCANNER MODAL (CHẤM TỰ ĐỘNG)
    ============================================================ */

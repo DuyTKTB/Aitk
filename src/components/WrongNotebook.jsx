@@ -36,7 +36,17 @@ export default function WrongNotebook() {
   // Filters
   const [search, setSearch] = useState('');
   const [filterDiff, setFilterDiff] = useState('all');
-  const [filterTopic, setFilterTopic] = useState('all');
+  /* Cho phép mở sẵn theo chương: #notebook?topic=c11-alcohol
+     (đi từ thẻ "Lộ trình kiến thức" → Sổ lỗi sai) */
+  const [filterTopic, setFilterTopic] = useState(() => {
+    try {
+      const q = window.location.hash.split('?')[1] || '';
+      const t = new URLSearchParams(q).get('topic');
+      return t || 'all';
+    } catch {
+      return 'all';
+    }
+  });
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('list');
 
@@ -424,6 +434,24 @@ export default function WrongNotebook() {
           {topicCounts.map(([id, n]) => (
             <button key={id} type="button" className={'nb-chip' + (filterTopic === id ? ' on' : '')} onClick={() => setFilterTopic(id)}>{topicName(id)} · {n}</button>
           ))}
+        </div>
+      )}
+
+      {/* Đi từ "Lộ trình kiến thức" sang mà chương này chưa có câu sai nào:
+          hiện nhãn lọc + nút bỏ lọc, tránh việc danh sách trống mà không rõ lý do */}
+      {filterTopic !== 'all' && !topicCounts.some(([id]) => id === filterTopic) && (
+        <div className="nb-filters" aria-label="Đang lọc theo chuyên đề">
+          <span className="nb-chip on">Đang lọc: {topicName(filterTopic)}</span>
+          <button
+            type="button"
+            className="nb-chip"
+            onClick={() => {
+              setFilterTopic('all');
+              try { history.replaceState(null, '', '#notebook'); } catch { /* */ }
+            }}
+          >
+            Bỏ lọc
+          </button>
         </div>
       )}
 

@@ -1,0 +1,278 @@
+/* ============================================================
+   register-flow.css — đăng ký 3 bước
+   Dùng chung token màu với trang đăng nhập của dự án.
+   ============================================================ */
+
+.rf {
+  --rf-ink: var(--ink, #0b1020);
+  --rf-mut: var(--mut, #6b7280);
+  --rf-line: rgba(15, 23, 42, 0.12);
+  --rf-soft: rgba(15, 23, 42, 0.045);
+  --rf-card: #fff;
+  --rf-acc: var(--acc, #2563eb);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  color: var(--rf-ink);
+}
+
+[data-theme='dark'] .rf {
+  --rf-line: rgba(255, 255, 255, 0.13);
+  --rf-soft: rgba(255, 255, 255, 0.06);
+  --rf-card: #1b1c22;
+}
+
+.rf-head h1 {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 1.32rem;
+  letter-spacing: -0.02em;
+}
+
+.rf-head p { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--rf-mut); }
+
+/* ---------- bước ---------- */
+.rf-steps { display: flex; gap: 0.4rem; align-items: center; }
+
+.rf-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--rf-line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--rf-mut);
+  background: var(--rf-card);
+}
+
+.rf-dot.on { border-color: var(--rf-acc); color: #fff; background: var(--rf-acc); }
+.rf-dot.done { border-color: rgba(15, 157, 118, 0.4); color: #067a5b; background: rgba(15, 157, 118, 0.12); }
+
+.rf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.rf-badge.ok { background: rgba(15, 157, 118, 0.13); color: #067a5b; }
+
+/* ---------- field ---------- */
+.rf-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--rf-line);
+  border-radius: 12px;
+  background: var(--rf-card);
+  padding: 0 0.7rem;
+}
+
+.rf-field:focus-within { border-color: var(--rf-acc); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+
+.rf-ic { display: inline-flex; color: var(--rf-mut); flex-shrink: 0; }
+
+.rf-field input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0.7rem 0.55rem;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--rf-ink);
+  outline: none;
+  min-width: 0;
+}
+
+.rf-eye {
+  border: 0;
+  background: transparent;
+  color: var(--rf-mut);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: inline-flex;
+}
+
+/* ---------- vai trò ---------- */
+.rf-role { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+
+.rf-role-btn {
+  border: 1.5px solid var(--rf-line);
+  background: var(--rf-card);
+  border-radius: 12px;
+  padding: 0.55rem 0.6rem;
+  text-align: left;
+  cursor: pointer;
+  color: var(--rf-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rf-role-btn b { font-size: 0.86rem; }
+.rf-role-btn small { font-size: 0.72rem; color: var(--rf-mut); }
+.rf-role-btn.on { border-color: var(--rf-acc); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+
+/* ---------- độ mạnh ---------- */
+.rf-strength { display: flex; align-items: center; gap: 0.5rem; }
+
+.rf-meter {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rf-soft);
+  overflow: hidden;
+}
+
+.rf-meter span { display: block; height: 100%; border-radius: 999px; transition: width 0.2s ease; }
+.rf-strength[data-tone='bad'] .rf-meter span { background: #ef4444; }
+.rf-strength[data-tone='weak'] .rf-meter span { background: #f97316; }
+.rf-strength[data-tone='mid'] .rf-meter span { background: #f59e0b; }
+.rf-strength[data-tone='good'] .rf-meter span { background: #22c55e; }
+.rf-strength[data-tone='very'] .rf-meter span { background: #15803d; }
+
+.rf-strength-label { font-size: 0.74rem; color: var(--rf-mut); white-space: nowrap; }
+.rf-strength-label b { color: var(--rf-ink); }
+
+/* ---------- checklist ---------- */
+.rf-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--rf-mut);
+}
+
+.rf-checks li { display: flex; align-items: center; gap: 0.3rem; }
+.rf-checks li.ok { color: #067a5b; }
+
+.rf-dotx {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--rf-line);
+  display: inline-block;
+}
+
+/* ---------- gợi ý / lỗi ---------- */
+.rf-link {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--rf-acc);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rf-err { margin: -0.35rem 0 0; font-size: 0.76rem; color: #b91c1c; }
+
+.rf-hint { margin: 0; font-size: 0.74rem; color: var(--rf-mut); line-height: 1.45; }
+
+.rf-msg {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+}
+
+.rf-msg.err { background: rgba(220, 38, 38, 0.09); color: #b91c1c; }
+
+/* ---------- tổng kết ---------- */
+.rf-summary {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid var(--rf-line);
+  border-radius: 12px;
+  padding: 0.6rem 0.7rem;
+  background: var(--rf-soft);
+}
+
+.rf-summary > div { display: flex; justify-content: space-between; gap: 0.8rem; font-size: 0.82rem; }
+.rf-summary dt { color: var(--rf-mut); }
+.rf-summary dd { margin: 0; font-weight: 700; text-align: right; word-break: break-word; }
+
+.rf-terms {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--rf-mut);
+}
+
+.rf-terms input { margin-top: 0.15rem; width: 16px; height: 16px; accent-color: var(--rf-acc); flex-shrink: 0; }
+
+/* ---------- nút ---------- */
+.rf-actions { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.25rem; }
+
+.rf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--rf-line);
+  background: var(--rf-card);
+  color: var(--rf-ink);
+  border-radius: 12px;
+  padding: 0.62rem 1rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+
+.rf-btn.primary { background: var(--rf-acc); border-color: transparent; color: #fff; }
+.rf-btn.ghost { background: transparent; color: var(--rf-mut); flex: 0 0 auto; }
+.rf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.rf-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  animation: rf-spin 0.7s linear infinite;
+}
+
+@keyframes rf-spin { to { transform: rotate(360deg); } }
+
+.rf-tips { margin: 0.2rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.55; color: var(--rf-mut); }
+.rf-tips li { margin-bottom: 0.15rem; }
+
+.rf-foot {
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--rf-line);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--rf-mut);
+}
+
+@media (max-width: 460px) {
+  .rf-role { grid-template-columns: 1fr; }
+  .rf-checks { grid-template-columns: 1fr; }
+  .rf-actions { flex-direction: column; }
+  .rf-btn.ghost { flex: 1 1 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-spinner { animation: none; }
+}

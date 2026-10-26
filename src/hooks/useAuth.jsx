@@ -109,7 +109,8 @@ export function AuthProvider({ children }) {
 
   /* ============ REGISTER ============ */
   const register = useCallback(async (email, password, displayName, opts = {}) => {
-    const { role = 'student' } = opts;
+    /* role chỉ nhận student/teacher — rules cũng chặn nếu cố gửi giá trị khác */
+    const { role = 'student', school = '', termsAcceptedAt = 0 } = opts;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
 
     if (displayName) {
@@ -122,6 +123,8 @@ export function AuthProvider({ children }) {
         email,
         displayName: displayName || '',
         createdAt: new Date().toISOString(),
+        ...(school ? { school: String(school).trim().slice(0, 80) } : {}),
+        ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
       }, { merge: true });
     } catch (e) {
       console.warn('Không lưu user metadata:', e);

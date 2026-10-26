@@ -1956,3 +1956,41 @@
   .td-session-card h3 { font-size: .95rem; }
   .td-session-stats b { font-size: 1rem; }
 }
+/* ============================================================
+   Hàng "Điểm + Chương" trong trình soạn câu hỏi (ExamCreate)
+   Mục đích: gắn chương cho từng câu → bật heatmap ở Số liệu lớp
+   ============================================================ */
+.ec-q-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ec-topic-wrap {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.ec-topic {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1.5px solid var(--soft);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--ink);
+  font: 500 0.78rem var(--sans);
+  cursor: pointer;
+}
+
+.ec-topic:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 1px;
+}
+
+@media (max-width: 560px) {
+  .ec-q-meta { gap: 0.4rem; }
+  .ec-topic-wrap { flex-basis: 100%; }
+}

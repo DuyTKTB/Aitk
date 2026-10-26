@@ -157,6 +157,16 @@
   flex-shrink: 0;
   color: var(--acc);
 }
+.tpp-features li span { line-height: 1.45; }
+.tpp-features li b { font-weight: 800; }
+
+/* Ghi chú nhỏ dưới nút liên hệ Admin */
+.tpp-note {
+  margin: .55rem 0 0;
+  font-size: .76rem;
+  line-height: 1.5;
+  color: var(--mut);
+}
 
 /* ============ ACTIVATE BOX ============ */
 .tpp-activate {
