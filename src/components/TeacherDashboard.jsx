@@ -29,6 +29,8 @@ import {
   removeClassMember,
   deleteExam as deleteExamFs,
   updateClass,
+  setExamVisibility,
+  setExamLock,
   regenerateClassKey,
   deleteClass,
   classJoinUrl,
@@ -281,6 +283,11 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [linkedClasses, setLinkedClasses] = useState([]);
 
   /* Chuông thông báo (notices: liên kết mới / gỡ liên kết / đề mới) */
+  /* Đề đang lưu chế độ công khai (chặn bấm nhiều lần) */
+  const [savingVis, setSavingVis] = useState('');
+  /* Đề đang lưu chế độ khoá bài */
+  const [savingLock, setSavingLock] = useState('');
+
   const [bellOpen, setBellOpen] = useState(false);
   const [notices, setNotices] = useState([]);
   const [noticesErr, setNoticesErr] = useState('');
@@ -1183,6 +1190,47 @@ export default function TeacherDashboard({ onExit } = {}) {
     },
   }[section] || {};
 
+  /* Công khai ⇄ riêng tư. Công khai phải xác nhận vì nội dung đề lộ ra ngoài lớp.
+     Lưu ý: phải là hàm thường, KHÔNG dùng hook ở đây — vị trí này nằm sau
+     các lệnh return sớm (viewingSessionId), thêm hook sẽ làm lệch số hook. */
+  const toggleVisibility = async (exam) => {
+    const next = exam.visibility === 'public' ? 'private' : 'public';
+    if (next === 'public'
+      && !window.confirm('Công khai đề này?\nAi có link cũng mở và làm được, kể cả người ngoài lớp. Bài nộp của họ vẫn được ghi nhận.')) {
+      return;
+    }
+    setSavingVis(exam.id);
+    try {
+      await setExamVisibility(exam.id, next);
+      setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, visibility: next } : e)));
+      say(next === 'public' ? 'Đề đã chuyển sang công khai' : 'Đề đã chuyển sang riêng tư', 'success');
+    } catch (e) {
+      say(e?.message || 'Không đổi được chế độ công khai', 'error');
+    } finally {
+      setSavingVis('');
+    }
+  };
+
+  /* Bật/tắt khoá bài: chỉ khi giáo viên bấm "Bắt đầu thi" học sinh mới vào thi thật,
+     chưa mở phòng thì học sinh vào chế độ luyện tập (không lưu điểm). */
+  const toggleLock = async (exam) => {
+    const next = !exam.lockUntilStart;
+    if (next
+      && !window.confirm('Bật khoá bài?\nHọc sinh mở link sẽ thấy bảng “Chưa đến giờ thi — đang chờ giáo viên”, chỉ vào thi thật khi bạn bấm “Bắt đầu thi”. Các em có thể chọn luyện tập trước (không lưu điểm).')) {
+      return;
+    }
+    setSavingLock(exam.id);
+    try {
+      await setExamLock(exam.id, next);
+      setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, lockUntilStart: next } : e)));
+      say(next ? 'Đã khoá: học sinh chỉ luyện tập cho tới khi bạn bắt đầu' : 'Đã mở: học sinh vào thi được ngay', 'success');
+    } catch (e) {
+      say(e?.message || 'Không đổi được chế độ khoá bài', 'error');
+    } finally {
+      setSavingLock('');
+    }
+  };
+
   const goBell = () => setBellOpen(true);
 
   /* ============================================================
@@ -1716,6 +1764,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     return cls?.subject || cls?._mySubject || '—';
                   })();
                   const isAi = isAiGeneratedExam(ex);
+                  const isPublic = ex.visibility === 'public';
                   const typeCount = (() => {
                     const t = { single_choice: 0, true_false: 0, short_answer: 0 };
                     (ex.questions || []).forEach((question) => {
@@ -1742,6 +1791,44 @@ export default function TeacherDashboard({ onExit } = {}) {
                               <IcoSparkles size={11} /> AI tạo
                             </span>
                           )}
+                          {/* Công khai / riêng tư: quyết định ai có link cũng vào được */}
+                          <button
+                            type="button"
+                            className="vt-chip"
+                            title={isPublic
+                              ? 'Đang công khai: ai có link cũng làm được. Bấm để chuyển sang riêng tư.'
+                              : 'Đang riêng tư: chỉ thành viên lớp vào được. Bấm để công khai.'}
+                            onClick={() => toggleVisibility(ex)}
+                            disabled={savingVis === ex.id}
+                            style={{
+                              cursor: savingVis === ex.id ? 'wait' : 'pointer',
+                              border: '1px solid ' + (isPublic ? 'rgba(16,185,129,.4)' : 'rgba(100,116,139,.35)'),
+                              background: isPublic ? 'color-mix(in srgb, #10b981 14%, transparent)' : 'transparent',
+                              color: isPublic ? '#047857' : 'var(--t-ink-muted)',
+                              opacity: savingVis === ex.id ? 0.6 : 1,
+                            }}
+                          >
+                            {isPublic ? 'Công khai' : 'Riêng tư'}
+                          </button>
+                          {/* Khoá bài: chỉ thi thật khi giáo viên bấm "Bắt đầu thi" */}
+                          <button
+                            type="button"
+                            className="vt-chip"
+                            title={ex.lockUntilStart
+                              ? 'Đang khoá: học sinh thấy bảng chờ, chỉ vào thi khi bạn bấm “Bắt đầu thi”. Bấm để mở vào tự do.'
+                              : 'Đang mở: học sinh vào thi bất cứ lúc nào. Bấm để khoá tới khi bạn bắt đầu.'}
+                            onClick={() => toggleLock(ex)}
+                            disabled={savingLock === ex.id}
+                            style={{
+                              cursor: savingLock === ex.id ? 'wait' : 'pointer',
+                              border: '1px solid ' + (ex.lockUntilStart ? 'rgba(217,119,6,.45)' : 'rgba(100,116,139,.35)'),
+                              background: ex.lockUntilStart ? 'color-mix(in srgb, #d97706 14%, transparent)' : 'transparent',
+                              color: ex.lockUntilStart ? '#a45c05' : 'var(--t-ink-muted)',
+                              opacity: savingLock === ex.id ? 0.6 : 1,
+                            }}
+                          >
+                            {ex.lockUntilStart ? 'Khoá bài' : 'Vào tự do'}
+                          </button>
                         </div>
                         <h3>{ex.title}</h3>
                         <small>

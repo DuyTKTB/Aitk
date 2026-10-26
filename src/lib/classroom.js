@@ -405,6 +405,8 @@ export async function createExam({
   kind = '',
   subject = '',
   grade = 0,
+  /* 'private' = chỉ thành viên lớp vào được (mặc định); 'public' = ai có link cũng làm được */
+  visibility = 'private',
 }) {
   const totalPoints = Math.round((questions || []).reduce((s, q) => s + (Number(q.points) || 1), 0) * 100) / 100;
 
@@ -413,6 +415,8 @@ export async function createExam({
     teacherId,
     teacherName,
     classId: classId || '',
+    visibility: visibility === 'public' ? 'public' : 'private',
+    visibilityUpdatedAt: null,
     title: title || 'Đề kiểm tra',
     description: description || '',
     duration: Number(duration) || 15,
@@ -1153,7 +1157,7 @@ const sumPoints = (qs = []) => Math.round(qs.reduce((t, q) => t + (Number(q.poin
 export async function updateExam(examId, patch = {}) {
   if (!examId) throw new Error('Thiếu mã đề');
   const allowed = ['title', 'description', 'duration', 'questions', 'showAnswerAfter',
-    'allowRetry', 'shuffle', 'opensAt', 'closesAt', 'proctor', 'active'];
+    'allowRetry', 'shuffle', 'opensAt', 'closesAt', 'proctor', 'active', 'visibility', 'lockUntilStart'];
   const data = {};
   allowed.forEach((k) => { if (k in patch) data[k] = patch[k]; });
   if (data.questions) data.totalPoints = sumPoints(data.questions);
@@ -1164,6 +1168,42 @@ export async function updateExam(examId, patch = {}) {
     return { ok: true };
   } catch (e) {
     throw new Error(friendlyFirestoreError(e, 'sửa đề'));
+  }
+}
+
+/**
+ * Công khai / riêng tư một đề.
+ * 'private'  → chỉ thành viên lớp (và giáo viên) vào được bằng link.
+ * 'public'   → ai có link cũng làm được (đề ôn tập, đề thi thử).
+ * Rules kiểm tra lại giá trị này khi đọc đề và khi nộp bài.
+ */
+/**
+ * Khoá bài: bật → học sinh chỉ vào được khi giáo viên ĐÃ bấm "Bắt đầu thi"
+ * (có phòng thi trực tiếp đang mở). Chưa mở phòng thì học sinh vào chế độ
+ * LUYỆN TẬP: chấm tại chỗ, không ghi bài nộp, không tính vi phạm.
+ */
+export async function setExamLock(examId, locked) {
+  if (!examId) throw new Error('Thiếu mã đề');
+  const lockUntilStart = !!locked;
+  try {
+    await updateDoc(doc(db, 'exams', examId), { lockUntilStart });
+    return { ok: true, lockUntilStart };
+  } catch (e) {
+    throw new Error(friendlyFirestoreError(e, 'đổi chế độ khoá bài'));
+  }
+}
+
+export async function setExamVisibility(examId, visibility) {
+  if (!examId) throw new Error('Thiếu mã đề');
+  const v = visibility === 'public' ? 'public' : 'private';
+  try {
+    await updateDoc(doc(db, 'exams', examId), {
+      visibility: v,
+      visibilityUpdatedAt: serverTimestamp(),
+    });
+    return { ok: true, visibility: v };
+  } catch (e) {
+    throw new Error(friendlyFirestoreError(e, 'đổi chế độ công khai'));
   }
 }
 

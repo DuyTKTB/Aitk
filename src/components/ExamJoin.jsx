@@ -5,7 +5,9 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
   getExamByToken,
+  getClassById,
   submitExam,
+  gradeAnswers,
   startAttempt,
   saveAttemptAnswers,
   appendAttemptEvents,
@@ -375,6 +377,11 @@ export default function ExamJoin({ token, onExit }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  /* Đề riêng tư của lớp mình không thuộc → chặn ở client (rules đọc đang mở) */
+  const [blocked, setBlocked] = useState(false);
+  /* Đề đang khoá: học sinh thấy bảng "chờ giáo viên mở"; chỉ khi tự bấm
+     "Luyện tập trước" mới vào chế độ luyện tập (không tính điểm). */
+  const [practiceOptIn, setPracticeOptIn] = useState(false);
   const [cameraConsent, setCameraConsent] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -449,6 +456,21 @@ export default function ExamJoin({ token, onExit }) {
         if (ex) {
           setTimeLeft(ex.duration * 60);
 
+          /* Đề RIÊNG TƯ: chỉ thành viên lớp / giáo viên phụ trách mới vào được.
+             Rules để đọc mở (vì query theo token), nên chặn ở đây. */
+          if (ex.visibility !== 'public' && ex.classId && user?.uid && user.uid !== ex.teacherId) {
+            try {
+              const cls = await getClassById(ex.classId);
+              const ids = cls?.memberIds || [];
+              const inMembers = ids.includes(user.uid)
+                || (cls?.members || []).some((m) => (m?.id || m?.uid) === user.uid);
+              const isOwner = cls?.teacherId === user.uid;
+              if (!inMembers && !isOwner) setBlocked(true);
+            } catch (e) {
+              console.warn('[ExamJoin] không kiểm tra được lớp:', e?.message);
+            }
+          }
+
           if (ex.classId) {
             try {
               const live = await getLiveSessionForClass(ex.classId);
@@ -499,6 +521,11 @@ export default function ExamJoin({ token, onExit }) {
     return listenLiveSessionForClass(exam.classId, (live) => { if (live) setSession(live); });
   }, [exam?.classId, session, stage]);
 
+  /* LUYỆN TẬP: đề bật "khoá bài" nhưng giáo viên CHƯA bấm Bắt đầu thi
+     → chấm tại chỗ, không ghi bài nộp, không tính vi phạm. */
+  const lockWaiting = !!exam?.lockUntilStart && !session && !sessionId && !practiceOptIn;
+  const practiceMode = !!exam?.lockUntilStart && !session && !sessionId && practiceOptIn;
+
   const finishExam = useCallback(async (opts = {}) => {
     if (!exam || !user || submittedRef.current) return;
     submittedRef.current = true;
@@ -506,6 +533,36 @@ export default function ExamJoin({ token, onExit }) {
     if (opts.auto) console.warn('[ExamJoin] TỰ ĐỘNG NỘP — lý do:', opts.reason || 'violation', opts);
 
     const arr = packAnswers(exam.questions, answersRef.current);
+
+    /* Luyện tập: chấm ngay trên máy, không gửi lên server */
+    if (practiceMode) {
+      try {
+        const g = gradeAnswers(exam.questions, arr) || {};
+        /* scoreExam trả {detail, correctCount, score} — KHÔNG có `correct`/`total`,
+           trước đây đọc sai khoá nên màn luyện tập luôn hiện 0 câu đúng. */
+        const detail = g.detail || [];
+        setResult({
+          score: g.score ?? null,
+          totalPoints: exam.totalPoints,
+          correct: g.correctCount ?? detail.filter((d) => d.isCorrect).length,
+          total: detail.length || exam.questions.length,
+          detail,
+          answers: arr,
+          practice: true,
+          autoSubmitted: false,
+          autoReason: '',
+        });
+      } catch (e) {
+        setResult({
+          score: null, totalPoints: exam.totalPoints, correct: 0,
+          total: exam.questions.length, detail: [], practice: true,
+          saveError: e?.message || 'Không chấm được bài luyện tập',
+        });
+      }
+      setStage('result');
+      return;
+    }
+
     try {
       const res = await submitExam({
         examId: exam.id,
@@ -556,14 +613,14 @@ export default function ExamJoin({ token, onExit }) {
       });
       setStage('result');
     }
-  }, [exam, user, sessionId, retryPermit, prevSubmission]);
+  }, [exam, user, sessionId, retryPermit, prevSubmission, practiceMode]);
 
   const handleAutoSubmit = useCallback((count) => {
     finishExam({ auto: true, reason: 'violation', violationCount: count ?? guardRef.current?.violations ?? 0 });
   }, [finishExam]);
 
   const guard = useExamGuard({
-    active: stage === 'exam',
+    active: stage === 'exam' && !practiceMode,
     onAutoSubmit: handleAutoSubmit,
     /* Mặc định bật, nhưng NẾU giáo viên đã tắt trong "Chỉnh sửa đề" thì tôn trọng lựa chọn đó */
     config: proctorConfig ? {
@@ -1251,13 +1308,73 @@ export default function ExamJoin({ token, onExit }) {
     );
   }
 
+  if (blocked) {
+    return (
+      <div className="ej-notfound">
+        <IcoWarning size={56} />
+        <h2>Đề này là đề riêng tư</h2>
+        <p>
+          Đề chỉ dành cho học sinh của lớp. Hãy nhập <b>key lớp</b> để tham gia lớp trước,
+          hoặc xin giáo viên chuyển đề sang chế độ công khai.
+        </p>
+        <button className="td-btn" type="button" onClick={onExit}>Về trang chủ</button>
+      </div>
+    );
+  }
+
   if (!exam) {
     return (
       <div className="ej-notfound">
         <IcoWarning size={56} />
-        <h2>Đề không tồn tại</h2>
-        <p>Link có thể đã hết hạn hoặc bị xóa.</p>
+        <h2>Không mở được đề này</h2>
+        <p>
+          Link có thể đã hết hạn, đề đã bị xoá, hoặc đây là <b>đề riêng tư</b> của lớp
+          mà bạn chưa tham gia. Hãy nhập key lớp để vào lớp trước, hoặc xin giáo viên
+          chuyển đề sang chế độ công khai.
+        </p>
         <button className="td-btn primary" onClick={onExit} type="button">Về trang chủ</button>
+      </div>
+    );
+  }
+
+  /* Đề bị khoá và giáo viên CHƯA bấm "Bắt đầu thi" → chờ, không vào làm */
+  if (lockWaiting) {
+    return (
+      <div className="ej-notfound">
+        <IcoClock size={56} />
+        <h2>Chưa đến giờ thi</h2>
+        <p>
+          Giáo viên <b>chưa bắt đầu</b> bài này. Trang sẽ <b>tự chuyển sang bài thi</b>
+          ngay khi giáo viên bấm “Bắt đầu thi” — bạn không cần tải lại.
+        </p>
+        <div
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '.4rem', margin: '.2rem 0 .9rem',
+            padding: '.3rem .7rem', borderRadius: 999, fontSize: '.74rem', fontWeight: 700,
+            background: 'rgba(217, 119, 6, 0.12)', color: '#a45c05',
+          }}
+        >
+          <span
+            style={{
+              width: 8, height: 8, borderRadius: '50%', background: '#d97706',
+              animation: 'ej-pulse 1.4s ease-in-out infinite',
+            }}
+          />
+          Đang chờ giáo viên mở phòng thi
+        </div>
+        <p style={{ fontSize: '.82rem', opacity: 0.8 }}>
+          {exam.title || 'Bài kiểm tra'}
+          {exam.classId ? ` · ${exam.questions?.length || 0} câu · ${exam.duration} phút` : ''}
+        </p>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '.6rem' }}>
+          <button className="td-btn primary" type="button" onClick={() => setPracticeOptIn(true)}>
+            Luyện tập trước (không tính điểm)
+          </button>
+          <button className="td-btn" type="button" onClick={onExit}>Về trang chủ</button>
+        </div>
+        <p style={{ marginTop: '.7rem', fontSize: '.76rem', opacity: 0.7 }}>
+          Luyện tập không lưu điểm, không tính vi phạm và không hiện trong bảng điểm của lớp.
+        </p>
       </div>
     );
   }
@@ -1827,6 +1944,21 @@ export default function ExamJoin({ token, onExit }) {
 
         <TeacherWarning warning={teacherWarning} onClose={() => setTeacherWarning(null)} />
       </div>
+
+      {/* Chế độ luyện tập: đề đang khoá chờ giáo viên bắt đầu */}
+      {practiceMode && (stage === 'exam' || stage === 'result') && (
+        <div
+          style={{
+            position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 9100, pointerEvents: 'none',
+            background: 'rgba(245, 158, 11, 0.95)', color: '#3b2606',
+            fontSize: '0.74rem', fontWeight: 700, lineHeight: 1.4,
+            padding: '0.35rem 0.8rem', borderRadius: 999, maxWidth: '92vw', textAlign: 'center',
+          }}
+        >
+          Chế độ luyện tập — không tính điểm, giáo viên chưa bắt đầu giờ thi.
+        </div>
+      )}
 
       {/* iPhone Safari không có Fullscreen API → nói rõ đang dùng chế độ thay thế,
           để học sinh không tưởng là không bị giám sát */}

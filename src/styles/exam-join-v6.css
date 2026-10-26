@@ -189,3 +189,9 @@
   .ep-monitor-chip.live { animation: none; }
   .ep-cam.ok .ep-cam-dot, .ep-cam-mini-dot { animation: none; }
 }
+/* Chấm nhấp nháy cho trạng thái 'đang chờ giáo viên mở phòng thi' */
+@keyframes ej-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.8); }
+}
+

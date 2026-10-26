@@ -267,7 +267,12 @@ service cloud.firestore {
     // 3. EXAMS — Đề thi & bài làm dở
     // ===============================================================
     match /exams/{examId} {
-      // Đọc: giữ mở — học sinh vào thi bằng token/link trước khi biết classId
+      /* Đọc: mở cho người đã đăng nhập.
+         ❗ Không chặn theo `visibility` ở đây: học sinh mở đề bằng token nên
+         truy vấn `where('token','==',…)` không thể chứng minh điều kiện
+         visibility/memberIds → Firestore từ chối TOÀN BỘ query và trang
+         làm bài quay vô hạn. Việc chặn đề riêng tư được làm ở client
+         (ExamJoin kiểm tra memberIds) + rule nộp bài bên dưới. */
       allow read: if signedIn();
 
       // Tạo đề: phải là chủ lớp, hoặc GVBM đã liên kết của chính lớp đó
