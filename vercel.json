@@ -3,7 +3,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/:path*", "destination": "/index.html" }
+    {
+      "//": "Chỉ rewrite các path KHÔNG có phần mở rộng (route của app). Path có đuôi (.xml, .txt, .png…) luôn lấy file tĩnh — trước đây /:path* nuốt cả sitemap.xml và robots.txt, khiến Google Search Console báo 'Không thể tìm nạp'.",
+      "source": "/:path((?!.*\\.).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
