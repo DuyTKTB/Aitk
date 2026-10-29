@@ -4,12 +4,12 @@
    Dùng <SkinPet mood="happy" /> — tự chạy animation (chớp mắt → wink).
    ============================================================ */
 import { usePetAnim } from '../hooks/usePetAnim.js';
-import elecDefault from '../assets/elec/elec-default.svg';
-import elecThink from '../assets/elec/elec-think.svg';
-import elecHappy from '../assets/elec/elec-happy.svg';
-import elecWink from '../assets/elec/elec-wink.svg';
-
-const ELEC_SRC = { default: elecDefault, think: elecThink, happy: elecHappy, wink: elecWink };
+const ELEC_SRC = {
+  default: '/img/elec/elec-default.svg',
+  think: '/img/elec/elec-think.svg',
+  happy: '/img/elec/elec-happy.svg',
+  wink: '/img/elec/elec-wink.svg',
+};
 
 /* ============================================================
    ELEC AI — linh vật chính

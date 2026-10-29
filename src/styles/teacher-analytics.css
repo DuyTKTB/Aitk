@@ -94,26 +94,26 @@
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
 }
 
-/* ---------- KPI ---------- */
+/* ---------- KPI (Gọn gàng) ---------- */
 .ta-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.6rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
 }
 
 .ta-kpi {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 16px;
+  gap: 0.1rem;
+  padding: 0.52rem 0.7rem;
+  border-radius: 13px;
   border: 1px solid var(--ta-line);
   background: linear-gradient(160deg, var(--ta-panel), transparent 140%);
 }
 
 .ta-kpi-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--ta-mut);
@@ -121,21 +121,21 @@
 }
 
 .ta-kpi-value {
-  font-size: 1.6rem;
+  font-size: 1.32rem;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
 
 .ta-kpi-value small {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
   margin-left: 2px;
   color: var(--ta-mut);
 }
 
 .ta-kpi-hint {
-  font-size: 0.7rem;
+  font-size: 0.67rem;
   color: var(--ta-mut);
 }
 
@@ -144,31 +144,74 @@
 .ta-kpi.is-mid { border-color: rgba(217, 119, 6, 0.3); }
 .ta-kpi.is-mid .ta-kpi-value { color: var(--ta-mid); }
 
+/* ---------- Subtabs & 2-Column Overview ---------- */
+.ta-subtabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: var(--ta-soft);
+  border: 1px solid var(--ta-line);
+  margin-bottom: 0.7rem;
+}
+
+.ta-subtab {
+  border: 0;
+  background: transparent;
+  color: var(--ta-mut);
+  font-size: 0.79rem;
+  font-weight: 700;
+  padding: 0.38rem 0.85rem;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ta-subtab.active {
+  background: var(--ta-panel);
+  color: var(--ta-ink);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+.ta-overview-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .ta-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Card ---------- */
 .ta-card {
   border: 1px solid var(--ta-line);
-  border-radius: 18px;
+  border-radius: 15px;
   background: var(--ta-panel);
-  padding: 0.9rem 1rem 1rem;
-  margin-bottom: 0.9rem;
+  padding: 0.7rem 0.85rem 0.8rem;
+  margin-bottom: 0.65rem;
 }
 
 .ta-card-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: baseline;
+  gap: 0.45rem;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.5rem;
 }
 
 .ta-card-head h3 {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
 }
 
 .ta-card-sub {
-  font-size: 0.74rem;
+  font-size: 0.71rem;
   color: var(--ta-mut);
 }
 
@@ -681,4 +724,226 @@
 
 @media (max-width: 480px) {
   .ta-teachers { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   NÂNG CẤP D4 — Biểu đồ Cột/Đường, So sánh 2 lớp, Lọc ngày, Lưới HS
+   ============================================================ */
+
+.ta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.42rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--ta-line);
+  background: var(--ta-panel);
+  color: var(--ta-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.ta-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.ta-btn.primary {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.ta-btn.active {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+.ta-select--compare {
+  border-color: rgba(15, 157, 118, 0.45);
+}
+
+.ta-date-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--ta-line);
+  background: var(--ta-panel);
+}
+
+.ta-date-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ta-date-bar input[type='date'] {
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--ta-line);
+  background: var(--ta-sheet);
+  color: var(--ta-ink);
+  font-size: 0.8rem;
+}
+
+.ta-kpi-diff.up { color: var(--ta-ex); }
+.ta-kpi-diff.down { color: var(--ta-bad); }
+
+.ta-chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ta-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.ta-chart-svg {
+  width: 100%;
+  min-width: 480px;
+  height: auto;
+  max-height: 230px;
+  display: block;
+}
+
+.ta-chart-legend {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.35rem;
+  font-size: 0.76rem;
+  color: var(--ta-mut);
+}
+
+.ta-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ta-chart-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.ta-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ta-compare-table th,
+.ta-compare-table td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--ta-line);
+  text-align: left;
+}
+
+.ta-compare-table th.num,
+.ta-compare-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ta-student-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.ta-search-input {
+  padding: 0.42rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--ta-line);
+  background: var(--ta-sheet);
+  color: var(--ta-ink);
+  font-size: 0.8rem;
+  min-width: 190px;
+}
+
+.ta-student-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.65rem;
+}
+
+.ta-student-card {
+  padding: 0.75rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid var(--ta-line);
+  background: var(--ta-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.ta-student-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.ta-student-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.ta-student-card-head b { font-size: 0.88rem; }
+.ta-student-card-head span { font-size: 0.72rem; color: var(--ta-mut); }
+
+.ta-student-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--ta-mut);
+}
+
+.ta-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.ta-skel-kpi,
+.ta-skel-block {
+  border-radius: 16px;
+  background: linear-gradient(90deg, var(--ta-soft) 25%, rgba(148, 163, 184, 0.14) 50%, var(--ta-soft) 75%);
+  background-size: 200% 100%;
+  animation: ta-shimmer 1.4s infinite;
+}
+
+.ta-skel-kpi { height: 84px; }
+.ta-skel-block { height: 220px; margin-bottom: 0.9rem; }
+
+@keyframes ta-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.ta-state--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  border-color: rgba(220, 38, 38, 0.35);
 }

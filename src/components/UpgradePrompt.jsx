@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import AIMark from './AIMark.jsx';
-import { IcoClose, IcoCrown, IcoSparkle } from './Icons.jsx';
+import { IcoClose, IcoCrown, IcoSparkle, IconInfinity, IconZap, IconBook, IconBan } from './Icons.jsx';
 
 /* ============================================================
    UpgradePrompt — Popup mời nâng cấp VIP khi bấm tính năng khóa
@@ -59,11 +59,11 @@ export default function UpgradePrompt({ open, feature, onClose, onUpgrade }) {
         </p>
 
         <ul className="upgrade-prompt-feats">
-          <li>✨ So sánh công cụ AI thông minh</li>
-          <li>♾️ Chat AI không giới hạn</li>
-          <li>⚡ Ưu tiên xử lý, phản hồi nhanh</li>
-          <li>📚 Bộ đề chuyên sâu theo lớp</li>
-          <li>🚫 Không quảng cáo</li>
+          <li><IcoSparkle size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />So sánh công cụ AI thông minh</li>
+          <li><IconInfinity size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Chat AI không giới hạn</li>
+          <li><IconZap size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Ưu tiên xử lý, phản hồi nhanh</li>
+          <li><IconBook size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Bộ đề chuyên sâu theo lớp</li>
+          <li><IconBan size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Không quảng cáo</li>
         </ul>
 
         <div className="upgrade-prompt-actions">

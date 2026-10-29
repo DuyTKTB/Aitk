@@ -41,6 +41,7 @@ import { readFile, validateFiles, fmtSize } from '../../lib/fileReader.js';
 import sound from '../../lib/gameSound.js';
 import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import AIMark from '../AIMark.jsx';
+import { IconAlert } from '../Icons.jsx';
 
 import '../../styles/autoexam-studio.css';
 
@@ -117,6 +118,7 @@ export default function AutoExamStudio({
   classes = [],
   initialClass = null,
   classInsights,
+  initialPreset = null,
   onGenerated,   // ⭐ Prop mới: đẩy dữ liệu sang form thủ công
   onDone,
   onCancel,
@@ -277,6 +279,20 @@ export default function AutoExamStudio({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  /* Tự động điền gợi ý tạo đề ôn bù hổng từ InsightPanel nếu có initialPreset */
+  useEffect(() => {
+    if (!initialPreset) return;
+    const topicsStr = Array.isArray(initialPreset.topics) && initialPreset.topics.length
+      ? initialPreset.topics.join(', ')
+      : initialPreset.title || 'Ôn tập củng cố';
+    const cnt = Number(initialPreset.count) || 10;
+    const promptStr = `Tạo đề ôn tập ${cnt} câu chuyên đề: ${topicsStr}. ${initialPreset.hint || ''}`.trim();
+    setTopic(topicsStr);
+    setSelectedCount(cnt);
+    setInputMessage(promptStr);
+    inputRef.current?.focus();
+  }, [initialPreset]);
 
   /* ============ LƯU / LOAD LỊCH SỬ CHAT ============ */
   useEffect(() => {
@@ -1836,8 +1852,8 @@ export default function AutoExamStudio({
                           </span>
                         )}
                         {q.verify?.status === 'mismatch' && (
-                          <span className="aes-badge" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#dc2626' }} title={q.verify.note || 'AI giải ra đáp án khác'}>
-                            ⚠ AI giải khác đáp án
+                          <span className="aes-badge" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: 4 }} title={q.verify.note || 'AI giải ra đáp án khác'}>
+                            <IconAlert size={11} /> AI giải khác đáp án
                             <button
                               type="button"
                               style={{ marginLeft: 6, border: 0, background: 'transparent', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', fontSize: 11 }}

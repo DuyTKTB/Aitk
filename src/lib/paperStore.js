@@ -126,3 +126,43 @@ export async function deletePaperResult(examId, rid) {
   await deleteDoc(doc(db, 'paperExams', examId, 'results', rid));
 }
 
+/* Đồng bộ điểm bài chấm A4 vào danh sách bài nộp (submissions) của lớp học */
+export async function syncPaperResultsToSubmissions(paper, items) {
+  if (!paper || !paper.classId || !Array.isArray(items) || !items.length) {
+    return { ok: false, error: 'Bài chấm chưa gắn với lớp học cụ thể.' };
+  }
+  try {
+    for (let i = 0; i < items.length; i += 400) {
+      const b = writeBatch(db);
+      items.slice(i, i + 400).forEach((r) => {
+        const studentId = r.studentId || r.sbd || `omr_${r.code}_${Math.random().toString(36).slice(2, 6)}`;
+        const subId = `omr_${paper.id}_${studentId}`;
+        const score10 = Number(r.grade?.score10 ?? (r.grade?.total ? ((r.grade.total / (r.grade.max || 10)) * 10).toFixed(1) : 0));
+        b.set(doc(db, 'submissions', subId), {
+          examId: paper.id,
+          examTitle: paper.title || 'Bài thi phiếu A4',
+          classId: paper.classId,
+          studentId: String(studentId),
+          studentName: r.studentName || (r.sbd ? `Học sinh SBD ${r.sbd}` : 'Học sinh phiếu A4'),
+          score: score10,
+          totalPoints: 10,
+          correctCount: Math.round((score10 / 10) * (paper.counts ? (paper.counts.p1 + paper.counts.p2 + paper.counts.p3) : 28)),
+          totalQuestions: paper.counts ? (paper.counts.p1 + paper.counts.p2 + paper.counts.p3) : 28,
+          submittedAt: serverTimestamp(),
+          graded: true,
+          isPaperOmr: true,
+          sbd: r.sbd || '',
+          paperCode: r.code || '',
+        }, { merge: true });
+      });
+      // eslint-disable-next-line no-await-in-loop
+      await b.commit();
+    }
+    return { ok: true, synced: items.length };
+  } catch (e) {
+    console.error('[paperStore] syncPaperResultsToSubmissions error:', e);
+    return { ok: false, error: friendly(e, 'đồng bộ điểm vào lớp học') };
+  }
+}
+
+

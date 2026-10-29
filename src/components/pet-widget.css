@@ -509,3 +509,23 @@
 .pet-tab-body-compact { padding: .75rem .9rem .9rem !important; gap: .65rem !important; }
 .pet-chat-compact { padding: .65rem .9rem .75rem !important; }
 .pet-memories-compact { padding: .65rem .9rem .75rem !important; gap: .35rem !important; }
+
+/* ── Mobile Responsive (< 768px) ── */
+@media (max-width: 768px) {
+  .petw {
+    width: 68px !important;
+    height: 68px !important;
+    z-index: 9997 !important;
+  }
+  .pet-pane {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-width: 380px !important;
+    max-height: min(480px, calc(100dvh - 120px)) !important;
+    margin: 0 auto !important;
+    z-index: 100000 !important;
+  }
+}

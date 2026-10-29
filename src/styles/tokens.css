@@ -42,7 +42,7 @@
   --err-bg: rgba(255, 59, 48, 0.12);
 
   /* ============ 2. TYPOGRAPHY (SF PRO HIERARCHY) ============ */
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "DM Sans", system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
   --fs-md: 1rem;

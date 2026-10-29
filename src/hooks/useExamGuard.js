@@ -448,7 +448,18 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   /* ---- Phím tắt / sao chép / in ---- */
   useEffect(() => {
     if (!active) return undefined;
-    const clearClip = () => { try { navigator.clipboard.writeText(''); } catch { /* */ } };
+    const clearClip = () => {
+      try {
+        // Chỉ dọn clipboard nếu đã có quyền sẵn, tránh gây ra popup xin quyền trình duyệt
+        if (navigator.permissions && navigator.permissions.query) {
+          navigator.permissions.query({ name: 'clipboard-write' }).then((perm) => {
+            if (perm.state === 'granted') {
+              navigator.clipboard?.writeText?.('').catch(() => {});
+            }
+          }).catch(() => {});
+        }
+      } catch { /* */ }
+    };
 
     const onKey = (e) => {
       const key = String(e.key || '');            // autofill có thể gửi keydown không có key

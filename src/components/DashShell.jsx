@@ -278,19 +278,9 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
 export function Topbar({
    title, subtitle, tabs, active, onTab, search, onSearch,
    placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme, onToggleNav, navHidden,
+   onOpenCommandPalette,
  }) {
   const searchInputRef = useRef(null);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   return (
     <header className="t-topbar-slim">
@@ -317,6 +307,7 @@ export function Topbar({
               margin: 0, fontSize: 18, fontWeight: 700,
               color: 'var(--ts-ink)', letterSpacing: '-0.02em',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              textTransform: 'none', fontVariant: 'normal',
             }}>
               {title}
             </h1>
@@ -338,6 +329,7 @@ export function Topbar({
             <IcoSearch size={14} />
             <input
               ref={searchInputRef}
+              className="vt-search-input"
               value={search}
               onChange={(e) => onSearch(e.target.value)}
               placeholder={placeholder}
@@ -352,24 +344,29 @@ export function Topbar({
               >
                 <IcoClose size={11} />
               </button>
-            ) : (
-              <span className="t-search-kbd">⌘K</span>
-            )}
+            ) : null}
           </div>
+        )}
+
+        {onOpenCommandPalette && (
+          <button
+            type="button"
+            className="t-top-action-btn"
+            onClick={onOpenCommandPalette}
+            title="Tìm nhanh lớp, đề thi, học sinh & chức năng (Ctrl + K)"
+            aria-label="Mở bảng tìm kiếm và lệnh nhanh (Ctrl K)"
+          >
+            <IcoSearch size={16} />
+          </button>
         )}
 
         {bell && (
           <button
             type="button"
-            className="vt-icon-btn"
+            className={`t-top-action-btn ${bell.on ? 'has-notice' : ''}`}
             onClick={bell.onClick}
-            title={bell.title}
-            aria-label={bell.title}
-            style={{
-              background: bell.on ? 'color-mix(in srgb, var(--ts-danger) 15%, transparent)' : 'var(--ts-surface-2)',
-              color: bell.on ? 'var(--ts-danger)' : 'var(--ts-ink-2)',
-              borderColor: bell.on ? 'color-mix(in srgb, var(--ts-danger) 30%, transparent)' : 'var(--ts-border)',
-            }}
+            title={bell.title || 'Thông báo lớp học'}
+            aria-label={bell.title || 'Thông báo lớp học'}
           >
             {bell.Icon ? <bell.Icon size={16} /> : <IcoBell size={16} />}
           </button>
@@ -378,9 +375,9 @@ export function Topbar({
         {onToggleNav && (
           <button
             type="button"
-            className="vt-icon-btn"
+            className="t-top-action-btn"
             onClick={onToggleNav}
-            title={navHidden ? 'Hiển thị menu' : 'Ẩn menu'}
+            title={navHidden ? 'Hiển thị menu bên trái' : 'Thu gọn/ẩn menu bên trái'}
             aria-label="Bật/tắt menu điều hướng"
           >
             {navHidden ? <IcoEye size={16} /> : <IcoEyeOff size={16} />}
@@ -390,10 +387,10 @@ export function Topbar({
         {onToggleTheme && (
           <button
             type="button"
-            className="vt-icon-btn"
+            className="t-top-action-btn"
             onClick={onToggleTheme}
-            title={theme === 'light' ? 'Chuyển sang tối' : 'Chuyển sang sáng'}
-            aria-label="Đổi giao diện"
+            title={theme === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
+            aria-label="Đổi giao diện sáng tối"
           >
             {theme === 'light' ? <IcoMoon size={16} /> : <IcoSun size={16} />}
           </button>
@@ -414,6 +411,7 @@ export function DashFrame({
    extraNav,
    fullscreen = false,
    autoHideNav = false,
+   onOpenCommandPalette,
    className = '',
    children,
  }) {
@@ -424,22 +422,24 @@ export function DashFrame({
        return 'dark';
      }
    });
-   /* ❗ MỚI: ghim rail (CSS .expanded/.pinned đã có sẵn trong teacher-ds.css nhưng
-      JSX chưa nối → trước đây rail chỉ mở khi hover) */
-   const [pinned, setPinned] = useState(false);
-   /* ❗ MỚI: ẩn nav rail */
-   const [hidden, setHidden] = useState(() => {
+   /* Mặc định ghim mở menu trên màn hình lớn để giáo viên nhìn rõ 4 nhóm chức năng */
+   const [pinned, setPinned] = useState(() => {
      try {
-       // Nếu autoHideNav = true, mặc định ẩn; ngược lại dùng localStorage
-       if (autoHideNav) {
-         console.log('🔍 DashFrame: autoHideNav=true → hidden=true');
-         return true;
-       }
-       return localStorage.getItem('elec_teacher_nav_hidden') === 'true';
+       const saved = localStorage.getItem('elec_teacher_nav_pinned');
+       return saved == null ? true : saved === 'true';
      } catch {
-       return autoHideNav ? true : false;
+       return true;
      }
    });
+   const [hidden, setHidden] = useState(() => {
+     try {
+       if (autoHideNav) return true;
+       return localStorage.getItem('elec_teacher_nav_hidden') === 'true';
+     } catch {
+       return false;
+     }
+   });
+   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleToggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -455,55 +455,79 @@ export function DashFrame({
 
    useEffect(() => {
      try {
-       localStorage.setItem('elec_teacher_nav_hidden', hidden);
+       localStorage.setItem('elec_teacher_nav_pinned', String(pinned));
+     } catch { /* */ }
+   }, [pinned]);
+
+   useEffect(() => {
+     try {
+       localStorage.setItem('elec_teacher_nav_hidden', String(hidden));
      } catch { /* */ }
    }, [hidden]);
 
   const isTopbarElem = (child) =>
     React.isValidElement(child) && (child.type === Topbar || child.type?.isTopbar);
 
+  /* Chọn 4 mục chính cho thanh đáy di động + nút Menu */
+  const mobilePrimaryKeys = ['overview', 'classes', 'exams', 'paper'];
+  const matchedTeacherItems = mobilePrimaryKeys
+    .map((k) => items.find((it) => it.key === k))
+    .filter(Boolean);
+  const mobilePrimaryItems = matchedTeacherItems.length >= 3
+    ? matchedTeacherItems
+    : items.slice(0, 4);
+  const isAdminScope = className.includes('ad-scope') || items.some((it) => it.key === 'dashboard');
+
    return (
      <div className={`t-shell ${className}`} data-theme={theme}>
        <aside className={`t-rail-sidebar ${pinned ? 'pinned expanded' : ''} ${hidden ? 'hidden' : ''}`}>
-        {/* Logo AIMark của app — dùng size nhỏ, không có chữ */}
         <div className="t-rail-logo" onClick={onExit} title="ELEC AI">
           <AIMark size={32} animate={false} />
           <span className="t-rail-logo-text">ELEC AI</span>
         </div>
 
         <nav className="t-rail-nav" aria-label="Điều hướng giáo viên">
-          {items.map((it) => {
+          {items.map((it, idx) => {
             const I = it.Icon;
             const on = active === it.key;
+            const prevGroup = idx > 0 ? items[idx - 1].group : null;
+            const showGroup = it.group && it.group !== prevGroup;
             return (
-              <button
-                key={it.key}
-                type="button"
-                className={`t-rail-btn ${on ? 'active' : ''}`}
-                onClick={() => onChange(it.key)}
-                title={it.label}
-                aria-current={on ? 'page' : undefined}
-              >
-                <span className="t-rail-btn-icon">
-                  <I size={20} />
-                </span>
-                <span className="t-rail-btn-label">{it.label}</span>
-                {it.badge ? <span className="t-rail-btn-badge">{it.badge}</span> : null}
-              </button>
+              <React.Fragment key={it.key}>
+                {showGroup && (
+                  <>
+                    {idx > 0 && <div className="t-rail-group-divider" />}
+                    <div className="t-rail-group-label">{it.group}</div>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className={`t-rail-btn ${on ? 'active' : ''}`}
+                  onClick={() => {
+                    if (it.onClick) it.onClick();
+                    else onChange(it.key);
+                  }}
+                  title={it.label}
+                  aria-current={on ? 'page' : undefined}
+                >
+                  <span className="t-rail-btn-icon">
+                    <I size={20} />
+                  </span>
+                  <span className="t-rail-btn-label">{it.label}</span>
+                  {it.badge ? <span className="t-rail-btn-badge">{it.badge}</span> : null}
+                </button>
+              </React.Fragment>
             );
           })}
           {extraNav}
         </nav>
 
         <div className="t-rail-footer">
-           {/* ❗ MỚI: ghim menu — CSS (.expanded/.pinned) có sẵn từ trước nhưng JSX
-               chưa từng nối → rail chỉ mở khi hover, tablet/không có hover không bao giờ
-               thấy chữ. Nay thêm nút ghim. */}
            <button
              type="button"
              className={`t-rail-btn ${pinned ? 'active' : ''}`}
              onClick={() => setPinned((v) => !v)}
-             title={pinned ? 'Thu gọn menu' : 'Ghim menu — luôn hiện chữ'}
+             title={pinned ? 'Thu gọn thanh bên (chỉ hiện icon)' : 'Mở rộng thanh bên (luôn hiện chữ)'}
              aria-pressed={pinned}
            >
              <span className="t-rail-btn-icon">
@@ -511,19 +535,7 @@ export function DashFrame({
                  <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
                </svg>
              </span>
-             <span className="t-rail-btn-label">Ghim menu</span>
-           </button>
-           <button
-             type="button"
-             className={`t-rail-btn ${hidden ? 'active' : ''}`}
-             onClick={() => setHidden((v) => !v)}
-             title={hidden ? 'Hiển thị menu' : 'Ẩn menu'}
-             aria-pressed={hidden}
-           >
-             <span className="t-rail-btn-icon">
-               {hidden ? <IcoEye size={20} /> : <IcoEyeOff size={20} />}
-             </span>
-             <span className="t-rail-btn-label">{hidden ? 'Hiện menu' : 'Ẩn menu'}</span>
+             <span className="t-rail-btn-label">{pinned ? 'Thu gọn menu' : 'Ghim mở menu'}</span>
            </button>
            <button
              type="button"
@@ -547,6 +559,7 @@ export function DashFrame({
                 onToggleTheme: handleToggleTheme,
                 onToggleNav: () => setHidden((v) => !v),
                 navHidden: hidden,
+                onOpenCommandPalette,
               });
           }
           return null;
@@ -560,6 +573,132 @@ export function DashFrame({
           })}
         </div>
       </section>
+
+      {/* Thanh Điều Hướng Đáy Di Động (< 768px) kiểu Apple Floating Pill */}
+      <nav className="t-mobile-bottom-nav" aria-label="Điều hướng nhanh trên di động">
+        {mobilePrimaryItems.map((it) => {
+          const I = it.Icon;
+          const on = active === it.key;
+          return (
+            <button
+              key={it.key}
+              type="button"
+              className={`t-mobile-nav-btn ${on ? 'active' : ''}`}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onChange(it.key);
+              }}
+              aria-current={on ? 'page' : undefined}
+            >
+              <span className="t-mobile-nav-icon">
+                <I size={19} />
+                {it.badge ? <span className="t-mobile-nav-badge">{it.badge}</span> : null}
+              </span>
+              <span className="t-mobile-nav-label">{it.shortLabel || it.label}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className={`t-mobile-nav-btn ${mobileMenuOpen ? 'active' : ''}`}
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          aria-expanded={mobileMenuOpen}
+          aria-label="Xem tất cả chức năng"
+        >
+          <span className="t-mobile-nav-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="2" />
+              <rect x="14" y="3.5" width="6.5" height="6.5" rx="2" />
+              <rect x="14" y="14" width="6.5" height="6.5" rx="2" />
+              <rect x="3.5" y="14" width="6.5" height="6.5" rx="2" />
+            </svg>
+          </span>
+          <span className="t-mobile-nav-label">Thêm</span>
+        </button>
+      </nav>
+
+      {/* Bottom Sheet Menu Giáo viên trên Di Động */}
+      {mobileMenuOpen && (
+        <div className="t-mobile-sheet-backdrop" onClick={() => setMobileMenuOpen(false)}>
+          <div
+            className="t-mobile-sheet"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu Khu vực Giáo viên"
+          >
+            <div className="t-mobile-sheet-grip" aria-hidden="true" />
+
+            <div className="t-mobile-sheet-head">
+              <div className="t-mobile-sheet-title">
+                <strong>{isAdminScope ? 'Trung tâm Quản trị Admin' : 'Khu vực Giáo viên'}</strong>
+                <small>{isAdminScope ? 'Hệ thống quản trị, đề thi, câu hỏi & thành viên' : 'Hệ thống quản lý lớp, ngân hàng đề & khảo thí'}</small>
+              </div>
+              <button
+                type="button"
+                className="t-mobile-sheet-close"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Đóng menu"
+              >
+                <IcoClose size={16} />
+              </button>
+            </div>
+
+            <div className="t-mobile-sheet-grid">
+              {items.map((it) => {
+                const I = it.Icon;
+                const on = active === it.key;
+                return (
+                  <button
+                    key={it.key}
+                    type="button"
+                    className={`t-sheet-item ${on ? 'active' : ''}`}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      if (it.onClick) it.onClick();
+                      else onChange(it.key);
+                    }}
+                  >
+                    <span className="t-sheet-item-ico">
+                      <I size={18} />
+                    </span>
+                    <span className="t-sheet-item-label">{it.label}</span>
+                    {it.badge ? (
+                      <span className="t-sheet-item-badge">{it.badge}</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="t-mobile-sheet-foot">
+              <button
+                type="button"
+                className="t-sheet-action-btn"
+                onClick={handleToggleTheme}
+              >
+                {theme === 'light' ? (
+                  <>
+                    <IcoMoon size={15} /> <span>Giao diện Tối</span>
+                  </>
+                ) : (
+                  <>
+                    <IcoSun size={15} /> <span>Giao diện Sáng</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className="t-sheet-action-btn danger"
+                onClick={onExit}
+              >
+                <IcoArrowLeft size={15} />
+                <span>{exitLabel}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

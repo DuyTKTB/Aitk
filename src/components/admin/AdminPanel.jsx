@@ -6,7 +6,8 @@ import { supabase } from '../../lib/supabase.js';
 import { IconLock, IconBack, IconRefresh } from './AdminIcons.jsx';
 import { AdminUIProvider, ErrorBoundary, InlineAlert, PageLoader } from './AdminUI.jsx';
 import { friendlyError } from './adminUtils.js';
-import AdminShell, { Topbar } from './AdminShell.jsx';
+import AdminShell, { Topbar, setGlobalAdminBadges } from './AdminShell.jsx';
+import { isProActive, daysLeft } from '../../lib/proKeyApi.js';
 import Dashboard from './Dashboard.jsx';
 import ExamManager from './ExamManager.jsx';
 import QuestionManager from './QuestionManager.jsx';
@@ -124,6 +125,23 @@ function AdminApp() {
         console.error(e);
         if (alive) setCatalogError(friendlyError(e));
       });
+
+    // Đồng bộ badge toàn cục cho thanh menu trái ở mọi trang Admin
+    Promise.all([
+      supabase.from('pro_keys').select('used_by, revoked'),
+      supabase.from('pro_users').select('expiry'),
+    ]).then(([kRes, pRes]) => {
+      if (!alive) return;
+      const keys = kRes.data || [];
+      const pros = pRes.data || [];
+      const unused = keys.filter((k) => !k.used_by && !k.revoked).length;
+      const soon = pros.filter((u) => isProActive(u.expiry) && daysLeft(u.expiry) <= 7).length;
+      setGlobalAdminBadges({
+        key: unused > 0 ? unused : null,
+        pro: soon > 0 ? soon : null,
+      });
+    }).catch(() => {});
+
     return () => { alive = false; };
   }, []);
 

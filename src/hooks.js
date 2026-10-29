@@ -84,6 +84,97 @@ export function studyToday(s) {
 export const liveStreak = (s) =>
   s.last === dayKey() || s.last === dayKey(Date.now() - 864e5) ? s.n : 0;
 
+export const STREAK_KEY = 'cs-streak-v2';
+export const LEGACY_STREAK_KEY = 'cs-streak';
+export const STREAK_CHANGE_EVENT = 'cs-streak-change';
+
+export function getStreakData() {
+  try {
+    let cur = { last: '', n: 0, total: 0 };
+    const v2 = localStorage.getItem(STREAK_KEY);
+    if (v2) {
+      try {
+        const parsed = JSON.parse(v2);
+        if (parsed && typeof parsed === 'object') {
+          cur = {
+            last: parsed.last || '',
+            n: Number(parsed.n) || 0,
+            total: Number(parsed.total) || Number(parsed.n) || 0,
+          };
+        }
+      } catch { /* ignore */ }
+    }
+    const v1 = localStorage.getItem(LEGACY_STREAK_KEY);
+    if (v1) {
+      try {
+        const p1 = JSON.parse(v1);
+        if (p1 && typeof p1 === 'object') {
+          const n1 = Number(p1.n) || 0;
+          const total1 = Number(p1.total) || n1;
+          const last1 = p1.last || '';
+          if (n1 > cur.n || total1 > cur.total || (!cur.last && last1)) {
+            cur = {
+              last: cur.last || last1,
+              n: Math.max(cur.n, n1),
+              total: Math.max(cur.total, total1),
+            };
+            localStorage.setItem(STREAK_KEY, JSON.stringify(cur));
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    return cur;
+  } catch {
+    return { last: '', n: 0, total: 0 };
+  }
+}
+
+export function recordDailyStreak() {
+  try {
+    const cur = getStreakData();
+    const next = studyToday(cur);
+    const raw = JSON.stringify(next);
+    localStorage.setItem(STREAK_KEY, raw);
+    localStorage.setItem(LEGACY_STREAK_KEY, raw);
+    try {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent(STREAK_CHANGE_EVENT, { detail: next }));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: STREAK_KEY }));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: LEGACY_STREAK_KEY }));
+      }
+    } catch { /* ignore in non-browser env */ }
+    return next;
+  } catch {
+    return { last: '', n: 0, total: 0 };
+  }
+}
+
+export function useLiveStreak() {
+  const [streakObj, setStreakObj] = useState(getStreakData);
+
+  useEffect(() => {
+    const sync = () => setStreakObj(getStreakData());
+    window.addEventListener(STREAK_CHANGE_EVENT, sync);
+    const onCsLs = (e) => {
+      if (e.detail === STREAK_KEY || e.detail === LEGACY_STREAK_KEY) sync();
+    };
+    window.addEventListener('cs-ls', onCsLs);
+    const onStorage = (e) => {
+      if (e.key === STREAK_KEY || e.key === LEGACY_STREAK_KEY) sync();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(STREAK_CHANGE_EVENT, sync);
+      window.removeEventListener('cs-ls', onCsLs);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  const count = liveStreak(streakObj);
+  const isToday = streakObj?.last === dayKey();
+  return { count, streakObj, isToday, setStreakObj, recordDailyStreak };
+}
+
 /* ============================================================
    useSRS — Spaced Repetition
    ============================================================ */

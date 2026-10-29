@@ -53,7 +53,7 @@ initFeedbackQueue();
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -62,6 +62,7 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     console.error('[App] Uncaught error:', error, info);
+    this.setState({ errorInfo: info });
   }
 
   handleReload = () => {
@@ -99,15 +100,60 @@ class ErrorBoundary extends Component {
         background: '#f3f6ff',
         color: '#0a1230',
       }}>
-        <div style={{ maxWidth: 480 }}>
-          <h1 style={{ fontSize: '1.5rem', margin: '0 0 .8rem', letterSpacing: '-.02em' }}>
+        <div style={{ maxWidth: 600, width: '100%' }}>
+          <h1 style={{ fontSize: '1.5rem', margin: '0 0 .8rem', letterSpacing: '-.02em', color: '#1e293b' }}>
             {isChunkError ? 'Ứng dụng đã cập nhật' : 'Có lỗi xảy ra'}
           </h1>
           <p style={{ color: '#5d6a94', lineHeight: 1.6, margin: '0 0 1.5rem' }}>
             {isChunkError
               ? 'Phiên bản mới đã được tải lên. Bấm nút dưới đây để tải lại trang.'
-              : 'Vui lòng tải lại trang. Nếu lỗi vẫn tiếp diễn, hãy báo cho đội phát triển.'}
+              : 'Vui lòng tải lại trang. Nếu lỗi vẫn tiếp diễn, xem chi tiết lỗi bên dưới:'}
           </p>
+
+          {/* HIỂN THỊ LỖI RÕ RÀNG ĐỂ DEBUG NGAY */}
+          <div style={{
+            textAlign: 'left',
+            background: '#ffffff',
+            padding: '16px',
+            borderRadius: '12px',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            fontSize: '0.82rem',
+            overflowX: 'auto',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.08)'
+          }}>
+            <p style={{ margin: '0 0 6px', fontWeight: 800 }}>
+              {this.state.error?.name || 'Error'}: {this.state.error?.message || 'Unknown error'}
+            </p>
+            {this.state.error?.stack && (
+              <pre style={{
+                margin: 0,
+                fontSize: '0.74rem',
+                color: '#64748b',
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'Consolas, monospace',
+                maxHeight: 180,
+                overflowY: 'auto'
+              }}>
+                {this.state.error.stack}
+              </pre>
+            )}
+            {this.state.errorInfo?.componentStack && (
+              <pre style={{
+                margin: '8px 0 0',
+                fontSize: '0.72rem',
+                color: '#94a3b8',
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'Consolas, monospace',
+                maxHeight: 120,
+                overflowY: 'auto'
+              }}>
+                Component: {this.state.errorInfo.componentStack}
+              </pre>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={this.handleReload}

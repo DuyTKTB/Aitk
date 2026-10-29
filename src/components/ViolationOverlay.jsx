@@ -217,7 +217,7 @@ export default function ViolationOverlay({ warning, onDismiss, strict = false })
             {(() => {
               const remaining = Math.max(1, (warning.limit || 3) - (warning.count || 0));
               return remaining <= 1
-                ? '⚠ Vi phạm thêm 1 lần nữa sẽ tự động nộp bài.'
+                ? 'Vi phạm thêm 1 lần nữa sẽ tự động nộp bài.'
                 : `Vi phạm thêm ${remaining} lần nữa sẽ tự động nộp bài.`;
             })()}
           </p>

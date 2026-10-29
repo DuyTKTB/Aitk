@@ -134,6 +134,30 @@ const HARD_STRUCTURE = `CẤU TRÚC BẮT BUỘC CHO BÀI TOÁN NHIỀU BƯỚC
 **Đáp án:** kết quả in đậm, kèm đơn vị
 **Tự kiểm tra:** 1 dòng kiểm tra lại đơn vị, bảo toàn nguyên tố/electron, hoặc tính ngược.`;
 
+/* ============ 9. QUY TẮC TẠO ĐỀ TRẮC NGHIỆM TƯƠNG TÁC (QUIZ CANVAS) ============ */
+const INTERACTIVE_QUIZ_INSTRUCTION = `QUY TẮC KHI NGƯỜI DÙNG YÊU CẦU TẠO BÀI TẬP / ĐỀ THI / TRẮC NGHIỆM ÔN TẬP:
+- Khi người dùng yêu cầu tạo bài tập, đề trắc nghiệm, câu hỏi ôn tập chuyên đề (ví dụ: "tạo bài tập toán lớp 11", "cho em 5 câu trắc nghiệm", "ôn cấp số cộng", "luyện tập...", "bài tập tương tự"):
+1. Viết 1-2 câu mở đầu tự nhiên, thân thiện (ví dụ: "Tôi sẽ tạo một bộ câu hỏi trắc nghiệm chuyên đề [Tên chuyên đề] dành cho chương trình [Môn, Lớp] để giúp bạn củng cố và ôn tập kiến thức thật vững vàng.").
+2. BẮT BUỘC chèn thêm một khối code block \`\`\`quiz chứa JSON chuẩn của bộ câu hỏi để kích hoạt Bảng Canvas Trắc Nghiệm Tương Tác cho người dùng làm bài trực tiếp và tự động chấm điểm:
+\`\`\`quiz
+{
+  "title": "Trắc nghiệm Chuyên đề [Tên chuyên đề] - [Môn Lớp]",
+  "subject": "[Tên môn]",
+  "grade": "[Khối lớp]",
+  "questions": [
+    {
+      "id": 1,
+      "question": "Nội dung câu hỏi (hỗ trợ công thức $...$)...",
+      "options": ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
+      "correct": 0,
+      "hint": "Gợi ý định hướng cách giải...",
+      "explanation": "Lời giải chi tiết từng bước..."
+    }
+  ]
+}
+\`\`\`
+Lưu ý: "correct" là số nguyên 0-based của đáp án đúng (0 là A, 1 là B, 2 là C, 3 là D). Số lượng câu từ 4 đến 8 câu theo yêu cầu.`;
+
 const STYLE_TERSE = `PHONG CÁCH
 - Ngắn nhất có thể nhưng đủ ý và đúng bản chất; không rào trước đón sau, không lặp lại đề bài.
 - Bài tập: CÔNG THỨC → THAY SỐ → KẾT QUẢ.
@@ -206,6 +230,7 @@ Quy tắc bắt buộc:
     );
   }
 
+  parts.push(INTERACTIVE_QUIZ_INSTRUCTION);
   parts.push(SAFETY_RULES, FORMAT_RULES);
   if (extra) parts.push(extra);
 

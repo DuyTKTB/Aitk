@@ -199,7 +199,19 @@ export default function ClassDetailModal({
   onDeleteClass,
   onShareKey,
 }) {
-  const [tab, setTab] = useState(initialTab);
+  const mapInitialTab = (t) => {
+    if (t === 'pending' || t === 'retry') return 'members';
+    if (t === 'analytics') return 'scores';
+    return t || 'overview';
+  };
+  const [tab, setTab] = useState(() => mapInitialTab(initialTab));
+  const [peopleSubTab, setPeopleSubTab] = useState(() => (
+    initialTab === 'pending' ? 'pending' : initialTab === 'retry' ? 'retry' : 'roster'
+  ));
+  const [scoreSubTab, setScoreSubTab] = useState(() => (
+    initialTab === 'analytics' ? 'ai' : 'matrix'
+  ));
+  const [copiedKey, setCopiedKey] = useState(false);
   const [search, setSearch] = useState('');
   const [memberFilter, setMemberFilter] = useState('all');
   const [submissionsMap, setSubmissionsMap] = useState({});
@@ -362,16 +374,27 @@ export default function ClassDetailModal({
 
   const TABS = [
     { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
-    { key: 'analytics', label: 'Phân tích AI', Icon: IconTrendUp },
-    { key: 'members', label: 'Thành viên', Icon: IconUsers, badge: members.length },
-    // Đặt cạnh "Thành viên" (cùng là quản lý con người) để không bị đẩy ra cuối dải tab
-    { key: 'teachers', label: 'Giáo viên bộ môn', Icon: IconUserPlus },
-    { key: 'pending', label: 'Chờ duyệt', Icon: IconUserPlus, badge: pending.length, danger: true },
+    {
+      key: 'members',
+      label: 'Học sinh',
+      Icon: IconUsers,
+      badge: members.length,
+      alertBadge: pending.length + pendingRetry.length,
+    },
     { key: 'exams', label: 'Đề thi', Icon: IconBook, badge: exams.length },
-    { key: 'scores', label: 'Bảng điểm', Icon: IconTable },
-    { key: 'retry', label: 'Xin thi lại', Icon: IconBell, badge: pendingRetry.length, danger: true },
+    { key: 'scores', label: 'Bảng điểm & AI', Icon: IconTable },
+    { key: 'teachers', label: 'GV bộ môn', Icon: IconUserPlus },
     { key: 'settings', label: 'Cài đặt', Icon: IconLock },
   ];
+
+  const handleCopyClassKey = async () => {
+    if (!classInfo?.key) return;
+    try {
+      await navigator.clipboard.writeText(classInfo.key);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 1500);
+    } catch { /* ignore */ }
+  };
 
   const handleRetryAction = async (r, action) => {
     setRetryActioning(r.id);
@@ -403,16 +426,51 @@ export default function ClassDetailModal({
             {String(classInfo?.name || '?')[0].toUpperCase()}
           </span>
           <div className="cd-head-info">
-            <h2>{classInfo?.name || 'Lớp học'}</h2>
+            <div className="cd-head-title-row">
+              <h2>{classInfo?.name || 'Lớp học'}</h2>
+              {classInfo?.subject && <span className="cd-subject-pill">{classInfo.subject}</span>}
+              {classInfo?.key && (
+                <button
+                  type="button"
+                  className="cd-key-pill"
+                  onClick={handleCopyClassKey}
+                  title="Bấm để sao chép mã lớp"
+                >
+                  <span>Mã: <b>{classInfo.key}</b></span>
+                  <small>{copiedKey ? 'Đã chép!' : 'Sao chép'}</small>
+                </button>
+              )}
+            </div>
             <p>
-              GV {classInfo?.teacherName || 'Giáo viên'}
-              {classInfo?.subject && ` · ${classInfo.subject}`}
-              {classInfo?.key && ` · Key ${classInfo.key}`}
+              GV chủ nhiệm: <b>{classInfo?.teacherName || 'Giáo viên'}</b>
+              {` · ${members.length} học sinh · ${exams.length} đề kiểm tra`}
             </p>
           </div>
-          <button type="button" className="cd-close" onClick={onClose} aria-label="Đóng">
-            <IconClose size={18} />
-          </button>
+          <div className="cd-head-actions">
+            {onShareKey && (
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={() => onShareKey(classInfo)}
+                title="Mở mã QR tham gia lớp"
+              >
+                Mã QR
+              </button>
+            )}
+            {onExportCsv && (
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={() => onExportCsv(classInfo, exams, submissionsMap)}
+                title="Xuất bảng điểm lớp ra CSV"
+              >
+                <IconDownload size={13} /> Xuất CSV
+              </button>
+            )}
+            <button type="button" className="cd-close" onClick={onClose} aria-label="Đóng">
+              <IconClose size={18} />
+            </button>
+          </div>
         </header>
 
         <nav className="cd-tabs" role="tablist">
@@ -430,8 +488,11 @@ export default function ClassDetailModal({
                 <I size={15} />
                 <span>{t.label}</span>
                 {t.badge > 0 && (
-                  <em style={t.danger ? { background: '#dc2626', color: '#fff' } : undefined}>
-                    {t.badge}
+                  <em>{t.badge}</em>
+                )}
+                {t.alertBadge > 0 && (
+                  <em style={{ background: '#dc2626', color: '#fff' }}>
+                    {t.alertBadge}
                   </em>
                 )}
               </button>
@@ -462,30 +523,60 @@ export default function ClassDetailModal({
 
           {tab === 'overview' && (
             <div className="cd-overview">
+              {/* Cảnh báo nhanh nếu có HS chờ duyệt hoặc xin thi lại */}
+              {(pending.length > 0 || pendingRetry.length > 0) && (
+                <div className="cd-quick-alerts">
+                  {pending.length > 0 && (
+                    <div className="cd-quick-alert-item">
+                      <span><b>{pending.length} học sinh</b> đang chờ duyệt vào lớp</span>
+                      <button
+                        type="button"
+                        className="vt-btn sm primary"
+                        onClick={() => { setTab('members'); setPeopleSubTab('pending'); }}
+                      >
+                        Xem &amp; Duyệt ngay →
+                      </button>
+                    </div>
+                  )}
+                  {pendingRetry.length > 0 && (
+                    <div className="cd-quick-alert-item warn">
+                      <span><b>{pendingRetry.length} yêu cầu</b> xin thi lại đang chờ xử lý</span>
+                      <button
+                        type="button"
+                        className="vt-btn sm primary"
+                        onClick={() => { setTab('members'); setPeopleSubTab('retry'); }}
+                      >
+                        Xử lý đơn →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="cd-stat-grid">
-                <div className="cd-stat">
-                  <span className="cd-stat-ico"><IconUsers size={20} /></span>
+                <div className="cd-stat" onClick={() => { setTab('members'); setPeopleSubTab('roster'); }} style={{ cursor: 'pointer' }}>
+                  <span className="cd-stat-ico"><IconUsers size={18} /></span>
                   <div>
                     <small>Học sinh</small>
                     <b>{classStats.totalStudents}</b>
                   </div>
                 </div>
-                <div className="cd-stat">
-                  <span className="cd-stat-ico"><IconBook size={20} /></span>
+                <div className="cd-stat" onClick={() => setTab('exams')} style={{ cursor: 'pointer' }}>
+                  <span className="cd-stat-ico"><IconBook size={18} /></span>
                   <div>
                     <small>Đề thi</small>
                     <b>{classStats.totalExams}</b>
                   </div>
                 </div>
-                <div className="cd-stat">
-                  <span className="cd-stat-ico"><IconCheck size={20} /></span>
+                <div className="cd-stat" onClick={() => { setTab('scores'); setScoreSubTab('matrix'); }} style={{ cursor: 'pointer' }}>
+                  <span className="cd-stat-ico"><IconCheck size={18} /></span>
                   <div>
                     <small>Lượt nộp</small>
                     <b>{classStats.totalSubs}</b>
                   </div>
                 </div>
                 <div className="cd-stat">
-                  <span className="cd-stat-ico warn"><IconAlert size={20} /></span>
+                  <span className="cd-stat-ico warn"><IconAlert size={18} /></span>
                   <div>
                     <small>Vi phạm</small>
                     <b>{classStats.totalViolations}</b>
@@ -496,14 +587,14 @@ export default function ClassDetailModal({
               <div className="cd-overview-cols">
                 <div className="cd-card">
                   <h3>
-                    <IconTrendUp size={15} /> Điểm TB lớp
+                    <IconTrendUp size={15} /> Điểm TB lớp &amp; Mức độ hoàn thành
                   </h3>
                   <div className="cd-overview-chart">
                     <Donut
                       value={classStats.avgScore || 0}
                       max={100}
-                      size={140}
-                      stroke={12}
+                      size={112}
+                      stroke={10}
                       tone={
                         classStats.avgScore == null ? 'acc'
                           : classStats.avgScore >= 70 ? 'acc'
@@ -516,12 +607,16 @@ export default function ClassDetailModal({
                     </Donut>
                     <ul className="cd-overview-facts">
                       <li>
-                        <span>Tỷ lệ đạt từ 50% trở lên</span>
+                        <span>Tỷ lệ bài đạt (≥ 50%)</span>
                         <b>{classStats.passRate}%</b>
                       </li>
                       <li>
                         <span>HS đã làm ít nhất 1 đề</span>
                         <b>{classStats.completedRate}%</b>
+                      </li>
+                      <li>
+                        <span>Chưa làm bài nào</span>
+                        <b>{studentsStats.filter((s) => s.doneCount === 0).length} HS</b>
                       </li>
                     </ul>
                   </div>
@@ -529,12 +624,97 @@ export default function ClassDetailModal({
 
                 <div className="cd-card">
                   <h3>
-                    <IconTrendUp size={15} /> Xu hướng điểm
+                    <IconTrendUp size={15} /> Xu hướng điểm qua các đề
                   </h3>
                   {trendPoints.length > 0 ? (
-                    <TrendChart points={trendPoints} mode="line" max={100} />
+                    <div className="cd-trend-box">
+                      <TrendChart points={trendPoints} mode="line" max={100} />
+                      <div className="cd-trend-labels">
+                        {trendPoints.map((pt, idx) => (
+                          <span key={idx} title={pt.label}>
+                            <b>{pt.value}%</b>
+                            <small>{pt.label.length > 12 ? `${pt.label.slice(0, 12)}…` : pt.label}</small>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   ) : (
                     <p className="cd-muted">Chưa có bài nộp nào</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Hàng dưới: Đề thi gần đây & Học sinh tiêu biểu / Cần chú ý (Lấp đầy không gian hợp lý) */}
+              <div className="cd-overview-cols">
+                <div className="cd-card">
+                  <div className="cd-card-head-row">
+                    <h3><IconBook size={15} /> Đề kiểm tra của lớp ({exams.length})</h3>
+                    {exams.length > 0 && (
+                      <button type="button" className="cd-link-btn" onClick={() => setTab('exams')}>
+                        Xem tất cả →
+                      </button>
+                    )}
+                  </div>
+                  {exams.length === 0 ? (
+                    <p className="cd-muted">Lớp chưa có đề kiểm tra nào.</p>
+                  ) : (
+                    <ul className="cd-mini-list">
+                      {exams.slice(0, 4).map((ex) => {
+                        const subs = submissionsMap[ex.id] || [];
+                        const scores = subs.filter((s) => s.totalPoints > 0).map((s) => (s.score / s.totalPoints) * 100);
+                        const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+                        return (
+                          <li key={ex.id} className="cd-mini-item" onClick={() => onOpenExam?.(ex.id)}>
+                            <div className="cd-mini-main">
+                              <b>{ex.title}</b>
+                              <small>{ex.questions?.length || 0} câu · {ex.duration || 45} phút</small>
+                            </div>
+                            <div className="cd-mini-right">
+                              <span className="cd-badge">{subs.length}/{members.length} nộp</span>
+                              <strong style={{ color: avg == null ? 'var(--mut)' : avg >= 70 ? '#16a34a' : avg >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                {avg == null ? '—' : `${avg}%`}
+                              </strong>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="cd-card">
+                  <div className="cd-card-head-row">
+                    <h3><IconUsers size={15} /> Học sinh trong lớp ({members.length})</h3>
+                    <button type="button" className="cd-link-btn" onClick={() => { setTab('members'); setPeopleSubTab('roster'); }}>
+                      Quản lý HS →
+                    </button>
+                  </div>
+                  {studentsStats.length === 0 ? (
+                    <p className="cd-muted">Chưa có học sinh trong lớp.</p>
+                  ) : (
+                    <ul className="cd-mini-list">
+                      {studentsStats.slice(0, 5).map((s) => (
+                        <li key={s.id} className="cd-mini-item" onClick={() => setOpenStudent(s)}>
+                          <div className="cd-cell-student compact">
+                            <Avatar name={s.name} size={28} />
+                            <div>
+                              <b>{s.name}</b>
+                              <small>{s.doneCount}/{s.totalExams} đề đã làm{s.totalViolations > 0 ? ` · ${s.totalViolations} vi phạm` : ''}</small>
+                            </div>
+                          </div>
+                          <div className="cd-mini-right">
+                            <strong style={{
+                              color: s.avgScore == null ? 'var(--mut)'
+                                : s.avgScore >= 70 ? '#16a34a'
+                                  : s.avgScore >= 50 ? '#f59e0b'
+                                    : '#ef4444',
+                            }}>
+                              {s.avgScore == null ? 'Chưa làm' : `${s.avgScore}%`}
+                            </strong>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               </div>
@@ -543,197 +723,327 @@ export default function ClassDetailModal({
 
           {tab === 'members' && (
             <div className="cd-members">
-              <div className="cd-toolbar">
-                <label className="cd-search">
-                  <IconSearch size={15} />
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Tìm học sinh..."
-                    aria-label="Tìm học sinh"
-                  />
-                </label>
-                <div className="cd-seg" role="group" aria-label="Lọc thành viên">
+              {/* Thanh chuyển nhanh 3 mục Con người: Danh sách lớp | Chờ duyệt | Xin thi lại */}
+              <div className="cd-subnav-bar">
+                <div className="cd-seg" role="tablist" aria-label="Quản lý học sinh">
                   <button
                     type="button"
-                    className={memberFilter === 'all' ? 'on' : ''}
-                    onClick={() => setMemberFilter('all')}
+                    className={peopleSubTab === 'roster' ? 'on' : ''}
+                    onClick={() => setPeopleSubTab('roster')}
                   >
-                    Tất cả <em>{studentsStats.length}</em>
+                    Danh sách lớp <em>{members.length}</em>
                   </button>
                   <button
                     type="button"
-                    className={memberFilter === 'done' ? 'on' : ''}
-                    onClick={() => setMemberFilter('done')}
+                    className={peopleSubTab === 'pending' ? 'on' : ''}
+                    onClick={() => setPeopleSubTab('pending')}
                   >
-                    Đã làm <em>{studentsStats.filter((s) => s.doneCount > 0).length}</em>
+                    Chờ duyệt vào lớp <em style={pending.length > 0 ? { background: '#dc2626', color: '#fff' } : undefined}>{pending.length}</em>
                   </button>
                   <button
                     type="button"
-                    className={memberFilter === 'no-do' ? 'on' : ''}
-                    onClick={() => setMemberFilter('no-do')}
+                    className={peopleSubTab === 'retry' ? 'on' : ''}
+                    onClick={() => setPeopleSubTab('retry')}
                   >
-                    Chưa làm <em>{studentsStats.filter((s) => s.doneCount === 0).length}</em>
+                    Đơn xin thi lại <em style={pendingRetry.length > 0 ? { background: '#dc2626', color: '#fff' } : undefined}>{pendingRetry.length}</em>
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className="vt-btn sm"
-                  onClick={() => onExportCsv?.(classInfo, exams, submissionsMap)}
-                  title="Xuất bảng điểm CSV"
-                >
-                  <IconDownload size={13} /> Xuất CSV
-                </button>
               </div>
 
-              {filteredStudents.length === 0 ? (
-                <div className="cd-empty">
-                  <span><IconUsers size={30} /></span>
-                  <h3>Không có học sinh nào</h3>
-                  <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
-                </div>
-              ) : (
-                <div className="cd-table-wrap">
-                  <table className="cd-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 40 }}>#</th>
-                        <th>Học sinh</th>
-                        <th style={{ width: 100 }}>Đã làm</th>
-                        <th style={{ width: 100 }}>Điểm TB</th>
-                        <th style={{ width: 100 }}>Vi phạm</th>
-                        <th style={{ width: 140 }}>Lần cuối</th>
-                        <th style={{ width: 60 }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredStudents.map((s, i) => (
-                        <tr key={s.id} className="cd-row">
-                          <td className="cd-idx">{i + 1}</td>
-                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
-                            <div className="cd-cell-student">
-                              <Avatar name={s.name} size={36} />
-                              <div>
-                                <b>{s.name}</b>
-                                <small>{s.email}</small>
-                              </div>
-                            </div>
-                          </td>
-                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
-                            <span className="cd-badge">
-                              <b>{s.doneCount}</b>/{s.totalExams}
-                            </span>
-                          </td>
-                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
-                            {s.avgScore == null ? (
-                              <span className="cd-muted">—</span>
-                            ) : (
-                              <b
-                                className="cd-score"
-                                style={{
-                                  color: s.avgScore >= 70 ? '#16a34a'
-                                    : s.avgScore >= 50 ? '#f59e0b'
-                                      : '#ef4444',
-                                }}
-                              >
-                                {s.avgScore}%
-                              </b>
-                            )}
-                          </td>
-                          <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
-                            {s.totalViolations === 0 ? (
-                              <span className="cd-muted">0</span>
-                            ) : (
-                              <span className="cd-badge danger">
-                                <IconAlert size={11} /> {s.totalViolations}
-                              </span>
-                            )}
-                          </td>
-                          <td className="cd-muted" style={{ fontSize: '.78rem' }}>
-                            {s.lastSubAt ? fmtDate(s.lastSubAt) : '—'}
-                          </td>
-                          <td>
-                            {onRemoveMember && (
-                              <button
-                                type="button"
-                                className="vt-icon-btn danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onRemoveMember(classInfo, s);
-                                }}
-                                title="Xóa khỏi lớp"
-                                aria-label={`Xóa ${s.name} khỏi lớp`}
-                              >
-                                <IconTrash size={14} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {peopleSubTab === 'roster' && (
+                <>
+                  <div className="cd-toolbar">
+                    <label className="cd-search">
+                      <IconSearch size={15} />
+                      <input
+                        type="search"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Tìm tên hoặc email học sinh..."
+                        aria-label="Tìm học sinh"
+                      />
+                    </label>
+                    <div className="cd-seg" role="group" aria-label="Lọc thành viên">
+                      <button
+                        type="button"
+                        className={memberFilter === 'all' ? 'on' : ''}
+                        onClick={() => setMemberFilter('all')}
+                      >
+                        Tất cả <em>{studentsStats.length}</em>
+                      </button>
+                      <button
+                        type="button"
+                        className={memberFilter === 'done' ? 'on' : ''}
+                        onClick={() => setMemberFilter('done')}
+                      >
+                        Đã làm <em>{studentsStats.filter((s) => s.doneCount > 0).length}</em>
+                      </button>
+                      <button
+                        type="button"
+                        className={memberFilter === 'no-do' ? 'on' : ''}
+                        onClick={() => setMemberFilter('no-do')}
+                      >
+                        Chưa làm <em>{studentsStats.filter((s) => s.doneCount === 0).length}</em>
+                      </button>
+                    </div>
+                  </div>
+
+                  {filteredStudents.length === 0 ? (
+                    <div className="cd-empty">
+                      <span><IconUsers size={30} /></span>
+                      <h3>Không có học sinh nào</h3>
+                      <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                    </div>
+                  ) : (
+                    <div className="cd-table-wrap">
+                      <table className="cd-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 40 }}>#</th>
+                            <th>Học sinh</th>
+                            <th style={{ width: 100 }}>Đã làm</th>
+                            <th style={{ width: 100 }}>Điểm TB</th>
+                            <th style={{ width: 100 }}>Vi phạm</th>
+                            <th style={{ width: 140 }}>Lần cuối</th>
+                            <th style={{ width: 60 }} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredStudents.map((s, i) => (
+                            <tr key={s.id} className="cd-row">
+                              <td className="cd-idx">{i + 1}</td>
+                              <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
+                                <div className="cd-cell-student">
+                                  <Avatar name={s.name} size={34} />
+                                  <div>
+                                    <b>{s.name}</b>
+                                    <small>{s.email}</small>
+                                  </div>
+                                </div>
+                              </td>
+                              <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
+                                <span className="cd-badge">
+                                  <b>{s.doneCount}</b>/{s.totalExams}
+                                </span>
+                              </td>
+                              <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
+                                {s.avgScore == null ? (
+                                  <span className="cd-muted">—</span>
+                                ) : (
+                                  <b
+                                    className="cd-score"
+                                    style={{
+                                      color: s.avgScore >= 70 ? '#16a34a'
+                                        : s.avgScore >= 50 ? '#f59e0b'
+                                          : '#ef4444',
+                                    }}
+                                  >
+                                    {s.avgScore}%
+                                  </b>
+                                )}
+                              </td>
+                              <td onClick={() => setOpenStudent(s)} style={{ cursor: 'pointer' }}>
+                                {s.totalViolations === 0 ? (
+                                  <span className="cd-muted">0</span>
+                                ) : (
+                                  <span className="cd-badge danger">
+                                    <IconAlert size={11} /> {s.totalViolations}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="cd-muted" style={{ fontSize: '.78rem' }}>
+                                {s.lastSubAt ? fmtDate(s.lastSubAt) : '—'}
+                              </td>
+                              <td>
+                                {onRemoveMember && (
+                                  <button
+                                    type="button"
+                                    className="vt-icon-btn danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveMember(classInfo, s);
+                                    }}
+                                    title="Xóa khỏi lớp"
+                                    aria-label={`Xóa ${s.name} khỏi lớp`}
+                                  >
+                                    <IconTrash size={14} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-          )}
 
-          {tab === 'pending' && (
-            <div className="cd-members">
-              <div className="cd-toolbar">
-                <label className="cd-check">
-                  <input
-                    type="checkbox"
-                    checked={classInfo?.requireApproval !== false}
-                    onChange={(e) => onToggleApproval?.(classInfo, e.target.checked)}
-                  />
-                  Học sinh phải được duyệt mới vào lớp
-                </label>
-                {pending.length > 0 && (
-                  <button
-                    type="button"
-                    className="vt-btn sm primary"
-                    onClick={() => onApproveAll?.(classInfo)}
-                  >
-                    <IconCheck size={13} /> Duyệt tất cả ({pending.length})
-                  </button>
-                )}
-              </div>
-
-              {pending.length === 0 ? (
-                <div className="cd-empty">
-                  <span><IconUserPlus size={30} /></span>
-                  <h3>Không có yêu cầu nào</h3>
-                  <p>Học sinh nhập key lớp sẽ xuất hiện ở đây để chờ duyệt.</p>
-                </div>
-              ) : (
-                <ul className="cd-sub-list">
-                  {pending.map((p) => (
-                    <li key={p.id} className="cd-sub-item">
-                      <Avatar name={p.name} size={40} />
-                      <div className="cd-sub-main">
-                        <h4>{p.name}</h4>
-                        <p className="cd-sub-meta">
-                          {p.email || '—'} · yêu cầu {timeAgoShort(p.requestedAt)}
-                        </p>
-                      </div>
+              {peopleSubTab === 'pending' && (
+                <>
+                  <div className="cd-toolbar">
+                    <label className="cd-check">
+                      <input
+                        type="checkbox"
+                        checked={classInfo?.requireApproval !== false}
+                        onChange={(e) => onToggleApproval?.(classInfo, e.target.checked)}
+                      />
+                      Học sinh phải được duyệt mới vào lớp
+                    </label>
+                    {pending.length > 0 && (
                       <button
                         type="button"
                         className="vt-btn sm primary"
-                        onClick={() => onApprove?.(classInfo, p.id)}
+                        onClick={() => onApproveAll?.(classInfo)}
                       >
-                        <IconCheck size={13} /> Duyệt
+                        <IconCheck size={13} /> Duyệt tất cả ({pending.length})
                       </button>
-                      <button
-                        type="button"
-                        className="vt-btn sm danger"
-                        onClick={() => onReject?.(classInfo, p.id)}
-                      >
-                        <IconX size={13} /> Từ chối
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                    )}
+                  </div>
+
+                  {pending.length === 0 ? (
+                    <div className="cd-empty">
+                      <span><IconUserPlus size={30} /></span>
+                      <h3>Không có yêu cầu chờ duyệt</h3>
+                      <p>Học sinh nhập mã lớp sẽ xuất hiện tại đây để bạn phê duyệt.</p>
+                    </div>
+                  ) : (
+                    <ul className="cd-sub-list">
+                      {pending.map((p) => (
+                        <li key={p.id} className="cd-sub-item">
+                          <Avatar name={p.name} size={40} />
+                          <div className="cd-sub-main">
+                            <h4>{p.name}</h4>
+                            <p className="cd-sub-meta">
+                              {p.email || '—'} · yêu cầu {timeAgoShort(p.requestedAt)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="vt-btn sm primary"
+                            onClick={() => onApprove?.(classInfo, p.id)}
+                          >
+                            <IconCheck size={13} /> Duyệt
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-btn sm danger"
+                            onClick={() => onReject?.(classInfo, p.id)}
+                          >
+                            <IconX size={13} /> Từ chối
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+
+              {peopleSubTab === 'retry' && (
+                <>
+                  {pendingRetry.length === 0 && Object.keys(allowances).filter((k) => allowances[k]).length === 0 && historyRetry.length === 0 ? (
+                    <div className="cd-empty">
+                      <span><IconBell size={30} /></span>
+                      <h3>Chưa có yêu cầu thi lại</h3>
+                      <p>Khi học sinh gửi đơn xin thi lại, yêu cầu sẽ hiển thị ở đây.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {pendingRetry.length > 0 && (
+                        <>
+                          <h3 style={{ margin: '0 0 .6rem', font: '800 .92rem var(--sans)', color: 'var(--ink)' }}>
+                            Yêu cầu chờ duyệt ({pendingRetry.length})
+                          </h3>
+                          <ul className="cd-sub-list" style={{ marginBottom: '1rem' }}>
+                            {pendingRetry.map((r) => {
+                              const examTitle = exams.find((e) => e.id === r.examId)?.title || 'Đề không xác định';
+                              const isActing = retryActioning === r.id;
+                              return (
+                                <li key={r.id} className="cd-sub-item" style={{ flexWrap: 'wrap' }}>
+                                  <Avatar name={r.studentName} size={38} />
+                                  <div className="cd-sub-main" style={{ flex: '1 1 200px' }}>
+                                    <h4>{r.studentName}</h4>
+                                    <p className="cd-sub-meta"><b>{examTitle}</b></p>
+                                    <p className="cd-sub-meta">
+                                      {r.reason ? `Lý do: ${r.reason}` : 'Không có lý do'}
+                                      {' · '}{timeAgoShort(r.requestedAt)}
+                                    </p>
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', flex: '1 1 220px' }}>
+                                    <input
+                                      type="text"
+                                      placeholder="Ghi chú gửi học sinh (không bắt buộc)"
+                                      value={retryNote[r.id] || ''}
+                                      onChange={(e) => setRetryNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                                      maxLength={200}
+                                      disabled={isActing}
+                                      style={{
+                                        padding: '.45rem .75rem',
+                                        borderRadius: 10,
+                                        border: '1.5px solid var(--soft)',
+                                        background: 'var(--vt-tint)',
+                                        color: 'var(--ink)',
+                                        font: '500 .8rem var(--sans)',
+                                        width: '100%',
+                                      }}
+                                    />
+                                    <div style={{ display: 'flex', gap: '.4rem' }}>
+                                      <button
+                                        type="button"
+                                        className="vt-btn sm primary"
+                                        onClick={() => handleRetryAction(r, 'approve')}
+                                        disabled={isActing}
+                                      >
+                                        <IconCheck size={13} /> {isActing ? 'Đang xử lý...' : 'Duyệt'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="vt-btn sm danger"
+                                        onClick={() => handleRetryAction(r, 'deny')}
+                                        disabled={isActing}
+                                      >
+                                        <IconX size={13} /> Từ chối
+                                      </button>
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </>
+                      )}
+
+                      <h3 style={{ margin: '.6rem 0 .5rem', font: '800 .92rem var(--sans)', color: 'var(--ink)' }}>
+                        Cấp quyền thi lại tự do cho từng học sinh
+                      </h3>
+                      <ul className="cd-sub-list">
+                        {members.map((m) => {
+                          const allowed = !!allowances[m.id];
+                          return (
+                            <li key={m.id} className="cd-sub-item">
+                              <Avatar name={m.name} size={36} />
+                              <div className="cd-sub-main">
+                                <h4>{m.name}</h4>
+                                <p className="cd-sub-meta">{m.email || '—'}</p>
+                              </div>
+                              <button
+                                type="button"
+                                className={'vt-btn sm' + (allowed ? ' danger' : ' primary')}
+                                onClick={() => onToggleAllowance?.(classInfo, m, !allowed)}
+                              >
+                                {allowed ? (
+                                  <><IconLock size={13} /> Khóa thi lại</>
+                                ) : (
+                                  <><IconUnlock size={13} /> Cho thi lại mọi đề</>
+                                )}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -787,225 +1097,102 @@ export default function ClassDetailModal({
 
           {tab === 'scores' && (
             <div className="cd-scores">
-              {exams.length === 0 || members.length === 0 ? (
+              <div className="cd-toolbar" style={{ justifyContent: 'space-between' }}>
+                <div className="cd-seg" role="tablist" aria-label="Chế độ xem điểm">
+                  <button
+                    type="button"
+                    className={scoreSubTab === 'matrix' ? 'on' : ''}
+                    onClick={() => setScoreSubTab('matrix')}
+                  >
+                    <IconTable size={14} /> Bảng điểm ma trận
+                  </button>
+                  <button
+                    type="button"
+                    className={scoreSubTab === 'ai' ? 'on' : ''}
+                    onClick={() => setScoreSubTab('ai')}
+                  >
+                    <IconTrendUp size={14} /> Phân tích AI chuyên sâu
+                  </button>
+                </div>
+                {scoreSubTab === 'matrix' && (
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    onClick={() => onExportCsv?.(classInfo, exams, submissionsMap)}
+                  >
+                    <IconDownload size={13} /> Xuất CSV
+                  </button>
+                )}
+              </div>
+
+              {scoreSubTab === 'ai' ? (
+                <LearningAnalytics
+                  classInfo={classInfo}
+                  exams={exams}
+                  submissionsMap={submissionsMap}
+                  loadingSubmissions={loadingSubs}
+                />
+              ) : exams.length === 0 || members.length === 0 ? (
                 <div className="cd-empty">
                   <span><IconTable size={30} /></span>
                   <h3>Chưa có dữ liệu</h3>
                   <p>Cần có ít nhất 1 đề và 1 học sinh.</p>
                 </div>
               ) : (
-                <>
-                  <div className="cd-toolbar">
-                    <button
-                      type="button"
-                      className="vt-btn sm"
-                      onClick={() => onExportCsv?.(classInfo, exams, submissionsMap)}
-                    >
-                      <IconDownload size={13} /> Xuất CSV
-                    </button>
-                  </div>
-                  <div className="cd-score-wrap">
-                    <table className="cd-score-table">
-                      <thead>
-                        <tr>
-                          <th className="cd-sticky-col">Học sinh</th>
-                          {exams.map((ex, i) => (
-                            <th key={ex.id} title={ex.title}>
-                              Đề {i + 1}
-                            </th>
-                          ))}
-                          <th>TB</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {studentsStats.map((s) => {
-                          const totalPct = s.avgScore;
-                          return (
-                            <tr key={s.id}>
-                              <td className="cd-sticky-col">
-                                <div className="cd-cell-student compact">
-                                  <Avatar name={s.name} size={26} />
-                                  <b>{s.name}</b>
-                                </div>
-                              </td>
-                              {exams.map((ex) => {
-                                const sub = (submissionsMap[ex.id] || []).find((x) => x.studentId === s.id);
-                                if (!sub) return <td key={ex.id} className="cd-score-cell empty">—</td>;
-                                const pct = pctOf(sub);
-                                return (
-                                  <td
-                                    key={ex.id}
-                                    className="cd-score-cell"
-                                    style={{
-                                      background: `color-mix(in srgb, ${
-                                        pct >= 70 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#ef4444'
-                                      } ${Math.min(60, 15 + pct / 2)}%, var(--panel))`,
-                                      cursor: 'pointer',
-                                    }}
-                                    onClick={() => setOpenStudent(s)}
-                                    title={`${fmtDate(sub.submittedAt)} · ${fmtTime(sub.timeSpent)}`}
-                                  >
-                                    {pct}%
-                                  </td>
-                                );
-                              })}
-                              <td className="cd-score-cell total">
-                                {totalPct == null ? '—' : `${totalPct}%`}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {tab === 'retry' && (
-            <div className="cd-members">
-              {pendingRetry.length === 0 && Object.keys(allowances).filter((k) => allowances[k]).length === 0 ? (
-                <div className="cd-empty">
-                  <span><IconBell size={30} /></span>
-                  <h3>Chưa có yêu cầu thi lại</h3>
-                  <p>Khi học sinh bấm "Xin cô cho thi lại", yêu cầu sẽ xuất hiện ở đây.</p>
-                </div>
-              ) : (
-                <>
-                  {pendingRetry.length > 0 && (
-                    <>
-                      <h3 style={{ margin: '0 0 .7rem', font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>
-                        Yêu cầu chờ duyệt ({pendingRetry.length})
-                      </h3>
-                      <ul className="cd-sub-list" style={{ marginBottom: '1.2rem' }}>
-                        {pendingRetry.map((r) => {
-                          const examTitle = exams.find((e) => e.id === r.examId)?.title || 'Đề không xác định';
-                          const isActing = retryActioning === r.id;
-                          return (
-                            <li key={r.id} className="cd-sub-item" style={{ flexWrap: 'wrap' }}>
-                              <Avatar name={r.studentName} size={40} />
-                              <div className="cd-sub-main" style={{ flex: '1 1 200px' }}>
-                                <h4>{r.studentName}</h4>
-                                <p className="cd-sub-meta">
-                                  <b>{examTitle}</b>
-                                </p>
-                                <p className="cd-sub-meta">
-                                  {r.reason ? `Lý do: ${r.reason}` : 'Không có lý do'}
-                                  {' · '}{timeAgoShort(r.requestedAt)}
-                                </p>
+                <div className="cd-score-wrap">
+                  <table className="cd-score-table">
+                    <thead>
+                      <tr>
+                        <th className="cd-sticky-col">Học sinh</th>
+                        {exams.map((ex, i) => (
+                          <th key={ex.id} title={ex.title}>
+                            Đề {i + 1}
+                          </th>
+                        ))}
+                        <th>TB</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentsStats.map((s) => {
+                        const totalPct = s.avgScore;
+                        return (
+                          <tr key={s.id}>
+                            <td className="cd-sticky-col">
+                              <div className="cd-cell-student compact">
+                                <Avatar name={s.name} size={26} />
+                                <b>{s.name}</b>
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', flex: '1 1 220px' }}>
-                                <input
-                                  type="text"
-                                  placeholder="Ghi chú gửi học sinh (không bắt buộc)"
-                                  value={retryNote[r.id] || ''}
-                                  onChange={(e) => setRetryNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                                  maxLength={200}
-                                  disabled={isActing}
+                            </td>
+                            {exams.map((ex) => {
+                              const sub = (submissionsMap[ex.id] || []).find((x) => x.studentId === s.id);
+                              if (!sub) return <td key={ex.id} className="cd-score-cell empty">—</td>;
+                              const pct = pctOf(sub);
+                              return (
+                                <td
+                                  key={ex.id}
+                                  className="cd-score-cell"
                                   style={{
-                                    padding: '.5rem .8rem',
-                                    borderRadius: 10,
-                                    border: '1.5px solid var(--soft)',
-                                    background: 'var(--vt-tint)',
-                                    color: 'var(--ink)',
-                                    font: '500 .8rem var(--sans)',
-                                    width: '100%',
+                                    background: `color-mix(in srgb, ${
+                                      pct >= 70 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#ef4444'
+                                    } ${Math.min(60, 15 + pct / 2)}%, var(--panel))`,
+                                    cursor: 'pointer',
                                   }}
-                                />
-                                <div style={{ display: 'flex', gap: '.4rem' }}>
-                                  <button
-                                    type="button"
-                                    className="vt-btn sm primary"
-                                    onClick={() => handleRetryAction(r, 'approve')}
-                                    disabled={isActing}
-                                  >
-                                    <IconCheck size={13} /> {isActing ? 'Đang xử lý...' : 'Duyệt'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="vt-btn sm danger"
-                                    onClick={() => handleRetryAction(r, 'deny')}
-                                    disabled={isActing}
-                                  >
-                                    <IconX size={13} /> Từ chối
-                                  </button>
-                                </div>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </>
-                  )}
-
-                  {historyRetry.length > 0 && (
-                    <>
-                      <h3 style={{ margin: '1rem 0 .7rem', font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>
-                        Lịch sử đã xử lý ({historyRetry.length})
-                      </h3>
-                      <ul className="cd-sub-list" style={{ marginBottom: '1.2rem' }}>
-                        {historyRetry.map((r) => {
-                          const examTitle = exams.find((e) => e.id === r.examId)?.title || '—';
-                          return (
-                            <li key={r.id} className="cd-sub-item">
-                              <Avatar name={r.studentName} size={32} />
-                              <div className="cd-sub-main">
-                                <h4 style={{ fontSize: '.88rem' }}>{r.studentName}</h4>
-                                <p className="cd-sub-meta">
-                                  {examTitle}
-                                  {' · '}
-                                  {r.status === 'approved' && 'Đã duyệt'}
-                                  {r.status === 'denied' && 'Đã từ chối'}
-                                  {r.status === 'used' && 'Đã sử dụng'}
-                                  {' · '}
-                                  {new Date(r.decidedAtMs || r.requestedAtMs || 0).toLocaleDateString('vi-VN')}
-                                </p>
-                                {r.note && (
-                                  <p className="cd-sub-meta" style={{ color: 'var(--ink)' }}>
-                                    Ghi chú: {r.note}
-                                  </p>
-                                )}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </>
-                  )}
-
-                  <h3 style={{ margin: '1rem 0 .7rem', font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>
-                    Bật thi lại mọi đề cho từng HS
-                  </h3>
-                  <p className="cd-muted" style={{ margin: '0 0 .7rem', fontSize: '.82rem' }}>
-                    Bật xong, HS đó có thể làm lại bất kỳ đề nào của lớp này mà không cần xin từng đề.
-                  </p>
-                  <ul className="cd-sub-list">
-                    {members.map((m) => {
-                      const allowed = !!allowances[m.id];
-                      return (
-                        <li key={m.id} className="cd-sub-item">
-                          <Avatar name={m.name} size={40} />
-                          <div className="cd-sub-main">
-                            <h4>{m.name}</h4>
-                            <p className="cd-sub-meta">{m.email || '—'}</p>
-                          </div>
-                          <button
-                            type="button"
-                            className={'vt-btn sm' + (allowed ? ' danger' : ' primary')}
-                            onClick={() => onToggleAllowance?.(classInfo, m, !allowed)}
-                          >
-                            {allowed ? (
-                              <><IconLock size={13} /> Khóa thi lại</>
-                            ) : (
-                              <><IconUnlock size={13} /> Cho thi lại mọi đề</>
-                            )}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
+                                  onClick={() => setOpenStudent(s)}
+                                  title={`${fmtDate(sub.submittedAt)} · ${fmtTime(sub.timeSpent)}`}
+                                >
+                                  {pct}%
+                                </td>
+                              );
+                            })}
+                            <td className="cd-score-cell total">
+                              {totalPct == null ? '—' : `${totalPct}%`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

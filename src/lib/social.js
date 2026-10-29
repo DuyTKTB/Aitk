@@ -9,6 +9,15 @@
    - Giới hạn: TỐI ĐA 20 ĐOẠN CHAT RIÊNG mỗi người dùng
    ============================================================ */
 import { db } from './firebase.js';
+import {
+  isValidStreakMessage,
+  processFriendStreakUpdate,
+  getFriendStreakStatus,
+  calculateClassTarget,
+  isStreakMilestone,
+  getVietnamDateKey,
+} from './chatStreak.js';
+import { recordDailyStreak, getStreakData, dayKey } from '../hooks.js';
 import { checkVipFromDoc } from '../services/api.js';
 import {
   doc, setDoc, getDoc, collection, query, where, getDocs, addDoc,
@@ -187,7 +196,22 @@ export function listenMyDms(uid, cb) {
   const q = query(collection(db, 'dms'), where('members', 'array-contains', uid));
   return onSnapshot(q, (snap) => {
     const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    rows.sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0));
+    rows.sort((a, b) => {
+      const otherA = (a.members || []).find((u) => u !== uid) || '';
+      const otherB = (b.members || []).find((u) => u !== uid) || '';
+      const stA = getFriendStreakStatus(a.streak, uid, otherA);
+      const stB = getFriendStreakStatus(b.streak, uid, otherB);
+
+      const urgentA = stA.urgent && !stA.bothDone;
+      const urgentB = stB.urgent && !stB.bothDone;
+      if (urgentA && !urgentB) return -1;
+      if (!urgentA && urgentB) return 1;
+
+      if ((stB.count || 0) !== (stA.count || 0)) {
+        return (stB.count || 0) - (stA.count || 0);
+      }
+      return (b.lastAt || 0) - (a.lastAt || 0);
+    });
     cb(rows);
   }, () => cb([]));
 }
@@ -229,6 +253,44 @@ export async function openDm(me, otherUid, otherName) {
 export async function sendDmMessage(dmIdStr, me, text) {
   const t = String(text || '').trim().slice(0, MAX_DM_TEXT);
   if (!dmIdStr || !me?.uid || !t) return;
+  try {
+    await addDoc(collection(db, 'dms', dmIdStr, 'messages'), {
+      uid: me.uid,
+      name: me.displayName || 'Bạn',
+      text: t,
+      createdAt: Date.now(),
+    });
+    const dmRef = doc(db, 'dms', dmIdStr);
+    const dmSnap = await getDoc(dmRef);
+    const dmData = dmSnap.exists() ? dmSnap.data() : {};
+    const members = Array.isArray(dmData.members) ? dmData.members : [];
+    const otherUid = members.find((u) => u !== me.uid) || '';
+    const isValid = isValidStreakMessage(t, dmData.lastText || '');
+    let streakUpdate = dmData.streak || null;
+    if (isValid && otherUid) {
+      streakUpdate = processFriendStreakUpdate(dmData.streak, me.uid, otherUid);
+      try {
+        const cur = getStreakData();
+        if (cur.last !== dayKey()) {
+          recordDailyStreak();
+        }
+      } catch { /* ignore */ }
+    }
+    await updateDoc(dmRef, {
+      lastText: t.slice(0, 60),
+      lastAt: Date.now(),
+      lastUid: me.uid,
+      ...(streakUpdate ? { streak: streakUpdate } : {}),
+    });
+    return;
+  } catch (err) {
+    console.error('Error sending DM message:', err);
+    throw err;
+  }
+}
+async function _legacySendDmMessage(dmIdStr, me, text) {
+  const t = String(text || '').trim().slice(0, MAX_DM_TEXT);
+  if (!dmIdStr || !me?.uid || !t) return;
   await addDoc(collection(db, 'dms', dmIdStr, 'messages'), {
     uid: me.uid,
     name: me.displayName || 'Bạn',
@@ -262,6 +324,102 @@ export function listenClassChat(classId, cb) {
 }
 
 export async function sendClassMessage(classId, me, text) {
+  const t = String(text || '').trim().slice(0, MAX_CLASS_TEXT);
+  if (!classId || !me?.uid || !t) return;
+  try {
+    await addDoc(collection(db, 'classes', classId, 'chat'), {
+      uid: me.uid,
+      name: me.displayName || 'Bạn',
+      text: t,
+      createdAt: Date.now(),
+    });
+
+    const isValid = isValidStreakMessage(t);
+    if (!isValid) return;
+
+    try {
+      const curStreak = getStreakData();
+      if (curStreak.last !== dayKey()) {
+        recordDailyStreak();
+      }
+    } catch { /* ignore */ }
+
+    const classRef = doc(db, 'classes', classId);
+    const snap = await getDoc(classRef);
+    if (!snap.exists()) return;
+    const cls = snap.data();
+
+    const today = getVietnamDateKey();
+    const yesterday = getVietnamDateKey(Date.now() - 864e5);
+    const prevStreak = cls.streak || { count: 0, record: 0, lastDate: '', todayActive: [], completedDate: '' };
+
+    let count = Number(prevStreak.count) || 0;
+    let record = Number(prevStreak.record) || count;
+    let todayActive = Array.isArray(prevStreak.todayActive) ? [...prevStreak.todayActive] : [];
+    let completedDate = prevStreak.completedDate || '';
+
+    if (prevStreak.lastDate !== today) {
+      if (prevStreak.lastDate && prevStreak.lastDate !== yesterday) {
+        count = 0;
+      }
+      todayActive = [];
+    }
+
+    if (!todayActive.includes(me.uid)) {
+      todayActive.push(me.uid);
+    }
+
+    const memberCount = Number(cls.memberCount) || (cls.members?.length) || 1;
+    const target = calculateClassTarget(memberCount);
+    let justReachedThreshold = false;
+    let milestoneHit = 0;
+
+    if (todayActive.length >= target && completedDate !== today) {
+      count = count + 1;
+      completedDate = today;
+      if (count > record) record = count;
+      justReachedThreshold = true;
+      if (isStreakMilestone(count)) {
+        milestoneHit = count;
+      }
+    }
+
+    const updatedStreak = {
+      count,
+      record,
+      lastDate: today,
+      completedDate,
+      todayActive,
+    };
+
+    await updateDoc(classRef, { streak: updatedStreak });
+
+    if (justReachedThreshold) {
+      await addDoc(collection(db, 'classes', classId, 'chat'), {
+        uid: 'system',
+        name: 'Hệ thống',
+        isSystem: true,
+        text: `🔥 Lớp ${cls.name || ''} đã hoàn thành chỉ tiêu giữ chuỗi ngày thứ ${count}!`,
+        createdAt: Date.now(),
+      });
+
+      if (milestoneHit) {
+        await addDoc(collection(db, 'classes', classId, 'chat'), {
+          uid: 'system',
+          name: 'Hệ thống',
+          isSystem: true,
+          isMilestone: true,
+          text: `🎉 XUẤT SẮC! Cả lớp đạt mốc chuỗi kỷ lục ${milestoneHit} ngày học tập liên tục! Thưởng +${milestoneHit * 10} XP cho tất cả thành viên!`,
+          createdAt: Date.now() + 50,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error in sendClassMessage:', err);
+    throw err;
+  }
+}
+async function _legacySendClassMessage(classId, me, text) {
   const t = String(text || '').trim().slice(0, MAX_CLASS_TEXT);
   if (!classId || !me?.uid || !t) return;
   await addDoc(collection(db, 'classes', classId, 'chat'), {

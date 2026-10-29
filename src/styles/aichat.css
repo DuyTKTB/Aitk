@@ -5718,3 +5718,967 @@ body.on-ai-page::before {
     transform: none !important;
   }
 }
+
+
+/* ============================================================
+   13. INTERACTIVE QUIZ CANVAS & SPLIT VIEW (CHUẨN GOOGLE GEMINI & CHATGPT)
+   ============================================================ */
+
+/* Khung chia đôi sân khấu (Chat + Canvas) */
+.ds-stage-split {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.ds-stage-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Khi có Canvas mở trên Desktop: chế độ chia đôi 2 cột song song chuẩn Google Gemini Canvas */
+@media (min-width: 900px) {
+  .ds-stage-split.has-canvas {
+    flex-direction: row;
+    background: #131314 !important;
+  }
+
+  [data-theme='light'] .ds-stage-split.has-canvas {
+    background: #f0f4f9 !important;
+  }
+
+  .ds-stage-split.has-canvas .ds-stage-chat {
+    flex: 1;
+    min-width: 360px;
+    max-width: 580px;
+    border-right: none;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* Khối Canvas nổi dạng Floating Island bo tròn 24px cao cấp */
+  .ds-stage-canvas-panel {
+    flex: 1.35;
+    min-width: 480px;
+    max-width: 920px;
+    height: calc(100% - 24px);
+    margin: 12px 16px 12px 8px;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #1e1f20;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    animation: gemini-canvas-enter 0.32s cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  }
+
+  [data-theme='light'] .ds-stage-canvas-panel {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Khi có Canvas trên màn hình nhỏ & Mobile: full screen mượt mà */
+@media (max-width: 899px) {
+  .ds-stage-canvas-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    background: #1e1f20;
+    animation: gemini-canvas-slide-up 0.28s cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  }
+
+  [data-theme='light'] .ds-stage-canvas-panel {
+    background: #ffffff;
+  }
+}
+
+@keyframes gemini-canvas-enter {
+  from {
+    transform: translateX(40px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes gemini-canvas-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes gemini-q-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gemini-toast-pop {
+  from {
+    transform: translate(-50%, 8px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   KHỐI PHÁT ĐỘNG TRONG CHAT (CHUẨN THẺ XANH GOOGLE GEMINI)
+   ============================================================ */
+.ds-gemini-quiz-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.ds-gemini-intro {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* Thẻ hình chữ nhật xanh Gemini sang trọng */
+.ds-gemini-card {
+  background: linear-gradient(135deg, #1b2848 0%, #152038 100%);
+  border: 1px solid rgba(66, 133, 244, 0.32);
+  border-radius: 16px;
+  padding: 18px 22px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 4px 18px rgba(26, 115, 232, 0.15);
+  margin-top: 6px;
+  user-select: none;
+}
+
+[data-theme='light'] .ds-gemini-card {
+  background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
+  border-color: rgba(26, 115, 232, 0.35);
+  box-shadow: 0 4px 18px rgba(26, 115, 232, 0.1);
+}
+
+.ds-gemini-card:hover {
+  border-color: rgba(66, 133, 244, 0.65);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(26, 115, 232, 0.3);
+}
+
+.ds-gemini-card:active {
+  transform: translateY(0);
+}
+
+.ds-gemini-card.is-active {
+  border-color: #1a73e8;
+  background: linear-gradient(135deg, #22345e 0%, #192746 100%);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.25), 0 8px 28px rgba(26, 115, 232, 0.35);
+}
+
+[data-theme='light'] .ds-gemini-card.is-active {
+  background: #d2e3fc;
+  border-color: #1a73e8;
+}
+
+.ds-gemini-card-title {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+[data-theme='light'] .ds-gemini-card-title {
+  color: #1a73e8;
+  font-weight: 700;
+}
+
+.ds-gemini-card-sub {
+  font-size: 13px;
+  color: #8ab4f8;
+  margin: 5px 0 0;
+  font-weight: 400;
+}
+
+[data-theme='light'] .ds-gemini-card-sub {
+  color: #1967d2;
+}
+
+/* Nút chữ phụ: "Thử lại mà không dùng câu đố tương tác" */
+.ds-gemini-plain-toggle {
+  background: transparent;
+  border: none;
+  color: #9aa0a6;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: left;
+  display: inline-block;
+  transition: color 0.18s ease;
+}
+
+.ds-gemini-plain-toggle:hover {
+  color: #e3e3e3;
+  text-decoration: underline;
+}
+
+[data-theme='light'] .ds-gemini-plain-toggle:hover {
+  color: #1f1f1f;
+}
+
+.ds-gemini-plain-box {
+  margin-top: 10px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .ds-gemini-plain-box {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+/* ============================================================
+   INTERACTIVE QUIZ CANVAS (GIAO DIỆN GEMINI CANVAS CHUẨN)
+   ============================================================ */
+.ds-quiz-canvas {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: inherit;
+  color: #e3e3e3;
+  font-family: -apple-system, BlinkMacSystemFont, 'Google Sans', 'Be Vietnam Pro', Roboto, sans-serif;
+}
+
+[data-theme='light'] .ds-quiz-canvas {
+  color: #1f1f1f;
+}
+
+/* 1. Header Canvas */
+.ds-qc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 26px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+[data-theme='light'] .ds-qc-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.ds-qc-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #e3e3e3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 78%;
+  letter-spacing: -0.01em;
+}
+
+[data-theme='light'] .ds-qc-title {
+  color: #1f1f1f;
+  font-weight: 600;
+}
+
+.ds-qc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ds-qc-btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #9aa0a6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ds-qc-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+[data-theme='light'] .ds-qc-btn-icon:hover {
+  background: #f1f3f4;
+  color: #1f1f1f;
+}
+
+/* 2. Subbar: Segmented Progress Bar & Score Pills Gemini */
+.ds-qc-subbar {
+  padding: 12px 26px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+[data-theme='light'] .ds-qc-subbar {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.ds-qc-segments {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  align-items: center;
+  height: 8px;
+}
+
+.ds-qc-seg {
+  height: 4px;
+  border-radius: 9999px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.14);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme='light'] .ds-qc-seg {
+  background: #e2e8f0;
+}
+
+.ds-qc-seg.is-active {
+  background: #ffffff;
+  height: 5px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.65);
+}
+
+[data-theme='light'] .ds-qc-seg.is-active {
+  background: #1a73e8;
+  box-shadow: 0 0 8px rgba(26, 115, 232, 0.4);
+}
+
+.ds-qc-seg.is-correct {
+  background: #22c55e;
+}
+
+.ds-qc-seg.is-wrong {
+  background: #ef4444;
+}
+
+.ds-qc-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ds-qc-counter {
+  color: #9aa0a6;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+
+.ds-qc-pill {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-qc-pill.wrong {
+  background: #4a252a;
+  color: #fca5a5;
+}
+
+[data-theme='light'] .ds-qc-pill.wrong {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.ds-qc-pill.correct {
+  background: #1e4635;
+  color: #86efac;
+}
+
+[data-theme='light'] .ds-qc-pill.correct {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+/* 3. Main Question Content */
+.ds-qc-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px;
+  scrollbar-width: thin;
+}
+
+.ds-qc-q-fade {
+  animation: gemini-q-fade 0.22s cubic-bezier(0.2, 0, 0, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-qc-qnum {
+  font-size: 14px;
+  font-weight: 500;
+  color: #9aa0a6;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.ds-qc-question {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.68;
+  color: #e3e3e3;
+  margin-bottom: 22px;
+}
+
+[data-theme='light'] .ds-qc-question {
+  color: #1f1f1f;
+  font-weight: 500;
+}
+
+/* 4. Options List (Chuẩn nút phẳng thanh lịch Gemini) */
+.ds-qc-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.ds-qc-opt {
+  min-height: 52px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1.5px solid transparent;
+  color: #e3e3e3;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+  font-size: 15px;
+  font-family: inherit;
+  position: relative;
+}
+
+[data-theme='light'] .ds-qc-opt {
+  background: #f1f3f4;
+  color: #1f1f1f;
+}
+
+.ds-qc-opt:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.085);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='light'] .ds-qc-opt:hover:not(:disabled) {
+  background: #e8eaed;
+  border-color: #dadce0;
+}
+
+.ds-qc-opt:active:not(:disabled) {
+  transform: scale(0.994);
+}
+
+.ds-qc-opt.is-correct {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border-color: #22c55e !important;
+  color: #4ade80 !important;
+  font-weight: 600;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.22);
+}
+
+[data-theme='light'] .ds-qc-opt.is-correct {
+  background: #e6f4ea !important;
+  border-color: #1e8e3e !important;
+  color: #137333 !important;
+}
+
+.ds-qc-opt.is-wrong {
+  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: #ef4444 !important;
+  color: #f87171 !important;
+  font-weight: 600;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.22);
+}
+
+[data-theme='light'] .ds-qc-opt.is-wrong {
+  background: #fce8e6 !important;
+  border-color: #d93025 !important;
+  color: #c5221f !important;
+}
+
+.ds-qc-opt.is-muted {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.ds-qc-opt-letter {
+  font-weight: 600;
+  color: #9aa0a6;
+  margin-right: 14px;
+  width: 22px;
+  flex-shrink: 0;
+  font-size: 15px;
+}
+
+.ds-qc-opt-text {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.ds-qc-opt-badge {
+  font-size: 13px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.ds-qc-opt-badge.check {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.ds-qc-opt-badge.cross {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* 5. Gợi ý ∨ (Tối giản thanh lịch) */
+.ds-qc-hint-wrap {
+  margin-top: 6px;
+  margin-bottom: 14px;
+}
+
+.ds-qc-hint-btn {
+  background: transparent;
+  border: none;
+  color: #9aa0a6;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.18s ease;
+}
+
+.ds-qc-hint-btn:hover {
+  color: #e3e3e3;
+}
+
+[data-theme='light'] .ds-qc-hint-btn:hover {
+  color: #1f1f1f;
+}
+
+.ds-qc-hint-box {
+  margin-top: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+[data-theme='light'] .ds-qc-hint-box {
+  background: #fef9c3;
+  border-color: #fde047;
+  color: #854d0e;
+}
+
+/* 6. Lời giải chi tiết & Sổ tay lỗi sai */
+.ds-qc-explain-box {
+  margin-top: 14px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: rgba(26, 115, 232, 0.08);
+  border: 1px solid rgba(26, 115, 232, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: gemini-q-fade 0.25s ease;
+}
+
+[data-theme='light'] .ds-qc-explain-box {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.ds-qc-explain-head {
+  font-size: 14px;
+  font-weight: 600;
+  color: #8ab4f8;
+}
+
+[data-theme='light'] .ds-qc-explain-head {
+  color: #1d4ed8;
+}
+
+.ds-qc-explain-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #e3e3e3;
+}
+
+[data-theme='light'] .ds-qc-explain-body {
+  color: #1e293b;
+}
+
+.ds-qc-wrong-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  font-size: 13px;
+}
+
+[data-theme='light'] .ds-qc-wrong-notice {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* 7. Footer Điều hướng — 2 nút Pill góc phải chuẩn Google Gemini */
+.ds-qc-footer {
+  padding: 18px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+[data-theme='light'] .ds-qc-footer {
+  border-top-color: rgba(0, 0, 0, 0.06);
+  background: #fafafa;
+}
+
+.ds-qc-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ds-qc-btn {
+  padding: 10px 24px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-qc-btn.secondary {
+  background: #282a2d;
+  color: #e3e3e3;
+}
+
+[data-theme='light'] .ds-qc-btn.secondary {
+  background: #e8eaed;
+  color: #3c4043;
+}
+
+.ds-qc-btn.secondary:hover:not(:disabled) {
+  background: #333538;
+}
+
+[data-theme='light'] .ds-qc-btn.secondary:hover:not(:disabled) {
+  background: #dadce0;
+}
+
+.ds-qc-btn.secondary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ds-qc-btn.primary {
+  background: #1a73e8;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.35);
+}
+
+.ds-qc-btn.primary:hover:not(:disabled) {
+  background: #1967d2;
+  box-shadow: 0 4px 14px rgba(26, 115, 232, 0.5);
+  transform: translateY(-1px);
+}
+
+.ds-qc-btn.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* 8. Màn hình Hoàn thành & Tích điểm */
+.ds-qc-completed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.ds-qc-comp-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 32px 26px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme='light'] .ds-qc-comp-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.ds-qc-comp-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(245, 158, 11, 0.1));
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-qc-comp-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e3e3e3;
+}
+
+[data-theme='light'] .ds-qc-comp-title {
+  color: #1f1f1f;
+}
+
+.ds-qc-comp-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #9aa0a6;
+}
+
+.ds-qc-comp-stats {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.ds-qc-comp-stat {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-theme='light'] .ds-qc-comp-stat {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.ds-qc-comp-stat b {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #e3e3e3;
+}
+
+[data-theme='light'] .ds-qc-comp-stat b {
+  color: #1f1f1f;
+}
+
+.ds-qc-comp-stat span {
+  font-size: 0.78rem;
+  color: #9aa0a6;
+}
+
+.ds-qc-comp-stat.xp {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.25);
+}
+
+.ds-qc-comp-stat.xp b {
+  color: #c084fc;
+}
+
+[data-theme='light'] .ds-qc-comp-stat.xp b {
+  color: #7e22ce;
+}
+
+.ds-qc-comp-wrong-box {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-theme='light'] .ds-qc-comp-wrong-box {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.ds-qc-comp-wb-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #fca5a5;
+}
+
+[data-theme='light'] .ds-qc-comp-wb-left {
+  color: #dc2626;
+}
+
+.ds-qc-comp-wb-left b {
+  display: block;
+  font-size: 0.92rem;
+  color: #ef4444;
+  margin-bottom: 2px;
+}
+
+.ds-qc-comp-wb-left p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #9aa0a6;
+}
+
+.ds-qc-btn-link {
+  color: #8ab4f8;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.ds-qc-btn-link:hover {
+  text-decoration: underline;
+}
+
+.ds-qc-comp-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.ds-qc-comp-actions .ds-qc-btn {
+  flex: 1;
+}
+
+/* 9. Floating Toast */
+.ds-qc-toast {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #282a2d;
+  color: #ffffff;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  pointer-events: none;
+  animation: gemini-toast-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}

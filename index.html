@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="vi" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
@@ -10,12 +10,16 @@
       content="ELEC AI (ELECAI) — trợ lý AI Hóa học cho học sinh THPT: giải bài từng bước, bảng tuần hoàn tương tác, tạo đề và chấm bài tự động, quản lý lớp, phân tích kết quả học tập."
     />
     <meta name="author" content="Duy TK" />
-    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <meta name="googlebot" content="index,follow,max-image-preview:large,max-snippet:-1" />
     <link rel="canonical" href="https://aitk-ten.vercel.app/" />
+    <link rel="alternate" hreflang="vi" href="https://aitk-ten.vercel.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://aitk-ten.vercel.app/" />
+    <meta name="language" content="Vietnamese" />
     <meta name="keywords" content="ELEC AI, ELECAI, Elec AI, học Hóa, trợ lý AI Hóa học, giải bài Hóa, bảng tuần hoàn, đề thi Hóa, chấm bài tự động, quản lý lớp học" />
     <meta name="application-name" content="ELEC AI" />
     <meta property="og:site_name" content="ELEC AI" />
-    <!-- ❗ Thay REPLACE-YOUR-DOMAIN bằng tên miền thật (vd: elecai.edu.vn) sau khi deploy -->
+    <!-- Khi mua tên miền riêng: đổi MỌI "aitk-ten.vercel.app" (canonical, og, schema, robots, sitemap) -->
     <meta property="og:url" content="https://aitk-ten.vercel.app/" />
 
     <!-- PWA -->
@@ -23,7 +27,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="ELEC AI K60" />
+    <meta name="apple-mobile-web-app-title" content="ELEC AI" />
     <link rel="apple-touch-icon" href="/img/icon-192.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png" />
     <link rel="apple-touch-icon" sizes="512x512" href="/img/icon-512.png" />
@@ -32,12 +36,12 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="ELEC AI — Học Hóa thông minh" />
     <meta property="og:description" content="Trợ lý AI Hóa học, bảng tuần hoàn tương tác, quiz thông minh, trò chơi giáo dục." />
-    <!-- Ảnh chia sẻ phải là URL tuyệt đối thì Facebook/Zalo mới hiện.
-         /img/og-image.png KHÔNG tồn tại trong repo → dùng logo thật đang có. -->
+    <!-- Ảnh chia sẻ phải là URL tuyệt đối. BẮT BUỘC tạo file public/img/og-image.png (1200x630) -->
     <meta property="og:image" content="https://aitk-ten.vercel.app/img/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:alt" content="ELEC AI — trợ lý AI Hóa học" />
     <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="640" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="vi_VN" />
 
     <!-- Twitter -->
@@ -45,16 +49,17 @@
     <meta name="twitter:title" content="ELEC AI — Học Hóa thông minh" />
     <meta name="twitter:description" content="Trợ lý AI Hóa học miễn phí cho học sinh THPT." />
     <meta name="twitter:image" content="https://aitk-ten.vercel.app/img/og-image.png" />
+    <meta name="twitter:image:alt" content="ELEC AI — trợ lý AI Hóa học" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
 
-    <title>ELEC AI — Học Hóa cùng trợ lý AI | ELECAI</title>
+    <title>ELEC AI (ELECAI) — Trợ lý AI Hóa học cho học sinh THPT</title>
 
     <!-- Dữ liệu có cấu trúc: giúp Google hiểu "ELEC AI" là một sản phẩm/website,
          không phải từ khoá chung. alternateName xử lý các cách gõ: elecai, elec ai, elec-ai. -->
@@ -88,7 +93,39 @@
             "inLanguage": "vi-VN",
             "url": "https://aitk-ten.vercel.app/",
             "description": "Trợ lý AI Hóa học cho học sinh THPT và công cụ quản lý lớp, giao đề, chấm bài tự động cho giáo viên.",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" }
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" },
+            "audience": { "@type": "EducationalAudience", "educationalRole": ["student", "teacher"] },
+            "featureList": [
+              "Giải bài Hóa học từng bước bằng AI",
+              "Bảng tuần hoàn tương tác",
+              "Tạo đề và chấm bài tự động",
+              "Quản lý lớp học và phân tích kết quả"
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "ELEC AI là gì?",
+                "acceptedAnswer": { "@type": "Answer", "text": "ELEC AI (ELECAI) là nền tảng học Hóa với trợ lý AI dành cho học sinh THPT, kèm công cụ giao đề, chấm bài và quản lý lớp cho giáo viên." }
+              },
+              {
+                "@type": "Question",
+                "name": "ELEC AI có miễn phí không?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Có. Học sinh có thể tạo tài khoản và sử dụng ELEC AI miễn phí." }
+              },
+              {
+                "@type": "Question",
+                "name": "ELEC AI giải bài Hóa như thế nào?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Bạn nhập hoặc chụp ảnh đề bài, trợ lý AI sẽ hướng dẫn giải từng bước để hiểu bản chất thay vì chỉ đưa đáp án." }
+              },
+              {
+                "@type": "Question",
+                "name": "Giáo viên dùng ELEC AI để làm gì?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Giáo viên có thể tạo lớp bằng key, giao đề (soạn tay, AI sinh đề, nhập từ ảnh/PDF), chấm bài tự động và xem phân tích kết quả theo từng học sinh." }
+              }
+            ]
           }
         ]
       }
@@ -270,6 +307,15 @@
           <li>Chấm bài tự động, chấm phiếu trắc nghiệm A4, giám sát thi</li>
           <li>Phân tích kết quả theo môn, xếp loại học sinh, cảnh báo sớm</li>
         </ul>
+        <h2>Câu hỏi thường gặp</h2>
+        <h3>ELEC AI là gì?</h3>
+        <p>ELEC AI (ELECAI) là nền tảng học Hóa với trợ lý AI dành cho học sinh THPT, kèm công cụ giao đề, chấm bài và quản lý lớp cho giáo viên.</p>
+        <h3>ELEC AI có miễn phí không?</h3>
+        <p>Có. Học sinh có thể tạo tài khoản và sử dụng miễn phí.</p>
+        <h3>ELEC AI giải bài Hóa như thế nào?</h3>
+        <p>Nhập hoặc chụp ảnh đề bài, trợ lý AI hướng dẫn giải từng bước để hiểu bản chất thay vì chỉ đưa đáp án.</p>
+        <h3>Giáo viên dùng ELEC AI để làm gì?</h3>
+        <p>Tạo lớp bằng key, giao đề, chấm bài tự động và xem phân tích kết quả theo từng học sinh.</p>
         <p><a href="/#/login">Đăng nhập</a> hoặc <a href="/#/login">tạo tài khoản miễn phí</a>.</p>
       </main>
     </div>

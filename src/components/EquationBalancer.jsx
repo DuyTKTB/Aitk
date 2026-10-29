@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 /* Lõi cân bằng dùng chung với lớp công cụ AI (aiTools.js) — một nguồn sự thật duy nhất */
 import { balanceEquation, checkBalance, parseFormula } from '../lib/chemBalance.js';
+import { IconAlert, IconCheck, IconCopy, IconZap } from './Icons.jsx';
 
 const EXAMPLES = [
   'Fe + O2 -> Fe2O3',
@@ -83,7 +84,9 @@ export default function EquationBalancer() {
         <p className="hint">Dùng <b>+</b> giữa các chất, và <b>-&gt;</b> hoặc <b>=</b> giữa 2 vế. Hỗ trợ ngoặc và ngậm nước (CuSO4.5H2O).</p>
 
         {result.err && (
-          <p className="hint" style={{ color: 'var(--acc)' }}>⚠️ {result.err}</p>
+          <p className="hint" style={{ color: 'var(--acc)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <IconAlert size={14} /> {result.err}
+          </p>
         )}
 
         {result.ok && (
@@ -92,18 +95,22 @@ export default function EquationBalancer() {
               <span>PHƯƠNG TRÌNH ĐÃ CÂN BẰNG</span>
               <b>{balancedStr}</b>
               {result.ambiguous && (
-                <small style={{ color: 'var(--acc)' }}>
-                  ⚠️ Phương trình có thể có nhiều cách cân bằng khác nhau — đây là một nghiệm hợp lệ.
+                <small style={{ color: 'var(--acc)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <IconAlert size={13} /> Phương trình có thể có nhiều cách cân bằng khác nhau — đây là một nghiệm hợp lệ.
                 </small>
               )}
               {check.verified && (
-                <small style={{ color: 'var(--ok, #2e9e5b)' }}>
-                  ✓ Đã kiểm tra bảo toàn nguyên tố hai vế
+                <small style={{ color: 'var(--ok, #2e9e5b)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <IconCheck size={13} /> Đã kiểm tra bảo toàn nguyên tố hai vế
                 </small>
               )}
             </div>
-            <button className="btn" onClick={copy} style={{ marginTop: '.8rem' }}>
-              {copied ? '✓ Đã sao chép' : '📋 Sao chép'}
+            <button className="btn" onClick={copy} style={{ marginTop: '.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {copied ? (
+                <><IconCheck size={14} /> Đã sao chép</>
+              ) : (
+                <><IconCopy size={14} /> Sao chép</>
+              )}
             </button>
 
             <h3 style={{ marginTop: '1.4rem' }}>Đối chiếu nguyên tố</h3>
@@ -120,8 +127,8 @@ export default function EquationBalancer() {
       </div>
 
       <details className="card" style={{ marginTop: '1rem' }}>
-        <summary style={{ cursor: 'pointer' }}>
-          <b>⚡ Ví dụ nhanh</b>
+        <summary style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <b><IconZap size={15} style={{ verticalAlign: 'middle', marginRight: 4 }} />Ví dụ nhanh</b>
         </summary>
         <div className="chips" style={{ marginTop: '.6rem' }}>
           {EXAMPLES.map((ex) => (

@@ -515,19 +515,230 @@
 }
 .cw-lightbox button:hover { background: rgba(255,255,255,.25); }
 
-/* ---------- Mobile ---------- */
-@media (max-width: 480px) {
+/* ---------- Mobile (< 768px): Full-screen Chat Drawer & Floating FAB an toàn ---------- */
+@media (max-width: 768px) {
   .cw-pane {
-    right: 8px; bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-    width: calc(100vw - 16px);
-    height: min(640px, calc(100dvh - 104px - env(safe-area-inset-bottom, 0px)));
-    border-radius: 20px;
+    position: fixed;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+    z-index: 100000 !important;
+    animation: cw-mobile-up .26s cubic-bezier(.16, 1, .3, 1) !important;
+  }
+  @keyframes cw-mobile-up {
+    from { opacity: 0; transform: translateY(100%); }
+    to { opacity: 1; transform: translateY(0); }
   }
   .cw-fab {
-    right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    right: 14px;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    width: 48px;
+    height: 48px;
+    z-index: 9998;
   }
   .cw-msg { max-width: 88%; }
+  .cw-input-area {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- Chat Widget 3-Tab Bar ---------- */
+.cw-tab-bar {
+  display: flex;
+  align-items: center;
+  background: rgba(118, 118, 128, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 4px 8px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .cw-tab-bar {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.cw-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  font: 600 0.78rem -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.16s ease;
+}
+[data-theme="dark"] .cw-tab-btn {
+  color: rgba(255, 255, 255, 0.6);
+}
+.cw-tab-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.85);
+}
+[data-theme="dark"] .cw-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.cw-tab-btn.active {
+  background: #fff;
+  color: #007aff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.12);
+}
+[data-theme="dark"] .cw-tab-btn.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #38bdf8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.cw-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.2);
+  flex-shrink: 0;
+}
+
+/* ---------- Streak Badge in Messages ---------- */
+.cw-author-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.cw-author-btn:hover .cw-author {
+  text-decoration: underline;
+  color: #007aff;
+}
+
+.cw-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 0.5px solid rgba(249, 115, 22, 0.35);
+  color: #ea580c;
+  font: 700 0.65rem -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease;
+  vertical-align: middle;
+}
+[data-theme="dark"] .cw-streak-badge {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+  border-color: rgba(249, 115, 22, 0.45);
+}
+.cw-streak-badge:hover {
+  transform: scale(1.05);
+  background: rgba(249, 115, 22, 0.22);
+}
+
+/* ---------- Community Top Classes Streak Card ---------- */
+.cw-top-classes-card {
+  margin: 6px 10px 4px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(234, 88, 12, 0.04));
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .cw-top-classes-card {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(234, 88, 12, 0.06));
+  border-color: rgba(249, 115, 22, 0.28);
+}
+.cw-top-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c2410c;
+}
+[data-theme="dark"] .cw-top-head {
+  color: #fb923c;
+}
+.cw-top-link {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #0284c7;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.cw-top-link:hover {
+  text-decoration: underline;
+}
+.cw-top-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--ink, #1e293b);
+  padding: 2px 0;
+}
+[data-theme="dark"] .cw-top-row {
+  color: #f1f5f9;
+}
+.cw-top-rank {
+  font-weight: 800;
+  color: #ea580c;
+  min-width: 14px;
+}
+.cw-top-name {
+  flex: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cw-top-fire {
+  font-weight: 700;
+  color: #ea580c;
+  font-size: 0.7rem;
+}
+
+/* System Announcement Pill in Chat */
+.cw-sys-broadcast {
+  align-self: center;
+  margin: 6px 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px dashed rgba(249, 115, 22, 0.35);
+  color: #c2410c;
+  font: 600 0.72rem -apple-system, BlinkMacSystemFont, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+[data-theme="dark"] .cw-sys-broadcast {
+  background: rgba(249, 115, 22, 0.18);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #fdba74;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { isAdmin as checkAdmin } from '../lib/isAdmin.js';
 import { buildClassInsights } from '../lib/classInsights.js';
 import { listMyLinkedClasses } from '../lib/classTeachers.js';
+import { addQuestionsBatch } from '../lib/questionBank.js';
 import { notifyClassOwner } from '../lib/notices.js';
 import {
   groupNotices, unreadCount, noticeSummary,
@@ -26,6 +27,8 @@ import {
   getExamsByTeacher,
   getSubmissionsByExam,
   createClass,
+  createExam,
+  updateExam,
   removeClassMember,
   deleteExam as deleteExamFs,
   updateClass,
@@ -80,6 +83,7 @@ const PaperGrading = lazy(() => import('./teacher/PaperGrading.jsx'));
 const TeacherSimulatorHub = lazy(() => import('./teacher/TeacherSimulatorHub.jsx'));
 const ExamPreviewSimulator = lazy(() => import('./teacher/ExamPreviewSimulator.jsx'));
 const InsightPanel = lazy(() => import('./teacher/InsightPanel.jsx'));
+const TeacherProfileSection = lazy(() => import('./teacher/TeacherProfileSection.jsx'));
 
 /* ============ SVG ICONS (NO EMOJI) ============ */
 const Svg = ({ size = 18, sw = 2, children }) => (
@@ -148,6 +152,35 @@ const IcoSubject = (p) => (
   </Svg>
 );
 
+const IcoUser = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </Svg>
+);
+
+const IcoCalendar = (p) => (
+  <Svg {...p} sw={1.8}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </Svg>
+);
+
+const IcoFolder = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </Svg>
+);
+
+const IcoSend = (p) => (
+  <Svg {...p} sw={1.8}>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </Svg>
+);
+
 import {
   DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
   tsMs, fmtMMSS, fmtClock, downloadCsv,
@@ -168,9 +201,10 @@ const avgOf = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length
 
 function examStatus(ex, liveSession, now) {
   if (liveSession) return { key: 'live', label: 'Đang thi' };
+  if (ex.isDraft || ex.status === 'draft' || ex.kind === 'draft') return { key: 'draft', label: 'Nháp' };
   if (ex.opensAt && now < new Date(ex.opensAt).getTime()) return { key: 'soon', label: 'Chưa mở' };
-  if (ex.closesAt && now > new Date(ex.closesAt).getTime()) return { key: 'closed', label: 'Đã đóng' };
-  return { key: 'ready', label: 'Sẵn sàng' };
+  if (ex.closesAt && now > new Date(ex.closesAt).getTime()) return { key: 'closed', label: 'Đã kết thúc' };
+  return { key: 'ready', label: 'Đã giao' };
 }
 
 /**
@@ -301,6 +335,13 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
+  const [newClassSubject, setNewClassSubject] = useState('Hóa học');
+  const [newClassGrade, setNewClassGrade] = useState('12');
+  const [aiPreset, setAiPreset] = useState(null);
+  const [copyExamTarget, setCopyExamTarget] = useState(null);
+  const [copyTargetClassId, setCopyTargetClassId] = useState('');
+  const [copyExamBusy, setCopyExamBusy] = useState(false);
+  const [syncingBank, setSyncingBank] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [shareClass, setShareClass] = useState(null);
   const [renameDraft, setRenameDraft] = useState('');
@@ -327,7 +368,33 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [confirmState, setConfirmState] = useState(null);
   const [toast, setToast] = useState(null);
   const [toastTone, setToastTone] = useState('info');
+  const [toastUndo, setToastUndo] = useState(null);
   const [startingId, setStartingId] = useState(null);
+
+  /* Trạng thái nâng cấp Mục C & D4: Lọc, Sắp xếp, Chế độ Lưới/Danh sách, Đặt lịch, Duyệt hàng loạt */
+  const [classSectionTab, setClassSectionTab] = useState('my'); // 'my' | 'linked'
+  const [classViewMode, setClassViewMode] = useState('grid'); // 'grid' | 'list'
+  const [classSort, setClassSort] = useState('name'); // 'name' | 'members' | 'exams'
+  const [classFilter, setClassFilter] = useState('all'); // 'all' | 'pending' | 'hasExams'
+
+  /* Bảng Tìm Kiếm & Lệnh Nhanh Toàn Cục (Ctrl+K Command Palette) */
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState('');
+  const [cmdIndex, setCmdIndex] = useState(0);
+
+  const [examSort, setExamSort] = useState('newest'); // 'newest' | 'title' | 'subs'
+  const [scheduleExamModal, setScheduleExamModal] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({ opensAt: '', closesAt: '' });
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+
+  const [sessionViewMode, setSessionViewMode] = useState('grid'); // 'grid' | 'list'
+  const [sessionSort, setSessionSort] = useState('newest'); // 'newest' | 'active'
+
+  const [retryStatusFilter, setRetryStatusFilter] = useState('pending'); // 'pending' | 'resolved' | 'all'
+  const [retryClassFilter, setRetryClassFilter] = useState('all');
+  const [selectedRetryIds, setSelectedRetryIds] = useState(() => new Set());
+  const [bulkRetryBusy, setBulkRetryBusy] = useState(false);
+  const [bulkRetryNote, setBulkRetryNote] = useState('');
 
   const [allRetryRequests, setRetryRequests] = useState([]);
   /* Yêu cầu theo NGƯỜI TẠO ĐỀ (bắt cả đề không gắn lớp — trước đây bị mất) */
@@ -348,12 +415,72 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [retryActioning, setRetryActioning] = useState(null);
 
   const toastTimer = useRef(null);
-  const say = useCallback((text, tone = 'info') => {
+  const say = useCallback((text, tone = 'info', opts = {}) => {
     clearTimeout(toastTimer.current);
     setToast(text);
     setToastTone(tone);
-    toastTimer.current = setTimeout(() => setToast(null), 2800);
+    const hasUndo = typeof opts?.onUndo === 'function';
+    setToastUndo(hasUndo ? { label: opts.undoLabel || 'Hoàn tác', onUndo: opts.onUndo } : null);
+    toastTimer.current = setTimeout(() => {
+      setToast(null);
+      setToastUndo(null);
+    }, hasUndo ? 6000 : 3000);
   }, []);
+
+  /* Phím tắt toàn cục Khu vực Giáo viên: Ctrl+K mở Bảng lệnh nhanh, "/" tìm kiếm, "N" tạo mới, "Esc" đóng cửa sổ */
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+        setCmdQuery('');
+        setCmdIndex(0);
+        return;
+      }
+      const tag = (e.target?.tagName || '').toLowerCase();
+      const isInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
+      if (e.key === 'Escape') {
+        if (cmdOpen) { setCmdOpen(false); return; }
+        if (confirmState) { setConfirmState(null); return; }
+        if (copyExamTarget) { setCopyExamTarget(null); return; }
+        if (scheduleExamModal) { setScheduleExamModal(null); return; }
+        if (showCreateClass) { setShowCreateClass(false); return; }
+        if (showClassPicker) { setShowClassPicker(false); return; }
+        if (shareClass) { setShareClass(null); return; }
+        if (noticeClass) { setNoticeClass(null); return; }
+        if (bellOpen) { setBellOpen(false); return; }
+        if (extOpen) { setExtOpen(false); return; }
+        if (selectedExam) { setSelectedExam(null); return; }
+        if (editingExam) { setEditingExam(null); return; }
+        if (previewExam) { setPreviewExam(null); return; }
+        if (selectedClass) { setSelectedClass(null); return; }
+        return;
+      }
+      if (isInput || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === '/') {
+        const searchEl = document.querySelector('.vt-search-input, .vt-search input, .ta-search-input, .qb-search input, .st-search');
+        if (searchEl) {
+          e.preventDefault();
+          searchEl.focus();
+        } else {
+          e.preventDefault();
+          setCmdOpen(true);
+          setCmdQuery('');
+          setCmdIndex(0);
+        }
+      } else if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        if (section === 'classes') setShowCreateClass(true);
+        else goSection('create');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    cmdOpen, confirmState, scheduleExamModal, showCreateClass, showClassPicker,
+    shareClass, noticeClass, bellOpen, extOpen, selectedExam,
+    editingExam, previewExam, selectedClass, section,
+  ]);
 
   const showAdminLink = checkAdmin(user);
 
@@ -570,8 +697,13 @@ export default function TeacherDashboard({ onExit } = {}) {
     })();
   }, [selectedClass?.id]);
 
-  /* FIX #5: Refresh trước khi mở AI Studio */
-  const openNewExam = async () => {
+  /* FIX #5: Refresh trước khi mở AI Studio + hỗ trợ truyền Preset từ InsightPanel */
+  const openNewExam = async (presetOrEvent = null) => {
+    const validPreset = (presetOrEvent && typeof presetOrEvent === 'object' && !presetOrEvent.nativeEvent && !presetOrEvent.target)
+      ? presetOrEvent
+      : null;
+    setAiPreset(validPreset);
+
     if (classes.length === 0) {
       say('Hãy tạo lớp trước khi tạo đề', 'error');
       goSection('classes');
@@ -624,6 +756,8 @@ export default function TeacherDashboard({ onExit } = {}) {
     try {
       await createClass({
         name: newClassName.trim(),
+        subject: newClassSubject,
+        grade: newClassGrade,
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
         requireApproval: true,
@@ -631,11 +765,102 @@ export default function TeacherDashboard({ onExit } = {}) {
       setNewClassName('');
       setShowCreateClass(false);
       await refresh();
-      say('Đã tạo lớp mới', 'success');
+      say(`Đã tạo lớp ${newClassName.trim()} (${newClassSubject} · Khối ${newClassGrade})`, 'success');
     } catch (e) {
       say('Lỗi: ' + e.message, 'error');
     }
   };
+
+  /* Giao / Nhân bản đề có sẵn sang một lớp khác (bao gồm cả lớp liên kết) */
+  const handleCopyExamToClass = async () => {
+    if (!copyExamTarget || !copyTargetClassId) return;
+    const targetCls = [...classes, ...linkedClasses].find((c) => c.id === copyTargetClassId);
+    setCopyExamBusy(true);
+    try {
+      const cloned = await createExam({
+        teacherId: user.uid,
+        teacherName: user.displayName || user.email,
+        classId: copyTargetClassId,
+        title: copyExamTarget.title || 'Đề kiểm tra',
+        description: copyExamTarget.description || '',
+        duration: copyExamTarget.duration || 45,
+        questions: copyExamTarget.questions || [],
+        showAnswerAfter: copyExamTarget.showAnswerAfter ?? true,
+        allowRetry: copyExamTarget.allowRetry ?? false,
+        shuffle: copyExamTarget.shuffle ?? true,
+        proctor: copyExamTarget.proctor,
+        subject: copyExamTarget.subject || targetCls?._mySubject || targetCls?.subject || '',
+        grade: copyExamTarget.grade || targetCls?.grade || '',
+        source: copyExamTarget.source || 'assigned-copy',
+      });
+      setExams((prev) => [cloned, ...prev]);
+      if (targetCls?._linked && targetCls?.teacherId && targetCls.teacherId !== user.uid) {
+        try {
+          await notifyClassOwner({
+            type: 'exam_assigned',
+            toUid: targetCls.teacherId,
+            actorId: user.uid,
+            actorName: user.displayName || user.email || 'Giáo viên',
+            classId: targetCls.id,
+            className: targetCls.name,
+            subject: cloned.subject || '',
+            title: cloned.title,
+            body: `vừa giao đề “${cloned.title}” sang lớp ${targetCls.name || ''}.`,
+            tab: 'exams',
+          });
+        } catch { /* ignore */ }
+      }
+      setCopyExamTarget(null);
+      say(`Đã giao đề “${cloned.title}” sang lớp ${targetCls?.name || copyTargetClassId}`, 'success', {
+        undoLabel: 'Hoàn tác',
+        onUndo: async () => {
+          try {
+            await deleteExamFs(cloned.id);
+            setExams((prev) => prev.filter((e) => e.id !== cloned.id));
+            say('Đã thu hồi đề vừa giao sang lớp khác', 'info');
+          } catch { /* ignore */ }
+        },
+      });
+    } catch (e) {
+      say('Không giao được đề sang lớp khác: ' + (e.message || e), 'error');
+    } finally {
+      setCopyExamBusy(false);
+    }
+  };
+
+  /* Đồng bộ toàn bộ câu hỏi từ Kho đề thi vào Ngân hàng câu hỏi */
+  const handleSyncExamsToBank = useCallback(async () => {
+    if (!exams.length || syncingBank) return;
+    setSyncingBank(true);
+    try {
+      const batch = [];
+      for (const ex of exams) {
+        const qs = Array.isArray(ex.questions) ? ex.questions : [];
+        for (const q of qs) {
+          if (!q?.q) continue;
+          batch.push({
+            ...q,
+            subject: q.subject || ex.subject || 'Hóa học',
+            grade: String(q.grade || ex.grade || '12'),
+            topic: q.topic || ex.title || 'Tổng hợp',
+            difficulty: q.difficulty || 'thông hiểu',
+            source: 'exam-sync',
+          });
+        }
+      }
+      if (!batch.length) {
+        say('Các đề hiện tại chưa có câu hỏi nào để đồng bộ.', 'error');
+        return;
+      }
+      const res = await addQuestionsBatch(batch, user?.uid);
+      const addedCount = Array.isArray(res) ? res.length : (res?.added ?? batch.length);
+      say(`Đã đồng bộ ${addedCount} câu hỏi từ ${exams.length} đề thi vào Ngân hàng câu hỏi!`, 'success');
+    } catch (e) {
+      say('Không đồng bộ được vào Ngân hàng: ' + (e.message || e), 'error');
+    } finally {
+      setSyncingBank(false);
+    }
+  }, [exams, syncingBank, user?.uid, say]);
 
   const handleStartSession = useCallback(async (exam) => {
     setStartingId(exam.id);
@@ -700,20 +925,144 @@ export default function TeacherDashboard({ onExit } = {}) {
   const handleDeleteExam = useCallback((exam) => {
     setConfirmState({
       title: 'Xóa đề thi?',
-      body: `Đề "${exam.title}" và toàn bộ bài nộp sẽ bị xóa. Không thể hoàn tác.`,
-      okLabel: 'Xóa',
+      body: `Đề "${exam.title}" sẽ bị xóa khỏi danh sách. Bạn có thể bấm Hoàn tác trong 6 giây sau khi xóa.`,
+      okLabel: 'Xóa đề',
       danger: true,
       onOk: async () => {
+        const snapshot = { ...exam };
         try {
           await deleteExamFs(exam.id);
           setExams((prev) => prev.filter((e) => e.id !== exam.id));
           delete subsCacheRef.current[exam.id];
-          say('Đã xóa đề', 'success');
+          say(`Đã xóa đề “${exam.title}”`, 'success', {
+            undoLabel: 'Hoàn tác',
+            onUndo: async () => {
+              try {
+                const { id: _id, token: _token, ...rest } = snapshot;
+                const recreated = await createExam({
+                  ...rest,
+                  teacherId: user.uid,
+                  teacherName: user.displayName || user.email,
+                });
+                setExams((prev) => [recreated, ...prev]);
+                say(`Đã khôi phục đề “${snapshot.title}”`, 'success');
+              } catch (err) {
+                say('Không khôi phục được đề: ' + (err.message || err), 'error');
+              }
+            },
+          });
         } catch (e) {
           say('Lỗi: ' + e.message, 'error');
         }
       },
     });
+  }, [say, user]);
+
+  /* Nhân bản đề thi (Mục D4) */
+  const handleDuplicateExam = useCallback(async (exam) => {
+    try {
+      const copyTitle = `${exam.title || 'Đề kiểm tra'} (Bản sao)`;
+      const duplicated = await createExam({
+        teacherId: user.uid,
+        teacherName: user.displayName || user.email,
+        classId: exam.classId,
+        title: copyTitle,
+        description: exam.description || '',
+        duration: exam.duration || 45,
+        questions: exam.questions || [],
+        showAnswerAfter: exam.showAnswerAfter ?? true,
+        allowRetry: exam.allowRetry ?? false,
+        shuffle: exam.shuffle ?? true,
+        proctor: exam.proctor,
+        subject: exam.subject,
+        grade: exam.grade,
+        source: exam.source || 'duplicate',
+      });
+      setExams((prev) => [duplicated, ...prev]);
+      say(`Đã nhân bản đề “${copyTitle}”`, 'success', {
+        undoLabel: 'Hoàn tác',
+        onUndo: async () => {
+          try {
+            await deleteExamFs(duplicated.id);
+            setExams((prev) => prev.filter((e) => e.id !== duplicated.id));
+            say('Đã hủy bản nhân bản', 'info');
+          } catch { /* ignore */ }
+        },
+      });
+    } catch (e) {
+      say('Không nhân bản được đề: ' + (e.message || e), 'error');
+    }
+  }, [user, say]);
+
+  /* Đặt lịch mở / đóng đề thi (Mục D4) */
+  const openScheduleModal = useCallback((exam) => {
+    const toLocalInput = (val) => {
+      if (!val) return '';
+      const ms = tsMs(val);
+      if (!ms) return '';
+      const d = new Date(ms - new Date().getTimezoneOffset() * 60000);
+      return d.toISOString().slice(0, 16);
+    };
+    setScheduleExamModal(exam);
+    setScheduleForm({
+      opensAt: toLocalInput(exam.opensAt),
+      closesAt: toLocalInput(exam.closesAt),
+    });
+  }, []);
+
+  const handleSaveSchedule = async () => {
+    if (!scheduleExamModal) return;
+    const prevOpens = scheduleExamModal.opensAt || null;
+    const prevCloses = scheduleExamModal.closesAt || null;
+    const nextOpens = scheduleForm.opensAt ? new Date(scheduleForm.opensAt).toISOString() : null;
+    const nextCloses = scheduleForm.closesAt ? new Date(scheduleForm.closesAt).toISOString() : null;
+    if (nextOpens && nextCloses && new Date(nextOpens) >= new Date(nextCloses)) {
+      say('Thời gian đóng đề phải sau thời gian mở đề.', 'error');
+      return;
+    }
+    setScheduleSaving(true);
+    try {
+      const targetId = scheduleExamModal.id;
+      await updateExam(targetId, { opensAt: nextOpens, closesAt: nextCloses });
+      setExams((prev) => prev.map((e) => (
+        e.id === targetId ? { ...e, opensAt: nextOpens, closesAt: nextCloses } : e
+      )));
+      setScheduleExamModal(null);
+      say('Đã lưu lịch mở/đóng đề thi', 'success', {
+        undoLabel: 'Hoàn tác',
+        onUndo: async () => {
+          await updateExam(targetId, { opensAt: prevOpens, closesAt: prevCloses });
+          setExams((prev) => prev.map((e) => (
+            e.id === targetId ? { ...e, opensAt: prevOpens, closesAt: prevCloses } : e
+          )));
+          say('Đã khôi phục lịch đề thi cũ', 'info');
+        },
+      });
+    } catch (e) {
+      say('Không lưu được lịch: ' + (e.message || e), 'error');
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  /* Xuất danh sách học sinh của 1 lớp ra CSV (Mục D4) */
+  const exportClassRosterCsv = useCallback((cls) => {
+    const members = cls?.members || [];
+    const pending = cls?.pendingMembers || [];
+    if (!members.length && !pending.length) {
+      say('Lớp chưa có học sinh nào để xuất danh sách', 'error');
+      return;
+    }
+    const rows = [['STT', 'Họ và tên', 'Email', 'Trạng thái', 'Mã lớp']];
+    members.forEach((m, idx) => {
+      rows.push([idx + 1, m.name || 'Học sinh', m.email || '', 'Chính thức', cls.key || '']);
+    });
+    pending.forEach((m, idx) => {
+      rows.push([members.length + idx + 1, m.name || 'Học sinh', m.email || '', 'Chờ duyệt', cls.key || '']);
+    });
+    const safe = (cls.name || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
+    downloadCsv(`danh-sach-hoc-sinh-${safe}.csv`, rows);
+    say(`Đã xuất danh sách ${members.length} học sinh lớp ${cls.name}`, 'success');
   }, [say]);
 
   const reloadClass = async (id) => {
@@ -828,7 +1177,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     });
   };
 
-  /* ============ DUYỆT THI LẠI ============ */
+  /* ============ DUYỆT THI LẠI (ĐƠN LẺ & HÀNG LOẠT — MỤC D4) ============ */
   const handleApproveRetry = async (req) => {
     const note = (retryNotes[req.id] || '').trim();
     setRetryActioning(req.id);
@@ -837,7 +1186,13 @@ export default function TeacherDashboard({ onExit } = {}) {
       teacherId: user.uid,
       note,
     });
-    say(r.ok ? `Đã duyệt cho ${req.studentName} thi lại` : r.error, r.ok ? 'success' : 'error');
+    say(r.ok ? `Đã duyệt cho ${req.studentName} thi lại` : r.error, r.ok ? 'success' : 'error', r.ok ? {
+      undoLabel: 'Hoàn tác (Từ chối lại)',
+      onUndo: async () => {
+        await denyRetry({ permitId: req.id, teacherId: user.uid, note: 'Hoàn tác duyệt' });
+        say(`Đã hoàn tác duyệt của ${req.studentName}`, 'info');
+      },
+    } : {});
     if (r.ok) {
       setRetryNotes((prev) => {
         const next = { ...prev };
@@ -856,7 +1211,13 @@ export default function TeacherDashboard({ onExit } = {}) {
       teacherId: user.uid,
       note,
     });
-    say(r.ok ? `Đã từ chối ${req.studentName}` : r.error, r.ok ? 'success' : 'error');
+    say(r.ok ? `Đã từ chối ${req.studentName}` : r.error, r.ok ? 'success' : 'error', r.ok ? {
+      undoLabel: 'Hoàn tác (Duyệt lại)',
+      onUndo: async () => {
+        await approveRetry({ permitId: req.id, teacherId: user.uid, note: 'Hoàn tác từ chối' });
+        say(`Đã duyệt lại cho ${req.studentName}`, 'success');
+      },
+    } : {});
     if (r.ok) {
       setRetryNotes((prev) => {
         const next = { ...prev };
@@ -865,6 +1226,36 @@ export default function TeacherDashboard({ onExit } = {}) {
       });
     }
     setRetryActioning(null);
+  };
+
+  const handleBulkRetryAction = async (mode = 'approve') => {
+    const ids = [...selectedRetryIds];
+    if (!ids.length) return;
+    const targets = retryRequests.filter((r) => ids.includes(r.id) && r.status === 'pending');
+    if (!targets.length) {
+      say('Các yêu cầu đã chọn đều đã được xử lý.', 'error');
+      return;
+    }
+    setBulkRetryBusy(true);
+    const note = bulkRetryNote.trim();
+    let okCount = 0;
+    for (const req of targets) {
+      try {
+        const res = mode === 'approve'
+          ? await approveRetry({ permitId: req.id, teacherId: user.uid, note: note || retryNotes[req.id] || '' })
+          : await denyRetry({ permitId: req.id, teacherId: user.uid, note: note || retryNotes[req.id] || 'Không đủ điều kiện thi lại' });
+        if (res?.ok) okCount += 1;
+      } catch { /* ignore individual failure */ }
+    }
+    setBulkRetryBusy(false);
+    setSelectedRetryIds(new Set());
+    setBulkRetryNote('');
+    say(
+      mode === 'approve'
+        ? `Đã duyệt hàng loạt ${okCount}/${targets.length} yêu cầu thi lại`
+        : `Đã từ chối hàng loạt ${okCount}/${targets.length} yêu cầu`,
+      'success',
+    );
   };
 
   const handleToggleAllowance = async (cls, m, allowed) => {
@@ -897,8 +1288,12 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const cutoff = range === 'all' ? 0 : now - Number(range) * 86400000;
   const subsInRange = useMemo(
-    () => subsAll.filter((s) => (tsMs(s.submittedAt) || now) >= cutoff),
-    [subsAll, cutoff, now]
+    () => subsAll.filter((s) => {
+      if (range === 'all') return true;
+      const t = tsMs(s.submittedAt);
+      return t > 0 && t >= cutoff;
+    }),
+    [subsAll, cutoff, range]
   );
 
   const avgPct = Math.round(avgOf(subsInRange.map(pctOf)));
@@ -907,7 +1302,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     : 0;
 
   const classHealthGrade = useMemo(() => {
-    if (!subsInRange.length) return { grade: 'A', label: 'Chưa có bài nộp' };
+    if (!subsInRange.length) return { grade: '—', label: 'Chưa có bài nộp' };
     if (avgPct >= 85 && passRate >= 90) return { grade: 'A+', label: 'Xuất sắc' };
     if (avgPct >= 75 && passRate >= 80) return { grade: 'A', label: 'Tốt' };
     if (avgPct >= 65 && passRate >= 70) return { grade: 'B+', label: 'Khá' };
@@ -1067,68 +1462,72 @@ export default function TeacherDashboard({ onExit } = {}) {
   }
 
   /* ============================================================
-     NAV ITEMS
+     NAV ITEMS — PHÂN NHÓM 4 NGHIỆP VỤ RÕ RÀNG
      ============================================================ */
   const navItems = [
-    { key: 'overview', label: 'Tổng quan', Icon: IcoGrid },
-    { key: 'analytics', label: 'Số liệu lớp', Icon: IcoChart },
-    { key: 'link', label: 'Liên kết lớp', Icon: IcoKey },
+    /* Nhóm 1: Quản lý lớp */
+    { key: 'overview', shortLabel: 'Tổng quan', label: 'Tổng quan', Icon: IcoGrid, group: 'Quản lý lớp' },
     {
       key: 'classes',
-      label: 'Lớp học',
+      shortLabel: 'Lớp học',
+      label: 'Lớp học & Liên kết',
       Icon: IcoUsers,
       badge: totalPendingMembers > 0 ? totalPendingMembers : null,
       live: totalPendingMembers > 0,
+      group: 'Quản lý lớp',
     },
-    { key: 'exams', label: 'Đề thi', Icon: IcoBook },
+    { key: 'analytics', shortLabel: 'Số liệu', label: 'Số liệu lớp', Icon: IcoChart, group: 'Quản lý lớp' },
+
+    /* Nhóm 2: Biên soạn & Kho đề */
+    { key: 'create', shortLabel: 'AI Tạo đề', label: 'AI Tạo đề', Icon: IcoSparkles, group: 'Biên soạn & Kho đề' },
+    { key: 'bank', shortLabel: 'Ngân hàng', label: 'Ngân hàng câu hỏi', Icon: IcoLibrary, group: 'Biên soạn & Kho đề' },
+    { key: 'exams', shortLabel: 'Đề thi', label: 'Kho đề thi', Icon: IcoBook, group: 'Biên soạn & Kho đề' },
+    { key: 'simulator', shortLabel: 'Đảo đề', label: 'Mô phỏng & Đảo đề', Icon: IcoShuffle, group: 'Biên soạn & Kho đề' },
+
+    /* Nhóm 3: Tổ chức thi & Chấm */
     {
       key: 'sessions',
-      label: 'Phòng thi',
+      shortLabel: 'Phòng thi',
+      label: 'Phòng thi LIVE',
       Icon: IcoVideo,
       badge: liveSessions.length || null,
       live: true,
+      group: 'Tổ chức thi & Chấm',
     },
-    { key: 'create', label: 'AI Tạo đề', Icon: IcoSparkles },
+    { key: 'paper', shortLabel: 'Chấm A4', label: 'Chấm phiếu A4', Icon: IcoScan, group: 'Tổ chức thi & Chấm' },
+    {
+      key: 'retry',
+      shortLabel: 'Thi lại',
+      label: 'Xin thi lại',
+      Icon: IcoBell,
+      badge: totalPendingRetry > 0 ? totalPendingRetry : null,
+      group: 'Tổ chức thi & Chấm',
+    },
+
+    /* Nhóm 4: Tài khoản & Hệ thống */
+    { key: 'profile', shortLabel: 'Hồ sơ', label: 'Hồ sơ giáo viên', Icon: IcoUser, group: 'Tài khoản & Hệ thống' },
+    { key: 'link', shortLabel: 'Giao chéo', label: 'Giao đề lớp khác', Icon: IcoKey, group: 'Tài khoản & Hệ thống' },
+    ...(showAdminLink ? [{
+      key: 'admin',
+      shortLabel: 'Quản trị',
+      label: 'Quản trị hệ thống',
+      Icon: IcoMonitor,
+      group: 'Tài khoản & Hệ thống',
+      onClick: () => { window.location.hash = 'admin'; },
+    }] : []),
   ];
 
-  /* ❗ FIX: các nút extraNav trước đây KHÔNG có class active → bấm vào không bao giờ
-     sáng như 5 nút đầu (DashFrame chỉ tự gắn active cho `items`). Nay gắn theo `section`. */
-  const extraNav = (
-    <>
-      <button type="button" className={`t-rail-btn ${section === 'simulator' ? 'active' : ''}`} onClick={() => goSection('simulator')} title="Mô phỏng & Đảo đề">
-        <span className="t-rail-btn-icon"><IcoShuffle size={20} /></span>
-        <span className="t-rail-btn-label">Mô phỏng & Đảo đề</span>
-      </button>
-      <button type="button" className={`t-rail-btn ${section === 'bank' ? 'active' : ''}`} onClick={() => goSection('bank')} title="Ngân hàng câu hỏi">
-        <span className="t-rail-btn-icon"><IcoLibrary size={20} /></span>
-        <span className="t-rail-btn-label">Ngân hàng</span>
-      </button>
-      <button type="button" className={`t-rail-btn ${section === 'paper' ? 'active' : ''}`} onClick={() => goSection('paper')} title="Chấm phiếu A4">
-        <span className="t-rail-btn-icon"><IcoScan size={20} /></span>
-        <span className="t-rail-btn-label">Chấm phiếu A4</span>
-      </button>
-      <button type="button" className={`t-rail-btn ${section === 'retry' ? 'active' : ''}`} onClick={() => goSection('retry')} title="Xin thi lại">
-        <span className="t-rail-btn-icon"><IcoBell size={20} /></span>
-        <span className="t-rail-btn-label">Xin thi lại</span>
-        {totalPendingRetry > 0 && <span className="t-rail-btn-badge">{totalPendingRetry}</span>}
-      </button>
-      <button
-        type="button"
-        className={`t-rail-btn ${extClass ? 'active' : ''}`}
-        onClick={() => setExtOpen(true)}
-        title="Giao đề vào lớp của giáo viên khác bằng mã lớp"
-      >
-        <span className="t-rail-btn-icon"><IcoBook size={20} /></span>
-        <span className="t-rail-btn-label">Giao đề lớp khác</span>
-      </button>
-      {showAdminLink && (
-        <button type="button" className="t-rail-btn" onClick={() => { window.location.hash = 'admin'; }} title="Sang trang quản trị hệ thống">
-          <span className="t-rail-btn-icon"><IcoMonitor size={20} /></span>
-          <span className="t-rail-btn-label">Quản trị</span>
-        </button>
-      )}
-    </>
-  );
+  /* Môn dạy chính tự động lấy từ Hồ sơ giáo viên hoặc lớp/đề hiện có */
+  const primarySubject = (() => {
+    try {
+      const raw = localStorage.getItem(`cs-teacher-profile-v1:${user?.uid || 'guest'}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.mainSubject) return parsed.mainSubject;
+      }
+    } catch { /* ignore */ }
+    return classes[0]?.subject || availableSubjects[0] || 'Hóa học';
+  })();
 
   const examsWithStatus = exams.map((ex) => {
     const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live');
@@ -1138,14 +1537,15 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const examTabs = [
     { key: 'all', label: 'Tất cả', count: exams.length },
+    { key: 'draft', label: 'Nháp', count: countBy('draft') },
+    { key: 'ready', label: 'Đã giao', count: countBy('ready') },
     { key: 'live', label: 'Đang thi', count: countBy('live') },
-    { key: 'ready', label: 'Sẵn sàng', count: countBy('ready') },
     { key: 'soon', label: 'Chưa mở', count: countBy('soon') },
-    { key: 'closed', label: 'Đã đóng', count: countBy('closed') },
+    { key: 'closed', label: 'Đã kết thúc', count: countBy('closed') },
   ];
   const sessionTabs = [
     { key: 'all', label: 'Tất cả', count: sessions.length },
-    { key: 'live', label: 'LIVE', count: sessions.filter((s) => s.status === 'live').length },
+    { key: 'live', label: 'Đang thi (LIVE)', count: sessions.filter((s) => s.status === 'live').length },
     { key: 'ended', label: 'Đã kết thúc', count: sessions.filter((s) => s.status === 'ended').length },
   ];
 
@@ -1154,19 +1554,27 @@ export default function TeacherDashboard({ onExit } = {}) {
       title: `Chào ${user?.displayName || user?.email || 'thầy cô'}`,
       subtitle: 'Tổng quan lớp học và phòng thi của bạn',
     },
+    analytics: {
+      title: 'Số liệu & Phân tích lớp học',
+      subtitle: 'Biểu đồ xu hướng, so sánh hai lớp, lọc theo ngày và theo dõi học sinh cần kèm',
+    },
+    link: {
+      title: 'Trung tâm Liên kết lớp & Giao đề chéo',
+      subtitle: 'Nhập key liên kết từ giáo viên chủ nhiệm hoặc giao đề nhanh vào lớp khác',
+    },
     classes: {
-      title: 'Lớp học của tôi',
-      subtitle: `${classes.length} lớp · ${classes.reduce((a, c) => a + (c.members?.length || 0), 0)} học sinh`,
+      title: 'Lớp học & Lớp liên kết',
+      subtitle: `${classes.length} lớp chủ nhiệm · ${linkedClasses.length} lớp liên kết · ${classes.reduce((a, c) => a + (c.members?.length || 0), 0)} học sinh`,
       onSearch: setSearch,
-      placeholder: 'Tìm lớp hoặc key...',
+      placeholder: 'Tìm lớp hoặc mã lớp (phím /)...',
     },
     exams: {
       tabs: examTabs, active: subTab, onTab: setSubTab,
-      onSearch: setSearch, placeholder: 'Tìm đề thi...',
+      onSearch: setSearch, placeholder: 'Tìm đề thi (phím /)...',
     },
     sessions: {
       tabs: sessionTabs, active: subTab, onTab: setSubTab,
-      onSearch: setSearch, placeholder: 'Tìm phiên thi...',
+      onSearch: setSearch, placeholder: 'Tìm phiên thi (phím /)...',
     },
     create: {
       title: 'AutoExam AI Studio',
@@ -1174,36 +1582,47 @@ export default function TeacherDashboard({ onExit } = {}) {
     },
     simulator: {
       title: 'Bộ Xem Trước, Mô Phỏng & Đảo Đề',
-      subtitle: 'Trải nghiệm thi như học sinh, xuất bản in A4 và tự động hoán vị 4 mã đề',
+      subtitle: 'Quy trình 4 bước: Chọn đề gốc → Cấu hình đảo → Xem trước & Thi thử → Xuất & Giao đề',
     },
     bank: {
       title: 'Ngân hàng câu hỏi',
-      subtitle: 'Lưu trữ và tái sử dụng câu hỏi',
+      subtitle: 'Cây thư mục chuyên đề, tìm kiếm toàn văn tiếng Việt, phát hiện trùng & AI hỗ trợ',
     },
     paper: {
       title: 'Chấm phiếu trắc nghiệm A4',
-      subtitle: 'Nhận dạng phiếu tự động bằng Camera hoặc ảnh chụp',
+      subtitle: 'Nhận dạng phiếu tự động bằng Camera hoặc ảnh chụp, cảnh báo ô nghi ngờ',
     },
     retry: {
-      title: 'Yêu cầu thi lại',
+      title: 'Yêu cầu xin thi lại',
       subtitle: `${totalPendingRetry} yêu cầu đang chờ duyệt`,
+      onSearch: setSearch,
+      placeholder: 'Tìm học sinh hoặc lý do...',
+    },
+    profile: {
+      title: 'Hồ sơ giáo viên bộ môn',
+      subtitle: 'Thông tin giảng dạy, bảng điều khiển theo môn, thành tựu & cài đặt cá nhân',
     },
   }[section] || {};
 
-  /* Công khai ⇄ riêng tư. Công khai phải xác nhận vì nội dung đề lộ ra ngoài lớp.
-     Lưu ý: phải là hàm thường, KHÔNG dùng hook ở đây — vị trí này nằm sau
-     các lệnh return sớm (viewingSessionId), thêm hook sẽ làm lệch số hook. */
-  const toggleVisibility = async (exam) => {
-    const next = exam.visibility === 'public' ? 'private' : 'public';
-    if (next === 'public'
-      && !window.confirm('Công khai đề này?\nAi có link cũng mở và làm được, kể cả người ngoài lớp. Bài nộp của họ vẫn được ghi nhận.')) {
-      return;
-    }
+  /* Công khai ⇄ riêng tư. Công khai phải xác nhận qua hộp thoại nội bộ + có Hoàn tác */
+  const applyVisibilityChange = async (exam, next) => {
+    const prev = exam.visibility || 'private';
     setSavingVis(exam.id);
     try {
       await setExamVisibility(exam.id, next);
       setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, visibility: next } : e)));
-      say(next === 'public' ? 'Đề đã chuyển sang công khai' : 'Đề đã chuyển sang riêng tư', 'success');
+      say(
+        next === 'public' ? 'Đề đã chuyển sang Công khai' : 'Đề đã chuyển sang Riêng tư',
+        'success',
+        {
+          undoLabel: 'Hoàn tác',
+          onUndo: async () => {
+            await setExamVisibility(exam.id, prev);
+            setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, visibility: prev } : e)));
+            say('Đã hoàn tác chế độ hiển thị đề', 'info');
+          },
+        },
+      );
     } catch (e) {
       say(e?.message || 'Không đổi được chế độ công khai', 'error');
     } finally {
@@ -1211,19 +1630,40 @@ export default function TeacherDashboard({ onExit } = {}) {
     }
   };
 
-  /* Bật/tắt khoá bài: chỉ khi giáo viên bấm "Bắt đầu thi" học sinh mới vào thi thật,
-     chưa mở phòng thì học sinh vào chế độ luyện tập (không lưu điểm). */
-  const toggleLock = async (exam) => {
-    const next = !exam.lockUntilStart;
-    if (next
-      && !window.confirm('Bật khoá bài?\nHọc sinh mở link sẽ thấy bảng “Chưa đến giờ thi — đang chờ giáo viên”, chỉ vào thi thật khi bạn bấm “Bắt đầu thi”. Các em có thể chọn luyện tập trước (không lưu điểm).')) {
+  const toggleVisibility = (exam) => {
+    const next = exam.visibility === 'public' ? 'private' : 'public';
+    if (next === 'public') {
+      setConfirmState({
+        title: 'Công khai đề thi này?',
+        body: 'Ai có liên kết cũng mở và làm bài được, kể cả học sinh ngoài lớp. Bài nộp của các em vẫn được ghi nhận.',
+        okLabel: 'Công khai đề',
+        danger: false,
+        onOk: () => applyVisibilityChange(exam, next),
+      });
       return;
     }
+    applyVisibilityChange(exam, next);
+  };
+
+  /* Bật/tắt khoá bài qua hộp thoại nội bộ + Hoàn tác */
+  const applyLockChange = async (exam, next) => {
+    const prev = !!exam.lockUntilStart;
     setSavingLock(exam.id);
     try {
       await setExamLock(exam.id, next);
       setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, lockUntilStart: next } : e)));
-      say(next ? 'Đã khoá: học sinh chỉ luyện tập cho tới khi bạn bắt đầu' : 'Đã mở: học sinh vào thi được ngay', 'success');
+      say(
+        next ? 'Đã khoá bài: học sinh chỉ luyện tập cho tới khi bạn bắt đầu' : 'Đã mở: học sinh vào thi được ngay',
+        'success',
+        {
+          undoLabel: 'Hoàn tác',
+          onUndo: async () => {
+            await setExamLock(exam.id, prev);
+            setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, lockUntilStart: prev } : e)));
+            say('Đã hoàn tác chế độ khoá bài', 'info');
+          },
+        },
+      );
     } catch (e) {
       say(e?.message || 'Không đổi được chế độ khoá bài', 'error');
     } finally {
@@ -1231,7 +1671,119 @@ export default function TeacherDashboard({ onExit } = {}) {
     }
   };
 
+  const toggleLock = (exam) => {
+    const next = !exam.lockUntilStart;
+    if (next) {
+      setConfirmState({
+        title: 'Bật khoá bài cho đến khi bắt đầu?',
+        body: 'Học sinh mở liên kết sẽ thấy bảng “Chưa đến giờ thi — đang chờ giáo viên”, chỉ vào thi thật khi bạn bấm “Bắt đầu thi”.',
+        okLabel: 'Bật khoá bài',
+        danger: false,
+        onOk: () => applyLockChange(exam, next),
+      });
+      return;
+    }
+    applyLockChange(exam, next);
+  };
+
   const goBell = () => setBellOpen(true);
+
+  /* Khối Giao diện Hợp nhất: Liên kết lớp & Giao đề lớp khác (dùng chung cho tab trong Lớp học và mục Giao đề lớp khác) */
+  const renderUnifiedLinkedClassesHub = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+        <div className="vt-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Danh sách lớp đã liên kết ({linkedClasses.length})</h3>
+              <p className="vt-muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
+                Bấm “Giao đề” để mở trình tạo đề AI/thủ công gắn thẳng vào lớp đó, hoặc “Giám sát” khi lớp đang thi.
+              </p>
+            </div>
+          </div>
+
+          <LinkedClassesPanel
+            user={user}
+            onSay={say}
+            onAssign={(classInfo) => {
+              setExtOpen(false);
+              setExtClass(classInfo);
+              setExtCreate(true);
+              goSection('create');
+            }}
+            onMonitor={(session) => {
+              setSessions((prev) => (
+                prev.some((s) => s.id === session.id) ? prev : [session, ...prev]
+              ));
+              setExtOpen(false);
+              setViewingSessionId(session.id);
+            }}
+          />
+        </div>
+
+        <div className="vt-card">
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Giao đề nhanh bằng Mã lớp (Không cần Key)</h3>
+          <p className="vt-muted" style={{ margin: '0.3rem 0 0.75rem', fontSize: '0.82rem' }}>
+            Nếu bạn chỉ cần giao 1 đề kiểm tra đột xuất vào lớp của đồng nghiệp, hãy nhập trực tiếp mã lớp của học sinh tại đây:
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <input
+              value={extKey}
+              onChange={(e) => { setExtKey(e.target.value.toUpperCase()); setExtErr(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') findExternalClass(); }}
+              placeholder="VD: 11A7-8KQ3ZM"
+              style={{
+                flex: '1 1 200px',
+                padding: '0.6rem 0.85rem',
+                fontSize: '0.92rem',
+                letterSpacing: '0.06em',
+                borderRadius: 12,
+                border: '1.5px solid var(--soft)',
+                background: 'var(--vt-tint)',
+                color: 'var(--ink)',
+                textTransform: 'uppercase',
+              }}
+            />
+            <button
+              type="button"
+              className="vt-btn sm primary"
+              onClick={async () => {
+                await findExternalClass();
+                if (extKey.trim()) {
+                  setExtCreate(true);
+                }
+              }}
+              disabled={extBusy}
+            >
+              {extBusy ? 'Đang tìm…' : 'Tìm lớp & Giao đề'}
+            </button>
+          </div>
+          {extErr && <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--vt-red)', fontWeight: 600 }}>{extErr}</p>}
+          {extClass && (
+            <div style={{ marginTop: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: 12, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.84rem', fontWeight: 700 }}>
+                Đã tìm thấy lớp <b>{extClass.name}</b> {extClass.teacherName ? `(GVCN: ${extClass.teacherName})` : ''}
+              </span>
+              <button
+                type="button"
+                className="vt-btn sm primary"
+                onClick={() => {
+                  setExtCreate(true);
+                  goSection('create');
+                }}
+              >
+                Soạn đề cho lớp {extClass.name} →
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <LinkClassPanel />
+      </div>
+    </div>
+  );
 
   /* ============================================================
      RENDER
@@ -1242,17 +1794,21 @@ export default function TeacherDashboard({ onExit } = {}) {
       active={section}
       onChange={goSection}
       fullscreen
-      autoHideNav={true}
+      autoHideNav={false}
+      onOpenCommandPalette={() => {
+        setCmdOpen(true);
+        setCmdQuery('');
+        setCmdIndex(0);
+      }}
       exitLabel="Về ELEC AI"
       onExit={() => {
         if (onExit) onExit();
         else window.location.hash = 'home';
       }}
-      extraNav={extraNav}
     >
       <Topbar
         {...topProps}
-        search={section !== 'create' && section !== 'simulator' && section !== 'retry' && section !== 'bank' ? search : undefined}
+        search={section !== 'create' && section !== 'simulator' && section !== 'bank' && section !== 'profile' && section !== 'analytics' && section !== 'link' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
           on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0 || unreadNotices > 0,
           onClick: () => {
@@ -1268,6 +1824,57 @@ export default function TeacherDashboard({ onExit } = {}) {
         } : undefined}
       />
 
+      {/* Thanh Liên Kết Luồng Biên Soạn & Tổ Chức Thi 1 Chạm */}
+      {['create', 'bank', 'exams', 'simulator', 'sessions'].includes(section) && (
+        <div className="t-workflow-bar" role="navigation" aria-label="Chuỗi quy trình khảo thí">
+          <div className="t-workflow-steps">
+            {[
+              { key: 'create', num: 1, label: 'AI Tạo đề' },
+              { key: 'bank', num: 2, label: 'Ngân hàng câu hỏi' },
+              { key: 'exams', num: 3, label: `Kho Đề thi (${exams.length})` },
+              { key: 'simulator', num: 4, label: 'Mô phỏng & Đảo đề' },
+              { key: 'sessions', num: 5, label: `Phòng thi LIVE (${liveSessions.length})` },
+            ].map((step, idx, arr) => (
+              <div key={step.key} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <button
+                  type="button"
+                  className={`t-workflow-step ${section === step.key ? 'active' : ''}`}
+                  onClick={() => goSection(step.key)}
+                >
+                  <span className="t-workflow-step-num">{step.num}</span>
+                  <span>{step.label}</span>
+                </button>
+                {idx < arr.length - 1 && <span className="t-workflow-arrow" aria-hidden="true">→</span>}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+            {exams.length > 0 && (section === 'exams' || section === 'bank') && (
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={handleSyncExamsToBank}
+                disabled={syncingBank}
+                title="Đẩy toàn bộ câu hỏi từ các đề thi hiện có vào Ngân hàng câu hỏi để tái sử dụng"
+              >
+                <IcoFolder size={13} /> {syncingBank ? 'Đang đồng bộ...' : 'Đồng bộ đề → Ngân hàng'}
+              </button>
+            )}
+            {section !== 'create' && (
+              <button type="button" className="vt-btn sm primary" onClick={() => openNewExam()}>
+                <IcoSparkles size={13} /> + Soạn đề mới (Phím N)
+              </button>
+            )}
+            {section === 'exams' && exams.length > 0 && (
+              <button type="button" className="vt-btn sm" onClick={() => goSection('simulator')}>
+                <IcoShuffle size={13} /> Đảo mã đề & In A4
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ============================================================
           TỔNG QUAN — 12-COL DARK BENTO
          ============================================================ */}
@@ -1282,7 +1889,33 @@ export default function TeacherDashboard({ onExit } = {}) {
               onClick={() => goSection('sessions')}
             />
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'inline-flex', background: 'var(--t-surface-2)', border: '1px solid var(--t-border)', borderRadius: 999, padding: '0.2rem', gap: '0.2rem' }} role="group" aria-label="Khoảng thời gian thống kê">
+                {[
+                  { k: '7', label: '7 ngày' },
+                  { k: '30', label: '30 ngày' },
+                  { k: '90', label: '90 ngày' },
+                  { k: 'all', label: 'Tất cả' },
+                ].map((opt) => (
+                  <button
+                    key={opt.k}
+                    type="button"
+                    onClick={() => setRange(opt.k)}
+                    style={{
+                      padding: '0.32rem 0.72rem',
+                      borderRadius: 999,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      background: range === opt.k ? 'var(--t-accent)' : 'transparent',
+                      color: range === opt.k ? 'var(--t-accent-ink)' : 'var(--t-ink-muted)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={openNewExam}
@@ -1314,7 +1947,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 label="Đề thi đã biên soạn"
                 suffix=" đề"
                 delta={countBy('ready')}
-                deltaLabel="sẵn sàng mở"
+                deltaLabel="đã giao sẵn sàng"
               />
             </MemoBentoCard>
           </div>
@@ -1335,7 +1968,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             <MemoBentoCard
               interactive
               tone={atRiskStudents.length > 0 ? 'dark' : 'default'}
-              onClick={() => goSection('classes')}
+              onClick={() => goSection('analytics')}
             >
               <MemoStatBig
                 value={atRiskStudents.length}
@@ -1404,7 +2037,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                               {c.name}
                             </h4>
                             <span style={{ fontSize: '0.75rem', color: 'var(--t-ink-muted)' }}>
-                              Key: <code style={{ color: 'var(--t-accent)', fontWeight: 700 }}>{c.key}</code>
+                              Mã lớp: <code style={{ color: 'var(--t-accent)', fontWeight: 700 }}>{c.key}</code>
                             </span>
                           </div>
                         </div>
@@ -1509,7 +2142,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   </div>
                   <button
                     type="button"
-                    onClick={goBell}
+                    onClick={() => setViewingSessionId(liveSessions[0].id)}
                     style={{
                       marginTop: '0.5rem',
                       padding: '0.55rem 1rem',
@@ -1592,8 +2225,8 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <InsightPanel
                   insightsData={classInsights}
                   className={classes[0]?.name || 'Toàn bộ lớp học'}
-                  subject="Hóa học"
-                  onOpenAiStudio={() => openNewExam()}
+                  subject={primarySubject}
+                  onOpenAiStudio={(preset) => openNewExam(preset)}
                 />
               </Suspense>
             </ErrorBoundary>
@@ -1602,9 +2235,9 @@ export default function TeacherDashboard({ onExit } = {}) {
       )}
 
       {/* ============================================================
-          LỚP HỌC
+          TRUNG TÂM LIÊN KẾT LỚP & GIAO ĐỀ LỚP KHÁC (HỢP NHẤT)
          ============================================================ */}
-      {section === 'link' && <LinkClassPanel />}
+      {section === 'link' && renderUnifiedLinkedClassesHub()}
 
       {section === 'analytics' && (
         <ClassAnalytics
@@ -1612,336 +2245,609 @@ export default function TeacherDashboard({ onExit } = {}) {
           exams={exams}
           submissionsMap={submissionsMap}
           loading={loading}
+          onRetry={refresh}
         />
       )}
 
-      {section === 'classes' && (
-        <div className="vt-grid">
-          <button type="button" className="vt-card vt-add-card" onClick={() => setShowCreateClass(true)}>
-            <span className="vt-fab static">+</span>
-            <b>Tạo lớp mới</b>
-            <small>Học sinh vào lớp bằng key</small>
-          </button>
+      {section === 'classes' && (() => {
+        const filteredClasses = classes
+          .filter((c) => {
+            if (q && !c.name?.toLowerCase().includes(q) && !c.key?.toLowerCase().includes(q)) return false;
+            if (classFilter === 'pending') return (c.pendingMembers?.length || 0) > 0;
+            if (classFilter === 'hasExams') return exams.some((e) => e.classId === c.id);
+            return true;
+          })
+          .sort((a, b) => {
+            if (classSort === 'members') return (b.members?.length || 0) - (a.members?.length || 0);
+            if (classSort === 'exams') {
+              const ea = exams.filter((e) => e.classId === a.id).length;
+              const eb = exams.filter((e) => e.classId === b.id).length;
+              return eb - ea;
+            }
+            return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+          });
 
-          {classes
-            .filter((c) => !q || c.name?.toLowerCase().includes(q) || c.key?.toLowerCase().includes(q))
-            .map((cls) => {
-              const members = cls.members || [];
-              const classExams = exams.filter((e) => e.classId === cls.id);
-              const pendingCount = cls.pendingMembers?.length || 0;
-              return (
-                <article key={cls.id} className="vt-card vt-class">
-                  <header>
-                    <MemoAvatar name={cls.name} size={52} />
-                    <div>
-                      <h3>{cls.name}</h3>
-                      <small>{cls.subject} · {classExams.length} đề</small>
-                    </div>
-                    <i className="vt-count">{members.length}</i>
-                  </header>
+        return (
+          <>
+            {/* Thanh chuyển Tab giữa Lớp chủ nhiệm của tôi & Lớp liên kết / Giao đề lớp khác */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.9rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--soft)' }}>
+              <div style={{ display: 'inline-flex', background: 'var(--vt-tint)', borderRadius: 999, padding: '0.25rem', gap: '0.25rem' }} role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={classSectionTab === 'my'}
+                  onClick={() => setClassSectionTab('my')}
+                  style={{
+                    padding: '0.42rem 0.95rem',
+                    borderRadius: 999,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    background: classSectionTab === 'my' ? 'var(--acc)' : 'transparent',
+                    color: classSectionTab === 'my' ? '#fff' : 'var(--ink)',
+                  }}
+                >
+                  Lớp của tôi ({classes.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={classSectionTab === 'linked'}
+                  onClick={() => setClassSectionTab('linked')}
+                  style={{
+                    padding: '0.42rem 0.95rem',
+                    borderRadius: 999,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    background: classSectionTab === 'linked' ? 'var(--acc)' : 'transparent',
+                    color: classSectionTab === 'linked' ? '#fff' : 'var(--ink)',
+                  }}
+                >
+                  Lớp liên kết & Giao đề lớp khác ({linkedClasses.length})
+                </button>
+              </div>
 
-                  {pendingCount > 0 && (
-                    <div
+              {classSectionTab === 'my' && (
+                <button type="button" className="vt-btn sm primary" onClick={() => setShowCreateClass(true)}>
+                  + Tạo lớp mới (Phím N)
+                </button>
+              )}
+            </div>
+
+            {classSectionTab === 'linked' ? (
+              renderUnifiedLinkedClassesHub()
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {[
+                      { k: 'all', label: `Tất cả (${classes.length})` },
+                      { k: 'pending', label: `Có HS chờ duyệt (${classes.filter((c) => (c.pendingMembers?.length || 0) > 0).length})` },
+                      { k: 'hasExams', label: `Đang có đề (${classes.filter((c) => exams.some((e) => e.classId === c.id)).length})` },
+                    ].map((f) => (
+                      <button
+                        key={f.k}
+                        type="button"
+                        className={`vt-btn sm ${classFilter === f.k ? 'primary' : ''}`}
+                        onClick={() => setClassFilter(f.k)}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <select
+                      aria-label="Sắp xếp lớp học"
+                      value={classSort}
+                      onChange={(e) => setClassSort(e.target.value)}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '.5rem',
-                        padding: '.5rem .8rem',
-                        borderRadius: 12,
-                        background: 'color-mix(in srgb, #f59e0b 14%, var(--vt-tint))',
-                        border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)',
-                        color: '#b45309',
-                        font: '700 .78rem var(--sans)',
-                        cursor: 'pointer',
+                        padding: '0.4rem 0.7rem',
+                        borderRadius: 10,
+                        border: '1px solid var(--soft)',
+                        background: 'var(--panel)',
+                        color: 'var(--ink)',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
                       }}
-                      onClick={() => setSelectedClass(cls)}
                     >
-                      <IcoBell size={14} />
-                      <span style={{ flex: 1 }}>{pendingCount} học sinh chờ duyệt</span>
-                      <IcoChevronRight size={14} />
+                      <option value="name">Sắp xếp: Tên lớp A → Z</option>
+                      <option value="members">Sắp xếp: Sĩ số giảm dần</option>
+                      <option value="exams">Sắp xếp: Số đề giảm dần</option>
+                    </select>
+
+                    <div style={{ display: 'inline-flex', background: 'var(--vt-tint)', borderRadius: 10, padding: '0.2rem', gap: '0.2rem' }} role="group" aria-label="Chế độ hiển thị lớp học">
+                      <button
+                        type="button"
+                        onClick={() => setClassViewMode('grid')}
+                        aria-label="Chế độ lưới"
+                        style={{
+                          padding: '0.32rem 0.65rem',
+                          borderRadius: 8,
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          background: classViewMode === 'grid' ? 'var(--acc)' : 'transparent',
+                          color: classViewMode === 'grid' ? '#fff' : 'var(--ink)',
+                        }}
+                      >
+                        Lưới
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setClassViewMode('list')}
+                        aria-label="Chế độ danh sách"
+                        style={{
+                          padding: '0.32rem 0.65rem',
+                          borderRadius: 8,
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          background: classViewMode === 'list' ? 'var(--acc)' : 'transparent',
+                          color: classViewMode === 'list' ? '#fff' : 'var(--ink)',
+                        }}
+                      >
+                        Danh sách
+                      </button>
                     </div>
-                  )}
-
-                  <div className="vt-keybox">
-                    <IcoKey size={15} />
-                    <code>{cls.key}</code>
-                    <button
-                      type="button"
-                      className="vt-icon-btn"
-                      onClick={() => copyText(cls.key, cls.id, 'Đã chép mã lớp')}
-                      title="Sao chép mã"
-                    >
-                      {copiedKey === cls.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
-                    </button>
-                    <button
-                      type="button"
-                      className="vt-icon-btn"
-                      onClick={() => setShareClass(cls)}
-                      title="Mã QR"
-                    >
-                      QR
-                    </button>
                   </div>
+                </div>
 
-                  {cls.announcement?.text && (
-                    <div style={{
-                      fontSize: '0.78rem',
-                      color: 'var(--ink)',
-                      background: 'color-mix(in srgb, var(--acc) 10%, var(--surface-2))',
-                      padding: '0.4rem 0.65rem',
-                      borderRadius: 10,
-                      border: '1px solid color-mix(in srgb, var(--acc) 22%, transparent)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                    }}>
-                      <IcoPin size={13} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {cls.announcement.text}
-                      </span>
-                    </div>
+                <div className={classViewMode === 'list' ? 'vt-stackcards' : 'vt-grid'}>
+                  <button type="button" className="vt-card vt-add-card" onClick={() => setShowCreateClass(true)}>
+                    <span className="vt-fab static">+</span>
+                    <b>Tạo lớp mới (Phím N)</b>
+                    <small>Học sinh vào lớp bằng mã lớp</small>
+                  </button>
+
+                  {filteredClasses.map((cls) => {
+                    const members = cls.members || [];
+                    const classExams = exams.filter((e) => e.classId === cls.id);
+                    const pendingCount = cls.pendingMembers?.length || 0;
+                    return (
+                      <article key={cls.id} className="vt-card vt-class vt-folder-card">
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            paddingBottom: '0.5rem',
+                            marginBottom: '0.2rem',
+                            borderBottom: '1px dashed var(--soft)',
+                            fontSize: '0.73rem',
+                            color: 'var(--mut)',
+                            fontWeight: 700,
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--acc)' }}>
+                            <IcoFolder size={14} /> THƯ MỤC LỚP HỌC
+                          </span>
+                          <span>{classExams.length} đề · {members.length} HS</span>
+                        </div>
+
+                        <header style={{ cursor: 'pointer' }} onClick={() => setSelectedClass(cls)}>
+                          <MemoAvatar name={cls.name} size={50} />
+                          <div>
+                            <h3>{cls.name}</h3>
+                            <small>{cls.subject || 'Đa môn'} · {classExams.length} đề kiểm tra</small>
+                          </div>
+                          <i className="vt-count" title="Sĩ số lớp">{members.length}</i>
+                        </header>
+
+                        {pendingCount > 0 && (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '.45rem',
+                              padding: '.48rem .75rem',
+                              borderRadius: 12,
+                              background: 'color-mix(in srgb, #f59e0b 14%, var(--vt-tint))',
+                              border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)',
+                              color: '#b45309',
+                              font: '700 .78rem var(--sans)',
+                            }}
+                          >
+                            <IcoBell size={14} />
+                            <span
+                              style={{ flex: 1, cursor: 'pointer' }}
+                              onClick={() => setSelectedClass(cls)}
+                            >
+                              {pendingCount} HS chờ duyệt
+                            </span>
+                            <button
+                              type="button"
+                              className="vt-btn sm primary"
+                              style={{ padding: '0.22rem 0.55rem', fontSize: '0.72rem' }}
+                              onClick={(e) => { e.stopPropagation(); handleApproveAll(cls); }}
+                              title="Duyệt tất cả học sinh đang chờ vào lớp"
+                            >
+                              Duyệt tất cả
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="vt-keybox">
+                          <IcoKey size={15} />
+                          <code title="Mã lớp dành cho học sinh">{cls.key}</code>
+                          <button
+                            type="button"
+                            className="vt-icon-btn"
+                            aria-label="Sao chép mã lớp"
+                            onClick={() => copyText(cls.key, cls.id, 'Đã sao chép mã lớp')}
+                            title="Sao chép mã lớp 1 chạm"
+                          >
+                            {copiedKey === cls.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-icon-btn"
+                            aria-label="Làm mới mã lớp"
+                            onClick={() => handleRegenKey(cls)}
+                            title="Làm mới / đổi mã lớp"
+                          >
+                            <IcoRefresh size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-icon-btn"
+                            aria-label="Mở mã QR của lớp"
+                            onClick={() => setShareClass(cls)}
+                            title="Chia sẻ mã QR"
+                          >
+                            QR
+                          </button>
+                        </div>
+
+                        {cls.announcement?.text && (
+                          <div style={{
+                            fontSize: '0.78rem',
+                            color: 'var(--ink)',
+                            background: 'color-mix(in srgb, var(--acc) 10%, var(--surface-2))',
+                            padding: '0.4rem 0.65rem',
+                            borderRadius: 10,
+                            border: '1px solid color-mix(in srgb, var(--acc) 22%, transparent)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                          }}>
+                            <IcoPin size={13} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                              {cls.announcement.text}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="vt-stack">
+                          {members.slice(0, 5).map((m) => <MemoAvatar key={m.id} name={m.name} size={30} />)}
+                          {members.length > 5 && <span className="vt-stack-more">+{members.length - 5}</span>}
+                          {members.length === 0 && <small className="vt-muted">Chưa có học sinh tham gia</small>}
+                        </div>
+
+                        <footer>
+                          <button type="button" className="vt-btn sm" onClick={() => setSelectedClass(cls)}>
+                            <IcoUsers size={13} /> Chi tiết
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-btn sm"
+                            onClick={() => exportClassRosterCsv(cls)}
+                            title="Xuất danh sách học sinh ra CSV"
+                          >
+                            <IcoDownload size={12} /> Xuất DS
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-btn sm"
+                            onClick={() => { setNoticeClass(cls); setNoticeDraft(cls.announcement?.text || ''); }}
+                            title="Ghim thông báo cho lớp"
+                          >
+                            <IcoPin size={12} /> Ghim tin
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-btn sm primary"
+                            onClick={() => { setSelectedClass(cls); goSection('create'); }}
+                          >
+                            <IcoBook size={13} /> Tạo đề
+                          </button>
+                          <button type="button" className="vt-btn sm" onClick={() => handleDeleteClass(cls)}>
+                            Xóa
+                          </button>
+                        </footer>
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        );
+      })()}
+
+      {/* ============================================================
+          ĐỀ THI — LỌC TRẠNG THÁI, NHÂN BẢN, ĐẶT LỊCH, THEO DÕI TRỰC TIẾP
+         ============================================================ */}
+      {section === 'exams' && (() => {
+        const list = examsWithStatus
+          .filter(({ ex, st }) => {
+            if (subTab !== 'all' && st.key !== subTab) return false;
+            if (subjectFilter && detectExamSubject(ex) !== subjectFilter) return false;
+            if (q && !ex.title?.toLowerCase().includes(q)) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            if (examSort === 'title') return String(a.ex.title || '').localeCompare(String(b.ex.title || ''), 'vi');
+            if (examSort === 'subs') {
+              return (submissionsMap[b.ex.id]?.length || 0) - (submissionsMap[a.ex.id]?.length || 0);
+            }
+            return tsMs(b.ex.createdAt) - tsMs(a.ex.createdAt);
+          });
+
+        /* ❗ Thẻ đề bóc thành hàm dùng chung — nhóm theo lớp và danh sách phẳng cùng dùng */
+        const renderExamCard = ({ ex, liveSession, st }) => {
+          const cls = classById[ex.classId];
+          const subs = submissionsMap[ex.id] || [];
+          const pcts = subs.map(pctOf);
+          const avg = subs.length ? Math.round(avgOf(pcts)) : null;
+          const best = subs.length ? Math.round(Math.max(...pcts)) : null;
+          const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
+          const memberCount = cls?.members?.length || 0;
+          const liveDoingCount = liveSession
+            ? Math.max(0, (liveSession.stats?.joined || 0) - (liveSession.stats?.submitted || 0))
+            : 0;
+          const subject = (() => {
+            const own = detectExamSubject(ex);
+            if (own !== '—') return own;
+            return cls?.subject || cls?._mySubject || '—';
+          })();
+          const isAi = isAiGeneratedExam(ex);
+          const isPublic = ex.visibility === 'public';
+          const mcqAllA = (ex.questions || []).length >= 2
+            && (ex.questions || []).every((qItem) => (qItem.type || 'single_choice') !== 'single_choice'
+              || qItem.correct === 0);
+          const typeCount = (() => {
+            const t = { single_choice: 0, true_false: 0, short_answer: 0 };
+            (ex.questions || []).forEach((question) => {
+              const k = question.type || 'single_choice';
+              t[k] = (t[k] || 0) + 1;
+            });
+            return t;
+          })();
+
+          const opensMs = tsMs(ex.opensAt);
+          const closesMs = tsMs(ex.closesAt);
+
+          return (
+            <article key={ex.id} className={'vt-card vt-exam' + (st.key === 'live' ? ' live' : '')}>
+              <div className="vt-exam-main">
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span className={'vt-chip ' + st.key}>
+                    {st.key === 'live' && <IcoDot size={7} />} {st.label}
+                  </span>
+                  {liveSession && (
+                    <span
+                      className="vt-chip"
+                      style={{
+                        background: 'color-mix(in srgb, #10b981 18%, transparent)',
+                        color: '#059669',
+                        fontWeight: 800,
+                      }}
+                      title="Số học sinh đang làm bài trực tiếp trong phòng thi"
+                    >
+                      ● {liveDoingCount} HS đang làm trực tiếp
+                    </span>
                   )}
+                  {subject && subject !== '—' && (
+                    <span className="vt-chip" style={{ background: 'color-mix(in srgb, #8b5cf6 12%, transparent)', color: '#7c3aed' }}>
+                      <IcoSubject size={11} /> {subject}
+                    </span>
+                  )}
+                  {isAi && (
+                    <span className="vt-chip" style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309' }}>
+                      <IcoSparkles size={11} /> AI tạo
+                    </span>
+                  )}
+                  {(opensMs > 0 || closesMs > 0) && (
+                    <span
+                      className="vt-chip"
+                      onClick={() => openScheduleModal(ex)}
+                      style={{
+                        cursor: 'pointer',
+                        background: 'color-mix(in srgb, #0284c7 12%, transparent)',
+                        color: '#0369a1',
+                      }}
+                      title="Bấm để chỉnh lịch mở/đóng đề thi"
+                    >
+                      <IcoCalendar size={11} />
+                      {opensMs > 0 ? `Mở: ${fmtClock(opensMs)}` : ''}
+                      {opensMs > 0 && closesMs > 0 ? ' → ' : ''}
+                      {closesMs > 0 ? `Đóng: ${fmtClock(closesMs)}` : ''}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="vt-chip"
+                    title={isPublic
+                      ? 'Đang công khai: ai có link cũng làm được. Bấm để chuyển sang riêng tư.'
+                      : 'Đang riêng tư: chỉ thành viên lớp vào được. Bấm để công khai.'}
+                    onClick={() => toggleVisibility(ex)}
+                    disabled={savingVis === ex.id}
+                    style={{
+                      cursor: savingVis === ex.id ? 'wait' : 'pointer',
+                      border: '1px solid ' + (isPublic ? 'rgba(16,185,129,.4)' : 'rgba(100,116,139,.35)'),
+                      background: isPublic ? 'color-mix(in srgb, #10b981 14%, transparent)' : 'transparent',
+                      color: isPublic ? '#047857' : 'var(--t-ink-muted)',
+                      opacity: savingVis === ex.id ? 0.6 : 1,
+                    }}
+                  >
+                    {isPublic ? 'Công khai' : 'Riêng tư'}
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-chip"
+                    title={ex.lockUntilStart
+                      ? 'Đang khoá: học sinh thấy bảng chờ, chỉ vào thi khi bạn bấm “Bắt đầu thi”. Bấm để mở vào tự do.'
+                      : 'Đang mở: học sinh vào thi bất cứ lúc nào. Bấm để khoá tới khi bạn bắt đầu.'}
+                    onClick={() => toggleLock(ex)}
+                    disabled={savingLock === ex.id}
+                    style={{
+                      cursor: savingLock === ex.id ? 'wait' : 'pointer',
+                      border: '1px solid ' + (ex.lockUntilStart ? 'rgba(217,119,6,.45)' : 'rgba(100,116,139,.35)'),
+                      background: ex.lockUntilStart ? 'color-mix(in srgb, #d97706 14%, transparent)' : 'transparent',
+                      color: ex.lockUntilStart ? '#a45c05' : 'var(--t-ink-muted)',
+                      opacity: savingLock === ex.id ? 0.6 : 1,
+                    }}
+                  >
+                    {ex.lockUntilStart ? 'Khoá bài' : 'Vào tự do'}
+                  </button>
+                  {mcqAllA && (
+                    <span
+                      className="vt-chip"
+                      title="Mọi câu trắc nghiệm đang có đáp án A. Đề nhập từ file có thể chưa nhận được đáp án đúng — mở “Chỉnh sửa” để kiểm tra trước khi cho học sinh làm."
+                      style={{ background: 'rgba(220, 38, 38, 0.12)', color: '#b91c1c' }}
+                    >
+                      Kiểm tra đáp án
+                    </span>
+                  )}
+                </div>
+                <h3>{ex.title}</h3>
+                <small>
+                  <b>Lớp {cls?.name || '—'}</b>
+                  {subject && subject !== '—' ? <> · Môn <b>{subject}</b></> : null}
+                  {cls?.teacherName ? <> · GV chủ nhiệm: <b>{cls.teacherName}</b></> : null}
+                  {` · ${(ex.questions || []).length} câu · ${ex.duration} phút`}
+                  {typeCount.true_false > 0 && ` · ${typeCount.true_false} Đ/S`}
+                  {typeCount.short_answer > 0 && ` · ${typeCount.short_answer} TLN`}
+                </small>
+                <div className="vt-linkbox">
+                  <code title={link}>{link}</code>
+                  <button
+                    type="button"
+                    className="vt-icon-btn"
+                    aria-label="Sao chép liên kết đề thi"
+                    onClick={() => copyText(link, ex.id, 'Đã chép link đề')}
+                    title="Sao chép link"
+                  >
+                    {copiedKey === ex.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
+                  </button>
+                </div>
+              </div>
 
-                  <div className="vt-stack">
-                    {members.slice(0, 5).map((m) => <MemoAvatar key={m.id} name={m.name} size={30} />)}
-                    {members.length > 5 && <span className="vt-stack-more">+{members.length - 5}</span>}
-                    {members.length === 0 && <small className="vt-muted">Chưa có học sinh tham gia</small>}
-                  </div>
+              <div className="vt-exam-stats">
+                <div>
+                  <Donut value={memberCount ? subs.length : 0} max={memberCount || 1} size={74} stroke={8}>
+                    <strong className="sm">{subs.length}</strong>
+                  </Donut>
+                  <small>{memberCount ? `/${memberCount} đã nộp` : 'bài nộp'}</small>
+                </div>
+                <div>
+                  <b>{avg == null ? '—' : `${avg}%`}</b>
+                  <small>điểm TB</small>
+                </div>
+                <div>
+                  <b>{best == null ? '—' : `${best}%`}</b>
+                  <small>cao nhất</small>
+                </div>
+              </div>
 
-                  <footer>
-                    <button type="button" className="vt-btn sm" onClick={() => setSelectedClass(cls)}>
-                      <IcoUsers size={13} /> Chi tiết
-                    </button>
+              <div className="vt-exam-actions">
+                {liveSession ? (
+                  <button type="button" className="vt-btn primary" onClick={() => setViewingSessionId(liveSession.id)}>
+                    <IcoVideo size={14} /> Giám sát ({liveDoingCount} đang thi)
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="vt-btn primary"
+                    onClick={() => handleStartSession(ex)}
+                    disabled={startingId === ex.id || st.key === 'closed'}
+                  >
+                    {startingId === ex.id ? 'Đang tạo...' : <><IcoPlay size={14} /> Bắt đầu thi</>}
+                  </button>
+                )}
+                <div className="vt-exam-actions-row">
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                    onClick={() => setPreviewExam(ex)}
+                    title="Mô phỏng thi, bản in A4 và đảo mã đề"
+                  >
+                    <IcoEye size={13} /> Xem trước & In A4
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    onClick={() => openScheduleModal(ex)}
+                    title="Đặt lịch giờ mở đề và đóng đề tự động"
+                  >
+                    <IcoCalendar size={13} /> Đặt lịch
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    onClick={() => handleDuplicateExam(ex)}
+                    title="Nhân bản đề thi này thành bản sao mới"
+                  >
+                    <IcoCopy size={13} /> Nhân bản
+                  </button>
+                  {(classes.length + linkedClasses.length) > 1 && (
                     <button
                       type="button"
                       className="vt-btn sm"
-                      onClick={() => { setNoticeClass(cls); setNoticeDraft(cls.announcement?.text || ''); }}
-                      title="Ghim thông báo cho lớp"
+                      onClick={() => {
+                        const allTargets = [...classes, ...linkedClasses];
+                        const defaultCls = allTargets.find((c) => c.id !== ex.classId) || allTargets[0];
+                        setCopyTargetClassId(defaultCls?.id || '');
+                        setCopyExamTarget(ex);
+                      }}
+                      title="Giao đề thi này sang một lớp chủ nhiệm hoặc lớp liên kết khác"
                     >
-                      <IcoPin size={12} /> Ghim tin
+                      <IcoSend size={13} /> Giao lớp khác
                     </button>
-                    <button
-                      type="button"
-                      className="vt-btn sm primary"
-                      onClick={() => { setSelectedClass(cls); goSection('create'); }}
-                    >
-                      <IcoBook size={13} /> Tạo đề
-                    </button>
-                    <button type="button" className="vt-btn sm" onClick={() => handleDeleteClass(cls)}>
-                      Xóa
-                    </button>
-                  </footer>
-                </article>
-              );
-            })}
-        </div>
-      )}
-
-      {/* ============================================================
-          ĐỀ THI — CÓ FILTER MÔN + BADGE AI
-         ============================================================ */}
-      {section === 'exams' && (() => {
-        const list = examsWithStatus.filter(({ ex, st }) => {
-          if (subTab !== 'all' && st.key !== subTab) return false;
-          if (subjectFilter && detectExamSubject(ex) !== subjectFilter) return false;
-          if (q && !ex.title?.toLowerCase().includes(q)) return false;
-          return true;
-        });
-        /* ❗ Thẻ đề bóc thành hàm dùng chung — nhóm theo lớp và danh sách phẳng cùng dùng */
-        const renderExamCard = ({ ex, liveSession, st }) => {
-
-                  const cls = classById[ex.classId];
-                  const subs = submissionsMap[ex.id] || [];
-                  const pcts = subs.map(pctOf);
-                  const avg = subs.length ? Math.round(avgOf(pcts)) : null;
-                  const best = subs.length ? Math.round(Math.max(...pcts)) : null;
-                  const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
-                  const memberCount = cls?.members?.length || 0;
-                  /* Đề không tự ghi môn → lấy môn của lớp / môn đã gắn khi liên kết */
-                  const subject = (() => {
-                    const own = detectExamSubject(ex);
-                    if (own !== '—') return own;
-                    return cls?.subject || cls?._mySubject || '—';
-                  })();
-                  const isAi = isAiGeneratedExam(ex);
-                  const isPublic = ex.visibility === 'public';
-                  /* Cảnh báo đáp án: đề nhập từ file mà không đọc được đáp án sẽ
-                     bị mọi câu = A → chấm sai toàn bộ. Phát hiện để giáo viên sửa. */
-                  const mcqAllA = (ex.questions || []).length >= 2
-                    && (ex.questions || []).every((q) => (q.type || 'single_choice') !== 'single_choice'
-                      || q.correct === 0);
-                  const typeCount = (() => {
-                    const t = { single_choice: 0, true_false: 0, short_answer: 0 };
-                    (ex.questions || []).forEach((question) => {
-                      const k = question.type || 'single_choice';
-                      t[k] = (t[k] || 0) + 1;
-                    });
-                    return t;
-                  })();
-
-                  return (
-                    <article key={ex.id} className={'vt-card vt-exam' + (st.key === 'live' ? ' live' : '')}>
-                      <div className="vt-exam-main">
-                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          <span className={'vt-chip ' + st.key}>
-                            {st.key === 'live' && <IcoDot size={7} />} {st.label}
-                          </span>
-                          {subject && subject !== '—' && (
-                            <span className="vt-chip" style={{ background: 'color-mix(in srgb, #8b5cf6 12%, transparent)', color: '#7c3aed' }}>
-                              <IcoSubject size={11} /> {subject}
-                            </span>
-                          )}
-                          {isAi && (
-                            <span className="vt-chip" style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309' }}>
-                              <IcoSparkles size={11} /> AI tạo
-                            </span>
-                          )}
-                          {/* Công khai / riêng tư: quyết định ai có link cũng vào được */}
-                          <button
-                            type="button"
-                            className="vt-chip"
-                            title={isPublic
-                              ? 'Đang công khai: ai có link cũng làm được. Bấm để chuyển sang riêng tư.'
-                              : 'Đang riêng tư: chỉ thành viên lớp vào được. Bấm để công khai.'}
-                            onClick={() => toggleVisibility(ex)}
-                            disabled={savingVis === ex.id}
-                            style={{
-                              cursor: savingVis === ex.id ? 'wait' : 'pointer',
-                              border: '1px solid ' + (isPublic ? 'rgba(16,185,129,.4)' : 'rgba(100,116,139,.35)'),
-                              background: isPublic ? 'color-mix(in srgb, #10b981 14%, transparent)' : 'transparent',
-                              color: isPublic ? '#047857' : 'var(--t-ink-muted)',
-                              opacity: savingVis === ex.id ? 0.6 : 1,
-                            }}
-                          >
-                            {isPublic ? 'Công khai' : 'Riêng tư'}
-                          </button>
-                          {/* Khoá bài: chỉ thi thật khi giáo viên bấm "Bắt đầu thi" */}
-                          <button
-                            type="button"
-                            className="vt-chip"
-                            title={ex.lockUntilStart
-                              ? 'Đang khoá: học sinh thấy bảng chờ, chỉ vào thi khi bạn bấm “Bắt đầu thi”. Bấm để mở vào tự do.'
-                              : 'Đang mở: học sinh vào thi bất cứ lúc nào. Bấm để khoá tới khi bạn bắt đầu.'}
-                            onClick={() => toggleLock(ex)}
-                            disabled={savingLock === ex.id}
-                            style={{
-                              cursor: savingLock === ex.id ? 'wait' : 'pointer',
-                              border: '1px solid ' + (ex.lockUntilStart ? 'rgba(217,119,6,.45)' : 'rgba(100,116,139,.35)'),
-                              background: ex.lockUntilStart ? 'color-mix(in srgb, #d97706 14%, transparent)' : 'transparent',
-                              color: ex.lockUntilStart ? '#a45c05' : 'var(--t-ink-muted)',
-                              opacity: savingLock === ex.id ? 0.6 : 1,
-                            }}
-                          >
-                            {ex.lockUntilStart ? 'Khoá bài' : 'Vào tự do'}
-                          </button>
-                          {mcqAllA && (
-                            <span
-                              className="vt-chip"
-                              title="Mọi câu trắc nghiệm đang có đáp án A. Đề nhập từ file có thể chưa nhận được đáp án đúng — mở “Chỉnh sửa” để kiểm tra trước khi cho học sinh làm."
-                              style={{ background: 'rgba(220, 38, 38, 0.12)', color: '#b91c1c' }}
-                            >
-                              Kiểm tra đáp án
-                            </span>
-                          )}
-                        </div>
-                        <h3>{ex.title}</h3>
-                        <small>
-                          <b>Lớp {cls?.name || '—'}</b>
-                          {subject && subject !== '—' ? <> · Môn <b>{subject}</b></> : null}
-                          {cls?.teacherName ? <> · GV chủ nhiệm: <b>{cls.teacherName}</b></> : null}
-                          {` · ${ex.questions.length} câu · ${ex.duration} phút`}
-                          {typeCount.true_false > 0 && ` · ${typeCount.true_false} Đ/S`}
-                          {typeCount.short_answer > 0 && ` · ${typeCount.short_answer} TLN`}
-                        </small>
-                        <div className="vt-linkbox">
-                          <code title={link}>{link}</code>
-                          <button
-                            type="button"
-                            className="vt-icon-btn"
-                            onClick={() => copyText(link, ex.id, 'Đã chép link đề')}
-                            title="Sao chép link"
-                          >
-                            {copiedKey === ex.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="vt-exam-stats">
-                        <div>
-                          <Donut value={memberCount ? subs.length : 0} max={memberCount || 1} size={74} stroke={8}>
-                            <strong className="sm">{subs.length}</strong>
-                          </Donut>
-                          <small>{memberCount ? `/${memberCount} đã nộp` : 'bài nộp'}</small>
-                        </div>
-                        <div>
-                          <b>{avg == null ? '—' : `${avg}%`}</b>
-                          <small>điểm TB</small>
-                        </div>
-                        <div>
-                          <b>{best == null ? '—' : `${best}%`}</b>
-                          <small>cao nhất</small>
-                        </div>
-                      </div>
-
-                      <div className="vt-exam-actions">
-                        {liveSession ? (
-                          <button type="button" className="vt-btn primary" onClick={() => setViewingSessionId(liveSession.id)}>
-                            <IcoVideo size={14} /> Giám sát
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="vt-btn primary"
-                            onClick={() => handleStartSession(ex)}
-                            disabled={startingId === ex.id || st.key === 'closed'}
-                          >
-                            {startingId === ex.id ? 'Đang tạo...' : <><IcoPlay size={14} /> Bắt đầu thi</>}
-                          </button>
-                        )}
-                        <div className="vt-exam-actions-row">
-                          <button
-                            type="button"
-                            className="vt-btn sm"
-                            style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
-                            onClick={() => setPreviewExam(ex)}
-                            title="Mô phỏng thi, bản in A4 và đảo 4 mã đề"
-                          >
-                            <IcoEye size={13} /> Xem trước & In A4
-                          </button>
-                          <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
-                            <IcoChart size={13} /> Thống kê
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-btn sm"
-                            onClick={() => setEditingExam(ex)}
-                            title="Sửa thông tin, câu hỏi, cấu hình camera & chống gian lận"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
-                            Chỉnh sửa
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-icon-btn"
-                            onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
-                            title="Xuất điểm CSV"
-                          >
-                            <IcoDownload size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-icon-btn danger"
-                            onClick={() => handleDeleteExam(ex)}
-                            title="Xóa đề"
-                          >
-                            <IcoTrash size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                
+                  )}
+                  <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
+                    <IcoChart size={13} /> Thống kê
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    onClick={() => setEditingExam(ex)}
+                    title="Sửa thông tin, câu hỏi, cấu hình camera & chống gian lận"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
+                    Chỉnh sửa
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-icon-btn"
+                    aria-label="Xuất điểm CSV"
+                    onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
+                    title="Xuất điểm CSV"
+                  >
+                    <IcoDownload size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-icon-btn danger"
+                    aria-label="Xóa đề thi"
+                    onClick={() => handleDeleteExam(ex)}
+                    title="Xóa đề"
+                  >
+                    <IcoTrash size={15} />
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
         };
+
         /* ❗ MỚI: gom đề theo LỚP → môn (thư mục). Nhóm có phòng LIVE tự mở. */
         const groups = (() => {
           const map = new Map();
@@ -1965,7 +2871,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             || ((a.key === '__none__') - (b.key === '__none__'))
             || String(a.cls?.name || '').localeCompare(String(b.cls?.name || ''), 'vi'));
           return arr;
-})();
+        })();
 
         if (exams.length === 0) {
           return (
@@ -1980,7 +2886,33 @@ export default function TeacherDashboard({ onExit } = {}) {
 
         return (
           <>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '.55rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '.65rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <select
+                  aria-label="Sắp xếp đề thi"
+                  value={examSort}
+                  onChange={(e) => setExamSort(e.target.value)}
+                  style={{
+                    padding: '0.4rem 0.7rem',
+                    borderRadius: 10,
+                    border: '1px solid var(--soft)',
+                    background: 'var(--panel)',
+                    color: 'var(--ink)',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="newest">Sắp xếp: Mới tạo gần đây</option>
+                  <option value="title">Sắp xếp: Tên đề A → Z</option>
+                  <option value="subs">Sắp xếp: Nhiều bài nộp nhất</option>
+                </select>
+                {roomStudents > 0 && (
+                  <span style={{ padding: '0.32rem 0.75rem', borderRadius: 999, background: 'rgba(16,185,129,0.14)', color: '#059669', fontSize: '0.76rem', fontWeight: 800 }}>
+                    ● {roomStudents} học sinh đang làm bài trực tiếp
+                  </span>
+                )}
+              </div>
+
               <div style={{ display: 'inline-flex', background: 'var(--vt-tint)', borderRadius: 999, padding: '.25rem', gap: '.25rem' }}>
                 <button
                   type="button"
@@ -2000,7 +2932,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 </button>
               </div>
             </div>
-{availableSubjects.length > 1 && (
+            {availableSubjects.length > 1 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Môn:
@@ -2065,7 +2997,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <div className="vt-stackcards">
                   {list.map(renderExamCard)}
                 </div>
-) : (
+              ) : (
                 <div style={{ display: 'grid', gap: '.6rem' }}>
                   {groups.map((g) => {
                     const open = openGroups.has(g.key) || g.live > 0;
@@ -2082,12 +3014,12 @@ export default function TeacherDashboard({ onExit } = {}) {
                           </span>
                           <span style={{ flex: 1, minWidth: 0 }}>
                             <b style={{ font: '800 .95rem var(--t-font-sans)', color: 'var(--t-ink)', display: 'block' }}>{g.cls?.name || 'Chưa gắn lớp'}</b>
-                             <small style={{ color: 'var(--t-ink-muted)', font: '600 .74rem var(--t-font-sans)', display: 'block' }}>
-                               {g.mons.map((m) => m.name).join(', ') || '—'}
-                               {` · ${g.items.length} đề`}
-                               {g.cls?.teacherName ? ` · GV chủ nhiệm: ${g.cls.teacherName}` : ''}
-                               {g.cls?.members?.length ? ` · ${g.cls.members.length} HS` : ''}
-                             </small>
+                            <small style={{ color: 'var(--t-ink-muted)', font: '600 .74rem var(--t-font-sans)', display: 'block' }}>
+                              {g.mons.map((m) => m.name).join(', ') || '—'}
+                              {` · ${g.items.length} đề`}
+                              {g.cls?.teacherName ? ` · GV chủ nhiệm: ${g.cls.teacherName}` : ''}
+                              {g.cls?.members?.length ? ` · ${g.cls.members.length} HS` : ''}
+                            </small>
                           </span>
                           {g.live > 0 && (
                             <span style={{ padding: '.25rem .6rem', borderRadius: 999, background: 'var(--t-status-ok-subtle)', color: 'var(--t-status-ok)', font: '800 .7rem var(--t-font-sans)' }}>● LIVE {g.live}</span>
@@ -2116,26 +3048,97 @@ export default function TeacherDashboard({ onExit } = {}) {
                     );
                   })}
                 </div>
-)
+              )
             )}
           </>
         );
       })()}
 
       {/* ============================================================
-          PHÒNG THI
+          PHÒNG THI — THEO DÕI TRỰC TIẾP SỐ HỌC SINH ĐANG LÀM
          ============================================================ */}
       {section === 'sessions' && (() => {
-        const list = sessions.filter((s) =>
-          (subTab === 'all' || s.status === subTab) && (!q || s.title?.toLowerCase().includes(q))
-        );
+        const list = sessions
+          .filter((s) => (subTab === 'all' || s.status === subTab) && (!q || s.title?.toLowerCase().includes(q)))
+          .sort((a, b) => {
+            if (sessionSort === 'active') {
+              const aa = Math.max(0, (a.stats?.joined || 0) - (a.stats?.submitted || 0));
+              const bb = Math.max(0, (b.stats?.joined || 0) - (b.stats?.submitted || 0));
+              return bb - aa;
+            }
+            return (b.startedAtMs || 0) - (a.startedAtMs || 0);
+          });
+
         return (
           <>
-            <div className="vt-range">
-              <h2>Phiên thi</h2>
-              <button type="button" className="vt-btn sm" onClick={refresh}>
-                <IcoRefresh size={13} /> Làm mới
-              </button>
+            <div className="vt-range" style={{ flexWrap: 'wrap', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0 }}>Phiên thi</h2>
+                {roomStudents > 0 && (
+                  <span style={{ padding: '0.28rem 0.7rem', borderRadius: 999, background: 'rgba(16,185,129,0.15)', color: '#059669', fontSize: '0.76rem', fontWeight: 800 }}>
+                    ● {roomStudents} học sinh đang làm bài trực tiếp
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                <select
+                  aria-label="Sắp xếp phiên thi"
+                  value={sessionSort}
+                  onChange={(e) => setSessionSort(e.target.value)}
+                  style={{
+                    padding: '0.38rem 0.65rem',
+                    borderRadius: 10,
+                    border: '1px solid var(--soft)',
+                    background: 'var(--panel)',
+                    color: 'var(--ink)',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="newest">Sắp xếp: Mới mở gần đây</option>
+                  <option value="active">Sắp xếp: Đông học sinh đang làm nhất</option>
+                </select>
+
+                <div style={{ display: 'inline-flex', background: 'var(--vt-tint)', borderRadius: 10, padding: '0.2rem', gap: '0.2rem' }} role="group" aria-label="Chế độ hiển thị phiên thi">
+                  <button
+                    type="button"
+                    onClick={() => setSessionViewMode('grid')}
+                    style={{
+                      padding: '0.3rem 0.6rem',
+                      borderRadius: 8,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: sessionViewMode === 'grid' ? 'var(--acc)' : 'transparent',
+                      color: sessionViewMode === 'grid' ? '#fff' : 'var(--ink)',
+                    }}
+                  >
+                    Lưới
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSessionViewMode('list')}
+                    style={{
+                      padding: '0.3rem 0.6rem',
+                      borderRadius: 8,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: sessionViewMode === 'list' ? 'var(--acc)' : 'transparent',
+                      color: sessionViewMode === 'list' ? '#fff' : 'var(--ink)',
+                    }}
+                  >
+                    Danh sách
+                  </button>
+                </div>
+
+                <button type="button" className="vt-btn sm" onClick={refresh}>
+                  <IcoRefresh size={13} /> Làm mới
+                </button>
+              </div>
             </div>
 
             {list.length === 0 ? (
@@ -2148,7 +3151,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 </button>
               </div>
             ) : (
-              <div className="vt-grid">
+              <div className={sessionViewMode === 'list' ? 'vt-stackcards' : 'vt-grid'}>
                 {list.map((s) => {
                   const exam = exams.find((e) => e.id === s.examId);
                   const remaining = timeRemaining(s, now);
@@ -2157,13 +3160,14 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const total = (s.duration || 1) * 60;
                   const joined = s.stats?.joined || 0;
                   const submitted = s.stats?.submitted || 0;
+                  const doingNow = Math.max(0, joined - submitted);
                   const viol = s.stats?.violationCount || 0;
                   const tone = remaining < 60 ? 'danger' : remaining < 300 ? 'warn' : 'acc';
                   return (
                     <article key={s.id} className={'vt-card vt-session' + (isLive ? ' live' : ' ended')}>
                       <header>
                         <span className={'vt-chip ' + (isLive ? (expired ? 'closed' : 'live') : 'closed')}>
-                          <IcoDot size={7} /> {isLive ? (expired ? 'Hết giờ' : 'LIVE') : 'Đã kết thúc'}
+                          <IcoDot size={7} /> {isLive ? (expired ? 'Hết giờ' : 'Đang thi (LIVE)') : 'Đã kết thúc'}
                         </span>
                         <small>{fmtClock(s.startedAtMs)}</small>
                       </header>
@@ -2183,12 +3187,17 @@ export default function TeacherDashboard({ onExit } = {}) {
                         <div>
                           <h3>{s.title}</h3>
                           <small>{exam?.questions?.length || 0} câu · {s.duration} phút</small>
+                          {isLive && (
+                            <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>
+                              ● {doingNow} học sinh đang làm bài
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <dl className="vt-mini-stats">
-                        <div><dd>{joined}</dd><dt>Đã vào</dt></div>
-                        <div><dd>{submitted}</dd><dt>Đã nộp</dt></div>
+                        <div><dd>{doingNow}</dd><dt>Đang làm</dt></div>
+                        <div><dd>{submitted}/{joined}</dd><dt>Đã nộp</dt></div>
                         <div className={viol > 0 ? 'danger' : ''}><dd>{viol}</dd><dt>Vi phạm</dt></div>
                       </dl>
 
@@ -2210,6 +3219,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                         <button
                           type="button"
                           className="vt-icon-btn danger"
+                          aria-label="Xóa phiên thi"
                           onClick={() => handleDeleteSession(s)}
                           title="Xóa phiên"
                         >
@@ -2245,7 +3255,11 @@ export default function TeacherDashboard({ onExit } = {}) {
       {section === 'bank' && (
         <ErrorBoundary>
           <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
-            <QuestionBank classes={classes} onSoftExamCreated={() => refresh()} />
+            <QuestionBank
+              classes={classes}
+              onSoftExamCreated={() => refresh()}
+              onOpenAiStudio={openNewExam}
+            />
           </Suspense>
         </ErrorBoundary>
       )}
@@ -2262,39 +3276,256 @@ export default function TeacherDashboard({ onExit } = {}) {
       )}
 
       {/* ============================================================
-          XIN THI LẠI
+          HỒ SƠ GIÁO VIÊN BỘ MÔN (MỤC D3)
+         ============================================================ */}
+      {section === 'profile' && (
+        <ErrorBoundary>
+          <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải hồ sơ giáo viên...</p></div>}>
+            <TeacherProfileSection
+              user={user}
+              classes={classes}
+              exams={exams}
+              submissionsMap={submissionsMap}
+              onNavigate={(sec, cls) => {
+                if (cls) setSelectedClass(cls);
+                goSection(sec);
+              }}
+              onSay={say}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+
+      {/* ============================================================
+          XIN THI LẠI — DUYỆT/TỪ CHỐI KÈM LÝ DO & DUYỆT HÀNG LOẠT (MỤC D4)
          ============================================================ */}
       {section === 'retry' && (() => {
-        const pending = retryRequests.filter((r) => r.status === 'pending');
+        const filteredRetries = retryRequests.filter((r) => {
+          if (retryStatusFilter === 'pending' && r.status !== 'pending') return false;
+          if (retryStatusFilter === 'resolved' && r.status === 'pending') return false;
+          if (retryClassFilter !== 'all' && r.classId !== retryClassFilter) return false;
+          if (q && !r.studentName?.toLowerCase().includes(q) && !r.reason?.toLowerCase().includes(q)) return false;
+          return true;
+        });
+        const pendingFiltered = filteredRetries.filter((r) => r.status === 'pending');
+        const allPendingSelected = pendingFiltered.length > 0 && pendingFiltered.every((r) => selectedRetryIds.has(r.id));
+
+        const toggleSelectOne = (id) => {
+          setSelectedRetryIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+          });
+        };
+
+        const toggleSelectAllPending = () => {
+          if (allPendingSelected) {
+            setSelectedRetryIds(new Set());
+          } else {
+            setSelectedRetryIds(new Set(pendingFiltered.map((r) => r.id)));
+          }
+        };
+
         return (
           <>
-            <div className="vt-range">
-              <h2>Yêu cầu thi lại</h2>
-              <button type="button" className="vt-btn sm" onClick={() => say('Đã làm mới', 'success')}>
+            <div className="vt-range" style={{ flexWrap: 'wrap', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
+                  { k: 'pending', label: `Chờ duyệt (${retryRequests.filter((r) => r.status === 'pending').length})` },
+                  { k: 'resolved', label: `Đã xử lý (${retryRequests.filter((r) => r.status !== 'pending').length})` },
+                  { k: 'all', label: `Tất cả (${retryRequests.length})` },
+                ].map((tab) => (
+                  <button
+                    key={tab.k}
+                    type="button"
+                    className={`vt-btn sm ${retryStatusFilter === tab.k ? 'primary' : ''}`}
+                    onClick={() => setRetryStatusFilter(tab.k)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+
+                <select
+                  aria-label="Lọc yêu cầu theo lớp"
+                  value={retryClassFilter}
+                  onChange={(e) => setRetryClassFilter(e.target.value)}
+                  style={{
+                    padding: '0.38rem 0.65rem',
+                    borderRadius: 10,
+                    border: '1px solid var(--soft)',
+                    background: 'var(--panel)',
+                    color: 'var(--ink)',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="all">Tất cả lớp</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>Lớp {c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={async () => {
+                  await refresh();
+                  say('Đã tải lại danh sách yêu cầu thi lại', 'success');
+                }}
+              >
                 <IcoRefresh size={13} /> Làm mới
               </button>
             </div>
 
-            {pending.length === 0 ? (
+            {pendingFiltered.length > 0 && (
+              <div
+                className="vt-card"
+                style={{
+                  marginBottom: '0.85rem',
+                  padding: '0.75rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  background: 'var(--vt-tint)',
+                }}
+              >
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700 }}>
+                  <input
+                    type="checkbox"
+                    checked={allPendingSelected}
+                    onChange={toggleSelectAllPending}
+                  />
+                  Chọn tất cả ({selectedRetryIds.size}/{pendingFiltered.length} yêu cầu chờ duyệt)
+                </label>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+                  <input
+                    type="text"
+                    placeholder="Lý do / ghi chú chung khi duyệt hoặc từ chối hàng loạt..."
+                    value={bulkRetryNote}
+                    onChange={(e) => setBulkRetryNote(e.target.value)}
+                    style={{
+                      minWidth: 220,
+                      flex: '1 1 220px',
+                      maxWidth: 360,
+                      padding: '0.45rem 0.75rem',
+                      borderRadius: 10,
+                      border: '1px solid var(--soft)',
+                      background: 'var(--panel)',
+                      color: 'var(--ink)',
+                      fontSize: '0.8rem',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="vt-btn sm primary"
+                    disabled={selectedRetryIds.size === 0 || bulkRetryBusy}
+                    onClick={() => handleBulkRetryAction('approve')}
+                  >
+                    <IcoCheckCircle size={13} /> Duyệt hàng loạt ({selectedRetryIds.size})
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    disabled={bulkRetryBusy}
+                    onClick={async () => {
+                      const safePending = pendingInView.filter((r) => {
+                        const prevSubs = submissionsMap[r.examId] || [];
+                        const prev = prevSubs.find((s) => s.studentId === r.studentId || s.studentName === r.studentName);
+                        if (!prev) return true;
+                        const pct = pctOf(prev);
+                        return pct < 50 && (prev.violationCount || 0) === 0;
+                      });
+                      if (!safePending.length) {
+                        say('Không có đơn chờ duyệt nào thỏa tiêu chí (<50% điểm & 0 vi phạm).', 'info');
+                        return;
+                      }
+                      setBulkRetryBusy(true);
+                      let ok = 0;
+                      for (const req of safePending) {
+                        try {
+                          const res = await approveRetry({
+                            permitId: req.id,
+                            teacherId: user.uid,
+                            note: bulkRetryNote.trim() || 'Duyệt tự động: Điểm dưới 50% & 0 vi phạm quy chế',
+                          });
+                          if (res?.ok) ok += 1;
+                        } catch { /* ignore */ }
+                      }
+                      setBulkRetryBusy(false);
+                      say(`Đã duyệt nhanh ${ok}/${safePending.length} đơn hợp lệ (<50% & 0 vi phạm)`, 'success');
+                    }}
+                    title="Tự động duyệt ngay các đơn mà bài thi lần trước dưới 50% điểm và không có vi phạm gian lận"
+                  >
+                    <IcoSparkles size={13} /> Duyệt nhanh (&lt;50% &amp; 0 vi phạm)
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn sm danger"
+                    disabled={selectedRetryIds.size === 0 || bulkRetryBusy}
+                    onClick={() => handleBulkRetryAction('deny')}
+                  >
+                    Từ chối hàng loạt ({selectedRetryIds.size})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {filteredRetries.length === 0 ? (
               <div className="vt-empty">
                 <span><IcoBell size={30} /></span>
                 <h3>Không có yêu cầu nào</h3>
-                <p>Khi học sinh bấm "Xin cô cho thi lại", yêu cầu sẽ xuất hiện ở đây.</p>
+                <p>Khi học sinh gửi đơn xin thi lại, yêu cầu sẽ xuất hiện tại đây để bạn duyệt hoặc từ chối.</p>
               </div>
             ) : (
               <div className="vt-stackcards">
-                {pending.map((r) => {
+                {filteredRetries.map((r) => {
                   const exam = exams.find((e) => e.id === r.examId);
                   const cls = classById[r.classId];
                   const isActing = retryActioning === r.id;
+                  const isPending = r.status === 'pending';
+                  const prevSub = (submissionsMap[r.examId] || []).find(
+                    (s) => s.studentId === r.studentId || s.studentName === r.studentName
+                  );
                   return (
                     <article key={r.id} className="vt-card">
-                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        {isPending && (
+                          <input
+                            type="checkbox"
+                            aria-label={`Chọn yêu cầu của ${r.studentName}`}
+                            checked={selectedRetryIds.has(r.id)}
+                            onChange={() => toggleSelectOne(r.id)}
+                            style={{ marginTop: '0.85rem', width: 17, height: 17, cursor: 'pointer' }}
+                          />
+                        )}
                         <MemoAvatar name={r.studentName} size={48} />
                         <div style={{ flex: 1, minWidth: 200 }}>
-                          <h3 style={{ margin: 0, font: '800 1.05rem var(--sans)', letterSpacing: '-.02em' }}>
-                            {r.studentName}
-                          </h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <h3 style={{ margin: 0, font: '800 1.05rem var(--sans)', letterSpacing: '-.02em' }}>
+                              {r.studentName}
+                            </h3>
+                            <span className={'vt-chip ' + (isPending ? 'soon' : r.status === 'approved' ? 'ready' : 'closed')}>
+                              {isPending ? 'Chờ duyệt' : r.status === 'approved' ? 'Đã duyệt' : 'Đã từ chối'}
+                            </span>
+                            {prevSub && (
+                              <span
+                                className="vt-chip"
+                                style={{
+                                  background: (prevSub.violationCount || 0) > 0 ? 'rgba(239, 68, 68, 0.14)' : 'rgba(14, 165, 233, 0.14)',
+                                  color: (prevSub.violationCount || 0) > 0 ? '#ef4444' : '#38bdf8',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Lần trước: {prevSub.score}/{prevSub.totalPoints} ({Math.round(pctOf(prevSub))}%) · {prevSub.violationCount || 0} vi phạm
+                                {prevSub.timeTaken ? ` · ${Math.max(1, Math.round(prevSub.timeTaken / 60))} phút` : ''}
+                              </span>
+                            )}
+                          </div>
                           <p style={{ margin: '.2rem 0 0', color: 'var(--mut)', font: '500 .82rem var(--sans)' }}>
                             Lớp {cls?.name || '—'} · Đề {exam?.title || '—'}
                           </p>
@@ -2307,51 +3538,56 @@ export default function TeacherDashboard({ onExit } = {}) {
                               color: 'var(--ink)',
                               font: '500 .85rem/1.5 var(--sans)',
                             }}>
-                              {r.reason}
+                              Lý do xin thi lại: “{r.reason}”
                             </p>
                           )}
                           <p style={{ margin: '.5rem 0 0', color: 'var(--mut)', font: '500 .74rem var(--sans)' }}>
-                            Gửi cách đây {Math.round((Date.now() - (r.requestedAtMs || tsMs(r.requestedAt))) / 60000)} phút
+                            Gửi cách đây {Math.max(1, Math.round((Date.now() - (r.requestedAtMs || tsMs(r.requestedAt))) / 60000))} phút
+                            {r.note ? ` · Phản hồi GV: “${r.note}”` : ''}
                           </p>
 
-                          <input
-                            type="text"
-                            placeholder="Ghi chú gửi học sinh (không bắt buộc)"
-                            value={retryNotes[r.id] || ''}
-                            onChange={(e) => setRetryNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                            maxLength={200}
-                            disabled={isActing}
-                            style={{
-                              marginTop: '.7rem',
-                              width: '100%',
-                              padding: '.55rem .85rem',
-                              borderRadius: 10,
-                              border: '1.5px solid var(--soft)',
-                              background: 'var(--vt-tint)',
-                              color: 'var(--ink)',
-                              font: '500 .82rem var(--sans)',
-                              outline: 0,
-                            }}
-                          />
+                          {isPending && (
+                            <input
+                              type="text"
+                              placeholder="Lý do duyệt / từ chối gửi học sinh (không bắt buộc)"
+                              value={retryNotes[r.id] || ''}
+                              onChange={(e) => setRetryNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                              maxLength={200}
+                              disabled={isActing}
+                              style={{
+                                marginTop: '.7rem',
+                                width: '100%',
+                                padding: '.55rem .85rem',
+                                borderRadius: 10,
+                                border: '1.5px solid var(--soft)',
+                                background: 'var(--vt-tint)',
+                                color: 'var(--ink)',
+                                font: '500 .82rem var(--sans)',
+                                outline: 0,
+                              }}
+                            />
+                          )}
                         </div>
-                        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            className="vt-btn primary"
-                            onClick={() => handleApproveRetry(r)}
-                            disabled={isActing}
-                          >
-                            <IcoCheckCircle size={14} /> {isActing ? 'Đang xử lý...' : 'Duyệt'}
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-btn danger"
-                            onClick={() => handleDenyRetry(r)}
-                            disabled={isActing}
-                          >
-                            Từ chối
-                          </button>
-                        </div>
+                        {isPending && (
+                          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              className="vt-btn primary"
+                              onClick={() => handleApproveRetry(r)}
+                              disabled={isActing}
+                            >
+                              <IcoCheckCircle size={14} /> {isActing ? 'Đang xử lý...' : 'Duyệt'}
+                            </button>
+                            <button
+                              type="button"
+                              className="vt-btn danger"
+                              onClick={() => handleDenyRetry(r)}
+                              disabled={isActing}
+                            >
+                              Từ chối
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </article>
                   );
@@ -2393,6 +3629,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               classInfo={extCreate && extClass ? extClass : (selectedClass || classes[0])}
               classes={extCreate && extClass ? [extClass] : classes}
               classInsights={classInsights}
+              initialPreset={aiPreset}
               grades={[]}
               subjects={[]}
               onDone={async (createdExam) => {
@@ -2417,12 +3654,14 @@ export default function TeacherDashboard({ onExit } = {}) {
                 setSelectedClass(null);
                 setExtClass(null);
                 setExtCreate(false);
+                setAiPreset(null);
                 goSection('exams');
               }}
               onCancel={() => {
                 setSelectedClass(null);
                 setExtClass(null);
                 setExtCreate(false);
+                setAiPreset(null);
                 goSection('overview');
               }}
             />
@@ -2442,8 +3681,6 @@ export default function TeacherDashboard({ onExit } = {}) {
             user={user}
             onSay={say}
             onAssign={(classInfo) => {
-              /* Mở đúng trang tạo đề 3 tab (AI / Soạn thủ công / Nhập từ file)
-                 của mục "AI Tạo đề", khoá lớp = lớp vừa chọn. */
               setExtOpen(false);
               setExtClass(classInfo);
               setExtCreate(true);
@@ -2486,16 +3723,91 @@ export default function TeacherDashboard({ onExit } = {}) {
         </Modal>
       )}
 
-      {/* Việc tạo đề cho lớp đã liên kết dùng chung trang CreateExamPage 3 tab
-          (section 'create'), nên không còn modal ExamCreate riêng ở đây. */}
+      {/* ============ MODAL ĐẶT LỊCH ĐỀ THI (MỤC D4) ============ */}
+      {scheduleExamModal && (
+        <Modal
+          title={`Đặt lịch mở/đóng đề: ${scheduleExamModal.title}`}
+          size="sm"
+          onClose={() => setScheduleExamModal(null)}
+          foot={
+            <>
+              {(scheduleForm.opensAt || scheduleForm.closesAt) && (
+                <button
+                  type="button"
+                  className="vt-btn danger"
+                  onClick={() => setScheduleForm({ opensAt: '', closesAt: '' })}
+                  disabled={scheduleSaving}
+                >
+                  Xóa lịch
+                </button>
+              )}
+              <button type="button" className="vt-btn" onClick={() => setScheduleExamModal(null)} disabled={scheduleSaving}>
+                Hủy
+              </button>
+              <button type="button" className="vt-btn primary" onClick={handleSaveSchedule} disabled={scheduleSaving}>
+                <IcoCheckCircle size={14} /> {scheduleSaving ? 'Đang lưu...' : 'Lưu lịch thi'}
+              </button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <p className="vt-muted" style={{ margin: 0 }}>
+              Thiết lập khung giờ tự động mở đề và đóng đề cho học sinh. Để trống nếu muốn mở tự do.
+            </p>
+            <label className="vt-field">
+              <span>Thời điểm mở đề (Học sinh bắt đầu vào làm được)</span>
+              <input
+                type="datetime-local"
+                value={scheduleForm.opensAt}
+                onChange={(e) => setScheduleForm((prev) => ({ ...prev, opensAt: e.target.value }))}
+              />
+            </label>
+            <label className="vt-field">
+              <span>Thời điểm đóng đề (Hạn chót nộp bài)</span>
+              <input
+                type="datetime-local"
+                value={scheduleForm.closesAt}
+                onChange={(e) => setScheduleForm((prev) => ({ ...prev, closesAt: e.target.value }))}
+              />
+            </label>
+          </div>
+        </Modal>
+      )}
 
-      {/* ============ TOAST ============ */}
+      {/* ============ TOAST KÈM NÚT HOÀN TÁC (MỤC B) ============ */}
       {toast && (
         <div
           className={'vt-toast' + (toastTone === 'error' ? ' error' : toastTone === 'success' ? ' success' : '')}
           role="status"
+          aria-live="polite"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}
         >
-          {toast}
+          <span>{toast}</span>
+          {toastUndo && (
+            <button
+              type="button"
+              onClick={async () => {
+                const fn = toastUndo.onUndo;
+                setToast(null);
+                setToastUndo(null);
+                clearTimeout(toastTimer.current);
+                await fn?.();
+              }}
+              style={{
+                padding: '0.25rem 0.65rem',
+                borderRadius: 999,
+                border: '1px solid rgba(255,255,255,0.45)',
+                background: 'rgba(255,255,255,0.18)',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: '0.76rem',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {toastUndo.label || 'Hoàn tác'}
+            </button>
+          )}
         </div>
       )}
 
@@ -2519,20 +3831,90 @@ export default function TeacherDashboard({ onExit } = {}) {
             </>
           }
         >
-          <label className="vt-field">
-            <span>Tên lớp</span>
-            <input
-              autoFocus
-              placeholder="VD: 10A1"
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateClass()}
-              maxLength={20}
-            />
-          </label>
-          <p className="vt-muted">
-            Sau khi tạo, bạn sẽ có key để gửi cho học sinh. Học sinh nhập key sẽ chờ bạn duyệt mới vào lớp.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <label className="vt-field">
+              <span>Tên lớp</span>
+              <input
+                autoFocus
+                placeholder="VD: 12A1 — Chuyên Hóa"
+                value={newClassName}
+                onChange={(e) => setNewClassName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateClass()}
+                maxLength={32}
+              />
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+              <label className="vt-field">
+                <span>Môn học chính</span>
+                <select
+                  value={newClassSubject}
+                  onChange={(e) => setNewClassSubject(e.target.value)}
+                >
+                  {['Hóa học', 'Toán', 'Vật lý', 'Sinh học', 'Tiếng Anh', 'Ngữ văn', 'Lịch sử', 'Địa lý', 'Tin học', 'GDKT & PL'].map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="vt-field">
+                <span>Khối lớp</span>
+                <select
+                  value={newClassGrade}
+                  onChange={(e) => setNewClassGrade(e.target.value)}
+                >
+                  {['12', '11', '10', '9', '8', '7', '6'].map((g) => (
+                    <option key={g} value={g}>Khối {g}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="vt-muted" style={{ margin: 0 }}>
+              Sau khi tạo, hệ thống sẽ cấp mã lớp và mã QR để học sinh tham gia. Môn và khối lớp sẽ được tự động điền khi bạn tạo đề cho lớp này.
+            </p>
+          </div>
+        </Modal>
+      )}
+
+      {/* ============ GIAO ĐỀ CÓ SẴN SANG LỚP KHÁC ============ */}
+      {copyExamTarget && (
+        <Modal
+          title={`Giao đề sang lớp khác: ${copyExamTarget.title}`}
+          size="sm"
+          onClose={() => setCopyExamTarget(null)}
+          foot={
+            <>
+              <button type="button" className="vt-btn" onClick={() => setCopyExamTarget(null)} disabled={copyExamBusy}>
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="vt-btn primary"
+                onClick={handleCopyExamToClass}
+                disabled={!copyTargetClassId || copyExamBusy}
+              >
+                <IcoSend size={14} /> {copyExamBusy ? 'Đang giao...' : 'Giao đề ngay'}
+              </button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <p className="vt-muted" style={{ margin: 0 }}>
+              Chọn lớp chủ nhiệm hoặc lớp liên kết mà bạn muốn giao bản sao của đề <b>{copyExamTarget.title}</b> ({(copyExamTarget.questions || []).length} câu · {copyExamTarget.duration} phút):
+            </p>
+            <label className="vt-field">
+              <span>Chọn lớp nhận đề</span>
+              <select
+                value={copyTargetClassId}
+                onChange={(e) => setCopyTargetClassId(e.target.value)}
+              >
+                {[...classes, ...linkedClasses].map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c._linked ? `(Lớp liên kết · Môn ${c._mySubject || 'GVBM'})` : `(${c.members?.length || 0} HS)`}
+                    {c.id === copyExamTarget.classId ? ' — Lớp hiện tại' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </Modal>
       )}
 
@@ -2841,14 +4223,182 @@ export default function TeacherDashboard({ onExit } = {}) {
           }}
         />
       )}
+
+      {/* ============ BẢNG TÌM KIẾM & LỆNH NHANH TOÀN CỤC (CTRL + K) ============ */}
+      {cmdOpen && (() => {
+        const normVi = (str) => String(str || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/gi, 'd')
+          .toLowerCase()
+          .trim();
+        const kq = normVi(cmdQuery);
+
+        const quickActions = [
+          { id: 'act-create-exam', group: 'Lệnh nhanh', title: 'Tạo đề mới cùng AI Studio', sub: 'Phím tắt N · Lập ma trận & sinh câu hỏi tự động', run: () => openNewExam() },
+          { id: 'act-create-class', group: 'Lệnh nhanh', title: 'Tạo lớp học mới', sub: 'Tạo mã lớp để học sinh tham gia', run: () => { goSection('classes'); setClassSectionTab('my'); setShowCreateClass(true); } },
+          { id: 'act-shuffle', group: 'Lệnh nhanh', title: 'Mở Mô phỏng & Đảo mã đề (4 bước)', sub: 'Đảo 2–8 mã đề, xem song song & in A4', run: () => goSection('simulator') },
+          { id: 'act-bank', group: 'Lệnh nhanh', title: 'Mở Ngân hàng câu hỏi 3 vùng', sub: 'Tìm kiếm toàn văn, phát hiện câu trùng & AI giải chi tiết', run: () => goSection('bank') },
+          { id: 'act-paper', group: 'Lệnh nhanh', title: 'Chấm phiếu trắc nghiệm A4 bằng Camera/Ảnh', sub: 'Quét phiếu OMR & kiểm tra ô nghi ngờ', run: () => goSection('paper') },
+          { id: 'act-export-csv', group: 'Lệnh nhanh', title: 'Xuất bảng điểm tổng hợp toàn bộ lớp (CSV)', sub: `${subsInRange.length} bài nộp trong khoảng đang chọn`, run: () => exportAllCsv() },
+          ...navItems.map((it) => ({
+            id: `nav-${it.key}`,
+            group: `Chuyển trang · ${it.group || 'Điều hướng'}`,
+            title: it.label,
+            sub: `Mở trang ${it.label}`,
+            run: () => {
+              if (it.onClick) it.onClick();
+              else goSection(it.key);
+            },
+          })),
+        ];
+
+        const classItems = classes.map((c) => ({
+          id: `cls-${c.id}`,
+          group: 'Lớp học của tôi',
+          title: `Lớp ${c.name}`,
+          sub: `Mã lớp: ${c.key} · ${c.members?.length || 0} học sinh`,
+          run: () => {
+            goSection('classes');
+            setClassSectionTab('my');
+            setSelectedClass(c);
+          },
+        }));
+
+        const examItems = exams.slice(0, 30).map((ex) => ({
+          id: `ex-${ex.id}`,
+          group: 'Đề thi',
+          title: ex.title || 'Đề kiểm tra',
+          sub: `${(ex.questions || []).length} câu · ${ex.duration || 45} phút · Lớp ${classById[ex.classId]?.name || '—'}`,
+          run: () => {
+            goSection('exams');
+            setPreviewExam(ex);
+          },
+        }));
+
+        const studentItems = classes.flatMap((c) =>
+          (c.members || []).map((m) => ({
+            id: `stu-${c.id}-${m.id}`,
+            group: 'Học sinh',
+            title: m.name || 'Học sinh',
+            sub: `Lớp ${c.name}${m.email ? ` · ${m.email}` : ''}`,
+            run: () => {
+              goSection('classes');
+              setClassSectionTab('my');
+              setSelectedClass(c);
+            },
+          }))
+        );
+
+        const allEntries = [...quickActions, ...classItems, ...examItems, ...studentItems];
+        const matched = kq
+          ? allEntries.filter((item) => normVi(`${item.title} ${item.sub} ${item.group}`).includes(kq)).slice(0, 18)
+          : [...quickActions.slice(0, 8), ...classItems.slice(0, 4), ...examItems.slice(0, 4)];
+
+        const safeIdx = matched.length ? Math.min(cmdIndex, matched.length - 1) : 0;
+
+        return (
+          <div
+            className="t-cmd-backdrop"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setCmdOpen(false); }}
+            role="presentation"
+          >
+            <div className="t-cmd-modal" role="dialog" aria-modal="true" aria-label="Tìm kiếm và lệnh nhanh">
+              <div className="t-cmd-head">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  autoFocus
+                  value={cmdQuery}
+                  onChange={(e) => {
+                    setCmdQuery(e.target.value);
+                    setCmdIndex(0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setCmdIndex((i) => (matched.length ? (i + 1) % matched.length : 0));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setCmdIndex((i) => (matched.length ? (i - 1 + matched.length) % matched.length : 0));
+                    } else if (e.key === 'Enter' && matched[safeIdx]) {
+                      e.preventDefault();
+                      setCmdOpen(false);
+                      matched[safeIdx].run();
+                    }
+                  }}
+                  placeholder="Gõ tên lớp, đề thi, tên học sinh hoặc lệnh nhanh (không cần dấu)..."
+                />
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={() => setCmdOpen(false)}
+                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.72rem' }}
+                >
+                  Esc
+                </button>
+              </div>
+
+              <div className="t-cmd-body">
+                {matched.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--t-ink-muted)', fontSize: '0.86rem' }}>
+                    Không tìm thấy kết quả nào khớp với “{cmdQuery}”.
+                  </div>
+                ) : (
+                  matched.map((item, idx) => {
+                    const prevGroup = idx > 0 ? matched[idx - 1].group : null;
+                    return (
+                      <div key={item.id}>
+                        {item.group !== prevGroup && (
+                          <div className="t-cmd-group-title">{item.group}</div>
+                        )}
+                        <button
+                          type="button"
+                          className={`t-cmd-item ${idx === safeIdx ? 'selected' : ''}`}
+                          onMouseEnter={() => setCmdIndex(idx)}
+                          onClick={() => {
+                            setCmdOpen(false);
+                            item.run();
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--t-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.title}
+                            </div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--t-ink-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.sub}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--t-accent)', flexShrink: 0 }}>
+                            Mở ↵
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="t-cmd-foot">
+                <span>↑↓ để di chuyển · Enter để chọn · Esc để đóng</span>
+                <span>{classes.length} lớp · {exams.length} đề thi</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </DashFrame>
   );
 }
 
 /* ============================================================
-   THỐNG KÊ ĐỀ
+   THỐNG KÊ ĐỀ + XEM BÀI LÀM CHI TIẾT TỪNG HỌC SINH
    ============================================================ */
 function ExamStats({ exam, subs, onExport }) {
+  const [inspectSub, setInspectSub] = useState(null);
+
   if (!subs || subs.length === 0) {
     return <p className="vt-muted">Chưa có bài nộp nào cho đề này.</p>;
   }
@@ -2868,6 +4418,86 @@ function ExamStats({ exam, subs, onExport }) {
   const hardest = [...perQ].sort((a, b) => a.rate - b.rate).slice(0, 5);
 
   const flagged = subs.filter((s) => (s.violationCount || 0) > 0 || s.autoSubmitted);
+
+  if (inspectSub) {
+    const questions = exam.questions || [];
+    const detail = inspectSub.detail || [];
+    return (
+      <div className="vt-stats">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', paddingBottom: '0.6rem', borderBottom: '1px solid var(--soft)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <MemoAvatar name={inspectSub.studentName} size={40} />
+            <div>
+              <h4 style={{ margin: 0, fontSize: '1rem' }}>Bài làm của {inspectSub.studentName}</h4>
+              <small style={{ color: 'var(--mut)' }}>
+                Điểm: <b>{inspectSub.score}/{inspectSub.totalPoints}</b> ({Math.round(pctOf(inspectSub))}%) · Đúng {inspectSub.correctCount}/{inspectSub.totalQuestions} câu · {inspectSub.violationCount || 0} vi phạm
+              </small>
+            </div>
+          </div>
+          <button type="button" className="vt-btn sm" onClick={() => setInspectSub(null)}>
+            ← Quay lại bảng thống kê
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '58vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+          {questions.map((q, idx) => {
+            const d = detail[idx] || {};
+            const isOk = !!d.isCorrect;
+            const type = q.type || 'single_choice';
+            return (
+              <div
+                key={idx}
+                style={{
+                  padding: '0.75rem 0.9rem',
+                  borderRadius: 12,
+                  border: `1px solid ${isOk ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                  background: isOk ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem', fontSize: '0.78rem', fontWeight: 700 }}>
+                  <span>
+                    Câu {idx + 1} ({type === 'true_false' ? 'Đúng/Sai 4 ý' : type === 'short_answer' ? 'Trả lời ngắn' : 'Trắc nghiệm'})
+                  </span>
+                  <span style={{ color: isOk ? '#10b981' : '#ef4444' }}>
+                    {isOk ? '✓ Chính xác' : '✕ Sai / Chưa trọn vẹn'} ({d.earned ?? (isOk ? (q.points || 1) : 0)}/{q.points || 1} đ)
+                  </span>
+                </div>
+                <p style={{ margin: '0 0 0.45rem', fontSize: '0.86rem', fontWeight: 600 }}>{q.q}</p>
+                {type === 'single_choice' && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--mut)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <span>HS chọn: <b style={{ color: isOk ? '#10b981' : '#ef4444' }}>{d.picked != null ? `${String.fromCharCode(65 + Number(d.picked))}. ${q.options?.[d.picked] || ''}` : 'Bỏ trống'}</b></span>
+                    <span>Đáp án đúng: <b style={{ color: '#10b981' }}>{String.fromCharCode(65 + Number(q.correct || 0))}. {q.options?.[q.correct || 0] || ''}</b></span>
+                  </div>
+                )}
+                {type === 'short_answer' && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--mut)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <span>HS điền: <b style={{ color: isOk ? '#10b981' : '#ef4444' }}>{d.answerText || d.picked || 'Bỏ trống'}</b></span>
+                    <span>Đáp án chuẩn: <b style={{ color: '#10b981' }}>{q.answer}</b></span>
+                  </div>
+                )}
+                {type === 'true_false' && Array.isArray(q.statements) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.35rem', fontSize: '0.78rem' }}>
+                    {q.statements.map((st, si) => {
+                      const pickedVal = d.picked?.[st.key] ?? d.picked?.[si];
+                      const match = pickedVal === st.correct;
+                      return (
+                        <div key={st.key || si} style={{ padding: '0.3rem 0.5rem', borderRadius: 8, background: 'rgba(15,23,42,0.2)' }}>
+                          <b>{st.key || String.fromCharCode(97 + si)})</b> {st.text}{' '}
+                          <span style={{ color: match ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                            [HS: {pickedVal === true ? 'Đ' : pickedVal === false ? 'S' : '—'} | Chuẩn: {st.correct ? 'Đ' : 'S'}]
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="vt-stats">
@@ -2911,13 +4541,13 @@ function ExamStats({ exam, subs, onExport }) {
 
       {flagged.length > 0 && (
         <section>
-          <h4><IcoAlert size={14} /> Cần xem lại ({flagged.length})</h4>
+          <h4><IcoAlert size={14} /> Cần xem lại ({flagged.length}) — Bấm vào HS để xem bài làm</h4>
           <ul className="vt-flag">
             {flagged.map((s) => (
-              <li key={s.id}>
+              <li key={s.id} onClick={() => setInspectSub(s)} style={{ cursor: 'pointer' }} title="Bấm để xem chi tiết từng câu của học sinh này">
                 <MemoAvatar name={s.studentName} size={30} />
                 <b>{s.studentName}</b>
-                <span>{s.violationCount || 0} vi phạm{s.autoSubmitted ? ' · tự động nộp' : ''}</span>
+                <span>{s.violationCount || 0} vi phạm{s.autoSubmitted ? ' · tự động nộp' : ''} · Xem bài →</span>
               </li>
             ))}
           </ul>
@@ -2926,18 +4556,18 @@ function ExamStats({ exam, subs, onExport }) {
 
       <section>
         <header className="vt-card-head">
-          <h4>Bảng xếp hạng</h4>
+          <h4>Bảng xếp hạng (Bấm vào học sinh để xem bài làm chi tiết)</h4>
           <button type="button" className="vt-btn sm" onClick={onExport}>
             <IcoDownload size={13} /> Xuất CSV
           </button>
         </header>
         <ol className="vt-rank">
           {sorted.map((s, i) => (
-            <li key={s.id}>
+            <li key={s.id} onClick={() => setInspectSub(s)} style={{ cursor: 'pointer' }} title="Bấm để xem bài làm chi tiết từng câu">
               <span className={'vt-rank-n r' + (i < 3 ? i + 1 : 0)}>{i + 1}</span>
               <MemoAvatar name={s.studentName} size={32} />
               <b>{s.studentName}</b>
-              <small>{s.correctCount}/{s.totalQuestions} đúng</small>
+              <small>{s.correctCount}/{s.totalQuestions} đúng · Xem bài →</small>
               <span className="vt-rank-score">{s.score}/{s.totalPoints}</span>
             </li>
           ))}

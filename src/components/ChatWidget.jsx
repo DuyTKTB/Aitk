@@ -1,8 +1,15 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
-import { useLocalStorage } from '../hooks.js';
+import { useLocalStorage, useLiveStreak } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
-import './chat-widget.css';
+import { useToast } from '../ui/index.jsx';
+import { isValidStreakMessage } from '../lib/chatStreak.js';
+import { syncMyPublicStats } from '../lib/social.js';
+import { getTopStreakClasses } from '../lib/classroom.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
+import ProfileCard from './social/ProfileCard.jsx';
+import ClassChat from './social/ClassChat.jsx';
+import DmPanel from './social/DmPanel.jsx';
+import './chat-widget.css';
 
 /* ============ CẤU HÌNH ============ */
 const DB = (import.meta.env.VITE_FIREBASE_DB_URL || '').replace(/\/$/, '');
@@ -160,7 +167,7 @@ function Lightbox({ src, onClose }) {
 }
 
 /* ============ MỘT TIN NHẮN ============ */
-function Message({ m, prev, uid, active, armed, onToggle, onReact, onReply, onDel, onImg, onJump, onImgLoad }) {
+function Message({ m, prev, uid, active, armed, onToggle, onReact, onReply, onDel, onImg, onJump, onImgLoad, onOpenProfile }) {
   const isMe = m.uid === uid;
   const t = Number(m.t) || 0;
   const pt = prev ? Number(prev.t) || 0 : 0;
@@ -184,7 +191,24 @@ function Message({ m, prev, uid, active, armed, onToggle, onReact, onReply, onDe
             {isMe ? (
               <span className="cw-author">Bạn</span>
             ) : (
-              <AuthorName name={m.name} uid={m.uid} />
+              <button
+                type="button"
+                className="cw-author-btn"
+                onClick={() => onOpenProfile?.(m.uid, m.name)}
+                title="Bấm để xem hồ sơ"
+              >
+                <AuthorName name={m.name} uid={m.uid} />
+              </button>
+            )}
+            {Number(m.streak) >= 3 && (
+              <button
+                type="button"
+                className="cw-streak-badge"
+                onClick={() => onOpenProfile?.(m.uid, isMe ? 'Bạn' : m.name)}
+                title={`Chuỗi ${m.streak} ngày học liên tiếp. Bấm xem hồ sơ`}
+              >
+                🔥 {m.streak}
+              </button>
             )}
             {' · '}{fmtTime(t)}
           </small>
@@ -283,6 +307,23 @@ export default function ChatWidget() {
   const [newBelow, setNewBelow] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
+  const [activeTab, setActiveTab] = useState('community'); // 'community' | 'class' | 'friends'
+  const [activeDmThread, setActiveDmThread] = useState(null);
+  const [profileTarget, setProfileTarget] = useState(null);
+  const [topClasses, setTopClasses] = useState([]);
+
+  const { count: streakCount, isToday } = useLiveStreak();
+  const toast = useToast();
+  const lastSentText = useRef('');
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let alive = true;
+    getTopStreakClasses(3).then((list) => {
+      if (alive && list?.length) setTopClasses(list);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [open]);
 
   const [name, setName] = useLocalStorage(
     'cs-chatname',
@@ -465,12 +506,29 @@ export default function ChatWidget() {
     lastSend.current = Date.now();
     setSending(true);
     try {
+      // Đánh giá tin nhắn hợp lệ để giữ chuỗi cá nhân hôm nay
+      const isStreakMsg = isValidStreakMessage(t, lastSentText.current);
+      if (isStreakMsg) {
+        lastSentText.current = t;
+        if (!isToday) {
+          const next = recordDailyStreak();
+          toast('🔥 Đã giữ chuỗi hôm nay');
+          if (user?.uid) {
+            syncMyPublicStats(user.uid, {
+              displayName: name,
+              streak: next.n,
+            });
+          }
+        }
+      }
+
       const payload = {
         name: (name.trim() || 'Ẩn danh').slice(0, 20),
         text: t,
         img: img || null,
         uid,
         t: Date.now(),
+        streak: streakCount || 0,
       };
       if (replyTo) {
         payload.reply = {
@@ -597,8 +655,10 @@ export default function ChatWidget() {
         >
           <div className="cw-head">
             <div className="cw-head-main">
-              <b className="cw-title">Chat cộng đồng</b>
-              {DB && (
+              <b className="cw-title">
+                {activeTab === 'community' ? 'Chat cộng đồng' : activeTab === 'class' ? 'Chat lớp học' : 'Tin nhắn riêng'}
+              </b>
+              {activeTab === 'community' && DB && (
                 <small className="cw-status" title={onlineNames || undefined}>
                   <span className={'cw-dot' + (connected ? ' on' : '')} aria-hidden="true" />
                   {connected ? `${onlineCount} online` : 'Đang kết nối…'}
@@ -606,38 +666,105 @@ export default function ChatWidget() {
                 </small>
               )}
             </div>
-            <button
-              className={'cw-ib' + (showSearch ? ' on' : '')}
-              onClick={() => { setShowSearch((s) => !s); setSearch(''); }}
-              title="Tìm tin nhắn"
-              aria-label="Tìm tin nhắn"
-              aria-pressed={showSearch}
-              type="button"
-            >
-              <IcSearch />
-            </button>
+            {activeTab === 'community' && (
+              <button
+                className={'cw-ib' + (showSearch ? ' on' : '')}
+                onClick={() => { setShowSearch((s) => !s); setSearch(''); }}
+                title="Tìm tin nhắn"
+                aria-label="Tìm tin nhắn"
+                aria-pressed={showSearch}
+                type="button"
+              >
+                <IcSearch />
+              </button>
+            )}
             <button className="cw-ib" onClick={() => setOpen(false)} title="Đóng" aria-label="Đóng chat" type="button">
               <IcClose />
             </button>
           </div>
 
-          {showSearch && (
-            <div className="cw-search">
-              <IcSearch width="16" height="16" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tin nhắn…" aria-label="Tìm tin nhắn" autoFocus />
-              {search && <small>{filtered.length} kết quả</small>}
-            </div>
+          {/* 3-Tab Bar */}
+          <div className="cw-tab-bar" role="tablist" aria-label="Chọn tab trò chuyện">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'community'}
+              className={`cw-tab-btn ${activeTab === 'community' ? 'active' : ''}`}
+              onClick={() => setActiveTab('community')}
+            >
+              Cộng đồng
+              {newBelow > 0 && <span className="cw-tab-dot" />}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'class'}
+              className={`cw-tab-btn ${activeTab === 'class' ? 'active' : ''}`}
+              onClick={() => setActiveTab('class')}
+            >
+              Lớp
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'friends'}
+              className={`cw-tab-btn ${activeTab === 'friends' ? 'active' : ''}`}
+              onClick={() => setActiveTab('friends')}
+            >
+              Bạn bè
+            </button>
+          </div>
+
+          {activeTab === 'class' && (
+            <ClassChat onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })} />
           )}
 
-          {!DB ? (
-            <div className="cw-setup">
-              <b>Chưa cấu hình Firebase.</b>
-              <div>Tạo file <code>.env</code> với dòng:</div>
-              <code>VITE_FIREBASE_DB_URL=https://...</code>
-            </div>
-          ) : (
+          {activeTab === 'friends' && (
+            <DmPanel
+              me={user || { uid: 'anonymous', displayName: name }}
+              thread={activeDmThread}
+              setThread={setActiveDmThread}
+              onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })}
+              unreadMap={{}}
+            />
+          )}
+
+          {activeTab === 'community' && (
             <>
-              <div className="cw-body">
+              {showSearch && (
+                <div className="cw-search">
+                  <IcSearch width="16" height="16" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tin nhắn…" aria-label="Tìm tin nhắn" autoFocus />
+                  {search && <small>{filtered.length} kết quả</small>}
+                </div>
+              )}
+
+              {!DB ? (
+                <div className="cw-setup">
+                  <b>Chưa cấu hình Firebase.</b>
+                  <div>Tạo file <code>.env</code> với dòng:</div>
+                  <code>VITE_FIREBASE_DB_URL=https://...</code>
+                </div>
+              ) : (
+                <>
+                  <div className="cw-body">
+                    {topClasses.length > 0 && !search && (
+                      <div className="cw-top-classes-card">
+                        <div className="cw-top-head">
+                          <span>🔥 Lớp có chuỗi dài nhất hôm nay</span>
+                          <a href="#leaderboard" className="cw-top-link">
+                            BXH Chuỗi →
+                          </a>
+                        </div>
+                        {topClasses.map((cls, idx) => (
+                          <div key={cls.id || idx} className="cw-top-row">
+                            <span className="cw-top-rank">#{idx + 1}</span>
+                            <span className="cw-top-name">{cls.name || 'Lớp học'}</span>
+                            <span className="cw-top-fire">🔥 {cls.streak?.count || 0} ngày</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 <div className="cw-list" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Tin nhắn">
                   {msgs.length >= 50 && !search && !noMore && (
                     <button className="cw-more" type="button" onClick={loadOlder} disabled={loadingOld}>
@@ -667,6 +794,7 @@ export default function ChatWidget() {
                       onImg={setLightbox}
                       onJump={jumpTo}
                       onImgLoad={() => stick.current && toBottom(false)}
+                      onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })}
                     />
                   ))}
                 </div>
@@ -764,10 +892,25 @@ export default function ChatWidget() {
               </form>
             </>
           )}
+          </>
+        )}
         </div>
       )}
 
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+
+      {profileTarget && (
+        <ProfileCard
+          targetUid={profileTarget.uid}
+          fallbackName={profileTarget.name}
+          onClose={() => setProfileTarget(null)}
+          onOpenDm={(dmId) => {
+            setProfileTarget(null);
+            setActiveTab('friends');
+            setActiveDmThread({ dmId, peerUid: profileTarget.uid, peerName: profileTarget.name });
+          }}
+        />
+      )}
     </>
   );
 }

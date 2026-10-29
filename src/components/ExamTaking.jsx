@@ -2,6 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchExamQuestions, createAttempt, saveUserAnswer, submitAttempt } from '../lib/examApi.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 
+const IconStar = ({ size = 14, filled = false }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
 export default function ExamTaking({ exam, mode = 'practice', onExit }) {
   const { user } = useAuth();
   const [questions, setQuestions] = useState([]);
@@ -171,7 +177,8 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
               onClick={() => toggleFlag(current)}
               type="button"
             >
-              {flags.has(current) ? '★ Đã đánh dấu' : '☆ Đánh dấu'}
+              <IconStar size={13} filled={flags.has(current)} />
+              {flags.has(current) ? 'Đã đánh dấu' : 'Đánh dấu'}
             </button>
           </div>
 

@@ -3,16 +3,22 @@ import {
   IconTrash, IconPlus, IconSave, IconBack, IconWarning, IconCheckCircle, IconAlert, IconInfo,
 } from './AdminIcons.jsx';
 import { InlineAlert, Spinner, useConfirm, useToast } from './AdminUI.jsx';
-import { ANSWER_LABELS, DIFFICULTIES, EXAM_TYPES } from './adminConstants.js';
+import { ANSWER_LABELS, DIFFICULTIES, EXAM_TYPES, QUESTION_TYPES } from './adminConstants.js';
 import { questionProblems, resolveByName } from './adminUtils.js';
 
 /* Màn hình duyệt câu hỏi do AI sinh / import trước khi lưu thành đề.
-   props: questions, meta (từ JSON), grades, subjects, saving, onSave(meta, questions), onBack */
+   Hỗ trợ đầy đủ 3 dạng câu chuẩn THPT 2025: single_choice, true_false, short_answer. */
 export default function QuestionReview({ questions, meta = {}, grades = [], subjects = [], saving = false, onSave, onBack }) {
   const confirm = useConfirm();
   const toast = useToast();
 
-  const [items, setItems] = useState(() => questions.map((q) => ({ ...q, options: q.options.map((o) => ({ ...o })) })));
+  const [items, setItems] = useState(() =>
+    questions.map((q) => ({
+      ...q,
+      type: q.type || q.question_type || 'single_choice',
+      options: (q.options || []).map((o) => ({ ...o })),
+    })),
+  );
   const [form, setForm] = useState(() => ({
     title: meta.title || `Đề AI tạo ${new Date().toLocaleDateString('vi-VN')}`,
     description: meta.description || '',
@@ -30,8 +36,61 @@ export default function QuestionReview({ questions, meta = {}, grades = [], subj
 
   const update = (i, patch) => setItems((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
 
+  const changeType = (qi, nextType) => {
+    setItems((qs) =>
+      qs.map((q, idx) => {
+        if (idx !== qi) return q;
+        if (nextType === 'short_answer') {
+          return {
+            ...q,
+            type: 'short_answer',
+            shortAnswer: q.shortAnswer || '',
+            correctAnswer: q.shortAnswer || 'ĐS',
+            options: [{ label: 'ĐS', content: q.shortAnswer || '', is_correct: true }],
+          };
+        }
+        if (nextType === 'true_false') {
+          const opts = [0, 1, 2, 3].map((k) => ({
+            label: ANSWER_LABELS[k],
+            content: q.options?.[k]?.content || '',
+            is_correct: k % 2 === 0,
+          }));
+          return {
+            ...q,
+            type: 'true_false',
+            options: opts,
+            correctAnswer: opts.map((o) => (o.is_correct ? 'Đ' : 'S')).join('-'),
+          };
+        }
+        const opts = [0, 1, 2, 3].map((k) => ({
+          label: ANSWER_LABELS[k],
+          content: q.options?.[k]?.content || '',
+        }));
+        return {
+          ...q,
+          type: 'single_choice',
+          options: opts,
+          correctAnswer: 'A',
+        };
+      }),
+    );
+  };
+
   const updateOption = (qi, oi, content) =>
     setItems((qs) => qs.map((q, i) => (i !== qi ? q : { ...q, options: q.options.map((o, j) => (j === oi ? { ...o, content } : o)) })));
+
+  const toggleTfOption = (qi, oi, isRight) =>
+    setItems((qs) =>
+      qs.map((q, i) => {
+        if (i !== qi) return q;
+        const options = q.options.map((o, j) => (j === oi ? { ...o, is_correct: isRight } : o));
+        return {
+          ...q,
+          options,
+          correctAnswer: options.map((o) => (o.is_correct ? 'Đ' : 'S')).join('-'),
+        };
+      }),
+    );
 
   const addOption = (qi) =>
     setItems((qs) => qs.map((q, i) => (i !== qi || q.options.length >= ANSWER_LABELS.length ? q : {
@@ -43,7 +102,6 @@ export default function QuestionReview({ questions, meta = {}, grades = [], subj
       if (i !== qi || q.options.length <= 2) return q;
       const removed = q.options[oi];
       const options = q.options.filter((_, j) => j !== oi).map((o, j) => ({ ...o, label: ANSWER_LABELS[j] }));
-      // đánh lại nhãn → cập nhật đáp án đúng cho khớp
       let correct = q.correctAnswer;
       if (removed.label === q.correctAnswer) correct = '';
       else if (correct) {
@@ -141,12 +199,21 @@ export default function QuestionReview({ questions, meta = {}, grades = [], subj
 
       {items.map((q, qi) => {
         const errs = problems[qi];
+        const qType = q.type || 'single_choice';
         return (
           <article key={qi} className={'adl-review-card' + (errs.length ? ' invalid' : '')}>
-            <div className="adl-review-card-head">
+            <div className="adl-review-card-head" style={{ gap: '.5rem', flexWrap: 'wrap' }}>
               <b>Câu {qi + 1}</b>
+              <select
+                value={qType}
+                onChange={(e) => changeType(qi, e.target.value)}
+                className="vt-select-pill"
+                style={{ padding: '.2rem 1.6rem .2rem .6rem', fontSize: '.74rem' }}
+              >
+                {QUESTION_TYPES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
               {errs.length > 0 && <span className="adl-tag warn"><IconWarning size={12} /> {errs.join(' · ')}</span>}
-              <button type="button" className="adl-icon-btn-sm danger" onClick={() => removeQuestion(qi)} title="Xóa câu" aria-label={`Xóa câu ${qi + 1}`}>
+              <button type="button" className="adl-icon-btn-sm danger" onClick={() => removeQuestion(qi)} title="Xóa câu" aria-label={`Xóa câu ${qi + 1}`} style={{ marginLeft: 'auto' }}>
                 <IconTrash size={14} />
               </button>
             </div>
@@ -158,22 +225,70 @@ export default function QuestionReview({ questions, meta = {}, grades = [], subj
               <textarea value={q.content} onChange={(e) => update(qi, { content: e.target.value })} rows={2} />
             </label>
 
-            <fieldset className="adl-qedit-opts">
-              <legend>Đáp án — chọn nút tròn ở đáp án đúng</legend>
-              {q.options.map((o, oi) => (
-                <div key={oi} className={'adl-qedit-opt' + (q.correctAnswer === o.label ? ' correct' : '')}>
-                  <input type="radio" name={`rv-correct-${qi}`} checked={q.correctAnswer === o.label} onChange={() => update(qi, { correctAnswer: o.label })} aria-label={`Đáp án ${o.label} là đáp án đúng`} />
-                  <b>{o.label}</b>
-                  <input type="text" value={o.content} onChange={(e) => updateOption(qi, oi, e.target.value)} aria-label={`Nội dung đáp án ${o.label}`} />
-                  <button type="button" className="adl-icon-btn-sm" onClick={() => removeOption(qi, oi)} disabled={q.options.length <= 2} title="Xóa đáp án" aria-label={`Xóa đáp án ${o.label}`}>
-                    <IconTrash size={13} />
-                  </button>
-                </div>
-              ))}
-              {q.options.length < ANSWER_LABELS.length && (
-                <button type="button" className="adl-btn-sm" onClick={() => addOption(qi)}><IconPlus size={12} /> Thêm đáp án</button>
-              )}
-            </fieldset>
+            {qType === 'short_answer' ? (
+              <label className="adl-field" style={{ marginTop: '.5rem' }}>
+                <span>Đáp số trả lời ngắn (Phần III)</span>
+                <input
+                  type="text"
+                  value={q.shortAnswer ?? q.options?.[0]?.content ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    update(qi, {
+                      shortAnswer: val,
+                      correctAnswer: val || 'ĐS',
+                      options: [{ label: 'ĐS', content: val, is_correct: true }],
+                    });
+                  }}
+                  placeholder="VD: 12,5 hoặc -4"
+                  style={{ maxWidth: 260, fontFamily: 'var(--mono)', fontWeight: 700 }}
+                />
+              </label>
+            ) : qType === 'true_false' ? (
+              <fieldset className="adl-qedit-opts">
+                <legend>Phần II — Đúng / Sai (4 mệnh đề a, b, c, d)</legend>
+                {q.options.map((o, oi) => (
+                  <div key={oi} className="adl-qedit-opt">
+                    <b>{String.fromCharCode(97 + oi)})</b>
+                    <input type="text" value={o.content} onChange={(e) => updateOption(qi, oi, e.target.value)} aria-label={`Mệnh đề ${o.label}`} />
+                    <div className="vt-seg" role="group">
+                      <button
+                        type="button"
+                        className={o.is_correct ? 'on' : ''}
+                        onClick={() => toggleTfOption(qi, oi, true)}
+                        style={o.is_correct ? { background: '#16a34a', color: '#fff' } : undefined}
+                      >
+                        Đúng
+                      </button>
+                      <button
+                        type="button"
+                        className={!o.is_correct ? 'on' : ''}
+                        onClick={() => toggleTfOption(qi, oi, false)}
+                        style={!o.is_correct ? { background: '#ef4444', color: '#fff' } : undefined}
+                      >
+                        Sai
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </fieldset>
+            ) : (
+              <fieldset className="adl-qedit-opts">
+                <legend>Đáp án — chọn nút tròn ở đáp án đúng</legend>
+                {q.options.map((o, oi) => (
+                  <div key={oi} className={'adl-qedit-opt' + (q.correctAnswer === o.label ? ' correct' : '')}>
+                    <input type="radio" name={`rv-correct-${qi}`} checked={q.correctAnswer === o.label} onChange={() => update(qi, { correctAnswer: o.label })} aria-label={`Đáp án ${o.label} là đáp án đúng`} />
+                    <b>{o.label}</b>
+                    <input type="text" value={o.content} onChange={(e) => updateOption(qi, oi, e.target.value)} aria-label={`Nội dung đáp án ${o.label}`} />
+                    <button type="button" className="adl-icon-btn-sm" onClick={() => removeOption(qi, oi)} disabled={q.options.length <= 2} title="Xóa đáp án" aria-label={`Xóa đáp án ${o.label}`}>
+                      <IconTrash size={13} />
+                    </button>
+                  </div>
+                ))}
+                {q.options.length < ANSWER_LABELS.length && (
+                  <button type="button" className="adl-btn-sm" onClick={() => addOption(qi)}><IconPlus size={12} /> Thêm đáp án</button>
+                )}
+              </fieldset>
+            )}
 
             <label className="adl-field">
               <span>Lời giải</span>

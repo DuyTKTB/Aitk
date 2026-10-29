@@ -1,0 +1,1344 @@
+/* ============================================================
+   teacher-profile-section.css — D3. Hồ sơ Giáo viên Bộ môn
+   ------------------------------------------------------------
+   • Chuẩn Bento Card (bo góc 18px, hover nâng nhẹ 2px)
+   • Hỗ trợ đầy đủ Light & Dark mode ([data-theme='dark'])
+   • Responsive mượt tới 360px
+   • Bổ sung style cho xác nhận & hoàn tác của SubjectTeacherPanel
+   ============================================================ */
+
+.tps-root {
+  --tps-bg: #f8fafc;
+  --tps-card: #ffffff;
+  --tps-soft: rgba(15, 23, 42, 0.04);
+  --tps-line: rgba(15, 23, 42, 0.1);
+  --tps-ink: var(--ink, #0f172a);
+  --tps-mut: var(--mut, #64748b);
+  --tps-primary: var(--acc, #2563eb);
+  --tps-primary-soft: rgba(37, 99, 235, 0.1);
+  --tps-emerald: #0f9d76;
+  --tps-emerald-soft: rgba(15, 157, 118, 0.12);
+  --tps-amber: #d97706;
+  --tps-amber-soft: rgba(217, 119, 6, 0.12);
+  --tps-danger: #dc2626;
+  --tps-danger-soft: rgba(220, 38, 38, 0.1);
+  --tps-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+  --tps-shadow-hover: 0 10px 26px rgba(15, 23, 42, 0.08);
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--tps-ink);
+  padding-bottom: 1.5rem;
+}
+
+[data-theme='dark'] .tps-root {
+  --tps-bg: #111318;
+  --tps-card: #1b1c22;
+  --tps-soft: rgba(255, 255, 255, 0.05);
+  --tps-line: rgba(255, 255, 255, 0.11);
+  --tps-ink: #f1f5f9;
+  --tps-mut: #94a3b8;
+  --tps-primary-soft: rgba(59, 130, 246, 0.18);
+  --tps-emerald-soft: rgba(16, 185, 129, 0.16);
+  --tps-amber-soft: rgba(245, 158, 11, 0.16);
+  --tps-danger-soft: rgba(239, 68, 68, 0.16);
+  --tps-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  --tps-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Chuẩn Bento Card (Gọn gàng) ---------- */
+.tps-bento-card {
+  background: var(--tps-card);
+  border: 1px solid var(--tps-line);
+  border-radius: 15px;
+  padding: 0.85rem 1rem;
+  box-shadow: var(--tps-shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.tps-bento-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--tps-shadow-hover);
+}
+
+/* ---------- Subtabs cho Hồ sơ Giáo viên ---------- */
+.tps-subtabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: var(--tps-soft);
+  border: 1px solid var(--tps-line);
+  align-self: flex-start;
+}
+
+.tps-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--tps-mut);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.4rem 0.85rem;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tps-subtab.active {
+  background: var(--tps-card);
+  color: var(--tps-primary);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+}
+
+.tps-overview-two-col {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .tps-overview-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tps-achievements-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 0.5rem;
+}
+
+.tps-ach-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--tps-line);
+  background: var(--tps-card);
+}
+
+.tps-ach-pill.is-unlocked {
+  border-color: rgba(15, 157, 118, 0.38);
+}
+
+.tps-ach-pill.is-unlocked .tps-ach-medal {
+  background: var(--tps-emerald-soft);
+  color: var(--tps-emerald);
+}
+
+.tps-ach-pill-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.tps-ach-pill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.tps-ach-pill-row strong {
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tps-ach-pill-row span {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--tps-mut);
+  white-space: nowrap;
+}
+
+.tps-ai-compact-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tps-ai-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+}
+
+.tps-ai-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tps-ai-row-info h4 {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.tps-ai-row-info p {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--tps-mut);
+  line-height: 1.38;
+}
+
+/* ---------- Banner thông báo + Hoàn tác ---------- */
+.tps-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid var(--tps-line);
+  background: var(--tps-card);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.tps-banner.tone-ok {
+  border-color: rgba(15, 157, 118, 0.35);
+  background: var(--tps-emerald-soft);
+  color: var(--tps-emerald);
+}
+
+.tps-banner.tone-info {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: var(--tps-primary-soft);
+  color: var(--tps-primary);
+}
+
+.tps-banner.tone-err {
+  border-color: rgba(220, 38, 38, 0.35);
+  background: var(--tps-danger-soft);
+  color: var(--tps-danger);
+}
+
+.tps-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.tps-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ---------- Buttons ---------- */
+.tps-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.48rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.14s ease, background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.tps-btn:hover {
+  transform: translateY(-1px);
+}
+
+.tps-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.tps-btn-sm {
+  padding: 0.32rem 0.7rem;
+  font-size: 0.76rem;
+}
+
+.tps-btn-primary {
+  background: var(--tps-primary);
+  color: #ffffff;
+}
+
+.tps-btn-outline {
+  background: var(--tps-card);
+  border-color: var(--tps-line);
+  color: var(--tps-ink);
+}
+
+.tps-btn-outline:hover {
+  border-color: var(--tps-primary);
+  color: var(--tps-primary);
+}
+
+.tps-btn-ghost {
+  background: transparent;
+  color: var(--tps-mut);
+}
+
+.tps-btn-ghost:hover {
+  background: var(--tps-soft);
+  color: var(--tps-ink);
+}
+
+/* ---------- 1. Header Card ---------- */
+.tps-header-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--tps-line);
+}
+
+.tps-avatar-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.1rem;
+  flex: 1 1 420px;
+}
+
+.tps-avatar-ring {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 17px;
+  padding: 2.5px;
+  background: linear-gradient(135deg, #2563eb 0%, #0f9d76 55%, #d97706 100%);
+  flex-shrink: 0;
+}
+
+.tps-avatar-img,
+.tps-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 14.5px;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tps-card);
+  color: var(--tps-primary);
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.tps-avatar-edit-trigger {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--tps-line);
+  background: var(--tps-card);
+  color: var(--tps-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tps-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.tps-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tps-teacher-name {
+  margin: 0;
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.tps-pkg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.tps-pkg-badge.is-pro {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.18), rgba(37, 99, 235, 0.18));
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+[data-theme='dark'] .tps-pkg-badge.is-pro {
+  color: #fbbf24;
+}
+
+.tps-pkg-badge.is-free {
+  background: var(--tps-soft);
+  color: var(--tps-mut);
+  border: 1px solid var(--tps-line);
+}
+
+.tps-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.83rem;
+}
+
+.tps-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.tps-meta-muted {
+  color: var(--tps-mut);
+}
+
+.tps-meta-sep {
+  color: var(--tps-mut);
+}
+
+.tps-bio {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--tps-mut);
+  line-height: 1.45;
+}
+
+.tps-pkg-expiry-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--tps-mut);
+}
+
+.tps-pkg-expiry-bar strong {
+  color: var(--tps-ink);
+}
+
+/* ---------- Specialization Grid ---------- */
+.tps-specialization-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
+  padding-top: 0.95rem;
+}
+
+.tps-spec-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 14px;
+  background: var(--tps-soft);
+}
+
+.tps-spec-box-wide {
+  grid-column: 1 / -1;
+}
+
+.tps-spec-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tps-mut);
+}
+
+.tps-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.tps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.68rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.tps-chip-primary {
+  background: var(--tps-primary-soft);
+  color: var(--tps-primary);
+}
+
+.tps-chip-soft {
+  background: var(--tps-card);
+  border: 1px solid var(--tps-line);
+  color: var(--tps-ink);
+}
+
+.tps-chip-grade {
+  background: var(--tps-emerald-soft);
+  color: var(--tps-emerald);
+}
+
+.tps-chip-class-btn {
+  background: var(--tps-card);
+  border: 1px solid var(--tps-line);
+  color: var(--tps-ink);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, transform 0.12s ease;
+}
+
+.tps-chip-class-btn:hover {
+  border-color: var(--tps-primary);
+  color: var(--tps-primary);
+  transform: translateY(-1px);
+}
+
+.tps-chip-class-btn small {
+  font-size: 0.68rem;
+  padding: 0.05rem 0.32rem;
+  border-radius: 6px;
+  background: var(--tps-soft);
+  color: var(--tps-mut);
+}
+
+.tps-muted-text {
+  font-size: 0.78rem;
+  color: var(--tps-mut);
+  margin: 0;
+}
+
+/* ---------- Edit Profile Drawer ---------- */
+.tps-edit-drawer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--tps-line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tps-edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.tps-edit-head h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.tps-edit-head span {
+  font-size: 0.75rem;
+  color: var(--tps-mut);
+}
+
+.tps-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.tps-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--tps-mut);
+}
+
+.tps-field-span2 {
+  grid-column: span 2;
+}
+
+.tps-field-end {
+  justify-content: flex-end;
+}
+
+.tps-field input,
+.tps-field select {
+  padding: 0.48rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--tps-line);
+  background: var(--tps-card);
+  color: var(--tps-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.tps-avatar-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tps-avatar-input-row input[type='url'] {
+  flex: 1 1 200px;
+}
+
+.tps-Selectable-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.tps-pill-toggle {
+  padding: 0.3rem 0.68rem;
+  border-radius: 999px;
+  border: 1px solid var(--tps-line);
+  background: var(--tps-card);
+  color: var(--tps-mut);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tps-pill-toggle.is-on {
+  background: var(--tps-primary-soft);
+  border-color: var(--tps-primary);
+  color: var(--tps-primary);
+}
+
+.tps-edit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ---------- Section Headers ---------- */
+.tps-section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.tps-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.tps-section-title {
+  margin: 0;
+  font-size: 1.04rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.tps-section-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--tps-mut);
+}
+
+/* ---------- 2. Subject Dashboard Cards ---------- */
+.tps-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.tps-subject-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tps-subject-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.tps-subject-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--tps-primary-soft);
+  color: var(--tps-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tps-subject-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.tps-subject-title-wrap h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.tps-role-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--tps-mut);
+}
+
+.tps-role-tag.main {
+  color: var(--tps-primary);
+}
+
+.tps-trend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.tps-trend-pill.trend-up {
+  background: var(--tps-emerald-soft);
+  color: var(--tps-emerald);
+}
+
+.tps-trend-pill.trend-down {
+  background: var(--tps-danger-soft);
+  color: var(--tps-danger);
+}
+
+.tps-trend-pill.trend-flat {
+  background: var(--tps-soft);
+  color: var(--tps-mut);
+}
+
+.tps-subject-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.tps-metric-cell {
+  padding: 0.42rem 0.5rem;
+  border-radius: 10px;
+  background: var(--tps-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.tps-metric-cell small {
+  font-size: 0.64rem;
+  color: var(--tps-mut);
+  font-weight: 600;
+}
+
+.tps-metric-cell strong {
+  font-size: 1.02rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tps-score-highlight {
+  color: var(--tps-primary);
+}
+
+.tps-subject-trend-box {
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--tps-line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tps-trend-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--tps-mut);
+}
+
+.tps-mini-chart-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tps-mini-chart-svg {
+  overflow: visible;
+}
+
+.tps-mini-chart-points {
+  display: flex;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--tps-mut);
+}
+
+.tps-mini-chart-points span {
+  padding: 0.1rem 0.32rem;
+  border-radius: 6px;
+  background: var(--tps-soft);
+}
+
+.tps-trend-empty {
+  font-size: 0.74rem;
+  color: var(--tps-mut);
+  padding: 0.35rem 0;
+}
+
+/* ---------- 3. Achievements ---------- */
+.tps-achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 0.8rem;
+}
+
+.tps-ach-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  position: relative;
+}
+
+.tps-ach-card.is-unlocked {
+  border-color: rgba(15, 157, 118, 0.38);
+}
+
+.tps-ach-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tps-ach-medal {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--tps-soft);
+  color: var(--tps-mut);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tps-ach-card.is-unlocked .tps-ach-medal {
+  background: var(--tps-emerald-soft);
+  color: var(--tps-emerald);
+}
+
+.tps-ach-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  background: var(--tps-soft);
+  color: var(--tps-ink);
+}
+
+.tps-ach-title {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.tps-ach-desc {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--tps-mut);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.tps-ach-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--tps-soft);
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.tps-ach-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #0f9d76);
+  transition: width 0.3s ease;
+}
+
+/* ---------- 4. AI Daily Suggestions ---------- */
+.tps-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.85rem;
+}
+
+.tps-ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tps-ai-tag {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--tps-soft);
+  color: var(--tps-primary);
+}
+
+.tps-ai-card.tone-amber .tps-ai-tag {
+  background: var(--tps-amber-soft);
+  color: var(--tps-amber);
+}
+
+.tps-ai-card.tone-emerald .tps-ai-tag {
+  background: var(--tps-emerald-soft);
+  color: var(--tps-emerald);
+}
+
+.tps-ai-card h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.tps-ai-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--tps-mut);
+  line-height: 1.48;
+  flex: 1;
+}
+
+.tps-ai-student-list {
+  list-style: none;
+  margin: 0.2rem 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: var(--tps-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.tps-ai-student-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tps-ai-cta {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+/* ---------- 5. Personal Exam Settings & A4 Preview ---------- */
+.tps-exam-settings-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.tps-exam-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.tps-notify-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: var(--tps-soft);
+}
+
+.tps-check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tps-a4-preview-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.tps-a4-preview-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tps-mut);
+}
+
+.tps-a4-sheet {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.95rem 1rem;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.78rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.tps-a4-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 0.5rem;
+  text-align: center;
+  border-bottom: 1.5px solid #0f172a;
+  padding-bottom: 0.55rem;
+}
+
+.tps-a4-left,
+.tps-a4-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  align-items: center;
+}
+
+.tps-a4-line {
+  width: 48%;
+  height: 1px;
+  background: #0f172a;
+  margin: 2px 0;
+}
+
+.tps-a4-code-box {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid #0f172a;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.tps-a4-student-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+}
+
+.tps-a4-sample-body {
+  padding: 0.35rem 0;
+  border-top: 1px dashed #cbd5e1;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.tps-a4-sample-body p {
+  margin: 0 0 0.35rem;
+}
+
+.tps-a4-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.tps-a4-footer {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  font-size: 0.73rem;
+}
+
+.tps-a4-sign {
+  text-align: right;
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+
+/* ---------- 6. Colleague Resource Sharing ---------- */
+.tps-sharing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tps-shared-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--tps-line);
+  padding-top: 0.85rem;
+}
+
+.tps-shared-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  background: var(--tps-soft);
+}
+
+.tps-shared-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 200px;
+  flex: 1;
+}
+
+.tps-shared-type-badge {
+  align-self: flex-start;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.1rem 0.42rem;
+  border-radius: 6px;
+  background: var(--tps-primary-soft);
+  color: var(--tps-primary);
+}
+
+.tps-shared-info strong {
+  font-size: 0.86rem;
+}
+
+.tps-shared-info small {
+  font-size: 0.74rem;
+  color: var(--tps-mut);
+}
+
+.tps-shared-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tps-perm-pill {
+  border: 1px solid var(--tps-line);
+  border-radius: 999px;
+  padding: 0.26rem 0.6rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--tps-card);
+  color: var(--tps-ink);
+}
+
+.tps-perm-pill.perm-edit {
+  background: var(--tps-emerald-soft);
+  border-color: rgba(15, 157, 118, 0.35);
+  color: var(--tps-emerald);
+}
+
+.tps-class-selector label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tps-class-selector select {
+  padding: 0.38rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--tps-line);
+  background: var(--tps-card);
+  color: var(--tps-ink);
+  font-weight: 700;
+}
+
+/* ---------- Styles nâng cấp cho SubjectTeacherPanel ---------- */
+.st-error-with-retry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.st-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.st-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ffffff;
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.st-confirm-banner {
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  background: rgba(220, 38, 38, 0.07);
+  border-radius: 14px;
+  padding: 0.75rem 0.95rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.st-confirm-body strong {
+  display: block;
+  font-size: 0.86rem;
+  color: #b91c1c;
+}
+
+[data-theme='dark'] .st-confirm-body strong {
+  color: #f87171;
+}
+
+.st-confirm-body p {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--st-mut, #64748b);
+}
+
+.st-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.st-btn-danger {
+  background: #dc2626 !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.st-undo-banner {
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 14px;
+  padding: 0.6rem 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.st-undo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ---------- Responsive (Tablet & Mobile tới 360px) ---------- */
+@media (max-width: 860px) {
+  .tps-exam-settings-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .tps-bento-card {
+    padding: 0.95rem;
+  }
+
+  .tps-avatar-block {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .tps-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tps-field-span2 {
+    grid-column: span 1;
+  }
+
+  .tps-a4-header-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tps-a4-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .tps-teacher-name {
+    font-size: 1.12rem;
+  }
+
+  .tps-subject-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tps-btn {
+    padding: 0.42rem 0.75rem;
+    font-size: 0.76rem;
+  }
+}

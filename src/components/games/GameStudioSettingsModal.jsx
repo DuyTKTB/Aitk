@@ -11,6 +11,7 @@ import {
   SvgRobot,
   SvgLightbulb,
 } from './ClassroomGameIcons.jsx';
+import { IconClose, IconShield, IconLock, IconDownload, IconUpload } from '../Icons.jsx';
 import '../../styles/classroom-games.css';
 
 /* Danh sách 11 trò chơi */
@@ -99,7 +100,11 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
     if (!userIsAdmin) return;
     const next = { ...visibility, [gameId]: !visibility[gameId] };
     setVisibility(next);
-    localStorage.setItem('cs-game-visibility', JSON.stringify(next));
+    try {
+      localStorage.setItem('cs-game-visibility', JSON.stringify(next));
+    } catch (e) {
+      console.warn('GameStudioSettingsModal save visibility error:', e);
+    }
     sound.ding();
     onUpdated?.();
   };
@@ -108,7 +113,11 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
     if (!userIsAdmin) return;
     const next = !lockAllGames;
     setLockAllGames(next);
-    localStorage.setItem('cs-game-locked', String(next));
+    try {
+      localStorage.setItem('cs-game-locked', String(next));
+    } catch (e) {
+      console.warn('GameStudioSettingsModal save lock error:', e);
+    }
     sound.ding();
     onUpdated?.();
   };
@@ -120,9 +129,13 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
     const resetVis = {};
     ALL_GAMES_METADATA.forEach((g) => { resetVis[g.id] = true; });
     setVisibility(resetVis);
-    localStorage.setItem('cs-game-visibility', JSON.stringify(resetVis));
-    setLockAllGames(false);
-    localStorage.removeItem('cs-game-locked');
+    try {
+      localStorage.setItem('cs-game-visibility', JSON.stringify(resetVis));
+      setLockAllGames(false);
+      localStorage.removeItem('cs-game-locked');
+    } catch (e) {
+      console.warn('GameStudioSettingsModal reset defaults error:', e);
+    }
 
     sound.cheer();
     setSaveSuccess('Đã khôi phục cài đặt hệ thống thành công!');
@@ -271,10 +284,10 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
           <button
             type="button"
             className="cg-action-btn"
-            style={{ padding: '0.4rem 0.8rem' }}
+            style={{ padding: '0.4rem 0.8rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}
             onClick={onClose}
           >
-            Đóng ✕
+            Đóng <IconClose size={14} />
           </button>
         </div>
 
@@ -356,7 +369,7 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
               }}
               onClick={() => setActiveTab('admin')}
             >
-              <span>🛡️</span>
+              <IconShield size={16} />
               <span>Quản trị Hệ thống (Admin)</span>
             </button>
           </aside>
@@ -383,7 +396,7 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
 
                 {!userIsAdmin ? (
                   <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--surface-2, #f8fafc)', borderRadius: '18px', border: '1px dashed var(--line, #ccc)' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔒</div>
+                    <div style={{ marginBottom: '0.5rem', color: 'var(--mut, #64748b)' }}><IconLock size={40} /></div>
                     <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 800 }}>
                       Bạn chưa có quyền Admin
                     </h4>
@@ -649,17 +662,17 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
                     </h4>
 
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <label className="cg-action-btn" style={{ cursor: 'pointer', padding: '0.35rem 0.75rem' }}>
-                        📥 Nhập JSON
+                      <label className="cg-action-btn" style={{ cursor: 'pointer', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <IconUpload size={14} /> Nhập JSON
                         <input type="file" accept=".json" onChange={handleImportJSON} style={{ display: 'none' }} />
                       </label>
                       <button
                         type="button"
                         className="cg-action-btn"
-                        style={{ padding: '0.35rem 0.75rem' }}
+                        style={{ padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}
                         onClick={handleExportJSON}
                       >
-                        📤 Xuất JSON
+                        <IconDownload size={14} /> Xuất JSON
                       </button>
                       <button
                         type="button"

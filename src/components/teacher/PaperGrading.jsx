@@ -23,7 +23,7 @@ import {
 } from '../../lib/paperGrade.js';
 import {
   listPaperExams, createPaperExam, updatePaperExam, deletePaperExam,
-  listPaperResults, savePaperResults,
+  listPaperResults, savePaperResults, syncPaperResultsToSubmissions,
 } from '../../lib/paperStore.js';
 import sound from '../../lib/gameSound.js';
 import { downloadCsv } from '../DashShell.jsx';
@@ -46,6 +46,9 @@ const IcoTrash = (p) => <Svg {...p}><polyline points="3 6 5 6 21 6" /><path d="M
 const IcoEdit = (p) => <Svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
 const IcoX = (p) => <Svg {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Svg>;
 const IcoDownload = (p) => <Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></Svg>;
+const IcoSpark = (p) => <Svg {...p}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" /></Svg>;
+const IcoZoomIn = (p) => <Svg {...p}><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></Svg>;
+const IcoRotate = (p) => <Svg {...p}><path d="M21 12a9 9 0 1 1-3-6.7" /><polyline points="21 4 21 10 15 10" /></Svg>;
 
 const fmt = (n) => (n == null || Number.isNaN(n) ? '—' : String(round2(n)).replace('.', ','));
 let uid = 0;
@@ -63,12 +66,15 @@ export default function PaperGrading({ classes = [], exams = [] }) {
   const [current, setCurrent] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const [paperSearch, setPaperSearch] = useState('');
+  const [paperClassFilter, setPaperClassFilter] = useState('all');
+  const [confirmDeletePaper, setConfirmDeletePaper] = useState(null);
   const toastTimer = useRef(null);
 
-  const say = useCallback((text, tone = 'success') => {
-    setToast({ text, tone });
+  const say = useCallback((text, tone = 'success', opts = {}) => {
+    setToast({ text, tone, onUndo: opts.onUndo || null, undoLabel: opts.undoLabel || 'Hoàn tác' });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 3500);
+    toastTimer.current = setTimeout(() => setToast(null), opts.onUndo ? 5500 : 3500);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -111,16 +117,44 @@ export default function PaperGrading({ classes = [], exams = [] }) {
     }
   };
 
-  const handleDeletePaper = async (p) => {
-    if (!window.confirm(`Xóa bài chấm "${p.title}" và toàn bộ kết quả đã lưu?`)) return;
+  const handleDeletePaper = (p) => {
+    setConfirmDeletePaper(p);
+  };
+
+  const executeDeletePaper = async () => {
+    const p = confirmDeletePaper;
+    if (!p) return;
+    setConfirmDeletePaper(null);
+    const snapshot = { ...p };
     try {
       await deletePaperExam(p.id);
       await refresh();
-      say('Đã xóa bài chấm');
+      say(`Đã xóa bài chấm "${p.title}"`, 'success', {
+        undoLabel: 'Hoàn tác',
+        onUndo: async () => {
+          try {
+            const { id: _id, ...rest } = snapshot;
+            await createPaperExam({ ...rest, teacherId: user.uid });
+            await refresh();
+            say(`Đã khôi phục bài chấm "${snapshot.title}"`);
+          } catch (err) {
+            say(err.message || 'Không khôi phục được bài chấm', 'error');
+          }
+        },
+      });
     } catch (e) {
       say(e.message, 'error');
     }
   };
+
+  const filteredPapers = useMemo(() => {
+    const q = paperSearch.trim().toLowerCase();
+    return papers.filter((p) => {
+      if (paperClassFilter !== 'all' && (p.classId || '') !== paperClassFilter) return false;
+      if (!q) return true;
+      return (p.title || '').toLowerCase().includes(q);
+    });
+  }, [papers, paperSearch, paperClassFilter]);
 
   const handlePrintSheet = () => {
     sound.pop?.();
@@ -130,18 +164,58 @@ export default function PaperGrading({ classes = [], exams = [] }) {
 
   return (
     <div className="pg">
-      {/* Toast thông báo góc màn hình */}
+      {/* Toast thông báo góc màn hình kèm nút Hoàn tác */}
       {toast && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 999999,
+            display: 'inline-flex', alignItems: 'center', gap: '0.65rem',
             padding: '0.75rem 1.25rem', borderRadius: 14,
             background: toast.tone === 'error' ? '#ef4444' : toast.tone === 'warn' ? '#f59e0b' : '#10b981',
             color: '#ffffff', fontWeight: 700, fontSize: '0.9rem',
             boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
           }}
         >
-          {toast.text}
+          <span>{toast.text}</span>
+          {toast.onUndo && (
+            <button
+              type="button"
+              onClick={() => {
+                toast.onUndo();
+                setToast(null);
+              }}
+              style={{
+                border: '1px solid rgba(255,255,255,0.6)',
+                background: 'rgba(255,255,255,0.18)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                padding: '0.25rem 0.65rem',
+                borderRadius: 8,
+                cursor: 'pointer',
+              }}
+            >
+              {toast.undoLabel || 'Hoàn tác'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Modal xác nhận xóa bài chấm */}
+      {confirmDeletePaper && (
+        <div className="vt-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setConfirmDeletePaper(null)}>
+          <div className="pg-editor" style={{ maxWidth: 440, padding: '1.25rem' }} role="dialog" aria-modal="true" aria-label="Xác nhận xóa bài chấm">
+            <h3 style={{ marginTop: 0 }}>Xóa bài chấm phiếu A4?</h3>
+            <p style={{ color: 'var(--mut)', fontSize: '0.88rem', lineHeight: 1.5 }}>
+              Bạn sắp xóa bài chấm <b>“{confirmDeletePaper.title}”</b>. Bạn có thể bấm Hoàn tác trong vài giây sau khi xóa.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+              <button type="button" className="vt-btn sm" onClick={() => setConfirmDeletePaper(null)}>Hủy</button>
+              <button type="button" className="vt-btn sm danger" onClick={executeDeletePaper}>Xác nhận xóa</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -172,6 +246,45 @@ export default function PaperGrading({ classes = [], exams = [] }) {
             </div>
           </header>
 
+          {papers.length > 0 && (
+            <div className="pg-toolbar" style={{ marginBottom: '0.75rem' }}>
+              <input
+                type="search"
+                value={paperSearch}
+                onChange={(e) => setPaperSearch(e.target.value)}
+                placeholder="Tìm tên bài chấm phiếu…"
+                aria-label="Tìm bài chấm phiếu"
+                style={{
+                  padding: '0.45rem 0.8rem',
+                  borderRadius: 10,
+                  border: '1px solid var(--t-border, rgba(15,23,42,0.12))',
+                  background: 'var(--t-surface, #fff)',
+                  color: 'var(--t-ink, #0f172a)',
+                  fontSize: '0.85rem',
+                  minWidth: 220,
+                }}
+              />
+              {classes.length > 0 && (
+                <select
+                  value={paperClassFilter}
+                  onChange={(e) => setPaperClassFilter(e.target.value)}
+                  aria-label="Lọc bài chấm theo lớp"
+                  style={{
+                    padding: '0.45rem 0.8rem',
+                    borderRadius: 10,
+                    border: '1px solid var(--t-border, rgba(15,23,42,0.12))',
+                    background: 'var(--t-surface, #fff)',
+                    color: 'var(--t-ink, #0f172a)',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <option value="all">Tất cả lớp ({papers.length})</option>
+                  {classes.map((c) => <option key={c.id} value={c.id}>Lớp {c.name}</option>)}
+                </select>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="vt-loading"><p>Đang tải danh sách bài chấm...</p></div>
           ) : papers.length === 0 ? (
@@ -188,9 +301,17 @@ export default function PaperGrading({ classes = [], exams = [] }) {
                 <IcoPlus size={14} /> Tạo bài chấm đầu tiên
               </button>
             </div>
+          ) : filteredPapers.length === 0 ? (
+            <div className="pg-empty">
+              <h3>Không tìm thấy bài chấm khớp bộ lọc</h3>
+              <p>Thử đổi từ khóa tìm kiếm hoặc chọn “Tất cả lớp”.</p>
+              <button type="button" className="vt-btn sm" onClick={() => { setPaperSearch(''); setPaperClassFilter('all'); }}>
+                Xóa bộ lọc
+              </button>
+            </div>
           ) : (
             <div className="pg-cards">
-              {papers.map((p) => {
+              {filteredPapers.map((p) => {
                 const cls = classOf(p.classId);
                 const codeCount = Object.keys(p.keys || {}).length;
                 return (
@@ -854,12 +975,17 @@ function PaperGrade({
   }, []);
 
   const removeItem = (id) => {
-    setItems((cur) => {
-      const it = cur.find((c) => c.id === id);
-      if (it?.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url);
-      return cur.filter((c) => c.id !== id);
-    });
+    const removed = itemsRef.current.find((c) => c.id === id);
+    if (!removed) return;
+    setItems((cur) => cur.filter((c) => c.id !== id));
     if (editId === id) setEditId(null);
+    say(`Đã bỏ phiếu SBD ${removed.sbd || removed.fileName}`, 'warn', {
+      undoLabel: 'Hoàn tác',
+      onUndo: () => {
+        setItems((cur) => [...cur, removed]);
+        say('Đã khôi phục phiếu vào danh sách');
+      },
+    });
   };
 
   const visible = graded.filter((it) => {
@@ -886,14 +1012,23 @@ function PaperGrade({
     const needs = toSave.filter((r) => r.needsReview).length;
     if (needs && !window.confirm(`Còn ${needs} phiếu đánh dấu "cần xem lại". Vẫn lưu?`)) return;
     setSaving(true);
-    const res = await savePaperResults(paper.id, toSave.map((r) => ({
+    const mappedItems = toSave.map((r) => ({
       sbd: r.sbd, code: r.code, studentId: r.studentId, studentName: r.studentName,
       p1: r.read.p1, p2: r.read.p2, p3: r.read.p3, grade: r.grade, needsReview: r.needsReview, fileName: r.fileName,
-    })));
+    }));
+    const res = await savePaperResults(paper.id, mappedItems);
+
+    // Tự động đồng bộ điểm vào Lớp học (Firestore submissions) nếu bài đã gán lớp
+    if (res.ok && paper.classId) {
+      syncPaperResultsToSubmissions(paper, mappedItems).catch((err) => {
+        console.warn('[PaperGrading] syncPaperResultsToSubmissions error:', err);
+      });
+    }
+
     setSaving(false);
     if (res.ok) {
       setItems((cur) => cur.map((c) => (toSave.some((s) => s.id === c.id) ? { ...c, saved: true, edited: false } : c)));
-      say(`Đã lưu thành công ${res.saved} bài chấm vào cơ sở dữ liệu!`);
+      say(`Đã lưu thành công ${res.saved} bài chấm${paper.classId ? ' và đồng bộ vào Lớp học' : ''}!`);
     } else {
       say(res.error, 'error');
     }
@@ -1099,8 +1234,8 @@ function PaperGrade({
               <IcoCamera size={22} color="#38bdf8" />
               <strong>Camera Chấm Phiếu A4 Thời Gian Thực</strong>
             </div>
-            <button type="button" className="vt-btn sm" onClick={stopCamera}>
-              Đóng Camera ✕
+            <button type="button" className="vt-btn sm" onClick={stopCamera} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              Đóng Camera <IcoX size={13} />
             </button>
           </header>
 
@@ -1126,10 +1261,10 @@ function PaperGrade({
               <button
                 type="button"
                 className="vt-btn primary"
-                style={{ padding: '0.8rem 2rem', fontSize: '1rem', borderRadius: 999 }}
+                style={{ padding: '0.8rem 2rem', fontSize: '1rem', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                 onClick={captureAndScan}
               >
-                📸 Chụp & Nhận Diện Phiếu Này
+                <IcoCamera size={18} /> Chụp & Nhận Diện Phiếu Này
               </button>
             </div>
           </div>
@@ -1157,6 +1292,10 @@ function PaperGrade({
    SUB-COMPONENT: TRÌNH SỬA PHIẾU CHI TIẾT (SHEET EDITOR)
    ============================================================ */
 function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClose }) {
+  const [imgZoom, setImgZoom] = useState(1);
+  const [imgRotate, setImgRotate] = useState(0);
+  const [onlySuspicious, setOnlySuspicious] = useState(false);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -1182,6 +1321,17 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
   };
   const issueAt = (pred) => item.issues?.some(pred);
 
+  const issueLabel = (iss) => {
+    if (!iss) return 'Ô nghi ngờ';
+    if (typeof iss === 'string') return iss;
+    if (iss.part === 'sbd') return 'Số báo danh (SBD)';
+    if (iss.part === 'code') return 'Mã đề';
+    if (iss.part === 'p1') return `Phần I - Câu ${iss.q}`;
+    if (iss.part === 'p2') return `Phần II - Câu ${iss.q}${iss.y ? ` ý ${iss.y}` : ''}`;
+    if (iss.part === 'p3') return `Phần III - Câu ${iss.q}`;
+    return iss.msg || 'Ô nghi ngờ';
+  };
+
   return (
     <div className="vt-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="pg-editor" role="dialog" aria-modal="true" aria-label="Xem và sửa phiếu">
@@ -1189,23 +1339,79 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
           <h3>
             Phiếu {item.sbd || '(Chưa rõ SBD)'} <small>{item.fileName}</small>
           </h3>
-          <button type="button" className="pg-icon" onClick={onClose} aria-label="Đóng">
-            <IcoX size={16} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {item.issues?.length > 0 && (
+              <button
+                type="button"
+                className={'pg-chip' + (onlySuspicious ? ' on' : '')}
+                onClick={() => setOnlySuspicious((v) => !v)}
+              >
+                <IcoWarn size={13} /> {onlySuspicious ? 'Hiện tất cả câu' : `Chỉ hiện ô nghi ngờ (${item.issues.length})`}
+              </button>
+            )}
+            <button type="button" className="pg-icon" onClick={onClose} aria-label="Đóng">
+              <IcoX size={16} />
+            </button>
+          </div>
         </header>
 
         <div className="pg-ed-body">
           {item.url && (
-            <div className="pg-ed-img">
-              <img src={item.url} alt={`Ảnh phiếu ${item.fileName}`} />
+            <div className="pg-ed-img" style={{ position: 'relative', overflow: 'auto' }}>
+              <div style={{
+                position: 'sticky', top: 6, zIndex: 3, display: 'flex', gap: '0.35rem',
+                justifyContent: 'flex-end', marginBottom: '0.4rem',
+              }}>
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={() => setImgZoom((z) => (z >= 2 ? 1 : Number((z + 0.5).toFixed(1))))}
+                  title="Phóng to / Thu nhỏ ảnh phiếu"
+                >
+                  <IcoZoomIn size={13} /> {Math.round(imgZoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={() => setImgRotate((r) => (r + 90) % 360)}
+                  title="Xoay ảnh 90 độ"
+                >
+                  <IcoRotate size={13} /> Xoay
+                </button>
+              </div>
+              <div style={{ overflow: 'auto', textAlign: 'center' }}>
+                <img
+                  src={item.url}
+                  alt={`Ảnh phiếu ${item.fileName}`}
+                  style={{
+                    transform: ` scale(${imgZoom}) rotate(${imgRotate}deg)`,
+                    transformOrigin: 'top center',
+                    transition: 'transform 0.18s ease',
+                    maxWidth: '100%',
+                  }}
+                />
+              </div>
             </div>
           )}
           <div className="pg-ed-form">
             {item.quality?.warn && <p className="pg-warn"><IcoWarn size={14} /> {item.quality.warn}</p>}
             {item.issues?.length > 0 && (
-              <p className="pg-note">
-                Máy nghi ngờ {item.issues.length} chỗ (ô nền vàng bên dưới): tô đúp, tô mờ hoặc để trống.
-              </p>
+              <div className="pg-note" style={{ marginBottom: '0.6rem' }}>
+                <div>
+                  <b>Phát hiện {item.issues.length} ô nghi ngờ</b> (nền vàng bên dưới — do tô đúp, tô mờ hoặc bỏ trống):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>
+                  {item.issues.slice(0, 16).map((iss, idx) => (
+                    <span
+                      key={idx}
+                      className="pg-tag warn"
+                      style={{ fontSize: '0.72rem' }}
+                    >
+                      {issueLabel(iss)}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
 
             <div className="pg-grid">
@@ -1254,6 +1460,7 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
                 <div className="pg-p1grid">
                   {Array.from({ length: counts.p1 }, (_, q) => {
                     const sus = issueAt((x) => x.part === 'p1' && x.q === q + 1);
+                    if (onlySuspicious && !sus) return null;
                     return (
                       <label key={q} className={'pg-p1cell' + (sus ? ' sus' : '')}>
                         <span>{q + 1}</span>
@@ -1447,7 +1654,7 @@ function PaperAnalyticsView({ exam, onBack, say }) {
       {/* ELEC AI Chẩn đoán */}
       <div className="pg-block" style={{ borderLeft: '4px solid #0284c7' }}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0284c7' }}>
-          🤖 ELEC AI Chẩn đoán sư phạm
+          <IcoSpark size={18} /> ELEC AI Chẩn đoán sư phạm
         </h3>
         <p style={{ margin: '0.5rem 0 0', lineHeight: 1.6, fontSize: '0.92rem' }}>
           "Dựa trên kết quả bài chấm phiếu trắc nghiệm, điểm trung bình của lớp đạt <strong>{stats.avg}/10</strong> với tỷ lệ đạt <strong>{stats.passRate}%</strong>.

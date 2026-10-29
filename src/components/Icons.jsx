@@ -445,3 +445,104 @@ export const IcoSearch = IconSearch;
 export const IcoUser = IconUser;
 export const IcoLogout = IconLogout;
 export const IcoChevron = IconChevronDown; // AIChat tự xoay bằng class .open
+
+export const IconAlert = (p) => (
+  <Svg {...p}>
+    <path d="M12 9v4M12 17h.01" />
+    <path d="M10.3 3.6 1.8 18.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.8L13.7 3.6a2 2 0 0 0-3.4 0Z" {...duo} />
+  </Svg>
+);
+export const IcoAlert = IconAlert;
+
+export const IconZap = (p) => (
+  <Svg {...p}>
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" {...duo} />
+  </Svg>
+);
+export const IcoZap = IconZap;
+
+export const IconPin = (p) => (
+  <Svg {...p}>
+    <path d="M16 3l5 5L15 14l-2-2-4 4-2-2 4-4-2-2 5-5Z" {...duo} />
+    <path d="m9 15-6 6" />
+  </Svg>
+);
+export const IcoPin = IconPin;
+
+export const IconBulb = (p) => (
+  <Svg {...p}>
+    <path d="M9 18h6M10 22h4" />
+    <path d="M12 2a7 7 0 0 0-4.5 12.4c.9.8 1.5 2 1.5 3.2h6c0-1.2.6-2.4 1.5-3.2A7 7 0 0 0 12 2Z" {...duo} />
+  </Svg>
+);
+export const IcoBulb = IconBulb;
+
+export const IconLock = (p) => (
+  <Svg {...p}>
+    <rect x="5" y="11" width="14" height="10" rx="2" {...duo} />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </Svg>
+);
+export const IcoLock = IconLock;
+
+export const IconFile = (p) => (
+  <Svg {...p}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" {...duo} />
+    <polyline points="14 2 14 8 20 8" />
+  </Svg>
+);
+export const IcoFile = IconFile;
+
+export const IconFolder = (p) => (
+  <Svg {...p}>
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" {...duo} />
+  </Svg>
+);
+export const IcoFolder = IconFolder;
+
+export const IconShield = (p) => (
+  <Svg {...p}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" {...duo} />
+  </Svg>
+);
+export const IcoShield = IconShield;
+
+export const IconSave = (p) => (
+  <Svg {...p}>
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" {...duo} />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </Svg>
+);
+export const IcoSave = IconSave;
+
+export const IconDownload = (p) => (
+  <Svg {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </Svg>
+);
+export const IcoDownload = IconDownload;
+
+export const IconUpload = (p) => (
+  <Svg {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </Svg>
+);
+export const IcoUpload = IconUpload;
+
+export const IconInfinity = (p) => (
+  <Svg {...p}>
+    <path d="M18.178 8c5.096 0 5.096 8 0 8-2.678 0-4.498-2.667-6.178-5.333C10.32 8 8.5 8 5.822 8c-5.096 0-5.096 8 0 8 2.678 0 4.498-2.667 6.178-5.333C13.68 16 15.5 16 18.178 16Z" />
+  </Svg>
+);
+
+export const IconBan = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+  </Svg>
+);

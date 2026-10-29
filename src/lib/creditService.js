@@ -81,7 +81,14 @@ export async function getCredits(userId) {
    Giá: 1 điểm text + 1 điểm mỗi ảnh
    ============================================================ */
 export async function spendCredit(userId, imageCount = 0, creditCost = null) {
-  if (!userId) return { ok: false, balance: 0, needed: 1 };
+  if (!userId) {
+    try {
+      window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
+        detail: { needed: 1, balance: 0, needLogin: true },
+      }));
+    } catch { /* */ }
+    return { ok: false, balance: 0, needed: 1, needLogin: true };
+  }
 
   const imgCount = Math.max(0, Number(imageCount) || 0);
   // Nếu creditCost được chỉ định rõ (vd: tạo đề, ma trận) → dùng luôn
@@ -91,6 +98,11 @@ export async function spendCredit(userId, imageCount = 0, creditCost = null) {
   const credits = await getCredits(userId);
 
   if (credits.balance < cost) {
+    try {
+      window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
+        detail: { needed: cost, balance: credits.balance, needLogin: false },
+      }));
+    } catch { /* */ }
     return { ok: false, balance: credits.balance, needed: cost };
   }
 
@@ -119,6 +131,11 @@ export async function spendCredit(userId, imageCount = 0, creditCost = null) {
     return { ok: true, balance: newBalance, cost };
   } catch (e) {
     console.warn('[credits] spendCredit error:', e?.message || e);
+    try {
+      window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
+        detail: { needed: cost, balance: credits.balance },
+      }));
+    } catch { /* */ }
     return { ok: false, balance: credits.balance, needed: cost };
   }
 }
@@ -307,9 +324,9 @@ export async function claimWelcomeBonus(userId) {
   try {
     const { data: newBal, error } = await supabase.rpc('add_credits', {
       p_user_id: userId,
-      p_amount: 5,
+      p_amount: 15,
       p_type: 'daily_free',
-      p_description: 'Điểm chào mừng 🎁',
+      p_description: 'Điểm quà tặng (+15 điểm)',
     });
     if (error) throw error;
 
@@ -330,6 +347,121 @@ export async function claimWelcomeBonus(userId) {
   } catch (e) {
     console.warn('[credits] claimWelcomeBonus error:', e?.message || e);
     return { ok: false, reason: e?.message || 'rpc_fail' };
+  }
+}
+
+/* ============================================================
+   Cộng 15 điểm cho mỗi lượt nhập Mã kích hoạt / Mã giới thiệu
+   ============================================================ */
+export async function grantActivationCredits(userId, amount = 15, code = '') {
+  const pts = Number(amount) || 15;
+  if (!userId) {
+    try {
+      window.dispatchEvent(new CustomEvent('cs-credit-update', {
+        detail: { delta: pts, added: pts },
+      }));
+    } catch { /* */ }
+    return { ok: true, added: pts, balance: null };
+  }
+
+  try {
+    const { data: newBal, error } = await supabase.rpc('add_credits', {
+      p_user_id: userId,
+      p_amount: pts,
+      p_type: 'referral',
+      p_description: `Nhập mã kích hoạt ${code} (+${pts} điểm)`,
+    });
+    if (error) throw error;
+
+    try {
+      window.dispatchEvent(new CustomEvent('cs-credit-update', {
+        detail: { balance: newBal, added: pts },
+      }));
+    } catch { /* */ }
+
+    return { ok: true, added: pts, balance: newBal };
+  } catch (e) {
+    console.warn('[credits] grantActivationCredits fallback:', e?.message || e);
+    let fallbackBal = null;
+    try {
+      const cur = await getCredits(userId);
+      fallbackBal = (Number(cur?.balance) || 0) + pts;
+      window.dispatchEvent(new CustomEvent('cs-credit-update', {
+        detail: { balance: fallbackBal, added: pts },
+      }));
+    } catch {
+      try {
+        window.dispatchEvent(new CustomEvent('cs-credit-update', {
+          detail: { delta: pts, added: pts },
+        }));
+      } catch { /* */ }
+    }
+    return { ok: true, added: pts, balance: fallbackBal };
+  }
+}
+
+/* ============================================================
+   ADMIN: Điều chỉnh credits thủ công (Cộng hoặc Trừ điểm)
+   ============================================================ */
+export async function adminAdjustCredits(userId, delta = 0, reason = 'Admin điều chỉnh') {
+  const pts = Number(delta) || 0;
+  if (!userId || pts === 0) return { ok: false, reason: 'invalid_args' };
+
+  try {
+    const { data: newBal, error } = await supabase.rpc('add_credits', {
+      p_user_id: userId,
+      p_amount: pts,
+      p_type: pts > 0 ? 'admin_grant' : 'admin_deduct',
+      p_description: reason,
+    });
+    if (error) throw error;
+
+    try {
+      window.dispatchEvent(new CustomEvent('cs-credit-update', {
+        detail: { balance: newBal, delta: pts, reason },
+      }));
+    } catch { /* */ }
+
+    return { ok: true, balance: newBal, delta: pts };
+  } catch (e) {
+    console.warn('[credits] adminAdjustCredits RPC fail, fallback to direct update:', e?.message || e);
+    try {
+      const cur = await getCredits(userId);
+      const nextBal = Math.max(0, (Number(cur?.balance) || 0) + pts);
+      const nextEarned = pts > 0 ? (Number(cur?.total_earned) || 0) + pts : (cur?.total_earned || 0);
+      const nextSpent = pts < 0 ? (Number(cur?.total_spent) || 0) + Math.abs(pts) : (cur?.total_spent || 0);
+
+      await supabase
+        .from('user_credits')
+        .upsert({
+          user_id: userId,
+          balance: nextBal,
+          total_earned: nextEarned,
+          total_spent: nextSpent,
+          updated_at: new Date().toISOString(),
+        });
+
+      try {
+        await supabase.from('credit_transactions').insert({
+          user_id: userId,
+          amount: pts,
+          type: pts > 0 ? 'admin_grant' : 'admin_deduct',
+          description: reason,
+          created_at: new Date().toISOString(),
+        });
+      } catch { /* ignore transaction insert error */ }
+
+      try {
+        window.dispatchEvent(new CustomEvent('cs-credit-update', {
+          detail: { balance: nextBal, delta: pts, reason },
+        }));
+      } catch { /* */ }
+
+      return { ok: true, balance: nextBal, delta: pts };
+    } catch (fallbackErr) {
+      console.error('[credits] adminAdjustCredits fallback failed:', fallbackErr);
+      return { ok: false, reason: fallbackErr.message || 'update_failed' };
+    }
   }
 }
 

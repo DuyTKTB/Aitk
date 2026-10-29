@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useRef, useMemo } from 'react';
-import { useLocalStorage, studyToday, dayKey } from '../hooks.js';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocalStorage, studyToday, dayKey, recordDailyStreak } from '../hooks.js';
 import {
   IcoPlay, IcoPause, IcoReset, IcoExpand, IcoShrink, IcoFocus,
   IcoCoffee, IcoMoon, IcoVolume, IcoVolumeOff, IcoBell, IcoBellOff,
@@ -65,7 +65,6 @@ export default function Pomodoro() {
   const [cfg, setCfg] = useLocalStorage('cs-pomodoro', { focus: 25, short: 5, long: 15 });
   const [sessions, setSessions] = useLocalStorage('cs-sessions', 0);
   const [history, setHistory] = useLocalStorage('cs-pomo-history', {});
-  const [, setStreak] = useLocalStorage('cs-streak', { last: '', n: 0, total: 0 });
   const [notify, setNotify] = useLocalStorage('cs-pomo-notify', false);
   const [sound, setSound] = useLocalStorage('cs-pomo-sound', true);
   const [autoNext, setAutoNext] = useLocalStorage('cs-pomo-autonext', true);
@@ -119,14 +118,14 @@ export default function Pomodoro() {
 
         if (m === 'focus') {
           setSessions((s) => s + 1);
-          setStreak(studyToday);
+          recordDailyStreak();
           const k = dayKey();
           setHistory((h) => ({ ...h, [k]: (h[k] || 0) + 1 }));
           const newCycle = cycleCount + 1;
           setCycleCount(newCycle);
           const next = newCycle % 4 === 0 ? 'long' : 'short';
           setDoneMsg(`Hoàn thành 1 phiên Focus! Nghỉ ${next === 'long' ? 'dài' : 'ngắn'} thôi.`);
-          notifyUser('🎉 Hết giờ Focus', 'Nghỉ ngơi nào!');
+          notifyUser('Hết giờ Focus', 'Nghỉ ngơi nào!');
           setNoteModal(true);
           if (autoNext) {
             setTimeout(() => {

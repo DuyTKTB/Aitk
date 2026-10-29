@@ -1,8 +1,15 @@
+/* Chuẩn hóa font chữ Việt hóa toàn bộ hệ thống */
+*, *::before, *::after {
+  font-family: 'Be Vietnam Pro', var(--sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+input, button, select, textarea {
+  font-family: inherit;
+}
 /* ELEC AI — Editorial × Swiss × Brutalist. Giấy kem + mực đen + một màu nhấn duy nhất. */
 :root {
   --bg: #efece4; --panel: #efece4; --ink: #111; --mut: #6b675e; --soft: rgba(17, 17, 17, .16); --line: #111;
   --acc: #ff4d1a; --acc-ink: #111; --shadow: none;
-  --sans: 'Space Grotesk', system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
   --serif: 'Inter', Georgia, serif;
   --mono: 'Inter', ui-monospace, monospace;
   --ease: cubic-bezier(.2, .7, .2, 1);
@@ -4508,7 +4515,10 @@ input[type="range"]:focus {
 @media (max-width: 640px) {
   /* chữ ≥16px để iOS không tự phóng to khi bấm vào ô nhập */
   .hero-input, .hero-input-select, .chatname, .chat-input-row input,
-  .chat-input-row textarea, .chat-search input { font-size: 16px; }
+  .chat-input-row textarea, .chat-search input,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea { font-size: 16px !important; }
 
   /* ngón tay bấm dễ hơn */
   .btn { min-height: 44px; }
@@ -10818,7 +10828,7 @@ svg.ai-mark.look {
 
 /* ---------- 1. TOKEN ---------- */
 :root {
-  --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --serif: var(--sans);
   --mono: var(--sans);
 
@@ -11217,7 +11227,7 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: var(--z-nav, 9999);
 
     padding: 10px 16px;
     padding-top: calc(10px + env(safe-area-inset-top, 0px));
@@ -12375,7 +12385,7 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 
 /* ---------- 1. FONT ---------- */
 :root {
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --serif: 'Inter', Georgia, serif;   /* dùng Inter italic cho đồng bộ */
   
@@ -13050,7 +13060,9 @@ html body .petw.petw-hibernating {
   html body .petw.petw-sad,
   html body .petw.petw-hibernating {
     left: 14px !important;
-    bottom: 180px !important;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 56px !important;
+    height: 56px !important;
     right: auto !important;
   }
 }
@@ -13266,7 +13278,7 @@ body.on-ai-page .ds-header {
   .mhead-bar {
     position: sticky !important;
     top: 0 !important;
-    z-index: 100 !important;
+    z-index: var(--z-nav, 9999) !important;
     min-height: 60px !important;
   }
 

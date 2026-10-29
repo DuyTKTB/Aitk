@@ -15,7 +15,7 @@ import {
   listMyLinkedClasses, examStatus, toMs,
 } from '../../lib/classTeachers.js';
 import {
-  getClassById, getExamsByClass, getSubmissionsByExam, deleteExam,
+  getClassById, getExamsByClass, getSubmissionsByExam, deleteExam, createExam,
 } from '../../lib/classroom.js';
 import { createExamSession, getSessionByExam } from '../../lib/examSession.js';
 import { Modal } from '../DashShell.jsx';
@@ -59,6 +59,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
   const [busy, setBusy] = useState('');
   const [editCtx, setEditCtx] = useState(null); // { exam, item } — mở Chỉnh sửa chi tiết
   const [manageCtx, setManageCtx] = useState(null); // { exam, item } — gia hạn/đóng–mở/nhân bản/chấm lại
+  const [confirmRemoveCtx, setConfirmRemoveCtx] = useState(null); // { item, exam } — xác nhận xóa đề
 
   const load = useCallback(async () => {
     if (!user?.uid) return;
@@ -125,23 +126,37 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
     return { loading: false, subs, sessions };
   };
 
-  /* Xoá đề khỏi lớp — không thể hoàn tác, nên luôn hỏi xác nhận */
-  const removeExam = async (item, exam) => {
-    const label = item.cls?.name || item.className || item.classId;
-    const ok = window.confirm(
-      `Xoá đề “${exam.title || 'Đề'}” khỏi lớp ${label}?\n`
-      + 'Bài nộp của đề này sẽ không còn trong thống kê. Thao tác không thể hoàn tác.',
-    );
-    if (!ok) return;
+  /* Xoá đề khỏi lớp — mở hộp xác nhận + hỗ trợ Hoàn tác */
+  const removeExam = (item, exam) => {
+    setConfirmRemoveCtx({ item, exam });
+  };
+
+  const executeRemoveExam = async () => {
+    if (!confirmRemoveCtx) return;
+    const { item, exam } = confirmRemoveCtx;
+    setConfirmRemoveCtx(null);
+    const snapshot = { ...exam };
     setBusy(exam.id);
     try {
       await deleteExam(exam.id);
-      onSay?.('Đã xoá đề', 'success');
       await load();
       setDetail((d) => {
         const next = { ...d };
         delete next[item.classId];
         return next;
+      });
+      onSay?.(`Đã xoá đề “${exam.title || 'Đề'}”`, 'success', {
+        undoLabel: 'Hoàn tác',
+        onUndo: async () => {
+          try {
+            const { id: _id, ...rest } = snapshot;
+            await createExam(rest);
+            await load();
+            onSay?.(`Đã khôi phục đề “${snapshot.title || 'Đề'}”`, 'success');
+          } catch (err) {
+            onSay?.(`Không khôi phục được đề: ${err?.message || err}`, 'error');
+          }
+        },
       });
     } catch (e) {
       onSay?.(`Không xoá được: ${e?.message || e}`, 'error');
@@ -465,6 +480,31 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
             setDetail((d) => ({ ...d, [item.classId]: data }));
           }}
         />
+      )}
+      {/* Hộp xác nhận xóa đề khỏi lớp liên kết */}
+      {confirmRemoveCtx && (
+        <Modal
+          title="Xác nhận xoá đề khỏi lớp"
+          size="sm"
+          onClose={() => setConfirmRemoveCtx(null)}
+        >
+          <p className="st-empty" style={{ marginTop: 0, lineHeight: 1.5 }}>
+            Bạn sắp xoá đề <b>“{confirmRemoveCtx.exam.title || 'Đề'}”</b> khỏi lớp{' '}
+            <b>{confirmRemoveCtx.item.cls?.name || confirmRemoveCtx.item.className || confirmRemoveCtx.item.classId}</b>.
+            Bạn có thể bấm <b>Hoàn tác</b> trong vài giây sau khi xoá.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+            <button type="button" className="st-btn" onClick={() => setConfirmRemoveCtx(null)}>Hủy</button>
+            <button
+              type="button"
+              className="st-btn primary"
+              style={{ background: '#dc2626', borderColor: '#dc2626' }}
+              onClick={executeRemoveExam}
+            >
+              Xác nhận xoá
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

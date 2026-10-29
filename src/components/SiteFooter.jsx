@@ -1,3 +1,4 @@
+import { IconFlask } from './Icons.jsx';
 import './site-footer.css';
 
 /* ============================================================
@@ -35,7 +36,9 @@ export default function SiteFooter() {
       {/* Copyright */}
       <div className="sf-bot">
         <small>© 2026 · bycode Duy TK</small>
-        <small>Made with ⚗ in Vietnam</small>
+        <small style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          Made with <IconFlask size={13} style={{ color: 'var(--pri, #2563eb)' }} /> in Vietnam
+        </small>
       </div>
 
       {/* ✅ BANNER LỚN — dùng file banner.png riêng */}

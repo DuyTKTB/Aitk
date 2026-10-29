@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useLocalStorage } from '../hooks.js';
+import { useLocalStorage, useLiveStreak } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { IcoStar, IcoFire, IcoFlask, IcoCrown } from './ProfileIcons.jsx';
 
@@ -41,7 +41,7 @@ const ACHIEVEMENTS_DEF = [
 
 export default function ProfileAchievements() {
   const { user, tier } = useAuth();
-  const [streak] = useLocalStorage('cs-streak-v2', { n: 0, total: 0, last: '' });
+  const { streakObj: streak } = useLiveStreak();
   const [quizStats] = useLocalStorage('cs-quiz-stats', { totalCorrect: 0, totalWrong: 0 });
   const [unlocked] = useLocalStorage('cs-achievements', []);
 

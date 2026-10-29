@@ -3,6 +3,7 @@
    làm sập toàn bộ ứng dụng.
    ============================================================ */
 import React from 'react';
+import { IconAlert } from './Icons.jsx';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -40,7 +41,7 @@ export default class ErrorBoundary extends React.Component {
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '2.5rem' }} aria-hidden="true">⚠️</div>
+          <div style={{ color: 'var(--t-status-err, #ef4444)' }} aria-hidden="true"><IconAlert size={44} /></div>
           <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--t-ink, #111)' }}>
             Có lỗi xảy ra trong thành phần này
           </h2>

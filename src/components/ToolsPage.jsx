@@ -5,7 +5,7 @@ import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,
   IconGamepad, IconUser, IconCalc,
-  IconBook, IconChart, IconAtom,
+  IconBook, IconChart, IconAtom, IcoCrown,
 } from './Icons.jsx';
 import {
   CAT_ICONS, CAT_NAMES, IconArrowUpRight, IconSearch,
@@ -455,6 +455,13 @@ export default function ToolsPage() {
   const { tier } = useAuth();
   const isVip = tier?.key === 'vip';
 
+  useEffect(() => {
+    document.body.classList.add('page-tools');
+    return () => {
+      document.body.classList.remove('page-tools');
+    };
+  }, []);
+
 
 
   const switchTab = (t) => {
@@ -743,10 +750,21 @@ export default function ToolsPage() {
         </aside>
 
         <div className="tn-main">
-          {/* HEADER */}
+          {/* HEADER (BENTO COMPACT) */}
           <div className="tools-header">
             <div className="tools-header-row">
-              <h1>Công cụ</h1>
+              <div className="tools-header-left">
+                <h1>Công cụ</h1>
+                <nav className="tn-crumb tn-crumb-inline" aria-label="Đường dẫn">
+                  <a href="#home">Trang chủ</a><i>›</i><span>Công cụ</span><i>›</i><b>{tabName}</b>
+                </nav>
+              </div>
+              <div className="tn-top tn-top-compact">
+                <span><b>{STUDY_TOOLS.length}</b> học tập</span>
+                <span><b>{AI_TOOLS.length}</b> AI</span>
+                <span><b>{PROMPTS.length}</b> prompts</span>
+                <span><b>{DOCS.length}</b> tài liệu</span>
+              </div>
               <button
                 type="button"
                 className="tools-menu-btn"
@@ -759,19 +777,10 @@ export default function ToolsPage() {
                 <span>Menu</span>
               </button>
             </div>
-            <div className="tn-top">
-              <span><b>{STUDY_TOOLS.length}</b> công cụ học tập</span>
-              <span><b>{AI_TOOLS.length}</b> công cụ AI</span>
-              <span><b>{PROMPTS.length}</b> prompt mẫu</span>
-              <span><b>{DOCS.length}</b> tài liệu</span>
-            </div>
-            <nav className="tn-crumb" aria-label="Đường dẫn">
-              <a href="#home">Trang chủ</a><i>›</i><span>Công cụ</span><i>›</i><b>{tabName}</b>
-            </nav>
           </div>
 
-          {/* TABS */}
-          <div className="tools-tabs" role="tablist" aria-label="Loại công cụ">
+          {/* TABS (Mobile only - hidden on desktop where sidebar exists) */}
+          <div className="tools-tabs tools-tabs-mobile" role="tablist" aria-label="Loại công cụ">
             {[
               ['docs', 'Tài liệu', DOCS.length],
               ['hot', 'AI Hot', HOT_AI.__list.length],
@@ -928,7 +937,7 @@ export default function ToolsPage() {
           {/* ================= GỢI Ý VIP KHI ĐANG CHỌN ================= */}
           {compare.length >= 2 && !isVip && (
             <p className="tc-note tc-note-vip" style={{ textAlign: 'center', marginBottom: '.4rem' }}>
-              💎 So sánh công cụ AI là tính năng <b>VIP</b>. Nâng cấp để mở khóa.
+              <IcoCrown size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> So sánh công cụ AI là tính năng <b>VIP</b>. Nâng cấp để mở khóa.
             </p>
           )}
 

@@ -49,6 +49,12 @@ const IcoCheck = ({ size = 14 }) => (
   </svg>
 );
 
+const IcoStar = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
 const IcoHistory = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -295,7 +301,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onUpgrade }) {
             {checking ? 'Đang kiểm tra…'
               : claimLoading ? 'Đang nhận…'
               : claimed ? 'Đã nhận'
-              : 'Nhận 5 điểm'}
+              : 'Nhận 15 điểm'}
           </span>
         </button>
       </div>
@@ -316,7 +322,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onUpgrade }) {
                 className={'ctu-pkg' + (selectedPkg === p.amount ? ' on' : '') + (p.popular ? ' popular' : '')}
                 onClick={() => setSelectedPkg(p.amount)}
               >
-                {p.popular && <span className="ctu-pkg-popular">⭐ Phổ biến</span>}
+                {p.popular && <span className="ctu-pkg-popular" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><IcoStar size={11} /> Phổ biến</span>}
                 {p.badge && <span className="ctu-pkg-badge">{p.badge}</span>}
                 <b className="ctu-pkg-amount">{p.label}</b>
                 <span className="ctu-pkg-credits">

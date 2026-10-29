@@ -516,12 +516,12 @@
     align-items: center;
     justify-content: center;
     gap: 0;
-    padding: 0 0.85rem 1.25rem;
+    padding: 0 0.85rem 0.85rem;
     cursor: pointer;
     overflow: hidden;
     white-space: nowrap;
     border-bottom: 1px solid var(--t-border-subtle);
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.5rem;
     width: 100%;
     transition: all var(--t-dur-norm) var(--t-ease-smooth);
   }
@@ -552,12 +552,14 @@
   .t-rail-nav {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.22rem;
     width: 100%;
-    padding: 0 0.55rem;
+    padding: 0 0.55rem 3.5rem;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    scroll-behavior: smooth;
   }
 
   .t-rail-btn {
@@ -565,7 +567,8 @@
     align-items: center;
     justify-content: center;
     gap: 0;
-    padding: 0.7rem;
+    padding: 0.45rem 0.65rem;
+    min-height: 38px;
     border-radius: var(--t-r-lg);
     border: 1px solid transparent;
     background: transparent;
@@ -580,7 +583,8 @@
   .t-rail-sidebar.expanded .t-rail-btn,
   .t-rail-sidebar:not(.pinned):hover .t-rail-btn {
     justify-content: flex-start;
-    gap: 0.85rem;
+    gap: 0.75rem;
+    padding: 0.48rem 0.75rem;
   }
 
   .t-rail-btn:hover {
@@ -642,10 +646,12 @@
   .t-rail-footer {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.25rem;
     width: 100%;
-    padding: 0.85rem 0.55rem 0;
+    padding: 0.65rem 0.55rem 0.4rem;
     border-top: 1px solid var(--t-border-subtle);
+    flex-shrink: 0;
+    background: var(--t-surface-1);
   }
 
   /* Main Area */
@@ -708,6 +714,60 @@
     color: var(--t-ink-muted);
   }
 
+  /* Nút tiện ích tròn 34px trên Topbar Giáo viên (Search SVG, Chuông, Bật/tắt menu, Theme) */
+  .t-top-action-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 50% !important;
+    border: 1px solid var(--t-border, rgba(148, 163, 184, 0.24)) !important;
+    background: var(--t-surface-2, rgba(148, 163, 184, 0.08)) !important;
+    color: var(--t-ink, #0f172a) !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    transition: transform 0.15s ease, background 0.2s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .t-top-action-btn:hover {
+    transform: translateY(-1px) !important;
+    background: var(--t-surface-1, #ffffff) !important;
+    border-color: #2f6bff !important;
+    color: #2f6bff !important;
+    box-shadow: 0 3px 10px rgba(47, 107, 255, 0.18) !important;
+  }
+
+  .t-top-action-btn:active {
+    transform: scale(0.92) !important;
+  }
+
+  .t-top-action-btn.has-notice {
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+  }
+
+  [data-theme='dark'] .t-top-action-btn {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    color: #f8fafc !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  [data-theme='dark'] .t-top-action-btn:hover {
+    background: rgba(47, 107, 255, 0.25) !important;
+    border-color: #60a5fa !important;
+    color: #60a5fa !important;
+    box-shadow: 0 3px 12px rgba(47, 107, 255, 0.35) !important;
+  }
+
   /* Viewport */
   .t-viewport {
     flex: 1;
@@ -719,6 +779,209 @@
     padding: 0;
     overflow-y: visible;
     height: auto;
+  }
+
+  /* Nhãn phân nhóm trên Sidebar Rail */
+  .t-rail-group-label {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--t-ink-muted);
+    padding: 0.42rem 0.7rem 0.15rem;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity var(--t-dur-fast) ease, height var(--t-dur-fast) ease;
+  }
+
+  .t-rail-sidebar.expanded .t-rail-group-label,
+  .t-rail-sidebar:not(.pinned):hover .t-rail-group-label {
+    opacity: 0.75;
+    height: auto;
+  }
+
+  .t-rail-group-divider {
+    height: 1px;
+    width: calc(100% - 1rem);
+    margin: 0.35rem auto;
+    background: var(--t-border-subtle);
+  }
+
+  /* Thanh Liên Kết Luồng Công Việc 1 Chạm (Workflow Pipeline Bar) */
+  .t-workflow-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1rem;
+    border-radius: 16px;
+    background: var(--t-surface-1);
+    border: 1px solid var(--t-border);
+    box-shadow: var(--t-shadow-sm);
+  }
+
+  .t-workflow-steps {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .t-workflow-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.78rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: var(--t-surface-2);
+    color: var(--t-ink-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .t-workflow-step:hover {
+    color: var(--t-ink);
+    border-color: var(--t-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .t-workflow-step.active {
+    background: var(--t-accent);
+    color: var(--t-accent-ink);
+    border-color: var(--t-accent);
+    box-shadow: var(--t-shadow-lime);
+  }
+
+  .t-workflow-step-num {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    font-size: 0.68rem;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .t-workflow-step.active .t-workflow-step-num {
+    background: rgba(14, 14, 16, 0.18);
+    color: var(--t-accent-ink);
+  }
+
+  .t-workflow-arrow {
+    color: var(--t-ink-muted);
+    opacity: 0.45;
+    font-size: 0.75rem;
+    user-select: none;
+  }
+
+  /* Bảng Tìm Kiếm & Lệnh Nhanh Toàn Cục (Command Palette Ctrl+K) */
+  .t-cmd-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 10, 15, 0.68);
+    backdrop-filter: blur(6px);
+    z-index: 1200;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8vh 1rem 2rem;
+  }
+
+  .t-cmd-modal {
+    width: min(640px, 96vw);
+    max-height: 78vh;
+    background: var(--t-surface-1);
+    border: 1px solid var(--t-border-strong);
+    border-radius: 20px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .t-cmd-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.15rem;
+    border-bottom: 1px solid var(--t-border);
+    background: var(--t-surface-2);
+  }
+
+  .t-cmd-head input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--t-ink);
+    font-size: 0.96rem;
+    font-weight: 600;
+    outline: none;
+  }
+
+  .t-cmd-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .t-cmd-group-title {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--t-ink-muted);
+    padding: 0.25rem 0.6rem;
+  }
+
+  .t-cmd-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--t-ink);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+
+  .t-cmd-item:hover,
+  .t-cmd-item.selected {
+    background: var(--t-surface-2);
+    border-color: var(--t-accent);
+  }
+
+  .t-cmd-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border-top: 1px solid var(--t-border-subtle);
+    font-size: 0.74rem;
+    color: var(--t-ink-muted);
+    background: var(--t-surface-2);
+  }
+
+  /* Thanh Điều Hướng Đáy Di Động (< 768px) */
+  .t-mobile-bottom-nav {
+    display: none;
   }
 
   /* 12-Column Bento Grid (Ảnh 1 HubSpot) */
@@ -743,9 +1006,293 @@
   @media (max-width: 768px) {
     .t-bento-12 { grid-template-columns: 1fr; }
     .t-col-12, .t-col-8, .t-col-6, .t-col-4, .t-col-3 { grid-column: span 1; }
-    .t-rail-sidebar { width: 60px; }
-    .t-topbar-slim { padding: 0 1rem; }
-    .t-viewport { padding: 1rem; }
+    .t-rail-sidebar { display: none !important; }
+    .t-topbar-slim {
+      padding: 0 0.85rem !important;
+      height: 54px !important;
+      gap: 8px !important;
+    }
+    .t-search-pill { display: none !important; }
+    .t-viewport {
+      padding: 0.9rem 0.9rem calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .t-workflow-bar { padding: 0.5rem 0.65rem; }
+    .t-workflow-steps { overflow-x: auto; flex-wrap: nowrap; width: 100%; padding-bottom: 2px; }
+
+    /* Thanh Điều Hướng Đáy Di Động kiểu Apple Floating Pill */
+    .t-mobile-bottom-nav {
+      position: fixed !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+      width: min(440px, calc(100vw - 20px)) !important;
+      height: 58px !important;
+      padding: 4px 6px !important;
+      border-radius: 999px !important;
+      background: rgba(255, 255, 255, 0.92) !important;
+      border: 1px solid rgba(148, 163, 184, 0.28) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+      backdrop-filter: blur(20px) saturate(180%) !important;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-around !important;
+      z-index: 9999 !important;
+      box-sizing: border-box !important;
+    }
+
+    [data-theme='dark'] .t-mobile-bottom-nav {
+      background: rgba(20, 24, 38, 0.92) !important;
+      border-color: rgba(255, 255, 255, 0.14) !important;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65), 0 2px 10px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .t-mobile-nav-btn {
+      position: relative !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 3px !important;
+      flex: 1 1 0 !important;
+      height: 48px !important;
+      border: none !important;
+      border-radius: 16px !important;
+      background: transparent !important;
+      color: var(--t-ink-muted, #64748b) !important;
+      font-size: 0.68rem !important;
+      font-weight: 700 !important;
+      cursor: pointer !important;
+      transition: all 0.18s ease !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .t-mobile-nav-btn:active {
+      transform: scale(0.92) !important;
+    }
+
+    .t-mobile-nav-btn.active {
+      color: #2f6bff !important;
+      background: rgba(47, 107, 255, 0.1) !important;
+    }
+
+    [data-theme='dark'] .t-mobile-nav-btn.active {
+      color: #60a5fa !important;
+      background: rgba(47, 107, 255, 0.18) !important;
+    }
+
+    .t-mobile-nav-icon {
+      position: relative !important;
+      display: grid !important;
+      place-items: center !important;
+      width: 22px !important;
+      height: 22px !important;
+    }
+
+    .t-mobile-nav-label {
+      font-size: 0.68rem !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+      white-space: nowrap !important;
+    }
+
+    .t-mobile-nav-badge {
+      position: absolute !important;
+      top: -3px !important;
+      right: -7px !important;
+      min-width: 15px !important;
+      height: 15px !important;
+      padding: 0 3px !important;
+      border-radius: 999px !important;
+      background: #ef4444 !important;
+      color: #ffffff !important;
+      font-size: 0.6rem !important;
+      font-weight: 800 !important;
+      display: grid !important;
+      place-items: center !important;
+      box-shadow: 0 0 0 1.5px var(--t-surface-1, #ffffff) !important;
+    }
+  }
+
+  /* ============================================================
+     BOTTOM SHEET MENU GIÁO VIÊN TRÊN DI ĐỘNG (< 768px)
+     ============================================================ */
+  .t-mobile-sheet-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 100000 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    animation: tFadeIn .2s ease !important;
+  }
+
+  .t-mobile-sheet {
+    width: 100% !important;
+    max-width: 520px !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 26px 26px 0 0 !important;
+    padding: 14px 18px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35) !important;
+    animation: tSlideUp .25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-sizing: border-box !important;
+  }
+
+  [data-theme='dark'] .t-mobile-sheet {
+    background: #181a26 !important;
+    color: #f8fafc !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .t-mobile-sheet-grip {
+    width: 40px !important;
+    height: 4px !important;
+    border-radius: 999px !important;
+    background: rgba(148, 163, 184, 0.4) !important;
+    margin: 0 auto 12px !important;
+  }
+
+  .t-mobile-sheet-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 14px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+  }
+
+  .t-mobile-sheet-title strong {
+    display: block !important;
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+  }
+
+  .t-mobile-sheet-title small {
+    display: block !important;
+    font-size: 0.75rem !important;
+    color: #64748b !important;
+  }
+
+  [data-theme='dark'] .t-mobile-sheet-title small {
+    color: #94a3b8 !important;
+  }
+
+  .t-mobile-sheet-close {
+    width: 32px !important;
+    height: 32px !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    background: rgba(148, 163, 184, 0.08) !important;
+    color: inherit !important;
+    cursor: pointer !important;
+  }
+
+  .t-mobile-sheet-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .t-sheet-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    background: rgba(148, 163, 184, 0.06) !important;
+    color: inherit !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    transition: all 0.15s ease !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .t-sheet-item:hover,
+  .t-sheet-item:active {
+    background: rgba(47, 107, 255, 0.12) !important;
+    border-color: #2f6bff !important;
+    color: #2f6bff !important;
+  }
+
+  .t-sheet-item.active {
+    background: #2f6bff !important;
+    border-color: #2f6bff !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(47, 107, 255, 0.35) !important;
+  }
+
+  .t-sheet-item-ico {
+    display: grid !important;
+    place-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .t-sheet-item-label {
+    flex: 1 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .t-sheet-item-badge {
+    padding: 2px 6px !important;
+    border-radius: 999px !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+  }
+
+  .t-mobile-sheet-foot {
+    display: flex !important;
+    gap: 10px !important;
+    margin-top: 14px !important;
+    padding-top: 12px !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+  }
+
+  .t-sheet-action-btn {
+    flex: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    padding: 10px 14px !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    background: rgba(148, 163, 184, 0.08) !important;
+    color: inherit !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+  }
+
+  .t-sheet-action-btn.danger {
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+  }
+
+  @keyframes tSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes tFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 }
 

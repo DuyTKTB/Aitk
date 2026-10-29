@@ -1,10 +1,10 @@
 /* Giao diện bảng điều khiển tối kiểu neon cho trang Công cụ */
 .tools-page .tools-tabs{background:color-mix(in srgb,var(--acc) 7%,transparent);border:1px solid var(--line);border-radius:14px;padding:.3rem;overflow-x:auto;max-width:100%}
-.tools-page .tools-tab{border-radius:10px;text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;font-family:'Space Grotesk',sans-serif}
+.tools-page .tools-tab{border-radius:10px;text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;font-family:'Be Vietnam Pro','Inter',sans-serif}
 .tools-page .tools-tab.on{background:color-mix(in srgb,var(--acc) 22%,transparent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--acc),0 0 18px color-mix(in srgb,var(--acc) 30%,transparent)}
 .tools-page .tools-search{border-radius:14px;padding:1rem 1.3rem}
 
-.tn{display:flex;flex-direction:column;gap:.9rem;font-family:'Space Grotesk','Inter',sans-serif}
+.tn{display:flex;flex-direction:column;gap:.9rem;font-family:'Be Vietnam Pro','Inter',sans-serif}
 .tn-stats{display:flex;flex-wrap:wrap;gap:.5rem}
 .tn-stats span{padding:.4rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--glass);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
 .tn-stats b{color:var(--ink);margin-right:.25rem}

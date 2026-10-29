@@ -1,0 +1,42 @@
+# ELEC AI (AITK)
+
+> ELEC AI (còn viết là ELECAI, Elec AI, AITK) là nền tảng học và dạy Hoá học THPT trên web:
+> trợ lý AI giải bài từng bước, luyện tập và ôn tập ngắt quãng, lộ trình kiến thức theo chương,
+> tạo đề – giao đề – giám sát thi – chấm tự động cho giáo viên, kèm bộ công cụ Hoá học tương tác.
+> Trang chủ: https://aitk-ten.vercel.app/
+
+## Người học
+
+- Trợ lý AI Hoá học: giải bài theo 6 chế độ (tự động, giải chi tiết, từng bước, kiểm tra kết quả,
+  lý thuyết, bài tương tự), có ngữ cảnh lớp và chương đang học.
+- Luyện tập trắc nghiệm và ôn tập ngắt quãng (spaced repetition) theo chuyên đề.
+- Lộ trình kiến thức: theo dõi tiến độ thật từng chương, mức độ thành thạo, lịch ôn, bản đồ kiến thức,
+  gợi ý học tiếp dựa trên kết quả trả lời (không dùng dữ liệu mẫu).
+- Sổ lỗi sai: lưu câu trả lời sai kèm lời giải để luyện lại.
+- Bộ công cụ: bảng tuần hoàn tương tác, cân bằng phương trình, tính khối lượng mol / phân tử khối,
+  thư viện công thức, máy tính Hoá học.
+- Trò chơi giáo dục, Pomodoro, ghi chú, thời khoá biểu, hồ sơ thành tích.
+
+## Giáo viên và nhà trường
+
+- Tạo đề từ ngân hàng câu hỏi (trắc nghiệm, đúng/sai, trả lời ngắn), gắn chuyên đề và mức độ.
+- Giao đề cho lớp bằng mã/link, đặt thời gian, cấu hình chống gian lận (toàn màn hình, giới hạn chuyển tab,
+  chặn copy, camera tuỳ chọn).
+- Giám sát phòng thi trực tiếp, xem bài nộp, chấm tự động và phân tích kết quả theo lớp, theo câu.
+- Quản lý lớp, duyệt thành viên, duyệt thi lại.
+
+## Truy cập
+
+- Ứng dụng yêu cầu đăng nhập; trang công khai là trang giới thiệu tại https://aitk-ten.vercel.app/
+- Điều hướng trong ứng dụng dùng hash (#/ai, #/quiz, #/roadmap, #/stats ...).
+
+## Ghi chú kỹ thuật
+
+- Frontend: React + Vite (SPA, hash routing), thiết kế responsive, có chế độ sáng/tối.
+- Dữ liệu: Firebase (xác thực, lớp học, đề thi, bài nộp) và Supabase (ngân hàng câu hỏi, lượt làm bài).
+- Trợ lý AI dùng nhiều nhà cung cấp mô hình qua lớp định tuyến nội bộ, có giới hạn và dự phòng.
+
+## Liên kết
+
+- Trang chủ: https://aitk-ten.vercel.app/
+- Sitemap: https://aitk-ten.vercel.app/sitemap.xml

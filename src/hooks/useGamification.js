@@ -1,83 +1,128 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from './useAuth.jsx';
 
-const KEY = 'gamification-v1';
+export const GAMIFICATION_KEY = 'gamification-v1';
+export const GAMIFICATION_UPDATE_EVENT = 'cs-gamification-update';
 
-const LEVEL_XP = [0, 100, 250, 500, 900, 1500, 2400, 3600, 5200, 7200];
+export const LEVEL_XP = [0, 100, 250, 500, 900, 1500, 2400, 3600, 5200, 7200];
+
+export function getGamificationData(uid) {
+  if (!uid) return { xp: 0, level: 1, streak: 0, lastStudyDate: null, totalCorrect: 0, totalWrong: 0 };
+  try {
+    const all = JSON.parse(localStorage.getItem(GAMIFICATION_KEY) || '{}');
+    return all[uid] || { xp: 0, level: 1, streak: 0, lastStudyDate: null, totalCorrect: 0, totalWrong: 0 };
+  } catch {
+    return { xp: 0, level: 1, streak: 0, lastStudyDate: null, totalCorrect: 0, totalWrong: 0 };
+  }
+}
+
+export function recordGamificationResult(uid, { correctCount = 0, wrongCount = 0 } = {}) {
+  if (!uid) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(GAMIFICATION_KEY) || '{}');
+    const prev = all[uid] || {
+      xp: 0,
+      level: 1,
+      streak: 0,
+      lastStudyDate: null,
+      totalCorrect: 0,
+      totalWrong: 0,
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    let { xp, totalCorrect, totalWrong, streak, lastStudyDate } = prev;
+
+    xp += (correctCount || 0) * 10 + (wrongCount || 0) * 2;
+    totalCorrect += (correctCount || 0);
+    totalWrong += (wrongCount || 0);
+
+    if (lastStudyDate !== today) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      if (lastStudyDate === yesterday) streak += 1;
+      else streak = 1;
+    }
+    let level = 1;
+    for (let i = 0; i < LEVEL_XP.length; i++) {
+      if (xp >= LEVEL_XP[i]) level = i + 1;
+    }
+    const next = { xp, level, streak, lastStudyDate: today, totalCorrect, totalWrong };
+    all[uid] = next;
+    try {
+      localStorage.setItem(GAMIFICATION_KEY, JSON.stringify(all));
+    } catch (e) {
+      console.warn('[gamification] localStorage.setItem failed', e);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent(GAMIFICATION_UPDATE_EVENT, { detail: { uid, ...next } }));
+      } catch { /* ignore */ }
+    }
+    return next;
+  } catch (e) {
+    console.warn('[gamification] recordGamificationResult error', e);
+  }
+}
 
 export function useGamification() {
   const { user } = useAuth();
   const uid = user?.uid || user?.id;
 
-  const [data, setData] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(KEY) || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [data, setData] = useState(() => getGamificationData(uid));
+
   useEffect(() => {
     if (!uid) return;
-    try {
-      const all = JSON.parse(localStorage.getItem(KEY) || '{}');
-      setData(
-        all[uid] || {
-          xp: 0,
-          level: 1,
-          streak: 0,
-          lastStudyDate: null,
-          totalCorrect: 0,
-          totalWrong: 0,
-        }
-      );
-    } catch {
-      /* noop */
-    }
+    setData(getGamificationData(uid));
+
+    const handleUpdate = (e) => {
+      if (!e?.detail?.uid || e.detail.uid === uid) {
+        setData(getGamificationData(uid));
+      }
+    };
+    const handleStorage = (e) => {
+      if (e.key === GAMIFICATION_KEY) {
+        setData(getGamificationData(uid));
+      }
+    };
+
+    window.addEventListener(GAMIFICATION_UPDATE_EVENT, handleUpdate);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener(GAMIFICATION_UPDATE_EVENT, handleUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [uid]);
 
   const save = useCallback(
     (next) => {
       if (!uid) return;
       try {
-        const all = JSON.parse(localStorage.getItem(KEY) || '{}');
+        const all = JSON.parse(localStorage.getItem(GAMIFICATION_KEY) || '{}');
         all[uid] = next;
-        localStorage.setItem(KEY, JSON.stringify(all));
+        localStorage.setItem(GAMIFICATION_KEY, JSON.stringify(all));
         setData(next);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(GAMIFICATION_UPDATE_EVENT, { detail: { uid, ...next } }));
+        }
       } catch {
         /* noop */
       }
     },
     [uid]
   );
+
   const recordAnswer = useCallback(
     (isCorrect) => {
-      const today = new Date().toISOString().slice(0, 10);
-      let { xp, totalCorrect, totalWrong, streak, lastStudyDate } = data;
-
+      if (!uid) return;
       if (isCorrect) {
-        xp += 10;
-        totalCorrect += 1;
+        recordGamificationResult(uid, { correctCount: 1, wrongCount: 0 });
       } else {
-        xp += 2;
-        totalWrong += 1;
+        recordGamificationResult(uid, { correctCount: 0, wrongCount: 1 });
       }
-      if (lastStudyDate !== today) {
-        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-        if (lastStudyDate === yesterday) streak += 1;
-        else streak = 1;
-      }
-      let level = 1;
-      for (let i = 0; i < LEVEL_XP.length; i++) {
-        if (xp >= LEVEL_XP[i]) level = i + 1;
-      }
-
-      save({ xp, level, streak, lastStudyDate: today, totalCorrect, totalWrong });
     },
-    [data, save]
+    [uid]
   );
 
   const getLevelProgress = () => {
-    const { xp, level } = data;
+    const { xp = 0, level = 1 } = data || {};
     const currentMin = LEVEL_XP[level - 1] || 0;
     const nextMin = LEVEL_XP[level] || currentMin + 1000;
     const pct = ((xp - currentMin) / (nextMin - currentMin)) * 100;

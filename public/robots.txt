@@ -1,9 +1,34 @@
 User-agent: *
 Allow: /
-
-# Trang riêng tư / không cần index (SPA dùng hash nên chỉ cần chặn các path thật)
 Disallow: /api/
 Disallow: /admin
 
-# ❗ Thay REPLACE-YOUR-DOMAIN bằng tên miền thật sau khi deploy
+# ------------------------------------------------------------------
+# Cho phép các crawler của công cụ AI đọc nội dung công khai (GEO).
+# App dùng hash routing (#/...) nên phần lớn nội dung nằm sau đăng nhập;
+# các bot dưới đây chỉ đọc trang công khai (landing, mô tả tính năng).
+# ------------------------------------------------------------------
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Google-Extended
+Allow: /
+
 Sitemap: https://aitk-ten.vercel.app/sitemap.xml

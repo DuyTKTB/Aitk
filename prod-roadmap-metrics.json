@@ -1,0 +1,165 @@
+{
+  "assets": [
+    {
+      "decodedBodySize": 17507,
+      "duration": 62,
+      "encodedBodySize": 919,
+      "initiator": "link",
+      "name": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap",
+      "transferSize": 0
+    },
+    {
+      "decodedBodySize": 210850,
+      "duration": 83,
+      "encodedBodySize": 67853,
+      "initiator": "script",
+      "name": "/assets/index-U-iE7RlC.js",
+      "transferSize": 68153
+    },
+    {
+      "decodedBodySize": 611291,
+      "duration": 809,
+      "encodedBodySize": 105666,
+      "initiator": "link",
+      "name": "/assets/index-DK6nkN2d.css",
+      "transferSize": 105966
+    },
+    {
+      "decodedBodySize": 1728,
+      "duration": 39,
+      "encodedBodySize": 587,
+      "initiator": "link",
+      "name": "/manifest.json",
+      "transferSize": 887
+    },
+    {
+      "decodedBodySize": 0,
+      "duration": 13,
+      "encodedBodySize": 0,
+      "initiator": "fetch",
+      "name": "/",
+      "transferSize": 300
+    },
+    {
+      "decodedBodySize": 0,
+      "duration": 9,
+      "encodedBodySize": 0,
+      "initiator": "fetch",
+      "name": "/",
+      "transferSize": 300
+    },
+    {
+      "decodedBodySize": 0,
+      "duration": 20,
+      "encodedBodySize": 0,
+      "initiator": "fetch",
+      "name": "/",
+      "transferSize": 300
+    },
+    {
+      "decodedBodySize": 65964,
+      "duration": 37,
+      "encodedBodySize": 20246,
+      "initiator": "script",
+      "name": "/assets/Landing-Uew5fLqF.js",
+      "transferSize": 20546
+    },
+    {
+      "decodedBodySize": 72780,
+      "duration": 38,
+      "encodedBodySize": 15490,
+      "initiator": "link",
+      "name": "/assets/Landing-CK1ora_l.css",
+      "transferSize": 15790
+    },
+    {
+      "decodedBodySize": 8304,
+      "duration": 77,
+      "encodedBodySize": 691,
+      "initiator": "css",
+      "name": "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap&subset=vietnamese",
+      "transferSize": 991
+    },
+    {
+      "decodedBodySize": 28555,
+      "duration": 12,
+      "encodedBodySize": 28555,
+      "initiator": "script",
+      "name": "/assets/LoginPage-MWhyA3iP.js",
+      "transferSize": 0
+    },
+    {
+      "decodedBodySize": 15053,
+      "duration": 12,
+      "encodedBodySize": 15053,
+      "initiator": "link",
+      "name": "/assets/LoginPage-BtZS1OFT.css",
+      "transferSize": 0
+    }
+  ],
+  "cssCount": 0,
+  "cssTransfer": 0,
+  "jsCount": 0,
+  "jsTransfer": 0,
+  "render": {
+    "bodyLen": 12823,
+    "chapterRows": 0,
+    "hasHeading": false,
+    "navText": "Xem thử\nTính năng\nDành cho ai\nTất cả công cụ\nPhòng thi\nHỏi đáp\nBắt đầu\nĐăng nhập\nĐăng ký\nAI · TRỢ LÝ HÓA HỌC\nHọc\nHóa học\nthông minh\n01\n02\n03\n/ 03\nAI · HÓA HỌC\nSCROLL\n01\n02\n03\nHÓA\nHỌC\nAI\nH₂O\nπ\nΣ\ne⁻\n1\nH\n6\nC\n8\nO\n26\nFe\n11\nNa\n\nELEC AI\n\nSuy luận\nTra cứu\nGiải bài từ ảnh\nTạo quiz\nTính pH\nCân bằng PTHH\n\nMiễn phí cho học sinh. Bạn chỉ cần đăng nhập khi gửi câu hỏi.\n\nH₂O\nNước\nFe₂O₃\nSắt(III) oxit\nNaCl\nMuối ăn\nH₂SO₄\nAxit sunfuric\nC₆H₁₂O₆\nGlucozơ\nCH₃COOH\nAxit axetic\nCaCO₃\nĐá vôi\nNH₃\nAmoniac\nH₂O\nNước\nFe₂O₃\nSắt(III) oxit\nNaCl\nMuối ăn\nH₂SO₄\nAxit sunfuric\nC₆H₁₂O₆\nGlucozơ\nCH₃COOH\nAxit axetic\nCaCO₃\nĐá vôi\nNH₃\nAmo",
+    "rootChildren": 2,
+    "statCards": 1,
+    "tabs": [
+      "Học sinh",
+      "Giáo viên",
+      "Ôn thi",
+      "Lớp 10",
+      "Lớp 11",
+      "Lớp 12",
+      "Đại học",
+      "Tất cả",
+      "Cơ bản",
+      "AI",
+      "Tính năng",
+      "Lớp học",
+      "Bảo mật"
+    ]
+  },
+  "timing": {
+    "decodedBodySize_nav": 18599,
+    "domContentLoadedEventEnd": 1083.5999999996275,
+    "duration": 1217.0999999996275,
+    "loadEventEnd": 1217.0999999996275,
+    "responseEnd": 41.19999999925494,
+    "transferSize_nav": 5986,
+    "type": "navigate"
+  },
+  "title": "Lộ trình kiến thức · ELEC AI",
+  "url": "http://localhost:4173/#roadmap",
+  "vendors": [
+    {
+      "found": false,
+      "key": "vendor-pdf",
+      "names": []
+    },
+    {
+      "found": false,
+      "key": "vendor-three",
+      "names": []
+    },
+    {
+      "found": false,
+      "key": "vendor-firebase",
+      "names": []
+    },
+    {
+      "found": false,
+      "key": "vendor-supabase",
+      "names": []
+    },
+    {
+      "found": false,
+      "key": "vendor-math",
+      "names": []
+    }
+  ]
+}

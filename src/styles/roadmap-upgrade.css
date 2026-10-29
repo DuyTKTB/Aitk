@@ -1,0 +1,5261 @@
+
+/* ============================================================
+   roadmap-upgrade.css — NÂNG CẤP MODULE LỘ TRÌNH (Vòng 4)
+   Các class mới cho PracticeRunner, FlashcardSession,
+   StudyPlanCard, Overview, SidePanels nâng cấp.
+   Import sau roadmap-page.css trong RoadmapPage.jsx
+   ============================================================ */
+
+/* ── Timer phiên luyện ── */
+.rm-session-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--mut);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2, rgba(127,127,127,.08));
+  border: 1px solid var(--rm-line);
+  letter-spacing: .02em;
+}
+
+/* ── Số lần trả lời câu hỏi ── */
+.rm-quiz-history {
+  font-size: 11px;
+  color: var(--mut);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.rm-quiz-history span { display: flex; align-items: center; gap: 3px; }
+
+/* ── Màn done — celebration ── */
+.rm-done-celebrate {
+  text-align: center;
+  padding: 14px 10px 8px;
+  font-size: 2rem;
+  line-height: 1;
+  animation: rm-pop .5s cubic-bezier(.17,.67,.35,1.3) both;
+}
+.rm-done-msg {
+  text-align: center;
+  font-size: 13px;
+  font-weight: var(--fw-med);
+  margin: 0 0 8px;
+}
+.rm-done-msg.perfect { color: var(--ok); }
+.rm-done-msg.good { color: var(--acc-soft, var(--acc)); }
+.rm-done-msg.struggle { color: var(--warn); }
+
+@keyframes rm-pop {
+  from { transform: scale(.4); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Done list nâng cấp: hiện đáp án chi tiết ── */
+.rm-done-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.rm-done-list li {
+  border-radius: 10px;
+  border: 1px solid var(--rm-line);
+  padding: 9px 11px;
+  font-size: 12.5px;
+  background: var(--surface-2, rgba(127,127,127,.04));
+  display: grid;
+  gap: 3px;
+}
+.rm-done-list li.ok { border-color: color-mix(in srgb, var(--ok) 30%, var(--rm-line)); }
+.rm-done-list li.bad { border-color: color-mix(in srgb, var(--err) 30%, var(--rm-line)); }
+.rm-done-q { font-weight: var(--fw-med); line-height: 1.4; }
+.rm-done-ans {
+  font-size: 11.5px;
+  color: var(--mut);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.rm-done-ans .picked { color: var(--err); }
+.rm-done-ans .correct { color: var(--ok); }
+.rm-done-expl {
+  font-size: 11px;
+  color: var(--mut);
+  line-height: 1.45;
+  padding-top: 2px;
+  border-top: 1px solid var(--rm-line);
+  margin-top: 2px;
+}
+
+/* ── Nút "Ôn ngay câu sai" ── */
+.rm-done-review-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--warn);
+  background: var(--warn-bg, rgba(255,159,10,.1));
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font: var(--fw-med) 12px/1 var(--sans);
+  transition: background .15s;
+}
+.rm-done-review-btn:hover { background: color-mix(in srgb, var(--warn) 15%, transparent); }
+
+/* ── Flashcard: progress bar ── */
+.rm-flash-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--rm-line);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.rm-flash-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--acc);
+  transition: width .3s ease;
+}
+
+/* ── Flashcard: hint "Lần trước" ── */
+.rm-flash-prev {
+  font-size: 11px;
+  color: var(--mut);
+  text-align: right;
+  padding: 0 2px 4px;
+}
+.rm-flash-prev.lv1 { color: var(--err); }
+.rm-flash-prev.lv2 { color: var(--warn); }
+.rm-flash-prev.lv3 { color: var(--ok); }
+
+/* ── Flashcard done: list thẻ theo nhóm ── */
+.rm-flash-done-groups {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.rm-flash-done-group h4 {
+  margin: 0 0 5px;
+  font-size: 11.5px;
+  font-weight: var(--fw-med);
+  color: var(--mut);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.rm-flash-done-group.lv1 h4 { color: var(--err); }
+.rm-flash-done-group.lv2 h4 { color: var(--warn); }
+.rm-flash-done-group.lv3 h4 { color: var(--ok); }
+.rm-flash-done-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.rm-flash-done-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.03));
+}
+.rm-flash-done-list li .rm-done-q { font-size: 12px; font-weight: normal; }
+.rm-flash-done-list li small { font-size: 10.5px; color: var(--mut); margin-left: auto; white-space: nowrap; }
+
+/* ── StudyPlanCard: badge "Hôm nay" ── */
+.rm-plan-today {
+  font-size: 10.5px;
+  font-weight: var(--fw-bold);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--acc) 18%, transparent);
+  color: var(--acc-soft, var(--acc));
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── StudyPlanCard: generating spinner ── */
+.rm-plan-generating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mut);
+  font-size: 12.5px;
+  padding: 10px 0;
+}
+.rm-plan-generating::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--rm-line);
+  border-top-color: var(--acc);
+  border-radius: 50%;
+  animation: rm-spin .7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes rm-spin { to { transform: rotate(360deg); } }
+
+/* ── Overview: due badge trong metrics ── */
+.rm-metric-due {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.rm-metric-due-badge {
+  font-size: 10.5px;
+  font-weight: var(--fw-bold);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--warn-bg, rgba(255,159,10,.12));
+  color: var(--warn);
+}
+
+/* ── Overview: empty state heatmap ── */
+.rm-heat-empty {
+  padding: 18px 0;
+  text-align: center;
+  color: var(--mut);
+  font-size: 12.5px;
+}
+
+/* ── SidePanels: "Xem thêm" ── */
+.rm-panel-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 6px;
+}
+.rm-panel-more button {
+  font: var(--fw-med) 11.5px/1 var(--sans);
+  color: var(--acc-soft, var(--acc));
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.rm-panel-more button:hover { background: var(--surface-2, rgba(127,127,127,.08)); }
+
+/* ── SidePanels: mini sparkline tiến độ ── */
+.rm-sparkline-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rm-line);
+}
+.rm-sparkline-section h4 {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  font-weight: var(--fw-med);
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.rm-sparkline-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 40px;
+}
+.rm-sparkline-bar {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  background: var(--acc);
+  opacity: .7;
+  transition: opacity .15s;
+  position: relative;
+}
+.rm-sparkline-bar:hover { opacity: 1; }
+.rm-sparkline-bar::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  padding: 2px 5px;
+  border-radius: 5px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+.rm-sparkline-bar:hover::after { opacity: 1; }
+.rm-sparkline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--mut);
+  margin-top: 4px;
+}
+.rm-sparkline-trend {
+  font-size: 11.5px;
+  color: var(--mut);
+  margin-top: 5px;
+}
+.rm-sparkline-trend.up { color: var(--ok); }
+.rm-sparkline-trend.down { color: var(--err); }
+
+/* ── Confirm overlay khi đóng giữa chừng ── */
+.rm-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: inherit;
+  animation: rm-fade-in .15s ease;
+}
+.rm-confirm-box {
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  border-radius: 16px;
+  padding: 20px 22px;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 16px 50px rgba(0,0,0,.3);
+  display: grid;
+  gap: 12px;
+}
+.rm-confirm-box p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.rm-confirm-box small { font-size: 12px; color: var(--mut); }
+.rm-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+@keyframes rm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Nút "Hỏi AI giải thích" trong feedback ── */
+.rm-btn-ai-explain {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--acc-soft, var(--acc));
+  background: color-mix(in srgb, var(--acc) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 25%, transparent);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font: var(--fw-med) 11.5px/1 var(--sans);
+  transition: background .15s;
+  margin-top: 4px;
+}
+.rm-btn-ai-explain:hover { background: color-mix(in srgb, var(--acc) 18%, transparent); }
+
+/* ── Export .ics button ── */
+.rm-btn-ical {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+}
+
+/* ── Responsive: mobile 390px ── */
+@media (max-width: 480px) {
+  .rm-done-list li { padding: 7px 9px; }
+  .rm-flash-done-list li { padding: 4px 7px; }
+  .rm-sparkline-bars { height: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rm-done-celebrate { animation: none; }
+  .rm-plan-generating::before { animation: none; }
+  .rm-sparkline-bar { transition: none; }
+}
+
+/* ============================================================
+   PHẦN MỞ RỘNG: TRỌNG TÂM CHƯƠNG, MỨC ĐỘ CÂU HỎI & 9STUDY HUB
+   ============================================================ */
+
+/* ── ChapterSheet: Trọng tâm kiến thức & Lỗi hay mắc ── */
+.rm-guide-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.04));
+  display: grid;
+  gap: 12px;
+}
+.rm-guide-sec h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--acc-soft, var(--acc));
+}
+.rm-guide-sec.warn h4 { color: var(--warn); }
+.rm-guide-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* ── ChapterSheet & PracticeRunner: Mức độ câu hỏi ── */
+.rm-level-filter {
+  margin: 10px 0 6px;
+  display: grid;
+  gap: 6px;
+}
+.rm-level-filter > span {
+  font-size: 11.5px;
+  color: var(--mut);
+  font-weight: var(--fw-med);
+}
+.rm-level-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rm-level-pill {
+  border-radius: 999px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--ink);
+  padding: 6px 12px;
+  font: var(--fw-med) 12px/1 var(--sans);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.rm-level-pill:hover { border-color: var(--acc); }
+.rm-level-pill.on {
+  background: color-mix(in srgb, var(--acc) 18%, transparent);
+  border-color: var(--acc);
+  color: var(--acc-soft, var(--acc));
+  font-weight: var(--fw-bold);
+}
+
+.rm-quiz-level-badge {
+  font-size: 10.5px;
+  font-weight: var(--fw-bold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: .03em;
+}
+.rm-quiz-level-badge.lv-nb {
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  color: var(--ok);
+}
+.rm-quiz-level-badge.lv-th {
+  background: color-mix(in srgb, var(--acc) 15%, transparent);
+  color: var(--acc-soft, var(--acc));
+}
+.rm-quiz-level-badge.lv-vd {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  color: var(--warn);
+}
+
+/* ============================================================
+   9STUDY ASPIRATION & 5-STEP ROADMAP HUB (.ns-*)
+   Thiết kế lấy cảm hứng từ hệ thống 9Study.vn:
+   Bo góc 22–24px, badge viết hoa sắc nét, gradient tinh tế,
+   tương thích hoàn hảo cả giao diện Sáng & Tối.
+   ============================================================ */
+
+.ns-hub {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.ns-hero-card {
+  position: relative;
+  border-radius: 24px;
+  padding: 22px 24px;
+  background:
+    radial-gradient(900px 260px at 0% 0%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 65%),
+    radial-gradient(700px 240px at 100% 0%, rgba(16, 185, 129, 0.09), transparent 60%),
+    var(--rm-surface);
+  border: 1px solid color-mix(in srgb, var(--acc) 26%, var(--rm-line));
+  box-shadow: 0 18px 48px -18px rgba(15, 23, 42, 0.22);
+  display: grid;
+  gap: 18px;
+}
+
+.ns-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ns-hero-ident {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 460px;
+}
+
+.ns-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.ns-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  background: var(--surface-2, rgba(127, 127, 127, 0.1));
+  border: 1px solid var(--rm-line);
+  color: var(--mut);
+}
+
+.ns-pill.primary {
+  background: color-mix(in srgb, var(--acc) 18%, transparent);
+  border-color: color-mix(in srgb, var(--acc) 38%, transparent);
+  color: var(--acc-soft, var(--acc));
+}
+
+.ns-pill.step {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--ok);
+}
+
+.ns-nv1-headline h2 {
+  margin: 0;
+  font-size: clamp(18px, 2.2vw, 23px);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns-nv1-headline h2 em {
+  font-style: normal;
+  color: var(--acc-soft, var(--acc));
+}
+
+.ns-uni-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--acc);
+  color: #fff;
+  letter-spacing: .04em;
+}
+
+.ns-nv1-meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--mut);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ns-nv1-meta b { color: var(--ink); }
+.ns-nv1-meta .sep { opacity: .45; }
+
+.ns-feas-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.ns-feas-badge.tone-ok { background: rgba(16,185,129,.15); color: var(--ok); }
+.ns-feas-badge.tone-info { background: color-mix(in srgb, var(--acc) 16%, transparent); color: var(--acc-soft, var(--acc)); }
+.ns-feas-badge.tone-warn { background: rgba(245,158,11,.16); color: var(--warn); }
+.ns-feas-badge.tone-err { background: rgba(239,68,68,.16); color: var(--err); }
+.ns-feas-badge.tone-muted { background: rgba(127,127,127,.12); color: var(--mut); }
+
+.ns-hero-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── 3 ô chỉ số Điểm xuất phát · Khoảng cách NV1 · Elo ── */
+.ns-score-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ns-score-box {
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.05));
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 6px;
+}
+
+.ns-score-box.highlight {
+  background: color-mix(in srgb, var(--acc) 7%, var(--rm-surface));
+  border-color: color-mix(in srgb, var(--acc) 28%, var(--rm-line));
+}
+
+.ns-score-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+
+.ns-score-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns-score-pct {
+  font-size: 12.5px;
+  color: var(--acc-soft, var(--acc));
+}
+
+.ns-score-val {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns-score-val strong {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-score-val small {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+
+.ns-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--rm-line);
+  overflow: hidden;
+}
+
+.ns-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--acc), #10b981);
+  transition: width .35s ease;
+}
+
+.ns-score-note {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--mut);
+  line-height: 1.4;
+}
+
+.ns-elo-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.12);
+  color: var(--ink);
+}
+.ns-elo-badge.tone-ok { background: rgba(16,185,129,.15); color: var(--ok); }
+.ns-elo-badge.tone-info { background: color-mix(in srgb, var(--acc) 16%, transparent); color: var(--acc-soft, var(--acc)); }
+.ns-elo-badge.tone-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+
+/* ── Dải chip NV1 · NV2 · NV3 ── */
+.ns-wishes-mini {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.ns-wish-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+}
+
+.ns-wish-chip.is-nv1 {
+  border-color: color-mix(in srgb, var(--acc) 35%, var(--rm-line));
+}
+
+.ns-wish-rank {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  color: var(--acc-soft, var(--acc));
+  flex-shrink: 0;
+}
+
+.ns-wish-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.ns-wish-info b {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ns-wish-info small {
+  font-size: 11px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ns-wish-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ns-wish-status.tone-ok { background: rgba(16,185,129,.14); color: var(--ok); }
+.ns-wish-status.tone-info { background: color-mix(in srgb, var(--acc) 15%, transparent); color: var(--acc-soft, var(--acc)); }
+.ns-wish-status.tone-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+.ns-wish-status.tone-err { background: rgba(239,68,68,.15); color: var(--err); }
+.ns-wish-status.tone-muted { background: rgba(127,127,127,.1); color: var(--mut); }
+
+/* ── 2. QUY TRÌNH 5 BƯỚC CHUẨN 9STUDY (STEPPER) ── */
+.ns-stepper-wrap {
+  border-radius: 22px;
+  padding: 18px 20px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 14px;
+}
+
+.ns-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns-eyebrow {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--acc-soft, var(--acc));
+  margin-bottom: 3px;
+}
+
+.ns-section-head h3,
+.ns-card-head h3 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.015em;
+}
+
+.ns-hint {
+  font-size: 11.5px;
+  color: var(--mut);
+}
+
+.ns-stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ns-step-card {
+  border-radius: 16px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.03));
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.ns-step-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--acc) 45%, var(--rm-line));
+}
+
+.ns-step-card.is-done {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.ns-step-card.is-active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 9%, var(--rm-surface));
+  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--acc) 40%, transparent);
+}
+
+.ns-step-btn {
+  width: 100%;
+  height: 100%;
+  background: none;
+  border: 0;
+  padding: 13px 14px;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ns-step-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.ns-step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 800;
+  background: rgba(127,127,127,.12);
+  color: var(--ink);
+}
+
+.ns-step-card.is-done .ns-step-num {
+  background: var(--ok);
+  color: #fff;
+}
+
+.ns-step-card.is-active .ns-step-num {
+  background: var(--acc);
+  color: #fff;
+}
+
+.ns-step-state {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--mut);
+}
+
+.ns-step-card.is-done .ns-step-state { color: var(--ok); }
+.ns-step-card.is-active .ns-step-state { color: var(--acc-soft, var(--acc)); }
+
+.ns-step-title {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.ns-step-sub {
+  font-size: 11.5px;
+  color: var(--mut);
+  line-height: 1.35;
+}
+
+.ns-step-metric {
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  border-top: 1px dashed var(--rm-line);
+}
+
+/* ── 3. DRAWER CẤU HÌNH NGUYỆN VỌNG & KỲ THI ── */
+.ns-config-drawer {
+  border-radius: 22px;
+  padding: 20px 22px;
+  background: var(--rm-surface);
+  border: 1.5px solid color-mix(in srgb, var(--acc) 40%, var(--rm-line));
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 16px;
+  animation: rm-fade-in .18s ease;
+}
+
+.ns-config-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rm-line);
+}
+
+.ns-config-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns-config-tabs button {
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.06));
+  color: var(--mut);
+  font: 600 12.5px/1.2 var(--sans);
+  cursor: pointer;
+}
+
+.ns-config-tabs button.on {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+
+.ns-config-body {
+  display: grid;
+  gap: 16px;
+}
+
+.ns-config-body h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ns-selected-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.ns-selected-card {
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.04));
+  display: grid;
+  gap: 5px;
+}
+
+.ns-selected-card.nv1 {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 7%, var(--rm-surface));
+}
+
+.ns-selected-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.ns-rank-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--acc-soft, var(--acc));
+}
+
+.ns-selected-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.ns-selected-card p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mut);
+}
+
+.ns-selected-foot {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--mut);
+  padding-top: 6px;
+  border-top: 1px solid var(--rm-line);
+}
+.ns-selected-foot b { color: var(--ink); }
+
+.ns-catalog-controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+}
+
+.ns-search-input,
+.ns-catalog-controls select,
+.ns-custom-wish input {
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.06));
+  color: var(--ink);
+  font: 13px/1.2 var(--sans);
+}
+
+.ns-catalog-list {
+  max-height: 290px;
+  overflow-y: auto;
+  display: grid;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.ns-catalog-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.03));
+}
+
+.ns-catalog-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ns-catalog-code {
+  width: 42px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  color: var(--acc-soft, var(--acc));
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ns-catalog-main b {
+  display: block;
+  font-size: 13px;
+}
+
+.ns-catalog-main small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--mut);
+}
+
+.ns-catalog-scores {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--mut);
+  flex-shrink: 0;
+}
+.ns-catalog-scores b.hi { color: var(--ink); font-size: 13.5px; }
+
+.ns-trend {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.ns-trend.up { background: rgba(245,158,11,.14); color: var(--warn); }
+.ns-trend.down { background: rgba(16,185,129,.14); color: var(--ok); }
+
+.ns-custom-wish {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rm-line);
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.ns-exam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.ns-exam-card {
+  text-align: left;
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.04));
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+}
+
+.ns-exam-card.on {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 10%, var(--rm-surface));
+}
+
+.ns-exam-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.ns-exam-top span {
+  font-size: 11px;
+  color: var(--acc-soft, var(--acc));
+  font-weight: 700;
+}
+
+.ns-exam-name {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ns-exam-card small {
+  font-size: 11px;
+  color: var(--mut);
+  line-height: 1.35;
+}
+
+.ns-block-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ns-block-chip {
+  padding: 8px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.04));
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 12.5px/1.2 var(--sans);
+}
+
+.ns-block-chip.on {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  color: var(--acc-soft, var(--acc));
+}
+
+.ns-target-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.ns-slider-field {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.03));
+  display: grid;
+  gap: 8px;
+}
+
+.ns-slider-field > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+.ns-slider-field > div b {
+  color: var(--acc-soft, var(--acc));
+  font-size: 14px;
+}
+.ns-slider-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--acc);
+}
+.ns-slider-field small {
+  font-size: 11.5px;
+  color: var(--mut);
+  line-height: 1.4;
+}
+
+/* ── 4. LỊCH HỌC HÔM NAY (3 NHIỆM VỤ) & LỊCH GIỮ NHỊP THÁNG ── */
+.ns-daily-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 16px;
+}
+
+.ns-missions-card,
+.ns-calendar-card {
+  border-radius: 22px;
+  padding: 18px 20px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.ns-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns-mission-counter,
+.ns-active-days-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2, rgba(127,127,127,.08));
+  border: 1px solid var(--rm-line);
+  color: var(--mut);
+}
+.ns-mission-counter b,
+.ns-active-days-badge b { color: var(--ink); }
+
+.ns-mission-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.ns-mission-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.03));
+  transition: border-color .15s ease;
+}
+
+.ns-mission-item:hover {
+  border-color: color-mix(in srgb, var(--acc) 35%, var(--rm-line));
+}
+
+.ns-mission-item.is-done {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.ns-mission-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--rm-line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.ns-mission-item.is-done .ns-mission-check {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.ns-mission-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ns-mission-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns-mission-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--acc-soft, var(--acc));
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.ns-mission-dur {
+  font-size: 11px;
+  color: var(--mut);
+}
+
+.ns-mission-body b {
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.ns-mission-body small {
+  font-size: 11.5px;
+  color: var(--mut);
+  line-height: 1.4;
+}
+
+/* ── Lịch giữ nhịp tháng (Monthly Grid) ── */
+.ns-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ns-day-cell {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(127,127,127,.03));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mut);
+  position: relative;
+  line-height: 1;
+  gap: 2px;
+}
+
+.ns-day-cell i {
+  font-style: normal;
+  font-size: 10px;
+}
+
+.ns-day-cell.is-fire {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.ns-day-cell.is-partial {
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  border-color: color-mix(in srgb, var(--acc) 35%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ns-day-cell.is-today {
+  border: 2px solid var(--acc);
+  color: var(--acc-soft, var(--acc));
+  font-weight: 800;
+}
+
+.ns-day-cell.is-future {
+  opacity: .38;
+}
+
+.ns-month-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--mut);
+  padding-top: 4px;
+}
+
+.ns-month-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ns-month-legend .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.ns-month-legend .dot.fire { background: #f97316; }
+.ns-month-legend .dot.partial { background: var(--acc); }
+.ns-month-legend .dot.today { border: 2px solid var(--acc); }
+
+@media (max-width: 960px) {
+  .ns-score-strip { grid-template-columns: 1fr; }
+  .ns-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ns-daily-grid { grid-template-columns: 1fr; }
+  .ns-catalog-controls { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .ns-hero-card { padding: 16px; border-radius: 18px; }
+  .ns-stepper { grid-template-columns: 1fr; }
+  .ns-catalog-row { flex-direction: column; align-items: flex-start; }
+  .ns-mission-item { flex-wrap: wrap; }
+}
+
+
+/* ============================================================
+   GIAI ĐOẠN 4 & 5: GIAO DIỆN LỘ TRÌNH 9STUDY GỌN GÀNG (.ns9-*)
+   ------------------------------------------------------------
+   • Màu chủ đạo: #2f6bff · Bo góc 16–20px · Chạm tối thiểu 44px
+   • Tương thích hoàn hảo cả Light mode và Dark mode
+   ============================================================ */
+
+.ns9-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px clamp(14px, 3vw, 28px) 64px;
+  display: grid;
+  gap: 20px;
+}
+
+.ns9-hub {
+  display: grid;
+  gap: 16px;
+}
+
+/* ── 1. Banner Nguyện vọng cá nhân ── */
+.ns9-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.1) 0%, rgba(56, 189, 248, 0.05) 100%);
+  border: 1px solid rgba(47, 107, 255, 0.22);
+  flex-wrap: wrap;
+}
+
+.ns9-banner-left {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ns9-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #2f6bff;
+  text-transform: uppercase;
+}
+
+.ns9-wish-pill-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns9-wish-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.ns9-wish-headline {
+  margin: 0;
+  font-size: clamp(16px, 2vw, 20px);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.ns9-wish-headline b {
+  color: #2f6bff;
+}
+
+.ns9-wish-headline em {
+  font-style: normal;
+  color: var(--mut);
+  font-weight: 600;
+}
+
+.ns9-block-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  color: var(--ink);
+}
+
+.ns9-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-btn-outline,
+.ns9-btn-ai {
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.ns9-btn-outline {
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--ink);
+}
+
+.ns9-btn-outline:hover {
+  border-color: #2f6bff;
+  color: #2f6bff;
+  transform: translateY(-1px);
+}
+
+.ns9-btn-ai {
+  border: 1px solid rgba(47, 107, 255, 0.35);
+  background: rgba(47, 107, 255, 0.12);
+  color: #2f6bff;
+}
+
+.ns9-btn-ai:hover {
+  background: #2f6bff;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Thanh chọn thời gian rảnh mỗi tuần & ngày thi */
+.ns9-schedule-bar {
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--rm-surface);
+  border: 1px solid rgba(47, 107, 255, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ns9-sched-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ns9-hour-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ns9-hour-pills button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(148, 163, 184, 0.08));
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ns9-hour-pills button.on {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+.ns9-sched-group input[type="date"] {
+  min-height: 36px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.ns9-sched-done {
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 0;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── 2. Thẻ "Lộ trình của em" (4 chỉ số + Biểu đồ + CTA) ── */
+.ns9-roadmap-card {
+  border-radius: 20px;
+  padding: 20px 22px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  box-shadow: 0 12px 32px -12px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 18px;
+}
+
+.ns9-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-card-top h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.ns9-card-top p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-pace-pill {
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ns9-pace-pill.tone-ok,
+.ns9-status-tag.tone-ok {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+}
+
+.ns9-pace-pill.tone-info,
+.ns9-status-tag.tone-info {
+  background: rgba(47, 107, 255, 0.14);
+  color: #2f6bff;
+}
+
+.ns9-pace-pill.tone-warn,
+.ns9-status-tag.tone-warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+}
+
+.ns9-pace-pill.tone-muted,
+.ns9-status-tag.tone-muted {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--mut);
+}
+
+/* 4 chỉ số trên 1 hàng */
+.ns9-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ns9-metric-box {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.06));
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 4px;
+}
+
+.ns9-metric-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mut);
+}
+
+.ns9-metric-value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 32px;
+}
+
+.ns9-metric-value strong {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.ns9-metric-value.target strong {
+  color: #2f6bff;
+}
+
+.ns9-metric-value.elo strong {
+  color: #8b5cf6;
+}
+
+.ns9-metric-value small {
+  font-size: 12.5px;
+  color: var(--mut);
+  font-weight: 600;
+}
+
+.ns9-status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.ns9-metric-sub {
+  font-size: 12px;
+  color: var(--mut);
+  line-height: 1.35;
+}
+
+/* ── Biểu đồ đường SVG tương tác ── */
+.ns9-chart-block {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.04));
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 12px;
+}
+
+.ns9-chart-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns9-chart-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  gap: 2px;
+}
+
+.ns9-chart-seg button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ns9-chart-seg button.on {
+  background: #2f6bff;
+  color: #ffffff;
+}
+
+.ns9-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-pin-btn {
+  min-height: 32px;
+  padding: 5px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--mut);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.ns9-pin-btn.on {
+  border-color: rgba(47, 107, 255, 0.4);
+  color: #2f6bff;
+  background: rgba(47, 107, 255, 0.08);
+}
+
+.ns9-svg-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.ns9-chart-svg {
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  display: block;
+}
+
+.ns9-grid-line {
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-dasharray: 3 3;
+}
+
+.ns9-axis-txt {
+  font-size: 11px;
+  fill: #64748b;
+  font-weight: 600;
+}
+
+.ns9-target-line {
+  stroke: #10b981;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+}
+
+.ns9-target-label {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #10b981;
+}
+
+.ns9-pt {
+  fill: #ffffff;
+  stroke: #2f6bff;
+  stroke-width: 2.4;
+  transition: r 0.15s ease;
+}
+
+.ns9-pt.is-active {
+  fill: #2f6bff;
+}
+
+.ns9-chart-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--mut);
+  padding-top: 4px;
+}
+
+.ns9-chart-tooltip b {
+  color: var(--ink);
+}
+
+/* ── Thanh hành động chính nổi bật ("Luyện tập ngay") ── */
+.ns9-primary-cta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.12) 0%, rgba(47, 107, 255, 0.04) 100%);
+  border: 1.5px solid rgba(47, 107, 255, 0.32);
+  flex-wrap: wrap;
+}
+
+.ns9-cta-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ns9-cta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #2f6bff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ns9-cta-info b {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.ns9-cta-info small {
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.45;
+}
+
+.ns9-primary-cta-btn {
+  min-height: 46px;
+  padding: 10px 22px;
+  border-radius: 14px;
+  border: 0;
+  background: linear-gradient(135deg, #2f6bff 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -6px rgba(47, 107, 255, 0.5);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease;
+  flex-shrink: 0;
+}
+
+.ns9-primary-cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -6px rgba(47, 107, 255, 0.6);
+}
+
+/* ── 3. Thanh chuyển đổi 3 Tab & Chọn Khối lớp ── */
+.ns9-nav-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-main-tabs {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ns9-tab-btn {
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 13.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.ns9-tab-btn:hover {
+  color: var(--ink);
+}
+
+.ns9-tab-btn.on {
+  background: #2f6bff;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(47, 107, 255, 0.32);
+}
+
+.ns9-tab-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(148, 163, 184, 0.18);
+  color: inherit;
+}
+
+.ns9-tab-btn.on .ns9-tab-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.ns9-tab-badge.warn {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.ns9-grade-picker {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  gap: 4px;
+}
+
+.ns9-grade-picker button {
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ns9-grade-picker button.on {
+  background: rgba(47, 107, 255, 0.14);
+  color: #2f6bff;
+}
+
+/* ── 4. Tab 1: Lộ trình theo chuyên đề (Thẻ chương như ảnh 11 của 9Study) ── */
+.ns9-subjects-section {
+  display: grid;
+  gap: 16px;
+}
+
+.ns9-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-group-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ns9-group-pills button {
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--mut);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.ns9-group-pills button.on {
+  border-color: #2f6bff;
+  background: rgba(47, 107, 255, 0.12);
+  color: #2f6bff;
+}
+
+.ns9-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-search-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  color: var(--mut);
+  min-width: 240px;
+}
+
+.ns9-search-input input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  outline: none;
+}
+
+.ns9-view-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+}
+
+.ns9-view-toggle button {
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ns9-view-toggle button.on {
+  background: #2f6bff;
+  color: #ffffff;
+}
+
+/* Lưới thẻ chương 9Study */
+.ns9-chapter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+.ns9-chapter-card {
+  border-radius: 18px;
+  padding: 18px;
+  background: var(--rm-surface);
+  border: 1.5px solid var(--rm-line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.18s ease,
+              box-shadow 0.18s ease;
+}
+
+.ns9-chapter-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(47, 107, 255, 0.45);
+  box-shadow: 0 12px 28px -12px rgba(47, 107, 255, 0.25);
+}
+
+.ns9-ch-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-ch-index {
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.12);
+  color: #2f6bff;
+}
+
+.ns9-ch-exam-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--mut);
+}
+
+.ns9-ch-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.ns9-ch-title:hover {
+  color: #2f6bff;
+}
+
+.ns9-ch-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.ns9-ch-progress-block {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.06));
+}
+
+.ns9-ch-stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.ns9-ch-stats-row b {
+  color: var(--ink);
+}
+
+.ns9-ch-stats-row b.acc-ok { color: #10b981; }
+.ns9-ch-stats-row b.acc-info { color: #2f6bff; }
+.ns9-ch-stats-row b.acc-err { color: #ef4444; }
+
+.ns9-ch-bar-track {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.ns9-ch-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2f6bff, #38bdf8);
+  transition: width 0.24s ease;
+}
+
+.ns9-ch-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.ns9-ch-status {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ns9-ch-status.tone-ok { color: #10b981; }
+.ns9-ch-status.tone-info { color: #2f6bff; }
+.ns9-ch-status.tone-err { color: #ef4444; }
+.ns9-ch-status.tone-muted { color: var(--mut); }
+
+.ns9-ch-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ns9-ch-btn-ghost {
+  min-height: 38px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--rm-line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ns9-ch-btn-ghost:hover {
+  border-color: #2f6bff;
+  color: #2f6bff;
+}
+
+.ns9-ch-btn-primary {
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 0;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.ns9-ch-btn-primary:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* ── 5. Tab 2: Kế hoạch từng tuần (Tháng -> Tuần -> Ngày) ── */
+.ns9-timeline-section {
+  display: grid;
+  gap: 18px;
+}
+
+.ns9-timeline-intro {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ns9-timeline-intro h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.ns9-timeline-intro p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-weeks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.ns9-week-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.ns9-week-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rm-line);
+}
+
+.ns9-week-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #2f6bff;
+  text-transform: uppercase;
+}
+
+.ns9-week-head h4 {
+  margin: 2px 0 0;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.ns9-week-expected {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ns9-week-expected span {
+  display: block;
+  font-size: 10.5px;
+  color: var(--mut);
+}
+
+.ns9-week-expected b {
+  font-size: 14px;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.ns9-day-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ns9-day-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.05));
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 6px;
+}
+
+.ns9-day-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+}
+
+.ns9-day-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.12);
+  color: #2f6bff;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.ns9-day-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ns9-day-action {
+  justify-self: start;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(47, 107, 255, 0.14);
+  color: #2f6bff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.ns9-day-action:hover {
+  background: #2f6bff;
+  color: #ffffff;
+}
+
+/* ── 6. Tab 3: Sổ lỗi sai & Ôn ngắt quãng ── */
+.ns9-wrong-section {
+  display: grid;
+  gap: 16px;
+}
+
+.ns9-wrong-hero {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ns9-wrong-hero h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.ns9-wrong-hero p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-wrong-hero-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns9-wrong-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ns9-wrong-row {
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-wrong-info {
+  display: grid;
+  gap: 3px;
+}
+
+.ns9-wrong-info b {
+  font-size: 15px;
+}
+
+.ns9-wrong-info small {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+
+.ns9-wrong-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ns9-empty-state {
+  padding: 36px 20px;
+  border-radius: 18px;
+  background: var(--rm-surface);
+  border: 1.5px dashed var(--rm-line);
+  text-align: center;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.ns9-empty-state p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--mut);
+  max-width: 480px;
+}
+
+.ns9-teacher-bar {
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+/* Responsive trên Tablet & Điện thoại */
+@media (max-width: 900px) {
+  .ns9-metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .ns9-metrics-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ns9-chapter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ns9-primary-cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ns9-search-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ============================================================
+   PHẦN MỞ RỘNG GIAI ĐOẠN 4, 5, 6:
+   • Dashboard Trang chủ đánh trọng tâm Lộ trình + AI (.ns9-home-*)
+   • 3 Thẻ lối tắt chiến lược (.ns9-shortcuts-grid)
+   • Nhận xét tiến độ của Gia sư AI (.ns9-ai-commentary)
+   • Bài Test Đánh giá năng lực đầu vào 12 câu (.ns9-diag-*)
+   • Chi tiết từng câu hỏi sai trong Sổ lỗi sai (.ns9-wq-*)
+   ============================================================ */
+
+/* ── 1. Trang chủ Học sinh: Trọng tâm Lộ trình + AI ── */
+.ns9-home-wrap,
+.ns9-page,
+.ns9-hub {
+  --rm-surface: rgba(255, 255, 255, 0.92);
+  --rm-line: rgba(90, 110, 180, 0.16);
+}
+
+[data-theme='dark'] .ns9-home-wrap,
+[data-theme='dark'] .ns9-page,
+[data-theme='dark'] .ns9-hub {
+  --rm-surface: rgba(22, 30, 68, 0.88);
+  --rm-line: rgba(148, 163, 184, 0.18);
+}
+
+.ns9-card-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-home-wrap {
+  padding-bottom: 56px;
+}
+
+.ns9-home-container {
+  max-width: 1180px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 8px clamp(12px, 2.5vw, 24px);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 22px !important;
+}
+
+.ns9-home-container > * {
+  width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+  grid-column: auto !important;
+}
+
+.ns9-home-hero {
+  grid-column: auto !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px;
+  padding: 22px 24px !important;
+}
+
+.ns9-home-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ns9-home-wish-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: var(--rm-surface, rgba(255, 255, 255, 0.9));
+  border: 1.5px solid rgba(47, 107, 255, 0.32);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 0 8px 24px -10px rgba(47, 107, 255, 0.25);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease;
+  max-width: 100%;
+}
+
+.ns9-home-wish-chip:hover {
+  transform: translateY(-2px);
+  border-color: #2f6bff;
+}
+
+.ns9-home-wish-txt {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ns9-home-wish-txt b {
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.ns9-home-wish-txt small {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.ns9-home-composer {
+  margin-top: 2px;
+}
+
+/* ── 2. Ba thẻ lối tắt chiến lược (Lộ trình mục tiêu / Lộ trình cá nhân hóa / Luyện tập AI) ── */
+.ns9-shortcuts-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+.ns9-shortcut-card {
+  border-radius: 20px;
+  padding: 20px;
+  background: var(--rm-surface);
+  border: 1.5px solid var(--rm-line);
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.1);
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.18s ease,
+              box-shadow 0.18s ease;
+}
+
+.ns9-shortcut-card:hover {
+  transform: translateY(-3px);
+  border-color: #2f6bff;
+  box-shadow: 0 16px 32px -12px rgba(47, 107, 255, 0.28);
+}
+
+.ns9-sc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.ns9-sc-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(47, 107, 255, 0.12);
+  color: #2f6bff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ns9-shortcut-card.tone-purple .ns9-sc-icon {
+  background: rgba(139, 92, 246, 0.14);
+  color: #8b5cf6;
+}
+
+.ns9-shortcut-card.tone-teal .ns9-sc-icon {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+}
+
+.ns9-sc-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.1));
+  color: var(--mut);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.ns9-shortcut-card h3 {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.ns9-shortcut-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mut);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.ns9-sc-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #2f6bff;
+  padding-top: 4px;
+}
+
+/* Cụm Công cụ & Lớp học bên dưới Trang chủ */
+.ns9-home-bottom-grid {
+  display: grid !important;
+  grid-template-columns: 1.45fr 1fr !important;
+  gap: 16px !important;
+  align-items: stretch;
+  width: 100% !important;
+}
+
+.ns9-tools-card {
+  border-radius: 20px;
+  padding: 18px 20px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.1);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ns9-tools-card .bento-quick {
+  grid-column: auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+.ns9-tools-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14.5px;
+}
+
+.ns9-tools-head a {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #2f6bff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ns9-classroom-compact {
+  grid-column: auto !important;
+  margin: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* ── 3. Nhận xét tiến độ từ Gia sư AI (.ns9-ai-commentary) ── */
+.ns9-ai-commentary {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(47, 107, 255, 0.06);
+  border: 1px dashed rgba(47, 107, 255, 0.35);
+  display: grid;
+  gap: 6px;
+}
+
+.ns9-ai-comm-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns9-ai-comm-headline {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.ns9-ai-comm-next {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.45;
+}
+
+.ns9-cta-btns-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── 4. Bài Test Đánh giá năng lực đầu vào 12 câu (.ns9-diag-*) ── */
+.ns9-diag-modal {
+  max-width: 680px !important;
+}
+
+.ns9-diag-body {
+  display: grid;
+  gap: 14px;
+}
+
+.ns9-diag-qmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-diag-qtext {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.ns9-diag-options {
+  display: grid;
+  gap: 8px;
+}
+
+.ns9-diag-opt {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid var(--rm-line);
+  background: var(--surface-2, rgba(148, 163, 184, 0.05));
+  color: var(--ink);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ns9-diag-opt:hover:not(:disabled) {
+  border-color: #2f6bff;
+}
+
+.ns9-diag-opt.is-correct {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.ns9-diag-opt.is-wrong {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.ns9-opt-letter {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(47, 107, 255, 0.14);
+  color: #2f6bff;
+  font-size: 13px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ns9-diag-feedback {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  display: grid;
+  gap: 4px;
+}
+
+.ns9-diag-feedback.ok {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.ns9-diag-feedback.bad {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.ns9-diag-feedback p {
+  margin: 0;
+  color: var(--mut);
+}
+
+.ns9-diag-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
+
+.ns9-diag-summary-box {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(47, 107, 255, 0.1);
+  border: 1px solid rgba(47, 107, 255, 0.3);
+  display: grid;
+  gap: 6px;
+}
+
+.ns9-diag-summary-box strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 900;
+  color: #2f6bff;
+}
+
+.ns9-diag-summary-box p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+/* ── 5. Chi tiết từng câu hỏi sai trong Sổ lỗi sai (.ns9-wq-*) ── */
+.ns9-wrong-questions-block {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+.ns9-wq-head h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ns9-wq-head span {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+
+.ns9-wq-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.ns9-wq-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 10px;
+}
+
+.ns9-wq-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-wq-err-tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.ns9-wq-question {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.ns9-wq-ans-box {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  display: grid;
+  gap: 4px;
+}
+
+.ns9-wq-right {
+  font-size: 13.5px;
+  color: #10b981;
+}
+
+.ns9-wq-distractors {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.ns9-wq-explain {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mut);
+  line-height: 1.5;
+}
+
+.ns9-wq-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+  .ns9-shortcuts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ns9-home-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ============================================================
+   6. MODAL HỌC & LUYỆN ĐỀ TRUNG TÂM MÀN HÌNH (.ns9-modal-backdrop / .ns9-centered-sheet)
+   • Thay thế drawer lệch phải bằng hộp thoại giữa màn hình rộng rãi, hiện đại
+   • Tối ưu cho cả xem Lý thuyết, Làm đề trắc nghiệm và Flashcard
+   ============================================================ */
+
+.rm-sheet-backdrop.ns9-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 120 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: clamp(12px, 2.5vw, 28px) !important;
+  background: rgba(8, 15, 35, 0.64) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  animation: ns9FadeIn 0.18s ease-out;
+}
+
+@keyframes ns9FadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ns9ModalPop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.rm-sheet.ns9-centered-sheet {
+  width: min(860px, 95vw) !important;
+  max-width: 860px !important;
+  height: auto !important;
+  max-height: min(88vh, 860px) !important;
+  border-radius: 24px !important;
+  border: 1.5px solid rgba(90, 110, 180, 0.22) !important;
+  background: var(--rm-surface-solid, #ffffff) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 28px 80px -16px rgba(2, 8, 30, 0.52),
+              0 0 0 1px rgba(47, 107, 255, 0.08) !important;
+  padding: 24px 28px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  overflow-y: auto !important;
+  animation: ns9ModalPop 0.22s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+[data-theme='dark'] .rm-sheet.ns9-centered-sheet {
+  background: #141c3a !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  box-shadow: 0 32px 90px -16px rgba(0, 0, 0, 0.72),
+              0 0 0 1px rgba(96, 165, 250, 0.14) !important;
+}
+
+.rm-sheet.ns9-centered-sheet.is-quiz-mode {
+  width: min(880px, 96vw) !important;
+  max-width: 880px !important;
+}
+
+/* Header của Modal Chuyên đề */
+.ns9-sheet-head {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  gap: 16px !important;
+  padding-bottom: 14px !important;
+  border-bottom: 1px solid var(--rm-line, rgba(90, 110, 180, 0.16)) !important;
+}
+
+.ns9-sheet-title-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.ns9-sheet-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.ns9-ch-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.14);
+  color: #2f6bff;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.ns9-bank-count-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.ns9-sheet-title {
+  margin: 0 !important;
+  font-size: clamp(19px, 2.2vw, 23px) !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+  color: var(--ink) !important;
+}
+
+.ns9-sheet-desc {
+  margin: 6px 0 0 !important;
+  font-size: 13.5px !important;
+  color: var(--mut) !important;
+  line-height: 1.5 !important;
+}
+
+.ns9-sheet-close {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--rm-line) !important;
+  background: var(--surface-2, rgba(148, 163, 184, 0.08)) !important;
+  color: var(--ink) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.ns9-sheet-close:hover {
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  transform: scale(1.04);
+}
+
+/* 4 chỉ số tóm tắt của chương */
+.ns9-sheet-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.ns9-sheet-metrics > div {
+  padding: 12px 14px !important;
+  border-radius: 14px !important;
+  background: var(--surface-2, rgba(148, 163, 184, 0.06)) !important;
+  border: 1px solid var(--rm-line) !important;
+}
+
+/* Thanh 4 Tab trong Modal */
+.ns9-sheet-tabs {
+  display: flex !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  border-radius: 14px !important;
+  background: var(--surface-2, rgba(148, 163, 184, 0.08)) !important;
+  border: 1px solid var(--rm-line) !important;
+  overflow-x: auto !important;
+}
+
+.ns9-sheet-tabs button {
+  flex: 1 1 auto;
+  min-height: 38px;
+  padding: 7px 14px !important;
+  border-radius: 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--mut) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ns9-sheet-tabs button.on {
+  background: #2f6bff !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(47, 107, 255, 0.3) !important;
+}
+
+/* ============================================================
+   7. GIAO DIỆN PHÒNG LUYỆN ĐỀ TRẮC NGHIỆM NÂNG CẤP (.ns9-quiz-*)
+   ============================================================ */
+
+.ns9-quiz-runner {
+  padding: 20px 22px !important;
+  border-radius: 20px !important;
+  background: var(--surface-2, rgba(148, 163, 184, 0.05)) !important;
+  border: 1.5px solid var(--rm-line) !important;
+  display: grid !important;
+  gap: 16px !important;
+}
+
+.ns9-quiz-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-quiz-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns9-quiz-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.14);
+  color: #2f6bff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ns9-quiz-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-quiz-timer {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Dải chấm chuyển câu (Question Navigator Dots) */
+.ns9-q-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.ns9-q-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--mut);
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.16s ease;
+}
+
+.ns9-q-dot.is-cur {
+  border-color: #2f6bff;
+  background: #2f6bff;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(47, 107, 255, 0.35);
+  transform: scale(1.06);
+}
+
+.ns9-q-dot.is-ok {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.ns9-q-dot.is-bad {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Hộp đề bài câu hỏi */
+.ns9-quiz-qbox {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--rm-surface);
+  border: 1.5px solid rgba(47, 107, 255, 0.22);
+  box-shadow: 0 8px 24px -14px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 12px;
+}
+
+.ns9-qmeta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-qmeta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-lv-badge {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  padding: 4px 11px !important;
+  border-radius: 999px !important;
+}
+
+.ns9-skill-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .ns9-skill-tag {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+
+.ns9-builtin-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mut);
+}
+
+.ns9-quiz-qtext {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 650 !important;
+  line-height: 1.62 !important;
+  color: var(--ink) !important;
+  white-space: pre-line;
+}
+
+/* Danh sách 4 phương án A, B, C, D */
+.ns9-quiz-options {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+
+.ns9-quiz-opt {
+  min-height: 54px !important;
+  padding: 13px 16px !important;
+  border-radius: 14px !important;
+  border: 1.5px solid var(--rm-line) !important;
+  background: var(--rm-surface) !important;
+  color: var(--ink) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease !important;
+}
+
+.ns9-quiz-opt:hover:not(:disabled) {
+  border-color: #2f6bff !important;
+  background: rgba(47, 107, 255, 0.05) !important;
+  transform: translateX(3px);
+}
+
+.ns9-quiz-key {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 10px !important;
+  background: rgba(47, 107, 255, 0.12) !important;
+  color: #2f6bff !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.ns9-opt-txt {
+  flex: 1;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ns9-opt-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.ns9-opt-badge.ok {
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+}
+
+.ns9-opt-badge.bad {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+
+.ns9-quiz-opt.is-right {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+.ns9-quiz-opt.is-right .ns9-quiz-key {
+  background: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.ns9-quiz-opt.is-wrong {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.09) !important;
+}
+
+.ns9-quiz-opt.is-wrong .ns9-quiz-key {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Hộp lời giải phân tích chuyên sâu & Mẹo tránh bẫy */
+.ns9-quiz-solution {
+  padding: 16px 18px !important;
+  border-radius: 16px !important;
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.ns9-sol-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ns9-sol-verdict {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.ns9-sol-ans-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ns9-sol-steps {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 6px;
+}
+
+.ns9-sol-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2f6bff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ns9-sol-steps p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+.ns9-sol-tip {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.ns9-sol-actions {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
+.ns9-ai-deep-btn {
+  border-color: rgba(47, 107, 255, 0.4) !important;
+  color: #2f6bff !important;
+  font-weight: 700 !important;
+}
+
+.ns9-quiz-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.ns9-next-btn {
+  min-height: 42px !important;
+  padding: 8px 20px !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 720px) {
+  .rm-sheet-backdrop.ns9-modal-backdrop {
+    padding: 8px !important;
+    align-items: flex-end !important;
+  }
+
+  .rm-sheet.ns9-centered-sheet {
+    width: 100% !important;
+    max-height: 92vh !important;
+    padding: 18px 16px !important;
+    border-radius: 22px 22px 14px 14px !important;
+  }
+
+  .ns9-sheet-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ============================================================
+   8. NHÃN "HOT" PHÒNG THI ẢO & DROPDOWN HỒ SƠ CÁ NHÂN (.ns9-uprof-*)
+   ============================================================ */
+
+.ns9-nav-virtual-exam {
+  position: relative;
+}
+
+.ns9-nav-hot-badge {
+  position: absolute;
+  top: -5px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  box-shadow: 0 3px 8px rgba(249, 115, 22, 0.45);
+  pointer-events: none;
+}
+
+.ns9-nav-streak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.ns9-nav-streak-pill.is-active {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.45);
+  color: #ea580c;
+}
+
+.ns9-nav-streak-pill.is-idle {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: var(--ink-sub, #64748b);
+}
+
+.ns9-nav-streak-pill:hover {
+  transform: translateY(-1px);
+  border-color: #f97316;
+}
+
+.ns9-streak-flame,
+.ns9-streak-svg {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, filter 0.2s ease;
+}
+
+.ns9-streak-svg.active {
+  color: #f97316;
+  filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.5));
+}
+
+.ns9-streak-svg.idle {
+  color: #94a3b8;
+  filter: none;
+}
+
+/* Nút chuông thông báo SVG tròn giống ảnh mẫu */
+.ns9-nav-bell-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: var(--rm-surface, rgba(255, 255, 255, 0.92));
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: border-color 0.16s ease, transform 0.16s ease, color 0.16s ease;
+}
+
+[data-theme='dark'] .ns9-nav-bell-btn {
+  background: rgba(30, 41, 82, 0.85);
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.ns9-nav-bell-btn:hover {
+  border-color: #2f6bff;
+  color: #2f6bff;
+  transform: translateY(-1px);
+}
+
+/* Dropdown Hồ sơ cá nhân góc phải (Ảnh mẫu: Avatar tròn xanh tím + mũi tên xuống + Header 2 cột) */
+.ns9-uprof-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ns9-uprof-trigger {
+  height: 38px;
+  padding: 2px 6px 2px 2px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ns9-uprof-trigger:hover,
+.ns9-uprof-trigger.is-open {
+  background: rgba(92, 107, 192, 0.1);
+  border-color: rgba(92, 107, 192, 0.35);
+}
+
+.ns9-uprof-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #5c6bc0;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(92, 107, 192, 0.32);
+  flex-shrink: 0;
+}
+
+.ns9-uprof-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ns9-uprof-chev {
+  color: var(--mut);
+  transition: transform 0.18s ease;
+}
+
+.ns9-uprof-chev.up {
+  transform: rotate(180deg);
+}
+
+.ns9-uprof-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 288px;
+  border-radius: 18px;
+  padding: 14px 12px 10px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 22px 54px -12px rgba(15, 23, 42, 0.26);
+  z-index: 100005 !important;
+  animation: ns9ModalPop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme='dark'] .ns9-uprof-menu {
+  background: #151f42;
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.65);
+}
+
+/* Header 2 cột trong Dropdown giống ảnh: Avatar tròn lớn bên trái + Tên/Trường/Điểm bên phải */
+.ns9-uprof-head-row {
+  padding: 4px 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ns9-uprof-avatar-lg {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #5c6bc0;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(92, 107, 192, 0.32);
+}
+
+.ns9-uprof-avatar-lg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ns9-uprof-head-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ns9-uprof-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ns9-uprof-school {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme='dark'] .ns9-uprof-school {
+  color: #94a3b8;
+}
+
+.ns9-uprof-wish-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ns9-uprof-score-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #2f6bff;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .ns9-uprof-score-pill {
+  background: rgba(47, 107, 255, 0.2);
+  color: #60a5fa;
+}
+
+.ns9-uprof-major-txt {
+  font-size: 11.5px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme='dark'] .ns9-uprof-major-txt {
+  color: #94a3b8;
+}
+
+.ns9-uprof-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.ns9-uprof-list {
+  display: grid;
+  gap: 2px;
+}
+
+.ns9-uprof-item {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.ns9-uprof-item:hover {
+  background: rgba(47, 107, 255, 0.09);
+  color: #2f6bff;
+}
+
+.ns9-uprof-ico {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.ns9-uprof-ico.is-blue {
+  color: #2f6bff;
+}
+
+.ns9-uprof-item:hover .ns9-uprof-ico {
+  color: #2f6bff;
+}
+
+.ns9-uprof-item.is-highlight {
+  color: #2f6bff;
+  font-weight: 800;
+}
+
+.ns9-uprof-item.is-highlight .ns9-uprof-ico {
+  color: #2f6bff;
+}
+
+.ns9-uprof-item.is-crown .ns9-uprof-ico {
+  color: #f59e0b;
+}
+
+.ns9-uprof-item.is-logout {
+  color: #2f6bff;
+  font-weight: 750;
+}
+
+/* ============================================================
+   9. PHÒNG THI ẢO (.ns9-vex-* & .ns9-focus-bar) — ẢNH 1, 2, 3
+   ============================================================ */
+
+.ns9-vex-page {
+  --rm-surface: rgba(255, 255, 255, 0.94);
+  --rm-line: rgba(90, 110, 180, 0.16);
+  padding-bottom: 64px;
+}
+
+[data-theme='dark'] .ns9-vex-page {
+  --rm-surface: rgba(21, 30, 66, 0.9);
+  --rm-line: rgba(148, 163, 184, 0.18);
+}
+
+/* Thanh Focus Mode (Pomodoro) trên đầu trang */
+.ns9-focus-bar {
+  width: 100%;
+  background: var(--rm-surface);
+  border-bottom: 1px solid var(--rm-line);
+  padding: 8px clamp(12px, 3vw, 28px);
+  margin-bottom: 18px;
+}
+
+.ns9-focus-inner {
+  max-width: 1220px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-focus-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.ns9-focus-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ns9-focus-hint {
+  color: var(--mut);
+}
+
+.ns9-focus-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-focus-clock-pill {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rm-line);
+  background: rgba(47, 107, 255, 0.06);
+  color: var(--ink);
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ns9-focus-clock-pill b {
+  color: #2f6bff;
+  font-weight: 800;
+}
+
+.ns9-focus-play-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ns9-focus-play-btn.is-running {
+  background: #f59e0b;
+}
+
+.ns9-focus-ico-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ns9-focus-ico-btn:hover {
+  color: var(--ink);
+  background: rgba(148, 163, 184, 0.14);
+}
+
+/* Khung chính Phòng thi ảo */
+.ns9-vex-container {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 clamp(12px, 2.5vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Hàng Tìm kiếm & Sắp xếp */
+.ns9-vex-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-vex-search-box {
+  flex: 1 1 360px;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: var(--rm-surface);
+  border: 1.5px solid var(--rm-line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--mut);
+  box-shadow: 0 6px 20px -12px rgba(15, 23, 42, 0.08);
+}
+
+.ns9-vex-search-box input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  outline: none;
+}
+
+.ns9-vex-sort-wrap {
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--rm-surface);
+  border: 1.5px solid var(--rm-line);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-vex-sort-wrap select {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 13.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Bảng bộ lọc 2 cột */
+.ns9-vex-filter-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 18px 28px;
+  padding: 18px 22px;
+  border-radius: 20px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.08);
+}
+
+.ns9-vex-filter-col {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.ns9-vex-filter-col.is-right {
+  padding-left: 24px;
+  border-left: 1px solid var(--rm-line);
+}
+
+.ns9-vex-filter-line {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.ns9-vex-flabel {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--mut);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ns9-vex-fpills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ns9-vex-fpill {
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rm-line);
+  background: var(--surface-2, rgba(148, 163, 184, 0.08));
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ns9-vex-fpill:hover {
+  border-color: #2f6bff;
+  color: #2f6bff;
+}
+
+.ns9-vex-fpill.on {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(47, 107, 255, 0.32);
+}
+
+.ns9-vex-fpill.is-special {
+  border-color: rgba(139, 92, 246, 0.45);
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.ns9-vex-year-select {
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Banner Thông tin Cấu trúc đề thi */
+.ns9-vex-struct-banner {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  display: grid;
+  gap: 8px;
+}
+
+.ns9-vex-struct-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ns9-vex-struct-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.ns9-vex-struct-pills {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2f6bff;
+}
+
+.ns9-vex-struct-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.55;
+}
+
+/* Phân khu Đề thi VIP / PRO / FREE */
+.ns9-vex-section {
+  display: grid;
+  gap: 14px;
+}
+
+.ns9-vex-sec-head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 850;
+  color: var(--ink);
+}
+
+.ns9-vex-sec-head span {
+  font-size: 12.5px;
+  color: var(--mut);
+  font-weight: 600;
+}
+
+/* Lưới 4 cột Thẻ Đề Thi chuẩn 9Study */
+.ns9-vex-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ns9-vex-card {
+  border-radius: 20px;
+  background: var(--rm-surface);
+  border: 1.5px solid var(--rm-line);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 26px -14px rgba(15, 23, 42, 0.14);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.18s ease,
+              border-color 0.18s ease;
+}
+
+.ns9-vex-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(47, 107, 255, 0.45);
+  box-shadow: 0 18px 36px -14px rgba(47, 107, 255, 0.25);
+}
+
+/* Ảnh bìa xanh lá Hóa học trên đầu mỗi thẻ đề */
+.ns9-vex-banner {
+  position: relative;
+  height: 148px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 55%, #34d399 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.ns9-vex-banner.is-vip {
+  background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+}
+
+.ns9-vex-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.ns9-vex-badges-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ns9-vex-year-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ns9-vex-tier-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.ns9-vex-tier-pill.is-vip {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #ffffff;
+}
+
+.ns9-vex-tier-pill.is-pro {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: #ffffff;
+}
+
+.ns9-vex-tier-pill.is-free {
+  background: rgba(16, 185, 129, 0.9);
+  color: #ffffff;
+}
+
+.ns9-vex-hot-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #ea580c);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ns9-vex-banner-art {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 2;
+}
+
+.ns9-vex-banner-text {
+  display: grid;
+  gap: 3px;
+}
+
+.ns9-vex-subj-chip {
+  justify-self: start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #047857;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.ns9-vex-exam-sub {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.ns9-vex-team-line {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ns9-vex-chem-svg {
+  width: 112px;
+  height: 78px;
+  flex-shrink: 0;
+}
+
+/* Phần thân trắng dưới thẻ đề */
+.ns9-vex-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.ns9-vex-subrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ns9-vex-exam-code {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mut);
+}
+
+.ns9-vex-badge-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--mut);
+}
+
+.ns9-vex-badge-tag.is-vip {
+  background: rgba(124, 58, 237, 0.14);
+  color: #7c3aed;
+}
+
+[data-theme='dark'] .ns9-vex-badge-tag.is-vip {
+  color: #c4b5fd;
+}
+
+.ns9-vex-done-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.ns9-vex-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: var(--ink);
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 40px;
+}
+
+.ns9-vex-title:hover {
+  color: #2f6bff;
+}
+
+.ns9-vex-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.ns9-vex-meta-lines {
+  display: grid;
+  gap: 3px;
+  min-height: 36px;
+  align-content: start;
+}
+
+.ns9-vex-author {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ns9-vex-author.is-vip {
+  color: #7c3aed;
+}
+
+.ns9-vex-author.is-pro {
+  color: #ea580c;
+}
+
+.ns9-vex-author.is-free {
+  color: #2f6bff;
+}
+
+[data-theme='dark'] .ns9-vex-author.is-vip {
+  color: #c4b5fd;
+}
+
+.ns9-vex-inst {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+[data-theme='dark'] .ns9-vex-inst {
+  color: #93c5fd;
+}
+
+.ns9-vex-foot {
+  margin-top: auto;
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-vex-more-btn {
+  width: 36px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--rm-line);
+  background: transparent;
+  color: var(--mut);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.ns9-vex-more-btn:hover,
+.ns9-vex-more-btn.is-fav {
+  border-color: #2f6bff;
+  color: #2f6bff;
+  background: rgba(47, 107, 255, 0.1);
+}
+
+.ns9-vex-start-btn {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  border: 0;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.ns9-vex-start-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.ns9-vex-start-btn.is-vip {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 6px 16px -4px rgba(124, 58, 237, 0.45);
+}
+
+.ns9-vex-start-btn.is-pro {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  box-shadow: 0 6px 16px -4px rgba(234, 88, 12, 0.45);
+}
+
+.ns9-vex-start-btn.is-free {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 6px 16px -4px rgba(37, 99, 235, 0.42);
+}
+
+/* ============================================================
+   10. TRANG HỒ SƠ & "GÓI CỦA TÔI" 2x2 BENTO (.ns9-sub-*) — ẢNH 5
+   ============================================================ */
+
+.ns9-profile-page {
+  max-width: 1120px !important;
+  margin: 0 auto !important;
+  padding: 18px clamp(12px, 2.5vw, 24px) 64px !important;
+}
+
+.ns9-pf-top-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 5px;
+  border-radius: 16px;
+  background: var(--rm-surface, rgba(255, 255, 255, 0.92));
+  border: 1px solid var(--rm-line, rgba(148, 163, 184, 0.2));
+  margin-bottom: 22px;
+}
+
+[data-theme='dark'] .ns9-pf-top-tabs {
+  background: rgba(21, 30, 66, 0.9);
+}
+
+.ns9-pf-tab-btn {
+  min-height: 38px;
+  padding: 7px 14px;
+  border-radius: 11px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.ns9-pf-tab-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ns9-pf-tab-btn:hover {
+  color: var(--ink);
+}
+
+.ns9-pf-tab-btn.on {
+  background: #2f6bff;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(47, 107, 255, 0.3);
+}
+
+/* Bố cục 2x2 chuẩn Ảnh 5 cho tab "Gói của tôi" */
+.ns9-sub-bento-grid {
+  display: grid;
+  grid-template-columns: 1.32fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.ns9-sub-card {
+  border-radius: 22px;
+  padding: 24px 26px;
+  background: var(--rm-surface, #ffffff);
+  border: 1.5px solid var(--rm-line, rgba(148, 163, 184, 0.18));
+  box-shadow: 0 14px 36px -16px rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+[data-theme='dark'] .ns9-sub-card {
+  background: rgba(21, 30, 66, 0.92);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.ns9-sub-card-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 850;
+  color: var(--ink);
+}
+
+/* Thẻ 1: Gói đang sử dụng */
+.ns9-sub-current {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.ns9-sub-current-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ns9-sub-plan-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ns9-sub-sprout-ico {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: rgba(16, 185, 129, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.ns9-sub-plan-meta {
+  display: grid;
+  gap: 3px;
+}
+
+.ns9-sub-plan-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-sub-plan-name-row strong {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.ns9-sub-active-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.ns9-sub-plan-meta small {
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-sub-specs {
+  border-top: 1px solid var(--rm-line, rgba(148, 163, 184, 0.18));
+  border-bottom: 1px solid var(--rm-line, rgba(148, 163, 184, 0.18));
+  padding: 10px 0;
+  display: grid;
+  gap: 10px;
+}
+
+.ns9-sub-spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+}
+
+.ns9-sub-spec-row span {
+  color: var(--mut);
+}
+
+.ns9-sub-spec-row b {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.ns9-sub-upgrade-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-sub-upgrade-btn {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 10px 22px;
+  border-radius: 14px;
+  border: 0;
+  background: linear-gradient(135deg, #2f6bff 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -6px rgba(47, 107, 255, 0.5);
+  transition: transform 0.16s ease;
+}
+
+.ns9-sub-upgrade-btn:hover {
+  transform: translateY(-2px);
+}
+
+.ns9-sub-current-right {
+  width: 148px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ns9-sub-mascot {
+  width: 140px;
+  height: 150px;
+}
+
+/* Thẻ 2: Hạn mức sử dụng (Mạng luyện tập & Credit AI) */
+.ns9-hearts-box {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(244, 63, 94, 0.07);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  display: grid;
+  gap: 8px;
+}
+
+.ns9-hearts-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ns9-hearts-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.ns9-hearts-full-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.ns9-hearts-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ns9-hearts-num strong {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.ns9-hearts-num span {
+  font-size: 16px;
+  color: var(--mut);
+  font-weight: 700;
+}
+
+.ns9-hearts-icons {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 16px;
+}
+
+.ns9-hearts-sub {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+.ns9-hearts-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(244, 63, 94, 0.18);
+  overflow: hidden;
+}
+
+.ns9-hearts-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fb7185, #f43f5e);
+}
+
+.ns9-hearts-ready {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ns9-credit-quota-box {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(47, 107, 255, 0.07);
+  border: 1px solid rgba(47, 107, 255, 0.2);
+  display: grid;
+  gap: 8px;
+}
+
+.ns9-credit-quota-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.ns9-credit-quota-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.18);
+  overflow: hidden;
+}
+
+.ns9-credit-quota-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #2f6bff;
+}
+
+/* Thẻ 3: Lịch sử thanh toán */
+.ns9-sub-tx-empty {
+  padding: 28px 16px;
+  text-align: center;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.ns9-sub-tx-ico {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(59, 130, 246, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.ns9-sub-tx-empty strong {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.ns9-sub-tx-empty p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-sub-tx-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ns9-sub-tx-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.08));
+  border: 1px solid var(--rm-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.ns9-sub-tx-item small {
+  display: block;
+  font-size: 12px;
+  color: var(--mut);
+  margin-top: 2px;
+}
+
+.ns9-sub-tx-right {
+  text-align: right;
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
+/* Thẻ 4: Mã kích hoạt */
+.ns9-sub-code-sub {
+  margin: -6px 0 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.ns9-sub-code-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ns9-sub-code-form input {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--rm-line, rgba(148, 163, 184, 0.25));
+  background: var(--surface-2, rgba(148, 163, 184, 0.05));
+  color: var(--ink);
+  font-size: 14px;
+  outline: none;
+}
+
+.ns9-sub-code-form input:focus {
+  border-color: #2f6bff;
+}
+
+.ns9-sub-code-form button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1.5px solid var(--rm-line, rgba(148, 163, 184, 0.28));
+  background: var(--rm-surface);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ns9-sub-code-form button:hover {
+  border-color: #2f6bff;
+  color: #2f6bff;
+}
+
+/* Các danh sách trong tab Đề yêu thích / Lịch sử / Hướng dẫn */
+.ns9-pf-sec {
+  display: grid;
+  gap: 14px;
+}
+
+.ns9-pf-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ns9-pf-row-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface-2, rgba(148, 163, 184, 0.06));
+  border: 1px solid var(--rm-line, rgba(148, 163, 184, 0.2));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Responsive cho Phòng thi ảo & Gói của tôi */
+@media (max-width: 1100px) {
+  .ns9-vex-cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .ns9-vex-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ns9-vex-filter-col.is-right {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--rm-line);
+  }
+
+  .ns9-vex-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ns9-sub-bento-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 580px) {
+  .ns9-vex-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ns9-vex-filter-line {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .ns9-sub-current {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ns9-sub-current-right {
+    align-self: center;
+  }
+}
+
+/* ============================================================
+   11. PHÒNG THI TOÀN MÀN HÌNH BIỆT LẬP (KHÔNG NAV, KHÔNG TIỆN ÍCH NGOÀI)
+   ============================================================ */
+body[data-virtual-exam-active='1'] .dnav,
+body[data-virtual-exam-active='1'] .mhdr,
+body[data-virtual-exam-active='1'] .bnav,
+body[data-virtual-exam-active='1'] .sfoot,
+body[data-virtual-exam-active='1'] .petw,
+body[data-virtual-exam-active='1'] .elec-act,
+body[data-virtual-exam-active='1'] .cw-fab,
+body[data-virtual-exam-active='1'] .cw-window,
+body[data-virtual-exam-active='1'] .cw-backdrop,
+body[data-virtual-exam-active='1'] .live-session-banner,
+body[data-virtual-exam-active='1'] .scroll-progress,
+body[data-virtual-exam-active='1'] .skip-link,
+body[data-virtual-exam-active='1'] .cp-overlay,
+.is-virtual-exam-fullscreen .dnav,
+.is-virtual-exam-fullscreen .mhdr,
+.is-virtual-exam-fullscreen .bnav,
+.is-virtual-exam-fullscreen .sfoot,
+.is-virtual-exam-fullscreen .petw,
+.is-virtual-exam-fullscreen .elec-act,
+.is-virtual-exam-fullscreen .cw-fab,
+.is-virtual-exam-fullscreen .cw-window,
+.is-virtual-exam-fullscreen .cw-backdrop,
+.is-virtual-exam-fullscreen .live-session-banner,
+.is-virtual-exam-fullscreen .scroll-progress,
+.is-virtual-exam-fullscreen .skip-link,
+.is-virtual-exam-fullscreen .cp-overlay {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+body[data-virtual-exam-active='1'],
+body[data-virtual-exam-active='1'] html {
+  overflow: hidden !important;
+}
+
+body[data-virtual-exam-active='1'] #main,
+.is-virtual-exam-fullscreen #main {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100vw !important;
+  width: 100vw !important;
+  min-height: 100vh !important;
+}
+
+.ns9-strict-exam-wrapper {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999998 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: var(--bg, #0f172a) !important;
+  overflow-y: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}

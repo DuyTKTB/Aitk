@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocalStorage, liveStreak, dayKey } from '../hooks.js';
+import { useLocalStorage, liveStreak, dayKey, useLiveStreak, recordDailyStreak } from '../hooks.js';
 import { STAGES } from './Pet.jsx';
 import { SkinPet, PET_SKINS, LEGACY_DEFAULT_NAMES } from './PetSkins.jsx';
 import { rankReply, myBestRank } from '../lib/petRank.js';
@@ -139,7 +139,7 @@ export default function PetWidget() {
   const { user } = useAuth();
   const [name, setName] = useLocalStorage('cs-petname', 'Elec');
   const skin = 'elec'; /* ELEC AI là linh vật duy nhất — vĩnh viễn */
-  const [s] = useLocalStorage('cs-streak', { last: '', n: 0, total: 0 });
+  const { count: live, streakObj: s } = useLiveStreak();
   const [food, setFood] = useLocalStorage('cs-pet-food', 0);
   const [lastFed, setLastFed] = useLocalStorage('cs-pet-lastfed', '');
   const [open, setOpen] = useState(false);
@@ -190,15 +190,14 @@ export default function PetWidget() {
   /* Chưa tự đặt tên → hiện tên riêng của skin */
   const displayName = DEFAULT_NAMES.includes(name) ? skinInfo.defaultName : name;
 
-  const total = Math.max(s.total || 0, s.n || 0);
+  const total = Math.max(s?.total || 0, s?.n || 0);
 
   let st = 0;
   STAGES.forEach(([t], i) => {
     if (total >= t) st = i;
   });
   const next = STAGES[st + 1];
-  const fed = s.last === dayKey();
-  const live = liveStreak(s);
+  const fed = (s?.last === dayKey()) || (lastFed === dayKey());
   const mood = getMood(live, fed);
 
   /* Tên cấp theo skin (lửa dùng tên gốc) */
@@ -271,6 +270,7 @@ export default function PetWidget() {
     }
     setFood(food - 1);
     setLastFed(dayKey());
+    recordDailyStreak();
     showBubble('Ngon quá! Cảm ơn bạn');
   };
 
@@ -278,11 +278,12 @@ export default function PetWidget() {
   const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : '') || displayName;
   const bestRank = myBestRank(userName);
 
-  /* Liên kết nhanh tới các phần của web */
+  /* Menu nổi 4 tác vụ của Mascot ELEC AI (Chuẩn Giai đoạn 6) */
   const QUICK_LINKS = [
-    { h: '#quiz', label: 'Ôn tập', d: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20' },
-    { h: '#games', label: 'Trò chơi', d: 'M6 12h4M8 10v4M15.5 13h.01M18.5 11h.01M17.3 5H6.7a4.7 4.7 0 0 0-4.62 5.6l1 5.4a2.4 2.4 0 0 0 4.1 1.1L9 15h6l1.82 2.1a2.4 2.4 0 0 0 4.1-1.1l1-5.4A4.7 4.7 0 0 0 17.3 5z' },
-    { h: '#ai', label: 'Hỏi AI', d: 'M12 8V4M8 4h8M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zM9 13h.01M15 13h.01' },
+    { h: '#ai', label: 'Giải bài tập', d: 'M12 8V4M8 4h8M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zM9 13h.01M15 13h.01' },
+    { h: '#roadmap?tab=wrong', label: 'Sổ lỗi sai', d: 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' },
+    { h: '#roadmap?tab=timeline', label: 'Giao bài học', d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5zm13-3v4M8 2v4M3 10h18' },
+    { h: '#roadmap', label: 'Nhiệm vụ hôm nay', d: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 6a4 4 0 1 0 4 4 4 4 0 0 0-4-4z' },
   ];
   const go = (h) => { window.location.hash = h; setOpen(false); };
   const replyFor = (text) => {

@@ -1,0 +1,226 @@
+/* ============================================================
+   roadmap-page-v2.css — NÂNG CẤP GIAO DIỆN TRANG LỘ TRÌNH
+   ------------------------------------------------------------
+   Import SAU roadmap-page.css:
+       import '../../styles/roadmap-page.css';
+       import '../../styles/roadmap-page-v2.css';
+   File này chỉ GHI ĐÈ/BỔ SUNG, không xoá gì ở file cũ → gỡ file này là về giao diện cũ.
+   Dùng đúng token sẵn có (--acc, --ink, --mut, --surface…), tự đổi sáng/tối.
+   ============================================================ */
+
+:root {
+  --rm2-ease: cubic-bezier(.2, .8, .2, 1);
+  --rm2-ok: var(--ok, #22c55e);
+  --rm2-warn: var(--warn, #f59e0b);
+  --rm2-err: var(--err, #ef4444);
+}
+
+/* ---------------- Khung trang ---------------- */
+.rm { max-width: 1240px; gap: clamp(16px, 2.2vw, 26px); }
+
+.rm-head h1 {
+  background: linear-gradient(120deg, var(--ink) 30%, color-mix(in srgb, var(--acc) 70%, var(--ink)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.rm-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 18px; height: 2px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* Thanh chọn khối: nổi trên nền kính khi cuộn */
+.rm-seg {
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+.rm-seg button { transition: background .2s var(--rm2-ease), color .2s, transform .2s var(--rm2-ease); }
+.rm-seg button:active { transform: scale(.96); }
+.rm-seg button.on { box-shadow: 0 4px 14px rgba(0, 0, 0, .14), inset 0 0 0 1px var(--rm-line); }
+
+/* ---------------- Thẻ "Tiếp tục học" ---------------- */
+.rm-continue {
+  padding: clamp(20px, 3vw, 34px);
+  border-radius: calc(var(--rm-radius) + 4px);
+  box-shadow: 0 18px 50px -24px color-mix(in srgb, var(--acc) 55%, transparent), var(--rm-shadow);
+}
+.rm-continue h2 { font-size: clamp(1.3rem, 2.8vw, 1.9rem); }
+.rm-continue .rm-btn.primary { padding-inline: 20px; }
+.rm-continue-score { padding: 10px; border-radius: 22px; background: color-mix(in srgb, var(--rm-surface) 70%, transparent); border: 1px solid var(--rm-line); }
+
+/* ---------------- Chỉ số: 6 → 3 → 2 cột ---------------- */
+.rm-metric {
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s var(--rm2-ease), box-shadow .2s var(--rm2-ease), border-color .2s;
+}
+.rm-metric:hover { transform: translateY(-2px); box-shadow: 0 10px 26px -14px rgba(2, 8, 30, .35); }
+.rm-metric::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--acc), #8b5cf6);
+  opacity: .0;
+  transition: opacity .2s;
+}
+.rm-metric:hover::before { opacity: .85; }
+.rm-metric.is-warn::before { background: var(--rm2-warn); opacity: .9; }
+.rm-metric-inline { color: var(--rm2-warn); font-weight: var(--fw-bold); }
+.rm-metric .rm-link { padding: 0; }
+@media (max-width: 1024px) { .rm-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px)  { .rm-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------------- Nhịp học (Insights) ---------------- */
+.rm-insights {
+  display: grid;
+  grid-template-columns: minmax(150px, .7fr) minmax(0, 2fr) minmax(170px, 1fr) minmax(170px, 1fr);
+  gap: 12px;
+}
+.rm-ins-card {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--r-md, 14px);
+  border: 1px solid var(--rm-line);
+  background: var(--rm-surface);
+  min-width: 0;
+}
+.rm-ins-card small {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+.rm-ins-card > b {
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.rm-ins-card > b span { margin-left: 6px; font-size: .85rem; font-weight: var(--fw-med); color: var(--mut); letter-spacing: 0; }
+.rm-ins-card > em { font-style: normal; font-size: 12px; line-height: 1.4; color: var(--mut); }
+.rm-ins-card .rm-btn { justify-self: start; margin-top: 4px; }
+.rm-ins-card.is-warn { border-color: color-mix(in srgb, var(--rm2-warn) 45%, var(--rm-line)); }
+
+.rm-ins-streak.is-live {
+  background:
+    radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--rm2-warn) 22%, transparent), transparent 62%),
+    var(--rm-surface);
+  border-color: color-mix(in srgb, var(--rm2-warn) 40%, var(--rm-line));
+}
+.rm-ins-streak.is-live > b::before { content: '🔥'; margin-right: 6px; font-size: 1.5rem; }
+.rm-ins-pill {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+.rm-ins-pill.warn { background: var(--warn-bg, rgba(245, 158, 11, .14)); color: var(--rm2-warn); }
+
+.rm-ins-chart header { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.rm-ins-chart header span { font-size: 11.5px; color: var(--mut); }
+.rm-bars {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  align-items: end;
+  gap: 6px;
+  height: 108px;
+  margin-top: 6px;
+}
+.rm-bar-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 5px; }
+.rm-bar-col i {
+  display: block;
+  width: 100%;
+  max-width: 22px;
+  border-radius: 6px 6px 3px 3px;
+  background: var(--acc);
+  transform-origin: bottom;
+  animation: rm2-grow .5s var(--rm2-ease) both;
+}
+.rm-bar-col i[data-tone='ok']  { background: var(--rm2-ok); }
+.rm-bar-col i[data-tone='mid'] { background: var(--rm2-warn); }
+.rm-bar-col i[data-tone='low'] { background: var(--rm2-err); }
+.rm-bar-col i[data-tone='none'] { background: var(--surface-3, rgba(127, 127, 127, .22)); }
+.rm-bar-col.is-empty i { opacity: .55; }
+.rm-bar-col span { font-size: 9.5px; color: var(--mut); font-variant-numeric: tabular-nums; }
+.rm-bar-col.is-today span { color: var(--ink); font-weight: var(--fw-bold); }
+.rm-bar-col.is-today i { box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 40%, transparent); }
+
+@keyframes rm2-grow { from { transform: scaleY(.05); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+
+@media (max-width: 1100px) { .rm-insights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rm-ins-chart { grid-column: 1 / -1; order: 3; } }
+@media (max-width: 560px)  { .rm-insights { grid-template-columns: minmax(0, 1fr); } .rm-bars { gap: 3px; } }
+
+/* ---------------- Danh sách chương ---------------- */
+.rm-row { position: relative; transition: border-color .18s, transform .2s var(--rm2-ease), box-shadow .2s var(--rm2-ease); }
+.rm-row:hover { transform: translateY(-1px); }
+.rm-row-idx { background: color-mix(in srgb, var(--acc) 12%, var(--soft, transparent)); color: var(--acc); }
+.rm-row-score b { font-size: 1.25rem; }
+.rm-row.is-due { box-shadow: inset 3px 0 0 var(--rm2-warn); border-left-width: 1px; }
+
+/* ---------------- Panel bên phải ---------------- */
+.rm-panel { border-radius: var(--r-md, 14px); transition: box-shadow .2s var(--rm2-ease); }
+.rm-panel:hover { box-shadow: 0 10px 28px -18px rgba(2, 8, 30, .4); }
+.rm-side { top: 84px; }
+
+/* ---------------- Bản đồ nhiệt ---------------- */
+.rm-heat-cell { transition: transform .18s var(--rm2-ease), box-shadow .18s var(--rm2-ease); }
+.rm-heat-cell:hover, .rm-heat-cell:focus-visible { transform: translateY(-2px) scale(1.015); box-shadow: 0 10px 22px -12px rgba(2, 8, 30, .5); }
+
+/* ---------------- Bản đồ kiến thức (SVG) ---------------- */
+.rm-node { cursor: pointer; transition: filter .18s; }
+.rm-node:hover, .rm-node:focus-visible { filter: drop-shadow(0 10px 18px rgba(2, 8, 30, .28)); }
+.rm-node:focus-visible { outline: none; }
+.rm-node:focus-visible .rm-node-box { stroke: var(--acc); stroke-width: 2.5; }
+.rm-node-act { cursor: pointer; }
+.rm-node-act:hover { text-decoration: underline; }
+
+/* ---------------- Sheet chi tiết chương ---------------- */
+.rm-sheet-backdrop { animation: rm2-fade .18s ease both; }
+.rm-sheet { animation: rm2-rise .28s var(--rm2-ease) both; }
+.rm-sheet-slim { max-width: 560px; }
+.rm-tabs button { transition: color .18s, background .18s; }
+.rm-tabs button.on { box-shadow: inset 0 -2px 0 var(--acc); }
+.rm-sheet-metrics > div { border-radius: var(--r-md, 14px); }
+
+@keyframes rm2-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rm2-rise { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+
+/* ---------------- Luyện tập / thẻ ghi nhớ ---------------- */
+.rm-quiz-opt { transition: border-color .15s, background .15s, transform .15s var(--rm2-ease); }
+.rm-quiz-opt:not(:disabled):hover { transform: translateX(3px); }
+.rm-quiz-opt.is-right { animation: rm2-pop .32s var(--rm2-ease); }
+.rm-quiz-opt.is-wrong { animation: rm2-shake .32s ease; }
+@keyframes rm2-pop { 50% { transform: scale(1.02); } }
+@keyframes rm2-shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+
+/* ---------------- Trạng thái chờ ---------------- */
+.rm-skel { position: relative; overflow: hidden; }
+.rm-skel::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
+  transform: translateX(-100%);
+  animation: rm2-shimmer 1.3s infinite;
+}
+@keyframes rm2-shimmer { to { transform: translateX(100%); } }
+
+/* ---------------- In kế hoạch ---------------- */
+@media print {
+  .rm-head-side, .rm-insights, .rm-metrics, .rm-continue, .rm-grid, .rm-notice, .rm-plan-form, .rm-plan-buttons, .rm-plan-foot .rm-link { display: none !important; }
+  .rm-plan { box-shadow: none !important; border: 0 !important; }
+  .rm { padding: 0; max-width: none; }
+}
+
+/* ---------------- Tôn trọng "giảm chuyển động" ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  .rm *, .rm-sheet, .rm-sheet-backdrop, .rm-skel::after { animation: none !important; transition: none !important; }
+  .rm-metric:hover, .rm-row:hover, .rm-heat-cell:hover { transform: none; }
+}

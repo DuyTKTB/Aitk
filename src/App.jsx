@@ -1,3 +1,4 @@
+import UniversityDetailModal from './components/aspiration/UniversityDetailModal.jsx';
 import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { isAdmin } from './lib/isAdmin.js';   // nguồn duy nhất (claims), thay cho bản cũ đọc VITE_ADMIN_EMAILS
@@ -24,6 +25,8 @@ const ProfilePage = lazy(() => import('./components/ProfilePage.jsx'));
 const ToolsPage = lazy(() => import('./components/ToolsPage.jsx'));
 const WrongNotebook = lazy(() => import('./components/WrongNotebook.jsx'));
 const StatsPage = lazy(() => import('./components/StatsPage.jsx'));
+const RoadmapPage = lazy(() => import('./components/roadmap/RoadmapPage.jsx'));
+const LeaderboardPage = lazy(() => import('./components/LeaderboardPage.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Feedback = lazy(() => import('./pages/Feedback.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
@@ -67,6 +70,8 @@ import StudySheet from './components/StudySheet.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
 import LiveSessionBanner from './components/LiveSessionBanner.jsx';
+import SystemAnnouncementBanner from './components/SystemAnnouncementBanner.jsx';
+import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
 
 /* ============ HOOKS + LIB ============ */
 import { useAuth } from './hooks/useAuth.jsx';
@@ -84,12 +89,13 @@ import './admin-dashboard.css';
 import './admin-upgrade.css';
 import './styles/classroom.css';
 import './styles/teacher-pro.css';
+import './styles/roadmap-upgrade.css';
 
 /* ============ ICONS ============ */
 import {
   IconHome, IconCalc, IconRobot, IconMicroscope, IconScale,
   IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
-  IconTools, IconUser,
+  IconTools, IconUser, IcoBook,
 } from './components/Icons.jsx';
 
 /* ============ LOCAL ICONS ============ */
@@ -135,6 +141,7 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Học tập',
     tools: [
+      { id: 'roadmap', label: 'Lộ trình kiến thức', desc: 'Biết mình đang ở đâu, học gì tiếp', Icon: IcoBook },
       { id: 'formulas', label: 'Công thức nhanh', desc: 'Tra cứu công thức theo chủ đề', Icon: IconCalc },
       { id: 'analyze', label: 'Phân tích hợp chất', desc: 'Nhận diện loại, tính chất, phản ứng', Icon: IconMicroscope },
       { id: 'balance', label: 'Cân bằng PTHH', desc: 'Cân bằng bằng đại số tuyến tính', Icon: IconScale },
@@ -150,6 +157,7 @@ const NAV_TOOLS_GROUPS = [
       { id: 'pomodoro', label: 'Clock Hub', desc: 'Pomodoro, hẹn giờ, báo thức', Icon: IconTimer },
       { id: 'exam', label: 'Kỳ thi', desc: 'Đếm ngược kỳ thi', Icon: IconCalendar },
       { id: 'grade', label: 'Tính điểm', desc: 'Tính GPA, xét tuyển', Icon: IconTarget },
+      { id: 'leaderboard', label: 'Bảng xếp hạng', desc: 'Vinh danh chuỗi lớp & học sinh', Icon: IconChart },
       { id: 'stats', label: 'Thống kê', desc: 'Tiến độ học tập', Icon: IconChart },
     ],
   },
@@ -174,6 +182,9 @@ const PAGES = [
   ['feedback', 'Phản hồi', null],
   ['classroom', 'Lớp học', null],
   ['my-classes', 'Lớp học của tôi', IconClass],
+  ['leaderboard', 'Bảng xếp hạng', IconTarget],
+  ['virtual-exams', 'Phòng thi ảo', IconTarget],
+  ['truong', 'Đề án tuyển sinh', IconTarget],
 ];
 
 const GAME_ROUTES = [
@@ -185,10 +196,12 @@ const GAME_ROUTES = [
 /* ============ PAGE ROUTING HELPERS ============ */
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
-  const h = window.location.hash.slice(1).split('?')[0];
+  const raw = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0].replace(/^\/+/, '');
+  const h = raw;
   if (h === 'login' || h === 'register') return h;
   if (GAME_ROUTES.includes(h)) return h;
   if (h.startsWith('exam/')) return h;
+  if (h === 'truong' || h.startsWith('truong/')) return h;
   if (h === 'admin' || h.startsWith('admin/')) return 'admin';
   if (h === '' || h === 'main') return 'home';
   return PAGES.some((p) => p[0] === h) ? h : '404';
@@ -215,10 +228,13 @@ const pageMeta = (page) => {
     pomodoro: 'Clock Hub — Đồng hồ tổng hợp: Pomodoro, hẹn giờ, báo thức, bấm giây, đồng hồ thế giới.',
     schedule: 'Thời khóa biểu — tự lập lịch học, nhắc đúng giờ và theo dõi tiến độ mỗi ngày.',
     quiz: 'Ôn tập Hóa học với quiz thông minh, lặp lại ngắt quãng.',
+    roadmap: 'Lộ trình kiến thức — tiến độ thật theo chương, mức thành thạo, bản đồ kiến thức và gợi ý học tiếp.',
     games: 'Học Hóa qua trò chơi: bắt gà, bắn súng, phòng lab ảo, đấu nguyên tố.',
     profile: 'Trang cá nhân — quản lý tài khoản, thống kê học tập.',
     classroom: 'Quản lý lớp học — tạo lớp, giao đề, quản lý học sinh.',
     'my-classes': 'Tham gia lớp học — dán key lớp hoặc link đề cô giáo gửi.',
+    leaderboard: 'Bảng xếp hạng chuỗi và thành tích học tập — vinh danh các lớp và học sinh bền bỉ nhất.',
+    'virtual-exams': 'Phòng thi ảo ELEC AI — Luyện đề Hóa học bấm giờ thật, cấu hình kỳ thi chuẩn, phân khu VIP, PRO, FREE.',
     admin: 'Trang quản trị hệ thống — quản lý đề thi, người dùng, key PRO.',
   };
   return metas[page] || metas.home;
@@ -244,6 +260,27 @@ export default function App() {
   const progRef = useRef(null);
   const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
   const [credits, setCredits] = useState(null);
+  const [virtualExamActive, setVirtualExamActive] = useState(false);
+  const [isMobileScreen, setIsMobileScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobileScreen(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Tự động đóng mọi dropdown/modal menu trên nav khi chuyển trang
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
+  }, [page]);
+
+  useEffect(() => {
+    const onVexMode = (e) => setVirtualExamActive(!!e.detail?.active);
+    window.addEventListener('elec-virtual-exam-mode', onVexMode);
+    return () => window.removeEventListener('elec-virtual-exam-mode', onVexMode);
+  }, []);
 
   /* ============ LOAD CREDITS ============ */
   useEffect(() => {
@@ -251,8 +288,14 @@ export default function App() {
     setExamAiUserId(user.uid); // Cho exam AI cũng trừ credits
     getCredits(user.uid).then((c) => setCredits(c.balance)).catch(() => {});
     const unsub = onCreditsChange(user.uid, (data) => setCredits(data.balance));
-    // Lắng nghe event từ creditService khi trừ điểm
-    const onCreditEvt = (e) => { if (e.detail?.balance != null) setCredits(e.detail.balance); };
+    // Lắng nghe event từ creditService khi trừ điểm hoặc cộng điểm
+    const onCreditEvt = (e) => {
+      if (e.detail?.balance != null) {
+        setCredits(e.detail.balance);
+      } else if (e.detail?.delta != null) {
+        setCredits((prev) => (prev != null ? prev + e.detail.delta : e.detail.delta));
+      }
+    };
     window.addEventListener('cs-credit-update', onCreditEvt);
     return () => { unsub(); window.removeEventListener('cs-credit-update', onCreditEvt); };
   }, [user?.uid]);
@@ -311,7 +354,11 @@ export default function App() {
   const prevLoginRef = useRef(isLoggedIn);
   useEffect(() => {
     if (!prevLoginRef.current && isLoggedIn) {
-      const keep = window.location.hash.startsWith('#exam/');
+      /* Giữ nguyên deep link hợp lệ khi vừa đăng nhập xong (vd #roadmap?chapter=...).
+         Trước đây mọi hash đều bị đẩy về #home nên link chia sẻ bị mất trang. */
+      const route = window.location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
+      const isRealRoute = route !== '' && route !== 'login' && route !== 'register' && readPage() !== '404';
+      const keep = window.location.hash.startsWith('#exam/') || isRealRoute;
       if (!keep && window.location.hash !== '#home') history.replaceState(null, '', '#home');
       setHashTick((t) => t + 1);
       window.scrollTo(0, 0);
@@ -461,9 +508,27 @@ export default function App() {
     if (page === 'notes') return <Notes />;
     if (page === 'notebook') return <WrongNotebook />;
     if (page === 'grade') return <GradeCalculator />;
-    if (page === 'quiz') return <Quiz />;
+    if (page === 'quiz' || page === 'virtual-exams') return <Quiz />;
+    if (page === 'roadmap') return <RoadmapPage />;
+    if (page === 'leaderboard') return <LeaderboardPage />;
+
+    if (page === 'truong' || page.startsWith('truong/')) {
+      const schoolId = page.startsWith('truong/') ? page.replace('truong/', '') : 'NEU';
+      return (
+        <>
+          <Home />
+          <UniversityDetailModal
+            open={true}
+            schoolId={schoolId || 'NEU'}
+            uid={user?.uid}
+            onClose={() => { window.location.hash = 'home'; }}
+          />
+        </>
+      );
+    }
+  
     if (page === 'stats') return <StatsPage />;
-    if (page === 'profile') return <ProfilePage />;
+    if (page === 'profile') return <ProfilePage credits={credits} />;
     if (page === 'settings') return <Settings theme={theme} onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />;
     if (page === 'feedback') return <Feedback />;
     if (page === '404') return <NotFound />;
@@ -518,63 +583,64 @@ export default function App() {
   /* Khu giáo viên (Lớp học + AutoExam Studio...) cũng chạy toàn màn hình, không có nav chính.
      Học sinh vào #classroom vẫn thấy giao diện thường. */
   const isTeacherPage = page === 'classroom' && (pro.isPro || isAdmin(user));
-  const isFullPage = isAiPage || isTeacherPage;
+  /* Khi vào làm bài trong Phòng thi ảo (#quiz / #virtual-exams): ẩn toàn bộ Nav, Mascot, ChatWidget, Footer giống hệt ExamJoin */
+  const isVirtualExamRoom = (page === 'quiz' || page === 'virtual-exams' || page === 'exam') && (virtualExamActive || (typeof document !== 'undefined' && document.body?.dataset?.virtualExamActive === '1'));
+  const isFullPage = isAiPage || isTeacherPage || isVirtualExamRoom;
 
   return (
-    <div data-page={page}>
-      <a
-        className="skip-link"
-        href="#main"
-        onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}
-      >Bỏ qua điều hướng</a>
-      <div className="scroll-progress" ref={progRef} aria-hidden="true" />
+    <div data-page={page} className={isVirtualExamRoom ? 'is-virtual-exam-fullscreen' : undefined}>
+      {!isVirtualExamRoom && (
+        <a
+          className="skip-link"
+          href="#main"
+          onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}
+        >Bỏ qua điều hướng</a>
+      )}
+      {!isVirtualExamRoom && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
 
       {!isFullPage && <PetWidget />}
       {!isFullPage && <ChatWidget />}
+      <OutOfCreditsModal />
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
       {/* {page === 'home' && <ElecBuddies />} */}
 
-      <LiveSessionBanner />
+      {!isVirtualExamRoom && <SystemAnnouncementBanner />}
+      {!isVirtualExamRoom && <LiveSessionBanner />}
 
       <div className={'loader' + (loading ? '' : ' hide')} aria-hidden={!loading}>
         <span>ELEC AI</span>
       </div>
 
-      {!isFullPage && (
-      <MobileHeader
-        page={page}
-        theme={theme}
-        isPro={pro.isPro}
-        userRole={userRole}
-        onSearch={() => {
-          if (window.location.hash !== '#table') window.location.hash = 'table';
-          setTimeout(() => document.getElementById('search')?.focus(), 100);
-        }}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        onMenu={() => setMenu(true)}
-      />
+      {!isFullPage && isMobileScreen && (
+        <MobileHeader
+          page={page}
+          theme={theme}
+          isPro={pro.isPro}
+          userRole={userRole}
+          credits={credits}
+          onSearch={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onMenu={() => setMenu(true)}
+        />
       )}
 
-      {!isFullPage && (
-      <DesktopNav
-        page={page}
-        theme={theme}
-        scrolled={scrolled}
-        isAdmin={isAdmin(user)}
-        isPro={pro.isPro}
-        userRole={userRole}
-        credits={credits}
-        toolOpen={toolOpen}
-        onToolOpen={setToolOpen}
-        tools={NAV_TOOLS_GROUPS}
-        navRef={navRef}
-        onSearch={() => {
-          if (window.location.hash !== '#table') window.location.hash = 'table';
-          setTimeout(() => document.getElementById('search')?.focus(), 100);
-        }}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        onLogout={() => setAskLogout(true)}
-      />
+      {!isFullPage && !isMobileScreen && (
+        <DesktopNav
+          page={page}
+          theme={theme}
+          scrolled={scrolled}
+          isAdmin={isAdmin(user)}
+          isPro={pro.isPro}
+          userRole={userRole}
+          credits={credits}
+          toolOpen={toolOpen}
+          onToolOpen={setToolOpen}
+          tools={NAV_TOOLS_GROUPS}
+          navRef={navRef}
+          onSearch={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onLogout={() => setAskLogout(true)}
+        />
       )}
 
       <StudySheet open={menu} onClose={() => setMenu(false)} />
@@ -603,9 +669,9 @@ export default function App() {
 
       {!isFullPage && <SiteFooter />}
 
-      {!isFullPage && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} />}
+      {!isFullPage && isMobileScreen && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} onOpenMore={() => setMenu(true)} />}
 
-      <CommandPalette />
+      {!isVirtualExamRoom && <CommandPalette />}
     </div>
   );
 }

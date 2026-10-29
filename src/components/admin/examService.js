@@ -33,13 +33,24 @@ async function insertQuestionsWithAnswers(examId, questions) {
   questions.forEach((q, i) => {
     const qid = idByNumber.get(q.question_number ?? i + 1);
     if (!qid) throw new Error(`Không tạo được câu ${i + 1}.`);
-    const opts = q.options || q.answers || [];
+    const qType = q.question_type || q.type || 'single_choice';
+    let opts = q.options || q.answers || [];
+    if (qType === 'short_answer' && opts.length === 0) {
+      const val = String(q.shortAnswer ?? q.correctAnswer ?? '').trim();
+      opts = [{ label: 'ĐS', content: val, is_correct: true, sort_order: 0 }];
+    }
     opts.forEach((o, idx) => {
+      let isRight = !!o.is_correct;
+      if (qType === 'single_choice' && q.correctAnswer != null && q.correctAnswer !== '') {
+        isRight = q.correctAnswer === o.label;
+      } else if (qType === 'short_answer') {
+        isRight = true;
+      }
       aRows.push({
         question_id: qid,
-        label: o.label,
-        content: o.content,
-        is_correct: q.correctAnswer != null ? q.correctAnswer === o.label : !!o.is_correct,
+        label: o.label || (qType === 'short_answer' ? 'ĐS' : String.fromCharCode(65 + idx)),
+        content: o.content ?? '',
+        is_correct: isRight,
         sort_order: o.sort_order ?? idx,
       });
     });
@@ -127,4 +138,57 @@ export async function duplicateExam(examId) {
     throw e;
   }
   return copy;
+}
+
+/* Xuất đề thi ra đối tượng JSON chuẩn để tải về hoặc chia sẻ */
+export async function exportExamData(examId) {
+  const { data: src, error: e0 } = await supabase
+    .from('exams')
+    .select('*, grade:grades(name), subject:subjects(name)')
+    .eq('id', examId)
+    .single();
+  if (e0) throw e0;
+
+  const { data: qs, error: e1 } = await supabase
+    .from('questions')
+    .select('*, answers:answers(id, label, content, is_correct, sort_order)')
+    .eq('exam_id', examId)
+    .order('question_number');
+  if (e1) throw e1;
+
+  return {
+    title: src.title,
+    description: src.description || '',
+    grade: src.grade?.name || '',
+    subject: src.subject?.name || '',
+    grade_id: src.grade_id,
+    subject_id: src.subject_id,
+    exam_type: src.exam_type,
+    duration: src.duration,
+    difficulty: src.difficulty,
+    source: src.source || '',
+    questions: (qs || []).map((q) => {
+      const sorted = [...(q.answers || [])].sort((a, b) => a.sort_order - b.sort_order);
+      const qType = q.question_type || 'single_choice';
+      const right = sorted.find((a) => a.is_correct);
+      return {
+        content: q.content,
+        type: qType,
+        options: sorted.map((a) => ({
+          label: a.label,
+          content: a.content,
+          isCorrect: !!a.is_correct,
+        })),
+        correctAnswer:
+          qType === 'short_answer'
+            ? sorted[0]?.content || ''
+            : qType === 'true_false'
+              ? sorted.map((a) => (a.is_correct ? 'Đ' : 'S')).join('-')
+              : right?.label || '',
+        explanation: q.explanation || '',
+        difficulty: q.difficulty || 'medium',
+        topic: q.topic_id || '',
+      };
+    }),
+  };
 }

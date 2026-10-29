@@ -121,11 +121,19 @@ export function buildClassInsights({ exams = [], submissionsMap = {}, rangeDays 
     atRisk.length ? `${atRisk.length} học sinh dưới 50%: cần câu nhận biết/thông hiểu để kéo điểm, xen vài câu vận dụng.` : '',
   ].filter(Boolean).join('\n');
 
+  const scoreBins = [0, 0, 0, 0, 0];
+  subs.forEach((s) => {
+    const p = Math.max(0, Math.min(100, pctOf(s)));
+    const idx = Math.min(4, Math.floor(p / 20));
+    scoreBins[idx] += 1;
+  });
+
   return {
     examCount: exams.length,
     submissionCount: subs.length,
     avgPct,
     passRate,
+    scoreBins,
     health,
     atRisk,
     hardest,

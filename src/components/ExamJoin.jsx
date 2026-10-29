@@ -48,6 +48,10 @@ import '../styles/exam-types.css';
 import '../styles/exam-pro.css';
 import '../styles/exam-join-v6.css';
 import '../styles/exam-paper.css'; // <-- File CSS mới
+import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
+import { recordActivity } from '../lib/progress.js';
+import { recordDailyStreak } from '../hooks.js';
+import { recordGamificationResult } from '../hooks/useGamification.js';
 
 const IcoWarning = ({ size = 48 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -584,6 +588,37 @@ export default function ExamJoin({ token, onExit }) {
 
       guardRef.current?.exitFullscreen?.();
       if (res.ok) {
+        /* Ghi nhận câu sai vào Sổ tay lỗi dùng chung (WrongNotebook) */
+        try {
+          const detailList = res.detail || [];
+          const wrongItems = exam.questions.map((q, i) => {
+            const d = detailList[i];
+            const isOk = d ? d.isCorrect : false;
+            return {
+              question: q,
+              userPicked: arr[i],
+              isCorrect: isOk,
+              examTitle: exam.title,
+              examId: exam.id,
+              source: `class-exam:${exam.id}`,
+              topicId: q.topicId || q.topic_id,
+            };
+          }).filter((it) => !it.isCorrect);
+          recordWrongAnswers(user.uid, wrongItems);
+        } catch (err) {
+          console.warn('[ExamJoin] recordWrongAnswers error:', err);
+        }
+
+        /* Ghi nhận hoạt động vào Trang chủ & Chuỗi ngày học (Streak) & Gamification XP */
+        try {
+          recordActivity({ type: 'exam', title: exam.title, hash: 'exam', count: 1 });
+          recordDailyStreak();
+          recordGamificationResult(user?.uid, {
+            correctCount: res.correct,
+            wrongCount: Math.max(0, (res.total || 0) - (res.correct || 0)),
+          });
+        } catch { /* ignore */ }
+
         setResult({ ...res, autoSubmitted: !!opts.auto, autoReason: opts.auto ? (opts.reason || 'violation') : '' });
         setStage('result');
       } else {

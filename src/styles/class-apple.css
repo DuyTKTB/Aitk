@@ -888,6 +888,7 @@
     width: 100%;
     padding-left: 0.9rem;
     padding-right: 0.9rem;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .ap-exam {
     grid-template-columns: 1fr;
@@ -903,4 +904,730 @@
     flex-direction: column;
     text-align: center;
   }
+}
+
+/* ============================================================
+   NÂNG CẤP BỔ SUNG — TABS, BẢNG XẾP HẠNG, GỠ ĐIỂM & DARK MODE
+   ============================================================ */
+
+/* 1. THANH CHUYỂN TAB CHÍNH (BÀI TẬP / BẢNG XẾP HẠNG) */
+.ap-main-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.3rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  margin-bottom: 1.25rem;
+  width: fit-content;
+  border: 1px solid var(--line-soft);
+}
+
+.ap-main-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.52rem 1.15rem;
+  border-radius: var(--r-pill);
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font: 600 0.86rem var(--sans);
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.ap-main-tab:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+
+.ap-main-tab.active {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--sh-1);
+}
+
+.ap-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--r-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.ap-tab-badge.urgent {
+  background: var(--err);
+  color: #fff;
+  animation: ap-pulse 1.8s infinite;
+}
+
+/* 2. HUY HIỆU LỚP CHÍNH THỨC */
+.ap-verified-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* 3. THẺ BÀI TẬP CẦN NỘP GẤP (URGENT TASK HERO) */
+.ap-urgent-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--r-xl);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.08));
+  border: 1px solid color-mix(in srgb, var(--err) 30%, transparent);
+  margin-bottom: 1.25rem;
+  animation: ap-fade-in 0.3s ease;
+}
+
+.ap-urgent-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.ap-urgent-icon-pulse {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--err);
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+}
+
+.ap-urgent-hero-text h4 {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ap-urgent-hero-text p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--mut);
+}
+
+/* 4. THANH RIBBON XẾP HẠNG THU GỌN */
+.ap-mini-leaderboard-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  margin-bottom: 1.15rem;
+  font-size: 0.82rem;
+}
+
+.ap-mini-lb-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink);
+}
+
+.ap-mini-lb-link {
+  border: 0;
+  background: transparent;
+  color: var(--acc);
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--r-md);
+}
+
+.ap-mini-lb-link:hover {
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+}
+
+/* 5. MINI SPARKLINE TIẾN ĐỘ ĐIỂM SỐ */
+.ap-sparkline-box {
+  margin: 0.85rem 0 0.4rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.ap-sparkline-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--mut);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.ap-sparkline-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+  height: 38px;
+}
+
+.ap-sparkline-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.ap-sparkline-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--acc) 50%, transparent);
+  transition: height 0.4s ease;
+  min-height: 4px;
+}
+
+.ap-sparkline-bar.high { background: #22c55e; }
+.ap-sparkline-bar.med { background: #3b82f6; }
+.ap-sparkline-bar.low { background: #f59e0b; }
+
+.ap-sparkline-lbl {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--mut);
+}
+
+/* 6. STYLE BẢNG XẾP HẠNG TOÀN DIỆN (.ap-lb-*) */
+.ap-lb-card {
+  padding: 1.35rem 1.45rem;
+  border-radius: var(--r-xl);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--sh-1), var(--glass-specular);
+  animation: ap-fade-in 0.3s ease;
+}
+
+.ap-lb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.4rem;
+}
+
+.ap-lb-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ap-lb-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
+.ap-lb-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ap-lb-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mut);
+}
+
+.ap-lb-sort-pills {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+}
+
+.ap-lb-sort-pills button {
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--r-pill);
+  font: 600 0.74rem var(--sans);
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.ap-lb-sort-pills button.on {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--sh-1);
+}
+
+/* BỤC PODIUM TOP 3 */
+.ap-lb-podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+  align-items: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.ap-lb-podium-item {
+  position: relative;
+  text-align: center;
+  padding: 1.1rem 0.6rem 1rem;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-2);
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.ap-lb-podium-item:hover {
+  transform: translateY(-3px);
+}
+
+.ap-lb-podium-item.rank-1 {
+  padding-top: 1.4rem;
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.25), rgba(251, 191, 36, 0.08));
+  border-color: rgba(251, 191, 36, 0.45);
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2);
+}
+
+.ap-lb-podium-item.rank-2 {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.ap-lb-podium-item.rank-3 {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.18), rgba(249, 115, 22, 0.05));
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
+.ap-lb-podium-item.is-me {
+  outline: 2px solid var(--acc);
+}
+
+.ap-lb-crown-badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.5));
+}
+
+.ap-lb-podium-avatar {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin: 0 auto 0.6rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.ap-lb-podium-item.rank-1 .ap-lb-podium-avatar {
+  width: 58px;
+  height: 58px;
+  font-size: 1.35rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+}
+
+.ap-lb-podium-avatar.rank-2 {
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.3);
+}
+
+.ap-lb-podium-avatar.rank-3 {
+  background: linear-gradient(135deg, #f97316, #c2410c);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+.ap-lb-rank-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  border: 2px solid var(--panel);
+}
+
+.ap-lb-rank-badge.rank-1 { background: #f59e0b; }
+.ap-lb-rank-badge.rank-2 { background: #64748b; }
+.ap-lb-rank-badge.rank-3 { background: #c2410c; }
+
+.ap-lb-podium-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ap-lb-podium-points {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0.2rem 0 0.15rem;
+}
+
+.ap-lb-podium-points small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--mut);
+}
+
+.ap-lb-podium-meta {
+  font-size: 0.72rem;
+  color: var(--mut);
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.ap-lb-honor-tag {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--r-pill);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ap-lb-honor-tag.rank-1 { background: rgba(245, 158, 11, 0.25); color: #b45309; }
+.ap-lb-honor-tag.rank-2 { background: rgba(148, 163, 184, 0.25); color: #475569; }
+.ap-lb-honor-tag.rank-3 { background: rgba(249, 115, 22, 0.25); color: #c2410c; }
+
+[data-theme='dark'] .ap-lb-honor-tag.rank-1 { color: #fde68a; }
+[data-theme='dark'] .ap-lb-honor-tag.rank-2 { color: #cbd5e1; }
+[data-theme='dark'] .ap-lb-honor-tag.rank-3 { color: #fed7aa; }
+
+.ap-lb-me-tag {
+  display: inline-block;
+  margin-left: 0.3rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--r-pill);
+  font-size: 0.65rem;
+  background: var(--acc);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* DANH SÁCH TOP 4–10 */
+.ap-lb-list-wrap {
+  margin-bottom: 1.25rem;
+}
+
+.ap-lb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ap-lb-item {
+  display: grid;
+  grid-template-columns: 32px 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  transition: background var(--dur-1) var(--ease);
+}
+
+.ap-lb-item:hover {
+  background: var(--surface-3);
+}
+
+.ap-lb-item.is-me {
+  background: color-mix(in srgb, var(--acc) 14%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, transparent);
+}
+
+.ap-lb-item-rank {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--mut);
+  text-align: center;
+}
+
+.ap-lb-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.ap-lb-item-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ap-lb-item-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ap-lb-item-meta {
+  font-size: 0.76rem;
+  color: var(--mut);
+  font-weight: 500;
+}
+
+.ap-lb-item-score {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* THANH DÍNH HẠNG CỦA TÔI */
+.ap-lb-me-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+
+.ap-lb-me-bar.active {
+  background: color-mix(in srgb, var(--acc) 12%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--acc) 30%, transparent);
+}
+
+.ap-lb-me-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.ap-lb-me-sub {
+  font-size: 0.78rem;
+  color: var(--mut);
+}
+
+.ap-lb-cheer {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--acc);
+}
+
+.ap-lb-cheer.top {
+  color: #d97706;
+}
+
+.ap-lb-footer-note {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--mut);
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 7. MODAL GỠ ĐIỂM (QUICK 5-QUESTION DRILL) */
+.ap-drill-modal {
+  width: min(540px, 100%);
+  background: var(--glass-thick);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--sh-float);
+  padding: 1.6rem;
+  animation: ap-pop-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ap-drill-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ap-drill-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ap-drill-progress-bar {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.ap-drill-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--acc), #8b5cf6);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.ap-drill-qbox {
+  margin-bottom: 1.25rem;
+}
+
+.ap-drill-qtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.ap-drill-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ap-drill-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 500 0.88rem var(--sans);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--dur-1) var(--ease);
+}
+
+.ap-drill-opt:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--acc);
+}
+
+.ap-drill-opt.correct {
+  background: color-mix(in srgb, #22c55e 16%, transparent);
+  border-color: #22c55e;
+  color: #15803d;
+  font-weight: 700;
+}
+
+.ap-drill-opt.wrong {
+  background: color-mix(in srgb, #ef4444 16%, transparent);
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+[data-theme='dark'] .ap-drill-opt.correct { color: #4ade80; }
+[data-theme='dark'] .ap-drill-opt.wrong { color: #fca5a5; }
+
+.ap-drill-explain {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* 8. MODAL RỜI LỚP (CONFIRM LEAVE MODAL) */
+.ap-confirm-modal {
+  width: min(420px, 100%);
+  background: var(--glass-thick);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--sh-float);
+  padding: 1.6rem;
+  text-align: center;
+}
+
+.ap-confirm-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--err-bg);
+  color: var(--err);
+  margin: 0 auto 1rem;
+}
+
+.ap-confirm-modal h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: var(--ink);
+}
+
+.ap-confirm-modal p {
+  margin: 0 0 1.25rem;
+  font-size: 0.86rem;
+  color: var(--mut);
+  line-height: 1.5;
+}
+
+.ap-confirm-actions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: center;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
 import { markMastered, markWrong, unsaveQuestion, saveQuestion } from '../lib/examApi.js';
+import { getWrongQuestions, markQuestionMastered, removeWrongQuestion, WRONG_UPDATE_EVENT } from '../lib/wrongQuestionService.js';
 import {
   IcoBookOpen, IcoBookMark, IcoX, IcoCheck, IcoCheckCircle, IcoSearch,
   IcoClose, IcoTrash, IcoStar, IcoCopy, IcoDownload, IcoUpload, IcoSort,
@@ -73,63 +74,94 @@ export default function WrongNotebook() {
     setTimeout(() => setToast(null), 2400);
   };
 
+  const [loadError, setLoadError] = useState('');
+
   const load = async () => {
     if (!uid) { setLoading(false); return; }
     try {
       setLoading(true);
+      setLoadError('');
 
-      const [wrongRes, savedRes] = await Promise.all([
-        supabase
-          .from('wrong_questions')
-          .select(`
-            id, wrong_count, mastered, last_wrong_at,
-            question:questions(
-              id, question_number, content, explanation, difficulty, topic_id,
-              exam:exams(id, title, subject:subjects(name)),
-              answers:answers(id, label, content, is_correct)
-            )
-          `)
-          .eq('user_id', uid)
-          .eq('mastered', false)
-          .order('last_wrong_at', { ascending: false }),
+      // Luôn đọc trước từ kho dữ liệu câu sai nội bộ (offline-first)
+      const localWrongs = getWrongQuestions(uid).filter((w) => !w.mastered);
 
-        supabase
-          .from('saved_questions')
-          .select(`
-            id, note, saved_at,
-            question:questions(
-              id, question_number, content, explanation, difficulty, topic_id,
-              exam:exams(id, title, subject:subjects(name)),
-              answers:answers(id, label, content, is_correct)
-            )
-          `)
-          .eq('user_id', uid)
-          .order('saved_at', { ascending: false }),
-      ]);
+      // Timeout 8s cho Supabase tránh treo khi mạng yếu
+      const withTimeout = (p, ms = 8000) =>
+        Promise.race([
+          p,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Hết thời gian kết nối (Timeout)')), ms)),
+        ]);
 
-      if (wrongRes.error) {
-        console.error("Lỗi tải wrong_questions:", wrongRes.error);
-        showToast('Lỗi tải câu sai. Kiểm tra Console!', 'err');
-      } else {
-        setWrongQs(wrongRes.data || []);
+      let remoteWrongs = [];
+      let remoteSaved = [];
+
+      try {
+        const [wrongRes, savedRes] = await withTimeout(
+          Promise.all([
+            supabase
+              .from('wrong_questions')
+              .select(`
+                id, wrong_count, mastered, last_wrong_at,
+                question:questions(
+                  id, question_number, content, explanation, difficulty, topic_id,
+                  exam:exams(id, title, subject:subjects(name)),
+                  answers:answers(id, label, content, is_correct)
+                )
+              `)
+              .eq('user_id', uid)
+              .eq('mastered', false)
+              .order('last_wrong_at', { ascending: false }),
+
+            supabase
+              .from('saved_questions')
+              .select(`
+                id, note, saved_at,
+                question:questions(
+                  id, question_number, content, explanation, difficulty, topic_id,
+                  exam:exams(id, title, subject:subjects(name)),
+                  answers:answers(id, label, content, is_correct)
+                )
+              `)
+              .eq('user_id', uid)
+              .order('saved_at', { ascending: false }),
+          ])
+        );
+
+        if (!wrongRes.error) remoteWrongs = wrongRes.data || [];
+        if (!savedRes.error) remoteSaved = savedRes.data || [];
+      } catch (err) {
+        console.warn('[WrongNotebook] Không tải được từ Supabase, dùng cache câu sai nội bộ:', err.message);
       }
 
-      if (savedRes.error) {
-        console.error("Lỗi tải saved_questions:", savedRes.error);
-        showToast('Lỗi tải câu đã lưu. Kiểm tra Console!', 'err');
-      } else {
-        setSavedQs(savedRes.data || []);
-      }
+      // Hợp nhất câu sai từ Supabase và từ các bài thi lớp / phòng thi ảo / lộ trình
+      const combined = [...remoteWrongs];
+      const seen = new Set(combined.map((w) => w.question?.content || w.id));
+      localWrongs.forEach((lw) => {
+        const c = lw.question?.content;
+        if (!seen.has(c) && !seen.has(lw.questionId)) {
+          combined.push(lw);
+          if (c) seen.add(c);
+        }
+      });
 
+      setWrongQs(combined);
+      setSavedQs(remoteSaved);
     } catch (e) {
       console.error("Lỗi hệ thống:", e);
+      setLoadError('Không thể tải dữ liệu câu sai. Vui lòng thử lại.');
       showToast('Lỗi tải dữ liệu', 'err');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [uid]);
+  useEffect(() => {
+    load();
+    const onWrongUpdate = () => load();
+    window.addEventListener(WRONG_UPDATE_EVENT, onWrongUpdate);
+    return () => window.removeEventListener(WRONG_UPDATE_EVENT, onWrongUpdate);
+    /* eslint-disable-next-line */
+  }, [uid]);
 
   /* ============ FILTER + SORT ============ */
   const items = tab === 'wrong' ? wrongQs : savedQs;
@@ -198,8 +230,9 @@ export default function WrongNotebook() {
   /* ============ ACTIONS ============ */
   const handleMastered = async (questionId) => {
     try {
-      await markMastered(uid, questionId);
-      setWrongQs((qs) => qs.filter((q) => q.question.id !== questionId));
+      markQuestionMastered(uid, questionId);
+      await markMastered(uid, questionId).catch(() => {});
+      setWrongQs((qs) => qs.filter((q) => q.question?.id !== questionId && q.id !== questionId && q.questionId !== questionId));
       showToast('Đã đánh dấu hiểu rồi');
     } catch (e) {
       showToast('Lỗi: ' + e.message, 'err');
@@ -337,6 +370,22 @@ export default function WrongNotebook() {
       <div className="nb-loading">
         <div className="nb-loading-spinner" />
         <p>Đang tải sổ tay…</p>
+      </div>
+    );
+  }
+
+  if (loadError && !wrongQs.length && !savedQs.length) {
+    return (
+      <div className="nb-loading" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+        <p style={{ color: '#ef4444', marginBottom: '1rem', fontWeight: 700 }}>{loadError}</p>
+        <button
+          type="button"
+          className="nb-hero-btn"
+          onClick={load}
+          style={{ padding: '0.6rem 1.4rem', borderRadius: 999, background: '#2f6bff', color: '#fff', border: 'none', cursor: 'pointer' }}
+        >
+          Thử lại
+        </button>
       </div>
     );
   }

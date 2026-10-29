@@ -1,0 +1,606 @@
+/* ============================================================
+   university-detail.css — GIAO DIỆN ĐỀ ÁN TUYỂN SINH CHUẨN 9STUDY
+   Dựa trên hình ảnh thực tế 9study.vn/truong/KHA:
+     • Banner trường rộng lớn bo tròn mượt mà
+     • Khối tiêu đề xanh dương + Nút "Website trường ↗"
+     • 6 Tab điều hướng: Tổng quan, Ngành đào tạo, Đề án, Điểm chuẩn, Học phí, Thông tin
+     • Tab Tổng quan gồm:
+       - Menu trái sticky: "TRONG TỔNG QUAN"
+       - Cột phải: 4 KPI (Năm đề án, Ngành, Tín chỉ, Điểm THPT)
+       - Banner CTA "Thi thử tại Phòng thi ảo →"
+       - Cụm nút chọn Nguyện vọng 1 - 2 - 3 trực tiếp
+       - Linh vật Elec màu xanh lấy trực tiếp từ /img/elec/elec-default.svg
+   ============================================================ */
+
+.udm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  z-index: 100010;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 30px 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  animation: udmFadeIn .2s ease-out;
+}
+
+@keyframes udmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.udm-modal {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 28px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  margin-bottom: 40px;
+  animation: udmSlideUp .25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+[data-theme="dark"] .udm-modal {
+  background: #151824;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+
+@keyframes udmSlideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Nút đóng modal góc phải trên cùng */
+.udm-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 20;
+  transition: all .15s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.udm-close-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
+}
+
+/* ── 1. BANNER HÌNH ẢNH TRƯỜNG ── */
+.udm-banner-wrap {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+  background: #1e293b;
+}
+
+.udm-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform .4s ease;
+}
+
+.udm-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.65) 100%);
+}
+
+/* ── 2. CARD TIÊU ĐỀ XANH DƯƠNG RỘNG ── */
+.udm-title-card {
+  position: relative;
+  margin: -60px 24px 0;
+  background: #2f6bff;
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 24px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 12px 32px rgba(47, 107, 255, 0.35);
+  z-index: 5;
+}
+
+.udm-title-info h2 {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.udm-title-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+  font-size: 0.9rem;
+  opacity: 0.92;
+}
+
+.udm-web-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2f6bff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transition: transform .15s ease, box-shadow .15s ease;
+  white-space: nowrap;
+}
+
+.udm-web-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+/* ── 3. THANH 6 TAB ĐIỀU HƯỚNG ── */
+.udm-tabs-nav {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.udm-tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.udm-tab-btn {
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--mut, #64748b);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+
+.udm-tab-btn:hover {
+  color: #2f6bff;
+  background: rgba(47, 107, 255, 0.06);
+}
+
+.udm-tab-btn.is-active {
+  color: #2f6bff;
+  background: rgba(47, 107, 255, 0.12);
+}
+
+[data-theme="dark"] .udm-tab-btn.is-active {
+  color: #60a5fa;
+  background: rgba(47, 107, 255, 0.22);
+}
+
+/* ── 4. BỐ CỤC 2 CỘT TAB TỔNG QUAN (MENU TRÁI + NỘI DUNG PHẢI) ── */
+.udm-content-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 28px;
+  padding: 24px;
+}
+
+/* Menu trái sticky */
+.udm-side-menu {
+  position: sticky;
+  top: 20px;
+  background: rgba(148, 163, 184, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  padding: 14px 10px;
+  height: fit-content;
+}
+
+[data-theme="dark"] .udm-side-menu {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.udm-side-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--mut, #94a3b8);
+  letter-spacing: 0.05em;
+  padding: 4px 12px 10px;
+  margin: 0;
+}
+
+.udm-side-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .12s ease;
+}
+
+.udm-side-link:hover {
+  background: rgba(47, 107, 255, 0.08);
+  color: #2f6bff;
+}
+
+.udm-side-link.is-active {
+  background: #2f6bff;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Cột phải: 4 KPI + Banner + Nội dung chi tiết */
+.udm-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Thẻ tóm tắt thông tin trường + 4 KPI */
+.udm-summary-card {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .udm-summary-card {
+  background: #1c2030;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.udm-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.udm-avatar-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.udm-summary-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: inherit;
+}
+
+/* 4 Thẻ KPI ngang */
+.udm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.udm-kpi-box {
+  background: rgba(148, 163, 184, 0.06);
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+[data-theme="dark"] .udm-kpi-box {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.udm-kpi-label {
+  font-size: 0.74rem;
+  color: var(--mut, #64748b);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.udm-kpi-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+[data-theme="dark"] .udm-kpi-val {
+  color: #f8fafc;
+}
+
+.udm-kpi-val.is-orange {
+  color: #ea580c;
+}
+
+.udm-kpi-val.is-green {
+  color: #059669;
+}
+
+/* Hộp thông báo màu xanh nhạt + CTA Phòng thi ảo */
+.udm-banner-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: rgba(47, 107, 255, 0.06);
+  border: 1px solid rgba(47, 107, 255, 0.2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 0.86rem;
+  color: var(--ink, #0f172a);
+}
+
+[data-theme="dark"] .udm-banner-notice {
+  background: rgba(47, 107, 255, 0.12);
+  border-color: rgba(47, 107, 255, 0.35);
+  color: #f8fafc;
+}
+
+.udm-banner-cta {
+  color: #2f6bff;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform .12s ease;
+}
+
+.udm-banner-cta:hover {
+  text-decoration: underline;
+  transform: translateX(3px);
+}
+
+/* Cụm nút chọn Nguyện vọng 1 - 2 - 3 trực tiếp */
+.udm-aspiration-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.25);
+}
+
+.udm-asp-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--mut, #64748b);
+  white-space: nowrap;
+}
+
+.udm-asp-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.udm-asp-choice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(47, 107, 255, 0.3);
+  background: rgba(47, 107, 255, 0.06);
+  color: #2f6bff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.udm-asp-choice-btn:hover {
+  background: #2f6bff;
+  color: #ffffff;
+  border-color: #2f6bff;
+}
+
+.udm-asp-choice-btn.is-active {
+  background: #2f6bff;
+  color: #ffffff;
+  border-color: #2f6bff;
+  box-shadow: 0 4px 12px rgba(47, 107, 255, 0.3);
+}
+
+/* Các section nội dung chi tiết */
+.udm-section-block {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+[data-theme="dark"] .udm-section-block {
+  background: #1c2030;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.udm-section-block h3 {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #2f6bff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.udm-section-block p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+  font-size: 0.88rem;
+  color: inherit;
+  opacity: 0.9;
+}
+
+/* Bảng phương thức xét tuyển */
+.udm-methods-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.udm-method-item {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(148, 163, 184, 0.06);
+  border-left: 4px solid #2f6bff;
+}
+
+[data-theme="dark"] .udm-method-item {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.udm-method-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.udm-method-code {
+  font-size: 0.76rem;
+  font-weight: 800;
+  background: #2f6bff;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.udm-method-quota {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.udm-method-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.udm-method-desc {
+  font-size: 0.82rem;
+  color: var(--mut, #64748b);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Linh vật Elec màu xanh góc dưới */
+.udm-mascot-fab {
+  position: sticky;
+  bottom: 20px;
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(47, 107, 255, 0.3);
+  padding: 6px 14px 6px 8px;
+  border-radius: 999px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform .18s ease;
+  z-index: 10;
+}
+
+[data-theme="dark"] .udm-mascot-fab {
+  background: #1e2235;
+  border-color: rgba(47, 107, 255, 0.4);
+}
+
+.udm-mascot-fab:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+
+.udm-mascot-img {
+  width: 36px;
+  height: 36px;
+}
+
+.udm-mascot-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2f6bff;
+}
+
+/* ── RESPONSIVE MOBILE ── */
+@media (max-width: 800px) {
+  .udm-backdrop {
+    padding: 0;
+  }
+  .udm-modal {
+    border-radius: 0;
+    margin-bottom: 0;
+    min-height: 100vh;
+  }
+  .udm-banner-wrap {
+    height: 180px;
+  }
+  .udm-title-card {
+    margin: -40px 14px 0;
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .udm-title-info h2 {
+    font-size: 1.3rem;
+  }
+  .udm-content-grid {
+    grid-template-columns: 1fr;
+    padding: 14px;
+    gap: 16px;
+  }
+  .udm-side-menu {
+    display: none; /* Thu gọn trên mobile, các tab chính đã bao quát */
+  }
+  .udm-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .udm-banner-notice {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

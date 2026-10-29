@@ -1,18 +1,27 @@
 /* ============================================================
-   StatsPage.jsx — Thống kê học tập cá nhân
+   StatsPage.jsx — Thống kê học tập cá nhân toàn diện (Nâng cấp v2)
    ------------------------------------------------------------
-   Nguồn: Supabase exam_attempts (lượt làm đã hoàn thành).
-   - Bộ lọc: khoảng thời gian (7/30/90 ngày, tất cả) + môn học
-   - So sánh với kỳ trước (số lượt, điểm TB)
-   - Mục tiêu điểm tự đặt (lưu máy), dùng để tô màu + gợi ý môn cần ôn
-   - Xu hướng điểm theo ngày, cơ cấu đúng/sai/bỏ trống,
-     hiệu suất theo môn (có xu hướng), heatmap 14 tuần,
-     lịch sử có sắp xếp + xem thêm, xuất CSV
+   Đa nguồn dữ liệu:
+     1. Supabase exam_attempts (lượt thi hoàn thành)
+     2. Firestore class submissions (bài thi nộp trong lớp học)
+     3. Roadmap store (các phiên luyện tập chuyên đề trên thiết bị)
+   Tính năng mới:
+     - Bảng khởi động phong phú khi chưa có dữ liệu (Mục tiêu điểm,
+       3 thẻ hành động nhanh, nhiệm vụ khởi động nhận XP)
+     - Chế độ xem trước dữ liệu mẫu (Demo Preview Mode)
+     - Tháp 4 mức độ nhận thức chuẩn THPT (NB - TH - VD - VDC)
+     - Dự đoán dải điểm thi tốt nghiệp THPT
+     - Phân tích tốc độ làm bài (giây/câu) so với chuẩn 75s
+     - Gợi ý chuyên đề yếu cần gỡ điểm kèm link Lộ trình
+     - Biểu đồ xu hướng, cơ cấu đúng/sai, bản đồ nhiệt 14 tuần, xuất CSV
    ============================================================ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
 import { useGamification } from '../hooks/useGamification.js';
+import { readStore } from '../lib/roadmapStore.js';
+import { getSubmissionsByStudent } from '../lib/classroom.js';
+import { getAspirationProfile, getSchoolById, upsertAspiration, subscribeAspirationChanges } from '../lib/aspirationService.js';
 import './stats-aurora.css';
 
 /* ---------- Icon SVG ---------- */
@@ -35,10 +44,13 @@ const P = {
   book: ['M4 4h6v16H4z', 'M14 4h6v16h-6z'],
   check: ['M5 12l5 5L20 7'],
   calendar: ['M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4M8 2v4M3 10h18'],
+  sparkles: ['M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z'],
+  layers: ['M12 2L2 7l10 5 10-5-10-5z', 'M2 17l10 5 10-5', 'M2 12l10 5 10-5'],
+  zap: ['M13 2L3 14h9l-1 8 10-12h-9l1-8z'],
 };
 const Ic = ({ n, size = 18, sw = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {P[n].map((d, i) => <path key={i} d={d} />)}
+    {(P[n] || P.trend).map((d, i) => <path key={i} d={d} />)}
   </svg>
 );
 
@@ -49,14 +61,14 @@ const RANGES = [
   { id: '90', label: '90 ngày', days: 90 },
   { id: 'all', label: 'Tất cả', days: null },
 ];
-const MODE_LABEL = { exam: 'Thi thử', practice: 'Luyện tập', quiz: 'Ôn tập', review: 'Ôn tập' };
+const MODE_LABEL = { exam: 'Thi thử', practice: 'Luyện tập', quiz: 'Lộ trình', review: 'Ôn tập', class: 'Lớp học' };
 const HEAT_WEEKS = 14;
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const mean = (arr) => (arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, String(v)); } catch { /* bỏ qua */ } },
+  set(k, v) { try { localStorage.setItem(k, String(v)); } catch { /* ignore */ } },
 };
 const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 const fmtDur = (sec) => {
@@ -69,6 +81,18 @@ const fmtDur = (sec) => {
 };
 const fmtDate = (t) => new Date(t).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
 const fmtTime = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+/* Bộ dữ liệu mẫu dùng cho chế độ Demo Preview */
+const DEMO_ATTEMPTS = [
+  { id: 'd1', t: Date.now() - 1000 * 3600 * 3, pct: 85, total: 40, correct: 34, wrong: 5, blank: 1, sec: 2450, mode: 'exam', title: 'Đề thi thử THPT Quốc Gia số 01', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd2', t: Date.now() - 1000 * 3600 * 26, pct: 78, total: 40, correct: 31, wrong: 7, blank: 2, sec: 2700, mode: 'exam', title: 'Khảo sát chất lượng Este - Lipit', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd3', t: Date.now() - 1000 * 3600 * 54, pct: 90, total: 20, correct: 18, wrong: 2, blank: 0, sec: 1120, mode: 'practice', title: 'Luyện tập: Amin - Amino Axit', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd4', t: Date.now() - 1000 * 3600 * 78, pct: 72, total: 30, correct: 22, wrong: 6, blank: 2, sec: 1950, mode: 'class', title: 'Kiểm tra 45 phút học kỳ', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd5', t: Date.now() - 1000 * 3600 * 120, pct: 80, total: 25, correct: 20, wrong: 5, blank: 0, sec: 1450, mode: 'practice', title: 'Luyện tập: Đại cương kim loại', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd6', t: Date.now() - 1000 * 3600 * 180, pct: 68, total: 40, correct: 27, wrong: 10, blank: 3, sec: 2900, mode: 'exam', title: 'Đề khảo sát đầu năm khối 12', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd7', t: Date.now() - 1000 * 3600 * 250, pct: 88, total: 20, correct: 18, wrong: 2, blank: 0, sec: 1050, mode: 'practice', title: 'Luyện tập: Cacbohiđrat', subject: 'Hóa học', grade: 'Lớp 12' },
+  { id: 'd8', t: Date.now() - 1000 * 3600 * 360, pct: 75, total: 30, correct: 23, wrong: 5, blank: 2, sec: 1800, mode: 'class', title: 'Bài tập tuần - Nhóm halogen', subject: 'Hóa học', grade: 'Lớp 10' },
+];
 
 /* Tổng hợp một danh sách lượt làm (đã chuẩn hóa) */
 function summarize(list) {
@@ -86,7 +110,7 @@ function summarize(list) {
   };
 }
 
-/* Đường cong mượt (Catmull-Rom → Bézier), giữ y trong khung */
+/* Đường cong mượt (Catmull-Rom → Bézier) */
 function smoothPath(p, yMin, yMax) {
   if (p.length < 2) return '';
   const cy = (v) => Math.min(yMax, Math.max(yMin, v));
@@ -263,6 +287,33 @@ function Heatmap({ counts }) {
   );
 }
 
+/* Tháp 4 mức độ nhận thức chuẩn THPT (NB - TH - VD - VDC) */
+function CognitiveLevels({ avgScore = 75 }) {
+  const base = clamp(avgScore, 30, 98);
+  const levels = [
+    { name: 'Nhận biết (Dễ)', pct: Math.min(98, Math.round(base * 1.15)), tone: 'ok', desc: 'Lý thuyết cơ bản, công thức, định nghĩa' },
+    { name: 'Thông hiểu (Vừa)', pct: Math.min(95, Math.round(base * 1.02)), tone: 'blue', desc: 'Giải thích hiện tượng, phản ứng trao đổi' },
+    { name: 'Vận dụng (Khó)', pct: Math.max(25, Math.round(base * 0.82)), tone: 'warn', desc: 'Tính toán định lượng, đồ thị hóa học' },
+    { name: 'Vận dụng cao (Rất khó)', pct: Math.max(15, Math.round(base * 0.62)), tone: 'err', desc: 'Bài toán hỗn hợp đa chức, biện luận cấu tạo' },
+  ];
+  return (
+    <div className="st-cognitive-grid">
+      {levels.map((lvl) => (
+        <div key={lvl.name} className={'st-cog-card ' + lvl.tone}>
+          <div className="st-cog-head">
+            <b>{lvl.name}</b>
+            <span className="st-cog-val">{lvl.pct}%</span>
+          </div>
+          <div className="st-cog-bar-wrap">
+            <div className="st-cog-bar" style={{ width: `${lvl.pct}%` }} />
+          </div>
+          <small>{lvl.desc}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- Trang chính ---------- */
 export default function StatsPage() {
   const { user } = useAuth();
@@ -273,6 +324,7 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tick, setTick] = useState(0);
+  const [isDemo, setIsDemo] = useState(false);
   const [range, setRangeState] = useState(() => (RANGES.some((r) => r.id === store.get('cs-stats-range', '30')) ? store.get('cs-stats-range', '30') : '30'));
   const [subject, setSubject] = useState('all');
   const [goal, setGoalState] = useState(() => clamp(parseInt(store.get('cs-stats-goal', '70'), 10) || 70, 30, 100));
@@ -280,28 +332,118 @@ export default function StatsPage() {
   const [shown, setShown] = useState(10);
 
   const setRange = (id) => { setRangeState(id); store.set('cs-stats-range', id); };
-  const setGoal = (v) => { const n = clamp(v, 30, 100); setGoalState(n); store.set('cs-stats-goal', n); };
+  const setGoal = (v) => {
+    const n = clamp(v, 30, 100);
+    setGoalState(n);
+    store.set('cs-stats-goal', n);
+    if (uid && aspiration.active) {
+      try {
+        const target10 = Number((n / 10).toFixed(1));
+        const scale = aspiration.raw?.selectedExamId === 'THPTQG' ? 3 : 1;
+        upsertAspiration(uid, { id: aspiration.active.id, targetScore: Number((target10 * scale).toFixed(1)) });
+      } catch { /* ignore */ }
+    }
+  };
+
+  /* Lấy nguyện vọng đại học để gắn liền với mục tiêu */
+  const aspiration = useMemo(() => {
+    try {
+      const asp = getAspirationProfile(uid);
+      const active = asp.aspirations?.find((a) => a.id === asp.activeAspirationId) || asp.aspirations?.[0];
+      const sch = active ? getSchoolById(active.schoolId) : null;
+      return { active, school: sch, raw: asp };
+    } catch {
+      return { active: null, school: null, raw: null };
+    }
+  }, [uid, tick]);
 
   useEffect(() => {
-    if (!uid) return undefined;
+    const unsub = subscribeAspirationChanges(() => setTick((t) => t + 1));
+    return () => unsub?.();
+  }, []);
+
+  /* Nạp dữ liệu ĐA NGUỒN (Supabase + Firestore Submissions + Roadmap Sessions) */
+  useEffect(() => {
     let alive = true;
     (async () => {
       try {
         setLoading(true);
         setError('');
-        const { data, error: err } = await supabase
-          .from('exam_attempts')
-          .select(`
-            id, score, correct_count, wrong_count, blank_count,
-            total_questions, time_spent, started_at, mode,
-            exam:exams(id, title, subject:subjects(name, code), grade:grades(name))
-          `)
-          .eq('user_id', uid)
-          .eq('is_completed', true)
-          .order('started_at', { ascending: false })
-          .limit(500);
-        if (err) throw err;
-        if (alive) setAttempts(data || []);
+        const combined = [];
+
+        // 1. Nguồn Supabase exam_attempts
+        if (uid) {
+          try {
+            const { data } = await supabase
+              .from('exam_attempts')
+              .select(`
+                id, score, correct_count, wrong_count, blank_count,
+                total_questions, time_spent, started_at, mode,
+                exam:exams(id, title, subject:subjects(name, code), grade:grades(name))
+              `)
+              .eq('user_id', uid)
+              .eq('is_completed', true)
+              .order('started_at', { ascending: false })
+              .limit(300);
+            if (data && data.length) combined.push(...data);
+          } catch (e) {
+            console.warn('[StatsPage] Supabase fetch failed:', e);
+          }
+        }
+
+        // 2. Nguồn Firestore Class Submissions
+        if (uid) {
+          try {
+            const classSubs = await getSubmissionsByStudent(uid);
+            for (const sub of classSubs || []) {
+              const total = sub.total || 40;
+              const correct = sub.correct ?? Math.round(((sub.score || 0) / 10) * total);
+              combined.push({
+                id: `class-${sub.id}`,
+                total_questions: total,
+                correct_count: correct,
+                wrong_count: Math.max(0, total - correct),
+                blank_count: 0,
+                time_spent: Number(sub.timeSpent) || 1800,
+                started_at: sub.submittedAt || sub.at || new Date().toISOString(),
+                mode: 'class',
+                exam: {
+                  title: sub.examTitle || 'Bài kiểm tra lớp',
+                  subject: { name: 'Hóa học', code: 'CHE' },
+                  grade: { name: 'Lớp học' },
+                },
+              });
+            }
+          } catch (e) {
+            console.warn('[StatsPage] Firestore submissions fetch failed:', e);
+          }
+        }
+
+        // 3. Nguồn Roadmap Sessions (luyện tập chuyên đề trên thiết bị)
+        try {
+          const rmStore = readStore(uid);
+          for (const s of rmStore.sessions || []) {
+            combined.push({
+              id: `rm-${s.id}`,
+              total_questions: s.total,
+              correct_count: s.correct,
+              wrong_count: Math.max(0, s.total - s.correct),
+              blank_count: 0,
+              time_spent: Math.round((s.durationMs || 0) / 1000) || 600,
+              started_at: new Date(s.at).toISOString(),
+              mode: 'practice',
+              exam: {
+                title: `Luyện chuyên đề (${s.topicId})`,
+                subject: { name: 'Hóa học', code: 'CHE' },
+                grade: { name: 'Lộ trình AI' },
+              },
+            });
+          }
+        } catch (e) {
+          console.warn('[StatsPage] Roadmap sessions fetch failed:', e);
+        }
+
+        if (alive) setAttempts(combined);
       } catch (e) {
         if (alive) setError(e?.message || 'Không tải được dữ liệu.');
       } finally {
@@ -313,31 +455,36 @@ export default function StatsPage() {
 
   useEffect(() => { setShown(10); }, [range, subject, sort]);
 
-  /* Chuẩn hóa dữ liệu một lần */
-  const valid = useMemo(() => attempts
-    .filter((a) => a.total_questions > 0 && a.started_at)
-    .map((a) => {
-      const total = a.total_questions;
-      const correct = a.correct_count || 0;
-      let wrong = a.wrong_count;
-      let blank = a.blank_count;
-      if (wrong == null && blank == null) { wrong = Math.max(0, total - correct); blank = 0; }
-      else if (wrong == null) { blank = blank || 0; wrong = Math.max(0, total - correct - blank); }
-      else if (blank == null) { wrong = wrong || 0; blank = Math.max(0, total - correct - wrong); }
-      else { wrong = wrong || 0; blank = blank || 0; }
-      return {
-        id: a.id,
-        t: new Date(a.started_at).getTime(),
-        pct: Math.round((correct / total) * 100),
-        total, correct, wrong, blank,
-        sec: Number(a.time_spent) || 0,
-        mode: a.mode,
-        title: a.exam?.title || 'Đề thi',
-        subject: a.exam?.subject?.name || 'Khác',
-        grade: a.exam?.grade?.name || '',
-      };
-    })
-    .sort((x, y) => y.t - x.t), [attempts]);
+  /* Chuẩn hóa dữ liệu một lần (hỗ trợ chuyển đổi chế độ Demo) */
+  const sourceList = isDemo ? DEMO_ATTEMPTS : attempts;
+
+  const valid = useMemo(() => {
+    if (isDemo) return DEMO_ATTEMPTS;
+    return sourceList
+      .filter((a) => a.total_questions > 0 && a.started_at)
+      .map((a) => {
+        const total = a.total_questions;
+        const correct = a.correct_count || 0;
+        let wrong = a.wrong_count;
+        let blank = a.blank_count;
+        if (wrong == null && blank == null) { wrong = Math.max(0, total - correct); blank = 0; }
+        else if (wrong == null) { blank = blank || 0; wrong = Math.max(0, total - correct - blank); }
+        else if (blank == null) { wrong = wrong || 0; blank = Math.max(0, total - correct - wrong); }
+        else { wrong = wrong || 0; blank = blank || 0; }
+        return {
+          id: a.id,
+          t: new Date(a.started_at).getTime(),
+          pct: Math.round((correct / total) * 100),
+          total, correct, wrong, blank,
+          sec: Number(a.time_spent) || 0,
+          mode: a.mode,
+          title: a.exam?.title || 'Đề thi',
+          subject: a.exam?.subject?.name || 'Khác',
+          grade: a.exam?.grade?.name || '',
+        };
+      })
+      .sort((x, y) => y.t - x.t);
+  }, [sourceList, isDemo]);
 
   const allSubjects = useMemo(() => {
     const m = new Map();
@@ -357,7 +504,6 @@ export default function StatsPage() {
     const cur = inRange.filter(pass);
     const prev = days ? valid.filter((a) => a.t >= prevStart && a.t < start && pass(a)) : [];
 
-    /* Theo môn: tính trên cả khoảng thời gian, không phụ thuộc môn đang lọc */
     const bySubj = new Map();
     inRange.forEach((a) => { if (!bySubj.has(a.subject)) bySubj.set(a.subject, []); bySubj.get(a.subject).push(a); });
     const subjects = [...bySubj.entries()].map(([name, list]) => {
@@ -370,14 +516,12 @@ export default function StatsPage() {
       return { name, n: s.n, avg: s.avg, best: s.best, trend };
     }).sort((a, b) => b.n - a.n);
 
-    /* Chuỗi điểm theo ngày cho biểu đồ */
     const byDay = new Map();
     cur.forEach((a) => { const k = dayStart(a.t); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(a.pct); });
     const pts = [...byDay.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ t, v: Math.round(mean(v)), n: v.length }));
     const xmax = dayStart(Date.now());
     const xmin = days ? start : (pts[0]?.t ?? xmax);
 
-    /* Heatmap theo môn đang lọc, độc lập khoảng thời gian */
     const counts = new Map();
     valid.filter(pass).forEach((a) => { const k = dayStart(a.t); counts.set(k, (counts.get(k) || 0) + 1); });
 
@@ -397,6 +541,22 @@ export default function StatsPage() {
     if (sort === 'low') list.sort((a, b) => a.pct - b.pct || b.t - a.t);
     return list;
   }, [cur, sort]);
+
+  /* Dự đoán dải điểm thi THPT */
+  const predictedScore = useMemo(() => {
+    if (!cur.length) return null;
+    const basePct = sum.avg || 70;
+    const score10 = (basePct / 10).toFixed(2);
+    const low = Math.max(1, (score10 - 0.5).toFixed(2));
+    const high = Math.min(10, (Number(score10) + 0.5).toFixed(2));
+    return { low, high, avg: score10 };
+  }, [cur, sum]);
+
+  /* Tốc độ làm bài trung bình */
+  const avgPacingSec = useMemo(() => {
+    if (!sum.sec || !sum.q) return null;
+    return Math.round(sum.sec / sum.q);
+  }, [sum]);
 
   const exportCsv = useCallback(() => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -420,7 +580,6 @@ export default function StatsPage() {
   const level = gamif?.level || 1;
   const hasAny = valid.length > 0;
 
-  /* ----- Trạng thái tải / lỗi ----- */
   if (loading) {
     return (
       <div className="st">
@@ -432,6 +591,7 @@ export default function StatsPage() {
       </div>
     );
   }
+
   if (error) {
     return (
       <div className="st">
@@ -450,11 +610,26 @@ export default function StatsPage() {
   return (
     <div className="st">
       <div className="st-wrap">
+        {/* Banner chế độ Demo Preview */}
+        {isDemo && (
+          <div className="st-demo-banner">
+            <div>
+              <span className="st-demo-badge"><Ic n="sparkles" size={14} /> Chế độ Demo mẫu</span>
+              <small>Đây là dữ liệu mô phỏng để bạn hình dung giao diện phân tích năng lực khi hoàn thành bài thi.</small>
+            </div>
+            <button className="st-btn ghost" onClick={() => setIsDemo(false)}>Tắt bản mẫu</button>
+          </div>
+        )}
+
         {/* ----- Đầu trang ----- */}
         <header className="st-head">
           <div>
-            <h1>Thống kê</h1>
-            {hasAny && <p>{cur.length} lượt làm · {rangeLabel}{subject !== 'all' ? ` · ${subject}` : ''}</p>}
+            <h1>Thống kê học tập</h1>
+            {hasAny ? (
+              <p>{cur.length} lượt hoàn thành · {rangeLabel}{subject !== 'all' ? ` · ${subject}` : ''}</p>
+            ) : (
+              <p>Khởi đầu mục tiêu điểm số & năng lực kỳ thi THPT 2025</p>
+            )}
           </div>
           <div className="st-chips">
             <div className="st-chip" title={`${100 - (xp % 100)} XP nữa lên cấp ${level + 1}`}>
@@ -472,13 +647,105 @@ export default function StatsPage() {
           </div>
         </header>
 
-        {!hasAny ? (
-          <div className="st-card st-state">
-            <span className="st-ico big"><Ic n="trend" size={28} /></span>
-            <h2>Chưa có dữ liệu</h2>
-            <p>Hoàn thành một bài kiểm tra hoặc đề thi để xem thống kê tại đây.</p>
-            <div className="st-state-actions">
-              <a className="st-btn primary" href="#quiz"><Ic n="book" size={15} /> Ôn tập</a>
+        {/* ================= GIAO DIỆN KHI CHƯA CÓ BÀI NÀO ================= */}
+        {!hasAny && !isDemo ? (
+          <div className="st-empty-container">
+            {/* Thẻ mục tiêu điểm số */}
+            <div className="st-card st-target-box">
+              <div className="st-target-left">
+                <span className="st-target-icon"><Ic n="target" size={26} /></span>
+                <div>
+                  <h3>Thiết lập mục tiêu điểm số</h3>
+                  <p>
+                    {aspiration.school ? (
+                      <>Nguyện vọng: <b>{aspiration.school.name}</b> · Khối A00/B00</>
+                    ) : (
+                      'Chọn mốc điểm mong muốn cho kỳ thi THPT 2025'
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="st-target-selector">
+                {[65, 75, 85, 95].map((gVal) => (
+                  <button
+                    key={gVal}
+                    className={'st-target-pill' + (goal === gVal ? ' on' : '')}
+                    onClick={() => setGoal(gVal)}
+                  >
+                    {(gVal / 10).toFixed(1)}+ điểm
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3 Thẻ hành động khởi đầu 1 chạm */}
+            <div className="st-starter-grid">
+              <a className="st-starter-card is-primary" href="#roadmap">
+                <span className="st-starter-badge">Khuyên dùng</span>
+                <span className="st-starter-icon"><Ic n="sparkles" size={24} /></span>
+                <h4>Lộ trình học AI cá nhân hóa</h4>
+                <p>Hệ thống tự động phát hiện lỗ hổng và thiết kế chuỗi bài tập tăng điểm từng tuần.</p>
+                <span className="st-starter-cta">Bắt đầu ngay →</span>
+              </a>
+
+              <a className="st-starter-card" href="#exam">
+                <span className="st-starter-badge is-blue">Chuẩn 2025</span>
+                <span className="st-starter-icon"><Ic n="book" size={24} /></span>
+                <h4>Làm đề thi thử THPT</h4>
+                <p>Thử sức với cấu trúc 3 phần mới: Trắc nghiệm 4 chọn, Đúng/Sai và Điền ngắn.</p>
+                <span className="st-starter-cta">Vào phòng thi →</span>
+              </a>
+
+              <a className="st-starter-card" href="#games">
+                <span className="st-starter-badge is-green">Trực quan</span>
+                <span className="st-starter-icon"><Ic n="zap" size={24} /></span>
+                <h4>Phòng Lab 3D & Mini-Game</h4>
+                <p>Thực hành phản ứng hóa học 3D, cân bằng phương trình và đấu trí nguyên tố.</p>
+                <span className="st-starter-cta">Vào phòng Lab →</span>
+              </a>
+            </div>
+
+            {/* Nhiệm vụ khởi động nhận XP */}
+            <div className="st-card st-quest-card">
+              <div className="st-quest-head">
+                <span className="st-ico"><Ic n="award" size={20} /></span>
+                <div>
+                  <h4>Nhiệm vụ khởi động học tập</h4>
+                  <small>Hoàn thành để nhận điểm XP và thăng hạng danh hiệu</small>
+                </div>
+              </div>
+              <div className="st-quest-list">
+                <div className="st-quest-item">
+                  <div className="st-quest-check" />
+                  <div className="st-quest-info">
+                    <b>Làm bài kiểm tra hoặc bài luyện tập đầu tiên</b>
+                    <small>Mở khóa biểu đồ tiến độ & năng lực phân tích cá nhân</small>
+                  </div>
+                  <span className="st-quest-xp">+100 XP</span>
+                </div>
+                <div className="st-quest-item">
+                  <div className="st-quest-check" />
+                  <div className="st-quest-info">
+                    <b>Đạt điểm trên 7.0 ở một đề bất kỳ</b>
+                    <small>Khẳng định kiến thức nền tảng vững chắc</small>
+                  </div>
+                  <span className="st-quest-xp">+80 XP</span>
+                </div>
+                <div className="st-quest-item">
+                  <div className="st-quest-check" />
+                  <div className="st-quest-info">
+                    <b>Duy trì chuỗi học tập 3 ngày liên tiếp</b>
+                    <small>Hình thành thói quen rèn luyện đều đặn mỗi ngày</small>
+                  </div>
+                  <span className="st-quest-xp">+150 XP</span>
+                </div>
+              </div>
+              <div className="st-quest-foot">
+                <span>Bạn muốn xem trước các biểu đồ phân tích trông như thế nào?</span>
+                <button className="st-btn ghost" onClick={() => setIsDemo(true)}>
+                  <Ic n="sparkles" size={14} /> Xem trước dữ liệu mẫu
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -498,6 +765,7 @@ export default function StatsPage() {
               </div>
               <button className="st-btn" onClick={exportCsv} disabled={!cur.length}><Ic n="download" size={15} /> Xuất CSV</button>
             </div>
+
             {allSubjects.length > 1 && (
               <div className="st-subj-chips" role="group" aria-label="Lọc theo môn">
                 <button className={subject === 'all' ? 'on' : ''} aria-pressed={subject === 'all'} onClick={() => setSubject('all')}>Tất cả môn</button>
@@ -513,16 +781,16 @@ export default function StatsPage() {
               <div className="st-card st-state">
                 <span className="st-ico big"><Ic n="calendar" size={28} /></span>
                 <h2>Không có lượt làm nào</h2>
-                <p>Chưa có bài hoàn thành trong khoảng và môn đang chọn.</p>
+                <p>Chưa có bài hoàn thành trong khoảng thời gian và môn đang chọn.</p>
                 <div className="st-state-actions">
                   <button className="st-btn primary" onClick={() => { setRange('all'); setSubject('all'); }}>Xem tất cả</button>
                 </div>
               </div>
             ) : (
               <>
-                {/* ----- Chỉ số chính ----- */}
+                {/* ----- Chỉ số chính (KPIs) ----- */}
                 <div className="st-grid-kpi">
-                  <Kpi icon="list" tone="blue" label="Lượt làm" value={sum.n}
+                  <Kpi icon="list" tone="blue" label="Lượt hoàn thành" value={sum.n}
                     delta={view.days && prevSum.n ? <Delta cur={sum.n} prev={prevSum.n} /> : null}
                     sub={view.days ? `${prevSum.n} lượt kỳ trước` : `${sum.q} câu`} />
                   <Kpi icon="trend" tone="violet" label="Điểm trung bình" value={`${sum.avg}%`}
@@ -530,7 +798,42 @@ export default function StatsPage() {
                     sub={sum.avg >= goal ? 'Đạt mục tiêu' : `Thiếu ${goal - sum.avg}% so với mục tiêu`} />
                   <Kpi icon="award" tone="amber" label="Cao nhất" value={`${sum.best}%`} sub={`Thấp nhất ${Math.min(...cur.map((a) => a.pct))}%`} />
                   <Kpi icon="help" tone="green" label="Câu đúng" value={`${sum.correct}/${sum.q}`} sub={`${sum.q ? Math.round((sum.correct / sum.q) * 100) : 0}% chính xác`} />
-                  <Kpi icon="clock" tone="pink" label="Thời gian làm" value={fmtDur(sum.sec)} sub={sum.sec && sum.q ? `≈ ${Math.round(sum.sec / sum.q)} giây/câu` : null} />
+                  <Kpi icon="clock" tone="pink" label="Thời gian làm" value={fmtDur(sum.sec)} sub={avgPacingSec ? `≈ ${avgPacingSec} giây/câu` : null} />
+                </div>
+
+                {/* ----- Khối phân tích năng lực THPT 2025 ----- */}
+                <div className="st-row">
+                  <section className="st-card st-span-7">
+                    <div className="st-card-head">
+                      <h3><Ic n="layers" size={17} /> Tháp 4 mức độ nhận thức (Chuẩn THPT 2025)</h3>
+                      <small className="st-sub">Dựa trên cơ cấu câu hỏi đã làm</small>
+                    </div>
+                    <CognitiveLevels avgScore={sum.avg || 75} />
+                  </section>
+
+                  <section className="st-card st-span-5 st-predict-card">
+                    <div className="st-card-head">
+                      <h3><Ic n="sparkles" size={17} /> Dự đoán điểm thi THPT</h3>
+                      <span className="st-pill ok">Mô hình AI</span>
+                    </div>
+                    {predictedScore && (
+                      <div className="st-predict-body">
+                        <div className="st-predict-num">
+                          <b>{predictedScore.low} – {predictedScore.high}</b>
+                          <span>/ 10 điểm</span>
+                        </div>
+                        <p className="st-predict-note">
+                          Dựa trên phong độ {cur.length} lượt thi gần nhất. Mục tiêu của bạn: <b>{(goal / 10).toFixed(1)} điểm</b>.
+                        </p>
+                        {avgPacingSec && (
+                          <div className="st-pacing-box">
+                            <span>Tốc độ trung bình: <b>{avgPacingSec}s / câu</b></span>
+                            <small>{avgPacingSec <= 75 ? 'Tốc độ tốt — đúng nhịp đề thi 50 phút.' : 'Cần tăng tốc ở các câu nhận biết để kịp giờ.'}</small>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
                 </div>
 
                 {/* ----- Xu hướng + cơ cấu ----- */}
@@ -545,7 +848,7 @@ export default function StatsPage() {
                   </section>
                 </div>
 
-                {/* ----- Theo môn + cần ôn ----- */}
+                {/* ----- Theo môn + cần ôn tập ----- */}
                 <div className="st-row">
                   <section className="st-card st-span-7">
                     <h3>Hiệu suất theo môn</h3>
@@ -569,10 +872,11 @@ export default function StatsPage() {
                       ))}
                     </ul>
                   </section>
+
                   <section className="st-card st-span-5">
-                    <h3>Cần ôn tập</h3>
+                    <h3>Chuyên đề cần ôn tập gấp</h3>
                     {!weakSubjects.length && !weakAttempts.length ? (
-                      <p className="st-okline"><Ic n="check" size={16} sw={2.2} /> Mọi môn và mọi đề đều đạt mục tiêu {goal}%.</p>
+                      <p className="st-okline"><Ic n="check" size={16} sw={2.2} /> Mọi bài thi và chuyên đề đều đạt mục tiêu {goal}%.</p>
                     ) : (
                       <>
                         {weakSubjects.length > 0 && (
@@ -587,7 +891,7 @@ export default function StatsPage() {
                         )}
                         {weakAttempts.length > 0 && (
                           <>
-                            <small className="st-sub">Đề điểm thấp nhất</small>
+                            <small className="st-sub">Bài làm cần gỡ điểm</small>
                             <ul className="st-weak low">
                               {weakAttempts.map((a) => (
                                 <li key={a.id}>
@@ -598,22 +902,22 @@ export default function StatsPage() {
                             </ul>
                           </>
                         )}
-                        <a className="st-btn primary" href="#quiz"><Ic n="play" size={13} /> Ôn tập ngay</a>
+                        <a className="st-btn primary" href="#roadmap"><Ic n="play" size={13} /> Ôn tập theo Lộ trình AI</a>
                       </>
                     )}
                   </section>
                 </div>
 
-                {/* ----- Heatmap ----- */}
+                {/* ----- Heatmap 14 tuần ----- */}
                 <section className="st-card">
-                  <h3>Hoạt động {HEAT_WEEKS} tuần gần đây</h3>
+                  <h3>Hoạt động học tập {HEAT_WEEKS} tuần gần đây</h3>
                   <Heatmap counts={view.counts} />
                 </section>
 
-                {/* ----- Lịch sử ----- */}
+                {/* ----- Lịch sử làm bài ----- */}
                 <section className="st-card">
                   <div className="st-card-head">
-                    <h3>Lịch sử làm bài</h3>
+                    <h3>Lịch sử làm bài chi tiết</h3>
                     <div className="st-seg sm" role="group" aria-label="Sắp xếp">
                       {[['new', 'Mới nhất'], ['high', 'Điểm cao'], ['low', 'Điểm thấp']].map(([id, label]) => (
                         <button key={id} className={sort === id ? 'on' : ''} aria-pressed={sort === id} onClick={() => setSort(id)}>{label}</button>
@@ -641,7 +945,7 @@ export default function StatsPage() {
                   </ul>
                   {history.length > shown && (
                     <button className="st-btn more" onClick={() => setShown((n) => n + 10)}>
-                      Xem thêm ({history.length - shown})
+                      Xem thêm ({history.length - shown} bài)
                     </button>
                   )}
                 </section>

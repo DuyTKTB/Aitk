@@ -3,6 +3,8 @@ import { useLocalStorage, dayKey } from '../hooks.js';
 import { mastery } from '../lib/srs.js';
 import { ELEMENTS, norm } from '../data/elements.js';
 import { Ico } from './QuizIcons.jsx';
+import { recordAttemptScore, getAspirationProfile } from '../lib/aspirationService.js';
+import { auth } from '../lib/firebase.js';
 
 /* ============================================================
    HẰNG SỐ
@@ -148,7 +150,7 @@ function drawReport({ title, gpaText, rank, rows, hide, st }) {
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const g = cv.getContext('2d');
-  const F = '"Space Grotesk", system-ui, sans-serif';
+  const F = '"Be Vietnam Pro", "Inter", system-ui, sans-serif';
   g.fillStyle = '#efece4'; g.fillRect(0, 0, W, H);
   g.fillStyle = rank ? rank.hex : '#c9c5b8'; g.fillRect(0, 0, W, 16);
   g.fillStyle = '#111';
@@ -457,6 +459,20 @@ function Admission({ rows }) {
   const bonus = num(a.bonus) || 0;
   const total = all ? vals.reduce((x, y) => x + y, 0) + bonus : null;
   const bench = num(a.bench);
+  const uid = auth?.currentUser?.uid;
+
+  const [aspSyncMsg, setAspSyncMsg] = useState('');
+
+  const syncToAspiration = () => {
+    if (total === null) return;
+    try {
+      recordAttemptScore(uid || 'guest', Number(total.toFixed(2)));
+      setAspSyncMsg(`Đã đồng bộ ${total.toFixed(2)}đ vào Nguyện vọng 1!`);
+      setTimeout(() => setAspSyncMsg(''), 3500);
+    } catch {
+      setAspSyncMsg('Đã lưu điểm xét tuyển.');
+    }
+  };
 
   return (
     <div className="gc-card">
@@ -478,8 +494,16 @@ function Admission({ rows }) {
         {total !== null && bench !== null && Number.isFinite(bench) && (
           <p className={'gc-plan-msg ' + (total >= bench ? 'ok' : 'no')}>{total >= bench ? `Cao hơn điểm chuẩn ${(total - bench).toFixed(2)}` : `Thiếu ${(bench - total).toFixed(2)} điểm so với điểm chuẩn`}</p>
         )}
-        <button type="button" className="btn sm" onClick={fill}><Ico n="refresh" size={14} /> Lấy từ điểm các môn</button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn sm" onClick={fill}><Ico n="refresh" size={14} /> Lấy từ điểm các môn</button>
+          {total !== null && (
+            <button type="button" className="btn sm primary" onClick={syncToAspiration}>
+              Lưu điểm vào Nguyện vọng 1 →
+            </button>
+          )}
+        </div>
       </div>
+      {aspSyncMsg && <p className="gc-note" style={{ color: 'var(--post)', fontWeight: 700 }}>{aspSyncMsg}</p>}
       <p className="gc-note">Điểm ưu tiên và điểm chuẩn do bạn tự nhập, hãy đối chiếu với thông báo của trường.</p>
     </div>
   );

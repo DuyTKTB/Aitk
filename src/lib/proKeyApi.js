@@ -9,10 +9,10 @@
 import { supabase } from './supabase.js';
 
 /* ============ HELPERS ============ */
-export function generateProKey() {
+export function generateProKey(prefix = 'PRO') {
   const p1 = Math.random().toString(36).slice(2, 6).toUpperCase();
   const p2 = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `PRO-${p1}-${p2}`;
+  return `${prefix}-${p1}-${p2}`;
 }
 
 const toMs = (v) => {
@@ -30,13 +30,12 @@ export const daysLeft = (expiry) => {
 };
 
 /* ============================================================
-   ADMIN: TẠO KEY
+   ADMIN: TẠO KEY (Hỗ trợ Teacher PRO, Student VIP, Credit AI)
    ============================================================ */
-export async function adminCreateProKey({ durationDays = 30, note = '', createdBy = null } = {}) {
+export async function adminCreateProKey({ durationDays = 30, note = '', createdBy = null, prefix = 'PRO', code: customCode = null } = {}) {
   const days = Math.max(1, Math.min(3650, Number(durationDays) || 30));
-  // thử tối đa 5 lần để tránh trùng code
   for (let attempt = 0; attempt < 5; attempt++) {
-    const code = generateProKey();
+    const code = customCode ? String(customCode).trim().toUpperCase() : generateProKey(prefix);
     const { data, error } = await supabase
       .from('pro_keys')
       .insert({
@@ -49,13 +48,12 @@ export async function adminCreateProKey({ durationDays = 30, note = '', createdB
       .single();
 
     if (!error) return data;
-    // 23505 = duplicate key → thử lại
     if (error.code !== '23505') throw error;
   }
   throw new Error('Không sinh được key duy nhất sau 5 lần thử.');
 }
 
-export async function adminCreateProKeyBatch({ count = 5, durationDays = 30, note = '', createdBy = null } = {}) {
+export async function adminCreateProKeyBatch({ count = 5, durationDays = 30, note = '', createdBy = null, prefix = 'PRO' } = {}) {
   const n = Math.max(1, Math.min(100, Number(count) || 5));
   const days = Math.max(1, Math.min(3650, Number(durationDays) || 30));
   const rows = [];
@@ -64,7 +62,7 @@ export async function adminCreateProKeyBatch({ count = 5, durationDays = 30, not
     let code;
     let guard = 0;
     do {
-      code = generateProKey();
+      code = generateProKey(prefix);
       guard++;
     } while (seen.has(code) && guard < 20);
     seen.add(code);
@@ -117,6 +115,12 @@ export async function adminDeleteKey(keyId) {
   if (error) throw error;
 }
 
+export async function adminDeleteKeysBatch(keyIds = []) {
+  if (!keyIds.length) return;
+  const { error } = await supabase.from('pro_keys').delete().in('id', keyIds);
+  if (error) throw error;
+}
+
 export async function adminRevokeKey(keyId, reason = '') {
   const { data, error } = await supabase
     .from('pro_keys')
@@ -126,6 +130,52 @@ export async function adminRevokeKey(keyId, reason = '') {
       revoked_reason: reason?.trim() || null,
     })
     .eq('id', keyId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function adminRevokeKeysBatch(keyIds = [], reason = 'Thu hồi hàng loạt bởi admin') {
+  if (!keyIds.length) return;
+  const { error } = await supabase
+    .from('pro_keys')
+    .update({
+      revoked: true,
+      revoked_at: new Date().toISOString(),
+      revoked_reason: reason?.trim() || null,
+    })
+    .in('id', keyIds);
+  if (error) throw error;
+}
+
+/* Cấp quyền PRO trực tiếp cho 1 user_id (không cần qua bước nhập key) */
+export async function adminGrantProDirect({ userId, durationDays = 30, note = 'Cấp trực tiếp bởi Admin' } = {}) {
+  const uid = String(userId || '').trim();
+  if (!uid) throw new Error('Thiếu ID người dùng.');
+  const days = Math.max(1, Math.min(3650, Number(durationDays) || 30));
+
+  const { data: existing } = await supabase
+    .from('pro_users')
+    .select('expiry, duration_days, key_code')
+    .eq('user_id', uid)
+    .maybeSingle();
+
+  const base = existing ? Math.max(Date.now(), toMs(existing.expiry)) : Date.now();
+  const newExpiry = new Date(base + days * 86400000).toISOString();
+  const newDuration = (Number(existing?.duration_days) || 0) + days;
+  const code = existing?.key_code || `DIRECT-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+  const { data, error } = await supabase
+    .from('pro_users')
+    .upsert({
+      user_id: uid,
+      key_code: code,
+      expiry: newExpiry,
+      duration_days: newDuration,
+      activated_at: existing ? undefined : new Date().toISOString(),
+      note: note?.trim() || null,
+    }, { onConflict: 'user_id' })
     .select()
     .single();
   if (error) throw error;
@@ -196,6 +246,40 @@ export async function activateProKey(userId, keyCode) {
     return { ok: false, error: 'Key đã được sử dụng bởi tài khoản khác.' };
   }
 
+  // 1. Nếu là Thẻ nạp điểm Credit AI
+  const creditMatch = (key.note || '').match(/\[CREDIT:(\d+)\]/i);
+  if (creditMatch) {
+    const amount = Number(creditMatch[1]) || 500;
+    try {
+      const { grantActivationCredits } = await import('./creditService.js');
+      await grantActivationCredits(userId, amount, key.code);
+    } catch (crErr) {
+      console.warn('[proKeyApi] grantActivationCredits err:', crErr);
+    }
+    await supabase.from('pro_keys').update({ used_by: userId, used_at: new Date().toISOString() }).eq('id', key.id);
+    return {
+      ok: true,
+      type: 'credit',
+      amount,
+      message: `Kích hoạt thành công thẻ nạp! Bạn được cộng +${amount} điểm AI.`,
+    };
+  }
+
+  // 2. Nếu là Key VIP Học sinh
+  const isVip = (key.note || '').includes('[STUDENT_VIP') || key.code.startsWith('VIP-');
+  if (isVip) {
+    try {
+      localStorage.setItem('cs-vip-status', JSON.stringify({
+        isPro: true,
+        plan: 'VIP',
+        expiry: new Date(Date.now() + key.duration_days * 864e5).toISOString(),
+        daysLeft: key.duration_days,
+      }));
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    } catch { /* ignore */ }
+  }
+
   const now = new Date();
   const expiry = new Date(now.getTime() + key.duration_days * 86400000);
 
@@ -253,23 +337,61 @@ export async function getProStatus(userId) {
       .eq('user_id', userId)
       .maybeSingle();
     if (error) throw error;
-    if (!data) return { isPro: false };
+    if (data) {
+      const expiryMs = toMs(data.expiry);
+      const isPro = expiryMs > Date.now();
+      const left = isPro ? Math.ceil((expiryMs - Date.now()) / 86400000) : 0;
 
-    const expiryMs = toMs(data.expiry);
-    const isPro = expiryMs > Date.now();
-    const left = isPro ? Math.ceil((expiryMs - Date.now()) / 86400000) : 0;
-
-    return {
-      isPro,
-      pro: { key: data.key_code, expiry: data.expiry },
-      expiry: data.expiry,
-      daysLeft: left,
-      expired: !isPro,
-      durationDays: data.duration_days,
-      activatedAt: data.activated_at,
-    };
+      if (isPro) {
+        return {
+          isPro: true,
+          pro: { key: data.key_code, expiry: data.expiry },
+          expiry: data.expiry,
+          daysLeft: left,
+          expired: false,
+          durationDays: data.duration_days,
+          activatedAt: data.activated_at,
+          source: 'supabase',
+        };
+      }
+    }
   } catch (e) {
-    console.warn('[proKeyApi] getProStatus error:', e.message);
-    return { isPro: false };
+    console.warn('[proKeyApi] Supabase getProStatus error, kiểm tra nguồn dự phòng:', e.message);
   }
+
+  // 2. Nguồn dự phòng: Gói kích hoạt mã phòng thi ảo (cs-user-subscription)
+  try {
+    const rawSub = JSON.parse(localStorage.getItem(`cs-user-subscription:${userId}`) || 'null');
+    if (rawSub && (rawSub.planName === 'PRO' || rawSub.planName === 'VIP')) {
+      return {
+        isPro: true,
+        pro: { key: 'ELEC-PRO', expiry: new Date(Date.now() + 365 * 864e5).toISOString() },
+        expiry: new Date(Date.now() + 365 * 864e5).toISOString(),
+        daysLeft: 365,
+        expired: false,
+        durationDays: 365,
+        activatedAt: new Date().toISOString(),
+        source: 'subscription',
+      };
+    }
+  } catch { /* ignore */ }
+
+  // 3. Nguồn dự phòng: cs-vip-status
+  try {
+    const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
+    if (rawVip && (rawVip.isPro || rawVip.vip)) {
+      return {
+        isPro: true,
+        pro: { key: rawVip.key || 'VIP-LOCAL', expiry: rawVip.expiry || new Date(Date.now() + 365 * 864e5).toISOString() },
+        expiry: rawVip.expiry || new Date(Date.now() + 365 * 864e5).toISOString(),
+        daysLeft: rawVip.daysLeft || 365,
+        expired: false,
+        durationDays: 365,
+        activatedAt: new Date().toISOString(),
+        source: 'vip_status',
+      };
+    }
+  } catch { /* ignore */ }
+
+  return { isPro: false };
 }

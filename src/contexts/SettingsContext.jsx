@@ -12,6 +12,10 @@ const DEFAULT = {
   enableGames: true,
   enableQuiz: true,
   maintenanceMode: false,
+  announcementEnabled: false,
+  announcementText: '',
+  announcementLink: '',
+  announcementBadge: '🔥 Nổi bật',
 };
 
 const SettingsContext = createContext({

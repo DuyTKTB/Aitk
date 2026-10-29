@@ -1,70 +1,99 @@
 /* ============================================================
    roadmap.js — LỘ TRÌNH KIẾN THỨC (nguồn duy nhất)
    ------------------------------------------------------------
-   Trước đây lộ trình bị hardcode 2 lần (components/Home.jsx và
-   pages/Home.jsx) và chỉ là chuỗi tên → không nối được với ngân
-   hàng câu hỏi, sổ lỗi sai hay thống kê.
+   v3: danh sách chương được SINH TỪ CHEM_TOPICS (data/chemTopics.js)
+   thay vì chép tay. Lý do: chemTopics.js là nơi quy định id dùng cho
+   cột questions.topic_id. Nếu chép tay, một chương mới thêm vào ngân
+   hàng sẽ KHÔNG xuất hiện trong Lộ trình, và câu hỏi của chương đó bị
+   bỏ qua âm thầm (đã xảy ra với c12-sustain).
 
-   Ở đây mỗi chương có `id` LẤY ĐÚNG từ data/chemTopics.js
-   (cột questions.topic_id). Nhờ vậy mọi thống kê theo chương
-   đều ghép được mà không cần map tên → id ở chỗ khác.
-
-   `bank: false` = chương chưa có ngân hàng câu hỏi (khối Đại học),
-   chỉ dùng để xem tóm tắt bằng AI, không có tiến độ.
+   Ở đây chỉ giữ:
+     • DESC  — mô tả ngắn 1 câu (hiển thị ở trang chi tiết)
+     • NAME  — tên hiển thị tiếng Việt (nếu muốn khác tên trong ngân hàng)
+     • CROSS — điều kiện tiên quyết giữa hai khối (chương đầu khối sau)
+   Điều kiện tiên quyết chỉ để GỢI Ý, không khoá quyền học.
    ============================================================ */
 
-export const ROADMAP_LEVELS = [
-  {
-    key: 'Lớp 10',
-    goal: 'Vững nền tảng: Cấu tạo nguyên tử, bảng tuần hoàn, liên kết và phản ứng.',
-    chapters: [
-      { id: 'c10-atom', name: 'Cấu tạo nguyên tử' },
-      { id: 'c10-periodic', name: 'Bảng tuần hoàn' },
-      { id: 'c10-bonding', name: 'Liên kết hóa học' },
-      { id: 'c10-redox', name: 'Phản ứng oxi hóa – khử' },
-      { id: 'c10-energy', name: 'Năng lượng hóa học' },
-      { id: 'c10-rate', name: 'Tốc độ phản ứng' },
-      { id: 'c10-halogen', name: 'Nhóm halogen' },
-    ],
-  },
-  {
-    key: 'Lớp 11',
-    goal: 'Mở rộng sang cân bằng hóa học, nitơ – lưu huỳnh và hóa hữu cơ.',
-    chapters: [
-      { id: 'c11-equilibrium', name: 'Cân bằng hóa học' },
-      { id: 'c11-nitrogen', name: 'Nitơ và lưu huỳnh' },
-      { id: 'c11-organic-gen', name: 'Đại cương hóa hữu cơ' },
-      { id: 'c11-hydrocarbon', name: 'Hiđrocacbon' },
-      { id: 'c11-alcohol', name: 'Ancol và phenol' },
-      { id: 'c11-carbonyl', name: 'Anđehit – axit cacboxylic' },
-    ],
-  },
-  {
-    key: 'Lớp 12',
-    goal: 'Về đích: Hệ thống kiến thức, luyện đề thi tốt nghiệp THPT Quốc gia.',
-    chapters: [
-      { id: 'c12-ester', name: 'Este – lipit' },
-      { id: 'c12-carbohydrate', name: 'Cacbohiđrat' },
-      { id: 'c12-amine', name: 'Amin, protein' },
-      { id: 'c12-polymer', name: 'Polime' },
-      { id: 'c12-electro', name: 'Pin điện & điện phân' },
-      { id: 'c12-metal', name: 'Đại cương kim loại' },
-      { id: 'c12-metal-main', name: 'Nhôm & kiềm thổ' },
-      { id: 'c12-transition', name: 'Sắt & hợp chất' },
-    ],
-  },
-  {
+import { CHEM_TOPICS } from './chemTopics.js';
+
+const DESC = {
+  'c10-atom': 'Thành phần nguyên tử, đồng vị, orbital và cấu hình electron.',
+  'c10-periodic': 'Cấu trúc bảng tuần hoàn, quy luật biến đổi tính chất và ý nghĩa vị trí.',
+  'c10-bonding': 'Liên kết ion, cộng hoá trị, liên kết hydrogen và tương tác van der Waals.',
+  'c10-redox': 'Số oxi hoá, chất khử – chất oxi hoá, cân bằng theo phương pháp electron.',
+  'c10-energy': 'Biến thiên enthalpy, phản ứng toả nhiệt – thu nhiệt và ứng dụng.',
+  'c10-rate': 'Tốc độ phản ứng, các yếu tố ảnh hưởng và vai trò của xúc tác.',
+  'c10-halogen': 'Tính chất vật lí – hoá học, điều chế và ứng dụng của nhóm halogen.',
+  'c11-equilibrium': 'Phản ứng thuận nghịch, hằng số cân bằng và nguyên lí chuyển dịch Le Chatelier.',
+  'c11-nitrogen': 'Nitrogen, sulfur và hợp chất: tính chất, điều chế, ứng dụng, tác động môi trường.',
+  'c11-organic-gen': 'Công thức phân tử, đồng phân, danh pháp và liên kết trong hợp chất hữu cơ.',
+  'c11-hydrocarbon': 'Alkane, alkene, alkyne, arene: cấu tạo, tính chất và phản ứng đặc trưng.',
+  'c11-alcohol': 'Dẫn xuất halogen, alcohol, phenol: tính chất hoá học và ứng dụng.',
+  'c11-carbonyl': 'Aldehyde, ketone, carboxylic acid: tính chất, phản ứng và điều chế.',
+  'c12-ester': 'Ester, lipid, phản ứng xà phòng hoá và ứng dụng trong đời sống.',
+  'c12-carbohydrate': 'Glucose, fructose, saccharose, tinh bột và cellulose.',
+  'c12-amine': 'Amine, amino acid, peptide và protein: tính chất, vai trò.',
+  'c12-polymer': 'Khái niệm, phân loại, phản ứng trùng hợp – trùng ngưng, vật liệu polymer.',
+  'c12-electro': 'Pin điện hoá, thế điện cực chuẩn, điện phân và ứng dụng công nghiệp.',
+  'c12-metal': 'Tính chất chung của kim loại, dãy điện hoá và ăn mòn kim loại.',
+  'c12-metal-main': 'Kim loại nhóm IA, IIA, aluminium và hợp chất quan trọng.',
+  'c12-transition': 'Kim loại chuyển tiếp, phức chất, sắt và hợp chất của sắt.',
+  'c12-sustain': 'Hoá học xanh, năng lượng tái tạo, tái chế và phát triển bền vững.',
+};
+
+/* Tên hiển thị gọn cho học sinh; không có trong bảng thì dùng tên ngân hàng */
+const NAME = {
+  'c10-periodic': 'Bảng tuần hoàn',
+  'c11-nitrogen': 'Nitơ và lưu huỳnh',
+  'c11-hydrocarbon': 'Hiđrocacbon',
+  'c11-alcohol': 'Ancol và phenol',
+  'c11-carbonyl': 'Anđehit – axit cacboxylic',
+  'c12-ester': 'Este – lipit',
+  'c12-carbohydrate': 'Cacbohiđrat',
+  'c12-amine': 'Amin, protein',
+  'c12-polymer': 'Polime',
+  'c12-electro': 'Pin điện & điện phân',
+  'c12-metal': 'Đại cương kim loại',
+  'c12-metal-main': 'Nhôm & kiềm thổ',
+  'c12-transition': 'Sắt & hợp chất',
+};
+
+/* Chương đầu của mỗi khối cần kiến thức cuối khối trước (gợi ý) */
+const CROSS = {
+  'c11-equilibrium': ['c10-rate'],
+  'c12-ester': ['c11-carbonyl'],
+};
+
+const LEVELS = [
+  { key: 'Lớp 10', grade: 10, goal: 'Vững nền tảng: Cấu tạo nguyên tử, bảng tuần hoàn, liên kết và phản ứng.' },
+  { key: 'Lớp 11', grade: 11, goal: 'Mở rộng sang cân bằng hóa học, nitơ – lưu huỳnh và hóa hữu cơ.' },
+  { key: 'Lớp 12', grade: 12, goal: 'Về đích: Hệ thống kiến thức, luyện đề thi tốt nghiệp THPT Quốc gia.' },
+];
+
+const buildChapters = (grade) => {
+  const list = CHEM_TOPICS.filter((t) => t.grade === grade);
+  return list.map((t, i) => ({
+    id: t.id,
+    name: NAME[t.id] || t.name,
+    desc: DESC[t.id] || '',
+    prereq: i > 0 ? [list[i - 1].id] : (CROSS[t.id] || []),
+    bank: true,
+  }));
+};
+
+export const ROADMAP_LEVELS = LEVELS.map((l) => ({ ...l, chapters: buildChapters(l.grade) }))
+  .concat([{
     key: 'Đại học',
+    grade: 0,
     goal: 'Nâng lên tư duy định lượng: Nhiệt động, động hóa học và hóa phân tích.',
     chapters: [
-      { id: null, name: 'Hóa đại cương', bank: false },
-      { id: null, name: 'Nhiệt động hóa học', bank: false },
-      { id: null, name: 'Động hóa học', bank: false },
-      { id: null, name: 'Cân bằng ion', bank: false },
-      { id: null, name: 'Hóa phân tích', bank: false },
+      { id: null, name: 'Hóa đại cương', bank: false, desc: 'Cấu tạo chất, liên kết, dung dịch và các cân bằng cơ bản ở bậc đại học.', prereq: [] },
+      { id: null, name: 'Nhiệt động hóa học', bank: false, desc: 'Nguyên lí nhiệt động, enthalpy, entropy và năng lượng Gibbs.', prereq: [] },
+      { id: null, name: 'Động hóa học', bank: false, desc: 'Định luật tốc độ, bậc phản ứng, cơ chế phản ứng và xúc tác.', prereq: [] },
+      { id: null, name: 'Cân bằng ion', bank: false, desc: 'Acid – base, pH, dung dịch đệm và cân bằng kết tủa.', prereq: [] },
+      { id: null, name: 'Hóa phân tích', bank: false, desc: 'Phân tích định tính, định lượng, chuẩn độ và xử lý số liệu.', prereq: [] },
     ],
-  },
-];
+  }]);
 
 export const LEVEL_KEYS = ROADMAP_LEVELS.map((l) => l.key);
 
@@ -88,8 +117,14 @@ export function findChapter(id) {
   return null;
 }
 
-/* Ngưỡng coi như "đã nắm" một chương */
-export const MASTERED_PCT = 70;
+/* Tên chương theo id (dùng cho nhãn hoạt động gần đây) */
+export function chapterName(id) {
+  const hit = findChapter(id);
+  return hit ? hit.chapter.name : null;
+}
+
+/* Ngưỡng coi như "đã nắm" một chương — đồng nhất 80% với MASTERED_SCORE của roadmapEngine */
+export const MASTERED_PCT = 80;
 
 export const pctOf = (p) => {
   if (!p || !p.total) return null;

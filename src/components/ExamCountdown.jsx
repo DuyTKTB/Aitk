@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocalStorage } from '../hooks.js';
+import { IconBell, IconPin, IconNote, IconBulb } from './Icons.jsx';
 
 const EMPTY = { name: '', subject: '', date: '', time: '', notes: '' };
 const stamp = (x) => new Date(`${x.date}T${x.time || '23:59'}`).getTime();
@@ -122,6 +123,29 @@ export default function ExamCountdown() {
     <section className="wrap">
       <h1>Đếm ngược kỳ thi</h1>
 
+      {/* Khối Luyện thi thử THPT Quốc Gia 2025 */}
+      <div className="card" style={{ background: 'linear-gradient(135deg, rgba(47, 107, 255, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)', border: '1px solid rgba(47, 107, 255, 0.25)', marginBottom: '1.25rem', padding: '1.25rem 1.4rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <span style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#2f6bff', padding: '0.2rem 0.6rem', borderRadius: 999, background: 'rgba(47, 107, 255, 0.12)' }}>
+              Đề thi thử THPT 2025
+            </span>
+            <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.15rem', fontWeight: 800 }}>Phòng thi thử trực tuyến &amp; Luyện đề chuẩn cấu trúc</h3>
+            <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--mut)', lineHeight: 1.5 }}>
+              Luyện đề thi thử chuẩn 28 câu format mới: Trắc nghiệm 4 chọn, Đúng/Sai và Điền ngắn.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <a href="#quiz" className="btn primary sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              Vào phòng thi ảo ngay →
+            </a>
+            <a href="#roadmap" className="btn sm" style={{ textDecoration: 'none' }}>
+              Ôn theo Lộ trình AI
+            </a>
+          </div>
+        </div>
+      </div>
+
       <form className="card examform" onSubmit={submit}>
         <label>Tên kỳ thi<input value={form.name} onChange={set('name')} required placeholder="Kiểm tra 45' chương 3" /></label>
         <label>Môn học<input value={form.subject} onChange={set('subject')} placeholder="Hóa, Lý, Toán..." /></label>
@@ -136,8 +160,9 @@ export default function ExamCountdown() {
             ⬆ Nhập JSON
             <input type="file" accept=".json" hidden onChange={importJSON} />
           </label>
-          <button className="btn" type="button" onClick={enableNotify}>
-            {notifyOn ? '🔔 Đã bật thông báo' : '🔕 Bật thông báo'}
+          <button className="btn" type="button" onClick={enableNotify} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <IconBell size={14} style={{ opacity: notifyOn ? 1 : 0.6 }} />
+            {notifyOn ? 'Đã bật thông báo' : 'Bật thông báo'}
           </button>
         </div>
       </form>
@@ -170,14 +195,14 @@ export default function ExamCountdown() {
             <article key={x.id} className={'card exam urgency-' + u + (x.pinned && !over ? ' pinned' : '')}>
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <h3>{x.name}</h3>
-                {x.pinned && !over && <span className="badge">📌</span>}
+                {x.pinned && !over && <span className="badge" title="Đã ghim" style={{ display: 'inline-flex', alignItems: 'center' }}><IconPin size={12} /></span>}
               </div>
 
               <p className="hint">
                 {[x.subject, x.date.split('-').reverse().join('/'), x.time].filter(Boolean).join(' · ')}
               </p>
 
-              {x.notes && <p className="exam-notes">📝 {x.notes}</p>}
+              {x.notes && <p className="exam-notes" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconNote size={13} />{x.notes}</p>}
 
               {over ? (
                 <p className="done">✓ Đã diễn ra</p>
@@ -196,7 +221,7 @@ export default function ExamCountdown() {
               )}
 
               {tip && !over && (
-                <p className="exam-tip">💡 <b>Gợi ý:</b> {tip}</p>
+                <p className="exam-tip" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconBulb size={13} /> <b>Gợi ý:</b> {tip}</p>
               )}
 
               <div className="row">

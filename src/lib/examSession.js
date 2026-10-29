@@ -115,6 +115,21 @@ export async function endExamSession(sessionId) {
   });
 }
 
+export async function extendExamSession(sessionId, extraMinutes = 5) {
+  if (!sessionId) return;
+  const mins = Number(extraMinutes) || 5;
+  const snap = await getDoc(doc(db, SESSIONS, sessionId));
+  if (!snap.exists()) return;
+  const cur = snap.data();
+  const baseEnd = cur.closesAt?.toMillis?.() ?? cur.closesAtMs ?? Date.now();
+  const nextEndMs = Math.max(Date.now(), baseEnd) + mins * 60 * 1000;
+  await updateDoc(doc(db, SESSIONS, sessionId), {
+    duration: (Number(cur.duration) || 15) + mins,
+    closesAt: Timestamp.fromMillis(nextEndMs),
+    closesAtMs: nextEndMs,
+  });
+}
+
 export async function deleteExamSession(sessionId) {
   if (!sessionId) return;
   // Firestore không tự xóa subcollection → dọn học sinh + ảnh camera để không sót dữ liệu của trẻ vị thành niên

@@ -4,6 +4,14 @@
              coloured avatars, day separators, unread badges
    ============================================================ */
 import { useEffect, useRef, useState } from 'react';
+import { db } from '../../lib/firebase.js';
+import { doc, onSnapshot } from 'firebase/firestore';
+import {
+  getFriendStreakStatus,
+  canNudgeFriend,
+  recordFriendNudge,
+} from '../../lib/chatStreak.js';
+import { useToast } from '../../ui/index.jsx';
 import {
   listenMyDms, listenDmMessages, listenFriends, listenFriendRequests,
   openDm, sendDmMessage, acceptFriendRequest, declineFriendRequest,
@@ -150,6 +158,7 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
           const otherUid  = (d.members || []).find((x) => x !== me.uid) || '';
           const otherName = d.names?.[otherUid] || 'Bạn học';
           const unread    = !!unreadMap?.[d.id];
+          const st = getFriendStreakStatus(d.streak, me.uid, otherUid, otherName);
           return (
             <button
               key={d.id}
@@ -159,7 +168,17 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
             >
               <Avatar uid={otherUid} name={otherName} size={38} />
               <span className="sw-dm-info">
-                <b>{otherName}</b>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <b>{otherName}</b>
+                  {st.count >= 1 && (
+                    <span className="sw-streak-pill" style={{ padding: '0 4px', fontSize: '.62rem' }}>
+                      🔥 {st.count}
+                    </span>
+                  )}
+                  {st.urgent && !st.bothDone && (
+                    <span title="Chuỗi sắp hết hạn (< 3h)" style={{ fontSize: '.68rem' }}>⏳</span>
+                  )}
+                </span>
                 <small>{d.lastText || 'Chưa có tin nhắn'}</small>
               </span>
               {unread && <span className="sw-unread-dot" aria-label="Chưa đọc" />}
@@ -205,9 +224,38 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
 function DmThread({ me, thread, onBack, onOpenProfile }) {
   const [msgs, setMsgs]   = useState([]);
   const [text, setText]   = useState('');
+  const [dmMeta, setDmMeta] = useState(null);
+  const [nudgeAllowed, setNudgeAllowed] = useState(() => canNudgeFriend(thread.peerUid));
   const listRef           = useRef(null);
+  const toast             = useToast();
 
   useEffect(() => listenDmMessages(thread.dmId, setMsgs), [thread.dmId]);
+
+  useEffect(() => {
+    if (!thread.dmId) return undefined;
+    return onSnapshot(doc(db, 'dms', thread.dmId), (snap) => {
+      if (snap.exists()) setDmMeta(snap.data());
+    });
+  }, [thread.dmId]);
+
+  useEffect(() => {
+    setNudgeAllowed(canNudgeFriend(thread.peerUid));
+  }, [thread.peerUid]);
+
+  const streakStatus = getFriendStreakStatus(dmMeta?.streak, me.uid, thread.peerUid, thread.peerName);
+
+  const handleNudgeFriend = async () => {
+    if (!canNudgeFriend(thread.peerUid)) return;
+    recordFriendNudge(thread.peerUid);
+    setNudgeAllowed(false);
+    const nudgeMsg = `👋 ${thread.peerName || 'Bạn'} ơi, vào nhắn tin để cùng giữ chuỗi 🔥 hôm nay nhé! ⏳ Còn ${streakStatus.remainingTimeStr} nữa thôi!`;
+    try {
+      await sendDmMessage(thread.dmId, me, nudgeMsg);
+      toast(`🔥 Đã gửi lời nhắc giữ chuỗi tới ${thread.peerName || 'bạn'}`);
+    } catch {
+      toast('Không gửi được lời nhắc');
+    }
+  };
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -247,6 +295,34 @@ function DmThread({ me, thread, onBack, onOpenProfile }) {
           Tin nhắn riêng
         </span>
       </div>
+
+      {/* Friend Streak bar */}
+      <div className="sw-friend-streak-bar">
+        <div className="sw-streak-info">
+          <span className="sw-streak-pill" title={`Kỷ lục chuỗi của 2 bạn: ${streakStatus.record} ngày`}>
+            🔥 {streakStatus.count} ngày
+          </span>
+          <span className="sw-streak-text" title={streakStatus.statusText}>
+            {streakStatus.statusText}
+          </span>
+        </div>
+        {streakStatus.urgent && (
+          <span className="sw-streak-urgent" title="Sắp kết thúc ngày (UTC+7)">
+            ⏳ Còn {streakStatus.remainingTimeStr}
+          </span>
+        )}
+        {nudgeAllowed && !streakStatus.peerDone && (
+          <button
+            type="button"
+            className="sw-nudge-btn"
+            onClick={handleNudgeFriend}
+            title="Nhắc bạn nhắn tin hôm nay (tối đa 1 lần/ngày)"
+          >
+            Nhắc bạn
+          </button>
+        )}
+      </div>
+
 
       {/* Messages */}
       <div className="sw-msgs" ref={listRef}>

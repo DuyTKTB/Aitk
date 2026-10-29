@@ -4,6 +4,7 @@ import { isAdmin } from '../../lib/isAdmin.js';
 import { CAMERA_GAMES } from '../../lib/cameraGames.js';
 import { CAMERA_ICONS } from '../../lib/cameraIcons.jsx';
 import GameStudioSettingsModal from './GameStudioSettingsModal.jsx';
+import { IconSettings, IconLock } from '../Icons.jsx';
 
 const GAMES = [
   /* 5 GAME MỚI PHONG CÁCH GIAOVIENDOIMOI.COM & APPLE HIG */
@@ -457,7 +458,7 @@ export default function GameHub() {
             }}
             onClick={() => setSettingsOpen(true)}
           >
-            <span>⚙️ Cài đặt & Quản lý trò chơi</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconSettings size={15} /> Cài đặt & Quản lý trò chơi</span>
             {userIsAdmin && (
               <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: '4px', background: '#ef4444', color: '#fff', marginLeft: '0.35rem' }}>
                 Admin
@@ -513,7 +514,7 @@ export default function GameHub() {
       {/* Banner Khóa giờ thi (cho học sinh) */}
       {isLocked && !userIsAdmin ? (
         <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center', background: 'var(--panel, #fff)', borderRadius: 24, border: '1.5px dashed var(--line, #ccc)', margin: '2rem 0' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🔒</div>
+          <div style={{ marginBottom: '0.75rem', color: '#ef4444' }}><IconLock size={44} /></div>
           <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.35rem', fontWeight: 800, color: '#ef4444' }}>
             Chế độ Giờ thi đang được kích hoạt
           </h3>
@@ -558,7 +559,7 @@ export default function GameHub() {
                       borderColor: 'rgba(239, 68, 68, 0.3)',
                     }}
                   >
-                    🔒 ĐÃ ẨN BỞI ADMIN
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconLock size={12} /> ĐÃ ẨN BỞI ADMIN</span>
                   </span>
                 )}
                 {g.badge && (

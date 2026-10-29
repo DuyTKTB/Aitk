@@ -19,7 +19,14 @@ export function useTeacherPro() {
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 60000);
-    return () => clearInterval(t);
+    const onTierChange = () => refresh();
+    window.addEventListener('cs-vip-update', onTierChange);
+    window.addEventListener('cs-tier-update', onTierChange);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('cs-vip-update', onTierChange);
+      window.removeEventListener('cs-tier-update', onTierChange);
+    };
   }, [refresh]);
 
   const activate = async (keyCode) => {

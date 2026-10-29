@@ -1,33 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AIMark from './AIMark.jsx';
 import { askAI, useGreeting } from './HomePlus.jsx';
-import { Badge, Button, EmptyState } from '../ui/index.jsx';
-import { timeAgo, useProgress } from '../lib/progress.js';
-import { elementOfDay } from '../lib/elementOfDay.js';
-import { colorOf, eventsOn, toMin, doneKey, fmtDur, useSchedule } from '../lib/schedule.js';
-import RoadmapCard from './RoadmapCard.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
+import { useProgress } from '../lib/progress.js';
+import { DEFAULT_LEVEL, getLevel } from '../data/roadmap.js';
+import { readStore, sessionsToEvents, subscribeRoadmap } from '../lib/roadmapStore.js';
+import { cardStats, subscribeCards } from '../lib/flashcardStore.js';
+import { dueSummary } from '../lib/reviewQueue.js';
+import { summarizeEvents, buildChapterViews } from '../lib/roadmapEngine.js';
+import { getUserAspirationsState, subscribeAspirationChanges } from '../lib/aspirationService.js';
+import AspirationRoadmapHub from './roadmap/AspirationRoadmapHub.jsx';
 import '../styles/home-apple-bento.css';
 import '../styles/home-aurora.css';
+import '../styles/roadmap-upgrade.css';
 
 /* ============================================================
-   Home.jsx — TRANG CHỦ KÍNH MỜ PASTEL KIỂU APPLE
-   Bố cục (lưới 12 cột):
-   1. Hero ELECAI + ô hỏi nhanh   |  Mục tiêu hôm nay (vòng tiến độ)
-   2. 4 tính năng chính (ô lớn)
-   3. Hàng nút truy cập nhanh (công cụ)
-   4. Lịch hôm nay                |  Tập trung
-   5. 4 số liệu học tập
-   6. Lộ trình                    |  Nguyên tố của ngày
-   7. Học tiếp                    |  Phòng thi & lớp học
-   8. Khu trò chơi
-   Màu mỗi thẻ truyền qua biến --t (R,G,B) bằng class tone-*.
+   Home.jsx — DASHBOARD HỌC SINH (GIAI ĐOẠN 4 · TRỌNG TÂM LỘ TRÌNH + AI)
+   ------------------------------------------------------------
+   Bố cục gọn gàng, đặt LỘ TRÌNH CÁ NHÂN HÓA và TRỢ LÝ AI làm trung tâm:
+   1. Banner Cá nhân + Trợ lý AI giải bài tập nhanh (kèm Chip Nguyện vọng đang chọn)
+   2. Thẻ Trung tâm "Lộ trình của em":
+      • 4 chỉ số trên 1 hàng: Điểm dự đoán / Mục tiêu / Tiến độ / Điểm năng lực (Elo)
+      • Biểu đồ đường tương tác (Điểm | Elo, zoom, ghim mốc)
+      • Nhận xét của Gia sư AI & Nút hành động chính nổi bật "Luyện tập ngay"
+   3. Ba thẻ lối tắt chiến lược (chuẩn 9Study):
+      • Lộ trình mục tiêu
+      • Lộ trình cá nhân hóa
+      • Luyện tập bằng AI
+   4. Cụm Lớp học & Công cụ Hóa học truy cập nhanh.
    ============================================================ */
 
-const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const SUGGEST = [
-  'Cân bằng Fe + O₂ → Fe₂O₃',
-  'Tóm tắt Este – Lipit',
-  'Vì sao kim loại kiềm hoạt động mạnh?',
+  'Giải từng bước bài toán Ester thủy phân trong kiềm',
+  'Cân bằng phản ứng oxi hóa - khử Fe + HNO₃ loãng',
+  'Tóm tắt trọng tâm Điện hóa học Lớp 12',
 ];
 
 const ico = (d, sw = 1.9) => ({ size = 20 }) => (
@@ -40,21 +46,15 @@ const IcoChart = ico(<><path d="M3 3v18h18" /><path d="M7 14l3-3 3 3 5-6" /></>)
 const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />, 2.2);
 const IcoUsers = ico(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.4c2.2.6 3.5 2.5 3.5 5.6" /></>);
 const IcoLink = ico(<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>);
-const IcoFlame = ico(<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2.2 1.4.9 2.2 1.7 2.7C10.4 8.6 10.6 5.6 12 3z" />);
 const IcoCal = ico(<><rect x="3.5" y="5" width="17" height="15.5" rx="3.5" /><path d="M8 3v4M16 3v4M3.5 10h17" /></>);
 const IcoTimer = ico(<><circle cx="12" cy="13.5" r="7.5" /><path d="M12 9.5v4l2.5 1.5M9.5 3h5" /></>);
 const IcoGrid = ico(<><rect x="3.5" y="3.5" width="7" height="7" rx="2" /><rect x="13.5" y="3.5" width="7" height="7" rx="2" /><rect x="3.5" y="13.5" width="7" height="7" rx="2" /><rect x="13.5" y="13.5" width="7" height="7" rx="2" /></>);
 const IcoGame = ico(<><rect x="2.5" y="7" width="19" height="11" rx="5.5" /><path d="M7.5 10.5v4M5.5 12.5h4M15.5 11.5h.01M18 13.5h.01" /></>);
 const IcoSpark = ico(<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />);
-const IcoPlus = ico(<path d="M12 5v14M5 12h14" />, 2.2);
 const IcoArrow = ico(<path d="M7 17L17 7M9 7h8v8" />, 2.2);
 const IcoFormula = ico(<><rect x="4" y="3.5" width="16" height="17" rx="3.5" /><path d="M8 8h8M8 12.5h2M13 12.5h3M8 16.5h2M13 16.5h3" /></>);
-const IcoMicro = ico(<><path d="M9 3h4l1 6H8l1-6zM11 9v4" /><path d="M6 21h12M8 21c0-3 2-5 5-5a5 5 0 0 0 0-8" /></>);
-const IcoNote = ico(<><path d="M6 3.5h9l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5A1.5 1.5 0 0 1 6 3.5z" /><path d="M14.5 3.5V8H19M8.5 12.5h7M8.5 16h5" /></>);
 const IcoTarget = ico(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>);
-const IcoCountdown = ico(<><rect x="3.5" y="5" width="17" height="15.5" rx="3.5" /><path d="M8 3v4M16 3v4M3.5 10h17M12 13v3l2 1" /></>);
-const IcoBook = ico(<><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15z" /><path d="M4 20.5A2.5 2.5 0 0 0 6.5 22H20v-4" /></>);
-const IcoAtom = ico(<><circle cx="12" cy="12" r="1.6" /><ellipse cx="12" cy="12" rx="9" ry="3.6" /><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)" /><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)" /></>, 1.5);
+const IcoRoute = ico(<><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></>);
 
 function goAI(payload) {
   try {
@@ -63,37 +63,10 @@ function goAI(payload) {
   location.hash = 'ai';
 }
 
-function ELECAISays(p) {
-  const left = p.goal - p.today;
-  if (p.isEmpty) return 'Mình là ELECAI. Đặt câu hỏi Hóa học bất kỳ để bắt đầu buổi học nhé.';
-  if (p.today >= p.goal) return 'Bạn đã hoàn thành xuất sắc mục tiêu hôm nay! Thử thêm bài thử thách không?';
-  if (p.today === 0 && p.streak >= 3) return `Chuỗi ${p.streak} ngày đang chờ bạn. Làm vài câu để giữ lửa nhé!`;
-  if (p.today > 0) return `Chỉ còn ${left} câu nữa là hoàn thành mục tiêu ngày. Cố lên nhé!`;
-  const h = new Date().getHours();
-  return h < 11
-    ? 'Buổi sáng là thời điểm não bộ tiếp thu kiến thức tốt nhất. Bắt đầu ngay thôi!'
-    : h < 18
-    ? 'Hôm nay bạn muốn cùng ELECAI ôn luyện chương nào?'
-    : 'Ôn nhẹ một vài kiến thức trọng tâm trước khi nghỉ ngơi nhé.';
-}
-
-/* Tiêu đề thẻ: ô biểu tượng màu + tên + liên kết phụ */
-function WTitle({ Icon, title, href, link }) {
-  return (
-    <div className="bento-widget-title">
-      <span className="bento-wt">
-        {Icon && <i className="bento-wt-ico"><Icon size={16} /></i>}
-        {title}
-      </span>
-      {href && <a href={href}>{link}</a>}
-    </div>
-  );
-}
-
 /* ============================================================
-   1. HERO
+   1. BANNER CÁ NHÂN + TRỢ LÝ AI HỌC TẬP
    ============================================================ */
-function HeroBento({ p, hello, name }) {
+function PersonalAiHero({ hello, name, activeAsp, activeExam }) {
   const [val, setVal] = useState('');
   const submit = (e) => {
     e?.preventDefault();
@@ -103,31 +76,54 @@ function HeroBento({ p, hello, name }) {
   const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <article className="bento-card bento-hero">
+    <article className="bento-card bento-hero ns9-home-hero">
       <div className="bento-hero-orbs" aria-hidden="true"><i /><i /><i /></div>
-      <div className="bento-hero-floats" aria-hidden="true">
-        <span className="bento-orb" />
-        <span className="bento-float f1"><IcoSpark size={14} />Giải từng bước</span>
-        <span className="bento-float f2"><IcoBalance size={14} />Fe + O₂ → Fe₂O₃</span>
-      </div>
-      <header className="bento-hero-header">
-        <div className="bento-ai-avatar">
-          <AIMark size={40} animate title="ELECAI Intelligence" />
-        </div>
-        <div className="bento-hero-title">
-          <p className="bento-date">{today}</p>
-          <h1>{hello}, {name}</h1>
-        </div>
-      </header>
-      <p className="bento-hero-bubble">{ELECAISays(p)}</p>
 
-      <form className="bento-composer" onSubmit={submit}>
-        <label htmlFor="bento-ask-input" className="sr-only">Hỏi ELECAI</label>
+      <div className="ns9-home-hero-top">
+        <header className="bento-hero-header">
+          <div className="bento-ai-avatar">
+            <AIMark size={42} animate title="ELEC AI Tutor" />
+          </div>
+          <div className="bento-hero-title">
+            <p className="bento-date">{today}</p>
+            <h1>{hello}, {name}!</h1>
+          </div>
+        </header>
+
+        {/* Chip Trường + Ngành Nguyện vọng đang chọn */}
+        <a
+          href="#roadmap"
+          className="ns9-home-wish-chip"
+          title="Xem chi tiết lộ trình chinh phục nguyện vọng"
+        >
+          <span className="ns9-wish-badge">
+            {activeAsp ? `NV${activeAsp.priority}` : activeExam?.name || 'THPTQG'}
+          </span>
+          <div className="ns9-home-wish-txt">
+            {activeAsp ? (
+              <>
+                <b>{activeAsp?.school?.code || 'ĐH'} · {activeAsp?.school?.name || 'Trường Đại học'}</b>
+                <small>Ngành {(activeAsp?.major?.name || 'Ngành xét tuyển').replace(/^ngành\s+/i, '')} · Tổ hợp {activeAsp?.block || 'A00'} · Mục tiêu {activeAsp?.targetScore ?? 24}đ</small>
+              </>
+            ) : (
+              <>
+                <b>Chưa chọn trường Nguyện vọng 1</b>
+                <small>Bấm để chọn trường &amp; nhận lộ trình Hóa cá nhân hóa</small>
+              </>
+            )}
+          </div>
+          <IcoArrow size={15} />
+        </a>
+      </div>
+
+      {/* Khung hỏi nhanh Gia sư AI ngay tại Trang chủ */}
+      <form className="bento-composer ns9-home-composer" onSubmit={submit}>
+        <label htmlFor="bento-ask-input" className="sr-only">Hỏi Gia sư ELEC AI</label>
         <textarea
           id="bento-ask-input"
           rows={2}
           value={val}
-          placeholder="Hỏi bài tập Hóa, cân bằng phương trình, giải thích hiện tượng hoặc xin đề trắc nghiệm…"
+          placeholder="Hỏi Gia sư ELEC AI: Dán đề bài Hóa để giải từng bước, cân bằng phương trình, hoặc nhờ AI tạo đề ôn tập theo chương yếu…"
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) submit(e);
@@ -135,6 +131,13 @@ function HeroBento({ p, hello, name }) {
         />
         <div className="bento-composer-footer">
           <div className="bento-chips-list">
+            <button
+              type="button"
+              className="bento-chip"
+              onClick={() => goAI({ action: 'capture' })}
+            >
+              <IcoCamera size={14} /> Chụp ảnh đề bài
+            </button>
             {SUGGEST.map((s) => (
               <button key={s} type="button" className="bento-chip" onClick={() => setVal(s)}>
                 {s}
@@ -151,67 +154,58 @@ function HeroBento({ p, hello, name }) {
 }
 
 /* ============================================================
-   2. MỤC TIÊU HÔM NAY
+   3. BA THẺ LỐI TẮT CHIẾN LƯỢC (CHUẨN 9STUDY GIAI ĐOẠN 4)
    ============================================================ */
-function TodayBento({ p }) {
-  const done = p.today >= p.goal;
-  const pct = Math.min(100, Math.round((p.today / p.goal) * 100));
+function StrategicShortcuts({ activeAsp, dueTotal }) {
+  const cards = [
+    {
+      href: '#roadmap',
+      badge: activeAsp ? `Mục tiêu ${activeAsp.school.code}` : 'Trọng tâm thi ĐH',
+      title: 'Lộ trình mục tiêu',
+      desc: activeAsp
+        ? `Chinh phục từng chuyên đề Hóa bám sát mốc điểm ${activeAsp.targetScore} của ${activeAsp.school.name}.`
+        : 'Hệ thống 22 chuyên đề Hóa THPT kèm trọng số câu hỏi trong đề thi thật và bài luyện 3 cấp độ.',
+      cta: 'Vào lộ trình chuyên đề',
+      Icon: IcoTarget,
+      tone: 'blue',
+    },
+    {
+      href: dueTotal > 0 ? '#notebook' : '#roadmap?tab=timeline',
+      badge: dueTotal > 0 ? `${dueTotal} câu cần sửa sai` : 'Tháng → Tuần → Ngày',
+      title: 'Lộ trình cá nhân hóa',
+      desc: dueTotal > 0
+        ? `Ưu tiên xử lý ${dueTotal} câu bạn từng làm sai trong Sổ tay lỗi và bám sát kế hoạch 4 tuần tới.`
+        : 'Kế hoạch học tập tự động theo quỹ thời gian rảnh mỗi tuần, tự tăng tốc ở các chủ đề đang yếu.',
+      cta: dueTotal > 0 ? 'Mở Sổ tay lỗi sai' : 'Xem kế hoạch từng tuần',
+      Icon: IcoRoute,
+      tone: 'purple',
+    },
+    {
+      href: '#ai',
+      badge: 'Gia sư 24/7',
+      title: 'Luyện tập bằng AI',
+      desc: 'Giải thích bài tập từng bước (xưng mình – bạn), chấm bài tự luận bằng ảnh chụp và sinh câu hỏi theo lỗ hổng.',
+      cta: 'Mở Trợ lý AI',
+      Icon: IcoSpark,
+      tone: 'teal',
+    },
+  ];
 
   return (
-    <article className="bento-card bento-today-widget tone-green">
-      <WTitle Icon={IcoTarget} title="Mục tiêu hôm nay" href="#settings" link="Tùy chỉnh" />
-
-      <div className="bento-ring-row">
-        <div
-          className={`bento-ring ${done ? 'done' : ''}`}
-          style={{ '--p': pct }}
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <b className="num">{p.today}</b>
-          <small className="num">/ {p.goal} câu</small>
-        </div>
-        <div className="bento-ring-text">
-          <b>{done ? 'Đã hoàn thành' : `Còn ${p.goal - p.today} câu`}</b>
-          <span>{done ? 'Tuyệt vời, giữ nhịp nhé!' : 'để đạt mục tiêu hôm nay'}</span>
-          {done && <Badge tone="ok">Hoàn thành</Badge>}
-        </div>
-      </div>
-
-      <ol className="bento-week-dots" aria-label="7 ngày gần đây">
-        {p.week.map((d) => (
-          <li key={d.key} className={`bento-week-dot-item ${d.count ? 'active' : ''} ${d.today ? 'today' : ''}`}>
-            <div className="bento-dot-circle" title={d.count ? `${d.count} câu` : 'Chưa học'} />
-            <small>{DOW[d.dow]}</small>
-          </li>
-        ))}
-      </ol>
-    </article>
-  );
-}
-
-/* ============================================================
-   3. BỐN TÍNH NĂNG CHÍNH + HÀNG TRUY CẬP NHANH
-   ============================================================ */
-const FEATURES = [
-  { href: '#ai', Icon: IcoSpark, title: 'Hỏi ELECAI', desc: 'Giải bài và giải thích từng bước', tone: 'purple' },
-  { href: '#schedule', Icon: IcoCal, title: 'Thời khóa biểu', desc: 'Tự lập lịch học, nhắc đúng giờ', tone: 'blue' },
-  { href: '#quiz', Icon: IcoQuiz, title: 'Quiz nhanh', desc: 'Ôn tập thông minh theo SRS', tone: 'orange' },
-  { href: '#pomodoro', Icon: IcoTimer, title: 'Tập trung', desc: 'Pomodoro và đồng hồ học tập', tone: 'pink' },
-];
-
-function FeaturesBento() {
-  return (
-    <section className="bento-features" aria-label="Tính năng chính">
-      {FEATURES.map(({ href, Icon, title, desc, tone }) => (
-        <a key={title} href={href} className={`bento-feature tone-${tone}`}>
-          <span className="bento-feature-go"><IcoArrow size={15} /></span>
-          <span className="bento-feature-ico"><Icon size={28} /></span>
-          <span className="bento-feature-text">
-            <b>{title}</b>
-            <small>{desc}</small>
+    <section className="ns9-shortcuts-grid" aria-label="Ba lối tắt lộ trình và AI">
+      {cards.map((c) => (
+        <a key={c.title} href={c.href} className={`ns9-shortcut-card tone-${c.tone}`}>
+          <div className="ns9-sc-top">
+            <span className="ns9-sc-icon">
+              <c.Icon size={22} />
+            </span>
+            <span className="ns9-sc-badge">{c.badge}</span>
+          </div>
+          <h3>{c.title}</h3>
+          <p>{c.desc}</p>
+          <span className="ns9-sc-cta">
+            <span>{c.cta}</span>
+            <IcoArrow size={15} />
           </span>
         </a>
       ))}
@@ -219,242 +213,26 @@ function FeaturesBento() {
   );
 }
 
-const QUICK = [
-  { href: '#balance', Icon: IcoBalance, label: 'Cân bằng PTHH', tone: 'green' },
+/* ============================================================
+   4. THANH CÔNG CỤ HÓA HỌC & LỚP HỌC GỌN GÀNG
+   ============================================================ */
+const QUICK_TOOLS = [
+  { href: '#quiz', Icon: IcoQuiz, label: 'Phòng luyện tập', tone: 'orange' },
   { href: '#table', Icon: IcoGrid, label: 'Bảng tuần hoàn', tone: 'teal' },
+  { href: '#balance', Icon: IcoBalance, label: 'Cân bằng PTHH', tone: 'green' },
   { href: '#formulas', Icon: IcoFormula, label: 'Công thức nhanh', tone: 'blue' },
-  { href: '#analyze', Icon: IcoMicro, label: 'Phân tích hợp chất', tone: 'purple' },
-  { href: '#games', Icon: IcoGame, label: 'Trò chơi', tone: 'yellow' },
+  { href: '#schedule', Icon: IcoCal, label: 'Thời khóa biểu', tone: 'purple' },
+  { href: '#pomodoro', Icon: IcoTimer, label: 'Pomodoro 25p', tone: 'pink' },
+  { href: '#games', Icon: IcoGame, label: 'Trò chơi Hóa', tone: 'yellow' },
   { href: '#stats', Icon: IcoChart, label: 'Thống kê', tone: 'indigo' },
-  { href: '#exam', Icon: IcoCountdown, label: 'Đếm ngược kỳ thi', tone: 'pink' },
-  { href: '#grade', Icon: IcoBook, label: 'Tính điểm', tone: 'orange' },
-  { href: '#notes', Icon: IcoNote, label: 'Ghi chú', tone: 'teal' },
 ];
 
-function QuickBento() {
-  return (
-    <nav className="bento-quick" aria-label="Truy cập nhanh">
-      <button type="button" className="bento-qbtn tone-gray" onClick={() => goAI({ action: 'capture' })}>
-        <i><IcoCamera size={16} /></i>Chụp đề
-      </button>
-      {QUICK.map(({ href, Icon, label, tone }) => (
-        <a key={label} href={href} className={`bento-qbtn tone-${tone}`}>
-          <i><Icon size={16} /></i>{label}
-        </a>
-      ))}
-    </nav>
-  );
-}
-
-/* ============================================================
-   4. LỊCH HÔM NAY (đọc từ Thời khóa biểu)
-   ============================================================ */
-function ScheduleBento() {
-  const { events, done } = useSchedule();
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000);
-    return () => clearInterval(id);
-  }, []);
-
-  const list = eventsOn(events, now);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const isDone = (ev) => !!done[doneKey(ev.id, now)];
-  const doneCount = list.filter(isDone).length;
-  const current = list.find((e) => nowMin >= toMin(e.start) && nowMin < toMin(e.end));
-  const next = list.find((e) => toMin(e.start) > nowMin);
-  const shown = list.filter((e) => toMin(e.end) > nowMin || !isDone(e)).slice(0, 4);
-  const pct = list.length ? Math.round((doneCount / list.length) * 100) : 0;
-
-  let headline = 'Chưa có lịch hôm nay';
-  let sub = 'Tự lập thời khóa biểu để học đều mỗi ngày.';
-  if (current) {
-    headline = current.title;
-    sub = `Đang diễn ra · còn ${fmtDur(toMin(current.end) - nowMin)}, kết thúc lúc ${current.end}`;
-  } else if (next) {
-    headline = next.title;
-    sub = `Tiếp theo lúc ${next.start} · còn ${fmtDur(toMin(next.start) - nowMin)}`;
-  } else if (list.length) {
-    headline = 'Bạn đã hết lịch hôm nay';
-    sub = `${doneCount}/${list.length} hoạt động đã hoàn thành`;
-  }
-
-  return (
-    <article className="bento-card bento-schedule tone-blue">
-      <WTitle Icon={IcoCal} title="Lịch hôm nay" href="#schedule" link="Mở thời khóa biểu" />
-
-      <div className="bento-sch-top">
-        <div className="bento-sch-text">
-          <h3>{current && <i className="bento-live" />}{headline}</h3>
-          <p>{sub}</p>
-        </div>
-        {list.length > 0 && (
-          <div className="bento-sch-ring" style={{ '--p': pct }} aria-label={`Hoàn thành ${pct}%`}>
-            <b className="num">{pct}%</b>
-          </div>
-        )}
-      </div>
-
-      {list.length === 0 ? (
-        <a className="bento-sch-empty" href="#schedule">
-          <span><IcoPlus size={18} /></span>
-          Tạo thời khóa biểu đầu tiên
-        </a>
-      ) : (
-        <ul className="bento-sch-list">
-          {shown.map((ev) => (
-            <li
-              key={ev.id}
-              className={`${ev === current ? 'live' : ''} ${isDone(ev) ? 'done' : ''}`}
-              style={{ '--t': colorOf(ev.color).rgb }}
-            >
-              <i />
-              <time className="num">{ev.start}</time>
-              <span>{ev.title}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </article>
-  );
-}
-
-/* ============================================================
-   5. TẬP TRUNG
-   ============================================================ */
-function FocusBento() {
-  const { events } = useSchedule();
-  return (
-    <article className="bento-card bento-focus tone-pink">
-      <WTitle Icon={IcoTimer} title="Tập trung" href="#pomodoro" link="Clock Hub" />
-      <div className="bento-focus-body">
-        <div className="bento-focus-time" aria-hidden="true">
-          <b className="num">25</b>
-          <small>phút</small>
-        </div>
-        <div>
-          <h3>Học theo nhịp 25 phút</h3>
-          <p>Bật Pomodoro để giữ nhịp học và nghỉ, rồi đánh dấu xong từng mục trong lịch.</p>
-        </div>
-      </div>
-      <div className="bento-focus-actions">
-        <a className="bento-pill-btn primary" href="#pomodoro">Bắt đầu tập trung</a>
-        <a className="bento-pill-btn" href="#schedule">{events.length ? 'Xem lịch' : 'Lập lịch'}</a>
-      </div>
-    </article>
-  );
-}
-
-/* ============================================================
-   6. SỐ LIỆU HỌC TẬP
-   ============================================================ */
-function Spark({ week }) {
-  const max = Math.max(1, ...week.map((d) => d.count));
-  const pts = week.map((d, i) => `${(i / 6) * 100},${28 - (d.count / max) * 24}`).join(' ');
-  return (
-    <svg className="bento-spark" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
-      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function StatsBento({ p }) {
-  const nextText = p.lv.next ? `${p.xp}/${p.lv.next.xp} XP` : `${p.xp} XP`;
-
-  return (
-    <section className="bento-stats-strip" aria-label="Thống kê học tập">
-      <div className="bento-stat-box tone-orange">
-        <span className="bento-stat-label">Chuỗi ngày</span>
-        <div className="bento-stat-val num"><IcoFlame size={26} /> {p.streak}</div>
-        <span className="bento-stat-sub">{p.streak ? 'ngày liên tiếp' : 'Học hôm nay để bắt đầu'}</span>
-      </div>
-
-      <div className="bento-stat-box tone-green">
-        <span className="bento-stat-label">Độ chính xác</span>
-        <div className="bento-stat-val num">{p.accuracy === null ? '–' : `${p.accuracy}%`}</div>
-        <span className="bento-stat-sub num">{p.answered ? `${p.answered} câu đã giải` : 'Chưa có dữ liệu'}</span>
-      </div>
-
-      <div className="bento-stat-box tone-blue">
-        <span className="bento-stat-label">7 ngày qua</span>
-        <div className="bento-stat-val num">
-          {p.week.reduce((a, d) => a + d.count, 0)} <small>câu</small>
-        </div>
-        <Spark week={p.week} />
-      </div>
-
-      <div className="bento-stat-box tone-purple">
-        <span className="bento-stat-label">Cấp độ {p.lv.lvl}</span>
-        <div className="bento-stat-val bento-stat-val--text">{p.lv.title}</div>
-        <span className="bento-stat-sub num">{nextText}</span>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================
-   8. NGUYÊN TỐ CỦA NGÀY
-   ============================================================ */
-function ElementBento() {
-  const e = elementOfDay();
-
-  return (
-    <article className="bento-card bento-element-card tone-teal">
-      <WTitle Icon={IcoAtom} title="Nguyên tố của ngày" href="#table" link="Bảng tuần hoàn" />
-
-      <div className="bento-el-badge">
-        <div className="bento-el-symbol-box">
-          <small>{e.z}</small>
-          <b>{e.s}</b>
-          <span>{e.m}</span>
-        </div>
-        <div className="bento-el-details">
-          <h3>{e.n}</h3>
-          <p>{e.fact}</p>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-/* ============================================================
-   9. HỌC TIẾP
-   ============================================================ */
-function RecentBento({ p }) {
-  return (
-    <article className="bento-card bento-recent tone-blue">
-      <WTitle Icon={IcoSpark} title="Học tiếp" href="#quiz" link="Kho đề Quiz" />
-      {p.isEmpty ? (
-        <EmptyState
-          title="Chưa có hoạt động nào"
-          text="Hỏi ELECAI một câu hoặc làm bài quiz đầu tiên để bắt đầu lưu lại tiến trình học tập của bạn."
-          action={<Button variant="primary" href="#quiz">Làm quiz đầu tiên</Button>}
-        />
-      ) : (
-        <ul className="bento-recent-list">
-          {p.recent.slice(0, 4).map((r) => (
-            <li key={r.id}>
-              <a href={'#' + (r.hash || 'ai')}>
-                <span>{r.title}</span>
-                <time className="num">{timeAgo(r.t)}</time>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </article>
-  );
-}
-
-/* ============================================================
-   10. PHÒNG THI & LỚP HỌC
-   ============================================================ */
 function parseExamToken(raw) {
   const m = /exam\/([^\s?#/]+)/i.exec(raw || '');
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-function ClassroomBento() {
+function ClassroomAndToolsBar() {
   const [val, setVal] = useState('');
   const [err, setErr] = useState('');
 
@@ -470,89 +248,153 @@ function ClassroomBento() {
   };
 
   return (
-    <article className="bento-card bento-classroom tone-orange">
-      <WTitle Icon={IcoUsers} title="Phòng thi và lớp học" href="#my-classes" link="Lớp của tôi" />
-      <p className="bento-note">Dán đường link đề thi giáo viên gửi để bắt đầu làm bài ngay.</p>
-
-      <form onSubmit={submit}>
-        <div className="bento-input-pill">
-          <IcoLink size={18} />
-          <input
-            type="text"
-            inputMode="url"
-            autoComplete="off"
-            value={val}
-            placeholder="Dán link đề cô giáo gửi..."
-            onChange={(e) => { setVal(e.target.value); if (err) setErr(''); }}
-          />
-          <button type="submit" disabled={!val.trim()}>Vào thi</button>
+    <section className="ns9-home-bottom-grid" aria-label="Công cụ Hóa học và Lớp học">
+      <div className="ns9-tools-card">
+        <div className="ns9-tools-head">
+          <b>Công cụ bổ trợ môn Hóa</b>
+          <a href="#tools">Xem tất cả công cụ ›</a>
         </div>
-        {err && <p className="bento-err">{err}</p>}
-      </form>
-
-      <a href="#my-classes" className="bento-text-link">
-        Hoặc tham gia lớp học bằng mã lớp
-      </a>
-    </article>
-  );
-}
-
-/* ============================================================
-   11. TRÒ CHƠI
-   ============================================================ */
-const GAME_LIST = [
-  ['chicken', 'Bắt gà 3D', 'yellow'],
-  ['slingshot', 'Ná cao su', 'orange'],
-  ['jeopardy', 'Jeopardy', 'blue'],
-  ['lab', 'Phòng lab ảo', 'teal'],
-  ['battle', 'Đấu nguyên tố', 'pink'],
-  ['sudoku', 'Sudoku Hóa', 'purple'],
-];
-
-function GamesBento() {
-  return (
-    <article className="bento-card bento-games tone-yellow">
-      <WTitle Icon={IcoGame} title="Khu trò chơi Hóa học" href="#games" link="Xem tất cả" />
-      <div className="bento-games-grid">
-        {GAME_LIST.map(([id, name, tone]) => (
-          <a key={id} href={'#games/' + id} className={`bento-game-pill tone-${tone}`}>
-            <i />{name}
-          </a>
-        ))}
+        <nav className="bento-quick" aria-label="Truy cập nhanh">
+          <button type="button" className="bento-qbtn tone-gray" onClick={() => goAI({ action: 'capture' })}>
+            <i><IcoCamera size={16} /></i>Chụp đề giải ngay
+          </button>
+          {QUICK_TOOLS.map(({ href, Icon, label, tone }) => (
+            <a key={label} href={href} className={`bento-qbtn tone-${tone}`}>
+              <i><Icon size={16} /></i>{label}
+            </a>
+          ))}
+        </nav>
       </div>
-    </article>
+
+      <article className="bento-card bento-classroom tone-orange ns9-classroom-compact">
+        <div className="bento-widget-title">
+          <span className="bento-wt">
+            <i className="bento-wt-ico"><IcoUsers size={16} /></i>
+            Phòng thi &amp; Lớp học
+          </span>
+          <a href="#my-classes">Lớp của tôi</a>
+        </div>
+        <p className="bento-note">Dán đường link đề thi giáo viên giao để vào làm bài ngay.</p>
+        <form onSubmit={submit}>
+          <div className="bento-input-pill">
+            <IcoLink size={18} />
+            <input
+              type="text"
+              inputMode="url"
+              autoComplete="off"
+              value={val}
+              placeholder="Dán link đề cô giáo gửi..."
+              onChange={(e) => { setVal(e.target.value); if (err) setErr(''); }}
+            />
+            <button type="submit" disabled={!val.trim()}>Vào thi</button>
+          </div>
+          {err && <p className="bento-err">{err}</p>}
+        </form>
+      </article>
+    </section>
   );
 }
 
 /* ============================================================
-   TRANG CHỦ
+   TRANG CHỦ HỌC SINH (ĐÁNH TRỌNG TÂM LỘ TRÌNH + AI)
    ============================================================ */
 export default function Home() {
   const { hello, name } = useGreeting();
-  const p = useProgress();
+  const { user } = useAuth();
+  const uid = user?.uid || null;
+  useProgress(); // giữ đồng bộ tiến trình chung
+
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => subscribeRoadmap(() => setTick((n) => n + 1)), []);
+  useEffect(() => subscribeCards(() => setTick((n) => n + 1)), []);
+  useEffect(() => subscribeAspirationChanges(() => setTick((n) => n + 1)), []);
+
+  const gradeKey = useMemo(() => {
+    try {
+      return localStorage.getItem('cs-home-grade') || DEFAULT_LEVEL;
+    } catch {
+      return DEFAULT_LEVEL;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
+
+  const level = useMemo(() => getLevel(gradeKey), [gradeKey]);
+
+  const roadmapSnapshot = useMemo(() => {
+    const store = uid ? readStore(uid) : { sessions: [] };
+    const events = sessionsToEvents(store.sessions || []);
+    const summaries = summarizeEvents(events);
+    const view = buildChapterViews(level, summaries, Date.now());
+    const due = uid ? dueSummary(uid, events) : { total: 0, byTopic: {} };
+    const cards = uid ? cardStats(uid, Date.now()) : { due: 0 };
+    const aspState = getUserAspirationsState(uid);
+    return {
+      events,
+      view,
+      dueTotal: due.total,
+      cardsDue: cards.due,
+      activeAsp: aspState.activeAspiration || aspState.aspirations[0] || null,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, level, tick]);
+
+  const handleOpenChapterFromHome = (chapterId) => {
+    if (!chapterId) {
+      window.location.hash = 'roadmap';
+      return;
+    }
+    window.location.hash = `roadmap?chapter=${encodeURIComponent(chapterId)}`;
+  };
+
+  const handleAiStrategyFromHome = (rmData) => {
+    const asp = rmData?.activeAsp;
+    const targetLine = asp
+      ? `Nguyện vọng 1: ${asp?.school?.code || 'ĐH'} - ${asp?.school?.name || 'Trường Đại học'} (${asp?.major?.name || 'Ngành xét tuyển'}), Điểm mục tiêu ${asp?.targetScore ?? 24}/${rmData.examScale} (Môn Hóa cần đạt ${rmData.targetChem10}/10).`
+      : 'Mục tiêu: Chinh phục kỳ thi THPT Quốc gia môn Hóa học.';
+    askAI(
+      `Đóng vai Gia sư Hóa ELEC AI (xưng "mình – bạn"), hãy lập kế hoạch học tập tuần này giúp mình bám sát mục tiêu:\n${targetLine}\n`
+      + `Điểm Hóa dự đoán hiện tại: ${rmData?.hasEvidence ? rmData.predictedChem10 : 'Chưa đo'}/10 · Tiến độ: ${rmData?.paceStatus}.`,
+      gradeKey,
+    );
+  };
 
   return (
-    <div className="db-bento-wrap">
+    <div className="db-bento-wrap ns9-home-wrap">
       <div className="db-bento-ambient" aria-hidden="true" />
-      <div className="bento-grid">
-        <HeroBento p={p} hello={hello} name={name} />
-        <TodayBento p={p} />
 
-        <FeaturesBento />
-        <QuickBento />
+      <div className="ns9-home-container">
+        {/* 1. BANNER CÁ NHÂN + TRỢ LÝ AI NỔI BẬT */}
+        <PersonalAiHero
+          hello={hello}
+          name={name}
+          activeAsp={roadmapSnapshot.activeAsp}
+        />
 
-        <ScheduleBento />
-        <FocusBento />
+        {/* 2. THẺ TRUNG TÂM "LỘ TRÌNH CỦA EM" (4 CHỈ SỐ + BIỂU ĐỒ ĐIỂM/ELO + CTA CHÍNH) */}
+        <AspirationRoadmapHub
+          uid={uid}
+          overview={roadmapSnapshot.view.overview}
+          chapters={roadmapSnapshot.view.chapters}
+          dueTotal={roadmapSnapshot.dueTotal}
+          cardsDue={roadmapSnapshot.cardsDue}
+          events={roadmapSnapshot.events}
+          hideTopBanner
+          onOpenChapter={handleOpenChapterFromHome}
+          onPracticeChapter={handleOpenChapterFromHome}
+          onReviewChapter={handleOpenChapterFromHome}
+          onAiStrategy={handleAiStrategyFromHome}
+          onOpenDiagnostic={() => { window.location.hash = 'roadmap?mode=diagnostic'; }}
+        />
 
-        <StatsBento p={p} />
+        {/* 3. BA THẺ LỐI TẮT CHIẾN LƯỢC: LỘ TRÌNH MỤC TIÊU · LỘ TRÌNH CÁ NHÂN HÓA · LUYỆN TẬP BẰNG AI */}
+        <StrategicShortcuts
+          activeAsp={roadmapSnapshot.activeAsp}
+          dueTotal={roadmapSnapshot.dueTotal}
+        />
 
-        <RoadmapCard />
-        <ElementBento />
-
-        <RecentBento p={p} />
-        <ClassroomBento />
-
-        <GamesBento />
+        {/* 4. CỤM LỚP HỌC & CÔNG CỤ BỔ TRỢ */}
+        <ClassroomAndToolsBar />
       </div>
     </div>
   );

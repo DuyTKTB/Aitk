@@ -1,15 +1,15 @@
 /* ============================================================
-   QuestionManager.jsx — Ngân hàng câu hỏi (Vitality)
+   QuestionManager.jsx — Ngân hàng câu hỏi Admin (Lọc nâng cao + Sửa nhanh tại chỗ)
    ============================================================ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import AdminShell, { Topbar } from './AdminShell.jsx';
+import AdminShell, { Topbar, downloadCsv } from './AdminShell.jsx';
 import { Modal, ConfirmDialog, useDebounced } from './AdminUI.jsx';
 import {
-  IconQuestion, IconSearch, IconRefresh, IconTrash, IconEye, IconEdit,
-  IconChevron, IconBack, IconClose, IconCheck,
+  IconQuestion, IconRefresh, IconTrash, IconEye, IconEdit,
+  IconChevron, IconBack, IconClose, IconCheck, IconSave, IconDownload,
 } from './AdminIcons.jsx';
-import { DIFFICULTIES, diffColor, diffName } from './adminConstants.js';
+import { DIFFICULTIES, QUESTION_TYPES, diffColor, diffName, qTypeName } from './adminConstants.js';
 import { escapeLike, friendlyError } from './adminUtils.js';
 
 const PAGE_SIZE = 20;
@@ -32,8 +32,16 @@ export default function QuestionManager({ onOpenExam }) {
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('all');
   const [subjectId, setSubjectId] = useState('all');
+  const [qTypeFilter, setQTypeFilter] = useState('all');
+  const [explainFilter, setExplainFilter] = useState('all'); // all | missing | has
   const [subjects, setSubjects] = useState([]);
+
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const [detail, setDetail] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+  const [savingDetail, setSavingDetail] = useState(false);
   const [deleting, setDeleting] = useState(null);
 
   const [toast, setToast] = useState(null);
@@ -42,7 +50,7 @@ export default function QuestionManager({ onOpenExam }) {
   const say = useCallback((t) => {
     clearTimeout(toastTimer.current);
     setToast(t);
-    toastTimer.current = setTimeout(() => setToast(null), 2400);
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -55,7 +63,7 @@ export default function QuestionManager({ onOpenExam }) {
     });
   }, []);
 
-  useEffect(() => { setPage(0); }, [term, difficulty, subjectId]);
+  useEffect(() => { setPage(0); }, [term, difficulty, subjectId, qTypeFilter, explainFilter]);
 
   const load = useCallback(async () => {
     const my = ++reqId.current;
@@ -76,21 +84,91 @@ export default function QuestionManager({ onOpenExam }) {
       if (term) q = q.ilike('content', `%${escapeLike(term)}%`);
       if (difficulty !== 'all') q = q.eq('difficulty', difficulty);
       if (subjectId !== 'all') q = q.eq('exams.subject_id', Number(subjectId));
+      if (qTypeFilter !== 'all') q = q.eq('question_type', qTypeFilter);
+      if (explainFilter === 'missing') q = q.or('explanation.is.null,explanation.eq.');
+      if (explainFilter === 'has') q = q.not('explanation', 'is', null).neq('explanation', '');
 
       const { data, count, error: e } = await q;
       if (e) throw e;
       if (my !== reqId.current) return;
       setRows(data || []);
       setTotal(count ?? 0);
+      setSelected(new Set());
     } catch (e) {
       if (my !== reqId.current) return;
       setError(friendlyError(e));
     } finally {
       if (my === reqId.current) setLoading(false);
     }
-  }, [page, term, difficulty, subjectId]);
+  }, [page, term, difficulty, subjectId, qTypeFilter, explainFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openDetailModal = (q) => {
+    setDetail(q);
+    setEditDraft({
+      id: q.id,
+      content: q.content || '',
+      explanation: q.explanation || '',
+      difficulty: q.difficulty || 'medium',
+      question_type: q.question_type || 'single_choice',
+      answers: [...(q.answers || [])].sort((a, b) => a.sort_order - b.sort_order).map((a) => ({ ...a })),
+    });
+  };
+
+  const handleSaveDetail = async () => {
+    if (!editDraft) return;
+    if (!editDraft.content.trim()) {
+      say('Nội dung câu hỏi không được để trống.');
+      return;
+    }
+    setSavingDetail(true);
+    try {
+      const { error: e1 } = await supabase
+        .from('questions')
+        .update({
+          content: editDraft.content.trim(),
+          explanation: editDraft.explanation?.trim() || null,
+          difficulty: editDraft.difficulty,
+        })
+        .eq('id', editDraft.id);
+      if (e1) throw e1;
+
+      if (editDraft.answers?.length) {
+        const updates = await Promise.all(
+          editDraft.answers.map((a) =>
+            supabase
+              .from('answers')
+              .update({ content: a.content.trim(), is_correct: !!a.is_correct })
+              .eq('id', a.id),
+          ),
+        );
+        const bad = updates.find((u) => u.error);
+        if (bad) throw bad.error;
+      }
+
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === editDraft.id
+            ? {
+                ...r,
+                content: editDraft.content.trim(),
+                explanation: editDraft.explanation?.trim() || null,
+                difficulty: editDraft.difficulty,
+                answers: editDraft.answers,
+              }
+            : r,
+        ),
+      );
+      setDetail(null);
+      setEditDraft(null);
+      say('Đã lưu chỉnh sửa câu hỏi');
+    } catch (e) {
+      say('Không lưu được: ' + friendlyError(e));
+    } finally {
+      setSavingDetail(false);
+    }
+  };
 
   const handleDelete = (q) => {
     setConfirm({
@@ -105,6 +183,7 @@ export default function QuestionManager({ onOpenExam }) {
           if (e) throw e;
           say('Đã xóa câu hỏi');
           setDetail(null);
+          setEditDraft(null);
           if (rows.length === 1 && page > 0) setPage((p) => p - 1);
           else load();
         } catch (e) {
@@ -116,14 +195,93 @@ export default function QuestionManager({ onOpenExam }) {
     });
   };
 
+  const handleBulkDifficulty = async (newDiff) => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setBulkBusy(true);
+    try {
+      const { error: e } = await supabase.from('questions').update({ difficulty: newDiff }).in('id', ids);
+      if (e) throw e;
+      setRows((prev) => prev.map((r) => (selected.has(r.id) ? { ...r, difficulty: newDiff } : r)));
+      setSelected(new Set());
+      say(`Đã đổi độ khó cho ${ids.length} câu`);
+    } catch (e) {
+      say('Lỗi cập nhật: ' + friendlyError(e));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setConfirm({
+      title: `Xóa ${ids.length} câu hỏi đã chọn`,
+      body: 'Các câu hỏi này sẽ bị xóa khỏi đề thi tương ứng. Không thể hoàn tác.',
+      okLabel: `Xóa ${ids.length} câu`,
+      danger: true,
+      onOk: async () => {
+        setBulkBusy(true);
+        try {
+          const { error: e } = await supabase.from('questions').delete().in('id', ids);
+          if (e) throw e;
+          setSelected(new Set());
+          say(`Đã xóa ${ids.length} câu hỏi`);
+          load();
+        } catch (e) {
+          say('Không xóa được: ' + friendlyError(e));
+        } finally {
+          setBulkBusy(false);
+        }
+      },
+    });
+  };
+
+  const toggleSelect = (id) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilter = term || difficulty !== 'all' || subjectId !== 'all';
+  const hasFilter = term || difficulty !== 'all' || subjectId !== 'all' || qTypeFilter !== 'all' || explainFilter !== 'all';
+
+  const handleExportCsv = () => {
+    if (!rows.length) return say('Không có câu hỏi nào để xuất');
+    const header = [
+      'STT', 'Mã câu', 'Đề thi', 'Môn', 'Khối',
+      'Loại câu', 'Độ khó', 'Nội dung câu hỏi',
+      'Phương án', 'Đáp án đúng', 'Lời giải',
+    ];
+    const dataRows = rows.map((q, idx) => {
+      const correctAns = (q.answers || []).filter((a) => a.is_correct).map((a) => a.label || a.content).join(', ') || '—';
+      const answersText = (q.answers || []).map((a) => `${a.label || ''}. ${a.content}`).join(' | ');
+      return [
+        idx + 1,
+        q.id,
+        q.exams?.title || '—',
+        q.exams?.subject?.name || '—',
+        q.exams?.grade?.name || '—',
+        qTypeName(q.question_type),
+        diffName(q.difficulty),
+        q.content || '',
+        answersText,
+        correctAns,
+        q.explanation || '',
+      ];
+    });
+    const filename = `ngan-hang-cau-hoi-${new Date().toISOString().slice(0, 10)}.csv`;
+    downloadCsv(filename, [header, ...dataRows]);
+    say(`Đã xuất CSV cho ${rows.length} câu hỏi`);
+  };
 
   return (
     <AdminShell active="questions" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
       <Topbar
         title="Ngân hàng câu hỏi"
-        subtitle={`${total.toLocaleString('vi-VN')} câu hỏi từ mọi đề`}
+        subtitle={`${total.toLocaleString('vi-VN')} câu hỏi từ mọi đề thi · Bấm vào câu bất kỳ để xem & sửa nhanh`}
         onSearch={setSearch}
         search={search}
         placeholder="Tìm trong nội dung câu hỏi…"
@@ -140,15 +298,61 @@ export default function QuestionManager({ onOpenExam }) {
             <option value="all">Mọi độ khó</option>
             {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
+          <select value={qTypeFilter} onChange={(e) => setQTypeFilter(e.target.value)} className="vt-select-pill">
+            <option value="all">Mọi loại câu</option>
+            {QUESTION_TYPES.map((t) => <option key={t.id} value={t.id}>{t.short}</option>)}
+          </select>
+          <select value={explainFilter} onChange={(e) => setExplainFilter(e.target.value)} className="vt-select-pill">
+            <option value="all">Tất cả lời giải</option>
+            <option value="missing">Chưa có lời giải</option>
+            <option value="has">Đã có lời giải</option>
+          </select>
+
+          <button type="button" className="vt-btn sm" onClick={handleExportCsv} disabled={loading || rows.length === 0} style={{ marginLeft: 'auto' }} title="Xuất danh sách câu hỏi đang xem ra file CSV">
+            <IconDownload size={13} /> Xuất CSV
+          </button>
           <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
             <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
           </button>
           {hasFilter && (
-            <button type="button" className="vt-btn sm" onClick={() => { setSearch(''); setDifficulty('all'); setSubjectId('all'); }}>
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => {
+                setSearch('');
+                setDifficulty('all');
+                setSubjectId('all');
+                setQTypeFilter('all');
+                setExplainFilter('all');
+              }}
+            >
               <IconClose size={12} /> Xóa lọc
             </button>
           )}
         </div>
+
+        {selected.size > 0 && (
+          <div className="vt-bulk-bar">
+            <span>Đã chọn <b>{selected.size}</b> câu</span>
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className="vt-btn sm"
+                disabled={bulkBusy}
+                onClick={() => handleBulkDifficulty(d.id)}
+              >
+                Đặt: {d.short}
+              </button>
+            ))}
+            <button type="button" className="vt-btn sm danger" disabled={bulkBusy} onClick={handleBulkDelete}>
+              <IconTrash size={13} /> Xóa {selected.size} câu
+            </button>
+            <button type="button" className="vt-btn sm" onClick={() => setSelected(new Set())}>
+              <IconClose size={12} /> Bỏ chọn
+            </button>
+          </div>
+        )}
       </div>
 
       {error ? (
@@ -183,43 +387,65 @@ export default function QuestionManager({ onOpenExam }) {
             <table className="vt-table">
               <thead>
                 <tr>
+                  <th style={{ width: 38 }}>
+                    <input
+                      type="checkbox"
+                      checked={rows.length > 0 && rows.every((r) => selected.has(r.id))}
+                      onChange={() => {
+                        const all = rows.every((r) => selected.has(r.id));
+                        setSelected(all ? new Set() : new Set(rows.map((r) => r.id)));
+                      }}
+                    />
+                  </th>
                   <th style={{ width: 54 }}>Câu</th>
-                  <th>Nội dung</th>
+                  <th>Nội dung câu hỏi</th>
                   <th>Thuộc đề</th>
-                  <th>Độ khó</th>
+                  <th>Loại & Độ khó</th>
                   <th style={{ width: 130 }} />
                 </tr>
               </thead>
               <tbody>
                 {rows.map((q) => (
-                  <tr key={q.id}>
-                    <td style={{ fontFamily: 'var(--mono)', color: 'var(--mut)' }}>{q.question_number}</td>
+                  <tr key={q.id} className={selected.has(q.id) ? 'vt-row-selected' : ''}>
                     <td>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(q.id)}
+                        onChange={() => toggleSelect(q.id)}
+                      />
+                    </td>
+                    <td style={{ fontFamily: 'var(--mono)', color: 'var(--mut)', fontWeight: 700 }}>{q.question_number}</td>
+                    <td style={{ cursor: 'pointer' }} onClick={() => openDetailModal(q)}>
                       <b style={{ fontSize: '.88rem', ...clamp2 }}>
                         {q.content}
                       </b>
-                      <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>
-                        {q.answers?.length || 0} đáp án{q.explanation ? ' · có lời giải' : ' · chưa có lời giải'}
+                      <small style={{ color: q.explanation ? 'var(--mut)' : 'var(--vt-amber)', fontSize: '.72rem' }}>
+                        {q.answers?.length || 0} phương án · {q.explanation ? 'Đã có lời giải' : 'Chưa có lời giải'}
                       </small>
                     </td>
                     <td>
-                      <b style={{ display: 'block', fontSize: '.85rem' }}>{q.exams?.title}</b>
+                      <b style={{ display: 'block', fontSize: '.84rem' }}>{q.exams?.title}</b>
                       <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>
                         {[q.exams?.subject?.name, q.exams?.grade?.name].filter(Boolean).join(' · ')}
                       </small>
                     </td>
                     <td>
-                      <span className="vt-chip" style={{ background: diffColor(q.difficulty), color: '#fff' }}>
-                        {diffName(q.difficulty)}
-                      </span>
+                      <div style={{ display: 'flex', gap: '.3rem', flexWrap: 'wrap' }}>
+                        <span className="vt-chip" style={{ background: diffColor(q.difficulty), color: '#fff' }}>
+                          {diffName(q.difficulty)}
+                        </span>
+                        <span className="vt-chip closed">
+                          {qTypeName(q.question_type)}
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <div className="vt-row-actions">
-                        <button type="button" className="vt-icon-btn" onClick={() => setDetail(q)} title="Xem chi tiết">
+                        <button type="button" className="vt-icon-btn" onClick={() => openDetailModal(q)} title="Xem & sửa nhanh">
                           <IconEye size={14} />
                         </button>
                         {onOpenExam && (
-                          <button type="button" className="vt-icon-btn" onClick={() => onOpenExam(q.exam_id)} title="Mở đề để sửa">
+                          <button type="button" className="vt-icon-btn" onClick={() => onOpenExam(q.exam_id)} title="Mở đề chứa câu này">
                             <IconEdit size={14} />
                           </button>
                         )}
@@ -250,56 +476,143 @@ export default function QuestionManager({ onOpenExam }) {
         </div>
       )}
 
-      {detail && (
+      {detail && editDraft && (
         <Modal
-          title={`Câu ${detail.question_number}`}
-          onClose={() => setDetail(null)}
-          size="md"
+          title={`Câu ${detail.question_number} · Sửa nhanh tại chỗ`}
+          subtitle={detail.exams?.title}
+          onClose={() => { setDetail(null); setEditDraft(null); }}
+          size="lg"
           foot={
             <>
+              <button type="button" className="vt-btn danger" onClick={() => handleDelete(detail)} style={{ marginRight: 'auto' }}>
+                <IconTrash size={14} /> Xóa câu
+              </button>
               {onOpenExam && (
-                <button type="button" className="vt-btn" onClick={() => { setDetail(null); onOpenExam(detail.exam_id); }}>
-                  <IconEdit size={14} /> Mở đề
+                <button type="button" className="vt-btn" onClick={() => { setDetail(null); setEditDraft(null); onOpenExam(detail.exam_id); }}>
+                  <IconEdit size={14} /> Mở toàn bộ đề
                 </button>
               )}
-              <button type="button" className="vt-btn danger" onClick={() => handleDelete(detail)}>
-                <IconTrash size={14} /> Xóa
+              <button type="button" className="vt-btn primary" onClick={handleSaveDetail} disabled={savingDetail}>
+                <IconSave size={14} /> {savingDetail ? 'Đang lưu…' : 'Lưu câu hỏi'}
               </button>
             </>
           }
         >
-          <div style={{ marginBottom: '.8rem', fontSize: '.82rem', color: 'var(--mut)' }}>
-            {detail.exams?.title} · {diffName(detail.difficulty)}
-          </div>
-          <p style={{ font: '500 .95rem/1.6 var(--sans)', margin: '0 0 1rem' }}>{detail.content}</p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem', display: 'grid', gap: '.4rem' }}>
-            {[...(detail.answers || [])].sort((a, b) => a.sort_order - b.sort_order).map((a) => (
-              <li
-                key={a.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '.7rem',
-                  padding: '.55rem .8rem',
-                  borderRadius: 10,
-                  background: a.is_correct ? 'color-mix(in srgb, #16a34a 15%, transparent)' : 'var(--vt-tint)',
-                  border: a.is_correct ? '1.5px solid #16a34a' : '1.5px solid transparent',
-                }}
-              >
-                <b style={{ width: 24, textAlign: 'center' }}>{a.label}</b>
-                <span style={{ flex: 1 }}>{a.content}</span>
-                {a.is_correct && <IconCheck size={15} style={{ color: '#16a34a' }} />}
-              </li>
-            ))}
-          </ul>
-          {detail.explanation ? (
-            <div style={{ padding: '.8rem 1rem', background: 'var(--vt-tint)', borderRadius: 12, borderLeft: '3px solid var(--acc)' }}>
-              <small style={{ color: 'var(--mut)', display: 'block', marginBottom: '.3rem', textTransform: 'uppercase', fontSize: '.7rem', fontWeight: 700 }}>Lời giải</small>
-              <p style={{ margin: 0, fontSize: '.88rem', lineHeight: 1.5 }}>{detail.explanation}</p>
+          <div style={{ display: 'grid', gap: '.85rem' }}>
+            <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="vt-chip closed">{qTypeName(editDraft.question_type)}</span>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', fontSize: '.82rem', fontWeight: 600 }}>
+                <span>Độ khó:</span>
+                <select
+                  value={editDraft.difficulty}
+                  onChange={(e) => setEditDraft({ ...editDraft, difficulty: e.target.value })}
+                  className="vt-select-pill"
+                >
+                  {DIFFICULTIES.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </label>
             </div>
-          ) : (
-            <p className="vt-muted">Câu này chưa có lời giải.</p>
-          )}
+
+            <label className="vt-field">
+              <span>Nội dung câu hỏi</span>
+              <textarea
+                value={editDraft.content}
+                onChange={(e) => setEditDraft({ ...editDraft, content: e.target.value })}
+                rows={3}
+                style={{ padding: '.65rem .85rem', borderRadius: 12 }}
+              />
+            </label>
+
+            <div>
+              <span style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: 'var(--mut)', marginBottom: '.4rem' }}>
+                {editDraft.question_type === 'true_false'
+                  ? 'Các mệnh đề Đúng / Sai (bấm nút bên phải để đổi Đúng/Sai)'
+                  : editDraft.question_type === 'short_answer'
+                    ? 'Đáp số trả lời ngắn'
+                    : 'Các phương án trả lời (chọn nút tròn ở đáp án đúng)'}
+              </span>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '.4rem' }}>
+                {editDraft.answers.map((a, idx) => (
+                  <li
+                    key={a.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '.6rem',
+                      padding: '.45rem .75rem',
+                      borderRadius: 10,
+                      background: a.is_correct ? 'color-mix(in srgb, #16a34a 14%, transparent)' : 'var(--vt-tint)',
+                      border: a.is_correct ? '1.5px solid #16a34a' : '1.5px solid transparent',
+                    }}
+                  >
+                    {editDraft.question_type === 'single_choice' && (
+                      <input
+                        type="radio"
+                        name="qm-correct"
+                        checked={!!a.is_correct}
+                        onChange={() =>
+                          setEditDraft({
+                            ...editDraft,
+                            answers: editDraft.answers.map((x) => ({ ...x, is_correct: x.id === a.id })),
+                          })
+                        }
+                        style={{ accentColor: '#16a34a' }}
+                      />
+                    )}
+                    <b style={{ width: 24, textAlign: 'center' }}>{a.label}</b>
+                    <input
+                      type="text"
+                      value={a.content}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditDraft({
+                          ...editDraft,
+                          answers: editDraft.answers.map((x, i) => (i === idx ? { ...x, content: val } : x)),
+                        });
+                      }}
+                      style={{
+                        flex: 1,
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--ink)',
+                        font: '500 .88rem var(--sans)',
+                        padding: '.25rem .4rem',
+                      }}
+                    />
+                    {editDraft.question_type === 'true_false' && (
+                      <button
+                        type="button"
+                        className={'vt-chip ' + (a.is_correct ? 'ready' : 'kicked')}
+                        onClick={() =>
+                          setEditDraft({
+                            ...editDraft,
+                            answers: editDraft.answers.map((x, i) => (i === idx ? { ...x, is_correct: !x.is_correct } : x)),
+                          })
+                        }
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {a.is_correct ? 'Đúng' : 'Sai'}
+                      </button>
+                    )}
+                    {a.is_correct && editDraft.question_type !== 'true_false' && (
+                      <IconCheck size={15} style={{ color: '#16a34a' }} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <label className="vt-field">
+              <span>Lời giải chi tiết</span>
+              <textarea
+                value={editDraft.explanation}
+                onChange={(e) => setEditDraft({ ...editDraft, explanation: e.target.value })}
+                rows={3}
+                placeholder="Nhập lời giải từng bước để học sinh xem sau khi nộp bài…"
+                style={{ padding: '.65rem .85rem', borderRadius: 12 }}
+              />
+            </label>
+          </div>
         </Modal>
       )}
 

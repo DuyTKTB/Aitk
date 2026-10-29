@@ -1543,3 +1543,19 @@
     backdrop-filter: none !important;
   }
 }
+
+
+/* ============================================================
+   OVERRIDE: PET POSITION & DESKTOP TABS HIDING
+   ============================================================ */
+body.page-tools .petw {
+  left: auto !important;
+  right: 24px !important;
+}
+
+@media (min-width: 901px) {
+  .tools-page .tools-tabs,
+  .tools-tabs-mobile {
+    display: none !important;
+  }
+}

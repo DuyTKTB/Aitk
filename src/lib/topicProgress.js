@@ -1,3 +1,4 @@
+import { loadEvidence, summarizeByTopic } from './roadmapEvidence.js';
 /* ============================================================
    topicProgress.js — TIẾN ĐỘ THEO CHUYÊN ĐỀ (số liệu THẬT)
    ------------------------------------------------------------
@@ -45,59 +46,11 @@ const chunk = (arr, size) => {
 };
 
 async function loadFromDb(uid) {
-  if (!supabase) return {};
-
-  /* 1) Các lượt thi gần đây của chính mình */
-  const { data: attempts, error: e1 } = await supabase
-    .from('exam_attempts')
-    .select('id')
-    .eq('user_id', uid)
-    .order('started_at', { ascending: false })
-    .limit(MAX_ATTEMPTS);
-
-  if (e1) throw e1;
-  if (!attempts || attempts.length === 0) return {};
-
-  /* 2) Câu trả lời trong các lượt đó */
-  let answers = [];
-  const attemptChunks = chunk(attempts.map((a) => a.id), 15);
-  for (let i = 0; i < attemptChunks.length; i++) {
-    const { data, error } = await supabase
-      .from('user_answers')
-      .select('question_id,is_correct')
-      .in('attempt_id', attemptChunks[i]);
-    if (error) throw error;
-    if (data) answers = answers.concat(data);
-  }
-  if (answers.length === 0) return {};
-
-  /* 3) Câu hỏi thuộc chuyên đề nào */
-  const qids = Array.from(new Set(answers.map((a) => a.question_id).filter(Boolean)));
-  const topicOf = {};
-  const qChunks = chunk(qids, 150);
-  for (let i = 0; i < qChunks.length; i++) {
-    const { data, error } = await supabase
-      .from('questions')
-      .select('id,topic_id')
-      .in('id', qChunks[i]);
-    if (error) throw error;
-    (data || []).forEach((q) => {
-      if (q.topic_id) topicOf[q.id] = q.topic_id;
-    });
-  }
-
-  /* 4) Gộp theo chuyên đề */
-  const map = {};
-  answers.forEach((a) => {
-    const topic = topicOf[a.question_id];
-    if (!topic) return;
-    if (!map[topic]) map[topic] = { correct: 0, total: 0 };
-    map[topic].total += 1;
-    if (a.is_correct === true) map[topic].correct += 1;
-  });
-  return map;
+  /* MOT nguon duy nhat: roadmapEvidence da gop Firestore + Supabase + phien luyen
+     va co cache rieng, nen khong query lai exam_attempts/user_answers o day. */
+  const res = await loadEvidence(uid);
+  return summarizeByTopic(res.events);
 }
-
 /* Xoá cache sau khi làm bài xong (gọi ở nơi nộp bài nếu cần) */
 export function invalidateTopicProgress(uid) {
   try {
@@ -128,7 +81,6 @@ export function useTopicProgress(uid) {
     loadFromDb(uid)
       .then((m) => {
         if (!alive) return;
-        writeCache(uid, m);
         setMap(m);
       })
       .catch((e) => {

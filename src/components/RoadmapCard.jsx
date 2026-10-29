@@ -14,12 +14,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { askAI } from './HomePlus.jsx';
-import { IcoBook } from './Icons.jsx';
+import { IcoBook, IconClose } from './Icons.jsx';
 import {
   LEVEL_KEYS, DEFAULT_LEVEL, getLevel, findChapter, pctOf,
   nextChapter, levelStats, MASTERED_PCT,
 } from '../data/roadmap.js';
 import { useTopicProgress } from '../lib/topicProgress.js';
+import { readStore, sessionsToEvents, subscribeRoadmap } from '../lib/roadmapStore.js';
+import { subscribeCards } from '../lib/flashcardStore.js';
+import { dueSummary } from '../lib/reviewQueue.js';
+import { readAspirations, subscribeAspirations } from '../lib/aspirationStore.js';
 
 const GRADE_KEY = 'cs-home-grade';
 
@@ -45,8 +49,9 @@ function Ring({ pct }) {
   const R = 11;
   const C = 2 * Math.PI * R;
   const has = pct !== null;
+  const tone = !has ? '' : pct >= MASTERED_PCT ? ' tone-ok' : pct >= 40 ? ' tone-warn' : ' tone-err';
   return (
-    <svg className={'road-ring' + (has ? '' : ' is-empty')} width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+    <svg className={'road-ring' + (has ? '' : ' is-empty') + tone} width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
       <circle cx="15" cy="15" r={R} className="road-ring-bg" />
       {has && (
         <circle
@@ -67,7 +72,27 @@ export default function RoadmapCard() {
   const { map: progress, loading } = useTopicProgress(user && user.uid);
   const [grade, setGrade] = useState(readGrade);
   const [sheet, setSheet] = useState(null);
+  const [dueTick, setDueTick] = useState(0);
   const sheetRef = useRef(null);
+
+  useEffect(() => subscribeRoadmap(() => setDueTick((t) => t + 1)), []);
+  useEffect(() => subscribeCards(() => setDueTick((t) => t + 1)), []);
+  useEffect(() => subscribeAspirations(() => setDueTick((t) => t + 1)), []);
+
+  const aspiration = useMemo(() => {
+    const uid = user && user.uid;
+    return readAspirations(uid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, dueTick]);
+  const nv1 = aspiration?.wishes?.[0] || null;
+
+  const dueToday = useMemo(() => {
+    const uid = user && user.uid;
+    if (!uid) return 0;
+    const events = sessionsToEvents(readStore(uid).sessions || []);
+    return dueSummary(uid, events).total;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, dueTick]);
 
   const level = useMemo(() => getLevel(grade), [grade]);
   const stats = useMemo(() => levelStats(level, progress), [level, progress]);
@@ -108,9 +133,14 @@ export default function RoadmapCard() {
   useEffect(() => {
     if (!sheet) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') close(); };
+    const back = document.activeElement;
     window.addEventListener('keydown', onKey);
     if (sheetRef.current && sheetRef.current.focus) sheetRef.current.focus();
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      /* Trả focus về hàng chương vừa bấm để người dùng bàn phím không mất vị trí */
+      if (back && back.focus && document.contains(back)) back.focus();
+    };
   }, [sheet, close]);
 
   const goSummary = (chapter, levelKey) => {
@@ -159,6 +189,22 @@ export default function RoadmapCard() {
       </div>
 
       <p className="bento-road-goal">{level.goal}</p>
+
+      {nv1 && (
+        <button
+          type="button"
+          className="road-next"
+          onClick={() => { window.location.hash = 'roadmap?level=' + encodeURIComponent(grade); }}
+          title="Mở Trung tâm Nguyện vọng & Quy trình Lộ trình 5 bước"
+        >
+          <span className="road-next-tag">NV1 · {aspiration.examType}</span>
+          <span className="road-next-name">{nv1.uni} — {nv1.major}</span>
+          <span className="road-next-meta">
+            Chuẩn 2025: {nv1.s2025 ?? 'Xét riêng'} · Mục tiêu Hóa: {aspiration.targetChemScore}/10đ
+          </span>
+          <span className="road-next-go" aria-hidden="true">›</span>
+        </button>
+      )}
 
       {stats.total > 0 && (
         <div className="road-progress">
@@ -212,6 +258,19 @@ export default function RoadmapCard() {
         })}
       </div>
 
+      {/* Lối vào trang Lộ trình đầy đủ (bản đồ kiến thức, mức thành thạo,
+          gợi ý học tiếp, ôn tập). Card ở trang chủ giữ nguyên hành vi cũ. */}
+      <button
+        type="button"
+        className="road-next road-open-full"
+        onClick={() => { window.location.hash = 'roadmap?level=' + encodeURIComponent(grade); }}
+      >
+        <span className="road-next-tag">{dueToday > 0 ? `Cần ôn (${dueToday})` : 'Lộ trình đầy đủ'}</span>
+        <span className="road-next-name">Bản đồ kiến thức, mức thành thạo &amp; gợi ý</span>
+        <span className="road-next-meta">{dueToday > 0 ? `${dueToday} câu/thẻ đến hạn ôn hôm nay` : 'tiến độ thật theo từng chương'}</span>
+        <span className="road-next-go" aria-hidden="true">›</span>
+      </button>
+
       {sheet && createPortal((
         <div className="road-sheet-backdrop" onClick={close} role="presentation">
           <div
@@ -234,7 +293,9 @@ export default function RoadmapCard() {
                   {sheetPct === null ? ' · chưa luyện' : ` · ${sheetPct}% chính xác`}
                 </small>
               </div>
-              <button type="button" className="road-sheet-x" onClick={close} aria-label="Đóng">✕</button>
+              <button type="button" className="road-sheet-x" onClick={close} aria-label="Đóng" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IconClose size={16} />
+              </button>
             </div>
 
             <div className="road-sheet-actions">

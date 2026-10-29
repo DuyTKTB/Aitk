@@ -49,7 +49,7 @@
   --err-bg: rgba(255, 59, 48, 0.12);
 
   /* ============ 2. TYPOGRAPHY (SF PRO HIERARCHY) ============ */
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "DM Sans", system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "DM Sans", system-ui, sans-serif;
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
   --fs-md: 1rem;
@@ -228,7 +228,7 @@
 :root {
   --bg: #efece4; --panel: #efece4; --ink: #111; --mut: #6b675e; --soft: rgba(17, 17, 17, .16); --line: #111;
   --acc: #ff4d1a; --acc-ink: #111; --shadow: none;
-  --sans: 'Space Grotesk', system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
   --serif: 'Inter', Georgia, serif;
   --mono: 'Inter', ui-monospace, monospace;
   --ease: cubic-bezier(.2, .7, .2, 1);
@@ -4831,9 +4831,9 @@ input[type="range"]:focus {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   height: var(--nav-h);
-  padding: 0 6px;
+  padding: 0 8px;
   border-radius: 999px;
   background: var(--nav-bg);
   border: 1px solid var(--nav-border);
@@ -4841,7 +4841,7 @@ input[type="range"]:focus {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   transition: background .3s, box-shadow .3s, padding .3s var(--ease);
-  max-width: min(960px, 100%);
+  max-width: min(1200px, calc(100vw - 24px));
 }
 
 .nav-wrap.scrolled .nav-apple {
@@ -11044,7 +11044,7 @@ svg.ai-mark.look {
 
 /* ---------- 1. TOKEN ---------- */
 :root {
-  --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --serif: var(--sans);
   --mono: var(--sans);
 
@@ -11443,7 +11443,7 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: var(--z-nav, 9999);
 
     padding: 10px 16px;
     padding-top: calc(10px + env(safe-area-inset-top, 0px));
@@ -12601,7 +12601,7 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 
 /* ---------- 1. FONT ---------- */
 :root {
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --serif: 'Inter', Georgia, serif;   /* dùng Inter italic cho đồng bộ */
   
@@ -13492,7 +13492,7 @@ body.on-ai-page .ds-header {
   .mhead-bar {
     position: sticky !important;
     top: 0 !important;
-    z-index: 100 !important;
+    z-index: var(--z-nav, 9999) !important;
     min-height: 60px !important;
   }
 
@@ -13977,7 +13977,7 @@ body.on-ai-page .ds-header {
 
 /* ---------- 1. TOKEN ---------- */
 :root {
-  --sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --serif: 'Inter', Georgia, serif;
   --mono: 'Inter', ui-monospace, monospace;
 

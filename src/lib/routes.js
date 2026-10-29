@@ -2,7 +2,10 @@
    khi nào render <NotFound />. HÃY BỔ SUNG đủ các route thật của app. */
 import { useEffect, useState } from 'react';
 
-export const ROUTES = ['', 'home', 'ai', 'quiz', 'balance', 'stats', 'settings', 'feedback', 'login', 'tools'];
+export const ROUTES = [
+  '', 'home', 'ai', 'quiz', 'virtual-exams', 'balance', 'stats', 'settings', 'feedback', 'login',
+  'tools', 'roadmap', 'leaderboard', 'classroom', 'my-classes', 'profile', 'admin',
+];
 
 const parse = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
 

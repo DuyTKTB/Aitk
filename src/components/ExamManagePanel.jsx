@@ -14,6 +14,7 @@ import MathText, { stripMath } from './MathText.jsx';
 import {
   updateExam, duplicateExam, setExamActive, extendExam, regradeExam, analyzeSubmissions,
 } from '../lib/classroom.js';
+import { IconAlert } from './Icons.jsx';
 import '../styles/exam-manage.css';
 
 const letter = (i) => String.fromCharCode(65 + i);
@@ -71,8 +72,8 @@ export default function ExamManagePanel({ exam, submissions = [], onChanged, toa
       </div>
 
       {suspicious.length > 0 && (
-        <p className="emp-alert" role="status">
-          ⚠ Câu {suspicious.map((q) => q.index + 1).join(', ')}: đa số học sinh chọn sai — hãy kiểm tra lại đáp án đúng.
+        <p className="emp-alert" role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <IconAlert size={14} /> Câu {suspicious.map((q) => q.index + 1).join(', ')}: đa số học sinh chọn sai — hãy kiểm tra lại đáp án đúng.
         </p>
       )}
 

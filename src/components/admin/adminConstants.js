@@ -23,5 +23,12 @@ export const ROLES = [
 
 export const ANSWER_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+export const QUESTION_TYPES = [
+  { id: 'single_choice', name: 'Phần I — Trắc nghiệm 4 lựa chọn', short: 'Trắc nghiệm' },
+  { id: 'true_false',    name: 'Phần II — Đúng / Sai (4 ý a,b,c,d)', short: 'Đúng/Sai' },
+  { id: 'short_answer',  name: 'Phần III — Trả lời ngắn (Điền đáp số)', short: 'Trả lời ngắn' },
+];
+
 export const diffName = (id) => DIFFICULTIES.find((d) => d.id === id)?.name || id || '—';
 export const diffColor = (id) => DIFFICULTIES.find((d) => d.id === id)?.color || 'var(--soft)';
+export const qTypeName = (id) => QUESTION_TYPES.find((t) => t.id === id)?.short || 'Trắc nghiệm';

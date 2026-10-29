@@ -132,7 +132,11 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
               </div>
             </div>
 
-            {visible.length === 0 && <p className="erx-empty">Không có câu nào ở mục này 🎉</p>}
+            {visible.length === 0 && (
+              <p className="erx-empty">
+                <IcoCheck size={16} /> Không có câu nào ở mục này
+              </p>
+            )}
 
             <ol className="er-list erx-list">
               {visible.map(({ q, d, i, status }) => (
@@ -176,8 +180,36 @@ export default function ExamResult({ exam, result, showAnswer, onExit }) {
           </>
         )}
 
-        <div className="er-actions">
-          <button className="td-btn primary big" onClick={onExit} type="button">Về trang chủ</button>
+        <div className="er-actions" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1.5rem' }}>
+          {counts.no > 0 && (
+            <button
+              className="td-btn"
+              style={{ background: '#ef4444', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              onClick={() => { window.location.hash = 'notebook'; }}
+              type="button"
+            >
+              <IcoX size={15} /> Sổ tay lỗi ({counts.no} câu)
+            </button>
+          )}
+          <button
+            className="td-btn"
+            style={{ background: 'rgba(47, 107, 255, 0.1)', color: '#2f6bff', border: '1px solid rgba(47, 107, 255, 0.3)' }}
+            onClick={() => { window.location.hash = 'stats'; }}
+            type="button"
+          >
+            Xem Thống kê bài làm
+          </button>
+          <button
+            className="td-btn"
+            style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', border: '1px solid rgba(139, 92, 246, 0.3)' }}
+            onClick={() => { window.location.hash = 'roadmap'; }}
+            type="button"
+          >
+            Lộ trình AI ôn tập
+          </button>
+          <button className="td-btn primary big" onClick={onExit} type="button">
+            Về trang chủ
+          </button>
         </div>
       </div>
     </div>

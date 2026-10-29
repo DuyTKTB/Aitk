@@ -21,7 +21,7 @@ export class VipRequiredError extends Error {
 /* ============================================================
    Check VIP từ 1 Firestore doc — hỗ trợ nhiều field name
    ============================================================ */
-function checkVipFromDoc(data) {
+export function checkVipFromDoc(data) {
   if (!data) return false;
 
   // Các field name có thể có (theo thứ tự ưu tiên)

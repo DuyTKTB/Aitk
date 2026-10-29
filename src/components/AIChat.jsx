@@ -17,8 +17,11 @@ import { getQuota, canSend, consumeQuota } from '../lib/quota.js';
 import { spendCredit, refundCredit } from '../lib/creditService.js';
 import { isVipActive } from '../lib/vipService.js';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
 import { MarkdownLike, CollapsibleText, ReasoningSteps } from './ChatMarkdown.jsx';
+import InteractiveQuizCanvas from './InteractiveQuizCanvas.jsx';
+import { parseQuizFromText } from '../lib/aiQuizParser.js';
 import * as tts from '../lib/tts.js';
 import {
   IcoPlus, IcoChat, IcoTrash, IcoChevron, IcoClose, IcoImage, IcoSend, IcoBrain,
@@ -433,6 +436,8 @@ export default function AIChat({ onExit }) {
   const [grade, setGrade] = useState('Lớp 11');
   /* Chế độ học: điều khiển cách AI trả lời (giải chi tiết / gợi ý từng bước / kiểm tra đáp án...) */
   const [mode, setMode] = useLocalStorage('cs-ai-mode', 'auto');
+  const [activeInteractiveQuiz, setActiveInteractiveQuiz] = useState(null);
+  const [plainViewMsgIds, setPlainViewMsgIds] = useState(() => new Set());
   const [busyId, setBusyId] = useState(null);
   const [streaming, setStreaming] = useState('');
   const [reasoning, setReasoning] = useState('');
@@ -507,6 +512,27 @@ export default function AIChat({ onExit }) {
   useEffect(() => {
     if (!visible) tts.stop();
   }, [visible]);
+
+  // Đóng Canvas khi đổi đoạn chat
+  useEffect(() => {
+    setActiveInteractiveQuiz(null);
+  }, [activeId]);
+
+  // Tự động mở Canvas khi AI vừa sinh xong một bộ bài tập trắc nghiệm mới
+  useEffect(() => {
+    if (loading || streaming) return;
+    if (!messages || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last && last.role === 'model' && last.text) {
+      const qData = parseQuizFromText(last.text);
+      if (qData?.quiz && !activeInteractiveQuiz) {
+        const isRecent = !last.createdAt || (Date.now() - last.createdAt < 20000);
+        if (isRecent) {
+          setActiveInteractiveQuiz(qData.quiz);
+        }
+      }
+    }
+  }, [messages, loading, streaming]);
 
   /* SYNC CHAT LÊN SERVER */
   useEffect(() => {
@@ -1427,6 +1453,21 @@ export default function AIChat({ onExit }) {
         source: 'ai-chat',
       });
       localStorage.setItem(key, JSON.stringify(existing));
+
+      try {
+        recordWrongAnswers(user?.uid || 'guest', [{
+          question: {
+            id: `ai_${Date.now()}`,
+            content: stripMarkdown(msgText).slice(0, 500),
+            explanation: 'Ghi chú lưu từ Trợ lý AI Chem',
+          },
+          userPicked: null,
+          isCorrect: false,
+          examTitle: 'Trợ lý AI Chem',
+          source: 'ai-chat',
+        }]);
+      } catch { /* ignore */ }
+
       setCopied('saved-' + msgIdx);
       setTimeout(() => setCopied((c) => (c === 'saved-' + msgIdx ? null : c)), 1500);
     } catch (e) {
@@ -1986,7 +2027,9 @@ export default function AIChat({ onExit }) {
           )}
         </header>
 
-        <main className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
+        <div className={`ds-stage-split ${activeInteractiveQuiz ? 'has-canvas' : ''}`}>
+          <div className="ds-stage-chat">
+            <main className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
           {!AI_READY && (
             <div className="ds-warning">
               <b>Chưa cấu hình API</b>
@@ -2093,15 +2136,61 @@ export default function AIChat({ onExit }) {
                             </div>
                           )}
 
-                          <div className={'ds-msg-content' + (m.isQuotaError ? ' quota-error' : '')}>
-                            {m.isQuotaError ? (
-                              <MarkdownLike text={m.text || ''} />
-                            ) : (
-                              <CollapsibleText defaultOpen={isLast}>
-                                <MarkdownLike text={m.text || ''} />
-                              </CollapsibleText>
-                            )}
-                          </div>
+                          {(() => {
+                            const quizData = !m.isQuotaError && m.text ? parseQuizFromText(m.text) : null;
+                            return (
+                              <div className={'ds-msg-content' + (m.isQuotaError ? ' quota-error' : '')}>
+                                {m.isQuotaError ? (
+                                  <MarkdownLike text={m.text || ''} />
+                                ) : quizData ? (
+                                  <div className="ds-gemini-quiz-block">
+                                    {quizData.introText && (
+                                      <div className="ds-gemini-intro">
+                                        <MarkdownLike text={quizData.introText} />
+                                      </div>
+                                    )}
+
+                                    <div
+                                      className={`ds-gemini-card ${activeInteractiveQuiz === quizData.quiz ? 'is-active' : ''}`}
+                                      onClick={() => setActiveInteractiveQuiz(quizData.quiz)}
+                                      role="button"
+                                      tabIndex={0}
+                                      title="Bấm để mở bài tập trên Canvas tương tác"
+                                    >
+                                      <div className="ds-gemini-card-body">
+                                        <h4 className="ds-gemini-card-title">{quizData.quiz.title}</h4>
+                                        <p className="ds-gemini-card-sub">
+                                          {activeInteractiveQuiz === quizData.quiz ? 'Đang mở trên Canvas tương tác' : 'Bắt đầu làm bài tương tác'}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      className="ds-gemini-plain-toggle"
+                                      onClick={() => setPlainViewMsgIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(i)) next.delete(i); else next.add(i);
+                                        return next;
+                                      })}
+                                    >
+                                      {plainViewMsgIds.has(i) ? 'Ẩn dạng câu hỏi văn bản' : 'Thử lại mà không dùng câu đố tương tác'}
+                                    </button>
+
+                                    {plainViewMsgIds.has(i) && (
+                                      <div className="ds-gemini-plain-box">
+                                        <MarkdownLike text={m.text || ''} />
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <CollapsibleText defaultOpen={isLast}>
+                                    <MarkdownLike text={m.text || ''} />
+                                  </CollapsibleText>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {m.stopped && <span className="ds-stopped">đã dừng — câu trả lời chưa đầy đủ</span>}
 
@@ -2450,6 +2539,18 @@ export default function AIChat({ onExit }) {
           <p className="ds-disclaimer">AI có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.</p>
         </div>
       </div>
+          </div>
+
+          {activeInteractiveQuiz && (
+            <aside className="ds-stage-canvas-panel" aria-label="Bảng tương tác trắc nghiệm AI">
+              <InteractiveQuizCanvas
+                quiz={activeInteractiveQuiz}
+                uid={uid}
+                onClose={() => setActiveInteractiveQuiz(null)}
+              />
+            </aside>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog state={confirmState} onClose={closeConfirm} />

@@ -4,6 +4,16 @@
    Features: class picker, avatars, emoji reactions, timestamps
    ============================================================ */
 import { useEffect, useRef, useState } from 'react';
+import { db } from '../../lib/firebase.js';
+import { doc, onSnapshot, addDoc, collection } from 'firebase/firestore';
+import {
+  getClassStreakStatus,
+  canNudgeClassMember,
+  recordClassMemberNudge,
+  fireStreakConfetti,
+  getVietnamDateKey,
+} from '../../lib/chatStreak.js';
+import { useToast } from '../../ui/index.jsx';
 import { getClassesByStudent, getClassesByTeacher } from '../../lib/classroom.js';
 import { listenClassChat, sendClassMessage } from '../../lib/social.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -69,7 +79,46 @@ export default function ClassChat({ onOpenProfile }) {
   const [msgs, setMsgs]         = useState([]);
   const [text, setText]         = useState('');
   const [reacting, setReacting] = useState(null); // msgId showing picker
+  const [liveClassDoc, setLiveClassDoc] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
   const listRef = useRef(null);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!classId) return undefined;
+    return onSnapshot(doc(db, 'classes', classId), (snap) => {
+      if (snap.exists()) setLiveClassDoc({ id: snap.id, ...snap.data() });
+    });
+  }, [classId]);
+
+  /* Confetti khi lớp đạt mốc chuỗi */
+  useEffect(() => {
+    if (!msgs.length) return;
+    const latest = msgs[msgs.length - 1];
+    if (latest?.isMilestone && Date.now() - (latest.createdAt || 0) < 15000) {
+      fireStreakConfetti();
+    }
+  }, [msgs]);
+
+  /* Cảnh báo khi còn < 3 giờ mà chưa đủ chuỗi lớp */
+  useEffect(() => {
+    if (!liveClassDoc?.id || !user?.uid) return;
+    const st = getClassStreakStatus(liveClassDoc, user.uid);
+    const today = getVietnamDateKey();
+    const warnKey = `cs_class_urgent_warn_${liveClassDoc.id}_${today}`;
+    if (st.urgent && !st.completedToday) {
+      try {
+        if (!localStorage.getItem(warnKey)) {
+          localStorage.setItem(warnKey, '1');
+          sendClassMessage(
+            liveClassDoc.id,
+            { uid: 'system', displayName: 'Hệ thống' },
+            `⏳ Lớp chỉ còn ${st.remainingTimeStr} để giữ chuỗi! Còn thiếu ${st.remainingNeeded} bạn nữa, cùng nhau cố lên nhé! 🔥`
+          );
+        }
+      } catch { /* ignore */ }
+    }
+  }, [liveClassDoc?.id, liveClassDoc?.streak?.lastDate]);
 
   /* Load classes */
   useEffect(() => {
@@ -127,6 +176,27 @@ export default function ClassChat({ onOpenProfile }) {
   );
 
   const currentClass = classes.find((c) => c.id === classId);
+  const targetClass = liveClassDoc || currentClass;
+  const streakStatus = getClassStreakStatus(targetClass, user?.uid);
+  const allMembers = Array.isArray(targetClass?.members) ? targetClass.members : [];
+  const pendingMembers = allMembers.filter(
+    (m) => m?.id && m.id !== user?.uid && !streakStatus.activeMembers.includes(m.id)
+  );
+
+  const handleNudgeMember = async (member) => {
+    if (!canNudgeClassMember(member.id, classId)) return;
+    recordClassMemberNudge(member.id, classId);
+    try {
+      await sendClassMessage(
+        classId,
+        user,
+        `@${member.name || 'bạn'} ơi, vào chat hoặc làm bài để cùng lớp giữ chuỗi hôm nay nhé! 🔥`
+      );
+      toast(`Đã gửi lời nhắc giữ chuỗi tới ${member.name}`);
+    } catch {
+      toast('Không gửi được lời nhắc');
+    }
+  };
 
   return (
     <div className="sw-root">
@@ -142,12 +212,104 @@ export default function ClassChat({ onOpenProfile }) {
             <option key={c.id} value={c.id}>{c.name || 'Lớp học'}</option>
           ))}
         </select>
-        {currentClass && (
+        {targetClass && (
           <span style={{ fontSize: '.68rem', color: 'var(--sw-ink3)', flexShrink: 0 }}>
-            {currentClass.memberCount ? `${currentClass.memberCount} thành viên` : ''}
+            {targetClass.memberCount ? `${targetClass.memberCount} thành viên` : ''}
           </span>
         )}
       </div>
+
+      {/* Pinned Class Streak Card */}
+      {targetClass && (
+        <div className="sw-class-pinned">
+          <div
+            className="sw-class-pinned-head"
+            onClick={() => setCollapsed((c) => !c)}
+            role="button"
+            tabIndex={0}
+            aria-expanded={!collapsed}
+          >
+            <div className="sw-class-pinned-title">
+              <span>🔥 Chuỗi {streakStatus.count} ngày</span>
+              {streakStatus.record > streakStatus.count && (
+                <small style={{ color: 'var(--sw-ink3)', fontWeight: 500 }}>(Kỷ lục: {streakStatus.record})</small>
+              )}
+              <span style={{ fontSize: '.7rem', color: 'var(--sw-ink2)' }}>
+                · Hôm nay: {streakStatus.activeCount}/{streakStatus.target} bạn
+              </span>
+            </div>
+            <button
+              type="button"
+              className="sw-class-toggle-btn"
+              aria-label={collapsed ? 'Mở rộng thẻ chuỗi' : 'Thu gọn thẻ chuỗi'}
+            >
+              <Svg d={collapsed ? ICONS.chevron : 'M18 15l-6-6-6 6'} size={14} />
+            </button>
+          </div>
+
+          {!collapsed && (
+            <div className="sw-class-pinned-body">
+              {/* Progress Bar */}
+              <div className="sw-class-progress-wrap">
+                <div className="sw-class-progress-labels">
+                  <span>
+                    {streakStatus.completedToday
+                      ? '🎉 Đã đạt mục tiêu giữ chuỗi hôm nay!'
+                      : `Cần thêm ${streakStatus.remainingNeeded} bạn tham gia`}
+                  </span>
+                  {streakStatus.urgent && !streakStatus.completedToday && (
+                    <span className="sw-streak-urgent">⏳ Còn {streakStatus.remainingTimeStr}</span>
+                  )}
+                </div>
+                <div className="sw-class-progress-bar">
+                  <div
+                    className={`sw-class-progress-fill ${streakStatus.completedToday ? 'done' : ''}`}
+                    style={{
+                      width: `${Math.min(100, Math.round((streakStatus.activeCount / streakStatus.target) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Pending Members */}
+              {pendingMembers.length > 0 && !streakStatus.completedToday && (
+                <div className="sw-class-members-list">
+                  <div style={{ fontSize: '.66rem', color: 'var(--sw-ink3)', fontWeight: 600 }}>
+                    Chưa tham gia hôm nay ({pendingMembers.length}):
+                  </div>
+                  {pendingMembers.slice(0, 6).map((m) => {
+                    const canNudge = canNudgeClassMember(m.id, classId);
+                    return (
+                      <div key={m.id} className="sw-class-member-item">
+                        <span className="sw-class-member-name">{m.name || 'Thành viên'}</span>
+                        <button
+                          type="button"
+                          className="sw-class-mini-nudge"
+                          disabled={!canNudge}
+                          onClick={() => handleNudgeMember(m)}
+                          title={canNudge ? 'Nhắc bạn này tham gia giữ chuỗi' : 'Đã nhắc hôm nay'}
+                        >
+                          {canNudge ? 'Nhắc' : 'Đã nhắc'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="sw-class-pinned-footer">
+                <span style={{ fontSize: '.68rem', color: 'var(--sw-ink3)' }}>
+                  {streakStatus.iAmActive ? '✓ Bạn đã tính điểm hôm nay' : '• Nhắn tin để tính điểm chuỗi'}
+                </span>
+                <a href="#leaderboard" className="sw-class-leaderboard-link">
+                  🏆 BXH Chuỗi →
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="sw-msgs grow" ref={listRef}>
@@ -155,6 +317,13 @@ export default function ClassChat({ onOpenProfile }) {
           <p className="sw-empty">Lớp chưa chat gì —<br />mở lời đầu tiên đi! 🎉</p>
         )}
         {msgs.map((m, i) => {
+          if (m.isSystem || m.uid === 'system') {
+            return (
+              <div key={m.id || i} className="sw-class-sys-msg">
+                {m.text}
+              </div>
+            );
+          }
           const mine = m.uid === user.uid;
           const prev = msgs[i - 1];
           const head = !prev || prev.uid !== m.uid;

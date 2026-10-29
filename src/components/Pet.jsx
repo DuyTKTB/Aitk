@@ -1,5 +1,51 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
-import { useLocalStorage, liveStreak, dayKey } from '../hooks.js';
+import { useLocalStorage, liveStreak, dayKey, useLiveStreak } from '../hooks.js';
+import { IconBook, IconSparkle } from './Icons.jsx';
+
+const IcoFire = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+  </svg>
+);
+
+const SvgFace = ({ mood, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+    <circle cx="12" cy="12" r="10" />
+    {mood === 'happy' && (
+      <>
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </>
+    )}
+    {mood === 'normal' && (
+      <>
+        <line x1="8" y1="15" x2="16" y2="15" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </>
+    )}
+    {mood === 'sleepy' && (
+      <>
+        <line x1="8" y1="15" x2="16" y2="15" />
+        <path d="M8 9h2M14 9h2" />
+      </>
+    )}
+    {mood === 'sad' && (
+      <>
+        <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </>
+    )}
+    {mood === 'hibernating' && (
+      <>
+        <path d="M7 10h3l-3 4h3" strokeWidth="1.5" />
+        <path d="M13 6h3l-3 4h3" strokeWidth="1.5" />
+      </>
+    )}
+  </svg>
+);
 
 export const STAGES = [
   [0, 'Tia lửa'],
@@ -25,11 +71,11 @@ const getSkin = (stage) => (stage >= 4 ? SKINS[2] : stage >= 2 ? SKINS[1] : SKIN
 const getScale = (stage) => 0.78 + stage * 0.05; // 0.78 → 1.03
 
 const MOODS = {
-  happy: '😊',
-  normal: '🙂',
-  sleepy: '😴',
-  sad: '😢',
-  hibernating: '💤',
+  happy: <SvgFace mood="happy" />,
+  normal: <SvgFace mood="normal" />,
+  sleepy: <SvgFace mood="sleepy" />,
+  sad: <SvgFace mood="sad" />,
+  hibernating: <SvgFace mood="hibernating" />,
 };
 
 function getMood(streak, fedToday) {
@@ -361,8 +407,9 @@ function Molecule({ x, y }) {
    PET CHÍNH
    ============================================================ */
 export default function Pet({ mini = false }) {
-  const [s] = useLocalStorage('cs-streak', { last: '', n: 0, total: 0 });
+  const { streakObj: s, count: live } = useLiveStreak();
   const [food] = useLocalStorage('cs-pet-food', 0);
+  const [lastFed] = useLocalStorage('cs-pet-lastfed', '');
   const [blink, setBlink] = useState(false);
   const [time, setTime] = useState(0);
   const [look, setLook] = useState({ x: 0, y: 0 });
@@ -370,9 +417,8 @@ export default function Pet({ mini = false }) {
   const wrapRef = useRef(null);
   const prevStageRef = useRef(null);
 
-  const total = Math.max(s.total || 0, s.n || 0);
-  const live = liveStreak(s);
-  const fed = s.last === dayKey();
+  const total = Math.max(s?.total || 0, s?.n || 0);
+  const fed = (s?.last === dayKey()) || (lastFed === dayKey());
 
   let st = 0;
   STAGES.forEach(([t], i) => {
@@ -578,25 +624,25 @@ export default function Pet({ mini = false }) {
 
       {!mini && (
         <div className="petinfo">
-          <h3>
-            🔥 Ember — {STAGES[st][1]}{' '}
-            <span className="pet-mood-badge" title={`Tâm trạng: ${mood}`}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IcoFire size={18} /> Ember — {STAGES[st][1]}{' '}
+            <span className="pet-mood-badge" title={`Tâm trạng: ${mood}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
               {MOODS[mood]}
             </span>
           </h3>
 
           <p className="hint">
             {fed
-              ? 'Hôm nay Ember đã được nuôi 💖'
+              ? 'Hôm nay Ember đã được nuôi dưỡng đầy đủ!'
               : live
               ? 'Làm 1 quiz hoặc 1 phiên Pomodoro để giữ chuỗi!'
               : 'Ember đang ngủ đông. Học hôm nay để thắp lại ngọn lửa.'}
           </p>
 
           <div className="row" style={{ flexWrap: 'wrap', gap: '.4rem' }}>
-            <span className="badge">🔥 {live} ngày liên tiếp</span>
-            <span className="badge">📚 {total} ngày đã học</span>
-            <span className="badge">🍎 {food} thức ăn</span>
+            <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IcoFire size={12} /> {live} ngày liên tiếp</span>
+            <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconBook size={12} /> {total} ngày đã học</span>
+            <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconSparkle size={12} /> {food} thức ăn</span>
           </div>
 
           <div className="bar" aria-label="Tiến độ lên cấp">

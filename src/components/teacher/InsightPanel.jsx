@@ -104,9 +104,13 @@ export default function InsightPanel({
     loadInsights(false);
   }, [insightsData, className, subject]);
 
-  // Phổ điểm KDE mô phỏng
+  // Phổ điểm thực tế theo 5 dải điểm: 0-2, 2-4, 4-6, 6-8, 8-10 (nếu chưa có bài nộp thì hiển thị đường chuẩn tham khảo)
   const scoreBuckets = useMemo(() => {
-    // 5 dải điểm: 0-2 (kém), 2-4 (yếu), 4-6 (trung bình), 6-8 (khá), 8-10 (giỏi)
+    const bins = Array.isArray(insightsData?.scoreBins) ? insightsData.scoreBins : null;
+    const total = bins ? bins.reduce((a, b) => a + b, 0) : 0;
+    if (bins && total > 0) {
+      return bins.map((cnt) => Math.round((cnt / total) * 100));
+    }
     const base = [
       Math.max(2, Math.round((100 - (insightsData?.avgPct || 50)) * 0.1)),
       Math.max(4, Math.round((insightsData?.atRisk?.length || 2) * 1.5)),

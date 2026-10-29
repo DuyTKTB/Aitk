@@ -69,6 +69,7 @@ export default function CreateExamPage({
   classInfo,
   classes = [],
   classInsights,
+  initialPreset = null,
   grades = [],
   subjects = [],
   onDone,
@@ -81,6 +82,7 @@ export default function CreateExamPage({
   const [saving, setSaving] = useState(false);
   const dirtyRef = useRef(false);
   const [pendingDraft, setPendingDraft] = useState(() => readManualDraft(classInfo?.id));
+  const [confirmOverwritePayload, setConfirmOverwritePayload] = useState(null);
 
   /* FIX #3: Ref tới form instance để gọi replaceContent() thay vì remount */
   const formRef = useRef(null);
@@ -116,18 +118,8 @@ export default function CreateExamPage({
     if (has) writeManualDraft(classInfo?.id, snap);
   }, [classInfo?.id]);
 
-  /* FIX #3: AI sinh đề xong → gọi form API để thay thế nội dung,
-     KHÔNG remount (giữ state khác như proctor settings, opensAt...) */
-  const handleAIGenerated = useCallback((payload) => {
+  const applyAiPayloadToForm = useCallback((payload) => {
     const { questions, meta, warnings = [] } = payload;
-
-    // Cảnh báo nếu đang có dữ liệu chưa lưu
-    if (dirtyRef.current) {
-      const ok = window.confirm(
-        'Tab "Soạn thủ công" đang có nội dung chưa lưu. Thay bằng đề AI này?'
-      );
-      if (!ok) return;
-    }
 
     // Truyền dữ liệu vào form qua ref thay vì remount
     if (formRef.current?.replaceContent) {
@@ -168,6 +160,17 @@ export default function CreateExamPage({
         : `AI đã tạo ${questions.length} câu — bấm "Lưu đề" để hoàn tất`
     );
   }, [toast]);
+
+  /* FIX #3: AI sinh đề xong → gọi form API để thay thế nội dung,
+     KHÔNG remount (giữ state khác như proctor settings, opensAt...) */
+  const handleAIGenerated = useCallback((payload) => {
+    // Cảnh báo qua hộp thoại nội bộ nếu đang có dữ liệu chưa lưu
+    if (dirtyRef.current) {
+      setConfirmOverwritePayload(payload);
+      return;
+    }
+    applyAiPayloadToForm(payload);
+  }, [applyAiPayloadToForm]);
 
   /* Lưu đề */
   const handleSave = async (data) => {
@@ -262,11 +265,48 @@ export default function CreateExamPage({
           classes={classes.length ? classes : classInfo ? [classInfo] : []}
           initialClass={classInfo}
           classInsights={classInsights}
+          initialPreset={initialPreset}
           onGenerated={handleAIGenerated}
           onDone={onDone}
           onCancel={onCancel}
         />
       </div>
+
+      {/* Hộp xác nhận nội bộ khi ghi đè form Soạn thủ công */}
+      {confirmOverwritePayload && (
+        <div
+          className="vt-backdrop"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmOverwritePayload(null); }}
+          role="presentation"
+        >
+          <div className="vt-modal sm" role="dialog" aria-modal="true" aria-label="Xác nhận thay thế nội dung">
+            <header className="vt-modal-head">
+              <h3>Thay thế nội dung đang soạn?</h3>
+            </header>
+            <div className="vt-modal-body">
+              <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.5 }}>
+                Tab <b>“Soạn thủ công”</b> đang có nội dung chưa lưu. Bạn có chắc muốn thay thế bằng bộ câu hỏi vừa tạo từ AI không?
+              </p>
+            </div>
+            <footer className="vt-modal-foot">
+              <button type="button" className="vt-btn" onClick={() => setConfirmOverwritePayload(null)}>
+                Giữ lại bản đang soạn
+              </button>
+              <button
+                type="button"
+                className="vt-btn primary"
+                onClick={() => {
+                  const p = confirmOverwritePayload;
+                  setConfirmOverwritePayload(null);
+                  applyAiPayloadToForm(p);
+                }}
+              >
+                Thay bằng đề AI
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
 
       <div hidden={tab !== 'manual'}>
         {/* FIX #3: KHÔNG dùng key để tránh remount. Dùng ref để expose API. */}

@@ -1,0 +1,41 @@
+{
+  "_huong_dan": "Tệp mẫu cho npm run import:questions. Mỗi câu BẮT BUỘC có topic_id đúng id trong src/data/chemTopics.js thì Lộ trình kiến thức mới tính được.",
+  "exam": {
+    "title": "Đề mẫu — Cân bằng hoá học (Lớp 11)",
+    "grade": "Lớp 11",
+    "subject": "Hóa học",
+    "duration": 20,
+    "program": "2018",
+    "publish": false
+  },
+  "questions": [
+    {
+      "content": "Phát biểu nào sau đây đúng về phản ứng thuận nghịch?",
+      "options": [
+        "Chỉ xảy ra theo một chiều duy nhất.",
+        "Xảy ra đồng thời theo hai chiều trong cùng điều kiện.",
+        "Luôn kết thúc khi hết chất phản ứng.",
+        "Không bao giờ đạt trạng thái cân bằng."
+      ],
+      "correct": 1,
+      "explanation": "Phản ứng thuận nghịch xảy ra đồng thời theo cả hai chiều trong cùng điều kiện, nên không bao giờ kết thúc hoàn toàn.",
+      "topic_id": "c11-equilibrium",
+      "difficulty": "easy",
+      "question_type": "single_choice"
+    },
+    {
+      "content": "Khi tăng nồng độ chất phản ứng, cân bằng chuyển dịch theo chiều nào?",
+      "options": [
+        "Chiều nghịch",
+        "Chiều thuận",
+        "Không chuyển dịch",
+        "Phụ thuộc chất xúc tác"
+      ],
+      "correct": 1,
+      "explanation": "Theo nguyên lí Le Chatelier, tăng nồng độ chất tham gia làm cân bằng chuyển dịch theo chiều làm giảm nồng độ đó, tức chiều thuận.",
+      "topic_id": "c11-equilibrium",
+      "difficulty": "medium",
+      "question_type": "single_choice"
+    }
+  ]
+}

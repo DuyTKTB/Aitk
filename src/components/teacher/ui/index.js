@@ -15,3 +15,16 @@ export { default as Sparkline } from './Sparkline.jsx';
 export { default as Skeleton } from './Skeleton.jsx';
 export { default as Orb } from './Orb.jsx';
 export { default as AIPulse } from './AIPulse.jsx';
+export {
+  TButton,
+  TCard,
+  TBadge,
+  TTabs,
+  TTable,
+  TModal,
+  TDrawer,
+  TToast,
+  TEmptyState,
+  TTooltip,
+  TViewToggle,
+} from './TeacherUIKit.jsx';

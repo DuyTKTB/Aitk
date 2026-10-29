@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { IcoCrown, IconStar } from './Icons.jsx';
 
 /* ============================================================
    ToolsKit — tiện ích dùng chung cho ToolsPage + PromptLibrary
@@ -226,10 +227,15 @@ export function PriceBadge({ price = 'freemium' }) {
     free: { label: 'Miễn phí', cls: 'free' },
     freemium: { label: 'Freemium', cls: 'freemium' },
     paid: { label: 'Trả phí', cls: 'paid' },
-    vip: { label: '👑 Siêu VIP', cls: 'vip' },
+    vip: { label: 'Siêu VIP', cls: 'vip', isVip: true },
   };
   const m = META[price] || META.freemium;
-  return <span className={'price-badge ' + m.cls}>{m.label}</span>;
+  return (
+    <span className={'price-badge ' + m.cls} style={m.isVip ? { display: 'inline-flex', alignItems: 'center', gap: 4 } : undefined}>
+      {m.isVip && <IcoCrown size={12} />}
+      {m.label}
+    </span>
+  );
 }
 export function CompareBar({ items = [], onRemove, onClear, onOpen }) {
   if (items.length === 0) return null;
@@ -288,7 +294,11 @@ export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, 
           <div className="quickview-title">
             <h2>
               {tool.name}
-              {isELECAI && <span className="ELECAI-badge-inline">👑 Siêu VIP</span>}
+              {isELECAI && (
+                <span className="ELECAI-badge-inline" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <IcoCrown size={12} /> Siêu VIP
+                </span>
+              )}
             </h2>
             <span className="quickview-domain">{tool.domain}</span>
             {meta?.rating && <Rating value={meta.rating} showNumber />}
@@ -358,8 +368,9 @@ export function QuickView({ tool, meta, compare, onClose, onFav, isFav, onCopy, 
           >
             {isELECAI ? 'Dùng ngay →' : 'Mở công cụ ↗'}
           </a>
-          <button type="button" className={'quickview-btn' + (isFav ? ' on' : '')} onClick={onFav}>
-            {isFav ? '★ Đã lưu' : '☆ Lưu'}
+          <button type="button" className={'quickview-btn' + (isFav ? ' on' : '')} onClick={onFav} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <IconStar size={13} on={isFav} />
+            {isFav ? 'Đã lưu' : 'Lưu'}
           </button>
           <button type="button" className="quickview-btn" onClick={onCopy}>Sao chép link</button>
           <button type="button" className="quickview-btn" onClick={onShare}>Chia sẻ</button>

@@ -100,6 +100,9 @@ const COMMANDS = [
   { id: 'table',      group: 'Điều hướng', label: 'Bảng tuần hoàn',     Icon: IconAtom,      keywords: 'pt bang tuan hoan' },
   { id: 'tools',      group: 'Điều hướng', label: 'Công cụ',            Icon: IconTools,     keywords: 'tools cong cu' },
   { id: 'profile',    group: 'Điều hướng', label: 'Trang cá nhân',      Icon: IconUser,      keywords: 'profile ca nhan' },
+  { id: 'roadmap',    group: 'Điều hướng', label: 'Lộ trình kiến thức', Icon: IcoBook,       keywords: 'roadmap lo trinh kien thuc tien do' },
+  { id: 'roadmap?level=Lớp 12', group: 'Điều hướng', label: 'Lộ trình Lớp 12',   Icon: IcoBook,       keywords: 'roadmap lop 12 lo trinh on thi thpt' },
+  { id: 'roadmap?level=Lớp 11', group: 'Điều hướng', label: 'Lộ trình Lớp 11',   Icon: IcoBook,       keywords: 'roadmap lop 11 lo trinh' },
   { id: 'formulas',   group: 'Công cụ',    label: 'Công thức nhanh',    Icon: IconCalc,      keywords: 'formula cong thuc' },
   { id: 'analyze',    group: 'Công cụ',    label: 'Phân tích hợp chất', Icon: IconMicroscope,keywords: 'analyze phan tich' },
   { id: 'balance',    group: 'Công cụ',    label: 'Cân bằng PTHH',      Icon: IconScale,     keywords: 'balance can bang pthh' },
@@ -122,18 +125,34 @@ const COMMANDS = [
   { id: 'action:random',  group: 'Hành động', label: 'Đi tới trang ngẫu nhiên', Icon: IcoRandom,     keywords: 'random ngau nhien' },
 ];
 
+/* Bỏ dấu + hạ chữ thường: gõ "lo trinh" hay "lộ trình" đều ra, gõ "elecai" khớp "ELECAI" */
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+/* Điểm khớp: nhãn bắt đầu bằng từ khoá > nhãn chứa > từ khoá phụ > tên nhóm */
+function scoreOf(cmd, q) {
+  const label = norm(cmd.label);
+  if (label.startsWith(q)) return 4;
+  if (label.includes(q)) return 3;
+  if (norm(cmd.keywords).includes(q)) return 2;
+  if (norm(cmd.group).includes(q)) return 1;
+  return 0;
+}
+
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
+  const lastFocus = useRef(null);
 
-  /* ---------- Mở / đóng bằng Ctrl/Cmd + K ---------- */
+  /* ---------- Mở / đóng bằng Ctrl/Cmd + K hoặc Custom Event ---------- */
   useEffect(() => {
     const onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
+        if (!open) lastFocus.current = document.activeElement;
         setOpen((o) => !o);
         setQuery('');
         setSelectedIdx(0);
@@ -143,27 +162,44 @@ export default function CommandPalette() {
         setOpen(false);
       }
     };
+    const onCustomOpen = () => {
+      if (!open) lastFocus.current = document.activeElement;
+      setOpen(true);
+      setQuery('');
+      setSelectedIdx(0);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('open-command-palette', onCustomOpen);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('open-command-palette', onCustomOpen);
+    };
   }, [open]);
 
-  /* ---------- Focus input khi mở ---------- */
+  /* ---------- Focus input khi mở, trả focus về chỗ cũ khi đóng ---------- */
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
+    if (open) {
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+    const el = lastFocus.current;
+    if (el && el.focus && document.contains(el)) el.focus();
+    return undefined;
   }, [open]);
 
   /* ---------- Lọc commands ---------- */
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = norm(query).trim();
     if (!q) return COMMANDS;
-    return COMMANDS.filter((c) =>
-      c.label.toLowerCase().includes(q) ||
-      (c.keywords || '').includes(q) ||
-      c.group.toLowerCase().includes(q)
-    );
+    return COMMANDS
+      .map((c, i) => ({ c, i, s: scoreOf(c, q) }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s || a.i - b.i)
+      .map((x) => x.c);
   }, [query]);
 
-  /* ---------- Nhóm theo group ---------- */
+  /* ---------- Nhóm theo group; danh sách phẳng khớp ĐÚNG thứ tự hiển thị
+     (chọn bằng phím mũi tên không bị lệch khi kết quả xen kẽ nhiều nhóm) ---------- */
   const grouped = useMemo(() => {
     const map = {};
     filtered.forEach((c) => {
@@ -172,17 +208,18 @@ export default function CommandPalette() {
     });
     return map;
   }, [filtered]);
+  const flat = useMemo(() => Object.values(grouped).flat(), [grouped]);
 
   /* ---------- Reset selection khi query đổi ---------- */
   useEffect(() => {
     setSelectedIdx(0);
-  }, [filtered.length]);
+  }, [query]);
 
   /* ---------- Cuộn item đang chọn vào view ---------- */
   useEffect(() => {
     if (!listRef.current) return;
     const el = listRef.current.querySelector(`[data-idx="${selectedIdx}"]`);
-    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el?.scrollIntoView({ block: 'nearest' });
   }, [selectedIdx]);
 
   /* ---------- Chạy command ---------- */
@@ -219,21 +256,16 @@ export default function CommandPalette() {
   const onKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIdx((i) => Math.min(filtered.length - 1, i + 1));
+      setSelectedIdx((i) => Math.min(flat.length - 1, i + 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIdx((i) => Math.max(0, i - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const cmd = filtered[selectedIdx];
+      const cmd = flat[selectedIdx];
       if (cmd) runCommand(cmd);
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      setSelectedIdx(0);
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      setSelectedIdx(filtered.length - 1);
     }
+    /* Home/End để nguyên cho ô nhập (di chuyển con trỏ) */
   };
 
   if (!open) return null;
@@ -261,15 +293,19 @@ export default function CommandPalette() {
             onKeyDown={onKeyDown}
             placeholder="Tìm công cụ, trang, hành động…"
             aria-label="Tìm lệnh"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="cp-listbox"
+            aria-activedescendant={flat[selectedIdx] ? `cp-opt-${selectedIdx}` : undefined}
             autoComplete="off"
             spellCheck="false"
           />
           <kbd>ESC</kbd>
         </div>
 
-        <div className="cp-list" ref={listRef}>
+        <div className="cp-list" ref={listRef} id="cp-listbox" role="listbox" aria-label="Kết quả">
           {filtered.length === 0 ? (
-            <p className="cp-empty">
+            <p className="cp-empty" role="status">
               Không tìm thấy kết quả nào cho &ldquo;{query}&rdquo;
             </p>
           ) : (
@@ -283,6 +319,10 @@ export default function CommandPalette() {
                   return (
                     <button
                       key={c.id}
+                      id={`cp-opt-${idx}`}
+                      role="option"
+                      aria-selected={selectedIdx === idx}
+                      tabIndex={-1}
                       type="button"
                       data-idx={idx}
                       className={'cp-item' + (selectedIdx === idx ? ' on' : '')}

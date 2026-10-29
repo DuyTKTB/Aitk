@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 /* Lõi tính toán dùng chung với lớp công cụ AI (aiTools.js) — một nguồn sự thật duy nhất */
 import { parseFormula, molarMass } from '../lib/chemBalance.js';
+import { IconAlert } from './Icons.jsx';
 
 const fmt = (n, digits = 4) => {
   if (isNaN(n) || !isFinite(n)) return '—';
@@ -57,8 +58,8 @@ export default function MolarMass() {
 
         {empty && <p className="hint">Nhập công thức để bắt đầu.</p>}
         {err && (
-          <p className="hint" style={{ color: 'var(--acc)' }}>
-            ⚠️ {err}
+          <p className="hint" style={{ color: 'var(--acc)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <IconAlert size={14} /> {err}
           </p>
         )}
 

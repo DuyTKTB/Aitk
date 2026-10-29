@@ -1,13 +1,13 @@
 /* ============================================================
-   ActivityPage.jsx — Nhật ký làm bài (Vitality)
+   ActivityPage.jsx — Nhật ký làm bài (Hiển thị Học sinh + Lọc phổ điểm + Xuất CSV)
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import AdminShell, { Topbar, Donut } from './AdminShell.jsx';
+import AdminShell, { Topbar, Avatar, downloadCsv } from './AdminShell.jsx';
 import { Modal } from './AdminUI.jsx';
 import {
-  IconActivity, IconClock, IconEye, IconTrophy, IconRefresh,
-  IconCheck, IconClose, IconChart, IconTrendUp, IconWarning,
+  IconActivity, IconClock, IconEye, IconRefresh,
+  IconCheck, IconClose, IconChart, IconWarning, IconDownload,
 } from './AdminIcons.jsx';
 import { formatDateTime, friendlyError } from './adminUtils.js';
 
@@ -26,10 +26,13 @@ const formatTime = (sec) => {
 
 export default function ActivityPage() {
   const [attempts, setAttempts] = useState([]);
+  const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterDays, setFilterDays] = useState(7);
   const [filterSubject, setFilterSubject] = useState('all');
+  const [scoreFilter, setScoreFilter] = useState('all'); // all | excellent | pass | fail
+  const [search, setSearch] = useState('');
   const [subjects, setSubjects] = useState([]);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -39,7 +42,7 @@ export default function ActivityPage() {
   const say = useCallback((t) => {
     clearTimeout(toastTimer.current);
     setToast(t);
-    toastTimer.current = setTimeout(() => setToast(null), 2400);
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -87,7 +90,20 @@ export default function ActivityPage() {
       const { data, error: e } = await q;
       if (e) throw e;
       if (my !== reqId.current) return;
-      setAttempts(data || []);
+      const rows = data || [];
+      setAttempts(rows);
+
+      // Tải thông tin học sinh làm bài
+      const uids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
+      if (uids.length) {
+        const { data: profData } = await supabase
+          .from('profiles')
+          .select('id, display_name, email, avatar_url')
+          .in('id', uids.slice(0, 200));
+        if (profData && my === reqId.current) {
+          setProfiles(Object.fromEntries(profData.map((p) => [p.id, p])));
+        }
+      }
     } catch (e) {
       if (my !== reqId.current) return;
       setError(friendlyError(e));
@@ -105,8 +121,50 @@ export default function ActivityPage() {
     const avg = attempts.length ? attempts.reduce((s, a) => s + scoreNum(a.score), 0) / attempts.length : 0;
     const passed = attempts.filter((a) => scoreNum(a.score) >= 5).length;
     const excellent = attempts.filter((a) => scoreNum(a.score) >= 8).length;
-    return { today, total: attempts.length, avg, passed, excellent };
+    const failed = attempts.length - passed;
+    return { today, total: attempts.length, avg, passed, excellent, failed };
   }, [attempts]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return attempts.filter((a) => {
+      const s = scoreNum(a.score);
+      if (scoreFilter === 'excellent' && s < 8) return false;
+      if (scoreFilter === 'pass' && s < 5) return false;
+      if (scoreFilter === 'fail' && s >= 5) return false;
+      if (!q) return true;
+      const prof = profiles[a.user_id] || {};
+      return (
+        (a.exam?.title || '').toLowerCase().includes(q) ||
+        (prof.display_name || '').toLowerCase().includes(q) ||
+        (prof.email || '').toLowerCase().includes(q) ||
+        String(a.user_id || '').toLowerCase().includes(q)
+      );
+    });
+  }, [attempts, scoreFilter, search, profiles]);
+
+  const handleExportCsv = () => {
+    if (!filtered.length) return say('Chưa có lượt làm bài để xuất.');
+    const rows = [['Thời gian', 'Học sinh', 'Email', 'Đề thi', 'Môn', 'Lớp', 'Chế độ', 'Điểm', 'Số câu đúng', 'Tổng câu', 'Thời gian làm (giây)']];
+    filtered.forEach((a) => {
+      const p = profiles[a.user_id] || {};
+      rows.push([
+        formatDateTime(a.started_at),
+        p.display_name || a.user_id || 'Khách',
+        p.email || '',
+        a.exam?.title || 'Đề đã xóa',
+        a.exam?.subject?.name || '',
+        a.exam?.grade?.name || '',
+        a.mode === 'exam' ? 'Thi thử' : 'Luyện tập',
+        scoreNum(a.score).toFixed(1),
+        a.correct_count ?? 0,
+        a.total_questions ?? 0,
+        a.time_spent ?? 0,
+      ]);
+    });
+    downloadCsv(`hoat-dong-lam-bai-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    say(`Đã xuất ${filtered.length} lượt làm bài`);
+  };
 
   const openDetail = async (attempt) => {
     setDetail({ attempt, answers: null });
@@ -134,51 +192,49 @@ export default function ActivityPage() {
     }
   };
 
+  const tabs = [
+    { key: 'all',       label: 'Tất cả',       count: stats.total },
+    { key: 'excellent', label: 'Xuất sắc ≥8',  count: stats.excellent },
+    { key: 'pass',      label: 'Đạt ≥5',       count: stats.passed },
+    { key: 'fail',      label: 'Chưa đạt <5',  count: stats.failed },
+  ];
+
   return (
     <AdminShell active="activity" onChange={(k) => { window.location.hash = `admin/${k}`; }}>
       <Topbar
-        title="Hoạt động"
-        subtitle={`Nhật ký làm bài ${filterDays === 1 ? 'hôm nay' : `${filterDays} ngày qua`}`}
+        title="Nhật ký Hoạt động"
+        subtitle={`Theo dõi lượt làm bài ${filterDays === 1 ? 'hôm nay' : `${filterDays} ngày qua`}`}
+        tabs={tabs}
+        active={scoreFilter}
+        onTab={setScoreFilter}
+        search={search}
+        onSearch={setSearch}
+        placeholder="Tìm tên học sinh hoặc tên đề…"
       />
 
-      {/* ===== HERO ===== */}
-      <div className="vt-row-hero">
-        <div className="vt-hero">
-          <div className="vt-hero-left">
-            <span className="vt-hero-label">Lượt làm bài</span>
-            <div className="vt-hero-num">
-              <b>{stats.total}</b>
-              <span>lượt</span>
-            </div>
-            <dl className="vt-hero-facts">
-              <div><dt>Hôm nay</dt><dd>{stats.today}</dd></div>
-              <div><dt>Điểm TB</dt><dd>{stats.avg.toFixed(1)}</dd></div>
-              <div><dt>Đạt ≥5</dt><dd>{stats.passed}</dd></div>
-              <div><dt>Xuất sắc ≥8</dt><dd>{stats.excellent}</dd></div>
-            </dl>
-          </div>
-          <div className="vt-hero-right">
-            <div className="vt-hero-chart-head">
-              <b>Tỷ lệ đạt</b>
-            </div>
-            <div className="vt-donut-row">
-              <Donut
-                value={stats.passed}
-                max={Math.max(stats.total, 1)}
-                size={130}
-                stroke={12}
-                tone={stats.total && stats.passed / stats.total < 0.5 ? 'danger' : 'acc'}
-              >
-                <strong>{stats.total ? Math.round((stats.passed / stats.total) * 100) : 0}<sup>%</sup></strong>
-                <small>đạt ≥5</small>
-              </Donut>
-              <ul className="vt-rank" style={{ flex: 1 }}>
-                <li><span className="vt-rank-n r1">✓</span><b>Đạt</b><span className="vt-rank-score">{stats.passed}</span></li>
-                <li><span className="vt-rank-n">×</span><b>Chưa đạt</b><span className="vt-rank-score">{stats.total - stats.passed}</span></li>
-                <li><span className="vt-rank-n r2">★</span><b>Xuất sắc</b><span className="vt-rank-score">{stats.excellent}</span></li>
-              </ul>
-            </div>
-          </div>
+      {/* ===== COMPACT KPI STRIP ===== */}
+      <div className="ad-kpi-strip ad-kpi-strip--4">
+        <div className="vt-card ad-mini-kpi">
+          <span>Tổng lượt làm bài</span>
+          <b>{stats.total}</b>
+          <small>Hôm nay: {stats.today} lượt</small>
+        </div>
+        <div className="vt-card ad-mini-kpi">
+          <span>Điểm trung bình</span>
+          <b style={{ color: scoreColor(stats.avg) }}>{stats.avg.toFixed(1)}</b>
+          <small>Thang điểm 10</small>
+        </div>
+        <div className="vt-card ad-mini-kpi">
+          <span>Tỷ lệ đạt (≥5.0)</span>
+          <b style={{ color: '#16a34a' }}>
+            {stats.total ? Math.round((stats.passed / stats.total) * 100) : 0}%
+          </b>
+          <small>{stats.passed} đạt · {stats.excellent} xuất sắc (≥8)</small>
+        </div>
+        <div className="vt-card ad-mini-kpi ad-mini-kpi--actions">
+          <button type="button" className="vt-btn sm" onClick={handleExportCsv}>
+            <IconDownload size={13} /> Xuất báo cáo CSV
+          </button>
         </div>
       </div>
 
@@ -201,7 +257,7 @@ export default function ActivityPage() {
               {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
+          <button type="button" className="vt-btn sm" onClick={load} disabled={loading} style={{ marginLeft: 'auto' }}>
             <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
           </button>
         </div>
@@ -229,7 +285,7 @@ export default function ActivityPage() {
             ))}
           </div>
         </div>
-      ) : attempts.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="vt-empty">
           <span><IconActivity size={30} /></span>
           <h3>Chưa có lượt làm bài nào</h3>
@@ -240,7 +296,7 @@ export default function ActivityPage() {
           <header className="vt-card-head">
             <h3 className="vt-card-title">
               <IconActivity size={16} className="vt-title-ico" />
-              Nhật ký ({attempts.length})
+              Nhật ký ({filtered.length})
             </h3>
           </header>
           <div className="vt-table-wrap">
@@ -248,6 +304,7 @@ export default function ActivityPage() {
               <thead>
                 <tr>
                   <th>Thời gian</th>
+                  <th>Học sinh</th>
                   <th>Đề thi</th>
                   <th>Chế độ</th>
                   <th>Điểm</th>
@@ -257,15 +314,27 @@ export default function ActivityPage() {
                 </tr>
               </thead>
               <tbody>
-                {attempts.map((a) => {
+                {filtered.map((a) => {
                   const s = scoreNum(a.score);
+                  const prof = profiles[a.user_id];
                   return (
                     <tr key={a.id}>
-                      <td style={{ fontSize: '.82rem', color: 'var(--mut)', whiteSpace: 'nowrap' }}>
+                      <td style={{ fontSize: '.8rem', color: 'var(--mut)', whiteSpace: 'nowrap' }}>
                         {formatDateTime(a.started_at)}
                       </td>
                       <td>
-                        <b style={{ display: 'block', fontSize: '.88rem' }}>{a.exam?.title || 'Đề đã xóa'}</b>
+                        <div className="vt-user-cell">
+                          <Avatar name={prof?.display_name || 'H'} size={28} />
+                          <div style={{ minWidth: 0 }}>
+                            <b style={{ display: 'block', fontSize: '.84rem' }}>
+                              {prof?.display_name || (a.user_id ? `HS (${String(a.user_id).slice(0, 6)})` : 'Khách')}
+                            </b>
+                            {prof?.email && <small style={{ color: 'var(--mut)', fontSize: '.7rem' }}>{prof.email}</small>}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <b style={{ display: 'block', fontSize: '.86rem' }}>{a.exam?.title || 'Đề đã xóa'}</b>
                         <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>
                           {[a.exam?.subject?.name, a.exam?.grade?.name].filter(Boolean).join(' · ')}
                         </small>
@@ -290,7 +359,7 @@ export default function ActivityPage() {
                           type="button"
                           className="vt-icon-btn"
                           onClick={() => openDetail(a)}
-                          title="Xem chi tiết"
+                          title="Xem chi tiết bài làm"
                         >
                           <IconEye size={14} />
                         </button>
@@ -303,7 +372,7 @@ export default function ActivityPage() {
           </div>
           {attempts.length >= LIMIT && (
             <p className="vt-muted" style={{ marginTop: '1rem', fontSize: '.78rem' }}>
-              Chỉ hiển thị {LIMIT} lượt gần nhất. Thu hẹp khoảng thời gian hoặc chọn môn để xem chính xác hơn.
+              Hiển thị {LIMIT} lượt gần nhất. Thu hẹp khoảng thời gian hoặc chọn môn để xem sâu hơn.
             </p>
           )}
         </div>
@@ -313,6 +382,7 @@ export default function ActivityPage() {
       {detail && (
         <Modal
           title={detail.attempt.exam?.title || 'Đề đã xóa'}
+          subtitle={profiles[detail.attempt.user_id]?.display_name || ''}
           size="lg"
           onClose={() => setDetail(null)}
         >

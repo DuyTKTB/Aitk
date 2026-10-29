@@ -127,6 +127,199 @@
   color: #06b6d4;
 }
 
+.tsh-stat-pill.purple .tsh-stat-num {
+  color: #8b5cf6;
+}
+
+/* ============ 4-STEP WIZARD BAR ============ */
+.tsh-wizard-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 0.75rem;
+  position: relative;
+  z-index: 1;
+}
+
+.tsh-wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--acc, #0071e3) 18%, transparent);
+  background: color-mix(in srgb, var(--panel, #fff) 65%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--ink, #1d1d1f);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tsh-wizard-step:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--acc, #0071e3) 45%, transparent);
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--acc, #0071e3) 35%, transparent);
+}
+
+.tsh-wizard-step.active {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--acc, #0071e3) 14%, var(--panel, #fff)),
+    var(--panel, #fff));
+  border-color: var(--acc, #0071e3);
+}
+
+.tsh-wizard-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--acc, #0071e3), #6366f1);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.tsh-wizard-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tsh-wizard-info b {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--ink, #1d1d1f);
+}
+
+.tsh-wizard-info small {
+  font-size: 0.73rem;
+  color: var(--mut, #86868b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============ TOOLBAR & FILTERS ============ */
+.tsh-toolbar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tsh-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.tsh-search-box {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 12px;
+  background: var(--panel, #fff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  color: var(--mut, #86868b);
+}
+
+.tsh-search-box input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink, #1d1d1f);
+  font: 500 0.85rem var(--sans, system-ui);
+  font-family: inherit;
+}
+
+.tsh-filter-select {
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  background: var(--panel, #fff);
+  color: var(--ink, #1d1d1f);
+  font: 600 0.82rem var(--sans, system-ui);
+  font-family: inherit;
+  cursor: pointer;
+  outline: 0;
+}
+
+.tsh-view-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink, #000) 6%, transparent);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+
+.tsh-view-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mut, #86868b);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.tsh-view-btn.on {
+  background: var(--panel, #fff);
+  color: var(--acc, #0071e3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ============ LIST MODE & SPECIAL PILL ============ */
+.tsh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tsh-exam-card.list-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.tsh-exam-card.list-row .tsh-exam-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.tsh-exam-card.list-row .tsh-exam-actions {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.tsh-special-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .tsh-stat-label {
   font-size: 0.72rem;
   color: var(--mut, #86868b);
@@ -504,12 +697,41 @@
     grid-template-columns: 1fr;
   }
 
+  .tsh-wizard-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .tsh-exam-card.list-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .tsh-exam-actions {
     grid-template-columns: 1fr;
   }
 }
 
 /* ============ DARK MODE ============ */
+[data-theme='dark'] .tsh-wizard-step {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .tsh-wizard-step.active {
+  background: rgba(10, 132, 255, 0.14);
+  border-color: var(--acc, #0a84ff);
+}
+
+[data-theme='dark'] .tsh-search-box,
+[data-theme='dark'] .tsh-filter-select {
+  background: #1c1c1e;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f5f5f7;
+}
+
+[data-theme='dark'] .tsh-view-btn.on {
+  background: rgba(255, 255, 255, 0.12);
+}
 [data-theme='dark'] .tsh-hero {
   background:
     radial-gradient(120% 100% at 0% 0%,

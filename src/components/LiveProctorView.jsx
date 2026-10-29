@@ -22,6 +22,7 @@ import {
   listenSession,
   listenSessionStudents,
   endExamSession,
+  extendExamSession,
   kickStudent,
   warnStudent,
   setStudentPaused,
@@ -405,6 +406,8 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
   const [kickTarget, setKickTarget] = useState(null);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastText, setBroadcastText] = useState('');
+  const [projectorOpen, setProjectorOpen] = useState(false);
+  const [extending, setExtending] = useState(false);
   const [toast, setToast] = useState(null);
   const [actioning, setActioning] = useState(false);
 
@@ -544,6 +547,19 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     }
   };
 
+  const handleExtendTime = async (mins = 5) => {
+    if (extending || isEnded) return;
+    setExtending(true);
+    try {
+      await extendExamSession(sessionId, mins);
+      say(`Đã cộng thêm ${mins} phút cho cả phòng thi`);
+    } catch (e) {
+      say('Không cộng thêm giờ được: ' + (e.message || e));
+    } finally {
+      setExtending(false);
+    }
+  };
+
   const handleKick = useCallback(async (studentId, reason) => {
     await kickStudent({ sessionId, studentId, reason });
   }, [sessionId]);
@@ -674,9 +690,35 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
               {stats.paused > 0 && <div><dt>Tạm dừng</dt><dd>{stats.paused}</dd></div>}
             </dl>
             {!isEnded && (
-              <div className="vt-hero-btns">
+              <div className="vt-hero-btns" style={{ flexWrap: 'wrap', gap: '0.45rem' }}>
                 <button type="button" className="vt-hero-btn" onClick={() => setBroadcastOpen(true)}>
                   <IcoBell size={14} /> Nhắc cả phòng
+                </button>
+                <button
+                  type="button"
+                  className="vt-hero-btn ghost"
+                  onClick={() => handleExtendTime(5)}
+                  disabled={extending}
+                  title="Cộng thêm 5 phút làm bài cho toàn bộ học sinh trong phòng"
+                >
+                  <IcoClock size={13} /> +5 phút
+                </button>
+                <button
+                  type="button"
+                  className="vt-hero-btn ghost"
+                  onClick={() => handleExtendTime(10)}
+                  disabled={extending}
+                  title="Cộng thêm 10 phút làm bài cho toàn bộ học sinh trong phòng"
+                >
+                  <IcoClock size={13} /> +10 phút
+                </button>
+                <button
+                  type="button"
+                  className="vt-hero-btn ghost"
+                  onClick={() => setProjectorOpen(true)}
+                  title="Mở màn hình đồng hồ lớn & mã QR chiếu lên bảng/TV lớp học"
+                >
+                  Trình chiếu TV
                 </button>
                 <button type="button" className="vt-hero-btn ghost" onClick={() => setConfirmEnd(true)}>
                   <IcoStop size={13} /> Kết thúc
@@ -1060,6 +1102,76 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
           }
         >
           <p className="vt-confirm-text">Tất cả học sinh đang làm bài sẽ được yêu cầu nộp bài ngay. Hành động này không thể hoàn tác.</p>
+        </Modal>
+      )}
+
+      {/* CHẾ ĐỘ TRÌNH CHIẾU MÁY CHIẾU / TV LỚP HỌC (PROJECTOR MODE) */}
+      {projectorOpen && (
+        <Modal
+          title={`Màn hình Trình chiếu Phòng thi · ${session.title}`}
+          size="xl"
+          onClose={() => setProjectorOpen(false)}
+          foot={
+            <>
+              {!isEnded && (
+                <>
+                  <button type="button" className="vt-btn" onClick={() => handleExtendTime(5)} disabled={extending}>
+                    <IcoClock size={14} /> +5 phút
+                  </button>
+                  <button type="button" className="vt-btn" onClick={() => setBroadcastOpen(true)}>
+                    <IcoBell size={14} /> Nhắc cả phòng
+                  </button>
+                </>
+              )}
+              <button type="button" className="vt-btn primary" onClick={() => setProjectorOpen(false)}>
+                Đóng màn hình trình chiếu
+              </button>
+            </>
+          }
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'center', padding: '1rem 0.5rem' }}>
+            <div style={{ textAlign: 'center', padding: '1.5rem', borderRadius: 24, background: 'var(--vt-tint, rgba(15,23,42,0.06))', border: '1px solid var(--soft)' }}>
+              <span style={{ fontSize: '0.88rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--mut)' }}>
+                {isEnded ? 'CA THI ĐÃ KẾT THÚC' : 'THỜI GIAN LÀM BÀI CÒN LẠI'}
+              </span>
+              <div style={{ fontSize: 'clamp(3.2rem, 8vw, 5.5rem)', fontWeight: 900, lineHeight: 1.1, margin: '0.6rem 0', fontVariantNumeric: 'tabular-nums', color: remaining < 300 && !isEnded ? '#ef4444' : 'var(--ink)' }}>
+                {isEnded ? '00:00' : fmtMMSS(remaining)}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                <div>
+                  <strong style={{ fontSize: '1.6rem', display: 'block', color: 'var(--ink)' }}>{students.length}</strong>
+                  <small style={{ color: 'var(--mut)', fontWeight: 700 }}>Học sinh đã vào</small>
+                </div>
+                <div>
+                  <strong style={{ fontSize: '1.6rem', display: 'block', color: '#10b981' }}>{stats.submitted}</strong>
+                  <small style={{ color: 'var(--mut)', fontWeight: 700 }}>Đã nộp bài</small>
+                </div>
+                <div>
+                  <strong style={{ fontSize: '1.6rem', display: 'block', color: '#3b82f6' }}>{Math.max(0, students.length - stats.submitted)}</strong>
+                  <small style={{ color: 'var(--mut)', fontWeight: 700 }}>Đang làm bài</small>
+                </div>
+              </div>
+            </div>
+
+            {session.examToken && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: 24, border: '1px solid var(--soft)' }}>
+                <b style={{ fontSize: '0.95rem' }}>Quét mã QR để vào phòng thi</b>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}#exam/${session.examToken}`)}&margin=1`}
+                  width={190}
+                  height={190}
+                  alt="QR vào phòng thi"
+                  style={{ borderRadius: 14, border: '1px solid var(--soft)', background: '#fff', padding: 8 }}
+                />
+                <code style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', borderRadius: 8, background: 'var(--vt-tint)', color: 'var(--acc)', fontWeight: 700 }}>
+                  {`${window.location.origin}${window.location.pathname}#exam/${session.examToken}`}
+                </code>
+                <small style={{ color: 'var(--mut)' }}>
+                  Giữ chế độ toàn màn hình và không chuyển tab trong suốt thời gian làm bài.
+                </small>
+              </div>
+            )}
+          </div>
         </Modal>
       )}
     </DashFrame>

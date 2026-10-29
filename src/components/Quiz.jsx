@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { ELEMENTS, CATS, norm } from '../data/elements.js';
-import { useLocalStorage, studyToday, liveStreak, dayKey } from '../hooks.js';
+import { useLocalStorage, studyToday, liveStreak, dayKey, recordDailyStreak } from '../hooks.js';
 import { pickNext, mastery, stats, srsReview, freshRecord, isDue } from '../lib/srs.js';
 import { ACHIEVEMENTS, getLevel } from '../data/achievements.js';
 import { sound } from '../lib/gameSound.js';
 import { recordActivity } from '../lib/progress.js';
 import { Ico, AchIcon } from './QuizIcons.jsx';
 import AIQuizGenerator from './AIQuizGenerator.jsx';
+import VirtualExamRoom from './VirtualExamRoom.jsx';
 import './ai-quiz-generator.css';
 
 /* ============================================================
@@ -287,9 +288,23 @@ function Modal({ title, icon, onClose, children, wide }) {
 }
 
 /* ============================================================
-   MAIN
+   MAIN — PHÒNG THI ẢO MẶC ĐỊNH + CHẾ ĐỘ PHẢN XẠ NGUYÊN TỐ
    ============================================================ */
 export default function Quiz() {
+  const [viewMode, setViewMode] = useState('virtual-exam'); // 'virtual-exam' | 'reflex-quiz'
+
+  if (viewMode === 'virtual-exam') {
+    return (
+      <VirtualExamRoom
+        onSwitchToLegacyQuiz={() => setViewMode('reflex-quiz')}
+      />
+    );
+  }
+
+  return <LegacyElementQuiz onBackToVirtualExam={() => setViewMode('virtual-exam')} />;
+}
+
+function LegacyElementQuiz({ onBackToVirtualExam }) {
   const [records, setRecords] = useLocalStorage('cs-srs-v2', {});
   const [streak, setStreak] = useLocalStorage('cs-streak-v2', { last: '', n: 0, total: 0 });
   const [xp, setXp] = useLocalStorage('cs-xp', 0);
@@ -421,6 +436,7 @@ export default function Quiz() {
     });
     setXp((x) => x + gain);
     setStreak(studyToday(streak));
+    recordDailyStreak();
     recordActivity({ type: 'quiz', title: 'Quiz nguyên tố', hash: 'quiz' });
     setGs((g) => {
       const k = g.byKind?.[q.kind] || { ok: 0, all: 0 };
@@ -464,6 +480,7 @@ export default function Quiz() {
     setRecords((prev) => ({ ...prev, [e.atomicNumber]: srsReview(prev[e.atomicNumber] || freshRecord(), quality) }));
     setXp((x) => x + (quality >= 3 ? 3 : 1));
     setStreak((st) => studyToday(st));
+    recordDailyStreak();
     recordActivity({ type: 'quiz', title: 'Ôn thẻ nguyên tố', hash: 'quiz' });
   }, [setRecords, setXp, setStreak]);
 
@@ -552,6 +569,15 @@ export default function Quiz() {
 
       {/* ===== Thanh công cụ ===== */}
       <div className="qz-tools">
+        {onBackToVirtualExam && (
+          <button
+            className="btn sm primary"
+            type="button"
+            onClick={onBackToVirtualExam}
+          >
+            ← Quay lại Phòng thi ảo
+          </button>
+        )}
         <button className="btn sm" type="button" onClick={() => setModal('stats')}><Ico n="chart" size={15} /> Thống kê</button>
         <button className="btn sm" type="button" onClick={() => setModal('ach')}><Ico n="trophy" size={15} /> Thành tích {achievements.length}/{ACHIEVEMENTS.length}</button>
         {wrongBank.length > 0 && <button className="btn sm" type="button" onClick={() => setModal('review')}><Ico n="review" size={15} /> Câu sai {wrongBank.length}</button>}

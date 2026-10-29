@@ -206,6 +206,59 @@ export function normalizeQuestions(data) {
       warnings.push(`Câu ${i + 1}: nhãn đáp án bị trùng, đã đánh lại A, B, C…`);
     }
 
+    const rawType = String(item.question_type ?? item.type ?? 'single_choice').trim().toLowerCase();
+    const qType =
+      rawType === 'true_false' || rawType === 'dung_sai' || rawType === 'tf'
+        ? 'true_false'
+        : rawType === 'short_answer' || rawType === 'tra_loi_ngan' || rawType === 'short'
+          ? 'short_answer'
+          : 'single_choice';
+
+    if (qType === 'short_answer') {
+      const ansText = String(
+        item.correctAnswer ?? item.correct_answer ?? item.answer ?? item.shortAnswer ?? options[0]?.content ?? '',
+      ).trim();
+      return {
+        content,
+        type: 'short_answer',
+        options: [{ label: 'ĐS', content: ansText, is_correct: true }],
+        correctAnswer: ansText || 'ĐS',
+        shortAnswer: ansText,
+        explanation: String(item.explanation ?? item.solution ?? item.loi_giai ?? '').trim(),
+        difficulty: normalizeDifficulty(item.difficulty ?? item.level),
+        topic: String(item.topic ?? item.chapter ?? '').trim(),
+        note: String(item.fixNote ?? item.note ?? '').trim(),
+      };
+    }
+
+    if (qType === 'true_false') {
+      const tfLabels = ['a', 'b', 'c', 'd'];
+      const tfOpts = (options.length ? options.slice(0, 4) : tfLabels.map((l) => ({ label: l.toUpperCase(), content: '' }))).map((o, idx) => {
+        const rawSub = rawOpts[idx];
+        const isTrue =
+          rawSub?.isCorrect === true ||
+          rawSub?.is_correct === true ||
+          rawSub?.correct === true ||
+          o.is_correct === true;
+        return {
+          label: tfLabels[idx]?.toUpperCase() || ANSWER_LABELS[idx],
+          content: o.content || '',
+          is_correct: !!isTrue,
+        };
+      });
+      const summaryKey = tfOpts.map((o) => (o.is_correct ? 'Đ' : 'S')).join('-');
+      return {
+        content,
+        type: 'true_false',
+        options: tfOpts,
+        correctAnswer: summaryKey,
+        explanation: String(item.explanation ?? item.solution ?? item.loi_giai ?? '').trim(),
+        difficulty: normalizeDifficulty(item.difficulty ?? item.level),
+        topic: String(item.topic ?? item.chapter ?? '').trim(),
+        note: String(item.fixNote ?? item.note ?? '').trim(),
+      };
+    }
+
     let correct = item.correctAnswer ?? item.correct_answer ?? item.correct ?? item.answer ?? item.right ?? flaggedCorrect;
     if (typeof correct === 'number') {
       const idx = correct >= 1 && correct <= options.length ? correct - 1 : correct;
@@ -239,6 +292,21 @@ export function normalizeQuestions(data) {
 export function questionProblems(q) {
   const p = [];
   if (!q.content?.trim()) p.push('Thiếu nội dung câu hỏi');
+  const qType = q.type || q.question_type || 'single_choice';
+
+  if (qType === 'short_answer') {
+    const val = String(q.shortAnswer ?? q.options?.[0]?.content ?? q.correctAnswer ?? '').trim();
+    if (!val || val === 'ĐS') p.push('Chưa nhập đáp số trả lời ngắn');
+    return p;
+  }
+
+  if (qType === 'true_false') {
+    const opts = q.options || [];
+    if (opts.length < 2) p.push('Cần ít nhất 2 mệnh đề Đúng/Sai');
+    else if (opts.some((o) => !o.content?.trim())) p.push('Có mệnh đề Đúng/Sai bị bỏ trống');
+    return p;
+  }
+
   const filled = (q.options || []).filter((o) => o.content?.trim());
   if ((q.options || []).length < 2) p.push('Cần ít nhất 2 đáp án');
   else if (filled.length !== q.options.length) p.push('Có đáp án bị bỏ trống');

@@ -682,7 +682,7 @@ export default function DocStudio() {
               <div className="dst-sum">
                 <div className="dst-sumtop">
                   <Ring value={active.flashcards.length ? knownN / active.flashcards.length : 0} label={`${knownN}/${active.flashcards.length}`} />
-                  <div><h3>Tiến độ ghi nhớ</h3><small>{knownN === active.flashcards.length ? 'Bạn đã thuộc toàn bộ thẻ 🎉' : `Còn ${active.flashcards.length - knownN} thẻ chưa thuộc`}</small>
+                  <div><h3>Tiến độ ghi nhớ</h3><small>{knownN === active.flashcards.length ? 'Bạn đã thuộc toàn bộ thẻ' : `Còn ${active.flashcards.length - knownN} thẻ chưa thuộc`}</small>
                     <div className="dst-actions left">
                       <button type="button" className="dst-btn" onClick={() => setTab('flash')}><Ico n="cards" s={16} /> Học thẻ</button>
                       <button type="button" className="dst-ghost" onClick={() => setTab('quiz')}><Ico n="quiz" s={16} /> Làm quiz</button>

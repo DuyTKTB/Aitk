@@ -9,10 +9,11 @@ import {
 } from './AdminIcons.jsx';
 import { chunk, downloadFile, fetchAllRows, friendlyError } from './adminUtils.js';
 
-const BACKUP_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers', 'profiles'];
-const RESTORE_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers'];
+const BACKUP_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers', 'profiles', 'pro_keys', 'pro_users'];
+const RESTORE_TABLES = ['grades', 'subjects', 'topics', 'exams', 'questions', 'answers', 'pro_keys', 'pro_users'];
 const DELETE_ORDER = ['answers', 'questions', 'exams', 'topics'];
-const ALL_ROWS = (q) => q.not('id', 'is', null);
+const pkOf = (table) => (table === 'pro_users' ? 'user_id' : 'id');
+const ALL_ROWS = (q, pk = 'id') => q.not(pk, 'is', null);
 
 const TOGGLES = [
   { key: 'enableAI', label: 'AI Chat (ELEC AI)', desc: 'Trợ lý AI Hóa học trong web' },
@@ -35,6 +36,10 @@ export default function SettingsPage() {
     enableGames: !!settings.enableGames,
     enableQuiz: !!settings.enableQuiz,
     maintenanceMode: !!settings.maintenanceMode,
+    announcementEnabled: !!settings.announcementEnabled,
+    announcementText: settings.announcementText ?? '',
+    announcementLink: settings.announcementLink ?? '',
+    announcementBadge: settings.announcementBadge ?? '🔥 Nổi bật',
   }), [settings]);
 
   const [form, setForm] = useState(initial);
@@ -100,9 +105,10 @@ export default function SettingsPage() {
     const warnings = [];
     for (const t of BACKUP_TABLES) {
       setProgress(`Đang đọc bảng ${t}…`);
+      const pk = pkOf(t);
       try {
         // eslint-disable-next-line no-await-in-loop
-        tables[t] = await fetchAllRows(() => supabase.from(t).select('*').order('id', { ascending: true }));
+        tables[t] = await fetchAllRows(() => supabase.from(t).select('*').order(pk, { ascending: true }));
       } catch (e) {
         warnings.push(`${t}: ${friendlyError(e)}`);
       }
@@ -142,8 +148,9 @@ export default function SettingsPage() {
     const found = RESTORE_TABLES.filter((t) => Array.isArray(tables?.[t]));
     if (found.length === 0) throw new Error('File không chứa dữ liệu hợp lệ (cần các bảng exams, questions, answers…).');
     for (const t of found) {
-      if (tables[t].some((r) => r == null || typeof r !== 'object' || r.id == null)) {
-        throw new Error(`Bảng "${t}" có dòng thiếu cột id — file bị hỏng hoặc không đúng định dạng.`);
+      const pk = pkOf(t);
+      if (tables[t].some((r) => r == null || typeof r !== 'object' || r[pk] == null)) {
+        throw new Error(`Bảng "${t}" có dòng thiếu cột khóa chính (${pk}) — file bị hỏng hoặc không đúng định dạng.`);
       }
     }
     return { tables, found };
@@ -190,10 +197,11 @@ export default function SettingsPage() {
       let written = 0;
       for (const t of RESTORE_TABLES) {
         if (!found.includes(t)) continue;
+        const pk = pkOf(t);
         for (const part of chunk(tables[t], 500)) {
           setProgress(`Đang ghi ${t} (${written.toLocaleString('vi-VN')} dòng)…`);
           // eslint-disable-next-line no-await-in-loop
-          const { error } = await supabase.from(t).upsert(part, { onConflict: 'id' });
+          const { error } = await supabase.from(t).upsert(part, { onConflict: pk });
           if (error) throw new Error(`Ghi bảng ${t} thất bại: ${friendlyError(error)}`);
           written += part.length;
         }
@@ -290,6 +298,84 @@ export default function SettingsPage() {
               maxLength={200}
             />
           </label>
+        </div>
+      </div>
+
+      {/* ===== THÔNG BÁO TOÀN HỆ THỐNG ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">
+            <IconInfo size={16} className="vt-title-ico" />
+            Banner Thông báo Toàn hệ thống
+          </h3>
+          <span className="vt-chip" style={{ background: form.announcementEnabled ? 'rgba(34, 197, 94, 0.12)' : 'rgba(148, 163, 184, 0.15)', color: form.announcementEnabled ? '#16a34a' : 'var(--mut)' }}>
+            {form.announcementEnabled ? 'Đang bật' : 'Đang tắt'}
+          </span>
+        </header>
+        <p className="vt-muted" style={{ fontSize: '.84rem', marginTop: '-.3rem', marginBottom: '1rem' }}>
+          Hiển thị dải băng thông báo nổi bật trên đầu trang của mọi học sinh và giáo viên khi truy cập website.
+        </p>
+
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <ToggleRow
+            label="Bật dải băng thông báo trên web"
+            desc="Khi bật, dải băng thông báo sẽ xuất hiện trên đầu trang chính của toàn bộ người dùng"
+            checked={form.announcementEnabled}
+            onChange={(v) => set('announcementEnabled', v)}
+          />
+
+          {form.announcementEnabled && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '1rem' }}>
+                <label className="vt-field">
+                  <span>Huy hiệu</span>
+                  <select
+                    value={form.announcementBadge}
+                    onChange={(e) => set('announcementBadge', e.target.value)}
+                    className="vt-select-pill"
+                    style={{ width: '100%', height: 42 }}
+                  >
+                    <option value="🔥 Nổi bật">🔥 Nổi bật</option>
+                    <option value="📢 Thông báo">📢 Thông báo</option>
+                    <option value="⚡ Cập nhật">⚡ Cập nhật</option>
+                    <option value="⭐ Kỳ thi mới">⭐ Kỳ thi mới</option>
+                    <option value="⚠️ Lưu ý">⚠️ Lưu ý</option>
+                  </select>
+                </label>
+
+                <label className="vt-field">
+                  <span>Nội dung thông báo hiển thị</span>
+                  <input
+                    type="text"
+                    value={form.announcementText}
+                    onChange={(e) => set('announcementText', e.target.value)}
+                    placeholder="VD: Phòng thi ảo đã cập nhật 10 đề thi thử THPTQG & HSA mới nhất 2026!"
+                    maxLength={160}
+                  />
+                </label>
+              </div>
+
+              <label className="vt-field">
+                <span>Liên kết hành động (tùy chọn)</span>
+                <input
+                  type="text"
+                  value={form.announcementLink}
+                  onChange={(e) => set('announcementLink', e.target.value)}
+                  placeholder="VD: #virtual-exams hoặc #roadmap hoặc để trống"
+                />
+              </label>
+
+              {form.announcementText && (
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: 'linear-gradient(90deg, #1d4ed8, #4338ca 50%, #6d28d9)', color: '#fff', fontSize: '.84rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,0.22)', fontSize: '.72rem', fontWeight: 800 }}>
+                    {form.announcementBadge}
+                  </span>
+                  <span style={{ flex: 1 }}>{form.announcementText}</span>
+                  {form.announcementLink && <span style={{ textDecoration: 'underline', fontWeight: 700 }}>Khám phá ngay →</span>}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

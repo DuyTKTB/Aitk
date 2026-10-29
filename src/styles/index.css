@@ -2,7 +2,7 @@
 :root {
   --bg: #efece4; --panel: #efece4; --ink: #111; --mut: #6b675e; --soft: rgba(17, 17, 17, .16); --line: #111;
   --acc: #ff4d1a; --acc-ink: #111; --shadow: none;
-  --sans: 'Space Grotesk', system-ui, sans-serif;
+  --sans: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
   --serif: 'Inter', Georgia, serif;
   --mono: 'Inter', ui-monospace, monospace;
   --ease: cubic-bezier(.2, .7, .2, 1);
@@ -11217,7 +11217,7 @@ kbd { border-radius: 6px; font-family: var(--sans); }
 
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: var(--z-nav, 9999);
 
     padding: 10px 16px;
     padding-top: calc(10px + env(safe-area-inset-top, 0px));
@@ -13266,7 +13266,7 @@ body.on-ai-page .ds-header {
   .mhead-bar {
     position: sticky !important;
     top: 0 !important;
-    z-index: 100 !important;
+    z-index: var(--z-nav, 9999) !important;
     min-height: 60px !important;
   }
 

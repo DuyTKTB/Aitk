@@ -1,0 +1,58 @@
+/* ============================================================
+   home-roadmap-v2.css — NÂNG CẤP GIAO DIỆN CARD "LỘ TRÌNH KIẾN THỨC" Ở TRANG CHỦ
+   Import SAU home-apple-bento.css. Chỉ ghi đè/bổ sung; gỡ file này là về giao diện cũ.
+   ============================================================ */
+
+.bento-roadmap { --road-ease: cubic-bezier(.2, .8, .2, 1); }
+
+/* Thanh tiến độ: gradient + vạch mốc theo chương */
+.road-bar { height: 8px; }
+.road-bar i { background: linear-gradient(90deg, var(--acc), #8b5cf6); transition: width .5s var(--road-ease); }
+.road-progress-top b { font-variant-numeric: tabular-nums; }
+
+/* Nút "Học tiếp": nổi bật hơn, có phản hồi khi rê/nhấn */
+.road-next {
+  transition: background .18s, transform .2s var(--road-ease), box-shadow .2s var(--road-ease);
+}
+.road-next:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -14px rgba(var(--t), .55); }
+.road-next-go { transition: transform .2s var(--road-ease); }
+.road-next:hover .road-next-go { transform: translateX(3px); }
+.road-open-full { border: 1px dashed color-mix(in srgb, var(--acc) 45%, transparent); background: transparent; }
+.road-open-full:hover { background: color-mix(in srgb, var(--acc) 10%, transparent); }
+
+/* Hàng chương */
+.road-row { transition: background .16s, transform .18s var(--road-ease); border-radius: 12px; }
+.road-row:hover { transform: translateX(2px); }
+.road-row.is-done .road-row-num { background: var(--ok, #22c55e); color: #fff; }
+.road-row.is-done .road-row-name { color: var(--mut); }
+
+/* Vòng % theo mức: đỏ < 40, vàng < 70, xanh ≥ 70 (có số bên trong nên không chỉ dựa vào màu) */
+.road-ring-fg { transition: stroke-dashoffset .6s var(--road-ease); }
+
+/* Sheet 3 hành động */
+.road-sheet-backdrop { animation: road-fade .18s ease both; }
+.road-sheet { animation: road-rise .28s var(--road-ease) both; }
+.road-act { transition: background .16s, transform .18s var(--road-ease); }
+.road-act:hover:not(:disabled) { transform: translateY(-1px); }
+.road-act:focus-visible, .road-sheet-x:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+@keyframes road-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes road-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+/* Màn hình hẹp: vùng chạm tối thiểu 44px */
+@media (max-width: 560px) {
+  .road-row { min-height: 48px; }
+  .road-act { min-height: 56px; }
+  .bento-segmented-btn { min-height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .road-bar i, .road-ring-fg, .road-next, .road-next-go, .road-row, .road-act,
+  .road-sheet, .road-sheet-backdrop { animation: none !important; transition: none !important; }
+  .road-next:hover, .road-row:hover, .road-act:hover { transform: none; }
+}
+
+/* Màu vòng % theo mức */
+.road-ring.tone-ok .road-ring-fg { stroke: var(--ok, #22c55e); }
+.road-ring.tone-warn .road-ring-fg { stroke: var(--warn, #f59e0b); }
+.road-ring.tone-err .road-ring-fg { stroke: var(--err, #ef4444); }

@@ -490,7 +490,8 @@ export function useGreeting() {
   const h = new Date().getHours();
   const hello = h < 11 ? 'Chào buổi sáng' : h < 14 ? 'Chào buổi trưa' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
   const raw = user?.displayName || (user?.email || '').split('@')[0] || 'bạn';
-  const name = raw.trim().split(/\s+/).slice(-1)[0];
+  const cleaned = raw.trim().replace(/\s+(nè|nhé|ơi|nha|ạ)$/i, '');
+  const name = cleaned.split(/\s+/).slice(-1)[0] || 'bạn';
   const date = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
   return { hello, name, date };
 }

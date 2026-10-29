@@ -3,6 +3,7 @@
    ============================================================ */
 import { useMemo, useRef, useState } from 'react';
 import { updateTeacherExam } from '../../lib/classroom.js';
+import { IconClose, IconImage, IconScale, IconBook, IconSave } from '../Icons.jsx';
 
 /* ---- 3 dạng câu chuẩn THPT 2025 ---- */
 const normType = (q) => {
@@ -441,7 +442,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
               {exam.token ? `Mã đề: ${exam.token}` : ''} · {questions.length} câu · {totalPoints} điểm
             </small>
           </div>
-          <button type="button" onClick={onClose} style={{ ...P.btn, background: 'var(--t-surface-3)', color: 'var(--t-ink-muted)' }}>✕</button>
+          <button type="button" onClick={onClose} style={{ ...P.btn, background: 'var(--t-surface-3)', color: 'var(--t-ink-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Đóng"><IconClose size={16} /></button>
         </div>
 
         {err && (
@@ -504,7 +505,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
           <select style={{ ...P.input, marginBottom: '.8rem' }} value={proctor.camera} onChange={(e) => setP({ camera: e.target.value })}>
             <option value="off">Tắt — không dùng camera</option>
             <option value="optional">Cho phép bật (không bắt buộc)</option>
-            <option value="required">⚠️ BẮT BUỘC bật camera mới được vào thi</option>
+            <option value="required">BẮT BUỘC bật camera mới được vào thi</option>
           </select>
 
           {proctor.camera !== 'off' && (
@@ -564,7 +565,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
 
           {imgBytes > 0 && (
             <small style={{ display: 'block', margin: '0 0 .5rem', color: imgBytes > IMG_BUDGET ? 'var(--t-status-err)' : 'var(--t-ink-muted)', font: '600 .72rem var(--t-font-sans)' }}>
-              🖼 Ảnh nhúng: {kb(imgBytes)} / ~{kb(IMG_BUDGET)} cho phép
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconImage size={14} /> Ảnh nhúng: {kb(imgBytes)} / ~{kb(IMG_BUDGET)} cho phép</span>
             </small>
           )}
 
@@ -575,7 +576,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
               onClick={() => setScoreOpen((v) => !v)}
               style={{ all: 'unset', cursor: 'pointer', display: 'flex', width: '100%', alignItems: 'center', gap: '.6rem', font: '800 .85rem var(--t-font-sans)', color: 'var(--t-ink)' }}
             >
-              <span>⚖ Chấm điểm nhanh</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><IconScale size={14} /> Chấm điểm nhanh</span>
               <small style={{ marginLeft: 'auto', font: '700 .78rem var(--t-font-sans)', color: tOk && Math.abs(totalPoints - tNum) < 0.005 ? 'var(--t-status-ok)' : 'var(--t-ink-muted)' }}>
                 Tổng hiện tại: {totalPoints} điểm
               </small>
@@ -646,7 +647,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
                   <span style={{ flex: 1, font: '600 .84rem var(--t-font-sans)', color: 'var(--t-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {String(q.q || '(câu trống)').slice(0, 80)}
                   </span>
-                  {q.image && <small title="Câu có hình minh hoạ" style={{ font: '700 .7rem var(--t-font-sans)' }}>🖼</small>}
+                  {q.image && <small title="Câu có hình minh hoạ" style={{ display: 'inline-flex', alignItems: 'center' }}><IconImage size={12} /></small>}
                   {normType(q) !== 'single_choice' && (
                     <small style={{ color: 'var(--t-accent)', font: '700 .66rem var(--t-font-sans)', background: 'color-mix(in srgb, var(--t-accent) 14%, transparent)', padding: '.15rem .45rem', borderRadius: 999, whiteSpace: 'nowrap' }}>
                       {TYPE_LABEL[normType(q)]}
@@ -657,7 +658,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
                       title="Câu này thuộc 1 bài đọc/đoạn văn chung — giữ nguyên khi sửa để màn làm bài không bị xáo trộn"
                       style={{ color: 'var(--t-accent)', font: '700 .66rem var(--t-font-sans)', background: 'color-mix(in srgb, var(--t-accent) 14%, transparent)', padding: '.15rem .45rem', borderRadius: 999, whiteSpace: 'nowrap' }}
                     >
-                      📖 Bài đọc
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><IconBook size={11} /> Bài đọc</span>
                     </small>
                   )}
                   <small style={{ color: 'var(--t-ink-muted)', font: '600 .72rem var(--t-font-sans)' }}>{round2(ptsOf(q))} đ</small>
@@ -701,7 +702,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
                     <div style={{ border: '1px dashed var(--t-border)', borderRadius: 'var(--t-r-md)', padding: '.6rem .7rem', marginBottom: '.7rem', background: 'var(--t-surface-3)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
                         <label style={{ ...P.btn, background: 'var(--t-accent)', color: 'var(--t-accent-ink)', cursor: 'pointer', opacity: imgBusy === i ? 0.6 : 1 }}>
-                          🖼 {q.image ? 'Đổi ảnh' : 'Thêm hình minh hoạ'}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IconImage size={14} /> {q.image ? 'Đổi ảnh' : 'Thêm hình minh hoạ'}</span>
                           <input
                             type="file" accept="image/*" hidden disabled={imgBusy === i}
                             onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) attachImage(i, f); }}
@@ -798,7 +799,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
                               patchQ(i, { options: next, correct: q.correct >= next.length ? next.length - 1 : (q.correct > oi ? q.correct - 1 : q.correct) });
                             }}
                             style={{ ...P.btn, padding: '.4rem .55rem', background: 'var(--t-surface-3)', color: 'var(--t-status-err)' }}
-                          >✕</button>
+                          ><IconClose size={13} /></button>
                         )}
                       </div>
                     ))}
@@ -838,7 +839,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
             disabled={saving}
             style={{ ...P.btn, background: 'var(--t-accent)', color: 'var(--t-accent-ink)', boxShadow: 'var(--t-shadow-lime)', opacity: saving ? 0.6 : 1 }}
           >
-            {saving ? 'Đang lưu…' : '💾 Lưu thay đổi'}
+            {saving ? 'Đang lưu…' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><IconSave size={14} /> Lưu thay đổi</span>}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback, createContext, useContext } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { ELEMENTS, SGK_MASS } from '../data/elements.js';
+import { IconStar, IconClock } from './Icons.jsx';
 import './FormulaCalculator.css';
 
 /* ========================================================================
@@ -102,7 +103,7 @@ function CardShell({ def, fav, onFav, tag, wide, children, footer }) {
           aria-label={fav ? 'Bỏ ghim' : 'Ghim công thức'} title={fav ? 'Bỏ ghim' : 'Ghim lên đầu'}
           onClick={onFav}
         >
-          {fav ? '★' : '☆'}
+          <IconStar size={15} on={fav} />
         </button>
       </header>
       {def.f && <p className="fc-formula">{def.f}</p>}
@@ -458,7 +459,7 @@ const CARDS = [
     inputs: [I('nA', 'n(A)', 'mol'), I('a', 'Hệ số a', '', { def: '1' }), I('nB', 'n(B)', 'mol'), I('b', 'Hệ số b', '', { def: '1' })],
     calc: (v) => {
       const rA = v.nA / v.a, rB = v.nB / v.b;
-      if (eq(rA, rB)) return [{ l: 'Kết luận', v: '✅ Vừa đủ', main: true }];
+      if (eq(rA, rB)) return [{ l: 'Kết luận', v: '✓ Vừa đủ', main: true }];
       const lim = rA < rB ? 'A' : 'B';
       const dư = rA < rB ? v.nB - rA * v.b : v.nA - rB * v.a;
       return [
@@ -528,7 +529,7 @@ const CARDS = [
         { l: 'Tổng nH⁺', v: nH, u: 'mol' },
         { l: 'Tổng nOH⁻', v: nOH, u: 'mol' },
         { l: 'Kết luận', main: true, bad: !eq(d, 0),
-          v: eq(d, 0) ? '✅ Trung hòa vừa đủ' : d > 0 ? `Dư axit — thừa ${fmt(d)} mol H⁺` : `Dư bazơ — thừa ${fmt(-d)} mol OH⁻` },
+          v: eq(d, 0) ? '✓ Trung hòa vừa đủ' : d > 0 ? `Dư axit — thừa ${fmt(d)} mol H⁺` : `Dư bazơ — thừa ${fmt(-d)} mol OH⁻` },
       ];
       if (v.V > 0) out.push({ l: 'pH sau phản ứng', v: eq(d, 0) ? 7 : d > 0 ? -Math.log10(d / v.V) : 14 + Math.log10(-d / v.V), d: 3 });
       return out;
@@ -1057,7 +1058,7 @@ const CARDS = [
     calc: (v) => {
       const p = v.n1 * v.z1 + v.n2 * v.z2, a = v.m1 * v.y1 + v.m2 * v.y2, d = p - a;
       return [{ l: 'Tổng điện tích dương', v: p, u: 'mol' }, { l: 'Tổng điện tích âm', v: a, u: 'mol' },
-        { l: 'Kết luận', main: true, bad: !eq(d, 0), v: eq(d, 0) ? '✅ Cân bằng điện tích' : d > 0 ? `Còn thiếu ${fmt(d)} mol điện tích âm` : `Còn thiếu ${fmt(-d)} mol điện tích dương` }];
+        { l: 'Kết luận', main: true, bad: !eq(d, 0), v: eq(d, 0) ? '✓ Cân bằng điện tích' : d > 0 ? `Còn thiếu ${fmt(d)} mol điện tích âm` : `Còn thiếu ${fmt(-d)} mol điện tích dương` }];
     } },
 
   { id: 'feno3', tab: 'vc', title: 'Fe + HNO₃ loãng (sản phẩm khử NO)', f: 'T = nHNO₃/nFe   ·   T ≥ 4: Fe³⁺   ·   8/3 < T < 4: cả hai   ·   T ≤ 8/3: Fe²⁺', kw: 'sat axit nitric muoi fe2+ fe3+ no',
@@ -1226,15 +1227,15 @@ function QuickCalc() {
    Component chính
    ==================================================================== */
 const TABS = [
-  ['fav', '★ Đã ghim'],
-  ['recent', '🕘 Gần đây'],
+  ['fav', 'Đã ghim', IconStar],
+  ['recent', 'Gần đây', IconClock],
   ['mol', 'Mol & Khí'],
   ['dd', 'Dung dịch & pH'],
   ['vc', 'Vô cơ'],
   ['hc', 'Hữu cơ'],
   ['nhiet', 'Nhiệt · Cân bằng · Điện'],
 ];
-const TAB_NAME = Object.fromEntries(TABS);
+const TAB_NAME = Object.fromEntries(TABS.map(([k, l]) => [k, l]));
 
 export default function FormulaCalculator() {
   const [tabSaved, setTab] = useLocalStorage('cs-fc-tab', 'mol');
@@ -1316,12 +1317,14 @@ export default function FormulaCalculator() {
         <QuickCalc />
 
         <div className="fc-tabs" role="tablist">
-          {TABS.map(([k, l]) => (
+          {TABS.map(([k, l, Icon]) => (
             <button
               key={k} role="tab" aria-selected={!query && tab === k}
               className={'chip' + (!query && tab === k ? ' on' : '')}
               onClick={() => { setQ(''); setTab(k); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
             >
+              {Icon && <Icon size={13} />}
               {l}<span className="fc-n">{counts[k] || 0}</span>
             </button>
           ))}
@@ -1332,7 +1335,7 @@ export default function FormulaCalculator() {
         {list.length === 0 ? (
           <p className="fc-empty big">
             {query ? 'Không tìm thấy công thức phù hợp. Thử từ khóa ngắn hơn (vd: “mol”, “ph”, “este”).'
-              : tab === 'recent' ? 'Chưa có công thức nào được dùng. Bấm vào ô nhập của một thẻ để lưu vào đây.' : 'Chưa có công thức nào được ghim. Nhấn ☆ trên thẻ để ghim.'}
+              : tab === 'recent' ? 'Chưa có công thức nào được dùng. Bấm vào ô nhập của một thẻ để lưu vào đây.' : 'Chưa có công thức nào được ghim. Nhấn biểu tượng ngôi sao trên thẻ để ghim.'}
           </p>
         ) : (
           <div className="fc-grid">

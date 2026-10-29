@@ -1342,3 +1342,22 @@ export function listenMyRetryRequests(studentId, cb, onError) {
     (e) => { console.warn('[listenMyRetryRequests]', e.code, e.message); onError?.(e); }
   );
 }
+
+/* ============================================================
+   TOP CHUỖI LỚP HỌC (cho ChatWidget & BXH)
+   ============================================================ */
+export async function getTopStreakClasses(limitCount = 3) {
+  try {
+    const q = query(collection(db, 'classes'), limit(20));
+    const snap = await getDocs(q);
+    if (snap.empty) return [];
+    const list = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((c) => (c.streak?.count || 0) > 0);
+    list.sort((a, b) => (b.streak?.count || 0) - (a.streak?.count || 0));
+    return list.slice(0, limitCount);
+  } catch (e) {
+    console.warn('[getTopStreakClasses]', e);
+    return [];
+  }
+}

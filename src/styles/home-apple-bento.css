@@ -193,17 +193,18 @@
 }
 .bento-composer textarea {
   width: 100%;
-  min-height: 48px;
+  min-height: 56px;
   max-height: 120px;
   resize: none;
   border: 0;
   outline: 0;
   background: transparent;
   font-family: var(--sans);
-  font-size: var(--fs-md);
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.45;
   color: var(--ink);
   caret-color: var(--acc);
+  overflow-y: hidden;
 }
 .bento-composer textarea::placeholder { color: var(--mut); opacity: 0.8; }
 .bento-composer-footer {
@@ -764,12 +765,42 @@
 }
 
 @media (max-width: 640px) {
-  .db-bento-wrap { width: 100%; padding-left: 1rem; padding-right: 1rem; }
+  .db-bento-wrap {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
+  }
   .bento-grid { gap: 0.85rem; }
   .bento-card { padding: 1.2rem; }
   .bento-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 30px; }
   .bento-ai-avatar { width: 54px; height: 54px; }
-  .bento-composer-footer { flex-wrap: wrap; }
+  .bento-composer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .bento-chips-list {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .bento-chips-list::-webkit-scrollbar {
+    display: none;
+  }
+  .bento-chip {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .bento-send-btn {
+    margin-left: auto;
+  }
   .bento-features { gap: 0.85rem; }
   .bento-feature { min-height: 144px; padding: 1.05rem; }
   .bento-feature-go { display: none; }
@@ -1075,3 +1106,11 @@
   }
   .road-next { padding: 0.55rem 0.65rem; }
 }
+
+/* Lối vào trang Lộ trình đầy đủ (RoadmapCard) */
+.road-open-full { margin-top: 8px; }
+
+
+/* Lối vào trang Lộ trình đầy đủ (RoadmapCard) */
+.road-open-full { margin-top: 8px; }
+

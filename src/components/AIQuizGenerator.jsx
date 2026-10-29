@@ -6,6 +6,19 @@ import { spendCredit, refundCredit } from '../lib/creditService.js';
 import VipGate from './VipGate.jsx';
 import AIMark from './AIMark.jsx';
 import { sanitizeTopicId, topicPromptList } from '../data/chemTopics.js';
+import {
+  IconClose,
+  IconCheck,
+  IconAlert,
+  IconFolder,
+  IconFile,
+  IconTrophy,
+  IconTarget,
+  IconBook,
+  IconRobot,
+  IcoRefresh,
+  IconSparkle,
+} from './Icons.jsx';
 
 /* ============================================================
    AI QUIZ GENERATOR — Tính năng VIP
@@ -359,7 +372,7 @@ export default function AIQuizGenerator({ onClose }) {
         </div>
         {onClose && (
           <button type="button" className="aiq-x" onClick={onClose} aria-label="Đóng">
-            ✕
+            <IconClose size={16} />
           </button>
         )}
       </div>
@@ -377,7 +390,7 @@ export default function AIQuizGenerator({ onClose }) {
           const isCurrent = id === step || (step === STEP.GENERATING && id === STEP.TARGET);
           return (
             <div key={id} className={'aiq-step' + (isDone ? ' done' : '') + (isCurrent ? ' cur' : '')}>
-              <span className="aiq-step-num">{isDone ? '✓' : num}</span>
+              <span className="aiq-step-num">{isDone ? <IconCheck size={12} /> : num}</span>
               <span className="aiq-step-label">{label}</span>
             </div>
           );
@@ -386,7 +399,9 @@ export default function AIQuizGenerator({ onClose }) {
 
       {error && (
         <div className="aiq-error" role="alert">
-          <b>⚠️ Lỗi:</b>
+          <b style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <IconAlert size={16} /> Lỗi:
+          </b>
           <span>{error}</span>
         </div>
       )}
@@ -407,7 +422,9 @@ export default function AIQuizGenerator({ onClose }) {
               hidden
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
             />
-            <div className="aiq-drop-icon">📁</div>
+            <div className="aiq-drop-icon">
+              <IconFolder size={40} />
+            </div>
             <h3>Kéo thả tài liệu vào đây</h3>
             <p>hoặc</p>
             <button type="button" className="aiq-btn-upload" onClick={() => fileRef.current?.click()}>
@@ -432,7 +449,9 @@ export default function AIQuizGenerator({ onClose }) {
                     {f.kind === 'image' ? (
                       <img src={`data:${f.mimeType};base64,${f.base64}`} alt={f.fileName} />
                     ) : (
-                      <span className="aiq-file-icon">📄</span>
+                      <span className="aiq-file-icon">
+                        <IconFile size={18} />
+                      </span>
                     )}
                     <div className="aiq-file-info">
                       <b>{f.fileName}</b>
@@ -442,8 +461,8 @@ export default function AIQuizGenerator({ onClose }) {
                         {(f.file.size / 1024).toFixed(0)} KB
                       </small>
                     </div>
-                    <button type="button" className="aiq-file-x" onClick={() => removeFile(i)}>
-                      ✕
+                    <button type="button" className="aiq-file-x" onClick={() => removeFile(i)} aria-label="Xóa file">
+                      <IconClose size={14} />
                     </button>
                   </li>
                 ))}
@@ -484,11 +503,11 @@ export default function AIQuizGenerator({ onClose }) {
               <div className="aiq-target-marks">
                 <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
               </div>
-              <small className="aiq-hint">
-                {targetScore >= 9.5 && '🏆 Đề rất khó — AI sẽ tập trung câu vận dụng cao'}
-                {targetScore >= 8 && targetScore < 9.5 && '🎯 Đề khó vừa — phân bố 40/40/20'}
-                {targetScore >= 6.5 && targetScore < 8 && '📚 Đề trung bình — cân bằng lý thuyết và bài tập'}
-                {targetScore < 6.5 && '🌱 Đề dễ — tập trung nhận biết và thông hiểu'}
+              <small className="aiq-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                {targetScore >= 9.5 && <><IconTrophy size={14} /> Đề rất khó — AI sẽ tập trung câu vận dụng cao</>}
+                {targetScore >= 8 && targetScore < 9.5 && <><IconTarget size={14} /> Đề khó vừa — phân bố 40/40/20</>}
+                {targetScore >= 6.5 && targetScore < 8 && <><IconBook size={14} /> Đề trung bình — cân bằng lý thuyết và bài tập</>}
+                {targetScore < 6.5 && <><IconSparkle size={14} /> Đề dễ — tập trung nhận biết và thông hiểu</>}
               </small>
             </label>
           </div>
@@ -520,8 +539,8 @@ export default function AIQuizGenerator({ onClose }) {
             <button type="button" className="aiq-btn ghost" onClick={() => setStep(STEP.UPLOAD)}>
               ← Quay lại
             </button>
-            <button type="button" className="aiq-btn primary" onClick={generate}>
-              🤖 Tạo đề bằng AI
+            <button type="button" className="aiq-btn primary" onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <IconRobot size={16} /> Tạo đề bằng AI
             </button>
           </div>
         </div>
@@ -581,8 +600,12 @@ export default function AIQuizGenerator({ onClose }) {
 
           {showExplain[qIndex] && questions[qIndex].explain && (
             <div className={'aiq-explain ' + (picks[qIndex] === questions[qIndex].answer ? 'ok' : 'bad')}>
-              <b>
-                {picks[qIndex] === questions[qIndex].answer ? '✓ Chính xác!' : '✗ Chưa đúng'}
+              <b style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                {picks[qIndex] === questions[qIndex].answer ? (
+                  <><IconCheck size={14} /> Chính xác!</>
+                ) : (
+                  <><IconClose size={14} /> Chưa đúng</>
+                )}
               </b>
               <p>{questions[qIndex].explain}</p>
             </div>
@@ -630,20 +653,21 @@ export default function AIQuizGenerator({ onClose }) {
 
           <div className={'aiq-result-msg ' + (score >= targetScore ? 'ok' : 'bad')}>
             {score >= targetScore
-              ? `🎉 Tuyệt vời! Bạn đã đạt ${score.toFixed(1)}/${10} điểm — vượt mục tiêu ${targetScore}.`
-              : `💪 Cố lên! Bạn đạt ${score.toFixed(1)}/10 — cần thêm ${(targetScore - score).toFixed(1)} điểm để đạt mục tiêu.`}
+              ? `Tuyệt vời! Bạn đã đạt ${score.toFixed(1)}/${10} điểm — vượt mục tiêu ${targetScore}.`
+              : `Cố lên! Bạn đạt ${score.toFixed(1)}/10 — cần thêm ${(targetScore - score).toFixed(1)} điểm để đạt mục tiêu.`}
           </div>
 
           <div className="aiq-actions">
-            <button type="button" className="aiq-btn ghost" onClick={resetAll}>
-              📚 Upload tài liệu mới
+            <button type="button" className="aiq-btn ghost" onClick={resetAll} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <IconFolder size={15} /> Upload tài liệu mới
             </button>
             <button
               type="button"
               className="aiq-btn primary"
               onClick={() => { setQIndex(0); setPicks({}); setShowExplain({}); setStep(STEP.QUIZ); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
-              🔄 Làm lại
+              <IcoRefresh size={15} /> Làm lại
             </button>
           </div>
         </div>
