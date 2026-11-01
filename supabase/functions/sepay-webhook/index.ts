@@ -10,17 +10,19 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
 // Bảng quy đổi (phải khớp với CREDIT_PACKAGES ở frontend)
 const CREDIT_PACKAGES = {
-  10000: 100,
-  20000: 210,
-  50000: 550,
-  100000: 1150,
-  200000: 2400,
-  500000: 6500,
+  10000: 10000,
+  25000: 25000,
+  30000: 30000,
+  50000: 50000,
+  60000: 60000,
+  100000: 100000,
+  200000: 220000,
+  500000: 600000,
 }
 
 function calculateCredits(amountVnd) {
   if (CREDIT_PACKAGES[amountVnd]) return CREDIT_PACKAGES[amountVnd]
-  return Math.floor(amountVnd / 1000) * 10
+  return Math.floor(amountVnd)
 }
 
 Deno.serve(async (req) => {

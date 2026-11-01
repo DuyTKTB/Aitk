@@ -25,7 +25,12 @@ import {
 import {
   getClassesByTeacher,
   getExamsByTeacher,
+  getExamsByClass,
   getSubmissionsByExam,
+  listenSubmissions,
+  listenSubmissionsByClass,
+  listenExamsByTeacher,
+  listenClassesByTeacher,
   createClass,
   createExam,
   updateExam,
@@ -55,6 +60,7 @@ import {
   endExamSession,
   deleteExamSession,
   listenSession,
+  listenSessionsByTeacher,
   getSessionsByTeacher,
   timeRemaining,
 } from '../lib/examSession.js';
@@ -196,7 +202,18 @@ import {
 /* ============================================================
    HELPERS
    ============================================================ */
-const pctOf = (s) => (s.totalPoints > 0 ? (s.score / s.totalPoints) * 100 : 0);
+const pctOf = (s) => {
+  if (!s) return 0;
+  if (typeof s.percentage === 'number' && !Number.isNaN(s.percentage)) return s.percentage;
+  if (s.totalPoints > 0 && typeof s.score === 'number' && !Number.isNaN(s.score)) {
+    return (s.score / s.totalPoints) * 100;
+  }
+  if (s.totalQuestions > 0 && typeof s.correctCount === 'number' && !Number.isNaN(s.correctCount)) {
+    return (s.correctCount / s.totalQuestions) * 100;
+  }
+  const n = Number(s.score);
+  return Number.isNaN(n) ? 0 : n;
+};
 const avgOf = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
 
 function examStatus(ex, liveSession, now) {
@@ -364,6 +381,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [showClassPicker, setShowClassPicker] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState(null);
   const [previewExam, setPreviewExam] = useState(null);
+  const [detailExamModal, setDetailExamModal] = useState(null);
 
   const [confirmState, setConfirmState] = useState(null);
   const [toast, setToast] = useState(null);
@@ -572,9 +590,44 @@ export default function TeacherDashboard({ onExit } = {}) {
         getExamsByTeacher(user.uid),
         getSessionsByTeacher(user.uid),
       ]);
-      setClasses(cls);
-      setExams(ex);
-      setSessions(sess);
+
+      /* Lấy thêm các đề do GV bộ môn (GVBM) giao vào các lớp chủ nhiệm của tôi */
+      let combinedExams = [...ex];
+      try {
+        const classExamArrays = await Promise.all(
+          cls.map((c) => getExamsByClass(c.id).catch(() => []))
+        );
+        const seenIds = new Set(combinedExams.map((e) => e.id));
+        classExamArrays.flat().forEach((ce) => {
+          if (ce && ce.id && !seenIds.has(ce.id)) {
+            seenIds.add(ce.id);
+            combinedExams.push(ce);
+          }
+        });
+      } catch (e) {
+        console.warn('[TeacherDashboard] Không tải được đề của lớp chủ nhiệm:', e);
+      }
+
+      setClasses((prev) => {
+        const map = new Map(cls.map((c) => [c.id, c]));
+        prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+        return Array.from(map.values());
+      });
+      setExams((prev) => {
+        const map = new Map(combinedExams.map((e) => [e.id, e]));
+        prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+        const res = Array.from(map.values());
+        res.sort((a, b) => (tsMs(b.createdAt) || 0) - (tsMs(a.createdAt) || 0));
+        return res;
+      });
+      setSessions((prev) => {
+        const map = new Map(sess.map((s) => [s.id, s]));
+        prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+        const res = Array.from(map.values());
+        res.sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
+        return res;
+      });
+      setLoading(false); // Dashboard hiển thị ngay lập tức, không để giáo viên chờ lâu
 
       /* Lớp đã liên kết bằng key (GVBM) — đề giao cho lớp đó cần tên lớp/môn/chủ nhiệm
          để hiển thị đúng thay vì "Lớp —". Lỗi quyền (chưa deploy rules) không được
@@ -594,34 +647,27 @@ export default function TeacherDashboard({ onExit } = {}) {
         setLinkedClasses([]);
       }
 
-      const priorityExams = ex.slice(0, 8);
-      const subsMap = { ...subsCacheRef.current };
+      const priorityExams = combinedExams.slice(0, 8);
+      const subsMap = { ...submissionsMap };
       await Promise.all(priorityExams.map(async (e) => {
-        if (!subsMap[e.id]) {
-          try {
-            const s = await getSubmissionsByExam(e.id);
-            subsMap[e.id] = s;
-            subsCacheRef.current[e.id] = s;
-          } catch {
-            subsMap[e.id] = [];
-          }
+        try {
+          const s = await getSubmissionsByExam(e.id);
+          subsMap[e.id] = s;
+        } catch {
+          if (!subsMap[e.id]) subsMap[e.id] = [];
         }
       }));
       setSubmissionsMap({ ...subsMap });
 
-      if (ex.length > 8) {
-        const remaining = ex.slice(8);
+      if (combinedExams.length > 8) {
+        const remaining = combinedExams.slice(8);
         Promise.all(remaining.map(async (e) => {
-          if (!subsCacheRef.current[e.id]) {
-            try {
-              const s = await getSubmissionsByExam(e.id);
-              subsCacheRef.current[e.id] = s;
-              return { id: e.id, subs: s };
-            } catch {
-              return { id: e.id, subs: [] };
-            }
+          try {
+            const s = await getSubmissionsByExam(e.id);
+            return { id: e.id, subs: s };
+          } catch {
+            return { id: e.id, subs: subsMap[e.id] || [] };
           }
-          return { id: e.id, subs: subsCacheRef.current[e.id] };
         })).then((results) => {
           setSubmissionsMap((prev) => {
             const next = { ...prev };
@@ -641,7 +687,48 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  /* Realtime sessions */
+  /* Realtime: Lắng nghe toàn bộ phiên thi của giáo viên theo thời gian thực */
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const unsub = listenSessionsByTeacher(user.uid, (freshList) => {
+      setSessions((prev) => {
+        const freshMap = new Map(freshList.map((s) => [s.id, s]));
+        const merged = [...freshList];
+        prev.forEach((p) => {
+          if (!freshMap.has(p.id)) merged.push(p);
+        });
+        merged.sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
+        return merged;
+      });
+    });
+    return () => unsub?.();
+  }, [user?.uid]);
+
+  /* Realtime: Lắng nghe toàn bộ đề thi của giáo viên theo thời gian thực (tạo/nhân bản đề xuất hiện ngay) */
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const unsub = listenExamsByTeacher(user.uid, (freshExams) => {
+      setExams((prev) => {
+        const freshMap = new Map(freshExams.map((e) => [e.id, e]));
+        const others = prev.filter((e) => e.teacherId && e.teacherId !== user.uid);
+        const combined = [...freshExams, ...others];
+        combined.sort((a, b) => (tsMs(b.createdAt) || 0) - (tsMs(a.createdAt) || 0));
+        return combined;
+      });
+    });
+    return () => unsub?.();
+  }, [user?.uid]);
+
+  /* Realtime: Lắng nghe danh sách lớp của giáo viên theo thời gian thực */
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const unsub = listenClassesByTeacher(user.uid, (freshClasses) => {
+      setClasses(freshClasses);
+    });
+    return () => unsub?.();
+  }, [user?.uid]);
+
+  /* Realtime live session progress / proctoring */
   const liveIdsKey = sessions.filter((s) => s.status === 'live').map((s) => s.id).join(',');
   useEffect(() => {
     if (!liveIdsKey) return undefined;
@@ -679,6 +766,48 @@ export default function TeacherDashboard({ onExit } = {}) {
     );
     return () => unsub?.();
   }, [user?.uid]);
+
+  /* Realtime submissions: Tự động cập nhật bài nộp của học sinh ngay khi vừa nộp */
+  const allClassIdsKey = [...classes, ...linkedClasses].map((c) => c.id).filter(Boolean).sort().join(',');
+  useEffect(() => {
+    if (!allClassIdsKey) return undefined;
+    const ids = allClassIdsKey.split(',');
+    const unsubs = ids.map((cid) =>
+      listenSubmissionsByClass(cid, (list) => {
+        if (!list || !list.length) return;
+        setSubmissionsMap((prev) => {
+          const next = { ...prev };
+          list.forEach((sub) => {
+            if (!sub.examId) return;
+            if (!next[sub.examId]) next[sub.examId] = [];
+            const idx = next[sub.examId].findIndex((x) => x.id === sub.id);
+            if (idx >= 0) next[sub.examId][idx] = sub;
+            else next[sub.examId] = [sub, ...next[sub.examId]];
+          });
+          return next;
+        });
+      })
+    );
+    return () => unsubs.forEach((u) => u && u());
+  }, [allClassIdsKey]);
+
+  /* Lắng nghe nộp bài mới từ học sinh trong cùng trình duyệt (storage event giữa các tab) */
+  useEffect(() => {
+    const handleSubChange = () => {
+      subsCacheRef.current = {};
+      refresh().catch(() => {});
+    };
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'cs-last-submission-ts' || e.key === 'cs-submit-queue-v1') {
+        handleSubChange();
+      }
+    });
+    window.addEventListener('cs-submission-created', handleSubChange);
+    return () => {
+      window.removeEventListener('storage', handleSubChange);
+      window.removeEventListener('cs-submission-created', handleSubChange);
+    };
+  }, [refresh]);
 
   /* Load allowances khi chọn lớp */
   useEffect(() => {
@@ -754,7 +883,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const handleCreateClass = async () => {
     if (!newClassName.trim()) return;
     try {
-      await createClass({
+      const createdCls = await createClass({
         name: newClassName.trim(),
         subject: newClassSubject,
         grade: newClassGrade,
@@ -762,10 +891,13 @@ export default function TeacherDashboard({ onExit } = {}) {
         teacherName: user.displayName || user.email,
         requireApproval: true,
       });
+      if (createdCls?.id) {
+        setClasses((prev) => [createdCls, ...prev]);
+      }
       setNewClassName('');
       setShowCreateClass(false);
-      await refresh();
       say(`Đã tạo lớp ${newClassName.trim()} (${newClassSubject} · Khối ${newClassGrade})`, 'success');
+      refresh().catch(() => {});
     } catch (e) {
       say('Lỗi: ' + e.message, 'error');
     }
@@ -865,24 +997,29 @@ export default function TeacherDashboard({ onExit } = {}) {
   const handleStartSession = useCallback(async (exam) => {
     setStartingId(exam.id);
     try {
+      const targetClassId = exam.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+      if (!targetClassId) {
+        throw new Error('Đề thi chưa được gán vào lớp học nào. Hãy chọn hoặc tạo lớp trước.');
+      }
       const session = await createExamSession({
         examId: exam.id,
         examToken: exam.token,
-        classId: exam.classId,
+        classId: targetClassId,
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
         title: exam.title,
         duration: exam.duration,
       });
-      setSessions((prev) => [session, ...prev]);
-      say('Đã bắt đầu phòng thi!', 'success');
+      // Cập nhật state phòng thi ngay lập tức trong thời gian thực
+      setSessions((prev) => [session, ...prev.filter((s) => s.id !== session.id)]);
+      say('Đã mở phòng thi trực tiếp!', 'success');
       goSection('sessions');
     } catch (e) {
-      say('Không tạo được phòng thi: ' + e.message, 'error');
+      say('Không mở được phòng thi: ' + (e?.message || e), 'error');
     } finally {
       setStartingId(null);
     }
-  }, [user, say]);
+  }, [user, classes, linkedClasses, say]);
 
   const handleEndSession = useCallback((session) => {
     setConfirmState({
@@ -2241,7 +2378,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
       {section === 'analytics' && (
         <ClassAnalytics
-          classes={classes}
+          classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
           exams={exams}
           submissionsMap={submissionsMap}
           loading={loading}
@@ -2596,7 +2733,6 @@ export default function TeacherDashboard({ onExit } = {}) {
           const pcts = subs.map(pctOf);
           const avg = subs.length ? Math.round(avgOf(pcts)) : null;
           const best = subs.length ? Math.round(Math.max(...pcts)) : null;
-          const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
           const memberCount = cls?.members?.length || 0;
           const liveDoingCount = liveSession
             ? Math.max(0, (liveSession.stats?.joined || 0) - (liveSession.stats?.submitted || 0))
@@ -2607,26 +2743,17 @@ export default function TeacherDashboard({ onExit } = {}) {
             return cls?.subject || cls?._mySubject || '—';
           })();
           const isAi = isAiGeneratedExam(ex);
-          const isPublic = ex.visibility === 'public';
-          const mcqAllA = (ex.questions || []).length >= 2
-            && (ex.questions || []).every((qItem) => (qItem.type || 'single_choice') !== 'single_choice'
-              || qItem.correct === 0);
-          const typeCount = (() => {
-            const t = { single_choice: 0, true_false: 0, short_answer: 0 };
-            (ex.questions || []).forEach((question) => {
-              const k = question.type || 'single_choice';
-              t[k] = (t[k] || 0) + 1;
-            });
-            return t;
-          })();
-
           const opensMs = tsMs(ex.opensAt);
           const closesMs = tsMs(ex.closesAt);
 
           return (
-            <article key={ex.id} className={'vt-card vt-exam' + (st.key === 'live' ? ' live' : '')}>
-              <div className="vt-exam-main">
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <article
+              key={ex.id}
+              className={'vt-exam-clean-card' + (st.key === 'live' ? ' live' : '')}
+              onClick={() => setDetailExamModal(ex)}
+            >
+              <div className="vt-ecc-main">
+                <div className="vt-ecc-tags">
                   <span className={'vt-chip ' + st.key}>
                     {st.key === 'live' && <IcoDot size={7} />} {st.label}
                   </span>
@@ -2640,7 +2767,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                       }}
                       title="Số học sinh đang làm bài trực tiếp trong phòng thi"
                     >
-                      ● {liveDoingCount} HS đang làm trực tiếp
+                      ● {liveDoingCount} HS đang thi
                     </span>
                   )}
                   {subject && subject !== '—' && (
@@ -2648,118 +2775,51 @@ export default function TeacherDashboard({ onExit } = {}) {
                       <IcoSubject size={11} /> {subject}
                     </span>
                   )}
+                  <span className="vt-chip" style={{ background: 'var(--vt-tint)', color: 'var(--ink)' }}>
+                    Lớp {cls?.name || '—'}
+                  </span>
                   {isAi && (
                     <span className="vt-chip" style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309' }}>
-                      <IcoSparkles size={11} /> AI tạo
+                      <IcoSparkles size={11} /> AI
                     </span>
                   )}
                   {(opensMs > 0 || closesMs > 0) && (
                     <span
                       className="vt-chip"
-                      onClick={() => openScheduleModal(ex)}
-                      style={{
-                        cursor: 'pointer',
-                        background: 'color-mix(in srgb, #0284c7 12%, transparent)',
-                        color: '#0369a1',
-                      }}
-                      title="Bấm để chỉnh lịch mở/đóng đề thi"
+                      style={{ background: 'color-mix(in srgb, #0284c7 12%, transparent)', color: '#0369a1' }}
                     >
-                      <IcoCalendar size={11} />
-                      {opensMs > 0 ? `Mở: ${fmtClock(opensMs)}` : ''}
-                      {opensMs > 0 && closesMs > 0 ? ' → ' : ''}
-                      {closesMs > 0 ? `Đóng: ${fmtClock(closesMs)}` : ''}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className="vt-chip"
-                    title={isPublic
-                      ? 'Đang công khai: ai có link cũng làm được. Bấm để chuyển sang riêng tư.'
-                      : 'Đang riêng tư: chỉ thành viên lớp vào được. Bấm để công khai.'}
-                    onClick={() => toggleVisibility(ex)}
-                    disabled={savingVis === ex.id}
-                    style={{
-                      cursor: savingVis === ex.id ? 'wait' : 'pointer',
-                      border: '1px solid ' + (isPublic ? 'rgba(16,185,129,.4)' : 'rgba(100,116,139,.35)'),
-                      background: isPublic ? 'color-mix(in srgb, #10b981 14%, transparent)' : 'transparent',
-                      color: isPublic ? '#047857' : 'var(--t-ink-muted)',
-                      opacity: savingVis === ex.id ? 0.6 : 1,
-                    }}
-                  >
-                    {isPublic ? 'Công khai' : 'Riêng tư'}
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-chip"
-                    title={ex.lockUntilStart
-                      ? 'Đang khoá: học sinh thấy bảng chờ, chỉ vào thi khi bạn bấm “Bắt đầu thi”. Bấm để mở vào tự do.'
-                      : 'Đang mở: học sinh vào thi bất cứ lúc nào. Bấm để khoá tới khi bạn bắt đầu.'}
-                    onClick={() => toggleLock(ex)}
-                    disabled={savingLock === ex.id}
-                    style={{
-                      cursor: savingLock === ex.id ? 'wait' : 'pointer',
-                      border: '1px solid ' + (ex.lockUntilStart ? 'rgba(217,119,6,.45)' : 'rgba(100,116,139,.35)'),
-                      background: ex.lockUntilStart ? 'color-mix(in srgb, #d97706 14%, transparent)' : 'transparent',
-                      color: ex.lockUntilStart ? '#a45c05' : 'var(--t-ink-muted)',
-                      opacity: savingLock === ex.id ? 0.6 : 1,
-                    }}
-                  >
-                    {ex.lockUntilStart ? 'Khoá bài' : 'Vào tự do'}
-                  </button>
-                  {mcqAllA && (
-                    <span
-                      className="vt-chip"
-                      title="Mọi câu trắc nghiệm đang có đáp án A. Đề nhập từ file có thể chưa nhận được đáp án đúng — mở “Chỉnh sửa” để kiểm tra trước khi cho học sinh làm."
-                      style={{ background: 'rgba(220, 38, 38, 0.12)', color: '#b91c1c' }}
-                    >
-                      Kiểm tra đáp án
+                      <IcoCalendar size={11} /> {opensMs > 0 ? fmtClock(opensMs) : ''}{opensMs > 0 && closesMs > 0 ? ' → ' : ''}{closesMs > 0 ? fmtClock(closesMs) : ''}
                     </span>
                   )}
                 </div>
-                <h3>{ex.title}</h3>
-                <small>
-                  <b>Lớp {cls?.name || '—'}</b>
-                  {subject && subject !== '—' ? <> · Môn <b>{subject}</b></> : null}
-                  {cls?.teacherName ? <> · GV chủ nhiệm: <b>{cls.teacherName}</b></> : null}
-                  {` · ${(ex.questions || []).length} câu · ${ex.duration} phút`}
-                  {typeCount.true_false > 0 && ` · ${typeCount.true_false} Đ/S`}
-                  {typeCount.short_answer > 0 && ` · ${typeCount.short_answer} TLN`}
-                </small>
-                <div className="vt-linkbox">
-                  <code title={link}>{link}</code>
-                  <button
-                    type="button"
-                    className="vt-icon-btn"
-                    aria-label="Sao chép liên kết đề thi"
-                    onClick={() => copyText(link, ex.id, 'Đã chép link đề')}
-                    title="Sao chép link"
-                  >
-                    {copiedKey === ex.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
-                  </button>
+
+                <h3 className="vt-ecc-title">{ex.title}</h3>
+
+                <div className="vt-ecc-meta">
+                  <span>{(ex.questions || []).length} câu</span>
+                  <span className="dot">•</span>
+                  <span>{ex.duration} phút</span>
+                  <span className="dot">•</span>
+                  <span>{subs.length ? `${subs.length}/${memberCount || '?'} đã nộp` : 'Chưa có bài nộp'}</span>
+                  {avg != null && (
+                    <>
+                      <span className="dot">•</span>
+                      <span className="highlight">Điểm TB: {avg}%</span>
+                    </>
+                  )}
+                  {best != null && (
+                    <>
+                      <span className="dot">•</span>
+                      <span>Cao nhất: {best}%</span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="vt-exam-stats">
-                <div>
-                  <Donut value={memberCount ? subs.length : 0} max={memberCount || 1} size={74} stroke={8}>
-                    <strong className="sm">{subs.length}</strong>
-                  </Donut>
-                  <small>{memberCount ? `/${memberCount} đã nộp` : 'bài nộp'}</small>
-                </div>
-                <div>
-                  <b>{avg == null ? '—' : `${avg}%`}</b>
-                  <small>điểm TB</small>
-                </div>
-                <div>
-                  <b>{best == null ? '—' : `${best}%`}</b>
-                  <small>cao nhất</small>
-                </div>
-              </div>
-
-              <div className="vt-exam-actions">
+              <div className="vt-ecc-actions" onClick={(e) => e.stopPropagation()}>
                 {liveSession ? (
                   <button type="button" className="vt-btn primary" onClick={() => setViewingSessionId(liveSession.id)}>
-                    <IcoVideo size={14} /> Giám sát ({liveDoingCount} đang thi)
+                    <IcoVideo size={14} /> Giám sát ({liveDoingCount})
                   </button>
                 ) : (
                   <button
@@ -2768,81 +2828,26 @@ export default function TeacherDashboard({ onExit } = {}) {
                     onClick={() => handleStartSession(ex)}
                     disabled={startingId === ex.id || st.key === 'closed'}
                   >
-                    {startingId === ex.id ? 'Đang tạo...' : <><IcoPlay size={14} /> Bắt đầu thi</>}
+                    {startingId === ex.id ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                        Đang mở...
+                      </span>
+                    ) : (
+                      <><IcoPlay size={14} /> Bắt đầu thi</>
+                    )}
                   </button>
                 )}
-                <div className="vt-exam-actions-row">
-                  <button
-                    type="button"
-                    className="vt-btn sm"
-                    style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
-                    onClick={() => setPreviewExam(ex)}
-                    title="Mô phỏng thi, bản in A4 và đảo mã đề"
-                  >
-                    <IcoEye size={13} /> Xem trước & In A4
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-btn sm"
-                    onClick={() => openScheduleModal(ex)}
-                    title="Đặt lịch giờ mở đề và đóng đề tự động"
-                  >
-                    <IcoCalendar size={13} /> Đặt lịch
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-btn sm"
-                    onClick={() => handleDuplicateExam(ex)}
-                    title="Nhân bản đề thi này thành bản sao mới"
-                  >
-                    <IcoCopy size={13} /> Nhân bản
-                  </button>
-                  {(classes.length + linkedClasses.length) > 1 && (
-                    <button
-                      type="button"
-                      className="vt-btn sm"
-                      onClick={() => {
-                        const allTargets = [...classes, ...linkedClasses];
-                        const defaultCls = allTargets.find((c) => c.id !== ex.classId) || allTargets[0];
-                        setCopyTargetClassId(defaultCls?.id || '');
-                        setCopyExamTarget(ex);
-                      }}
-                      title="Giao đề thi này sang một lớp chủ nhiệm hoặc lớp liên kết khác"
-                    >
-                      <IcoSend size={13} /> Giao lớp khác
-                    </button>
-                  )}
-                  <button type="button" className="vt-btn sm" onClick={() => setSelectedExam(ex)}>
-                    <IcoChart size={13} /> Thống kê
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-btn sm"
-                    onClick={() => setEditingExam(ex)}
-                    title="Sửa thông tin, câu hỏi, cấu hình camera & chống gian lận"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
-                    Chỉnh sửa
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-icon-btn"
-                    aria-label="Xuất điểm CSV"
-                    onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất', 'error'))}
-                    title="Xuất điểm CSV"
-                  >
-                    <IcoDownload size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-icon-btn danger"
-                    aria-label="Xóa đề thi"
-                    onClick={() => handleDeleteExam(ex)}
-                    title="Xóa đề"
-                  >
-                    <IcoTrash size={15} />
-                  </button>
-                </div>
+
+                <button
+                  type="button"
+                  className="vt-ecc-btn-detail"
+                  onClick={() => setDetailExamModal(ex)}
+                  title="Bấm để xem chi tiết, thống kê và toàn bộ thao tác"
+                >
+                  <span>Chi tiết</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
               </div>
             </article>
           );
@@ -3257,7 +3262,12 @@ export default function TeacherDashboard({ onExit } = {}) {
           <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
             <QuestionBank
               classes={classes}
-              onSoftExamCreated={() => refresh()}
+              onSoftExamCreated={(exam) => {
+                if (exam?.id) {
+                  setExams((prev) => [exam, ...prev.filter((x) => x.id !== exam.id)]);
+                }
+                refresh().catch(() => {});
+              }}
               onOpenAiStudio={openNewExam}
             />
           </Suspense>
@@ -3625,19 +3635,31 @@ export default function TeacherDashboard({ onExit } = {}) {
               </div>
             )}
             <CreateExamPage
-              /* Giáo viên bộ môn: khoá vào đúng lớp đã liên kết, không cho chọn lớp khác */
-              classInfo={extCreate && extClass ? extClass : (selectedClass || classes[0])}
-              classes={extCreate && extClass ? [extClass] : classes}
+              /* Giáo viên bộ môn / chủ nhiệm: hỗ trợ cả lớp chủ nhiệm và lớp đã liên kết */
+              classInfo={extCreate && extClass ? extClass : (selectedClass || classes[0] || linkedClasses[0])}
+              classes={extCreate && extClass ? [extClass] : (linkedClasses.length ? [...classes, ...linkedClasses] : classes)}
               classInsights={classInsights}
               initialPreset={aiPreset}
               grades={[]}
               subjects={[]}
               onDone={async (createdExam) => {
                 subsCacheRef.current = {};
-                await refresh();
+                if (createdExam?.id) {
+                  setExams((prev) => {
+                    if (prev.some((x) => x.id === createdExam.id)) return prev;
+                    return [createdExam, ...prev];
+                  });
+                }
+                // Chuyển ngay lập tức sang Kho Đề thi (Realtime UI phản hồi lập tức)
+                setSelectedClass(null);
+                setExtClass(null);
+                setExtCreate(false);
+                setAiPreset(null);
+                goSection('exams');
+
                 if (extCreate && extClass) {
                   /* Báo cho chủ nhiệm: có đề mới trong lớp của họ */
-                  await notifyClassOwner({
+                  notifyClassOwner({
                     type: 'exam_assigned',
                     toUid: extClass.teacherId,
                     actorId: user.uid,
@@ -3648,14 +3670,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                     title: createdExam?.title || 'Đề mới',
                     body: `vừa giao đề “${createdExam?.title || 'Đề mới'}” cho lớp ${extClass.name || ''}.`,
                     tab: 'exams',
-                  });
+                  }).catch(() => {});
                   say(`Đã giao đề cho lớp ${extClass.name || ''}`.trim(), 'success');
                 }
-                setSelectedClass(null);
-                setExtClass(null);
-                setExtCreate(false);
-                setAiPreset(null);
-                goSection('exams');
+                // Đồng bộ nền, không chặn giao diện và không đè mất đề vừa tạo
+                refresh().catch(() => {});
               }}
               onCancel={() => {
                 setSelectedClass(null);
@@ -3722,6 +3741,212 @@ export default function TeacherDashboard({ onExit } = {}) {
           </details>
         </Modal>
       )}
+
+      {/* ============ MODAL CHI TIẾT ĐỀ THI ("ẤN VÀO LÀ HIỆN RA") ============ */}
+      {detailExamModal && (() => {
+        const ex = detailExamModal;
+        const cls = classById[ex.classId];
+        const subs = submissionsMap[ex.id] || [];
+        const pcts = subs.map(pctOf);
+        const avg = subs.length ? Math.round(avgOf(pcts)) : null;
+        const best = subs.length ? Math.round(Math.max(...pcts)) : null;
+        const link = `${window.location.origin}${window.location.pathname}#exam/${ex.token}`;
+        const memberCount = cls?.members?.length || 0;
+        const subject = detectExamSubject(ex) || cls?.subject || '—';
+        const isPublic = ex.visibility === 'public';
+        const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live');
+        const liveDoingCount = liveSession
+          ? Math.max(0, (liveSession.stats?.joined || 0) - (liveSession.stats?.submitted || 0))
+          : 0;
+
+        return (
+          <Modal
+            title={`Chi tiết đề thi: ${ex.title}`}
+            size="lg"
+            onClose={() => setDetailExamModal(null)}
+            foot={
+              <>
+                <button
+                  type="button"
+                  className="vt-btn"
+                  onClick={() => setDetailExamModal(null)}
+                >
+                  Đóng
+                </button>
+                {liveSession ? (
+                  <button
+                    type="button"
+                    className="vt-btn primary"
+                    onClick={() => { setDetailExamModal(null); setViewingSessionId(liveSession.id); }}
+                  >
+                    <IcoVideo size={14} /> Giám sát phòng LIVE ({liveDoingCount})
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="vt-btn primary"
+                    onClick={() => { setDetailExamModal(null); handleStartSession(ex); }}
+                    disabled={startingId === ex.id}
+                  >
+                    <IcoPlay size={14} /> Mở phòng thi ngay
+                  </button>
+                )}
+              </>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              {/* 2 thẻ lớn: Link & Cấu hình + Tình hình nộp bài */}
+              <div className="vt-edm-grid">
+                <div className="vt-edm-card">
+                  <h4 className="vt-edm-card-title">
+                    <IcoBook size={14} /> Link làm bài &amp; Thông tin đề
+                  </h4>
+                  <div className="vt-edm-link-row">
+                    <input
+                      type="text"
+                      readOnly
+                      value={link}
+                      className="vt-edm-link-input"
+                      title={link}
+                    />
+                    <button
+                      type="button"
+                      className="vt-btn sm primary"
+                      onClick={() => copyText(link, ex.id, 'Đã sao chép liên kết đề!')}
+                    >
+                      {copiedKey === ex.id ? <><IcoCheckCircle size={14} /> Đã chép</> : <><IcoCopy size={14} /> Chép link</>}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--mut)' }}>
+                    <span>Lớp: <b style={{ color: 'var(--ink)' }}>{cls?.name || '—'}</b></span>
+                    <span>•</span>
+                    <span>Môn: <b style={{ color: 'var(--ink)' }}>{subject}</b></span>
+                    <span>•</span>
+                    <span>{(ex.questions || []).length} câu</span>
+                    <span>•</span>
+                    <span>{ex.duration} phút</span>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      className="vt-chip"
+                      style={{ cursor: 'pointer', padding: '0.15rem 0.5rem' }}
+                      onClick={() => toggleVisibility(ex)}
+                      title="Bấm để chuyển đổi giữa Riêng tư và Công khai"
+                    >
+                      {isPublic ? '🌐 Công khai' : '🔒 Riêng tư'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="vt-edm-card">
+                  <h4 className="vt-edm-card-title">
+                    <IcoChart size={14} /> Tình hình nộp bài
+                  </h4>
+                  <div className="vt-edm-stats-row">
+                    <Donut value={memberCount ? subs.length : 0} max={memberCount || 1} size={64} stroke={7}>
+                      <strong className="sm">{subs.length}</strong>
+                    </Donut>
+                    <div className="vt-edm-stats-stat">
+                      <b>{subs.length} <small style={{ fontSize: '0.8rem', fontWeight: 600 }}>/{memberCount || '?'} HS</small></b>
+                      <small>đã nộp bài</small>
+                    </div>
+                    <div className="vt-edm-stats-stat">
+                      <b>{avg == null ? '—' : `${avg}%`}</b>
+                      <small>điểm TB</small>
+                    </div>
+                    <div className="vt-edm-stats-stat">
+                      <b>{best == null ? '—' : `${best}%`}</b>
+                      <small>cao nhất</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lưới công cụ thao tác */}
+              <div>
+                <h4 style={{ margin: '0 0 0.65rem', fontSize: '0.84rem', fontWeight: 800, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Công cụ &amp; Thao tác
+                </h4>
+                <div className="vt-edm-tools-grid">
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => { setDetailExamModal(null); setPreviewExam(ex); }}
+                    title="Mô phỏng thi, in đề A4 và đảo mã đề"
+                  >
+                    <IcoEye size={15} /> Xem trước &amp; In A4
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => { setDetailExamModal(null); setEditingExam(ex); }}
+                    title="Chỉnh sửa nội dung câu hỏi, đáp án, cấu hình thi"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
+                    Chỉnh sửa đề
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => { setDetailExamModal(null); openScheduleModal(ex); }}
+                    title="Đặt lịch giờ mở đề và đóng đề tự động"
+                  >
+                    <IcoCalendar size={15} /> Đặt lịch mở/đóng
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => { setDetailExamModal(null); handleDuplicateExam(ex); }}
+                    title="Nhân bản đề thi này thành bản sao mới"
+                  >
+                    <IcoCopy size={15} /> Nhân bản đề
+                  </button>
+                  {(classes.length + linkedClasses.length) > 1 && (
+                    <button
+                      type="button"
+                      className="vt-edm-tool-btn"
+                      onClick={() => {
+                        const allTargets = [...classes, ...linkedClasses];
+                        const defaultCls = allTargets.find((c) => c.id !== ex.classId) || allTargets[0];
+                        setCopyTargetClassId(defaultCls?.id || '');
+                        setCopyExamTarget(ex);
+                        setDetailExamModal(null);
+                      }}
+                      title="Giao đề thi này sang một lớp khác"
+                    >
+                      <IcoSend size={15} /> Giao lớp khác
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => { setDetailExamModal(null); setSelectedExam(ex); }}
+                    title="Bảng điểm chi tiết & phân tích phổ điểm từng học sinh"
+                  >
+                    <IcoChart size={15} /> Thống kê chi tiết
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất CSV', 'error'))}
+                    title="Xuất bảng điểm ra file CSV"
+                  >
+                    <IcoDownload size={15} /> Xuất điểm CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn danger"
+                    onClick={() => { setDetailExamModal(null); handleDeleteExam(ex); }}
+                    title="Xóa vĩnh viễn đề thi này"
+                  >
+                    <IcoTrash size={15} /> Xóa đề thi
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* ============ MODAL ĐẶT LỊCH ĐỀ THI (MỤC D4) ============ */}
       {scheduleExamModal && (
@@ -4096,7 +4321,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           <ExamStats
             exam={selectedExam}
             subs={submissionsMap[selectedExam.id] || []}
-            onExport={() => exportExamCsv(selectedExam, submissionsMap[selectedExam.id] || [])}
+            onExport={(freshSubs) => exportExamCsv(selectedExam, freshSubs || submissionsMap[selectedExam.id] || [])}
           />
         </Modal>
       )}
@@ -4396,11 +4621,51 @@ export default function TeacherDashboard({ onExit } = {}) {
 /* ============================================================
    THỐNG KÊ ĐỀ + XEM BÀI LÀM CHI TIẾT TỪNG HỌC SINH
    ============================================================ */
-function ExamStats({ exam, subs, onExport }) {
+function ExamStats({ exam, subs: initialSubs = [], onExport }) {
+  const [subs, setSubs] = useState(initialSubs || []);
+  const [loading, setLoading] = useState(!initialSubs || initialSubs.length === 0);
   const [inspectSub, setInspectSub] = useState(null);
 
+  useEffect(() => {
+    if (!exam?.id) return;
+    setLoading(true);
+    const unsub = listenSubmissions(exam.id, (fresh) => {
+      setSubs(fresh || []);
+      setLoading(false);
+    });
+    return () => unsub?.();
+  }, [exam?.id]);
+
+  const reloadSubmissions = async () => {
+    if (!exam?.id) return;
+    setLoading(true);
+    try {
+      const fresh = await getSubmissionsByExam(exam.id);
+      setSubs(fresh || []);
+    } catch (e) {
+      console.warn('[ExamStats] Lỗi tải bài nộp:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && (!subs || subs.length === 0)) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <p className="vt-muted">Đang tải danh sách bài nộp...</p>
+      </div>
+    );
+  }
+
   if (!subs || subs.length === 0) {
-    return <p className="vt-muted">Chưa có bài nộp nào cho đề này.</p>;
+    return (
+      <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+        <p className="vt-muted" style={{ marginBottom: '1rem' }}>Chưa có bài nộp nào cho đề này.</p>
+        <button type="button" className="vt-btn sm" onClick={reloadSubmissions}>
+          🔄 Tải lại dữ liệu
+        </button>
+      </div>
+    );
   }
 
   const sorted = [...subs].sort((a, b) => b.score - a.score);
@@ -4557,7 +4822,7 @@ function ExamStats({ exam, subs, onExport }) {
       <section>
         <header className="vt-card-head">
           <h4>Bảng xếp hạng (Bấm vào học sinh để xem bài làm chi tiết)</h4>
-          <button type="button" className="vt-btn sm" onClick={onExport}>
+          <button type="button" className="vt-btn sm" onClick={() => onExport?.(subs)}>
             <IcoDownload size={13} /> Xuất CSV
           </button>
         </header>

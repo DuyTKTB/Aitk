@@ -302,8 +302,7 @@ body.on-ai-page .ds-page .ds-input-wrap {
     pointer-events: auto;
   }
 
-  /* Ẩn những thứ đã được gom vào 2 menu */
-  body.on-ai-page .ds-page .ds-exit-btn,
+  /* Ẩn những thứ đã được gom vào 2 menu (giữ ds-exit-btn để thoát trang dễ dàng) */
   body.on-ai-page .ds-page .ds-title-block,
   body.on-ai-page .ds-page .ds-grade,
   body.on-ai-page .ds-page .ds-grade-select,
@@ -318,14 +317,36 @@ body.on-ai-page .ds-page .ds-input-wrap {
     display: flex;
   }
 
-  /* Nút tròn kính 38px */
+  /* Nút tròn kính 38px (Exit btn, Menu btn, v.v.) */
   body.on-ai-page .ds-page .ds-menu-btn,
+  body.on-ai-page .ds-page .ds-exit-btn,
   body.on-ai-page .ds-page .ds-hbtn {
-    display: grid;
+    display: grid !important;
     place-items: center;
     width: 38px !important;
     height: 38px !important;
     flex: 0 0 38px !important;
+    border-radius: 50% !important;
+  }
+
+  body.on-ai-page .ds-page .ds-exit-btn {
+    color: var(--ink) !important;
+    background: var(--fm-glass, rgba(125, 179, 255, 0.12)) !important;
+    border: 1px solid var(--fm-edge, rgba(125, 179, 255, 0.24)) !important;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  body.on-ai-page .ds-page .ds-quota-item.vip {
+    color: #f59e0b !important;
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.45) !important;
+    font-weight: 700 !important;
+  }
+
+  body.on-ai-page .ds-page .ds-quota-item.vip span {
+    color: #f59e0b !important;
+    font-weight: 800 !important;
   }
 
   /* Tiêu đề bấm được */

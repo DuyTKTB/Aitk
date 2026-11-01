@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { AuthProvider } from './hooks/useAuth.jsx';
 import { SettingsProvider } from './contexts/SettingsContext.jsx';
 import { ToastProvider } from './ui/index.jsx';
+import { IntroProvider } from './components/ElecIntroLoader.jsx';
 
 /* ============ CSS NỀN ============ */
 import './index.css';
@@ -34,6 +35,7 @@ import './styles/tokens.css';
 import './styles/tools-apple.css';
 import './styles/violation-overlay.css';
 import './styles/round-polish.css';
+import './styles/animated-icons.css';
 
 /* Chế độ nhẹ cho máy yếu — phải import SAU các file CSS khác để ghi đè */
 import './perf-lite.css';
@@ -191,9 +193,11 @@ createRoot(rootEl).render(
     <ErrorBoundary>
       <SettingsProvider>
         <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <IntroProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </IntroProvider>
         </AuthProvider>
       </SettingsProvider>
     </ErrorBoundary>

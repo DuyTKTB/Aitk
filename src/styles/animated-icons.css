@@ -1,0 +1,519 @@
+/* ============================================================
+   animated-icons.css — ELEC AI Dynamic Micro-Interactions System
+   Inspired by Animate-UI, Lucide Motion & Apple VisionOS
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. CORE BASE & GPU ACCELERATION
+   ------------------------------------------------------------ */
+.anim-ico-svg,
+.nav-ico svg,
+.nav-tool-icon svg,
+.nav-action-icon-btn svg,
+.bnav-ico svg,
+.sg-icon-btn svg,
+.sg-wish-thumb svg,
+.sg-add-school-btn svg,
+.sg-detail-link svg {
+  display: inline-block;
+  vertical-align: middle;
+  transform-origin: center center;
+  will-change: transform, filter;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 0.25s ease,
+              color 0.2s ease,
+              opacity 0.2s ease;
+}
+
+/* Tactile press on click/touch */
+.anim-ico-svg:active,
+.nav-item:active .anim-ico-svg,
+.nav-tool-item:active .anim-ico-svg,
+.nav-action-icon-btn:active svg,
+.bnav-btn:active .bnav-ico svg,
+.sg-icon-btn:active svg {
+  transform: scale(0.9) !important;
+}
+
+/* ------------------------------------------------------------
+   2. DESKTOP NAVBAR ICONS: HIỆN ICON & CHỮ CÂN ĐỐI
+   Ghi đè quy tắc cũ display: none !important
+   ------------------------------------------------------------ */
+@media (min-width: 721px) {
+  .nav-item .nav-ico {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin-right: 5px;
+    line-height: 1;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .nav-item .nav-label {
+    display: inline !important;
+  }
+
+  .nav-item {
+    gap: 2px !important;
+    padding: 0 12px !important;
+  }
+}
+
+/* Đảm bảo căn giữa icon trong nav item */
+.nav-item .nav-ico svg {
+  display: block;
+}
+
+/* ------------------------------------------------------------
+   3. ANIMATED KEYFRAMES FOR ICON FAMILIES
+   ------------------------------------------------------------ */
+
+/* === HOME: Spring Bounce & Warm Hearth Glow === */
+@keyframes anim-home-bounce {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-3px) scaleY(1.12) scaleX(0.95); }
+  65% { transform: translateY(-1px) scaleY(0.98) scaleX(1.02); }
+  100% { transform: translateY(-2px) scale(1.06); }
+}
+
+.anim-ico-home,
+.nav-item:hover .anim-ico-home,
+.bnav-btn:hover .anim-ico-home {
+  animation: anim-home-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === QUIZ / CAP / VIRTUAL EXAMS: Playful Mortarboard Tilt === */
+@keyframes anim-cap-tilt {
+  0% { transform: rotate(0) translateY(0); }
+  30% { transform: rotate(-16deg) translateY(-2px) scale(1.1); }
+  60% { transform: rotate(-8deg) translateY(-1px) scale(1.05); }
+  100% { transform: rotate(-13deg) translateY(-1.5px) scale(1.08); }
+}
+
+.anim-ico-cap,
+.anim-ico-quiz,
+.nav-item:hover .anim-ico-cap,
+.nav-item:hover .anim-ico-quiz,
+.bnav-btn:hover .anim-ico-cap,
+.bnav-btn:hover .anim-ico-quiz,
+.ns9-nav-virtual-exam:hover .nav-ico svg {
+  animation: anim-cap-tilt 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === ROADMAP / BOOK: Compass Spin & Perspective Flip === */
+@keyframes anim-compass-spin {
+  0% { transform: rotate(0) scale(1); }
+  35% { transform: rotate(45deg) scale(1.12); }
+  70% { transform: rotate(-15deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1.08); }
+}
+
+.anim-ico-book,
+.anim-ico-roadmap,
+.nav-item:hover .anim-ico-book,
+.nav-item:hover .anim-ico-roadmap,
+.bnav-btn:hover .anim-ico-roadmap {
+  animation: anim-compass-spin 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === CLASSROOM / NOTEBOOK: Writing Tilt & Line Shimmer === */
+@keyframes anim-notebook-write {
+  0% { transform: rotate(0) translateY(0); }
+  30% { transform: rotate(12deg) translateY(-2px) scale(1.08); }
+  60% { transform: rotate(-6deg) translateY(-1px) scale(1.04); }
+  100% { transform: rotate(8deg) translateY(-1.5px) scale(1.06); }
+}
+
+.anim-ico-class,
+.anim-ico-notebook,
+.nav-item:hover .anim-ico-class,
+.bnav-btn:hover .anim-ico-class {
+  animation: anim-notebook-write 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === TOOLS / SETTINGS: Mechanical Gear Rotation === */
+@keyframes anim-tools-turn {
+  0% { transform: rotate(0) scale(1); }
+  60% { transform: rotate(45deg) scale(1.12); }
+  100% { transform: rotate(35deg) scale(1.08); }
+}
+
+.anim-ico-tools,
+.anim-ico-settings,
+.nav-item:hover .anim-ico-tools,
+.nav-tool-item:hover .anim-ico-tools,
+.nav-item.has-drop[aria-expanded="true"] .anim-ico-tools {
+  animation: anim-tools-turn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === ROBOT / ELEC AI: Antenna Sparkle & Head Nod === */
+@keyframes anim-robot-pulse {
+  0% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-2px) scale(1.1) rotate(-5deg); filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6)); }
+  50% { transform: translateY(-2px) scale(1.1) rotate(5deg); filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8)); }
+  75% { transform: translateY(-1px) scale(1.05) rotate(-2deg); }
+  100% { transform: translateY(-1px) scale(1.08) rotate(0); filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.5)); }
+}
+
+.anim-ico-robot,
+.anim-ico-ai,
+.nav-tool-item:hover .anim-ico-robot,
+.nav-tool-item:hover .anim-ico-ai {
+  animation: anim-robot-pulse 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === ATOM: Orbiting Electron Continuous & Hover Speedup === */
+@keyframes anim-atom-orbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.anim-ico-atom {
+  transform-origin: 12px 12px;
+}
+.nav-tool-item:hover .anim-ico-atom,
+.anim-ico-atom:hover {
+  animation: anim-atom-orbit 2.5s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.6));
+}
+
+/* === FLASK / BEAKER: Chemical Bubble Rise & Slosh === */
+@keyframes anim-flask-slosh {
+  0%, 100% { transform: rotate(0) scale(1); }
+  25% { transform: rotate(-10deg) scale(1.08); }
+  75% { transform: rotate(8deg) scale(1.08); }
+}
+
+.anim-ico-flask,
+.nav-tool-item:hover .anim-ico-flask {
+  animation: anim-flask-slosh 0.5s ease-in-out forwards;
+}
+
+/* === CALC / QUICK FORMULAS: Keypad Press Spring === */
+@keyframes anim-calc-press {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.9) translateY(1.5px); }
+  70% { transform: scale(1.1) translateY(-2px); }
+  100% { transform: scale(1.06) translateY(-1px); }
+}
+
+.anim-ico-calc,
+.nav-tool-item:hover .anim-ico-calc {
+  animation: anim-calc-press 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === SCALE / EQUATION BALANCER: Seesaw Beam Tilt === */
+@keyframes anim-scale-seesaw {
+  0%, 100% { transform: rotate(0) scale(1); }
+  30% { transform: rotate(-9deg) scale(1.08); }
+  70% { transform: rotate(7deg) scale(1.08); }
+}
+
+.anim-ico-scale,
+.nav-tool-item:hover .anim-ico-scale {
+  animation: anim-scale-seesaw 0.5s ease-in-out forwards;
+}
+
+/* === MICROSCOPE / ANALYZER: Lens Turret Dial === */
+@keyframes anim-microscope-dial {
+  0% { transform: scale(1) translateY(0); }
+  40% { transform: scale(1.12) translateY(-2px) rotate(8deg); }
+  100% { transform: scale(1.08) translateY(-1px) rotate(0); }
+}
+
+.anim-ico-microscope,
+.nav-tool-item:hover .anim-ico-microscope {
+  animation: anim-microscope-dial 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === TIMER / CLOCK HUB: Seconds Hand Tick === */
+@keyframes anim-timer-sweep {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1.08); }
+}
+
+.anim-ico-timer,
+.anim-ico-clock,
+.nav-tool-item:hover .anim-ico-timer,
+.nav-tool-item:hover .anim-ico-clock {
+  animation: anim-timer-sweep 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === CALENDAR / SCHEDULE: Sheet Page Flip === */
+@keyframes anim-calendar-flip {
+  0% { transform: translateY(0) rotate(0); }
+  40% { transform: translateY(-3px) rotate(-6deg) scale(1.1); }
+  100% { transform: translateY(-1.5px) rotate(-3deg) scale(1.06); }
+}
+
+.anim-ico-calendar,
+.nav-tool-item:hover .anim-ico-calendar {
+  animation: anim-calendar-flip 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === TARGET / GRADE CALCULATOR: Bullseye Reticle Pulse === */
+@keyframes anim-target-pulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.2); filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7)); }
+  70% { transform: scale(0.96); }
+  100% { transform: scale(1.08); filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4)); }
+}
+
+.anim-ico-target,
+.nav-tool-item:hover .anim-ico-target {
+  animation: anim-target-pulse 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === CHART / STATS: Columns Elevation === */
+@keyframes anim-chart-rise {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.12); }
+  100% { transform: translateY(-1.5px) scale(1.06); }
+}
+
+.anim-ico-chart,
+.nav-tool-item:hover .anim-ico-chart {
+  animation: anim-chart-rise 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === GAMEPAD / GAME STUDIO: Tactile D-Pad Click === */
+@keyframes anim-gamepad-click {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  25% { transform: translateY(-2px) rotate(-6deg) scale(1.1); }
+  75% { transform: translateY(1px) rotate(4deg) scale(1.05); }
+}
+
+.anim-ico-gamepad,
+.nav-tool-item:hover .anim-ico-gamepad,
+.game-card:hover .anim-ico-gamepad {
+  animation: anim-gamepad-click 0.4s ease-in-out forwards;
+}
+
+/* ------------------------------------------------------------
+   4. LIVING AMBIENT HIGHLIGHTS (STREAK FLAME, CREDITS ZAP, HOT)
+   ------------------------------------------------------------ */
+
+/* === STREAK FLAME: Organic Fire Breathing Aura === */
+@keyframes anim-flame-ambient {
+  0%, 100% {
+    transform: scale(1) rotate(-1deg);
+    filter: drop-shadow(0 0 3px rgba(249, 115, 22, 0.5));
+  }
+  50% {
+    transform: scale(1.14) rotate(3deg) translateY(-1px);
+    filter: drop-shadow(0 0 9px rgba(249, 115, 22, 0.85));
+  }
+}
+
+.ns9-streak-svg.active,
+.mhead-streak-svg.active,
+.anim-ico-flame {
+  animation: anim-flame-ambient 2.4s ease-in-out infinite !important;
+  transform-origin: 50% 90%;
+}
+
+.ns9-nav-streak-pill:hover .ns9-streak-svg,
+.mhead-streak-pill:hover .mhead-streak-svg {
+  transform: scale(1.25) rotate(-4deg) translateY(-2px) !important;
+  filter: drop-shadow(0 0 12px rgba(249, 115, 22, 1)) !important;
+}
+
+/* === CREDIT ZAP: Electric Voltage Surge === */
+@keyframes anim-zap-surge {
+  0%, 100% {
+    transform: scale(1);
+    filter: none;
+  }
+  30% {
+    transform: scale(1.22) rotate(-8deg);
+    filter: drop-shadow(0 0 8px #facc15);
+    color: #facc15;
+  }
+  70% {
+    transform: scale(1.12) rotate(5deg);
+    filter: drop-shadow(0 0 6px #38bdf8);
+    color: #38bdf8;
+  }
+}
+
+.nav-credit-pill:hover svg,
+.mhead-credit-pill:hover svg,
+.anim-ico-zap:hover {
+  animation: anim-zap-surge 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* === SEARCH LENS: Zoom In & Tilting Perspective === */
+.nav-search-btn:hover svg,
+.mhead-search-btn:hover svg,
+.anim-ico-search:hover {
+  transform: scale(1.22) rotate(18deg) translateY(-1px) !important;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2)) !important;
+  color: #3b82f6 !important;
+}
+
+/* === THEME SUN / MOON === */
+@keyframes anim-sun-spin {
+  0% { transform: rotate(0) scale(1); }
+  100% { transform: rotate(180deg) scale(1.18); filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.8)); }
+}
+
+@keyframes anim-moon-rock {
+  0%, 100% { transform: rotate(0) scale(1); }
+  35% { transform: rotate(-16deg) scale(1.14); filter: drop-shadow(0 0 6px rgba(147, 197, 253, 0.7)); }
+  70% { transform: rotate(12deg) scale(1.1); }
+}
+
+.nav-theme-btn:hover svg circle {
+  animation: anim-sun-spin 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.nav-theme-btn:hover svg path {
+  animation: anim-moon-rock 0.55s ease-in-out forwards;
+}
+
+/* === NOTIFICATION BELL: Pendulum Ring === */
+@keyframes anim-bell-ring {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(18deg); }
+  40% { transform: rotate(-16deg); }
+  60% { transform: rotate(10deg); }
+  80% { transform: rotate(-6deg); }
+  100% { transform: rotate(0); }
+}
+
+.nav-bell-btn:hover svg,
+.anim-ico-bell:hover {
+  animation: anim-bell-ring 0.6s ease-in-out forwards;
+  transform-origin: 50% 15%;
+  color: #f59e0b !important;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5)) !important;
+}
+
+/* ------------------------------------------------------------
+   5. MODALS & ASPIRATION ACTIONS MICRO-INTERACTIONS
+   ------------------------------------------------------------ */
+
+/* === PENCIL / EDIT: Writing Scribble Wiggle === */
+@keyframes anim-pencil-scribble {
+  0%, 100% { transform: rotate(0) translate(0, 0) scale(1); }
+  25% { transform: rotate(-18deg) translate(2px, -2px) scale(1.18); color: #3b82f6; }
+  50% { transform: rotate(-10deg) translate(0, -1px) scale(1.14); }
+  75% { transform: rotate(-16deg) translate(2px, -2px) scale(1.18); }
+}
+
+.sg-exam-card:hover .sg-exam-edit-btn svg,
+.sg-exam-edit-btn:hover svg,
+.sg-icon-btn:hover .anim-ico-pencil,
+.anim-ico-pencil:hover,
+.anim-ico-edit:hover {
+  animation: anim-pencil-scribble 0.45s ease-in-out forwards;
+}
+
+/* === TRASH: Lid Lift & Red Warning Flare === */
+.sg-icon-btn:hover .anim-ico-trash,
+.anim-ico-trash:hover {
+  transform: translateY(-2px) scale(1.15) !important;
+  color: #ef4444 !important;
+  filter: drop-shadow(0 2px 6px rgba(239, 68, 68, 0.4)) !important;
+}
+
+/* === UNIVERSITY THUMBNAIL: Architectural Elevation === */
+.sg-wish-item:hover .sg-wish-thumb svg,
+.anim-ico-university:hover {
+  transform: translateY(-2px) scale(1.14) !important;
+  filter: drop-shadow(0 2px 5px rgba(255, 255, 255, 0.4)) !important;
+}
+
+/* === PLUS / ADD: 90-Degree Spring Turn === */
+.sg-add-school-btn:hover svg,
+.anim-ico-plus:hover {
+  transform: rotate(90deg) scale(1.2) !important;
+  color: #2563eb !important;
+}
+
+/* === DIRECTIONAL CHEVRONS & ARROWS: Elastic Slide === */
+.sg-icon-btn:hover .anim-ico-up,
+.sg-icon-btn:hover svg polyline[points="18 15 12 9 6 15"] {
+  transform: translateY(-2.5px) scale(1.15) !important;
+  color: #2563eb !important;
+}
+
+.sg-icon-btn:hover .anim-ico-down,
+.sg-icon-btn:hover svg polyline[points="6 9 12 15 18 9"] {
+  transform: translateY(2.5px) scale(1.15) !important;
+  color: #2563eb !important;
+}
+
+.sg-detail-link:hover svg:last-child,
+.anim-ico-arrow:hover {
+  transform: translateX(4px) scale(1.12) !important;
+}
+
+/* === CLOSE BUTTON: 90deg Spin === */
+.sg-close-btn:hover svg,
+.udm-close-btn:hover svg,
+.anim-ico-close:hover {
+  transform: rotate(90deg) scale(1.12) !important;
+  color: #ef4444 !important;
+}
+
+/* ------------------------------------------------------------
+   6. MOBILE BOTTOM NAV (≤ 768px): TACTILE TOUCH & FLOATING AURA
+   ------------------------------------------------------------ */
+.bnav-btn {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bnav-btn:hover .bnav-ico svg,
+.bnav-btn.active .bnav-ico svg {
+  transform: translateY(-2px) scale(1.12);
+  filter: drop-shadow(0 3px 6px rgba(47, 107, 255, 0.35));
+}
+
+.bnav-btn.active .bnav-ico {
+  animation: anim-active-pill 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes anim-active-pill {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* ------------------------------------------------------------
+   7. GAME STUDIO / GAME HUB INTERACTIVE CARDS & PILLS
+   ------------------------------------------------------------ */
+.gc-icon svg,
+.game-card .gc-icon svg {
+  display: inline-block;
+  will-change: transform;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
+}
+
+.game-card:hover .gc-icon svg {
+  transform: scale(1.22) rotate(-8deg);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.16));
+}
+
+.btn.primary.gc-play svg {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn.primary.gc-play:hover svg {
+  transform: translateX(3px) scale(1.18);
+}
+
+.gh-cat-btn svg {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.gh-cat-btn:hover svg {
+  transform: scale(1.2) rotate(6deg);
+}
+
+.gh-admin-btn:hover svg {
+  animation: anim-tools-turn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+

@@ -81,6 +81,17 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
     return [];
   });
 
+  // Lắng nghe phím Escape để đóng modal chuẩn UX
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   // Khi chuyển game tab
   useEffect(() => {
     if (activeTab === 'admin') return;
@@ -517,8 +528,8 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
             ) : (
               /* TAB CÀI ĐẶT CÔNG KHAI CỦA TỪNG GAME */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
+                  <div style={{ flex: '1 1 260px' }}>
                     <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.35rem', fontWeight: 800 }}>
                       Cài đặt: {ALL_GAMES_METADATA.find((g) => g.id === activeTab)?.name}
                     </h3>
@@ -530,7 +541,16 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
                   <button
                     type="button"
                     className="cg-btn-primary"
-                    style={{ padding: '0.6rem 1.4rem' }}
+                    style={{
+                      padding: '0.65rem 1.4rem',
+                      whiteSpace: 'nowrap',
+                      flex: '0 0 auto',
+                      minWidth: 'max-content',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                    }}
                     onClick={handleSaveGameConfig}
                   >
                     Lưu tất cả thay đổi
@@ -677,7 +697,7 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
                       <button
                         type="button"
                         className="cg-btn-primary"
-                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem' }}
+                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', whiteSpace: 'nowrap', flex: '0 0 auto' }}
                         onClick={handleAddQuestion}
                       >
                         + Thêm câu hỏi

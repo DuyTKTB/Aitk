@@ -17,18 +17,23 @@ describe('Profile Mobile Architecture & Helpers', () => {
     expect(mask('', false)).toBe('—');
   });
 
-  it('maps legacy profile query tabs correctly into the 5 core tabs', () => {
+  it('maps legacy and modern profile query tabs correctly into the core tabs', () => {
     const mapTab = (raw) => {
       if (!raw) return 'overview';
-      if (['upgrade', 'guide', 'overview'].includes(raw)) return 'overview';
+      if (['vip', 'upgrade', 'tiers'].includes(raw)) return 'vip';
+      if (['guide', 'overview'].includes(raw)) return 'overview';
       if (['achievements', 'stats'].includes(raw)) return 'achievements';
       if (['classroom', 'classes', 'friends', 'teacher'].includes(raw)) return 'classroom';
       if (['history', 'favorites'].includes(raw)) return 'history';
-      if (['settings', 'info', 'security', 'referral', 'reports', 'feedback'].includes(raw)) return 'settings';
+      if (['settings', 'info', 'security', 'invoice', 'notifications', 'referral', 'reports', 'feedback', 'billing'].includes(raw)) return 'settings';
       return 'overview';
     };
 
-    expect(mapTab('upgrade')).toBe('overview');
+    expect(mapTab('vip')).toBe('vip');
+    expect(mapTab('upgrade')).toBe('vip');
+    expect(mapTab('billing')).toBe('settings');
+    expect(mapTab('reports')).toBe('settings');
+    expect(mapTab('referral')).toBe('settings');
     expect(mapTab('guide')).toBe('overview');
     expect(mapTab('stats')).toBe('achievements');
     expect(mapTab('teacher')).toBe('classroom');
@@ -36,6 +41,32 @@ describe('Profile Mobile Architecture & Helpers', () => {
     expect(mapTab('security')).toBe('settings');
     expect(mapTab('feedback')).toBe('settings');
     expect(mapTab('unknown')).toBe('overview');
+  });
+
+  it('validates and protects activation code redemption against spam and invalid codes', async () => {
+    const { redeemActivationCode, getSubscriptionAndQuota } = await import('../src/data/virtualExamsBank.js');
+    const testUid = 'test-spam-user-' + Date.now();
+
+    // 1. Mã không hợp lệ bị từ chối
+    const rInvalid = redeemActivationCode(testUid, 'XYZ999');
+    expect(rInvalid.ok).toBe(false);
+    expect(rInvalid.message).toContain('không hợp lệ');
+
+    // 2. Mã quà tặng hợp lệ ELEC15 thành công
+    const r1 = redeemActivationCode(testUid, 'ELEC15');
+    expect(r1.ok).toBe(true);
+    expect(r1.addedPoints).toBe(15);
+
+    // 3. Nhập lại cùng 1 mã bị chặn, không cho cộng điểm lần 2
+    const rDuplicate = redeemActivationCode(testUid, 'ELEC15');
+    expect(rDuplicate.ok).toBe(false);
+    expect(rDuplicate.message).toContain('đã được kích hoạt');
+
+    // 4. Mã ELECVIP nâng cấp gói thành VIP
+    const rVip = redeemActivationCode(testUid, 'ELECVIP');
+    expect(rVip.ok).toBe(true);
+    expect(rVip.data.planName).toBe('VIP');
+    expect(rVip.data.hearts).toBe(99);
   });
 
   it('computes 30-day mini streak calendar accurately', () => {

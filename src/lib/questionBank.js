@@ -15,7 +15,7 @@
      • Xuất thêm: norm, questionKey, findDuplicate (dùng ở giao diện).
    ============================================================ */
 import {
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, doc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, serverTimestamp, limit, writeBatch, increment,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
@@ -89,8 +89,16 @@ function buildQuestion(raw, teacherId) {
 export async function addQuestion({ teacherId, ...raw }) {
   if (!teacherId) throw new Error('Thiếu teacherId');
   const data = buildQuestion(raw, teacherId);
-  const ref = await addDoc(collection(db, COL), data);
-  return { id: ref.id, ...data };
+  const newDocRef = doc(collection(db, COL));
+  const qData = { id: newDocRef.id, ...data };
+  const writePromise = setDoc(newDocRef, data);
+  await Promise.race([
+    writePromise,
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ]).catch((err) => {
+    console.warn('[addQuestion] setDoc background warning:', err?.message);
+  });
+  return qData;
 }
 
 /* ============================================================

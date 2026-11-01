@@ -76,7 +76,8 @@ export async function createExamSession({
   }
 
   const now = Date.now();
-  const closesAt = Timestamp.fromMillis(now + duration * 60 * 1000);
+  const dur = Number(duration) > 0 ? Number(duration) : 15;
+  const closesAt = Timestamp.fromMillis(now + dur * 60 * 1000);
 
   const data = {
     sessionId: rid(),
@@ -86,12 +87,12 @@ export async function createExamSession({
     teacherId,
     teacherName: teacherName || 'Giáo viên',
     title: title || 'Bài kiểm tra',
-    duration: Number(duration) || 15,
+    duration: dur,
     status: 'live',
     startedAt: serverTimestamp(),
     startedAtMs: now,
     closesAt,
-    closesAtMs: now + duration * 60 * 1000,
+    closesAtMs: now + dur * 60 * 1000,
     endedAt: null,
     endedAtMs: null,
     stats: {
@@ -102,32 +103,57 @@ export async function createExamSession({
     createdAt: serverTimestamp(),
   };
 
-  const ref = await addDoc(collection(db, SESSIONS), data);
-  return { id: ref.id, ...data };
+  const newDocRef = doc(collection(db, SESSIONS));
+  const sessionId = newDocRef.id;
+  const sessionData = {
+    id: sessionId,
+    ...data,
+  };
+
+  // Ghi vào Firestore: setDoc lưu vào IndexedDB cache ngay lập tức (<5ms).
+  // Đồng bộ ngầm lên đám mây mà không chặn phản hồi thời gian thực của UI.
+  setDoc(newDocRef, data).catch((err) => {
+    console.warn('[createExamSession] setDoc cảnh báo:', err?.message);
+  });
+
+  return sessionData;
 }
 
 export async function endExamSession(sessionId) {
   if (!sessionId) return;
-  await updateDoc(doc(db, SESSIONS, sessionId), {
-    status: 'ended',
-    endedAt: serverTimestamp(),
-    endedAtMs: Date.now(),
-  });
+  await Promise.race([
+    updateDoc(doc(db, SESSIONS, sessionId), {
+      status: 'ended',
+      endedAt: serverTimestamp(),
+      endedAtMs: Date.now(),
+    }),
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ]).catch((err) => console.warn('[endExamSession] updateDoc warning:', err?.message));
 }
 
 export async function extendExamSession(sessionId, extraMinutes = 5) {
   if (!sessionId) return;
   const mins = Number(extraMinutes) || 5;
-  const snap = await getDoc(doc(db, SESSIONS, sessionId));
-  if (!snap.exists()) return;
-  const cur = snap.data();
-  const baseEnd = cur.closesAt?.toMillis?.() ?? cur.closesAtMs ?? Date.now();
-  const nextEndMs = Math.max(Date.now(), baseEnd) + mins * 60 * 1000;
-  await updateDoc(doc(db, SESSIONS, sessionId), {
-    duration: (Number(cur.duration) || 15) + mins,
-    closesAt: Timestamp.fromMillis(nextEndMs),
-    closesAtMs: nextEndMs,
-  });
+  try {
+    const snap = await Promise.race([
+      getDoc(doc(db, SESSIONS, sessionId)),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    if (!snap || !snap.exists()) return;
+    const cur = snap.data();
+    const baseEnd = cur.closesAt?.toMillis?.() ?? cur.closesAtMs ?? Date.now();
+    const nextEndMs = Math.max(Date.now(), baseEnd) + mins * 60 * 1000;
+    await Promise.race([
+      updateDoc(doc(db, SESSIONS, sessionId), {
+        duration: (Number(cur.duration) || 15) + mins,
+        closesAt: Timestamp.fromMillis(nextEndMs),
+        closesAtMs: nextEndMs,
+      }),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+  } catch (err) {
+    console.warn('[extendExamSession] warning:', err?.message);
+  }
 }
 
 export async function deleteExamSession(sessionId) {
@@ -263,6 +289,45 @@ export function listenLiveSessionForClass(classId, cb) {
       cb(docs[0]);
     },
     (err) => console.warn('[examSession] listenLiveSessionForClass error:', err.message)
+  );
+}
+
+/** Lắng nghe phiên thi trực tiếp theo mã đề thi (Realtime cho học sinh đang chờ mở bài) */
+export function listenLiveSessionForExam(examId, cb) {
+  if (!examId) return () => {};
+  const q = query(
+    collection(db, SESSIONS),
+    where('examId', '==', examId),
+    where('status', '==', 'live')
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      if (snap.empty) return cb(null);
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
+      cb(docs[0]);
+    },
+    (err) => console.warn('[examSession] listenLiveSessionForExam error:', err.message)
+  );
+}
+
+/** Lắng nghe toàn bộ danh sách phòng thi của giáo viên theo thời gian thực (Realtime cho TeacherDashboard) */
+export function listenSessionsByTeacher(teacherId, cb, max = 50) {
+  if (!teacherId) return () => {};
+  const q = query(
+    collection(db, SESSIONS),
+    where('teacherId', '==', teacherId),
+    limit(max)
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
+      cb(list);
+    },
+    (err) => console.warn('[examSession] listenSessionsByTeacher error:', err.message)
   );
 }
 
@@ -524,11 +589,11 @@ export async function reportViolation({
    ============================================================ */
 export async function markStudentSubmitted({ sessionId, studentId }) {
   if (!sessionId || !studentId) return;
+  const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+  const sref = doc(db, SESSIONS, sessionId);
   try {
-    const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
-    const sref = doc(db, SESSIONS, sessionId);
-    // Transaction: gọi nhiều lần (nộp tay + auto) vẫn chỉ tăng stats.submitted đúng 1 lần
-    await runTransaction(db, async (tx) => {
+    // Transaction với timeout 2000ms để không bị kẹt khi mạng/quota chậm
+    const txPromise = runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (snap.exists() && snap.data()?.status === 'submitted') return;
       tx.set(ref, {
@@ -541,8 +606,24 @@ export async function markStudentSubmitted({ sessionId, studentId }) {
       }, { merge: true });
       tx.update(sref, { 'stats.submitted': increment(1) });
     });
+
+    await Promise.race([
+      txPromise,
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
   } catch (e) {
-    console.warn('[examSession] markStudentSubmitted failed:', e.message);
+    console.warn('[examSession] markStudentSubmitted fallback:', e.message);
+    try {
+      await Promise.race([
+        setDoc(ref, {
+          studentId,
+          status: 'submitted',
+          submittedAtMs: Date.now(),
+          lastSeenMs: Date.now(),
+        }, { merge: true }),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
+    } catch { /* ignore */ }
   }
 }
 

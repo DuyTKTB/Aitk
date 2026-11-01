@@ -745,3 +745,216 @@ body > .vt:not(.t-shell) {
 .vt .vt-search input { border: 0; padding: 0; background: none; }
 .vt .vt-field input, .vt .vt-warn-row input { border-radius: 16px; padding: 0 1.1rem; }
 .vt .vt-field input:focus, .vt .vt-warn-row input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
+
+/* ============================================================
+   CLEAN EXAM CARDS & EXAM DETAIL MODAL ("ẤN VÀO LÀ HIỆN RA")
+   ============================================================ */
+.vt-exam-clean-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.1rem 1.4rem;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--soft);
+  box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.04);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+}
+.vt-exam-clean-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 10px 28px -6px rgba(37, 99, 235, 0.1);
+}
+.vt-exam-clean-card.live {
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2), 0 8px 24px -4px rgba(239, 68, 68, 0.12);
+}
+
+.vt-ecc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.vt-ecc-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.vt-ecc-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vt-ecc-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mut);
+  flex-wrap: wrap;
+}
+.vt-ecc-meta .dot {
+  opacity: 0.45;
+}
+.vt-ecc-meta .highlight {
+  color: var(--acc, #2563eb);
+  font-weight: 700;
+}
+
+.vt-ecc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+.vt-ecc-btn-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 12px;
+  background: var(--vt-tint);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.vt-ecc-btn-detail:hover {
+  background: var(--soft);
+  color: var(--acc, #2563eb);
+}
+
+/* Exam Detail Modal */
+.vt-edm-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--soft);
+  margin-bottom: 1.25rem;
+}
+.vt-edm-hero-left h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0.4rem 0 0.3rem;
+}
+.vt-edm-hero-left p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--mut);
+}
+
+.vt-edm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+@media (max-width: 640px) {
+  .vt-edm-grid { grid-template-columns: 1fr; }
+  .vt-exam-clean-card { flex-direction: column; align-items: stretch; gap: 0.8rem; }
+  .vt-ecc-actions { justify-content: flex-end; }
+}
+.vt-edm-card {
+  padding: 1.1rem;
+  border-radius: 18px;
+  background: var(--vt-tint);
+  border: 1px solid var(--soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.vt-edm-card-title {
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mut);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.vt-edm-link-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+.vt-edm-link-input {
+  flex: 1;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--soft);
+  background: var(--panel);
+  font-size: 0.8rem;
+  color: var(--ink);
+  font-family: monospace;
+}
+
+.vt-edm-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.vt-edm-stats-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.vt-edm-stats-stat b {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.vt-edm-stats-stat small {
+  font-size: 0.74rem;
+  color: var(--mut);
+}
+
+.vt-edm-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.65rem;
+}
+.vt-edm-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+.vt-edm-tool-btn:hover {
+  background: var(--vt-tint);
+  border-color: var(--acc, #2563eb);
+  color: var(--acc, #2563eb);
+}
+.vt-edm-tool-btn.danger:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}

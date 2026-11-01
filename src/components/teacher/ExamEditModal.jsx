@@ -413,6 +413,8 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
         ...exam,
         title: title.trim(), description: description.trim(), duration: Number(duration),
         classId: classId || '', showAnswerAfter, allowRetry, shuffle, displayMode, proctor,
+        opensAt: opensAt ? new Date(opensAt) : null,
+        closesAt: closesAt ? new Date(closesAt) : null,
         questions: cleaned, totalPoints: sumPoints,
       });
       onClose?.();

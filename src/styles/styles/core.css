@@ -10182,7 +10182,7 @@ svg.ai-mark.look {
   display: none;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   /* ---- Header ---- */
   .mhead-bar {
     display: flex;

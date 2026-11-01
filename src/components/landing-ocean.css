@@ -219,7 +219,12 @@
 
 .lp-logo img { width: 34px; height: 34px; }
 .lp-links { justify-content: center; gap: .15rem; }
-.lp-links button { padding: .4rem .9rem; font-weight: 500; }
+.lp-links button {
+  padding: .4rem .9rem;
+  font-weight: 600;
+  color: var(--ink);
+  transition: color .2s, background .2s;
+}
 .lp-links button:hover {
   color: var(--ink);
   background: color-mix(in srgb, var(--acc) 14%, transparent);
@@ -238,13 +243,22 @@
 }
 .lp-ico:hover { background: var(--soft); }
 .lp-login {
-  padding: .45rem .8rem;
+  padding: .45rem .85rem;
   border-radius: 999px;
-  color: var(--ink);
+  color: #0071e3;
+  background: rgba(0, 113, 227, 0.08);
+  border: 1px solid rgba(0, 113, 227, 0.25);
   text-decoration: none;
-  font: 500 .9rem inherit;
+  font: 600 .88rem inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s ease;
 }
-.lp-login:hover { background: var(--soft); }
+.lp-login:hover {
+  background: rgba(0, 113, 227, 0.16);
+  border-color: rgba(0, 113, 227, 0.4);
+}
 .lp-acts .lp-btn { padding: .5rem 1.1rem; font-size: .88rem; }
 
 /* =========================================================================

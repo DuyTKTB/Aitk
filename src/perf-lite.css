@@ -17,18 +17,18 @@ html.perf-lite *::after {
   will-change: auto !important;
 }
 
-/* 2) Lớp trang trí động: tắt animation vô hạn + blur/glow */
-html.perf-lite [class*="orb"],
-html.perf-lite [class*="blob"],
-html.perf-lite [class*="aurora"],
-html.perf-lite [class*="particle"],
-html.perf-lite [class*="spark"],
-html.perf-lite [class*="glow"],
-html.perf-lite [class*="cloud"],
-html.perf-lite [class*="fx-"],
-html.perf-lite [class*="marquee"],
-html.perf-lite .crystal,
-html.perf-lite .field-cloud {
+/* 2) Lớp trang trí động: tắt animation vô hạn + blur/glow (ngoại trừ Brand Intro Loader) */
+html.perf-lite [class*="orb"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="blob"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="aurora"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="particle"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="spark"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="glow"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="cloud"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="fx-"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite [class*="marquee"]:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite .crystal:not(.elec-intro-overlay *):not(.elec-intro-overlay),
+html.perf-lite .field-cloud:not(.elec-intro-overlay *):not(.elec-intro-overlay) {
   animation: none !important;
   filter: none !important;
   box-shadow: none !important;

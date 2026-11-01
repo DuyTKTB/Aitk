@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useLiveStreak } from '../hooks.js';
 import StudyGoalNavDropdown from './aspiration/StudyGoalNavDropdown.jsx';
 import UserProfileNavDropdown from './UserProfileNavDropdown.jsx';
+import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
 import {
   IconHome, IconRobot, IconTools,
   IconCalc, IconMicroscope, IconScale, IconTimer,
@@ -10,33 +12,37 @@ import {
 } from './Icons.jsx';
 
 /* ============ CUSTOM SVG ICONS ============ */
-const IconClass = ({ size = 16 }) => (
+const IconClass = ({ size = 16, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-class ${className}`} aria-hidden="true">
     <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
     <path d="M6 12v5c3 3 9 3 12 0v-5" />
   </svg>
 );
 
-const IconNotebook = ({ size = 16 }) => (
+const IconNotebook = ({ size = 16, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-notebook ${className}`} aria-hidden="true">
     <rect x="5" y="3" width="14" height="18" rx="2" />
     <path d="M9 3v18" />
     <path d="M12 8h4M12 12h4" />
   </svg>
 );
 
-const IconChart = ({ size = 16 }) => (
+const IconChart = ({ size = 16, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-chart ${className}`} aria-hidden="true">
     <path d="M4 20V10M10 20V4M16 20v-7M22 20V8" />
   </svg>
 );
 
-const IconAtom = ({ size = 16 }) => (
+const IconAtom = ({ size = 16, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-atom ${className}`} aria-hidden="true">
     <circle cx="12" cy="12" r="1.6" />
     <ellipse cx="12" cy="12" rx="10" ry="4" />
     <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
@@ -44,23 +50,26 @@ const IconAtom = ({ size = 16 }) => (
   </svg>
 );
 
-const IconSearch = ({ size = 15 }) => (
+const IconSearch = ({ size = 15, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-search ${className}`} aria-hidden="true">
     <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
   </svg>
 );
 
-const IconArrow = ({ size = 15 }) => (
+const IconArrow = ({ size = 15, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-arrow ${className}`} aria-hidden="true">
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 );
 
-const IconDash = ({ size = 16 }) => (
+const IconDash = ({ size = 16, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+    className={`anim-ico-svg anim-ico-dashboard ${className}`} aria-hidden="true">
     <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
     <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
   </svg>
@@ -97,6 +106,7 @@ export default function DesktopNav({
   const wrapRef = useRef(null);
   const { user, isLoggedIn } = useAuth();
   const { count: streakCount, isToday: hasStreakToday } = useLiveStreak();
+  const { playing: introPlaying } = useElecIntro();
 
   useEffect(() => {
     const onClick = (e) => {
@@ -124,17 +134,19 @@ export default function DesktopNav({
         {/* ============ CỤM TRÁI: LOGO ELEC AI ============ */}
         <div className="nav-left-cluster">
           <a className="nav-logo" href="#home" aria-label="Trang chủ ELEC AI">
-            <img
-              src="/img/logo.png"
-              alt="ELEC AI"
-              className="nav-logo-img"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling.style.display = 'inline-flex';
-              }}
-            />
-            <span className="nav-logo-dot" aria-hidden="true" />
-            <span className="logo-text">ELEC AI</span>
+            {!introPlaying && (
+              <motion.div
+                layoutId="elec-brand-logo"
+                transition={{ layout: LOGO_GLIDE_TRANSITION }}
+                className="nav-logo-motion-wrap"
+              >
+                <img
+                  src="/img/logo.png"
+                  alt="ELEC AI"
+                  className="nav-logo-img"
+                />
+              </motion.div>
+            )}
           </a>
         </div>
 
@@ -145,7 +157,7 @@ export default function DesktopNav({
             href="#home"
             className={'nav-item' + (page === 'home' ? ' active' : '')}
           >
-            <span className="nav-ico"><IconHome size={15} /></span>
+            <span className="nav-ico"><IconHome size={15} className="anim-ico-svg anim-ico-home" /></span>
             <span className="nav-label">Trang chủ</span>
           </a>
 
@@ -155,7 +167,7 @@ export default function DesktopNav({
             className={'nav-item ns9-nav-virtual-exam' + (page === 'quiz' || page === 'virtual-exams' ? ' active' : '')}
           >
             <span className="ns9-nav-hot-badge" aria-hidden="true">HOT</span>
-            <span className="nav-ico"><IconQuiz size={15} /></span>
+            <span className="nav-ico"><IconQuiz size={15} className="anim-ico-svg anim-ico-quiz anim-ico-cap" /></span>
             <span className="nav-label">Phòng thi ảo</span>
           </a>
 
@@ -164,7 +176,7 @@ export default function DesktopNav({
             href="#roadmap"
             className={'nav-item' + (page === 'roadmap' ? ' active' : '')}
           >
-            <span className="nav-ico"><IcoBook size={15} /></span>
+            <span className="nav-ico"><IcoBook size={15} className="anim-ico-svg anim-ico-book anim-ico-roadmap" /></span>
             <span className="nav-label">Lộ trình</span>
           </a>
 
@@ -174,7 +186,7 @@ export default function DesktopNav({
               href="#classroom"
               className={'nav-item' + (page === 'classroom' ? ' active' : '')}
             >
-              <span className="nav-ico"><IconClass size={15} /></span>
+              <span className="nav-ico"><IconClass size={15} className="anim-ico-svg anim-ico-class" /></span>
               <span className="nav-label">Quản lý lớp</span>
             </a>
           ) : (
@@ -182,7 +194,7 @@ export default function DesktopNav({
               href="#my-classes"
               className={'nav-item' + (page === 'my-classes' || page === 'classroom' ? ' active' : '')}
             >
-              <span className="nav-ico"><IconClass size={15} /></span>
+              <span className="nav-ico"><IconClass size={15} className="anim-ico-svg anim-ico-class" /></span>
               <span className="nav-label">Lớp học</span>
             </a>
           )}
@@ -199,7 +211,7 @@ export default function DesktopNav({
               aria-expanded={toolOpen}
               aria-label="Mở menu Công cụ và Trợ lý AI"
             >
-              <span className="nav-ico"><IconTools size={15} /></span>
+              <span className="nav-ico"><IconTools size={15} className="anim-ico-svg anim-ico-tools" /></span>
               <span className="nav-label">Công cụ</span>
             </button>
             {toolOpen && (
@@ -261,24 +273,25 @@ export default function DesktopNav({
               }
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={`ns9-streak-svg ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={`ns9-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
               <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
             </svg>
             <span>{streakCount}</span>
           </a>
 
           {credits != null && (
-            <a
-              href="#profile?tab=upgrade"
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
               className="nav-credit-pill"
-              title="Số điểm AI của bạn"
+              title="Điểm AI của bạn — Bấm để nạp ELEC AI Credit"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
               <span>{credits.toLocaleString('vi-VN')}</span>
-            </a>
+            </button>
           )}
 
           {/* Cụm 4 nút tiện ích gọn đẹp: Tìm kiếm (SVG) • Đổi giao diện • Thông báo • Avatar */}
@@ -291,7 +304,7 @@ export default function DesktopNav({
               aria-label="Tìm nhanh toàn hệ thống (Ctrl K)"
               title="Tìm nhanh toàn hệ thống (Ctrl K)"
             >
-              <IconSearch size={16} />
+              <IconSearch size={16} className="anim-ico-svg anim-ico-search" />
             </button>
 
             {/* 2. Nút Đổi giao diện Sáng / Tối */}
@@ -304,13 +317,13 @@ export default function DesktopNav({
             >
               {theme === 'dark' ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-sun" aria-hidden="true">
                   <circle cx="12" cy="12" r="4" />
                   <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
                 </svg>
               ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-moon" aria-hidden="true">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
               )}
@@ -324,7 +337,7 @@ export default function DesktopNav({
               aria-label="Thông báo học tập"
               title="Thông báo học tập"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-bell" aria-hidden="true">
                 <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
                 <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
               </svg>

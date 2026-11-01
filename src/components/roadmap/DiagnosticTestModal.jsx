@@ -8,11 +8,16 @@
    ============================================================ */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { buildDiagnosticQuestions, LEVEL_META } from '../../data/roadmapExercises.js';
 import { chapterName } from '../../data/roadmap.js';
 import { saveSession } from '../../lib/roadmapStore.js';
 import { IconClose, IconPin, IconBulb } from '../Icons.jsx';
+import {
+  DialogRoot,
+  DialogPortal,
+  DialogBackdrop,
+  DialogPopup,
+} from '../ui/AnimateDialog.jsx';
 
 export default function DiagnosticTestModal({
   open,
@@ -126,18 +131,20 @@ export default function DiagnosticTestModal({
   const estimatedScore10 = Math.round((correctTotal / Math.max(1, totalQ)) * 10 * 4) / 4;
   const progressPct = Math.round(((stepIdx + (picked !== null ? 1 : 0)) / Math.max(1, totalQ)) * 100);
 
-  return createPortal(
-    <div className="rm-sheet-backdrop ns9-modal-backdrop" onClick={onClose} role="presentation">
-      <div
-        className="rm-sheet ns9-centered-sheet ns9-diag-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Bài đánh giá năng lực đầu vào môn Hóa ${levelKey}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="rm-sheet-grip" aria-hidden="true" />
+  return (
+    <DialogRoot open={open} onOpenChange={onClose}>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup
+          from="top"
+          size="lg"
+          className="ns9-diag-animate-popup"
+          aria-label={`Bài đánh giá năng lực đầu vào môn Hóa ${levelKey}`}
+        >
+          <div className="rm-sheet ns9-centered-sheet ns9-diag-modal" style={{ maxWidth: '100%', margin: 0, boxShadow: 'none' }}>
+            <div className="rm-sheet-grip" aria-hidden="true" />
 
-        <header className="rm-sheet-head ns9-sheet-head">
+            <header className="rm-sheet-head ns9-sheet-head">
           <div className="ns9-sheet-title-wrap">
             <div className="ns9-sheet-eyebrow">
               <span className="ns9-ch-pill">ĐÁNH GIÁ NĂNG LỰC ĐẦU VÀO · {levelKey.toUpperCase()}</span>
@@ -292,8 +299,9 @@ export default function DiagnosticTestModal({
             </div>
           </div>
         )}
-      </div>
-    </div>,
-    document.body,
+          </div>
+        </DialogPopup>
+      </DialogPortal>
+    </DialogRoot>
   );
 }

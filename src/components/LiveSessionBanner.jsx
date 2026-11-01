@@ -40,6 +40,19 @@ function fmtTime(seconds) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+const isTeacherOrExamRoute = (h = location.hash) => {
+  const clean = (h || '').replace(/^#\/?/, '');
+  return (
+    clean.startsWith('classroom') ||
+    clean.startsWith('teacher') ||
+    clean.startsWith('proctor') ||
+    clean.startsWith('virtual-exam') ||
+    clean.startsWith('admin') ||
+    clean.startsWith('omr') ||
+    clean.startsWith('exam/')
+  );
+};
+
 export default function LiveSessionBanner() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
@@ -47,7 +60,7 @@ export default function LiveSessionBanner() {
   const [now, setNow] = useState(serverNow);
   const [dismissed, setDismissed] = useState(loadDismissed);
   const [submittedMap, setSubmittedMap] = useState({}); // { [examId]: true }
-  const [onExamPage, setOnExamPage] = useState(() => location.hash.startsWith('#exam/'));
+  const [onExamPage, setOnExamPage] = useState(() => isTeacherOrExamRoute(location.hash));
 
   /* ---- Đồng hồ 1s ---- */
   useEffect(() => {
@@ -57,7 +70,7 @@ export default function LiveSessionBanner() {
 
   /* ---- Danh sách lớp: tải lại định kỳ / khi quay lại tab / khi có mạng ---- */
   const loadClasses = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || onExamPage) return;
     try {
       const list = await getClassesByStudent(user.uid);
       setClasses((prev) => {
@@ -68,9 +81,10 @@ export default function LiveSessionBanner() {
     } catch (e) {
       console.warn('[LiveSessionBanner] load classes fail:', e.message);
     }
-  }, [user?.uid]);
+  }, [user?.uid, onExamPage]);
 
   useEffect(() => {
+    if (onExamPage) return undefined;
     loadClasses();
     const id = setInterval(loadClasses, CLASS_REFRESH_MS);
     const onVis = () => { if (!document.hidden) loadClasses(); };
@@ -81,11 +95,11 @@ export default function LiveSessionBanner() {
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('online', loadClasses);
     };
-  }, [loadClasses]);
+  }, [loadClasses, onExamPage]);
 
   /* ---- Nghe phiên thi live của từng lớp ---- */
   useEffect(() => {
-    if (classes.length === 0) { setSessions([]); return undefined; }
+    if (classes.length === 0 || onExamPage) { setSessions([]); return undefined; }
     const map = new Map();
     const unsubs = classes.map((cls) =>
       listenLiveSessionForClass(cls.id, (session) => {
@@ -95,7 +109,7 @@ export default function LiveSessionBanner() {
       })
     );
     return () => unsubs.forEach((u) => u && u());
-  }, [classes]);
+  }, [classes, onExamPage]);
 
   /* ---- Kiểm tra đã nộp chưa (mỗi examId kiểm tra 1 lần) ---- */
   useEffect(() => {
@@ -113,9 +127,9 @@ export default function LiveSessionBanner() {
     return () => { alive = false; };
   }, [sessions, user?.uid, submittedMap]);
 
-  /* ---- Ẩn khi đang trong phòng thi ---- */
+  /* ---- Ẩn khi đang trong phòng thi hoặc trang quản trị của giáo viên ---- */
   useEffect(() => {
-    const check = () => setOnExamPage(location.hash.startsWith('#exam/'));
+    const check = () => setOnExamPage(isTeacherOrExamRoute(location.hash));
     window.addEventListener('hashchange', check);
     return () => window.removeEventListener('hashchange', check);
   }, []);
@@ -134,12 +148,15 @@ export default function LiveSessionBanner() {
 
   /* ---- Lọc ---- */
   const { visible, hiddenCount } = useMemo(() => {
-    const open = sessions.filter((s) => timeRemaining(s, now) > 0 && !submittedMap[s.examId]);
+    // Không hiển thị banner học sinh nếu người dùng là giáo viên tạo phòng thi đó
+    const open = sessions.filter(
+      (s) => timeRemaining(s, now) > 0 && !submittedMap[s.examId] && s.teacherId !== user?.uid
+    );
     return {
       visible: open.filter((s) => !dismissed[s.id]).sort((a, b) => timeRemaining(a, now) - timeRemaining(b, now)),
       hiddenCount: open.filter((s) => dismissed[s.id]).length,
     };
-  }, [sessions, now, dismissed, submittedMap]);
+  }, [sessions, now, dismissed, submittedMap, user?.uid]);
 
   if (onExamPage) return null;
   if (visible.length === 0 && hiddenCount === 0) return null;

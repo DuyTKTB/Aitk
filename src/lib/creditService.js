@@ -7,15 +7,18 @@
 import { supabase } from './supabase.js';
 
 /* ============================================================
-   BẢNG QUY ĐỔI
+   BẢNG QUY ĐỔI ELEC AI CREDIT (CHUẨN 1 VNĐ ≈ 1 CREDIT)
    ============================================================ */
 export const CREDIT_PACKAGES = [
-  { amount: 10000,  credits: 100,  bonus: 0,    total: 100,  label: '10.000đ' },
-  { amount: 25000,  credits: 250,  bonus: 25,   total: 275,  label: '25.000đ', badge: '+10%' },
-  { amount: 50000,  credits: 500,  bonus: 100,  total: 600,  label: '50.000đ', badge: '+20%', popular: true },
-  { amount: 100000, credits: 1000, bonus: 300,  total: 1300, label: '100.000đ', badge: '+30%' },
-  { amount: 200000, credits: 2000, bonus: 800,  total: 2800, label: '200.000đ', badge: '+40%' },
-  { amount: 500000, credits: 5000, bonus: 2500, total: 7500, label: '500.000đ', badge: '+50%' },
+  { amount: 10000,  credits: 10000,  bonus: 0,     total: 10000,  name: 'PRO 1',   label: '10.000 đ',  coins: 1 },
+  { amount: 30000,  credits: 30000,  bonus: 0,     total: 30000,  name: 'PRO 2',   label: '30.000 đ',  coins: 1, rate: '~1đ / credit' },
+  { amount: 60000,  credits: 60000,  bonus: 0,     total: 60000,  name: 'PRO 3',   label: '60.000 đ',  coins: 2, rate: '~1đ / credit' },
+  { amount: 100000, credits: 100000, bonus: 0,     total: 100000, name: 'PREMIUM', label: '100.000 đ', coins: 3, rate: '~1đ / credit', badge: 'ĐƯỢC CHỌN NHIỀU NHẤT', popular: true },
+  { amount: 200000, credits: 200000, bonus: 20000, total: 220000, name: 'PRO MAX', label: '200.000 đ', coins: 3, badge: '+10% Thưởng' },
+  { amount: 500000, credits: 500000, bonus: 100000,total: 600000, name: 'VIP MAX', label: '500.000 đ', coins: 3, badge: '+20% Thưởng' },
+  // Giữ lại các gói phụ để tương thích ngược
+  { amount: 25000,  credits: 25000,  bonus: 0,     total: 25000,  name: 'TIẾP SỨC', label: '25.000 đ', coins: 1 },
+  { amount: 50000,  credits: 50000,  bonus: 0,     total: 50000,  name: 'ÔN LUYỆN', label: '50.000 đ', coins: 2 },
 ];
 
 export const BANK_INFO = {
@@ -256,6 +259,22 @@ export function onOrderPaid(orderId, callback) {
 
   return () => supabase.removeChannel(channel);
 }
+
+export async function checkOrderStatus(orderId) {
+  if (!orderId) return null;
+  try {
+    const { data, error } = await supabase
+      .from('payment_orders')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 
 /* ============================================================
    Lịch sử giao dịch

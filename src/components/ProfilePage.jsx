@@ -8,8 +8,13 @@ import ProfileAchievements from './ProfileAchievements.jsx';
 import TeacherProPanel from './TeacherProPanel.jsx';
 import PaymentPanel from './PaymentPanel.jsx';
 import CreditTopUp from './CreditTopUp.jsx';
+import ProfileEditSection from './ProfileEditSection.jsx';
+import SubscriptionTiers from './SubscriptionTiers.jsx';
 import { getCredits, grantActivationCredits } from '../lib/creditService.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { setUserTier } from '../lib/tier.js';
+import { adminGrantProDirect } from '../lib/proKeyApi.js';
+import { setUserRole } from '../lib/userRole.js';
 import { getStreakData, liveStreak, dayKey } from '../hooks.js';
 import { getClassesByStudent } from '../lib/classroom.js';
 import { listenFriends } from '../lib/social.js';
@@ -28,6 +33,7 @@ import {
 import { readStore } from '../lib/roadmapStore.js';
 import './ProfileFB.css';
 import '../styles/profile-modern-mobile.css';
+import '../styles/profile-apple-luxe.css';
 
 const AVATAR_COLORS = ['#ff4d1a', '#a7c4f2', '#b7dc9a', '#ffc46b', '#f2b6c6', '#c1b4f0', '#8fd6c4', '#ff9b85'];
 const hashStr = (s = '') => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
@@ -45,7 +51,7 @@ const PW_RULES = [
   ['Có ký tự đặc biệt', (p) => /[^A-Za-z0-9]/.test(p)],
 ];
 
-/* Đọc ?tab=... từ URL hash (#profile?tab=upgrade) và ánh xạ sang 5 tab chính */
+/* Đọc ?tab=... từ URL hash (#profile?tab=upgrade) và ánh xạ sang các tab chính */
 function readTabFromHash() {
   if (typeof window === 'undefined') return 'overview';
   const h = window.location.hash || '';
@@ -54,12 +60,26 @@ function readTabFromHash() {
   const params = new URLSearchParams(h.slice(qIdx + 1));
   const raw = params.get('tab');
   if (!raw) return 'overview';
-  if (['upgrade', 'guide', 'overview'].includes(raw)) return 'overview';
+  if (['vip', 'upgrade', 'tiers'].includes(raw)) return 'vip';
+  if (['guide', 'overview'].includes(raw)) return 'overview';
   if (['achievements', 'stats'].includes(raw)) return 'achievements';
   if (['classroom', 'classes', 'friends', 'teacher'].includes(raw)) return 'classroom';
   if (['history', 'favorites'].includes(raw)) return 'history';
-  if (['settings', 'info', 'security', 'referral', 'reports', 'feedback'].includes(raw)) return 'settings';
+  if (['settings', 'info', 'security', 'invoice', 'notifications', 'referral', 'reports', 'feedback', 'billing'].includes(raw)) return 'settings';
   return 'overview';
+}
+
+function readSubTabFromHash() {
+  if (typeof window === 'undefined') return 'info';
+  const h = window.location.hash || '';
+  const qIdx = h.indexOf('?');
+  if (qIdx < 0) return 'info';
+  const params = new URLSearchParams(h.slice(qIdx + 1));
+  const raw = params.get('tab');
+  if (['info', 'invoice', 'notifications', 'security', 'billing', 'reports', 'referral'].includes(raw)) {
+    return raw;
+  }
+  return 'info';
 }
 
 function Field({ id, label, hint, locked, right, children }) {
@@ -161,6 +181,11 @@ const PfSvg = {
   ),
   heartFilled: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+  ),
+  heartEmpty: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
     </svg>
   ),
@@ -324,6 +349,7 @@ export default function ProfilePage({ credits: propCredits }) {
   const [askLogout, setAskLogout] = useState(false);
   const [pickedColor, setPickedColor] = useState(() => ls.get('cs-avatar-color', ''));
   const [showPayment, setShowPayment] = useState(false);
+  const [customPkg, setCustomPkg] = useState(null);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [credits, setCredits] = useState(() => (propCredits != null ? propCredits : null));
 
@@ -427,10 +453,24 @@ export default function ProfilePage({ credits: propCredits }) {
     const syncFromHash = () => {
       const nextTab = readTabFromHash();
       if (nextTab) setTab(nextTab);
+      const h = typeof window !== 'undefined' ? window.location.hash : '';
+      const qIdx = h.indexOf('?');
+      if (qIdx >= 0) {
+        const raw = new URLSearchParams(h.slice(qIdx + 1)).get('tab');
+        if (raw === 'favorites') setHistoryFilter('fav');
+        else if (raw === 'history') setHistoryFilter('all');
+      }
     };
     syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
     return () => window.removeEventListener('hashchange', syncFromHash);
+  }, []);
+
+  /* Đảm bảo không bao giờ mở chồng chéo hai modal thanh toán */
+  useEffect(() => {
+    const handleClosePayment = () => setShowPayment(false);
+    window.addEventListener('elec-open-credit-topup', handleClosePayment);
+    return () => window.removeEventListener('elec-open-credit-topup', handleClosePayment);
   }, []);
 
   useEffect(() => {
@@ -588,11 +628,101 @@ export default function ProfilePage({ credits: propCredits }) {
   const sendVerify = run(sendVerifyEmail, () => ok('Đã gửi email xác thực. Kiểm tra hộp thư (cả mục Spam).'));
   const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
 
-  const handlePaymentSuccess = useCallback(async () => {
-    await refreshTier();
-    await refreshUser();
-    return { isVip: true };
-  }, [refreshTier, refreshUser]);
+  const handlePaymentSuccess = useCallback(async (completedPkg) => {
+    const targetPkg = completedPkg || customPkg;
+    const role = targetPkg?.role || (pro?.isPro ? 'teacher' : 'student');
+    const months = Number(targetPkg?.months) || 12;
+    const days = months * 30;
+    const expiryDate = new Date(Date.now() + days * 86400000).toISOString();
+    const pkgLabel = targetPkg?.label || (role === 'teacher' ? 'ELEC AI Giáo Viên PRO' : 'ELEC AI Học Sinh VIP');
+
+    // 1. Nếu là Giáo Viên PRO
+    if (role === 'teacher') {
+      try {
+        setUserRole(uid, 'teacher');
+      } catch {}
+      try {
+        await adminGrantProDirect({ userId: uid, durationDays: days, note: pkgLabel });
+      } catch (err) {
+        console.warn('adminGrantProDirect error:', err);
+      }
+      try {
+        localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify({
+          planName: 'PRO',
+          planDesc: 'Quản lý không giới hạn lớp học & Đề thi AI',
+          durationLabel: `${months} tháng`,
+          examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',
+          hearts: 99,
+          maxHearts: 99,
+          expiry: expiryDate,
+        }));
+        localStorage.setItem('cs-vip-status', JSON.stringify({
+          isPro: true,
+          plan: 'PRO',
+          expiry: expiryDate,
+          daysLeft: days,
+        }));
+      } catch {}
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+      window.dispatchEvent(new CustomEvent('user-profile-change'));
+      await pro?.refresh?.();
+    } else {
+      // 2. Nếu là Học Sinh VIP
+      try {
+        await setUserTier(uid, 'vip');
+      } catch (err) {
+        console.warn('setUserTier error:', err);
+      }
+      try {
+        localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify({
+          planName: 'VIP',
+          planDesc: 'Đặc quyền Bộ đề VIP + Gia sư AI không giới hạn',
+          durationLabel: `${months} tháng`,
+          examAccessLabel: 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi',
+          hearts: 99,
+          maxHearts: 99,
+          expiry: expiryDate,
+        }));
+        localStorage.setItem('cs-vip-status', JSON.stringify({
+          isPro: true,
+          plan: 'VIP',
+          expiry: expiryDate,
+          daysLeft: days,
+        }));
+      } catch {}
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+      window.dispatchEvent(new CustomEvent('user-profile-change'));
+      await refreshTier();
+      await refreshUser();
+    }
+
+    // 3. Ghi lại lịch sử giao dịch vào subQuota
+    try {
+      const curSub = getSubscriptionAndQuota(uid);
+      const newTx = {
+        id: 'TX-' + Date.now().toString(36).toUpperCase(),
+        title: `Nâng cấp thành công gói ${pkgLabel}`,
+        amount: targetPkg?.amount ? `${Number(targetPkg.amount).toLocaleString('vi-VN')} đ` : 'Đã thanh toán',
+        status: 'Thành công',
+        at: new Date().toLocaleString('vi-VN'),
+      };
+      const updatedSub = {
+        ...curSub,
+        planName: role === 'teacher' ? 'PRO' : 'VIP',
+        durationLabel: `${months} tháng`,
+        hearts: 99,
+        maxHearts: 99,
+        transactions: [newTx, ...(curSub.transactions || [])],
+      };
+      localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify(updatedSub));
+      setSubQuota(updatedSub);
+    } catch {}
+
+    ok(`Nâng cấp thành công gói ${pkgLabel}!`);
+    return { isVip: true, isPro: true, ok: true };
+  }, [uid, customPkg, pro, refreshTier, refreshUser, ok]);
 
   const handleRedeemCode = async (e) => {
     e.preventDefault();
@@ -675,31 +805,39 @@ export default function ProfilePage({ credits: propCredits }) {
     return (sum / examHistory.length).toFixed(1);
   }, [examHistory]);
 
-  const effectivePlanName = isVip ? 'VIP' : subQuota.planName || 'Free';
-  const planDesc = effectivePlanName === 'VIP'
+  const isTeacher = Boolean(pro?.isPro);
+  const effectivePlanName = isTeacher ? 'GIÁO VIÊN PRO' : isVip ? 'VIP' : subQuota.planName || 'Free';
+  const planDesc = isTeacher
+    ? 'Toàn quyền quản lý lớp học, biên soạn đề AI & chấm thi tự động'
+    : effectivePlanName === 'VIP'
     ? 'Đặc quyền Bộ đề VIP + Gia sư AI không giới hạn'
     : effectivePlanName === 'PRO'
     ? 'Mở khóa toàn bộ Bộ đề PRO & Giải thích AI chi tiết'
     : (subQuota.planDesc || 'Nội dung miễn phí');
-  const durationLabel = effectivePlanName === 'VIP'
+  const durationLabel = isTeacher
+    ? `${pro.daysLeft != null ? `${pro.daysLeft} ngày` : 'Đang hoạt động'} (đến ${pro.expiry ? new Date(pro.expiry).toLocaleDateString('vi-VN') : '2027'})`
+    : effectivePlanName === 'VIP'
     ? 'Trọn mùa thi 2027'
     : effectivePlanName === 'PRO'
     ? '12 tháng (2026–2027)'
     : (subQuota.durationLabel || 'Trọn đời');
-  const examAccessLabel = effectivePlanName === 'VIP'
+  const examAccessLabel = isTeacher
+    ? 'Không giới hạn tạo & giao đề thi cho toàn bộ học sinh'
+    : effectivePlanName === 'VIP'
     ? 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi'
     : effectivePlanName === 'PRO'
     ? 'Toàn bộ đề FREE + PRO của 6 kỳ thi'
     : (subQuota.examAccessLabel || 'Đề cơ bản của mọi kỳ thi');
-  const heartsCount = effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.hearts || 5);
-  const maxHeartsCount = effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.maxHearts || 5);
+  const heartsCount = isTeacher || effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.hearts || 5);
+  const maxHeartsCount = isTeacher || effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.maxHearts || 5);
 
   const MAIN_TABS = [
     { id: 'overview', label: 'Tổng quan', icon: PfSvg.crown },
+    { id: 'vip', label: 'Gói VIP & Lộ trình', icon: PfSvg.crown },
     { id: 'achievements', label: 'Thành tích', icon: PfSvg.star },
     { id: 'classroom', label: 'Lớp & Bạn', icon: PfSvg.users },
     { id: 'history', label: 'Hoạt động', icon: PfSvg.history },
-    { id: 'settings', label: 'Cài đặt', icon: PfSvg.settings },
+    { id: 'settings', label: 'Chỉnh sửa hồ sơ', icon: PfSvg.settings },
   ];
 
   return (
@@ -715,7 +853,9 @@ export default function ProfilePage({ credits: propCredits }) {
         )}
       </div>
 
-      {/* ============================================================
+      {tab !== 'settings' && (
+        <>
+          {/* ============================================================
          1. ĐẦU TRANG (HEADER CARD)
          ============================================================ */}
       <div className="pf-m-header-card">
@@ -804,7 +944,15 @@ export default function ProfilePage({ credits: propCredits }) {
           <span className="pf-m-stat-lbl">Chuỗi ngày</span>
         </a>
 
-        <button type="button" className="pf-m-stat-tile" onClick={() => setShowPayment(true)} title="Điểm và Credit AI khả dụng — Bấm nạp điểm">
+        <button
+          type="button"
+          className="pf-m-stat-tile"
+          onClick={() => {
+            setShowPayment(false);
+            window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+          }}
+          title="Điểm và ELEC AI Credit khả dụng — Bấm nạp ELEC Credit"
+        >
           <span className="pf-m-stat-val bolt">
             <span className="pf-m-stat-ico" aria-hidden="true">{PfSvg.bolt}</span>
             <span>{credits != null ? credits.toLocaleString('vi-VN') : 0}</span>
@@ -857,6 +1005,9 @@ export default function ProfilePage({ credits: propCredits }) {
           ))}
         </nav>
       </div>
+
+              </>
+      )}
 
       {/* ============================================================
          4. TAB 1: TỔNG QUAN (OVERVIEW)
@@ -912,9 +1063,9 @@ export default function ProfilePage({ credits: propCredits }) {
               <button
                 type="button"
                 className="ns9-sub-upgrade-btn"
-                onClick={() => setShowPayment(true)}
+                onClick={() => selectTab('vip')}
               >
-                Nâng cấp gói <span>→</span>
+                {isTeacher ? 'Gia hạn / Nâng cấp gói' : 'Nâng cấp gói'} <span>→</span>
               </button>
             </div>
 
@@ -933,7 +1084,9 @@ export default function ProfilePage({ credits: propCredits }) {
                   <i className="ns9-heart-dot" aria-hidden="true">{PfSvg.heartFilled}</i>
                   <b>Mạng luyện tập</b>
                 </span>
-                <span className="ns9-hearts-full-pill">Đã đầy</span>
+                <span className={heartsCount >= maxHeartsCount ? 'ns9-hearts-full-pill' : heartsCount === 0 ? 'ns9-hearts-full-pill is-empty' : 'ns9-hearts-full-pill is-recovering'}>
+                  {heartsCount >= maxHeartsCount ? 'Đã đầy' : heartsCount === 0 ? 'Hết lượt' : 'Đang hồi phục'}
+                </span>
               </div>
 
               <div className="ns9-hearts-main">
@@ -942,27 +1095,33 @@ export default function ProfilePage({ credits: propCredits }) {
                   <span>/{maxHeartsCount}</span>
                 </div>
                 <div className="ns9-hearts-icons" aria-label={`${heartsCount} mạng luyện tập`}>
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <span key={i} className="ns9-heart-svg" aria-hidden="true">{PfSvg.heartFilled}</span>
-                  ))}
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const threshold = Math.round(((i + 1) / 5) * maxHeartsCount);
+                    const isFilled = heartsCount >= threshold || (i === 0 && heartsCount > 0);
+                    return (
+                      <span key={i} className={`ns9-heart-svg ${isFilled ? 'filled' : 'empty'}`} aria-hidden="true">
+                        {isFilled ? PfSvg.heartFilled : PfSvg.heartEmpty}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
               <small className="ns9-hearts-sub">mạng luyện tập còn lại</small>
               <div className="ns9-hearts-bar">
-                <i style={{ width: '100%' }} />
+                <i style={{ width: `${Math.min(100, Math.max(0, Math.round(((heartsCount || 5) / (maxHeartsCount || 5)) * 100)))}%` }} />
               </div>
             </div>
 
             <div className="ns9-credit-quota-box">
               <div className="ns9-credit-quota-top">
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {PfSvg.sparkleAi} Điểm &amp; Credit AI khả dụng
+                  {PfSvg.sparkleAi} Điểm &amp; ELEC AI Credit khả dụng
                 </span>
                 <b>{credits != null ? credits.toLocaleString('vi-VN') : 0} điểm</b>
               </div>
               <div className="ns9-credit-quota-bar">
-                <i style={{ width: credits != null && credits > 0 ? '100%' : '0%' }} />
+                <i style={{ width: credits != null && credits > 0 ? `${Math.min(100, Math.max(5, Math.round((Math.log10(credits + 1) / 7) * 100)))}%` : '0%' }} />
               </div>
             </div>
           </article>
@@ -1016,6 +1175,22 @@ export default function ProfilePage({ credits: propCredits }) {
               <button type="submit">Kiểm tra</button>
             </form>
           </article>
+
+          </div>
+      )}
+
+      {/* ============================================================
+         4B. TAB VIP: GÓI LUYỆN THI VIP & LỘ TRÌNH CHUYÊN SÂU ("ẤN VÀO LÀ HIỆN RA")
+         ============================================================ */}
+      {tab === 'vip' && (
+        <div style={{ maxWidth: 1200, width: '100%', minWidth: 0, boxSizing: 'border-box', margin: '0 auto', padding: '16px 0' }}>
+          <SubscriptionTiers
+            onUpgrade={(pkg) => {
+              window.dispatchEvent(new CustomEvent('elec-close-credit-topup'));
+              setCustomPkg(pkg);
+              setShowPayment(true);
+            }}
+          />
         </div>
       )}
 
@@ -1248,234 +1423,23 @@ export default function ProfilePage({ credits: propCredits }) {
         </div>
       )}
 
-      {/* ============================================================
-         8. TAB 5: CÀI ĐẶT (SETTINGS - ACCORDION GROUPS)
+            {/* ============================================================
+         8. TAB 5: CHỈNH SỬA HỒ SƠ & CÀI ĐẶT (CHUẨN 100% ẢNH 1)
          ============================================================ */}
       {tab === 'settings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="pf-m-settings-group">
-            {/* Nhóm 1: Hồ sơ cá nhân */}
-            <button
-              type="button"
-              className="pf-m-setting-row"
-              onClick={() => setOpenSettingsGroup((prev) => (prev === 'profile' ? null : 'profile'))}
-            >
-              <div className="pf-m-setting-left">
-                <span className="pf-m-setting-ico">{PfSvg.edit}</span>
-                <span>Thông tin cá nhân &amp; Mã giới thiệu</span>
-              </div>
-              <span className="pf-m-setting-arrow">{PfSvg.chevronDown}</span>
-            </button>
-
-            {openSettingsGroup === 'profile' && (
-              <div className="pf-m-accordion-body">
-                <form onSubmit={saveName} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div className="pf-m-field">
-                    <label htmlFor="pf-m-name-in">Tên hiển thị</label>
-                    <input
-                      id="pf-m-name-in"
-                      type="text"
-                      className="pf-m-input"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      maxLength={30}
-                      placeholder="Nguyễn Duy TK"
-                    />
-                  </div>
-
-                  <div className="pf-m-field">
-                    <label>Email tài khoản</label>
-                    <input
-                      type="text"
-                      className="pf-m-input"
-                      value={email}
-                      disabled
-                      readOnly
-                      style={{ opacity: 0.7 }}
-                    />
-                  </div>
-
-                  <div className="pf-m-field">
-                    <label>Mã giới thiệu của bạn (+{POINTS_PER_CODE_ENTRY} điểm/lượt)</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        type="text"
-                        className="pf-m-input"
-                        value={identCode}
-                        readOnly
-                        style={{ fontWeight: 800, color: '#2f6bff' }}
-                      />
-                      <button type="button" className="pf-m-btn primary" onClick={copyId}>
-                        {copied ? 'Đã sao chép' : 'Sao chép'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button type="submit" className="pf-m-btn primary" disabled={loading || !dirty}>
-                      {loading ? 'Đang lưu…' : 'Lưu tên mới'}
-                    </button>
-                    {dirty && (
-                      <button type="button" className="pf-m-btn" onClick={() => setName(display)}>
-                        Hoàn tác
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {/* Nhóm 2: Bảo mật & Đổi mật khẩu */}
-            <button
-              type="button"
-              className="pf-m-setting-row"
-              onClick={() => setOpenSettingsGroup((prev) => (prev === 'security' ? null : 'security'))}
-            >
-              <div className="pf-m-setting-left">
-                <span className="pf-m-setting-ico">{PfSvg.lock}</span>
-                <span>Đổi mật khẩu &amp; Xác thực email</span>
-              </div>
-              <span className="pf-m-setting-arrow">{PfSvg.chevronDown}</span>
-            </button>
-
-            {openSettingsGroup === 'security' && (
-              <div className="pf-m-accordion-body">
-                {isGoogle ? (
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--mut)' }}>
-                    Tài khoản đăng nhập qua Google — mật khẩu do Google bảo vệ, không cần đổi tại đây.
-                  </p>
-                ) : (
-                  <form onSubmit={savePassword} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div className="pf-m-field">
-                      <label htmlFor="pf-old-pw">Mật khẩu hiện tại</label>
-                      <input
-                        id="pf-old-pw"
-                        type={showOld ? 'text' : 'password'}
-                        className="pf-m-input"
-                        value={oldPw}
-                        onChange={(e) => setOldPw(e.target.value)}
-                        placeholder="••••••••"
-                      />
-                    </div>
-
-                    <div className="pf-m-field">
-                      <label htmlFor="pf-new-pw">Mật khẩu mới</label>
-                      <input
-                        id="pf-new-pw"
-                        type={showNew ? 'text' : 'password'}
-                        className="pf-m-input"
-                        value={newPw}
-                        onChange={(e) => setNewPw(e.target.value)}
-                        placeholder="••••••••"
-                        onKeyUp={(e) => setCaps(!!e.getModifierState?.('CapsLock'))}
-                        onBlur={() => setCaps(false)}
-                      />
-                      {caps && <small style={{ color: '#ea580c' }}>Caps Lock đang bật</small>}
-                    </div>
-
-                    <div className="pf-m-field">
-                      <label htmlFor="pf-conf-pw">Xác nhận mật khẩu mới</label>
-                      <input
-                        id="pf-conf-pw"
-                        type={showNew ? 'text' : 'password'}
-                        className="pf-m-input"
-                        value={confirmPw}
-                        onChange={(e) => setConfirmPw(e.target.value)}
-                        placeholder="••••••••"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="pf-m-btn primary"
-                      disabled={loading || !oldPw || !newPw || !confirmPw}
-                      style={{ marginTop: 4 }}
-                    >
-                      {loading ? 'Đang đổi…' : 'Đổi mật khẩu'}
-                    </button>
-                  </form>
-                )}
-
-                <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.15)', paddingTop: 10, marginTop: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      {user?.emailVerified ? (
-                        <>Email đã xác thực <span style={{ color: '#10b981' }}>{PfSvg.check}</span></>
-                      ) : (
-                        'Email chưa xác thực'
-                      )}
-                    </span>
-                    {!user?.emailVerified && (
-                      <button type="button" className="pf-m-btn" onClick={sendVerify} disabled={loading}>
-                        Gửi link xác thực
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Nhóm 3: Báo lỗi & Góp ý */}
-            <button
-              type="button"
-              className="pf-m-setting-row"
-              onClick={() => setOpenSettingsGroup((prev) => (prev === 'feedback' ? null : 'feedback'))}
-            >
-              <div className="pf-m-setting-left">
-                <span className="pf-m-setting-ico">{PfSvg.flag}</span>
-                <span>Báo lỗi câu hỏi &amp; Góp ý tính năng</span>
-              </div>
-              <span className="pf-m-setting-arrow">{PfSvg.chevronDown}</span>
-            </button>
-
-            {openSettingsGroup === 'feedback' && (
-              <div className="pf-m-accordion-body">
-                <form onSubmit={(e) => handleSubmitReportOrFeedback(e, 'feedback')} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div className="pf-m-field">
-                    <label>Chủ đề góp ý</label>
-                    <select
-                      className="pf-m-input"
-                      value={feedbackTopic}
-                      onChange={(e) => setFeedbackTopic(e.target.value)}
-                    >
-                      <option value="Nội dung câu hỏi / Đáp án">Nội dung câu hỏi / Đáp án Hóa học</option>
-                      <option value="Giao diện Phòng thi ảo / Lộ trình">Giao diện Phòng thi ảo / Lộ trình</option>
-                      <option value="Góp ý tính năng AI">Góp ý tính năng Gia sư AI</option>
-                    </select>
-                  </div>
-
-                  <div className="pf-m-field">
-                    <label>Nội dung chi tiết</label>
-                    <textarea
-                      className="pf-m-input"
-                      rows={3}
-                      value={feedbackText}
-                      onChange={(e) => setFeedbackText(e.target.value)}
-                      placeholder="Mô tả ý tưởng hoặc câu hỏi bạn phát hiện lỗi..."
-                    />
-                  </div>
-
-                  <button type="submit" className="pf-m-btn primary">
-                    Gửi góp ý
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* Hàng Đăng xuất */}
-            <button
-              type="button"
-              className="pf-m-setting-row pf-m-logout-row"
-              onClick={() => setAskLogout(true)}
-            >
-              <div className="pf-m-setting-left">
-                <span className="pf-m-setting-ico">{PfSvg.logout}</span>
-                <span>Đăng xuất khỏi thiết bị này</span>
-              </div>
-              <span className="pf-m-setting-arrow">→</span>
-            </button>
-          </div>
-        </div>
+        <ProfileEditSection
+          onBack={() => selectTab('overview')}
+          onOpenAvatarModal={() => setAvatarMenuOpen(true)}
+          initialSubTab={readSubTabFromHash()}
+          subQuota={subQuota}
+          identCode={identCode}
+          reports={reports}
+          onAddReport={addUserReport}
+          onRefreshData={() => {
+            setSubQuota(getSubscriptionAndQuota(uid));
+            setReports(getUserReports(uid));
+          }}
+        />
       )}
 
       {/* ============================================================
@@ -1562,16 +1526,8 @@ export default function ProfilePage({ credits: propCredits }) {
               identCode={identCode}
               onPaymentSuccess={handlePaymentSuccess}
               onClose={() => setShowPayment(false)}
+              customPackage={customPkg}
             />
-            {user?.uid && (
-              <div style={{ marginTop: 14 }}>
-                <CreditTopUp
-                  userId={user.uid}
-                  onCreditUpdate={(newBal) => setCredits(newBal)}
-                  onUpgrade={() => {}}
-                />
-              </div>
-            )}
           </div>
         </div>
       )}

@@ -713,6 +713,22 @@ export default function ChatWidget() {
             >
               Bạn bè
             </button>
+            <a
+              href="#ai"
+              className="cw-tab-btn cw-tab-ai"
+              onClick={() => setOpen(false)}
+              title="Mở Trợ lý ELEC AI giải bài từng bước"
+              style={{
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: '#2f6bff',
+                fontWeight: 700,
+              }}
+            >
+              <span>✨</span> Trợ lý AI
+            </a>
           </div>
 
           {activeTab === 'class' && (

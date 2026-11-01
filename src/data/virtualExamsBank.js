@@ -514,6 +514,26 @@ export function unpublishExamFromVirtual(examId) {
    LOCALSTORAGE HELPERS: ĐỀ YÊU THÍCH, LỊCH SỬ THI, MẠNG LUYỆN TẬP & MÃ KÍCH HOẠT
    ============================================================ */
 
+const memStorage = new Map();
+function safeGet(key) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem(key);
+      if (v != null) return v;
+    }
+  } catch {}
+  return memStorage.get(key) || null;
+}
+
+function safeSet(key, val) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, val);
+    }
+  } catch {}
+  memStorage.set(key, val);
+}
+
 const FAV_KEY = (uid) => `elec_fav_exams_v1_${uid || 'guest'}`;
 const HIST_KEY = (uid) => `elec_exam_history_v1_${uid || 'guest'}`;
 const SUB_KEY = (uid) => `elec_sub_quota_v1_${uid || 'guest'}`;
@@ -590,7 +610,7 @@ export function saveVirtualExamResult(uid, result) {
 
 export function getSubscriptionAndQuota(uid) {
   try {
-    const raw = JSON.parse(localStorage.getItem(SUB_KEY(uid)) || 'null');
+    const raw = JSON.parse(safeGet(SUB_KEY(uid)) || safeGet(`cs-user-subscription:${uid}`) || 'null');
     if (raw && typeof raw === 'object') return raw;
   } catch { /* ignore */ }
   return {
@@ -606,6 +626,59 @@ export function getSubscriptionAndQuota(uid) {
   };
 }
 
+/**
+ * Kiểm tra xem người dùng có quyền làm đề thi theo phân hạng không
+ * @param {string} userPlan - 'FREE' | 'PRO' | 'VIP' | 'ADMIN'
+ * @param {string} examTier - 'FREE' | 'PRO' | 'VIP'
+ * @returns {boolean}
+ */
+export function canAccessVirtualExam(userPlan = 'FREE', examTier = 'FREE') {
+  const normPlan = String(userPlan || 'FREE').toUpperCase();
+  const normTier = String(examTier || 'FREE').toUpperCase();
+
+  // 1. Đề FREE: Mọi tài khoản đều được truy cập
+  if (normTier === 'FREE') return true;
+
+  // 2. Admin hoặc VIP: Toàn quyền truy cập mọi phân hạng (VIP, PRO, FREE)
+  if (normPlan.includes('VIP') || normPlan.includes('ADMIN')) return true;
+
+  // 3. Gói PRO (Học sinh PRO, Giáo viên PRO): Được làm đề PRO và FREE
+  if (normPlan.includes('PRO')) {
+    return normTier === 'PRO' || normTier === 'FREE';
+  }
+
+  // 4. Mặc định tài khoản Free: Chỉ được làm đề FREE
+  return false;
+}
+
+/**
+ * Tiêu hao 1 mạng luyện tập khi bắt đầu hoặc nộp bài thi
+ * @param {string} uid
+ * @returns {{ ok: boolean, hearts: number, message?: string }}
+ */
+export function consumeExamHeart(uid) {
+  const cur = getSubscriptionAndQuota(uid);
+  const isVip = String(cur.planName || '').toUpperCase().includes('VIP');
+  if (isVip) return { ok: true, hearts: 99 }; // VIP không bị giới hạn mạng
+
+  const currentHearts = Number.isFinite(cur.hearts) ? cur.hearts : 5;
+  if (currentHearts <= 0) {
+    return { ok: false, hearts: 0, message: 'Bạn đã sử dụng hết mạng luyện tập hôm nay.' };
+  }
+
+  const nextHearts = Math.max(0, currentHearts - 1);
+  const nextQuota = {
+    ...cur,
+    hearts: nextHearts,
+  };
+  safeSet(SUB_KEY(uid), JSON.stringify(nextQuota));
+  try {
+    localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify(nextQuota));
+  } catch {}
+  window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: nextQuota }));
+  return { ok: true, hearts: nextHearts };
+}
+
 export const POINTS_PER_CODE_ENTRY = 15;
 
 export function redeemActivationCode(uid, rawCode) {
@@ -617,8 +690,20 @@ export function redeemActivationCode(uid, rawCode) {
   const cur = getSubscriptionAndQuota(uid);
   const usedCodes = Array.isArray(cur.usedCodes) ? cur.usedCodes : [];
 
+  // 1. Chống spam: Mỗi mã chỉ được sử dụng 1 lần duy nhất trên tài khoản
+  if (usedCodes.includes(code)) {
+    return {
+      ok: false,
+      message: `Mã "${code}" đã được kích hoạt trên tài khoản này rồi! Mỗi mã chỉ được nhận thưởng 1 lần.`,
+    };
+  }
+
   // Cấu hình các gói nâng cấp đặc biệt (vẫn cộng +15 điểm mỗi lượt nhập)
   const SPECIAL_PLANS = {
+    ELEC15: {
+      planName: null, // chỉ cộng điểm thưởng
+      txTitle: 'Nhập mã quà tặng ELEC15 (+15 điểm AI)',
+    },
     ELECPRO: {
       planName: 'PRO',
       planDesc: 'Mở khóa toàn bộ Bộ đề PRO & Giải thích AI chi tiết',
@@ -635,6 +720,14 @@ export function redeemActivationCode(uid, rawCode) {
       maxHearts: 99,
       txTitle: 'Kích hoạt mã đặc quyền ELECVIP (+15 điểm AI)',
     },
+    ELECAI2027: {
+      planName: 'VIP',
+      planDesc: 'Gói Học bổng ELEC AI Lộ trình Mục tiêu Đại học 2027',
+      durationLabel: 'Trọn mùa thi 2027',
+      examAccessLabel: 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi',
+      maxHearts: 99,
+      txTitle: 'Kích hoạt học bổng ELECAI2027 (+15 điểm AI)',
+    },
     '9STUDY2027': {
       planName: 'VIP',
       planDesc: 'Gói Học bổng Lộ trình Mục tiêu Đại học 2027',
@@ -645,6 +738,17 @@ export function redeemActivationCode(uid, rawCode) {
     },
   };
 
+  // Kiểm tra mã hợp lệ: thuộc SPECIAL_PLANS hoặc mã giới thiệu hợp lệ
+  const isSpecial = Boolean(SPECIAL_PLANS[code]);
+  const isReferralCode = code.startsWith('ELECAI-') || code.startsWith('VIP-') || code.startsWith('PRO-');
+
+  if (!isSpecial && !isReferralCode) {
+    return {
+      ok: false,
+      message: `Mã "${code}" không hợp lệ hoặc đã hết hạn. Hãy thử mã ELEC15, ELECPRO hoặc ELECVIP.`,
+    };
+  }
+
   const matchedPlan = SPECIAL_PLANS[code];
   const addedPoints = POINTS_PER_CODE_ENTRY; // Mỗi lượt nhập được cộng đúng 15 điểm
   const nextCreditsMax = (Number(cur.aiCreditsMax) || 30) + addedPoints;
@@ -652,19 +756,19 @@ export function redeemActivationCode(uid, rawCode) {
 
   const next = {
     ...cur,
-    planName: matchedPlan ? matchedPlan.planName : cur.planName,
-    planDesc: matchedPlan ? matchedPlan.planDesc : cur.planDesc,
-    durationLabel: matchedPlan ? matchedPlan.durationLabel : cur.durationLabel,
-    examAccessLabel: matchedPlan ? matchedPlan.examAccessLabel : cur.examAccessLabel,
-    hearts: matchedPlan ? matchedPlan.maxHearts : cur.hearts,
-    maxHearts: matchedPlan ? matchedPlan.maxHearts : cur.maxHearts,
+    planName: matchedPlan?.planName ? matchedPlan.planName : cur.planName,
+    planDesc: matchedPlan?.planDesc ? matchedPlan.planDesc : cur.planDesc,
+    durationLabel: matchedPlan?.durationLabel ? matchedPlan.durationLabel : cur.durationLabel,
+    examAccessLabel: matchedPlan?.examAccessLabel ? matchedPlan.examAccessLabel : cur.examAccessLabel,
+    hearts: matchedPlan?.maxHearts ? matchedPlan.maxHearts : cur.hearts,
+    maxHearts: matchedPlan?.maxHearts ? matchedPlan.maxHearts : cur.maxHearts,
     aiCreditsMax: nextCreditsMax,
     bonusPoints: nextBonusPoints,
     usedCodes: [code, ...usedCodes],
     transactions: [
       {
         id: 'TX-' + Date.now().toString(36).toUpperCase(),
-        title: matchedPlan ? matchedPlan.txTitle : `Nhập mã quà tặng / giới thiệu ${code}`,
+        title: matchedPlan ? matchedPlan.txTitle : `Nhập mã giới thiệu ${code} (+${addedPoints} điểm)`,
         code,
         amount: `+${addedPoints} điểm`,
         status: 'Thành công',
@@ -675,16 +779,19 @@ export function redeemActivationCode(uid, rawCode) {
   };
 
   try {
-    localStorage.setItem(SUB_KEY(uid), JSON.stringify(next));
-    if (matchedPlan) {
-      localStorage.setItem('cs-vip-status', JSON.stringify({
+    safeSet(SUB_KEY(uid), JSON.stringify(next));
+    if (matchedPlan?.planName) {
+      safeSet('cs-vip-status', JSON.stringify({
         isPro: true,
         plan: matchedPlan.planName,
         expiry: new Date(Date.now() + 365 * 864e5).toISOString(),
         daysLeft: 365,
       }));
-      window.dispatchEvent(new CustomEvent('cs-vip-update'));
-      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cs-vip-update'));
+        window.dispatchEvent(new CustomEvent('cs-tier-update'));
+        window.dispatchEvent(new CustomEvent('user-profile-change'));
+      }
     }
   } catch { /* ignore */ }
 
@@ -700,7 +807,7 @@ export function redeemActivationCode(uid, rawCode) {
 
 export function getUserReports(uid) {
   try {
-    return JSON.parse(localStorage.getItem(REPORT_KEY(uid)) || '[]');
+    return JSON.parse(safeGet(REPORT_KEY(uid)) || '[]');
   } catch {
     return [];
   }
@@ -716,7 +823,10 @@ export function addUserReport(uid, report) {
   };
   const next = [item, ...cur];
   try {
-    localStorage.setItem(REPORT_KEY(uid), JSON.stringify(next));
+    safeSet(REPORT_KEY(uid), JSON.stringify(next));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('elec-user-reports-changed'));
+    }
   } catch { /* ignore */ }
   return next;
 }

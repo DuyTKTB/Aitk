@@ -1086,7 +1086,7 @@ export default function AutoExamStudio({
 
       // Fallback: gọi createExam trực tiếp (nếu không có onGenerated)
       const targetClass = classes.find((c) => c.id === selectedClassId);
-      await createExam({
+      const newExam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email || 'Giáo viên',
         classId: selectedClassId,
@@ -1106,7 +1106,7 @@ export default function AutoExamStudio({
       sound.cheer();
       setShowPublishModal(false);
       showToast(`Đã xuất bản vào lớp ${targetClass?.name || ''}`, 'success');
-      setTimeout(() => onDone?.(), 1200);
+      setTimeout(() => onDone?.(newExam), 1200);
     } catch (err) {
       showToast(`Lỗi xuất bản: ${err.message}`, 'error');
     } finally {

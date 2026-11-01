@@ -1,0 +1,195 @@
+/* ============================================================
+   intro-loader.css — MINIMALIST CLEAN LOGO INTRO & SHARED GLIDE
+   ------------------------------------------------------------
+   Phong cách tối giản, tinh tế chuẩn Apple & Animate UI:
+   • Màn hình nền đơn sắc sạch sẽ, tập trung 100% vào Logomark
+   • Không có hào quang loang lổ hay quỹ đạo rườm rà
+   • Logo chuyển động nhịp thở (breathing/floating) êm ái
+   • Shared Layout Morph lướt bay dứt khoát vào vị trí Navbar
+   ============================================================ */
+
+/* 1. Màn hình Intro phủ toàn trang */
+.elec-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+[data-theme='dark'] .elec-intro-overlay,
+.dark .elec-intro-overlay {
+  background: #090d16;
+}
+
+/* 2. Khối chứa Logomark chính tại trung tâm */
+.elec-intro-brand-box {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.elec-intro-logo-motion-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 3. Logo động: Hiệu ứng chuyển động bồng bềnh & thở nhẹ tinh tế */
+.elec-intro-logo-clean {
+  width: min(52vw, 190px);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  display: block;
+  border-radius: 28px;
+  animation: elecLogoCleanFloat 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes elecLogoCleanFloat {
+  0% {
+    transform: translateY(0px) scale(0.98);
+    filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.08));
+  }
+  100% {
+    transform: translateY(-8px) scale(1.025);
+    filter: drop-shadow(0 20px 36px rgba(47, 107, 255, 0.22));
+  }
+}
+
+[data-theme='dark'] .elec-intro-logo-clean {
+  animation: elecLogoCleanFloatDark 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes elecLogoCleanFloatDark {
+  0% {
+    transform: translateY(0px) scale(0.98);
+    filter: drop-shadow(0 10px 28px rgba(47, 107, 255, 0.35));
+  }
+  100% {
+    transform: translateY(-8px) scale(1.025);
+    filter: drop-shadow(0 20px 42px rgba(59, 130, 246, 0.55));
+  }
+}
+
+/* 4. Motion wrap trên Navbar Desktop & Mobile */
+.nav-logo-motion-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Ẩn hoàn toàn dấu chấm tròn legacy và text thừa bên cạnh logo navbar */
+.nav-logo::before,
+.nav-logo .nav-logo-dot,
+.nav-logo .logo-text {
+  display: none !important;
+}
+
+/* Bảo toàn hiệu ứng ngay cả khi kích hoạt perf-lite */
+html.perf-lite .elec-intro-overlay,
+html.perf-lite .elec-intro-overlay * {
+  will-change: transform, opacity !important;
+}
+
+/* ============================================================
+   PAGE LOADER NÂNG CẤP (DÀNH CHO ROUTE TRANSITIONS / SUSPENSE)
+   ============================================================ */
+.elec-page-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 40px 20px;
+  gap: 16px;
+  color: var(--text, #1e293b);
+}
+
+.elec-page-loader-core {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.elec-page-loader-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 8px;
+  animation: elecLogoBreath 1.8s infinite ease-in-out;
+}
+
+@keyframes elecLogoBreath {
+  0%, 100% {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.45));
+  }
+}
+
+.elec-page-loader-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #3b82f6;
+  border-right-color: #8b5cf6;
+  animation: elecRingSpin 0.9s linear infinite;
+}
+
+@keyframes elecRingSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.elec-page-loader-shimmer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  letter-spacing: -0.01em;
+}
+
+.elec-page-loader-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  box-shadow: 0 0 6px #3b82f6;
+  animation: elecPulseDot 1.2s infinite ease-in-out;
+}
+
+@keyframes elecPulseDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.45;
+  }
+}

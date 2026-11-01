@@ -161,8 +161,16 @@ const fmtTime = (sec) => {
 };
 
 const pctOf = (sub) => {
-  if (!sub || !sub.totalPoints) return 0;
-  return Math.round((sub.score / sub.totalPoints) * 100);
+  if (!sub) return 0;
+  if (typeof sub.percentage === 'number' && !Number.isNaN(sub.percentage)) return Math.round(sub.percentage);
+  if (sub.totalPoints > 0 && typeof sub.score === 'number' && !Number.isNaN(sub.score)) {
+    return Math.round((sub.score / sub.totalPoints) * 100);
+  }
+  if (sub.totalQuestions > 0 && typeof sub.correctCount === 'number' && !Number.isNaN(sub.correctCount)) {
+    return Math.round((sub.correctCount / sub.totalQuestions) * 100);
+  }
+  const n = Number(sub.score);
+  return Number.isNaN(n) ? 0 : Math.round(n);
 };
 
 const timeAgoShort = (t) => {
@@ -317,9 +325,7 @@ export default function ClassDetailModal({
       });
 
       const doneCount = mySubs.length;
-      const scores = mySubs
-        .filter((s) => s.totalPoints > 0)
-        .map((s) => (s.score / s.totalPoints) * 100);
+      const scores = mySubs.map(pctOf);
       const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
 
       const totalViolations = mySubs.reduce((sum, s) => sum + (s.violationCount || 0), 0);
@@ -366,7 +372,7 @@ export default function ClassDetailModal({
       .slice(-7)
       .map((ex) => {
         const subs = submissionsMap[ex.id] || [];
-        const scores = subs.filter((s) => s.totalPoints > 0).map((s) => (s.score / s.totalPoints) * 100);
+        const scores = subs.map(pctOf);
         const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
         return { label: ex.title, value: avg };
       });

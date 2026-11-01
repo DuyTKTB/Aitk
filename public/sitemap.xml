@@ -1,12 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Khi mua tên miền riêng: đổi mọi "aitk-ten.vercel.app" sang tên miền mới.
-     App dùng hash routing (#/...) nên Google chỉ thấy URL gốc.
-     Khi chuyển sang BrowserRouter, thêm từng trang (/ai, /bang-tuan-hoan, /quiz...) vào đây. -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <!-- Trang chủ & Landing tổng quan -->
   <url>
     <loc>https://aitk-ten.vercel.app/</loc>
-    <lastmod>2026-10-27</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+
+  <!-- Bảng tuần hoàn 118 nguyên tố hóa học tương tác -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/bang-tuan-hoan</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Máy cân bằng phương trình hóa học (PTHH) trực tuyến -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/can-bang-phuong-trinh-hoa-hoc</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Tra cứu công thức Hóa học 10, 11, 12 GDPT 2018 -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/cong-thuc-hoa-hoc</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Lộ trình kiến thức & ôn thi THPT Quốc gia môn Hóa -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/lo-trinh-on-thi-thpt-quoc-gia</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Phòng thi ảo bấm giờ chuẩn cấu trúc Bộ GD&ĐT 2026 -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/phong-thi-ao</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Kho tài liệu và sách giáo khoa Hóa học -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/tai-lieu-hoa-hoc</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Công cụ tính điểm xét tuyển Đại học (A00, A01, B00...) -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/tinh-diem-xet-tuyen-dai-hoc</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Trợ lý AI giải Hóa từng bước -->
+  <url>
+    <loc>https://aitk-ten.vercel.app/tro-ly-ai-giai-hoa</loc>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
 </urlset>

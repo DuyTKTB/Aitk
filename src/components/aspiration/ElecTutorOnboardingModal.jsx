@@ -780,7 +780,7 @@ export default function ElecTutorOnboardingModal({
                     </span>
                   </div>
                   <div className="et-insight-pill chem">
-                    <span>🧪 Mục tiêu môn Hóa: <b>{targetChemScore}/10đ</b></span>
+                    <span>Mục tiêu môn Hóa: <b>{targetChemScore}/10đ</b></span>
                   </div>
                 </div>
               </div>

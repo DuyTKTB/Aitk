@@ -21,6 +21,11 @@ const BIG_VENDORS = [
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    watch: {
+      ignored: ['**/báo cáo/**', '**/*.docx', '**/*.pdf'],
+    },
+  },
   build: {
     chunkSizeWarningLimit: 900,
     rollupOptions: {

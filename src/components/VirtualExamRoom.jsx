@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import {
   VIRTUAL_EXAMS,
   getAllVirtualExams,
@@ -8,7 +9,12 @@ import {
   toggleFavoriteExamId,
   getVirtualExamHistory,
   saveVirtualExamResult,
+  getSubscriptionAndQuota,
+  canAccessVirtualExam,
+  consumeExamHeart,
+  redeemActivationCode,
 } from '../data/virtualExamsBank.js';
+import PaymentPanel from './PaymentPanel.jsx';
 import { saveSession } from '../lib/roadmapStore.js';
 import { recordAttemptScore, getAspirationProfile, ASPIRATION_CHANGE_EVENT } from '../lib/aspirationService.js';
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
@@ -42,6 +48,13 @@ import '../styles/exam-paper.css';
    ============================================================ */
 
 /* ── Bộ Icon SVG sắc nét ── */
+const SvgLock = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
 const SvgClock = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
@@ -204,7 +217,7 @@ const SOURCE_FILTERS = [
 const LETTERS = ['A', 'B', 'C', 'D'];
 
 /* Hình minh họa Banner Hóa học (Bình tam giác, ống nghiệm, ô nguyên tố Carbon) */
-function ChemCardBanner({ exam }) {
+function ChemCardBanner({ exam, canAccess = true }) {
   const isVip = exam.tier === 'VIP';
   const isPro = exam.tier === 'PRO';
 
@@ -226,6 +239,11 @@ function ChemCardBanner({ exam }) {
           {!isVip && !isPro && (
             <span className="ns9-vex-tier-pill is-free">
               <SvgGift size={11} /> FREE
+            </span>
+          )}
+          {!canAccess && (
+            <span className="ns9-vex-lock-chip" title="Cần nâng cấp để mở khóa">
+              <SvgLock size={10} /> Khóa
             </span>
           )}
         </div>
@@ -283,12 +301,20 @@ function ChemCardBanner({ exam }) {
 }
 
 /* Thẻ Đề Thi chuẩn 9Study (100% SVG) */
-function VirtualExamCard({ exam, isFav, isDone, lastScore, onStart, onToggleFav }) {
+function VirtualExamCard({ exam, isFav, isDone, lastScore, canAccess = true, onStart, onToggleFav, onRequireUpgrade }) {
   const isVip = exam.tier === 'VIP';
 
+  const handleAction = () => {
+    if (canAccess) {
+      onStart(exam);
+    } else {
+      onRequireUpgrade(exam);
+    }
+  };
+
   return (
-    <article className={`ns9-vex-card tier-${exam.tier.toLowerCase()}`}>
-      <ChemCardBanner exam={exam} />
+    <article className={`ns9-vex-card tier-${exam.tier.toLowerCase()} ${!canAccess ? 'is-locked' : ''}`}>
+      <ChemCardBanner exam={exam} canAccess={canAccess} />
 
       <div className="ns9-vex-body">
         <div className="ns9-vex-subrow">
@@ -304,7 +330,7 @@ function VirtualExamCard({ exam, isFav, isDone, lastScore, onStart, onToggleFav 
           )}
         </div>
 
-        <h4 className="ns9-vex-title" onClick={() => onStart(exam)}>
+        <h4 className="ns9-vex-title" onClick={handleAction}>
           {exam.title}
         </h4>
 
@@ -340,13 +366,25 @@ function VirtualExamCard({ exam, isFav, isDone, lastScore, onStart, onToggleFav 
             {isFav ? <SvgBookmark size={15} filled /> : <SvgDotsVertical size={15} />}
           </button>
 
-          <button
-            type="button"
-            className={`ns9-vex-start-btn is-${exam.tier.toLowerCase()}`}
-            onClick={() => onStart(exam)}
-          >
-            {isDone ? 'Làm lại đề' : 'Làm bài ngay'}
-          </button>
+          {!canAccess ? (
+            <button
+              type="button"
+              className={`ns9-vex-start-btn is-${exam.tier.toLowerCase()} is-locked`}
+              onClick={handleAction}
+              title={`Nội dung ${exam.tier} — Bấm để mở khóa`}
+            >
+              <SvgLock size={12} />
+              <span>Mở khóa {exam.tier}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`ns9-vex-start-btn is-${exam.tier.toLowerCase()}`}
+              onClick={handleAction}
+            >
+              {isDone ? 'Làm lại đề' : 'Làm bài ngay'}
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -481,8 +519,10 @@ function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) 
   useEffect(() => {
     const d = dlgRef.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
+    try {
+      if (open && !d.open) d.showModal();
+      if (!open && d.open) d.close();
+    } catch { /* ignore */ }
   }, [open]);
 
   const unanswered = total - answered;
@@ -492,7 +532,12 @@ function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) 
       ref={dlgRef}
       className="ep-dialog"
       onClose={onCancel}
-      onClick={(e) => e.target === dlgRef.current && onCancel()}
+      onClick={(e) => {
+        const rect = dlgRef.current?.getBoundingClientRect();
+        if (rect && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) {
+          onCancel();
+        }
+      }}
     >
       {open && (
         <>
@@ -1181,7 +1226,37 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
 
 export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const { user } = useAuth();
+  const pro = useTeacherPro();
   const uid = user?.uid;
+
+  /* ── Phân quyền và Gói sử dụng ── */
+  const [subQuota, setSubQuota] = useState(() => getSubscriptionAndQuota(uid));
+  const [upgradeModalExam, setUpgradeModalExam] = useState(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentPkg, setPaymentPkg] = useState(null);
+  const [voucherCode, setVoucherCode] = useState('');
+  const [voucherMsg, setVoucherMsg] = useState(null);
+
+  useEffect(() => {
+    setSubQuota(getSubscriptionAndQuota(uid));
+    const onQuota = (e) => {
+      setSubQuota(e.detail || getSubscriptionAndQuota(uid));
+    };
+    window.addEventListener('elec-quota-changed', onQuota);
+    return () => window.removeEventListener('elec-quota-changed', onQuota);
+  }, [uid]);
+
+  const isAdminUser = Boolean(user && (user.email === 'admin@chem.edu.vn' || user.email?.startsWith('admin') || user.isAdmin));
+  const isTeacher = Boolean(pro.isPro || user?.role === 'teacher' || (typeof localStorage !== 'undefined' && localStorage.getItem('cs-user-role') === 'teacher'));
+  const isVipLocal = typeof localStorage !== 'undefined' && (localStorage.getItem('cs-vip') === 'true' || localStorage.getItem('cs-user-tier') === 'vip');
+
+  const userPlan = useMemo(() => {
+    if (isAdminUser) return 'ADMIN';
+    if (isTeacher) return 'PRO';
+    if (subQuota?.planName === 'VIP' || isVipLocal) return 'VIP';
+    if (subQuota?.planName === 'PRO') return 'PRO';
+    return 'FREE';
+  }, [isAdminUser, isTeacher, subQuota, isVipLocal]);
 
   /* ── Focus Mode (Pomodoro bar) ── */
   const [showFocusBar, setShowFocusBar] = useState(true);
@@ -1225,6 +1300,52 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const [favIds, setFavIds] = useState(() => getFavoriteExamIds(uid));
   const [historyList, setHistoryList] = useState(() => getVirtualExamHistory(uid));
   const [activeExam, setActiveExam] = useState(null);
+
+  const handleStartExam = (exam) => {
+    const allowed = canAccessVirtualExam(userPlan, exam.tier);
+    if (!allowed) {
+      setUpgradeModalExam(exam);
+      return;
+    }
+
+    if (userPlan === 'FREE') {
+      const hearts = subQuota.hearts != null ? subQuota.hearts : 5;
+      if (hearts <= 0) {
+        alert('Bạn đã sử dụng hết 5/5 mạng luyện tập hôm nay.\nVui lòng nạp thêm ELEC AI Credit hoặc nâng cấp VIP để thi không giới hạn!');
+        setUpgradeModalExam(exam);
+        return;
+      }
+    }
+
+    consumeExamHeart(uid);
+    setActiveExam(exam);
+  };
+
+  const handleOpenPayment = (tier) => {
+    const custom = tier === 'VIP'
+      ? { key: 'hs-12m', role: 'student', label: 'ELEC AI VIP — 12 tháng', amount: 499000 }
+      : { key: 'hs-1m', role: 'student', label: 'ELEC AI Học Sinh — 1 tháng', amount: 79000 };
+    setPaymentPkg(custom);
+    setUpgradeModalExam(null);
+    setShowPayment(true);
+  };
+
+  const handleRedeemVoucher = (e) => {
+    e.preventDefault();
+    if (!voucherCode.trim()) return;
+    const res = redeemActivationCode(uid, voucherCode.trim());
+    if (res.ok) {
+      setVoucherMsg({ ok: true, text: `Kích hoạt thành công gói ${res.data?.planName || 'VIP'}!` });
+      setSubQuota(res.data);
+      setTimeout(() => {
+        setUpgradeModalExam(null);
+        setVoucherMsg(null);
+        setVoucherCode('');
+      }, 1400);
+    } else {
+      setVoucherMsg({ ok: false, text: res.message });
+    }
+  };
 
   useEffect(() => {
     setFavIds(getFavoriteExamIds(uid));
@@ -1608,7 +1729,9 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   isFav={favIds.includes(exam.id)}
                   isDone={doneMap.has(exam.id)}
                   lastScore={doneMap.get(exam.id)}
-                  onStart={setActiveExam}
+                  canAccess={canAccessVirtualExam(userPlan, exam.tier)}
+                  onStart={handleStartExam}
+                  onRequireUpgrade={setUpgradeModalExam}
                   onToggleFav={handleToggleFav}
                 />
               ))}
@@ -1630,7 +1753,9 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   isFav={favIds.includes(exam.id)}
                   isDone={doneMap.has(exam.id)}
                   lastScore={doneMap.get(exam.id)}
-                  onStart={setActiveExam}
+                  canAccess={canAccessVirtualExam(userPlan, exam.tier)}
+                  onStart={handleStartExam}
+                  onRequireUpgrade={setUpgradeModalExam}
                   onToggleFav={handleToggleFav}
                 />
               ))}
@@ -1652,7 +1777,9 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   isFav={favIds.includes(exam.id)}
                   isDone={doneMap.has(exam.id)}
                   lastScore={doneMap.get(exam.id)}
-                  onStart={setActiveExam}
+                  canAccess={canAccessVirtualExam(userPlan, exam.tier)}
+                  onStart={handleStartExam}
+                  onRequireUpgrade={setUpgradeModalExam}
                   onToggleFav={handleToggleFav}
                 />
               ))}
@@ -1681,6 +1808,193 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           </div>
         )}
       </div>
+
+      {/* ── 6. MODAL NÂNG CẤP GÓI KHI BẤM ĐỀ BỊ KHÓA (Chuẩn Apple HIG) ── */}
+      {upgradeModalExam && (
+        <div
+          className="ns9-upg-dialog-backdrop"
+          onClick={() => setUpgradeModalExam(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="ns9-upg-dialog-card" onClick={(e) => e.stopPropagation()}>
+            <div className="ns9-upg-dialog-head">
+              <div>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  color: upgradeModalExam.tier === 'VIP' ? '#7c3aed' : '#ea580c',
+                  background: upgradeModalExam.tier === 'VIP' ? 'rgba(124, 58, 237, 0.1)' : 'rgba(234, 88, 12, 0.1)',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  marginBottom: 8,
+                }}>
+                  {upgradeModalExam.tier === 'VIP' ? <SvgDiamond size={12} /> : <SvgCrown size={12} />}
+                  YÊU CẦU GÓI {upgradeModalExam.tier}
+                </span>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--ink, #0f172a)' }}>
+                  Mở khóa {upgradeModalExam.tier === 'VIP' ? 'Bộ đề VIP Độc Quyền' : 'Bộ đề PRO Cao Cấp'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="ns9-cr-close-btn"
+                onClick={() => setUpgradeModalExam(null)}
+                aria-label="Đóng"
+                style={{ position: 'relative', top: 'auto', right: 'auto' }}
+              >
+                <SvgClose size={16} />
+              </button>
+            </div>
+
+            <div className="ns9-upg-dialog-body">
+              <div className="ns9-upg-preview-box">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span className={`ns9-vex-badge-tag is-${upgradeModalExam.tier.toLowerCase()}`}>
+                    {upgradeModalExam.badgeLabel}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--mut, #64748b)' }}>
+                    Kỳ thi {upgradeModalExam.examType} · {upgradeModalExam.year}
+                  </span>
+                </div>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--ink, #0f172a)', display: 'block', lineHeight: 1.4 }}>
+                  {upgradeModalExam.title}
+                </strong>
+                <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: '0.8rem', color: 'var(--mut, #64748b)' }}>
+                  <span><SvgDoc size={12} /> {upgradeModalExam.questionCount} câu</span>
+                  <span><SvgClock size={12} /> {upgradeModalExam.durationMinutes || 50} phút</span>
+                  <span>{upgradeModalExam.author}</span>
+                </div>
+              </div>
+
+              <ul className="ns9-upg-feat-list">
+                <li className="ns9-upg-feat-item">
+                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
+                  <span>Mở khóa 100% đề thi độc quyền kỳ thi THPTQG, HSA, TSA</span>
+                </li>
+                <li className="ns9-upg-feat-item">
+                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
+                  <span>Gia sư ELEC AI phân tích, giải thích từng bước &amp; chỉ rõ lỗi sai</span>
+                </li>
+                <li className="ns9-upg-feat-item">
+                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
+                  <span>Không giới hạn số lượt thi (99 mạng luyện tập không lo hết lượt)</span>
+                </li>
+                <li className="ns9-upg-feat-item">
+                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
+                  <span>Sổ lỗi sai thông minh &amp; Dự đoán phổ điểm nguyện vọng Đại học</span>
+                </li>
+              </ul>
+
+              {/* Form nhập mã kích hoạt voucher nhanh */}
+              <form onSubmit={handleRedeemVoucher} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <input
+                  type="text"
+                  placeholder="Mã voucher (Thử ELECVIP, ELECAI2027)"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value)}
+                  style={{
+                    flex: 1,
+                    height: 38,
+                    borderRadius: 10,
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                    padding: '0 12px',
+                    fontSize: '0.85rem',
+                    background: 'transparent',
+                    color: 'inherit',
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    height: 38,
+                    padding: '0 14px',
+                    borderRadius: 10,
+                    border: 0,
+                    background: '#2563eb',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Kích hoạt
+                </button>
+              </form>
+
+              {voucherMsg && (
+                <div style={{
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  fontSize: '0.8rem',
+                  background: voucherMsg.ok ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  color: voucherMsg.ok ? '#10b981' : '#ef4444',
+                }}>
+                  {voucherMsg.text}
+                </div>
+              )}
+
+              <div className="ns9-upg-actions">
+                <button
+                  type="button"
+                  className="ns9-upg-btn-primary"
+                  onClick={() => handleOpenPayment(upgradeModalExam.tier)}
+                >
+                  <SvgCrown size={16} />
+                  <span>Nâng cấp ngay từ {upgradeModalExam.tier === 'VIP' ? '499.000 đ' : '79.000 đ'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="ns9-upg-btn-secondary"
+                  onClick={() => setUpgradeModalExam(null)}
+                >
+                  Để sau
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. MODAL THANH TOÁN VIETQR TRỰC TIẾP ── */}
+      {showPayment && (
+        <div className="ns9-cr-backdrop" onClick={() => setShowPayment(false)} role="dialog" aria-modal="true">
+          <div className="ns9-cr-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, padding: '24px 28px' }}>
+            <button
+              type="button"
+              className="ns9-cr-close-btn"
+              onClick={() => setShowPayment(false)}
+              aria-label="Đóng"
+            >
+              <SvgClose size={18} />
+            </button>
+            <PaymentPanel
+              identCode={user?.email ? 'ELECAI-' + user.email.split('@')[0] : 'VIP2027'}
+              customPackage={paymentPkg}
+              onPaymentSuccess={(pkg) => {
+                const updated = {
+                  ...subQuota,
+                  planName: pkg?.role === 'teacher' ? 'PRO' : 'VIP',
+                  durationLabel: 'Trọn mùa thi 2027',
+                  hearts: 99,
+                  maxHearts: 99,
+                };
+                try {
+                  localStorage.setItem(`elec_sub_quota_v1_${uid || 'guest'}`, JSON.stringify(updated));
+                  localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify(updated));
+                } catch {}
+                setSubQuota(updated);
+                setShowPayment(false);
+                alert(`Nâng cấp thành công gói ${pkg?.label || 'VIP'}! Toàn bộ đề thi đã được mở khóa.`);
+              }}
+              onClose={() => setShowPayment(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

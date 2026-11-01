@@ -99,7 +99,12 @@ const MAX_CHATS = 50;
 const MAX_IMAGES = 10;
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const isCoarse = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-const onAiPage = () => location.hash.slice(1) === 'ai';
+const onAiPage = () => {
+  if (typeof window === 'undefined') return false;
+  const hash = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0];
+  const path = (window.location.pathname || '').replace(/^\/+/, '').split('/')[0];
+  return hash === 'ai' || path === 'tro-ly-ai-giai-hoa';
+};
 const stamp = (c) => c.updatedAt || c.createdAt || 0;
 
 const IMG_EXT = /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif)$/i;
@@ -423,7 +428,14 @@ function QuotaRing({ left, total, size = 34, label }) {
    MAIN COMPONENT
    ============================================================ */
 export default function AIChat({ onExit }) {
-  const { user, tier, logout } = useAuth();
+  const { user, tier: authTier, logout } = useAuth();
+  const tier = useMemo(() => authTier || {
+    key: 'free',
+    name: 'Free',
+    color: '#64748b',
+    quotaText: 5,
+    quotaImage: 2,
+  }, [authTier]);
   const uid = user?.uid;
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -2480,8 +2492,8 @@ export default function AIChat({ onExit }) {
             >
               <IcoPlus size={20} />
             </button>
-            <input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple className="ds-file-hidden" tabIndex={-1} onChange={pickImages} />
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="ds-file-hidden" tabIndex={-1} onChange={pickImages} />
+            <input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple className="ds-file-hidden" tabIndex={-1} aria-label="Tải ảnh bài tập lên để AI giải" onChange={pickImages} />
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="ds-file-hidden" tabIndex={-1} aria-label="Chụp ảnh bài tập bằng camera" onChange={pickImages} />
 
             <button
               className={'ds-input-icon ds-icon-wand' + (showQuickPrompts ? ' on' : '')}

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, lazy, Suspense, useCallback } from 'react';
+import { motion } from 'motion/react';
 import AIMark from './AIMark.jsx';
 import SiteFooter from './SiteFooter.jsx';
+import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
 import './landing-v3.css';
 import './landing-ocean.css';
 import './landing-class.css';
@@ -375,8 +377,18 @@ function MagBtn({ as: Tag = 'button', className = '', children, ...rest }) {
 
 function Logo({ size = 40 }) {
   const [err, setErr] = useState(false);
+  const { playing: introPlaying } = useElecIntro();
   if (err) return <IcoLogoFallback size={size} />;
-  return <img src={LOGO} alt="ELEC AI" width={size} height={size} onError={() => setErr(true)} />;
+  if (introPlaying) return null;
+  return (
+    <motion.div
+      layoutId="elec-brand-logo"
+      transition={{ layout: LOGO_GLIDE_TRANSITION }}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <img src={LOGO} alt="ELEC AI" width={size} height={size} onError={() => setErr(true)} />
+    </motion.div>
+  );
 }
 
 /* ============================================================

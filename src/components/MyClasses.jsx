@@ -808,8 +808,11 @@ export default function MyClasses() {
   };
 
   const openExam = (exam) => {
-    if (exam._st.key === 'soon' || exam._st.key === 'closed') return;
-    if (exam._st.key === 'done' && exam._st.closed) return;
+    if (exam._st.key === 'soon') return;
+    const permit = retryPermitsMap[exam.id];
+    const canRetry = exam.allowRetry || permit?.status === 'approved' || exam.canRetry;
+    if (exam._st.key === 'closed' && !canRetry) return;
+    if (exam._st.key === 'done' && exam._st.closed && !canRetry) return;
     window.location.hash = `exam/${exam.token || exam.id}`;
   };
 
@@ -1334,7 +1337,7 @@ export default function MyClasses() {
                                         <button
                                           type="button"
                                           className="ap-btn sm"
-                                          onClick={() => { window.location.hash = `exam/${ex.token || ex.id}`; }}
+                                          onClick={() => { window.location.hash = `exam/${ex.token || ex.id}?view=result`; }}
                                           title="Xem lại chi tiết từng câu trong bài thi"
                                         >
                                           Xem lại bài

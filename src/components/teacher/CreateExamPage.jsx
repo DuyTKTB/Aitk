@@ -174,7 +174,8 @@ export default function CreateExamPage({
 
   /* Lưu đề */
   const handleSave = async (data) => {
-    if (!classInfo?.id) {
+    const targetClassId = data.classId || classInfo?.id || classes[0]?.id;
+    if (!targetClassId) {
       toast.error('Thiếu thông tin lớp.');
       return;
     }
@@ -183,7 +184,7 @@ export default function CreateExamPage({
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
-        classId: data.classId || classInfo.id,
+        classId: targetClassId,
         title: data.title,
         description: data.description,
         duration: data.duration,
@@ -199,12 +200,14 @@ export default function CreateExamPage({
       });
       toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
       clearDraft();
-      clearManualDraft(classInfo.id);
+      clearManualDraft(targetClassId);
       dirtyRef.current = false;
       onDone?.(exam);
+      return exam;
     } catch (e) {
       console.error(e);
       toast.error('Không lưu được đề: ' + (e.message || 'Lỗi không xác định'));
+      throw e;
     } finally {
       setSaving(false);
     }

@@ -25,14 +25,14 @@ export const onQueueChange = (cb) => {
 
 const looksOffline = (r) =>
   (typeof navigator !== 'undefined' && navigator.onLine === false) ||
-  /unavailable|network|offline|kết nối|mạng/i.test(String(r?.error || r?.message || ''));
+  /unavailable|network|offline|kết nối|mạng|failed to fetch|timeout|quota|resource-exhausted|exceeded/i.test(String(r?.error || r?.saveError || r?.message || ''));
 
 export async function submitExamSafe(payload) {
   let res;
   try {
     res = await submitExam(payload);
   } catch (e) {
-    res = { ok: false, error: e?.message || String(e) };
+    res = { ok: false, error: e?.message || String(e), saveError: e?.message || String(e) };
   }
   if (res?.ok) return res;
 
@@ -40,7 +40,17 @@ export async function submitExamSafe(payload) {
     const q = read().filter((x) => !(x.examId === payload.examId && x.student?.id === payload.student?.id));
     q.push({ ...payload, queuedAt: Date.now() });
     write(q);
-    return { ok: false, queued: true, error: 'Mất kết nối. Bài đã được lưu trên máy và sẽ tự nộp khi có mạng.' };
+    return {
+      ok: false,
+      queued: true,
+      error: 'Mất kết nối. Bài đã được lưu trên máy và sẽ tự nộp khi có mạng.',
+      saveError: null,
+      score: res?.score ?? null,
+      correct: res?.correct ?? 0,
+      total: res?.total ?? 0,
+      totalPoints: res?.totalPoints ?? 0,
+      detail: res?.detail ?? [],
+    };
   }
   return res;
 }

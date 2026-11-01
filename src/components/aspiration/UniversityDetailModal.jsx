@@ -6,6 +6,12 @@ import {
   getUserAspirationsState,
   upsertAspiration,
 } from '../../lib/aspirationService.js';
+import {
+  DialogRoot,
+  DialogPortal,
+  DialogBackdrop,
+  DialogPopup,
+} from '../ui/AnimateDialog.jsx';
 import '../../styles/university-detail.css';
 
 const TABS = [
@@ -86,28 +92,27 @@ export default function UniversityDetailModal({
   };
 
   return (
-    <div
-      className="udm-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Đề án tuyển sinh ${scheme.schoolName}`}
-    >
-      <div className="udm-modal" ref={modalRef}>
-        {/* Nút đóng */}
-        <button
-          type="button"
-          className="udm-close-btn"
-          onClick={onClose}
-          aria-label="Đóng đề án tuyển sinh"
+    <DialogRoot open={open} onOpenChange={onClose}>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup
+          from="top"
+          size="full"
+          className="udm-animate-modal"
+          aria-label={`Đề án tuyển sinh ${scheme.schoolName}`}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+          {/* Nút đóng */}
+          <button
+            type="button"
+            className="udm-close-btn"
+            onClick={onClose}
+            aria-label="Đóng đề án tuyển sinh"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
 
         {/* ── 1. BANNER TRƯỜNG ── */}
         <div className="udm-banner-wrap">
@@ -396,7 +401,8 @@ export default function UniversityDetailModal({
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
+      </DialogPopup>
+    </DialogPortal>
+  </DialogRoot>
+);
 }

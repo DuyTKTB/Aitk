@@ -150,6 +150,46 @@ function PdfViewerModal({ doc, onClose }) {
 /* ============================================================
    MODAL XEM DANH SÁCH BỘ SÁCH
    ============================================================ */
+function BookThumb({ img, title }) {
+  const [failed, setFailed] = useState(false);
+  if (!img || failed) {
+    return (
+      <div
+        className="tn-book-thumb-fallback"
+        style={{
+          width: 38,
+          height: 52,
+          borderRadius: 4,
+          background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.2))',
+          border: '1px solid rgba(59,130,246,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          color: '#3b82f6'
+        }}
+        aria-hidden="true"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={img}
+      alt={title}
+      className="tn-book-thumb"
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function BookList({ doc, onClose }) {
   const ref = useRef(null);
   useEffect(() => { ref.current?.showModal(); }, []);
@@ -181,17 +221,7 @@ function BookList({ doc, onClose }) {
       <div className="tn-books-list">
         {books.map((b, i) => (
           <a key={i} className="tn-book-item" href={b.url} target="_blank" rel="noopener noreferrer">
-            {b.img && (
-              <img
-                src={b.img}
-                alt={b.title}
-                className="tn-book-thumb"
-                loading="lazy"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-            )}
+            <BookThumb img={b.img} title={b.title} />
             <div className="tn-book-info">
               <b>{b.title}</b>
               <small>NXB Giáo dục VN</small>

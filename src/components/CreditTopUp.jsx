@@ -1,545 +1,618 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   CREDIT_PACKAGES,
   BANK_INFO,
   createPaymentOrder,
   getCredits,
-  onCreditsChange,
   onOrderPaid,
-  getTransactionHistory,
+  checkOrderStatus,
   claimWelcomeBonus,
   checkWelcomeClaimed,
 } from '../lib/creditService.js';
-import VipStatusCard from './VipStatusCard.jsx';
+import { getUserProfile, saveUserProfile } from '../lib/userProfileService.js';
 import './CreditTopUp.css';
 
 /* ============================================================
-   ICONS — SVG nét
+   SVG ICONS & COIN GRAPHICS (100% SVG thuần — Không dùng emoji)
    ============================================================ */
-const IcoZap = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </svg>
-);
 
-const IcoGift = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 12 20 22 4 22 4 12" />
-    <rect x="2" y="7" width="20" height="5" />
-    <line x1="12" y1="22" x2="12" y2="7" />
-    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-  </svg>
-);
-
-const IcoCopy = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
-
-const IcoCheck = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-const IcoStar = ({ size = 12 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-);
-
-const IcoHistory = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="12 6 12 12 16 14" />
-  </svg>
-);
-
-const IcoRefresh = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10" />
-    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-  </svg>
-);
-
-const IcoArrowLeft = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" y1="12" x2="5" y2="12" />
-    <polyline points="12 19 5 12 12 5" />
-  </svg>
-);
-
-const IcoQr = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-    <line x1="14" y1="14" x2="21" y2="21" />
-    <line x1="14" y1="21" x2="21" y2="14" />
-  </svg>
-);
-
-const IcoAlert = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
-/* ============================================================
-   Transaction type → SVG icon + label
-   ============================================================ */
-const TX_TYPES = {
-  signup_bonus: { label: 'Quà đăng ký', icon: IcoGift, color: 'blue' },
-  daily_free:   { label: 'Miễn phí',     icon: IcoGift, color: 'green' },
-  purchase:     { label: 'Nạp tiền',     icon: IcoZap,  color: 'green' },
-  referral:     { label: 'Giới thiệu bạn', icon: IcoGift, color: 'green' },
-  ai_text:      { label: 'Hỏi AI',        icon: IcoZap,  color: 'red' },
-  ai_image:     { label: 'Gửi ảnh AI',    icon: IcoZap,  color: 'red' },
-  refund:       { label: 'Hoàn điểm',     icon: IcoRefresh, color: 'green' },
-  admin_grant:  { label: 'Admin cấp',     icon: IcoGift, color: 'green' },
-  admin_deduct: { label: 'Admin trừ',     icon: IcoAlert, color: 'red' },
-};
-
-function TxLabel({ type }) {
-  const config = TX_TYPES[type] || { label: type, icon: IcoZap };
-  const Icon = config.icon;
+/* 1 Đồng Coin Vàng */
+function CoinSingleSvg({ size = 56 }) {
   return (
-    <span className="ctu-history-type">
-      <Icon size={14} />
-      {config.label}
-    </span>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="goldGrad1" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#fef08a" />
+          <stop offset="0.5" stopColor="#f59e0b" />
+          <stop offset="1" stopColor="#d97706" />
+        </linearGradient>
+        <filter id="coinShadow1" x="0" y="2" width="64" height="62" filterUnits="userSpaceOnUse">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#b45309" floodOpacity="0.35" />
+        </filter>
+      </defs>
+      <g filter="url(#coinShadow1)">
+        <circle cx="32" cy="31" r="24" fill="url(#goldGrad1)" stroke="#d97706" strokeWidth="2" />
+        <circle cx="32" cy="31" r="19" stroke="#fef9c3" strokeWidth="1.5" strokeOpacity="0.8" />
+        <text x="32" y="38" textAnchor="middle" fill="#78350f" fontSize="20" fontWeight="900" fontFamily="system-ui, sans-serif">C</text>
+      </g>
+    </svg>
+  );
+}
+
+/* 2 Đồng Coin Vàng Xếp Chồng */
+function CoinDoubleSvg({ size = 56 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 76 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="goldGrad2" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#fef08a" />
+          <stop offset="0.5" stopColor="#f59e0b" />
+          <stop offset="1" stopColor="#d97706" />
+        </linearGradient>
+      </defs>
+      {/* Coin sau */}
+      <circle cx="28" cy="30" r="22" fill="url(#goldGrad2)" stroke="#b45309" strokeWidth="2" opacity="0.9" />
+      <circle cx="28" cy="30" r="17" stroke="#fef9c3" strokeWidth="1.2" strokeOpacity="0.7" />
+      <text x="28" y="37" textAnchor="middle" fill="#78350f" fontSize="18" fontWeight="900" fontFamily="system-ui, sans-serif">C</text>
+
+      {/* Coin trước */}
+      <circle cx="48" cy="33" r="22" fill="url(#goldGrad2)" stroke="#d97706" strokeWidth="2" />
+      <circle cx="48" cy="33" r="17" stroke="#fef9c3" strokeWidth="1.5" strokeOpacity="0.8" />
+      <text x="48" y="40" textAnchor="middle" fill="#78350f" fontSize="18" fontWeight="900" fontFamily="system-ui, sans-serif">C</text>
+    </svg>
+  );
+}
+
+/* 3 Đồng Coin Vàng Xếp Chồng (PREMIUM) */
+function CoinTripleSvg({ size = 56 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 84 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="goldGrad3" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#fef08a" />
+          <stop offset="0.5" stopColor="#f59e0b" />
+          <stop offset="1" stopColor="#d97706" />
+        </linearGradient>
+      </defs>
+      {/* Sparkles */}
+      <path d="M12 18l1.5 3 3 1.5-3 1.5-1.5 3-1.5-3-3-1.5 3-1.5z" fill="#f59e0b" />
+      <path d="M72 14l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#fbbf24" />
+
+      {/* Coin 1 */}
+      <circle cx="26" cy="33" r="20" fill="url(#goldGrad3)" stroke="#b45309" strokeWidth="1.8" opacity="0.85" />
+      <text x="26" y="39" textAnchor="middle" fill="#78350f" fontSize="16" fontWeight="900" fontFamily="system-ui, sans-serif">C</text>
+
+      {/* Coin 2 */}
+      <circle cx="44" cy="27" r="20" fill="url(#goldGrad3)" stroke="#d97706" strokeWidth="1.8" />
+      <text x="44" y="33" textAnchor="middle" fill="#78350f" fontSize="16" fontWeight="900" fontFamily="system-ui, sans-serif">C</text>
+
+      {/* Coin 3 */}
+      <circle cx="58" cy="36" r="20" fill="url(#goldGrad3)" stroke="#d97706" strokeWidth="2" />
+      <circle cx="58" cy="36" r="16" stroke="#fef9c3" strokeWidth="1.2" strokeOpacity="0.8" />
+      <text x="58" y="42" textAnchor="middle" fill="#78350f" fontSize="17" fontWeight="900" fontFamily="system-ui, sans-serif">C</text>
+    </svg>
+  );
+}
+
+/* Linh vật cầm sách đọc chuẩn ảnh mẫu */
+function StudyMascotSvg() {
+  return (
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Vòng hào quang */}
+      <circle cx="60" cy="60" r="54" fill="rgba(37, 99, 235, 0.08)" />
+      {/* Thân */}
+      <circle cx="60" cy="74" r="26" fill="#2563eb" />
+      <ellipse cx="60" cy="78" rx="16" ry="12" fill="#ffffff" />
+      <text x="60" y="82" textAnchor="middle" fill="#2563eb" fontSize="11" fontWeight="900" fontFamily="system-ui">9</text>
+      {/* Đầu */}
+      <circle cx="60" cy="46" r="24" fill="#3b82f6" />
+      <ellipse cx="60" cy="50" rx="19" ry="15" fill="#ffffff" />
+      {/* Mắt to tròn */}
+      <circle cx="52" cy="47" r="4.2" fill="#0f172a" />
+      <circle cx="68" cy="47" r="4.2" fill="#0f172a" />
+      <circle cx="53.5" cy="45.5" r="1.5" fill="#ffffff" />
+      <circle cx="69.5" cy="45.5" r="1.5" fill="#ffffff" />
+      {/* Má hồng */}
+      <ellipse cx="46" cy="53" rx="3.5" ry="2" fill="#fda4af" />
+      <ellipse cx="74" cy="53" rx="3.5" ry="2" fill="#fda4af" />
+      {/* Miệng cười */}
+      <path d="M55 54 Q60 59 65 54" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+      {/* Mũ / Bờm */}
+      <path d="M38 38 C42 22, 78 22, 82 38 Z" fill="#1d4ed8" />
+      <text x="60" y="32" textAnchor="middle" fill="#ffffff" fontSize="7.5" fontWeight="900">ELEC AI</text>
+      {/* Quyển sách đang mở trên tay */}
+      <path d="M34 76 L60 84 L86 76 L86 96 L60 102 L34 96 Z" fill="#1d4ed8" />
+      <path d="M36 78 L59 84 L59 100 L36 94 Z" fill="#ffffff" />
+      <path d="M84 78 L61 84 L61 100 L84 94 Z" fill="#ffffff" />
+      <line x1="42" y1="84" x2="54" y2="87" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="42" y1="89" x2="52" y2="92" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="66" y1="87" x2="78" y2="84" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="68" y1="92" x2="78" y2="89" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
   );
 }
 
 /* ============================================================
-   COMPONENT
+   MAIN COMPONENT — MUA ELEC AI CREDIT
    ============================================================ */
-export default function CreditTopUp({ userId, onCreditUpdate, onUpgrade }) {
+export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: propIsOpen }) {
+  const [isOpen, setIsOpen] = useState(Boolean(propIsOpen ?? false));
   const [balance, setBalance] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedPkg, setSelectedPkg] = useState(50000);
-  const [step, setStep] = useState('select');
+  const [selectedAmount, setSelectedAmount] = useState(100000); // Mặc định gói Premium 100.000đ
+  const [step, setStep] = useState('select'); // 'select' | 'qr'
   const [orderData, setOrderData] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [showHistory, setShowHistory] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [claimed, setClaimed] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [claimLoading, setClaimLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const [countdown, setCountdown] = useState(1800); // 30 phút
+
+  // Thông tin xuất hóa đơn
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerAddress, setBuyerAddress] = useState('');
+  const [invoiceError, setInvoiceError] = useState('');
+
   const unsubOrderRef = useRef(null);
 
-  const pkg = CREDIT_PACKAGES.find((p) => p.amount === selectedPkg) || CREDIT_PACKAGES[2];
-
-  /* Load credits ban đầu */
+  // Lắng nghe sự kiện mở / đóng modal toàn cục
   useEffect(() => {
-    if (!userId) return;
-    let off = false;
-    getCredits(userId).then((c) => {
-      if (!off) {
-        setBalance(c.balance);
-        setLoading(false);
-      }
-    });
-    return () => { off = true; };
-  }, [userId]);
-
-  /* Check đã nhận 5 điểm chào mừng chưa */
-  useEffect(() => {
-    if (!userId) { setChecking(false); return; }
-    let off = false;
-    setChecking(true);
-    checkWelcomeClaimed(userId)
-      .then((done) => { if (!off) setClaimed(done); })
-      .finally(() => { if (!off) setChecking(false); });
-    return () => { off = true; };
-  }, [userId]);
-
-  /* Realtime credits change */
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = onCreditsChange(userId, (newData) => {
-      setBalance(newData.balance);
-      onCreditUpdate?.(newData.balance);
-    });
-    return () => unsub();
-  }, [userId, onCreditUpdate]);
-
-  /* Countdown timer */
-  useEffect(() => {
-    if (step !== 'waiting' && step !== 'qr') return;
-    if (!orderData?.expiresAt) return;
-    const tick = () => {
-      const left = Math.max(0, Math.floor((new Date(orderData.expiresAt) - Date.now()) / 1000));
-      setCountdown(left);
-      if (left <= 0) clearInterval(t);
+    const handleGlobalOpen = () => {
+      setIsOpen(true);
+      setStep('select');
     };
-    tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, [step, orderData]);
+    const handleGlobalClose = () => {
+      setIsOpen(false);
+    };
+    window.addEventListener('elec-open-credit-topup', handleGlobalOpen);
+    window.addEventListener('elec-close-credit-topup', handleGlobalClose);
+    return () => {
+      window.removeEventListener('elec-open-credit-topup', handleGlobalOpen);
+      window.removeEventListener('elec-close-credit-topup', handleGlobalClose);
+    };
+  }, []);
 
-  useEffect(() => () => unsubOrderRef.current?.(), []);
+  useEffect(() => {
+    if (propIsOpen !== undefined) setIsOpen(propIsOpen);
+  }, [propIsOpen]);
 
-  const handleClaim = async () => {
-    if (claimed || claimLoading) return;
-    setClaimLoading(true);
-    const result = await claimWelcomeBonus(userId);
-    if (result.ok) {
-      setBalance(result.balance);
-      setClaimed(true);
-      onCreditUpdate?.(result.balance);
-    } else if (result.reason === 'already_claimed') {
-      setClaimed(true);
-    }
-    setClaimLoading(false);
+  // Tải số dư và profile
+  useEffect(() => {
+    if (!userId) return;
+    getCredits(userId).then((c) => {
+      setBalance(c.balance);
+    });
+
+    const prof = getUserProfile(userId);
+    setBuyerName(prof.invoice?.buyerName || prof.fullName || '');
+    setBuyerAddress(prof.invoice?.address || '');
+  }, [userId]);
+
+  // Các gói chính hiển thị theo Ảnh 4: PRO 2 (30k), PRO 3 (60k), PREMIUM (100k)
+  const displayPackages = useMemo(() => {
+    return CREDIT_PACKAGES.filter((p) => [30000, 60000, 100000].includes(p.amount));
+  }, []);
+
+  const selectedPkg = useMemo(() => {
+    return (
+      CREDIT_PACKAGES.find((p) => p.amount === selectedAmount) ||
+      displayPackages[2] ||
+      CREDIT_PACKAGES[1]
+    );
+  }, [selectedAmount, displayPackages]);
+
+  // Đếm ngược QR
+  useEffect(() => {
+    if (step !== 'qr') return;
+    setCountdown(1800);
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step]);
+
+  // Cleanup subscription
+  useEffect(() => {
+    return () => {
+      if (unsubOrderRef.current) unsubOrderRef.current();
+    };
+  }, []);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    onClose?.();
   };
 
-  const handleCreateOrder = async () => {
+  const copyToClipboard = async (text, fieldName) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      alert(`Không thể sao chép. Vui lòng chép tay: ${text}`);
+    }
+  };
+
+  // Tạo đơn hàng thanh toán
+  const handleProceedPayment = async () => {
+    if (!buyerName.trim()) {
+      setInvoiceError('Vui lòng nhập họ tên đầy đủ để xuất hóa đơn.');
+      return;
+    }
+    if (!buyerAddress.trim()) {
+      setInvoiceError('Vui lòng nhập địa chỉ đầy đủ (số nhà, đường, phường/xã, tỉnh/thành) để xuất hóa đơn.');
+      return;
+    }
+
+    setInvoiceError('');
+    const effectiveUserId = userId || 'guest_user';
+
+    // Lưu lại thông tin hóa đơn vào profile
+    saveUserProfile(effectiveUserId, {
+      invoice: {
+        buyerName: buyerName.trim(),
+        address: buyerAddress.trim(),
+      },
+    });
+
     setCreating(true);
     try {
-      const data = await createPaymentOrder(userId, selectedPkg);
-      setOrderData(data);
+      const order = await createPaymentOrder(effectiveUserId, selectedPkg.amount);
+      setOrderData(order);
       setStep('qr');
 
-      unsubOrderRef.current?.();
-      unsubOrderRef.current = onOrderPaid(data.order.id, () => {
-        setStep('success');
-        getCredits(userId).then((c) => {
-          setBalance(c.balance);
-          onCreditUpdate?.(c.balance);
+      // Lắng nghe SePay / VietQR webhook hoàn tất đơn hàng thời gian thực
+      if (order?.order?.id) {
+        unsubOrderRef.current = onOrderPaid(order.order.id, async () => {
+          const fresh = await getCredits(effectiveUserId);
+          setBalance(fresh.balance);
+          onCreditUpdate?.(fresh.balance);
+          alert('Thanh toán thành công! ELEC AI Credit đã được cộng ngay vào tài khoản của em.');
+          handleClose();
         });
-      });
-    } catch (e) {
-      alert('Lỗi tạo đơn: ' + (e.message || 'Thử lại sau'));
+      }
+    } catch (err) {
+      alert('Không thể tạo đơn hàng: ' + (err?.message || 'Vui lòng thử lại sau.'));
     } finally {
       setCreating(false);
     }
   };
 
-  const handleCopy = async (text) => {
+  const handleCheckStatus = async () => {
+    setChecking(true);
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (orderData?.order?.id) {
+        const order = await checkOrderStatus(orderData.order.id);
+        if (order?.status === 'paid') {
+          const fresh = await getCredits(userId);
+          setBalance(fresh.balance);
+          onCreditUpdate?.(fresh.balance);
+          alert('Thanh toán thành công! ELEC AI Credit đã được cộng ngay vào tài khoản của em.');
+          handleClose();
+          return;
+        }
+      }
+      const fresh = await getCredits(userId);
+      setBalance(fresh.balance);
+      onCreditUpdate?.(fresh.balance);
+      alert(`Đang chờ ngân hàng xác nhận giao dịch (${orderData?.transferContent || 'ELEC'}).\nSố dư hiện tại: ${fresh.balance.toLocaleString('vi-VN')} ELEC Credit.`);
     } catch {
-      alert('Copy thủ công: ' + text);
+      alert('Hệ thống đang kiểm tra, vui lòng đợi 15-30 giây.');
+    } finally {
+      setChecking(false);
     }
   };
 
-  const loadHistory = async () => {
-    if (history.length > 0) {
-      setShowHistory((s) => !s);
-      return;
-    }
-    const data = await getTransactionHistory(userId);
-    setHistory(data);
-    setShowHistory(true);
+  const formatCountdown = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  const fmtDate = (d) => new Date(d).toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  });
-
-  if (loading) {
-    return (
-      <div className="ctu-wrap">
-        <div className="ctu-loading">
-          <div className="ctu-spinner" />
-          <p>Đang tải…</p>
-        </div>
-      </div>
-    );
-  }
-
-  const claimDisabled = claimed || claimLoading || checking;
+  if (!isOpen) return null;
 
   return (
-    <div className="ctu-wrap">
-
-      {/* ============ VIP STATUS ============ */}
-      <VipStatusCard onUpgrade={onUpgrade} />
-
-      {/* ============ BALANCE ============ */}
-      <div className="ctu-balance">
-        <div className="ctu-balance-content">
-          <div className="ctu-balance-icon">
-            <IcoZap size={26} />
-          </div>
-          <div className="ctu-balance-info">
-            <div className="ctu-balance-num">
-              {balance?.toLocaleString('vi-VN') ?? 0}
-              <span className="ctu-balance-unit">điểm</span>
-            </div>
-            <div className="ctu-balance-sub">1.000đ = 10 điểm · Chat: 1đ/lần · Tạo đề: 5–20đ</div>
-          </div>
-        </div>
+    <div className="ns9-cr-backdrop" onClick={handleClose} role="dialog" aria-modal="true">
+      <div className="ns9-cr-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Nút đóng */}
         <button
           type="button"
-          className={'ctu-daily' + (claimed ? ' claimed' : '')}
-          onClick={handleClaim}
-          disabled={claimDisabled}
+          className="ns9-cr-close-btn"
+          onClick={handleClose}
+          aria-label="Đóng"
         >
-          <IcoGift size={15} />
-          <span>
-            {checking ? 'Đang kiểm tra…'
-              : claimLoading ? 'Đang nhận…'
-              : claimed ? 'Đã nhận'
-              : 'Nhận 15 điểm'}
-          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
-      </div>
 
-      {/* ============ STEP: SELECT ============ */}
-      {step === 'select' && (
-        <div className="ctu-card">
-          <div className="ctu-card-head">
-            <h3 className="ctu-title">Nạp điểm</h3>
-            <p className="ctu-desc">Chọn mệnh giá · Nạp nhiều được bonus thêm</p>
-          </div>
+        {/* ── BƯỚC 1: CHỌN GÓI & THÔNG TIN HÓA ĐƠN (Khớp 100% Ảnh 4) ── */}
+        {step === 'select' && (
+          <div className="ns9-cr-content">
+            {/* Header */}
+            <div className="ns9-cr-header">
+              <div className="ns9-cr-header-left">
+                <div className="ns9-cr-logo-row">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                  <span className="ns9-cr-brand">ELEC AI</span>
+                </div>
+                <h2 className="ns9-cr-title">Mua ELEC AI Credit</h2>
+                <p className="ns9-cr-subtitle">
+                  Tiếp sức học tập cùng Trợ lý ELEC AI. ELEC Credit mua thêm giữ đến khi dùng hết.
+                </p>
 
-          <div className="ctu-pkg-grid">
-            {CREDIT_PACKAGES.map((p) => (
-              <button
-                key={p.amount}
-                type="button"
-                className={'ctu-pkg' + (selectedPkg === p.amount ? ' on' : '') + (p.popular ? ' popular' : '')}
-                onClick={() => setSelectedPkg(p.amount)}
-              >
-                {p.popular && <span className="ctu-pkg-popular" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><IcoStar size={11} /> Phổ biến</span>}
-                {p.badge && <span className="ctu-pkg-badge">{p.badge}</span>}
-                <b className="ctu-pkg-amount">{p.label}</b>
-                <span className="ctu-pkg-credits">
-                  <IcoZap size={11} />
-                  {p.total.toLocaleString('vi-VN')}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="ctu-receive">
-            <div className="ctu-receive-l">
-              <span className="ctu-receive-label">Bạn sẽ nhận</span>
-              <span className="ctu-receive-amount">
-                <IcoZap size={16} />
-                {pkg.total.toLocaleString('vi-VN')} điểm
-              </span>
-            </div>
-            {pkg.bonus > 0 && (
-              <span className="ctu-receive-bonus">+{pkg.bonus} bonus</span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="ctu-btn primary"
-            onClick={handleCreateOrder}
-            disabled={creating}
-          >
-            {creating ? (
-              <><div className="ctu-spinner sm" /><span>Đang tạo…</span></>
-            ) : (
-              <><IcoQr size={17} /><span>Tạo mã chuyển khoản</span></>
-            )}
-          </button>
-        </div>
-      )}
-
-      {/* ============ STEP: QR ============ */}
-      {step === 'qr' && orderData && (
-        <div className="ctu-card">
-          <div className="ctu-card-head row">
-            <button type="button" className="ctu-back" onClick={() => setStep('select')}>
-              <IcoArrowLeft size={16} />
-              <span>Chọn gói khác</span>
-            </button>
-            <span className="ctu-head-badge">{pkg.label}</span>
-          </div>
-
-          <div className="ctu-qr-box">
-            <img src={orderData.qrUrl} alt="QR thanh toán" className="ctu-qr-img" />
-            <div className="ctu-qr-hint">Quét mã bằng app ngân hàng</div>
-          </div>
-
-          <div className="ctu-info-list">
-            <div className="ctu-info-row">
-              <span className="ctu-info-label">Ngân hàng</span>
-              <span className="ctu-info-value">{BANK_INFO.bankName}</span>
-            </div>
-            <div className="ctu-info-row">
-              <span className="ctu-info-label">Số tài khoản</span>
-              <span className="ctu-info-value">{BANK_INFO.accountNo}</span>
-            </div>
-            <div className="ctu-info-row">
-              <span className="ctu-info-label">Chủ tài khoản</span>
-              <span className="ctu-info-value">{BANK_INFO.accountName}</span>
-            </div>
-            <div className="ctu-info-row">
-              <span className="ctu-info-label">Số tiền</span>
-              <span className="ctu-info-value highlight">{pkg.amount.toLocaleString('vi-VN')}đ</span>
-            </div>
-            <div className="ctu-info-row">
-              <span className="ctu-info-label">Nội dung</span>
-              <span className="ctu-info-value">
-                <b className="ctu-code">{orderData.transferContent}</b>
-                <button
-                  type="button"
-                  className={'ctu-copy' + (copied ? ' copied' : '')}
-                  onClick={() => handleCopy(orderData.transferContent)}
-                  aria-label="Copy nội dung"
-                >
-                  {copied ? <IcoCheck size={13} /> : <IcoCopy size={13} />}
-                </button>
-              </span>
-            </div>
-          </div>
-
-          <div className="ctu-warning">
-            <span className="ctu-warning-icon">
-              <IcoAlert size={18} />
-            </span>
-            <div>
-              <b>Ghi đúng nội dung chuyển khoản</b>
-              <p>Hệ thống tự động cộng điểm sau 1-2 phút. Sai nội dung sẽ phải chờ Admin xử lý thủ công.</p>
-            </div>
-          </div>
-
-          <button type="button" className="ctu-btn primary" onClick={() => setStep('waiting')}>
-            <IcoCheck size={16} />
-            <span>Tôi đã chuyển khoản</span>
-          </button>
-
-          {countdown > 0 && (
-            <div className="ctu-countdown">
-              Đơn hết hạn sau <b>{fmtTime(countdown)}</b>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ============ STEP: WAITING ============ */}
-      {step === 'waiting' && (
-        <div className="ctu-card">
-          <div className="ctu-card-head row">
-            <button type="button" className="ctu-back" onClick={() => setStep('qr')}>
-              <IcoArrowLeft size={16} />
-              <span>Quay lại QR</span>
-            </button>
-          </div>
-
-          <div className="ctu-waiting">
-            <div className="ctu-spinner lg" />
-            <h3 className="ctu-waiting-title">Đang kiểm tra giao dịch</h3>
-            <p className="ctu-waiting-desc">
-              Hệ thống đang xác minh chuyển khoản của bạn.<br />
-              Thường mất <b>1-2 phút</b>.
-            </p>
-
-            {countdown > 0 && (
-              <div className="ctu-waiting-timer">
-                <IcoRefresh size={14} />
-                <span>Tự động kiểm tra · <b>{fmtTime(countdown)}</b></span>
+                {/* Pill số dư */}
+                <div className="ns9-cr-balance-badge">
+                  <span>Số dư:</span>
+                  <b>{balance != null ? balance.toLocaleString('vi-VN') : '997'} ELEC Credit</b>
+                </div>
               </div>
-            )}
 
+              {/* Linh vật đọc sách góc phải */}
+              <div className="ns9-cr-header-mascot">
+                <StudyMascotSvg />
+              </div>
+            </div>
+
+            {/* Bố cục 2 cột */}
+            <div className="ns9-cr-grid">
+              {/* CỘT TRÁI: CHỌN GÓI */}
+              <div className="ns9-cr-col-left">
+                <h3 className="ns9-cr-col-heading">Chọn gói phù hợp với bạn</h3>
+
+                <div className="ns9-cr-cards-row">
+                  {displayPackages.map((p) => {
+                    const isSelected = selectedAmount === p.amount;
+                    return (
+                      <div
+                        key={p.amount}
+                        className={`ns9-cr-pkg-card ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedAmount(p.amount)}
+                      >
+                        {p.badge && (
+                          <div className="ns9-cr-pkg-ribbon">
+                            {p.badge}
+                          </div>
+                        )}
+
+                        <div className="ns9-cr-radio-wrap">
+                          <div className={`ns9-cr-radio-circle ${isSelected ? 'checked' : ''}`} />
+                        </div>
+
+                        {/* Icon Coin */}
+                        <div className="ns9-cr-coin-visual">
+                          {p.amount === 30000 && <CoinSingleSvg size={54} />}
+                          {p.amount === 60000 && <CoinDoubleSvg size={58} />}
+                          {p.amount === 100000 && <CoinTripleSvg size={64} />}
+                        </div>
+
+                        <span className="ns9-cr-pkg-name">{p.name}</span>
+                        <div className="ns9-cr-credits-row">
+                          <b className="ns9-cr-credits-val">{p.credits.toLocaleString('vi-VN')}</b>
+                          <span className="ns9-cr-credits-unit">Credit</span>
+                        </div>
+                        <span className="ns9-cr-pkg-rate">{p.rate || '~1đ / credit'}</span>
+                        <b className="ns9-cr-pkg-price">{p.amount.toLocaleString('vi-VN')} đ</b>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* CỘT PHẢI: THÔNG TIN XUẤT HÓA ĐƠN & THANH TOÁN */}
+              <div className="ns9-cr-col-right">
+                <div className="ns9-cr-invoice-box">
+                  <h4 className="ns9-cr-invoice-title">Thông tin xuất hóa đơn</h4>
+                  <p className="ns9-cr-invoice-sub">
+                    Bắt buộc để ELEC AI xuất hóa đơn cho đơn này.
+                  </p>
+
+                  <div className="ns9-cr-field">
+                    <label className="ns9-cr-label">Họ tên đầy đủ</label>
+                    <input
+                      type="text"
+                      className={`ns9-cr-input ${invoiceError && !buyerName.trim() ? 'ns9-cr-input-err' : ''}`}
+                      placeholder="Nguyễn Văn A"
+                      value={buyerName}
+                      onChange={(e) => {
+                        setBuyerName(e.target.value);
+                        if (invoiceError) setInvoiceError('');
+                      }}
+                    />
+                  </div>
+
+                  <div className="ns9-cr-field">
+                    <label className="ns9-cr-label">Địa chỉ đầy đủ</label>
+                    <input
+                      type="text"
+                      className={`ns9-cr-input ${invoiceError && !buyerAddress.trim() ? 'ns9-cr-input-err' : ''}`}
+                      placeholder="Số nhà, đường, phường/xã, tỉnh/thành phố"
+                      value={buyerAddress}
+                      onChange={(e) => {
+                        setBuyerAddress(e.target.value);
+                        if (invoiceError) setInvoiceError('');
+                      }}
+                    />
+                  </div>
+
+                  {invoiceError && (
+                    <div style={{
+                      marginTop: 6,
+                      marginBottom: 8,
+                      padding: '8px 12px',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      borderRadius: 10,
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>{invoiceError}</span>
+                    </div>
+                  )}
+
+                  <div className="ns9-cr-summary-row">
+                    <span className="ns9-cr-summary-name">{selectedPkg.name}</span>
+                    <span className="ns9-cr-summary-credits">
+                      {selectedPkg.credits.toLocaleString('vi-VN')} ELEC Credit
+                    </span>
+                  </div>
+
+                  <div className="ns9-cr-total-row">
+                    <span className="ns9-cr-total-label">Tổng thanh toán</span>
+                    <span className="ns9-cr-total-val">
+                      {selectedPkg.amount.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="ns9-cr-pay-btn"
+                    onClick={handleProceedPayment}
+                    disabled={creating}
+                  >
+                    {creating ? 'Đang tạo đơn QR…' : `Thanh toán ${selectedPkg.amount.toLocaleString('vi-VN')} đ`}
+                  </button>
+
+                  <p className="ns9-cr-caption">
+                    Chuyển khoản QR · ELEC Credit cộng ngay khi xác nhận
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── BƯỚC 2: QUÉT MÃ VIETQR CHUYỂN KHOẢN TỰ ĐỘNG ── */}
+        {step === 'qr' && orderData && (
+          <div className="ns9-cr-content ns9-cr-qr-view">
             <button
               type="button"
-              className="ctu-btn primary"
-              onClick={() => {
-                getCredits(userId).then((c) => {
-                  if (c.balance > (balance || 0)) {
-                    setBalance(c.balance);
-                    setStep('success');
-                    onCreditUpdate?.(c.balance);
-                  } else {
-                    alert('Chưa ghi nhận giao dịch. Vui lòng đợi thêm 1-2 phút.');
-                  }
-                });
-              }}
+              className="ns9-cr-back-link"
+              onClick={() => setStep('select')}
             >
-              <IcoRefresh size={15} />
-              <span>Kiểm tra ngay</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Chọn gói khác
             </button>
 
-            <p className="ctu-help">
-              Sau 5 phút chưa được cộng điểm?{' '}
-              <a href="https://www.facebook.com/nguyentheduytk" target="_blank" rel="noopener noreferrer">
-                Liên hệ Admin
-              </a>{' '}
-              kèm ảnh biên lai.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ============ STEP: SUCCESS ============ */}
-      {step === 'success' && (
-        <div className="ctu-card success">
-          <div className="ctu-success-emoji">
-            <IcoCheck size={56} />
-          </div>
-          <h3 className="ctu-success-title">Nạp thành công!</h3>
-          <div className="ctu-success-amount">
-            +{orderData?.credits?.toLocaleString('vi-VN')} điểm
-          </div>
-          <p className="ctu-success-sub">
-            Số dư hiện tại: <b>{balance?.toLocaleString('vi-VN')} điểm</b>
-          </p>
-          <button
-            type="button"
-            className="ctu-btn primary"
-            onClick={() => { setStep('select'); setOrderData(null); }}
-          >
-            <IcoCheck size={16} />
-            <span>Xong</span>
-          </button>
-        </div>
-      )}
-
-      {/* ============ HISTORY ============ */}
-      <div className="ctu-card">
-        <button type="button" className="ctu-history-toggle" onClick={loadHistory}>
-          <IcoHistory size={15} />
-          <span>{showHistory ? 'Ẩn lịch sử' : 'Xem lịch sử điểm'}</span>
-        </button>
-
-        {showHistory && (
-          <div className="ctu-history-list">
-            {history.length === 0 ? (
-              <div className="ctu-history-empty">Chưa có giao dịch nào.</div>
-            ) : (
-              history.slice(0, 20).map((tx) => (
-                <div key={tx.id} className="ctu-history-item">
-                  <div className="ctu-history-info">
-                    <TxLabel type={tx.type} />
-                    <span className="ctu-history-date">{fmtDate(tx.created_at)}</span>
-                  </div>
-                  <span className={'ctu-history-amt' + (tx.amount > 0 ? ' pos' : ' neg')}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount}
+            <div className="ns9-cr-qr-card">
+              <div className="ns9-cr-qr-left">
+                <div className="ns9-cr-qr-img-box">
+                  <img
+                    src={orderData.qrUrl}
+                    alt="VietQR Chuyển khoản"
+                    className="ns9-cr-qr-img"
+                  />
+                  <span className="ns9-cr-qr-timer">
+                    Mã QR hết hạn sau: <b>{formatCountdown(countdown)}</b>
                   </span>
                 </div>
-              ))
-            )}
+              </div>
+
+              <div className="ns9-cr-qr-right">
+                <h3 className="ns9-cr-qr-title">Quét mã QR để cộng ELEC Credit</h3>
+                <p className="ns9-cr-qr-desc">
+                  Mở ứng dụng ngân hàng bất kỳ (MBBank, Vietcombank, Momo...) và quét mã bên trái.
+                </p>
+
+                <div className="ns9-cr-qr-detail-list">
+                  {/* Ngân hàng */}
+                  <div className="ns9-cr-qr-row">
+                    <span className="ns9-cr-qr-label">Ngân hàng</span>
+                    <strong className="ns9-cr-qr-val">{BANK_INFO.bankName}</strong>
+                  </div>
+
+                  {/* Số tài khoản */}
+                  <div className="ns9-cr-qr-row">
+                    <span className="ns9-cr-qr-label">Số tài khoản</span>
+                    <div className="ns9-cr-qr-val-copy">
+                      <strong>{BANK_INFO.accountNo}</strong>
+                      <button
+                        type="button"
+                        className="ns9-cr-copy-chip"
+                        onClick={() => copyToClipboard(BANK_INFO.accountNo, 'acc')}
+                      >
+                        {copiedField === 'acc' ? 'Đã sao chép' : 'Sao chép'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tên chủ tài khoản */}
+                  <div className="ns9-cr-qr-row">
+                    <span className="ns9-cr-qr-label">Chủ tài khoản</span>
+                    <strong className="ns9-cr-qr-val">{BANK_INFO.accountName}</strong>
+                  </div>
+
+                  {/* Số tiền */}
+                  <div className="ns9-cr-qr-row">
+                    <span className="ns9-cr-qr-label">Số tiền</span>
+                    <div className="ns9-cr-qr-val-copy">
+                      <strong style={{ color: '#2563eb' }}>
+                        {orderData.amount.toLocaleString('vi-VN')} đ
+                      </strong>
+                      <button
+                        type="button"
+                        className="ns9-cr-copy-chip"
+                        onClick={() => copyToClipboard(String(orderData.amount), 'amount')}
+                      >
+                        {copiedField === 'amount' ? 'Đã sao chép' : 'Sao chép'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Nội dung chuyển khoản (QUAN TRỌNG) */}
+                  <div className="ns9-cr-qr-row highlight">
+                    <span className="ns9-cr-qr-label">Nội dung CK</span>
+                    <div className="ns9-cr-qr-val-copy">
+                      <strong style={{ color: '#dc2626', fontSize: '1rem' }}>
+                        {orderData.transferContent}
+                      </strong>
+                      <button
+                        type="button"
+                        className="ns9-cr-copy-chip"
+                        onClick={() => copyToClipboard(orderData.transferContent, 'content')}
+                      >
+                        {copiedField === 'content' ? 'Đã sao chép' : 'Sao chép'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ns9-cr-qr-actions">
+                  <button
+                    type="button"
+                    className="ns9-cr-check-btn"
+                    onClick={handleCheckStatus}
+                    disabled={checking}
+                  >
+                    {checking ? 'Đang kiểm tra…' : 'Kiểm tra trạng thái'}
+                  </button>
+                  <span className="ns9-cr-qr-note">
+                    ELEC Credit sẽ tự động cộng sau 5–15 giây kể từ lúc giao dịch hoàn tất.
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
     </div>
   );
 }

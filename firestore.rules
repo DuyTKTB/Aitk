@@ -342,11 +342,9 @@ service cloud.firestore {
     }
 
     match /submissions/{subId} {
-      allow read: if signedIn() && (
-        resource.data.studentId == request.auth.uid
-        || subExamAuthor()
-        || subClassOwner()
-      );
+      /* Đọc: mở cho người dùng đã đăng nhập (để giáo viên xem danh sách bài nộp,
+         thống kê đề/lớp, và học sinh xem bài làm của mình). */
+      allow read: if signedIn();
 
       allow create: if signedIn()
         && request.resource.data.studentId == request.auth.uid

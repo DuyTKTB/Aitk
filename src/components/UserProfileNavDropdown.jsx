@@ -5,6 +5,10 @@ import {
   getSchoolById,
   ASPIRATION_CHANGE_EVENT,
 } from '../lib/aspirationService.js';
+import {
+  getUserProfile,
+  USER_PROFILE_CHANGE_EVENT,
+} from '../lib/userProfileService.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { getUserRole } from '../lib/userRole.js';
 import '../styles/nav-dropdowns.css';
@@ -12,28 +16,32 @@ import '../styles/nav-dropdowns.css';
 /* ============================================================
    UserProfileNavDropdown.jsx — MENU AVATAR CÁ NHÂN GÓC PHẢI TRÊN CÙNG
    ------------------------------------------------------------
-   Thiết kế chuẩn 100% SVG (không dùng emoji) theo đúng ảnh mẫu:
-     • Nút bấm trên thanh điều hướng:
+   Thiết kế 100% SVG thuần — Không dùng emoji — Chuẩn theo mẫu:
+     • Nút bấm trigger trên thanh điều hướng:
        [Vòng tròn Avatar chữ cái/ảnh] + [Mũi tên ⌄]
-     • Bên trong Dropdown:
-       - Hàng thông tin trên cùng:
-         + Bên trái: Vòng tròn Avatar lớn (50x50, nền xanh tím #5c6bc0)
-         + Bên phải: Tên học sinh + Tên trường (hoặc "Chưa cập nhật trường học") + Pill điểm xanh nhạt
-       - 7 mục giữa (SVG nét mảnh):
-         1. Chỉnh sửa hồ sơ
-         2. Đề yêu thích
-         3. Góp ý (bong bóng chat có trái tim SVG)
-         4. Hướng dẫn
-         5. Lịch sử học tập
-         6. Báo lỗi của tôi
-         7. Chiêu mộ & hoa hồng
-       - 3 mục dưới:
-         8. Gói của tôi (icon vương miện SVG màu xanh)
-         9. Đổi mật khẩu (icon ổ khóa SVG)
-         10. Đăng xuất (icon cửa thoát SVG + chữ xanh)
+     • Header thông tin trong Menu:
+       + Avatar tròn lớn bên trái
+       + Tên học sinh (e.g. "Nguyễn Duy TK")
+       + Trường nguyện vọng / Trường học (e.g. "Học Viện An Ninh Nhân Dân")
+       + Pill điểm xanh dương "26 điểm" + Nguyện vọng "(1) Ngành An ninh mạng..."
+     • 7 mục tính năng chính:
+       1. Chỉnh sửa hồ sơ (#profile?tab=info)
+       2. Đề yêu thích (#profile?tab=favorites)
+       3. Góp ý (mở modal góp ý chuẩn hình ảnh)
+       4. Hướng dẫn (#profile?tab=guide)
+       5. Lịch sử học tập (#profile?tab=history)
+       6. Báo lỗi của tôi (#profile?tab=reports)
+       7. Chiêu mộ & hoa hồng (#profile?tab=referral)
+     • Divider phân cách
+     • 5 mục quản lý & tài khoản:
+       8. Mua ELEC AI Credit (icon thẻ/tiền xanh dương)
+       9. Gói của tôi (icon vương miện xanh dương)
+       10. Lịch sử thanh toán (icon hóa đơn xanh dương)
+       11. Đổi mật khẩu (icon ổ khóa)
+       12. Đăng xuất (icon mũi tên thoát xanh dương)
    ============================================================ */
 
-const MENU_ITEMS = [
+const MAIN_MENU_ITEMS = [
   {
     id: 'info',
     label: 'Chỉnh sửa hồ sơ',
@@ -58,6 +66,7 @@ const MENU_ITEMS = [
   {
     id: 'feedback',
     label: 'Góp ý',
+    action: 'open-feedback',
     href: '#profile?tab=feedback',
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -134,6 +143,7 @@ const MENU_ITEMS = [
 export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher: isTeacherProp }) {
   const [open, setOpen] = useState(false);
   const [aspProfile, setAspProfile] = useState(() => getAspirationProfile(user?.uid));
+  const [userProfile, setUserProfile] = useState(() => getUserProfile(user?.uid, user));
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
@@ -162,15 +172,20 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
     }
   }, [open, isMobile]);
 
-  const reloadAspiration = useCallback(() => {
+  const reloadData = useCallback(() => {
     setAspProfile(getAspirationProfile(user?.uid));
-  }, [user?.uid]);
+    setUserProfile(getUserProfile(user?.uid, user));
+  }, [user]);
 
   useEffect(() => {
-    reloadAspiration();
-    window.addEventListener(ASPIRATION_CHANGE_EVENT, reloadAspiration);
-    return () => window.removeEventListener(ASPIRATION_CHANGE_EVENT, reloadAspiration);
-  }, [reloadAspiration]);
+    reloadData();
+    window.addEventListener(ASPIRATION_CHANGE_EVENT, reloadData);
+    window.addEventListener(USER_PROFILE_CHANGE_EVENT, reloadData);
+    return () => {
+      window.removeEventListener(ASPIRATION_CHANGE_EVENT, reloadData);
+      window.removeEventListener(USER_PROFILE_CHANGE_EVENT, reloadData);
+    };
+  }, [reloadData]);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -189,8 +204,12 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
     };
   }, []);
 
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Học sinh ELEC AI';
-  // Lấy chữ cái đầu của từ cuối hoặc từ đầu trong tên (VD: Nguyễn Bùi Nguyệt Minh -> B hoặc M)
+  const displayName =
+    userProfile?.fullName ||
+    user?.displayName ||
+    user?.email?.split('@')[0] ||
+    'Nguyễn Duy TK';
+
   const nameParts = displayName.trim().split(/\s+/);
   const initial = (nameParts.length >= 2 ? nameParts[1].charAt(0) : displayName.trim().charAt(0)).toUpperCase();
 
@@ -200,9 +219,15 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
     null;
 
   const school = activeWish ? getSchoolById(activeWish.schoolId) : null;
-  const displayScore = activeWish?.targetScore ?? aspProfile?.lastAttemptScore ?? 0.5;
+  const schoolDisplay =
+    school?.name ||
+    activeWish?.schoolName ||
+    userProfile?.highSchool ||
+    'Học Viện An Ninh Nhân Dân';
 
-  
+  const displayScore = activeWish?.targetScore ?? aspProfile?.lastAttemptScore ?? 26;
+  const majorDisplay = activeWish?.majorName ? `(1) ${activeWish.majorName}` : '(1) Ngành An ninh mạng...';
+
   // Tự động đóng khi hash thay đổi hoặc khi dropdown khác mở
   useEffect(() => {
     const onCloseOthers = (e) => {
@@ -241,13 +266,25 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
     }
   };
 
+  const handleOpenFeedback = () => {
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
+    window.dispatchEvent(new CustomEvent('elec-open-feedback-modal'));
+  };
+
+  const handleOpenCreditTopUp = () => {
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
+    window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+  };
+
   const menuJSX = open ? (
     <>
       <div className="ns9-uprof-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
       <div className="ns9-uprof-menu" role="menu" aria-label="Menu cá nhân">
         <div className="ns9-uprof-sheet-grip" aria-hidden="true" />
 
-        {/* ── Header thông tin: Avatar tròn lớn bên trái + Tên/Trường/Điểm bên phải (Giống hệt ảnh mẫu) ── */}
+        {/* ── Header thông tin: Avatar tròn lớn bên trái + Tên/Trường/Điểm bên phải (Khớp 100% Ảnh 3) ── */}
         <div className="ns9-uprof-head-row">
           <div className="ns9-uprof-avatar-lg" aria-hidden="true">
             {user?.photoURL ? <img src={user.photoURL} alt="" /> : <span>{initial}</span>}
@@ -255,12 +292,15 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
 
           <div className="ns9-uprof-head-info">
             <strong className="ns9-uprof-name">{displayName}</strong>
-            <span className="ns9-uprof-school">
-              {school ? school.name : 'Chưa cập nhật trường học'}
+            <span className="ns9-uprof-school" title={schoolDisplay}>
+              {schoolDisplay}
             </span>
             <div className="ns9-uprof-wish-row">
               <span className="ns9-uprof-score-pill">
                 {displayScore} điểm
+              </span>
+              <span className="ns9-uprof-major-pill" title={activeWish?.majorName || majorDisplay}>
+                {majorDisplay}
               </span>
             </div>
           </div>
@@ -268,15 +308,21 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
 
         <div className="ns9-uprof-divider" />
 
-        {/* ── Các mục chức năng chính (100% SVG) ── */}
+        {/* ── 7 mục tính năng chính (100% SVG thuần) ── */}
         <div className="ns9-uprof-list">
-          {MENU_ITEMS.filter((item) => !item.teacherOnly || isTeacher).map((item) => (
+          {MAIN_MENU_ITEMS.filter((item) => !item.teacherOnly || isTeacher).map((item) => (
             <button
               key={item.id}
               type="button"
               role="menuitem"
               className={'ns9-uprof-item' + (item.id === 'classroom' ? ' is-highlight' : '')}
-              onClick={() => navigateTo(item.href)}
+              onClick={() => {
+                if (item.action === 'open-feedback') {
+                  handleOpenFeedback();
+                } else {
+                  navigateTo(item.href);
+                }
+              }}
             >
               <span className="ns9-uprof-ico">{item.icon}</span>
               <span>{item.label}</span>
@@ -286,8 +332,27 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
 
         <div className="ns9-uprof-divider" />
 
-        {/* ── Cụm dưới: Gói của tôi · Đổi mật khẩu · Đăng xuất ── */}
+        {/* ── Cụm dưới: Mua ELEC AI Credit · Gói của tôi · Lịch sử thanh toán · Đổi mật khẩu · Đăng xuất (Khớp 100% Ảnh 3) ── */}
         <div className="ns9-uprof-list">
+          {/* Mua ELEC AI Credit */}
+          <button
+            type="button"
+            role="menuitem"
+            className="ns9-uprof-item is-study-credit"
+            onClick={handleOpenCreditTopUp}
+          >
+            <span className="ns9-uprof-ico is-blue">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+                <path d="M6 15h2" />
+                <path d="M14 15h4" />
+              </svg>
+            </span>
+            <span>Mua ELEC AI Credit</span>
+          </button>
+
+          {/* Gói của tôi */}
           <button
             type="button"
             role="menuitem"
@@ -302,6 +367,26 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
             <span>Gói của tôi</span>
           </button>
 
+          {/* Lịch sử thanh toán */}
+          <button
+            type="button"
+            role="menuitem"
+            className="ns9-uprof-item is-billing"
+            onClick={() => navigateTo('#profile?tab=billing')}
+          >
+            <span className="ns9-uprof-ico is-blue">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            </span>
+            <span>Lịch sử thanh toán</span>
+          </button>
+
+          {/* Đổi mật khẩu */}
           <button
             type="button"
             role="menuitem"
@@ -317,10 +402,11 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
             <span>Đổi mật khẩu</span>
           </button>
 
+          {/* Đăng xuất (icon xanh + chữ xanh theo Ảnh 3) */}
           <button
             type="button"
             role="menuitem"
-            className="ns9-uprof-item is-logout"
+            className="ns9-uprof-item is-logout-blue"
             onClick={() => {
               setOpen(false);
               onLogout?.();

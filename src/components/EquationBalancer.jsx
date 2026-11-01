@@ -132,7 +132,14 @@ export default function EquationBalancer() {
         </summary>
         <div className="chips" style={{ marginTop: '.6rem' }}>
           {EXAMPLES.map((ex) => (
-            <button key={ex} className="chip" type="button" onClick={() => setEq(ex)}>
+            <button
+              key={ex}
+              className="chip"
+              type="button"
+              aria-label={`Ví dụ phương trình: ${ex}`}
+              title={ex}
+              onClick={() => setEq(ex)}
+            >
               {ex}
             </button>
           ))}

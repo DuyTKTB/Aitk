@@ -513,7 +513,7 @@ export default function AspirationRoadmapHub({
           <div>
             <h3>Lộ trình của em</h3>
             <p>
-              Kỳ thi <b>{activeExam.name}</b> · Quy đổi thực tế từ độ chính xác và tốc độ làm bài môn Hóa
+              Kỳ thi <b>{(activeExam?.name || 'THPTQG').replace(/^Thi\s+/i, '')}</b> · Quy đổi thực tế từ độ chính xác và tốc độ làm bài môn Hóa
             </p>
           </div>
           <div className="ns9-card-top-right">

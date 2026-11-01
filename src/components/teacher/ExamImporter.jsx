@@ -1352,6 +1352,12 @@ export default function ExamImporter({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [note, setNote] = useState('');
+
+  useEffect(() => {
+    if (!classId && (classInfo?.id || classes[0]?.id)) {
+      setClassId(classInfo?.id || classes[0]?.id);
+    }
+  }, [classInfo?.id, classes, classId]);
   /* Chế độ sinh đề từ code */
   const codeDismissed = useRef(false);
   const [codeMode, setCodeMode] = useState(false);
@@ -1518,11 +1524,18 @@ export default function ExamImporter({
   const handleCreate = async () => {
     if (!valid.length) { setMsg('Chưa có câu hợp lệ nào để tạo.'); return; }
     if (!onCreateSoftExam) { setMsg('Tính năng nhập đang không khả dụng ở nơi này.'); return; }
+    const targetClassId = classId || classInfo?.id || classes[0]?.id;
+    if (!targetClassId) {
+      setMsg('Vui lòng chọn hoặc tạo ít nhất một lớp học trước khi tạo đề.');
+      return;
+    }
+    setBusy(true);
+    setMsg('');
     try {
       await onCreateSoftExam({
         title: title || fileName || 'Đề nhập từ file',
         duration: Number(duration) > 0 ? Number(duration) : Math.max(15, valid.length * 2),
-        classId,
+        classId: targetClassId,
         subject: classInfo?.subject || '',
         grade: classInfo?.grade || '',
         questions: valid.map((it) => {
@@ -1550,6 +1563,8 @@ export default function ExamImporter({
       setMsg(`Đã tạo đề từ file thành công!${skipped ? ` (bỏ qua ${skipped} câu chưa hợp lệ)` : ''}`);
     } catch (e) {
       setMsg(e.message || 'Lỗi khi tạo đề.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1941,7 +1956,7 @@ export default function ExamImporter({
           )}
           <button type="button" className="ei2-btn pri" onClick={handleCreate}
             disabled={!valid.length || !allowSoftExam || busy} style={{ padding: '.7rem 1.4rem' }}>
-            {valid.length ? `Tạo đề từ ${valid.length} câu hợp lệ` : 'Tạo đề'}
+            {busy ? 'Đang tạo đề...' : (valid.length ? `Tạo đề từ ${valid.length} câu hợp lệ` : 'Tạo đề')}
           </button>
         </div>
         {msg && <p className={'ei2-msg ' + (msg.includes('thành công') ? 'ok' : 'err')}>{msg}</p>}

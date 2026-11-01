@@ -72,10 +72,14 @@ import SiteFooter from './components/SiteFooter.jsx';
 import LiveSessionBanner from './components/LiveSessionBanner.jsx';
 import SystemAnnouncementBanner from './components/SystemAnnouncementBanner.jsx';
 import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
+import FeedbackModal from './components/FeedbackModal.jsx';
+import CreditTopUp from './components/CreditTopUp.jsx';
+import ElecIntroLoader, { PageLoader } from './components/ElecIntroLoader.jsx';
 
 /* ============ HOOKS + LIB ============ */
 import { useAuth } from './hooks/useAuth.jsx';
 import { useTeacherPro } from './hooks/useTeacherPro.js';
+import { useSeoHead, ROUTE_SEO } from './hooks/useSeoHead.js';
 import { getUserRole } from './lib/userRole.js';
 import { getCredits, onCreditsChange } from './lib/creditService.js';
 import { setExamAiUserId } from './lib/examAiUtils.js';
@@ -121,12 +125,7 @@ const IconClass = ({ size = 18 }) => (
   </svg>
 );
 
-const PageLoader = () => (
-  <div className="page-loader" role="status" aria-live="polite">
-    <div className="page-loader-spinner" />
-    <span>Đang tải…</span>
-  </div>
-);
+// PageLoader is imported from ./components/ElecIntroLoader.jsx
 
 /* ============ NAV CONFIG ============ */
 const NAV_MAIN = [
@@ -194,8 +193,25 @@ const GAME_ROUTES = [
 ].map((g) => 'games/' + g);
 
 /* ============ PAGE ROUTING HELPERS ============ */
+const CLEAN_PATH_MAP = {
+  'bang-tuan-hoan': 'table',
+  'can-bang-phuong-trinh-hoa-hoc': 'balance',
+  'cong-thuc-hoa-hoc': 'formulas',
+  'lo-trinh-on-thi-thpt-quoc-gia': 'roadmap',
+  'phong-thi-ao': 'virtual-exams',
+  'tai-lieu-hoa-hoc': 'tools',
+  'tinh-diem-xet-tuyen-dai-hoc': 'grade',
+  'tro-ly-ai-giai-hoa': 'ai',
+  'chinh-sua-ho-so': 'profile',
+  'mua-credit': 'profile',
+  'goi-cua-toi': 'profile',
+};
+
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
+  const path = (window.location.pathname || '').replace(/^\/+/, '').split('/')[0];
+  if (CLEAN_PATH_MAP[path]) return CLEAN_PATH_MAP[path];
+
   const raw = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0].replace(/^\/+/, '');
   const h = raw;
   if (h === 'login' || h === 'register') return h;
@@ -208,12 +224,13 @@ const readPage = () => {
 };
 
 const pageTitle = (page) => {
+  if (ROUTE_SEO[page]?.title) return ROUTE_SEO[page].title;
   if (page === '404') return 'Không tìm thấy trang · ELEC AI';
   const hit = PAGES.find((p) => p[0] === page);
   if (hit) return hit[1] + ' · ELEC AI';
-  if (page.startsWith('games/')) return 'Trò chơi · ELEC AI';
-  if (page.startsWith('exam/')) return 'Làm bài thi · ELEC AI';
-  return 'Trang chủ · ELEC AI';
+  if (page.startsWith('games/')) return 'Trò chơi Hóa học · ELEC AI';
+  if (page.startsWith('exam/')) return 'Làm bài thi thử · ELEC AI';
+  return 'ELEC AI (ELECAI) — Nền Tảng Học & Luyện Thi Hóa THPT Quốc Gia Chuẩn 2026';
 };
 
 const pageMeta = (page) => {
@@ -330,16 +347,10 @@ export default function App() {
     if (meta) meta.content = theme === 'dark' ? '#030618' : '#f3f6ff';
   }, [theme]);
 
-  /* ============ TITLE + META ============ */
+  /* ============ DYNAMIC SEO (META + OG + CANONICAL) ============ */
+  useSeoHead(page);
+
   useEffect(() => {
-    document.title = pageTitle(page);
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta');
-      metaDesc.name = 'description';
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.content = pageMeta(page);
     document.getElementById('main')?.focus({ preventScroll: true });
   }, [page]);
 
@@ -444,20 +455,83 @@ export default function App() {
 
   /* ============ GUARDS ============ */
   if (!ready) {
-    return (
-      <div className="loader">
-        <span>ELEC AI</span>
-      </div>
-    );
+    return null;
   }
 
+  const PUBLIC_SEO_PAGES = ['ai', 'table', 'balance', 'formulas', 'roadmap', 'grade', 'virtual-exams', 'tools'];
+
   if (!isLoggedIn) {
+    if (PUBLIC_SEO_PAGES.includes(page)) {
+      if (page === 'ai') {
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <main id="main" tabIndex="-1" style={{ width: '100%', height: '100%' }}>
+              {renderPage()}
+            </main>
+          </Suspense>
+        );
+      }
+      return (
+        <div className="public-guest-wrap" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="guest-banner" style={{
+            background: 'linear-gradient(90deg, #1d4ed8, #6d28d9)',
+            color: '#fff',
+            padding: '10px 16px',
+            textAlign: 'center',
+            fontSize: '13px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1000,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+          }}>
+            <span>✨ Bạn đang xem bản trải nghiệm mở của <strong>ELEC AI</strong>.</span>
+            <a
+              href="/#/register"
+              style={{
+                background: '#fff',
+                color: '#1d4ed8',
+                padding: '4px 12px',
+                borderRadius: '999px',
+                textDecoration: 'none',
+                fontWeight: 700,
+                fontSize: '12px'
+              }}
+            >
+              Đăng ký miễn phí
+            </a>
+            <a
+              href="/#/login"
+              style={{
+                color: 'rgba(255,255,255,0.9)',
+                textDecoration: 'underline',
+                fontSize: '12px'
+              }}
+            >
+              Đăng nhập
+            </a>
+          </div>
+          <Suspense fallback={<PageLoader />}>
+            <main id="main" tabIndex="-1" style={{ flex: 1 }}>
+              {renderPage()}
+            </main>
+          </Suspense>
+          <SiteFooter />
+        </div>
+      );
+    }
+
     return (
       <Suspense fallback={<PageLoader />}>
+        <ElecIntroLoader />
         <Landing
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          authOpen={page !== 'home'}
+          authOpen={page === 'login' || page === 'register'}
           authMode={page === 'register' ? 'register' : 'login'}
         />
       </Suspense>
@@ -465,7 +539,7 @@ export default function App() {
   }
 
   /* ============ PAGE ROUTING ============ */
-  const renderPage = () => {
+  function renderPage() {
     if (page === 'home') return <Home />;
 
     if (page === 'table') {
@@ -598,18 +672,18 @@ export default function App() {
       )}
       {!isVirtualExamRoom && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
 
-      {!isFullPage && <PetWidget />}
+      {!isFullPage && page !== 'profile' && <PetWidget />}
       {!isFullPage && <ChatWidget />}
       <OutOfCreditsModal />
+      <FeedbackModal />
+      <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
       {/* {page === 'home' && <ElecBuddies />} */}
 
       {!isVirtualExamRoom && <SystemAnnouncementBanner />}
       {!isVirtualExamRoom && <LiveSessionBanner />}
 
-      <div className={'loader' + (loading ? '' : ' hide')} aria-hidden={!loading}>
-        <span>ELEC AI</span>
-      </div>
+      <ElecIntroLoader />
 
       {!isFullPage && isMobileScreen && (
         <MobileHeader

@@ -3,6 +3,7 @@
    ============================================================ */
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { submitExamSafe } from '../lib/submitQueue.js';
 import {
   getExamByToken,
   getClassById,
@@ -26,6 +27,7 @@ import {
   listenMySessionDoc,
   getLiveSessionForClass,
   listenLiveSessionForClass,
+  listenLiveSessionForExam,
   listenSession,
   timeRemaining,
 } from '../lib/examSession.js';
@@ -226,13 +228,15 @@ const IcoLock = ({ size = 56 }) => (
   </svg>
 );
 
-function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) {
+function ConfirmSubmit({ open, total, answered, flagged, submitting, onCancel, onConfirm }) {
   const dlgRef = useRef(null);
   useEffect(() => {
     const d = dlgRef.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
+    try {
+      if (open && !d.open) d.showModal();
+      if (!open && d.open) d.close();
+    } catch { /* ignore */ }
   }, [open]);
 
   const unanswered = total - answered;
@@ -241,8 +245,13 @@ function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) 
     <dialog
       ref={dlgRef}
       className="ep-dialog"
-      onClose={onCancel}
-      onClick={(e) => e.target === dlgRef.current && onCancel()}
+      onClose={() => { if (!submitting) onCancel(); }}
+      onClick={(e) => {
+        const rect = dlgRef.current?.getBoundingClientRect();
+        if (rect && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) {
+          if (!submitting) onCancel();
+        }
+      }}
     >
       {open && (
         <>
@@ -257,9 +266,13 @@ function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) 
           </p>
           <p className="ep-dialog-note">Sau khi nộp, bạn không thể sửa lại đáp án.</p>
           <div className="ep-dialog-actions">
-            <button className="td-btn" onClick={onCancel} type="button">Hủy</button>
-            <button className="td-btn primary" onClick={onConfirm} type="button">
-              <IcoCheck size={14} /> Nộp bài
+            <button className="td-btn" onClick={onCancel} type="button" disabled={submitting}>Hủy</button>
+            <button className="td-btn primary" onClick={onConfirm} type="button" disabled={submitting}>
+              {submitting ? (
+                <>Đang nộp bài...</>
+              ) : (
+                <><IcoCheck size={14} /> Nộp bài</>
+              )}
             </button>
           </div>
         </>
@@ -316,7 +329,7 @@ function PausedScreen() {
   );
 }
 
-function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sending }) {
+function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sending, onViewResult }) {
   return (
     <div className="ej-notfound">
       <IcoLock size={56} />
@@ -334,6 +347,11 @@ function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sen
         Nếu muốn làm lại, hãy gửi yêu cầu cho giáo viên. Khi cô duyệt, bạn có thể vào lại.
       </p>
       <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '.6rem' }}>
+        {prevSubmission && onViewResult && (
+          <button className="td-btn" onClick={onViewResult} type="button">
+            👁 Xem lại bài làm
+          </button>
+        )}
         <button
           className="td-btn primary"
           onClick={onRequestRetry}
@@ -370,10 +388,11 @@ const makeThumbnail = (video, max = 160, quality = 0.55) => {
 };
 
 export default function ExamJoin({ token, onExit }) {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
 
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [stage, setStage] = useState('confirm');
   const [answers, setAnswers] = useState({});
   const [flags, setFlags] = useState({});
@@ -427,6 +446,7 @@ export default function ExamJoin({ token, onExit }) {
   const pausedRef = useRef(false);
   const joinReadyRef = useRef(false);
   const joinStartedRef = useRef(false);
+  const lastClosesAtRef = useRef(0);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { currentQRef.current = currentQ; }, [currentQ]);
@@ -455,7 +475,8 @@ export default function ExamJoin({ token, onExit }) {
   useEffect(() => {
     (async () => {
       try {
-        const ex = await getExamByToken(token);
+        const cleanToken = String(token || '').split('?')[0].trim();
+        const ex = await getExamByToken(cleanToken);
         setExam(ex);
         if (ex) {
           setTimeLeft(ex.duration * 60);
@@ -489,6 +510,13 @@ export default function ExamJoin({ token, onExit }) {
               const prev = await getSubmissionForStudent(ex.id, user.uid);
               setPrevSubmission(prev || null);
 
+              // Nếu trên URL có view=result và đã có bài nộp trước đó -> chuyển sang xem lại ngay
+              const isViewResult = window.location.href.includes('view=result') || String(token || '').includes('view=result');
+              if (isViewResult && prev) {
+                setResult(prev);
+                setStage('result');
+              }
+
               if (prev) {
                 if (ex.allowRetry) {
                   setRetryPermit({ canRetry: true, source: 'allowRetry' });
@@ -518,12 +546,26 @@ export default function ExamJoin({ token, onExit }) {
     })();
   }, [token, user?.uid]);
 
-  /* Giáo viên mở phòng thi SAU khi học sinh đã tải đề → vẫn tự nhận phòng (trước đây chỉ kiểm tra 1 lần lúc tải) */
+  /* Giáo viên mở phòng thi SAU khi học sinh đã tải đề → vẫn tự nhận phòng theo thời gian thực (không cần F5) */
   useEffect(() => {
-    if (!exam?.classId || session || submittedRef.current) return undefined;
+    if ((!exam?.id && !exam?.classId) || session || submittedRef.current) return undefined;
     if (stage !== 'confirm' && stage !== 'exam') return undefined;
-    return listenLiveSessionForClass(exam.classId, (live) => { if (live) setSession(live); });
-  }, [exam?.classId, session, stage]);
+
+    // Ưu tiên 1: Lắng nghe chính xác theo mã đề thi (Realtime trực tiếp)
+    if (exam?.id) {
+      const unsub = listenLiveSessionForExam(exam.id, (live) => {
+        if (live) setSession(live);
+      });
+      return () => unsub?.();
+    }
+
+    // Ưu tiên 2: Lắng nghe theo lớp nếu đề có gắn classId
+    if (exam?.classId) {
+      return listenLiveSessionForClass(exam.classId, (live) => {
+        if (live && (!live.examId || live.examId === exam.id)) setSession(live);
+      });
+    }
+  }, [exam?.id, exam?.classId, session, stage]);
 
   /* LUYỆN TẬP: đề bật "khoá bài" nhưng giáo viên CHƯA bấm Bắt đầu thi
      → chấm tại chỗ, không ghi bài nộp, không tính vi phạm. */
@@ -531,8 +573,13 @@ export default function ExamJoin({ token, onExit }) {
   const practiceMode = !!exam?.lockUntilStart && !session && !sessionId && practiceOptIn;
 
   const finishExam = useCallback(async (opts = {}) => {
-    if (!exam || !user || submittedRef.current) return;
+    if (!exam || submittedRef.current) return;
+    if (!user) {
+      alert('Phiên đăng nhập đã hết hạn hoặc bạn chưa đăng nhập. Vui lòng đăng nhập lại để nộp bài.');
+      return;
+    }
     submittedRef.current = true;
+    setSubmitting(true);
     guardRef.current?.stop?.(); // đã nộp → ngừng ghi vi phạm (thoát fullscreen sau nộp không bị tính)
     if (opts.auto) console.warn('[ExamJoin] TỰ ĐỘNG NỘP — lý do:', opts.reason || 'violation', opts);
 
@@ -563,31 +610,38 @@ export default function ExamJoin({ token, onExit }) {
           saveError: e?.message || 'Không chấm được bài luyện tập',
         });
       }
+      setSubmitting(false);
+      setConfirmOpen(false);
       setStage('result');
       return;
     }
 
-    try {
-      const res = await submitExam({
-        examId: exam.id,
-        student: { id: user.uid, name: user.displayName || user.email },
-        answers: arr,
-        timeSpent: Math.round((Date.now() - (startTimeRef.current || Date.now())) / 1000),
-        attemptMeta: {
-          autoSubmitted: !!opts.auto,
-          violationCount: opts.violationCount || 0,
-          cameraStatus: opts.cameraStatus || 'off',
-          isRetry: !!prevSubmission,
-          permitId: retryPermit?.permit?.id || null,
-        },
-      });
+    const payload = {
+      examId: exam.id,
+      student: { id: user.uid, name: user.displayName || user.email },
+      answers: arr,
+      timeSpent: Math.round((Date.now() - (startTimeRef.current || Date.now())) / 1000),
+      attemptMeta: {
+        autoSubmitted: !!opts.auto,
+        violationCount: opts.violationCount || 0,
+        cameraStatus: opts.cameraStatus || 'off',
+        isRetry: !!prevSubmission,
+        permitId: retryPermit?.permit?.id || null,
+      },
+    };
 
-      if (sessionId) {
-        markStudentSubmitted({ sessionId, studentId: user.uid }).catch(() => {});
+    try {
+      const res = await submitExamSafe(payload);
+
+      const activeSid = sessionId || session?.id;
+      if (activeSid) {
+        markStudentSubmitted({ sessionId: activeSid, studentId: user.uid }).catch(() => {});
       }
 
       guardRef.current?.exitFullscreen?.();
-      if (res.ok) {
+      setConfirmOpen(false);
+
+      if (res.ok || res.queued) {
         /* Ghi nhận câu sai vào Sổ tay lỗi dùng chung (WrongNotebook) */
         try {
           const detailList = res.detail || [];
@@ -617,18 +671,29 @@ export default function ExamJoin({ token, onExit }) {
             correctCount: res.correct,
             wrongCount: Math.max(0, (res.total || 0) - (res.correct || 0)),
           });
+          localStorage.setItem('cs-last-submission-ts', String(Date.now()));
+          window.dispatchEvent(new CustomEvent('cs-submission-created', { detail: { examId: exam.id, subId: res.id } }));
         } catch { /* ignore */ }
 
-        setResult({ ...res, autoSubmitted: !!opts.auto, autoReason: opts.auto ? (opts.reason || 'violation') : '' });
+        setResult({
+          ...res,
+          answers: arr,
+          rawPayload: payload,
+          autoSubmitted: !!opts.auto,
+          autoReason: opts.auto ? (opts.reason || 'violation') : ''
+        });
         setStage('result');
       } else {
+        // Lưu thất bại nhưng vẫn có kết quả điểm để xem và có nút Nộp lại
         setResult({
-          score: null,
+          score: res.score ?? null,
           totalPoints: exam.totalPoints,
-          correct: 0,
+          correct: res.correct ?? 0,
           total: exam.questions.length,
-          detail: [],
-          saveError: res.error || 'Không lưu được bài',
+          detail: res.detail || [],
+          answers: arr,
+          rawPayload: payload,
+          saveError: res.saveError || res.error || 'Không lưu được bài lên hệ thống',
           autoSubmitted: !!opts.auto,
           autoReason: opts.auto ? (opts.reason || 'violation') : '',
         });
@@ -636,19 +701,53 @@ export default function ExamJoin({ token, onExit }) {
       }
     } catch (e) {
       console.error('[finishExam] lỗi:', e);
+      setConfirmOpen(false);
       setResult({
         score: null,
         totalPoints: exam.totalPoints,
         correct: 0,
         total: exam.questions.length,
         detail: [],
+        answers: arr,
+        rawPayload: payload,
         saveError: e.message || 'Lỗi không xác định',
         autoSubmitted: !!opts.auto,
         autoReason: opts.auto ? (opts.reason || 'violation') : '',
       });
       setStage('result');
+    } finally {
+      setSubmitting(false);
     }
-  }, [exam, user, sessionId, retryPermit, prevSubmission, practiceMode]);
+  }, [exam, user, sessionId, session, retryPermit, prevSubmission, practiceMode]);
+
+  const handleRetrySubmit = useCallback(async () => {
+    if (!result?.rawPayload || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await submitExamSafe(result.rawPayload);
+      if (res.ok) {
+        setResult((prev) => ({
+          ...prev,
+          id: res.id,
+          saveError: null,
+          queued: false,
+        }));
+        alert('Đã lưu bài nộp lên hệ thống thành công!');
+      } else if (res.queued) {
+        setResult((prev) => ({
+          ...prev,
+          queued: true,
+          saveError: null,
+        }));
+      } else {
+        alert('Vẫn chưa lưu được: ' + (res.error || res.saveError || 'Lỗi kết nối mạng.'));
+      }
+    } catch (e) {
+      alert('Lỗi: ' + (e.message || 'Không thể kết nối'));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [result, submitting]);
 
   const handleAutoSubmit = useCallback((count) => {
     finishExam({ auto: true, reason: 'violation', violationCount: count ?? guardRef.current?.violations ?? 0 });
@@ -964,10 +1063,20 @@ export default function ExamJoin({ token, onExit }) {
         }
         return;
       }
+      const currentEnd = s.closesAt?.toMillis?.() ?? s.closesAtMs ?? 0;
       if (first) {
         first = false;
+        lastClosesAtRef.current = currentEnd;
         const rem = timeRemaining(s);
         if (s.status === 'live' && rem > 0) setTimeLeft((t) => Math.min(t, rem));
+      } else if (currentEnd > (lastClosesAtRef.current || 0)) {
+        // Giáo viên gia hạn thêm thời gian trong phòng thi trực tiếp!
+        const diffSec = Math.round((currentEnd - lastClosesAtRef.current) / 1000);
+        lastClosesAtRef.current = currentEnd;
+        const rem = timeRemaining(s);
+        if (s.status === 'live' && rem > 0) {
+          setTimeLeft((t) => Math.max(t + diffSec, rem));
+        }
       }
     });
   }, [stage, session?.id, finishExam]);
@@ -997,16 +1106,19 @@ export default function ExamJoin({ token, onExit }) {
   }, [stage, sessionId, user?.uid, paused, joinReady]);
 
   useEffect(() => {
-    if (stage !== 'exam' || !sessionId || !user?.uid) return;
-    if (!joinReady) return;
-    heartbeat({
-      sessionId,
-      studentId: user.uid,
-      studentName: user.displayName || user.email,
-      currentQuestion: currentQ,
-      answered: countAnswered(exam?.questions, answers),
-      status: paused ? 'paused' : 'examining',
-    }).catch(() => {});
+    if (stage !== 'exam' || !sessionId || !user?.uid) return undefined;
+    if (!joinReady) return undefined;
+    const timer = setTimeout(() => {
+      heartbeat({
+        sessionId,
+        studentId: user.uid,
+        studentName: user.displayName || user.email,
+        currentQuestion: currentQ,
+        answered: countAnswered(exam?.questions, answers),
+        status: paused ? 'paused' : 'examining',
+      }).catch(() => {});
+    }, 8000);
+    return () => clearTimeout(timer);
   }, [currentQ, answers, stage, sessionId, user?.uid, paused, joinReady]);
 
   useEffect(() => {
@@ -1071,7 +1183,7 @@ export default function ExamJoin({ token, onExit }) {
       }
 
       const isActive = now < activeUntilRef.current;
-      const interval = isActive ? 2500 : 8000;
+      const interval = isActive ? 8000 : 20000;
 
       if (now - lastUploadAt >= interval) {
         lastUploadAt = now;
@@ -1179,7 +1291,11 @@ export default function ExamJoin({ token, onExit }) {
 
   const needCamForStart = proctorConfig?.camera === 'required';
   const startExam = async () => {
-    if (!(needCamForStart ? (cameraConsent && pre.ready) : (!cameraConsent || pre.ready))) return; // chưa qua test camera
+    if (!user?.uid) {
+      setError('Bạn cần đăng nhập tài khoản để bắt đầu thi.');
+      return;
+    }
+    if (needCamForStart && !(cameraConsent && pre.ready)) return; // chưa qua test camera (chỉ chặn khi camera bắt buộc)
     pre.release(); // nhả camera test để phòng thi dùng lại
     requestMotionPermission(); // iOS: phải gọi trong lúc bấm nút (không await để không mất quyền vào fullscreen)
     const fsOk = guard.fullscreenLock ? await guard.enterFullscreen() : true;
@@ -1334,11 +1450,36 @@ export default function ExamJoin({ token, onExit }) {
     e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
 
-  if (loading || (user?.uid && !permitChecked)) {
+  if (!ready || loading || (user?.uid && !permitChecked)) {
     return (
       <div className="ej-notfound">
         <div className="page-loader-spinner" />
-        <p>Đang tải đề...</p>
+        <p>{!ready ? 'Đang kiểm tra đăng nhập...' : 'Đang tải đề...'}</p>
+      </div>
+    );
+  }
+
+  if (ready && !user) {
+    return (
+      <div className="ej-notfound">
+        <IcoWarning size={56} />
+        <h2>Yêu cầu đăng nhập</h2>
+        <p>
+          Bạn cần đăng nhập tài khoản học sinh để làm bài và nộp bài kiểm tra này.
+        </p>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1rem' }}>
+          <button
+            className="td-btn primary"
+            type="button"
+            onClick={() => {
+              sessionStorage.setItem('cs_auth_redirect', `exam/${token}`);
+              window.location.hash = 'login';
+            }}
+          >
+            Đăng nhập ngay
+          </button>
+          <button className="td-btn" type="button" onClick={onExit}>Về trang chủ</button>
+        </div>
       </div>
     );
   }
@@ -1476,7 +1617,7 @@ export default function ExamJoin({ token, onExit }) {
   if (stage === 'confirm') {
     const needCamera = proctorConfig?.camera === 'required';
     const wantCamera = proctorConfig?.camera && proctorConfig.camera !== 'off';
-    const canStart = needCamera ? (cameraConsent && pre.ready) : (!cameraConsent || pre.ready);
+    const canStart = needCamera ? (cameraConsent && pre.ready) : true;
 
     if (prevSubmission && !retryPermit?.canRetry) {
       return (
@@ -1487,6 +1628,7 @@ export default function ExamJoin({ token, onExit }) {
             onExit={onExit}
             onRequestRetry={openRetryModal}
             sending={sendingRetry}
+            onViewResult={() => { setResult(prevSubmission); setStage('result'); }}
           />
           {retryModalOpen && (
             <RetryRequestModal
@@ -1574,7 +1716,27 @@ export default function ExamJoin({ token, onExit }) {
 
           {error && <p className="ej-confirm-error">{error}</p>}
 
+          {needCamera && !canStart && (
+            <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.95rem', borderRadius: 10, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', color: '#b45309', fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1.4 }}>
+              <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+              <span>
+                {!cameraConsent
+                  ? 'Vui lòng tích chọn “Tôi đồng ý bật camera” phía trên để mở nút Bắt đầu thi.'
+                  : (pre.message || 'Đang chuẩn bị camera... Vui lòng hướng mặt vào khung hình để bắt đầu.')}
+              </span>
+            </div>
+          )}
+
           <div className="ej-confirm-actions">
+            {isRetry && prevSubmission && (
+              <button
+                className="td-btn"
+                onClick={() => { setResult(prevSubmission); setStage('result'); }}
+                type="button"
+              >
+                👁 Xem lại bài trước
+              </button>
+            )}
             <button className="td-btn" onClick={onExit} type="button">Hủy</button>
             <button className="td-btn primary big" onClick={startExam} type="button" disabled={!canStart}>
               <IcoFullscreen /> {isRetry ? 'Bắt đầu thi lại' : 'Bắt đầu thi'}
@@ -1594,6 +1756,18 @@ export default function ExamJoin({ token, onExit }) {
     };
     return (
       <>
+        {retryPermit?.canRetry && (
+          <div style={{ position: 'sticky', top: 0, zIndex: 201, background: '#ecfdf5', color: '#065f46', padding: '.7rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid #10b981', boxShadow: '0 2px 8px rgba(16,185,129,0.15)' }}>
+            <span><b>Thông báo:</b> Bạn đã được giáo viên duyệt cho phép thi lại bài này.</span>
+            <button
+              type="button"
+              className="td-btn primary sm"
+              onClick={() => { setStage('confirm'); }}
+            >
+              🔄 Bắt đầu thi lại ngay
+            </button>
+          </div>
+        )}
         {result.autoSubmitted && REASONS[result.autoReason] && (
           <div style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fef3c7', color: '#92400e', padding: '.6rem 1rem', font: '600 .85rem system-ui, sans-serif', textAlign: 'center', borderBottom: '1px solid #f59e0b' }}>
             Bài được nộp tự động — lý do: {REASONS[result.autoReason]}
@@ -1605,6 +1779,7 @@ export default function ExamJoin({ token, onExit }) {
           order={order} // [1.8] Truyền order vào ExamResult
           showAnswer={exam.showAnswerAfter}
           onExit={onExit}
+          onRetrySubmit={handleRetrySubmit}
         />
       </>
     );
@@ -1729,8 +1904,8 @@ export default function ExamJoin({ token, onExit }) {
               <IcoClock size={16} />
               <b>{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}</b>
             </div>
-            <button className="ep-submit-btn" onClick={() => setConfirmOpen(true)} type="button" disabled={paused}>
-              <IcoSend size={14} /> Nộp bài
+            <button className="ep-submit-btn" onClick={() => setConfirmOpen(true)} type="button" disabled={paused || submitting}>
+              <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
             </button>
           </div>
         </header>
@@ -1825,9 +2000,9 @@ export default function ExamJoin({ token, onExit }) {
                       className="ep-nav-btn primary"
                       onClick={() => setConfirmOpen(true)}
                       type="button"
-                      disabled={paused}
+                      disabled={paused || submitting}
                     >
-                      <IcoSend size={14} /> Nộp bài
+                      <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
                     </button>
                   )}
                 </div>
@@ -1841,8 +2016,8 @@ export default function ExamJoin({ token, onExit }) {
               <button type="button" className="ep-pbar-list" onClick={() => setSidebarOpen(true)} disabled={paused}>
                 <IcoPanel size={16} /> {answered}/{exam.questions.length} câu
               </button>
-              <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)} disabled={paused}>
-                <IcoSend size={14} /> Nộp bài
+              <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)} disabled={paused || submitting}>
+                <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
               </button>
             </div>
           )}
@@ -1967,15 +2142,28 @@ export default function ExamJoin({ token, onExit }) {
           total={exam.questions.length}
           answered={answered}
           flagged={flaggedCount}
-          onCancel={() => setConfirmOpen(false)}
+          submitting={submitting}
+          onCancel={() => { if (!submitting) setConfirmOpen(false); }}
           onConfirm={() => {
-            setConfirmOpen(false);
             finishExam({
               violationCount: guardRef.current?.violations ?? 0,
               cameraStatus: proctor.status,
             });
           }}
         />
+
+        {submitting && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 10000,
+            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', gap: '1rem',
+          }}>
+            <div className="page-loader-spinner" style={{ width: 44, height: 44, borderWidth: 4 }} />
+            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Đang nộp bài và lưu kết quả...</h3>
+            <p style={{ margin: 0, opacity: 0.85, fontSize: '.9rem' }}>Vui lòng không tắt hoặc tải lại trang.</p>
+          </div>
+        )}
 
         <TeacherWarning warning={teacherWarning} onClose={() => setTeacherWarning(null)} />
       </div>

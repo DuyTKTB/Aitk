@@ -115,7 +115,7 @@ export default function SettingsPage() {
     }
     const counts = Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length]));
     return {
-      backup: { meta: { app: 'a7k60dta', version: 2, createdAt: new Date().toISOString(), counts }, tables },
+      backup: { meta: { app: 'elec-ai', version: 2, createdAt: new Date().toISOString(), counts }, tables },
       warnings,
     };
   };

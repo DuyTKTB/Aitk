@@ -400,6 +400,7 @@ export default function GameHub() {
   const { user } = useAuth();
   const userIsAdmin = isAdmin(user);
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [guideOpen, setGuideOpen] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updateTick, setUpdateTick] = useState(0);
@@ -427,9 +428,42 @@ export default function GameHub() {
     });
   }, [userIsAdmin, visibility]);
 
-  const filteredGames = filter === 'all'
-    ? availableGames
-    : availableGames.filter((g) => g.category === filter);
+  // Đếm số lượng game theo từng danh mục (đồng bộ & không bỏ sót game)
+  const counts = useMemo(() => {
+    return {
+      all: availableGames.length,
+      camera: availableGames.filter((g) => g.category === 'camera').length,
+      team: availableGames.filter((g) => g.category === 'team' || g.category === 'versus').length,
+      gameshow: availableGames.filter((g) => g.category === 'gameshow').length,
+      practice: availableGames.filter((g) => g.category === 'practice' || g.category === 'simulation').length,
+    };
+  }, [availableGames]);
+
+  // Lọc game theo danh mục và từ khóa tìm kiếm (khắc phục lỗi orphan games duel & lab-3d)
+  const filteredGames = useMemo(() => {
+    let list = availableGames;
+    if (filter === 'camera') {
+      list = list.filter((g) => g.category === 'camera');
+    } else if (filter === 'team') {
+      list = list.filter((g) => g.category === 'team' || g.category === 'versus');
+    } else if (filter === 'gameshow') {
+      list = list.filter((g) => g.category === 'gameshow');
+    } else if (filter === 'practice') {
+      list = list.filter((g) => g.category === 'practice' || g.category === 'simulation');
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((g) =>
+        (g.title || '').toLowerCase().includes(q) ||
+        (g.titleEm || '').toLowerCase().includes(q) ||
+        (g.desc || '').toLowerCase().includes(q) ||
+        (g.tag || '').toLowerCase().includes(q) ||
+        (g.badge || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [availableGames, filter, searchQuery]);
 
   return (
     <section className="wrap games-hub">
@@ -467,6 +501,66 @@ export default function GameHub() {
           </button>
         </div>
 
+        {/* Thanh tìm kiếm nhanh phong cách Apple Glassmorphism */}
+        <div style={{ maxWidth: 440, width: '100%', margin: '1.25rem auto 0', position: 'relative' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--panel, #ffffff)',
+            border: '1px solid var(--line, rgba(0,0,0,0.1))',
+            borderRadius: '16px',
+            padding: '0.5rem 0.9rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--mut, #64748b)', marginRight: '0.6rem', flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm trò chơi (Kéo co, Dò mìn, Triệu phú, Lab 3D...)..."
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                width: '100%',
+                fontSize: '0.92rem',
+                color: 'var(--ink, #0f172a)',
+              }}
+              aria-label="Tìm kiếm trò chơi"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  border: 'none',
+                  background: 'var(--surface-2, #e2e8f0)',
+                  color: 'var(--mut, #64748b)',
+                  borderRadius: '50%',
+                  width: 20,
+                  height: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  lineHeight: 1,
+                  padding: 0,
+                  marginLeft: '0.4rem',
+                  flexShrink: 0,
+                }}
+                aria-label="Xóa tìm kiếm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Category Tabs Filter */}
         <div className="cg-tab-row" style={{ marginTop: '1.25rem', justifyContent: 'center' }}>
           <button
@@ -474,7 +568,7 @@ export default function GameHub() {
             className={`cg-tab-btn ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
-            Tất cả ({availableGames.length})
+            Tất cả ({counts.all})
           </button>
           <button
             type="button"
@@ -482,7 +576,7 @@ export default function GameHub() {
             onClick={() => setFilter('camera')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>
-            Camera ({CAMERA_GAMES.length})
+            Camera ({counts.camera})
           </button>
           <button
             type="button"
@@ -490,7 +584,7 @@ export default function GameHub() {
             onClick={() => setFilter('team')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><path d="M4 12h16M12 9v6M7 7l-3 5 3 5M17 7l3 5-3 5" /></svg>
-            Đối kháng & Đua tốc độ
+            Đối kháng & Đua tốc độ ({counts.team})
           </button>
           <button
             type="button"
@@ -498,7 +592,7 @@ export default function GameHub() {
             onClick={() => setFilter('gameshow')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
-            Gameshow & May mắn
+            Gameshow & May mắn ({counts.gameshow})
           </button>
           <button
             type="button"
@@ -506,7 +600,7 @@ export default function GameHub() {
             onClick={() => setFilter('practice')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }}><path d="M9 3h6M10 3v5L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8V3" /></svg>
-            Rèn luyện & Thí nghiệm
+            Rèn luyện & Thí nghiệm ({counts.practice})
           </button>
         </div>
       </header>
@@ -521,6 +615,31 @@ export default function GameHub() {
           <p style={{ margin: 0, color: 'var(--mut, #64748b)', maxWidth: 520, marginInline: 'auto', fontSize: '0.92rem' }}>
             Quản trị viên đã tạm khóa toàn bộ trò chơi để học sinh tập trung làm bài thi. Các trò chơi sẽ tự động mở lại sau khi kết thúc buổi kiểm tra.
           </p>
+        </div>
+      ) : filteredGames.length === 0 ? (
+        <div style={{
+          padding: '3rem 1.5rem',
+          textAlign: 'center',
+          background: 'var(--panel, #ffffff)',
+          borderRadius: 24,
+          border: '1.5px dashed var(--line, rgba(0,0,0,0.12))',
+          margin: '2rem 0',
+        }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔍</div>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 800 }}>
+            Không tìm thấy trò chơi phù hợp
+          </h3>
+          <p style={{ margin: '0 0 1.25rem', color: 'var(--mut, #64748b)', fontSize: '0.92rem' }}>
+            Không có kết quả nào khớp với từ khóa "{searchQuery}". Bạn có thể thử tìm kiếm từ khóa khác hoặc quay về xem toàn bộ kho trò chơi.
+          </p>
+          <button
+            type="button"
+            className="cg-action-btn"
+            style={{ fontWeight: 700, padding: '0.55rem 1.25rem' }}
+            onClick={() => { setSearchQuery(''); setFilter('all'); }}
+          >
+            Xem lại tất cả ({counts.all}) trò chơi
+          </button>
         </div>
       ) : (
         <div className="games-grid">

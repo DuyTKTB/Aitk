@@ -4,10 +4,23 @@ Disallow: /api/
 Disallow: /admin
 
 # ------------------------------------------------------------------
-# Cho phép các crawler của công cụ AI đọc nội dung công khai (GEO).
-# App dùng hash routing (#/...) nên phần lớn nội dung nằm sau đăng nhập;
-# các bot dưới đây chỉ đọc trang công khai (landing, mô tả tính năng).
+# Cho phép các crawler của công cụ tìm kiếm & AI đọc nội dung công khai (GEO).
 # ------------------------------------------------------------------
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Applebot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
 User-agent: GPTBot
 Allow: /
 Disallow: /api/
@@ -31,4 +44,5 @@ Disallow: /admin
 User-agent: Google-Extended
 Allow: /
 
+Host: https://aitk-ten.vercel.app/
 Sitemap: https://aitk-ten.vercel.app/sitemap.xml

@@ -15,9 +15,18 @@ exports.askAIBatch = aiProxy.askAIBatch;
 const CONFIG = {
   WEBHOOK_SECRET: process.env.ELECAI_WEBHOOK_SECRET || 'CHANGE_ME_SECRET',
   PRICE_MAP: {
+    // Legacy rates
     50000: 1,
     250000: 6,
     450000: 12,
+    // Modern VIP Tiers (Học Bá, Báaa Khíiii, Thủ Khoa)
+    399000: 3,
+    499000: 6,
+    599000: 3,
+    699000: 12,
+    899000: 12,
+    999000: 6,
+    1399000: 12,
   },
   CONTENT_REGEX: /ELECAI\s+VIP\s+([A-Z0-9-]+)/i,
 };

@@ -247,16 +247,18 @@ export function createDefaultUserState(uid = 'guest') {
  */
 export function hydrateAspiration(asp) {
   if (!asp) return null;
-  const school = getSchoolById(asp.schoolId) || {
-    id: asp.schoolId || 'CUSTOM',
-    code: asp.schoolCode || asp.schoolId || 'ĐH',
+  const schoolId = asp.schoolId || asp.school?.id || asp.school?.code;
+  const school = getSchoolById(schoolId) || (asp.school ? { ...asp.school, code: asp.school.code || schoolId || 'ĐH' } : {
+    id: schoolId || 'CUSTOM',
+    code: asp.schoolCode || schoolId || 'ĐH',
     name: asp.schoolName || 'Trường Đại học',
     city: asp.city || 'Toàn quốc',
     coverColor: '#2f6bff',
     cover: 'linear-gradient(135deg, #2f6bff 0%, #60a5fa 100%)',
-  };
-  const major = getMajorById(asp.majorId) || {
-    id: asp.majorId || 'custom-major',
+  });
+  const majorId = asp.majorId || asp.major?.id;
+  const major = getMajorById(majorId) || (asp.major ? { ...asp.major } : {
+    id: majorId || 'custom-major',
     schoolId: school.id,
     name: asp.majorName || 'Ngành xét tuyển',
     majorCode: asp.majorCode || '',
@@ -265,7 +267,7 @@ export function hydrateAspiration(asp) {
     cutoffs: Number.isFinite(asp.cutoffScore)
       ? [{ year: referenceData.nam, examId: asp.examId || 'THPTQG', score: asp.cutoffScore }]
       : [],
-  };
+  });
   const exam = getExamById(asp.examId || 'THPTQG');
   const cutoff = getCutoffForMajor(major, exam.id);
   const suggestion = suggestTargetScore(major, exam.id);
@@ -784,16 +786,48 @@ export function getDetailedAdmissionScheme(schoolIdOrCode) {
   const key = String(schoolIdOrCode).trim().toUpperCase();
   const schemes = referenceData.detailedSchemes || {};
   
-  // 1. Kiểm tra nếu có đề án chi tiết sẵn
-  if (schemes[key]) return schemes[key];
-  
   // Tìm theo school
   const school = getSchools().find((s) => s.id === key || s.code === key || s.admissionCode === key || s.altCode === key);
-  if (!school) return null;
   
-  if (schemes[school.id]) return schemes[school.id];
-  if (schemes[school.code]) return schemes[school.code];
-  if (school.admissionCode && schemes[school.admissionCode]) return schemes[school.admissionCode];
+  // 1. Kiểm tra nếu có đề án chi tiết sẵn
+  const rawScheme = schemes[key] || (school ? (schemes[school.id] || schemes[school.code] || (school.admissionCode && schemes[school.admissionCode])) : null);
+  if (rawScheme) {
+    return {
+      ...rawScheme,
+      schoolId: rawScheme.schoolId || rawScheme.universityId || school?.id || key,
+      schoolName: rawScheme.schoolName || rawScheme.name || school?.name || 'Trường Đại học',
+      admissionCode: rawScheme.admissionCode || rawScheme.code || school?.admissionCode || school?.code || key,
+      yearPlan: rawScheme.yearPlan || rawScheme.planYear || 2026,
+      cutoffRange: rawScheme.cutoffRange || '21.00 – 28.50',
+      totalMajors: rawScheme.totalMajors || (Array.isArray(rawScheme.majors) ? rawScheme.majors.length : 30),
+      creditsPerYear: rawScheme.creditsPerYear || 33,
+      cover: rawScheme.cover || school?.cover || 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80',
+      website: rawScheme.website || school?.website || 'https://moet.gov.vn',
+      stats: rawScheme.stats || [
+        { label: 'Năm đề án', value: String(rawScheme.yearPlan || rawScheme.planYear || 2026) },
+        { label: 'Ngành đào tạo', value: String(rawScheme.totalMajors || (Array.isArray(rawScheme.majors) ? rawScheme.majors.length : 30)) },
+        { label: 'Tín chỉ/năm', value: String(rawScheme.creditsPerYear || 33) },
+        { label: 'Điểm chuẩn THPT', value: rawScheme.cutoffRange || '21.00 – 28.50' },
+      ],
+      methods: rawScheme.methods || (rawScheme.admissionMethods || []).map((m) => ({
+        code: m.code,
+        name: m.name,
+        quotaPercent: m.quotaPercent || m.quotaPct || '—',
+        desc: m.desc,
+      })),
+      tuition: rawScheme.tuition || {
+        standard: rawScheme.tuitionAndScholarships?.standardTuition || 'Theo quy định nhà nước',
+        advanced: rawScheme.tuitionAndScholarships?.advancedTuition || 'Tùy theo chương trình',
+        scholarships: rawScheme.tuitionAndScholarships?.scholarshipFund || 'Có quỹ học bổng khuyến khích học tập',
+      },
+      contact: rawScheme.contact || {
+        address: rawScheme.address || school?.city || 'Việt Nam',
+        hotline: rawScheme.hotline || 'Xem website trường',
+        email: rawScheme.email || 'tuyensinh@edu.vn',
+      },
+    };
+  }
+  if (!school) return null;
 
   // 2. Tạo đề án sơ bộ chuẩn hóa cho trường
   return {

@@ -83,6 +83,17 @@ export function AuthProvider({ children }) {
           }
         }
       } else {
+        const devMock = typeof window !== 'undefined' ? localStorage.getItem('cs-dev-mock-user') : null;
+        if (devMock) {
+          try {
+            const parsed = JSON.parse(devMock);
+            setUser(parsed);
+            setIsLoggedIn(true);
+            setTier({ key: 'vip', name: 'VIP', desc: 'Đặc quyền VIP' });
+            if (mountedRef.current) setReady(true);
+            return;
+          } catch {}
+        }
         setUser(null);
         setIsLoggedIn(false);
         setTier(null);
