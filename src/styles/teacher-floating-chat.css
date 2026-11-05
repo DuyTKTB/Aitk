@@ -1,0 +1,1554 @@
+/* ============================================================
+   teacher-floating-chat.css — Giao diện Con Chat AI Trợ Lý Giáo Viên
+   Phong cách Clerio Clean Sky-Blue SaaS (Tham chiếu ảnh Clerio)
+   ============================================================ */
+
+/* ============================================================
+   1. FLOATING LAUNCHER BUTTON (NÚT NỔI LUÔN HIỆN DIỆN GÓC DƯỚI PHẢI)
+   ============================================================ */
+.tfc-launcher-wrap {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 99990;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tfc-launcher-btn {
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+  color: #ffffff;
+  padding: 10px 18px 10px 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(15, 23, 42, 0.1);
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+
+.tfc-launcher-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.45), 0 4px 10px rgba(15, 23, 42, 0.15);
+}
+
+.tfc-launcher-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.tfc-launcher-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  overflow: visible;
+}
+
+.tfc-launcher-logo-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 50%;
+  display: block;
+}
+
+.tfc-live-pulse-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #ffffff;
+}
+
+.tfc-live-pulse-dot.alert {
+  background: #ef4444;
+  animation: tfcPulse 1.4s infinite;
+}
+
+@keyframes tfcPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.tfc-launcher-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.tfc-launcher-title {
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+
+.tfc-launcher-sub {
+  font-weight: 500;
+  font-size: 0.7rem;
+  opacity: 0.88;
+}
+
+/* ============================================================
+   2. FLOATING CHAT WINDOW (CỬA SỔ CON CHAT CLERIO SKY-BLUE)
+   ============================================================ */
+.tfc-window {
+  position: fixed;
+  bottom: 80px;
+  right: 22px;
+  z-index: 99995;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  height: 640px;
+  max-height: calc(100vh - 105px);
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid rgba(219, 234, 254, 0.95);
+  box-shadow: 0 24px 60px -10px rgba(15, 23, 42, 0.18), 0 8px 24px -4px rgba(37, 99, 235, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: inherit;
+  transition: width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: tfcSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tfc-window.expanded {
+  width: 680px;
+  height: 720px;
+}
+
+@keyframes tfcSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================================
+   3. HEADER CỦA CON CHAT
+   ============================================================ */
+.tfc-header {
+  padding: 1rem 1.15rem;
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.tfc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.tfc-header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1.5px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  flex-shrink: 0;
+}
+
+.tfc-header-logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+
+.tfc-header-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tfc-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tfc-header-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.tfc-header-pill {
+  font-size: 0.66rem;
+  font-weight: 700;
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tfc-header-status {
+  font-size: 0.72rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tfc-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.tfc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tfc-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tfc-icon-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+/* ============================================================
+   3.1 CẢM BIẾN NGỮ CẢNH TAB THỜI GIAN THỰC (LIVE TAB RADAR)
+   ============================================================ */
+.tfc-context-radar {
+  padding: 0.45rem 1rem;
+  background: linear-gradient(90deg, #f0f7ff 0%, #f8faff 100%);
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.tfc-radar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tfc-radar-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  animation: tfcRadarPulse 1.8s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes tfcRadarPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.tfc-radar-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tfc-radar-title {
+  font-size: 0.75rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tfc-radar-title b {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.tfc-radar-badge {
+  font-size: 0.66rem;
+  font-weight: 600;
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid rgba(199, 210, 254, 0.8);
+}
+
+.tfc-radar-analyze-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+}
+
+.tfc-radar-analyze-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+.tfc-radar-analyze-btn:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   4. CHAT MESSAGES BODY (DANH SÁCH TIN NHẮN)
+   ============================================================ */
+.tfc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #fcfdfe;
+}
+
+.tfc-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tfc-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tfc-body::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 0.7);
+  border-radius: 999px;
+}
+
+/* Tin nhắn */
+.tfc-msg {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  animation: tfcMsgIn 0.18s ease-out;
+}
+
+@keyframes tfcMsgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tfc-msg.user {
+  flex-direction: row-reverse;
+}
+
+.tfc-msg-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.tfc-msg.bot .tfc-msg-avatar {
+  background: #ffffff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.tfc-msg-logo-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: 4px;
+  display: block;
+}
+
+.tfc-msg.user .tfc-msg-avatar {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.tfc-bubble {
+  max-width: 90%;
+  padding: 0.95rem 1.15rem;
+  border-radius: 18px;
+  font-size: 0.88rem;
+  line-height: 1.62;
+  color: #1e293b;
+  position: relative;
+  word-break: break-word;
+}
+
+.tfc-msg.bot .tfc-bubble {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.tfc-msg.user .tfc-bubble {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.tfc-bubble p {
+  margin: 0 0 0.55rem 0;
+}
+
+.tfc-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* ChatGPT-style Markdown & Typography */
+.tfc-markdown-content {
+  color: #1e293b;
+  font-size: 0.88rem;
+  line-height: 1.62;
+  word-break: break-word;
+}
+
+.tfc-markdown-content p {
+  margin: 0 0 0.6rem 0;
+  color: #334155;
+}
+
+.tfc-markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.tfc-markdown-content h3 {
+  font-size: 0.96rem;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0.85rem 0 0.4rem 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  letter-spacing: -0.01em;
+}
+
+.tfc-markdown-content h3:first-child {
+  margin-top: 0;
+}
+
+.tfc-markdown-content h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0.65rem 0 0.35rem 0;
+}
+
+.tfc-markdown-content strong {
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.tfc-markdown-content em {
+  font-style: italic;
+  color: #475569;
+}
+
+.tfc-markdown-content ul,
+.tfc-markdown-content ol {
+  margin: 0.45rem 0 0.7rem 1.25rem;
+  padding: 0;
+  color: #334155;
+}
+
+.tfc-markdown-content li {
+  margin-bottom: 0.35rem;
+  line-height: 1.55;
+}
+
+.tfc-markdown-content li::marker {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.tfc-markdown-content .ds-callout-box,
+.tfc-markdown-content blockquote {
+  background: #f0f7ff;
+  border-left: 3px solid #2563eb;
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.85rem;
+  margin: 0.7rem 0;
+  font-size: 0.84rem;
+  color: #1e40af;
+  line-height: 1.55;
+}
+
+.tfc-markdown-content code,
+.tfc-markdown-content .ds-inline-code {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.tfc-markdown-content hr.ds-divider {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 0.85rem 0;
+}
+
+.tfc-markdown-content .ds-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0.65rem 0;
+}
+
+.tfc-markdown-content table.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  border: 1px solid #e2e8f0;
+}
+
+.tfc-markdown-content table.ds-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #0f172a;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.tfc-markdown-content table.ds-table td {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+/* Nút sao chép và đọc giọng nói trên tin nhắn */
+.tfc-bubble-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+
+.tfc-bubble:hover .tfc-bubble-actions {
+  opacity: 1;
+}
+
+.tfc-bubble-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tfc-bubble-btn:hover {
+  color: #2563eb;
+  background: #f1f5f9;
+}
+
+.tfc-copied-chip {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.tfc-time {
+  font-size: 0.66rem;
+  opacity: 0.7;
+  margin-top: 0.35rem;
+  display: block;
+  text-align: right;
+}
+
+/* ============================================================
+   5. THẺ CHẨN ĐOÁN & FILE TRONG TIN NHẮN (CLERIO STYLE)
+   ============================================================ */
+.tfc-file-preview-card {
+  margin: 0.5rem 0;
+  padding: 0.75rem 0.9rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tfc-file-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tfc-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tfc-file-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tfc-file-sub {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* Diagnostic Box */
+.tfc-diag-box {
+  margin-top: 0.65rem;
+  padding: 0.8rem;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tfc-diag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.tfc-diag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.tfc-diag-chip {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.tfc-diag-chip.ok {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.tfc-diag-chip.warn {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+/* Action Button Grid in Message */
+.tfc-action-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.75rem;
+}
+
+.tfc-btn-action {
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  font-family: inherit;
+}
+
+.tfc-btn-action:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.tfc-btn-action.sec {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.tfc-btn-action.sec:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.tfc-btn-action.danger {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+.tfc-btn-action.danger:hover {
+  background: #dc2626;
+}
+
+/* ============================================================
+   6. CAPABILITY QUICK CHIPS (THANH GỢI Ý NHANH KIỂU CLERIO)
+   ============================================================ */
+.tfc-quick-chips {
+  padding: 0.5rem 0.9rem;
+  background: #ffffff;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tfc-quick-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.tfc-chip {
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+  font-family: inherit;
+}
+
+.tfc-chip:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25);
+}
+
+/* ============================================================
+   7. INPUT BAR (THANH NHẬP LIỆU VIỀN BO TRÒN THEO CLERIO)
+   ============================================================ */
+.tfc-footer {
+  padding: 0.75rem 1rem 0.9rem 1rem;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.tfc-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 5px 8px 5px 12px;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.02);
+  transition: all 0.16s ease;
+}
+
+.tfc-input-container:focus-within {
+  background: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.tfc-attach-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.tfc-attach-btn:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.tfc-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.86rem;
+  color: #0f172a;
+  font-family: inherit;
+}
+
+.tfc-input::placeholder {
+  color: #94a3b8;
+}
+
+.tfc-send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  flex-shrink: 0;
+}
+
+.tfc-send-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
+.tfc-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Typing loader */
+.tfc-typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.tfc-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: tfcBounce 1.2s infinite ease-in-out both;
+}
+
+.tfc-typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.tfc-typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes tfcBounce {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Drag overlay */
+.tfc-drag-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(239, 246, 255, 0.92);
+  border: 2px dashed #2563eb;
+  border-radius: 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+/* ============================================================
+   8. SIÊU CẤP: AI AGENT WORKFLOW PIPELINE (ONE-COMMAND AGENT)
+   ============================================================ */
+.tfc-agent-card {
+  margin-top: 0.75rem;
+  padding: 0.95rem 1.1rem;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 16px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+}
+
+.tfc-agent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.tfc-agent-title {
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tfc-agent-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.tfc-agent-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.tfc-agent-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: #cbd5e1;
+}
+
+.tfc-agent-step.done {
+  color: #86efac;
+}
+
+.tfc-agent-step-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+}
+
+.tfc-agent-step.done .tfc-agent-step-icon {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+/* ============================================================
+   9. SIÊU CẤP: THẨM ĐỊNH ĐỀ BẰNG 100 HỌC SINH ẢO (VIRTUAL SIMULATOR)
+   ============================================================ */
+.tfc-sim-box {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tfc-sim-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tfc-sim-score-big {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.tfc-sim-score-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Biểu đồ phổ điểm hình chuông (Bell Curve) */
+.tfc-bell-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 60px;
+  padding: 0 4px;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.tfc-bell-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tfc-bell-bar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%);
+  transition: height 0.4s ease;
+}
+
+.tfc-bell-n {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.tfc-bell-lbl {
+  font-size: 0.62rem;
+  color: #64748b;
+}
+
+.tfc-sim-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.tfc-sim-metric-pill {
+  padding: 6px 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tfc-sim-metric-val {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.tfc-sim-metric-lbl {
+  font-size: 0.66rem;
+  color: #64748b;
+}
+
+/* ============================================================
+   10. SIÊU CẤP: CHẨN ĐOÁN BỆNH LÝ TƯ DUY & ĐƠN THUỐC ĐẶC TRỊ
+   ============================================================ */
+.tfc-rx-box {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tfc-rx-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #92400e;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.tfc-rx-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tfc-rx-layer-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #451a03;
+  line-height: 1.4;
+}
+
+.tfc-rx-layer-tag {
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #b45309;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ============================================================
+   11. SIÊU CẤP: NÚT MIC GIỌNG NÓI & ĐỌC LỜI PHÊ
+   ============================================================ */
+.tfc-mic-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+}
+
+.tfc-mic-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.tfc-mic-btn.recording {
+  background: #ef4444;
+  color: #ffffff;
+  animation: tfcMicPulse 1.2s infinite;
+}
+
+@keyframes tfcMicPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.tfc-audio-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.tfc-audio-btn:hover {
+  color: #2563eb;
+}
+
+/* ============================================================
+   12. SIÊU CẤP: INTERACTIVE AI EXAM CREATION & WORD DOCTOR WIZARD
+   ============================================================ */
+.tfc-wizard-card {
+  margin-top: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.06);
+}
+
+.tfc-wizard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tfc-wizard-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #1e40af;
+}
+
+.tfc-wizard-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.tfc-wizard-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tfc-wizard-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.tfc-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tfc-pill-btn {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tfc-pill-btn:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.tfc-pill-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+}
+
+.tfc-pill-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+}
+
+.tfc-pill-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.tfc-wizard-launch-btn {
+  margin-top: 4px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+  color: #ffffff;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.tfc-wizard-launch-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.tfc-wizard-launch-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================================
+   13. SIÊU CẤP: BÁC SĨ CHẨN ĐOÁN & SỬA FILE WORD
+   ============================================================ */
+.tfc-doctor-card {
+  margin-top: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tfc-doctor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tfc-doctor-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #92400e;
+}
+
+.tfc-doctor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.tfc-doctor-box {
+  background: #ffffff;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid #fef3c7;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+
+.tfc-doctor-box-n {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.tfc-doctor-box-lbl {
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.tfc-doctor-box.warn {
+  border-color: #fca5a5;
+  background: #fff1f2;
+}
+
+.tfc-doctor-box.warn .tfc-doctor-box-n {
+  color: #e11d48;
+}
+
+.tfc-doctor-warn-banner {
+  padding: 6px 8px;
+  background: #fef2f2;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  font-size: 0.73rem;
+  color: #9f1239;
+  line-height: 1.4;
+}
+
+.tfc-btn-action.download {
+  background: #059669;
+  color: #ffffff;
+}
+
+.tfc-btn-action.download:hover {
+  background: #047857;
+}
+
+.tfc-btn-action.doctor {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  color: #ffffff;
+}
+
+.tfc-btn-action.doctor:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%);
+}
+
+/* ============================================================
+   THẨM ĐỊNH & PHÁN XÉT SƯ PHẠM GDPT 2025 CARD
+   ============================================================ */
+.tfc-audit-card {
+  margin-top: 8px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.06);
+}
+
+.tfc-audit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tfc-audit-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tfc-audit-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tfc-audit-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.tfc-audit-badge.ok {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.tfc-audit-badge.warn {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.tfc-audit-badge.danger {
+  background: #ffe4e6;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.tfc-audit-badge.level {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.tfc-audit-body {
+  font-size: 0.77rem;
+  line-height: 1.55;
+  color: #334155;
+  background: #ffffff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  max-height: 420px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+

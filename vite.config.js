@@ -21,6 +21,26 @@ const BIG_VENDORS = [
 
 export default defineConfig({
   plugins: [react()],
+  worker: {
+    format: 'es',
+  },
+  optimizeDeps: {
+    include: [
+      '@casualoffice/docs',
+      'yjs',
+      'y-prosemirror',
+      '@hocuspocus/provider',
+      'y-websocket',
+    ],
+  },
+  test: {
+    css: true,
+    server: {
+      deps: {
+        inline: [/@casualoffice/, /prosemirror/],
+      },
+    },
+  },
   server: {
     watch: {
       ignored: ['**/báo cáo/**', '**/*.docx', '**/*.pdf'],

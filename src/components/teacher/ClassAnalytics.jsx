@@ -88,21 +88,55 @@ const IcoRefresh = () => (
   </svg>
 );
 
-function Kpi({ label, value, unit, hint, tone, diff }) {
+function Kpi({ label, value, unit, hint, tone, diff, icon: iconType }) {
   return (
     <div className={`ta-kpi${tone ? ` is-${tone}` : ''}`}>
-      <span className="ta-kpi-label">{label}</span>
-      <span className="ta-kpi-value">
-        {value === null || value === undefined ? '—' : value}
-        {unit && value !== null && value !== undefined ? <small>{unit}</small> : null}
-      </span>
+      <div className="ta-kpi-top">
+        <span className="ta-kpi-label">{label}</span>
+        {iconType && (
+          <span className={`ta-kpi-icon tone-${iconType}`}>
+            {iconType === 'trend' && <IcoLineChart />}
+            {iconType === 'check' && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            )}
+            {iconType === 'award' && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="6" />
+                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+              </svg>
+            )}
+            {iconType === 'alert' && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            )}
+            {iconType === 'clock' && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            )}
+          </span>
+        )}
+      </div>
+      <div className="ta-kpi-middle">
+        <span className="ta-kpi-value">
+          {value === null || value === undefined ? '—' : value}
+          {unit && value !== null && value !== undefined ? <small>{unit}</small> : null}
+        </span>
+        {diff !== undefined && diff !== null && (
+          <span className={`ta-kpi-diff-pill ${diff >= 0 ? 'up' : 'down'}`}>
+            {diff >= 0 ? `+${diff}` : diff}{unit || ''}
+          </span>
+        )}
+      </div>
       <span className="ta-kpi-hint">
         {hint}
-        {diff !== undefined && diff !== null && (
-          <strong className={`ta-kpi-diff ${diff >= 0 ? 'up' : 'down'}`}>
-            {' '}({diff >= 0 ? `+${diff}` : diff}{unit || ''})
-          </strong>
-        )}
       </span>
     </div>
   );
@@ -138,28 +172,43 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
     return <p className="ta-note">Chưa có đề thi có bài nộp để hiển thị biểu đồ xu hướng.</p>;
   }
   const W = 640;
-  const H = 168;
-  const padL = 34;
-  const padR = 16;
-  const padT = 16;
+  const H = 172;
+  const padL = 36;
+  const padR = 20;
+  const padT = 20;
   const padB = 32;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const n = series.length;
-  const stepX = n > 1 ? innerW / (n - 1) : innerW / 2;
+  const slotW = innerW / Math.max(n, 1);
 
   const yOf = (val) => padT + innerH - (Math.max(0, Math.min(100, val || 0)) / 100) * innerH;
 
   return (
     <div className="ta-chart-wrap">
       <svg viewBox={`0 0 ${W} ${H}`} className="ta-chart-svg" role="img" aria-label="Biểu đồ xu hướng điểm trung bình">
+        <defs>
+          <linearGradient id="taBarGradPrimary" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#1d4ed8" />
+          </linearGradient>
+          <linearGradient id="taBarGradCmp" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="100%" stopColor="#059669" />
+          </linearGradient>
+          <linearGradient id="taAreaGradPrimary" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
         {/* Đường lưới ngang */}
         {[0, 25, 50, 75, 100].map((v) => {
           const y = yOf(v);
           return (
             <g key={v}>
-              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="currentColor" strokeOpacity="0.09" strokeDasharray="3 3" />
-              <text x={padL - 6} y={y + 4} textAnchor="end" fontSize="10" fill="currentColor" opacity="0.55">
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="currentColor" strokeOpacity="0.08" strokeDasharray="3 3" />
+              <text x={padL - 6} y={y + 4} textAnchor="end" fontSize="10" fill="currentColor" opacity="0.5">
                 {v}%
               </text>
             </g>
@@ -168,58 +217,56 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
 
         {chartType === 'bar' ? (
           series.map((pt, i) => {
-            const groupW = Math.min(54, innerW / Math.max(n, 1) - 10);
             const hasCmp = compareSeries.length > 0 && compareSeries[i]?.value !== null && compareSeries[i]?.value !== undefined;
-            const barW = hasCmp ? Math.max(10, groupW / 2 - 2) : Math.max(14, groupW);
-            const cx = n === 1 ? padL + innerW / 2 : padL + (i / (n - 1)) * innerW;
+            const barW = hasCmp ? Math.min(24, Math.max(12, slotW / 3)) : Math.min(44, Math.max(18, slotW * 0.48));
+            const cx = padL + (i + 0.5) * slotW;
             const y = yOf(pt.value);
-            const h = Math.max(3, padT + innerH - y);
+            const h = Math.max(4, padT + innerH - y);
             const cmpVal = hasCmp ? compareSeries[i].value : null;
             const cmpY = cmpVal !== null ? yOf(cmpVal) : 0;
-            const cmpH = cmpVal !== null ? Math.max(3, padT + innerH - cmpY) : 0;
+            const cmpH = cmpVal !== null ? Math.max(4, padT + innerH - cmpY) : 0;
 
             return (
-              <g key={pt.key || i}>
+              <g key={pt.key || i} className="ta-chart-group">
                 <rect
-                  x={hasCmp ? cx - barW - 1 : cx - barW / 2}
+                  x={hasCmp ? cx - barW - 2 : cx - barW / 2}
                   y={y}
                   width={barW}
                   height={h}
                   rx="5"
-                  fill="#2563eb"
+                  fill="url(#taBarGradPrimary)"
                 >
                   <title>{`${pt.label} (${primaryLabel}): ${pt.value}% (${pt.subCount || 0} bài)`}</title>
                 </rect>
                 <text
-                  x={hasCmp ? cx - barW / 2 - 1 : cx}
-                  y={Math.max(12, y - 5)}
+                  x={hasCmp ? cx - barW / 2 - 2 : cx}
+                  y={Math.max(14, y - 5)}
                   textAnchor="middle"
                   fontSize="10"
-                  fontWeight="700"
-                  fill="#2563eb"
+                  fontWeight="800"
+                  fill="#1d4ed8"
                 >
                   {pt.value}%
                 </text>
                 {hasCmp && (
                   <>
                     <rect
-                      x={cx + 1}
+                      x={cx + 2}
                       y={cmpY}
                       width={barW}
                       height={cmpH}
                       rx="5"
-                      fill="#0f9d76"
-                      opacity="0.85"
+                      fill="url(#taBarGradCmp)"
                     >
                       <title>{`${compareSeries[i].label || pt.label} (${compareLabel}): ${cmpVal}%`}</title>
                     </rect>
                     <text
-                      x={cx + barW / 2 + 1}
-                      y={Math.max(12, cmpY - 5)}
+                      x={cx + barW / 2 + 2}
+                      y={Math.max(14, cmpY - 5)}
                       textAnchor="middle"
                       fontSize="10"
-                      fontWeight="700"
-                      fill="#0f9d76"
+                      fontWeight="800"
+                      fill="#059669"
                     >
                       {cmpVal}%
                     </text>
@@ -227,11 +274,12 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
                 )}
                 <text
                   x={cx}
-                  y={H - 14}
+                  y={H - 12}
                   textAnchor="middle"
                   fontSize="10.5"
+                  fontWeight="600"
                   fill="currentColor"
-                  opacity="0.75"
+                  opacity="0.8"
                 >
                   {pt.shortLabel || pt.label.slice(0, 14)}
                 </text>
@@ -240,15 +288,22 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
           })
         ) : (
           <>
+            {/* Vùng mờ dưới đường biểu diễn */}
+            {series.length > 1 && (
+              <polygon
+                fill="url(#taAreaGradPrimary)"
+                points={`${padL + 0.5 * slotW},${padT + innerH} ${series.map((pt, i) => `${padL + (i + 0.5) * slotW},${yOf(pt.value)}`).join(' ')} ${padL + (series.length - 0.5) * slotW},${padT + innerH}`}
+              />
+            )}
             {/* Đường chính */}
             {series.length > 1 && (
               <polyline
                 fill="none"
                 stroke="#2563eb"
-                strokeWidth="2.5"
+                strokeWidth="2.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                points={series.map((pt, i) => `${n === 1 ? padL + innerW / 2 : padL + i * stepX},${yOf(pt.value)}`).join(' ')}
+                points={series.map((pt, i) => `${padL + (i + 0.5) * slotW},${yOf(pt.value)}`).join(' ')}
               />
             )}
             {/* Đường so sánh */}
@@ -256,25 +311,23 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
               <polyline
                 fill="none"
                 stroke="#0f9d76"
-                strokeWidth="2.2"
+                strokeWidth="2.4"
                 strokeDasharray="5 3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                points={compareSeries.map((pt, i) => `${compareSeries.length === 1 ? padL + innerW / 2 : padL + (i / (Math.max(n, compareSeries.length) - 1)) * innerW},${yOf(pt.value || 0)}`).join(' ')}
+                points={compareSeries.map((pt, i) => `${padL + (i + 0.5) * slotW},${yOf(pt.value || 0)}`).join(' ')}
               />
             )}
             {series.map((pt, i) => {
-              const cx = n === 1 ? padL + innerW / 2 : padL + i * stepX;
+              const cx = padL + (i + 0.5) * slotW;
               const cy = yOf(pt.value);
               return (
                 <g key={pt.key || i}>
-                  <circle cx={cx} cy={cy} r="4.5" fill="#2563eb" stroke="#fff" strokeWidth="1.5">
-                    <title>{`${pt.label}: ${pt.value}%`}</title>
-                  </circle>
-                  <text x={cx} y={Math.max(12, cy - 8)} textAnchor="middle" fontSize="10" fontWeight="700" fill="#2563eb">
+                  <circle cx={cx} cy={cy} r="4.5" fill="#2563eb" stroke="#fff" strokeWidth="2" />
+                  <text x={cx} y={Math.max(14, cy - 8)} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#1d4ed8">
                     {pt.value}%
                   </text>
-                  <text x={cx} y={H - 14} textAnchor="middle" fontSize="10.5" fill="currentColor" opacity="0.75">
+                  <text x={cx} y={H - 12} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="currentColor" opacity="0.8">
                     {pt.shortLabel || pt.label.slice(0, 14)}
                   </text>
                 </g>
@@ -282,7 +335,7 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
             })}
             {compareSeries.map((pt, i) => {
               if (pt?.value === null || pt?.value === undefined) return null;
-              const cx = compareSeries.length === 1 ? padL + innerW / 2 : padL + (i / (Math.max(n, compareSeries.length) - 1)) * innerW;
+              const cx = padL + (i + 0.5) * slotW;
               const cy = yOf(pt.value);
               return (
                 <circle key={`cmp-${i}`} cx={cx} cy={cy} r="4" fill="#0f9d76" stroke="#fff" strokeWidth="1.5">
@@ -736,7 +789,11 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
               aria-label="Chọn lớp học"
               onChange={(e) => { setClassId(e.target.value); setDrawerId(null); }}
             >
-              {classes.map((c) => <option key={c.id} value={c.id}>Lớp {c.name}</option>)}
+              {classes.map((c) => {
+                const rawName = String(c.name || '').trim();
+                const displayName = rawName.toLowerCase().startsWith('lớp') ? rawName : `Lớp ${rawName}`;
+                return <option key={c.id} value={c.id}>{displayName}</option>;
+              })}
             </select>
           )}
           {classes.length > 1 && (
@@ -756,9 +813,11 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
               aria-label="Chọn lớp đối chiếu"
               onChange={(e) => setCompareClassId(e.target.value)}
             >
-              {classes.filter((c) => c.id !== classId).map((c) => (
-                <option key={c.id} value={c.id}>Đối chiếu: Lớp {c.name}</option>
-              ))}
+              {classes.filter((c) => c.id !== classId).map((c) => {
+                const rawName = String(c.name || '').trim();
+                const displayName = rawName.toLowerCase().startsWith('lớp') ? rawName : `Lớp ${rawName}`;
+                return <option key={c.id} value={c.id}>Đối chiếu: {displayName}</option>;
+              })}
             </select>
           )}
           {data.teachers.length > 1 && (
@@ -824,6 +883,7 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
           value={kpi.avgPct}
           unit="%"
           hint={`${kpi.submitted} bài nộp`}
+          icon="trend"
           diff={cmpKpi && kpi.avgPct !== null && cmpKpi.avgPct !== null ? kpi.avgPct - cmpKpi.avgPct : null}
         />
         <Kpi
@@ -831,13 +891,15 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
           value={kpi.passRate}
           unit="%"
           hint="từ 50% trở lên"
+          icon="check"
           diff={cmpKpi && kpi.passRate !== null && cmpKpi.passRate !== null ? kpi.passRate - cmpKpi.passRate : null}
         />
         <Kpi
           label="Mastery TB"
           value={kpi.masteryAvg}
           unit="/100"
-          hint={`${kpi.dataCoverage}% em đủ dữ liệu`}
+          hint={`${kpi.dataCoverage}% học sinh đủ dữ liệu`}
+          icon="award"
           diff={cmpKpi && kpi.masteryAvg !== null && cmpKpi.masteryAvg !== null ? kpi.masteryAvg - cmpKpi.masteryAvg : null}
         />
         <Kpi
@@ -845,13 +907,15 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
           value={kpi.atRisk}
           unit=" em"
           hint="Mastery dưới 40"
+          icon="alert"
           tone={kpi.atRisk ? 'bad' : undefined}
         />
         <Kpi
           label="Chưa nộp"
           value={kpi.noSub}
           unit=" em"
-          hint="trong khoảng đang xem"
+          hint="trong đợt đang xem"
+          icon="clock"
           tone={kpi.noSub ? 'mid' : undefined}
         />
       </div>
@@ -1003,13 +1067,22 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
                 <p className="ta-note">Chưa có dữ liệu câu hỏi hay sai trong khoảng thời gian này.</p>
               ) : (
                 <ul className="ta-hardest">
-                  {data.hardest.slice(0, 4).map((q) => (
-                    <li key={q.key}>
-                      <span className={`ta-hard-rate tone-${rateTone(q.rate)}`}>{q.rate}%</span>
-                      <span className="ta-hard-text">
-                        {q.text.length > 95 ? `${q.text.slice(0, 95)}…` : q.text}
-                        <small>{q.examTitle}{q.topic ? ` · ${q.topic}` : ''} · {q.ok}/{q.rated} đúng</small>
-                      </span>
+                  {data.hardest.slice(0, 4).map((q, idx) => (
+                    <li key={q.key} className="ta-hard-item">
+                      <div className="ta-hard-badge-wrap">
+                        <span className={`ta-hard-rate tone-${rateTone(q.rate)}`}>
+                          {q.rate}% đúng
+                        </span>
+                        <span className="ta-hard-rank">#{idx + 1}</span>
+                      </div>
+                      <div className="ta-hard-text">
+                        <p className="ta-hard-q-title">{q.text.length > 110 ? `${q.text.slice(0, 110)}…` : q.text}</p>
+                        <div className="ta-hard-meta">
+                          <span className="ta-hard-exam-tag">{q.examTitle}</span>
+                          {q.topic ? <span className="ta-hard-topic-tag">{q.topic}</span> : null}
+                          <span className="ta-hard-stats">{q.ok}/{q.rated} em đúng</span>
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>

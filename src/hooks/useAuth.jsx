@@ -60,11 +60,17 @@ export function AuthProvider({ children }) {
       if (!mountedRef.current) return;
 
       if (u) {
-        // Điền email vào Supabase profiles (RLS: tự ghi dòng của mình) — fire-and-forget
+        // Điền email & tên hiển thị vào Supabase profiles (RLS: tự ghi dòng của mình) — fire-and-forget
         if (u.email) {
+          const profPayload = {
+            id: u.uid,
+            email: u.email,
+            ...(u.displayName ? { display_name: u.displayName } : {}),
+            ...(u.photoURL ? { avatar_url: u.photoURL } : {}),
+          };
           supabase
             .from('profiles')
-            .upsert({ id: u.uid, email: u.email }, { onConflict: 'id' })
+            .upsert(profPayload, { onConflict: 'id' })
             .then(({ error }) => {
               if (error) console.warn('[profiles] Điền email lỗi:', error.message);
             });

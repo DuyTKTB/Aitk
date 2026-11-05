@@ -24,11 +24,42 @@ const getFixedPos = (w) => {
 };
 
 const DIALOGUES = {
-  happy: ['Hôm nay học giỏi lắm!', 'Cố lên! Mình đang lớn nè', 'Bạn là idol của mình', 'Wow, streak đỉnh quá!'],
-  normal: ['Học thêm chút nữa đi nào~', 'Nhớ nghỉ ngơi giữa giờ nha!', 'Mình đợi bạn mở quiz', 'Hôm nay ôn gì thế?'],
-  sleepy: ['Zzz... đói quá bạn ơi', 'Làm 1 quiz nhỏ cho mình tỉnh nhé!', 'Mình sắp ngủ mất rồi...'],
-  sad: ['Buồn quá... lâu rồi bạn không học', 'Bỏ lỡ ngày nào cũng buồn ngày đó', 'Mình nhớ bạn lắm...'],
-  hibernating: ['Zzz... (đang ngủ đông)', 'Đánh thức mình bằng 1 quiz nhé!', 'Ngủ đông rồi...'],
+  happy: [
+    'Isoamyl axetat có mùi chuối chín, còn bạn lười học là ăn gậy của thầy cô nha!',
+    'Tình yêu có thể tan vỡ, nhưng liên kết cộng hóa trị giữa chúng ta bền vững hơn nhiều!',
+    'Hôm nay bạn giải bao nhiêu bài este rồi? Đừng để ngọn lửa chuỗi ngày tắt ngúm nhé!',
+    'Chuỗi ngày học tập của bạn đang rực sáng hơn cả kim loại Magie bốc cháy trong không khí!',
+    'Cồn bảy mươi độ sát khuẩn tay, còn sự chăm chỉ của bạn sẽ sát phạt mọi đề thi thử!',
+    'Chăm chỉ như hạt electron quay quanh hạt nhân, chắc chắn cổng trường Đại học mở toang đón bạn!',
+    'Làm đúng nhiều câu thế này thì danh hiệu Thủ khoa Hóa học năm nay chắc chắn thuộc về bạn!',
+    'Nước cất thì tinh khiết, còn bạn thì chăm chỉ và thông minh nhất phòng thi ảo hôm nay!',
+    'Cứ giữ vững phong độ này, đề thi đại học năm nay chỉ là chuyện nhỏ với bạn!',
+  ],
+  normal: [
+    'Cân bằng phản ứng oxi hóa khử xong chưa mà đã đòi chuyển tab lướt mạng xã hội hả bạn ơi?',
+    'Làm sai câu này thì giám khảo chấm thi cười xỉu đó nha, đọc kỹ lại đề bài đi bạn ơi!',
+    'Axit sunfuric đặc thì háo nước, còn bạn thì đang háo điểm mười môn Hóa đúng không?',
+    'Đừng như khí hiếm trơ trọi một mình, vào phòng thi ảo chiến đề cùng các bạn đi nào!',
+    'Học Hóa không khó, chỉ khó khi bạn quên mất công thức cấu tạo của chất béo thôi!',
+    'Electron quay quanh hạt nhân cũng không chóng mặt bằng bài toán este đa chức đâu bạn ơi!',
+    'Đang phân vân đáp án A hay B hả? Dùng phương pháp loại trừ hoặc hỏi ngay Gia sư AI nhé!',
+    'Hôm nay mục tiêu giải quyết trọn vẹn một đề thi thử các trường chuyên nhé!',
+    'Một nụ cười bằng mười thang thuốc bổ, còn một đề thi thử bằng mười bậc thăng tiến tương lai!',
+  ],
+  sleepy: [
+    'Buồn ngủ hả bạn ơi? Để mình tạo phản ứng tỏa nhiệt sưởi ấm quyết tâm cho bạn nhé!',
+    'Ngáp một cái là mất luôn một câu trắc nghiệm đúng sai rồi đó, tỉnh táo lên nào!',
+    'Cho một giọt quỳ tím vào cốc nước lọc rồi làm một đề thi thử cho tỉnh ngủ ngay đi!',
+    'Đừng để bộ não rơi vào trạng thái ngủ đông, vào phòng thi ảo khởi động năm câu nhanh nào!',
+  ],
+  sad: [
+    'Lâu rồi không thấy bạn vào cày đề, chuỗi ngày học tập của bạn sắp khóc ròng rồi nè...',
+    'Đừng bỏ rơi mình một mình trong phòng thí nghiệm, vào luyện một đề cho vui đi mà!',
+    'Mục tiêu Đại học Bách Khoa và Y Dược đang chờ bạn, đừng nản lòng mà hãy cày tiếp nhé!',
+  ],
+  hibernating: [
+    'Mình đang rơi vào trạng thái trơ như khí hiếm rồi... Làm ngay một đề thi để kích hoạt mình nhé!',
+  ],
 };
 
 const CHAT_RESPONSES = {

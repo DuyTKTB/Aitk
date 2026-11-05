@@ -344,12 +344,19 @@ body > .vt:not(.t-shell) {
 .vt-hero-foot { font: 500 .72rem var(--sans); opacity: .8; text-align: right; }
 
 .vt-chart { width: 100%; height: 130px; display: block; overflow: visible; }
-.vt-chart-grid { stroke: rgba(255,255,255,.18); stroke-width: 1; stroke-dasharray: 3 5; }
-.vt-chart-line { stroke: #fff; stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.vt-chart-dot { fill: #fff; stroke: var(--acc); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
-.vt-chart-bar { fill: rgba(255,255,255,.8); }
-.vt-chart-bar:hover { fill: #fff; }
-.vt-chart-empty { height: 130px; display: grid; place-items: center; border-radius: 18px; background: rgba(255,255,255,.12); font: 600 .85rem var(--sans); opacity: .9; }
+.vt-chart-grid { stroke: var(--line, rgba(148,163,184,.25)); stroke-width: 1; stroke-dasharray: 3 5; }
+.vt-chart-line { stroke: var(--acc, #2563eb); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.vt-chart-dot { fill: var(--panel, #fff); stroke: var(--acc, #2563eb); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.vt-chart-bar { fill: var(--acc, #2563eb); opacity: .82; }
+.vt-chart-bar:hover { fill: var(--acc, #2563eb); opacity: 1; }
+.vt-chart-empty { height: 130px; display: grid; place-items: center; border-radius: 18px; background: var(--soft, rgba(148,163,184,.12)); color: var(--mut); font: 600 .85rem var(--sans); opacity: .9; }
+
+.vt-hero .vt-chart-grid { stroke: rgba(255,255,255,.18); }
+.vt-hero .vt-chart-line { stroke: #fff; }
+.vt-hero .vt-chart-dot { fill: #fff; stroke: var(--acc); }
+.vt-hero .vt-chart-bar { fill: rgba(255,255,255,.8); opacity: 1; }
+.vt-hero .vt-chart-bar:hover { fill: #fff; }
+.vt-hero .vt-chart-empty { background: rgba(255,255,255,.12); color: #fff; }
 
 .vt-ring-card { display: flex; flex-direction: column; align-items: center; gap: .9rem; }
 .vt-ring-card header { width: 100%; display: flex; justify-content: space-between; align-items: baseline; }

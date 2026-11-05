@@ -12,7 +12,7 @@ import {
   query, where, serverTimestamp, arrayUnion, arrayRemove, onSnapshot,
   orderBy, limit, writeBatch,
 } from 'firebase/firestore';
-import { scoreExam, qType } from './examScoring.js';
+import { scoreExam, scoreQuestion, isAnswered, qType } from './examScoring.js';
 import { stripUndefined } from './examSubmit.js';
 import { db } from './firebase.js';
 
@@ -1410,19 +1410,29 @@ export function gradeAnswers(questions, answers = {}) {
 }
 
 /**
- * CHẤM LẠI khi giáo viên đổi đáp án đúng (vì AI đôi khi ra sai).
- * changes: { [chỉ số câu]: chỉ số đáp án đúng mới }  — hoặc { [i]: { correct, points } }
+ * CHẤM LẠI khi giáo viên đổi đáp án đúng (hỗ trợ cả 3 phần: Trắc nghiệm, Đúng/Sai, Trả lời ngắn).
+ * changes: { [chỉ số câu]: chỉ số đáp án đúng mới | { statements } | { answer, accepted } }
  * Trả về { ok, changed, total, avg }
  */
 export async function regradeExam(examId, changes = {}) {
   const exam = await getExamById(examId);
   if (!exam) throw new Error('Đề không tồn tại');
 
-  const questions = exam.questions.map((q, i) => {
+  const questions = (exam.questions || []).map((q, i) => {
     const c = changes[i];
     if (c == null) return q;
-    const patch = typeof c === 'object' ? c : { correct: c };
-    return { ...q, ...patch };
+    if (typeof c === 'object' && !Array.isArray(c)) {
+      const next = { ...q, ...c };
+      if (Array.isArray(c.statements)) {
+        next.statements = c.statements.map((s) => ({
+          ...s,
+          answer: Boolean(s.answer ?? s.correct),
+          correct: Boolean(s.answer ?? s.correct),
+        }));
+      }
+      return next;
+    }
+    return { ...q, correct: Number(c) };
   });
   const totalPoints = sumPoints(questions);
 
@@ -1454,39 +1464,99 @@ export async function regradeExam(examId, changes = {}) {
 }
 
 /* ============================================================
-   THỐNG KÊ & PHÂN TÍCH ĐÁP ÁN NHIỄU (tính từ submissions đã tải)
+   THỐNG KÊ & PHÂN TÍCH ĐÁP ÁN NHIỄU (tính từ submissions đã tải, chuẩn 3 phần)
    ============================================================ */
 export function analyzeSubmissions(exam, subs = []) {
   const n = subs.length;
-  const scores = subs.map((s) => Number(s.score) || 0);
+  const examTotalPts = Number(exam?.totalPoints) || sumPoints(exam?.questions || []) || 10;
+  const scores10 = subs.map((s) => {
+    const raw = Number(s?.score) || 0;
+    const max = Number(s?.totalPoints) || examTotalPts || 10;
+    return max > 0 ? Math.round(((raw / max) * 10) * 100) / 100 : raw;
+  });
+
   const questions = (exam?.questions || []).map((q, qi) => {
-    const isMC = qType(q) === 'single_choice';
+    const type = qType(q);
+    const isMC = type === 'single_choice';
+    const isTF = type === 'true_false';
+    const isSA = type === 'short_answer';
     const counts = new Array(isMC ? (q.options || []).length : 0).fill(0);
+    const stmtCorrectCounts = isTF ? new Array((q.statements || []).length).fill(0) : [];
+    const wrongShortMap = new Map();
     let skipped = 0;
+    let earnedRatioSum = 0;
+    let fullCorrectCount = 0;
+
     subs.forEach((s) => {
-      const p = s.detail?.[qi]?.picked ?? s.answers?.[qi];
-      if (typeof p === 'number' && p >= 0 && p < counts.length) counts[p] += 1;
-      else skipped += 1;
+      const rawAns = s.answers?.[qi] !== undefined ? s.answers[qi] : s.detail?.[qi]?.picked;
+      const answered = isAnswered(q, rawAns);
+      if (!answered) {
+        skipped += 1;
+        return;
+      }
+      const res = scoreQuestion(q, rawAns);
+      const ratio = res.max > 0 ? (res.earned / res.max) : (res.isCorrect ? 1 : 0);
+      earnedRatioSum += ratio;
+      if (res.isCorrect) fullCorrectCount += 1;
+
+      if (isMC) {
+        const p = typeof rawAns === 'number' ? rawAns : res.picked;
+        if (typeof p === 'number' && p >= 0 && p < counts.length) counts[p] += 1;
+      } else if (isTF) {
+        const stmts = q.statements || [];
+        const pickedArr = Array.isArray(res.picked) ? res.picked : [];
+        stmts.forEach((stmt, si) => {
+          const target = Boolean(stmt.answer ?? stmt.correct);
+          if (pickedArr[si] === target) stmtCorrectCounts[si] += 1;
+        });
+      } else if (isSA && !res.isCorrect) {
+        const txt = String(rawAns ?? '').trim();
+        if (txt) wrongShortMap.set(txt, (wrongShortMap.get(txt) || 0) + 1);
+      }
     });
+
     const correctRate = n
-      ? (isMC ? counts[q.correct] / n : subs.filter((s) => s.detail?.[qi]?.isCorrect).length / n)
+      ? (isMC ? (counts[q.correct] || 0) / n : earnedRatioSum / n)
       : 0;
-    const topWrong = counts
-      .map((c, oi) => ({ oi, c }))
-      .filter((x) => x.oi !== q.correct)
-      .sort((a, b) => b.c - a.c)[0];
+    const fullCorrectRate = n ? fullCorrectCount / n : 0;
+
+    const topWrong = isMC
+      ? counts
+          .map((c, oi) => ({ oi, c }))
+          .filter((x) => x.oi !== q.correct)
+          .sort((a, b) => b.c - a.c)[0]
+      : null;
+
+    let topWrongShort = null;
+    if (isSA && wrongShortMap.size > 0) {
+      const sorted = [...wrongShortMap.entries()].sort((a, b) => b[1] - a[1]);
+      topWrongShort = { text: sorted[0][0], c: sorted[0][1] };
+    }
+
+    const statementRates = isTF
+      ? stmtCorrectCounts.map((c) => (n ? c / n : 0))
+      : [];
+
     return {
-      index: qi, counts, skipped, correctRate,
+      index: qi,
+      type,
+      counts,
+      skipped,
+      correctRate,
+      fullCorrectRate,
+      statementRates,
       difficulty: correctRate >= 0.8 ? 'dễ' : correctRate >= 0.5 ? 'vừa' : 'khó',
       topDistractor: topWrong && topWrong.c > 0 ? topWrong : null,
-      suspicious: n >= 5 && correctRate < 0.15, // đa số chọn sai → có thể đáp án đúng bị sai
+      topWrongShort,
+      suspicious: n >= 3 && correctRate < 0.2 && skipped < n * 0.8,
     };
   });
+
   return {
     submitted: n,
-    avg: n ? scores.reduce((a, b) => a + b, 0) / n : 0,
-    max: n ? Math.max(...scores) : 0,
-    min: n ? Math.min(...scores) : 0,
+    avg: n ? Math.round((scores10.reduce((a, b) => a + b, 0) / n) * 100) / 100 : 0,
+    max: n ? Math.max(...scores10) : 0,
+    min: n ? Math.min(...scores10) : 0,
     questions,
   };
 }

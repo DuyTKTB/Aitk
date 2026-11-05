@@ -13,6 +13,8 @@
    ============================================================ */
 
 import { callModel, parseJsonLoose } from './examAiUtils.js';
+import { parseExamDocxFile } from './examDocxParser.js';
+import { detectExamSubjectAndGrade } from './subjectClassifier.js';
 
 const MAX_PAGES = 500;
 const OCR_PAGE_CAP = 40;
@@ -677,7 +679,14 @@ function mergeQuestions(regexQ, aiQ) {
 }
 
 function qualityRate(questions, expected) {
-  const ok = (questions || []).filter((q) => q._ok !== false && (q.options || []).length >= MIN_OPTS && (q.q || '').trim().length >= MIN_STEM).length;
+  const ok = (questions || []).filter((q) => {
+    if (q._ok === false) return false;
+    const hasStem = (q.q || '').trim().length >= MIN_STEM || Boolean(q.image) || (q.images && q.images.length > 0);
+    const isP1 = (q.options || []).length >= MIN_OPTS;
+    const isP2 = q.part === 2 || q.type === 'true_false' || (Array.isArray(q.statements) && q.statements.length > 0);
+    const isP3 = q.part === 3 || q.type === 'short_answer' || Boolean(q.answer);
+    return hasStem && (isP1 || isP2 || isP3);
+  }).length;
   const denom = Math.max(expected, questions.length, 1);
   if (expected > 0) return ok / expected;
   return questions.length ? ok / denom : 0;
@@ -688,6 +697,38 @@ function qualityRate(questions, expected) {
    ============================================================ */
 export async function parseExamFile(file, { onProgress, signal } = {}) {
   const t0 = performance.now();
+  if (!file) throw new Error('Không có file.');
+  throwIfAborted(signal);
+
+  const fileName = (file.name || '').toLowerCase();
+
+  // NÂNG CẤP V4: Với file .docx, ưu tiên bộ parser chuyên sâu examDocxParser
+  // Trích xuất 100% hình ảnh (kể cả ảnh nổi wp:anchor), công thức OMML và chuẩn 3 phần GDPT 2025
+  if (/\.docx$/i.test(fileName)) {
+    onProgress?.({ stage: 'reading', percent: 25 });
+    const docxResult = await parseExamDocxFile(file);
+    onProgress?.({ stage: 'done', percent: 100 });
+    const elapsedMs = Math.round(performance.now() - t0);
+    return {
+      questions: (docxResult.questions || []).map((q, i) => ({
+        ...q,
+        num: q.num || i + 1,
+        part: q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1),
+        type: q.type || (q.part === 2 ? 'true_false' : q.part === 3 ? 'short_answer' : 'single_choice'),
+        points: q.points || (q.part === 2 ? 1.0 : q.part === 3 ? 0.25 : 0.25),
+      })),
+      subject: docxResult.subject,
+      grade: docxResult.grade,
+      text: docxResult.text,
+      extractedImages: docxResult.extractedImages || [],
+      formulaCount: docxResult.formulaCount || 0,
+      stats: {
+        ...docxResult.stats,
+        usedAI: false,
+        elapsedMs,
+      },
+    };
+  }
 
   onProgress?.({ stage: 'extracting', percent: 4 });
   const { text, pages, imagePages, kind } = await extractTextFromFile(file, onProgress, signal);
@@ -746,18 +787,34 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
     }
   }
 
-  const cleaned = finalQuestions.filter((q) => (q.q || '').trim() && (q.options || []).length >= MIN_OPTS);
+  // Bảo vệ không làm mất câu hỏi Phần II, Phần III, hoặc câu chỉ có hình ảnh
+  const cleaned = finalQuestions.filter((q) => {
+    const hasStem = (q.q || '').trim().length > 0 || Boolean(q.image) || (q.images && q.images.length > 0);
+    const isPart1 = (q.options || []).length >= MIN_OPTS;
+    const isPart2 = q.part === 2 || q.type === 'true_false' || (Array.isArray(q.statements) && q.statements.length > 0);
+    const isPart3 = q.part === 3 || q.type === 'short_answer' || Boolean(q.answer);
+    return hasStem && (isPart1 || isPart2 || isPart3);
+  });
+
   onProgress?.({ stage: 'done', percent: 100 });
 
   if (!cleaned.length) {
     throw new Error('Không tách được câu hỏi. File nên có dạng: Câu 1: ... / A. ... / B. ... / Đáp án: A');
   }
 
+  const detected = detectExamSubjectAndGrade({
+    fileName: file.name,
+    text,
+    questions: cleaned,
+  });
+
   const elapsedMs = Math.round(performance.now() - t0);
-  console.log(`[examParser] Xử lý xong trong ${elapsedMs}ms: ${cleaned.length}/${expectedCount} câu`);
+  console.log(`[examParser] Xử lý xong trong ${elapsedMs}ms: ${cleaned.length}/${expectedCount} câu (${detected.subject} - Lớp ${detected.grade})`);
 
   return {
     questions: cleaned.map((q, i) => ({ ...q, num: q.num || i + 1 })),
+    subject: detected.subject,
+    grade: detected.grade,
     stats: {
       total: cleaned.length,
       expected: expectedCount,

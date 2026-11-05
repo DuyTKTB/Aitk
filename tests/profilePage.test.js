@@ -48,22 +48,22 @@ describe('Profile Mobile Architecture & Helpers', () => {
     const testUid = 'test-spam-user-' + Date.now();
 
     // 1. Mã không hợp lệ bị từ chối
-    const rInvalid = redeemActivationCode(testUid, 'XYZ999');
+    const rInvalid = await redeemActivationCode(testUid, 'XYZ999');
     expect(rInvalid.ok).toBe(false);
     expect(rInvalid.message).toContain('không hợp lệ');
 
     // 2. Mã quà tặng hợp lệ ELEC15 thành công
-    const r1 = redeemActivationCode(testUid, 'ELEC15');
+    const r1 = await redeemActivationCode(testUid, 'ELEC15');
     expect(r1.ok).toBe(true);
     expect(r1.addedPoints).toBe(15);
 
     // 3. Nhập lại cùng 1 mã bị chặn, không cho cộng điểm lần 2
-    const rDuplicate = redeemActivationCode(testUid, 'ELEC15');
+    const rDuplicate = await redeemActivationCode(testUid, 'ELEC15');
     expect(rDuplicate.ok).toBe(false);
     expect(rDuplicate.message).toContain('đã được kích hoạt');
 
     // 4. Mã ELECVIP nâng cấp gói thành VIP
-    const rVip = redeemActivationCode(testUid, 'ELECVIP');
+    const rVip = await redeemActivationCode(testUid, 'ELECVIP');
     expect(rVip.ok).toBe(true);
     expect(rVip.data.planName).toBe('VIP');
     expect(rVip.data.hearts).toBe(99);

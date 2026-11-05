@@ -15,7 +15,7 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
   const { user, logout } = useAuth();
   const { count: streakCount, isToday: hasStreakToday } = useLiveStreak();
   const { playing: introPlaying } = useElecIntro();
-  const isTeacher = isPro && userRole === 'teacher';
+  const isTeacher = Boolean(isPro || userRole === 'teacher');
 
   return (
     <header className="mhead-bar" style={{ display: 'flex' }}>
@@ -45,24 +45,22 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
       {/* ----- BÊN PHẢI: Chuỗi 🔥 + XP ⚡ + Tìm kiếm + Theme + Profile ----- */}
       <div className="mhead-right">
         {/* Chip chuỗi ngày lửa cam */}
-        <a
-          href="#leaderboard"
+        <button
+          type="button"
           className={`mhead-streak-pill ${hasStreakToday ? 'is-active' : 'is-idle'}`}
           onClick={(e) => {
+            e.preventDefault();
             window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
-            if (window.location.hash === '#leaderboard') {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              window.dispatchEvent(new HashChangeEvent('hashchange'));
-            }
+            window.dispatchEvent(new CustomEvent('elec-open-streak-modal'));
           }}
-          title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi 🔥) — Xem Bảng xếp hạng` : `Chuỗi ${streakCount} ngày (Chưa học) — Xem Bảng xếp hạng`}
+          title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay) — Xem Bảo vệ chuỗi` : `Chuỗi ${streakCount} ngày (Chưa học) — Xem Bảo vệ chuỗi`}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className={`mhead-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
             <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
           </svg>
           <span>{streakCount}</span>
-        </a>
+        </button>
 
         {/* Chip XP / Credits */}
         <button

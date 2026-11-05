@@ -101,22 +101,22 @@
   }
 
   [data-theme='light'] {
-    /* --- BẢNG MÀU LIGHT GLASS (ẢNH 2 & 3: BEEBOT & APP THỞ) --- */
-    --t-bg: #f4f6fb;
+    /* --- BẢNG MÀU CLERIO SKY-BLUE SAAS (ĐỒNG BỘ TOÀN HỆ THỐNG GIÁO VIÊN) --- */
+    --t-bg: #eaf2fb;
     --t-surface-0: #ffffff;
-    --t-surface-1: rgba(255, 255, 255, 0.82);
+    --t-surface-1: rgba(255, 255, 255, 0.92);
     --t-surface-2: #ffffff;
-    --t-surface-3: #eef2f9;
-    --t-surface-glass: rgba(255, 255, 255, 0.72);
-    --t-border: rgba(100, 120, 180, 0.16);
-    --t-border-subtle: rgba(100, 120, 180, 0.08);
-    --t-border-strong: rgba(91, 108, 255, 0.28);
+    --t-surface-3: #f0f6fd;
+    --t-surface-glass: rgba(255, 255, 255, 0.85);
+    --t-border: rgba(186, 212, 240, 0.55);
+    --t-border-subtle: rgba(186, 212, 240, 0.3);
+    --t-border-strong: rgba(59, 130, 246, 0.35);
 
-    /* Màu Nhấn Xanh Tím Sư Phạm */
-    --t-accent: #5b6cff;
-    --t-accent-hover: #4859f0;
-    --t-accent-subtle: rgba(91, 108, 255, 0.1);
-    --t-accent-glow: rgba(91, 108, 255, 0.25);
+    /* Màu Nhấn Xanh Tươi Sáng Hiện Đại */
+    --t-accent: #2563eb;
+    --t-accent-hover: #1d4ed8;
+    --t-accent-subtle: rgba(37, 99, 235, 0.08);
+    --t-accent-glow: rgba(37, 99, 235, 0.22);
     --t-accent-ink: #ffffff;
 
     --t-accent-2: #8b5cf6;

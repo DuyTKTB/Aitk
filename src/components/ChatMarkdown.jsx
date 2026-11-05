@@ -145,7 +145,14 @@ function renderInline(text) {
  * MarkdownLike — render câu trả lời với markdown cơ bản + công thức hóa học
  */
 export function MarkdownLike({ text }) {
-  const lines = useMemo(() => (text || '').split('\n'), [text]);
+  const lines = useMemo(() => {
+    const raw = String(text || '');
+    // Tự động ngắt dòng chuẩn nếu các tiêu đề ### hoặc bullet * bị dính liền trên 1 dòng
+    const normalized = raw
+      .replace(/([^\n])\s*(#{1,6}\s+)/g, '$1\n\n$2')
+      .replace(/([^\n])\s+([*•-]\s+)/g, '$1\n$2');
+    return normalized.split('\n');
+  }, [text]);
 
   const elements = [];
   let key = 0;
@@ -173,6 +180,71 @@ export function MarkdownLike({ text }) {
     // Dòng trống
     if (!trimmed) {
       flushList();
+      continue;
+    }
+
+    // Đường kẻ ngang --- hoặc ***
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      flushList();
+      elements.push(<hr key={key++} className="ds-divider" />);
+      continue;
+    }
+
+    // Callout / Trích dẫn >
+    if (trimmed.startsWith('>')) {
+      flushList();
+      const quoteContent = trimmed.replace(/^>\s*/, '');
+      elements.push(
+        <div key={key++} className="ds-callout-box">
+          {renderInline(quoteContent)}
+        </div>
+      );
+      continue;
+    }
+
+    // Bảng Markdown: | Cột 1 | Cột 2 |
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      flushList();
+      const tableLines = [trimmed];
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith('|') && lines[i + 1].trim().endsWith('|')) {
+        i++;
+        tableLines.push(lines[i].trim());
+      }
+
+      const parseRow = (rowStr) =>
+        rowStr
+          .split('|')
+          .slice(1, -1)
+          .map((c) => c.trim());
+
+      const headerRow = parseRow(tableLines[0]);
+      const bodyRows = tableLines
+        .slice(1)
+        .filter((r) => !/^\|[\s\-:|]+\|$/.test(r))
+        .map(parseRow);
+
+      elements.push(
+        <div key={key++} className="ds-table-wrap">
+          <table className="ds-table">
+            <thead>
+              <tr>
+                {headerRow.map((h, hIdx) => (
+                  <th key={hIdx}>{renderInline(h)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((r, rIdx) => (
+                <tr key={rIdx}>
+                  {r.map((cell, cIdx) => (
+                    <td key={cIdx}>{renderInline(cell)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
       continue;
     }
 

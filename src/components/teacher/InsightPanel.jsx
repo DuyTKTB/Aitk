@@ -166,7 +166,7 @@ export default function InsightPanel({
                   <IcoSparkles size={12} /> ELEC AI Pedagogical Insight
                 </span>
                 {data?.isAiGenerated ? (
-                  <Chip tone="lime" size="sm">Gemini GDPT 2018</Chip>
+                  <Chip tone="lime" size="sm">ELEC AI GDPT 2025</Chip>
                 ) : (
                   <Chip tone="default" size="sm">Thuật toán quy nạp</Chip>
                 )}

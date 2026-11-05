@@ -156,14 +156,14 @@ const envList = (v) => String(v || '').split(/[\s,;]+/).map((s) => s.trim()).fil
 
 const DEFAULTS = {
   gemini: {
-    // Giữ tên model đang chạy của dự án ở đầu chuỗi, thêm phương án dự phòng phổ biến.
-    fast: ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
-    smart: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'],
-    vision: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'],
+    // Model Gemini chính thức hoạt động
+    fast: ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'],
+    smart: ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-pro'],
+    vision: ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'],
   },
   groq: {
-    fast: ['openai/gpt-oss-20b'],
-    smart: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
+    fast: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
+    smart: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
     vision: [],
   },
   agnes: {

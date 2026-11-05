@@ -2,7 +2,7 @@
    ExamManagePanel.jsx — Bảng quản lý 1 đề cho giáo viên
    ------------------------------------------------------------
    • Gia hạn / Đóng–Mở lại / Nhân bản / Sửa nhanh thông tin
-   • CHẤM LẠI khi đổi đáp án đúng (AI đôi khi ra sai đáp án)
+   • CHẤM LẠI khi đổi đáp án đúng (hỗ trợ cả 3 phần: Trắc nghiệm, Đúng/Sai, Trả lời ngắn)
    • Phân tích đáp án nhiễu: mỗi câu bao nhiêu % chọn từng phương án,
      gắn cờ câu đa số chọn sai (có thể đáp án đúng bị sai)
    Props: exam, submissions (đã tải), onChanged(), toast {success,error}
@@ -110,32 +110,95 @@ export default function ExamManagePanel({ exam, submissions = [], onChanged, toa
           </>}>
           <p className="emp-hint">Chọn đáp án đúng mới cho câu cần sửa. Điểm của <b>tất cả bài đã nộp</b> sẽ được tính lại.</p>
           <ol className="emp-qs">
-            {exam.questions.map((q, i) => {
-              const cur = changes[i] ?? q.correct;
+            {(exam.questions || []).map((q, i) => {
+              const qType = q.type || (Array.isArray(q.statements) ? 'true_false' : (!Array.isArray(q.options) || q.options.length === 0) ? 'short_answer' : 'single_choice');
               const st = stats.questions[i];
+              const chg = changes[i];
               return (
-                <li key={i} className={'emp-q' + (st?.suspicious ? ' flag' : '') + (changes[i] != null ? ' changed' : '')}>
+                <li key={i} className={'emp-q' + (st?.suspicious ? ' flag' : '') + (chg != null ? ' changed' : '')}>
                   <div className="emp-q-head">
                     <b>Câu {i + 1}</b>
-                    {st && submissions.length > 0 && <span className="emp-rate">{pctOf(st.counts[q.correct] || 0, submissions.length)}% đúng</span>}
+                    {qType === 'true_false' && <span className="emp-rate">Đúng/Sai</span>}
+                    {qType === 'short_answer' && <span className="emp-rate">Trả lời ngắn</span>}
+                    {st && submissions.length > 0 && (
+                      <span className="emp-rate">{Math.round((st.correctRate || 0) * 100)}% đúng</span>
+                    )}
                     {st?.suspicious && <span className="emp-flag">đáng ngờ</span>}
                   </div>
                   <MathText as="p" className="emp-q-text">{q.q}</MathText>
-                  <div className="emp-opts">
-                    {q.options.map((o, oi) => (
-                      <button key={oi} type="button"
-                        className={'emp-opt' + (cur === oi ? ' sel' : '') + (q.correct === oi ? ' orig' : '')}
-                        onClick={() => setChanges((c) => {
-                          const n = { ...c };
-                          if (oi === q.correct) delete n[i]; else n[i] = oi;
-                          return n;
-                        })}>
-                        <span className="emp-key">{letter(oi)}</span>
-                        <MathText>{o}</MathText>
-                        {st && submissions.length > 0 && <em>{pctOf(st.counts[oi], submissions.length)}%</em>}
-                      </button>
-                    ))}
-                  </div>
+
+                  {qType === 'single_choice' && (
+                    <div className="emp-opts">
+                      {(q.options || []).map((o, oi) => {
+                        const cur = typeof chg === 'number' ? chg : q.correct;
+                        return (
+                          <button key={oi} type="button"
+                            className={'emp-opt' + (cur === oi ? ' sel' : '') + (q.correct === oi ? ' orig' : '')}
+                            onClick={() => setChanges((c) => {
+                              const n = { ...c };
+                              if (oi === q.correct) delete n[i]; else n[i] = oi;
+                              return n;
+                            })}>
+                            <span className="emp-key">{letter(oi)}</span>
+                            <MathText>{o}</MathText>
+                            {st && submissions.length > 0 && <em>{pctOf(st.counts?.[oi] || 0, submissions.length)}%</em>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {qType === 'true_false' && (
+                    <div className="emp-opts">
+                      {(chg?.statements || q.statements || []).map((stmt, si) => {
+                        const curAns = Boolean(stmt.answer ?? stmt.correct);
+                        return (
+                          <div key={si} className="emp-opt" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <span style={{ flex: 1 }}>
+                              <b style={{ marginRight: 6 }}>{'abcd'[si] || si + 1})</b>
+                              <MathText>{stmt.text}</MathText>
+                            </span>
+                            <button
+                              type="button"
+                              className="emp-btn"
+                              style={{
+                                background: curAns ? 'rgba(16,185,129,0.16)' : 'rgba(239,68,68,0.14)',
+                                color: curAns ? '#059669' : '#dc2626',
+                                fontWeight: 700,
+                              }}
+                              onClick={() => setChanges((c) => {
+                                const baseStmts = (c[i]?.statements || q.statements || []).map((s, idx) =>
+                                  idx === si ? { ...s, answer: !(s.answer ?? s.correct), correct: !(s.answer ?? s.correct) } : s
+                                );
+                                return { ...c, [i]: { statements: baseStmts } };
+                              })}
+                            >
+                              {curAns ? 'Đúng' : 'Sai'} (Bấm để đổi)
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {qType === 'short_answer' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Đáp án chuẩn:</span>
+                      <input
+                        value={chg?.answer ?? q.answer ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setChanges((c) => {
+                            const n = { ...c };
+                            if (val === String(q.answer ?? '')) delete n[i];
+                            else n[i] = { answer: val, accepted: [val, val.replace(',', '.'), val.replace('.', ',')] };
+                            return n;
+                          });
+                        }}
+                        style={{ padding: '0.35rem 0.65rem', borderRadius: 8, border: '1px solid var(--line, #cbd5e1)', maxWidth: 160 }}
+                      />
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -153,26 +216,50 @@ export default function ExamManagePanel({ exam, submissions = [], onChanged, toa
             <li><b>{stats.min}</b><span>Thấp nhất</span></li>
           </ul>
           <ol className="emp-qs">
-            {exam.questions.map((q, i) => {
-              const st = stats.questions[i];
+            {(exam.questions || []).map((q, i) => {
+              const st = stats.questions[i] || { counts: [], skipped: 0, correctRate: 0, difficulty: 'vừa', suspicious: false };
+              const qType = q.type || (Array.isArray(q.statements) ? 'true_false' : (!Array.isArray(q.options) || q.options.length === 0) ? 'short_answer' : 'single_choice');
               return (
                 <li key={i} className={'emp-q' + (st.suspicious ? ' flag' : '')}>
                   <div className="emp-q-head">
                     <b>Câu {i + 1}</b>
                     <span className={'emp-diff ' + st.difficulty}>{st.difficulty}</span>
-                    <span className="emp-rate">{Math.round(st.correctRate * 100)}% đúng</span>
+                    <span className="emp-rate">{Math.round((st.correctRate || 0) * 100)}% đúng</span>
                     {st.skipped > 0 && <span className="emp-rate">{st.skipped} bỏ qua</span>}
                   </div>
                   <p className="emp-q-text">{stripMath(q.q).slice(0, 140)}</p>
-                  <div className="emp-bars">
-                    {q.options.map((o, oi) => (
-                      <div key={oi} className={'emp-bar' + (oi === q.correct ? ' right' : '')}>
-                        <span className="emp-key">{letter(oi)}</span>
-                        <div className="emp-track"><div style={{ width: `${pctOf(st.counts[oi], stats.submitted)}%` }} /></div>
-                        <em>{pctOf(st.counts[oi], stats.submitted)}%</em>
-                      </div>
-                    ))}
-                  </div>
+                  {qType === 'single_choice' && (
+                    <div className="emp-bars">
+                      {(q.options || []).map((o, oi) => (
+                        <div key={oi} className={'emp-bar' + (oi === q.correct ? ' right' : '')}>
+                          <span className="emp-key">{letter(oi)}</span>
+                          <div className="emp-track"><div style={{ width: `${pctOf(st.counts?.[oi] || 0, stats.submitted)}%` }} /></div>
+                          <em>{pctOf(st.counts?.[oi] || 0, stats.submitted)}%</em>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {qType === 'true_false' && (
+                    <div className="emp-bars">
+                      {(q.statements || []).map((s, idx) => {
+                        const ratePct = Math.round((st.statementRates?.[idx] || 0) * 100);
+                        const isTrue = Boolean(s.answer ?? s.correct);
+                        return (
+                          <div key={idx} className="emp-bar right">
+                            <span className="emp-key">{'abcd'[idx]}) {isTrue ? 'Đ' : 'S'}</span>
+                            <div className="emp-track"><div style={{ width: `${ratePct}%` }} /></div>
+                            <em>{ratePct}% đúng</em>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {qType === 'short_answer' && (
+                    <p className="emp-note">
+                      Đáp án trả lời ngắn: <b>{q.answer || (q.accepted || [])[0] || '—'}</b>
+                      {st.topWrongShort ? ` · Sai phổ biến nhất: "${st.topWrongShort.text}" (${st.topWrongShort.c} HS)` : ''}
+                    </p>
+                  )}
                   {st.topDistractor && (
                     <p className="emp-note">Đáp án nhiễu hấp dẫn nhất: <b>{letter(st.topDistractor.oi)}</b> ({st.topDistractor.c} học sinh)</p>
                   )}

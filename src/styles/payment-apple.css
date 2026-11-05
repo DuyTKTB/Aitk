@@ -467,3 +467,87 @@
   color: #0071e3;
   font-weight: 600;
 }
+
+/* ============================================================
+   MÃ GIẢM GIÁ / VOUCHER APPLE HIG
+   ============================================================ */
+.apl-pay-discount-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+
+.apl-pay-discount-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.apl-pay-discount-input {
+  flex: 1;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+  padding: 0 14px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: inherit;
+  outline: none;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .apl-pay-discount-input {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.apl-pay-discount-input:focus {
+  border-color: #0071e3;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
+}
+
+.apl-pay-discount-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 0;
+  background: #0071e3;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.apl-pay-discount-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.apl-pay-discount-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10b981;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.apl-pay-discount-remove {
+  background: transparent;
+  border: 0;
+  color: #ef4444;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}

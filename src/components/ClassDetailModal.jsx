@@ -507,15 +507,6 @@ export default function ClassDetailModal({
         </nav>
 
         <div className="cd-body">
-          {tab === 'analytics' && (
-            <LearningAnalytics
-              classInfo={classInfo}
-              exams={exams}
-              submissionsMap={submissionsMap}
-              loadingSubmissions={loadingSubs}
-            />
-          )}
-
           {tab === 'teachers' && (
             <SubjectTeacherPanel
               classInfo={classInfo}

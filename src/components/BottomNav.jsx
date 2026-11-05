@@ -67,7 +67,7 @@ const isTextField = (el) => Boolean(el) && (
 );
 
 export default function BottomNav({ page, userRole = 'student', isPro = false, onOpenMore }) {
-  const isTeacher = isPro && userRole === 'teacher';
+  const isTeacher = Boolean(isPro || userRole === 'teacher');
   const isStudent = userRole === 'student';
   const showClassTab = isTeacher || isStudent;
 

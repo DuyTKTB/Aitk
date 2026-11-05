@@ -23,6 +23,7 @@ import {
 import { ELEMENTS, norm } from '../data/elements.js';
 import { COMPOUNDS, analyze } from '../data/chemRules.js';
 import { REACTIONS } from '../data/reactions.js';
+import { runScientificTools } from './scientificTools.js';
 
 export const MOLAR_VOLUME = 22.4;   // lít/mol ở đktc
 const r3 = (n) => Math.round(n * 1000) / 1000;
@@ -430,6 +431,19 @@ export function runTools(text, opts = {}) {
   hits = hits.concat(safe(() => toolCompound(formulas)));
   hits = hits.concat(safe(() => toolElement(raw)));
   hits = hits.concat(safe(() => toolMolar(formulas)));
+
+  // Bổ sung công cụ khoa học đa môn (Toán học, Vật lí, Sinh học)
+  const sciRes = safe(() => runScientificTools(raw));
+  if (sciRes && Array.isArray(sciRes.hits) && sciRes.hits.length) {
+    const sciHits = sciRes.hits.map((h) => ({
+      tool: h.tool,
+      title: h.title,
+      lines: h.lines,
+      value: h.value,
+      verify: typeof h.value === 'number',
+    }));
+    hits = hits.concat(sciHits);
+  }
 
   // Khử trùng lặp theo tool + title + dòng đầu
   const seen = new Set();

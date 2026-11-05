@@ -1,0 +1,945 @@
+/* ============================================================
+   teacher-ai-copilot.css — Style Clerio Clean Sky-Blue SaaS
+   Dành cho AI Trợ Lý Giáo Viên Toàn Năng (v1.0)
+   ============================================================ */
+
+.tac-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  animation: tacFadeIn 0.25s ease-out;
+}
+
+@keyframes tacFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   1. HEADER / BRAND TOPBAR
+   ============================================================ */
+.tac-header {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 22px;
+  padding: 1.2rem 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.035);
+}
+
+.tac-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.tac-brand-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25);
+  flex-shrink: 0;
+}
+
+.tac-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tac-brand-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+.tac-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.tac-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.tac-brand-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.tac-close-btn {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tac-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* ============================================================
+   2. NAV PILLS SWITCHER
+   ============================================================ */
+.tac-nav-pills {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 0.35rem;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.tac-pill {
+  padding: 0.55rem 1.1rem;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.18s ease;
+}
+
+.tac-pill:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: #1e293b;
+}
+
+.tac-pill.active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.1);
+}
+
+/* ============================================================
+   3. CONTENT GRID & CARDS
+   ============================================================ */
+.tac-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.tac-card {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 24px;
+  padding: 1.4rem;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.035);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+}
+
+.tac-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tac-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tac-card-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.tac-sub-title {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   4. FILE CHIP & TEXTAREA
+   ============================================================ */
+.tac-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+  color: #1d4ed8;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.tac-file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tac-textarea-wrap {
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.tac-textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.9rem;
+  font-size: 0.86rem;
+  font-family: inherit;
+  color: #0f172a;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.tac-textarea-foot {
+  padding: 0.65rem 0.9rem;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ============================================================
+   5. BUTTONS
+   ============================================================ */
+.tac-btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.83rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22);
+  transition: all 0.16s ease;
+}
+
+.tac-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+}
+
+.tac-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tac-btn-primary.sm {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+}
+
+.tac-btn-primary.icon-only {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.tac-btn-outline {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.16s ease;
+}
+
+.tac-btn-outline:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.tac-btn-outline.sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.76rem;
+}
+
+/* ============================================================
+   6. DIAGNOSTIC BOX & EMPTY BOX
+   ============================================================ */
+.tac-diagnostic-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tac-diag-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #166534;
+  font-size: 0.88rem;
+}
+
+.tac-diag-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+
+.tac-diag-item {
+  background: #ffffff;
+  border: 1px solid #dcfce7;
+  border-radius: 12px;
+  padding: 0.6rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tac-diag-item .num {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+.tac-diag-item .num.green { color: #16a34a; }
+.tac-diag-item .num.blue { color: #2563eb; }
+.tac-diag-item .num.purple { color: #7c3aed; }
+
+.tac-diag-item .lbl {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.tac-diag-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #15803d;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.tac-empty-box {
+  border: 2px dashed #e2e8f0;
+  border-radius: 18px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tac-empty-box h4 {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.tac-empty-box p {
+  margin: 0;
+  font-size: 0.8rem;
+  max-width: 380px;
+}
+
+/* ============================================================
+   7. QUESTIONS LIST PREVIEW
+   ============================================================ */
+.tac-questions-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.tac-q-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: #fcfdff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tac-q-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tac-q-badge {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+}
+
+.tac-level-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+.tac-level-pill.NB { background: #dcfce7; color: #166534; }
+.tac-level-pill.TH { background: #e0f2fe; color: #0369a1; }
+.tac-level-pill.VD { background: #fef3c7; color: #92400e; }
+.tac-level-pill.VDC { background: #fee2e2; color: #991b1b; }
+
+.tac-q-text {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.45;
+}
+
+.tac-q-img-wrap {
+  text-align: center;
+  max-width: 320px;
+  margin: 0.2rem auto;
+}
+.tac-q-img-wrap img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.tac-opt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.tac-opt-item {
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+.tac-opt-item.correct {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #15803d;
+  font-weight: 700;
+}
+
+.tac-tf-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tac-tf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.tac-tf-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+.tac-tf-tag.true { background: #dcfce7; color: #15803d; }
+.tac-tf-tag.false { background: #fee2e2; color: #b91c1c; }
+
+.tac-sa-row {
+  font-size: 0.8rem;
+  color: #1e293b;
+  background: #f8fafc;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.tac-explain-box {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.tac-more-footer {
+  text-align: center;
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+
+/* ============================================================
+   8. TAB 2: CLASS STATS & CHAT
+   ============================================================ */
+.tac-select {
+  padding: 0.4rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tac-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.tac-stat-pill {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0.75rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tac-stat-pill .lbl {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.tac-stat-pill .val {
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+.tac-stat-pill .val.blue { color: #2563eb; }
+.tac-stat-pill .val.green { color: #16a34a; }
+.tac-stat-pill .val.red { color: #dc2626; }
+
+.tac-topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tac-topic-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tac-topic-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+}
+.tac-topic-header b.red { color: #dc2626; }
+.tac-topic-header b.orange { color: #d97706; }
+.tac-topic-header b.green { color: #16a34a; }
+
+.tac-topic-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.tac-topic-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.tac-topic-fill.red { background: #ef4444; }
+.tac-topic-fill.orange { background: #f59e0b; }
+.tac-topic-fill.green { background: #10b981; }
+
+.tac-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tac-risk-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  padding: 0.55rem 0.8rem;
+}
+
+.tac-risk-item b {
+  font-size: 0.82rem;
+  color: #9f1239;
+  display: block;
+}
+
+.tac-risk-item small {
+  font-size: 0.72rem;
+  color: #be123c;
+}
+
+/* Chat card */
+.tac-card.chat-card {
+  min-height: 480px;
+}
+
+.tac-chat-stream {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.tac-chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+}
+
+.tac-chat-msg.user {
+  align-self: flex-end;
+}
+.tac-chat-msg.ai {
+  align-self: flex-start;
+}
+
+.tac-bubble {
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  font-size: 0.84rem;
+  line-height: 1.48;
+}
+
+.tac-chat-msg.user .tac-bubble {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.tac-chat-msg.ai .tac-bubble {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-bottom-left-radius: 4px;
+  border: 1px solid #e2e8f0;
+  white-space: pre-wrap;
+}
+
+.tac-msg-time {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+  padding: 0 0.4rem;
+}
+
+.tac-bubble.thinking {
+  display: flex;
+  gap: 5px;
+  padding: 0.6rem 0.9rem;
+}
+
+.tac-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+  animation: tacBounce 1s infinite alternate;
+}
+.tac-dot:nth-child(2) { animation-delay: 0.2s; }
+.tac-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes tacBounce {
+  from { transform: translateY(0); opacity: 0.4; }
+  to { transform: translateY(-4px); opacity: 1; }
+}
+
+.tac-quick-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tac-chip {
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tac-chip:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.tac-chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 0.3rem 0.45rem 0.3rem 0.85rem;
+}
+
+.tac-chat-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.84rem;
+  color: #0f172a;
+  outline: none;
+}
+
+/* ============================================================
+   9. TAB 3: PROCTOR AI
+   ============================================================ */
+.tac-switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+.tac-proctor-banner {
+  display: flex;
+  gap: 1rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  padding: 1.1rem;
+  align-items: flex-start;
+}
+
+.tac-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  flex-shrink: 0;
+}
+
+.tac-proctor-banner h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.tac-proctor-banner p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #3b82f6;
+  line-height: 1.45;
+}
+
+.tac-severity-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.tac-sev-card {
+  border-radius: 16px;
+  padding: 0.85rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tac-sev-card.low { background: #f0fdf4; border-color: #bbf7d0; }
+.tac-sev-card.med { background: #fffbeb; border-color: #fde68a; }
+.tac-sev-card.high { background: #fef2f2; border-color: #fecaca; }
+
+.tac-sev-card b {
+  font-size: 0.84rem;
+  color: #0f172a;
+}
+
+.tac-sev-card p {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.tac-sev-card small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: auto;
+}
+
+.tac-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.tac-badge.green { background: #dcfce7; color: #166534; }
+
+.tac-live-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.tac-feed-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.65rem 0.85rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8rem;
+}
+
+.tac-feed-item .time {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+  padding-top: 0.1rem;
+}
+
+.badge-sev {
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.badge-sev.low { background: #dcfce7; color: #166534; }
+.badge-sev.med { background: #fef3c7; color: #92400e; }
+.badge-sev.high { background: #fee2e2; color: #991b1b; }
+
+.tac-feed-item .desc {
+  flex: 1;
+  color: #0f172a;
+}
+
+.tac-feed-item .action-tag {
+  font-size: 0.73rem;
+  color: #4338ca;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}

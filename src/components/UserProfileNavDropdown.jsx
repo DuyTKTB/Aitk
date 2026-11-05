@@ -292,17 +292,45 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
 
           <div className="ns9-uprof-head-info">
             <strong className="ns9-uprof-name">{displayName}</strong>
-            <span className="ns9-uprof-school" title={schoolDisplay}>
-              {schoolDisplay}
-            </span>
-            <div className="ns9-uprof-wish-row">
-              <span className="ns9-uprof-score-pill">
-                {displayScore} điểm
-              </span>
-              <span className="ns9-uprof-major-pill" title={activeWish?.majorName || majorDisplay}>
-                {majorDisplay}
-              </span>
-            </div>
+            {teacherPro?.isPro && teacherPro?.isTeacherPro !== false ? (
+              <>
+                <span className="ns9-uprof-school" title={user?.email || 'Giáo viên PRO'}>
+                  {user?.email || 'Giáo viên — Quản lý lớp học'}
+                </span>
+                <div className="ns9-uprof-wish-row">
+                  <span
+                    className="ns9-uprof-score-pill"
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: '#fff',
+                      fontWeight: 800,
+                    }}
+                  >
+                    GIÁO VIÊN PRO
+                  </span>
+                  <span
+                    className="ns9-uprof-major-pill"
+                    title={teacherPro.pro?.key ? `Key: ${teacherPro.pro.key}` : 'Gói Giáo viên PRO'}
+                  >
+                    Còn {teacherPro.daysLeft ?? 30} ngày{teacherPro.pro?.key ? ` · ${teacherPro.pro.key}` : ''}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="ns9-uprof-school" title={schoolDisplay}>
+                  {schoolDisplay}
+                </span>
+                <div className="ns9-uprof-wish-row">
+                  <span className="ns9-uprof-score-pill">
+                    {displayScore} điểm
+                  </span>
+                  <span className="ns9-uprof-major-pill" title={activeWish?.majorName || majorDisplay}>
+                    {majorDisplay}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

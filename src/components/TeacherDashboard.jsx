@@ -90,6 +90,9 @@ const TeacherSimulatorHub = lazy(() => import('./teacher/TeacherSimulatorHub.jsx
 const ExamPreviewSimulator = lazy(() => import('./teacher/ExamPreviewSimulator.jsx'));
 const InsightPanel = lazy(() => import('./teacher/InsightPanel.jsx'));
 const TeacherProfileSection = lazy(() => import('./teacher/TeacherProfileSection.jsx'));
+const ExamImporter = lazy(() => import('./teacher/ExamImporter.jsx'));
+const WordDocxEditor = lazy(() => import('./teacher/WordDocxEditor.jsx'));
+import TeacherFloatingChat from './teacher/TeacherFloatingChat.jsx';
 
 /* ============ SVG ICONS (NO EMOJI) ============ */
 const Svg = ({ size = 18, sw = 2, children }) => (
@@ -122,6 +125,16 @@ const IcoShuffle = (p) => (
     <polyline points="21 16 21 21 16 21" />
     <line x1="15" y1="15" x2="21" y2="21" />
     <line x1="4" y1="4" x2="9" y2="9" />
+  </Svg>
+);
+
+const IcoFileDoc = (p) => (
+  <Svg {...p}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
   </Svg>
 );
 
@@ -184,6 +197,21 @@ const IcoSend = (p) => (
   <Svg {...p} sw={1.8}>
     <line x1="22" y1="2" x2="11" y2="13" />
     <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </Svg>
+);
+
+const IcoGlobe = (p) => (
+  <Svg {...p} sw={1.8}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </Svg>
+);
+
+const IcoLock = (p) => (
+  <Svg {...p} sw={1.8}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </Svg>
 );
 
@@ -338,6 +366,10 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [savingVis, setSavingVis] = useState('');
   /* Đề đang lưu chế độ khoá bài */
   const [savingLock, setSavingLock] = useState('');
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [importerModalOpen, setImporterModalOpen] = useState(false);
+  const [wordEditorOpen, setWordEditorOpen] = useState(false);
+  const [wordEditorExam, setWordEditorExam] = useState(null);
 
   const [bellOpen, setBellOpen] = useState(false);
   const [notices, setNotices] = useState([]);
@@ -388,6 +420,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [toastTone, setToastTone] = useState('info');
   const [toastUndo, setToastUndo] = useState(null);
   const [startingId, setStartingId] = useState(null);
+  const [simulatorInitialExam, setSimulatorInitialExam] = useState(null);
 
   /* Trạng thái nâng cấp Mục C & D4: Lọc, Sắp xếp, Chế độ Lưới/Danh sách, Đặt lịch, Duyệt hàng loạt */
   const [classSectionTab, setClassSectionTab] = useState('my'); // 'my' | 'linked'
@@ -458,6 +491,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       const tag = (e.target?.tagName || '').toLowerCase();
       const isInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
       if (e.key === 'Escape') {
+        if (aiChatOpen) { setAiChatOpen(false); return; }
         if (cmdOpen) { setCmdOpen(false); return; }
         if (confirmState) { setConfirmState(null); return; }
         if (copyExamTarget) { setCopyExamTarget(null); return; }
@@ -797,14 +831,15 @@ export default function TeacherDashboard({ onExit } = {}) {
       subsCacheRef.current = {};
       refresh().catch(() => {});
     };
-    window.addEventListener('storage', (e) => {
+    const onStorageEvent = (e) => {
       if (e.key === 'cs-last-submission-ts' || e.key === 'cs-submit-queue-v1') {
         handleSubChange();
       }
-    });
+    };
+    window.addEventListener('storage', onStorageEvent);
     window.addEventListener('cs-submission-created', handleSubChange);
     return () => {
-      window.removeEventListener('storage', handleSubChange);
+      window.removeEventListener('storage', onStorageEvent);
       window.removeEventListener('cs-submission-created', handleSubChange);
     };
   }, [refresh]);
@@ -1599,7 +1634,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   }
 
   /* ============================================================
-     NAV ITEMS — PHÂN NHÓM 4 NGHIỆP VỤ RÕ RÀNG
+     NAV ITEMS — PHÂN NHÓM 3 NGHIỆP VỤ RÕ RÀNG
      ============================================================ */
   const navItems = [
     /* Nhóm 1: Quản lý lớp */
@@ -1643,7 +1678,6 @@ export default function TeacherDashboard({ onExit } = {}) {
 
     /* Nhóm 4: Tài khoản & Hệ thống */
     { key: 'profile', shortLabel: 'Hồ sơ', label: 'Hồ sơ giáo viên', Icon: IcoUser, group: 'Tài khoản & Hệ thống' },
-    { key: 'link', shortLabel: 'Giao chéo', label: 'Giao đề lớp khác', Icon: IcoKey, group: 'Tài khoản & Hệ thống' },
     ...(showAdminLink ? [{
       key: 'admin',
       shortLabel: 'Quản trị',
@@ -1937,6 +1971,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         setCmdQuery('');
         setCmdIndex(0);
       }}
+      onOpenAiCopilot={() => setAiDrawerOpen(true)}
       exitLabel="Về ELEC AI"
       onExit={() => {
         if (onExit) onExit();
@@ -1945,6 +1980,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     >
       <Topbar
         {...topProps}
+        onOpenAiCopilot={() => setAiChatOpen((v) => !v)}
         search={section !== 'create' && section !== 'simulator' && section !== 'bank' && section !== 'profile' && section !== 'analytics' && section !== 'link' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
           on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0 || unreadNotices > 0,
@@ -1961,62 +1997,82 @@ export default function TeacherDashboard({ onExit } = {}) {
         } : undefined}
       />
 
-      {/* Thanh Liên Kết Luồng Biên Soạn & Tổ Chức Thi 1 Chạm */}
-      {['create', 'bank', 'exams', 'simulator', 'sessions'].includes(section) && (
-        <div className="t-workflow-bar" role="navigation" aria-label="Chuỗi quy trình khảo thí">
-          <div className="t-workflow-steps">
-            {[
-              { key: 'create', num: 1, label: 'AI Tạo đề' },
-              { key: 'bank', num: 2, label: 'Ngân hàng câu hỏi' },
-              { key: 'exams', num: 3, label: `Kho Đề thi (${exams.length})` },
-              { key: 'simulator', num: 4, label: 'Mô phỏng & Đảo đề' },
-              { key: 'sessions', num: 5, label: `Phòng thi LIVE (${liveSessions.length})` },
-            ].map((step, idx, arr) => (
-              <div key={step.key} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <button
-                  type="button"
-                  className={`t-workflow-step ${section === step.key ? 'active' : ''}`}
-                  onClick={() => goSection(step.key)}
-                >
-                  <span className="t-workflow-step-num">{step.num}</span>
-                  <span>{step.label}</span>
-                </button>
-                {idx < arr.length - 1 && <span className="t-workflow-arrow" aria-hidden="true">→</span>}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-            {exams.length > 0 && (section === 'exams' || section === 'bank') && (
-              <button
-                type="button"
-                className="vt-btn sm"
-                onClick={handleSyncExamsToBank}
-                disabled={syncingBank}
-                title="Đẩy toàn bộ câu hỏi từ các đề thi hiện có vào Ngân hàng câu hỏi để tái sử dụng"
-              >
-                <IcoFolder size={13} /> {syncingBank ? 'Đang đồng bộ...' : 'Đồng bộ đề → Ngân hàng'}
-              </button>
-            )}
-            {section !== 'create' && (
-              <button type="button" className="vt-btn sm primary" onClick={() => openNewExam()}>
-                <IcoSparkles size={13} /> + Soạn đề mới (Phím N)
-              </button>
-            )}
-            {section === 'exams' && exams.length > 0 && (
-              <button type="button" className="vt-btn sm" onClick={() => goSection('simulator')}>
-                <IcoShuffle size={13} /> Đảo mã đề & In A4
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ============================================================
           TỔNG QUAN — 12-COL DARK BENTO
          ============================================================ */}
       {section === 'overview' && (
         <div className="t-bento-12">
+          {/* BANNER CLERIO: AI TRỢ LÝ TOÀN NĂNG & CHUẨN HÓA ĐỀ */}
+          <div className="t-col-12">
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 50%, #f0fdf4 100%)',
+                border: '1px solid #bfdbfe',
+                borderRadius: 22,
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+                boxShadow: '0 8px 24px rgba(37, 99, 235, 0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                    color: '#fff',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 6px 16px rgba(37, 99, 235, 0.3)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <IcoSparkles size={22} />
+                </span>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: '1.02rem', color: '#1e1b4b', fontWeight: 900 }}>
+                      ELEC AI Agent: Sẵn sàng hỗ trợ chuẩn hóa đề &amp; Giám sát phòng thi
+                    </strong>
+                    <span
+                      style={{
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        padding: '2px 8px',
+                        borderRadius: 99,
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      ELEC AI Bản quyền GDPT 2025
+                    </span>
+                  </div>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#4338ca', fontWeight: 500 }}>
+                    Thả file Word bất kỳ để AI tự động sửa lỗi chuẩn GDPT 2025, hoặc bật chế độ tự động nhắc nhở học sinh vi phạm khi thi trực tiếp.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="vt-btn primary"
+                  onClick={() => setAiChatOpen(true)}
+                  style={{ borderRadius: 999, padding: '7px 16px', fontSize: '0.82rem' }}
+                >
+                  <IcoSparkles size={14} /> Mở AI Trợ lý Đồng hành
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="t-col-12" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem' }}>
             <SchedulePill
               time={liveSessions.length > 0 ? `${liveSessions.length} PHÒNG THI ĐANG MỞ` : 'Lịch thi hôm nay'}
@@ -2357,16 +2413,46 @@ export default function TeacherDashboard({ onExit } = {}) {
           </div>
 
           <div className="t-col-12" style={{ marginTop: '0.5rem' }}>
-            <ErrorBoundary>
-              <Suspense fallback={<InsightSkeleton />}>
-                <InsightPanel
-                  insightsData={classInsights}
-                  className={classes[0]?.name || 'Toàn bộ lớp học'}
-                  subject={primarySubject}
-                  onOpenAiStudio={(preset) => openNewExam(preset)}
-                />
-              </Suspense>
-            </ErrorBoundary>
+            <details
+              style={{
+                background: 'var(--t-surface)',
+                border: '1px solid var(--t-border)',
+                borderRadius: 18,
+                padding: '0.85rem 1.15rem',
+              }}
+            >
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  color: 'var(--t-ink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  listStyle: 'none',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <IcoSparkles size={16} /> Trợ lý Phân tích AI &amp; Gợi ý lỗ hổng kiến thức ({classes[0]?.name || 'Toàn bộ lớp học'})
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--t-accent)', fontWeight: 700 }}>
+                  Bấm để mở rộng / thu gọn ▾
+                </span>
+              </summary>
+              <div style={{ marginTop: '0.85rem' }}>
+                <ErrorBoundary>
+                  <Suspense fallback={<InsightSkeleton />}>
+                    <InsightPanel
+                      insightsData={classInsights}
+                      className={classes[0]?.name || 'Toàn bộ lớp học'}
+                      subject={primarySubject}
+                      onOpenAiStudio={(preset) => openNewExam(preset)}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
+              </div>
+            </details>
           </div>
         </div>
       )}
@@ -2548,30 +2634,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                     const pendingCount = cls.pendingMembers?.length || 0;
                     return (
                       <article key={cls.id} className="vt-card vt-class vt-folder-card">
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingBottom: '0.5rem',
-                            marginBottom: '0.2rem',
-                            borderBottom: '1px dashed var(--soft)',
-                            fontSize: '0.73rem',
-                            color: 'var(--mut)',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--acc)' }}>
-                            <IcoFolder size={14} /> THƯ MỤC LỚP HỌC
-                          </span>
-                          <span>{classExams.length} đề · {members.length} HS</span>
-                        </div>
-
                         <header style={{ cursor: 'pointer' }} onClick={() => setSelectedClass(cls)}>
-                          <MemoAvatar name={cls.name} size={50} />
+                          <MemoAvatar name={cls.name} size={46} />
                           <div>
                             <h3>{cls.name}</h3>
-                            <small>{cls.subject || 'Đa môn'} · {classExams.length} đề kiểm tra</small>
+                            <small>{cls.subject || 'Đa môn'} · {classExams.length} đề · {members.length} HS</small>
                           </div>
                           <i className="vt-count" title="Sĩ số lớp">{members.length}</i>
                         </header>
@@ -2624,15 +2691,6 @@ export default function TeacherDashboard({ onExit } = {}) {
                           <button
                             type="button"
                             className="vt-icon-btn"
-                            aria-label="Làm mới mã lớp"
-                            onClick={() => handleRegenKey(cls)}
-                            title="Làm mới / đổi mã lớp"
-                          >
-                            <IcoRefresh size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-icon-btn"
                             aria-label="Mở mã QR của lớp"
                             onClick={() => setShareClass(cls)}
                             title="Chia sẻ mã QR"
@@ -2660,23 +2718,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                           </div>
                         )}
 
-                        <div className="vt-stack">
-                          {members.slice(0, 5).map((m) => <MemoAvatar key={m.id} name={m.name} size={30} />)}
-                          {members.length > 5 && <span className="vt-stack-more">+{members.length - 5}</span>}
-                          {members.length === 0 && <small className="vt-muted">Chưa có học sinh tham gia</small>}
-                        </div>
-
                         <footer>
                           <button type="button" className="vt-btn sm" onClick={() => setSelectedClass(cls)}>
-                            <IcoUsers size={13} /> Chi tiết
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-btn sm"
-                            onClick={() => exportClassRosterCsv(cls)}
-                            title="Xuất danh sách học sinh ra CSV"
-                          >
-                            <IcoDownload size={12} /> Xuất DS
+                            <IcoUsers size={13} /> Chi tiết lớp
                           </button>
                           <button
                             type="button"
@@ -2691,10 +2735,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                             className="vt-btn sm primary"
                             onClick={() => { setSelectedClass(cls); goSection('create'); }}
                           >
-                            <IcoBook size={13} /> Tạo đề
-                          </button>
-                          <button type="button" className="vt-btn sm" onClick={() => handleDeleteClass(cls)}>
-                            Xóa
+                            <IcoBook size={13} /> + Tạo đề
                           </button>
                         </footer>
                       </article>
@@ -2765,7 +2806,6 @@ export default function TeacherDashboard({ onExit } = {}) {
                         color: '#059669',
                         fontWeight: 800,
                       }}
-                      title="Số học sinh đang làm bài trực tiếp trong phòng thi"
                     >
                       ● {liveDoingCount} HS đang thi
                     </span>
@@ -2778,19 +2818,6 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <span className="vt-chip" style={{ background: 'var(--vt-tint)', color: 'var(--ink)' }}>
                     Lớp {cls?.name || '—'}
                   </span>
-                  {isAi && (
-                    <span className="vt-chip" style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309' }}>
-                      <IcoSparkles size={11} /> AI
-                    </span>
-                  )}
-                  {(opensMs > 0 || closesMs > 0) && (
-                    <span
-                      className="vt-chip"
-                      style={{ background: 'color-mix(in srgb, #0284c7 12%, transparent)', color: '#0369a1' }}
-                    >
-                      <IcoCalendar size={11} /> {opensMs > 0 ? fmtClock(opensMs) : ''}{opensMs > 0 && closesMs > 0 ? ' → ' : ''}{closesMs > 0 ? fmtClock(closesMs) : ''}
-                    </span>
-                  )}
                 </div>
 
                 <h3 className="vt-ecc-title">{ex.title}</h3>
@@ -2805,12 +2832,6 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <>
                       <span className="dot">•</span>
                       <span className="highlight">Điểm TB: {avg}%</span>
-                    </>
-                  )}
-                  {best != null && (
-                    <>
-                      <span className="dot">•</span>
-                      <span>Cao nhất: {best}%</span>
                     </>
                   )}
                 </div>
@@ -3249,6 +3270,57 @@ export default function TeacherDashboard({ onExit } = {}) {
             <TeacherSimulatorHub
               teacherExams={exams}
               classes={classes}
+              initialImportedExam={simulatorInitialExam}
+              onImportPreset={async (presetData) => {
+                try {
+                  const targetClassId = presetData?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+                  const created = await createExam({
+                    teacherId: user.uid,
+                    teacherName: user.displayName || user.email,
+                    classId: targetClassId,
+                    title: presetData?.title || 'Đề kiểm tra từ Word',
+                    description: presetData?.description || 'Nhập từ bộ Trộn Đề Thi',
+                    duration: Number(presetData?.duration) || 45,
+                    questions: presetData?.questions || [],
+                    subject: presetData?.subject || 'Hóa học',
+                    grade: presetData?.grade || '12',
+                    shuffle: true,
+                    showAnswerAfter: true,
+                    source: 'word-mixer',
+                  });
+                  if (created?.id) {
+                    setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
+                  }
+                  say(`Đã lưu đề “${created.title}” vào Kho đề thi!`, 'success');
+                } catch (err) {
+                  say('Không lưu được đề: ' + (err?.message || err), 'error');
+                }
+              }}
+              onAssignShuffled={async (assignPayload) => {
+                try {
+                  const targetClassId = assignPayload?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+                  const created = await createExam({
+                    teacherId: user.uid,
+                    teacherName: user.displayName || user.email,
+                    classId: targetClassId,
+                    title: assignPayload?.title || 'Đề thi đã trộn mã',
+                    description: assignPayload?.description || '',
+                    duration: Number(assignPayload?.duration) || 45,
+                    questions: assignPayload?.questions || [],
+                    subject: assignPayload?.subject || 'Hóa học',
+                    grade: assignPayload?.grade || '12',
+                    shuffle: true,
+                    showAnswerAfter: assignPayload?.showAnswerAfter ?? true,
+                    source: 'shuffled-assign',
+                  });
+                  if (created?.id) {
+                    setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
+                  }
+                  say(`Đã giao đề “${created.title}” thành công!`, 'success');
+                } catch (err) {
+                  say('Không giao được đề: ' + (err?.message || err), 'error');
+                }
+              }}
             />
           </Suspense>
         </ErrorBoundary>
@@ -3443,7 +3515,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     className="vt-btn sm"
                     disabled={bulkRetryBusy}
                     onClick={async () => {
-                      const safePending = pendingInView.filter((r) => {
+                      const safePending = pendingFiltered.filter((r) => {
                         const prevSubs = submissionsMap[r.examId] || [];
                         const prev = prevSubs.find((s) => s.studentId === r.studentId || s.studentName === r.studentName);
                         if (!prev) return true;
@@ -3627,7 +3699,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 </span>
                 <button
                   type="button"
-                  className="td-btn"
+                  className="vt-btn sm"
                   onClick={() => { setExtCreate(false); setExtClass(null); goSection('overview'); }}
                 >
                   Huỷ
@@ -3686,60 +3758,6 @@ export default function TeacherDashboard({ onExit } = {}) {
             />
           </Suspense>
         </ErrorBoundary>
-      )}
-
-      {/* ============ GIAO ĐỀ CHO LỚP KHÁC (giáo viên bộ môn) ============ */}
-      {extOpen && (
-        <Modal title="Giao đề cho lớp khác" size="lg" onClose={() => { setExtOpen(false); setExtErr(''); }}>
-          <p style={{ margin: '0 0 0.7rem', fontSize: '0.86rem', color: 'var(--mut)' }}>
-            Đây là các lớp bạn đã liên kết bằng key của chủ nhiệm. Đề bạn tạo sẽ nằm trong lớp đó,
-            ghi tên <b>bạn</b> là người giao và chủ nhiệm theo dõi được trong mục “Phân tích AI”.
-          </p>
-
-          <LinkedClassesPanel
-            user={user}
-            onSay={say}
-            onAssign={(classInfo) => {
-              setExtOpen(false);
-              setExtClass(classInfo);
-              setExtCreate(true);
-              goSection('create');
-            }}
-            onMonitor={(session) => {
-              setSessions((prev) => (
-                prev.some((s) => s.id === session.id) ? prev : [session, ...prev]
-              ));
-              setExtOpen(false);
-              setViewingSessionId(session.id);
-            }}
-          />
-
-          <details style={{ marginTop: '0.9rem' }}>
-            <summary style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: 'var(--mut)' }}>
-              Hoặc dùng mã lớp (không cần key)
-            </summary>
-            <p style={{ margin: '0.6rem 0', fontSize: '0.82rem', color: 'var(--mut)' }}>
-              Nhập mã lớp do giáo viên chủ nhiệm gửi để giao đề nhanh mà không cần liên kết.
-            </p>
-            <input
-              value={extKey}
-              onChange={(e) => { setExtKey(e.target.value.toUpperCase()); setExtErr(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') findExternalClass(); }}
-              placeholder="VD: 11A7-8KQ3ZM"
-              style={{
-                width: '100%', padding: '0.6rem 0.75rem', fontSize: '1rem', letterSpacing: '0.06em',
-                borderRadius: 12, border: '1.5px solid var(--soft)', background: 'var(--surface, #fff)',
-                color: 'var(--ink)', textTransform: 'uppercase',
-              }}
-            />
-            {extErr && <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--acc)' }}>{extErr}</p>}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.7rem' }}>
-              <button type="button" className="td-btn primary" onClick={findExternalClass} disabled={extBusy}>
-                {extBusy ? 'Đang tìm…' : 'Tìm lớp'}
-              </button>
-            </div>
-          </details>
-        </Modal>
       )}
 
       {/* ============ MODAL CHI TIẾT ĐỀ THI ("ẤN VÀO LÀ HIỆN RA") ============ */}
@@ -3829,11 +3847,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <button
                       type="button"
                       className="vt-chip"
-                      style={{ cursor: 'pointer', padding: '0.15rem 0.5rem' }}
+                      style={{ cursor: 'pointer', padding: '0.15rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       onClick={() => toggleVisibility(ex)}
                       title="Bấm để chuyển đổi giữa Riêng tư và Công khai"
                     >
-                      {isPublic ? '🌐 Công khai' : '🔒 Riêng tư'}
+                      {isPublic ? <><IcoGlobe size={12} /> Công khai</> : <><IcoLock size={12} /> Riêng tư</>}
                     </button>
                   </div>
                 </div>
@@ -3875,6 +3893,18 @@ export default function TeacherDashboard({ onExit } = {}) {
                     title="Mô phỏng thi, in đề A4 và đảo mã đề"
                   >
                     <IcoEye size={15} /> Xem trước &amp; In A4
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-edm-tool-btn"
+                    onClick={() => {
+                      setDetailExamModal(null);
+                      setWordEditorExam(ex);
+                      setWordEditorOpen(true);
+                    }}
+                    title="Mở trong trình soạn thảo Word Office 365 (Casual Docs)"
+                  >
+                    <IcoFileDoc size={15} /> Mở trong Word Office 365
                   </button>
                   <button
                     type="button"
@@ -4179,7 +4209,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             {unreadNotices > 0 && (
               <button
                 type="button"
-                className="td-btn"
+                className="vt-btn sm"
                 onClick={async () => {
                   try { await markAllNoticesRead(notices); } catch { /* bỏ qua */ }
                 }}
@@ -4219,12 +4249,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                     {noticeSummary(n)}
                   </p>
                   <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                    <button type="button" className="td-btn" onClick={() => openNotice(n)}>Mở lớp</button>
+                    <button type="button" className="vt-btn sm primary" onClick={() => openNotice(n)}>Mở lớp</button>
                     {!n.read && (
                       <button
                         type="button"
-                        className="td-btn"
-                        style={{ background: 'transparent', border: '1px solid var(--soft)', color: 'var(--mut)' }}
+                        className="vt-btn sm"
                         onClick={async () => {
                           try { await markNoticeRead(n.id); } catch { /* bỏ qua */ }
                         }}
@@ -4234,8 +4263,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     )}
                     <button
                       type="button"
-                      className="td-btn"
-                      style={{ background: 'transparent', border: '1px solid var(--soft)', color: 'var(--mut)' }}
+                      className="vt-btn sm"
                       onClick={async () => {
                         try { await deleteNotice(n.id); } catch { /* bỏ qua */ }
                       }}
@@ -4251,17 +4279,17 @@ export default function TeacherDashboard({ onExit } = {}) {
           {(liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0) && (
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid var(--soft)' }}>
               {liveSessions.length > 0 && (
-                <button type="button" className="td-btn" onClick={() => { setBellOpen(false); goSection('sessions'); }}>
+                <button type="button" className="vt-btn sm" onClick={() => { setBellOpen(false); goSection('sessions'); }}>
                   {liveSessions.length} phòng thi đang mở
                 </button>
               )}
               {totalPendingRetry > 0 && (
-                <button type="button" className="td-btn" onClick={() => { setBellOpen(false); goSection('retry'); }}>
+                <button type="button" className="vt-btn sm" onClick={() => { setBellOpen(false); goSection('retry'); }}>
                   {totalPendingRetry} đơn xin thi lại
                 </button>
               )}
               {totalPendingMembers > 0 && (
-                <button type="button" className="td-btn" onClick={() => { setBellOpen(false); goSection('classes'); }}>
+                <button type="button" className="vt-btn sm" onClick={() => { setBellOpen(false); goSection('classes'); }}>
                   {totalPendingMembers} thành viên chờ duyệt
                 </button>
               )}
@@ -4614,6 +4642,164 @@ export default function TeacherDashboard({ onExit } = {}) {
           </div>
         );
       })()}
+
+      {/* ============================================================
+          MODAL NHẬP ĐỀ THI TỪ FILE WORD / PDF (EXAM IMPORTER V4.0)
+          ============================================================ */}
+      {importerModalOpen && (
+        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải trình nhập đề...</p></div>}>
+          <ExamImporter
+            isModal={true}
+            classes={classes}
+            defaultSubject={classes[0]?.subject || 'Hóa học'}
+            defaultGrade={classes[0]?.grade || '12'}
+            onClose={() => setImporterModalOpen(false)}
+            onSendToMixer={(data) => {
+              setImporterModalOpen(false);
+              setSimulatorInitialExam(data);
+              goSection('simulator');
+            }}
+            onCreateSoftExam={async (examData) => {
+              setImporterModalOpen(false);
+              try {
+                const created = await createExam({
+                  teacherId: user.uid,
+                  teacherName: user.displayName || user.email,
+                  classId: examData.classId || classes[0]?.id || '',
+                  title: examData.title || 'Đề nhập từ file Word',
+                  duration: Number(examData.duration) || 45,
+                  questions: examData.questions || [],
+                  subject: examData.subject || 'Hóa học',
+                  grade: examData.grade || '12',
+                  shuffle: true,
+                  showAnswerAfter: true,
+                  source: 'word-importer',
+                });
+                if (created?.id) {
+                  setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
+                }
+                say('Đã lưu đề vào Kho Đề Lớp thành công!', 'success');
+              } catch (e) {
+                say(e.message || 'Lỗi lưu đề', 'err');
+              }
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* ============================================================
+          TRÌNH SOẠN THẢO WORD OFFICE 365 (CASUAL DOCS V1.4.2)
+          ============================================================ */}
+      {wordEditorOpen && (
+        <Suspense fallback={null}>
+          <WordDocxEditor
+            open={wordEditorOpen}
+            onClose={() => setWordEditorOpen(false)}
+            initialExam={wordEditorExam || (exams && exams[0]) || null}
+            classes={classes}
+            onSaveToClass={async (newExam) => {
+              try {
+                const targetClassId = newExam?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+                const created = await createExam({
+                  teacherId: user.uid,
+                  teacherName: user.displayName || user.email,
+                  classId: targetClassId,
+                  title: newExam.title || 'Đề soạn từ Word Office 365',
+                  questions: newExam.questions || [],
+                  duration: Number(newExam.duration || newExam.timeLimitMinutes) || 45,
+                  allowRetake: Boolean(newExam.allowRetake),
+                  subject: newExam.subject || 'Hóa học',
+                  grade: newExam.grade || '12',
+                  source: 'word-editor-365',
+                });
+                if (created?.id) {
+                  setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
+                }
+                say(`Đã lưu đề "${newExam.title || 'Mới'}" vào kho thành công!`, 'success');
+                setWordEditorOpen(false);
+              } catch (err) {
+                say(err.message || 'Lỗi khi lưu đề thi', 'err');
+              }
+            }}
+            onSay={(msg, type) => say(msg, type === 'error' ? 'err' : 'success')}
+          />
+        </Suspense>
+      )}
+
+      {/* ============================================================
+          AI CHATBOT ĐỒNG HÀNH LUÔN HIỆN DIỆN (SÁT THỰC TẾ WEB)
+          ============================================================ */}
+      <TeacherFloatingChat
+        user={user}
+        classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
+        exams={exams}
+        submissionsMap={submissionsMap}
+        liveSessions={liveSessions}
+        activeSection={section}
+        activeSubTab={subTab}
+        selectedClass={selectedClass}
+        selectedExam={detailExamModal || selectedExam}
+        viewingSessionId={viewingSessionId}
+        wordEditorOpen={wordEditorOpen}
+        wordEditorExam={wordEditorExam}
+        onOpenSimulator={(simExam) => {
+          if (simExam) {
+            setSimulatorInitialExam(simExam);
+          }
+          goSection('simulator');
+        }}
+        onCreateExam={async (newExam) => {
+          try {
+            const targetClassId = newExam?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+            const created = await createExam({
+              teacherId: user.uid,
+              teacherName: user.displayName || user.email,
+              classId: targetClassId,
+              title: newExam?.title || 'Đề thi từ AI Trợ lý',
+              duration: Number(newExam?.duration) || 45,
+              questions: newExam?.questions || [],
+              subject: newExam?.subject || 'Hóa học',
+              grade: newExam?.grade || '12',
+              shuffle: true,
+              showAnswerAfter: true,
+              source: 'ai-assistant',
+            });
+            if (created?.id) {
+              setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
+            }
+            say(`Đã lưu đề "${newExam.title}" vào Kho Đề Lớp!`, 'success');
+            goSection('exams');
+          } catch (e) {
+            say(e.message || 'Lỗi khi lưu đề', 'err');
+          }
+        }}
+        onOpenImporter={() => setImporterModalOpen(true)}
+        onCreateClass={async ({ name, subject, grade }) => {
+          try {
+            const createdCls = await createClass({
+              name: (name || 'Lớp mới').trim(),
+              subject: subject || newClassSubject || 'Hóa học',
+              grade: String(grade || newClassGrade || '12'),
+              teacherId: user.uid,
+              teacherName: user.displayName || user.email,
+              requireApproval: true,
+            });
+            if (createdCls?.id) {
+              setClasses((prev) => [createdCls, ...prev]);
+              say(`Đã tạo thành công lớp ${createdCls.name}!`, 'success');
+              refresh().catch(() => {});
+            }
+            return createdCls;
+          } catch (e) {
+            say('Lỗi tạo lớp: ' + (e.message || e), 'err');
+            return null;
+          }
+        }}
+        onNavigate={(sec) => goSection(sec)}
+        onSay={say}
+        isOpen={aiChatOpen}
+        onToggleOpen={setAiChatOpen}
+      />
     </DashFrame>
   );
 }
@@ -4662,7 +4848,7 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
       <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
         <p className="vt-muted" style={{ marginBottom: '1rem' }}>Chưa có bài nộp nào cho đề này.</p>
         <button type="button" className="vt-btn sm" onClick={reloadSubmissions}>
-          🔄 Tải lại dữ liệu
+          <IcoRefresh size={13} /> Tải lại dữ liệu
         </button>
       </div>
     );
@@ -4677,8 +4863,19 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
 
   const perQ = (exam.questions || []).map((qq, i) => {
     const rated = subs.filter((s) => s.detail?.[i]);
-    const ok = rated.filter((s) => s.detail[i].isCorrect).length;
-    return { i, text: qq.q, type: qq.type || 'single_choice', rate: rated.length ? Math.round((ok / rated.length) * 100) : null };
+    if (!rated.length) return { i, text: qq.q, type: qq.type || 'single_choice', rate: null };
+    const maxPts = Number(qq.points) > 0 ? Number(qq.points) : 1;
+    let totalRatio = 0;
+    rated.forEach((s) => {
+      const d = s.detail[i] || {};
+      if ((qq.type || 'single_choice') === 'true_false') {
+        const earned = typeof d.earned === 'number' ? d.earned : (d.isCorrect ? maxPts : 0);
+        totalRatio += Math.min(1, Math.max(0, earned / maxPts));
+      } else {
+        totalRatio += d.isCorrect ? 1 : 0;
+      }
+    });
+    return { i, text: qq.q, type: qq.type || 'single_choice', rate: Math.round((totalRatio / rated.length) * 100) };
   }).filter((x) => x.rate != null);
   const hardest = [...perQ].sort((a, b) => a.rate - b.rate).slice(0, 5);
 

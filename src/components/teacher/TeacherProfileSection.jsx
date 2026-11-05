@@ -14,6 +14,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '../../lib/firebase.js';
 import { SUBJECTS } from '../../lib/subjects.js';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
 import SubjectTeacherPanel from './SubjectTeacherPanel.jsx';
 import '../../styles/teacher-profile-section.css';
 
@@ -284,8 +285,9 @@ function safeReadArray(key, fallback = []) {
 function getScore10(sub) {
   if (!sub) return null;
   if (typeof sub.score10 === 'number' && !Number.isNaN(sub.score10)) return sub.score10;
-  if (typeof sub.score === 'number' && typeof sub.total === 'number' && sub.total > 0) {
-    return Number(((sub.score / sub.total) * 10).toFixed(2));
+  const maxPts = Number(sub.totalPoints ?? sub.total ?? sub.maxScore ?? 0);
+  if (typeof sub.score === 'number' && maxPts > 0) {
+    return Number(((sub.score / maxPts) * 10).toFixed(2));
   }
   if (typeof sub.percentage === 'number') {
     return Number((sub.percentage / 10).toFixed(2));
@@ -319,17 +321,26 @@ function formatDateVN(val) {
   }
 }
 
-/* Đọc trạng thái gói VIP / PRO từ user hoặc localStorage */
-function resolvePackageStatus(user) {
+/* Đọc trạng thái gói VIP / PRO từ teacherPro, user hoặc localStorage */
+function resolvePackageStatus(user, teacherPro) {
+  if (teacherPro?.isPro) {
+    const daysText = teacherPro.daysLeft != null ? ` (${teacherPro.daysLeft} ngày)` : '';
+    return {
+      isPro: true,
+      label: `Gói PRO Giáo Viên${daysText}`,
+      expiresAt: teacherPro.expiry || null,
+      keyCode: teacherPro.pro?.key || null,
+    };
+  }
   try {
     const rawVip = localStorage.getItem('cs-vip-status');
     if (rawVip) {
       const parsed = JSON.parse(rawVip);
-      if (parsed && (parsed.isVip || parsed.tier === 'pro' || parsed.tier === 'vip' || parsed.active)) {
+      if (parsed && (parsed.isPro || parsed.isVip || parsed.tier === 'pro' || parsed.tier === 'vip' || parsed.active)) {
         return {
           isPro: true,
           label: parsed.planName || 'Gói PRO Giáo Viên',
-          expiresAt: parsed.expiresAt || parsed.expiryDate || null,
+          expiresAt: parsed.expiresAt || parsed.expiry || parsed.expiryDate || null,
         };
       }
     }
@@ -516,7 +527,8 @@ export default function TeacherProfileSection({
     setProfileDraft(merged);
   }, [profileStorageKey, user?.displayName, user?.email, user?.photoURL]);
 
-  const pkgStatus = useMemo(() => resolvePackageStatus(user), [user]);
+  const teacherPro = useTeacherPro();
+  const pkgStatus = useMemo(() => resolvePackageStatus(user, teacherPro), [user, teacherPro]);
 
   const notify = useCallback(
     (msg, tone = 'ok', opts) => {
@@ -934,7 +946,7 @@ export default function TeacherProfileSection({
     return {
       reviewClass: weakestClass
         ? {
-            title: `Lớp cần củng cố: ${weakestClass.name}`,
+            title: weakestClass.name.toLowerCase().startsWith('lớp') ? weakestClass.name : `Lớp ${weakestClass.name}`,
             detail:
               weakestClass.avg !== null
                 ? `Điểm trung bình hiện tại ${weakestClass.avg}/10 · Tỉ lệ nộp bài ${weakestClass.rate}%. Nên giao 1 đề ôn tập 15 phút tập trung vào các câu hay sai.`
@@ -950,7 +962,7 @@ export default function TeacherProfileSection({
           },
       shuffleExam: candidateExam
         ? {
-            title: `Nên đảo mã mới: ${candidateExam.title}`,
+            title: candidateExam.title,
             detail: `Đề môn ${candidateExam.subject} đã có ${candidateExam.subsCount} lượt làm bài${candidateExam.ageDays > 0 ? ` (tạo cách đây ${candidateExam.ageDays} ngày)` : ''}. Hãy trộn lại 4–6 mã đề mới trước khi giao cho lớp tiếp theo.`,
             actionLabel: 'Mở Đảo đề',
             onAction: () => onNavigate?.('simulator', candidateExam.exam),
@@ -1231,13 +1243,17 @@ export default function TeacherProfileSection({
                   <IcoCrown size={13} />
                   <span>{pkgStatus.label}</span>
                 </span>
-                <span className="tps-meta-item" style={{ fontSize: '0.76rem', color: 'var(--tps-mut)' }}>
-                  <IcoSchool size={14} /> <b>{profile.school}</b> · {profile.department}
-                </span>
               </div>
 
-              {/* Dải chip chuyên môn & lớp phụ trách thu gọn trên 1 hàng */}
-              <div className="tps-chip-row" style={{ marginTop: '0.25rem' }}>
+              <div className="tps-school-line">
+                <IcoSchool size={14} />
+                <b>{profile.school}</b>
+                <span className="tps-meta-sep">·</span>
+                <span>{profile.department}</span>
+              </div>
+
+              {/* Dải chip chuyên môn & lớp phụ trách sắp xếp khoa học */}
+              <div className="tps-chip-row" style={{ marginTop: '0.35rem' }}>
                 <span className="tps-chip tps-chip-primary" title="Môn giảng dạy chính">
                   <SubjectIcon subjectName={profile.mainSubject} size={13} />
                   <b>{profile.mainSubject}</b>
@@ -1252,24 +1268,28 @@ export default function TeacherProfileSection({
                     {g}
                   </span>
                 ))}
-                {classes.slice(0, 5).map((cls) => (
-                  <button
-                    key={cls.id}
-                    type="button"
-                    className="tps-chip tps-chip-class-btn"
-                    onClick={() => onNavigate?.('classes', cls)}
-                    title={`Mở chi tiết lớp ${cls.name}`}
-                  >
-                    <span>Lớp {cls.name}</span>
-                  </button>
-                ))}
+                {classes.slice(0, 5).map((cls) => {
+                  const rawName = String(cls.name || '').trim();
+                  const displayName = rawName.toLowerCase().startsWith('lớp') ? rawName : `Lớp ${rawName}`;
+                  return (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      className="tps-chip tps-chip-class-btn"
+                      onClick={() => onNavigate?.('classes', cls)}
+                      title={`Mở chi tiết ${displayName}`}
+                    >
+                      <span>{displayName}</span>
+                    </button>
+                  );
+                })}
                 {classes.length === 0 && (
                   <button
                     type="button"
                     className="tps-chip tps-chip-class-btn"
                     onClick={() => onNavigate?.('classes')}
                   >
-                    <span>+ Tạo lớp</span>
+                    <span>+ Tạo lớp học</span>
                   </button>
                 )}
               </div>
@@ -1546,7 +1566,7 @@ export default function TeacherProfileSection({
 
               <div className="tps-subject-grid">
                 {subjectStats.map((item) => (
-                  <article key={item.subject} className="tps-bento-card tps-subject-card">
+                  <article key={item.subject} className={`tps-bento-card tps-subject-card ${item.isMain ? 'is-main-subject' : ''}`}>
                     <div className="tps-subject-card-top">
                       <div className="tps-subject-icon-wrap">
                         <SubjectIcon subjectName={item.subject} size={18} />
@@ -1571,34 +1591,49 @@ export default function TeacherProfileSection({
                       </div>
                     </div>
 
-                    <div className="tps-subject-metrics">
-                      <div className="tps-metric-cell">
-                        <small>Đề thi</small>
-                        <strong>{item.examsCount}</strong>
-                      </div>
-                      <div className="tps-metric-cell">
-                        <small>Câu hỏi</small>
-                        <strong>{item.questionsCount}</strong>
-                      </div>
-                      <div className="tps-metric-cell">
-                        <small>Điểm TB</small>
-                        <strong className="tps-score-highlight">
-                          {item.avgScore10 !== null ? item.avgScore10.toFixed(1) : '—'}
-                        </strong>
-                      </div>
-                      <div className="tps-metric-cell">
-                        <small>Tỉ lệ nộp</small>
-                        <strong>{item.submitRate}%</strong>
-                      </div>
-                    </div>
+                    {item.examsCount > 0 ? (
+                      <>
+                        <div className="tps-subject-metrics">
+                          <div className="tps-metric-cell">
+                            <small>Đề thi</small>
+                            <strong>{item.examsCount}</strong>
+                          </div>
+                          <div className="tps-metric-cell">
+                            <small>Câu hỏi</small>
+                            <strong>{item.questionsCount}</strong>
+                          </div>
+                          <div className="tps-metric-cell">
+                            <small>Điểm TB</small>
+                            <strong className="tps-score-highlight">
+                              {item.avgScore10 !== null ? item.avgScore10.toFixed(1) : '—'}
+                            </strong>
+                          </div>
+                          <div className="tps-metric-cell">
+                            <small>Tỉ lệ nộp</small>
+                            <strong>{item.submitRate}%</strong>
+                          </div>
+                        </div>
 
-                    <div className="tps-subject-trend-box">
-                      <div className="tps-trend-header">
-                        <span>Xu hướng 4 đề gần nhất</span>
-                        <small>{item.totalSubmissions} bài nộp</small>
+                        <div className="tps-subject-trend-box">
+                          <div className="tps-trend-header">
+                            <span>Xu hướng 4 đề gần nhất</span>
+                            <small>{item.totalSubmissions} bài nộp</small>
+                          </div>
+                          <MiniSubjectTrendSvg points={item.last4} />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="tps-subject-empty-state">
+                        <span className="tps-subject-empty-hint">Chưa có đề thi được giao cho môn này</span>
+                        <button
+                          type="button"
+                          className="tps-btn tps-btn-sm tps-btn-outline"
+                          onClick={() => onNavigate?.('create', { subject: item.subject })}
+                        >
+                          + Soạn đề môn {item.subject}
+                        </button>
                       </div>
-                      <MiniSubjectTrendSvg points={item.last4} />
-                    </div>
+                    )}
                   </article>
                 ))}
               </div>
@@ -2072,11 +2107,15 @@ export default function TeacherProfileSection({
                   value={activeClassObj.id}
                   onChange={(e) => setSelectedClassForGVBM(e.target.value)}
                 >
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {classes.map((c) => {
+                    const rawName = String(c.name || '').trim();
+                    const displayName = rawName.toLowerCase().startsWith('lớp') ? rawName : `Lớp ${rawName}`;
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {displayName}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
             </div>

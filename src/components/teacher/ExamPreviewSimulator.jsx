@@ -329,13 +329,18 @@ export default function ExamPreviewSimulator({
 
   // Step 2: Shuffle configuration state
   const [shuffleConfig, setShuffleConfig] = useState({
-    codeCount: 4,
-    seedInput: String(exam.seed || '2025'),
-    shuffleQuestions: true,
-    shuffleOptions: true,
-    keepDifficultyGroups: true,
-    keepLinkedGroups: true,
-    smartSpecialOptions: true,
+    codeCount: exam.shuffleConfig?.codeCount || 4,
+    seedInput: String(exam.seed || exam.shuffleConfig?.seedInput || '2025'),
+    shuffleQuestions: exam.shuffleConfig?.shuffleQuestions ?? true,
+    shuffleOptions: exam.shuffleConfig?.shuffleOptions ?? true,
+    shufflePart1: exam.shuffleConfig?.shufflePart1 ?? true,
+    shufflePart1Options: exam.shuffleConfig?.shufflePart1Options ?? true,
+    shufflePart2: exam.shuffleConfig?.shufflePart2 ?? true,
+    shufflePart2Statements: exam.shuffleConfig?.shufflePart2Statements ?? true,
+    shufflePart3: exam.shuffleConfig?.shufflePart3 ?? true,
+    keepDifficultyGroups: exam.shuffleConfig?.keepDifficultyGroups ?? true,
+    keepLinkedGroups: exam.shuffleConfig?.keepLinkedGroups ?? true,
+    smartSpecialOptions: exam.shuffleConfig?.smartSpecialOptions ?? true,
   });
   const [lockedIndices, setLockedIndices] = useState([]);
 
@@ -364,6 +369,11 @@ export default function ExamPreviewSimulator({
       seedText: shuffleConfig.seedInput,
       shuffleQuestions: shuffleConfig.shuffleQuestions,
       shuffleOptions: shuffleConfig.shuffleOptions,
+      shufflePart1: shuffleConfig.shufflePart1,
+      shufflePart1Options: shuffleConfig.shufflePart1Options,
+      shufflePart2: shuffleConfig.shufflePart2,
+      shufflePart2Statements: shuffleConfig.shufflePart2Statements,
+      shufflePart3: shuffleConfig.shufflePart3,
       keepDifficultyGroups: shuffleConfig.keepDifficultyGroups,
       keepLinkedGroups: shuffleConfig.keepLinkedGroups,
       smartSpecialOptions: shuffleConfig.smartSpecialOptions,
@@ -753,6 +763,7 @@ export default function ExamPreviewSimulator({
         code: activeCode,
         questions: activeVersion.questions || editData.questions,
         includeAnswers: true,
+        headerInfo: exam.headerInfo || null,
       });
       sound.cheer();
       showToast(`Đã tải file Word (Mã đề ${activeCode})`, 'success');
@@ -838,10 +849,11 @@ export default function ExamPreviewSimulator({
   }, [classes, selectedClassId]);
 
   const classStudentList = useMemo(() => {
-    if (Array.isArray(selectedClassObj?.students) && selectedClassObj.students.length > 0) {
-      return selectedClassObj.students.map((st, idx) => ({
-        id: st.id || `st-${idx + 1}`,
-        name: st.name || st.fullName || `Học sinh ${idx + 1}`,
+    const rawMembers = selectedClassObj?.members || selectedClassObj?.students;
+    if (Array.isArray(rawMembers) && rawMembers.length > 0) {
+      return rawMembers.map((st, idx) => ({
+        id: st.id || st.uid || `st-${idx + 1}`,
+        name: st.name || st.fullName || st.displayName || `Học sinh ${idx + 1}`,
         code: st.code || st.studentCode || `HS${String(idx + 1).padStart(3, '0')}`,
         seat: st.seat || `Bàn ${Math.floor(idx / 2) + 1} - ${idx % 2 === 0 ? 'Trái' : 'Phải'}`,
       }));
@@ -2009,6 +2021,21 @@ export default function ExamPreviewSimulator({
                               <div className="eps-preview-q-text">
                                 {useMath ? <MathText text={q.q} /> : q.q}
                               </div>
+                              {q.image && (
+                                <img
+                                  src={q.image}
+                                  alt={q.imageAlt || 'Hình minh hoạ'}
+                                  style={{
+                                    display: 'block',
+                                    maxWidth: '100%',
+                                    maxHeight: 220,
+                                    margin: '8px auto',
+                                    objectFit: 'contain',
+                                    borderRadius: 8,
+                                    background: '#fff',
+                                  }}
+                                />
+                              )}
                               {type === 'single_choice' && (
                                 <div className="eps-preview-opts">
                                   {(q.options || []).map((opt, oIdx) => {
@@ -2023,6 +2050,30 @@ export default function ExamPreviewSimulator({
                                       </div>
                                     );
                                   })}
+                                </div>
+                              )}
+                              {type === 'true_false' && Array.isArray(q.statements) && (
+                                <div className="eps-preview-opts" style={{ gridTemplateColumns: '1fr' }}>
+                                  {q.statements.map((st, sIdx) => (
+                                    <div
+                                      key={sIdx}
+                                      className={`eps-preview-opt ${st.answer ? 'correct' : ''}`}
+                                      style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}
+                                    >
+                                      <span>
+                                        <b>{'abcd'[sIdx]})</b>{' '}
+                                        {useMath ? <MathText text={st.text} /> : st.text}
+                                      </span>
+                                      <b style={{ color: st.answer ? '#059669' : '#dc2626' }}>
+                                        {st.answer ? 'ĐÚNG' : 'SAI'}
+                                      </b>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {type === 'short_answer' && (
+                                <div style={{ marginTop: 6, fontSize: '0.84rem', color: '#047857', fontWeight: 700 }}>
+                                  Đáp số: {q.answer ?? (q.accepted || [])[0] ?? '—'}
                                 </div>
                               )}
                             </div>
@@ -2226,21 +2277,24 @@ export default function ExamPreviewSimulator({
                 <div className="a4-head">
                   <div>
                     <p className="a4-school">
-                      {teacherExamPrefs.headerDeptName ? `${teacherExamPrefs.headerDeptName} · ` : ''}
-                      {teacherExamPrefs.headerSchoolName || 'TRƯỜNG THPT'}
+                      {exam.headerInfo?.deptName || teacherExamPrefs.headerDeptName ? `${exam.headerInfo?.deptName || teacherExamPrefs.headerDeptName} · ` : ''}
+                      {exam.headerInfo?.schoolName || teacherExamPrefs.headerSchoolName || 'TRƯỜNG THPT'}
                     </p>
                     {teacherExamPrefs.headerSubjectGroup && (
                       <p style={{ margin: '0 0 0.15rem', fontSize: '0.78rem', fontWeight: 700 }}>
                         {teacherExamPrefs.headerSubjectGroup}
                       </p>
                     )}
-                    <p className="a4-title">{editData.examTitle.toUpperCase()}</p>
-                    <p className="a4-subject">Môn: {editData.subject}</p>
+                    <p className="a4-title">{(exam.headerInfo?.examName || editData.examTitle).toUpperCase()}</p>
+                    <p className="a4-subject">
+                      Môn: {exam.headerInfo?.subject || editData.subject}
+                      {exam.headerInfo?.grade ? ` · Lớp ${exam.headerInfo.grade}` : ''}
+                    </p>
                   </div>
                   <div className="a4-head-right">
                     <p className="a4-kick">{teacherExamPrefs.headerExamMotto || 'KỲ THI ĐÁNH GIÁ NĂNG LỰC HỌC TẬP'}</p>
-                    <p className="a4-year">NĂM HỌC 2025 - 2026</p>
-                    <p className="a4-duration">Thời gian làm bài: {editData.duration} phút</p>
+                    <p className="a4-year">NĂM HỌC {exam.headerInfo?.schoolYear || '2026 - 2027'}</p>
+                    <p className="a4-duration">Thời gian làm bài: {exam.headerInfo?.duration || editData.duration} phút</p>
                     <div className="a4-code-box">MÃ ĐỀ: {activeCode}</div>
                   </div>
                 </div>
@@ -2258,6 +2312,19 @@ export default function ExamPreviewSimulator({
                           <strong>Câu {idx + 1}:</strong>{' '}
                           <span>{useMath ? <MathText text={q.q} /> : q.q}</span>
                         </p>
+                        {q.image && (
+                          <img
+                            src={q.image}
+                            alt={q.imageAlt || 'Hình minh hoạ'}
+                            style={{
+                              display: 'block',
+                              maxWidth: '75%',
+                              maxHeight: 200,
+                              margin: '6px auto 10px',
+                              objectFit: 'contain',
+                            }}
+                          />
+                        )}
 
                         {type === 'single_choice' && (
                           <div className="a4-opts">
@@ -2495,7 +2562,7 @@ export default function ExamPreviewSimulator({
                       {classes.length > 0 ? (
                         classes.map((c) => (
                           <option key={c.id} value={c.id}>
-                            Lớp {c.name} ({c.students?.length || 12} học sinh)
+                            Lớp {c.name} ({c.members?.length || c.students?.length || 12} học sinh)
                           </option>
                         ))
                       ) : (

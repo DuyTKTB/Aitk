@@ -13,6 +13,7 @@ import {
   adminRevokeKey,
   adminRevokeKeysBatch,
 } from '../../lib/proKeyApi.js';
+import { adminCreateDiscountKey, DISCOUNT_PERCENT_PRESETS, DISCOUNT_AMOUNT_PRESETS } from '../../lib/discountService.js';
 import AdminShell, { Topbar, Avatar, downloadCsv, setGlobalAdminBadges } from './AdminShell.jsx';
 import { Modal, ConfirmDialog } from './AdminUI.jsx';
 import {
@@ -33,6 +34,38 @@ const STATUS_TABS = [
 export function getKeyMeta(k) {
   const code = String(k?.code || '').toUpperCase();
   const note = String(k?.note || '');
+
+  // 1. Kiểm tra Mã giảm giá / Voucher ưu đãi
+  const discMatch = note.match(/\[DISCOUNT:([a-z_]+):([^:\]]+)(?::max:(\d+))?(?::used:(\d+))?\]/i);
+  if (discMatch || code.startsWith('DISC-') || code.startsWith('KM-')) {
+    const dType = discMatch ? discMatch[1].toLowerCase() : 'percent';
+    const dVal = discMatch ? discMatch[2] : '20';
+    const maxUses = discMatch && discMatch[3] ? Number(discMatch[3]) : 1;
+    const usedCount = discMatch && discMatch[4] ? Number(discMatch[4]) : (k?.used_by ? 1 : 0);
+
+    let label = `🏷️ Giảm ${dVal}%`;
+    if (dType === 'amount') {
+      label = `🏷️ Giảm ${(Number(dVal) || 0).toLocaleString('vi-VN')}đ`;
+    } else if (dType === 'free_vip') {
+      label = `🎁 Tặng VIP ${k?.duration_days}d`;
+    } else if (dType === 'free_pro') {
+      label = `🎁 Tặng PRO ${k?.duration_days}d`;
+    }
+
+    const usageStr = maxUses > 1 ? ` (${usedCount}/${maxUses})` : (usedCount >= 1 ? ' (Đã dùng)' : '');
+
+    return {
+      type: 'discount',
+      discountType: dType,
+      discountValue: dVal,
+      maxUses,
+      usedCount,
+      label: `${label}${usageStr}`,
+      badgeColor: '#ec4899',
+      badgeBg: 'rgba(236, 72, 153, 0.12)',
+    };
+  }
+
   const creditMatch = note.match(/\[CREDIT:(\d+)\]/i);
   if (creditMatch || code.startsWith('CREDIT-')) {
     const amount = creditMatch ? Number(creditMatch[1]) : 500;
@@ -151,13 +184,15 @@ export default function KeyManager() {
     let teacher = 0;
     let student = 0;
     let credit = 0;
+    let discount = 0;
     allKeys.forEach((k) => {
       const t = getKeyMeta(k).type;
       if (t === 'teacher') teacher++;
       else if (t === 'student') student++;
       else if (t === 'credit') credit++;
+      else if (t === 'discount') discount++;
     });
-    return { teacher, student, credit };
+    return { teacher, student, credit, discount };
   }, [allKeys]);
 
   useEffect(() => {
@@ -351,7 +386,7 @@ export default function KeyManager() {
     <AdminShell active="keys" onChange={(k) => { window.location.hash = `admin/${k}`; }} badges={badges}>
       <Topbar
         title="Quản lý Key & Gói Dịch Vụ"
-        subtitle={`${filtered.length} key hiển thị · ${stats.unused} mã sẵn sàng · ${categoryCounts.teacher} Giáo viên PRO · ${categoryCounts.student} VIP Học sinh · ${categoryCounts.credit} Thẻ Credit`}
+        subtitle={`${filtered.length} key hiển thị · ${stats.unused} mã sẵn sàng · ${categoryCounts.discount} Mã giảm giá · ${categoryCounts.teacher} Giáo viên PRO · ${categoryCounts.student} VIP Học sinh · ${categoryCounts.credit} Thẻ Credit`}
         tabs={tabs}
         active={tab}
         onTab={setTab}
@@ -365,7 +400,7 @@ export default function KeyManager() {
         <div className="vt-card ad-mini-kpi">
           <span className="ad-mini-kpi-label">Tổng phát hành</span>
           <b className="ad-mini-kpi-val">{stats.total}</b>
-          <small className="ad-mini-kpi-sub">Giáo viên: {categoryCounts.teacher} · VIP: {categoryCounts.student} · Thẻ: {categoryCounts.credit}</small>
+          <small className="ad-mini-kpi-sub">Voucher: {categoryCounts.discount} · GV: {categoryCounts.teacher} · VIP: {categoryCounts.student} · Thẻ: {categoryCounts.credit}</small>
         </div>
         <div className="vt-card ad-mini-kpi">
           <span className="ad-mini-kpi-label">Chưa dùng (Sẵn sàng)</span>
@@ -390,10 +425,11 @@ export default function KeyManager() {
           {/* Nhóm lọc loại key */}
           <div className="vt-pills" style={{ margin: 0 }}>
             {[
-              { id: 'all',     label: `Tất cả (${stats.total})` },
-              { id: 'teacher', label: `🎓 Giáo viên PRO (${categoryCounts.teacher})` },
-              { id: 'student', label: `⭐ VIP Học sinh (${categoryCounts.student})` },
-              { id: 'credit',  label: `⚡ Thẻ Credit AI (${categoryCounts.credit})` },
+              { id: 'all',      label: `Tất cả (${stats.total})` },
+              { id: 'discount', label: `🏷️ Mã giảm giá / Voucher (${categoryCounts.discount})` },
+              { id: 'teacher',  label: `🎓 Giáo viên PRO (${categoryCounts.teacher})` },
+              { id: 'student',  label: `⭐ VIP Học sinh (${categoryCounts.student})` },
+              { id: 'credit',   label: `⚡ Thẻ Credit AI (${categoryCounts.credit})` },
             ].map((c) => (
               <button
                 key={c.id}
@@ -408,6 +444,15 @@ export default function KeyManager() {
 
           {/* Các nút hành động phát hành key */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="vt-btn sm primary"
+              style={{ background: 'linear-gradient(135deg, #ec4899, #db2777)', border: 0 }}
+              onClick={() => { setCreateCategory('discount'); setShowCreate(true); }}
+              title="Tạo Mã Giảm Giá hoặc Voucher ưu đãi"
+            >
+              <IconSparkle size={13} /> + Mã Giảm Giá
+            </button>
             <button
               type="button"
               className="vt-btn sm primary"
@@ -527,7 +572,7 @@ export default function KeyManager() {
                       <td>
                         <code className="vt-key-code">{k.code}</code>
                         <div className="vt-key-meta">
-                          {k.note ? k.note.replace(/\[(CREDIT|STUDENT_VIP)[^\]]*\]/gi, '').trim() || k.note : `Hiệu lực ${k.duration_days} ngày`}
+                          {k.note ? k.note.replace(/\[(CREDIT|STUDENT_VIP|DISCOUNT)[^\]]*\]/gi, '').trim() || k.note : `Hiệu lực ${k.duration_days} ngày`}
                         </div>
                       </td>
                       <td>
@@ -660,9 +705,9 @@ export default function KeyManager() {
 }
 
 /* ============================================================
-   MODAL TẠO 1 KEY (Đa năng: Teacher PRO / Student VIP / Credit)
+   MODAL TẠO 1 KEY (Đa năng: Mã Giảm Giá / Teacher PRO / Student VIP / Credit)
    ============================================================ */
-function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
+function CreateKeyModal({ initialCategory = 'discount', onClose, onDone }) {
   const { user } = useAuth();
   const [cat, setCat] = useState(initialCategory);
   const [days, setDays] = useState(30);
@@ -672,6 +717,14 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
+  // Tùy chọn riêng cho Mã giảm giá / Voucher
+  const [discountType, setDiscountType] = useState('percent');
+  const [discountPercent, setDiscountPercent] = useState(30);
+  const [discountAmount, setDiscountAmount] = useState(100000);
+  const [customDiscountVal, setCustomDiscountVal] = useState('');
+  const [customCode, setCustomCode] = useState('');
+  const [maxUses, setMaxUses] = useState(1);
+
   const finalDays = customDays ? Math.max(1, Math.min(3650, Number(customDays) || 0)) : days;
 
   const submit = async (e) => {
@@ -679,6 +732,26 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
     setErr('');
     setSaving(true);
     try {
+      if (cat === 'discount') {
+        const finalVal = discountType === 'percent'
+          ? (customDiscountVal ? Math.max(1, Math.min(100, Number(customDiscountVal) || 30)) : discountPercent)
+          : discountType === 'amount'
+            ? (customDiscountVal ? Math.max(1000, Number(customDiscountVal) || 100000) : discountAmount)
+            : (discountType === 'free_vip' ? 'VIP' : 'PRO');
+
+        const key = await adminCreateDiscountKey({
+          code: customCode.trim() || undefined,
+          discountType,
+          discountValue: finalVal,
+          durationDays: finalDays,
+          maxUses,
+          note: note.trim(),
+          createdBy: user?.uid || null,
+        });
+        onDone(key);
+        return;
+      }
+
       let prefix = 'PRO';
       let payloadDays = finalDays;
       let finalNote = note.trim();
@@ -690,6 +763,9 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
       } else if (cat === 'student') {
         prefix = 'VIP';
         finalNote = `[STUDENT_VIP:${payloadDays}] ${finalNote || 'Gói VIP Học sinh'}`.trim();
+      } else if (cat === 'discount') {
+        prefix = 'DISC';
+        finalNote = `[DISCOUNT:percent:30:max:1] ${finalNote || 'Mã giảm giá 30%'}`.trim();
       }
 
       const key = await adminCreateProKey({
@@ -708,7 +784,7 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
 
   return (
     <Modal
-      title="Phát hành Mã Key Mới"
+      title="Phát hành Mã Key & Voucher Mới"
       size="sm"
       onClose={onClose}
       foot={
@@ -720,11 +796,13 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
             onClick={submit}
             disabled={saving}
             style={{
-              background: cat === 'student'
-                ? 'linear-gradient(135deg, #7c3aed, #4f46e5)'
-                : cat === 'credit'
-                  ? 'linear-gradient(135deg, #0284c7, #2563eb)'
-                  : undefined,
+              background: cat === 'discount'
+                ? 'linear-gradient(135deg, #ec4899, #db2777)'
+                : cat === 'student'
+                  ? 'linear-gradient(135deg, #7c3aed, #4f46e5)'
+                  : cat === 'credit'
+                    ? 'linear-gradient(135deg, #0284c7, #2563eb)'
+                    : undefined,
               border: 0,
             }}
           >
@@ -736,11 +814,12 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Loại Key / Gói dịch vụ</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
             {[
-              { id: 'teacher', label: '🎓 Giáo viên PRO', color: '#d97706' },
-              { id: 'student', label: '⭐ VIP Học sinh', color: '#7c3aed' },
-              { id: 'credit',  label: '⚡ Nạp Credit AI', color: '#0284c7' },
+              { id: 'discount', label: '🏷️ Mã giảm giá / Voucher', color: '#ec4899' },
+              { id: 'teacher',  label: '🎓 Giáo viên PRO', color: '#d97706' },
+              { id: 'student',  label: '⭐ VIP Học sinh', color: '#7c3aed' },
+              { id: 'credit',   label: '⚡ Nạp Credit AI', color: '#0284c7' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -761,7 +840,143 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
           </div>
         </div>
 
-        {cat === 'credit' ? (
+        {cat === 'discount' ? (
+          <>
+            {/* Loại giảm giá */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Hình thức ưu đãi</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                {[
+                  { id: 'percent', label: 'Giảm theo %' },
+                  { id: 'amount', label: 'Giảm số tiền (đ)' },
+                  { id: 'free_vip', label: 'Tặng 100% VIP' },
+                  { id: 'free_pro', label: 'Tặng 100% PRO' },
+                ].map((dt) => (
+                  <button
+                    key={dt.id}
+                    type="button"
+                    className={'vt-btn sm' + (discountType === dt.id ? ' primary' : '')}
+                    style={{ fontSize: 11, padding: '4px 6px' }}
+                    onClick={() => setDiscountType(dt.id)}
+                  >
+                    {dt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mức giảm */}
+            {discountType === 'percent' && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Mức giảm giá (%)</label>
+                <div className="vt-pills">
+                  {DISCOUNT_PERCENT_PRESETS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      className={'vt-pill sm' + (!customDiscountVal && discountPercent === p ? ' on' : '')}
+                      onClick={() => { setDiscountPercent(p); setCustomDiscountVal(''); }}
+                    >
+                      {p}%
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  className="vt-search-input"
+                  style={{ width: '100%', fontSize: 12, marginTop: 6 }}
+                  value={customDiscountVal}
+                  onChange={(e) => setCustomDiscountVal(e.target.value)}
+                  placeholder="Hoặc tự nhập % khác (VD: 35)"
+                />
+              </div>
+            )}
+
+            {discountType === 'amount' && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Số tiền giảm (VNĐ)</label>
+                <div className="vt-pills">
+                  {DISCOUNT_AMOUNT_PRESETS.map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      className={'vt-pill sm' + (!customDiscountVal && discountAmount === a ? ' on' : '')}
+                      onClick={() => { setDiscountAmount(a); setCustomDiscountVal(''); }}
+                    >
+                      {(a / 1000).toFixed(0)}k
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  step={5000}
+                  className="vt-search-input"
+                  style={{ width: '100%', fontSize: 12, marginTop: 6 }}
+                  value={customDiscountVal}
+                  onChange={(e) => setCustomDiscountVal(e.target.value)}
+                  placeholder="Hoặc tự nhập số tiền (VD: 150000)"
+                />
+              </div>
+            )}
+
+            {/* Tùy chỉnh mã code */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                Mã ưu đãi tùy chỉnh (để trống sẽ tự sinh ngẫu nhiên)
+              </label>
+              <input
+                className="vt-search-input"
+                style={{ width: '100%', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+                placeholder="VD: ELEC2027, GIAM50, KMVIP..."
+                maxLength={20}
+              />
+            </div>
+
+            {/* Giới hạn số lượt dùng */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Số lượt sử dụng tối đa</label>
+              <div className="vt-pills">
+                {[
+                  { n: 1, label: '1 lần duy nhất' },
+                  { n: 5, label: '5 lượt' },
+                  { n: 20, label: '20 lượt' },
+                  { n: 100, label: '100 lượt' },
+                  { n: 999999, label: 'Vô hạn' },
+                ].map((m) => (
+                  <button
+                    key={m.n}
+                    type="button"
+                    className={'vt-pill sm' + (maxUses === m.n ? ' on' : '')}
+                    onClick={() => setMaxUses(m.n)}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Thời hạn hiệu lực của mã */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Thời hạn hiệu lực mã</label>
+              <div className="vt-pills">
+                {DURATION_PRESETS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={'vt-pill sm' + (!customDays && days === d ? ' on' : '')}
+                    onClick={() => { setDays(d); setCustomDays(''); }}
+                  >
+                    {d} ngày
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : cat === 'credit' ? (
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Mệnh giá thẻ (Điểm AI)</label>
             <div className="vt-pills">
@@ -808,13 +1023,13 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
         )}
 
         <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Ghi chú mã (tùy chọn)</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Ghi chú mã / Chiến dịch (tùy chọn)</label>
           <input
             className="vt-search-input"
             style={{ width: '100%' }}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="VD: Quà tặng kỳ thi HSA, Thưởng thành tích..."
+            placeholder="VD: Khuyến mãi mùa thi 2027, Quà tặng học sinh giỏi..."
             maxLength={120}
           />
         </div>
@@ -822,9 +1037,11 @@ function CreateKeyModal({ initialCategory = 'teacher', onClose, onDone }) {
         {err && <p className="vt-muted" style={{ color: 'var(--vt-red)', margin: 0 }}>{err}</p>}
 
         <p className="vt-muted" style={{ fontSize: '.75rem', margin: 0 }}>
-          {cat === 'credit'
-            ? `Thẻ sinh ra dạng CREDIT-XXXX-XXXX, cộng +${credits} điểm AI khi kích hoạt.`
-            : `Key sinh ra dạng ${cat === 'student' ? 'VIP-XXXX-XXXX' : 'PRO-XXXX-XXXX'}, có hiệu lực ${finalDays} ngày.`}
+          {cat === 'discount'
+            ? `Mã giảm giá có thể dùng tại màn hình Thanh toán hoặc Phòng thi ảo để giảm tiền / kích hoạt.`
+            : cat === 'credit'
+              ? `Thẻ sinh ra dạng CREDIT-XXXX-XXXX, cộng +${credits} điểm AI khi kích hoạt.`
+              : `Key sinh ra dạng ${cat === 'student' ? 'VIP-XXXX-XXXX' : 'PRO-XXXX-XXXX'}, có hiệu lực ${finalDays} ngày.`}
         </p>
       </div>
     </Modal>
@@ -866,6 +1083,9 @@ function CreateBatchModal({ initialCategory = 'teacher', onClose, onDone }) {
       } else if (cat === 'student') {
         prefix = 'VIP';
         finalNote = `[STUDENT_VIP:${payloadDays}] ${finalNote || 'Gói VIP Học sinh'}`.trim();
+      } else if (cat === 'discount') {
+        prefix = 'DISC';
+        finalNote = `[DISCOUNT:percent:30:max:1] ${finalNote || 'Mã giảm giá 30%'}`.trim();
       }
 
       const list = await adminCreateProKeyBatch({
@@ -917,11 +1137,12 @@ function CreateBatchModal({ initialCategory = 'teacher', onClose, onDone }) {
 
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Loại Key / Gói dịch vụ</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
             {[
-              { id: 'teacher', label: '🎓 Giáo viên PRO', color: '#d97706' },
-              { id: 'student', label: '⭐ VIP Học sinh', color: '#7c3aed' },
-              { id: 'credit',  label: '⚡ Nạp Credit AI', color: '#0284c7' },
+              { id: 'discount', label: '🏷️ Mã giảm giá', color: '#ec4899' },
+              { id: 'teacher',  label: '🎓 Giáo viên PRO', color: '#d97706' },
+              { id: 'student',  label: '⭐ VIP Học sinh', color: '#7c3aed' },
+              { id: 'credit',   label: '⚡ Nạp Credit AI', color: '#0284c7' },
             ].map((item) => (
               <button
                 key={item.id}

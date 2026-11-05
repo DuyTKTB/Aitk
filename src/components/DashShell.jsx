@@ -45,6 +45,13 @@ const IcoEyeOff = ({ size = 16 }) => (
   </svg>
 );
 
+const IcoSparkles = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m12 3 1.9 4.8a2 2 0 0 0 1.3 1.3L20 11l-4.8 1.9a2 2 0 0 0-1.3 1.3L12 19l-1.9-4.8a2 2 0 0 0-1.3-1.3L4 11l4.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
+  </svg>
+);
+
 export const tsMs = (t) => {
   if (!t) return 0;
   if (typeof t === 'number') return t;
@@ -160,8 +167,8 @@ export function TrendChart({ points = [], mode = 'line', max = 100, unit = '%', 
     <svg className="vt-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Biểu đồ">
       <defs>
         <linearGradient id={`g${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--ts-accent)" stopOpacity=".25" />
-          <stop offset="1" stopColor="var(--ts-accent)" stopOpacity="0" />
+          <stop offset="0" stopColor="var(--acc, #2563eb)" stopOpacity=".25" />
+          <stop offset="1" stopColor="var(--acc, #2563eb)" stopOpacity="0" />
         </linearGradient>
       </defs>
       {[0.25, 0.5, 0.75].map((f) => (
@@ -276,10 +283,10 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
 }
 
 export function Topbar({
-   title, subtitle, tabs, active, onTab, search, onSearch,
-   placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme, onToggleNav, navHidden,
-   onOpenCommandPalette,
- }) {
+  title, subtitle, tabs, active, onTab, search, onSearch,
+  placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme, onToggleNav, navHidden,
+  onOpenCommandPalette, onOpenAiCopilot,
+}) {
   const searchInputRef = useRef(null);
 
   return (
@@ -348,6 +355,33 @@ export function Topbar({
           </div>
         )}
 
+        {onOpenAiCopilot && (
+          <button
+            type="button"
+            className="t-top-ai-btn"
+            onClick={onOpenAiCopilot}
+            title="Mở AI Trợ lý Toàn năng (Sửa đề, Phân tích học sinh, Giám thị)"
+            aria-label="Mở AI Trợ lý Toàn năng"
+            style={{
+              background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 999,
+              padding: '6px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              transition: 'all 0.16s ease',
+            }}
+          >
+            <IcoSparkles size={14} /> AI Trợ lý
+          </button>
+        )}
+
         {onOpenCommandPalette && (
           <button
             type="button"
@@ -412,6 +446,7 @@ export function DashFrame({
    fullscreen = false,
    autoHideNav = false,
    onOpenCommandPalette,
+   onOpenAiCopilot,
    className = '',
    children,
  }) {
@@ -560,6 +595,7 @@ export function DashFrame({
                 onToggleNav: () => setHidden((v) => !v),
                 navHidden: hidden,
                 onOpenCommandPalette,
+                onOpenAiCopilot,
               });
           }
           return null;

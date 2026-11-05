@@ -30,7 +30,7 @@ import { retrieve, formatContext, citationsOf } from './aiKnowledge.js';
 import { loadProfile, buildMemoryBlock, compressHistory } from './aiMemory.js';
 import { ocrImages } from './aiOcr.js';
 
-const ENV = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+const ENV = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' && process.env ? process.env : {});
 
 /* ============================================================
    API KEYS — hỗ trợ NHIỀU key mỗi provider (cách nhau bởi , ; | hoặc xuống dòng)
@@ -312,9 +312,26 @@ function normalizeChemTextOnly(text) {
     .replace(/<=/g, '≤').replace(/>=/g, '≥').replace(/\+-/g, '±');
 }
 
-export function normalizeChemistryText(text) {
+export function sanitizeBrandIdentity(text) {
   if (!text) return '';
   return String(text)
+    .replace(/Agnes-3\.0-flash/gi, 'ELEC AI Core')
+    .replace(/Agnes-2\.5-flash/gi, 'ELEC AI Core')
+    .replace(/Agnes-2\.5-pro-beta/gi, 'ELEC AI Reasoning')
+    .replace(/Agnes AI/gi, 'ELEC AI')
+    .replace(/Sapiens AI/gi, 'ELEC AI')
+    .replace(/Sapiens-AI/gi, 'ELEC AI')
+    .replace(/Tôi là Agnes[^.,\n]*/gi, 'Tôi là ELEC AI Senior Academic Copilot')
+    .replace(/Tôi là trợ lý AI được phát triển bởi Sapiens AI/gi, 'Tôi là trợ lý sư phạm ELEC AI')
+    .replace(/được phát triển bởi Sapiens AI/gi, 'được phát triển bởi ELEC AI')
+    .replace(/do Sapiens AI phát triển/gi, 'do ELEC AI phát triển')
+    .replace(/phát triển bởi Sapiens AI/gi, 'phát triển bởi ELEC AI');
+}
+
+export function normalizeChemistryText(text) {
+  if (!text) return '';
+  const cleaned = sanitizeBrandIdentity(text);
+  return String(cleaned)
     .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
     .map((part, i) => (i % 2 === 1 ? part : normalizeChemTextOnly(part)))
     .join('');
@@ -745,7 +762,14 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
     ? systemPromptOrOptions
     : { ...(maybeOptions || {}), systemPrompt: typeof systemPromptOrOptions === 'string' ? systemPromptOrOptions : undefined };
 
-  const historyArr = Array.isArray(history) ? history : [];
+  let historyArr;
+  if (Array.isArray(history)) {
+    historyArr = history;
+  } else if (typeof history === 'string' && history.trim()) {
+    historyArr = [{ role: 'user', parts: [{ text: history.trim() }] }];
+  } else {
+    historyArr = [];
+  }
   if (!historyArr.length) return Promise.reject(new Error('Không có nội dung câu hỏi.'));
 
   const anyKey = RINGS.gemini.size + RINGS.groq.size + RINGS.agnes.size;
@@ -780,6 +804,8 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
         toolHits,
         verification,
         fromCache: true,
+        toString() { return this.text; },
+        valueOf() { return this.text; },
       });
       p.abort = () => {};
       return p;
@@ -957,6 +983,8 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
               citations,
               toolHits,
               fromCache: false,
+              toString() { return this.text; },
+              valueOf() { return this.text; },
             });
           } else if (winner === i) {
             finish(reject, new Error(`${id}/${model} không trả nội dung`));

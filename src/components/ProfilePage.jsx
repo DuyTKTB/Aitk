@@ -482,7 +482,7 @@ export default function ProfilePage({ credits: propCredits }) {
     setFavIds(getFavoriteExamIds(uid));
     setExamHistory(getVirtualExamHistory(uid));
     setReports(getUserReports(uid));
-  }, [uid]);
+  }, [uid, pro?.isPro]);
 
   /* Tải lớp học và bạn bè */
   useEffect(() => {
@@ -727,13 +727,15 @@ export default function ProfilePage({ credits: propCredits }) {
   const handleRedeemCode = async (e) => {
     e.preventDefault();
     const raw = activationInput;
-    const res = redeemActivationCode(uid, raw);
+    const res = await redeemActivationCode(uid, raw);
     if (!res.ok) {
       fail(res.message);
       return;
     }
     setSubQuota(res.data);
     setActivationInput('');
+    await pro?.refresh?.();
+    await refreshTier?.();
 
     const nextPoints = (credits ?? 0) + POINTS_PER_CODE_ENTRY;
     setCredits(nextPoints);
@@ -805,7 +807,7 @@ export default function ProfilePage({ credits: propCredits }) {
     return (sum / examHistory.length).toFixed(1);
   }, [examHistory]);
 
-  const isTeacher = Boolean(pro?.isPro);
+  const isTeacher = Boolean(pro?.isPro && pro?.isTeacherPro !== false);
   const effectivePlanName = isTeacher ? 'GIÁO VIÊN PRO' : isVip ? 'VIP' : subQuota.planName || 'Free';
   const planDesc = isTeacher
     ? 'Toàn quyền quản lý lớp học, biên soạn đề AI & chấm thi tự động'
@@ -885,13 +887,13 @@ export default function ProfilePage({ credits: propCredits }) {
             <div className="pf-m-name-row">
               <span className="pf-m-name">{display || 'Học sinh ELEC AI'}</span>
               {(isVip || pro.isPro) && <VerifiedBadge isVip size={18} />}
-              <span className={`pf-m-badge-pill ${isVip ? 'vip' : 'free'}`}>
-                {pro.isPro ? 'GIÁO VIÊN PRO' : effectivePlanName}
+              <span className={`pf-m-badge-pill ${isVip || pro.isPro ? 'vip' : 'free'}`}>
+                {isTeacher ? 'GIÁO VIÊN PRO' : effectivePlanName}
               </span>
             </div>
 
             <div className="pf-m-school">
-              <span>{pro.isPro ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}</span>
+              <span>{isTeacher ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}</span>
               <span>•</span>
               <span>Tham gia {daysJoined} ngày</span>
             </div>
@@ -912,9 +914,19 @@ export default function ProfilePage({ credits: propCredits }) {
         </div>
 
         <div className="pf-m-header-actions">
+          {isTeacher && (
+            <a
+              href="#classroom"
+              className="pf-m-btn primary"
+              style={{ textDecoration: 'none' }}
+            >
+              {PfSvg.crown}
+              <span>Vào quản lý lớp học</span>
+            </a>
+          )}
           <button
             type="button"
-            className="pf-m-btn primary"
+            className={'pf-m-btn' + (isTeacher ? '' : ' primary')}
             onClick={() => selectTab('settings')}
           >
             {PfSvg.edit}
@@ -1052,6 +1064,14 @@ export default function ProfilePage({ credits: propCredits }) {
                   </span>
                   <b>{durationLabel}</b>
                 </div>
+                {isTeacher && pro.pro?.key && (
+                  <div className="ns9-sub-spec-row">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {PfSvg.crown} Mã Key PRO
+                    </span>
+                    <b style={{ fontFamily: 'monospace' }}>{pro.pro.key}</b>
+                  </div>
+                )}
                 <div className="ns9-sub-spec-row">
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {PfSvg.doc} Kỳ thi
@@ -1060,13 +1080,25 @@ export default function ProfilePage({ credits: propCredits }) {
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="ns9-sub-upgrade-btn"
-                onClick={() => selectTab('vip')}
-              >
-                {isTeacher ? 'Gia hạn / Nâng cấp gói' : 'Nâng cấp gói'} <span>→</span>
-              </button>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {isTeacher && (
+                  <a
+                    href="#classroom"
+                    className="ns9-sub-upgrade-btn"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    Vào quản lý lớp học <span>→</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className="ns9-sub-upgrade-btn"
+                  style={isTeacher ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
+                  onClick={() => selectTab('vip')}
+                >
+                  {isTeacher ? 'Gia hạn / Nâng cấp gói' : 'Nâng cấp gói'} <span>→</span>
+                </button>
+              </div>
             </div>
 
             <div className="ns9-sub-current-right">
@@ -1183,7 +1215,12 @@ export default function ProfilePage({ credits: propCredits }) {
          4B. TAB VIP: GÓI LUYỆN THI VIP & LỘ TRÌNH CHUYÊN SÂU ("ẤN VÀO LÀ HIỆN RA")
          ============================================================ */}
       {tab === 'vip' && (
-        <div style={{ maxWidth: 1200, width: '100%', minWidth: 0, boxSizing: 'border-box', margin: '0 auto', padding: '16px 0' }}>
+        <div style={{ maxWidth: 1200, width: '100%', minWidth: 0, boxSizing: 'border-box', margin: '0 auto', padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {isTeacher && (
+            <div className="pf-m-card">
+              <TeacherProPanel />
+            </div>
+          )}
           <SubscriptionTiers
             onUpgrade={(pkg) => {
               window.dispatchEvent(new CustomEvent('elec-close-credit-topup'));

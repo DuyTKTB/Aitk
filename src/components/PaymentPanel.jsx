@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import '../styles/payment-apple.css';
+import { verifyDiscountCode, recordDiscountUsage } from '../lib/discountService.js';
 
 /* ============================================================
    SVG ICONS THUẦN — ZERO EMOJIS, ZERO ICON FONTS
@@ -87,7 +88,24 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
   const [countdown, setCountdown] = useState(300);
   const [copiedField, setCopiedField] = useState(null);
 
-  const pkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-12m'];
+  // Quản lý mã giảm giá / Voucher
+  const [couponInput, setCouponInput] = useState(() => customPackage?.initialDiscountCode || '');
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountMsg, setDiscountMsg] = useState(null);
+  const [activatingFree, setActivatingFree] = useState(false);
+
+  const rawPkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-12m'];
+  const finalAmount = appliedDiscount ? appliedDiscount.finalPrice : rawPkg.amount;
+  const isFree = Boolean(appliedDiscount?.isFree);
+
+  const pkg = useMemo(() => ({
+    ...rawPkg,
+    amount: finalAmount,
+    originalAmount: rawPkg.amount,
+    discountAmount: appliedDiscount?.discountAmount || 0,
+    appliedDiscountCode: appliedDiscount?.code || null,
+  }), [rawPkg, finalAmount, appliedDiscount]);
 
   const transferContent = useMemo(() => {
     const cleanId = String(identCode || '').replace(/^ELECAI-?/i, '');
@@ -96,12 +114,67 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
 
   const qrUrl = useMemo(() => {
     const params = new URLSearchParams({
-      amount: String(pkg.amount),
+      amount: String(finalAmount),
       addInfo: transferContent,
       accountName: BANK_INFO.accountName,
     });
     return `https://img.vietqr.io/image/${BANK_INFO.bankId}-${BANK_INFO.accountNo}-${BANK_INFO.template}.png?${params.toString()}`;
-  }, [pkg.amount, transferContent]);
+  }, [finalAmount, transferContent]);
+
+  const handleApplyDiscount = async (codeToTry) => {
+    const code = String(codeToTry || couponInput).trim();
+    if (!code) return;
+    setDiscountLoading(true);
+    setDiscountMsg(null);
+    try {
+      const res = await verifyDiscountCode({ code, originalPrice: rawPkg.amount, userId: identCode });
+      if (res.ok) {
+        setAppliedDiscount(res);
+        setDiscountMsg({ ok: true, text: res.message });
+      } else {
+        setAppliedDiscount(null);
+        setDiscountMsg({ ok: false, text: res.error });
+      }
+    } catch (e) {
+      setAppliedDiscount(null);
+      setDiscountMsg({ ok: false, text: e?.message || 'Lỗi kiểm tra mã giảm giá' });
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setCouponInput('');
+    setDiscountMsg(null);
+  };
+
+  useEffect(() => {
+    if (customPackage?.initialDiscountCode) {
+      handleApplyDiscount(customPackage.initialDiscountCode);
+    }
+  }, [customPackage?.initialDiscountCode]);
+
+  const handleFreeActivation = async () => {
+    setActivatingFree(true);
+    try {
+      if (appliedDiscount?.keyId) {
+        await recordDiscountUsage({ keyId: appliedDiscount.keyId, userId: identCode });
+      }
+      await onPaymentSuccess?.({
+        ...pkg,
+        amount: 0,
+        discountCode: appliedDiscount?.code,
+        isFree: true,
+      });
+      alert('Chúc mừng! Gói tài khoản đã được kích hoạt thành công với mã ưu đãi.');
+      onClose?.();
+    } catch (e) {
+      alert('Không thể kích hoạt: ' + (e?.message || 'Vui lòng thử lại'));
+    } finally {
+      setActivatingFree(false);
+    }
+  };
 
   /* Đếm ngược 5 phút khi ở bước waiting */
   useEffect(() => {
@@ -240,13 +313,53 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
             )}
           </ul>
 
+          {/* Ô nhập mã giảm giá / Voucher */}
+          <div className="apl-pay-discount-section">
+            {!appliedDiscount ? (
+              <div className="apl-pay-discount-form">
+                <input
+                  type="text"
+                  placeholder="Mã giảm giá / Voucher (nếu có)"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  className="apl-pay-discount-input"
+                />
+                <button
+                  type="button"
+                  className="apl-pay-discount-btn"
+                  onClick={() => handleApplyDiscount()}
+                  disabled={discountLoading || !couponInput.trim()}
+                >
+                  {discountLoading ? 'Kiểm tra…' : 'Áp dụng'}
+                </button>
+              </div>
+            ) : (
+              <div className="apl-pay-discount-applied">
+                <span>✓ {appliedDiscount.message}</span>
+                <button type="button" className="apl-pay-discount-remove" onClick={handleRemoveDiscount}>
+                  Gỡ bỏ
+                </button>
+              </div>
+            )}
+            {discountMsg && !discountMsg.ok && (
+              <small style={{ color: '#ef4444', fontSize: '0.78rem' }}>{discountMsg.text}</small>
+            )}
+          </div>
+
           <button
             type="button"
             className="apl-pay-btn-primary"
             onClick={() => setStep('qr')}
           >
             <SvgCrown size={16} />
-            Mở khoá — {pkg.amount.toLocaleString('vi-VN')}đ
+            {appliedDiscount ? (
+              <>
+                Mở khoá — <s style={{ opacity: 0.6, marginRight: 6 }}>{rawPkg.amount.toLocaleString('vi-VN')}đ</s>
+                <b>{finalAmount.toLocaleString('vi-VN')}đ</b>
+              </>
+            ) : (
+              <>Mở khoá — {pkg.amount.toLocaleString('vi-VN')}đ</>
+            )}
           </button>
         </>
       )}
@@ -271,89 +384,136 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
             </span>
           </div>
 
-          <div className="apl-pay-qr-card">
-            <img src={qrUrl} alt={`QR ${pkg.label}`} width={210} height={210} />
-            <p className="apl-pay-qr-price">
-              Số tiền cần chuyển: <b>{pkg.amount.toLocaleString('vi-VN')}đ</b>
-            </p>
-          </div>
-
-          <div className="apl-pay-inset-group">
-            <div className="apl-pay-row">
-              <span className="apl-pay-label">Ngân hàng</span>
-              <span className="apl-pay-val">{BANK_INFO.bankName}</span>
-            </div>
-
-            <div className="apl-pay-row">
-              <span className="apl-pay-label">Số tài khoản</span>
-              <div className="apl-pay-val-wrap">
-                <span className="apl-pay-val">{BANK_INFO.accountNo}</span>
-                <button
-                  type="button"
-                  className="apl-pay-copy-btn"
-                  onClick={() => copyToClipboard(BANK_INFO.accountNo, 'stk')}
-                >
-                  <SvgCopy size={11} />
-                  {copiedField === 'stk' ? 'Đã sao chép' : 'Sao chép'}
-                </button>
+          {/* Nếu được miễn phí 100% qua mã ưu đãi */}
+          {isFree ? (
+            <div className="apl-pay-qr-card" style={{ padding: '28px 16px', textAlign: 'center' }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}>
+                <SvgCrown size={32} />
               </div>
+              <h4 style={{ margin: '0 0 6px', fontSize: '1.1rem' }}>Mã đặc quyền miễn phí 100%</h4>
+              <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: 'var(--mut)' }}>
+                {appliedDiscount?.message || 'Bạn được kích hoạt miễn phí gói này.'}
+              </p>
+              <button
+                type="button"
+                className="apl-pay-btn-primary"
+                style={{ background: 'linear-gradient(135deg, #10b981, #059669)', width: '100%' }}
+                onClick={handleFreeActivation}
+                disabled={activatingFree}
+              >
+                {activatingFree ? <SvgSpinner size={16} /> : <SvgCheck size={16} />}
+                {activatingFree ? 'Đang kích hoạt...' : 'Kích hoạt ngay không cần chuyển khoản'}
+              </button>
             </div>
+          ) : (
+            <>
+              <div className="apl-pay-qr-card">
+                <img src={qrUrl} alt={`QR ${pkg.label}`} width={210} height={210} />
+                <p className="apl-pay-qr-price">
+                  Số tiền cần chuyển: {appliedDiscount ? (
+                    <>
+                      <s style={{ opacity: 0.6, fontSize: '0.9em', marginRight: 6 }}>{rawPkg.amount.toLocaleString('vi-VN')}đ</s>
+                      <b>{finalAmount.toLocaleString('vi-VN')}đ</b>
+                    </>
+                  ) : (
+                    <b>{pkg.amount.toLocaleString('vi-VN')}đ</b>
+                  )}
+                </p>
+                {appliedDiscount && (
+                  <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>
+                    Tiết kiệm {appliedDiscount.discountAmount?.toLocaleString('vi-VN')}đ với mã {appliedDiscount.code}
+                  </span>
+                )}
+              </div>
 
-            <div className="apl-pay-row">
-              <span className="apl-pay-label">Chủ tài khoản</span>
-              <span className="apl-pay-val">{BANK_INFO.accountName}</span>
-            </div>
+              <div className="apl-pay-inset-group">
+                <div className="apl-pay-row">
+                  <span className="apl-pay-label">Ngân hàng</span>
+                  <span className="apl-pay-val">{BANK_INFO.bankName}</span>
+                </div>
 
-            <div className="apl-pay-row">
-              <span className="apl-pay-label">Nội dung chuyển khoản</span>
-              <div className="apl-pay-val-wrap">
-                <span className="apl-pay-val" style={{ fontFamily: 'monospace', color: '#0071e3' }}>
-                  {transferContent}
+                <div className="apl-pay-row">
+                  <span className="apl-pay-label">Số tài khoản</span>
+                  <div className="apl-pay-val-wrap">
+                    <span className="apl-pay-val">{BANK_INFO.accountNo}</span>
+                    <button
+                      type="button"
+                      className="apl-pay-copy-btn"
+                      onClick={() => copyToClipboard(BANK_INFO.accountNo, 'stk')}
+                    >
+                      <SvgCopy size={11} />
+                      {copiedField === 'stk' ? 'Đã sao chép' : 'Sao chép'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="apl-pay-row">
+                  <span className="apl-pay-label">Chủ tài khoản</span>
+                  <span className="apl-pay-val">{BANK_INFO.accountName}</span>
+                </div>
+
+                <div className="apl-pay-row">
+                  <span className="apl-pay-label">Nội dung chuyển khoản</span>
+                  <div className="apl-pay-val-wrap">
+                    <span className="apl-pay-val" style={{ fontFamily: 'monospace', color: '#0071e3' }}>
+                      {transferContent}
+                    </span>
+                    <button
+                      type="button"
+                      className="apl-pay-copy-btn"
+                      onClick={() => copyToClipboard(transferContent, 'content')}
+                    >
+                      <SvgCopy size={11} />
+                      {copiedField === 'content' ? 'Đã sao chép' : 'Sao chép'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="apl-pay-row">
+                  <span className="apl-pay-label">Số tiền chính xác</span>
+                  <div className="apl-pay-val-wrap">
+                    <span className="apl-pay-val" style={{ color: '#0071e3' }}>
+                      {finalAmount.toLocaleString('vi-VN')}đ
+                    </span>
+                    <button
+                      type="button"
+                      className="apl-pay-copy-btn"
+                      onClick={() => copyToClipboard(String(finalAmount), 'amount')}
+                    >
+                      <SvgCopy size={11} />
+                      {copiedField === 'amount' ? 'Đã sao chép' : 'Sao chép'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="apl-pay-alert">
+                <SvgAlert size={16} />
+                <span>
+                  Ghi <b>chính xác nội dung chuyển khoản</b> để hệ thống tự động kích hoạt tài khoản ngay lập tức sau 30-60 giây.
                 </span>
-                <button
-                  type="button"
-                  className="apl-pay-copy-btn"
-                  onClick={() => copyToClipboard(transferContent, 'content')}
-                >
-                  <SvgCopy size={11} />
-                  {copiedField === 'content' ? 'Đã sao chép' : 'Sao chép'}
-                </button>
               </div>
-            </div>
 
-            <div className="apl-pay-row">
-              <span className="apl-pay-label">Số tiền chính xác</span>
-              <div className="apl-pay-val-wrap">
-                <span className="apl-pay-val" style={{ color: '#0071e3' }}>
-                  {pkg.amount.toLocaleString('vi-VN')}đ
-                </span>
-                <button
-                  type="button"
-                  className="apl-pay-copy-btn"
-                  onClick={() => copyToClipboard(String(pkg.amount), 'amount')}
-                >
-                  <SvgCopy size={11} />
-                  {copiedField === 'amount' ? 'Đã sao chép' : 'Sao chép'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="apl-pay-alert">
-            <SvgAlert size={16} />
-            <span>
-              Ghi <b>chính xác nội dung chuyển khoản</b> để hệ thống tự động kích hoạt tài khoản ngay lập tức sau 30-60 giây.
-            </span>
-          </div>
-
-          <button
-            type="button"
-            className="apl-pay-btn-primary"
-            onClick={() => setStep('waiting')}
-          >
-            <SvgCheck size={16} />
-            Tôi đã chuyển khoản
-          </button>
+              <button
+                type="button"
+                className="apl-pay-btn-primary"
+                onClick={() => setStep('waiting')}
+              >
+                <SvgCheck size={16} />
+                Tôi đã chuyển khoản
+              </button>
+            </>
+          )}
         </>
       )}
 

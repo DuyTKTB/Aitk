@@ -56,7 +56,7 @@ const QUICK_WARNS = [
   'Còn ít thời gian, kiểm tra lại bài.',
 ];
 
-const SEVERE_WARN = '⚠ CẢNH BÁO NGHIÊM TRỌNG: Bạn đã vi phạm quy chế thi. Vi phạm thêm sẽ bị mời ra khỏi phòng.';
+const SEVERE_WARN = '[CẢNH BÁO NGHIÊM TRỌNG] Bạn đã vi phạm quy chế thi. Vi phạm thêm sẽ bị đình chỉ thi.';
 
 function hardCount(st) {
   return (st.violations || []).filter((v) => v.severity === 'hard').length;
@@ -69,6 +69,14 @@ function riskOf(st, now) {
   const online = isStudentOnline(st, now);
   const stale = secondsSinceUpdate(st, now) > STALE_SEC;
   return hardCount(st) * 3 + softCount(st) + (!online ? 2 : 0) + (online && stale ? 1 : 0);
+}
+
+function aiSeverityOf(st) {
+  const hard = hardCount(st);
+  const total = (st.violations || []).length;
+  if (hard >= 1 || total >= 3) return { level: 'high', label: 'Nghiêm trọng', color: '#ef4444' };
+  if (total >= 1) return { level: 'med', label: 'Trung bình', color: '#f59e0b' };
+  return { level: 'low', label: 'An toàn / Nhẹ', color: '#10b981' };
 }
 function camState(st, now) {
   if (st.status === 'submitted' || st.status === 'kicked') return 'done';
@@ -148,6 +156,29 @@ function CamCard({ st, now, total, pinned, highlight, onOpen, onPin }) {
 
           {hard && meta && st.status !== 'submitted' && !st.paused && (
             <span className="vt-cam-viol" title={meta.label}><meta.Icon size={12} /> {hardCount(st)}</span>
+          )}
+          {st.status !== 'submitted' && st.status !== 'kicked' && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 8,
+                left: 60,
+                padding: '2px 7px',
+                borderRadius: 999,
+                fontSize: '0.66rem',
+                fontWeight: 800,
+                background: aiSeverityOf(st).color,
+                color: '#fff',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                zIndex: 2,
+              }}
+              title={`Đánh giá AI: Mức độ ${aiSeverityOf(st).label}`}
+            >
+              AI: {aiSeverityOf(st).label}
+            </span>
           )}
           {burstFresh && (
             <span className="vt-cam-burst"><IcoBroadcast size={11} /> {st.burst.frames.length}</span>
@@ -277,6 +308,46 @@ function StudentModal({ student, total, onClose, onKick, onWarn, onTogglePause, 
             <div><b>{fmtClock(student.joinedAtMs)}</b><small>vào phòng</small></div>
           </div>
 
+          {/* Đánh giá AI Giám thị & Độ trung thực */}
+          <div style={{
+            background: aiSeverityOf(student).level === 'high' ? '#fef2f2' : aiSeverityOf(student).level === 'med' ? '#fffbeb' : '#f0fdf4',
+            border: `1px solid ${aiSeverityOf(student).level === 'high' ? '#fecaca' : aiSeverityOf(student).level === 'med' ? '#fde68a' : '#bbf7d0'}`,
+            borderRadius: 14,
+            padding: '10px 14px',
+            marginBottom: '0.6rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: aiSeverityOf(student).color }}>
+                  Đánh giá AI Giám thị: Mức độ {aiSeverityOf(student).label}
+                </span>
+                <span style={{ fontSize: '0.74rem', background: 'rgba(0,0,0,0.06)', padding: '2px 8px', borderRadius: 99, fontWeight: 700 }}>
+                  Độ tin cậy bài làm: {Math.max(10, 100 - hardCount(student) * 25 - softCount(student) * 10)}%
+                </span>
+              </div>
+              <small style={{ color: '#475569', fontSize: '0.75rem', marginTop: 3, display: 'block' }}>
+                {hardCount(student) >= 1
+                  ? 'Khuyến nghị: Phát hiện vi phạm nặng hoặc nhiều lần. Giáo viên nên gửi cảnh báo hoặc tạm dừng bài thi.'
+                  : softCount(student) >= 1
+                  ? 'Khuyến nghị: Thí sinh có 1-2 lần rời màn hình nhẹ. Nên nhắc nhở tập trung làm bài.'
+                  : 'Khuyến nghị: Thí sinh làm bài nghiêm túc, không phát hiện dấu hiệu gian lận.'}
+              </small>
+            </div>
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => send(`[Giám thị AI] Thí sinh ${student.studentName} vui lòng giữ nghiêm túc và tập trung làm bài thi.`)}
+              style={{ fontSize: '0.74rem', padding: '4px 10px' }}
+            >
+              AI Nhắc nhở ngay
+            </button>
+          </div>
+
           <section className="vt-sm-viol">
             <h4><IcoAlert size={14} /> Lịch sử vi phạm</h4>
             {violations.length === 0 ? (
@@ -400,6 +471,19 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
   const [chartMode, setChartMode] = useState('line');
   const [logFilter, setLogFilter] = useState('all');
 
+  /* AI Giám thị thông minh & Tự động nhắc nhở */
+  const [aiAutoWarn, setAiAutoWarn] = useState(true);
+  const [aiProctorFeed, setAiProctorFeed] = useState([
+    {
+      id: 'init-1',
+      time: 'Vừa xong',
+      studentName: 'Hệ thống',
+      severity: 'low',
+      messageSent: 'AI Giám thị đã được kích hoạt và đang tự động giám sát phòng thi.',
+    },
+  ]);
+  const lastWarnTimeMap = useRef({});
+
   const [selectedId, setSelectedId] = useState(null);
   const [logs, setLogs] = useState([]);
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -439,22 +523,61 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
 
   useEffect(() => {
     const fresh = [];
+    const nowMs = Date.now();
     for (const st of students) {
       const vs = st.violations || [];
       const seen = seenViolRef.current.get(st.id) || 0;
       if (vs.length > seen) {
         for (let i = seen; i < vs.length; i++) {
-          fresh.push({ id: `${st.id}-${i}`, studentId: st.id, studentName: st.studentName, ...vs[i] });
+          const viol = vs[i];
+          const severity = (viol.severity === 'hard' || vs.length >= 3)
+            ? 'high'
+            : (viol.type === 'window_blur' || viol.type === 'tab_hidden')
+              ? 'med'
+              : 'low';
+
+          fresh.push({ id: `${st.id}-${i}`, studentId: st.id, studentName: st.studentName, severity, ...viol });
+
+          // AI Tự động gửi nhắc nhở thí sinh vi phạm
+          if (aiAutoWarn && st.status === 'examining') {
+            const lastWarn = lastWarnTimeMap.current[st.id] || 0;
+            // Debounce: Mỗi thí sinh cách nhau ít nhất 15 giây
+            if (nowMs - lastWarn > 15000) {
+              lastWarnTimeMap.current[st.id] = nowMs;
+              let msg = '';
+              if (severity === 'high') {
+                msg = `[CẢNH BÁO GIÁM THỊ AI] Thí sinh ${st.studentName} đã vi phạm quy chế nghiêm trọng (lần thứ ${vs.length}). Giáo viên đang theo dõi trực tiếp bài làm của em!`;
+              } else if (severity === 'med') {
+                msg = `[Giám thị AI] Thí sinh ${st.studentName} vừa chuyển tab làm bài (lần thứ ${vs.length}). Hệ thống đã lưu vết, vui lòng tập trung làm bài!`;
+              } else {
+                msg = `[Giám thị AI] Thí sinh ${st.studentName} chú ý giữ khuôn mặt trong góc camera và không rời màn hình thi.`;
+              }
+
+              // Gửi cảnh báo thời gian thực tới thí sinh
+              warnStudent({ sessionId, studentId: st.id, message: msg }).catch(() => {});
+
+              setAiProctorFeed((prev) => [
+                {
+                  id: `ai-${nowMs}-${st.id}`,
+                  time: fmtClock(nowMs),
+                  studentName: st.studentName,
+                  severity,
+                  messageSent: msg,
+                },
+                ...prev.slice(0, 30),
+              ]);
+            }
+          }
         }
         seenViolRef.current.set(st.id, vs.length);
       }
     }
     if (fresh.length > 0) {
       setLogs((prev) => [...fresh, ...prev].sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 200));
-      if (loadedRef.current && fresh.some((f) => f.severity === 'hard')) beep();
+      if (loadedRef.current && fresh.some((f) => f.severity === 'hard' || f.severity === 'high')) beep();
     }
     if (students.length > 0) loadedRef.current = true;
-  }, [students]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [students, aiAutoWarn, sessionId, beep]);
 
   /* ---------- DERIVED ---------- */
   const remaining = session ? timeRemaining(session, now) : 0;
@@ -675,6 +798,100 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
           title: sound ? 'Âm báo vi phạm: đang bật' : 'Âm báo vi phạm: đang tắt',
         }}
       />
+
+      {/* ============================================================
+          AI GIÁM THỊ THÔNG MINH & TỰ ĐỘNG NHẮC NHỞ
+          ============================================================ */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
+          border: '1px solid #bfdbfe',
+          borderRadius: 16,
+          padding: '10px 16px',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 260 }}>
+          <span
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: '#2563eb',
+              color: '#fff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)',
+              flexShrink: 0,
+            }}
+          >
+            <IcoShield size={17} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <strong style={{ fontSize: '0.86rem', color: '#1e3a8a' }}>
+                AI Giám Thị Phòng Thi Thông Minh
+              </strong>
+              <span
+                style={{
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  padding: '2px 8px',
+                  borderRadius: 99,
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                }}
+              >
+                ● LIVE
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: '0.76rem',
+                color: '#3b82f6',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                marginTop: 2,
+              }}
+            >
+              {aiProctorFeed[0]?.messageSent || 'Đang tự động theo dõi vi phạm và hỗ trợ bảo vệ phòng thi.'}
+            </div>
+          </div>
+        </div>
+
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            cursor: 'pointer',
+            background: '#fff',
+            padding: '6px 12px',
+            borderRadius: 99,
+            border: '1px solid #cbd5e1',
+            fontSize: '0.78rem',
+            fontWeight: 800,
+            color: '#0f172a',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={aiAutoWarn}
+            onChange={(e) => setAiAutoWarn(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: '#2563eb' }}
+          />
+          <span>AI Tự động gửi nhắc nhở thí sinh khi vi phạm</span>
+        </label>
+      </div>
 
       {/* HERO */}
       <div className="vt-row-hero">

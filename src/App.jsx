@@ -74,6 +74,7 @@ import SystemAnnouncementBanner from './components/SystemAnnouncementBanner.jsx'
 import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
 import FeedbackModal from './components/FeedbackModal.jsx';
 import CreditTopUp from './components/CreditTopUp.jsx';
+import StreakModal from './components/StreakModal.jsx';
 import ElecIntroLoader, { PageLoader } from './components/ElecIntroLoader.jsx';
 
 /* ============ HOOKS + LIB ============ */
@@ -85,6 +86,7 @@ import { getCredits, onCreditsChange } from './lib/creditService.js';
 import { setExamAiUserId } from './lib/examAiUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase.js';
+import { supabase } from './lib/supabase.js';
 
 /* ============ CSS ============ */
 import './app-extra.css';
@@ -321,24 +323,66 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) {
       setUserRole('student');
-      return;
+      return undefined;
     }
+
+    const saveLocalRole = (role) => {
+      setUserRole(role);
+      try {
+        const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+        meta[user.uid] = { ...(meta[user.uid] || {}), role };
+        localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+      } catch { /* ignore */ }
+    };
+
+    if (pro?.isPro && pro?.isTeacherPro !== false) {
+      saveLocalRole('teacher');
+      return undefined;
+    }
+
     setUserRole(getUserRole(user));
-    (async () => {
+
+    let alive = true;
+    const syncRoleFromServer = async () => {
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.uid)
+          .maybeSingle();
+        if (!alive) return;
+        if (prof?.role === 'teacher') {
+          saveLocalRole('teacher');
+          return;
+        }
+      } catch { /* ignore */ }
+
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
+        if (!alive) return;
         if (snap.exists()) {
           const role = snap.data()?.role || 'student';
-          setUserRole(role);
-          const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-          meta[user.uid] = { ...(meta[user.uid] || {}), role };
-          localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+          saveLocalRole(role);
         }
       } catch (e) {
         console.warn('Không load được role:', e);
       }
-    })();
-  }, [user?.uid]);
+    };
+
+    syncRoleFromServer();
+    const onRoleUpdate = () => {
+      if (pro?.isPro && pro?.isTeacherPro !== false) {
+        saveLocalRole('teacher');
+      } else {
+        setUserRole(getUserRole(user));
+      }
+    };
+    window.addEventListener('user-profile-change', onRoleUpdate);
+    return () => {
+      alive = false;
+      window.removeEventListener('user-profile-change', onRoleUpdate);
+    };
+  }, [user?.uid, pro?.isPro, pro?.isTeacherPro]);
 
   /* ============ THEME ============ */
   useEffect(() => {
@@ -677,6 +721,7 @@ export default function App() {
       <OutOfCreditsModal />
       <FeedbackModal />
       <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />
+      <StreakModal />
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
       {/* {page === 'home' && <ElecBuddies />} */}
 
@@ -689,8 +734,8 @@ export default function App() {
         <MobileHeader
           page={page}
           theme={theme}
-          isPro={pro.isPro}
-          userRole={userRole}
+          isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
+          userRole={pro.isPro && pro.isTeacherPro !== false ? 'teacher' : userRole}
           credits={credits}
           onSearch={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -704,8 +749,8 @@ export default function App() {
           theme={theme}
           scrolled={scrolled}
           isAdmin={isAdmin(user)}
-          isPro={pro.isPro}
-          userRole={userRole}
+          isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
+          userRole={pro.isPro && pro.isTeacherPro !== false ? 'teacher' : userRole}
           credits={credits}
           toolOpen={toolOpen}
           onToolOpen={setToolOpen}
@@ -743,7 +788,14 @@ export default function App() {
 
       {!isFullPage && <SiteFooter />}
 
-      {!isFullPage && isMobileScreen && <BottomNav page={page} userRole={userRole} isPro={pro.isPro} onOpenMore={() => setMenu(true)} />}
+      {!isFullPage && isMobileScreen && (
+        <BottomNav
+          page={page}
+          userRole={pro.isPro && pro.isTeacherPro !== false ? 'teacher' : userRole}
+          isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
+          onOpenMore={() => setMenu(true)}
+        />
+      )}
 
       {!isVirtualExamRoom && <CommandPalette />}
     </div>

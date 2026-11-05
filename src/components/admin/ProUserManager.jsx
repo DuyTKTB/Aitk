@@ -8,6 +8,7 @@ import {
   adminExtendProUser,
   adminRevokeProUser,
   adminGrantProDirect,
+  adminGrantVipDirect,
   isProActive,
   daysLeft,
 } from '../../lib/proKeyApi.js';
@@ -197,6 +198,23 @@ export default function ProUserManager() {
     });
   };
 
+  const handleUpgradeToVip = (row) => {
+    setConfirm({
+      title: 'Nâng lên VIP?',
+      body: `Nâng cấp "${row.name}" (${row.email}) thành tài khoản VIP (365 ngày)?`,
+      okLabel: 'Nâng VIP',
+      onOk: async () => {
+        try {
+          await adminGrantVipDirect({ userId: row.user_id, durationDays: 365, note: 'Nâng từ Giáo viên PRO lên VIP' });
+          say(`Đã nâng cấp ${row.name} lên VIP`);
+          await load();
+        } catch (e) {
+          say('Lỗi: ' + e.message);
+        }
+      },
+    });
+  };
+
   const handleExport = () => {
     if (!filtered.length) {
       say('Chưa có dữ liệu');
@@ -375,9 +393,18 @@ export default function ProUserManager() {
                         </button>
                         <button
                           type="button"
+                          className="vt-btn sm"
+                          style={{ color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.4)' }}
+                          onClick={() => handleUpgradeToVip(r)}
+                          title="Nâng cấp tài khoản thành VIP (365 ngày)"
+                        >
+                          Lên VIP
+                        </button>
+                        <button
+                          type="button"
                           className="vt-icon-btn danger"
                           onClick={() => handleRevoke(r)}
-                          title="Thu hồi PRO"
+                          title="Thu hồi PRO (Đưa về Thường)"
                         >
                           <IconTrash size={14} />
                         </button>
@@ -484,7 +511,7 @@ function GrantProDirectModal({ onClose, onDone }) {
       .from('profiles')
       .select('id, display_name, email, role')
       .order('created_at', { ascending: false })
-      .limit(100)
+      .limit(500)
       .then(({ data }) => {
         if (alive && data) setCandidates(data);
       });
@@ -506,15 +533,27 @@ function GrantProDirectModal({ onClose, onDone }) {
 
   const submit = async () => {
     setErr('');
-    const uid = pickedUser?.id || query.trim();
+    const rawQuery = query.trim();
+    const qLower = rawQuery.toLowerCase();
+    const autoPicked =
+      pickedUser ||
+      candidates.find(
+        (u) =>
+          String(u.id).toLowerCase() === qLower ||
+          (u.email || '').trim().toLowerCase() === qLower
+      ) ||
+      (matched.length === 1 ? matched[0] : null);
+
+    const uid = autoPicked?.id || rawQuery;
     if (!uid) {
-      setErr('Hãy chọn một tài khoản hoặc dán UID người dùng.');
+      setErr('Hãy chọn một tài khoản hoặc nhập email / UID người dùng.');
       return;
     }
     setSaving(true);
     try {
       await adminGrantProDirect({ userId: uid, durationDays: days, note });
-      onDone(`Đã cấp PRO +${days} ngày cho ${pickedUser?.display_name || uid}`);
+      const label = autoPicked?.display_name || autoPicked?.email || uid;
+      onDone(`Đã cấp PRO +${days} ngày cho ${label}`);
     } catch (e) {
       setErr(e.message || 'Không cấp được PRO.');
     } finally {

@@ -1,0 +1,819 @@
+import fs from 'fs';
+import path from 'path';
+import { chromium } from '@playwright/test';
+
+const HTML_CONTENT = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Thiết kế Phân hệ: Khảo thí & Tổ chức Thi Online (Giám sát AI Nâng cao)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* BLUEPRINT DRAFTING BOARD */
+    .blueprint-board {
+      width: 1720px;
+      height: 960px;
+      background: #fafbfc;
+      background-image: 
+        linear-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+        linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+      background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+      border: 3px solid #1e293b;
+      position: relative;
+      padding: 32px 48px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
+
+    /* Inner technical border */
+    .inner-frame {
+      position: absolute;
+      top: 14px; left: 14px; right: 14px; bottom: 14px;
+      border: 1px solid #64748b;
+      pointer-events: none;
+    }
+    .corner-mark {
+      position: absolute;
+      width: 18px; height: 18px;
+      border-color: #0f172a;
+    }
+    .cm-tl { top: 6px; left: 6px; border-top: 3px solid #0f172a; border-left: 3px solid #0f172a; }
+    .cm-tr { top: 6px; right: 6px; border-top: 3px solid #0f172a; border-right: 3px solid #0f172a; }
+    .cm-bl { bottom: 6px; left: 6px; border-bottom: 3px solid #0f172a; border-left: 3px solid #0f172a; }
+    .cm-br { bottom: 6px; right: 6px; border-bottom: 3px solid #0f172a; border-right: 3px solid #0f172a; }
+
+    /* HEADER */
+    .header {
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .header-title {
+      font-size: 27px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .header-subtitle {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 8px;
+      margin-bottom: 30px;
+      letter-spacing: 0.5px;
+    }
+
+    /* MAIN FLOW PIPELINE */
+    .flow-pipeline {
+      display: grid;
+      grid-template-columns: 420px 140px 420px 140px 440px;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    /* STAGE COLUMNS */
+    .stage-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stage-header {
+      font-size: 19px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    /* CARD 1: INPUT MATRIX (ISOMETRIC / TILTED PAPER) */
+    .card-matrix {
+      width: 380px;
+      height: 480px;
+      background: #ffffff;
+      border: 1.5px solid #334155;
+      border-radius: 12px;
+      box-shadow: -12px 16px 0px rgba(71, 85, 105, 0.25), 0 10px 25px rgba(0,0,0,0.06);
+      padding: 20px 24px;
+      transform: rotate(-3deg);
+      transition: all 0.3s;
+      position: relative;
+    }
+    .matrix-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0284c7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #e0f2fe;
+      padding-bottom: 6px;
+    }
+    .level-row {
+      margin-bottom: 11px;
+    }
+    .level-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    .progress-track {
+      height: 7px;
+      background: #f1f5f9;
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+    }
+    .q-box {
+      margin-top: 14px;
+      border: 1px dashed #94a3b8;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #334155;
+    }
+    .q-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+
+    /* TRANSITION ARROW WITH GEAR */
+    .arrow-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .gear-arrow-svg {
+      width: 120px;
+      height: 60px;
+    }
+    .arrow-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #1e293b;
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.35;
+      max-width: 130px;
+    }
+
+    /* CARD 2: STANDARDIZED EXPORT & PACKAGING */
+    .card-export {
+      width: 370px;
+      height: 500px;
+      background: #ffffff;
+      border: 1.5px solid #0f172a;
+      border-radius: 8px;
+      padding: 18px 20px;
+      position: relative;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    }
+    /* Technical dimension indicators */
+    .dim-top {
+      position: absolute;
+      top: -26px;
+      left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+    }
+    .dim-line {
+      flex: 1;
+      height: 1px;
+      background: #94a3b8;
+      position: relative;
+    }
+    .dim-line::before, .dim-line::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      width: 1px;
+      height: 7px;
+      background: #94a3b8;
+    }
+    .dim-line::before { left: 0; }
+    .dim-line::after { right: 0; }
+
+    .dim-side {
+      position: absolute;
+      left: -22px;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: #94a3b8;
+    }
+    .dim-side::before, .dim-side::after {
+      content: '';
+      position: absolute;
+      left: -3px;
+      width: 7px;
+      height: 1px;
+      background: #94a3b8;
+    }
+    .dim-side::before { top: 0; }
+    .dim-side::after { bottom: 0; }
+
+    .corner-anchor {
+      position: absolute;
+      width: 8px; height: 8px;
+      background: #ffffff;
+      border: 2px solid #0284c7;
+      border-radius: 50%;
+    }
+    .ca-tl { top: -4px; left: -4px; }
+    .ca-tr { top: -4px; right: -4px; }
+    .ca-bl { bottom: -4px; left: -4px; }
+    .ca-br { bottom: -4px; right: -4px; }
+
+    .export-box-pdf {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      margin-bottom: 14px;
+    }
+    .export-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: #dc2626;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .export-desc {
+      font-size: 11.5px;
+      color: #475569;
+      line-height: 1.4;
+    }
+    .pill-list {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+    }
+
+    .export-box-online {
+      border: 1.5px solid #0284c7;
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: #f0f9ff;
+    }
+    .online-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0369a1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .token-preview {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      border: 1px dashed #38bdf8;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-top: 8px;
+    }
+
+    /* CARD 3: ONLINE EXAM & ADVANCED AI PROCTORING */
+    .card-proctoring-wrapper {
+      position: relative;
+      width: 420px;
+      height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .exam-screen {
+      width: 360px;
+      height: 480px;
+      background: #ffffff;
+      border: 1.5px solid #334155;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .screen-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 12px;
+    }
+    .timer-badge {
+      font-size: 12px;
+      font-weight: 800;
+      color: #e11d48;
+      background: #ffe4e6;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .security-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #059669;
+      background: #d1fae5;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* 3D GLASS SHIELD OVERLAY (AI PROCTORING HUD) */
+    .proctoring-hud-glass {
+      position: absolute;
+      top: 40px;
+      right: -24px;
+      width: 360px;
+      height: 420px;
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(99, 102, 241, 0.28));
+      border: 2px solid #0284c7;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      box-shadow: 12px 18px 40px rgba(2, 132, 199, 0.25);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+    .hud-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0369a1;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .hud-cam-frame {
+      width: 100%;
+      height: 170px;
+      background: #0f172a;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #38bdf8;
+    }
+    /* Face mesh SVG overlay */
+    .face-mesh-svg {
+      position: absolute;
+      width: 120px;
+      height: 140px;
+    }
+    .face-box {
+      position: absolute;
+      width: 110px;
+      height: 130px;
+      border: 1.5px dashed #38bdf8;
+      border-radius: 12px;
+    }
+    .gaze-vector {
+      position: absolute;
+      width: 2px;
+      height: 35px;
+      background: #22c55e;
+      top: 50px;
+      transform: rotate(5deg);
+    }
+    .gaze-point {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      top: 45px;
+      box-shadow: 0 0 10px #22c55e;
+    }
+    .cam-status {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      font-size: 10px;
+      color: #34d399;
+      font-family: monospace;
+      font-weight: 700;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .hud-features {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .hud-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(2, 132, 199, 0.3);
+    }
+    .hud-icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* FOOTER ANNOTATION */
+    .footer-note {
+      position: absolute;
+      bottom: 26px;
+      right: 48px;
+      max-width: 540px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #334155;
+      text-align: right;
+      font-weight: 500;
+    }
+    .footer-note strong {
+      color: #0f172a;
+    }
+    .footer-brand {
+      position: absolute;
+      bottom: 26px;
+      left: 48px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="blueprint-board">
+  <div class="inner-frame"></div>
+  <div class="corner-mark cm-tl"></div>
+  <div class="corner-mark cm-tr"></div>
+  <div class="corner-mark cm-bl"></div>
+  <div class="corner-mark cm-br"></div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">Thiết kế Phân hệ 2: Khảo thí & Tổ chức Thi Online (Giám sát AI Nâng cao)</div>
+    <div class="header-subtitle">Smart Exam Authoring & Edge AI Proctoring Flow</div>
+  </div>
+
+  <!-- FLOW PIPELINE -->
+  <div class="flow-pipeline">
+
+    <!-- STAGE 1: SOAN & MA TRAN DE -->
+    <div class="stage-col">
+      <div class="stage-header">Đầu vào: Soạn & Ma trận đề</div>
+      
+      <div class="card-matrix">
+        <div class="matrix-title">Ma trận 4 Mức độ (GDPT 2018)</div>
+        
+        <div class="level-row">
+          <div class="level-meta">
+            <span style="color:#0284c7;">1. Nhận biết (40%)</span>
+            <span>16 câu</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: 40%; background: #0284c7;"></div>
+          </div>
+        </div>
+
+        <div class="level-row">
+          <div class="level-meta">
+            <span style="color:#10b981;">2. Thông hiểu (30%)</span>
+            <span>12 câu</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: 30%; background: #10b981;"></div>
+          </div>
+        </div>
+
+        <div class="level-row">
+          <div class="level-meta">
+            <span style="color:#f59e0b;">3. Vận dụng (20%)</span>
+            <span>8 câu</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: 20%; background: #f59e0b;"></div>
+          </div>
+        </div>
+
+        <div class="level-row">
+          <div class="level-meta">
+            <span style="color:#8b5cf6;">4. Vận dụng cao (10%)</span>
+            <span>4 câu</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: 10%; background: #8b5cf6;"></div>
+          </div>
+        </div>
+
+        <!-- Sample question items -->
+        <div class="q-box">
+          <div class="q-tag">Hóa 12 · Este - Lipit</div>
+          <div style="font-weight:600; margin-bottom:2px;">Câu 1: Thủy phân triolein trong NaOH...</div>
+          <div style="color:#64748b; font-size:11px;">Công thức tính mol: C3H5(OOCC17H33)3</div>
+        </div>
+
+        <div class="q-box" style="margin-top:10px;">
+          <div class="q-tag">Hóa 10 · Cân bằng Oxy hóa khử</div>
+          <div style="font-weight:600; margin-bottom:2px;">Câu 2: Fe + HNO3 → Fe(NO3)3 + NO + H2O</div>
+          <div style="color:#64748b; font-size:11px;">Hệ số cân bằng tối giản: a = 1, b = 4</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARROW 1: MATRIX ENGINE -->
+    <div class="arrow-container">
+      <svg class="gear-arrow-svg" viewBox="0 0 120 60">
+        <!-- Arrow Body -->
+        <path d="M 10 30 L 85 30 L 85 18 L 112 30 L 85 42 L 85 30 Z" fill="#e2e8f0" stroke="#475569" stroke-width="2.5" />
+        <!-- Technical Gear in Center -->
+        <g transform="translate(48, 30)">
+          <circle cx="0" cy="0" r="14" fill="#ffffff" stroke="#0284c7" stroke-width="2.5" />
+          <circle cx="0" cy="0" r="5" fill="#0284c7" />
+          <!-- Gear teeth -->
+          <rect x="-3" y="-18" width="6" height="4" fill="#0284c7" />
+          <rect x="-3" y="14" width="6" height="4" fill="#0284c7" />
+          <rect x="-18" y="-3" width="4" height="6" fill="#0284c7" />
+          <rect x="14" y="-3" width="4" height="6" fill="#0284c7" />
+          <rect x="-13" y="-13" width="5" height="5" fill="#0284c7" transform="rotate(45)" />
+          <rect x="9" y="9" width="5" height="5" fill="#0284c7" transform="rotate(45)" />
+          <rect x="-13" y="9" width="5" height="5" fill="#0284c7" transform="rotate(-45)" />
+          <rect x="9" y="-13" width="5" height="5" fill="#0284c7" transform="rotate(-45)" />
+        </g>
+      </svg>
+      <div class="arrow-label">Thuật toán Matrix Parser & Sinh đề</div>
+    </div>
+
+    <!-- STAGE 2: DONG GOI & XUAT BAN -->
+    <div class="stage-col">
+      <div class="stage-header">Đóng gói & Xuất bản đa định dạng</div>
+      
+      <div class="card-export">
+        <!-- Blueprint dimensions -->
+        <div class="dim-top">
+          <div class="dim-line"></div>
+          <span style="padding: 0 8px;">2480 × 3508 px (A4 Standard)</span>
+          <div class="dim-line"></div>
+        </div>
+        <div class="dim-side"></div>
+        <div class="corner-anchor ca-tl"></div>
+        <div class="corner-anchor ca-tr"></div>
+        <div class="corner-anchor ca-bl"></div>
+        <div class="corner-anchor ca-br"></div>
+
+        <!-- Format 1: In ấn -->
+        <div class="export-box-pdf">
+          <div class="export-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            1. Xuất tệp in ấn (PDF / Word .docx)
+          </div>
+          <div class="export-desc">
+            Đóng gói đề thi chuẩn Bộ GD&ĐT kèm khung điểm, lời giải chi tiết và hoán vị mã đề tự động.
+          </div>
+          <div class="pill-list">
+            <span class="pill" style="color:#dc2626; border-color:#fca5a5;">Mã đề 101</span>
+            <span class="pill" style="color:#d97706; border-color:#fcd34d;">Mã đề 102</span>
+            <span class="pill" style="color:#2563eb; border-color:#bfdbfe;">Mã đề 103</span>
+            <span class="pill" style="color:#059669; border-color:#a7f3d0;">Đáp án gốc</span>
+          </div>
+        </div>
+
+        <!-- Format 2: Online Room Token -->
+        <div class="export-box-online">
+          <div class="online-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            2. Khởi tạo Phòng thi Online
+          </div>
+          <div class="export-desc">
+            Tạo phiên thi trực tuyến bảo mật cao với mã phòng động, kiểm soát thí sinh và cấp quyền Edge AI.
+          </div>
+          <div class="token-preview">
+            <div>
+              <div style="font-size:10px; color:#64748b; font-weight:700;">MÃ PHÒNG THI ONLINE</div>
+              <div style="font-size:14px; font-weight:800; color:#0f172a; letter-spacing:1px;">CHEM-2026-VIP</div>
+            </div>
+            <span style="font-size:11px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:3px 8px; border-radius:4px;">Ready</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; border:1px solid #e2e8f0; border-radius:8px; padding:10px; background:#f8fafc;">
+          <div style="font-size:11.5px; font-weight:700; color:#334155; margin-bottom:4px;">Chính sách phòng thi:</div>
+          <div style="font-size:11px; color:#64748b; line-height:1.4;">
+            • Thời gian: 50 phút · 40 câu trắc nghiệm<br/>
+            • Trộn câu hỏi và đảo đáp án theo từng học sinh<br/>
+            • Yêu cầu bật camera giám sát AI trong suốt ca thi
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARROW 2: SECURE PROTOCOL -->
+    <div class="arrow-container">
+      <svg class="gear-arrow-svg" viewBox="0 0 120 60">
+        <!-- Arrow Body -->
+        <path d="M 10 30 L 85 30 L 85 18 L 112 30 L 85 42 L 85 30 Z" fill="#e2e8f0" stroke="#475569" stroke-width="2.5" />
+        <!-- Technical Gear in Center -->
+        <g transform="translate(48, 30)">
+          <circle cx="0" cy="0" r="14" fill="#ffffff" stroke="#8b5cf6" stroke-width="2.5" />
+          <circle cx="0" cy="0" r="5" fill="#8b5cf6" />
+          <!-- Gear teeth -->
+          <rect x="-3" y="-18" width="6" height="4" fill="#8b5cf6" />
+          <rect x="-3" y="14" width="6" height="4" fill="#8b5cf6" />
+          <rect x="-18" y="-3" width="4" height="6" fill="#8b5cf6" />
+          <rect x="14" y="-3" width="4" height="6" fill="#8b5cf6" />
+          <rect x="-13" y="-13" width="5" height="5" fill="#8b5cf6" transform="rotate(45)" />
+          <rect x="9" y="9" width="5" height="5" fill="#8b5cf6" transform="rotate(45)" />
+          <rect x="-13" y="9" width="5" height="5" fill="#8b5cf6" transform="rotate(-45)" />
+          <rect x="9" y="-13" width="5" height="5" fill="#8b5cf6" transform="rotate(-45)" />
+        </g>
+      </svg>
+      <div class="arrow-label">Cấp quyền & Khởi động Edge AI Session</div>
+    </div>
+
+    <!-- STAGE 3: THI ONLINE & GIAM SAT AI -->
+    <div class="stage-col">
+      <div class="stage-header">Thực thi: Phòng thi Online & AI Proctoring</div>
+      
+      <div class="card-proctoring-wrapper">
+        <!-- BASE ONLINE EXAM SCREEN -->
+        <div class="exam-screen">
+          <div class="screen-topbar">
+            <span class="security-badge">● Secure Lock</span>
+            <span class="timer-badge">⏱ 42:15</span>
+          </div>
+
+          <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:8px;">
+            Câu 14: Cho 11,2g Fe tác dụng hoàn toàn với dung dịch HCl dư. Thể tích khí H2 (đktc) thu được là:
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px; font-size:11px; color:#334155;">
+            <div style="padding:6px 8px; border:1px solid #cbd5e1; border-radius:4px;">A. 2,24 lít</div>
+            <div style="padding:6px 8px; border:1.5px solid #0284c7; background:#e0f2fe; border-radius:4px; font-weight:700; color:#0369a1;">● B. 4,48 lít</div>
+            <div style="padding:6px 8px; border:1px solid #cbd5e1; border-radius:4px;">C. 6,72 lít</div>
+            <div style="padding:6px 8px; border:1px solid #cbd5e1; border-radius:4px;">D. 1,12 lít</div>
+          </div>
+        </div>
+
+        <!-- 3D GLASS SHIELD (EDGE AI PROCTORING HUD) -->
+        <div class="proctoring-hud-glass">
+          <div class="hud-title">
+            <span>AI Proctoring HUD</span>
+            <span style="font-size:10px; background:#0284c7; color:#fff; padding:2px 6px; border-radius:4px;">Real-time</span>
+          </div>
+
+          <!-- WEBCAM FRAME WITH FACE MESH -->
+          <div class="hud-cam-frame">
+            <div class="face-box"></div>
+            <!-- Face mesh representation -->
+            <svg class="face-mesh-svg" viewBox="0 0 100 120">
+              <ellipse cx="50" cy="60" rx="36" ry="48" fill="none" stroke="rgba(56, 189, 248, 0.4)" stroke-width="1" stroke-dasharray="2 2" />
+              <!-- Landmark points -->
+              <circle cx="36" cy="50" r="3" fill="#38bdf8" />
+              <circle cx="64" cy="50" r="3" fill="#38bdf8" />
+              <circle cx="50" cy="65" r="2.5" fill="#38bdf8" />
+              <line x1="42" y1="80" x2="58" y2="80" stroke="#38bdf8" stroke-width="2" />
+              <line x1="36" y1="50" x2="50" y2="65" stroke="rgba(56, 189, 248, 0.6)" stroke-width="1" />
+              <line x1="64" y1="50" x2="50" y2="65" stroke="rgba(56, 189, 248, 0.6)" stroke-width="1" />
+              <line x1="50" y1="65" x2="50" y2="80" stroke="rgba(56, 189, 248, 0.6)" stroke-width="1" />
+            </svg>
+            <div class="gaze-vector"></div>
+            <div class="gaze-point"></div>
+            <div class="cam-status">PROCTOR: 1 FACE DETECTED · GAZE NORMAL</div>
+          </div>
+
+          <!-- SECURITY CHECKS -->
+          <div class="hud-features">
+            <div class="hud-item">
+              <svg class="hud-icon" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Face & Pose Tracking (Đúng người dự thi)</span>
+            </div>
+
+            <div class="hud-item">
+              <svg class="hud-icon" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Anti-Tab-Switch (Khóa toàn màn hình)</span>
+            </div>
+
+            <div class="hud-item">
+              <svg class="hud-icon" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Gaze Deviation Monitor (Cảnh báo liếc bài)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER ANNOTATION -->
+  <div class="footer-brand">ELEC AI · SMART EXAM & PROCTORING ENGINE</div>
+  <div class="footer-note">
+    <strong>Bảo đảm tính liêm chính học thuật tuyệt đối, bám sát chuẩn ma trận GDPT 2018.</strong><br/>
+    Hệ thống tự động chấm điểm, phân tích độ khó và đồng bộ trực tiếp vào sổ điểm & sổ câu sai của học sinh.
+  </div>
+</div>
+
+</body>
+</html>
+`;
+
+async function main() {
+  const rootDir = process.cwd();
+  const htmlPath = path.join(rootDir, 'report', 'so_do_khao_thi_ai_giam_sat.html');
+  const pngPath = path.join(rootDir, 'thiet_ke_khao_thi_online_proctoring.png');
+  const reportPngPath = path.join(rootDir, 'report', 'thiet_ke_khao_thi_online_proctoring.png');
+
+  console.log('Writing HTML blueprint file to:', htmlPath);
+  fs.writeFileSync(htmlPath, HTML_CONTENT, 'utf8');
+
+  console.log('Launching Playwright Chromium to render blueprint image...');
+  const browser = await chromium.launch();
+  const page = await browser.newPage({
+    viewport: { width: 1780, height: 1020 },
+    deviceScaleFactor: 2, // 2x Retina sharpness
+  });
+
+  await page.setContent(HTML_CONTENT, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+
+  const board = await page.$('.blueprint-board');
+  if (board) {
+    console.log('Taking screenshot of blueprint board...');
+    await board.screenshot({ path: pngPath, omitBackground: false });
+    fs.copyFileSync(pngPath, reportPngPath);
+    console.log('Saved PNG to:', pngPath);
+    console.log('Saved PNG to report folder:', reportPngPath);
+  } else {
+    await page.screenshot({ path: pngPath, fullPage: true });
+  }
+
+  await browser.close();
+  console.log('Blueprint generation completed successfully!');
+}
+
+main().catch(err => {
+  console.error('Error generating blueprint:', err);
+  process.exit(1);
+});

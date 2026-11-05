@@ -62,31 +62,37 @@ export function checkVipFromDoc(data) {
   return false;
 }
 
-/* Đọc VIP từ localStorage (chế độ dev/admin) */
+/* Đọc VIP từ localStorage — Khóa chặt bảo mật, chặn can thiệp console */
 function readLocalVip() {
   try {
-    const raw = localStorage.getItem('cs-vip');
-    if (raw === null || raw === '') return { vip: false, plan: 'free' };
+    const raw = localStorage.getItem('cs-vip-status');
+    if (!raw) return { vip: false, plan: 'free' };
 
-    let data = raw;
+    let data = null;
     try {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed === 'object' && parsed !== null) data = parsed;
-    } catch { /* */ }
+      data = JSON.parse(raw);
+    } catch {
+      return { vip: false, plan: 'free' };
+    }
 
-    if (typeof data === 'object' && data !== null) {
+    if (data && typeof data === 'object' && (data.isPro || data.vip)) {
+      if (data.expiry) {
+        const expMs = new Date(data.expiry).getTime();
+        if (Number.isNaN(expMs) || expMs <= Date.now()) {
+          localStorage.removeItem('cs-vip-status');
+          return { vip: false, plan: 'free' };
+        }
+      }
       return {
-        vip: checkVipFromDoc(data),
-        plan: data.tier || data.plan || 'free',
-        until: data.vipUntil || data.until || null,
-        isAdmin: data.role === 'admin',
-        source: 'localStorage',
+        vip: true,
+        plan: data.plan || 'VIP',
+        until: data.expiry || null,
+        isAdmin: false, // Tuyệt đối không cấp Admin qua localStorage
+        source: 'verified_cache',
       };
     }
 
-    const str = String(data).toLowerCase().trim();
-    const isVip = ['true', 'vip', 'premium', 'pro', '1'].includes(str);
-    return { vip: isVip, plan: isVip ? str : 'free', source: 'localStorage' };
+    return { vip: false, plan: 'free' };
   } catch {
     return { vip: false, plan: 'free' };
   }

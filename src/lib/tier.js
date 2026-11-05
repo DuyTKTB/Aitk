@@ -4,6 +4,7 @@
    ============================================================ */
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { supabase } from './supabase.js';
 
 export const TIERS = {
   free: {
@@ -15,6 +16,16 @@ export const TIERS = {
     unlimitedText: false,
     color: '#8fd6c4',
     desc: 'Gói miễn phí — 18 tin nhắn và 5 ảnh mỗi ngày.',
+  },
+  pro: {
+    key: 'pro',
+    name: 'Giáo viên PRO',
+    icon: '👑',
+    quotaText: Infinity,
+    quotaImage: 30,
+    unlimitedText: true,
+    color: '#ffb020',
+    desc: 'Gói Giáo viên PRO — Quản lý lớp học, tạo đề AI & chấm bài tự động.',
   },
   vip: {
     key: 'vip',
@@ -33,13 +44,29 @@ const cache = new Map();
 const CACHE_MS = 60 * 1000;
 
 /* ============================================================
-   Lấy tier của user từ Firestore
+   Lấy tier của user từ Firestore + dự phòng Supabase pro_users
    ============================================================ */
 export async function getTier(uid) {
   if (!uid) return TIERS.free;
 
   const c = cache.get(uid);
   if (c && Date.now() - c.t < CACHE_MS) return c.tier;
+
+  try {
+    const { data: proRow } = await supabase
+      .from('pro_users')
+      .select('key_code, expiry, note')
+      .eq('user_id', uid)
+      .maybeSingle();
+    if (proRow && proRow.expiry && new Date(proRow.expiry).getTime() > Date.now()) {
+      const isVip =
+        (proRow.note || '').includes('[STUDENT_VIP') ||
+        String(proRow.key_code || '').startsWith('VIP-');
+      const resolved = isVip ? TIERS.vip : TIERS.pro;
+      cache.set(uid, { tier: resolved, t: Date.now() });
+      return resolved;
+    }
+  } catch { /* ignore */ }
 
   try {
     const snap = await getDoc(doc(db, 'users', uid));

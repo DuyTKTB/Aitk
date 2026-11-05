@@ -108,6 +108,7 @@ export default function DesktopNav({
   const { count: streakCount, isToday: hasStreakToday } = useLiveStreak();
   const { playing: introPlaying } = useElecIntro();
 
+
   useEffect(() => {
     const onClick = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) {
@@ -125,7 +126,7 @@ export default function DesktopNav({
     };
   }, []);
 
-  const isTeacher = isPro && userRole === 'teacher';
+  const isTeacher = Boolean(isPro || userRole === 'teacher');
   const isStudent = userRole === 'student';
 
   return (
@@ -260,24 +261,31 @@ export default function DesktopNav({
             />
           )}
 
-          <a
-            href="#leaderboard"
+          <button
+            type="button"
             className={`ns9-nav-streak-pill ${hasStreakToday ? 'is-active' : 'is-idle'}`}
-            title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay 🔥) — Bấm xem Bảng xếp hạng` : `Chuỗi ${streakCount} ngày (Chưa học hôm nay) — Bấm xem Bảng xếp hạng`}
+            title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay) — Bấm xem Bảo vệ chuỗi & Nhận thưởng` : `Chuỗi ${streakCount} ngày (Chưa học hôm nay) — Bấm xem Bảo vệ chuỗi & Nhận thưởng`}
             onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
-              if (window.location.hash === '#leaderboard') {
-                e.preventDefault();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                window.dispatchEvent(new HashChangeEvent('hashchange'));
-              }
+              window.dispatchEvent(new CustomEvent('elec-open-streak-modal'));
             }}
+            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={`ns9-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill={hasStreakToday ? '#ea580c' : '#f97316'}
+              style={{ opacity: hasStreakToday ? 1 : 0.75, pointerEvents: 'none' }}
+              className={`ns9-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`}
+              aria-hidden="true"
+            >
               <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
             </svg>
-            <span>{streakCount}</span>
-          </a>
+            <span style={{ pointerEvents: 'none' }}>{streakCount}</span>
+          </button>
 
           {credits != null && (
             <button
@@ -353,6 +361,7 @@ export default function DesktopNav({
           </div>
         </div>
       </nav>
+
     </div>
   );
 }

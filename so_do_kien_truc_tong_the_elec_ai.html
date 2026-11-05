@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Sơ Đồ Kiến Trúc Tổng Thể Hệ Thống ELEC AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0B1120;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 32px;
+      min-width: 2200px;
+      display: flex;
+      justify-content: center;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    }
+
+    .container {
+      width: 2160px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 40px 44px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 28px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 32px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .brand-logo {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #0EA5E9, #6366F1, #EC4899);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.5);
+    }
+    .header-title h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #FFFFFF, #93C5FD, #C4B5FD);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .header-title p {
+      font-size: 14.5px;
+      color: #94A3B8;
+      font-weight: 500;
+    }
+    .badge-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #CBD5E1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pill.cyan { background: rgba(14, 165, 233, 0.15); border-color: rgba(56, 189, 248, 0.4); color: #38BDF8; }
+    .pill.purple { background: rgba(168, 85, 247, 0.15); border-color: rgba(192, 132, 252, 0.4); color: #C084FC; }
+    .pill.emerald { background: rgba(16, 185, 129, 0.15); border-color: rgba(52, 211, 153, 0.4); color: #34D399; }
+    .pill.amber { background: rgba(245, 158, 11, 0.15); border-color: rgba(251, 191, 36, 0.4); color: #FBBF24; }
+
+    /* TIERS WRAPPER */
+    .tiers-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: relative;
+    }
+
+    .tier-box {
+      border-radius: 18px;
+      padding: 24px 28px;
+      position: relative;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .tier-box.t1 {
+      border-color: rgba(56, 189, 248, 0.35);
+      background: linear-gradient(180deg, rgba(14, 165, 233, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+    }
+    .tier-box.t2 {
+      border-color: rgba(168, 85, 247, 0.35);
+      background: linear-gradient(180deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+    }
+    .tier-box.t3 {
+      border-color: rgba(16, 185, 129, 0.35);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+    }
+    .tier-box.t4 {
+      border-color: rgba(245, 158, 11, 0.35);
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+    }
+
+    .tier-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .tier-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .tier-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .t1 .tier-number { background: #0284C7; color: #FFF; }
+    .t2 .tier-number { background: #7C3AED; color: #FFF; }
+    .t3 .tier-number { background: #059669; color: #FFF; }
+    .t4 .tier-number { background: #D97706; color: #FFF; }
+
+    .tier-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .t1 .tier-title { color: #38BDF8; }
+    .t2 .tier-title { color: #C084FC; }
+    .t3 .tier-title { color: #34D399; }
+    .t4 .tier-title { color: #FBBF24; }
+
+    .tier-desc {
+      font-size: 13.5px;
+      color: #94A3B8;
+      font-weight: 500;
+    }
+
+    /* GRID COLUMNS */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 0.85fr;
+      gap: 20px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    /* CARD STYLING */
+    .module-card {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px 20px;
+      position: relative;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .card-icon {
+      font-size: 18px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #F8FAFC;
+    }
+    .card-badge {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.07);
+      color: #94A3B8;
+      font-weight: 600;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      color: #CBD5E1;
+      line-height: 1.45;
+    }
+    .feature-item .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #64748B;
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+    .feature-item b {
+      color: #F1F5F9;
+    }
+    .feature-item code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #38BDF8;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    /* CONNECTOR BARS BETWEEN TIERS */
+    .tier-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin: -10px 0;
+      z-index: 2;
+    }
+    .connector-line {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    }
+    .connector-badge {
+      background: #1E293B;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 30px;
+      padding: 6px 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .connector-badge .arrow {
+      color: #38BDF8;
+      font-weight: 800;
+    }
+
+    /* HIGHLIGHT CARDS */
+    .highlight-glow {
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+    }
+
+    /* FOOTER & LEGEND */
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #64748B;
+    }
+    .legend {
+      display: flex;
+      gap: 24px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: #94A3B8;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="brand-logo">⚛️</div>
+      <div class="header-title">
+        <h1>SƠ ĐỒ KIẾN TRÚC TỔNG THỂ HỆ THỐNG ELEC AI (CHEMSTUDY)</h1>
+        <p>Hệ thống Học tập & Khảo thí Hóa học Trực tuyến Tích hợp AI Đa tầng • Mã nguồn chem-study</p>
+      </div>
+    </div>
+    <div class="badge-bar">
+      <div class="pill cyan">⚡ React 18.3 + Vite 5 SPA</div>
+      <div class="pill purple">🧠 Gemini 2.0 / 1.5 + Groq Multi-LLM</div>
+      <div class="pill emerald">🛡️ MediaPipe Wasm & Tesseract OCR</div>
+      <div class="pill amber">🔥 Firebase v12 + Supabase PostgreSQL</div>
+    </div>
+  </div>
+
+  <!-- TIERS -->
+  <div class="tiers-container">
+
+    <!-- ==================== TẦNG 1: PRESENTATION LAYER ==================== -->
+    <div class="tier-box t1">
+      <div class="tier-header">
+        <div class="tier-title-wrap">
+          <div class="tier-number">1</div>
+          <div class="tier-title">Tầng Trình Bày & Giao Diện Người Dùng (Presentation Layer)</div>
+        </div>
+        <div class="tier-desc">Ứng dụng Single Page Application (SPA), React.lazy + Suspense Code Splitting, Dynamic CSS Loader, Smooth UX</div>
+      </div>
+
+      <div class="grid-3">
+        <!-- Student Module -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">🎓</span>
+            <span class="card-title">Phân Hệ Học Sinh (Student Experience)</span>
+            <span class="card-badge">Client SPA</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Dashboard Cá nhân hóa:</b> Trợ lý <code>ElecBuddies</code>, tiến độ học, thống kê Streak học tập liên tục.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Phòng thí nghiệm 3D & Bảng tuần hoàn:</b> <code>VirtualLab 3D</code> (Three.js), 118 nguyên tố tương tác cao.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Công cụ Hóa học chuyên sâu:</b> Cân bằng PTHH (đại số tuyến tính), phân tích hợp chất, tính khối lượng mol.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Học tập thích ứng & SRS:</b> <code>SmartQuiz</code>, <code>WrongNotebook</code> (Sổ tay câu sai chu kỳ 1-3-7-14-30 ngày).</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Phòng thi ảo (Virtual Exam):</b> Làm bài thi trực tuyến, đếm ngược, nộp bài tự động, tra cứu điểm thi.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Hệ sinh thái 15 Games:</b> Game tương tác Hóa học & Game điều khiển qua cử chỉ Camera MediaPipe.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Teacher Module -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">👨‍🏫</span>
+            <span class="card-title">Phân Hệ Giáo Viên (Teacher Experience)</span>
+            <span class="card-badge">Teacher Studio</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Teacher Dashboard Immersive:</b> Chế độ toàn màn hình tự ẩn thanh điều hướng (<code>Auto-Hide Nav</code>) tối ưu dữ liệu.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>AutoExam AI Studio:</b> Biên soạn đề thi ma trận 4 mức độ nhận thức, sinh đề tự động từ tài liệu DOCX/PDF.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Giám sát thi trực tuyến (Live Proctor):</b> Theo dõi Webcam học sinh theo thời gian thực, phát hiện chuyển tab/phao thi.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Chấm phiếu trắc nghiệm OMR:</b> Quét ảnh phiếu thi A4, nhận diện dấu tô bằng thuật toán xử lý ảnh, xuất điểm Excel.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Quản lý lớp học & Báo cáo:</b> Cấp mã lớp (Class Key), bảng điểm phân loại học sinh khá/yếu, đề xuất can thiệp.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Admin Module -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">⚙️</span>
+            <span class="card-title">Phân Hệ Quản Trị (Admin Operations)</span>
+            <span class="card-badge">Admin Shell</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Quản trị người dùng & Phân quyền:</b> RBAC phân tách quyền Admin / Teacher / Student qua Firebase Custom Claims.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Ngân hàng câu hỏi tập trung:</b> Quản lý, gắn tag chuyên đề chuẩn, duyệt xuất bản đề thi toàn trường.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Quản lý mã kích hoạt & VIP:</b> Sinh Pro Key, kiểm tra giao dịch nạp tín dụng học tập, cấu hình gói VIP.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Cấu hình & Giám sát hệ thống:</b> <code>SystemAnnouncementBanner</code>, nhật ký vi phạm, tiếp nhận phản hồi lỗi.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 1 -> 2 -->
+    <div class="tier-connector">
+      <div class="connector-line"></div>
+      <div class="connector-badge">
+        <span class="arrow">▼▲</span>
+        <span>Giao tiếp hai chiều: React State Hooks, Event Listeners ⇄ Gọi module nghiệp vụ thuần (Pure JS)</span>
+        <span class="arrow">▼▲</span>
+      </div>
+      <div class="connector-line"></div>
+    </div>
+
+    <!-- ==================== TẦNG 2: BUSINESS LOGIC LAYER ==================== -->
+    <div class="tier-box t2">
+      <div class="tier-header">
+        <div class="tier-title-wrap">
+          <div class="tier-number">2</div>
+          <div class="tier-title">Tầng Nghiệp Vụ & Lõi Tính Toán Trên Trình Duyệt (Client Business Logic)</div>
+        </div>
+        <div class="tier-desc">Thư mục <code>src/lib/</code> (98 files pure JS) độc lập hoàn toàn với React UI, kiểm thử tự động 100% bằng Vitest</div>
+      </div>
+
+      <div class="grid-4">
+        <!-- AI Engine -->
+        <div class="module-card highlight-glow">
+          <div class="card-header">
+            <span class="card-icon">🧠</span>
+            <span class="card-title">Động Cơ AI Đa Tầng</span>
+            <span class="card-badge">aiRouter</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>aiRouter.js</code>: Phân loại ý định tác vụ, chọn tầng Fast / Smart / Vision, xoay vòng Key Ring chống 429.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>aiTools.js</code>: Nguyên tắc <b>AI không bịa số học</b> – Máy tính tính trước kết quả mol/pH, kiểm chứng câu trả lời AI.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>aiKnowledge.js</code>: RAG tri thức nội bộ với giải thuật BM25 thu nhỏ tra cứu công thức, phản ứng, nguyên tố.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>aiMemory.js</code>: Nén ngữ cảnh hội thoại, lưu trữ hồ sơ phong cách học sinh.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Chemistry Core -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">⚗️</span>
+            <span class="card-title">Lõi Hóa Học & Toán Học</span>
+            <span class="card-badge">chemBalance</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>chemBalance.js</code>: Thuật toán cân bằng PTHH bằng đại số tuyến tính & khử Gauss, bảo toàn nguyên tố & điện tích.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>scientificTools.js</code>: Tính khối lượng mol, nồng độ dung dịch, hằng số phân ly axit/bazơ, pH.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span>Taxonomy tri thức Hóa học 10-11-12, bảng tính chất vật lý & cấu hình electron chuẩn hóa Unicode.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Exam Engine -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">📝</span>
+            <span class="card-title">Động Cơ Khảo Thí & Chấm Điểm</span>
+            <span class="card-badge">3 Dạng Thức</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>examScoring.js</code>: Chấm thi chuẩn 3 dạng thức Bộ GD&ĐT:
+                1) Trắc nghiệm nhiều lựa chọn;
+                2) Đúng/Sai lũy tiến (10-25-50-100%);
+                3) Trả lời ngắn có dung sai số.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>matrixAiService.js</code>: Xây dựng ma trận đề 4 mức độ nhận thức (Nhận biết, Thông hiểu, Vận dụng, VDC).</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>examParser.js</code>: Bóc tách cấu trúc đề thi thông minh từ tệp DOCX (Mammoth) và PDF (PDF.js).</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Roadmap & Classroom -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">🗺️</span>
+            <span class="card-title">Lộ Trình Thích Ứng & Lớp Học</span>
+            <span class="card-badge">Adaptive SRS</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>roadmapEngine.js</code>: Tính điểm thành thạo: <code>Mastery = 100 × Acc × Vol × Recency</code> theo từng chuyên đề.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>reviewQueue.js</code> & <code>srs.js</code>: Lập lịch ôn tập ngắt quãng Spaced Repetition cho danh sách câu làm sai.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>classroom.js</code> & <code>examSession.js</code>: Quản lý phiên thi, xác thực mã lớp, ghi nhận sự kiện phòng thi.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 2 -> 3 -->
+    <div class="tier-connector">
+      <div class="connector-line"></div>
+      <div class="connector-badge">
+        <span class="arrow">▼▲</span>
+        <span>Gọi mô hình thị giác WebAssembly, WebGL Canvas & Cơ chế chống rớt mạng (Offline-First)</span>
+        <span class="arrow">▼▲</span>
+      </div>
+      <div class="connector-line"></div>
+    </div>
+
+    <!-- ==================== TẦNG 3: ON-DEVICE INFERENCE & OFFLINE ==================== -->
+    <div class="tier-box t3">
+      <div class="tier-header">
+        <div class="tier-title-wrap">
+          <div class="tier-number">3</div>
+          <div class="tier-title">Tầng Tính Toán Cục Bộ & Ngoại Tuyến (On-Device Inference & Offline Resilience)</div>
+        </div>
+        <div class="tier-desc">Chạy trực tiếp trên trình duyệt thiết bị người dùng (Client-side WASM/Worker), giảm tải 90% chi phí máy chủ</div>
+      </div>
+
+      <div class="grid-3">
+        <!-- Vision & OCR -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">👁️</span>
+            <span class="card-title">Thị Giác Máy Tính & OCR Tại Chỗ</span>
+            <span class="card-badge">WebAssembly</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>MediaPipe Tasks Vision</code>: Phát hiện cử chỉ tay, theo dõi khuôn mặt cho Camera Games và giám sát thi online.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>Tesseract.js OCR</code>: Nhận dạng chữ viết & công thức từ ảnh chụp đề thi học sinh tải lên mà không tốn token server.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>omr.js</code> & <code>omrQuality.js</code>: Thuật toán nắn phối cảnh 4 góc phiếu A4, đo độ đen quang học nhận diện đáp án tô.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 3D Graphics -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">🧊</span>
+            <span class="card-title">Đồ Họa & Mô Phỏng Không Gian 3D</span>
+            <span class="card-badge">WebGL / Three.js</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>Three.js</code> + <code>@react-three/fiber</code>: Dựng mô hình 3D phòng thí nghiệm, ống nghiệm, cốc đong thủy tinh.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span>Engine mô phỏng phản ứng Hóa học: Đổi màu dung dịch, hiện tượng kết tủa, tỏa nhiệt, sinh bọt khí tương tác thực tế.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span>Mô hình tinh thể & cấu trúc không gian phân tử 3D xoay lật 360 độ phục vụ bài giảng trực quan.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Offline & Integrity -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">🛡️</span>
+            <span class="card-title">Cơ Chế Ngoại Tuyến & Chống Gian Lận</span>
+            <span class="card-badge">Resilience Core</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>submitQueue.js</code>: Hàng đợi nộp bài IndexedDB – Rớt mạng giữa giờ thi vẫn ghi đáp án, tự nộp khi có mạng trở lại.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>serverClock.js</code>: Đồng bộ lệch giờ với Server Timestamp – Chống học sinh đổi giờ máy tính để gian lận thời gian làm bài.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>persistentLocalCache</code>: Firestore cache đa tab lưu trữ dữ liệu lớp học, đề thi ngay cả khi mất kết nối Internet.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 3 -> 4 -->
+    <div class="tier-connector">
+      <div class="connector-line"></div>
+      <div class="connector-badge">
+        <span class="arrow">▼▲</span>
+        <span>REST / HTTP Callable, Firestore WebSocket Realtime, PostgreSQL RPC & Webhook Gateway</span>
+        <span class="arrow">▼▲</span>
+      </div>
+      <div class="connector-line"></div>
+    </div>
+
+    <!-- ==================== TẦNG 4: CLOUD BACKEND & AI PROVIDERS ==================== -->
+    <div class="tier-box t4">
+      <div class="tier-header">
+        <div class="tier-title-wrap">
+          <div class="tier-number">4</div>
+          <div class="tier-title">Tầng Dịch Vụ Đám Mây & AI Backend (Cloud Services & Multi-Provider AI)</div>
+        </div>
+        <div class="tier-desc">Kiến trúc Dual-Backend (Firebase + Supabase) kết hợp Gateway AI đa nhà cung cấp và Webhook thanh toán tự động</div>
+      </div>
+
+      <div class="grid-4">
+        <!-- Firebase Cloud -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">🔥</span>
+            <span class="card-title">Hệ Sinh Thái Firebase</span>
+            <span class="card-badge">Google Cloud</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Firebase Auth:</b> Quản lý tài khoản, Google Sign-in, Custom Claims phân quyền hệ thống.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Cloud Firestore:</b> CSDL Real-time NoSQL đồng bộ trạng thái phòng thi, giám sát trực tiếp, thông báo.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Cloud Storage:</b> Lưu trữ tệp đề thi DOCX/PDF, ảnh chụp bằng chứng vi phạm, học liệu số.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Cloud Functions v2:</b> <code>aiProxy</code> (bảo vệ API key), <code>elecaiWebhook</code> (kích hoạt VIP).</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Supabase PostgreSQL -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">⚡</span>
+            <span class="card-title">Hạ Tầng Supabase</span>
+            <span class="card-badge">PostgreSQL RLS</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>PostgreSQL Database:</b> Lưu trữ quan hệ chuẩn hóa <code>ai_chats</code>, <code>courses</code>, <code>profiles</code>.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>credits_system</code>: Quản lý số dư token AI, giao dịch nạp/trừ credit đảm bảo tính nguyên tử (Atomic).</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><code>wrong_questions</code>: Ngân hàng dữ liệu câu hỏi sai hỗ trợ học tập lặp lại ngắt quãng thích ứng.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Row-Level Security (RLS):</b> Bảo mật phân quyền truy cập dữ liệu chặt chẽ ở cấp độ từng dòng bản ghi.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- AI Cloud Providers -->
+        <div class="module-card highlight-glow">
+          <div class="card-header">
+            <span class="card-icon">🤖</span>
+            <span class="card-title">Cổng Nhà Cung Cấp AI</span>
+            <span class="card-badge">LLM Gateway</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Google Gemini 2.0 / 1.5:</b> Gemini Pro (suy luận sâu Hóa học, giải bài tập lớn), Gemini Flash (tốc độ cao, RAG).</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Groq (Llama 3 / Mixtral):</b> Kênh suy luận siêu tốc (Ultra-low latency) cho hội thoại tương tác nhanh.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Agnes / OpenRouter:</b> Kênh AI dự phòng mở rộng khi các nhà cung cấp chính đạt ngưỡng hạn mức (Quota Failover).</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Integrations -->
+        <div class="module-card">
+          <div class="card-header">
+            <span class="card-icon">💳</span>
+            <span class="card-title">Thanh Toán & Mở Rộng</span>
+            <span class="card-badge">Integrations</span>
+          </div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Casso / SePay Webhook:</b> Nhận thông báo giao dịch VietQR ngân hàng, tự động kích hoạt tài khoản VIP 24/7.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>Vercel Analytics:</b> Giám sát lưu lượng truy cập thực tế, đo đạc độ trễ TTI và hiệu năng các trang quản trị.</span>
+            </li>
+            <li class="feature-item">
+              <span class="dot"></span>
+              <span><b>KaTeX & Docx Engine:</b> Render công thức Hóa học LaTeX chuẩn mực, tạo và xuất đề thi Word chất lượng in ấn.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER & LEGEND -->
+  <div class="footer">
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background: #0284C7;"></div>
+        <span>Tầng 1: Giao diện React SPA (Student, Teacher, Admin)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #7C3AED;"></div>
+        <span>Tầng 2: Nghiệp vụ lõi JavaScript thuần (AI, Hóa học, Khảo thí, SRS)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #059669;"></div>
+        <span>Tầng 3: Tính toán cục bộ & Offline-First (MediaPipe, OCR, 3D Lab, submitQueue)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #D97706;"></div>
+        <span>Tầng 4: Đám mây & AI (Firebase, Supabase PostgreSQL, Gemini API, SePay Webhook)</span>
+      </div>
+    </div>
+    <div>ELEC AI Platform Architecture • ChemStudy System Model 2026-2027</div>
+  </div>
+</div>
+
+</body>
+</html>

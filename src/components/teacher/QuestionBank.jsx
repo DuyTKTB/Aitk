@@ -1443,8 +1443,41 @@ export default function QuestionBank({
     const tpName = getTopicName(aiGenTopic, aiGenSubject) || aiGenSubject;
     const count = Math.max(1, Math.min(10, Number(aiGenCount) || 3));
     const lvLabel = LEVEL_META[aiGenLevel]?.short || 'Vừa';
+    const curatedTemplates = [
+      {
+        q: `[${tpName}] Khi pin điện hóa Zn – Cu hoạt động ở điều kiện chuẩn, quá trình nào sau đây xảy ra tại cực âm (anode)?`,
+        options: ['Zn → Zn²⁺ + 2e.', 'Cu²⁺ + 2e → Cu.', 'Zn²⁺ + 2e → Zn.', 'Cu → Cu²⁺ + 2e.'],
+        correct: 0,
+        explain: 'Ở anode (cực âm) của pin Galvani Zn – Cu xảy ra quá trình oxi hóa nguyên tử Zn thành ion Zn²⁺.',
+      },
+      {
+        q: `[${tpName}] Cho E°(Ag⁺/Ag) = +0,80 V và E°(Cu²⁺/Cu) = +0,34 V. Sức điện động chuẩn của pin Galvani Cu – Ag bằng bao nhiêu?`,
+        options: ['0,46 V.', '1,14 V.', '0,26 V.', '0,80 V.'],
+        correct: 0,
+        explain: 'E°pin = E°(+ ) − E°(−) = 0,80 − 0,34 = 0,46 V.',
+      },
+      {
+        q: `[${tpName}] Trong các kim loại Na, Mg, Fe, Cu, kim loại có tính khử mạnh nhất là kim loại nào?`,
+        options: ['Na.', 'Mg.', 'Fe.', 'Cu.'],
+        correct: 0,
+        explain: 'Trong dãy điện hóa, Na đứng trước nên có thế điện cực chuẩn nhỏ nhất và tính khử mạnh nhất.',
+      },
+      {
+        q: `[${tpName}] Điện phân dung dịch CuSO₄ với hai điện cực trơ (graphite), tại cathode thu được chất nào sau đây?`,
+        options: ['Kim loại Cu.', 'Khí O₂.', 'Khí H₂.', 'Ion SO₄²⁻.'],
+        correct: 0,
+        explain: 'Tại cathode (cực âm) xảy ra quá trình khử ion Cu²⁺: Cu²⁺ + 2e → Cu.',
+      },
+      {
+        q: `[${tpName}] Chất nào sau đây thuộc loại hợp chất ester đơn chức mạch hở?`,
+        options: ['CH₃COOC₂H₅.', 'CH₃COOH.', 'C₂H₅OH.', 'CH₃CHO.'],
+        correct: 0,
+        explain: 'Ethyl acetate (CH₃COOC₂H₅) là ester đơn chức tạo bởi acetic acid và ethanol.',
+      },
+    ];
     const samples = [];
     for (let i = 1; i <= count; i++) {
+      const tpl = curatedTemplates[(i - 1) % curatedTemplates.length];
       samples.push({
         id: `ai-gen-${Date.now()}-${i}`,
         subject: aiGenSubject,
@@ -1453,15 +1486,10 @@ export default function QuestionBank({
         level: aiGenLevel,
         points: 1,
         tags: ['AI-sinh', lvLabel],
-        q: `[${aiGenSubject} ${aiGenGrade} · ${tpName}] Câu hỏi vận dụng số ${i} (${lvLabel}): Xác định phát biểu hoặc giá trị đúng khi khảo sát bài toán tiêu biểu của chuyên đề "${tpName}"?`,
-        options: [
-          `Phương án chuẩn xác theo định luật/công thức của ${tpName} (trường hợp ${i})`,
-          `Phương án nhiễu do nhầm dấu hoặc hệ số tỉ lệ (${i * 2})`,
-          `Phương án nhiễu do thiếu điều kiện xác định của bài toán`,
-          `Phương án nhiễu do áp dụng sai công thức tổng quát`,
-        ],
-        correct: 0,
-        explain: `Dựa vào kiến thức trọng tâm chuyên đề "${tpName}" (${aiGenSubject} lớp ${aiGenGrade}), biến đổi theo điều kiện chuẩn suy ra đáp án A.`,
+        q: tpl.q,
+        options: [...tpl.options],
+        correct: tpl.correct,
+        explain: tpl.explain,
       });
     }
     setAiGeneratedList(samples);
@@ -3407,9 +3435,12 @@ export default function QuestionBank({
 
       {showImporter && (
         <ExamImporter
+          open={showImporter}
           onClose={() => setShowImporter(false)}
           onSaveToBank={handleImportToBank}
           onCreateSoftExam={handleCreateSoftExam}
+          allowBank={true}
+          allowSoftExam={true}
           classes={classes}
           defaultSubject={filterSubject}
           defaultGrade={filterGrade}

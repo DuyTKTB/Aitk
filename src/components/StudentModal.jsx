@@ -288,7 +288,6 @@ function SubmissionDetailModal({ submission, studentName, onClose }) {
   const totalQ = submission.totalQuestions || detail.length;
   const pct = pctOf(submission);
 
-  // v3: hộp chi tiết bài làm đóng được bằng phím Esc (trước đây không có)
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', h);
@@ -337,24 +336,60 @@ function SubmissionDetailModal({ submission, studentName, onClose }) {
             </p>
           ) : (
             <ul className="cd-detail-list">
-              {detail.map((d, i) => (
-                <li
-                  key={i}
-                  className={'cd-detail-item ' + (d.isCorrect ? 'ok' : d.picked === -1 ? 'skip' : 'bad')}
-                >
-                  <div className="cd-detail-head">
-                    <b>Câu {i + 1}</b>
-                    <span className={'cd-verdict ' + (d.isCorrect ? 'ok' : d.picked === -1 ? 'skip' : 'bad')}>
-                      {d.isCorrect ? 'Đúng' : d.picked === -1 ? 'Bỏ trống' : 'Sai'}
-                    </span>
-                  </div>
-                  <p className="cd-detail-ans">
-                    Chọn: <b>{d.picked === -1 ? '—' : String.fromCharCode(65 + d.picked)}</b>
-                    {' · '}
-                    Đáp án đúng: <b>{String.fromCharCode(65 + d.correct)}</b>
-                  </p>
-                </li>
-              ))}
+              {detail.map((d, i) => {
+                const isTf = d.type === 'true_false' || Array.isArray(d.picked) || Array.isArray(d.correct);
+                const isSa = !isTf && (d.type === 'short_answer' || typeof d.picked === 'string' || typeof d.correct === 'string');
+                const isSkipped = isTf
+                  ? (!Array.isArray(d.picked) || d.picked.every((v) => v === null || v === undefined))
+                  : isSa
+                    ? (d.picked === '' || d.picked === null || d.picked === undefined)
+                    : (d.picked === -1 || d.picked === null || d.picked === undefined);
+
+                const formatTf = (arr) => {
+                  if (!Array.isArray(arr)) return '—';
+                  return arr
+                    .map((v, idx) => `${'abcd'[idx] || idx + 1}:${v === true ? 'Đ' : v === false ? 'S' : '—'}`)
+                    .join('  ');
+                };
+
+                const pickedLabel = isSkipped
+                  ? '—'
+                  : isTf
+                    ? formatTf(d.picked)
+                    : isSa
+                      ? String(d.picked)
+                      : String.fromCharCode(65 + Number(d.picked));
+
+                const correctLabel = isTf
+                  ? formatTf(d.correct)
+                  : isSa
+                    ? String(d.correct ?? '—')
+                    : (typeof d.correct === 'number' && d.correct >= 0 ? String.fromCharCode(65 + d.correct) : String(d.correct ?? '—'));
+
+                const statusCls = d.isCorrect ? 'ok' : isSkipped ? 'skip' : 'bad';
+                const statusText = d.isCorrect
+                  ? 'Đúng'
+                  : isSkipped
+                    ? 'Bỏ trống'
+                    : (isTf && d.earned > 0 ? `Đúng 1 phần (+${d.earned}đ)` : 'Sai');
+
+                return (
+                  <li key={i} className={'cd-detail-item ' + statusCls}>
+                    <div className="cd-detail-head">
+                      <b>
+                        Câu {i + 1}{' '}
+                        {isTf ? <small style={{ fontWeight: 500, opacity: 0.75 }}>(Đúng/Sai)</small> : isSa ? <small style={{ fontWeight: 500, opacity: 0.75 }}>(Trả lời ngắn)</small> : null}
+                      </b>
+                      <span className={'cd-verdict ' + statusCls}>{statusText}</span>
+                    </div>
+                    <p className="cd-detail-ans">
+                      HS làm: <b>{pickedLabel}</b>
+                      {' · '}
+                      Đáp án: <b>{correctLabel}</b>
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

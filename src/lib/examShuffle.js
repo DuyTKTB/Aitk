@@ -1,9 +1,13 @@
 /* ============================================================
-   examShuffle.js — Utility tạo mã đề hoán vị, giữ nhóm độ khó
+   examShuffle.js — Utility tạo mã đề hoán vị chuẩn GDPT 2025
    Hỗ trợ:
-   • Đảo thứ tự câu / đáp án tùy chọn
+   • Giữ đúng cấu trúc 3 phần: Phần I (ABCD) → Phần II (Đúng/Sai) → Phần III (Trả lời ngắn)
+   • Tùy chọn trộn riêng từng phần:
+     - Phần I: Trộn thứ tự câu + Đảo vị trí phương án A, B, C, D (kèm ảnh phương án)
+     - Phần II: Trộn thứ tự câu + Đảo vị trí các ý a), b), c), d)
+     - Phần III: Trộn thứ tự câu trả lời ngắn
    • Giữ nhóm độ khó (NB → TH → VD → VDC) hoặc đảo tự do
-   • Giữ nhóm câu liên kết (groupId / passageId / đoạn đọc hiểu)
+   • Giữ nhóm câu liên kết (groupId / passageId / đoạn đọc hiểu English "Read the...")
    • Khóa vị trí câu cố định (lockedIndices)
    • Xử lý thông minh phương án đặc biệt ("Cả A và B đúng", "Tất cả các đáp án trên"...)
    • Tái lập đề 100% từ hạt giống (salt / seedText)
@@ -78,11 +82,6 @@ const POSITIONAL_ABOVE_PATTERNS = [
   /các\s+(đáp\s+án|phương\s+án)\s+trên\s+đều\s+(đúng|sai)/i,
 ];
 
-/**
- * Phát hiện phương án chứa cụm từ phụ thuộc vị trí như:
- * "Tất cả các đáp án trên", "Cả A và B", "Cả A, B, C",
- * "Cả hai đáp án trên", "Không có đáp án nào trên", "Đáp án A và B", "A và C đúng"...
- */
 export function hasPositionalOption(options = []) {
   if (!Array.isArray(options) || options.length === 0) return false;
   return options.some((opt) => {
@@ -95,12 +94,6 @@ export function hasPositionalOption(options = []) {
   });
 }
 
-/**
- * Phân tích chi tiết chế độ bảo vệ phương án đặc biệt của câu hỏi:
- * - 'lock_all': Có tham chiếu chữ cái ("Cả A và B đúng") hoặc phương án vị trí nằm giữa → giữ nguyên A/B/C/D.
- * - 'pin_last': Phương án cuối là "Tất cả các đáp án trên" / "Không có đáp án nào đúng" → cố định phương án cuối, đảo các phương án trên.
- * - 'none': Không có phương án đặc biệt.
- */
 export function analyzePositionalOptions(options = []) {
   if (!Array.isArray(options) || options.length === 0) {
     return { hasSpecial: false, mode: 'none', reason: '' };
@@ -148,7 +141,7 @@ export function analyzePositionalOptions(options = []) {
 }
 
 /* ============================================================
-   THUẬT TOÁN ĐẢO ĐỀ NÂNG CAO
+   THUẬT TOÁN ĐẢO ĐỀ NÂNG CAO (CHUẨN 3 PHẦN GDPT 2025)
    ============================================================ */
 
 function buildChunks(items, keepLinkedGroups) {
@@ -176,18 +169,74 @@ function buildChunks(items, keepLinkedGroups) {
   return chunks;
 }
 
+/**
+ * Đảo thứ tự câu hỏi trong 1 phân nhóm (VD: Phần I, Phần II hoặc Phần III)
+ */
+function shufflePartItems(partItems, { shouldShuffle, keepDifficultyGroups, keepLinkedGroups, lockedSet, codeIdx, prng }) {
+  if (!shouldShuffle || codeIdx === 0 || partItems.length <= 1) {
+    return [...partItems];
+  }
+
+  const unlockedItems = [];
+  partItems.forEach((item) => {
+    const isReadTheLocked = Boolean(item.q?.lockGroupQuestionOrder);
+    if (!lockedSet.has(item.origIdx) && !isReadTheLocked) {
+      unlockedItems.push(item);
+    }
+  });
+
+  let shuffledUnlocked = [];
+  if (keepDifficultyGroups) {
+    const lvBuckets = { nb: [], th: [], vd: [], vdc: [] };
+    unlockedItems.forEach((item) => {
+      const lv = normLevel(item.q.level);
+      lvBuckets[lv].push(item);
+    });
+    ['nb', 'th', 'vd', 'vdc'].forEach((lv) => {
+      const chunks = buildChunks(lvBuckets[lv], keepLinkedGroups);
+      const orderedChunks = shuffleFisherYates(chunks, prng);
+      orderedChunks.forEach((chunk) => shuffledUnlocked.push(...chunk));
+    });
+  } else {
+    const chunks = buildChunks(unlockedItems, keepLinkedGroups);
+    const orderedChunks = shuffleFisherYates(chunks, prng);
+    orderedChunks.forEach((chunk) => shuffledUnlocked.push(...chunk));
+  }
+
+  let uPtr = 0;
+  return partItems.map((item) => {
+    const isReadTheLocked = Boolean(item.q?.lockGroupQuestionOrder);
+    if (lockedSet.has(item.origIdx) || isReadTheLocked) {
+      return item;
+    }
+    return shuffledUnlocked[uPtr++];
+  });
+}
+
 export function generateShuffledVersions(questions = [], count = 4, options = {}) {
   const {
     salt = 0,
     seedText = '',
     shuffleQuestions = true,
     shuffleOptions = true,
+    shufflePart1,
+    shufflePart1Options,
+    shufflePart2,
+    shufflePart2Statements,
+    shufflePart3,
+    keepPartsOrder = true,
     keepDifficultyGroups = true,
     keepLinkedGroups = true,
     lockedIndices = [],
     smartSpecialOptions = true,
     customCodes = null,
   } = options || {};
+
+  const effShufflePart1 = shufflePart1 !== undefined ? Boolean(shufflePart1) : Boolean(shuffleQuestions);
+  const effShufflePart1Opts = shufflePart1Options !== undefined ? Boolean(shufflePart1Options) : Boolean(shuffleOptions);
+  const effShufflePart2 = shufflePart2 !== undefined ? Boolean(shufflePart2) : Boolean(shuffleQuestions);
+  const effShufflePart2Stmts = shufflePart2Statements !== undefined ? Boolean(shufflePart2Statements) : Boolean(shuffleOptions);
+  const effShufflePart3 = shufflePart3 !== undefined ? Boolean(shufflePart3) : Boolean(shuffleQuestions);
 
   const codeList =
     Array.isArray(customCodes) && customCodes.length > 0
@@ -206,21 +255,8 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
       : []
   );
 
-  const hasAnyLinkedGroup =
-    keepLinkedGroups &&
-    questions.some((q) => Boolean(q?.groupId || q?.passageId || q?.contextId || q?.readingId));
-
-  const isClassicMode =
-    shuffleQuestions &&
-    keepDifficultyGroups &&
-    lockedSet.size === 0 &&
-    !hasAnyLinkedGroup;
-
-  const groups = { nb: [], th: [], vd: [], vdc: [] };
-  questions.forEach((q, idx) => {
-    const lv = normLevel(q.level);
-    groups[lv].push({ q, origIdx: idx });
-  });
+  const indexedQuestions = questions.map((q, idx) => ({ q, origIdx: idx }));
+  const hasMultipleParts = new Set(questions.map((q) => q?.type || 'single_choice')).size > 1;
 
   return codeList.map((code, codeIdx) => {
     const seed = seedForCode(code, effectiveSalt);
@@ -228,73 +264,85 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
 
     let orderedWithOrig = [];
 
-    if (isClassicMode) {
-      const shuffledByLevel = {};
-      ['nb', 'th', 'vd', 'vdc'].forEach((lv) => {
-        const group = groups[lv];
-        shuffledByLevel[lv] = codeIdx === 0 ? group : shuffleFisherYates(group, prng);
+    if (codeIdx === 0) {
+      orderedWithOrig = indexedQuestions;
+    } else if (keepPartsOrder && hasMultipleParts) {
+      const p1 = indexedQuestions.filter(({ q }) => (q.type || 'single_choice') === 'single_choice');
+      const p2 = indexedQuestions.filter(({ q }) => q.type === 'true_false');
+      const p3 = indexedQuestions.filter(({ q }) => q.type === 'short_answer');
+
+      const s1 = shufflePartItems(p1, {
+        shouldShuffle: effShufflePart1,
+        keepDifficultyGroups,
+        keepLinkedGroups,
+        lockedSet,
+        codeIdx,
+        prng,
       });
-      orderedWithOrig = [
-        ...shuffledByLevel.nb,
-        ...shuffledByLevel.th,
-        ...shuffledByLevel.vd,
-        ...shuffledByLevel.vdc,
-      ];
-    } else if (!shuffleQuestions) {
-      orderedWithOrig = questions.map((q, idx) => ({ q, origIdx: idx }));
+      const s2 = shufflePartItems(p2, {
+        shouldShuffle: effShufflePart2,
+        keepDifficultyGroups,
+        keepLinkedGroups,
+        lockedSet,
+        codeIdx,
+        prng,
+      });
+      const s3 = shufflePartItems(p3, {
+        shouldShuffle: effShufflePart3,
+        keepDifficultyGroups,
+        keepLinkedGroups,
+        lockedSet,
+        codeIdx,
+        prng,
+      });
+
+      orderedWithOrig = [...s1, ...s2, ...s3];
     } else {
-      // Có lockedIndices, hoặc tắt keepDifficultyGroups, hoặc có câu liên kết (groupId)
-      const unlockedItems = [];
-      questions.forEach((q, idx) => {
-        if (!lockedSet.has(idx)) {
-          unlockedItems.push({ q, origIdx: idx });
-        }
+      orderedWithOrig = shufflePartItems(indexedQuestions, {
+        shouldShuffle: effShufflePart1 && shuffleQuestions,
+        keepDifficultyGroups,
+        keepLinkedGroups,
+        lockedSet,
+        codeIdx,
+        prng,
       });
-
-      let shuffledUnlocked = [];
-      if (keepDifficultyGroups) {
-        const lvBuckets = { nb: [], th: [], vd: [], vdc: [] };
-        unlockedItems.forEach((item) => {
-          const lv = normLevel(item.q.level);
-          lvBuckets[lv].push(item);
-        });
-        ['nb', 'th', 'vd', 'vdc'].forEach((lv) => {
-          const chunks = buildChunks(lvBuckets[lv], keepLinkedGroups);
-          const orderedChunks = codeIdx === 0 ? chunks : shuffleFisherYates(chunks, prng);
-          orderedChunks.forEach((chunk) => shuffledUnlocked.push(...chunk));
-        });
-      } else {
-        const chunks = buildChunks(unlockedItems, keepLinkedGroups);
-        const orderedChunks = codeIdx === 0 ? chunks : shuffleFisherYates(chunks, prng);
-        orderedChunks.forEach((chunk) => shuffledUnlocked.push(...chunk));
-      }
-
-      if (lockedSet.size === 0) {
-        orderedWithOrig = shuffledUnlocked;
-      } else {
-        let uPtr = 0;
-        orderedWithOrig = questions.map((q, idx) => {
-          if (lockedSet.has(idx)) {
-            return { q, origIdx: idx };
-          }
-          return shuffledUnlocked[uPtr++];
-        });
-      }
     }
 
     const finalQuestions = orderedWithOrig.map(({ q, origIdx }) => {
       const isLockedPos = lockedSet.has(origIdx);
-      if (q.type === 'true_false' || q.type === 'short_answer') {
+      const qPrng = mulberry32(seed + (origIdx + 1) * 313);
+
+      // Phần III: Trả lời ngắn
+      if (q.type === 'short_answer') {
         const base = { ...q, originalIndex: origIdx + 1, _origQuestion: q };
         if (isLockedPos) base.isPositionLocked = true;
         return base;
       }
 
+      // Phần II: Đúng / Sai (hỗ trợ đảo các ý a, b, c, d)
+      if (q.type === 'true_false') {
+        const origStmts = Array.isArray(q.statements) ? q.statements.map((s, sIdx) => ({ ...s, origStatementIdx: sIdx })) : [];
+        let newStmts = origStmts;
+        if (codeIdx > 0 && effShufflePart2Stmts && origStmts.length > 1) {
+          newStmts = shuffleFisherYates(origStmts, qPrng);
+        }
+        const base = {
+          ...q,
+          statements: newStmts,
+          origStatements: origStmts,
+          originalIndex: origIdx + 1,
+          _origQuestion: q,
+        };
+        if (isLockedPos) base.isPositionLocked = true;
+        return base;
+      }
+
+      // Phần I: Trắc nghiệm 4 lựa chọn A, B, C, D
       const origOpts = [...(q.options || [])];
+      const origOptImgs = Array.isArray(q.optionImages) ? [...q.optionImages] : null;
       const origCorrectIdx = q.correct ?? 0;
       const correctText = origOpts[origCorrectIdx];
 
-      const qPrng = mulberry32(seed + (origIdx + 1) * 313);
       const optIndices = origOpts.map((_, i) => i);
 
       const specialInfo = smartSpecialOptions
@@ -302,7 +350,7 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
         : { hasSpecial: false, mode: 'none', reason: '' };
 
       let shuffledOptIndices;
-      if (codeIdx === 0 || !shuffleOptions) {
+      if (codeIdx === 0 || !effShufflePart1Opts) {
         shuffledOptIndices = optIndices;
       } else if (specialInfo.hasSpecial && specialInfo.mode === 'lock_all') {
         shuffledOptIndices = optIndices;
@@ -315,11 +363,15 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
       }
 
       const newOpts = shuffledOptIndices.map((i) => origOpts[i]);
-      const newCorrect = newOpts.indexOf(correctText);
+      const newOptImgs = origOptImgs ? shuffledOptIndices.map((i) => origOptImgs[i] || null) : undefined;
+      const newCorrect = shuffledOptIndices.indexOf(origCorrectIdx) >= 0
+        ? shuffledOptIndices.indexOf(origCorrectIdx)
+        : newOpts.indexOf(correctText);
 
       const resultQ = {
         ...q,
         options: newOpts,
+        ...(newOptImgs ? { optionImages: newOptImgs } : {}),
         correct: newCorrect >= 0 ? newCorrect : 0,
         origCorrect: origCorrectIdx,
         originalIndex: origIdx + 1,
@@ -363,14 +415,34 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
           optionLockedReason: q.optionLockedReason || null,
           isPositionLocked: Boolean(q.isPositionLocked),
         };
-      } else {
+      } else if (type === 'true_false') {
+        const stmtSummary = (q.statements || []).map((s) => (s.answer ? 'Đ' : 'S')).join('-');
         origToNew[origNum] = {
           newNum,
+          newLetter: stmtSummary,
+          origLetter: stmtSummary,
           type,
           isPositionLocked: Boolean(q.isPositionLocked),
         };
         newToOrig[newNum] = {
           origNum,
+          newLetter: stmtSummary,
+          origLetter: stmtSummary,
+          type,
+          isPositionLocked: Boolean(q.isPositionLocked),
+        };
+      } else {
+        origToNew[origNum] = {
+          newNum,
+          newLetter: String(q.answer ?? ''),
+          origLetter: String(q.answer ?? ''),
+          type,
+          isPositionLocked: Boolean(q.isPositionLocked),
+        };
+        newToOrig[newNum] = {
+          origNum,
+          newLetter: String(q.answer ?? ''),
+          origLetter: String(q.answer ?? ''),
           type,
           isPositionLocked: Boolean(q.isPositionLocked),
         };
@@ -409,7 +481,12 @@ export function answerKeyOf(version) {
         statements: (q.statements || []).map((s) => (s.answer ? 'Đ' : 'S')),
       };
     }
-    return { newNum: idx + 1, originalNum: originalIndex, type, letter: '' };
+    return {
+      newNum: idx + 1,
+      originalNum: originalIndex,
+      type,
+      letter: String(q.answer ?? ''),
+    };
   });
 }
 
@@ -419,7 +496,13 @@ export function findCollisions(versions = []) {
   const collisions = [];
   versions.forEach((v) => {
     const sig = v.questions
-      .map((q) => `${q.originalIndex}:${q.correct ?? ''}:${(q.options || []).join('|')}`)
+      .map((q) => {
+        if (q.type === 'true_false') {
+          const stSig = (q.statements || []).map((s) => `${s.text}:${s.answer ? 1 : 0}`).join('|');
+          return `${q.originalIndex}:TF:${stSig}`;
+        }
+        return `${q.originalIndex}:${q.correct ?? ''}:${(q.options || []).join('|')}`;
+      })
       .join(';');
     if (seen.has(sig)) collisions.push([seen.get(sig), v.code]);
     else seen.set(sig, v.code);
@@ -438,14 +521,6 @@ export function answerKeyRows(versions = []) {
   return rows;
 }
 
-/**
- * Kiểm tra tự động toàn bộ bộ mã đề sau khi đảo:
- * 1. allCountMatch: mọi mã đề đều có đủ originalCount câu (và đủ tập hợp câu gốc).
- * 2. allAnswerKeysValid: mọi câu trắc nghiệm đều có đáp án đúng hợp lệ khớp nội dung đáp án đúng của đề gốc.
- * 3. collisions: danh sách cặp mã đề trùng nhau.
- * 4. specialOptionsHandled: số câu được bảo vệ phương án đặc biệt ("Cả A và B đúng" / "Tất cả các đáp án trên").
- * 5. passed: boolean tổng hợp.
- */
 export function validateShuffledVersions(versions = [], originalCount = 0) {
   if (!Array.isArray(versions) || versions.length === 0) {
     return {

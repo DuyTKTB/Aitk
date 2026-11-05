@@ -94,54 +94,122 @@
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
 }
 
-/* ---------- KPI (Gọn gàng) ---------- */
+/* ---------- KPI (Gọn gàng & Trực quan cao cấp) ---------- */
 .ta-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-  gap: 0.45rem;
-  margin-bottom: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .ta-kpi {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.52rem 0.7rem;
-  border-radius: 13px;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
   border: 1px solid var(--ta-line);
-  background: linear-gradient(160deg, var(--ta-panel), transparent 140%);
+  background: var(--ta-panel);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.ta-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.ta-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .ta-kpi-label {
-  font-size: 0.68rem;
+  font-size: 0.73rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   color: var(--ta-mut);
   text-transform: uppercase;
 }
 
+.ta-kpi-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ta-kpi-icon.tone-trend { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+.ta-kpi-icon.tone-check { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.ta-kpi-icon.tone-award { background: rgba(139, 92, 246, 0.12); color: #7c3aed; }
+.ta-kpi-icon.tone-alert { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.ta-kpi-icon.tone-clock { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+
+.ta-kpi-middle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .ta-kpi-value {
-  font-size: 1.32rem;
+  font-size: 1.65rem;
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  color: var(--ta-ink);
 }
 
 .ta-kpi-value small {
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   font-weight: 700;
   margin-left: 2px;
   color: var(--ta-mut);
 }
 
-.ta-kpi-hint {
-  font-size: 0.67rem;
-  color: var(--ta-mut);
+.ta-kpi-diff-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
 }
 
-.ta-kpi.is-bad { border-color: rgba(220, 38, 38, 0.35); }
+.ta-kpi-diff-pill.up {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ta-kpi-diff-pill.down {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.ta-kpi-hint {
+  font-size: 0.72rem;
+  color: var(--ta-mut);
+  line-height: 1.35;
+}
+
+.ta-kpi.is-bad {
+  border-color: rgba(220, 38, 38, 0.3);
+  background: linear-gradient(170deg, var(--ta-panel), rgba(254, 242, 242, 0.5));
+}
 .ta-kpi.is-bad .ta-kpi-value { color: var(--ta-bad); }
-.ta-kpi.is-mid { border-color: rgba(217, 119, 6, 0.3); }
+
+.ta-kpi.is-mid {
+  border-color: rgba(217, 119, 6, 0.3);
+  background: linear-gradient(170deg, var(--ta-panel), rgba(255, 251, 235, 0.5));
+}
 .ta-kpi.is-mid .ta-kpi-value { color: var(--ta-mid); }
 
 /* ---------- Subtabs & 2-Column Overview ---------- */
@@ -408,27 +476,98 @@
 .ta-flag.flag-fast { background: rgba(124, 58, 237, 0.13); color: #6d28d9; }
 .ta-flag-ok { font-size: 0.72rem; color: var(--ta-mut); }
 
-/* ---------- Hardest questions ---------- */
-.ta-hardest { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
-
-.ta-hardest li {
+/* ---------- Hardest questions (Nâng cấp giao diện trực quan) ---------- */
+.ta-hardest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  gap: 0.6rem;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ta-hard-item {
+  display: flex;
+  gap: 0.75rem;
   align-items: flex-start;
-  padding: 0.5rem 0.6rem;
-  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  border-radius: 13px;
   background: var(--ta-soft);
+  border: 1px solid var(--ta-line);
+  transition: all 0.15s ease;
+}
+
+.ta-hard-item:hover {
+  background: var(--ta-panel);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.ta-hard-badge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 68px;
+  flex-shrink: 0;
 }
 
 .ta-hard-rate {
-  flex: 0 0 auto;
+  font-size: 0.74rem;
   font-weight: 800;
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.ta-hard-text { font-size: 0.82rem; line-height: 1.4; }
-.ta-hard-text small { display: block; color: var(--ta-mut); font-size: 0.7rem; margin-top: 0.15rem; }
+.ta-hard-rank {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ta-mut);
+}
+
+.ta-hard-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ta-hard-q-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ta-ink);
+  line-height: 1.45;
+}
+
+.ta-hard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.ta-hard-exam-tag {
+  background: var(--ta-panel);
+  border: 1px solid var(--ta-line);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--ta-ink);
+}
+
+.ta-hard-topic-tag {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ta-hard-stats {
+  color: var(--ta-mut);
+}
 
 /* ---------- Empty / loading ---------- */
 .ta-state {
