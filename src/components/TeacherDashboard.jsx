@@ -273,6 +273,7 @@ function normalizeExamForPreview(exam) {
     title: exam.title || 'Đề kiểm tra',
     duration: exam.duration || 45,
     subject: exam.subject || 'Hóa học',
+    grade: exam.grade || exam.classGrade || '12',
     questions,
   };
 }

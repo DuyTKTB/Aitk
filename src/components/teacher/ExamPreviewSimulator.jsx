@@ -24,7 +24,7 @@ import { downloadCsv } from '../DashShell.jsx';
 import sound from '../../lib/gameSound.js';
 import { getSubject } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
-import { exportToWord, exportToPDF } from '../../lib/examExport.js';
+import { exportToWord, exportToPDF, exportBundleZip } from '../../lib/examExport.js';
 import { printOmrSheetA4, printMultipleOmrSheets } from '../../lib/omrSheetGenerator.js';
 import { scoreExam } from '../../lib/examScoring.js';
 import { createPaperExam } from '../../lib/paperStore.js';
@@ -321,6 +321,7 @@ export default function ExamPreviewSimulator({
     examTitle: exam.title || matrix?.title || 'Đề kiểm tra',
     subject: exam.subject || matrix?.subject || 'Hóa học',
     duration: exam.duration || matrix?.duration || 30,
+    grade: exam.grade || matrix?.grade || '12',
     questions: [...questions],
   });
 
@@ -749,7 +750,7 @@ export default function ExamPreviewSimulator({
     return () => window.removeEventListener('keydown', handler);
   }, [tab, simSubmitted, simActiveQ, simQuestions, toggleFlag, requestSubmitSimulation, editMode, confirmModal]);
 
-  /* ---------- EXPORT WORD/PDF ---------- */
+  /* ---------- EXPORT WORD/PDF/ZIP ---------- */
   const handleExportWord = async () => {
     try {
       setExporting('word');
@@ -759,6 +760,7 @@ export default function ExamPreviewSimulator({
       await exportToWord({
         examTitle: editData.examTitle,
         subject: editData.subject,
+        grade: editData.grade || exam.grade || matrix?.grade || '12',
         duration: editData.duration,
         code: activeCode,
         questions: activeVersion.questions || editData.questions,
@@ -770,6 +772,29 @@ export default function ExamPreviewSimulator({
     } catch (err) {
       console.error(err);
       showToast('Lỗi xuất Word: ' + err.message, 'error');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportZip = async () => {
+    try {
+      setExporting('zip');
+      await exportBundleZip({
+        examTitle: editData.examTitle,
+        subject: editData.subject,
+        grade: editData.grade || exam.grade || matrix?.grade || '12',
+        duration: editData.duration,
+        versions: shuffledExams,
+        originalQuestions: editData.questions,
+        includeAnswers: true,
+        headerInfo: exam.headerInfo || null,
+      });
+      sound.cheer();
+      showToast(`Đã tải trọn bộ ${shuffledExams.length} mã đề (ZIP)`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Lỗi xuất ZIP: ' + err.message, 'error');
     } finally {
       setExporting(null);
     }
@@ -1614,10 +1639,16 @@ export default function ExamPreviewSimulator({
                     </div>
                   )}
 
-                  {simSubmitted && currentQ.explain && (
+                  {simSubmitted && (currentQ.explain || currentQ.work) && (
                     <div className="eps-explain">
                       <strong>Lời giải chi tiết: </strong>
-                      {useMath ? <MathText text={currentQ.explain} /> : currentQ.explain}
+                      {currentQ.explain && (useMath ? <MathText text={currentQ.explain} /> : currentQ.explain)}
+                      {currentQ.work && (
+                        <div style={{ marginTop: '0.45rem', paddingTop: '0.45rem', borderTop: '1px dashed #cbd5e1', fontSize: '0.88rem', color: '#0369a1' }}>
+                          <span style={{ fontWeight: 600 }}>Các bước tính toán / Lập luận: </span>
+                          {useMath ? <MathText text={currentQ.work} /> : currentQ.work}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2252,8 +2283,19 @@ export default function ExamPreviewSimulator({
                     className="eps-print-btn word"
                     onClick={handleExportWord}
                     disabled={exporting === 'word'}
+                    title={`Tải file Word (.docx) mã đề ${activeCode}`}
                   >
-                    <IcoFileWord size={15} /> {exporting === 'word' ? 'Đang tạo...' : 'Tải Word'}
+                    <IcoFileWord size={15} /> {exporting === 'word' ? 'Đang tạo...' : `Tải Word (${activeCode})`}
+                  </button>
+                  <button
+                    type="button"
+                    className="eps-print-btn word"
+                    onClick={handleExportZip}
+                    disabled={exporting === 'zip'}
+                    style={{ background: '#1d4ed8' }}
+                    title={`Tải trọn bộ ${shuffledExams.length} mã đề dạng file nén ZIP kèm ma trận và hướng dẫn chấm`}
+                  >
+                    <IcoFileWord size={15} /> {exporting === 'zip' ? 'Đang nén...' : `Tải trọn bộ ZIP (${shuffledExams.length} mã)`}
                   </button>
                   <button
                     type="button"
@@ -2442,6 +2484,38 @@ export default function ExamPreviewSimulator({
                           );
                         })}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* HƯỚNG DẪN GIẢI CHI TIẾT TỪNG CÂU */}
+                  {printQuestions.some((q) => q.explain || q.work) && (
+                    <div className="a4-answers-block" style={{ marginTop: '1.5rem', pageBreakBefore: 'always' }}>
+                      <h3 className="a4-answers-title" style={{ fontSize: '1rem', borderBottom: '2px solid #0f172a', paddingBottom: '4px', marginBottom: '12px' }}>
+                        HƯỚNG DẪN GIẢI VÀ ĐÁP ÁN CHI TIẾT (MÃ ĐỀ {activeCode})
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {printQuestions.map((q, idx) => {
+                          if (!q.explain && !q.work) return null;
+                          return (
+                            <div key={idx} style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '6px', borderLeft: '3px solid #2563eb', fontSize: '0.88rem' }}>
+                              <div style={{ fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>
+                                Câu {idx + 1}:
+                              </div>
+                              {q.explain && (
+                                <div style={{ color: '#334155', lineHeight: 1.5 }}>
+                                  {useMath ? <MathText text={q.explain} /> : q.explain}
+                                </div>
+                              )}
+                              {q.work && (
+                                <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #cbd5e1', color: '#0369a1' }}>
+                                  <strong style={{ fontSize: '0.82rem' }}>Các bước tính toán / Lập luận: </strong>
+                                  {useMath ? <MathText text={q.work} /> : q.work}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>

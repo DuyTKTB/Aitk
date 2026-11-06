@@ -79,14 +79,27 @@ export const examplePrompt = (subject) =>
   EXAMPLES[getSubject(subject).id] || `Tạo 10 câu ôn tập môn ${subject || 'bất kỳ'}`;
 
 /* ============================================================
-   GỌI AI
+   GỌI AI - MULTI-TIER & MULTI-PROVIDER FAILOVER
+   1. Gemini (ưu tiên gemini-3.5-flash, gemini-flash-lite-latest, gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.8-flash, gemini-3.7-flash)
+   2. Groq (openai/gpt-oss-120b, qwen/qwen3.8-27b, openai/gpt-oss-20b)
+   3. Agnes (agnes-3.0-flash, agnes-2.5-flash)
    ============================================================ */
-/* ⭐ FIX: ưu tiên VITE_GEMINI_KEY (key đang chạy ELEC AI Assistant) */
-const API_KEY = import.meta.env?.VITE_GEMINI_KEY || import.meta.env?.VITE_GEMINI_API_KEY;
+const GEMINI_KEYS = (import.meta.env?.VITE_GEMINI_KEY || import.meta.env?.VITE_GEMINI_API_KEY || '')
+  .split(/[,;\n]/)
+  .map((s) => s.trim())
+  .filter(Boolean);
 
-/* ⭐ FIX: model mặc định gemini-3.8-flash (model thật) */
-const MODELS = (import.meta.env?.VITE_GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.7-flash')
-  .split(',').map((s) => s.trim()).filter(Boolean);
+const GEMINI_MODELS = (import.meta.env?.VITE_GEMINI_MODEL ||
+  'gemini-2.5-flash,gemini-flash-latest,gemini-flash-lite-latest,gemini-3.5-flash,gemini-3.8-flash,gemini-3.7-flash')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const GROQ_KEY = import.meta.env?.VITE_GROQ_API_KEY || '';
+const GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+
+const AGNES_KEY = import.meta.env?.VITE_AGNES_API_KEY || '';
+const AGNES_MODELS = ['agnes-3.0-flash', 'agnes-2.5-flash'];
 
 let goodModelIdx = 0;
 let customCaller = null;
@@ -143,6 +156,160 @@ const QUESTION_SCHEMA = {
   required: ['questions'],
 };
 
+async function callGeminiRaw({ system, parts, temperature, signal, schema }) {
+  if (!GEMINI_KEYS.length) throw new Error('Chưa cấu hình VITE_GEMINI_KEY');
+  let lastErr = null;
+  for (const key of GEMINI_KEYS) {
+    for (let k = goodModelIdx; k < GEMINI_MODELS.length; k++) {
+      const model = GEMINI_MODELS[k];
+      try {
+        const generationConfig = {
+          temperature,
+          responseMimeType: 'application/json',
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+        };
+        if (schema) generationConfig.responseSchema = schema;
+
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            signal,
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: [{ role: 'user', parts }],
+              generationConfig,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          let msg = `Lỗi AI (${res.status})`;
+          try {
+            const j = await res.json();
+            if (j?.error?.message) msg += `: ${j.error.message}`;
+          } catch { /* ignore */ }
+          lastErr = new Error(msg);
+          if ([404, 429, 500, 502, 503, 504].includes(res.status)) continue;
+          throw lastErr;
+        }
+
+        const data = await res.json();
+        const finishReason = data?.candidates?.[0]?.finishReason;
+        if (finishReason === 'MAX_TOKENS') {
+          console.warn(`[examAiUtils] ⚠️ AI bị cắt vì hết token (MAX_TOKENS).`);
+        }
+        if (finishReason === 'SAFETY' || data?.promptFeedback?.blockReason) {
+          throw new Error('AI từ chối nội dung. Hãy đổi cách mô tả hoặc đổi file.');
+        }
+
+        const text = (data?.candidates?.[0]?.content?.parts || [])
+          .map((p) => p.text || '')
+          .join('');
+
+        if (text) {
+          goodModelIdx = k;
+          return text;
+        }
+      } catch (e) {
+        if (e?.name === 'AbortError') throw e;
+        lastErr = e;
+      }
+    }
+  }
+  throw lastErr || new Error('Không gọi được Gemini API');
+}
+
+async function callGroqRaw({ system, userContent, temperature, signal, schema }) {
+  if (!GROQ_KEY) throw new Error('Chưa cấu hình VITE_GROQ_API_KEY');
+  let lastErr = null;
+  const schemaInstruction = schema ? `\n\nBẮT BUỘC TRẢ VỀ JSON KHỚP CẤU TRÚC SAU:\n${JSON.stringify(schema)}` : '';
+  for (const model of GROQ_MODELS) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: `${system}${schemaInstruction}\n\nIMPORTANT: Respond ONLY with valid JSON.` },
+            { role: 'user', content: userContent },
+          ],
+          temperature,
+          response_format: { type: 'json_object' },
+        }),
+      });
+
+      if (!res.ok) {
+        let msg = `Groq (${res.status})`;
+        try {
+          const j = await res.json();
+          if (j?.error?.message) msg += `: ${j.error.message}`;
+        } catch { /* ignore */ }
+        lastErr = new Error(msg);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content || '';
+      if (text) return text;
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Không gọi được Groq API');
+}
+
+async function callAgnesRaw({ system, userContent, temperature, signal, schema }) {
+  if (!AGNES_KEY) throw new Error('Chưa cấu hình VITE_AGNES_API_KEY');
+  let lastErr = null;
+  const schemaInstruction = schema ? `\n\nBẮT BUỘC TRẢ VỀ JSON KHỚP CẤU TRÚC SAU:\n${JSON.stringify(schema)}` : '';
+  for (const model of AGNES_MODELS) {
+    try {
+      const res = await fetch('https://apihub.agnes-ai.com/v1/chat/completions', {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AGNES_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: `${system}${schemaInstruction}\n\nIMPORTANT: Respond ONLY with valid JSON.` },
+            { role: 'user', content: userContent },
+          ],
+          temperature,
+        }),
+      });
+
+      if (!res.ok) {
+        let msg = `Agnes (${res.status})`;
+        try {
+          const j = await res.json();
+          if (j?.error?.message) msg += `: ${j.error.message}`;
+        } catch { /* ignore */ }
+        lastErr = new Error(msg);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content || '';
+      if (text) return text;
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Không gọi được Agnes API');
+}
+
 export async function callModel({ system, parts, temperature = 0.7, signal, creditCost = null, schema = null }) {
   if (_creditUserId) {
     const hasImg = parts?.some((p) => p.inlineData);
@@ -158,76 +325,46 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
 
   if (customCaller) return customCaller({ system, parts, temperature, signal, schema });
 
-  if (!API_KEY) {
-    throw new Error('Chưa cấu hình AI. Thêm VITE_GEMINI_KEY vào .env rồi khởi động lại.');
-  }
+  const errors = [];
 
-  let lastErr = null;
-  for (let k = goodModelIdx; k < MODELS.length; k++) {
-    const model = MODELS[k];
-    let res;
+  // 1. Thử Google Gemini (các model hoạt động và tự luân chuyển model)
+  if (GEMINI_KEYS.length > 0) {
     try {
-      const generationConfig = {
-        temperature,
-        responseMimeType: 'application/json',
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
-      };
-      if (schema) generationConfig.responseSchema = schema;
-
-      res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: 'POST',
-          signal,
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: system }] },
-            contents: [{ role: 'user', parts }],
-            generationConfig,
-          }),
-        }
-      );
-    } catch (e) {
-      if (e?.name === 'AbortError') throw e;
-      lastErr = new Error(`Không kết nối được AI: ${e.message}`);
-      continue;
+      return await callGeminiRaw({ system, parts, temperature, signal, schema });
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      console.warn('[examAiUtils] ⚠️ Gemini gặp sự cố, tự động chuyển sang Groq / Agnes:', err.message);
+      errors.push(`Gemini: ${err.message}`);
     }
-
-    if (!res.ok) {
-      let msg = `Lỗi AI (${res.status})`;
-      try {
-        const j = await res.json();
-        if (j?.error?.message) msg += `: ${j.error.message}`;
-      } catch { /* ignore */ }
-      lastErr = new Error(msg);
-      if ([404, 429, 500, 502, 503, 504].includes(res.status) && k < MODELS.length - 1) continue;
-      throw lastErr;
-    }
-
-    const data = await res.json();
-
-    const finishReason = data?.candidates?.[0]?.finishReason;
-    if (finishReason === 'MAX_TOKENS') {
-      console.warn(`[examAiUtils] ⚠️ AI bị cắt vì hết token (MAX_TOKENS).`);
-    }
-    if (finishReason === 'SAFETY' || data?.promptFeedback?.blockReason) {
-      throw new Error('AI từ chối nội dung. Hãy đổi cách mô tả hoặc đổi file.');
-    }
-
-    const text = (data?.candidates?.[0]?.content?.parts || [])
-      .map((p) => p.text || '')
-      .join('');
-
-    if (!text) {
-      lastErr = new Error('AI không trả về nội dung. Hãy thử lại.');
-      if (k < MODELS.length - 1) continue;
-      throw lastErr;
-    }
-
-    goodModelIdx = k;
-    return text;
   }
-  throw lastErr || new Error('Không gọi được AI.');
+
+  // Chuẩn bị nội dung text cho các provider OpenAI-compatible
+  const userContent = (parts || []).map((p) => p.text || '').filter(Boolean).join('\n\n') || 'Bắt đầu';
+
+  // 2. Tự động chuyển sang Groq nếu Gemini hết quota / lỗi
+  if (GROQ_KEY) {
+    try {
+      console.info('[examAiUtils] 🔄 Đang xử lý qua Groq API...');
+      return await callGroqRaw({ system, userContent, temperature, signal, schema });
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      console.warn('[examAiUtils] ⚠️ Groq gặp sự cố, thử Agnes:', err.message);
+      errors.push(`Groq: ${err.message}`);
+    }
+  }
+
+  // 3. Tự động chuyển sang Agnes
+  if (AGNES_KEY) {
+    try {
+      console.info('[examAiUtils] 🔄 Đang xử lý qua Agnes API...');
+      return await callAgnesRaw({ system, userContent, temperature, signal, schema });
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      errors.push(`Agnes: ${err.message}`);
+    }
+  }
+
+  throw new Error(`Tất cả nguồn AI đều bận hoặc hết hạn ngạch:\n${errors.join('\n')}`);
 }
 
 /* ============ ĐỌC JSON "LỎNG" ============ */

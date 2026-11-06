@@ -6,6 +6,7 @@
    ============================================================ */
 import { useMemo, useState } from 'react';
 import MathText from './MathText.jsx';
+import ExamAiDiagnostic from './ExamAiDiagnostic.jsx';
 import '../styles/classroom.css';
 import '../styles/exam-result-v2.css';
 
@@ -143,6 +144,9 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
             </ul>
           )}
         </div>
+
+        {/* AI Chẩn đoán điểm yếu & Đơn thuốc học tập */}
+        <ExamAiDiagnostic exam={exam} result={result} />
 
         {showAnswer && rows.length > 0 && (
           <>

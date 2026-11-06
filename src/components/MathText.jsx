@@ -7,6 +7,7 @@
    • Cài:  npm i katex
    ============================================================ */
 import { useEffect, useMemo, useState } from 'react';
+import { formatMathAndChemSymbols } from '../lib/chemFormulaFormatter.js';
 
 let katexPromise = null;
 const loadKatex = () => {
@@ -49,7 +50,7 @@ export default function MathText({ children, text: propText, as: Tag = 'span', c
       {parts.map((p, i) => {
         const display = p.startsWith('$$');
         const isMath = display || (p.startsWith('$') && p.endsWith('$') && p.length > 2);
-        if (!isMath || !katex) return <span key={i}>{p}</span>;
+        if (!isMath || !katex) return <span key={i}>{formatMathAndChemSymbols(p)}</span>;
         const src = p.slice(display ? 2 : 1, display ? -2 : -1);
         let html;
         try {
@@ -59,7 +60,7 @@ export default function MathText({ children, text: propText, as: Tag = 'span', c
             strict: 'ignore',
           });
         } catch {
-          return <span key={i}>{p}</span>;
+          return <span key={i}>{formatMathAndChemSymbols(src)}</span>;
         }
         return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />;
       })}

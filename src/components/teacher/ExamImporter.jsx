@@ -3801,6 +3801,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
             title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề kiểm tra',
             subject: defaultSubject || classInfo?.subject || 'Hóa học',
             duration: Number(duration) || 45,
+            grade: detectedGrade || defaultGrade || classInfo?.grade || '12',
             questions: buildNormalizedQuestions(items),
           }}
           questions={buildNormalizedQuestions(items)}

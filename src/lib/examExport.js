@@ -19,9 +19,13 @@ import {
   WidthType,
   BorderStyle,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import fileSaver from 'file-saver';
+const saveAs = fileSaver?.saveAs || fileSaver;
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { formatMathAndChemSymbols } from './chemFormulaFormatter.js';
+
+const fmt = (s) => formatMathAndChemSymbols(String(s ?? ''));
 
 /* ============================================================
    HELPER: Tạo filename an toàn & chuyển DataURL sang Uint8Array
@@ -55,61 +59,99 @@ function dataUrlToUint8Array(dataUrl) {
    HELPER: Dựng nội dung Word (.docx) chuẩn 3 phần
    ============================================================ */
 export async function buildExamDocBlob({
-  examTitle = 'ĐỀ KIỂM TRA ĐÁNH GIÁ GIỮA KÌ I',
+  examTitle = 'ĐỀ KIỂM TRA ĐÁNH GIÁ ĐỊNH KỲ',
   subject = 'Hóa học',
+  grade = '12',
   duration = 45,
   code = '101',
   questions = [],
   includeAnswers = true,
   headerInfo = null,
 }) {
-  const deptName = headerInfo?.deptName || 'SỞ GD - ĐT QUẢNG TRỊ';
-  const schoolName = headerInfo?.schoolName || 'TRƯỜNG THPT NGUYỄN CHÍ THANH';
-  const examName = headerInfo?.examName || examTitle || 'KIỂM TRA ĐÁNH GIÁ GIỮA KÌ I';
+  const deptName = headerInfo?.deptName || 'SỞ GIÁO DỤC VÀ ĐÀO TẠO';
+  const schoolName = headerInfo?.schoolName || 'TRƯỜNG THPT';
+  const examName = headerInfo?.examName || examTitle || 'ĐỀ KIỂM TRA ĐỊNH KỲ';
   const subj = headerInfo?.subject || subject || 'Hóa học';
-  const grade = headerInfo?.grade || '12';
-  const schoolYear = headerInfo?.schoolYear || '2026 - 2027';
+  const finalGrade = headerInfo?.grade || grade || '12';
+  const schoolYear = headerInfo?.schoolYear || '2025 - 2026';
   const dur = headerInfo?.duration || duration || 45;
 
   const children = [];
 
-  // --- HEADER TRANG ĐẦU ---
+  const noBorder = {
+    top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+    bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+    left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+    right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  };
+
+  const tableBorder = {
+    top: { style: BorderStyle.SINGLE, size: 4, color: '475569' },
+    bottom: { style: BorderStyle.SINGLE, size: 4, color: '475569' },
+    left: { style: BorderStyle.SINGLE, size: 4, color: '475569' },
+    right: { style: BorderStyle.SINGLE, size: 4, color: '475569' },
+  };
+
+  // --- HEADER BỘ GD&ĐT 2 CỘT CHUẨN ---
   children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: `${deptName.toUpperCase()} — ${schoolName.toUpperCase()}`, bold: true, size: 22 }),
-      ],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: examName.toUpperCase(), bold: true, size: 26 }),
-      ],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: `NĂM HỌC: ${schoolYear}`, bold: true, size: 22 }),
-      ],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: `Môn thi: ${subj} — Lớp: ${grade} | Thời gian làm bài: ${dur} phút`, italics: true, size: 22 }),
-      ],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: `MÃ ĐỀ THI: ${code}`, bold: true, size: 26 }),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 42, type: WidthType.PERCENTAGE },
+              borders: noBorder,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: deptName.toUpperCase(), bold: true, size: 20 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: schoolName.toUpperCase(), bold: true, size: 20 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: '(Đề thi có hướng dẫn giải chi tiết)', italics: true, size: 18 })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 58, type: WidthType.PERCENTAGE },
+              borders: noBorder,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: examName.toUpperCase(), bold: true, size: 22 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `NĂM HỌC ${schoolYear}`, bold: true, size: 20 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `MÔN: ${subj.toUpperCase()} — LỚP ${finalGrade}`, bold: true, size: 22 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `Thời gian làm bài: ${dur} phút (không kể thời gian phát đề)`, italics: true, size: 18 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `MÃ ĐỀ THI: ${code}`, bold: true, size: 22 })],
+                }),
+              ],
+            }),
+          ],
+        }),
       ],
     }),
     new Paragraph({ text: '' }),
     new Paragraph({
       children: [
         new TextRun({
-          text: 'Họ và tên thí sinh: ............................................................... Số báo danh: ...............',
+          text: 'Họ và tên thí sinh: ............................................................................ Số báo danh: .............................',
           italics: true,
           size: 22,
         }),
@@ -131,7 +173,7 @@ export async function buildExamDocBlob({
           children: [
             new ImageRun({
               data: imgBytes,
-              transformation: { width: 280, height: 170 },
+              transformation: { width: 300, height: 180 },
             }),
           ],
         }),
@@ -145,12 +187,22 @@ export async function buildExamDocBlob({
       new Paragraph({
         children: [
           new TextRun({
-            text: `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${part1.length} câu). Thí sinh trả lời từ câu 1 đến câu ${part1.length}.`,
+            text: `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${part1.length} câu).`,
             bold: true,
             size: 24,
           }),
         ],
       }),
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `Thí sinh trả lời từ câu 1 đến câu ${part1.length}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`,
+            italics: true,
+            size: 22,
+          }),
+        ],
+      }),
+      new Paragraph({ text: '' }),
     );
 
     part1.forEach((q, idx) => {
@@ -158,7 +210,7 @@ export async function buildExamDocBlob({
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 24 }),
-            new TextRun({ text: String(q.q || ''), size: 24 }),
+            new TextRun({ text: fmt(q.q || ''), size: 24 }),
           ],
         }),
       );
@@ -171,7 +223,7 @@ export async function buildExamDocBlob({
               indent: { left: 480 },
               children: [
                 new TextRun({ text: `${letter}. `, bold: true, size: 24 }),
-                new TextRun({ text: String(opt || ''), size: 24 }),
+                new TextRun({ text: fmt(opt || ''), size: 24 }),
               ],
             }),
           );
@@ -187,12 +239,22 @@ export async function buildExamDocBlob({
       new Paragraph({
         children: [
           new TextRun({
-            text: `PHẦN II. Câu trắc nghiệm đúng sai (${part2.length} câu). Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`,
+            text: `PHẦN II. Câu trắc nghiệm đúng sai (${part2.length} câu).`,
             bold: true,
             size: 24,
           }),
         ],
       }),
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `Thí sinh trả lời từ câu 1 đến câu ${part2.length}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`,
+            italics: true,
+            size: 22,
+          }),
+        ],
+      }),
+      new Paragraph({ text: '' }),
     );
 
     part2.forEach((q, idx) => {
@@ -200,7 +262,7 @@ export async function buildExamDocBlob({
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 24 }),
-            new TextRun({ text: String(q.q || ''), size: 24 }),
+            new TextRun({ text: fmt(q.q || ''), size: 24 }),
           ],
         }),
       );
@@ -213,7 +275,7 @@ export async function buildExamDocBlob({
               indent: { left: 480 },
               children: [
                 new TextRun({ text: `${letter}) `, bold: true, size: 24 }),
-                new TextRun({ text: String(st.text || ''), size: 24 }),
+                new TextRun({ text: fmt(st.text || ''), size: 24 }),
               ],
             }),
           );
@@ -235,6 +297,16 @@ export async function buildExamDocBlob({
           }),
         ],
       }),
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `Thí sinh trả lời từ câu 1 đến câu ${part3.length}. Thí sinh điền kết quả vào ô tương ứng.`,
+            italics: true,
+            size: 22,
+          }),
+        ],
+      }),
+      new Paragraph({ text: '' }),
     );
 
     part3.forEach((q, idx) => {
@@ -242,7 +314,7 @@ export async function buildExamDocBlob({
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 24 }),
-            new TextRun({ text: String(q.q || ''), size: 24 }),
+            new TextRun({ text: fmt(q.q || ''), size: 24 }),
           ],
         }),
       );
@@ -251,7 +323,7 @@ export async function buildExamDocBlob({
         new Paragraph({
           indent: { left: 480 },
           children: [
-            new TextRun({ text: 'Đáp số: ..............................', italics: true, size: 24 }),
+            new TextRun({ text: 'Đáp số: ............................................................', italics: true, size: 24 }),
           ],
         }),
       );
@@ -259,14 +331,45 @@ export async function buildExamDocBlob({
     });
   }
 
-  // --- BẢNG ĐÁP ÁN ---
+  // --- DÒNG KẾT THÚC ĐỀ THI ---
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ text: '-------------------------- HẾT --------------------------', bold: true, size: 22 }),
+      ],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ text: '(Thí sinh không được sử dụng tài liệu. Cán bộ coi thi không giải thích gì thêm)', italics: true, size: 20 }),
+      ],
+    }),
+  );
+
+  // --- ĐÁP ÁN & HƯỚNG DẪN GIẢI CHI TIẾT (NGẮT TRANG SANG TRANG MỚI) ---
   if (includeAnswers) {
     children.push(
       new Paragraph({
+        pageBreakBefore: true,
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun({ text: `BẢNG ĐÁP ÁN — MÃ ĐỀ ${code}`, bold: true, size: 26 }),
+          new TextRun({ text: `ĐÁP ÁN VÀ HƯỚNG DẪN CHẤM CHI TIẾT — MÃ ĐỀ ${code}`, bold: true, size: 28, color: '0f172a' }),
         ],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({ text: `(Môn: ${subj} — Lớp: ${finalGrade} | Thời gian: ${dur} phút)`, italics: true, size: 20 }),
+        ],
+      }),
+      new Paragraph({ text: '' }),
+    );
+
+    // 1. BẢNG ĐÁP ÁN TỔNG HỢP
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'I. BẢNG ĐÁP ÁN TỔNG HỢP', bold: true, size: 24, color: '1d4ed8' })],
       }),
       new Paragraph({ text: '' }),
     );
@@ -274,16 +377,30 @@ export async function buildExamDocBlob({
     if (part1.length > 0) {
       children.push(
         new Paragraph({
-          children: [new TextRun({ text: 'Phần I — Trắc nghiệm nhiều lựa chọn:', bold: true, size: 22 })],
+          children: [new TextRun({ text: '1. Phần I — Trắc nghiệm nhiều lựa chọn:', bold: true, size: 22 })],
         }),
       );
-      const ansText = part1
-        .map((q, i) => `${i + 1}.${String.fromCharCode(65 + (q.correct || 0))}`)
-        .join('   |   ');
+      // Tạo bảng đáp án Phần I thành các dòng 10 câu
+      const p1Rows = [];
+      for (let i = 0; i < part1.length; i += 10) {
+        const slice = part1.slice(i, i + 10);
+        p1Rows.push(
+          new TableRow({
+            children: [
+              new TableCell({ borders: tableBorder, children: [new Paragraph({ children: [new TextRun({ text: 'Câu', bold: true, size: 20 })] })] }),
+              ...slice.map((_, sIdx) => new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(i + sIdx + 1), bold: true, size: 20 })] })] })),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({ borders: tableBorder, children: [new Paragraph({ children: [new TextRun({ text: 'Đ/A', bold: true, size: 20, color: '047857' })] })] }),
+              ...slice.map((q) => new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String.fromCharCode(65 + (q.correct || 0)), bold: true, size: 20, color: '047857' })] })] })),
+            ],
+          }),
+        );
+      }
       children.push(
-        new Paragraph({
-          children: [new TextRun({ text: ansText, bold: true, size: 22, color: '047857' })],
-        }),
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: p1Rows }),
         new Paragraph({ text: '' }),
       );
     }
@@ -291,38 +408,165 @@ export async function buildExamDocBlob({
     if (part2.length > 0) {
       children.push(
         new Paragraph({
-          children: [new TextRun({ text: 'Phần II — Trắc nghiệm Đúng / Sai:', bold: true, size: 22 })],
+          children: [new TextRun({ text: '2. Phần II — Trắc nghiệm Đúng / Sai:', bold: true, size: 22 })],
         }),
       );
+      const p2Rows = [
+        new TableRow({
+          children: [
+            new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Câu', bold: true, size: 20 })] })] }),
+            new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Ý a', bold: true, size: 20 })] })] }),
+            new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Ý b', bold: true, size: 20 })] })] }),
+            new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Ý c', bold: true, size: 20 })] })] }),
+            new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Ý d', bold: true, size: 20 })] })] }),
+          ],
+        }),
+      ];
       part2.forEach((q, i) => {
-        const stAns = (q.statements || [])
-          .map((s, sIdx) => `${'abcd'[sIdx]}) ${s.answer ? 'Đ' : 'S'}`)
-          .join('   ');
-        children.push(
-          new Paragraph({
+        const sts = q.statements || [];
+        p2Rows.push(
+          new TableRow({
             children: [
-              new TextRun({ text: `Câu ${i + 1}: `, bold: true, size: 22 }),
-              new TextRun({ text: stAns, size: 22 }),
+              new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Câu ${i + 1}`, bold: true, size: 20 })] })] }),
+              ...[0, 1, 2, 3].map((sIdx) => {
+                const ans = sts[sIdx]?.answer;
+                return new TableCell({
+                  borders: tableBorder,
+                  children: [
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      children: [
+                        new TextRun({
+                          text: ans === true ? 'Đ' : ans === false ? 'S' : '—',
+                          bold: true,
+                          size: 20,
+                          color: ans ? '047857' : 'dc2626',
+                        }),
+                      ],
+                    }),
+                  ],
+                });
+              }),
             ],
           }),
         );
       });
-      children.push(new Paragraph({ text: '' }));
+      children.push(
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: p2Rows }),
+        new Paragraph({ text: '' }),
+      );
     }
 
     if (part3.length > 0) {
       children.push(
         new Paragraph({
-          children: [new TextRun({ text: 'Phần III — Trắc nghiệm trả lời ngắn:', bold: true, size: 22 })],
+          children: [new TextRun({ text: '3. Phần III — Trắc nghiệm trả lời ngắn:', bold: true, size: 22 })],
         }),
       );
-      const saAns = part3.map((q, i) => `Câu ${i + 1}: ${q.answer ?? '—'}`).join('   |   ');
-      children.push(
-        new Paragraph({
-          children: [new TextRun({ text: saAns, bold: true, size: 22 })],
+      const p3Rows = [
+        new TableRow({
+          children: [
+            new TableCell({ borders: tableBorder, children: [new Paragraph({ children: [new TextRun({ text: 'Câu', bold: true, size: 20 })] })] }),
+            ...part3.map((_, i) => new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(i + 1), bold: true, size: 20 })] })] })),
+          ],
         }),
+        new TableRow({
+          children: [
+            new TableCell({ borders: tableBorder, children: [new Paragraph({ children: [new TextRun({ text: 'Đáp số', bold: true, size: 20, color: '047857' })] })] }),
+            ...part3.map((q) => new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(q.answer ?? '—'), bold: true, size: 20, color: '047857' })] })] })),
+          ],
+        }),
+      ];
+      children.push(
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: p3Rows }),
+        new Paragraph({ text: '' }),
       );
     }
+
+    // 2. HƯỚNG DẪN GIẢI CHI TIẾT TỪNG CÂU
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'II. HƯỚNG DẪN GIẢI CHI TIẾT & BIỂU ĐIỂM TỪNG CÂU', bold: true, size: 24, color: '1d4ed8' })],
+      }),
+      new Paragraph({ text: '' }),
+    );
+
+    questions.forEach((q, idx) => {
+      const typeLabel = q.type === 'true_false' ? 'Đúng/Sai' : q.type === 'short_answer' ? 'Trả lời ngắn' : 'Trắc nghiệm 4 lựa chọn';
+      const levelLabel = q.level || 'Thông hiểu';
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Câu ${idx + 1} (${typeLabel} — ${levelLabel}${q.points ? ` — ${q.points}đ` : ''}): `, bold: true, size: 22, color: '0f172a' }),
+            new TextRun({ text: fmt(String(q.q || '').slice(0, 160) + (String(q.q || '').length > 160 ? '...' : '')), italics: true, size: 20, color: '475569' }),
+          ],
+        }),
+      );
+
+      // In đáp án
+      if (q.type === 'single_choice' || !q.type) {
+        const correctLetter = String.fromCharCode(65 + (q.correct || 0));
+        const correctOptText = q.options?.[q.correct] ? `: ${fmt(q.options[q.correct])}` : '';
+        children.push(
+          new Paragraph({
+            indent: { left: 240 },
+            children: [
+              new TextRun({ text: '• Đáp án đúng: ', bold: true, size: 22, color: '047857' }),
+              new TextRun({ text: `${correctLetter}${correctOptText}`, bold: true, size: 22, color: '047857' }),
+            ],
+          }),
+        );
+      } else if (q.type === 'true_false') {
+        const tfText = (q.statements || []).map((st, si) => `${'abcd'[si]}) ${st.answer ? 'Đúng' : 'Sai'}`).join('   |   ');
+        children.push(
+          new Paragraph({
+            indent: { left: 240 },
+            children: [
+              new TextRun({ text: '• Đáp án: ', bold: true, size: 22, color: '047857' }),
+              new TextRun({ text: tfText, bold: true, size: 22, color: '047857' }),
+            ],
+          }),
+        );
+      } else if (q.type === 'short_answer') {
+        children.push(
+          new Paragraph({
+            indent: { left: 240 },
+            children: [
+              new TextRun({ text: '• Đáp số: ', bold: true, size: 22, color: '047857' }),
+              new TextRun({ text: fmt(q.answer ?? '—'), bold: true, size: 22, color: '047857' }),
+            ],
+          }),
+        );
+      }
+
+      // In lời giải chi tiết
+      if (q.explain) {
+        children.push(
+          new Paragraph({
+            indent: { left: 240 },
+            children: [
+              new TextRun({ text: '• Lời giải chi tiết: ', bold: true, size: 22 }),
+              new TextRun({ text: fmt(q.explain), size: 22 }),
+            ],
+          }),
+        );
+      }
+
+      // In các bước tính toán / bản giải nháp
+      if (q.work) {
+        children.push(
+          new Paragraph({
+            indent: { left: 240 },
+            children: [
+              new TextRun({ text: '• Bản giải / Các bước tính toán: ', bold: true, size: 20, color: '0369a1' }),
+              new TextRun({ text: fmt(q.work), size: 20, color: '334155' }),
+            ],
+          }),
+        );
+      }
+
+      children.push(new Paragraph({ text: '' }));
+    });
   }
 
   const doc = new Document({
@@ -345,6 +589,7 @@ export async function buildExamDocBlob({
 export async function exportToWord({
   examTitle = 'Đề kiểm tra',
   subject = 'Hóa học',
+  grade = '12',
   duration = 45,
   code = '101',
   questions = [],
@@ -354,6 +599,7 @@ export async function exportToWord({
   const blob = await buildExamDocBlob({
     examTitle,
     subject,
+    grade: headerInfo?.grade || grade || '12',
     duration,
     code,
     questions,
@@ -445,6 +691,7 @@ export async function exportBundleZip({
     const blob = await buildExamDocBlob({
       examTitle,
       subject,
+      grade: finalHeader.grade || grade,
       duration,
       code: version.code,
       questions: version.questions,
@@ -456,6 +703,7 @@ export async function exportBundleZip({
     const solvedBlob = await buildExamDocBlob({
       examTitle: `${examTitle} - Đáp Án Chi Tiết`,
       subject,
+      grade: finalHeader.grade || grade,
       duration,
       code: version.code,
       questions: version.questions,
