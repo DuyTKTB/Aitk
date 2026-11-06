@@ -1966,7 +1966,6 @@ export default function TeacherDashboard({ onExit } = {}) {
       active={section}
       onChange={goSection}
       fullscreen
-      autoHideNav={false}
       onOpenCommandPalette={() => {
         setCmdOpen(true);
         setCmdQuery('');

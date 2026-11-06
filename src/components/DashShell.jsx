@@ -29,22 +29,6 @@ const IcoMoon = ({ size = 16 }) => (
   </svg>
 );
 
-const IcoEye = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
-
-const IcoEyeOff = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-    <line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-
 const IcoSparkles = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -284,7 +268,7 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
 
 export function Topbar({
   title, subtitle, tabs, active, onTab, search, onSearch,
-  placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme, onToggleNav, navHidden,
+  placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme,
   onOpenCommandPalette, onOpenAiCopilot,
 }) {
   const searchInputRef = useRef(null);
@@ -406,18 +390,6 @@ export function Topbar({
           </button>
         )}
 
-        {onToggleNav && (
-          <button
-            type="button"
-            className="t-top-action-btn"
-            onClick={onToggleNav}
-            title={navHidden ? 'Hiển thị menu bên trái' : 'Thu gọn/ẩn menu bên trái'}
-            aria-label="Bật/tắt menu điều hướng"
-          >
-            {navHidden ? <IcoEye size={16} /> : <IcoEyeOff size={16} />}
-          </button>
-        )}
-
         {onToggleTheme && (
           <button
             type="button"
@@ -444,7 +416,6 @@ export function DashFrame({
    sideNote,
    extraNav,
    fullscreen = false,
-   autoHideNav = false,
    onOpenCommandPalette,
    onOpenAiCopilot,
    className = '',
@@ -455,23 +426,6 @@ export function DashFrame({
        return localStorage.getItem('elec_teacher_theme') || 'dark';
      } catch {
        return 'dark';
-     }
-   });
-   /* Mặc định ghim mở menu trên màn hình lớn để giáo viên nhìn rõ 4 nhóm chức năng */
-   const [pinned, setPinned] = useState(() => {
-     try {
-       const saved = localStorage.getItem('elec_teacher_nav_pinned');
-       return saved == null ? true : saved === 'true';
-     } catch {
-       return true;
-     }
-   });
-   const [hidden, setHidden] = useState(() => {
-     try {
-       if (autoHideNav) return true;
-       return localStorage.getItem('elec_teacher_nav_hidden') === 'true';
-     } catch {
-       return false;
      }
    });
    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -490,15 +444,10 @@ export function DashFrame({
 
    useEffect(() => {
      try {
-       localStorage.setItem('elec_teacher_nav_pinned', String(pinned));
+       localStorage.removeItem('elec_teacher_nav_pinned');
+       localStorage.removeItem('elec_teacher_nav_hidden');
      } catch { /* */ }
-   }, [pinned]);
-
-   useEffect(() => {
-     try {
-       localStorage.setItem('elec_teacher_nav_hidden', String(hidden));
-     } catch { /* */ }
-   }, [hidden]);
+   }, []);
 
   const isTopbarElem = (child) =>
     React.isValidElement(child) && (child.type === Topbar || child.type?.isTopbar);
@@ -515,7 +464,7 @@ export function DashFrame({
 
    return (
      <div className={`t-shell ${className}`} data-theme={theme}>
-       <aside className={`t-rail-sidebar ${pinned ? 'pinned expanded' : ''} ${hidden ? 'hidden' : ''}`}>
+       <aside className="t-rail-sidebar expanded">
         <div className="t-rail-logo" onClick={onExit} title="ELEC AI">
           <AIMark size={32} animate={false} />
           <span className="t-rail-logo-text">ELEC AI</span>
@@ -560,20 +509,6 @@ export function DashFrame({
         <div className="t-rail-footer">
            <button
              type="button"
-             className={`t-rail-btn ${pinned ? 'active' : ''}`}
-             onClick={() => setPinned((v) => !v)}
-             title={pinned ? 'Thu gọn thanh bên (chỉ hiện icon)' : 'Mở rộng thanh bên (luôn hiện chữ)'}
-             aria-pressed={pinned}
-           >
-             <span className="t-rail-btn-icon">
-               <svg width="20" height="20" viewBox="0 0 24 24" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                 <path d="M12 17v5M9 3h6l-1 7 3 2v2H7v-2l3-2-1-7z" />
-               </svg>
-             </span>
-             <span className="t-rail-btn-label">{pinned ? 'Thu gọn menu' : 'Ghim mở menu'}</span>
-           </button>
-           <button
-             type="button"
              className="t-rail-btn"
              onClick={onExit}
              title={exitLabel}
@@ -592,8 +527,6 @@ export function DashFrame({
               return React.cloneElement(child, {
                 theme,
                 onToggleTheme: handleToggleTheme,
-                onToggleNav: () => setHidden((v) => !v),
-                navHidden: hidden,
                 onOpenCommandPalette,
                 onOpenAiCopilot,
               });

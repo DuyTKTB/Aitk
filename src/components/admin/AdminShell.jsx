@@ -155,7 +155,6 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
       onChange={onChange}
       onExit={() => { window.location.hash = ''; }}
       exitLabel="Về trang chủ"
-      autoHideNav={true}
       sideNote={sideNote}
       extraNav={extraNav}
     >
