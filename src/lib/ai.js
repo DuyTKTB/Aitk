@@ -23,6 +23,7 @@ import { trackRequest } from './apiTracker.js';
 import {
   classifyTask, createKeyRing, buildProviderChain, modelsFor,
   warmUpGemini, lastUserText, discoveredGemini, coreText, reasoningParamFor,
+  collectEnvKeys,
 } from './aiRouter.js';
 import { buildSystemPrompt, VERIFY_SYSTEM_PROMPT } from './aiPrompts.js';
 import { runTools, verifyToolResults } from './aiTools.js';
@@ -34,11 +35,12 @@ const ENV = (typeof import.meta !== 'undefined' && import.meta.env) ? import.met
 
 /* ============================================================
    API KEYS — hỗ trợ NHIỀU key mỗi provider (cách nhau bởi , ; | hoặc xuống dòng)
+   Tự động gom mọi biến môi trường có tên chứa provider (VITE_GEMINI_KEY, VITE_GEMINI_KEY_1, ...)
    ============================================================ */
 const RINGS = {
-  gemini: createKeyRing(ENV.VITE_GEMINI_KEY),
-  groq: createKeyRing(ENV.VITE_GROQ_API_KEY),
-  agnes: createKeyRing(ENV.VITE_AGNES_API_KEY),
+  gemini: createKeyRing(collectEnvKeys(ENV, 'gemini')),
+  groq: createKeyRing(collectEnvKeys(ENV, 'groq')),
+  agnes: createKeyRing(collectEnvKeys(ENV, 'agnes')),
 };
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -441,8 +443,11 @@ async function streamGemini({
       const bodyText = await res.text().catch(() => '');
       console.warn(`[ELEC AI] ✗ Gemini/${model} → ${status}`, bodyText.slice(0, 200));
 
-      // Model không hỗ trợ thinkingConfig → thử lại không suy luận
-      if (useThinking && status === 400 && /thinking|thought|unknown field|invalid/i.test(bodyText)) {
+      // Kiểm tra lỗi xác thực / API key hết hạn / không hợp lệ
+      const isKeyError = status === 401 || status === 403 || /API[_ ]KEY|API_KEY_INVALID|API_KEY_EXPIRED|key expired|unauthorized|forbidden|credential|expired/i.test(bodyText);
+
+      // Model không hỗ trợ thinkingConfig → thử lại không suy luận (chỉ khi không phải lỗi API key)
+      if (useThinking && status === 400 && /thinking|thought|thinkingConfig|unknown field|unrecognized field/i.test(bodyText) && !isKeyError) {
         useThinking = false;
         continue;
       }
@@ -463,9 +468,10 @@ async function streamGemini({
         const err = new Error(`${model} không tồn tại`);
         err.status = 404; err.isNotFound = true; throw err;
       }
-      if (status === 401 || status === 403 || /API[_ ]KEY/i.test(bodyText)) {
+      if (isKeyError || (status === 400 && /invalid.*key|api key/i.test(bodyText))) {
         const err = new Error(MSG_API_KEY_ERROR);
         err.isAuth = true;
+        err.rawBody = bodyText;
         throw err;
       }
       const err = new Error(`Gemini ${model} lỗi ${status}`);
@@ -569,9 +575,10 @@ async function streamOpenAICompat({
         const err = new Error(`${model} quá tải (${status})`);
         err.status = status; err.isOverload = true; throw err;
       }
-      if (status === 401 || status === 403) {
+      if (status === 401 || status === 403 || /invalid_api_key|expired|unauthorized|forbidden|API[_ ]KEY/i.test(bodyText)) {
         const err = new Error(MSG_API_KEY_ERROR);
         err.isAuth = true;
+        err.rawBody = bodyText;
         throw err;
       }
       if (status === 404) {
@@ -998,37 +1005,54 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
           clearHedge();
           if (err?.isAbort || err?.name === 'AbortError' || aborted) return;
 
+          /* Bỏ luôn các model còn lại của provider này khi hết toàn bộ key / quota,
+             tránh bắt người dùng chờ qua nhiều lượt thử vô ích */
+          const dropProviderModels = () => {
+            attempts = attempts.filter((a) => a.id !== id);
+          };
+
           if (err?.isQuota) {
             const retryAfter = parseRetryAfterMs(err.rawBody || err.message);
             const tries = keyTries.get(id) || 0;
-            /* Hết quota thường là theo TÀI KHOẢN/provider → bỏ luôn các model còn lại
-               của provider này, tránh bắt người dùng chờ qua nhiều lượt thử vô ích */
-            const dropProviderModels = () => {
-              attempts = attempts.filter((a) => a.id !== id);
-            };
-            if (ring.size > 1 && tries < ring.size - 1 && ring.badCount() < ring.size) {
-              // Còn key khác → đổi key, thử lại cùng provider/model
-              ring.reportBad(key, retryAfter || 5 * 60 * 1000);
+            // Nếu provider này vẫn còn key khác chưa bị cooldown → xoay ngay sang key kế tiếp
+            if (ring.size > 1 && tries < ring.size && ring.hasUsable()) {
+              ring.reportBad(key, retryAfter || 5 * 60 * 1000, 'hết quota');
               keyTries.set(id, tries + 1);
-              console.warn(`[ELEC AI] ↻ Xoay API key cho ${id} (lần ${tries + 1})`);
+              console.warn(`[ELEC AI] ↻ Key ${id} hết quota, tự động đổi sang key khác (lần ${tries + 1}/${ring.size})`);
               setTimeout(() => {
                 if (finished || aborted || winner !== null) return;
                 attempts.unshift({ id, model });
                 launchNext();
-              }, 200);
+              }, 120);
               return;
             }
             if (/quota|exceeded|exhaust/i.test(err.rawBody || '') || !err.isRateLimit) {
               markModelExhausted(id, model, retryAfter || 60 * 60 * 1000);
               dropProviderModels();
             }
-            if (winner === null) { lastError = err; setTimeout(launchNext, 150); }
+            if (winner === null) { lastError = err; setTimeout(launchNext, 120); }
             return;
           }
 
           if (err?.isAuth) {
-            ring.reportBad(key, 30 * 60 * 1000);
-            if (winner === null) { lastError = lastError || err; setTimeout(launchNext, 120); }
+            // Key hết hạn hoặc sai key → đưa key vào cooldown 24h
+            ring.reportBad(key, 24 * 60 * 60 * 1000, 'key hết hạn hoặc không hợp lệ');
+            const tries = keyTries.get(id) || 0;
+            // Nếu provider này vẫn còn key khác dùng được → thử ngay key kế tiếp với cùng model
+            if (ring.size > 1 && tries < ring.size && ring.hasUsable()) {
+              keyTries.set(id, tries + 1);
+              console.warn(`[ELEC AI] ↻ Key ${id} hết hạn/không hợp lệ, tự động chuyển sang key khác (lần ${tries + 1}/${ring.size})`);
+              setTimeout(() => {
+                if (finished || aborted || winner !== null) return;
+                attempts.unshift({ id, model });
+                launchNext();
+              }, 100);
+              return;
+            }
+            // Đã hết key hợp lệ của provider này → drop hết model của provider này để nhảy sang provider khác ngay
+            console.warn(`[ELEC AI] ⚠️ Toàn bộ key của ${id} đều hết hạn/không hợp lệ, tự động chuyển sang nhà cung cấp AI tiếp theo...`);
+            dropProviderModels();
+            if (winner === null) { lastError = lastError || err; setTimeout(launchNext, 100); }
             return;
           }
 

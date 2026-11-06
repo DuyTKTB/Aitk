@@ -277,9 +277,33 @@ export function warmUpGemini(key) {
 /* ============ 4. KEY RING — XOAY NHIỀU API KEY ============ */
 /**
  * parseKeys('k1,k2;k3\naa') → ['k1','k2','k3','aa']
+ * Hỗ trợ string, array, tách theo dấu phẩy, chấm phẩy, khoảng trắng, xuống dòng, bỏ trùng.
  */
 export function parseKeys(raw) {
-  return String(raw || '').split(/[\s,;|]+/).map((s) => s.trim()).filter((s) => s.length > 8);
+  const str = Array.isArray(raw) ? raw.join(',') : String(raw || '');
+  const items = str
+    .split(/[\s,;|]+/)
+    .map((s) => s.trim().replace(/^["']|["']$/g, ''))
+    .filter((s) => s.length > 8);
+  return Array.from(new Set(items));
+}
+
+/**
+ * Thu thập tất cả API key từ object env cho một provider cụ thể.
+ * Hỗ trợ các biến như: VITE_GEMINI_KEY, VITE_GEMINI_KEYS, VITE_GEMINI_API_KEY, VITE_GEMINI_KEY_1, ...
+ */
+export function collectEnvKeys(env, provider) {
+  const p = String(provider || '').toLowerCase();
+  const gathered = [];
+  const source = env || {};
+  for (const [name, val] of Object.entries(source)) {
+    if (typeof val !== 'string' || !val.trim()) continue;
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes(p) && (lowerName.includes('key') || lowerName.includes('token') || lowerName.includes('api'))) {
+      gathered.push(val);
+    }
+  }
+  return parseKeys(gathered.join(','));
 }
 
 /**
@@ -290,7 +314,7 @@ export function parseKeys(raw) {
  */
 export function createKeyRing(raw, { cooldownMs = 10 * 60 * 1000 } = {}) {
   const keys = parseKeys(raw);
-  const bad = new Map();          // key → { until, fails }
+  const bad = new Map();          // key → { until, fails, reason }
   let cursor = 0;
 
   const usable = () => keys.filter((k) => {
@@ -308,15 +332,18 @@ export function createKeyRing(raw, { cooldownMs = 10 * 60 * 1000 } = {}) {
       cursor = (cursor + 1) % Math.max(1, list.length);
       return key;
     },
-    reportBad(key, ms = cooldownMs) {
+    reportBad(key, ms = cooldownMs, reason = '') {
       if (!key) return;
       const prev = bad.get(key);
-      bad.set(key, { until: Date.now() + ms, fails: (prev?.fails || 0) + 1 });
+      const fails = (prev?.fails || 0) + 1;
+      bad.set(key, { until: Date.now() + ms, fails, reason });
+      const masked = key.length > 10 ? `${key.slice(0, 4)}...${key.slice(-4)}` : '***';
+      console.warn(`[KeyRing] ⚠️ Key ${masked} đưa vào cooldown ${Math.round(ms / 1000)}s${reason ? ` (${reason})` : ''}. Thất bại: ${fails} lần.`);
     },
     reportGood(key) { if (key) bad.delete(key); },
     hasUsable() { return usable().length > 0; },
     badCount: () => [...bad.values()].filter((b) => Date.now() <= b.until).length,
-    stats: () => ({ total: keys.length, cooling: [...bad.entries()].map(([k, v]) => ({ key: k.slice(-4), until: v.until, fails: v.fails })) }),
+    stats: () => ({ total: keys.length, cooling: [...bad.entries()].map(([k, v]) => ({ key: k.slice(-4), until: v.until, fails: v.fails, reason: v.reason })) }),
   };
 }
 

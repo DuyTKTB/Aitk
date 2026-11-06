@@ -1,5 +1,43 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/* Tự động gộp các biến môi trường VITE_* bị lặp dòng trong file .env (ví dụ nhiều dòng VITE_GEMINI_KEY=...)
+   thành chuỗi phân cách bởi dấu phẩy để Vite và Client nhận đầy đủ tất cả API keys. */
+(function mergeEnvFiles() {
+  const envFiles = ['.env', '.env.local'];
+  const collected = {};
+  for (const file of envFiles) {
+    const filePath = path.resolve(process.cwd(), file);
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      for (const rawLine of content.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq <= 0) continue;
+        const k = line.slice(0, eq).trim();
+        let v = line.slice(eq + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+          v = v.slice(1, -1);
+        }
+        if (!v) continue;
+        if (!collected[k]) collected[k] = [];
+        v.split(/[\s,;|]+/).forEach((item) => {
+          const s = item.trim();
+          if (s && !collected[k].includes(s)) collected[k].push(s);
+        });
+      }
+    } catch { /* ignore */ }
+  }
+  for (const [k, arr] of Object.entries(collected)) {
+    if (k.startsWith('VITE_') && arr.length > 0) {
+      process.env[k] = arr.join(',');
+    }
+  }
+})();
 
 /* Tách các thư viện lớn ra chunk riêng:
    trước đây toàn bộ firebase + three + pdf nằm trong 1 file index ~1,4 MB,

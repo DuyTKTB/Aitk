@@ -13,6 +13,7 @@
 import { buildSubjectGuide, getSubject, SUBJECTS, GENERIC_SUBJECT } from './subjects.js';
 import { buildFileContext } from './fileReader.js';
 import { useCredit } from './creditService.js';
+import { collectEnvKeys } from './aiRouter.js';
 
 /* ============ HẰNG SỐ ============ */
 export const LEVELS = ['nhận biết', 'thông hiểu', 'vận dụng', 'vận dụng cao'];
@@ -84,10 +85,7 @@ export const examplePrompt = (subject) =>
    2. Groq (openai/gpt-oss-120b, qwen/qwen3.8-27b, openai/gpt-oss-20b)
    3. Agnes (agnes-3.0-flash, agnes-2.5-flash)
    ============================================================ */
-const GEMINI_KEYS = (import.meta.env?.VITE_GEMINI_KEY || import.meta.env?.VITE_GEMINI_API_KEY || '')
-  .split(/[,;\n]/)
-  .map((s) => s.trim())
-  .filter(Boolean);
+const GEMINI_KEYS = collectEnvKeys(import.meta.env, 'gemini');
 
 const GEMINI_MODELS = (import.meta.env?.VITE_GEMINI_MODEL ||
   'gemini-2.5-flash,gemini-flash-latest,gemini-flash-lite-latest,gemini-3.5-flash,gemini-3.8-flash,gemini-3.7-flash')
@@ -95,10 +93,10 @@ const GEMINI_MODELS = (import.meta.env?.VITE_GEMINI_MODEL ||
   .map((s) => s.trim())
   .filter(Boolean);
 
-const GROQ_KEY = import.meta.env?.VITE_GROQ_API_KEY || '';
+const GROQ_KEYS = collectEnvKeys(import.meta.env, 'groq');
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
 
-const AGNES_KEY = import.meta.env?.VITE_AGNES_API_KEY || '';
+const AGNES_KEYS = collectEnvKeys(import.meta.env, 'agnes');
 const AGNES_MODELS = ['agnes-3.0-flash', 'agnes-2.5-flash'];
 
 let goodModelIdx = 0;
@@ -159,7 +157,8 @@ const QUESTION_SCHEMA = {
 async function callGeminiRaw({ system, parts, temperature, signal, schema }) {
   if (!GEMINI_KEYS.length) throw new Error('Chưa cấu hình VITE_GEMINI_KEY');
   let lastErr = null;
-  for (const key of GEMINI_KEYS) {
+  for (let keyIdx = 0; keyIdx < GEMINI_KEYS.length; keyIdx++) {
+    const key = GEMINI_KEYS[keyIdx];
     for (let k = goodModelIdx; k < GEMINI_MODELS.length; k++) {
       const model = GEMINI_MODELS[k];
       try {
@@ -186,12 +185,26 @@ async function callGeminiRaw({ system, parts, temperature, signal, schema }) {
 
         if (!res.ok) {
           let msg = `Lỗi AI (${res.status})`;
+          let isKeyProblem = false;
           try {
             const j = await res.json();
-            if (j?.error?.message) msg += `: ${j.error.message}`;
+            if (j?.error?.message) {
+              msg += `: ${j.error.message}`;
+              if (/api.?key|expired|invalid|quota|exceeded|permission|unauthorized/i.test(j.error.message)) {
+                isKeyProblem = true;
+              }
+            }
           } catch { /* ignore */ }
           lastErr = new Error(msg);
-          if ([404, 429, 500, 502, 503, 504].includes(res.status)) continue;
+          console.warn(`[examAiUtils] ⚠️ Gemini key ${keyIdx + 1}/${GEMINI_KEYS.length} (${model}) gặp lỗi: ${msg}`);
+
+          // Nếu lỗi xác thực, key hết hạn, quota (400, 401, 403, 429) → chuyển sang key Gemini tiếp theo
+          if ([400, 401, 403, 429].includes(res.status) || isKeyProblem) {
+            break; // Thoát vòng lặp model, thử key tiếp theo trong GEMINI_KEYS
+          }
+          if ([404, 500, 502, 503, 504].includes(res.status)) {
+            continue; // Thử model khác với key này
+          }
           throw lastErr;
         }
 
@@ -218,96 +231,116 @@ async function callGeminiRaw({ system, parts, temperature, signal, schema }) {
       }
     }
   }
-  throw lastErr || new Error('Không gọi được Gemini API');
+  throw lastErr || new Error('Không gọi được Gemini API (toàn bộ key đều thất bại)');
 }
 
 async function callGroqRaw({ system, userContent, temperature, signal, schema }) {
-  if (!GROQ_KEY) throw new Error('Chưa cấu hình VITE_GROQ_API_KEY');
+  if (!GROQ_KEYS.length) throw new Error('Chưa cấu hình VITE_GROQ_API_KEY');
   let lastErr = null;
   const schemaInstruction = schema ? `\n\nBẮT BUỘC TRẢ VỀ JSON KHỚP CẤU TRÚC SAU:\n${JSON.stringify(schema)}` : '';
-  for (const model of GROQ_MODELS) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_KEY}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: `${system}${schemaInstruction}\n\nIMPORTANT: Respond ONLY with valid JSON.` },
-            { role: 'user', content: userContent },
-          ],
-          temperature,
-          response_format: { type: 'json_object' },
-        }),
-      });
+  for (let keyIdx = 0; keyIdx < GROQ_KEYS.length; keyIdx++) {
+    const key = GROQ_KEYS[keyIdx];
+    for (const model of GROQ_MODELS) {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: `${system}${schemaInstruction}\n\nIMPORTANT: Respond ONLY with valid JSON.` },
+              { role: 'user', content: userContent },
+            ],
+            temperature,
+            response_format: { type: 'json_object' },
+          }),
+        });
 
-      if (!res.ok) {
-        let msg = `Groq (${res.status})`;
-        try {
-          const j = await res.json();
-          if (j?.error?.message) msg += `: ${j.error.message}`;
-        } catch { /* ignore */ }
-        lastErr = new Error(msg);
-        continue;
+        if (!res.ok) {
+          let msg = `Groq (${res.status})`;
+          let isKeyProblem = false;
+          try {
+            const j = await res.json();
+            if (j?.error?.message) {
+              msg += `: ${j.error.message}`;
+              if (/api.?key|expired|invalid|rate|quota|tokens/i.test(j.error.message)) {
+                isKeyProblem = true;
+              }
+            }
+          } catch { /* ignore */ }
+          lastErr = new Error(msg);
+          console.warn(`[examAiUtils] ⚠️ Groq key ${keyIdx + 1}/${GROQ_KEYS.length} (${model}) gặp lỗi: ${msg}`);
+          if ([401, 403, 429].includes(res.status) || isKeyProblem) {
+            break; // Thử key Groq kế tiếp
+          }
+          continue;
+        }
+
+        const data = await res.json();
+        const text = data?.choices?.[0]?.message?.content || '';
+        if (text) return text;
+      } catch (e) {
+        if (e?.name === 'AbortError') throw e;
+        lastErr = e;
       }
-
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content || '';
-      if (text) return text;
-    } catch (e) {
-      if (e?.name === 'AbortError') throw e;
-      lastErr = e;
     }
   }
-  throw lastErr || new Error('Không gọi được Groq API');
+  throw lastErr || new Error('Không gọi được Groq API (toàn bộ key đều thất bại)');
 }
 
 async function callAgnesRaw({ system, userContent, temperature, signal, schema }) {
-  if (!AGNES_KEY) throw new Error('Chưa cấu hình VITE_AGNES_API_KEY');
+  if (!AGNES_KEYS.length) throw new Error('Chưa cấu hình VITE_AGNES_API_KEY');
   let lastErr = null;
   const schemaInstruction = schema ? `\n\nBẮT BUỘC TRẢ VỀ JSON KHỚP CẤU TRÚC SAU:\n${JSON.stringify(schema)}` : '';
-  for (const model of AGNES_MODELS) {
-    try {
-      const res = await fetch('https://apihub.agnes-ai.com/v1/chat/completions', {
-        method: 'POST',
-        signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AGNES_KEY}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: `${system}${schemaInstruction}\n\nIMPORTANT: Respond ONLY with valid JSON.` },
-            { role: 'user', content: userContent },
-          ],
-          temperature,
-        }),
-      });
+  for (let keyIdx = 0; keyIdx < AGNES_KEYS.length; keyIdx++) {
+    const key = AGNES_KEYS[keyIdx];
+    for (const model of AGNES_MODELS) {
+      try {
+        const res = await fetch('https://apihub.agnes-ai.com/v1/chat/completions', {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: `${system}${schemaInstruction}\n\nIMPORTANT: Respond ONLY with valid JSON.` },
+              { role: 'user', content: userContent },
+            ],
+            temperature,
+          }),
+        });
 
-      if (!res.ok) {
-        let msg = `Agnes (${res.status})`;
-        try {
-          const j = await res.json();
-          if (j?.error?.message) msg += `: ${j.error.message}`;
-        } catch { /* ignore */ }
-        lastErr = new Error(msg);
-        continue;
+        if (!res.ok) {
+          let msg = `Agnes (${res.status})`;
+          try {
+            const j = await res.json();
+            if (j?.error?.message) msg += `: ${j.error.message}`;
+          } catch { /* ignore */ }
+          lastErr = new Error(msg);
+          console.warn(`[examAiUtils] ⚠️ Agnes key ${keyIdx + 1}/${AGNES_KEYS.length} (${model}) gặp lỗi: ${msg}`);
+          if ([401, 403, 429].includes(res.status)) {
+            break; // Thử key Agnes kế tiếp
+          }
+          continue;
+        }
+
+        const data = await res.json();
+        const text = data?.choices?.[0]?.message?.content || '';
+        if (text) return text;
+      } catch (e) {
+        if (e?.name === 'AbortError') throw e;
+        lastErr = e;
       }
-
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content || '';
-      if (text) return text;
-    } catch (e) {
-      if (e?.name === 'AbortError') throw e;
-      lastErr = e;
     }
   }
-  throw lastErr || new Error('Không gọi được Agnes API');
+  throw lastErr || new Error('Không gọi được Agnes API (toàn bộ key đều thất bại)');
 }
 
 export async function callModel({ system, parts, temperature = 0.7, signal, creditCost = null, schema = null }) {
@@ -327,7 +360,7 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
 
   const errors = [];
 
-  // 1. Thử Google Gemini (các model hoạt động và tự luân chuyển model)
+  // 1. Thử Google Gemini (các model hoạt động và tự luân chuyển model + nhiều key)
   if (GEMINI_KEYS.length > 0) {
     try {
       return await callGeminiRaw({ system, parts, temperature, signal, schema });
@@ -341,8 +374,8 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
   // Chuẩn bị nội dung text cho các provider OpenAI-compatible
   const userContent = (parts || []).map((p) => p.text || '').filter(Boolean).join('\n\n') || 'Bắt đầu';
 
-  // 2. Tự động chuyển sang Groq nếu Gemini hết quota / lỗi
-  if (GROQ_KEY) {
+  // 2. Tự động chuyển sang Groq nếu Gemini hết quota / lỗi / hết hạn
+  if (GROQ_KEYS.length > 0) {
     try {
       console.info('[examAiUtils] 🔄 Đang xử lý qua Groq API...');
       return await callGroqRaw({ system, userContent, temperature, signal, schema });
@@ -354,7 +387,7 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
   }
 
   // 3. Tự động chuyển sang Agnes
-  if (AGNES_KEY) {
+  if (AGNES_KEYS.length > 0) {
     try {
       console.info('[examAiUtils] 🔄 Đang xử lý qua Agnes API...');
       return await callAgnesRaw({ system, userContent, temperature, signal, schema });

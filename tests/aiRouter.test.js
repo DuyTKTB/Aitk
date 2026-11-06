@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   classifyTask, tierFor, modelsFor, parseKeys, createKeyRing, buildProviderChain,
   lastUserText, hasImage, coreText, isSubstantive, reasoningParamFor,
+  collectEnvKeys,
 } from '../src/lib/aiRouter.js';
 
 const msg = (text) => [{ role: 'user', parts: [{ text }] }];
@@ -124,6 +125,24 @@ describe('parseKeys / createKeyRing', () => {
     ring.reportBad(next, 60000);
     expect(ring.get()).toBeNull();
     expect(ring.hasUsable()).toBe(false);
+  });
+
+  it('collectEnvKeys gom tất cả key của provider từ các biến môi trường', () => {
+    const mockEnv = {
+      VITE_GEMINI_KEY: 'key_gemini_11111111,key_gemini_22222222',
+      VITE_GEMINI_KEY_2: 'key_gemini_33333333',
+      VITE_GROQ_API_KEY: 'key_groq_111111111',
+      UNRELATED_VAR: 'foo_bar',
+    };
+    const gemKeys = collectEnvKeys(mockEnv, 'gemini');
+    expect(gemKeys).toHaveLength(3);
+    expect(gemKeys).toContain('key_gemini_11111111');
+    expect(gemKeys).toContain('key_gemini_22222222');
+    expect(gemKeys).toContain('key_gemini_33333333');
+
+    const groqKeys = collectEnvKeys(mockEnv, 'groq');
+    expect(groqKeys).toHaveLength(1);
+    expect(groqKeys).toContain('key_groq_111111111');
   });
 });
 
