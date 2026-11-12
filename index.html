@@ -2,12 +2,18 @@
 <html lang="vi" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/img/logo.png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/img/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/img/favicon-96.png" />
+    <link rel="icon" type="image/png" sizes="144x144" href="/img/favicon-144.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/img/logo.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#2f6bff" />
     <meta
       name="description"
-      content="ELEC Science AI (ELECAI) — Nền tảng học tập & khảo thí Khoa học Tự nhiên (KHTN: Vật lí — Hóa học — Sinh học) chuẩn GDPT mới: Trợ lý AI giải bài từng bước, Sổ tay công thức 3 môn, Bảng tuần hoàn tương tác, Phòng thi ảo THPTQG & ĐGNL bấm giờ thực và Lộ trình cá nhân hóa."
+      content="Nền tảng học & luyện thi KHTN (Vật lí, Hóa học, Sinh học) chuẩn 2026: Trợ lý AI giải từng bước, Phòng thi ảo THPTQG & ĐGNL, Bảng tuần hoàn & Công thức."
     />
     <meta name="author" content="ELEC Science AI Team & Duy TK" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
@@ -34,9 +40,10 @@
 
     <!-- Open Graph (Facebook / Zalo) -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ELEC Science AI (ELECAI) — Nền Tảng Học Tập & Luyện Thi KHTN (Vật lí — Hóa học — Sinh học) Chuẩn 2026" />
-    <meta property="og:description" content="Trợ lý AI giải bài tập Vật lí, Hóa học, Sinh học từng bước; phòng thi ảo bấm giờ thực chuẩn format mới Bộ GD&ĐT; ngân hàng công thức và máy tính khoa học KHTN." />
+    <meta property="og:title" content="ELEC Science AI (ELECAI) — Học & Luyện Thi KHTN Lý Hóa Sinh" />
+    <meta property="og:description" content="Trợ lý AI giải bài tập Vật lí, Hóa học, Sinh học từng bước; phòng thi ảo bấm giờ thực chuẩn format Bộ GD&ĐT; bảng tuần hoàn, công thức và lộ trình Elo." />
     <meta property="og:image" content="https://www.elecai.id.vn/img/og-image.png" />
+    <meta property="og:image:secure_url" content="https://www.elecai.id.vn/img/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:alt" content="ELEC Science AI — Nền tảng học tập & luyện thi Khoa học Tự nhiên" />
     <meta property="og:image:width" content="1200" />
@@ -45,8 +52,9 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ELEC Science AI (ELECAI) — Học Tập & Luyện Thi KHTN Chuẩn AI 2026" />
-    <meta name="twitter:description" content="Giải bài tập bằng AI từng bước cho môn Vật lí, Hóa học, Sinh học; phòng thi ảo và lộ trình cá nhân hóa KHTN." />
+    <meta name="twitter:url" content="https://www.elecai.id.vn/" />
+    <meta name="twitter:title" content="ELEC Science AI (ELECAI) — Học & Luyện Thi KHTN Lý Hóa Sinh" />
+    <meta name="twitter:description" content="Giải bài tập bằng AI từng bước cho Vật lí, Hóa học, Sinh học; phòng thi ảo chuẩn Bộ GD&ĐT và lộ trình cá nhân hóa." />
     <meta name="twitter:image" content="https://www.elecai.id.vn/img/og-image.png" />
     <meta name="twitter:image:alt" content="ELEC Science AI — Trợ lý AI Khoa học Tự nhiên & Luyện thi THPT" />
 
@@ -58,7 +66,7 @@
       rel="stylesheet"
     />
 
-    <title>ELEC Science AI (ELECAI) — Trợ Lý AI Học & Luyện Thi Khoa Học Tự Nhiên (Vật lí — Hóa học — Sinh học)</title>
+    <title>ELEC Science AI (ELECAI) — Học & Luyện Thi KHTN Lý Hóa Sinh</title>
 
     <!-- Dữ liệu có cấu trúc Schema.org Chuẩn Google Search 2026 -->
     <script type="application/ld+json">
@@ -72,6 +80,7 @@
             "name": "ELEC Science AI",
             "alternateName": ["ELEC AI", "ELECAI", "Elec AI", "ELEC KHTN", "elecai.id.vn"],
             "inLanguage": "vi-VN",
+            "publisher": { "@id": "https://www.elecai.id.vn/#org" },
             "description": "Nền tảng học tập & khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) với trợ lý AI: giải bài từng bước, tạo đề, chấm bài tự động và phân tích kết quả học tập.",
             "potentialAction": {
               "@type": "SearchAction",
@@ -83,12 +92,37 @@
             }
           },
           {
+            "@type": "WebPage",
+            "@id": "https://www.elecai.id.vn/#webpage",
+            "url": "https://www.elecai.id.vn/",
+            "name": "ELEC Science AI (ELECAI) — Học & Luyện Thi KHTN Lý Hóa Sinh",
+            "isPartOf": { "@id": "https://www.elecai.id.vn/#website" },
+            "about": { "@id": "https://www.elecai.id.vn/#app" },
+            "primaryImageOfPage": {
+              "@type": "ImageObject",
+              "url": "https://www.elecai.id.vn/img/og-image.png",
+              "width": 1200,
+              "height": 630
+            },
+            "inLanguage": "vi-VN",
+            "dateModified": "2026-11-12"
+          },
+          {
             "@type": "Organization",
             "@id": "https://www.elecai.id.vn/#org",
             "name": "ELEC Science AI",
             "alternateName": "ELECAI",
             "url": "https://www.elecai.id.vn/",
-            "logo": "https://www.elecai.id.vn/img/logo.png"
+            "logo": {
+              "@type": "ImageObject",
+              "@id": "https://www.elecai.id.vn/#logo",
+              "url": "https://www.elecai.id.vn/img/logo.png",
+              "contentUrl": "https://www.elecai.id.vn/img/logo.png",
+              "width": 512,
+              "height": 512,
+              "caption": "ELEC Science AI Logo"
+            },
+            "image": { "@id": "https://www.elecai.id.vn/#logo" }
           },
           {
             "@type": "EducationalApplication",
@@ -99,6 +133,9 @@
             "operatingSystem": "Web, Android, iOS, Windows, macOS",
             "inLanguage": "vi-VN",
             "url": "https://www.elecai.id.vn/",
+            "image": "https://www.elecai.id.vn/img/logo.png",
+            "screenshot": "https://www.elecai.id.vn/img/og-image.png",
+            "publisher": { "@id": "https://www.elecai.id.vn/#org" },
             "description": "Trợ lý AI Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) cho học sinh THCS, THPT và công cụ phòng thi ảo, quản lý lớp, giao đề, chấm bài tự động cho giáo viên.",
             "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" },
             "aggregateRating": {
@@ -123,6 +160,19 @@
               "Chấm phiếu trắc nghiệm A4 qua camera (OMR)",
               "Lộ trình ôn thi KHTN cá nhân hóa theo điểm Elo",
               "Quản lý lớp học và phân tích năng lực học sinh theo từng bộ môn"
+            ]
+          },
+          {
+            "@type": "ItemList",
+            "@id": "https://www.elecai.id.vn/#main-tools",
+            "name": "Các phân hệ chính của ELEC Science AI",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Trợ lý AI giải bài KHTN từng bước", "url": "https://www.elecai.id.vn/tro-ly-ai-giai-hoa" },
+              { "@type": "ListItem", "position": 2, "name": "Phòng thi ảo THPT Quốc Gia & ĐGNL", "url": "https://www.elecai.id.vn/phong-thi-ao" },
+              { "@type": "ListItem", "position": 3, "name": "Bảng tuần hoàn 118 nguyên tố hóa học", "url": "https://www.elecai.id.vn/bang-tuan-hoan" },
+              { "@type": "ListItem", "position": 4, "name": "Máy cân bằng phương trình hóa học", "url": "https://www.elecai.id.vn/can-bang-phuong-trinh-hoa-hoc" },
+              { "@type": "ListItem", "position": 5, "name": "Sổ tay công thức Lý - Hóa - Sinh", "url": "https://www.elecai.id.vn/cong-thuc-hoa-hoc" },
+              { "@type": "ListItem", "position": 6, "name": "Lộ trình ôn thi THPT Quốc Gia theo Elo", "url": "https://www.elecai.id.vn/lo-trinh-on-thi-thpt-quoc-gia" }
             ]
           },
           {
@@ -353,6 +403,7 @@
       <main style="max-width:960px;margin:0 auto;padding:0 20px;font:16px/1.7 system-ui,Arial,sans-serif;color:#1e293b">
         <section style="margin-bottom:28px">
           <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Bộ Công Cụ Khoa Học Tự Nhiên Trực Tuyến</h2>
+          <nav aria-label="Công cụ KHTN chính">
           <ul style="padding-left:20px;line-height:1.8">
             <li>
               <strong><a href="/tro-ly-ai-giai-hoa" style="color:#2563eb;text-decoration:none">Trợ lý AI giải bài tập KHTN từng bước</a>:</strong> Nhập hoặc chụp ảnh đề Vật lí, Hóa học, Sinh học để xem lời giải chi tiết, bản chất hiện tượng và bảng kiểm tra.
@@ -370,15 +421,16 @@
               <strong><a href="/phong-thi-ao" style="color:#2563eb;text-decoration:none">Phòng thi ảo THPT Quốc Gia &amp; ĐGNL</a>:</strong> Luyện đề thi thử trực tuyến mô phỏng format 3 phần mới của Bộ GD&amp;ĐT (Vật lí, Hóa học, Sinh học), bấm giờ thi thật và phân tích điểm dự đoán.
             </li>
             <li>
-              <strong><a href="/lo-trinh-on-thi-thpt-quoc-gia" style="color:#2563eb;text-decoration:none">Lộ trình kiến thức KHTN &amp; Ôn tập ngắt quãng (SRS)</a>:</strong> Theo dõi tiến độ từng chương theo điểm Elo, mức độ thành thạo và sổ tay câu sai tự động.
+              <strong><a href="/lo-trinh-on-thi-thpt-quoc-gia" style="color:#2563eb;text-decoration:none">Lộ trình kiến thức KHTN &amp; Ôn tập ngắt quãng (SRS)</a>:</strong> Theo dõi tiến độ từng chương theo điểm Elo, <a href="/quiz" style="color:#2563eb;text-decoration:none">luyện Quiz SRS</a> và <a href="/bang-xep-hang" style="color:#2563eb;text-decoration:none">bảng xếp hạng</a>.
             </li>
             <li>
-              <strong><a href="/tinh-diem-xet-tuyen-dai-hoc" style="color:#2563eb;text-decoration:none">Tính điểm xét tuyển Đại học (A00, A01, B00, D07)</a>:</strong> Quy đổi điểm thi, <a href="/tra-cuu-diem-chuan" style="color:#2563eb;text-decoration:none">tra cứu điểm chuẩn</a> và dự đoán cơ hội trúng tuyển vào các trường đại học hàng đầu.
+              <strong><a href="/tinh-diem-xet-tuyen-dai-hoc" style="color:#2563eb;text-decoration:none">Tính điểm xét tuyển Đại học (A00, A01, B00, D07)</a>:</strong> Quy đổi điểm thi, <a href="/tra-cuu-diem-chuan" style="color:#2563eb;text-decoration:none">tra cứu điểm chuẩn</a> và <a href="/dinh-huong-nghe-nghiep" style="color:#2563eb;text-decoration:none">định hướng nghề nghiệp RIASEC</a>.
             </li>
             <li>
-              <strong><a href="/tai-lieu-hoa-hoc" style="color:#2563eb;text-decoration:none">Kho tài liệu, Lab 3D &amp; Trò chơi Khoa học</a>:</strong> Phòng thí nghiệm Hóa học 3D, <a href="/ai-doc-studio" style="color:#2563eb;text-decoration:none">AI Doc Studio</a> và <a href="/tro-choi-khoa-hoc" style="color:#2563eb;text-decoration:none">trò chơi ôn tập tương tác</a>.
+              <strong><a href="/tai-lieu-hoa-hoc" style="color:#2563eb;text-decoration:none">Kho tài liệu, Lab 3D &amp; Trò chơi Khoa học</a>:</strong> Phòng thí nghiệm Hóa học 3D, <a href="/ai-doc-studio" style="color:#2563eb;text-decoration:none">AI Doc Studio</a>, <a href="/bang-phan-tuong-tac" style="color:#2563eb;text-decoration:none">bảng phấn tương tác</a> và <a href="/tro-choi-khoa-hoc" style="color:#2563eb;text-decoration:none">trò chơi ôn tập</a>.
             </li>
           </ul>
+          </nav>
         </section>
 
         <section style="margin-bottom:28px">

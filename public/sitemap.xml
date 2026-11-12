@@ -98,4 +98,36 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <!-- AI Doc Studio: Tóm tắt PDF, Flashcard & Quiz tự động -->
+  <url>
+    <loc>https://www.elecai.id.vn/ai-doc-studio</loc>
+    <lastmod>2026-11-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Bảng phấn tương tác KHTN -->
+  <url>
+    <loc>https://www.elecai.id.vn/bang-phan-tuong-tac</loc>
+    <lastmod>2026-11-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Luyện tập Quiz KHTN & Ghi nhớ lặp lại ngắt quãng (SRS) -->
+  <url>
+    <loc>https://www.elecai.id.vn/quiz</loc>
+    <lastmod>2026-11-12</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Bảng xếp hạng chuỗi học & thành tích KHTN -->
+  <url>
+    <loc>https://www.elecai.id.vn/bang-xep-hang</loc>
+    <lastmod>2026-11-12</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.75</priority>
+  </url>
 </urlset>

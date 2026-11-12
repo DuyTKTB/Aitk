@@ -227,6 +227,7 @@ const CLEAN_PATH_MAP = {
   'bang-phan-tuong-tac': 'chalkboard',
   'tro-choi-khoa-hoc': 'games',
   'bang-xep-hang': 'leaderboard',
+  'quiz': 'quiz',
 };
 
 const readPage = () => {

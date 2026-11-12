@@ -150,15 +150,27 @@ export default function Pomodoro() {
   }, [run]);
 
   /* ============ DOC TITLE ============ */
+  const prevTitleRef = useRef(null);
   useEffect(() => {
-    if (run) {
-      const m = MODES.find((x) => x.key === mode);
-      document.title = `${pad(Math.floor(left / 60))}:${pad(left % 60)} — ${m.shortLabel}`;
-    } else {
-      document.title = 'ELEC AI — bycode Duy TK';
+    if (!run) {
+      if (prevTitleRef.current !== null) {
+        document.title = prevTitleRef.current;
+        prevTitleRef.current = null;
+      }
+      return undefined;
     }
-    return () => { document.title = 'ELEC AI — bycode Duy TK'; };
+    if (prevTitleRef.current === null) prevTitleRef.current = document.title;
+    const m = MODES.find((x) => x.key === mode);
+    document.title = `${pad(Math.floor(left / 60))}:${pad(left % 60)} — ${m.shortLabel}`;
+    return undefined;
   }, [left, run, mode]);
+
+  useEffect(() => () => {
+    if (prevTitleRef.current !== null) {
+      document.title = prevTitleRef.current;
+      prevTitleRef.current = null;
+    }
+  }, []);
 
   /* ============ KEYBOARD ============ */
   useEffect(() => {
