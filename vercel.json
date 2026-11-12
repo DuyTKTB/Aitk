@@ -101,7 +101,7 @@
       "destination": "/bang-xep-hang.html"
     },
     {
-      "source": "/((?!api/|assets/|img/|video/|__/auth/|__/firebase/|robots\\.txt|sitemap\\.xml|llms\\.txt|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
+      "source": "/((?!api/|assets/|img/|video/|__/auth/|__/firebase/|robots\\.txt|sitemap\\.xml|llms\\.txt|BingSiteAuth\\.xml|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ],
