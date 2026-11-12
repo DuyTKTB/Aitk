@@ -343,7 +343,20 @@ export default function TeacherDashboard({ onExit } = {}) {
 
 
 
-  const [section, setSection] = useState('overview');
+  const [section, setSection] = useState(() => {
+    try {
+      const searchCode = new URLSearchParams(window.location.search || '').get('shareCode');
+      if (searchCode) return 'profile';
+      const hash = window.location.hash || '';
+      const qIdx = hash.indexOf('?');
+      if (qIdx !== -1 && new URLSearchParams(hash.slice(qIdx + 1)).get('shareCode')) {
+        return 'profile';
+      }
+    } catch {
+      /* ignore URL parse errors */
+    }
+    return 'overview';
+  });
   const [subTab, setSubTab] = useState('all');
   const [search, setSearch] = useState('');
   const [range, setRange] = useState('30');
@@ -3371,6 +3384,12 @@ export default function TeacherDashboard({ onExit } = {}) {
               onNavigate={(sec, cls) => {
                 if (cls) setSelectedClass(cls);
                 goSection(sec);
+              }}
+              onExamImported={(exam) => {
+                if (exam?.id) {
+                  setExams((prev) => [exam, ...prev.filter((x) => x.id !== exam.id)]);
+                }
+                refresh().catch(() => {});
               }}
               onSay={say}
             />

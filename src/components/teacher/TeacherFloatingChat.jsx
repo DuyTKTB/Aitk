@@ -22,6 +22,7 @@ import { parseExamFile } from '../../lib/examParser.js';
 import { buildClassInsights } from '../../lib/classInsights.js';
 import { exportToWord, exportLessonPlanDocx, exportMatrixDocx } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
+import { runWithCredit } from '../../lib/creditService.js';
 import { warnStudent, setStudentPaused } from '../../lib/examSession.js';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import { getCurrentTabInfo, buildTabDetailedAnalysis } from '../../lib/tabContextAnalyzer.js';
@@ -903,6 +904,7 @@ export default function TeacherFloatingChat({
   const [wordEditorOpen, setWordEditorOpen] = useState(false);
   const [wordEditorExam, setWordEditorExam] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [confirmClearChat, setConfirmClearChat] = useState(false);
 
   const handleCopyMessage = (id, text) => {
     if (navigator?.clipboard?.writeText) {
@@ -911,6 +913,15 @@ export default function TeacherFloatingChat({
       setTimeout(() => setCopiedId(null), 2000);
     }
   };
+
+  const callCopilotAI = (prompt, opts = {}, cost = 1, reason = 'AI Trợ lý Lớp học') =>
+    runWithCredit(
+      { userId: user?.uid, cost, reason },
+      () => askAI(prompt, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT, ...opts })
+    );
+
+  const aiErrMsg = (err, fallback) =>
+    err?.code === 'OUT_OF_CREDITS' ? err.message : (fallback || err?.message || 'Kết nối AI tạm thời gián đoạn.');
 
   const fileInputRef = useRef(null);
   const bodyEndRef = useRef(null);
@@ -1209,9 +1220,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
 }`;
 
     try {
-      const aiRes = await askAI(prompt, null, null, {
-        systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-      });
+      const aiRes = await callCopilotAI(prompt, {}, 2, 'Bổ sung Phần II & III đề thi');
       const text = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
       const parsed = parseExamJsonSafe(text);
 
@@ -1594,9 +1603,7 @@ TRẢ VỀ DUY NHẤT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
   ]
 }`;
 
-        const res = await askAI(prompt15, null, null, {
-          systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-        });
+        const res = await callCopilotAI(prompt15, {}, 2, 'Tạo đề kiểm tra 15 phút AI');
         const text = typeof res === 'string' ? res : (res?.text || '');
         const parsed = parseExamJsonSafe(text);
 
@@ -1664,10 +1671,19 @@ Trả về duy nhất JSON:
   ]
 }`;
 
-        const [resP1, resP2P3] = await Promise.all([
-          askAI(promptP1, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch(() => null),
-          askAI(promptP2P3, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch(() => null),
-        ]);
+        const [resP1, resP2P3] = await runWithCredit(
+          { userId: user?.uid, cost: 3, reason: 'Tạo đề kiểm tra 45-90 phút AI' },
+          async () => {
+            const pair = await Promise.all([
+              askAI(promptP1, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch(() => null),
+              askAI(promptP2P3, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch(() => null),
+            ]);
+            if (!pair[0] && !pair[1]) {
+              throw new Error('Không kết nối được AI để sinh đề.');
+            }
+            return pair;
+          }
+        );
 
         const textP1 = typeof resP1 === 'string' ? resP1 : (resP1?.text || '');
         const textP2P3 = typeof resP2P3 === 'string' ? resP2P3 : (resP2P3?.text || '');
@@ -1960,12 +1976,12 @@ Trả về duy nhất đối tượng JSON hợp lệ:
 }`;
       let parsed = null;
       try {
-        const rxRes = await askAI(rxPrompt, null, null, {
-          systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-        });
+        const rxRes = await callCopilotAI(rxPrompt, {}, 1, 'Kê đơn ôn tập AI cho học sinh');
         const genText = typeof rxRes === 'string' ? rxRes : (rxRes?.text || '');
         parsed = parseExamJsonSafe(genText);
-      } catch (_) {}
+      } catch (rxErr) {
+        if (rxErr?.code === 'OUT_OF_CREDITS') throw rxErr;
+      }
 
       const rxData = {
         student: targetStudent,
@@ -2011,8 +2027,19 @@ Trả về duy nhất đối tượng JSON hợp lệ:
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-    } catch (_) {
+    } catch (err) {
       setIsTyping(false);
+      if (err?.code === 'OUT_OF_CREDITS') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'bot_rx_err_' + Date.now(),
+            sender: 'bot',
+            text: err.message,
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }
     }
   };
 
@@ -2462,9 +2489,7 @@ d) Tổ chức thực hiện: ...
 
 YÊU CẦU: Trình bày học thuật chuẩn mực, sư phạm, KHÔNG dùng emoji.`;
 
-        const res = await askAI(lessonPlanPrompt, null, null, {
-          systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-        });
+        const res = await callCopilotAI(lessonPlanPrompt, {}, 1, 'Soạn kế hoạch bài dạy AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
 
@@ -2499,7 +2524,7 @@ YÊU CẦU: Trình bày học thuật chuẩn mực, sư phạm, KHÔNG dùng em
           {
             id: 'bot_plan_err_' + Date.now(),
             sender: 'bot',
-            text: 'Em đang xử lý soạn bài dạy nhưng gặp gián đoạn tạm thời. Thầy/Cô vui lòng bấm gửi lại câu hỏi nhé.',
+            text: aiErrMsg(err, 'Em đang xử lý soạn bài dạy nhưng gặp gián đoạn tạm thời. Thầy/Cô vui lòng bấm gửi lại câu hỏi nhé.'),
             time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
@@ -2545,9 +2570,7 @@ HÃY LẬP BẢNG MA TRẬN VÀ BẢN ĐẶC TẢ ĐẦY ĐỦ THEO CHUẨN Đ�
 
 YÊU CẦU: Trình bày chuẩn mực, rõ ràng, định dạng Markdown bảng và danh sách đẹp mắt, KHÔNG dùng emoji.`;
 
-        const res = await askAI(matrixPrompt, null, null, {
-          systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-        });
+        const res = await callCopilotAI(matrixPrompt, {}, 1, 'Lập khung ma trận & đặc tả đề AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
 
@@ -2582,7 +2605,7 @@ YÊU CẦU: Trình bày chuẩn mực, rõ ràng, định dạng Markdown bảng
           {
             id: 'bot_matrix_err_' + Date.now(),
             sender: 'bot',
-            text: 'Em đang thiết lập ma trận đề thi nhưng gặp gián đoạn kết nối. Thầy/Cô vui lòng gửi lại yêu cầu nhé.',
+            text: aiErrMsg(err, 'Em đang thiết lập ma trận đề thi nhưng gặp gián đoạn kết nối. Thầy/Cô vui lòng gửi lại yêu cầu nhé.'),
             time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
@@ -2626,9 +2649,7 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
 ### 5. BẢN HIỆU ĐÍNH CHUẨN MỰC (NẾU CẦN)
 - Đưa ra bản viết lại hoàn chỉnh của câu hỏi đạt 10/10 chuẩn GDPT 2025 sẵn sàng đưa vào đề thi chính thức.`;
 
-        const res = await askAI(auditPrompt, null, null, {
-          systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-        });
+        const res = await callCopilotAI(auditPrompt, {}, 1, 'Thẩm định câu hỏi đề thi AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
 
         let verdict = 'ĐẠT CHUẨN 10/10';
@@ -2660,6 +2681,18 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
         return;
       } catch (err) {
         setIsTyping(false);
+        if (err?.code === 'OUT_OF_CREDITS') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: 'bot_audit_err_' + Date.now(),
+              sender: 'bot',
+              text: err.message,
+              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          return;
+        }
       }
     }
 
@@ -2736,7 +2769,7 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
       const subject = detectedInfo.subject || targetClass.subject || 'Toán học';
 
       try {
-        const aiRes = await askAI(
+        const aiRes = await callCopilotAI(
           `Bạn là chuyên gia ra đề môn ${subject} GDPT 2025. Hãy soạn 10 câu hỏi chuẩn cấu trúc 3 phần theo yêu cầu: "${query}".
 Gồm:
 - 6 câu trắc nghiệm 4 lựa chọn (Phần I: A, B, C, D độc lập, 1 đáp án đúng).
@@ -2776,9 +2809,9 @@ Trả về duy nhất đối tượng JSON:
     }
   ]
 }`,
-          null,
-          null,
-          { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }
+          {},
+          2,
+          'Tạo đề kiểm tra giao nhanh cho lớp'
         );
 
         const genText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
@@ -2899,6 +2932,18 @@ Trả về duy nhất đối tượng JSON:
         return;
       } catch (err) {
         setIsTyping(false);
+        if (err?.code === 'OUT_OF_CREDITS') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: 'bot_audit_err_' + Date.now(),
+              sender: 'bot',
+              text: err.message,
+              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          return;
+        }
       }
     }
 
@@ -3336,9 +3381,7 @@ Câu hỏi của giáo viên: "${query}"
 
 Hãy trả lời chính xác, bám sát các số liệu thực tế trên của lớp ${targetClass.name}, ngắn gọn, sư phạm, KHÔNG dùng emoji.`;
 
-        const res = await askAI(classContextPrompt, null, null, {
-          systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-        });
+        const res = await callCopilotAI(classContextPrompt, {}, 1, 'Phân tích số liệu lớp học AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
         setMessages((prev) => [
@@ -3351,8 +3394,20 @@ Hãy trả lời chính xác, bám sát các số liệu thực tế trên của
           },
         ]);
         return;
-      } catch (_) {
+      } catch (clsErr) {
         setIsTyping(false);
+        if (clsErr?.code === 'OUT_OF_CREDITS') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: 'bot_cls_err_' + Date.now(),
+              sender: 'bot',
+              text: clsErr.message,
+              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          return;
+        }
       }
     }
 
@@ -3546,9 +3601,7 @@ HƯỚNG DẪN TRẢ LỜI:
    - Ngắn gọn, súc tích, mạch lạc, KHÔNG dùng emoji.
    - Dùng khối trích dẫn > cho các lưu ý hoặc mẹo hữu ích.`;
 
-      const res = await askAI(realContextPrompt, null, null, {
-        systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT,
-      });
+      const res = await callCopilotAI(realContextPrompt, {}, 1, 'Hỏi đáp sư phạm AI Copilot');
       const aiReply = typeof res === 'string' ? res : (res?.text || '');
       setIsTyping(false);
       setMessages((prev) => [
@@ -3567,7 +3620,7 @@ HƯỚNG DẪN TRẢ LỜI:
         {
           id: 'bot_err_' + Date.now(),
           sender: 'bot',
-          text: `Thầy/Cô có thể bấm mic nói tự nhiên hoặc gõ yêu cầu để em xử lý nhé!`,
+          text: aiErrMsg(e, 'Thầy/Cô có thể bấm mic nói tự nhiên hoặc gõ yêu cầu để em xử lý nhé!'),
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -3660,11 +3713,7 @@ HƯỚNG DẪN TRẢ LỜI:
               <button
                 type="button"
                 className="tfc-icon-btn"
-                onClick={() => {
-                  if (window.confirm('Làm mới lại cuộc trò chuyện?')) {
-                    setMessages([messages[0]]);
-                  }
-                }}
+                onClick={() => setConfirmClearChat((v) => !v)}
                 title="Xóa lịch sử trò chuyện"
               >
                 <IcoTrash size={15} />
@@ -3679,6 +3728,60 @@ HƯỚNG DẪN TRẢ LỜI:
               </button>
             </div>
           </div>
+
+          {confirmClearChat && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              padding: '8px 14px',
+              background: '#fffbeb',
+              borderBottom: '1px solid #fde68a',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              color: '#92400e',
+            }}>
+              <span>Làm mới lại cuộc trò chuyện này?</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearChat(false)}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #d97706',
+                    background: '#fff',
+                    color: '#92400e',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessages([messages[0]]);
+                    setConfirmClearChat(false);
+                  }}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#dc2626',
+                    color: '#fff',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Xóa mới
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ============================================================
               CẢM BIẾN NGỮ CẢNH TAB THỜI GIAN THỰC (LIVE TAB RADAR SENSOR)

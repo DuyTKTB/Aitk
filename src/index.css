@@ -7,7 +7,7 @@ input, button, select, textarea {
 }
 /* ELEC AI — Editorial × Swiss × Brutalist. Giấy kem + mực đen + một màu nhấn duy nhất. */
 :root {
-  --bg: #efece4; --panel: #efece4; --ink: #111; --mut: #6b675e; --soft: rgba(17, 17, 17, .16); --line: #111;
+  --bg: #f8fafc; --panel: #ffffff; --ink: #0f172a; --mut: #64748b; --soft: rgba(37, 99, 235, .08); --line: rgba(226, 232, 240, 0.85);
   --acc: #ff4d1a; --acc-ink: #111; --shadow: none;
   --sans: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
   --serif: 'Inter', Georgia, serif;
@@ -17,7 +17,7 @@ input, button, select, textarea {
   --nonmetal: #a7c4f2; --halogen: #c1b4f0; --noble: #e6b3e0; --lanthanide: #f2b6c6; --actinide: #c9c5b8;
 }
 [data-theme='dark'] {
-  --bg: #0d0d0c; --panel: #0d0d0c; --ink: #f1eee6; --mut: #9a968b; --soft: rgba(241, 238, 230, .18); --line: #f1eee6;
+  --bg: #090d22; --panel: #0d122e; --ink: #f1eee6; --mut: #9a968b; --soft: rgba(241, 238, 230, .18); --line: rgba(255, 255, 255, 0.12);
   --acc: #d4ff3a; --acc-ink: #0d0d0c;
   --alkali: #7f2a1c; --alkaline: #7a4a12; --transition: #6b5d10; --post: #2f5a1f; --metalloid: #17564a;
   --nonmetal: #1f3f7a; --halogen: #3b2f7a; --noble: #612a63; --lanthanide: #7a2a45; --actinide: #3d3b34;

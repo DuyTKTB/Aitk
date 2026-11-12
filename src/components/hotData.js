@@ -27,12 +27,12 @@ const HOT = [
     freeTier: true,
     vnSupport: true,
     isSuperVip: true,
-    desc: 'Trợ lý Hóa học AI của ELEC AI — miễn phí, không giới hạn cho học sinh',
-    why: 'Đây là AI của chính chúng ta — được tối ưu riêng cho môn Hóa học THPT Việt Nam. Hiểu chương trình Lớp 10-11-12 và Đại học, giải bài tập từng bước, phân tích ảnh đề bài, không dùng LaTeX khó đọc. Miễn phí hoàn toàn, không cần đăng ký, không giới hạn lượt chat cho học sinh trong lớp. Đặc biệt: trả lời ngắn gọn, đi thẳng vào bản chất, không lan man như các AI nước ngoài.',
+    desc: 'Trợ lý Khoa học Tự nhiên AI của ELEC AI — miễn phí, không giới hạn cho học sinh',
+    why: 'Đây là AI của chính chúng ta — được tối ưu riêng cho 3 môn Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) THPT Việt Nam. Hiểu chương trình Lớp 10-11-12 và Ôn thi ĐGNL/ĐGTD, giải bài tập từng bước, phân tích ảnh đề bài, không dùng LaTeX khó đọc. Miễn phí hoàn toàn, không cần đăng ký, không giới hạn lượt chat cho học sinh trong lớp. Đặc biệt: trả lời ngắn gọn, đi thẳng vào bản chất, không lan man như các AI nước ngoài.',
     bestFor: [
-      'Giải bài tập Hóa học từ Lớp 10 đến Đại học',
+      'Giải bài tập 3 môn KHTN (Lý - Hóa - Sinh) từ Lớp 10 đến Lớp 12',
       'Chụp ảnh đề bài — AI đọc và giải ngay',
-      'Ôn thi THPT Quốc gia môn Hóa',
+      'Ôn thi THPT Quốc gia, ĐGNL HSA & ĐGTD TSA',
       'Hỏi đáp lý thuyết, công thức, phương trình',
     ],
     pros: [

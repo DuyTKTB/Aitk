@@ -150,7 +150,7 @@ const PT = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'A
 const BENTO = [
   {
     cls: 'bt-ai', icon: 'spark', t: 'Hỏi AI',
-    d: 'Một trợ lý Hóa học đi cùng bạn từ bài tập đầu tiên đến đề thi.',
+    d: 'Một trợ lý Khoa học Tự nhiên đi cùng bạn từ bài tập đầu tiên đến các kỳ thi lớn (THPTQG, HSA, TSA).',
     pts: ['Gõ câu hỏi, dán ảnh đề hoặc nói bằng giọng', 'Chọn Lớp 10, 11, 12 hoặc Đại học để câu trả lời đúng mức', 'Chế độ Suy luận để giải bài, chế độ Tra cứu để tìm kiến thức', 'Lịch sử trò chuyện để quay lại bài cũ'],
     vis: 'chat',
   },
@@ -226,7 +226,7 @@ export function Bento({ kit }) {
   return (
     <section className="lp-wrap lm-sec" id="lp-all">
       <div className="lm-head">
-        <Split text="Mọi thứ để học Hóa, gom về một chỗ" />
+        <Split text="Mọi thứ để học 3 môn KHTN, gom về một chỗ" />
         <p>Không phải mở năm tab và ba ứng dụng. Từ hỏi bài, tra bảng tuần hoàn, làm quiz đến chơi trò chơi ôn tập đều dùng chung một tài khoản.</p>
       </div>
       <div className="lm-bento">

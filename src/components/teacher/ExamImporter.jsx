@@ -18,6 +18,8 @@ import MathText from '../MathText.jsx';
 import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import { exportToWord } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
+import { runWithCredit } from '../../lib/creditService.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import WordDocxEditor from './WordDocxEditor.jsx';
 
@@ -2441,6 +2443,7 @@ export default function ExamImporter({
   defaultGrade = '',
   initialEnglishMode = false,
 }) {
+  const { user } = useAuth();
   const fileRef = useRef(null);
   const [raw, setRaw] = useState('');
   const [fileLines, setFileLines] = useState(null);
@@ -2748,7 +2751,10 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
   ]
 }`;
 
-      const aiRes = await askAI(prompt);
+      const aiRes = await runWithCredit(
+        { userId: user?.uid, cost: 2, reason: 'AI bổ sung câu hỏi đề nhập' },
+        () => askAI(prompt)
+      );
       const text = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
       const parsed = parseExamJsonSafe(text);
 

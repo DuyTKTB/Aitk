@@ -538,8 +538,8 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
 
           fresh.push({ id: `${st.id}-${i}`, studentId: st.id, studentName: st.studentName, severity, ...viol });
 
-          // AI Tự động gửi nhắc nhở thí sinh vi phạm
-          if (aiAutoWarn && st.status === 'examining') {
+          // AI Tự động gửi nhắc nhở khi phát hiện vi phạm MỚI theo thời gian thực
+          if (loadedRef.current && aiAutoWarn && st.status === 'examining') {
             const lastWarn = lastWarnTimeMap.current[st.id] || 0;
             // Debounce: Mỗi thí sinh cách nhau ít nhất 15 giây
             if (nowMs - lastWarn > 15000) {

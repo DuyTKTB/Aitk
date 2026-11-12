@@ -17,6 +17,7 @@ import { useToast } from '../../ui/index.jsx';
 import { getClassesByStudent, getClassesByTeacher } from '../../lib/classroom.js';
 import { listenClassChat, sendClassMessage } from '../../lib/social.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import StudentAvatar from '../StudentAvatar.jsx';
 import './social.css';
 
 /* ── Micro SVG helper ── */
@@ -32,9 +33,9 @@ const ICONS = {
   cls:    'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   chevron:'M6 9l6 6 6-6',
   emoji:  'M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z',
+  trophy: 'M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1h10v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34M7 4h10v6a5 5 0 0 1-10 0V4z',
+  flame:  'M12 2c1.2 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-5 3-7 0 2 1 3 2 3 0-2 0-4 0-6z',
 };
-
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢'];
 
 const fmtTime = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 const fmtDay  = (t) => {
@@ -44,28 +45,6 @@ const fmtDay  = (t) => {
   if (d.toDateString() === y.toDateString()) return 'Hôm qua';
   return d.toLocaleDateString('vi-VN');
 };
-
-/* Colour from uid for avatar gradient */
-const GRAD = [
-  ['#007aff','#5856d6'], ['#34c759','#30d158'],
-  ['#ff9f0a','#ff6b00'], ['#ff375f','#ff2d55'],
-  ['#5856d6','#af52de'], ['#32ade6','#007aff'],
-];
-const avatarGrad = (uid = '') => GRAD[uid.charCodeAt(0) % GRAD.length];
-
-function Avatar({ uid, name, size = 32 }) {
-  const [c1, c2] = avatarGrad(uid);
-  const letter = (name?.[0] || '?').toUpperCase();
-  return (
-    <span
-      className="sw-avatar sm"
-      style={{ width: size, height: size, background: `linear-gradient(135deg,${c1},${c2})` }}
-      title={name}
-    >
-      <span style={{ fontSize: size * .38 }}>{letter}</span>
-    </span>
-  );
-}
 
 /* Day separator pill */
 function DaySep({ ts }) {
@@ -302,8 +281,9 @@ export default function ClassChat({ onOpenProfile }) {
                 <span style={{ fontSize: '.68rem', color: 'var(--sw-ink3)' }}>
                   {streakStatus.iAmActive ? '✓ Bạn đã tính điểm hôm nay' : '• Nhắn tin để tính điểm chuỗi'}
                 </span>
-                <a href="#leaderboard" className="sw-class-leaderboard-link">
-                  🏆 BXH Chuỗi →
+                <a href="#leaderboard" className="sw-class-leaderboard-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Svg d={ICONS.trophy} size={13} />
+                  <span>BXH Chuỗi →</span>
                 </a>
               </div>
             </div>
@@ -314,7 +294,7 @@ export default function ClassChat({ onOpenProfile }) {
       {/* Messages */}
       <div className="sw-msgs grow" ref={listRef}>
         {msgs.length === 0 && (
-          <p className="sw-empty">Lớp chưa chat gì —<br />mở lời đầu tiên đi! 🎉</p>
+          <p className="sw-empty">Lớp chưa có tin nhắn nào —<br />hãy là người mở lời đầu tiên cùng cả lớp nhé!</p>
         )}
         {msgs.map((m, i) => {
           if (m.isSystem || m.uid === 'system') {
@@ -342,8 +322,15 @@ export default function ClassChat({ onOpenProfile }) {
                   </button>
                 )}
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '.35rem', flexDirection: mine ? 'row-reverse' : 'row' }}>
-                  {!mine && head && <Avatar uid={m.uid} name={m.name} size={28} />}
-                  {!mine && !head && <span style={{ width: 28, flexShrink: 0 }} />}
+                  {head && (
+                    <StudentAvatar
+                      uid={mine ? user.uid : m.uid}
+                      name={mine ? user.displayName : m.name}
+                      photoURL={mine ? user.photoURL : (m.photoURL || null)}
+                      size={28}
+                    />
+                  )}
+                  {!head && <span style={{ width: 28, flexShrink: 0 }} />}
                   <div className="sw-bubble" style={{ position: 'relative' }}>
                     <span>{m.text}</span>
                     <small>{fmtTime(m.createdAt)}</small>

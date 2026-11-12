@@ -6,8 +6,11 @@
    ============================================================ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { askAI } from '../lib/ai.js';
+import { runWithCredit } from '../lib/creditService.js';
+import { useAuth } from './useAuth.jsx';
 
 export default function useAsk() {
+  const { user } = useAuth();
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -48,19 +51,23 @@ export default function useAsk() {
     setText('');
 
     try {
-      const promise = askAI(
-        h,
-        (chunk) => {
-          if (!mountedRef.current) return;
-          setText(chunk);
-          opts.onChunk?.(chunk);
-        },
-        null,
-        opts.systemPrompt || null
+      const result = await runWithCredit(
+        { userId: user?.uid, cost: 1, reason: 'AI Phân tích nguyên tố / Quiz' },
+        async () => {
+          const promise = askAI(
+            h,
+            (chunk) => {
+              if (!mountedRef.current) return;
+              setText(chunk);
+              opts.onChunk?.(chunk);
+            },
+            null,
+            opts.systemPrompt || null
+          );
+          promiseRef.current = promise;
+          return await promise;
+        }
       );
-      promiseRef.current = promise;
-
-      const result = await promise;
       if (mountedRef.current) {
         setText(result.text || '');
       }
@@ -82,7 +89,7 @@ export default function useAsk() {
       promiseRef.current = null;
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   const stop = useCallback(() => {
     try { promiseRef.current?.abort?.(); } catch { /* */ }

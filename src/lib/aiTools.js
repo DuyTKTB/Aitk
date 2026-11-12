@@ -460,6 +460,9 @@ export function runTools(text, opts = {}) {
   hits = hits.map((h) => {
     if (h.tool === 'molar') return { ...h, verify: asksForMolar };
     if (h.tool === 'stoich' || h.tool === 'solution') return { ...h, verify: true };
+    if (h.tool === 'quadratic_equation' || h.tool === 'rational_function' || h.tool === 'combinatorics' || h.tool === 'harmonic_oscillation' || h.tool === 'ac_circuit_rlc' || h.tool === 'dna_molecular' || h.verify !== undefined) {
+      return { ...h, verify: h.verify ?? true };
+    }
     return { ...h, verify: false };
   });
 

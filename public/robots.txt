@@ -44,5 +44,5 @@ Disallow: /admin
 User-agent: Google-Extended
 Allow: /
 
-Host: https://aitk-ten.vercel.app/
-Sitemap: https://aitk-ten.vercel.app/sitemap.xml
+Host: https://www.elecai.id.vn/
+Sitemap: https://www.elecai.id.vn/sitemap.xml

@@ -10,6 +10,7 @@
    ============================================================ */
 import { useEffect, useState, useMemo } from 'react';
 import { getClassLeaderboard } from '../lib/classLeaderboardDoc.js';
+import StudentAvatar from './StudentAvatar.jsx';
 
 /* Icon SVG sắc nét 100% */
 const IcoTrophy = ({ size = 16 }) => (
@@ -180,8 +181,8 @@ export default function LeaderboardCard({ classId, className = '', uid = '', com
                 </div>
               )}
 
-              <div className={`ap-lb-podium-avatar rank-${rank}`}>
-                {getStudentInitials(r.name)}
+              <div className={`ap-lb-podium-avatar rank-${rank}`} style={{ background: 'transparent', padding: 0 }}>
+                <StudentAvatar uid={r.id} name={r.name} size={rank === 1 ? 58 : 46} />
                 <span className={`ap-lb-rank-badge rank-${rank}`}>{rank}</span>
               </div>
 
@@ -222,9 +223,7 @@ export default function LeaderboardCard({ classId, className = '', uid = '', com
                 >
                   <span className="ap-lb-item-rank">{displayRank}</span>
                   <div className="ap-lb-item-info">
-                    <span className="ap-lb-item-avatar">
-                      {getStudentInitials(r.name)}
-                    </span>
+                    <StudentAvatar uid={r.id} name={r.name} size={28} />
                     <span className="ap-lb-item-name">
                       {r.name}
                       {isMe && <span className="ap-lb-me-tag">Bạn</span>}

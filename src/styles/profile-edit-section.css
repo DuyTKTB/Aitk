@@ -316,7 +316,8 @@
   pointer-events: none;
 }
 
-.ns9-pe-note-mascot svg {
+.ns9-pe-note-mascot svg,
+.ns9-pe-note-mascot img {
   width: 100%;
   height: 100%;
 }

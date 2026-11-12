@@ -81,6 +81,20 @@
 
 /* ===== BỐ CỤC: thanh bên trái + nội dung (giống ảnh mẫu) ===== */
 
+.tn-side-mascot {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tn-side-item:hover .tn-side-mascot,
+.tn-side-item.on .tn-side-mascot,
+.tools-tab:hover .tn-side-mascot,
+.tools-tab.on .tn-side-mascot {
+  transform: scale(1.22) rotate(-5deg);
+}
+
 .tn-shell{display:grid;grid-template-columns:320px minmax(0,1fr);gap:1.25rem;align-items:start}
 .tn-side{position:sticky;top:85px;max-height:calc(100vh - 105px);overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;padding:1rem .8rem;border:1px solid var(--line);border-radius:20px;background:var(--glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);scrollbar-width:thin}
 .tn-main{min-width:0;flex:1}

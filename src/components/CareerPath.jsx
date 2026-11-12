@@ -7,6 +7,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { askAI } from '../lib/ai.js';
+import { runWithCredit } from '../lib/creditService.js';
 import { useLocalStorage } from '../hooks.js';
 
 const A = {
@@ -78,12 +79,16 @@ export default function CareerPath() {
 
     let text = '';
     try {
-      await askAI(
-        [{ role: 'user', text: prompt }],
-        (chunk) => { text += chunk || ''; setAiText(text); },
-        null,
-        'Bạn là chuyên gia tư vấn hướng nghiệp cho học sinh Việt Nam. Trả lời đúng format JSON được yêu cầu, không thêm gì khác.'
+      const res = await runWithCredit(
+        { userId: user?.uid, cost: 1, reason: 'Định hướng nghề nghiệp AI' },
+        () => askAI(
+          [{ role: 'user', text: prompt }],
+          (chunk) => { text = chunk || ''; setAiText(text); },
+          null,
+          'Bạn là chuyên gia tư vấn hướng nghiệp cho học sinh Việt Nam. Trả lời đúng format JSON được yêu cầu, không thêm gì khác.'
+        )
       );
+      if (res?.text) text = res.text;
     } catch { /* fallback bên dưới */ }
 
     let data = null;

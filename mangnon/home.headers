@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Alt-Svc: h3=":443"; ma=2592000
+Cache-Control: no-cache
+Content-Length: 1498
+Content-Type: text/html; charset=utf-8
+Date: Tue, 10 Nov 2026 14:48:04 GMT
+Referrer-Policy: strict-origin-when-cross-origin
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Via: 1.1 Caddy
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+

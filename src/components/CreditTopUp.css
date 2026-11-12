@@ -1480,7 +1480,8 @@
   flex-shrink: 0;
 }
 
-.ns9-cr-header-mascot svg {
+.ns9-cr-header-mascot svg,
+.ns9-cr-header-mascot img {
   width: 100%;
   height: 100%;
 }

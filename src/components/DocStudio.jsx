@@ -7,6 +7,7 @@
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { askAI } from '../lib/ai.js';
+import { runWithCredit } from '../lib/creditService.js';
 import { useLocalStorage } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { getTier } from '../lib/tier.js';
@@ -97,18 +98,20 @@ async function extractText(file, onProgress) {
   return { text: null, pages: 0 };
 }
 
-/* Gọi AI — chịu được cả chunk dạng "tích lũy" lẫn "delta" */
-async function callAI(prompt, system, onText) {
-  let raw = '';
-  const msg = { role: 'user', parts: [{ text: prompt }], text: prompt };
-  const res = await askAI([msg], (c) => {
-    if (typeof c !== 'string' || !c) return;
-    const head = raw.slice(0, 30);
-    raw = c.length >= raw.length && c.startsWith(head) ? c : raw + c;
-    onText?.(raw);
-  }, null, system);
-  const t = (res && typeof res === 'object' ? res.text : typeof res === 'string' ? res : '') || raw;
-  return String(t || '');
+/* Gọi AI — chịu được cả chunk dạng "tích lũy" lẫn "delta" + trừ Credit */
+async function callAI(prompt, system, onText, userId = null, cost = 1, reason = 'AI Studio Tài liệu') {
+  return runWithCredit({ userId, cost, reason }, async () => {
+    let raw = '';
+    const msg = { role: 'user', parts: [{ text: prompt }], text: prompt };
+    const res = await askAI([msg], (c) => {
+      if (typeof c !== 'string' || !c) return;
+      const head = raw.slice(0, 30);
+      raw = c.length >= raw.length && c.startsWith(head) ? c : raw + c;
+      onText?.(raw);
+    }, null, system);
+    const t = (res && typeof res === 'object' ? res.text : typeof res === 'string' ? res : '') || raw;
+    return String(t || '');
+  });
 }
 
 /* Bóc JSON từ câu trả lời (bỏ ```json, rác thừa, dấu phẩy cuối) */
@@ -371,6 +374,8 @@ function Quiz({ doc, onFinish }) {
    HỎI ĐÁP TÀI LIỆU
    ============================================================ */
 function AskDoc({ doc }) {
+  const { user } = useAuth();
+  const uid = user?.uid || user?.id;
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -389,8 +394,14 @@ function AskDoc({ doc }) {
       `TÀI LIỆU:\n${doc.text || doc.summary}\n\n${history ? `HỘI THOẠI TRƯỚC:\n${history}\n\n` : ''}` +
       `CÂU HỎI: ${question}\n\nTrả lời tiếng Việt, ngắn gọn, chỉ dựa vào tài liệu. Nếu tài liệu không đề cập, nói rõ "Tài liệu không nhắc tới điều này".`;
     try {
-      const out = await callAI(prompt, 'Bạn là trợ lý học tập, trả lời chính xác dựa trên tài liệu được cung cấp. Không dùng LaTeX.',
-        (t) => setMsgs((m) => m.map((x, i) => (i === m.length - 1 ? { ...x, text: t } : x))));
+      const out = await callAI(
+        prompt,
+        'Bạn là trợ lý học tập, trả lời chính xác dựa trên tài liệu được cung cấp. Không dùng LaTeX.',
+        (t) => setMsgs((m) => m.map((x, i) => (i === m.length - 1 ? { ...x, text: t } : x))),
+        uid,
+        1,
+        'Hỏi đáp AI Studio Tài liệu'
+      );
       setMsgs((m) => m.map((x, i) => (i === m.length - 1 ? { ...x, text: out || 'Mình chưa trả lời được, thử hỏi lại nhé.' } : x)));
     } catch (e) {
       setMsgs((m) => m.map((x, i) => (i === m.length - 1 ? { ...x, text: e?.isQuota ? 'Bạn đã hết lượt AI hôm nay.' : (e?.message || 'Có lỗi khi gọi AI.') } : x)));
@@ -428,9 +439,10 @@ export default function DocStudio() {
   const [localTier, setLocalTier] = useState('loading');
   const [docs, setDocs] = useLocalStorage('cs-doc-study', []);
   /* CLOUD SYNC — Firestore users/{uid}/docStudioDocs/library */
+  const isCtxVip = ctxTier === 'vip' || ctxTier?.key === 'vip';
   const [cloud, setCloud] = useState('idle');
   useEffect(() => {
-    if (!uid || ctxTier !== 'vip') return undefined;
+    if (!uid || !isCtxVip) return undefined;
     (async () => {
       try {
         const snap = await fsGetDoc(fsDoc(db, 'users', uid, 'docStudioDocs', 'library'));
@@ -440,9 +452,9 @@ export default function DocStudio() {
       } catch { /* giữ bản local */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid]);
+  }, [uid, isCtxVip]);
   useEffect(() => {
-    if (!uid || ctxTier !== 'vip' || !docs.length) return undefined;
+    if (!uid || !isCtxVip || !docs.length) return undefined;
     setCloud('syncing');
     const t = setTimeout(() => {
       fsSetDoc(fsDoc(db, 'users', uid, 'docStudioDocs', 'library'), { docs, at: Date.now() })
@@ -496,7 +508,14 @@ export default function DocStudio() {
       sampleText(text, PROMPT_CHARS);
     let raw = '';
     try {
-      raw = await callAI(prompt, 'Bạn là giáo viên soạn nội dung ôn tập. Chỉ trả về JSON hợp lệ, không thêm chữ nào ngoài JSON.');
+      raw = await callAI(
+        prompt,
+        'Bạn là giáo viên soạn nội dung ôn tập. Chỉ trả về JSON hợp lệ, không thêm chữ nào ngoài JSON.',
+        null,
+        uid,
+        2,
+        'Tóm tắt & Sinh câu hỏi tài liệu AI'
+      );
     } catch (e) {
       if (stale()) return;
       setBusy(null);

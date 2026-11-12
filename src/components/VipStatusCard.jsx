@@ -123,15 +123,15 @@ export default function VipStatusCard({ onUpgrade }) {
         <div className="vsc-features">
           <div className="vsc-feat">
             <IcoCheck size={14} />
-            <span>Chat không giới hạn</span>
+            <span>Mở khóa 100% Đề thi & Phòng luyện VIP</span>
           </div>
           <div className="vsc-feat">
             <IcoCheck size={14} />
-            <span>30 ảnh mỗi ngày</span>
+            <span>Tặng kèm điểm Credit AI vào ví</span>
           </div>
           <div className="vsc-feat">
             <IcoCheck size={14} />
-            <span>AI Tạo Đề không giới hạn</span>
+            <span>AI Tạo Đề & Phân tích nguyên tố</span>
           </div>
           <div className="vsc-feat">
             <IcoCheck size={14} />
@@ -139,7 +139,7 @@ export default function VipStatusCard({ onUpgrade }) {
           </div>
           <div className="vsc-feat">
             <IcoCheck size={14} />
-            <span>Trợ lý AI Hóa học chuyên sâu</span>
+            <span>Trợ lý AI Khoa học Tự nhiên chuyên sâu (Lý - Hóa - Sinh)</span>
           </div>
           <div className="vsc-feat">
             <IcoCheck size={14} />
@@ -215,13 +215,13 @@ export default function VipStatusCard({ onUpgrade }) {
 
       <div className="vsc-highlight">
         <IcoSparkles size={14} />
-        <span>VIP mở khoá mọi chức năng cần VIP, dùng không giới hạn</span>
+        <span>VIP mở khoá mọi chức năng cần VIP + Tặng kèm Credit AI</span>
       </div>
 
       <div className="vsc-upgrade-cta">
         <div className="vsc-upgrade-info">
           <b>ELECAI VIP</b>
-          <span>Chat + ảnh không giới hạn · AI Tạo Đề · AI Quiz · Từ 50.000đ/tháng</span>
+          <span>Mở khoá Đề thi VIP · Tặng Credit AI · AI Quiz · Từ 50.000đ/tháng</span>
         </div>
         <button
           type="button"

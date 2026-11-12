@@ -8,7 +8,9 @@ import {
   checkOrderStatus,
   claimWelcomeBonus,
   checkWelcomeClaimed,
+  grantActivationCredits,
 } from '../lib/creditService.js';
+import { activateProKey } from '../lib/proKeyApi.js';
 import { getUserProfile, saveUserProfile } from '../lib/userProfileService.js';
 import './CreditTopUp.css';
 
@@ -94,41 +96,21 @@ function CoinTripleSvg({ size = 56 }) {
   );
 }
 
-/* Linh vật cầm sách đọc chuẩn ảnh mẫu */
-function StudyMascotSvg() {
+/* Linh vật ELEC AI tách nền cầm cúp / sách cao cấp */
+function StudyMascot() {
   return (
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      {/* Vòng hào quang */}
-      <circle cx="60" cy="60" r="54" fill="rgba(37, 99, 235, 0.08)" />
-      {/* Thân */}
-      <circle cx="60" cy="74" r="26" fill="#2563eb" />
-      <ellipse cx="60" cy="78" rx="16" ry="12" fill="#ffffff" />
-      <text x="60" y="82" textAnchor="middle" fill="#2563eb" fontSize="11" fontWeight="900" fontFamily="system-ui">9</text>
-      {/* Đầu */}
-      <circle cx="60" cy="46" r="24" fill="#3b82f6" />
-      <ellipse cx="60" cy="50" rx="19" ry="15" fill="#ffffff" />
-      {/* Mắt to tròn */}
-      <circle cx="52" cy="47" r="4.2" fill="#0f172a" />
-      <circle cx="68" cy="47" r="4.2" fill="#0f172a" />
-      <circle cx="53.5" cy="45.5" r="1.5" fill="#ffffff" />
-      <circle cx="69.5" cy="45.5" r="1.5" fill="#ffffff" />
-      {/* Má hồng */}
-      <ellipse cx="46" cy="53" rx="3.5" ry="2" fill="#fda4af" />
-      <ellipse cx="74" cy="53" rx="3.5" ry="2" fill="#fda4af" />
-      {/* Miệng cười */}
-      <path d="M55 54 Q60 59 65 54" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round" fill="none" />
-      {/* Mũ / Bờm */}
-      <path d="M38 38 C42 22, 78 22, 82 38 Z" fill="#1d4ed8" />
-      <text x="60" y="32" textAnchor="middle" fill="#ffffff" fontSize="7.5" fontWeight="900">ELEC AI</text>
-      {/* Quyển sách đang mở trên tay */}
-      <path d="M34 76 L60 84 L86 76 L86 96 L60 102 L34 96 Z" fill="#1d4ed8" />
-      <path d="M36 78 L59 84 L59 100 L36 94 Z" fill="#ffffff" />
-      <path d="M84 78 L61 84 L61 100 L84 94 Z" fill="#ffffff" />
-      <line x1="42" y1="84" x2="54" y2="87" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="42" y1="89" x2="52" y2="92" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="66" y1="87" x2="78" y2="84" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="68" y1="92" x2="78" y2="89" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
+    <img
+      src="/img/elec/elec-cool.png"
+      alt="ELEC AI"
+      className="ns9-cr-header-img"
+      draggable={false}
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 10px 22px rgba(37,99,235,0.22))',
+      }}
+    />
   );
 }
 
@@ -150,6 +132,12 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
   const [buyerName, setBuyerName] = useState('');
   const [buyerAddress, setBuyerAddress] = useState('');
   const [invoiceError, setInvoiceError] = useState('');
+
+  // Mã kích hoạt / Voucher
+  const [showCodeBox, setShowCodeBox] = useState(false);
+  const [activationCode, setActivationCode] = useState('');
+  const [activatingCode, setActivatingCode] = useState(false);
+  const [activationMsg, setActivationMsg] = useState(null);
 
   const unsubOrderRef = useRef(null);
 
@@ -215,6 +203,27 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
     return () => clearInterval(timer);
   }, [step]);
 
+  // Tự động Polling kiểm tra trạng thái đơn hàng khi ở màn hình QR (3 giây / lần)
+  useEffect(() => {
+    if (step !== 'qr' || !orderData?.order?.id) return;
+    const interval = setInterval(async () => {
+      try {
+        const order = await checkOrderStatus(orderData.order.id);
+        if (order?.status === 'paid') {
+          clearInterval(interval);
+          const effectiveUserId = userId || 'guest_user';
+          const fresh = await getCredits(effectiveUserId);
+          setBalance(fresh.balance);
+          onCreditUpdate?.(fresh.balance);
+          alert('Thanh toán thành công! ELEC AI Credit đã được cộng ngay vào tài khoản của em.');
+          handleClose();
+        }
+      } catch { /* im lặng tiếp tục polling */ }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [step, orderData?.order?.id, userId]);
+
   // Cleanup subscription
   useEffect(() => {
     return () => {
@@ -225,6 +234,42 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
   const handleClose = () => {
     setIsOpen(false);
     onClose?.();
+  };
+
+  const handleRedeemCode = async (e) => {
+    e.preventDefault();
+    const clean = activationCode.trim().toUpperCase();
+    if (!clean) return;
+    setActivatingCode(true);
+    setActivationMsg(null);
+    try {
+      const effectiveUserId = userId || 'guest_user';
+      // Thử kích hoạt qua ProKey trước
+      const res = await activateProKey(effectiveUserId, clean);
+      if (res.ok) {
+        const fresh = await getCredits(effectiveUserId);
+        setBalance(fresh.balance);
+        onCreditUpdate?.(fresh.balance);
+        setActivationMsg({ ok: true, text: res.message || 'Kích hoạt thành công!' });
+        setActivationCode('');
+      } else {
+        // Fallback sang grantActivationCredits
+        const grant = await grantActivationCredits(effectiveUserId, 15, clean);
+        if (grant.ok) {
+          const fresh = await getCredits(effectiveUserId);
+          setBalance(fresh.balance);
+          onCreditUpdate?.(fresh.balance);
+          setActivationMsg({ ok: true, text: `Kích hoạt thành công! +15 ELEC Credit đã được cộng vào tài khoản.` });
+          setActivationCode('');
+        } else {
+          setActivationMsg({ ok: false, text: res.error || 'Mã kích hoạt không đúng hoặc đã qua sử dụng.' });
+        }
+      }
+    } catch (err) {
+      setActivationMsg({ ok: false, text: err?.message || 'Lỗi khi kích hoạt mã. Vui lòng thử lại.' });
+    } finally {
+      setActivatingCode(false);
+    }
   };
 
   const copyToClipboard = async (text, fieldName) => {
@@ -358,7 +403,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
 
               {/* Linh vật đọc sách góc phải */}
               <div className="ns9-cr-header-mascot">
-                <StudyMascotSvg />
+                <StudyMascot />
               </div>
             </div>
 
@@ -404,6 +449,85 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Nhập mã kích hoạt / Voucher */}
+                <div style={{
+                  marginTop: 18,
+                  padding: '12px 16px',
+                  background: 'var(--surface, #f8fafc)',
+                  border: '1px dashed var(--border-color, #e2e8f0)',
+                  borderRadius: 14,
+                }}>
+                  <div
+                    onClick={() => setShowCodeBox(!showCodeBox)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: 'var(--primary, #2563eb)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5L10 10l1.5 1.5L9 14l-1.5-1.5L5 15l1.5 1.5L4 19l-2 3 3-2 2.5-2.5L11 19l2.5-2.5L16 19l2.5-2.5L21 19l1-1-6-6 4-4z" />
+                        <circle cx="7.5" cy="7.5" r="2.5" />
+                      </svg>
+                      <span>Bạn có Mã kích hoạt / Voucher tặng điểm?</span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{showCodeBox ? 'Thu gọn' : 'Nhập mã'}</span>
+                  </div>
+
+                  {showCodeBox && (
+                    <form onSubmit={handleRedeemCode} style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Nhập mã (VD: ELEC-VIP, PRO...)"
+                        value={activationCode}
+                        onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: 10,
+                          fontSize: '0.82rem',
+                          textTransform: 'uppercase',
+                          fontWeight: 600,
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={activatingCode || !activationCode.trim()}
+                        style={{
+                          padding: '8px 16px',
+                          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 10,
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {activatingCode ? 'Đang nạp…' : 'Kích hoạt'}
+                      </button>
+                    </form>
+                  )}
+
+                  {activationMsg && (
+                    <div style={{
+                      marginTop: 8,
+                      fontSize: '0.8rem',
+                      color: activationMsg.ok ? '#16a34a' : '#dc2626',
+                      fontWeight: 500,
+                    }}>
+                      {activationMsg.text}
+                    </div>
+                  )}
                 </div>
               </div>
 

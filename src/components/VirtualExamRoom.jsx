@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { isAdmin } from '../lib/isAdmin.js';
+import { useCurrentSubject } from './SubjectSwitcher.jsx';
 import {
   VIRTUAL_EXAMS,
   getAllVirtualExams,
@@ -16,6 +17,7 @@ import {
   redeemActivationCode,
 } from '../data/virtualExamsBank.js';
 import PaymentPanel from './PaymentPanel.jsx';
+import SubscriptionTiers from './SubscriptionTiers.jsx';
 import { saveSession } from '../lib/roadmapStore.js';
 import { recordAttemptScore, getAspirationProfile, ASPIRATION_CHANGE_EVENT } from '../lib/aspirationService.js';
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
@@ -29,14 +31,17 @@ import ViolationOverlay from './ViolationOverlay.jsx';
 import MathText from './MathText.jsx';
 import ExamPaperView, { PassageBox } from './ExamPaperView.jsx';
 import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.jsx';
+import DigitalOmrSheet from './exam/DigitalOmrSheet.jsx';
+import ExamTrapReport from './exam/ExamTrapReport.jsx';
+import ExamModeModal from './exam/ExamModeModal.jsx';
 import { isAnswered, countAnswered, packAnswers, scoreExam } from '../lib/examScoring.js';
 import { buildLayout } from '../lib/examLayout.js';
-import { lofiAudio } from '../lib/lofiAudioService.js';
 import '../styles/classroom.css';
 import '../styles/exam-types.css';
 import '../styles/exam-pro.css';
 import '../styles/exam-join-v6.css';
 import '../styles/exam-paper.css';
+import '../styles/exam-mode-upgrade.css';
 
 /* ============================================================
    VirtualExamRoom.jsx — PHÒNG THI ẢO ELEC AI (100% SVG, KHÔNG EMOJI)
@@ -222,6 +227,16 @@ const SvgAward = ({ size = 14 }) => (
   </svg>
 );
 
+const SvgShuffle = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="16 3 21 3 21 8" />
+    <line x1="4" y1="20" x2="21" y2="3" />
+    <polyline points="21 16 21 21 16 21" />
+    <line x1="15" y1="15" x2="21" y2="21" />
+    <line x1="4" y1="4" x2="9" y2="9" />
+  </svg>
+);
+
 const EXAM_TYPES = ['THPTQG', 'HSA', 'TSA', 'V-ACT', 'SPT', 'H-SCA'];
 const TIER_FILTERS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -229,11 +244,17 @@ const TIER_FILTERS = [
   { id: 'PRO', label: 'PRO' },
   { id: 'FREE', label: 'FREE' },
 ];
+const SUBJECT_FILTERS = [
+  { id: 'all', label: 'Tất cả KHTN' },
+  { id: 'ly', label: 'Vật lí' },
+  { id: 'hoa', label: 'Hóa học' },
+  { id: 'sinh', label: 'Sinh học' },
+];
 const GRADE_FILTERS = [
-  { id: 'all', label: 'Hóa học (Tất cả)' },
-  { id: '12', label: 'Hóa 12' },
-  { id: '11', label: 'Hóa 11' },
-  { id: '10', label: 'Hóa 10' },
+  { id: 'all', label: 'Tất cả khối' },
+  { id: '12', label: 'Khối 12' },
+  { id: '11', label: 'Khối 11' },
+  { id: '10', label: 'Khối 10' },
 ];
 const STATUS_FILTERS = [
   { id: 'all', label: 'Tất cả' },
@@ -250,16 +271,101 @@ const SOURCE_FILTERS = [
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-/* Hình minh họa Banner Hóa học (Bình tam giác, ống nghiệm, ô nguyên tố Carbon) */
+/* ============================================================
+   ẢNH BÌA ĐỀ THI THỬ KHOA HỌC TỰ NHIÊN (CHUẨN BỘ ẢNH THỰC TẾ)
+   - Hóa học: /img/nenthithu/hoahoc.jpg
+   - Vật lí: /img/nenthithu/vatli.jpg
+   - Sinh học: /img/nenthithu/sinhhoc.jpg
+   - KHTN tích hợp: /img/nenthithu/khtntichhop.jpg
+   ============================================================ */
+const SUBJ_COVERS = {
+  hoa: '/img/nenthithu/hoahoc.jpg',
+  ly: '/img/nenthithu/vatli.jpg',
+  sinh: '/img/nenthithu/sinhhoc.jpg',
+  all: '/img/nenthithu/khtntichhop.jpg',
+};
+
+function getExamCoverUrl(exam) {
+  if (exam?.coverUrl) return exam.coverUrl;
+  if (exam?.coverImg) return exam.coverImg;
+
+  const rawSubj = String(exam?.subject || '').toLowerCase().trim();
+  const title = String(exam?.title || '').toLowerCase();
+
+  // 1. Ưu tiên kiểm tra KHTN Tích hợp trước (vì đề tích hợp thường chứa tên cả 3 môn trong tiêu đề)
+  if (
+    rawSubj === 'all' ||
+    rawSubj === 'khtn' ||
+    rawSubj === 'tich-hop' ||
+    rawSubj === 'tonghop' ||
+    title.includes('tích hợp') ||
+    title.includes('khtn') ||
+    title.includes('đánh giá năng lực') ||
+    title.includes('dgnl') ||
+    title.includes('tsa')
+  ) {
+    return SUBJ_COVERS.all;
+  }
+
+  // 2. Môn Vật lí
+  if (
+    rawSubj === 'ly' ||
+    rawSubj === 'vatly' ||
+    rawSubj === 'vat-li' ||
+    rawSubj === 'physics' ||
+    title.includes('vật lí') ||
+    title.includes('vật lý')
+  ) {
+    return SUBJ_COVERS.ly;
+  }
+
+  // 3. Môn Sinh học
+  if (
+    rawSubj === 'sinh' ||
+    rawSubj === 'sinhhoc' ||
+    rawSubj === 'sinh-hoc' ||
+    rawSubj === 'biology' ||
+    title.includes('sinh học')
+  ) {
+    return SUBJ_COVERS.sinh;
+  }
+
+  // 4. Môn Hóa học (hoặc mặc định)
+  if (
+    rawSubj === 'hoa' ||
+    rawSubj === 'hoahoc' ||
+    rawSubj === 'hoa-hoc' ||
+    rawSubj === 'chemistry' ||
+    title.includes('hóa học') ||
+    title.includes('hoá học')
+  ) {
+    return SUBJ_COVERS.hoa;
+  }
+  return SUBJ_COVERS.hoa;
+}
+
 function ChemCardBanner({ exam, canAccess = true }) {
   const isVip = exam.tier === 'VIP';
   const isPro = exam.tier === 'PRO';
+  const subj = exam.subject || 'hoa';
+  const coverUrl = getExamCoverUrl(exam);
 
   return (
-    <div className={`ns9-vex-banner is-${exam.tier.toLowerCase()}`}>
+    <div className={`ns9-vex-banner is-${exam.tier.toLowerCase()} subj-${subj}`}>
+      {/* 1. Nền ảnh bìa đề thi thử chuẩn độ nét cao theo môn */}
+      <img
+        src={coverUrl}
+        alt={`Bìa ${exam.title || 'Đề thi thử'}`}
+        className="ns9-vex-banner-cover-img"
+        loading="lazy"
+      />
+      {/* 2. Lớp phủ vignette nhẹ nhàng để các badge hiển thị sắc nét */}
+      <div className="ns9-vex-banner-overlay" />
+
+      {/* 3. Huy hiệu Năm, Hạng (VIP/PRO/FREE), Hot & Khóa */}
       <div className="ns9-vex-banner-top">
         <div className="ns9-vex-badges-left">
-          <span className="ns9-vex-year-pill">{exam.year}</span>
+          <span className="ns9-vex-year-pill">{exam.year || '2027'}</span>
           {isVip && (
             <span className="ns9-vex-tier-pill is-vip">
               <SvgDiamond size={11} /> VIP
@@ -287,54 +393,11 @@ function ChemCardBanner({ exam, canAccess = true }) {
           </span>
         )}
       </div>
-
-      <div className="ns9-vex-banner-art">
-        <div className="ns9-vex-banner-text">
-          <span className="ns9-vex-subj-chip">HOÁ HỌC</span>
-          <strong className="ns9-vex-exam-sub">
-            {isVip ? 'KỲ THI THPT QUỐC GIA' : `Kỳ thi ${exam.examType}`}
-          </strong>
-          {isVip && (
-            <small className="ns9-vex-team-line">
-              Đội ngũ PGS.TS và Thầy/Cô THPT Chuyên
-            </small>
-          )}
-        </div>
-
-        <svg
-          className="ns9-vex-chem-svg"
-          viewBox="0 0 140 96"
-          fill="none"
-          aria-hidden="true"
-        >
-          <g transform="translate(8, 6) rotate(-10)">
-            <rect x="0" y="0" width="34" height="38" rx="5" stroke="rgba(255,255,255,0.55)" strokeWidth="1.4" fill="rgba(255,255,255,0.08)" />
-            <text x="5" y="10" fill="rgba(255,255,255,0.8)" fontSize="6.5" fontWeight="700">6</text>
-            <text x="11" y="24" fill="#ffffff" fontSize="14" fontWeight="800">C</text>
-            <text x="5" y="33" fill="rgba(255,255,255,0.75)" fontSize="5.5">12.011</text>
-          </g>
-          <g stroke="rgba(255,255,255,0.6)" strokeWidth="1.5">
-            <line x1="88" y1="16" x2="106" y2="24" />
-            <line x1="106" y1="24" x2="122" y2="14" />
-            <circle cx="88" cy="16" r="4.5" fill="rgba(255,255,255,0.85)" />
-            <circle cx="106" cy="24" r="6" fill="rgba(167,243,208,0.9)" />
-            <circle cx="122" cy="14" r="4" fill="rgba(255,255,255,0.85)" />
-          </g>
-          <g stroke="rgba(255,255,255,0.82)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M58 38v12a16 16 0 1 0 12 0V38" fill="rgba(255,255,255,0.1)" />
-            <line x1="55" y1="38" x2="73" y2="38" />
-            <path d="M50 68c4-3 12 3 18 0" stroke="rgba(167,243,208,0.8)" strokeWidth="1.4" />
-            <path d="M96 40v12l-13 28a4 4 0 0 0 3.6 5.7h30.8a4 4 0 0 0 3.6-5.7L108 52V40" fill="rgba(255,255,255,0.12)" />
-            <line x1="93" y1="40" x2="111" y2="40" />
-            <path d="M87 74h29" stroke="rgba(167,243,208,0.75)" strokeWidth="1.4" />
-          </g>
-        </svg>
-      </div>
     </div>
   );
 }
 
-/* Thẻ Đề Thi chuẩn 9Study (100% SVG) */
+/* Thẻ Đề Thi chuẩn ELEC AI (100% SVG) */
 function VirtualExamCard({ exam, isFav, isDone, lastScore, canAccess = true, onStart, onToggleFav, onRequireUpgrade }) {
   const isVip = exam.tier === 'VIP';
 
@@ -617,6 +680,8 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
     };
   }, []);
 
+  const isPractice = Boolean(rawExam.practiceMode);
+
   const questions = useMemo(() => {
     const list = buildExamQuestionsForPaper(rawExam);
     const ptsPerQ = Number((10 / Math.max(1, list.length)).toFixed(4));
@@ -635,17 +700,19 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
     questions,
     showAnswerAfter: true,
     shuffle: false,
+    practiceMode: isPractice,
+    viewMode: rawExam.viewMode || 'single',
     proctor: {
-      strictMode: true,
-      fullscreenLock: true,
-      blockCopyPaste: true,
-      tabSwitchLimit: 3,
+      strictMode: !isPractice,
+      fullscreenLock: !isPractice,
+      blockCopyPaste: !isPractice,
+      tabSwitchLimit: isPractice ? 999 : 3,
       camera: 'off',
     },
-  }), [rawExam, questions]);
+  }), [rawExam, questions, isPractice]);
 
-  const [stage, setStage] = useState('confirm');
-  const [mode, setMode] = useState('single'); // 'single' | 'paper'
+  const [stage, setStage] = useState(isPractice ? 'exam' : 'confirm');
+  const [mode, setMode] = useState(rawExam.viewMode === 'paper' ? 'paper' : 'single'); // 'single' | 'paper'
   const [answers, setAnswers] = useState({});
   const [flags, setFlags] = useState({});
   const [currentQ, setCurrentQ] = useState(0);
@@ -654,6 +721,7 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [practiceRevealed, setPracticeRevealed] = useState({});
 
   const startTimeRef = useRef(null);
   const submittedRef = useRef(false);
@@ -767,13 +835,13 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
 
   /* Kích hoạt bộ giám sát nghiêm ngặt cao (KHÔNG CAMERA) giống hệt ExamJoin */
   const guard = useExamGuard({
-    active: stage === 'exam',
+    active: stage === 'exam' && !isPractice,
     onAutoSubmit: handleAutoSubmit,
     config: {
-      strictMode: true,
-      fullscreenLock: true,
-      blockCopyPaste: true,
-      tabSwitchLimit: 3,
+      strictMode: !isPractice,
+      fullscreenLock: !isPractice,
+      blockCopyPaste: !isPractice,
+      tabSwitchLimit: isPractice ? 999 : 3,
       camera: 'off',
     },
   });
@@ -781,13 +849,14 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
   guardRef.current = guard;
 
   const mobilePush = useCallback((type, severity, meta) => {
+    if (isPractice) return undefined;
     const typingNow = Date.now() < typingUntilRef.current;
     if (typingNow && /resize|viewport|orient|zoom|split|keyboard|layout|size|shrunk|shrink/i.test(String(type))) return undefined;
     return guardRef.current?.pushEvent?.(type, severity, meta);
-  }, []);
+  }, [isPractice]);
 
   useMobileGuard({
-    active: stage === 'exam',
+    active: stage === 'exam' && !isPractice,
     pushEvent: mobilePush,
     trackHidden: true,
   });
@@ -818,10 +887,10 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
   }, [stage]);
 
   useEffect(() => {
-    if (stage === 'exam' && timeLeft === 0) {
+    if (stage === 'exam' && timeLeft === 0 && !isPractice) {
       finishExam({ auto: true, reason: 'time', violationCount: guardRef.current?.violations ?? 0 });
     }
-  }, [stage, timeLeft, finishExam]);
+  }, [stage, timeLeft, finishExam, isPractice]);
 
   useEffect(() => {
     if (stage !== 'exam') return undefined;
@@ -851,7 +920,7 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
   const [showFsBanner, setShowFsBanner] = useState(false);
 
   useEffect(() => {
-    if (stage !== 'exam' || !guard.fullscreenLock) {
+    if (stage !== 'exam' || !guard.fullscreenLock || isPractice) {
       setShowFsBanner(false);
       return undefined;
     }
@@ -871,10 +940,12 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
       evs.forEach((n) => document.removeEventListener(n, check));
       clearInterval(id);
     };
-  }, [stage, overlayOpen, guard.fullscreenLock]);
+  }, [stage, overlayOpen, guard.fullscreenLock, isPractice]);
 
   const startExam = async () => {
-    await guard.enterFullscreen();
+    if (!isPractice) {
+      await guard.enterFullscreen();
+    }
     startTimeRef.current = Date.now();
     submittedRef.current = false;
     setTimeLeft(exam.duration * 60);
@@ -984,6 +1055,13 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
           showAnswer={true}
           onExit={handleExitRoom}
         />
+        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 16px 32px' }}>
+          <ExamTrapReport
+            questions={exam.questions}
+            answers={answers}
+            detail={result.detail || []}
+          />
+        </div>
       </>
     );
   }
@@ -1069,18 +1147,44 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
             <div className="ep-progress-mini" aria-hidden="true">
               <div className="ep-progress-mini-bar" style={{ width: `${progress}%` }} />
             </div>
-            <span className="ep-monitor-chip">
-              <IcoShield size={13} /> Giám sát nghiêm ngặt · Vi phạm {guard.violations}/{guard.maxViolations}
-            </span>
-            <button
-              type="button"
-              className="ep-monitor-chip"
-              onClick={() => setMode((m) => (m === 'single' ? 'paper' : 'single'))}
-              style={{ cursor: 'pointer' }}
-              title="Đổi chế độ hiển thị Từng câu / Đề giấy"
-            >
-              <SvgDoc size={13} /> {mode === 'single' ? 'Xem dạng Đề giấy' : 'Xem Từng câu'}
-            </button>
+            {isPractice ? (
+              <span className="ep-monitor-chip" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                <IcoSparkle size={13} /> Chế độ Luyện tập tự do
+              </span>
+            ) : (
+              <span className="ep-monitor-chip">
+                <IcoShield size={13} /> Giám sát nghiêm ngặt · Vi phạm {guard.violations}/{guard.maxViolations}
+              </span>
+            )}
+            <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(15, 23, 42, 0.4)', borderRadius: 10, padding: 3, gap: 2 }}>
+              <button
+                type="button"
+                className={'ep-monitor-chip' + (mode === 'single' ? ' is-on' : '')}
+                onClick={() => setMode('single')}
+                style={{ cursor: 'pointer', background: mode === 'single' ? '#3b82f6' : 'transparent', color: mode === 'single' ? '#fff' : undefined }}
+                title="Xem từng câu"
+              >
+                Từng câu
+              </button>
+              <button
+                type="button"
+                className={'ep-monitor-chip' + (mode === 'paper' ? ' is-on' : '')}
+                onClick={() => setMode('paper')}
+                style={{ cursor: 'pointer', background: mode === 'paper' ? '#3b82f6' : 'transparent', color: mode === 'paper' ? '#fff' : undefined }}
+                title="Xem dạng đề giấy cuộn"
+              >
+                <SvgDoc size={12} /> Đề giấy
+              </button>
+              <button
+                type="button"
+                className={'ep-monitor-chip' + (mode === 'omr' ? ' is-on' : '')}
+                onClick={() => setMode('omr')}
+                style={{ cursor: 'pointer', background: mode === 'omr' ? '#2563eb' : 'transparent', color: mode === 'omr' ? '#fff' : undefined, fontWeight: mode === 'omr' ? 700 : undefined }}
+                title="Chế độ Phiếu tô OMR 1:1 chuẩn Bộ GD&ĐT"
+              >
+                Phiếu OMR 1:1
+              </button>
+            </div>
           </div>
 
           <div className="ep-header-right">
@@ -1150,6 +1254,53 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                   onFlag={toggleFlag}
                 />
 
+                {/* Chế độ Luyện tập: Nút kiểm tra đáp án & lời giải 4 tầng tức thì */}
+                {isPractice && (
+                  <div className="ns9-practice-check-box" style={{ margin: '14px 0' }}>
+                    {!practiceRevealed[qi] ? (
+                      <button
+                        type="button"
+                        className="ns9-practice-check-btn"
+                        onClick={() => setPracticeRevealed((prev) => ({ ...prev, [qi]: true }))}
+                        disabled={answers[qi] === undefined}
+                        title={answers[qi] === undefined ? 'Vui lòng chọn đáp án trước khi kiểm tra' : 'Xem đáp án và lời giải'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>Kiểm tra đáp án & Xem lời giải chi tiết</span>
+                      </button>
+                    ) : (
+                      <div className="ns9-practice-sol-card">
+                        <div className={`ns9-practice-sol-header ${answers[qi] === q.correct ? 'is-correct' : 'is-wrong'}`}>
+                          {answers[qi] === q.correct ? (
+                            <>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              <b>Chính xác! Đáp án đúng là {q.correct}</b>
+                            </>
+                          ) : (
+                            <>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                              <b>Chưa chính xác! Bạn chọn {answers[qi] || 'trống'} — Đáp án đúng là {q.correct}</b>
+                            </>
+                          )}
+                        </div>
+                        {q.explanation && (
+                          <div className="ns9-practice-sol-body">
+                            <span className="ns9-practice-sol-lbl">HƯỚNG DẪN GIẢI CHI TIẾT:</span>
+                            <MathText text={q.explanation} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="ep-nav">
                   <button
                     className="ep-nav-btn"
@@ -1200,6 +1351,20 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
               <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)}>
                 <IcoSend size={14} /> Nộp bài
               </button>
+            </div>
+          )}
+
+          {mode === 'omr' && (
+            <div style={{ width: 310, flexShrink: 0, padding: '12px 16px 16px 0', height: 'calc(100vh - 120px)', position: 'sticky', top: 60, zIndex: 10 }}>
+              <DigitalOmrSheet
+                questions={exam.questions}
+                answers={answers}
+                flags={flags}
+                currentQ={currentQ}
+                onSelectAnswer={(idx, optIdx) => pickAnswer(idx, optIdx)}
+                onToggleFlag={(idx) => toggleFlag(idx)}
+                onJumpToQuestion={(idx) => setCurrentQ(idx)}
+              />
             </div>
           )}
 
@@ -1300,32 +1465,16 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
     return 'FREE';
   }, [isAdminUser, isTeacher, isVipUser, subQuota]);
 
-  /* ── Focus Mode (Pomodoro bar) ── */
-  const [showFocusBar, setShowFocusBar] = useState(true);
-  const [focusRunning, setFocusRunning] = useState(false);
-  const [focusSeconds, setFocusSeconds] = useState(25 * 60);
+  /* ── Filters & Search ── */
+  const { subject: globalSubject, setSubject: setGlobalSubject } = useCurrentSubject();
+  const [selectedSubject, setSelectedSubject] = useState(globalSubject || 'all');
 
   useEffect(() => {
-    if (!focusRunning) return undefined;
-    const timer = setInterval(() => {
-      setFocusSeconds((s) => {
-        if (s <= 1) {
-          setFocusRunning(false);
-          return 25 * 60;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [focusRunning]);
+    if (globalSubject && globalSubject !== selectedSubject) {
+      setSelectedSubject(globalSubject);
+    }
+  }, [globalSubject, selectedSubject]);
 
-  const fmtFocus = (sec) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
-  /* ── Filters & Search ── */
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('priority');
   const [selectedExamType, setSelectedExamType] = useState(() => {
@@ -1343,29 +1492,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const [historyList, setHistoryList] = useState(() => getVirtualExamHistory(uid));
   const [activeExam, setActiveExam] = useState(null);
   const [variantPickerExam, setVariantPickerExam] = useState(null);
-
-  /* ── Lofi Ambient Audio & Live Peer Sync ── */
-  const [lofiPlaying, setLofiPlaying] = useState(false);
-  const [lofiMode, setLofiMode] = useState('lofi');
-  const [lofiVolume, setLofiVolume] = useState(0.35);
-  const [showLofiMenu, setShowLofiMenu] = useState(false);
-  const [onlinePeersCount, setOnlinePeersCount] = useState(1428);
-
-  useEffect(() => {
-    const intv = setInterval(() => {
-      setOnlinePeersCount((prev) => {
-        const delta = Math.floor(Math.random() * 5) - 2;
-        return Math.max(1380, Math.min(1510, prev + delta));
-      });
-    }, 6000);
-    return () => clearInterval(intv);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      lofiAudio.stop();
-    };
-  }, []);
+  const [modeModalExam, setModeModalExam] = useState(null);
 
   const handleStartExam = (exam, chosenVariant = null) => {
     const allowed = canAccessVirtualExam(userPlan, exam.tier);
@@ -1391,15 +1518,26 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
 
     consumeExamHeart(uid);
     setVariantPickerExam(null);
-    if (chosenVariant) {
-      setActiveExam({
-        ...exam,
-        selectedCode: chosenVariant,
-        title: `${exam.title} - Mã đề ${chosenVariant}`,
-      });
-    } else {
-      setActiveExam(exam);
-    }
+    const preparedExam = chosenVariant
+      ? {
+          ...exam,
+          selectedCode: chosenVariant,
+          title: `${exam.title} - Mã đề ${chosenVariant}`,
+        }
+      : exam;
+
+    // Mở Modal tùy chọn Chế độ làm bài (Thi thật vs Thi thử/Ôn luyện)
+    setModeModalExam(preparedExam);
+  };
+
+  const handleConfirmStartExamMode = ({ practiceMode, viewMode }) => {
+    if (!modeModalExam) return;
+    setActiveExam({
+      ...modeModalExam,
+      practiceMode,
+      viewMode,
+    });
+    setModeModalExam(null);
   };
 
   const handleOpenPayment = (tier) => {
@@ -1488,6 +1626,10 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         if (ex.examType !== selectedExamType) return false;
       }
       if (selectedTier !== 'ALL' && ex.tier !== selectedTier) return false;
+      if (selectedSubject !== 'all') {
+        const s = ex.subject || 'hoa';
+        if (s !== selectedSubject && s !== 'all') return false;
+      }
       if (selectedGrade !== 'all' && ex.gradeScope !== 'all' && ex.gradeScope !== selectedGrade) return false;
       if (selectedSource !== 'all' && ex.sourceType !== selectedSource) return false;
       if (selectedYear !== 'all' && String(ex.year) !== String(selectedYear)) return false;
@@ -1517,6 +1659,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
     sortBy,
     selectedExamType,
     selectedTier,
+    selectedSubject,
     selectedGrade,
     selectedStatus,
     selectedSource,
@@ -1562,214 +1705,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
 
   return (
     <div className="ns9-vex-page">
-      {/* ── 1. THANH FOCUS MODE (POMODORO BAR, 100% SVG) ── */}
-      {showFocusBar && (
-        <div className="ns9-focus-bar" role="region" aria-label="Chế độ tập trung Focus Mode">
-          <div className="ns9-focus-inner">
-            <div className="ns9-focus-left">
-              <span className="ns9-focus-icon" aria-hidden="true">
-                <SvgClock size={13} />
-              </span>
-              <strong>Focus Mode</strong>
-              <span className="ns9-focus-hint">
-                Bấm nút Play để bắt đầu tính giờ tập trung
-              </span>
-
-              {/* Đồng bộ trực tuyến bạn học */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '3px 10px',
-                  borderRadius: 999,
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  color: '#10b981',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  marginLeft: 8,
-                }}
-                title="Đang đồng bộ trực tiếp số bạn học trực tuyến trên hệ thống"
-              >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: '#10b981',
-                    boxShadow: '0 0 6px #10b981',
-                    display: 'inline-block',
-                  }}
-                />
-                <SvgUsers size={12} />
-                <span>{onlinePeersCount.toLocaleString('vi-VN')} bạn đang cùng học</span>
-              </div>
-            </div>
-
-            <div className="ns9-focus-right">
-              {/* Trình phát Nhạc Lofi & Âm thanh thư giãn (100% SVG) */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  type="button"
-                  className={'ns9-focus-clock-pill' + (lofiPlaying ? ' is-lofi-on' : '')}
-                  onClick={() => setShowLofiMenu((s) => !s)}
-                  style={{
-                    borderColor: lofiPlaying ? '#8b5cf6' : undefined,
-                    color: lofiPlaying ? '#7c3aed' : undefined,
-                    background: lofiPlaying ? 'rgba(139, 92, 246, 0.1)' : undefined,
-                  }}
-                  title="Không gian âm thanh Lofi & ASMR thư giãn"
-                >
-                  <SvgHeadphones size={13} />
-                  <span>{lofiPlaying ? 'Đang phát Lofi' : 'Nhạc Lofi'}</span>
-                </button>
-
-                {showLofiMenu && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      right: 0,
-                      background: 'var(--card-bg, #ffffff)',
-                      border: '1px solid var(--border, #e2e8f0)',
-                      borderRadius: 14,
-                      boxShadow: '0 12px 30px rgba(0,0,0,0.15)',
-                      padding: 12,
-                      width: 230,
-                      zIndex: 300,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--ink, #0f172a)' }}>Âm thanh thư giãn</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextState = lofiAudio.toggle();
-                          setLofiPlaying(nextState);
-                        }}
-                        style={{
-                          background: lofiPlaying ? '#ef4444' : '#10b981',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {lofiPlaying ? 'Tắt nhạc' : 'Phát nhạc'}
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                      {[
-                        { id: 'lofi', label: 'Lofi Chords êm dịu' },
-                        { id: 'rain', label: 'Tiếng mưa rơi nhẹ' },
-                        { id: 'lab', label: 'Phòng thí nghiệm ASMR' },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            lofiAudio.start(item.id);
-                            setLofiMode(item.id);
-                            setLofiPlaying(true);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '6px 10px',
-                            borderRadius: 8,
-                            border: lofiMode === item.id ? '1.5px solid #8b5cf6' : '1px solid transparent',
-                            background: lofiMode === item.id ? 'rgba(139, 92, 246, 0.08)' : 'rgba(0,0,0,0.03)',
-                            fontSize: '0.78rem',
-                            fontWeight: lofiMode === item.id ? 700 : 500,
-                            color: lofiMode === item.id ? '#7c3aed' : 'var(--ink, #0f172a)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <span>{item.label}</span>
-                          {lofiMode === item.id && lofiPlaying && <SvgSparkle size={11} />}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', color: 'var(--mut, #64748b)' }}>
-                      <SvgVolume size={13} />
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={lofiVolume}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setLofiVolume(val);
-                          lofiAudio.setVolume(val);
-                        }}
-                        style={{ width: '100%', cursor: 'pointer' }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                className="ns9-focus-clock-pill"
-                onClick={() => {
-                  if (!focusRunning) {
-                    setFocusSeconds((prev) => (prev === 25 * 60 ? 50 * 60 : 25 * 60));
-                  }
-                }}
-                title="Bấm để đổi 25 phút / 50 phút"
-              >
-                <span>Tập trung</span>
-                <b>{fmtFocus(focusSeconds)}</b>
-              </button>
-
-              <button
-                type="button"
-                className={'ns9-focus-play-btn' + (focusRunning ? ' is-running' : '')}
-                onClick={() => setFocusRunning((r) => !r)}
-              >
-                {focusRunning ? <><SvgPause size={11} /> <span>Tạm dừng</span></> : <><SvgPlay size={11} /> <span>Bắt đầu</span></>}
-              </button>
-
-              <button
-                type="button"
-                className="ns9-focus-ico-btn"
-                onClick={() => {
-                  if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen?.().catch(() => {});
-                  } else {
-                    document.exitFullscreen?.().catch(() => {});
-                  }
-                }}
-                title="Toàn màn hình tập trung"
-                aria-label="Toàn màn hình"
-              >
-                <SvgExpand size={14} />
-              </button>
-
-              <button
-                type="button"
-                className="ns9-focus-ico-btn"
-                onClick={() => setShowFocusBar(false)}
-                title="Ẩn thanh Focus Mode"
-                aria-label="Đóng thanh Focus Mode"
-              >
-                <SvgClose size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="ns9-vex-container">
-        {/* ── 2. THANH TÌM KIẾM & SẮP XẾP ── */}
+        {/* ── 1. THANH TÌM KIẾM & SẮP XẾP ── */}
         <div className="ns9-vex-search-row">
           <div className="ns9-vex-search-box">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1780,8 +1717,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm đề thi Hóa học..."
-              aria-label="Tìm đề thi Hóa học"
+              placeholder="Tìm kiếm đề thi KHTN (Vật lí, Hóa học, Sinh học)..."
+              aria-label="Tìm kiếm đề thi Khoa học Tự nhiên"
             />
           </div>
 
@@ -1843,7 +1780,30 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
             </div>
 
             <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">MÔN THI</span>
+              <span className="ns9-vex-flabel">PHÂN MÔN</span>
+              <div className="ns9-vex-fpills">
+                {SUBJECT_FILTERS.map((s) => {
+                  const active = selectedSubject === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
+                      onClick={() => {
+                        setSelectedSubject(s.id);
+                        setGlobalSubject(s.id);
+                      }}
+                    >
+                      {active && <SvgCheck size={11} />}
+                      <span>{s.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="ns9-vex-filter-line">
+              <span className="ns9-vex-flabel">KHỐI LỚP</span>
               <div className="ns9-vex-fpills">
                 {GRADE_FILTERS.map((g) => {
                   const active = selectedGrade === g.id;
@@ -1933,23 +1893,32 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           </div>
         </section>
 
-        {/* ── 4. BANNER CẤU TRÚC ĐỀ THI MÔN HÓA HỌC (100% SVG) ── */}
-        <section className="ns9-vex-struct-banner">
-          <div className="ns9-vex-struct-top">
-            <div className="ns9-vex-struct-title">
-              <SvgShieldCheck size={17} />
-              <strong>Cấu trúc đề thi môn Hóa học ({selectedExamType === 'THPTQG' ? 'Thi Tốt nghiệp THPT' : `Kỳ thi ${selectedExamType}`})</strong>
-            </div>
+        {/* ── 4. BANNER CẤU TRÚC ĐỀ THI KHTN (100% SVG) ── */}
+        <section className="ns9-vex-struct-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ flex: 1 }}>
+            <div className="ns9-vex-struct-top">
+              <div className="ns9-vex-struct-title">
+                <SvgShieldCheck size={17} />
+                <strong>Cấu trúc đề thi Khoa học Tự nhiên ({selectedExamType === 'THPTQG' ? 'Thi Tốt nghiệp THPT' : `Kỳ thi ${selectedExamType}`})</strong>
+              </div>
 
-            <div className="ns9-vex-struct-pills">
-              <span><SvgClock size={13} /> Bấm giờ thi thật</span>
-              <span><SvgSparkle size={13} /> AI chấm điểm &amp; lưu sổ lỗi sai</span>
-              <span><SvgAward size={13} /> Đáp án &amp; lời giải chi tiết</span>
+              <div className="ns9-vex-struct-pills">
+                <span><SvgClock size={13} /> Bấm giờ thi thật</span>
+                <span><SvgSparkle size={13} /> AI chấm điểm &amp; lưu sổ lỗi sai</span>
+                <span><SvgAward size={13} /> Đáp án &amp; lời giải chi tiết</span>
+              </div>
             </div>
+            <p className="ns9-vex-struct-desc">
+              Hệ thống đề thi thử và đề thi chính thức môn Khoa học Tự nhiên tại <b>ELEC AI</b> được biên soạn bám sát cấu trúc mới nhất của Bộ GD&amp;ĐT theo định dạng <b>Chương trình GDPT mới</b>. Học sinh có thể làm bài thi trắc nghiệm trực tuyến có bấm giờ, nhận kết quả chấm điểm tức thì và được AI phân tích chi tiết từng dạng bài để tối ưu hóa điểm số.
+            </p>
           </div>
-          <p className="ns9-vex-struct-desc">
-            Hệ thống đề thi thử và đề thi chính thức môn Hóa học tại <b>ELEC AI</b> được biên soạn bám sát cấu trúc mới nhất của Bộ GD&amp;ĐT theo định dạng <b>Chương trình GDPT mới</b>. Học sinh có thể làm bài thi trắc nghiệm trực tuyến có bấm giờ, nhận kết quả chấm điểm tức thì và được AI phân tích chi tiết từng dạng bài để tối ưu hóa điểm số.
-          </p>
+          <div className="ns9-vex-banner-mascot" title="Elec Chinh Phục Phòng Thi" style={{ flexShrink: 0, width: 88, height: 88 }}>
+            <img
+              src="/img/elec/elec-fighting.png"
+              alt="Elec Fighting"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 8px 18px rgba(37, 99, 235, 0.3))' }}
+            />
+          </div>
         </section>
 
         {/* ── 5. BA PHÂN KHU BỘ ĐỀ: VIP · PRO · FREE ── */}
@@ -2026,8 +1995,13 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         )}
 
         {filteredExams.length === 0 && (
-          <div className="ns9-empty-state">
-            <p>Không tìm thấy đề thi nào khớp với bộ lọc hiện tại.</p>
+          <div className="ns9-empty-state" style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <img
+              src="/img/elec/elec-shy.png"
+              alt="Elec Ngại Ngùng"
+              style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 8px 20px rgba(37, 99, 235, 0.25))', marginBottom: 12 }}
+            />
+            <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>Không tìm thấy đề thi nào khớp với bộ lọc hiện tại.</p>
             <button
               type="button"
               className="ns9-ch-btn-primary"
@@ -2047,154 +2021,46 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         )}
       </div>
 
-      {/* ── 6. MODAL NÂNG CẤP GÓI KHI BẤM ĐỀ BỊ KHÓA (Chuẩn Apple HIG) ── */}
+      {/* ── 6. MODAL NÂNG CẤP GÓI KHI BẤM ĐỀ BỊ KHÓA (CHUẨN BENTO 3 CỘT 9STUDY) ── */}
       {upgradeModalExam && (
-        <div
-          className="ns9-upg-dialog-backdrop"
-          onClick={() => setUpgradeModalExam(null)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="ns9-upg-dialog-card" onClick={(e) => e.stopPropagation()}>
-            <div className="ns9-upg-dialog-head">
-              <div>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: '0.8rem',
-                  fontWeight: 800,
-                  color: upgradeModalExam.tier === 'VIP' ? '#7c3aed' : '#ea580c',
-                  background: upgradeModalExam.tier === 'VIP' ? 'rgba(124, 58, 237, 0.1)' : 'rgba(234, 88, 12, 0.1)',
-                  padding: '3px 10px',
-                  borderRadius: 999,
-                  marginBottom: 8,
-                }}>
-                  {upgradeModalExam.tier === 'VIP' ? <SvgDiamond size={12} /> : <SvgCrown size={12} />}
-                  YÊU CẦU GÓI {upgradeModalExam.tier}
-                </span>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--ink, #0f172a)' }}>
-                  Mở khóa {upgradeModalExam.tier === 'VIP' ? 'Bộ đề VIP Độc Quyền' : 'Bộ đề PRO Cao Cấp'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="ns9-cr-close-btn"
-                onClick={() => setUpgradeModalExam(null)}
-                aria-label="Đóng"
-                style={{ position: 'relative', top: 'auto', right: 'auto' }}
-              >
-                <SvgClose size={16} />
-              </button>
-            </div>
-
-            <div className="ns9-upg-dialog-body">
-              <div className="ns9-upg-preview-box">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span className={`ns9-vex-badge-tag is-${upgradeModalExam.tier.toLowerCase()}`}>
-                    {upgradeModalExam.badgeLabel}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--mut, #64748b)' }}>
-                    Kỳ thi {upgradeModalExam.examType} · {upgradeModalExam.year}
-                  </span>
-                </div>
-                <strong style={{ fontSize: '0.95rem', color: 'var(--ink, #0f172a)', display: 'block', lineHeight: 1.4 }}>
-                  {upgradeModalExam.title}
-                </strong>
-                <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: '0.8rem', color: 'var(--mut, #64748b)' }}>
-                  <span><SvgDoc size={12} /> {upgradeModalExam.questionCount} câu</span>
-                  <span><SvgClock size={12} /> {upgradeModalExam.durationMinutes || 50} phút</span>
-                  <span>{upgradeModalExam.author}</span>
-                </div>
-              </div>
-
-              <ul className="ns9-upg-feat-list">
-                <li className="ns9-upg-feat-item">
-                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
-                  <span>Mở khóa 100% đề thi độc quyền kỳ thi THPTQG, HSA, TSA</span>
-                </li>
-                <li className="ns9-upg-feat-item">
-                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
-                  <span>Gia sư ELEC AI phân tích, giải thích từng bước &amp; chỉ rõ lỗi sai</span>
-                </li>
-                <li className="ns9-upg-feat-item">
-                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
-                  <span>Không giới hạn số lượt thi (99 mạng luyện tập không lo hết lượt)</span>
-                </li>
-                <li className="ns9-upg-feat-item">
-                  <span style={{ color: '#10b981', display: 'flex' }}><SvgCheck size={14} /></span>
-                  <span>Sổ lỗi sai thông minh &amp; Dự đoán phổ điểm nguyện vọng Đại học</span>
-                </li>
-              </ul>
-
-              {/* Form nhập mã kích hoạt voucher nhanh */}
-              <form onSubmit={handleRedeemVoucher} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <input
-                  type="text"
-                  placeholder="Nhập mã ưu đãi hoặc mã kích hoạt..."
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value)}
-                  style={{
-                    flex: 1,
-                    height: 38,
-                    borderRadius: 10,
-                    border: '1px solid rgba(148, 163, 184, 0.3)',
-                    padding: '0 12px',
-                    fontSize: '0.85rem',
-                    background: 'transparent',
-                    color: 'inherit',
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    height: 38,
-                    padding: '0 14px',
-                    borderRadius: 10,
-                    border: 0,
-                    background: '#2563eb',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Kích hoạt
-                </button>
-              </form>
-
-              {voucherMsg && (
-                <div style={{
-                  padding: '6px 12px',
-                  borderRadius: 8,
-                  fontSize: '0.8rem',
-                  background: voucherMsg.ok ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                  color: voucherMsg.ok ? '#10b981' : '#ef4444',
-                }}>
-                  {voucherMsg.text}
-                </div>
-              )}
-
-              <div className="ns9-upg-actions">
-                <button
-                  type="button"
-                  className="ns9-upg-btn-primary"
-                  onClick={() => handleOpenPayment(upgradeModalExam.tier)}
-                >
-                  <SvgCrown size={16} />
-                  <span>Nâng cấp ngay từ {upgradeModalExam.tier === 'VIP' ? '499.000 đ' : '79.000 đ'}</span>
-                </button>
-                <button
-                  type="button"
-                  className="ns9-upg-btn-secondary"
-                  onClick={() => setUpgradeModalExam(null)}
-                >
-                  Để sau
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SubscriptionTiers
+          isModal={true}
+          exam={upgradeModalExam}
+          onClose={() => setUpgradeModalExam(null)}
+          onUpgrade={(pack) => {
+            const custom = {
+              key: pack.tierId || (upgradeModalExam.tier === 'VIP' ? 'hs-12m' : 'hs-1m'),
+              role: pack.role || 'student',
+              label: pack.label || `ELEC AI ${pack.tierName}`,
+              amount: pack.amount || (upgradeModalExam.tier === 'VIP' ? 499000 : 79000),
+            };
+            setPaymentPkg(custom);
+            setUpgradeModalExam(null);
+            setShowPayment(true);
+          }}
+          onRedeemVoucher={async (code) => {
+            const res = await redeemActivationCode(uid, code);
+            if (res.ok) {
+              if (res.isDiscount) {
+                const custom = {
+                  key: upgradeModalExam.tier === 'VIP' ? 'hs-12m' : 'hs-1m',
+                  role: 'student',
+                  label: 'ELEC AI VIP — 12 tháng',
+                  amount: 499000,
+                  initialDiscountCode: code,
+                };
+                setPaymentPkg(custom);
+                setUpgradeModalExam(null);
+                setShowPayment(true);
+                return { ok: true, text: res.message || 'Mã ưu đãi hợp lệ! Đang mở thanh toán...' };
+              }
+              setSubQuota(res.data);
+              setTimeout(() => setUpgradeModalExam(null), 1200);
+              return { ok: true, text: `Kích hoạt thành công gói ${res.data?.planName || 'VIP'}!` };
+            }
+            return { ok: false, text: res.message };
+          }}
+        />
       )}
 
       {/* ── MODAL CHỌN MÃ ĐỀ THI (KHI BỘ ĐỀ CÓ NHIỀU MÃ ĐỀ) ── */}
@@ -2274,7 +2140,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                     gap: 6,
                   }}
                 >
-                  🎲 Chọn ngẫu nhiên mã đề
+                  <SvgShuffle size={14} />
+                  <span>Chọn ngẫu nhiên mã đề</span>
                 </button>
               </div>
 
@@ -2354,12 +2221,25 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                 } catch {}
                 setSubQuota(updated);
                 setShowPayment(false);
-                alert(`Nâng cấp thành công gói ${pkg?.label || 'VIP'}! Toàn bộ đề thi đã được mở khóa.`);
+                if (uid) {
+                  import('../lib/creditService.js').then(({ grantActivationCredits }) => {
+                    grantActivationCredits(uid, 1000, 'VIP_UPGRADE').catch(() => {});
+                  });
+                }
+                alert(`Nâng cấp thành công gói ${pkg?.label || 'VIP'}! Toàn bộ đề thi VIP đã được mở khóa và bạn được tặng +1.000 điểm Credit AI.`);
               }}
               onClose={() => setShowPayment(false)}
             />
           </div>
         </div>
+      )}
+      {/* ── 8. MODAL CHỌN CHẾ ĐỘ LÀM BÀI (THI THẬT vs THI THỬ/ÔN LUYỆN) ── */}
+      {modeModalExam && (
+        <ExamModeModal
+          exam={modeModalExam}
+          onStart={handleConfirmStartExamMode}
+          onClose={() => setModeModalExam(null)}
+        />
       )}
     </div>
   );

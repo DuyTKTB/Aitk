@@ -26,10 +26,15 @@ const ToolsPage = lazy(() => import('./components/ToolsPage.jsx'));
 const WrongNotebook = lazy(() => import('./components/WrongNotebook.jsx'));
 const StatsPage = lazy(() => import('./components/StatsPage.jsx'));
 const RoadmapPage = lazy(() => import('./components/roadmap/RoadmapPage.jsx'));
+const DedicatedLessonView = lazy(() => import('./components/roadmap/DedicatedLessonView.jsx'));
 const LeaderboardPage = lazy(() => import('./components/LeaderboardPage.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Feedback = lazy(() => import('./pages/Feedback.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
+const AdmissionLookup = lazy(() => import('./components/AdmissionLookup.jsx'));
+const CareerPath = lazy(() => import('./components/CareerPath.jsx'));
+const DocStudio = lazy(() => import('./components/DocStudio.jsx'));
+const ChalkboardView = lazy(() => import('./components/ChalkboardView.jsx'));
 
 /* ============ GAMES ============ */
 const GameHub = lazy(() => import('./components/games/GameHub.jsx'));
@@ -61,8 +66,8 @@ const AdminPanel = lazy(() => import('./components/admin/AdminPanel.jsx'));
 
 /* ============ WIDGETS ============ */
 import PetWidget from './components/PetWidget.jsx';
-import ElecBuddies from './components/ElecBuddies.jsx';
 import ChatWidget from './components/ChatWidget.jsx';
+import ElecBuddies from './components/ElecBuddies.jsx';
 import MobileHeader from './components/MobileHeader.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import DesktopNav from './components/DesktopNav.jsx';
@@ -140,33 +145,37 @@ const NAV_MAIN = [
 /* Mega menu — chia nhóm 3 cột */
 const NAV_TOOLS_GROUPS = [
   {
-    group: 'Học tập',
+    group: 'Học tập & Khảo thí',
     tools: [
-      { id: 'roadmap', label: 'Lộ trình kiến thức', desc: 'Biết mình đang ở đâu, học gì tiếp', Icon: IcoBook },
-      { id: 'formulas', label: 'Công thức nhanh', desc: 'Tra cứu công thức theo chủ đề', Icon: IconCalc },
-      { id: 'analyze', label: 'Phân tích hợp chất', desc: 'Nhận diện loại, tính chất, phản ứng', Icon: IconMicroscope },
+      { id: 'roadmap', label: 'Lộ trình KHTN', desc: 'Tiến độ & mục tiêu 3 môn', Icon: IcoBook },
+      { id: 'formulas', label: 'Công thức KHTN', desc: 'Tra cứu công thức Lý — Hóa — Sinh', Icon: IconCalc },
+      { id: 'analyze', label: 'Phân tích & Hợp chất', desc: 'Nhận diện chất, phản ứng & hiện tượng', Icon: IconMicroscope },
       { id: 'balance', label: 'Cân bằng PTHH', desc: 'Cân bằng bằng đại số tuyến tính', Icon: IconScale },
-      { id: 'quiz', label: 'Ôn tập', desc: 'Quiz thông minh + SRS', Icon: IconQuiz },
-      { id: 'notebook', label: 'Sổ tay lỗi', desc: 'Câu sai tự động ghi vào', Icon: IconNotebook },
+      { id: 'quiz', label: 'Ôn tập Quiz', desc: 'Quiz thông minh + SRS đa môn', Icon: IconQuiz },
+      { id: 'notebook', label: 'Sổ tay lỗi sai', desc: 'Câu sai tự động phân loại theo môn', Icon: IconNotebook },
+      { id: 'doc-studio', label: 'AI Doc Studio', desc: 'Học & tạo quiz từ tài liệu', Icon: IconNote },
+      { id: 'chalkboard', label: 'Bảng phấn 3D', desc: 'Hình không gian & kiểm định cơ học', Icon: IconScale },
       { id: 'notes', label: 'Ghi chú', desc: 'Note dán trên canvas', Icon: IconNote },
     ],
   },
   {
-    group: 'Tiện ích',
+    group: 'Tiện ích & Hướng nghiệp',
     tools: [
+      { id: 'admission', label: 'Tra cứu điểm chuẩn', desc: 'Đo độ vừa sức khối A00, B00, A01, D07', Icon: IconTarget },
+      { id: 'career', label: 'Hướng nghiệp AI', desc: 'Test RIASEC & định hướng ngành', Icon: IcoBook },
       { id: 'schedule', label: 'Thời khóa biểu', desc: 'Tự lập lịch học, nhắc đúng giờ', Icon: IconCalendar },
       { id: 'pomodoro', label: 'Clock Hub', desc: 'Pomodoro, hẹn giờ, báo thức', Icon: IconTimer },
-      { id: 'exam', label: 'Kỳ thi', desc: 'Đếm ngược kỳ thi', Icon: IconCalendar },
-      { id: 'grade', label: 'Tính điểm', desc: 'Tính GPA, xét tuyển', Icon: IconTarget },
+      { id: 'exam', label: 'Kỳ thi', desc: 'Đếm ngược kỳ thi THPTQG & ĐGNL', Icon: IconCalendar },
+      { id: 'grade', label: 'Tính điểm xét tuyển', desc: 'Tính GPA, điểm xét tuyển ĐH', Icon: IconTarget },
       { id: 'leaderboard', label: 'Bảng xếp hạng', desc: 'Vinh danh chuỗi lớp & học sinh', Icon: IconChart },
-      { id: 'stats', label: 'Thống kê', desc: 'Tiến độ học tập', Icon: IconChart },
+      { id: 'stats', label: 'Thống kê', desc: 'Tiến độ học tập & Elo 3 môn', Icon: IconChart },
     ],
   },
   {
-    group: 'Giải trí',
+    group: 'Giải trí & Trực quan',
     tools: [
-      { id: 'games', label: 'Trò chơi', desc: '7 game học Hóa', Icon: IconGamepad },
-      { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác', Icon: IconHome },
+      { id: 'games', label: 'Trò chơi Khoa học', desc: 'Game tương tác KHTN & lab ảo', Icon: IconGamepad },
+      { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác chuẩn IUPAC', Icon: IconHome },
     ],
   },
 ];
@@ -185,6 +194,11 @@ const PAGES = [
   ['my-classes', 'Lớp học của tôi', IconClass],
   ['leaderboard', 'Bảng xếp hạng', IconTarget],
   ['virtual-exams', 'Phòng thi ảo', IconTarget],
+  ['admission', 'Tra cứu điểm chuẩn & Năng lực', IconTarget],
+  ['career', 'Định hướng nghề nghiệp AI', IconTarget],
+  ['doc-studio', 'AI Studio Tài liệu', IconNotebook],
+  ['study', 'Phòng học lý thuyết & Công thức', IconNotebook],
+  ['chalkboard', 'Bảng phấn tương tác & Kiểm định', IconScale],
   ['truong', 'Đề án tuyển sinh', IconTarget],
 ];
 
@@ -207,53 +221,67 @@ const CLEAN_PATH_MAP = {
   'chinh-sua-ho-so': 'profile',
   'mua-credit': 'profile',
   'goi-cua-toi': 'profile',
+  'tra-cuu-diem-chuan': 'admission',
+  'dinh-huong-nghe-nghiep': 'career',
+  'ai-doc-studio': 'doc-studio',
+  'bang-phan-tuong-tac': 'chalkboard',
+  'tro-choi-khoa-hoc': 'games',
+  'bang-xep-hang': 'leaderboard',
 };
 
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
+
+  // 1. Khi có hash, hash LUÔN có quyền ưu tiên cao nhất để không bị kẹt khi click menu từ trang SEO clean path
+  const raw = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0].replace(/^\/+/, '');
+  const h = raw;
+  if (h) {
+    if (h === 'login' || h === 'register') return h;
+    if (GAME_ROUTES.includes(h)) return h;
+    if (h.startsWith('exam/')) return h;
+    if (h === 'truong' || h.startsWith('truong/')) return h;
+    if (h === 'admin' || h.startsWith('admin/')) return 'admin';
+    if (h === 'main' || h === 'home') return 'home';
+    if (PAGES.some((p) => p[0] === h)) return h;
+  }
+
+  // 2. Khi hash rỗng hoặc chưa chọn, kiểm tra pathname SEO sạch
   const path = (window.location.pathname || '').replace(/^\/+/, '').split('/')[0];
   if (CLEAN_PATH_MAP[path]) return CLEAN_PATH_MAP[path];
 
-  const raw = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0].replace(/^\/+/, '');
-  const h = raw;
-  if (h === 'login' || h === 'register') return h;
-  if (GAME_ROUTES.includes(h)) return h;
-  if (h.startsWith('exam/')) return h;
-  if (h === 'truong' || h.startsWith('truong/')) return h;
-  if (h === 'admin' || h.startsWith('admin/')) return 'admin';
-  if (h === '' || h === 'main') return 'home';
-  return PAGES.some((p) => p[0] === h) ? h : '404';
+  if (!h || h === '' || h === 'home') return 'home';
+  return '404';
 };
 
 const pageTitle = (page) => {
   if (ROUTE_SEO[page]?.title) return ROUTE_SEO[page].title;
-  if (page === '404') return 'Không tìm thấy trang · ELEC AI';
+  if (page === '404') return 'Không tìm thấy trang · ELEC Science AI';
   const hit = PAGES.find((p) => p[0] === page);
-  if (hit) return hit[1] + ' · ELEC AI';
-  if (page.startsWith('games/')) return 'Trò chơi Hóa học · ELEC AI';
-  if (page.startsWith('exam/')) return 'Làm bài thi thử · ELEC AI';
-  return 'ELEC AI (ELECAI) — Nền Tảng Học & Luyện Thi Hóa THPT Quốc Gia Chuẩn 2026';
+  if (hit) return hit[1] + ' · ELEC Science AI';
+  if (page.startsWith('games/')) return 'Trò chơi Khoa học · ELEC Science AI';
+  if (page.startsWith('exam/')) return 'Làm bài thi thử · ELEC Science AI';
+  return 'ELEC Science AI (ELECAI) — Nền Tảng Học & Luyện Thi Khoa Học Tự Nhiên Chuẩn 2026';
 };
 
 const pageMeta = (page) => {
   const metas = {
-    home: 'Học Hóa học thông minh với AI, bảng tuần hoàn tương tác, quiz và trò chơi giáo dục.',
-    ai: 'Trợ lý AI Hóa học — giải bài tập, phân tích ảnh đề, sinh câu hỏi ôn tập.',
+    home: 'Học tập Khoa học Tự nhiên thông minh với AI: Vật lí, Hóa học, Sinh học, phòng thi ảo, quiz và trò chơi giáo dục.',
+    ai: 'Trợ lý AI Khoa học Tự nhiên — giải bài tập Vật lí, Hóa học, Sinh học, phân tích ảnh đề, sinh câu hỏi ôn tập.',
     table: 'Bảng tuần hoàn 118 nguyên tố — lọc, tìm kiếm, xem chi tiết.',
-    tools: 'Bộ công cụ học Hóa: cân bằng PTHH, tính mol, phân tích hợp chất.',
-    formulas: 'Tra cứu công thức Hóa học nhanh chóng theo chủ đề.',
+    tools: 'Bộ công cụ Khoa học Tự nhiên: cân bằng PTHH, máy tính dao động/RLC, máy tính di truyền ADN, phân tích hợp chất.',
+    formulas: 'Tra cứu công thức Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học) nhanh chóng theo chuyên đề.',
     balance: 'Cân bằng phương trình hóa học chính xác bằng đại số tuyến tính.',
     analyze: 'Phân tích hợp chất — nhận diện loại, tính chất, phản ứng đặc trưng.',
     pomodoro: 'Clock Hub — Đồng hồ tổng hợp: Pomodoro, hẹn giờ, báo thức, bấm giây, đồng hồ thế giới.',
     schedule: 'Thời khóa biểu — tự lập lịch học, nhắc đúng giờ và theo dõi tiến độ mỗi ngày.',
-    quiz: 'Ôn tập Hóa học với quiz thông minh, lặp lại ngắt quãng.',
-    roadmap: 'Lộ trình kiến thức — tiến độ thật theo chương, mức thành thạo, bản đồ kiến thức và gợi ý học tiếp.',
-    games: 'Học Hóa qua trò chơi: bắt gà, bắn súng, phòng lab ảo, đấu nguyên tố.',
-    profile: 'Trang cá nhân — quản lý tài khoản, thống kê học tập.',
-    classroom: 'Quản lý lớp học — tạo lớp, giao đề, quản lý học sinh.',
-    'my-classes': 'Tham gia lớp học — dán key lớp hoặc link đề cô giáo gửi.',
+    quiz: 'Ôn tập KHTN với quiz thông minh đa môn, lặp lại ngắt quãng SRS.',
+    roadmap: 'Lộ trình kiến thức KHTN — tiến độ theo chuyên đề, mức thành thạo, bản đồ kiến thức và gợi ý học tiếp.',
+    games: 'Học Khoa học qua trò chơi tương tác: kéo co, vòng quay, đua xe, phòng lab ảo.',
+    profile: 'Trang cá nhân — quản lý tài khoản, thống kê học tập KHTN.',
+    classroom: 'Quản lý lớp học — tạo lớp, giao đề, quản lý học sinh theo bộ môn.',
+    'my-classes': 'Tham gia lớp học — dán key lớp hoặc link đề thầy cô gửi.',
     leaderboard: 'Bảng xếp hạng chuỗi và thành tích học tập — vinh danh các lớp và học sinh bền bỉ nhất.',
-    'virtual-exams': 'Phòng thi ảo ELEC AI — Luyện đề Hóa học bấm giờ thật, cấu hình kỳ thi chuẩn, phân khu VIP, PRO, FREE.',
+    'virtual-exams': 'Phòng thi ảo ELEC AI — Luyện đề thi thử KHTN (Lý - Hóa - Sinh) bấm giờ thật, cấu hình kỳ thi chuẩn, phân khu VIP, PRO, FREE.',
     admin: 'Trang quản trị hệ thống — quản lý đề thi, người dùng, key PRO.',
   };
   return metas[page] || metas.home;
@@ -502,7 +530,11 @@ export default function App() {
     return null;
   }
 
-  const PUBLIC_SEO_PAGES = ['ai', 'table', 'balance', 'formulas', 'roadmap', 'grade', 'virtual-exams', 'tools'];
+  const PUBLIC_SEO_PAGES = [
+    'ai', 'table', 'balance', 'formulas', 'roadmap', 'study', 'grade',
+    'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
+    'games', 'leaderboard', 'pomodoro', 'schedule',
+  ];
 
   if (!isLoggedIn) {
     if (PUBLIC_SEO_PAGES.includes(page)) {
@@ -575,7 +607,7 @@ export default function App() {
         <Landing
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          authOpen={page === 'login' || page === 'register'}
+          authOpen={page === 'login' || page === 'register' || page === 'profile' || page.startsWith('exam/')}
           authMode={page === 'register' ? 'register' : 'login'}
         />
       </Suspense>
@@ -628,7 +660,24 @@ export default function App() {
     if (page === 'grade') return <GradeCalculator />;
     if (page === 'quiz' || page === 'virtual-exams') return <Quiz />;
     if (page === 'roadmap') return <RoadmapPage />;
+    if (page === 'study') {
+      const p = new URLSearchParams((window.location.hash.split('?')[1] || ''));
+      const lesson = p.get('lesson') || 'ly-chuyen-dong-nem';
+      const subject = p.get('subject') || 'ly';
+      return (
+        <DedicatedLessonView
+          initialLessonId={lesson}
+          initialSubject={subject}
+          onBack={() => { window.location.hash = '#roadmap'; }}
+          uid={user?.uid}
+        />
+      );
+    }
     if (page === 'leaderboard') return <LeaderboardPage />;
+    if (page === 'admission') return <AdmissionLookup />;
+    if (page === 'career') return <CareerPath />;
+    if (page === 'doc-studio') return <DocStudio />;
+    if (page === 'chalkboard') return <ChalkboardView />;
 
     if (page === 'truong' || page.startsWith('truong/')) {
       const schoolId = page.startsWith('truong/') ? page.replace('truong/', '') : 'NEU';
@@ -716,8 +765,8 @@ export default function App() {
       )}
       {!isVirtualExamRoom && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
 
-      {!isFullPage && page !== 'profile' && <PetWidget />}
-      {!isFullPage && <ChatWidget />}
+      {!isFullPage && <PetWidget />}
+      {!isVirtualExamRoom && <ChatWidget />}
       <OutOfCreditsModal />
       <FeedbackModal />
       <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />

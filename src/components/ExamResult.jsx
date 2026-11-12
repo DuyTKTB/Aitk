@@ -7,8 +7,10 @@
 import { useMemo, useState } from 'react';
 import MathText from './MathText.jsx';
 import ExamAiDiagnostic from './ExamAiDiagnostic.jsx';
+import ScoreDistributionChart from './exam/ScoreDistributionChart.jsx';
 import '../styles/classroom.css';
 import '../styles/exam-result-v2.css';
+import '../styles/exam-mode-upgrade.css';
 
 const IcoCheck = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
@@ -144,6 +146,14 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
             </ul>
           )}
         </div>
+
+        {/* Biểu đồ Phổ điểm chuẩn hình chuông (Gaussian Bell Curve) so sánh cả nước */}
+        {!queued && !noScore && (
+          <ScoreDistributionChart
+            userScore={result.score}
+            totalPoints={exam.totalPoints || result.totalPoints || 10}
+          />
+        )}
 
         {/* AI Chẩn đoán điểm yếu & Đơn thuốc học tập */}
         <ExamAiDiagnostic exam={exam} result={result} />

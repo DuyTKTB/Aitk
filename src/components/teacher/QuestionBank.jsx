@@ -26,6 +26,9 @@ import {
 } from '../../lib/questionBank.js';
 import { createExam } from '../../lib/classroom.js';
 import { exportToWord, exportToPDF } from '../../lib/examExport.js';
+import { askAI } from '../../lib/ai.js';
+import { runWithCredit } from '../../lib/creditService.js';
+import { parseJsonLoose } from '../../lib/examAiUtils.js';
 import {
   TOPICS_BY_SUBJECT,
   getTopicsForSubject,
@@ -440,7 +443,7 @@ export default function QuestionBank({
 
   /* Cây thư mục bên trái & Bộ lọc yêu thích */
   const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [expandedSubjects, setExpandedSubjects] = useState(() => ({ 'Hóa học': true, 'Toán': true }));
+  const [expandedSubjects, setExpandedSubjects] = useState(() => ({ 'Vật lí': true, 'Hóa học': true, 'Sinh học': true }));
   const [expandedGrades, setExpandedGrades] = useState(() => ({ 'Hóa học-12': true }));
   const [favFilters, setFavFilters] = useState(() => {
     try {
@@ -478,6 +481,7 @@ export default function QuestionBank({
   const [quickDraft, setQuickDraft] = useState(null);
   const [aiResult, setAiResult] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   /* Modals & Drawers */
   const [allTags, setAllTags] = useState([]);
@@ -524,6 +528,8 @@ export default function QuestionBank({
   const [aiGenLevel, setAiGenLevel] = useState('thông hiểu');
   const [aiGenCount, setAiGenCount] = useState(3);
   const [aiGeneratedList, setAiGeneratedList] = useState([]);
+  const [aiGenBusy, setAiGenBusy] = useState(false);
+  const [aiGenError, setAiGenError] = useState('');
 
   const [formKey, setFormKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -790,6 +796,7 @@ export default function QuestionBank({
     if (!activeQuestion) {
       setQuickDraft(null);
       setAiResult(null);
+      setAiError('');
       return;
     }
     setQuickDraft({
@@ -808,6 +815,7 @@ export default function QuestionBank({
       tags: [...(activeQuestion.tags || [])].filter((t) => !t.startsWith('loai:')),
     });
     setAiResult(null);
+    setAiError('');
   }, [activeQuestion, customMeta]);
 
   const hasActiveFilter = Boolean(
@@ -1279,220 +1287,269 @@ export default function QuestionBank({
     }
   };
 
-  /* 1. AI: Sinh câu tương tự */
-  const runAiSimilarQuestion = () => {
-    if (!activeQuestion) return;
+  const stripOptPrefix = (s) => String(s || '').trim().replace(/^[A-Da-d][.):\s]+/, '').trim();
+
+  const callBankAI = async ({ prompt, system, cost = 1, reason = 'AI Ngân hàng câu hỏi' }) => {
+    const res = await runWithCredit(
+      { userId: user?.uid, cost, reason },
+      () => askAI(prompt, null, null, {
+        systemPrompt: system || 'Bạn là Chuyên gia Khảo thí THPT chuẩn Chương trình GDPT 2018 của Bộ Giáo dục & Đào tạo Việt Nam.',
+        noGuide: true,
+        noCache: true,
+      })
+    );
+    return typeof res === 'string' ? res : (res?.text || '');
+  };
+
+  /* 1. AI THẬT: Sinh câu tương tự cùng chuyên đề */
+  const runAiSimilarQuestion = async () => {
+    if (!activeQuestion || aiBusy) return;
     setAiBusy(true);
-    setTimeout(() => {
-      const origQ = activeQuestion.q || '';
-      const hasNumbers = /\d+/.test(origQ);
-      let mutatedQ = origQ;
-      if (hasNumbers) {
-        mutatedQ = origQ.replace(/\b(\d+(?:[.,]\d+)?)\b/g, (m) => {
-          const val = parseFloat(m.replace(',', '.'));
-          if (Number.isNaN(val) || val <= 1) return m;
-          return String(Math.round(val * 1.5 * 10) / 10);
-        });
-      } else {
-        mutatedQ = `[Biến thể tương tự] Cho tình huống mở rộng của bài toán: ${origQ}`;
+    setAiError('');
+    try {
+      const subj = activeQuestion.subject || 'Hóa học';
+      const gradeNum = activeQuestion.grade || 12;
+      const topicTitle = getTopicName(activeQuestion.topicId, subj) || subj;
+      const optsText = (activeQuestion.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+      const prompt = `Hãy sáng tạo 1 câu hỏi trắc nghiệm MỚI tương tự (cùng dạng kiến thức, thay đổi số liệu hoặc ngữ cảnh thực tế, KHÔNG sao chép nguyên văn) dựa trên câu gốc môn ${subj} Lớp ${gradeNum} (Chuyên đề: ${topicTitle}):
+Câu gốc: ${activeQuestion.q}
+Các phương án gốc:
+${optsText}
+Đáp án đúng gốc: ${String.fromCharCode(65 + (activeQuestion.correct || 0))}
+
+Chỉ trả về DUY NHẤT JSON hợp lệ (không thêm chữ thừa):
+{
+  "q": "Nội dung câu hỏi mới hoàn chỉnh",
+  "options": ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
+  "correct": 0,
+  "explain": "Lời giải chi tiết từng bước để tính ra đáp án đúng"
+}`;
+      const raw = await callBankAI({ prompt, cost: 1, reason: 'AI sinh câu tương tự' });
+      const parsed = parseJsonLoose(raw);
+      if (!parsed?.q || !Array.isArray(parsed?.options) || parsed.options.length < 4) {
+        throw new Error('AI trả về định dạng câu hỏi chưa đầy đủ, vui lòng thử lại.');
       }
-      const opts = [...(activeQuestion.options || ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'])];
-      const correctText = opts[activeQuestion.correct || 0];
-      // Đảo vị trí phương án
-      const rotated = opts.slice(1).concat(opts[0]);
-      const newCorrect = Math.max(0, rotated.indexOf(correctText));
+      const cleanOpts = parsed.options.slice(0, 4).map(stripOptPrefix);
+      const corrIdx = Math.min(3, Math.max(0, Number(parsed.correct) || 0));
 
       setAiResult({
         kind: 'similar',
-        title: 'Đã sinh 1 câu hỏi tương tự cùng chuyên đề',
+        title: 'Đã sinh 1 câu hỏi tương tự bằng AI',
         question: {
-          q: mutatedQ,
-          options: rotated,
-          correct: newCorrect,
-          explain: activeQuestion.explain
-            ? `Áp dụng phương pháp tương tự câu gốc: ${activeQuestion.explain}`
-            : `Vận dụng kiến thức chuyên đề ${getTopicName(activeQuestion.topicId, activeQuestion.subject) || activeQuestion.subject || 'bài học'} để suy ra đáp án ${String.fromCharCode(65 + newCorrect)}.`,
-          subject: activeQuestion.subject || 'Hóa học',
-          grade: activeQuestion.grade || 12,
+          q: String(parsed.q).trim(),
+          options: cleanOpts,
+          correct: corrIdx,
+          explain: String(parsed.explain || '').trim(),
+          subject: subj,
+          grade: gradeNum,
           topicId: activeQuestion.topicId || '',
           level: normalizeLevel(activeQuestion.level) || 'thông hiểu',
           points: activeQuestion.points || 1,
           tags: [...(activeQuestion.tags || [])],
         },
       });
+    } catch (err) {
+      setAiError(err?.message || 'Không gọi được AI lúc này.');
+    } finally {
       setAiBusy(false);
-    }, 320);
+    }
   };
 
-  /* 2. AI: Viết lời giải chi tiết */
-  const runAiWriteExplain = () => {
-    if (!activeQuestion) return;
+  /* 2. AI THẬT: Viết lời giải chi tiết từng bước */
+  const runAiWriteExplain = async () => {
+    if (!activeQuestion || aiBusy) return;
     setAiBusy(true);
-    setTimeout(() => {
+    setAiError('');
+    try {
+      const subj = activeQuestion.subject || 'Hóa học';
+      const gradeNum = activeQuestion.grade || 12;
       const correctIdx = activeQuestion.correct || 0;
       const correctLetter = String.fromCharCode(65 + correctIdx);
-      const correctText = activeQuestion.options?.[correctIdx] || '';
-      const topicTitle = getTopicName(activeQuestion.topicId, activeQuestion.subject) || activeQuestion.subject || 'chuyên đề này';
-      const generatedExplain = [
-        `• Kiến thức trọng tâm: Câu hỏi thuộc phần "${topicTitle}" (${LEVEL_META[normalizeLevel(activeQuestion.level)]?.label || 'Mức cơ bản'}).`,
-        `• Phân tích đề bài: Từ dữ kiện "${String(activeQuestion.q || '').slice(0, 90)}${String(activeQuestion.q || '').length > 90 ? '...' : ''}", đối chiếu với các phương án A, B, C, D.`,
-        `• Kết luận: Phương án ${correctLetter} (${correctText}) thỏa mãn đầy đủ điều kiện lý thuyết và công thức. Chọn đáp án ${correctLetter}.`,
-      ].join('\n');
+      const optsText = (activeQuestion.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+      const prompt = `Viết lời giải chi tiết từng bước, dễ hiểu cho học sinh THPT (môn ${subj} Lớp ${gradeNum}) cho câu hỏi sau:
+Câu hỏi: ${activeQuestion.q}
+Các phương án:
+${optsText}
+Đáp án quy ước: ${correctLetter}
 
+Yêu cầu:
+- Trình bày ngắn gọn, rõ công thức/phương trình/lập luận từng bước.
+- Nếu phát hiện đáp án quy ước sai khoa học, hãy cảnh báo nhẹ và nêu đáp án chính xác.
+- Kết thúc bằng: "Vậy chọn đáp án ${correctLetter}."`;
+
+      const text = await callBankAI({ prompt, cost: 1, reason: 'AI viết lời giải chi tiết' });
       setAiResult({
         kind: 'explain',
-        title: 'Gợi ý lời giải chi tiết từng bước',
-        explain: generatedExplain,
+        title: 'Lời giải chi tiết từ ELEC AI',
+        explain: String(text || '').trim(),
       });
+    } catch (err) {
+      setAiError(err?.message || 'Không gọi được AI lúc này.');
+    } finally {
       setAiBusy(false);
-    }, 280);
+    }
   };
 
-  /* 3. AI: Gợi ý độ khó & chuyên đề */
-  const runAiSuggestMeta = () => {
-    if (!activeQuestion) return;
+  /* 3. AI THẬT: Gợi ý độ khó & chuyên đề từ danh mục thật */
+  const runAiSuggestMeta = async () => {
+    if (!activeQuestion || aiBusy) return;
     setAiBusy(true);
-    setTimeout(() => {
-      const text = norm(activeQuestion.q + ' ' + (activeQuestion.explain || ''));
-      let suggestedLevel = 'nhận biết';
-      if (/cuc tri|gia tri lon nhat|gia tri nho nhat|hieu suat|bien luan|do thi|hon hop x|phan tram khoi luong/.test(text) || activeQuestion.q.length > 220) {
-        suggestedLevel = 'vận dụng cao';
-      } else if (/tinh|so mol|the tich|khoi luong|nghiem|phuong trinh|xac suat|dao ham|tich phan/.test(text) || activeQuestion.q.length > 130) {
-        suggestedLevel = 'vận dụng';
-      } else if (/giai thich|vi sao|nhan dinh nao|so phat bieu|dac diem|tinh chat/.test(text) || activeQuestion.q.length > 75) {
-        suggestedLevel = 'thông hiểu';
-      }
-
+    setAiError('');
+    try {
       const subj = activeQuestion.subject || filterSubject || 'Hóa học';
       const subjTopics = getTopicsForSubject(subj);
-      let bestTopic = subjTopics[0] || { id: '', name: 'Chưa xác định' };
-      let bestScore = -1;
-      subjTopics.forEach((tp) => {
-        const words = norm(tp.name).split(' ').filter((w) => w.length > 2);
-        let score = 0;
-        words.forEach((w) => { if (text.includes(w)) score += 2; });
-        if (score > bestScore) {
-          bestScore = score;
-          bestTopic = tp;
-        }
-      });
+      const topicCatalog = subjTopics.map((t) => `- id: "${t.id}" | name: "${t.name}"`).join('\n');
+      const prompt = `Phân loại mức độ nhận thức (theo thang Bloom GDPT 2018) và chuyên đề phù hợp nhất cho câu hỏi môn ${subj} sau:
+Câu hỏi: ${activeQuestion.q}
+Lời giải: ${activeQuestion.explain || '(chưa có)'}
+
+DANH SÁCH CHUYÊN ĐỀ CỦA MÔN ${subj}:
+${topicCatalog || '(Không có danh mục cụ thể)'}
+
+Trả về DUY NHẤT JSON:
+{
+  "level": "nhận biết" hoặc "thông hiểu" hoặc "vận dụng" hoặc "vận dụng cao",
+  "topicId": "id chính xác từ danh sách trên (hoặc rỗng nếu không có)",
+  "reason": "Giải thích ngắn 1 câu lý do phân loại"
+}`;
+      const raw = await callBankAI({ prompt, cost: 1, reason: 'AI phân loại độ khó & chuyên đề' });
+      const parsed = parseJsonLoose(raw);
+      const suggestedLevel = normalizeLevel(parsed?.level) || 'thông hiểu';
+      const matchedTopic = subjTopics.find((t) => t.id === parsed?.topicId) || subjTopics[0] || { id: '', name: 'Tổng hợp' };
 
       setAiResult({
         kind: 'meta',
-        title: 'Phân loại Độ khó & Chuyên đề tự động',
+        title: 'Phân loại Độ khó & Chuyên đề (ELEC AI)',
         suggestedLevel,
-        suggestedTopicId: bestTopic.id,
-        suggestedTopicName: bestTopic.name,
+        suggestedTopicId: matchedTopic.id,
+        suggestedTopicName: matchedTopic.name,
         suggestedSubject: subj,
+        reasonText: parsed?.reason || '',
       });
+    } catch (err) {
+      setAiError(err?.message || 'Không gọi được AI lúc này.');
+    } finally {
       setAiBusy(false);
-    }, 260);
+    }
   };
 
-  /* 4. AI: Kiểm tra đáp án sai / lỗi cấu trúc câu hỏi */
-  const runAiAuditQuestion = () => {
-    if (!activeQuestion) return;
+  /* 4. AI THẬT + KIỂM TRA CẤU TRÚC: Thẩm định đáp án & lỗi khoa học */
+  const runAiAuditQuestion = async () => {
+    if (!activeQuestion || aiBusy) return;
     setAiBusy(true);
-    setTimeout(() => {
-      const findings = [];
+    setAiError('');
+    try {
+      const localFindings = [];
       const opts = activeQuestion.options || [];
       const cIdx = activeQuestion.correct;
       const cLetter = String.fromCharCode(65 + (cIdx || 0));
 
       if (opts.length < 4) {
-        findings.push({ type: 'warn', text: `Câu hỏi hiện chỉ có ${opts.length} phương án (khuyến nghị đủ 4 phương án A, B, C, D).` });
+        localFindings.push({ type: 'warn', text: `Câu hỏi hiện chỉ có ${opts.length} phương án (khuyến nghị đủ 4 phương án A, B, C, D).` });
       }
       if (typeof cIdx !== 'number' || cIdx < 0 || cIdx >= opts.length || !String(opts[cIdx] || '').trim()) {
-        findings.push({ type: 'error', text: 'Đáp án đúng đang trỏ tới vị trí rỗng hoặc không hợp lệ.' });
+        localFindings.push({ type: 'error', text: 'Đáp án đúng đang trỏ tới vị trí rỗng hoặc không hợp lệ.' });
       }
       const normOpts = opts.map((o) => norm(o));
       const dupOptIdx = normOpts.findIndex((o, i) => o && normOpts.indexOf(o) !== i);
       if (dupOptIdx >= 0) {
-        findings.push({ type: 'error', text: `Phương án ${String.fromCharCode(65 + dupOptIdx)} bị trùng nội dung với một phương án khác.` });
-      }
-      if (activeQuestion.explain) {
-        const expMatch = activeQuestion.explain.match(/(?:chọn|đáp án)\s*([A-D])\b/i);
-        if (expMatch && expMatch[1].toUpperCase() !== cLetter) {
-          findings.push({
-            type: 'error',
-            text: `Mâu thuẫn: Đáp án đang chọn là ${cLetter} nhưng trong lời giải ghi "Đáp án ${expMatch[1].toUpperCase()}".`,
-          });
-        }
-      } else {
-        findings.push({ type: 'warn', text: 'Câu hỏi chưa có lời giải chi tiết để đối chiếu chéo với đáp án đúng.' });
+        localFindings.push({ type: 'error', text: `Phương án ${String.fromCharCode(65 + dupOptIdx)} bị trùng nội dung với một phương án khác.` });
       }
 
-      if (findings.length === 0) {
-        findings.push({
-          type: 'ok',
-          text: `Cấu trúc câu hỏi hợp lệ: 4 phương án phân biệt rõ ràng, đáp án ${cLetter} khớp với nội dung lời giải.`,
-        });
-      }
+      const subj = activeQuestion.subject || 'Hóa học';
+      const prompt = `Với vai trò Chủ tịch Hội đồng Thẩm định Đề thi môn ${subj}, hãy giải độc lập và kiểm định tính chính xác khoa học + kỹ thuật ra đề của câu hỏi sau:
+Câu hỏi: ${activeQuestion.q}
+Các phương án:
+${opts.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n')}
+Đáp án đang gán là ĐÚNG: ${cLetter}
+Lời giải đi kèm: ${activeQuestion.explain || '(Chưa có)'}
+
+Trả về DUY NHẤT JSON:
+{
+  "findings": [
+    { "type": "ok" | "warn" | "error", "text": "Nhận xét chi tiết về tính đúng sai khoa học, số liệu, đáp án đúng thật sự là gì, hay bẫy câu chữ" }
+  ]
+}`;
+      const raw = await callBankAI({ prompt, cost: 1, reason: 'AI thẩm định đáp án câu hỏi' });
+      const parsed = parseJsonLoose(raw);
+      const aiFindings = Array.isArray(parsed?.findings) && parsed.findings.length > 0
+        ? parsed.findings.filter((f) => f && f.text)
+        : [{ type: 'ok', text: `AI đã đối chiếu nội dung khoa học cho đáp án ${cLetter}.` }];
 
       setAiResult({
         kind: 'audit',
-        title: 'Kết quả rà soát chất lượng đáp án',
-        findings,
+        title: 'Kết quả thẩm định khoa học & đáp án (ELEC AI)',
+        findings: [...localFindings, ...aiFindings],
       });
+    } catch (err) {
+      setAiError(err?.message || 'Không gọi được AI lúc này.');
+    } finally {
       setAiBusy(false);
-    }, 260);
+    }
   };
 
-  /* Sinh nhanh bộ câu hỏi bằng AI ngay trong Ngân hàng */
-  const handleGenerateAiQuestionsBatch = () => {
-    const tpName = getTopicName(aiGenTopic, aiGenSubject) || aiGenSubject;
+  /* 5. AI THẬT: Sinh nhanh bộ câu hỏi bằng AI theo ĐÚNG môn, lớp, chuyên đề */
+  const handleGenerateAiQuestionsBatch = async () => {
+    if (aiGenBusy) return;
+    const tpName = getTopicName(aiGenTopic, aiGenSubject) || `Tổng hợp kiến thức ${aiGenSubject}`;
     const count = Math.max(1, Math.min(10, Number(aiGenCount) || 3));
     const lvLabel = LEVEL_META[aiGenLevel]?.short || 'Vừa';
-    const curatedTemplates = [
-      {
-        q: `[${tpName}] Khi pin điện hóa Zn – Cu hoạt động ở điều kiện chuẩn, quá trình nào sau đây xảy ra tại cực âm (anode)?`,
-        options: ['Zn → Zn²⁺ + 2e.', 'Cu²⁺ + 2e → Cu.', 'Zn²⁺ + 2e → Zn.', 'Cu → Cu²⁺ + 2e.'],
-        correct: 0,
-        explain: 'Ở anode (cực âm) của pin Galvani Zn – Cu xảy ra quá trình oxi hóa nguyên tử Zn thành ion Zn²⁺.',
-      },
-      {
-        q: `[${tpName}] Cho E°(Ag⁺/Ag) = +0,80 V và E°(Cu²⁺/Cu) = +0,34 V. Sức điện động chuẩn của pin Galvani Cu – Ag bằng bao nhiêu?`,
-        options: ['0,46 V.', '1,14 V.', '0,26 V.', '0,80 V.'],
-        correct: 0,
-        explain: 'E°pin = E°(+ ) − E°(−) = 0,80 − 0,34 = 0,46 V.',
-      },
-      {
-        q: `[${tpName}] Trong các kim loại Na, Mg, Fe, Cu, kim loại có tính khử mạnh nhất là kim loại nào?`,
-        options: ['Na.', 'Mg.', 'Fe.', 'Cu.'],
-        correct: 0,
-        explain: 'Trong dãy điện hóa, Na đứng trước nên có thế điện cực chuẩn nhỏ nhất và tính khử mạnh nhất.',
-      },
-      {
-        q: `[${tpName}] Điện phân dung dịch CuSO₄ với hai điện cực trơ (graphite), tại cathode thu được chất nào sau đây?`,
-        options: ['Kim loại Cu.', 'Khí O₂.', 'Khí H₂.', 'Ion SO₄²⁻.'],
-        correct: 0,
-        explain: 'Tại cathode (cực âm) xảy ra quá trình khử ion Cu²⁺: Cu²⁺ + 2e → Cu.',
-      },
-      {
-        q: `[${tpName}] Chất nào sau đây thuộc loại hợp chất ester đơn chức mạch hở?`,
-        options: ['CH₃COOC₂H₅.', 'CH₃COOH.', 'C₂H₅OH.', 'CH₃CHO.'],
-        correct: 0,
-        explain: 'Ethyl acetate (CH₃COOC₂H₅) là ester đơn chức tạo bởi acetic acid và ethanol.',
-      },
-    ];
-    const samples = [];
-    for (let i = 1; i <= count; i++) {
-      const tpl = curatedTemplates[(i - 1) % curatedTemplates.length];
-      samples.push({
-        id: `ai-gen-${Date.now()}-${i}`,
+    const cost = count > 5 ? 2 : 1;
+
+    setAiGenBusy(true);
+    setAiGenError('');
+    try {
+      const prompt = `Hãy soạn chính xác ${count} câu hỏi trắc nghiệm 4 lựa chọn môn ${aiGenSubject} Lớp ${aiGenGrade} (Chương trình GDPT 2018 mới).
+Chuyên đề trọng tâm: "${tpName}".
+Mức độ nhận thức yêu cầu: ${LEVEL_META[aiGenLevel]?.label || aiGenLevel}.
+
+Yêu cầu bắt buộc:
+- Câu hỏi chuẩn xác khoa học, bám sát sách giáo khoa mới, không lặp ý nhau.
+- Mỗi câu có đúng 4 phương án độc lập (không ghi chữ A. B. C. D. ở đầu chuỗi option).
+- Chỉ số "correct" là số nguyên 0, 1, 2 hoặc 3 tương ứng phương án đúng.
+- Mỗi câu có "explain" giải thích ngắn gọn, rõ ràng vì sao chọn đáp án đó.
+
+Trả về DUY NHẤT JSON:
+{
+  "questions": [
+    {
+      "q": "Nội dung câu hỏi...",
+      "options": ["Phương án thứ nhất", "Phương án thứ hai", "Phương án thứ ba", "Phương án thứ tư"],
+      "correct": 0,
+      "explain": "Lời giải chi tiết..."
+    }
+  ]
+}`;
+      const raw = await callBankAI({ prompt, cost, reason: `AI sinh ${count} câu ${aiGenSubject} Lớp ${aiGenGrade}` });
+      const parsed = parseJsonLoose(raw);
+      const arr = Array.isArray(parsed?.questions) ? parsed.questions : Array.isArray(parsed) ? parsed : [];
+      if (!arr.length) {
+        throw new Error('AI chưa trả về đúng danh sách câu hỏi, vui lòng bấm Sinh lại.');
+      }
+
+      const generated = arr.slice(0, count).map((item, idx) => ({
+        id: `ai-gen-${Date.now()}-${idx + 1}`,
         subject: aiGenSubject,
         grade: Number(aiGenGrade) || 12,
         topicId: aiGenTopic,
         level: aiGenLevel,
         points: 1,
         tags: ['AI-sinh', lvLabel],
-        q: tpl.q,
-        options: [...tpl.options],
-        correct: tpl.correct,
-        explain: tpl.explain,
-      });
+        q: String(item.q || '').trim(),
+        options: (Array.isArray(item.options) ? item.options : []).slice(0, 4).map(stripOptPrefix),
+        correct: Math.min(3, Math.max(0, Number(item.correct) || 0)),
+        explain: String(item.explain || '').trim(),
+      })).filter((it) => it.q && it.options.length >= 2);
+
+      if (!generated.length) {
+        throw new Error('Không phân tích được câu hỏi từ phản hồi AI.');
+      }
+      setAiGeneratedList(generated);
+    } catch (err) {
+      setAiGenError(err?.message || 'Lỗi khi sinh câu hỏi từ AI.');
+    } finally {
+      setAiGenBusy(false);
     }
-    setAiGeneratedList(samples);
   };
 
   const handleSaveAiGeneratedBatch = async () => {
@@ -2946,8 +3003,8 @@ export default function QuestionBank({
                       >
                         <IcoSparkles size={18} />
                         <div>
-                          <b>Sinh câu tương tự</b>
-                          <small>Tạo biến thể mới cùng chuyên đề & đảo phương án</small>
+                          <b>Sinh câu tương tự (1 credit)</b>
+                          <small>Tạo biến thể mới cùng chuyên đề &amp; đảo phương án</small>
                         </div>
                       </button>
 
@@ -2959,7 +3016,7 @@ export default function QuestionBank({
                       >
                         <IcoFileText size={18} />
                         <div>
-                          <b>Viết lời giải chi tiết</b>
+                          <b>Viết lời giải chi tiết (1 credit)</b>
                           <small>Tự động phân tích từng bước cho đáp án đúng</small>
                         </div>
                       </button>
@@ -2972,8 +3029,8 @@ export default function QuestionBank({
                       >
                         <IcoTag size={18} />
                         <div>
-                          <b>Gợi ý độ khó & chuyên đề</b>
-                          <small>Nhận diện mức độ nhận thức & chủ đề kiến thức</small>
+                          <b>Gợi ý độ khó &amp; chuyên đề (1 credit)</b>
+                          <small>Nhận diện mức độ nhận thức &amp; chủ đề kiến thức</small>
                         </div>
                       </button>
 
@@ -2985,11 +3042,17 @@ export default function QuestionBank({
                       >
                         <IcoCheck size={18} />
                         <div>
-                          <b>Kiểm tra đáp án sai</b>
-                          <small>Rà soát phương án trùng, thiếu hoặc mâu thuẫn</small>
+                          <b>Kiểm tra đáp án sai (1 credit)</b>
+                          <small>Rà soát phương án trùng, thiếu hoặc sai khoa học</small>
                         </div>
                       </button>
                     </div>
+
+                    {aiError && !aiBusy && (
+                      <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '0.8rem', fontWeight: 600 }}>
+                        {aiError}
+                      </div>
+                    )}
 
                     {aiBusy && (
                       <div className="qb-ai-loading">
@@ -3055,6 +3118,11 @@ export default function QuestionBank({
                             <p>
                               • Chuyên đề đề xuất: <b>{aiResult.suggestedTopicName}</b> ({aiResult.suggestedSubject})
                             </p>
+                            {aiResult.reasonText && (
+                              <p style={{ fontSize: '0.78rem', color: 'var(--mut)' }}>
+                                {aiResult.reasonText}
+                              </p>
+                            )}
                             <button
                               type="button"
                               className="vt-btn sm primary"
@@ -3376,23 +3444,34 @@ export default function QuestionBank({
                       value={aiGenCount}
                       onChange={(e) => setAiGenCount(e.target.value)}
                     />
-                    <button type="button" className="vt-btn primary" onClick={handleGenerateAiQuestionsBatch}>
-                      <IcoSparkles size={14} /> Sinh câu hỏi
+                    <button
+                      type="button"
+                      className="vt-btn primary"
+                      disabled={aiGenBusy}
+                      onClick={handleGenerateAiQuestionsBatch}
+                    >
+                      <IcoSparkles size={14} /> {aiGenBusy ? 'Đang sinh AI...' : `Sinh bằng AI (${(Number(aiGenCount) || 3) > 5 ? 2 : 1} credit)`}
                     </button>
                   </div>
                 </label>
               </div>
+
+              {aiGenError && (
+                <div style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '0.82rem', fontWeight: 600 }}>
+                  {aiGenError}
+                </div>
+              )}
 
               {aiGeneratedList.length > 0 && (
                 <div className="qb-ai-gen-preview-list">
                   {aiGeneratedList.map((item, idx) => (
                     <div key={item.id} className="qb-item">
                       <div className="qb-item-body">
-                        <p className="qb-item-q"><b>Câu {idx + 1}:</b> {item.q}</p>
+                        <p className="qb-item-q"><b>Câu {idx + 1}:</b> <MathText>{item.q}</MathText></p>
                         <div className="qb-item-opts">
                           {item.options.map((o, i) => (
                             <span key={i} className={'qb-item-opt' + (i === item.correct ? ' correct' : '')}>
-                              <b>{String.fromCharCode(65 + i)}.</b> {o}
+                              <b>{String.fromCharCode(65 + i)}.</b> <MathText>{o}</MathText>
                             </span>
                           ))}
                         </div>

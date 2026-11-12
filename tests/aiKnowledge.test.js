@@ -67,6 +67,18 @@ describe('knowledge index', () => {
     expect(fe.s.vn).toBeUndefined();
   });
 
+  it('tìm chuyên đề Vật lí theo tên', () => {
+    const hits = retrieve('dao động cơ');
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.map((h) => h.id)).toContain('topic:ly:dao-dong-co');
+  });
+
+  it('tìm chuyên đề Sinh học theo tên', () => {
+    const hits = retrieve('sinh học phân tử ADN');
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.map((h) => h.id)).toContain('topic:sinh:sinh-hoc-phan-tu');
+  });
+
   it('trả mảng rỗng với câu quá ngắn', () => {
     expect(retrieve('hi')).toEqual([]);
   });

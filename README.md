@@ -1,9 +1,8 @@
-# ELEC AI — Hệ điều hành ôn tập Hóa học cho THPT
+# ELEC Science AI — Nền tảng Học tập & Khảo thí Khoa học Tự nhiên cho THCS & THPT
 
-Repo: `DuyTKTB/Aitk` · package: `chem-study`
+Repo: `DuyTKTB/Aitk` · package: `elec-science-ai`
 
-Ứng dụng web (SPA) học Hóa học lớp 10–12: **ELEC AI** (trợ lý AI đa provider), bảng tuần hoàn 118
-nguyên tố, công cụ Hóa, quiz + SRS, sổ tay lỗi, lớp học/đề thi, chấm phiếu A4 (OMR), trò chơi và PWA.
+Ứng dụng web (SPA) học tập và luyện thi Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học): **ELEC Science AI** (trợ lý AI đa provider), máy tính khoa học, bảng tuần hoàn 118 nguyên tố, công cụ KHTN, quiz + SRS, sổ tay lỗi, lớp học/đề thi chuẩn Bộ GD&ĐT & ĐGNL, chấm phiếu A4 (OMR), trò chơi và PWA.
 
 ## Chạy dự án
 

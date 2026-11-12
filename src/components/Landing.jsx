@@ -98,7 +98,7 @@ const TILES = [
 ];
 
 const MANIFESTO =
-  'Học Hóa không khó vì có nhiều công thức. Khó vì ít ai chỉ ra lý do của từng bước, và vì kiến thức nằm rải rác ở quá nhiều nơi. Ở đây AI giải chậm từng dòng, câu sai tự vào sổ để ôn lại, tài liệu và đề thi nằm cùng chỗ, còn cô giáo giao bài ngay trong lớp.';
+  'Học Khoa học Tự nhiên không khó vì có nhiều công thức. Khó vì ít ai chỉ ra lý do của từng bước, và vì kiến thức nằm rải rác ở quá nhiều nơi. Ở đây AI giải chậm từng dòng 3 môn Lý — Hóa — Sinh, câu sai tự vào sổ để ôn lại, tài liệu và đề thi nằm cùng chỗ, còn cô giáo giao bài ngay trong lớp.';
 
 const STORY = [
   ['Hỏi', 'Gõ câu hỏi, dán hoặc chụp ảnh đề (tối đa 10 ảnh một lần), thậm chí nói bằng giọng. Chọn Lớp 10, 11, 12 hoặc Đại học để câu trả lời đúng mức của bạn.'],
@@ -620,7 +620,7 @@ function Tools() {
         <Flask />
         <div className="lp-h-track" data-track>
           <div className="lp-h-intro">
-            <Split text="Mọi công cụ học Hóa, một tài khoản" />
+            <Split text="Mọi công cụ học KHTN, một tài khoản" />
             <p>Cuộn xuống để lướt qua từng công cụ. Tất cả đều chạy thật sau khi bạn đăng nhập.</p>
           </div>
 
@@ -631,7 +631,7 @@ function Tools() {
               <u className="ai">4Fe + 3O₂ → 2Fe₂O₃ <IcoCheck size={13} /></u>
             </div>
             <h3>ELEC AI</h3>
-            <p>Trợ lý Hóa học cho Lớp 10, 11, 12 và Đại học. Gõ, dán ảnh đề hoặc nói bằng giọng, có lịch sử trò chuyện để quay lại bài cũ.</p>
+            <p>Trợ lý Khoa học Tự nhiên cho 3 môn Lý — Hóa — Sinh Lớp 10, 11, 12 và Ôn thi ĐGNL/ĐGTD. Gõ, dán ảnh đề hoặc nói bằng giọng, có lịch sử trò chuyện để quay lại bài cũ.</p>
             <button type="button" className="lp-link" onClick={() => openAuth('login')}>Hỏi thử <IcoArrow size={15} /></button>
           </article>
 
@@ -806,7 +806,7 @@ function Faq() {
           Câu hỏi <span className="lp-faq-em">thường gặp</span>
         </h2>
         <p className="lp-faq-lead">
-          Những thắc mắc phổ biến nhất khi bắt đầu học Hóa cùng ELEC AI.
+          Những thắc mắc phổ biến nhất khi bắt đầu học KHTN cùng ELEC AI.
           Không thấy câu trả lời? Gửi phản hồi cho tụi mình.
         </p>
       </div>
@@ -985,13 +985,13 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         <section className="lp-hero" ref={heroRef} data-scrub="pin" data-steps="3" data-step="0">
           <div className="lp-hero-stick">
             <div className="lp-side lp-side-l">
-              <small>AI · TRỢ LÝ HÓA HỌC</small>
+              <small>AI · TRỢ LÝ KHOA HỌC TỰ NHIÊN</small>
               <TypingHeadline />
               <span className="lp-count" aria-hidden="true"><b><i>01</i><i>02</i><i>03</i></b> / 03</span>
             </div>
 
             <div className="lp-side lp-side-r" aria-hidden="true">
-              <small>AI · HÓA HỌC</small>
+              <small>AI · KHTN 3 MÔN</small>
               <small className="sc">SCROLL</small>
               <span className="lp-rail"><i /></span>
               <ol className="lp-steps"><li>01</li><li>02</li><li>03</li></ol>

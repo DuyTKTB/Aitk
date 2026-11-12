@@ -1,5 +1,5 @@
 /* ============================================================
-   aspirationStore.js — HỒ SƠ NGUYỆN VỌNG & QUY TRÌNH 5 BƯỚC (9STUDY)
+   aspirationStore.js — HỒ SƠ NGUYỆN VỌNG & QUY TRÌNH 5 BƯỚC (ELEC AI)
    ------------------------------------------------------------
    Quản lý:
      • Nguyện vọng đại học (NV1, NV2, NV3) từ CUTOFF_DATA hoặc tự nhập
@@ -127,15 +127,15 @@ export function defaultAspirationProfile() {
   return {
     wishes: [
       {
-        id: 'bka-kthoa',
+        id: 'bka-tdh',
         uni: 'ĐH Bách Khoa Hà Nội',
         code: 'BKA',
-        majorCode: 'CH1',
+        majorCode: 'EE2',
         city: 'Hà Nội',
-        major: 'Kỹ thuật Hóa học',
-        combo: 'A00/B00/D07',
-        s2024: 23.8,
-        s2025: 24.4,
+        major: 'Kỹ thuật Điều khiển & Tự động hóa',
+        combo: 'A00/A02',
+        s2024: 24.75,
+        s2025: 25.6,
       },
       {
         id: 'dkh-duoc',
@@ -449,7 +449,7 @@ export function computeAspirationAnalytics({
       ? 'Thông hiểu (Mục tiêu 7.5–8.5đ)'
       : 'Nhận biết (Xây gốc 6.5–7.5đ)';
 
-  // 3 Nhiệm vụ Hôm nay chuẩn 9Study
+  // 3 Nhiệm vụ Hôm nay chuẩn ELEC AI
   const dailyMissions = [
     {
       id: 'mission-theory',

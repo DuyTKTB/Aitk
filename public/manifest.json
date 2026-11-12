@@ -1,7 +1,7 @@
 {
-  "name": "ELEC AI — Học Hóa thông minh",
-  "short_name": "ELEC AI K60",
-  "description": "Nền tảng học Hóa với AI, bảng tuần hoàn, quiz và trò chơi.",
+  "name": "ELEC Science AI — Học tập & Luyện thi KHTN",
+  "short_name": "ELEC KHTN",
+  "description": "Nền tảng học tập & khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) với AI, phòng thi ảo, quiz và trò chơi.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -18,27 +18,27 @@
   ],
   "shortcuts": [
     {
-      "name": "Trợ lý AI",
-      "short_name": "AI",
+      "name": "Trợ lý AI KHTN",
+      "short_name": "AI KHTN",
       "url": "/#ai",
       "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Bảng tuần hoàn",
-      "short_name": "Bảng TH",
-      "url": "/#table",
+      "name": "Công cụ KHTN",
+      "short_name": "Công cụ",
+      "url": "/#tools",
       "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Ôn tập",
-      "short_name": "Quiz",
-      "url": "/#quiz",
+      "name": "Phòng thi ảo KHTN",
+      "short_name": "Thi ảo",
+      "url": "/#virtual-exams",
       "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Trò chơi",
-      "short_name": "Game",
-      "url": "/#games",
+      "name": "Lộ trình KHTN",
+      "short_name": "Lộ trình",
+      "url": "/#roadmap",
       "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
     }
   ],

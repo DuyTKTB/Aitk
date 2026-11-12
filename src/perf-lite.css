@@ -42,10 +42,10 @@ html.perf-lite * {
   background-attachment: scroll !important;
 }
 
-/* 4) Bóng đổ nhiều lớp → 1 lớp mỏng (vẫn giữ phân cấp thị giác) */
-html.perf-lite [class*="card"],
+/* 4) Bóng đổ nhiều lớp → 1 lớp mỏng (vẫn giữ phân cấp thị giác, trừ các phần tử nav/tool) */
+html.perf-lite [class*="card"]:not([class*="nav-tool"]):not([class*="nav-tool"] *):not(.nav-drop-menu *),
 html.perf-lite [class*="modal"],
-html.perf-lite [class*="panel"],
+html.perf-lite [class*="panel"]:not([class*="nav-"]),
 html.perf-lite [class*="sheet"],
 html.perf-lite [class*="dialog"],
 html.perf-lite [class*="popover"] {

@@ -1,7 +1,7 @@
 {
   "nam": 2024,
   "nguon": "Bộ Giáo dục & Đào tạo, ĐHQGHN, ĐHQG TP.HCM, ĐHBK Hà Nội, ĐH Sư Phạm Hà Nội, ĐHKTQD và Cổng thông tin tuyển sinh các trường ĐH",
-  "nhanHienThi": "Dữ liệu tham khảo năm 2024 (Đang cập nhật Đề án tuyển sinh 2025–2026)",
+  "nhanHienThi": "Dữ liệu tham khảo năm 2024 (cập nhật tuyển sinh 2025 – 2026)",
   "meta": {
     "nam": 2024,
     "nguon": "Bộ Giáo dục & Đào tạo, ĐHQGHN, ĐHQG TP.HCM, ĐHBK Hà Nội, ĐH Sư Phạm Hà Nội, ĐHKTQD và Cổng thông tin tuyển sinh các trường ĐH",
@@ -2083,23 +2083,25 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 27.5,
-          "year": 2024
+          "year": 2024,
+          "score": 27.25,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.4,
+          "block": "A00"
         },
         {
           "examId": "HSA",
-          "score": 105,
-          "year": 2024
+          "year": 2024,
+          "score": 96
         },
         {
           "examId": "TSA",
-          "score": 75,
-          "year": 2024
-        },
-        {
-          "examId": "V-ACT",
-          "score": 920,
-          "year": 2024
+          "year": 2024,
+          "score": 72
         }
       ],
       "tuitionPerYear": "24 – 32 triệu",
@@ -2122,23 +2124,15 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 28.15,
-          "year": 2024
+          "year": 2024,
+          "score": 27.8,
+          "block": "A00"
         },
         {
-          "examId": "HSA",
-          "score": 110,
-          "year": 2024
-        },
-        {
-          "examId": "TSA",
-          "score": 78,
-          "year": 2024
-        },
-        {
-          "examId": "V-ACT",
-          "score": 950,
-          "year": 2024
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.9,
+          "block": "A00"
         }
       ],
       "tuitionPerYear": "24 – 32 triệu",
@@ -2161,23 +2155,15 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 28,
-          "year": 2024
+          "year": 2024,
+          "score": 27.5,
+          "block": "A00"
         },
         {
-          "examId": "HSA",
-          "score": 108,
-          "year": 2024
-        },
-        {
-          "examId": "TSA",
-          "score": 77,
-          "year": 2024
-        },
-        {
-          "examId": "V-ACT",
-          "score": 940,
-          "year": 2024
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.65,
+          "block": "A00"
         }
       ],
       "tuitionPerYear": "24 – 32 triệu",
@@ -2200,23 +2186,15 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 27.25,
-          "year": 2024
+          "year": 2024,
+          "score": 26.8,
+          "block": "A00"
         },
         {
-          "examId": "HSA",
-          "score": 104,
-          "year": 2024
-        },
-        {
-          "examId": "TSA",
-          "score": 74,
-          "year": 2024
-        },
-        {
-          "examId": "V-ACT",
-          "score": 910,
-          "year": 2024
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.1,
+          "block": "A00"
         }
       ],
       "tuitionPerYear": "24 – 32 triệu",
@@ -2235,11 +2213,30 @@
         "D07"
       ],
       "quota": 260,
-      "cutoffs": {
-        "THPTQG": 24.25,
-        "TSA": 62.5,
-        "HSA": 92
-      },
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24.25,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.6,
+          "block": "A00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 62.5
+        },
+        {
+          "examId": "HSA",
+          "year": 2024,
+          "score": 92
+        }
+      ],
       "tuitionPerYear": "28 – 35 triệu",
       "career": "Kỹ sư công nghệ lọc hóa dầu, Dược phẩm, Mỹ phẩm, Vật liệu polymer",
       "note": "Đạt chuẩn kiểm định quốc tế AUN-QA"
@@ -2249,20 +2246,34 @@
       "schoolId": "BKA",
       "majorCode": "IT1",
       "name": "Khoa học Máy tính (IT1)",
-      "faculty": "Trường CNTT & Truyền thông",
+      "faculty": "Trường Công nghệ Thông tin & Truyền thông",
       "blocks": [
         "A00",
         "A01"
       ],
       "quota": 300,
-      "cutoffs": {
-        "THPTQG": 29.42,
-        "TSA": 83.9,
-        "HSA": 118
-      },
-      "tuitionPerYear": "32 – 40 triệu",
-      "career": "Kỹ sư AI, Chuyên gia thuật toán, Kiến trúc sư hệ thống phần mềm",
-      "note": "Ngành học điểm chuẩn cao nhất ĐHBK Hà Nội nhiều năm liên tiếp"
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 28.29,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 28.5,
+          "block": "A00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 83.9
+        }
+      ],
+      "tuitionPerYear": "28 – 35 triệu",
+      "career": "Kỹ sư AI, Nhà khoa học dữ liệu, Chuyên gia thuật toán",
+      "note": "Ngành có điểm chuẩn cao nhất toàn trường"
     },
     {
       "id": "annd-anm-nam-bac",
@@ -2276,24 +2287,31 @@
         "C03",
         "D01"
       ],
-      "quota": 180,
+      "quota": 220,
       "cutoffs": [
         {
           "examId": "THPTQG",
+          "year": 2024,
           "score": 24.94,
-          "year": 2024
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.1,
+          "block": "A00"
         }
       ],
-      "tuitionPerYear": "Miễn phí 100%",
-      "career": "Sĩ quan An ninh nhân dân, Cán bộ bảo vệ an ninh trật tự Tổ quốc",
-      "note": "Tuyển thí sinh nam miền Bắc (từ Quảng Bình trở ra). Điểm chuẩn bài thi CA kết hợp THPTQG."
+      "tuitionPerYear": "0 đồng (Bao cấp)",
+      "career": "Sĩ quan Công an, Điều tra viên, Cán bộ Bộ Công an",
+      "note": "Thí sinh Nam có hộ khẩu thường trú từ Thừa Thiên Huế trở ra miền Bắc"
     },
     {
       "id": "annd-anm-nu-bac",
       "schoolId": "ANND",
-      "majorCode": "7860100-NuB",
+      "majorCode": "7860100-NUB",
       "name": "Nghiệp vụ An ninh (Nữ miền Bắc)",
-      "faculty": "Khoa Nghiệp vụ An ninh",
+      "faculty": "Khoa Nghi vụ An ninh",
       "blocks": [
         "A01",
         "D01"
@@ -2302,40 +2320,54 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
+          "year": 2024,
           "score": 26.85,
-          "year": 2024
+          "block": "A01"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.1,
+          "block": "A01"
         }
       ],
-      "tuitionPerYear": "Miễn phí 100%",
-      "career": "Sĩ quan An ninh, Điều tra viên nữ",
-      "note": "Tuyển thí sinh nữ miền Bắc, tỷ lệ chọi cao"
+      "tuitionPerYear": "0 đồng (Bao cấp)",
+      "career": "Sĩ quan Công an, Giảng viên nghiệp vụ, Chuyên viên phân tích hồ sơ",
+      "note": "Thí sinh Nữ có hộ khẩu thường trú từ Thừa Thiên Huế trở ra phía Bắc"
     },
     {
-      "id": "annd-attt-nam",
+      "id": "annd-attt-nam-bac",
       "schoolId": "ANND",
       "majorCode": "7480202-NB",
       "name": "An toàn thông tin (Nam phía Bắc)",
-      "faculty": "Khoa Công nghệ thông tin",
+      "faculty": "Khoa Công nghệ & An ninh mạng",
       "blocks": [
         "A00",
         "A01"
       ],
-      "quota": 60,
+      "quota": 100,
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 25.1,
-          "year": 2024
+          "year": 2024,
+          "score": 25.04,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.3,
+          "block": "A00"
         }
       ],
-      "tuitionPerYear": "Miễn phí 100%",
-      "career": "Tác chiến không gian mạng, Phòng chống tội phạm công nghệ cao",
-      "note": "Đào tạo chuyên gia An ninh mạng thuộc lực lượng vũ trang"
+      "tuitionPerYear": "0 đồng (Bao cấp)",
+      "career": "Kỹ sư an ninh mạng, Tác chiến không gian mạng, Phòng chống tội phạm công nghệ cao",
+      "note": "Thí sinh Nam các tỉnh phía Bắc, điểm toán từ 8.0 trở lên"
     },
     {
-      "id": "annd-luat",
+      "id": "annd-luat-nam-bac",
       "schoolId": "ANND",
-      "majorCode": "7380101",
+      "majorCode": "7380101-NB",
       "name": "Luật (Chuyên ngành Điều tra tư pháp)",
       "faculty": "Khoa Luật",
       "blocks": [
@@ -2343,22 +2375,29 @@
         "C03",
         "D01"
       ],
-      "quota": 50,
+      "quota": 60,
       "cutoffs": [
         {
           "examId": "THPTQG",
+          "year": 2024,
           "score": 24.8,
-          "year": 2024
+          "block": "A01"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25,
+          "block": "A01"
         }
       ],
-      "tuitionPerYear": "Miễn phí 100%",
-      "career": "Điều tra viên sơ cấp, Cán bộ pháp chế Công an",
-      "note": "Đào tạo cán bộ chấp pháp theo tiêu chuẩn Bộ Công an"
+      "tuitionPerYear": "0 đồng (Bao cấp)",
+      "career": "Thẩm tra viên, Kiểm sát viên, Cán bộ pháp chế lực lượng vũ trang",
+      "note": "Đào tạo cán bộ tư pháp ngành công an phía Bắc"
     },
     {
       "id": "tnu-spta",
       "schoolId": "TNU",
-      "majorCode": "7140231",
+      "majorCode": "7140217",
       "name": "Sư phạm Tiếng Anh",
       "faculty": "Khoa Ngoại ngữ",
       "blocks": [
@@ -2370,17 +2409,778 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 26.5,
-          "year": 2024
+          "year": 2024,
+          "score": 25.6,
+          "block": "D01"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.85,
+          "block": "D01"
         }
       ],
-      "tuitionPerYear": "Miễn 100% (Nghị định 116)",
-      "career": "Giáo viên tiếng Anh THPT, Giảng viên ngôn ngữ",
-      "note": "Hưởng trợ cấp sinh hoạt 3.63 triệu/tháng theo NĐ 116"
+      "tuitionPerYear": "0 đồng (Miễn học phí theo NĐ 116)",
+      "career": "Giáo viên Tiếng Anh cấp THPT & THCS, Biên phiên dịch viên",
+      "note": "Chính sách hỗ trợ sinh hoạt phí 3.63 triệu/tháng"
     },
     {
       "id": "yha-ykhoa",
       "schoolId": "YHA",
+      "majorCode": "7720101",
+      "name": "Y khoa (Bác sĩ đa khoa)",
+      "faculty": "Khối ngành Y học lâm sàng",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 420,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 27.73,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.85,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2023,
+          "score": 27.73,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "55 – 65 triệu",
+      "career": "Bác sĩ nội trú, Bác sĩ điều trị tại các Bệnh viện Trung ương, Giảng viên Y học",
+      "note": "Điểm chuẩn Y khoa cao nhất cả nước. Rèn luyện 6 năm chuẩn quốc tế."
+    },
+    {
+      "id": "bka-it2",
+      "schoolId": "BKA",
+      "majorCode": "IT2",
+      "name": "Kỹ thuật máy tính",
+      "faculty": "Trường Công nghệ Thông tin & Truyền thông",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 250,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 27.5,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.9,
+          "block": "A00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 79.5
+        }
+      ],
+      "tuitionPerYear": "28 – 35 triệu",
+      "career": "Kỹ sư phần cứng, Hệ thống nhúng & IoT, Thiết kế vi mạch",
+      "note": "Đào tạo phần cứng kết hợp phần mềm chuyên sâu."
+    },
+    {
+      "id": "bka-ee1",
+      "schoolId": "BKA",
+      "majorCode": "EE1",
+      "name": "Kỹ thuật điều khiển & Tự động hóa",
+      "faculty": "Trường Điện - Điện tử",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 450,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26.8,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.3,
+          "block": "A00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 74
+        }
+      ],
+      "tuitionPerYear": "26 – 32 triệu",
+      "career": "Kỹ sư Robotics, Tự động hóa nhà máy, Dây chuyền thông minh",
+      "note": "Trọng điểm công nghiệp 4.0 và sản xuất thông minh."
+    },
+    {
+      "id": "bka-ms2",
+      "schoolId": "BKA",
+      "majorCode": "MS2",
+      "name": "Kỹ thuật Vi điện tử & Công nghệ bán dẫn",
+      "faculty": "Trường Vật liệu",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 150,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26.7,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.2,
+          "block": "A00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 73.5
+        }
+      ],
+      "tuitionPerYear": "28 – 35 triệu",
+      "career": "Kỹ sư thiết kế chip (IC Design), Kiểm thử bán dẫn",
+      "note": "Chương trình hợp tác đào tạo mũi nhọn chip bán dẫn quốc gia."
+    },
+    {
+      "id": "bka-bf1",
+      "schoolId": "BKA",
+      "majorCode": "BF1",
+      "name": "Kỹ thuật Sinh học",
+      "faculty": "Trường Hóa & Khoa học Sự sống",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 160,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 23.9,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.4,
+          "block": "B00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 61
+        }
+      ],
+      "tuitionPerYear": "26 – 32 triệu",
+      "career": "Kỹ sư công nghệ gen & vaccine, Sinh học y dược, Vi sinh công nghiệp",
+      "note": "Nghiên cứu ứng dụng sinh học phân tử và công nghệ sinh dược."
+    },
+    {
+      "id": "bka-bf2",
+      "schoolId": "BKA",
+      "majorCode": "BF2",
+      "name": "Kỹ thuật Thực phẩm",
+      "faculty": "Trường Hóa & Khoa học Sự sống",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 220,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24.1,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.5,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "26 – 32 triệu",
+      "career": "Chuyên gia R&D thực phẩm & đồ uống, Giám đốc chất lượng (QA/QC)",
+      "note": "Ngành mũi nhọn chế biến thực phẩm và an toàn sinh học."
+    },
+    {
+      "id": "bka-ph1",
+      "schoolId": "BKA",
+      "majorCode": "PH1",
+      "name": "Vật lí kỹ thuật",
+      "faculty": "Viện Vật lí Kỹ thuật",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 23.8,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.2,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "24 – 30 triệu",
+      "career": "Kỹ sư vật lí quang điện tử, Vật liệu mới, Năng lượng tái tạo",
+      "note": "Nền tảng Vật lí chuyên sâu ứng dụng công nghệ cao."
+    },
+    {
+      "id": "yha-rhm",
+      "schoolId": "YHA",
+      "majorCode": "7720501",
+      "name": "Răng - Hàm - Mặt",
+      "faculty": "Khoa Răng Hàm Mặt",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 27.35,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.5,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "55 – 65 triệu",
+      "career": "Bác sĩ Răng Hàm Mặt, Chuyên gia phẫu thuật hàm mặt, Chỉnh nha",
+      "note": "Chỉ tiêu giới hạn, tỷ lệ chọi cao."
+    },
+    {
+      "id": "yha-yct",
+      "schoolId": "YHA",
+      "majorCode": "7720115",
+      "name": "Y học cổ truyền",
+      "faculty": "Khoa Y học cổ truyền",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 100,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24.3,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.8,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "42 – 50 triệu",
+      "career": "Bác sĩ Đông y, Châm cứu bấm huyệt, Phục hồi thể chất",
+      "note": "Kết hợp Y học hiện đại và Tinh hoa y học cổ truyền."
+    },
+    {
+      "id": "yha-xn",
+      "schoolId": "YHA",
+      "majorCode": "7720601",
+      "name": "Kỹ thuật xét nghiệm y học",
+      "faculty": "Khoa Kỹ thuật Y học",
+      "blocks": [
+        "B00",
+        "A00"
+      ],
+      "quota": 140,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.4,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "38 – 45 triệu",
+      "career": "Chuyên viên xét nghiệm vi sinh, huyết học, hóa sinh, di truyền",
+      "note": "Nhu cầu nhân lực y tế kỹ thuật cao tại các bệnh viện lớn."
+    },
+    {
+      "id": "dkh-duoc",
+      "schoolId": "DKH",
+      "majorCode": "7720201",
+      "name": "Dược học",
+      "faculty": "Khoa Dược học",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 560,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.51,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.85,
+          "block": "A00"
+        },
+        {
+          "examId": "TSA",
+          "year": 2024,
+          "score": 68
+        }
+      ],
+      "tuitionPerYear": "24.5 – 35 triệu",
+      "career": "Dược sĩ lâm sàng, Nghiên cứu bào chế thuốc, Quản trị chuỗi nhà thuốc",
+      "note": "Cái nôi đào tạo Dược sĩ hàng đầu Việt Nam, xét cả khối A00 và B00."
+    },
+    {
+      "id": "dkh-hoaduoc",
+      "schoolId": "DKH",
+      "majorCode": "7720203",
+      "name": "Hóa dược",
+      "faculty": "Khoa Công nghệ Hóa Dược",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.1,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.5,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "24.5 – 35 triệu",
+      "career": "Chuyên gia tổng hợp hoạt chất, Kỹ sư nghiên cứu thuốc mới",
+      "note": "Chuyên sâu về tổng hợp hữu cơ và hoạt chất sinh học chữa bệnh."
+    },
+    {
+      "id": "qhi-cntt",
+      "schoolId": "QHI",
+      "majorCode": "CN1",
+      "name": "Công nghệ thông tin",
+      "faculty": "Khoa Công nghệ Thông tin",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 380,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 27.5,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.8,
+          "block": "A00"
+        },
+        {
+          "examId": "HSA",
+          "year": 2024,
+          "score": 98.5
+        }
+      ],
+      "tuitionPerYear": "38 – 42 triệu",
+      "career": "Kỹ sư phần mềm xuất sắc, Kỹ sư kiến trúc hệ thống, Chuyên gia Cloud",
+      "note": "Trường đào tạo CNTT uy tín hàng đầu ĐHQGHN, ưu tiên điểm thi ĐGNL HSA."
+    },
+    {
+      "id": "qhi-ai",
+      "schoolId": "QHI",
+      "majorCode": "CN16",
+      "name": "Trí tuệ nhân tạo (AI & Robotics)",
+      "faculty": "Khoa Công nghệ Thông tin",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 27.1,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.4,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "38 – 42 triệu",
+      "career": "Kỹ sư Machine Learning, Kỹ sư NLP / Computer Vision, Robot thông minh",
+      "note": "Chương trình đào tạo đón đầu làn sóng AI quốc tế."
+    },
+    {
+      "id": "qht-hoahoc",
+      "schoolId": "QHT",
+      "majorCode": "QHT03",
+      "name": "Hóa học (Chuẩn & CLC)",
+      "faculty": "Khoa Hóa học",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 200,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 23.5,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 23.9,
+          "block": "A00"
+        },
+        {
+          "examId": "HSA",
+          "year": 2024,
+          "score": 83.5
+        }
+      ],
+      "tuitionPerYear": "22 – 28 triệu",
+      "career": "Chuyên viên nghiên cứu hóa lý, Phân tích kiểm nghiệm, Hóa dược phẩm",
+      "note": "Khoa Hóa học lâu đời và uy tín nhất cả nước, đào tạo nhiều GS đầu ngành."
+    },
+    {
+      "id": "qht-cnsinh",
+      "schoolId": "QHT",
+      "majorCode": "QHT08",
+      "name": "Công nghệ sinh học",
+      "faculty": "Khoa Sinh học",
+      "blocks": [
+        "B00",
+        "A00",
+        "B08"
+      ],
+      "quota": 240,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.4,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "24 – 30 triệu",
+      "career": "Kỹ sư di truyền học, Công nghệ vi sinh y học, Nông nghiệp thông minh",
+      "note": "Trọng điểm nghiên cứu di truyền và sinh học phân tử quốc gia."
+    },
+    {
+      "id": "qht-vatli",
+      "schoolId": "QHT",
+      "majorCode": "QHT05",
+      "name": "Vật lí học & Công nghệ bán dẫn",
+      "faculty": "Khoa Vật lí",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 150,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 23,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 23.5,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "22 – 26 triệu",
+      "career": "Chuyên gia vật lí vật liệu, Quang tử & bán dẫn, Vật lí hạt nhân",
+      "note": "Đào tạo nền tảng vững chắc để học sau đại học tại các viện quốc tế."
+    },
+    {
+      "id": "hnue-sphoa",
+      "schoolId": "HNUE",
+      "majorCode": "7140212",
+      "name": "Sư phạm Hóa học",
+      "faculty": "Khoa Hóa học",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 150,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26.4,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.85,
+          "block": "A00"
+        },
+        {
+          "examId": "HSA",
+          "year": 2024,
+          "score": 92
+        }
+      ],
+      "tuitionPerYear": "0 đồng (Miễn học phí + hỗ trợ sinh hoạt phí 3.63 tr/tháng)",
+      "career": "Giáo viên Hóa trường Chuyên, THPT, Giảng viên đại học, Nghiên cứu giáo dục",
+      "note": "Chính sách hỗ trợ theo Nghị định 116. Điểm chuẩn thuộc top đầu khối Sư phạm."
+    },
+    {
+      "id": "hnue-spli",
+      "schoolId": "HNUE",
+      "majorCode": "7140211",
+      "name": "Sư phạm Vật lí",
+      "faculty": "Khoa Vật lí",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 140,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26.3,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.75,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "0 đồng (Miễn học phí + hỗ trợ sinh hoạt phí 3.63 tr/tháng)",
+      "career": "Giáo viên Vật lí trường THPT, Trường Chuyên, Cán bộ quản lý giáo dục STEM",
+      "note": "Miễn 100% học phí theo quy định ngành Sư phạm."
+    },
+    {
+      "id": "hnue-spsinh",
+      "schoolId": "HNUE",
+      "majorCode": "7140213",
+      "name": "Sư phạm Sinh học",
+      "faculty": "Khoa Sinh học",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.6,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.1,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "0 đồng (Miễn học phí + hỗ trợ sinh hoạt phí 3.63 tr/tháng)",
+      "career": "Giáo viên Sinh học THPT, Cố vấn chương trình sinh thái học",
+      "note": "Miễn 100% học phí theo Nghị định 116."
+    },
+    {
+      "id": "hnue-spkhtn",
+      "schoolId": "HNUE",
+      "majorCode": "7140247",
+      "name": "Sư phạm Khoa học Tự nhiên",
+      "faculty": "Khoa Sư phạm KHTN",
+      "blocks": [
+        "A00",
+        "B00",
+        "A02"
+      ],
+      "quota": 130,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.8,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.25,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "0 đồng (Miễn học phí + hỗ trợ sinh hoạt phí 3.63 tr/tháng)",
+      "career": "Giáo viên dạy tích hợp môn Khoa học tự nhiên THCS (Lý - Hóa - Sinh), Chuyên gia STEM",
+      "note": "Ngành đào tạo chuẩn chương trình GDPT mới 2018, nhu cầu tuyển dụng cực lớn."
+    },
+    {
+      "id": "hcmut-khmt",
+      "schoolId": "HCMUT",
+      "majorCode": "106",
+      "name": "Khoa học máy tính",
+      "faculty": "Khoa Khoa học & Kỹ thuật Máy tính",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 350,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 27.1,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.5,
+          "block": "A00"
+        },
+        {
+          "examId": "V-ACT",
+          "year": 2024,
+          "score": 880
+        }
+      ],
+      "tuitionPerYear": "30 – 38 triệu",
+      "career": "Kỹ sư phần mềm quốc tế, Kỹ sư dữ liệu, Nghiên cứu thuật toán AI",
+      "note": "Điểm chuẩn cao nhất ĐHQG TP.HCM, xét tuyển kết hợp điểm thi ĐGNL V-ACT."
+    },
+    {
+      "id": "hcmut-kthoa",
+      "schoolId": "HCMUT",
+      "majorCode": "112",
+      "name": "Kỹ thuật Hóa học",
+      "faculty": "Khoa Kỹ thuật Hóa học",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 320,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24.3,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.8,
+          "block": "A00"
+        },
+        {
+          "examId": "V-ACT",
+          "year": 2024,
+          "score": 760
+        }
+      ],
+      "tuitionPerYear": "30 – 35 triệu",
+      "career": "Kỹ sư công nghệ hóa chất, Chế biến dầu khí, Hóa dược phẩm, Vật liệu sinh học",
+      "note": "Đạt chuẩn kiểm định quốc tế ABET (Mỹ)."
+    },
+    {
+      "id": "hcmut-ktsh",
+      "schoolId": "HCMUT",
+      "majorCode": "115",
+      "name": "Kỹ thuật Sinh học & Thực phẩm",
+      "faculty": "Khoa Kỹ thuật Hóa học",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 180,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.5,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "30 – 35 triệu",
+      "career": "Kỹ sư công nghệ vi sinh lên men, Chế biến thực phẩm xuất khẩu",
+      "note": "Đào tạo theo tiêu chuẩn quốc tế AUN-QA."
+    },
+    {
+      "id": "yds-ykhoa",
+      "schoolId": "YDS",
       "majorCode": "7720101",
       "name": "Y khoa (Bác sĩ đa khoa)",
       "faculty": "Khoa Y",
@@ -2391,13 +3191,545 @@
       "cutoffs": [
         {
           "examId": "THPTQG",
-          "score": 28.83,
-          "year": 2024
+          "year": 2024,
+          "score": 27.34,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.65,
+          "block": "B00"
         }
       ],
-      "tuitionPerYear": "55 triệu",
-      "career": "Bác sĩ nội trú, Bác sĩ điều trị tại các bệnh viện tuyến trung ương",
-      "note": "Chương trình 6 năm đào tạo Bác sĩ Y khoa danh giá nhất VN"
+      "tuitionPerYear": "50 – 77 triệu",
+      "career": "Bác sĩ lâm sàng tại các bệnh viện lớn tuyến cuối phía Nam",
+      "note": "Trường đào tạo Y khoa danh tiếng số 1 miền Nam."
+    },
+    {
+      "id": "yds-rhm",
+      "schoolId": "YDS",
+      "majorCode": "7720501",
+      "name": "Răng - Hàm - Mặt",
+      "faculty": "Khoa Răng Hàm Mặt",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26.96,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 27.25,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "50 – 77 triệu",
+      "career": "Bác sĩ chuyên khoa Răng Hàm Mặt, Bác sĩ phục hình & thẩm mỹ nha khoa",
+      "note": "Cơ sở thực hành lâm sàng hiện đại hàng đầu khu vực."
+    },
+    {
+      "id": "yds-duoc",
+      "schoolId": "YDS",
+      "majorCode": "7720201",
+      "name": "Dược học",
+      "faculty": "Khoa Dược",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 500,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.3,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.7,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "50 – 60 triệu",
+      "career": "Dược sĩ nghiên cứu, Quản trị doanh nghiệp dược, Dược lâm sàng bệnh viện",
+      "note": "Đào tạo Dược sĩ đại học uy tín nhất phía Nam."
+    },
+    {
+      "id": "pntu-ykhoa",
+      "schoolId": "PNTU",
+      "majorCode": "7720101",
+      "name": "Y khoa (Bác sĩ đa khoa)",
+      "faculty": "Khoa Y",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 650,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26.15,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.55,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "42 – 55 triệu",
+      "career": "Bác sĩ điều trị tại mạng lưới bệnh viện TP.HCM và các tỉnh lân cận",
+      "note": "Tuyển sinh toàn quốc, đào tạo bác sĩ tay nghề cao."
+    },
+    {
+      "id": "pntu-duoc",
+      "schoolId": "PNTU",
+      "majorCode": "7720201",
+      "name": "Dược học",
+      "faculty": "Khoa Dược",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 120,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24.8,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.2,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "42 – 50 triệu",
+      "career": "Dược sĩ lâm sàng bệnh viện, Bào chế thuốc, Quản lý kho dược phẩm",
+      "note": "Đào tạo theo chuẩn năng lực dược sĩ đa khoa."
+    },
+    {
+      "id": "hcmus-cnsinh",
+      "schoolId": "HCMUS",
+      "majorCode": "7420201",
+      "name": "Công nghệ sinh học",
+      "faculty": "Khoa Sinh học & Công nghệ Sinh học",
+      "blocks": [
+        "B00",
+        "A00",
+        "B08"
+      ],
+      "quota": 280,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.2,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.6,
+          "block": "B00"
+        },
+        {
+          "examId": "V-ACT",
+          "year": 2024,
+          "score": 805
+        }
+      ],
+      "tuitionPerYear": "26 – 34 triệu",
+      "career": "Kỹ sư di truyền & giải trình tự gen, Nghiên cứu y sinh tế bào",
+      "note": "Trọng điểm nghiên cứu khoa học sự sống của ĐHQG TP.HCM."
+    },
+    {
+      "id": "hcmus-hoahoc",
+      "schoolId": "HCMUS",
+      "majorCode": "7440112",
+      "name": "Hóa học & Hóa dược",
+      "faculty": "Khoa Hóa học",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 260,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.5,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "26 – 32 triệu",
+      "career": "Kỹ sư nghiên cứu chất mới, Chuyên viên phân tích sắc ký (HPLC/GC-MS)",
+      "note": "Khoa Hóa học mạnh hàng đầu miền Nam, kiểm định chuẩn AUN-QA."
+    },
+    {
+      "id": "ddk-cntt",
+      "schoolId": "DDK",
+      "majorCode": "7480201",
+      "name": "Công nghệ thông tin",
+      "faculty": "Khoa Công nghệ Thông tin",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 300,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.8,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.2,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "24 – 30 triệu",
+      "career": "Kỹ sư phần mềm cho các tập đoàn công nghệ miền Trung",
+      "note": "Trường đại học kỹ thuật số 1 khu vực miền Trung - Tây Nguyên."
+    },
+    {
+      "id": "ddk-kthoa",
+      "schoolId": "DDK",
+      "majorCode": "7520301",
+      "name": "Kỹ thuật Hóa học & Dầu khí",
+      "faculty": "Khoa Hóa",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 180,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 23.4,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 23.8,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "24 – 28 triệu",
+      "career": "Kỹ sư lọc hóa dầu Dung Quất/Nghi Sơn, Công nghệ silicate",
+      "note": "Đào tạo kỹ sư hóa phục vụ các trung tâm lọc hóa dầu miền Trung."
+    },
+    {
+      "id": "dhy-ykhoa",
+      "schoolId": "DHY",
+      "majorCode": "7720101",
+      "name": "Y khoa (Bác sĩ đa khoa)",
+      "faculty": "Khoa Y",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 380,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.8,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.2,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "45 – 55 triệu",
+      "career": "Bác sĩ tại Bệnh viện Trung ương Huế và các tỉnh miền Trung",
+      "note": "Trung tâm đào tạo Y Dược uy tín lâu đời nhất miền Trung."
+    },
+    {
+      "id": "dhy-duoc",
+      "schoolId": "DHY",
+      "majorCode": "7720201",
+      "name": "Dược học",
+      "faculty": "Khoa Dược",
+      "blocks": [
+        "A00",
+        "B00"
+      ],
+      "quota": 160,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 24.4,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 24.8,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "42 – 48 triệu",
+      "career": "Dược sĩ điều trị, Quản trị nhà thuốc, Kiểm định dược phẩm",
+      "note": "Đào tạo chuyên sâu dược học lâm sàng và bào chế."
+    },
+    {
+      "id": "ctu-cnsinh",
+      "schoolId": "CTU",
+      "majorCode": "7420201",
+      "name": "Công nghệ sinh học",
+      "faculty": "Viện Nghiên cứu & Phát triển CNSH",
+      "blocks": [
+        "B00",
+        "A00"
+      ],
+      "quota": 220,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 23,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 23.4,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "18 – 24 triệu",
+      "career": "Chuyên gia CNSH nông nghiệp ĐBSCL, Giống cây trồng vật nuôi",
+      "note": "Đầu tàu nghiên cứu công nghệ sinh học và thủy sản miền Tây Nam Bộ."
+    },
+    {
+      "id": "ctu-kthoa",
+      "schoolId": "CTU",
+      "majorCode": "7520301",
+      "name": "Kỹ thuật Hóa học",
+      "faculty": "Khoa Công nghệ",
+      "blocks": [
+        "A00",
+        "B00",
+        "D07"
+      ],
+      "quota": 150,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 22.3,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 22.8,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "18 – 24 triệu",
+      "career": "Kỹ sư hóa nông dược, Phân bón & thuốc BVTV, Chế biến thủy hải sản",
+      "note": "Nghiên cứu ứng dụng hóa chất thân thiện môi trường ĐBSCL."
+    },
+    {
+      "id": "ctump-ykhoa",
+      "schoolId": "CTUMP",
+      "majorCode": "7720101",
+      "name": "Y khoa (Bác sĩ đa khoa)",
+      "faculty": "Khoa Y",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 520,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.2,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.6,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "44 – 52 triệu",
+      "career": "Bác sĩ khám chữa bệnh tại các bệnh viện 13 tỉnh thành ĐBSCL",
+      "note": "Trường đào tạo nhân lực y tế trọng điểm vùng Đồng bằng sông Cửu Long."
+    },
+    {
+      "id": "yqh-bacsi-bac",
+      "schoolId": "YQH",
+      "majorCode": "7720101-MB",
+      "name": "Bác sĩ đa khoa Quân y (Nam miền Bắc)",
+      "faculty": "Hệ Quân sự",
+      "blocks": [
+        "B00",
+        "A00"
+      ],
+      "quota": 180,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.4,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.8,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "0 đồng (Bao cấp 100%)",
+      "career": "Sĩ quan Quân y, Bác sĩ phục vụ trong Quân đội Nhân dân Việt Nam",
+      "note": "Sơ tuyển sức khỏe và chính trị theo quy định Bộ Quốc phòng."
+    },
+    {
+      "id": "kqh-ktqs-nam",
+      "schoolId": "KQH",
+      "majorCode": "7480201-MB",
+      "name": "Kỹ thuật Quân sự (Nam miền Bắc)",
+      "faculty": "Hệ Kỹ sư Quân sự",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 350,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.2,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.6,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "0 đồng (Bao cấp 100%)",
+      "career": "Sĩ quan kỹ thuật, Kỹ sư thiết kế khí tài công nghệ cao",
+      "note": "Bao cấp toàn bộ chi phí và phong quân hàm Sĩ quan khi tốt nghiệp."
+    },
+    {
+      "id": "bvh-cntt",
+      "schoolId": "BVH",
+      "majorCode": "7480201",
+      "name": "Công nghệ thông tin",
+      "faculty": "Khoa Công nghệ Thông tin 1",
+      "blocks": [
+        "A00",
+        "A01"
+      ],
+      "quota": 550,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 26,
+          "block": "A00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26.4,
+          "block": "A00"
+        }
+      ],
+      "tuitionPerYear": "27 – 35 triệu",
+      "career": "Kỹ sư phần mềm viễn thông, Chuyên viên dữ liệu",
+      "note": "Thế mạnh truyền thống về mạng máy tính và truyền thông viễn thông."
+    },
+    {
+      "id": "ytb-ykhoa",
+      "schoolId": "YTB",
+      "majorCode": "7720101",
+      "name": "Y khoa (Bác sĩ đa khoa)",
+      "faculty": "Khoa Y",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 450,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.5,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 25.9,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "36 – 45 triệu",
+      "career": "Bác sĩ lâm sàng tại các bệnh viện đa khoa đồng bằng sông Hồng",
+      "note": "Truyền thống đào tạo bác sĩ thực hành tay nghề giỏi."
+    },
+    {
+      "id": "ypb-ykhoa",
+      "schoolId": "YPB",
+      "majorCode": "7720101",
+      "name": "Y khoa (Bác sĩ đa khoa)",
+      "faculty": "Khoa Y",
+      "blocks": [
+        "B00"
+      ],
+      "quota": 400,
+      "cutoffs": [
+        {
+          "examId": "THPTQG",
+          "year": 2024,
+          "score": 25.6,
+          "block": "B00"
+        },
+        {
+          "examId": "THPTQG",
+          "year": 2025,
+          "score": 26,
+          "block": "B00"
+        }
+      ],
+      "tuitionPerYear": "38 – 48 triệu",
+      "career": "Bác sĩ khám chữa bệnh, Y học biển đảo Hải Phòng",
+      "note": "Thế mạnh đặc biệt về Y học biển đảo và cấp cứu ven biển."
     }
   ],
   "detailedSchemes": {

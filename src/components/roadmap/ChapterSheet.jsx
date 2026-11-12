@@ -25,6 +25,9 @@ import {
 import PracticeRunner from './PracticeRunner.jsx';
 import FlashcardSession from './FlashcardSession.jsx';
 import { dueCards as dueCardsOf } from '../../lib/flashcardStore.js';
+import { getChapterPedagogy } from '../../lib/roadmapPedagogy.js';
+import { findLessonsByChapter } from '../../data/dedicatedLessonsData.js';
+import MathText from '../MathText.jsx';
 
 const SOURCE_LABEL = {
   exam: 'Bài cô giao',
@@ -51,8 +54,29 @@ export default function ChapterSheet({
   const meta = STATE_META[state] || STATE_META.none;
 
   const guide = useMemo(() => (chapter.id ? chapterGuide(chapter.id) : null), [chapter.id]);
+  const pedagogy = useMemo(() => getChapterPedagogy(chapter.id, chapter.name), [chapter.id, chapter.name]);
   const totalBuiltin = useMemo(() => (chapter.id ? builtinCount(chapter.id) : 0), [chapter.id]);
   const lvCounts = useMemo(() => (chapter.id ? builtinLevelCounts(chapter.id) : { nb: 0, th: 0, vd: 0 }), [chapter.id]);
+  const subLessons = useMemo(() => (chapter.id ? findLessonsByChapter(chapter.id) : []), [chapter.id]);
+  const [copiedFormulaId, setCopiedFormulaId] = useState(null);
+  const [selectedModalImage, setSelectedModalImage] = useState(null);
+
+  const handleCopyFormula = (fId, text) => {
+    try {
+      navigator?.clipboard?.writeText(text);
+      setCopiedFormulaId(fId);
+      setTimeout(() => setCopiedFormulaId(null), 2000);
+    } catch { /* ignore */ }
+  };
+
+  const scrollToAnchor = (anchorId) => {
+    const el = ref.current?.querySelector(`#${anchorId}`) || document.getElementById(anchorId);
+    if (!el || !ref.current) return;
+    const sheetTop = ref.current.getBoundingClientRect().top;
+    const elTop = el.getBoundingClientRect().top;
+    const targetScroll = ref.current.scrollTop + (elTop - sheetTop) - 65;
+    ref.current.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+  };
 
   /* Thẻ của CHƯƠNG NÀY đã đến hạn (đọc lại sau mỗi phiên) */
   const dueFlash = useMemo(
@@ -150,11 +174,135 @@ export default function ChapterSheet({
 
         {tab === 'overview' && (
           <div className="rm-sheet-body" ref={bodyRef}>
-            <section>
-              <h3>Kiến thức cần học trước</h3>
-              {(chapter.prereq || []).length === 0 ? (
-                <p className="rm-muted">Chương mở đầu của khối — không yêu cầu kiến thức trước.</p>
-              ) : (
+            {/* ── LỘ TRÌNH ÔN TẬP LOGIC 4 BƯỚC ── */}
+            <div className="ns9-ch-pipeline" style={{ margin: '0 0 16px' }} aria-label="Lộ trình ôn tập logic 4 bước">
+              <div className="ns9-pipe-header">
+                <span className="ns9-pipe-label">⚡ Lộ trình ôn tập logic 4 bước chuẩn sư phạm (GDPT 2018)</span>
+              </div>
+              <div className="ns9-pipe-steps">
+                <button
+                  type="button"
+                  className="ns9-pipe-step"
+                  onClick={() => scrollToAnchor('sec-concepts')}
+                  title="Bước 1: Nắm vững khái niệm cốt lõi, quy trình giải và sơ đồ tư duy"
+                >
+                  <span className="ns9-pipe-num">1</span>
+                  <span className="ns9-pipe-txt">Lý thuyết &amp; Mindmap</span>
+                </button>
+                <span className="ns9-pipe-arrow">›</span>
+                <button
+                  type="button"
+                  className="ns9-pipe-step"
+                  onClick={() => { switchTab('practice'); setMode('fresh'); setPractice(true); }}
+                  title="Bước 2: Luyện trắc nghiệm 3 cấp độ Nhận biết - Thông hiểu - Vận dụng"
+                >
+                  <span className="ns9-pipe-num">2</span>
+                  <span className="ns9-pipe-txt">Luyện 3 cấp độ</span>
+                </button>
+                <span className="ns9-pipe-arrow">›</span>
+                <button
+                  type="button"
+                  className="ns9-pipe-step"
+                  onClick={() => { switchTab('flash'); setFlash(true); }}
+                  title="Bước 3: Flashcards phản xạ và nhận diện các bẫy đề thi hay gặp"
+                >
+                  <span className="ns9-pipe-num">3</span>
+                  <span className="ns9-pipe-txt">Flashcard &amp; Bẫy thi</span>
+                </button>
+                <span className="ns9-pipe-arrow">›</span>
+                <button
+                  type="button"
+                  className="ns9-pipe-step"
+                  onClick={() => { switchTab('practice'); setMode('review'); setPractice(true); }}
+                  title="Bước 4: Ôn tập lại câu sai và làm đề kiểm tra đánh giá năng lực"
+                >
+                  <span className="ns9-pipe-num">4</span>
+                  <span className="ns9-pipe-txt">{dueCount > 0 ? `Ôn ${dueCount} câu sai` : 'Đề kiểm tra'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ── DANH SÁCH BÀI HỌC CHI TIẾT THEO CHƯƠNG ── */}
+            {subLessons.length > 0 && (
+              <div className="ns9-ch-lessons-box" style={{ margin: '0 0 16px' }}>
+                <div className="ns9-ch-lessons-header">
+                  <span className="ns9-ch-lessons-title">
+                    📚 Danh sách bài học chi tiết của chương ({subLessons.length} bài)
+                  </span>
+                  <span className="ns9-ch-lessons-hint">Bấm để học chuyên sâu &rarr;</span>
+                </div>
+                <div className="ns9-ch-lessons-list">
+                  {subLessons.map((les) => (
+                    <button
+                      key={les.id}
+                      type="button"
+                      className="ns9-ch-lesson-pill"
+                      onClick={() => onOpenChapter(les.id)}
+                      title={`Mở bài học chuyên sâu: ${les.title}`}
+                    >
+                      <span className="ns9-les-idx">Bài {les.lessonIndex}</span>
+                      <span className="ns9-les-title">{les.title}</span>
+                      <span className="ns9-les-meta">⏱️ {les.duration || '25p'} · {les.practiceCount || 8} câu</span>
+                      {les.tag && <span className="ns9-les-tag">{les.tag}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Thanh mục lục chuyển nhanh (Anchor Quick-Nav) */}
+            <nav className="ns9-anchor-bar" aria-label="Mục lục chuyên đề">
+              <button type="button" className="ns9-anchor-pill" onClick={() => scrollToAnchor('sec-concepts')}>
+                <IconBook size={13} /> Khái niệm ({pedagogy.concepts.length})
+              </button>
+              <button type="button" className="ns9-anchor-pill" onClick={() => scrollToAnchor('sec-algorithms')}>
+                <IconZap size={13} /> Quy trình giải ({pedagogy.algorithms.length})
+              </button>
+              {pedagogy.formulas.length > 0 && (
+                <button type="button" className="ns9-anchor-pill" onClick={() => scrollToAnchor('sec-formulas')}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="4" y1="9" x2="20" y2="9" />
+                    <line x1="4" y1="15" x2="20" y2="15" />
+                    <line x1="10" y1="3" x2="8" y2="21" />
+                    <line x1="16" y1="3" x2="14" y2="21" />
+                  </svg>
+                  Công thức ({pedagogy.formulas.length})
+                </button>
+              )}
+              {pedagogy.infographics?.length > 0 && (
+                <button type="button" className="ns9-anchor-pill" onClick={() => scrollToAnchor('sec-infographics')}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  Sơ đồ ({pedagogy.infographics.length})
+                </button>
+              )}
+              {pedagogy.traps.length > 0 && (
+                <button type="button" className="ns9-anchor-pill" onClick={() => scrollToAnchor('sec-traps')}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  Bẫy sai ({pedagogy.traps.length})
+                </button>
+              )}
+              {chapter.bank !== false && (
+                <button type="button" className="ns9-anchor-pill cta-pill" onClick={() => startPractice('fresh')}>
+                  <IconTarget size={13} /> Luyện tập ngay
+                </button>
+              )}
+            </nav>
+
+            {/* Kiến thức cần học trước */}
+            {(chapter.prereq || []).length > 0 && (
+              <section className="ns9-pedagogy-section" style={{ marginBottom: 18 }}>
+                <div className="ns9-pedagogy-head">
+                  <h3>Kiến thức cần học trước</h3>
+                  <span className="ns9-pedagogy-count-badge">Gợi ý lộ trình</span>
+                </div>
                 <ul className="rm-prereq">
                   {chapter.prereq.map((pid) => {
                     const miss = missingPrereq.find((p) => p.id === pid);
@@ -169,56 +317,235 @@ export default function ChapterSheet({
                     );
                   })}
                 </ul>
-              )}
-              <p className="rm-muted sm">
-                Điều kiện tiên quyết chỉ mang tính gợi ý — bạn vẫn có thể học chương bất kỳ.
-              </p>
+              </section>
+            )}
+
+            {/* TRỤ CỘT 1: KHÁI NIỆM CỐT LÕI */}
+            <section id="sec-concepts" className="ns9-pedagogy-section">
+              <div className="ns9-pedagogy-head">
+                <h3>
+                  <IconBook size={16} />
+                  <span>1. Khái niệm &amp; Bản chất cốt lõi</span>
+                </h3>
+                <span className="ns9-pedagogy-count-badge">{pedagogy.concepts.length} trọng tâm</span>
+              </div>
+              <div className="ns9-concept-list">
+                {pedagogy.concepts.map((c, i) => (
+                  <div key={i} className="ns9-concept-card">
+                    <div className="ns9-concept-title">
+                      <span className="ns9-concept-tag">Trọng tâm {i + 1}</span>
+                      <span><MathText text={c.title} /></span>
+                    </div>
+                    <div className="ns9-concept-desc">
+                      <MathText text={c.desc} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
 
-            <section>
-              <h3>Trọng tâm kiến thức</h3>
-              {guide ? (
-                <>
-                  <ul className="rm-prereq">
-                    {guide.points.map((pt, i) => (
-                      <li key={i} className="ok">
-                        <span aria-hidden="true">•</span>
-                        <span>{pt}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {guide.mistakes.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      <h3 style={{ marginBottom: 6 }}>Lỗi học sinh hay mắc</h3>
-                      <ul className="rm-prereq">
-                        {guide.mistakes.map((ms, i) => (
-                          <li key={i} className="miss">
-                            <span aria-hidden="true">!</span>
-                            <span>{ms}</span>
-                          </li>
-                        ))}
-                      </ul>
+            {/* TRỤ CỘT 2: QUY TRÌNH & THUẬT TOÁN GIẢI BÀI */}
+            <section id="sec-algorithms" className="ns9-pedagogy-section">
+              <div className="ns9-pedagogy-head">
+                <h3>
+                  <IconZap size={16} />
+                  <span>2. Quy trình &amp; Thuật toán giải bài toán</span>
+                </h3>
+                <span className="ns9-pedagogy-count-badge">{pedagogy.algorithms.length} bước</span>
+              </div>
+              <div className="ns9-algo-list">
+                {pedagogy.algorithms.map((step) => (
+                  <div key={step.step} className="ns9-algo-step">
+                    <div className="ns9-step-badge">Bước {step.step}</div>
+                    <div className="ns9-step-content">
+                      <h4><MathText text={step.title} /></h4>
+                      <p><MathText text={step.instruction} /></p>
+                      {step.tip && (
+                        <div className="ns9-step-tip">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                          </svg>
+                          <span><MathText text={step.tip} /></span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <div className="rm-quiz-foot" style={{ marginTop: 10 }}>
-                    <button type="button" className="rm-btn" onClick={() => onAi?.('summary')}>✦ Nhờ AI giảng chi tiết hơn</button>
-                    {chapter.bank !== false && (
-                      <button type="button" className="rm-btn primary" onClick={() => startPractice('fresh')}>
-                        Làm bài tập ngay ({totalBuiltin} câu)
-                      </button>
-                    )}
                   </div>
-                </>
-              ) : (
-                <div className="rm-state inline">
-                  <b>Chuyên đề nâng cao — học cùng trợ lý AI</b>
-                  <p>
-                    Bạn có thể dùng trợ lý AI để tóm tắt lý thuyết và đặt câu hỏi chuyên sâu cho chương này.
-                  </p>
-                  <button type="button" className="rm-btn" onClick={() => onAi?.('summary')}>Tóm tắt bằng AI</button>
-                </div>
-              )}
+                ))}
+              </div>
             </section>
+
+            {/* TRỤ CỘT 3: THẺ CÔNG THỨC TRỌNG TÂM */}
+            {pedagogy.formulas.length > 0 && (
+              <section id="sec-formulas" className="ns9-pedagogy-section">
+                <div className="ns9-pedagogy-head">
+                  <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="4" y1="9" x2="20" y2="9" />
+                      <line x1="4" y1="15" x2="20" y2="15" />
+                      <line x1="10" y1="3" x2="8" y2="21" />
+                      <line x1="16" y1="3" x2="14" y2="21" />
+                    </svg>
+                    <span>3. Thẻ công thức cần nhớ (Chuẩn KaTeX)</span>
+                  </h3>
+                  <span className="ns9-pedagogy-count-badge">{pedagogy.formulas.length} công thức</span>
+                </div>
+                <div className="ns9-formula-list">
+                  {pedagogy.formulas.map((f) => (
+                    <div key={f.id} className="ns9-pedagogy-formula-card">
+                      <div className="ns9-formula-head">
+                        <div className="ns9-formula-title">
+                          <span className="ns9-concept-tag">Công thức</span>
+                          <b><MathText text={f.name} /></b>
+                        </div>
+                        <button
+                          type="button"
+                          className={`ns9-formula-copy-btn ${copiedFormulaId === f.id ? 'copied' : ''}`}
+                          onClick={() => handleCopyFormula(f.id, f.displayLatex)}
+                          title="Sao chép công thức dạng LaTeX"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                          <span>{copiedFormulaId === f.id ? 'Đã copy LaTeX' : 'Copy LaTeX'}</span>
+                        </button>
+                      </div>
+
+                      <div className="ns9-formula-display">
+                        <MathText text={`$$${f.displayLatex}$$`} />
+                      </div>
+
+                      {f.symbols && f.symbols.length > 0 && (
+                        <div className="ns9-formula-symbols">
+                          {f.symbols.map((sym, sIdx) => (
+                            <div key={sIdx} className="ns9-symbol-row">
+                              <span className="ns9-symbol-badge">
+                                <MathText text={`$${sym.s}$`} />
+                              </span>
+                              <span>{sym.name}</span>
+                              {sym.unit && <span className="ns9-symbol-unit">[{sym.unit}]</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {f.notes && (
+                        <div className="ns9-formula-note">
+                          <b>Ghi chú:</b> <MathText text={f.notes} />
+                        </div>
+                      )}
+
+                      {f.example && (
+                        <div className="ns9-formula-example">
+                          <b>Ví dụ áp dụng:</b> <MathText text={f.example} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* TRỤ CỘT 4: BẪY TRẮC NGHIỆM & LỖI THƯỜNG GẶP */}
+            {pedagogy.traps.length > 0 && (
+              <section id="sec-traps" className="ns9-pedagogy-section">
+                <div className="ns9-pedagogy-head">
+                  <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span>4. Bẫy đề thi &amp; Lỗi học sinh hay mắc</span>
+                  </h3>
+                  <span className="ns9-pedagogy-count-badge" style={{ color: '#ef4444' }}>{pedagogy.traps.length} bẫy đề thi</span>
+                </div>
+                <div className="ns9-trap-list">
+                  {pedagogy.traps.map((tr, i) => (
+                    <div key={i} className="ns9-trap-card">
+                      <div className="ns9-trap-head">
+                        <span className="ns9-trap-tag">Cảnh báo bẫy #{i + 1}</span>
+                        <span><MathText text={tr.title} /></span>
+                      </div>
+                      <div className="ns9-trap-text">
+                        <b>Bẫy thường gặp:</b> <MathText text={tr.trap} />
+                      </div>
+                      {tr.advice && (
+                        <div className="ns9-trap-advice">
+                          <b>Lời khuyên thầy cô:</b> <MathText text={tr.advice} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* SƠ ĐỒ TƯ DUY & INFOGRAPHIC SGK CHUYÊN SÂU */}
+            {pedagogy.infographics?.length > 0 && (
+              <section id="sec-infographics" className="ns9-pedagogy-section">
+                <div className="ns9-pedagogy-head">
+                  <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    <span>Sơ đồ tóm tắt &amp; Infographic chuẩn SGK</span>
+                  </h3>
+                  <span className="ns9-pedagogy-count-badge" style={{ color: '#2563eb', background: '#eff6ff' }}>
+                    {pedagogy.infographics.length} sơ đồ trực quan
+                  </span>
+                </div>
+                <div className="ns9-infographics-grid">
+                  {pedagogy.infographics.map((info) => (
+                    <div
+                      key={info.id}
+                      className="ns9-infographic-card"
+                      onClick={() => setSelectedModalImage(info)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="ns9-info-img-wrapper">
+                        <img src={info.url} alt={info.title} loading="lazy" />
+                        <span className="ns9-info-zoom-hint">🔍 Xem phóng to / Tải về</span>
+                      </div>
+                      <div className="ns9-info-content">
+                        <h4 className="ns9-info-title">{info.title}</h4>
+                        {info.desc && <p className="ns9-info-desc">{info.desc}</p>}
+                        {info.tags && info.tags.length > 0 && (
+                          <div className="ns9-info-tags">
+                            {info.tags.map((t, idx) => (
+                              <span key={idx} className="ns9-info-tag">#{t}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* CẦU NỐI LUYỆN TẬP NGAY (DIRECT ACTION CTA) */}
+            <div className="ns9-overview-action-cta">
+              <div className="ns9-cta-left">
+                <h4>Sẵn sàng làm chủ chuyên đề {chapter.name}?</h4>
+                <p>Bộ câu hỏi biên soạn chuẩn ma trận Bộ GD&ĐT ({totalBuiltin} câu trắc nghiệm)</p>
+              </div>
+              <div className="ns9-cta-acts">
+                <button type="button" className="ns9-cta-ai-btn" onClick={() => onAi?.('summary')}>
+                  ✦ Nhờ Gia sư AI giảng sâu hơn
+                </button>
+                {chapter.bank !== false && (
+                  <button type="button" className="ns9-cta-btn" onClick={() => startPractice('fresh')}>
+                    <IconTarget size={16} /> Bắt đầu luyện ({totalBuiltin} câu)
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -409,6 +736,46 @@ export default function ChapterSheet({
           </footer>
         )}
       </div>
+
+      {/* Lightbox Modal phóng to Infographic */}
+      {selectedModalImage && (
+        <div className="ns9-lightbox-overlay" onClick={() => setSelectedModalImage(null)}>
+          <div className="ns9-lightbox-header" onClick={(e) => e.stopPropagation()}>
+            <div className="ns9-lightbox-title-box">
+              <h3>{selectedModalImage.title}</h3>
+              <p>{selectedModalImage.desc || 'Sơ đồ tóm tắt kiến thức chuẩn CT GDPT 2018'}</p>
+            </div>
+            <div className="ns9-lightbox-actions">
+              <a
+                href={selectedModalImage.url}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="ns9-lightbox-btn"
+                title="Tải ảnh về máy"
+              >
+                📥 Tải về
+              </a>
+              <button
+                type="button"
+                className="ns9-lightbox-btn close-btn"
+                onClick={() => setSelectedModalImage(null)}
+                aria-label="Đóng cửa sổ"
+              >
+                ✕ Đóng
+              </button>
+            </div>
+          </div>
+          <div className="ns9-lightbox-body" onClick={() => setSelectedModalImage(null)}>
+            <img
+              src={selectedModalImage.url}
+              alt={selectedModalImage.title}
+              className="ns9-lightbox-image"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

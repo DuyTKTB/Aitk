@@ -13,6 +13,7 @@ import { db } from '../lib/firebase.js';
 import { collection, getDocs, limit, query } from 'firebase/firestore';
 import ProfileCard from './social/ProfileCard.jsx';
 import VerifiedBadge from './VerifiedBadge.jsx';
+import StudentAvatar from './StudentAvatar.jsx';
 import '../styles/leaderboard-page.css';
 
 /* ── SVG ICONS ── */
@@ -155,8 +156,8 @@ export default function LeaderboardPage() {
               className={`lb-tab-btn ${tab === 'classes' ? 'active' : ''}`}
               onClick={() => setTab('classes')}
             >
-              <Svg d={ICONS.fire} size={15} />
-              Chuỗi Lớp Học
+              <img src="/img/elec/elec-happy.png" alt="" className="lb-tab-mascot" />
+              <span>Chuỗi Lớp Học</span>
             </button>
             <button
               type="button"
@@ -165,8 +166,8 @@ export default function LeaderboardPage() {
               className={`lb-tab-btn ${tab === 'students' ? 'active' : ''}`}
               onClick={() => setTab('students')}
             >
-              <Svg d={ICONS.sparkle} size={15} />
-              Học Sinh Xuất Sắc
+              <img src="/img/elec/elec-cool.png" alt="" className="lb-tab-mascot" />
+              <span>Học Sinh Xuất Sắc</span>
             </button>
             <button
               type="button"
@@ -175,8 +176,8 @@ export default function LeaderboardPage() {
               className={`lb-tab-btn ${tab === 'streaks' ? 'active' : ''}`}
               onClick={() => setTab('streaks')}
             >
-              <Svg d={ICONS.trophy} size={15} />
-              Kỷ Lục Chuỗi Cá Nhân
+              <img src="/img/elec/elec-celebrate.png" alt="" className="lb-tab-mascot" />
+              <span>Kỷ Lục Chuỗi Cá Nhân</span>
             </button>
           </div>
         </header>
@@ -187,16 +188,16 @@ export default function LeaderboardPage() {
             {/* Rank 2 - Bạc */}
             {top2 && (
               <div className="lb-podium-card rank-2">
+                <img
+                  src="/img/elec/elec-cool.png"
+                  alt="Elec Hạng 2"
+                  style={{ width: 42, height: 42, position: 'absolute', top: -14, right: -8, filter: 'drop-shadow(0 4px 10px rgba(148, 163, 184, 0.4))' }}
+                />
                 <div className="lb-card-meta" style={{ marginBottom: 6, color: '#94a3b8', fontWeight: 800 }}>
                   <Svg d={ICONS.medal} size={16} /> HẠNG 2 (BẠC)
                 </div>
-                <div
-                  className="lb-avatar-wrap"
-                  style={{
-                    background: `linear-gradient(135deg, ${avatarGradient(top2.name)[0]}, ${avatarGradient(top2.name)[1]})`,
-                  }}
-                >
-                  {(top2.name[0] || '?').toUpperCase()}
+                <div className="lb-avatar-wrap" style={{ background: 'transparent', boxShadow: 'none', padding: 0 }}>
+                  <StudentAvatar uid={top2.uid} name={top2.name} size={64} />
                 </div>
                 <h3 className="lb-card-name" title={top2.name}>{top2.name}</h3>
                 <div className="lb-streak-pill">
@@ -212,19 +213,19 @@ export default function LeaderboardPage() {
             {/* Rank 1 - Vàng */}
             {top1 && (
               <div className="lb-podium-card rank-1">
+                <img
+                  src="/img/elec/elec-celebrate.png"
+                  alt="Elec Quán Quân"
+                  style={{ width: 48, height: 48, position: 'absolute', top: -18, right: -10, filter: 'drop-shadow(0 6px 14px rgba(245, 158, 11, 0.45))' }}
+                />
                 <div className="lb-crown-icon" title="Quán quân">
                   <Svg d={ICONS.crown} size={28} fill="#ffb800" />
                 </div>
                 <div className="lb-card-meta" style={{ marginBottom: 6, color: '#d97706', fontWeight: 800 }}>
                   <Svg d={ICONS.trophy} size={16} /> QUÁN QUÂN (VÀNG)
                 </div>
-                <div
-                  className="lb-avatar-wrap"
-                  style={{
-                    background: `linear-gradient(135deg, ${avatarGradient(top1.name)[0]}, ${avatarGradient(top1.name)[1]})`,
-                  }}
-                >
-                  {(top1.name[0] || '?').toUpperCase()}
+                <div className="lb-avatar-wrap" style={{ background: 'transparent', boxShadow: 'none', padding: 0 }}>
+                  <StudentAvatar uid={top1.uid} name={top1.name} size={76} />
                 </div>
                 <h3 className="lb-card-name" title={top1.name} style={{ fontSize: '1.15rem' }}>{top1.name}</h3>
                 <div className="lb-streak-pill" style={{ padding: '0.25rem 0.85rem', fontSize: '0.95rem' }}>
@@ -240,16 +241,16 @@ export default function LeaderboardPage() {
             {/* Rank 3 - Đồng */}
             {top3 && (
               <div className="lb-podium-card rank-3">
+                <img
+                  src="/img/elec/elec-happy.png"
+                  alt="Elec Hạng 3"
+                  style={{ width: 42, height: 42, position: 'absolute', top: -14, right: -8, filter: 'drop-shadow(0 4px 10px rgba(205, 127, 50, 0.4))' }}
+                />
                 <div className="lb-card-meta" style={{ marginBottom: 6, color: '#cd7f32', fontWeight: 800 }}>
                   <Svg d={ICONS.medal} size={16} /> HẠNG 3 (ĐỒNG)
                 </div>
-                <div
-                  className="lb-avatar-wrap"
-                  style={{
-                    background: `linear-gradient(135deg, ${avatarGradient(top3.name)[0]}, ${avatarGradient(top3.name)[1]})`,
-                  }}
-                >
-                  {(top3.name[0] || '?').toUpperCase()}
+                <div className="lb-avatar-wrap" style={{ background: 'transparent', boxShadow: 'none', padding: 0 }}>
+                  <StudentAvatar uid={top3.uid} name={top3.name} size={60} />
                 </div>
                 <h3 className="lb-card-name" title={top3.name}>{top3.name}</h3>
                 <div className="lb-streak-pill">
@@ -300,17 +301,7 @@ export default function LeaderboardPage() {
                     </td>
                     <td>
                       <div className="lb-name-cell">
-                        <div
-                          className="sw-avatar sm"
-                          style={{
-                            width: 32,
-                            height: 32,
-                            fontSize: '0.76rem',
-                            background: `linear-gradient(135deg, ${avatarGradient(item.name)[0]}, ${avatarGradient(item.name)[1]})`,
-                          }}
-                        >
-                          {(item.name[0] || '?').toUpperCase()}
-                        </div>
+                        <StudentAvatar uid={item.uid} name={item.name} size={32} />
                         {tab === 'classes' ? (
                           <span style={{ fontWeight: 700 }}>{item.name}</span>
                         ) : (

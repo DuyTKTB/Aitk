@@ -501,5 +501,14 @@ service cloud.firestore {
       allow read, write: if isOwner(uid);
     }
 
+    // ===============================================================
+    // 16. SHARED RESOURCES — Chia sẻ đề thi & học liệu đồng nghiệp cùng tổ
+    // ===============================================================
+    match /shared_resources/{shareCode} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
   }
 }

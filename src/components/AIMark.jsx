@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
 /* ============================================================
-   AIMark.jsx — logo ELEC AI (bình hóa học + nguyên tử + sách mở)
+   AIMark.jsx — Logo ELEC Science AI (Biểu tượng Khoa học Tự nhiên:
+   Quỹ đạo nguyên tử/sóng Vật lí + Bình phản ứng Hóa học + Sách mở & Ký hiệu KHTN)
 
    Props:
    size (px chiều rộng) · mode 'idle' | 'think' | 'talk' | 'success' | 'error' | 'orbit'
@@ -54,10 +55,10 @@ const ORBIT_SPHERES = [
 ];
 
 const SYMBOLS = [
-  { s: 'H₂O', x: 188, d: 5.2 },
-  { s: 'π', x: 252, d: 4.6 },
-  { s: 'Σ', x: 368, d: 5.6 },
-  { s: 'e⁻', x: 432, d: 4.9 },
+  { s: 'λ', x: 175, d: 5.2 },
+  { s: 'H₂O', x: 235, d: 4.8 },
+  { s: 'DNA', x: 385, d: 5.4 },
+  { s: 'e⁻', x: 445, d: 4.9 },
 ];
 
 const SPARKS = Array.from({ length: 8 }, (_, i) => {

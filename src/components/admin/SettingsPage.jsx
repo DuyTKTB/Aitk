@@ -16,7 +16,7 @@ const pkOf = (table) => (table === 'pro_users' ? 'user_id' : 'id');
 const ALL_ROWS = (q, pk = 'id') => q.not(pk, 'is', null);
 
 const TOGGLES = [
-  { key: 'enableAI', label: 'AI Chat (ELEC AI)', desc: 'Trợ lý AI Hóa học trong web' },
+  { key: 'enableAI', label: 'AI Chat (ELEC AI)', desc: 'Trợ lý AI Khoa học Tự nhiên trong web' },
   { key: 'enableChat', label: 'Chat cộng đồng', desc: 'Chat nhóm giữa học sinh' },
   { key: 'enablePet', label: 'Pet Widget', desc: 'Linh vật pha lê ở góc phải' },
   { key: 'enableGames', label: 'Trò chơi', desc: 'GameHub và các game nhỏ' },

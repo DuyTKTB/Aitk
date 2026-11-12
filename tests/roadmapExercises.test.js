@@ -14,10 +14,11 @@ import {
 import { loadPracticeQuestions, loadQuestionsByIds, loadReviewQuestions } from '../src/lib/roadmapEvidence.js';
 
 describe('roadmapExercises — ngân hàng câu hỏi biên soạn sẵn', () => {
-  it('bao phủ đủ 100% chuyên đề trong CHEM_TOPICS (22 chuyên đề)', () => {
+  it('bao phủ đủ 100% chuyên đề trong CHEM_TOPICS (22 chuyên đề) và toàn bộ KHTN (36 chuyên đề)', () => {
     const topicIds = CHEM_TOPICS.map((t) => t.id);
-    expect(BUILTIN_TOPICS.sort()).toEqual(topicIds.sort());
-    expect(builtinCount()).toBeGreaterThanOrEqual(22 * 8);
+    expect(topicIds.every((id) => BUILTIN_TOPICS.includes(id))).toBe(true);
+    expect(BUILTIN_TOPICS.length).toBeGreaterThanOrEqual(36);
+    expect(builtinCount()).toBeGreaterThanOrEqual(36 * 8);
   });
 
   it('mỗi chuyên đề có trọng tâm, lỗi hay gặp và đủ 3 mức độ NB/TH/VD', () => {

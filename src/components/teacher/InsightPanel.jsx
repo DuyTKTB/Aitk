@@ -83,7 +83,7 @@ export default function InsightPanel({
   const [data, setData] = useState(null);
   const [copiedActionIdx, setCopiedActionIdx] = useState(null);
 
-  const loadInsights = async (force = false) => {
+  const loadInsights = async (force = false, useAi = false) => {
     setLoading(true);
     try {
       const res = await generatePedagogicalInsights({
@@ -91,6 +91,7 @@ export default function InsightPanel({
         className,
         subject,
         forceRefresh: force,
+        useAi,
       });
       setData(res);
     } catch (e) {
@@ -101,7 +102,7 @@ export default function InsightPanel({
   };
 
   useEffect(() => {
-    loadInsights(false);
+    loadInsights(false, false);
   }, [insightsData, className, subject]);
 
   // Phổ điểm thực tế theo 5 dải điểm: 0-2, 2-4, 4-6, 6-8, 8-10 (nếu chưa có bài nộp thì hiển thị đường chuẩn tham khảo)
@@ -185,6 +186,11 @@ export default function InsightPanel({
                   <p style={{ margin: '0.4rem 0 0', fontSize: '0.86rem', color: 'var(--t-ink-2)', lineHeight: 1.55, maxWidth: '820px' }}>
                     {data?.summary}
                   </p>
+                  {data?.aiError && (
+                    <p style={{ margin: '0.45rem 0 0', fontSize: '0.8rem', fontWeight: 600, color: 'var(--t-status-err, #ef4444)' }}>
+                      {data.aiError}
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -193,8 +199,8 @@ export default function InsightPanel({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <button
               type="button"
-              onClick={() => loadInsights(true)}
-              disabled={loading}
+              onClick={() => loadInsights(true, true)}
+              disabled={loading || !insightsData?.submissionCount}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -206,12 +212,17 @@ export default function InsightPanel({
                 border: '1px solid var(--t-border)',
                 fontSize: '0.82rem',
                 fontWeight: 700,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: (loading || !insightsData?.submissionCount) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s ease',
+                opacity: !insightsData?.submissionCount ? 0.6 : 1,
               }}
             >
               <IcoRefresh size={14} className={loading ? 'vt-blink' : ''} />
-              {loading ? 'Đang phân tích…' : 'Phân tích lại cùng AI'}
+              {loading
+                ? 'Đang phân tích…'
+                : data?.isAiGenerated
+                  ? 'Phân tích lại cùng AI (1 credit)'
+                  : 'Phân tích chuyên sâu AI (1 credit)'}
             </button>
           </div>
         </div>

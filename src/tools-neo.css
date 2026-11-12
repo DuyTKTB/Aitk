@@ -291,6 +291,20 @@
 .tools-page .tn-side-label { margin: 1.1rem .6rem .4rem; font: 600 .68rem var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
 .tools-page .tn-side-label:first-of-type { margin-top: 0; }
 
+.tn-side-mascot {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tools-page .tn-side-item:hover .tn-side-mascot,
+.tools-page .tn-side-item.on .tn-side-mascot,
+.tools-page .tools-tab:hover .tn-side-mascot,
+.tools-page .tools-tab.on .tn-side-mascot {
+  transform: scale(1.22) rotate(-5deg);
+}
+
 .tools-page .tn-side-item {
   display: flex;
   align-items: center;

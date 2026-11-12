@@ -57,6 +57,13 @@ export function recordWrongAnswers(uid, items = []) {
     const qid = String(q.id || q.questionId || `${it.examTitle || 'exam'}_${(q.content || q.q || '').slice(0, 30)}`);
     const prev = map.get(qid);
 
+    const subjName = it.subjectName
+      || q.subjectName
+      || (it.subject === 'ly' || q.subject === 'ly' || (it.examTitle || '').toLowerCase().includes('vật lí') ? 'Vật lí'
+      : it.subject === 'sinh' || q.subject === 'sinh' || (it.examTitle || '').toLowerCase().includes('sinh học') ? 'Sinh học'
+      : 'Hóa học');
+    const subjId = it.subject || q.subject || (subjName === 'Vật lí' ? 'ly' : subjName === 'Sinh học' ? 'sinh' : 'hoa');
+
     const updatedItem = {
       id: prev?.id || `local_wrong_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       questionId: qid,
@@ -65,16 +72,18 @@ export function recordWrongAnswers(uid, items = []) {
       last_wrong_at: now,
       source: it.source || prev?.source || 'exam',
       examTitle: it.examTitle || prev?.examTitle || 'Bài kiểm tra',
+      subject: subjId,
       question: {
         id: qid,
         content: q.content || q.q || '',
         explanation: q.explanation || q.explain || '',
         difficulty: q.difficulty || q.level || 'medium',
         topic_id: q.topic_id || q.topicId || it.topicId || 'c12-ester',
+        subject: subjId,
         exam: {
           id: it.examId || 'local',
           title: it.examTitle || 'Bài thi',
-          subject: { name: 'Hóa học' },
+          subject: { name: subjName, id: subjId },
         },
         answers: Array.isArray(q.options)
           ? q.options.map((opt, idx) => ({

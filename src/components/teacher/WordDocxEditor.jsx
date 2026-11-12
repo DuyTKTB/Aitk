@@ -9,6 +9,8 @@ import { generateShuffledVersions, answerKeyRows } from '../../lib/examShuffle.j
 import { parseExamDocxFile } from '../../lib/examDocxParser.js';
 import { detectExamSubjectAndGrade, SUPPORTED_SUBJECTS } from '../../lib/subjectClassifier.js';
 import { askAI } from '../../lib/ai.js';
+import { runWithCredit } from '../../lib/creditService.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
 import { createPaperExam } from '../../lib/paperStore.js';
 import {
@@ -304,6 +306,7 @@ export default function WordDocxEditor({
   onSaveToBank = null,
   onSay = null,
 }) {
+  const { user } = useAuth();
   if (!open) return null;
 
   // Header info
@@ -528,14 +531,18 @@ Số câu hiện tại: ${questions.length} câu.
 Mẫu 3 câu đầu tiên:
 ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
-      const aiReply = await askAI(
-        `Ngữ cảnh đề thi đang soạn:\n${examContext}\n\nYêu cầu của giáo viên: ${qText}\n\nHãy trả lời chuẩn sư phạm theo chương trình GDPT 2025, văn phong chuyên nghiệp, không sử dụng emoji.`,
-        null,
-        null,
-        { systemPrompt: `Bạn là chuyên gia khảo thí THPT môn ${subject} của Bộ Giáo dục & Đào tạo. Hãy cung cấp câu hỏi, lời giải hoặc gợi ý sư phạm chuẩn mực.` }
+      const aiReply = await runWithCredit(
+        { userId: user?.uid, cost: 1, reason: 'Word AI Copilot' },
+        () => askAI(
+          `Ngữ cảnh đề thi đang soạn:\n${examContext}\n\nYêu cầu của giáo viên: ${qText}\n\nHãy trả lời chuẩn sư phạm theo chương trình GDPT 2025, văn phong chuyên nghiệp, không sử dụng emoji.`,
+          null,
+          null,
+          { systemPrompt: `Bạn là chuyên gia khảo thí THPT môn ${subject} của Bộ Giáo dục & Đào tạo. Hãy cung cấp câu hỏi, lời giải hoặc gợi ý sư phạm chuẩn mực.` }
+        )
       );
 
-      setCopilotMessages((prev) => [...prev, { role: 'assistant', text: aiReply }]);
+      const replyText = typeof aiReply === 'string' ? aiReply : (aiReply?.text || 'Đã hoàn tất.');
+      setCopilotMessages((prev) => [...prev, { role: 'assistant', text: replyText }]);
     } catch (err) {
       setCopilotMessages((prev) => [...prev, { role: 'assistant', text: 'Lỗi phản hồi từ AI: ' + err.message }]);
     } finally {
@@ -885,8 +892,8 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
       try {
         const res = await createPaperExam({
-          teacherId: 'teacher_default',
-          classId: targetClass?.id || selectedClassId || 'general',
+          teacherId: user?.uid || 'teacher_default',
+          classId: targetClass?.id || selectedClassId || null,
           title: examName,
           counts,
           scoring,
@@ -1060,20 +1067,48 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
     setIsBusy(true);
     setMsg('AI đang rà soát chính tả, dấu chấm phẩy và danh pháp...');
     try {
-      const sample = questions.slice(0, 5).map((q, i) => `${i + 1}. ${q.q}`).join('\n');
-      const res = await askAI(
-        `Hãy kiểm tra và hiệu đính lỗi chính tả, danh pháp SGK mới cho đề thi môn ${subject}:
+      const sliceCount = Math.min(questions.length, 10);
+      const sample = questions.slice(0, sliceCount).map((q, i) => `${i + 1}. ${q.q}`).join('\n');
+      const res = await runWithCredit(
+        { userId: user?.uid, cost: 1, reason: 'AI rà soát chính tả đề' },
+        () => askAI(
+          `Hãy kiểm tra và hiệu đính lỗi chính tả, dấu câu, danh pháp SGK GDPT 2018 mới cho đề thi môn ${subject}:
 ${sample}
-Chỉ trả về JSON danh sách các câu đã chuẩn hóa: {"fixed": ["...", "..."]}`,
-        null,
-        null,
-        { systemPrompt: 'Bạn là chuyên gia rà soát văn bản đề thi THPT của Bộ GD&ĐT.' }
+Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng thứ tự (không kèm số thứ tự ở đầu câu): {"fixed": ["...", "..."]}`,
+          null,
+          null,
+          { systemPrompt: 'Bạn là chuyên gia rà soát văn bản đề thi THPT của Bộ GD&ĐT.' }
+        )
       );
-      setMsg('Đã hoàn tất rà soát chính tả!');
-      setTimeout(() => setMsg(''), 3000);
-    } catch (_) {
-      setMsg('Đã hoàn tất rà soát!');
-      setTimeout(() => setMsg(''), 2000);
+      const rawText = typeof res === 'string' ? res : (res?.text || '');
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      let fixedCount = 0;
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed?.fixed) && parsed.fixed.length > 0) {
+          const updated = questions.map((q, idx) => {
+            if (idx < parsed.fixed.length && typeof parsed.fixed[idx] === 'string' && parsed.fixed[idx].trim()) {
+              const clean = parsed.fixed[idx].trim().replace(/^\d+\.\s*/, '');
+              if (clean && clean !== q.q) {
+                fixedCount++;
+                return { ...q, q: clean };
+              }
+            }
+            return q;
+          });
+          if (fixedCount > 0) {
+            setQuestions(updated);
+            pushHistory(updated);
+          }
+        }
+      }
+      setMsg(fixedCount > 0 ? `Đã rà soát & hiệu đính xong ${fixedCount} câu hỏi!` : 'Nội dung câu hỏi đã chuẩn, không phát hiện lỗi chính tả!');
+      onSay?.(fixedCount > 0 ? `Đã hiệu đính ${fixedCount} câu hỏi chuẩn SGK mới!` : 'Đề thi đã chuẩn xác.', 'success');
+      setTimeout(() => setMsg(''), 3500);
+    } catch (err) {
+      setMsg(err?.message || 'Lỗi khi rà soát chính tả!');
+      onSay?.(err?.message || 'Lỗi khi rà soát chính tả', 'error');
+      setTimeout(() => setMsg(''), 3500);
     } finally {
       setIsBusy(false);
     }
@@ -1683,7 +1718,10 @@ Chỉ trả về JSON danh sách các câu đã chuẩn hóa: {"fixed": ["...", 
                     className="wde-tool-btn"
                     onClick={() => {
                       if (!selectedQId) {
-                        alert('Vui lòng nhấp chọn câu hỏi cần chèn ảnh trước!');
+                        const warnMsg = 'Vui lòng nhấp chọn câu hỏi cần chèn ảnh trước!';
+                        onSay?.(warnMsg, 'warning');
+                        setMsg(warnMsg);
+                        setTimeout(() => setMsg(''), 3000);
                         return;
                       }
                       imageUploadRef.current?.click();

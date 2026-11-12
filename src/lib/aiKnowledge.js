@@ -15,9 +15,12 @@ import { COMPOUNDS } from '../data/chemRules.js';
 import { ELEMENTS, CATS, norm } from '../data/elements.js';
 import { REACTIONS } from '../data/reactions.js';
 import { CHEM_TOPICS } from '../data/chemTopics.js';
+import { TOPICS_BY_SUBJECT } from '../data/topicsBySubject.js';
+import { APP_FEATURES } from './appGuideKnowledge.js';
 
 const CAT_LABEL = new Map(CATS);
 const KIND_WEIGHT = {
+  feature: 1.3,
   formula: 1.25,
   compound: 1.15,
   reaction: 1.1,
@@ -160,7 +163,7 @@ function buildDocs() {
     }));
   }
 
-  /* ---------- 5. Chuyên đề SGK ---------- */
+  /* ---------- 5. Chuyên đề SGK Khoa học Tự nhiên (Lý - Hóa - Sinh) ---------- */
   for (const t of CHEM_TOPICS) {
     docs.push(makeDoc({
       id: `topic:${t.id}`,
@@ -168,7 +171,41 @@ function buildDocs() {
       title: t.name,
       text: `Chuyên đề Hóa học lớp ${t.grade}: ${t.name}.`,
       grade: [t.grade],
-      ref: `Chuyên đề · ${t.name}`,
+      ref: `Chuyên đề Hóa học · ${t.name}`,
+    }));
+  }
+
+  for (const t of (TOPICS_BY_SUBJECT['Vật lí'] || [])) {
+    docs.push(makeDoc({
+      id: `topic:ly:${t.id}`,
+      kind: 'topic',
+      title: t.name,
+      text: `Chuyên đề Vật lí THPT: ${t.name}. Dao động, sóng, điện, quang, cơ học và hạt nhân nguyên tử.`,
+      ref: `Chuyên đề Vật lí · ${t.name}`,
+      keys: [t.name, 'Vật lí', 'vat ly', 'physics'],
+    }));
+  }
+
+  for (const t of (TOPICS_BY_SUBJECT['Sinh học'] || [])) {
+    docs.push(makeDoc({
+      id: `topic:sinh:${t.id}`,
+      kind: 'topic',
+      title: t.name,
+      text: `Chuyên đề Sinh học THPT: ${t.name}. Tế bào, di truyền phân tử, Men-đen, tiến hóa và sinh thái học.`,
+      ref: `Chuyên đề Sinh học · ${t.name}`,
+      keys: [t.name, 'Sinh học', 'sinh hoc', 'biology'],
+    }));
+  }
+
+  /* ---------- 6. Hướng dẫn & Tính năng Website ELEC AI ---------- */
+  for (const f of APP_FEATURES) {
+    docs.push(makeDoc({
+      id: `feature:${f.id}`,
+      kind: 'feature',
+      title: f.name,
+      text: `Chức năng ${f.name} nằm tại ${f.menuLocation} (đường dẫn [${f.name}](${f.route})). ${f.summary} Cách dùng: ${f.howToUse.join(' ')} Mẹo: ${f.tips}`,
+      ref: `Hướng dẫn sử dụng ELEC AI · [${f.name}](${f.route})`,
+      keys: [f.name, ...(f.keywords || []), f.route],
     }));
   }
 

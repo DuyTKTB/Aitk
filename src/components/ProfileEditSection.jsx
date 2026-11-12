@@ -7,23 +7,24 @@ import {
   GRADES_LIST,
 } from '../lib/userProfileService.js';
 import { getSubscriptionAndQuota, getUserReports } from '../data/virtualExamsBank.js';
+import UserAvatar from './UserAvatar.jsx';
 import '../styles/profile-edit-section.css';
 
-/* Linh vật chibi nằm trong note */
-function ChibiMascotSvg() {
+/* Linh vật ELEC AI tách nền cao cấp nằm trong note */
+function ChibiMascot() {
   return (
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="50" cy="50" r="42" fill="#2563eb" />
-      <ellipse cx="50" cy="56" rx="28" ry="24" fill="#ffffff" />
-      <circle cx="50" cy="58" r="10" fill="#2563eb" />
-      <text x="50" y="62" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900" fontFamily="system-ui">9</text>
-      {/* Mắt nháy */}
-      <circle cx="41" cy="48" r="3.5" fill="#0f172a" />
-      <path d="M56 48 Q61 43 65 48" stroke="#0f172a" strokeWidth="2.8" strokeLinecap="round" fill="none" />
-      <ellipse cx="36" cy="53" rx="3" ry="1.8" fill="#fda4af" />
-      <ellipse cx="66" cy="53" rx="3" ry="1.8" fill="#fda4af" />
-      <path d="M46 54 Q50 58 54 54" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" fill="none" />
-    </svg>
+    <img
+      src="/img/elec/elec-wink.png"
+      alt="ELEC AI Note"
+      className="ns9-pe-note-img"
+      draggable={false}
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.12))',
+      }}
+    />
   );
 }
 
@@ -278,12 +279,8 @@ export default function ProfileEditSection({
           {/* Thẻ 1: Avatar & Tên */}
           <div className="ns9-pe-card-user">
             <div className="ns9-pe-avatar-box">
-              <div className="ns9-pe-avatar-circle">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt={fullName} />
-                ) : (
-                  <span>{initial}</span>
-                )}
+              <div className="ns9-pe-avatar-circle" style={{ background: 'transparent', boxShadow: 'none' }}>
+                <UserAvatar user={user} size={86} title={fullName} />
               </div>
               <button
                 type="button"
@@ -426,7 +423,7 @@ export default function ProfileEditSection({
               Lưu hồ sơ ELEC AI để cá nhân hoá lộ trình cho em.
             </p>
             <div className="ns9-pe-note-mascot">
-              <ChibiMascotSvg />
+              <ChibiMascot />
             </div>
           </div>
         </div>

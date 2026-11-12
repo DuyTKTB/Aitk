@@ -1,42 +1,30 @@
-# ELEC AI (AITK)
+# ELEC Science AI (ELECAI)
 
-> ELEC AI (còn viết là ELECAI, Elec AI, AITK) là nền tảng học và dạy Hoá học THPT trên web:
-> trợ lý AI giải bài từng bước, luyện tập và ôn tập ngắt quãng, lộ trình kiến thức theo chương,
-> tạo đề – giao đề – giám sát thi – chấm tự động cho giáo viên, kèm bộ công cụ Hoá học tương tác.
-> Trang chủ: https://aitk-ten.vercel.app/
+> ELEC Science AI (còn viết là ELEC AI, ELECAI, Elec AI) là nền tảng học và luyện thi Khoa học Tự nhiên
+> (Vật lí — Hóa học — Sinh học) trên web theo chương trình GDPT 2018:
+> trợ lý AI giải bài từng bước, luyện tập và ôn tập ngắt quãng, lộ trình kiến thức theo điểm Elo,
+> phòng thi ảo chuẩn cấu trúc Bộ GD&ĐT & ĐGNL (HSA, TSA, V-ACT), tạo đề – giao đề – giám sát thi – chấm OMR
+> tự động cho giáo viên, kèm bộ công cụ KHTN và phòng thí nghiệm Hóa học 3D.
+> Trang chủ: https://www.elecai.id.vn/
 
 ## Người học
 
-- Trợ lý AI Hoá học: giải bài theo 6 chế độ (tự động, giải chi tiết, từng bước, kiểm tra kết quả,
-  lý thuyết, bài tương tự), có ngữ cảnh lớp và chương đang học.
-- Luyện tập trắc nghiệm và ôn tập ngắt quãng (spaced repetition) theo chuyên đề.
-- Lộ trình kiến thức: theo dõi tiến độ thật từng chương, mức độ thành thạo, lịch ôn, bản đồ kiến thức,
-  gợi ý học tiếp dựa trên kết quả trả lời (không dùng dữ liệu mẫu).
-- Sổ lỗi sai: lưu câu trả lời sai kèm lời giải để luyện lại.
-- Bộ công cụ: bảng tuần hoàn tương tác, cân bằng phương trình, tính khối lượng mol / phân tử khối,
-  thư viện công thức, máy tính Hoá học.
-- Trò chơi giáo dục, Pomodoro, ghi chú, thời khoá biểu, hồ sơ thành tích.
+- Trợ lý AI KHTN (/tro-ly-ai-giai-hoa): giải bài Vật lí, Hóa học, Sinh học theo nhiều chế độ (tự động, giải chi tiết, từng bước, kiểm tra kết quả, lý thuyết, bài tương tự), hỗ trợ đọc ảnh đề thi.
+- Phòng thi ảo (/phong-thi-ao): luyện đề thi thử THPTQG và ĐGNL bấm giờ thật.
+- Lộ trình kiến thức (/lo-trinh-on-thi-thpt-quoc-gia): theo dõi tiến độ từng chương, mức độ thành thạo, lịch ôn, bản đồ kiến thức và gợi ý học tiếp theo điểm Elo.
+- Sổ tay lỗi sai & SRS: lưu câu trả lời sai kèm lời giải để luyện lại đúng lúc sắp quên.
+- Bộ công cụ KHTN: Bảng tuần hoàn 118 nguyên tố (/bang-tuan-hoan), Cân bằng phương trình Hóa học (/can-bang-phuong-trinh-hoa-hoc), Sổ tay công thức 3 môn (/cong-thuc-hoa-hoc), Kho công cụ & tài liệu (/tai-lieu-hoa-hoc).
+- Tuyển sinh & Hướng nghiệp: Tính điểm xét tuyển Đại học (/tinh-diem-xet-tuyen-dai-hoc), Tra cứu điểm chuẩn (/tra-cuu-diem-chuan), Định hướng nghề nghiệp RIASEC (/dinh-huong-nghe-nghiep).
+- Trò chơi giáo dục & Lab 3D (/tro-choi-khoa-hoc): Phòng lab 3D, Pomodoro, ghi chú, thời khóa biểu, bảng xếp hạng.
 
 ## Giáo viên và nhà trường
 
-- Tạo đề từ ngân hàng câu hỏi (trắc nghiệm, đúng/sai, trả lời ngắn), gắn chuyên đề và mức độ.
-- Giao đề cho lớp bằng mã/link, đặt thời gian, cấu hình chống gian lận (toàn màn hình, giới hạn chuyển tab,
-  chặn copy, camera tuỳ chọn).
-- Giám sát phòng thi trực tiếp, xem bài nộp, chấm tự động và phân tích kết quả theo lớp, theo câu.
+- Tạo đề từ ngân hàng câu hỏi hoặc PDF/Word/AI (trắc nghiệm, đúng/sai, trả lời ngắn), gắn chuyên đề và mức độ.
+- Giao đề cho lớp bằng mã/link, đặt thời gian, cấu hình chống gian lận (toàn màn hình, giới hạn chuyển tab, chặn copy, camera tùy chọn).
+- Giám sát phòng thi trực tiếp, chấm phiếu trắc nghiệm OMR, chấm bài giấy và phân tích kết quả theo lớp, theo câu.
 - Quản lý lớp, duyệt thành viên, duyệt thi lại.
 
-## Truy cập
+## Liên kết chính thức
 
-- Ứng dụng yêu cầu đăng nhập; trang công khai là trang giới thiệu tại https://aitk-ten.vercel.app/
-- Điều hướng trong ứng dụng dùng hash (#/ai, #/quiz, #/roadmap, #/stats ...).
-
-## Ghi chú kỹ thuật
-
-- Frontend: React + Vite (SPA, hash routing), thiết kế responsive, có chế độ sáng/tối.
-- Dữ liệu: Firebase (xác thực, lớp học, đề thi, bài nộp) và Supabase (ngân hàng câu hỏi, lượt làm bài).
-- Trợ lý AI dùng nhiều nhà cung cấp mô hình qua lớp định tuyến nội bộ, có giới hạn và dự phòng.
-
-## Liên kết
-
-- Trang chủ: https://aitk-ten.vercel.app/
-- Sitemap: https://aitk-ten.vercel.app/sitemap.xml
+- Trang chủ: https://www.elecai.id.vn/
+- Sitemap: https://www.elecai.id.vn/sitemap.xml

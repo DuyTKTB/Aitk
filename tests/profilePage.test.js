@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../src/lib/proKeyApi.js', () => ({
+  activateProKey: vi.fn(async () => ({ ok: false, message: 'Invalid' })),
+}));
 
 describe('Profile Mobile Architecture & Helpers', () => {
   it('masks user email securely when hidden', () => {

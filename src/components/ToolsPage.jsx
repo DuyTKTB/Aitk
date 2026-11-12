@@ -33,6 +33,10 @@ import { useAuth } from '../hooks/useAuth.jsx';
 const STUDY_TOOLS = [
   { id: 'table', name: 'Bảng tuần hoàn', desc: 'Bảng tuần hoàn tương tác', Icon: IconAtom, tag: 'hot' },
   { id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
+  { id: 'admission', name: 'Điểm chuẩn & Năng lực', desc: 'So sánh điểm thi thật với điểm chuẩn ĐH', Icon: IconTarget, tag: 'new' },
+  { id: 'career', name: 'Hướng nghiệp AI', desc: 'Trắc nghiệm RIASEC & chọn ngành nghề', Icon: IconBook, tag: 'new' },
+  { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Học và tạo quiz từ file tài liệu của bạn', Icon: IconNote, tag: 'new' },
+  { id: 'chalkboard', name: 'Bảng phấn 3D', desc: 'Mô phỏng hình học & kiểm định cơ học', Icon: IconScale, tag: 'hot' },
   { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Nhập phương trình, ra hệ số', Icon: IconScale, tag: 'hot' },
   { id: 'pomodoro', name: 'Pomodoro', desc: 'Tập trung sâu, nghỉ đúng lúc', Icon: IconTimer },
@@ -715,13 +719,13 @@ export default function ToolsPage() {
 
   const hotOthers = filteredHot.filter((t) => t.id !== 'ELECAI');
   const tabList = [
-    ['docs', 'Tài liệu', DOCS.length],
-    ['exam', 'Đề thi', EXAMS.length],
-    ['formula', 'Công thức', FORMULAS.length],
-    ['hot', 'AI Hot', HOT_AI.__list.length],
-    ['study', 'Học tập', STUDY_TOOLS.length],
-    ['ai', 'AI Free', AI_TOOLS.length],
-    ['prompt', 'Prompt Free', PROMPTS.length],
+    ['docs', 'Tài liệu', DOCS.length, '/img/elec/elec-think.png'],
+    ['exam', 'Đề thi', EXAMS.length, '/img/elec/elec-cool.png'],
+    ['formula', 'Công thức', FORMULAS.length, '/img/elec/elec-happy.png'],
+    ['hot', 'AI Hot', HOT_AI.__list.length, '/img/elec/elec-fighting.png'],
+    ['study', 'Học tập', STUDY_TOOLS.length, '/img/elec/elec-celebrate.png'],
+    ['ai', 'AI Free', AI_TOOLS.length, '/img/elec/elec-super-saiyan.png'],
+    ['prompt', 'Prompt Free', PROMPTS.length, '/img/elec/elec-wink.png'],
   ];
   const tabName = (tabList.find((t) => t[0] === tab) || [])[1];
 
@@ -731,8 +735,9 @@ export default function ToolsPage() {
         <aside className="tn-side" aria-label="Danh mục công cụ">
           <div className="tn-side-brand"><b>Công cụ</b><small>ELEC AI</small></div>
           <p className="tn-side-label">Danh mục</p>
-          {tabList.map(([id, label, n]) => (
+          {tabList.map(([id, label, n, mascot]) => (
             <button key={id} type="button" className={'tn-side-item' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
+              {mascot && <img src={mascot} alt="" className="tn-side-mascot" />}
               <span>{label}</span><i>{n}</i>
             </button>
           ))}
@@ -781,16 +786,11 @@ export default function ToolsPage() {
 
           {/* TABS (Mobile only - hidden on desktop where sidebar exists) */}
           <div className="tools-tabs tools-tabs-mobile" role="tablist" aria-label="Loại công cụ">
-            {[
-              ['docs', 'Tài liệu', DOCS.length],
-              ['hot', 'AI Hot', HOT_AI.__list.length],
-              ['study', 'Học tập', STUDY_TOOLS.length],
-              ['ai', 'AI Free', AI_TOOLS.length],
-              ['prompt', 'Prompt Free', PROMPTS.length],
-            ].map(([id, label, n]) => (
+            {tabList.map(([id, label, n, mascot]) => (
               <button key={id} role="tab" aria-selected={tab === id}
                 className={'tools-tab' + (tab === id ? ' on' : '')} onClick={() => switchTab(id)}>
-                {label}<span className="tc-n">{n}</span>
+                {mascot && <img src={mascot} alt="" className="tn-side-mascot" />}
+                <span>{label}</span><span className="tc-n">{n}</span>
               </button>
             ))}
           </div>
@@ -827,7 +827,7 @@ export default function ToolsPage() {
             <>
               <p className="tc-lede">
                 {HOT_AI.__list.length} AI được chọn lọc, mỗi cái có ưu nhược điểm, mức giá và việc nó làm tốt nhất.
-                ELECAI, trợ lý Hóa học của chính ELEC AI, đứng đầu danh sách. Cập nhật theo xu hướng 2026.
+                ELECAI, trợ lý Khoa học Tự nhiên của chính ELEC AI, đứng đầu danh sách. Cập nhật theo xu hướng 2026.
               </p>
 
               {renderControls(true)}

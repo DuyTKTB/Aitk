@@ -291,17 +291,47 @@ function Modal({ title, icon, onClose, children, wide }) {
    MAIN — PHÒNG THI ẢO MẶC ĐỊNH + CHẾ ĐỘ PHẢN XẠ NGUYÊN TỐ
    ============================================================ */
 export default function Quiz() {
-  const [viewMode, setViewMode] = useState('virtual-exam'); // 'virtual-exam' | 'reflex-quiz'
+  const getInitialMode = () => {
+    if (typeof window === 'undefined') return 'virtual-exam';
+    const h = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0];
+    return h === 'quiz' ? 'reflex-quiz' : 'virtual-exam';
+  };
+
+  const [viewMode, setViewMode] = useState(getInitialMode);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const h = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0];
+      if (h === 'quiz') setViewMode('reflex-quiz');
+      else if (h === 'virtual-exams') setViewMode('virtual-exam');
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const handleSwitchToQuiz = () => {
+    setViewMode('reflex-quiz');
+    if (!window.location.hash.startsWith('#quiz')) {
+      window.location.hash = 'quiz';
+    }
+  };
+
+  const handleBackToExam = () => {
+    setViewMode('virtual-exam');
+    if (!window.location.hash.startsWith('#virtual-exams')) {
+      window.location.hash = 'virtual-exams';
+    }
+  };
 
   if (viewMode === 'virtual-exam') {
     return (
       <VirtualExamRoom
-        onSwitchToLegacyQuiz={() => setViewMode('reflex-quiz')}
+        onSwitchToLegacyQuiz={handleSwitchToQuiz}
       />
     );
   }
 
-  return <LegacyElementQuiz onBackToVirtualExam={() => setViewMode('virtual-exam')} />;
+  return <LegacyElementQuiz onBackToVirtualExam={handleBackToExam} />;
 }
 
 function LegacyElementQuiz({ onBackToVirtualExam }) {

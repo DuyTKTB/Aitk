@@ -3,36 +3,21 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { addUserReport } from '../data/virtualExamsBank.js';
 import '../styles/feedback-modal.css';
 
-/* Mascot minh họa hình ảnh chuẩn SVG */
-function MascotSvg() {
+/* Linh vật ELEC AI van nài / lắng nghe ý kiến */
+function MascotImg() {
   return (
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="46" fill="#3b82f6" />
-      <circle cx="50" cy="50" r="42" fill="#ffffff" />
-      {/* Thân linh vật xanh */}
-      <circle cx="50" cy="56" r="28" fill="#2563eb" />
-      <ellipse cx="50" cy="60" rx="18" ry="14" fill="#ffffff" />
-      <circle cx="50" cy="60" r="8" fill="#2563eb" />
-      {/* Đầu */}
-      <circle cx="50" cy="38" r="22" fill="#3b82f6" />
-      <ellipse cx="50" cy="41" rx="17" ry="14" fill="#ffffff" />
-      {/* Mắt */}
-      <circle cx="43" cy="38" r="3.8" fill="#0f172a" />
-      <circle cx="57" cy="38" r="3.8" fill="#0f172a" />
-      <circle cx="44.2" cy="36.8" r="1.4" fill="#ffffff" />
-      <circle cx="58.2" cy="36.8" r="1.4" fill="#ffffff" />
-      {/* Má hồng */}
-      <circle cx="38" cy="43" r="2.8" fill="#fda4af" />
-      <circle cx="62" cy="43" r="2.8" fill="#fda4af" />
-      {/* Miệng cười */}
-      <path d="M46 44 Q50 49 54 44" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" fill="none" />
-      {/* Tai / antenna */}
-      <circle cx="50" cy="18" r="4" fill="#fbbf24" />
-      <line x1="50" y1="18" x2="50" y2="24" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" />
-      {/* Cặp sách / sách */}
-      <rect x="22" y="52" width="14" height="18" rx="3" fill="#60a5fa" />
-      <path d="M22 56h14" stroke="#ffffff" strokeWidth="1.5" />
-    </svg>
+    <img
+      src="/img/elec/elec-plead.png"
+      alt="ELEC AI Feedback"
+      className="fbm-mascot-img"
+      draggable={false}
+      style={{
+        width: '84px',
+        height: '84px',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.18))',
+      }}
+    />
   );
 }
 
@@ -116,7 +101,7 @@ export default function FeedbackModal({ isOpen: propIsOpen, onClose }) {
         {/* Header nổi bật với Linh vật */}
         <div className="ns9-fb-header">
           <div className="ns9-fb-mascot-wrap">
-            <MascotSvg />
+            <MascotImg />
           </div>
           <div className="ns9-fb-title-wrap">
             <h3 className="ns9-fb-title">Góp ý của em với ELEC AI</h3>

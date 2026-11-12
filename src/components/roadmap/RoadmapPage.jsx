@@ -1,12 +1,12 @@
 /* ============================================================
-   RoadmapPage.jsx — TRANG "LỘ TRÌNH HỌC TẬP CÁ NHÂN HÓA" (CHUẨN 9STUDY)
+   RoadmapPage.jsx — TRANG "LỘ TRÌNH HỌC TẬP CÁ NHÂN HÓA" (CHUẨN ELEC AI)
    ------------------------------------------------------------
    Thiết kế tinh gọn, thực tế, dễ hiểu ngay từ cái nhìn đầu tiên:
    1. Thẻ "Lộ trình của em" (AspirationRoadmapHub):
       • Nguyện vọng đang chọn + 4 chỉ số (Điểm dự đoán, Mục tiêu, Tiến độ, Elo)
       • Biểu đồ đường Điểm | Elo + 1 Nút hành động chính duy nhất "Luyện tập ngay"
    2. Ba chế độ xem gọn gàng bằng Tab (không nhồi nhét quá 5 khối trên màn hình):
-      • Tab 1 — "Chuyên đề Hóa học" (Thẻ chương như ảnh 11 của 9Study: thanh tiến độ,
+      • Tab 1 — "Chuyên đề Hóa học" (Thẻ chương: thanh tiến độ,
         độ chính xác %, trọng số đề thi thật, nút "Vào học" & "Lý thuyết")
       • Tab 2 — "Kế hoạch theo tuần" (Lộ trình tự động Tháng -> Tuần -> Ngày kèm điểm kỳ vọng)
       • Tab 3 — "Sổ lỗi sai & Ôn tập" (Gom câu sai theo chương, nút "Luyện lại 10 câu sai")
@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { askAI } from '../HomePlus.jsx';
 import {
-  LEVEL_KEYS, DEFAULT_LEVEL, getLevel, findChapter,
+  ROADMAP_LEVELS, LEVEL_KEYS, DEFAULT_LEVEL, getLevel, findChapter,
 } from '../../data/roadmap.js';
 import {
   loadEvidence, invalidateEvidence, loadBankCoverage, localAttemptsOf,
@@ -35,14 +35,18 @@ import { buildAutoRoadmapData } from '../../lib/autoRoadmapEngine.js';
 import { subscribeAspirationChanges } from '../../lib/aspirationService.js';
 import KnowledgeMap from './KnowledgeMap.jsx';
 import ChapterSheet from './ChapterSheet.jsx';
+import DedicatedLessonView from './DedicatedLessonView.jsx';
+import { findLessonById, findLessonByChapterId, findLessonsByChapter, DEDICATED_LESSONS } from '../../data/dedicatedLessonsData.js';
 import BankTagger from './BankTagger.jsx';
 import StudyPlanCard from './StudyPlanCard.jsx';
 import FlashcardSession from './FlashcardSession.jsx';
 import { IconZap } from '../Icons.jsx';
 import AspirationRoadmapHub from './AspirationRoadmapHub.jsx';
 import DiagnosticTestModal from './DiagnosticTestModal.jsx';
+import StudyMethodologyGuideModal from './StudyMethodologyGuideModal.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
 import { getUserRole } from '../../lib/userRole.js';
+import { formatMathAndChemSymbols } from '../../lib/chemFormulaFormatter.js';
 import '../../styles/roadmap-page.css';
 import '../../styles/roadmap-page-v2.css';
 import '../../styles/roadmap-upgrade.css';
@@ -52,8 +56,9 @@ const LEVEL_KEY = 'cs-home-grade';
 const readLevel = () => {
   try {
     const g = localStorage.getItem(LEVEL_KEY);
-    return LEVEL_KEYS.indexOf(g) >= 0 ? g : DEFAULT_LEVEL;
-  } catch { return DEFAULT_LEVEL; }
+    if (g === 'all') return 'all';
+    return LEVEL_KEYS.indexOf(g) >= 0 ? g : 'all';
+  } catch { return 'all'; }
 };
 
 const hashParams = () => {
@@ -68,11 +73,94 @@ const norm = (s) => String(s || '')
   .replace(/[\u0300-\u036f]/g, '')
   .replace(/đ/g, 'd');
 
-/* Bộ biểu tượng SVG gọn sắc nét */
+/* Bộ biểu tượng SVG vector chuẩn nét — Không dùng Emoji */
 const IcoBook = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </svg>
+);
+
+const IcoBookOpen = ({ size = 14, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+const IcoGlobe = ({ size = 15, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
+
+const IcoFlask = ({ size = 15, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M10 2v7.31L4.35 18.2A2 2 0 0 0 6.07 21h11.86a2 2 0 0 0 1.72-2.8L14 9.31V2" />
+    <line x1="8.5" y1="2" x2="15.5" y2="2" />
+    <line x1="6.8" y1="15" x2="17.2" y2="15" />
+  </svg>
+);
+
+const IcoZap = ({ size = 15, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const IcoDna = ({ size = 15, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M2 15c6.667-6 13.333 0 20-6" />
+    <path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" />
+    <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" />
+    <path d="M17 6l-2.5-2.5" />
+    <path d="M14 8l-1-1" />
+    <path d="M7 18l2.5 2.5" />
+    <path d="M3.5 14.5l.5.5" />
+    <path d="M20 9.5l.5.5" />
+    <path d="M6.5 12.5l1 1" />
+    <path d="M16.5 10.5l1 1" />
+    <path d="M10 16l1.5 1.5" />
+    <path d="M2 9c6.667 6 13.333 0 20 6" />
+  </svg>
+);
+
+const IcoSparkles = ({ size = 14, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="M5 3v4" />
+    <path d="M19 17v4" />
+  </svg>
+);
+
+const IcoClock = ({ size = 12, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+const IcoCheck = ({ size = 13, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const IcoTarget = ({ size = 12, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" fill="currentColor" />
+  </svg>
+);
+
+const IcoAlertTriangle = ({ size = 12, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
   </svg>
 );
 
@@ -107,12 +195,30 @@ const IcoArrowRight = () => (
   </svg>
 );
 
+const IcoStudy = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+const IcoCompass = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </svg>
+);
+
 export default function RoadmapPage() {
   const { user } = useAuth();
   const uid = user?.uid || null;
 
   const [levelKey, setLevelKey] = useState(readLevel);
-  const [activeTab, setActiveTab] = useState('subjects'); // 'subjects' | 'timeline' | 'wrong'
+  const [subjectFilter, setSubjectFilter] = useState('all'); // 'all' | 'hoa' | 'ly' | 'sinh'
+  const [activeTab, setActiveTab] = useState('subjects'); // 'subjects' | 'timeline' | 'wrong' | 'study'
+  const [dedicatedLessonId, setDedicatedLessonId] = useState(null);
+  const [dedicatedSubject, setDedicatedSubject] = useState('ly');
+  const [dedicatedPractice, setDedicatedPractice] = useState(false);
   const [displayMode, setDisplayMode] = useState('cards'); // 'cards' | 'map'
   const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'priority' | 'learning' | 'mastered'
   const [query, setQuery] = useState('');
@@ -130,7 +236,18 @@ export default function RoadmapPage() {
   const [tick, setTick] = useState(0);
   const [taggerOpen, setTaggerOpen] = useState(false);
   const [diagOpen, setDiagOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [expandedChapters, setExpandedChapters] = useState(() => new Set());
   const alive = useRef(true);
+
+  const toggleExpandLessons = useCallback((chId) => {
+    setExpandedChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(chId)) next.delete(chId);
+      else next.add(chId);
+      return next;
+    });
+  }, []);
 
   const canCurate = isAdmin(user) || getUserRole(user) === 'teacher';
 
@@ -180,33 +297,148 @@ export default function RoadmapPage() {
     setData((d) => ({ ...d, sessions: store.sessions, goal: store.goal }));
   }), [uid]);
 
-  /* Deep link #roadmap?chapter=... | ?tab=wrong | ?mode=diagnostic */
+  /* Deep link #roadmap?chapter=... | ?tab=wrong | ?tab=study | ?lesson=... | ?mode=diagnostic */
   useEffect(() => {
     const apply = () => {
       const p = hashParams();
       const id = p.get('chapter');
+      const lesson = p.get('lesson');
+      const sub = p.get('subject');
       const lv = p.get('level');
       const tabParam = p.get('tab');
       const modeParam = p.get('mode');
       if (lv && LEVEL_KEYS.indexOf(lv) >= 0) setLevelKey(lv);
-      if (tabParam && ['subjects', 'timeline', 'wrong'].includes(tabParam)) {
+      if (tabParam && ['subjects', 'timeline', 'wrong', 'study'].includes(tabParam)) {
         setActiveTab(tabParam);
       }
       if (modeParam === 'diagnostic') {
         setDiagOpen(true);
       }
-      if (!id) return;
-      const hit = findChapter(id);
-      if (!hit) return;
-      setLevelKey(hit.level.key);
-      setSheetId(hit.chapter.id);
+      if (lesson) {
+        setDedicatedLessonId(lesson);
+        if (sub) setDedicatedSubject(sub);
+        setActiveTab('study');
+      } else if (id) {
+        const hitLesson = findLessonByChapterId(id);
+        if (hitLesson) {
+          setDedicatedLessonId(hitLesson.id);
+          setDedicatedSubject(hitLesson.subjectKey);
+          setActiveTab('study');
+        } else {
+          setDedicatedLessonId('ly-chuyen-dong-nem');
+          setDedicatedSubject('ly');
+          setActiveTab('study');
+        }
+      }
     };
     apply();
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
   }, []);
 
-  const level = useMemo(() => getLevel(levelKey), [levelKey]);
+  const allHoaChapters = useMemo(() => {
+    return ROADMAP_LEVELS.filter((l) => l.grade > 0).flatMap((l) => l.chapters.map((c) => ({ ...c, subjectKey: 'hoa' })));
+  }, []);
+
+  const lyChapters = useMemo(() => {
+    return (DEDICATED_LESSONS.ly || []).map((ch, idx) => {
+      let g = ch.grade;
+      if (!g) {
+        if (ch.chapterId.includes('donghoc') || ch.chapterId.includes('dongluc')) g = 10;
+        else if (ch.chapterId.includes('daodong') || ch.chapterId.includes('song') || ch.chapterId.includes('dientruong') || ch.chapterId.includes('tutruong')) g = 11;
+        else g = 12;
+      }
+      return {
+        id: ch.chapterId,
+        name: ch.chapterName,
+        desc: ch.lessons[0]?.desc || 'Kiến thức cốt lõi, công thức và phương pháp giải Vật lí.',
+        prereq: idx > 0 ? [DEDICATED_LESSONS.ly[idx - 1].chapterId] : [],
+        bank: true,
+        grade: g,
+        subjectKey: 'ly',
+      };
+    });
+  }, []);
+
+  const sinhChapters = useMemo(() => {
+    return (DEDICATED_LESSONS.sinh || []).map((ch, idx) => {
+      let g = ch.grade;
+      if (!g) {
+        if (ch.chapterId.includes('tebao')) g = 10;
+        else g = 12;
+      }
+      return {
+        id: ch.chapterId,
+        name: ch.chapterName,
+        desc: ch.lessons[0]?.desc || 'Lý thuyết di truyền, sinh thái, tế bào và bài tập trắc nghiệm Sinh học.',
+        prereq: idx > 0 ? [DEDICATED_LESSONS.sinh[idx - 1].chapterId] : [],
+        bank: true,
+        grade: g,
+        subjectKey: 'sinh',
+      };
+    });
+  }, []);
+
+  const subjectCounts = useMemo(() => {
+    const filterByLevel = (list) => {
+      if (levelKey === 'all') return list.length;
+      if (levelKey === 'Lớp 10') return list.filter((c) => c.grade === 10 || c.id?.startsWith('c10-') || c.id?.includes('10')).length;
+      if (levelKey === 'Lớp 11') return list.filter((c) => c.grade === 11 || c.id?.startsWith('c11-') || c.id?.includes('11')).length;
+      if (levelKey === 'Lớp 12') return list.filter((c) => c.grade === 12 || c.id?.startsWith('c12-') || c.id?.includes('12')).length;
+      return list.length;
+    };
+    const hoa = filterByLevel(allHoaChapters);
+    const ly = filterByLevel(lyChapters);
+    const sinh = filterByLevel(sinhChapters);
+    return {
+      all: hoa + ly + sinh,
+      hoa,
+      ly,
+      sinh,
+    };
+  }, [levelKey, allHoaChapters, lyChapters, sinhChapters]);
+
+  const activeLevelChapters = useMemo(() => {
+    let pool = [];
+    if (subjectFilter === 'hoa') {
+      pool = allHoaChapters;
+    } else if (subjectFilter === 'ly') {
+      pool = lyChapters;
+    } else if (subjectFilter === 'sinh') {
+      pool = sinhChapters;
+    } else {
+      pool = [...allHoaChapters, ...lyChapters, ...sinhChapters];
+    }
+
+    if (levelKey === 'all') {
+      return pool;
+    }
+    if (levelKey === 'Lớp 10') {
+      return pool.filter((c) => c.grade === 10 || c.id?.startsWith('c10-') || c.id?.includes('10'));
+    }
+    if (levelKey === 'Lớp 11') {
+      return pool.filter((c) => c.grade === 11 || c.id?.startsWith('c11-') || c.id?.includes('11'));
+    }
+    if (levelKey === 'Lớp 12') {
+      return pool.filter((c) => c.grade === 12 || c.id?.startsWith('c12-') || c.id?.includes('12'));
+    }
+    if (levelKey === 'Đại học') {
+      const hit = ROADMAP_LEVELS.find((l) => l.key === 'Đại học');
+      return hit ? hit.chapters : [];
+    }
+    return pool;
+  }, [subjectFilter, levelKey, allHoaChapters, lyChapters, sinhChapters]);
+
+  const level = useMemo(() => {
+    return {
+      key: levelKey,
+      grade: levelKey === 'all' ? 0 : (levelKey === 'Lớp 10' ? 10 : (levelKey === 'Lớp 11' ? 11 : 12)),
+      goal: levelKey === 'all'
+        ? 'Luyện thi THPT Quốc gia & ĐGNL: Toàn diện kiến thức Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học).'
+        : `Lộ trình chinh phục mục tiêu kiến thức ${levelKey}.`,
+      chapters: activeLevelChapters,
+    };
+  }, [levelKey, activeLevelChapters]);
 
   const localEvents = useMemo(
     () => sessionsToEvents(data.sessions),
@@ -264,7 +496,7 @@ export default function RoadmapPage() {
   }, [autoRoadmap.enrichedChapters, groupFilter, query]);
 
   const pickLevel = (k) => {
-    if (LEVEL_KEYS.indexOf(k) < 0) return;
+    if (k !== 'all' && LEVEL_KEYS.indexOf(k) < 0) return;
     setLevelKey(k);
     try { localStorage.setItem(LEVEL_KEY, k); } catch { /* */ }
   };
@@ -281,23 +513,41 @@ export default function RoadmapPage() {
 
   const openChapter = (id) => {
     if (!id) return;
-    const hit = findChapter(id);
-    if (hit) setLevelKey(hit.level.key);
-    setSheetMode(null);
-    setSheetId(id);
+    const hitLesson = findLessonByChapterId(id);
+    if (hitLesson) {
+      setDedicatedLessonId(hitLesson.id);
+      setDedicatedSubject(hitLesson.subjectKey);
+    } else {
+      setDedicatedLessonId('ly-chuyen-dong-nem');
+      setDedicatedSubject('ly');
+    }
+    setDedicatedPractice(false);
+    setActiveTab('study');
     syncChapterHash(id);
   };
 
   const closeSheet = () => {
     setSheetId(null);
     setSheetMode(null);
+    setActiveTab('subjects');
+    setDedicatedLessonId(null);
+    setDedicatedPractice(false);
     syncChapterHash(null);
   };
 
   const practiceChapter = (id, practiceMode = 'fresh') => {
     if (!id) return;
-    openChapter(id);
-    setSheetMode(practiceMode);
+    const hitLesson = findLessonByChapterId(id);
+    if (hitLesson) {
+      setDedicatedLessonId(hitLesson.id);
+      setDedicatedSubject(hitLesson.subjectKey);
+    } else {
+      setDedicatedLessonId('ly-chuyen-dong-nem');
+      setDedicatedSubject('ly');
+    }
+    setDedicatedPractice(practiceMode === 'fresh' || practiceMode === 'review');
+    setActiveTab('study');
+    syncChapterHash(id);
   };
 
   const reviewCards = () => {
@@ -307,18 +557,22 @@ export default function RoadmapPage() {
   };
 
   const aiStrategy = (rmData) => {
+    if (rmData?.customPrompt) {
+      askAI(rmData.customPrompt, levelKey);
+      return;
+    }
     const ctx = buildAiContext({
       levelKey, level, chapterViews: view.chapters, overview: view.overview,
       extra: { weekCount, weekGoal: data.goal },
     });
     const asp = rmData?.activeAsp;
     const nv1Line = asp
-      ? `Nguyện vọng đang chọn: ${asp.school.code} - ${asp.school.name} · Ngành ${asp.major.name} (Tổ hợp ${asp.block}, Điểm mục tiêu: ${asp.targetScore}/${rmData.examScale}, Môn Hóa cần đạt: ${rmData.targetChem10}/10).`
+      ? `Nguyện vọng đang chọn: ${asp.school.code} - ${asp.school.name} · Ngành ${asp.major.name} (Tổ hợp ${asp.block}, Điểm mục tiêu: ${asp.targetScore}/${rmData.examScale}, Môn KHTN cần đạt: ${rmData.targetChem10}/10).`
       : 'Chưa chọn trường Nguyện vọng cụ thể.';
     askAI(
-      'Đóng vai gia sư Hóa ELEC AI (xưng "mình – bạn"), dựa trên hồ sơ nguyện vọng và dữ liệu học tập dưới đây, hãy tư vấn ngắn gọn 5 bước:\n'
+      'Đóng vai gia sư Khoa học Tự nhiên ELEC AI (xưng "mình – bạn"), dựa trên hồ sơ nguyện vọng và dữ liệu học tập dưới đây, hãy tư vấn ngắn gọn 5 bước:\n'
       + '1) Nhận xét khoảng cách điểm hiện tại so với mục tiêu Nguyện vọng.\n'
-      + '2) Chỉ ra 2 chuyên đề Hóa học trọng tâm cần ưu tiên cày ngay tuần này để tăng điểm nhanh nhất.\n'
+      + '2) Chỉ ra 2 chuyên đề KHTN trọng tâm (Vật lí, Hóa học hoặc Sinh học) cần ưu tiên cày ngay tuần này để tăng điểm nhanh nhất.\n'
       + '3) Lịch học gợi ý mỗi ngày (30–40 phút).\n'
       + '4) Cách khắc phục các câu hay sai.\n'
       + '5) Động viên ngắn gọn.\n\n'
@@ -362,6 +616,26 @@ export default function RoadmapPage() {
     || autoRoadmap.primaryAction?.chapterId
     || view.chapters[0]?.chapter?.id;
 
+  if (activeTab === 'study') {
+    return (
+      <div className="ns9-dedicated-study-container">
+        <DedicatedLessonView
+          initialLessonId={dedicatedLessonId || 'ly-chuyen-dong-nem'}
+          initialSubject={dedicatedSubject || 'ly'}
+          initialPractice={dedicatedPractice}
+          onBack={() => {
+            setActiveTab('subjects');
+            setDedicatedLessonId(null);
+            setDedicatedPractice(false);
+            syncChapterHash(null);
+          }}
+          onAi={(prompt) => askAI(prompt, levelKey)}
+          uid={uid}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="rm ns9-page">
       {/* ── KHỐI 1: BANNER NGUYỆN VỌNG & THẺ "LỘ TRÌNH CỦA EM" (NHƯ ẢNH 9 & 10) ── */}
@@ -379,6 +653,14 @@ export default function RoadmapPage() {
         onReviewCards={reviewCards}
         onAiStrategy={aiStrategy}
         onOpenDiagnostic={() => setDiagOpen(true)}
+        onTabSelect={(tab) => {
+          if (tab === 'study') {
+            setDedicatedLessonId('ly-chuyen-dong-nem');
+            setDedicatedSubject('ly');
+            setDedicatedPractice(false);
+          }
+          setActiveTab(tab);
+        }}
       />
 
       {data.error && (
@@ -399,7 +681,7 @@ export default function RoadmapPage() {
             className={`ns9-tab-btn ${activeTab === 'subjects' ? 'on' : ''}`}
             onClick={() => setActiveTab('subjects')}
           >
-            <IcoBook />
+            <img src="/img/elec/elec-cool.png" alt="" className="ns9-tab-mascot" />
             <span>Lộ trình theo chuyên đề</span>
             <small className="ns9-tab-badge">{autoRoadmap.enrichedChapters.length}</small>
           </button>
@@ -411,7 +693,7 @@ export default function RoadmapPage() {
             className={`ns9-tab-btn ${activeTab === 'timeline' ? 'on' : ''}`}
             onClick={() => setActiveTab('timeline')}
           >
-            <IcoCalendar />
+            <img src="/img/elec/elec-think.png" alt="" className="ns9-tab-mascot" />
             <span>Kế hoạch từng tuần</span>
             <small className="ns9-tab-badge">4 tuần</small>
           </button>
@@ -423,13 +705,40 @@ export default function RoadmapPage() {
             className={`ns9-tab-btn ${activeTab === 'wrong' ? 'on' : ''}`}
             onClick={() => setActiveTab('wrong')}
           >
-            <IcoAlertBook />
+            <img src="/img/elec/elec-fighting.png" alt="" className="ns9-tab-mascot" />
             <span>Sổ lỗi sai &amp; Ôn tập</span>
             {dueTotal > 0 && <small className="ns9-tab-badge warn">{dueTotal}</small>}
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'study'}
+            className={`ns9-tab-btn ${activeTab === 'study' ? 'on' : ''}`}
+            onClick={() => {
+              setDedicatedLessonId('ly-chuyen-dong-nem');
+              setDedicatedSubject('ly');
+              setDedicatedPractice(false);
+              setActiveTab('study');
+            }}
+          >
+            <img src="/img/elec/elec-happy.png" alt="" className="ns9-tab-mascot" />
+            <span>Phòng học lý thuyết &amp; Công thức</span>
+            <small className="ns9-tab-badge">Chuyên sâu</small>
+          </button>
         </div>
 
-        <div className="ns9-grade-picker" role="tablist" aria-label="Chọn khối lớp Hóa học">
+        <div className="ns9-grade-picker" role="tablist" aria-label="Chọn khối lớp Khoa học Tự nhiên">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={levelKey === 'all'}
+            className={levelKey === 'all' ? 'on' : ''}
+            onClick={() => pickLevel('all')}
+          >
+            <IcoSparkles size={14} />
+            <span>Trọn bộ THPT (Tất cả)</span>
+          </button>
           {LEVEL_KEYS.map((k) => (
             <button
               key={k}
@@ -443,13 +752,47 @@ export default function RoadmapPage() {
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          className="ns9-asp-guide-trigger"
+          onClick={() => setGuideOpen(true)}
+          style={{ marginLeft: 8 }}
+          title="Xem cẩm nang hướng dẫn ôn thi đúng cách"
+        >
+          <IcoCompass />
+          <span>Hướng dẫn ôn đúng cách</span>
+        </button>
       </div>
 
       {/* ============================================================
-         TAB 1: LỘ TRÌNH THEO CHUYÊN ĐỀ (NHƯ ẢNH 11 CỦA 9STUDY)
+         TAB 1: LỘ TRÌNH THEO CHUYÊN ĐỀ (CHUẨN ELEC AI)
          ============================================================ */}
       {activeTab === 'subjects' && (
-        <section className="ns9-subjects-section" aria-label="Lộ trình theo chuyên đề Hóa học">
+        <section className="ns9-subjects-section" aria-label="Lộ trình theo chuyên đề Khoa học Tự nhiên">
+          {/* Thanh chuyển đổi phân môn Khoa học Tự nhiên (KHTN: Vật lí — Hóa học — Sinh học) */}
+          <div className="ns9-subject-tabs" role="tablist" aria-label="Chọn môn học Khoa học Tự nhiên">
+            {[
+              { id: 'all', label: 'Toàn bộ KHTN', icon: <IcoGlobe size={15} />, badge: `${subjectCounts.all} chuyên đề` },
+              { id: 'hoa', label: 'Hóa học', icon: <IcoFlask size={15} />, badge: `${subjectCounts.hoa} chuyên đề` },
+              { id: 'ly', label: 'Vật lí', icon: <IcoZap size={15} />, badge: `${subjectCounts.ly} chuyên đề` },
+              { id: 'sinh', label: 'Sinh học', icon: <IcoDna size={15} />, badge: `${subjectCounts.sinh} chuyên đề` },
+            ].map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={subjectFilter === s.id}
+                className={`ns9-subject-tab ${subjectFilter === s.id ? 'is-active' : ''}`}
+                onClick={() => setSubjectFilter(s.id)}
+              >
+                <span className="ns9-subtab-icon">{s.icon}</span>
+                <span className="ns9-subtab-label">{s.label}</span>
+                <span className="ns9-subtab-badge">{s.badge}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="ns9-filter-bar">
             <div className="ns9-group-pills" role="group" aria-label="Lọc theo mức độ ưu tiên">
               {[
@@ -517,63 +860,180 @@ export default function RoadmapPage() {
             </div>
           ) : (
             <div className="ns9-chapter-grid">
-              {filteredChapters.map((c) => (
-                <article
-                  key={c.chapter.id}
-                  className={`ns9-chapter-card tone-${c.studentTone}`}
-                >
-                  <div className="ns9-ch-top">
-                    <span className="ns9-ch-index">Chương {c.orderIndex}</span>
-                    <span className="ns9-ch-exam-tag">
-                      {c.weightLabel} · {c.questionsInExam}
-                    </span>
-                  </div>
+              {filteredChapters.map((c) => {
+                const subLessons = findLessonsByChapter(c.chapter.id);
+                const isExpanded = expandedChapters.has(c.chapter.id);
+                const isLy = c.chapter.subjectKey === 'ly';
+                const isSinh = c.chapter.subjectKey === 'sinh';
+                const subjectClass = isLy ? 'sub-ly' : (isSinh ? 'sub-sinh' : 'sub-hoa');
 
-                  <h3 className="ns9-ch-title" onClick={() => openChapter(c.chapter.id)}>
-                    {c.chapter.name}
-                  </h3>
-                  <p className="ns9-ch-desc">{c.chapter.desc}</p>
-
-                  {/* Thanh tiến độ & Độ chính xác % (Chuẩn ảnh 11 của 9Study) */}
-                  <div className="ns9-ch-progress-block">
-                    <div className="ns9-ch-stats-row">
-                      <span>
-                        Tiến độ: <b>{c.completionPct}%</b> ({c.answers}/20 câu)
-                      </span>
-                      <span>
-                        Chính xác: <b className={`acc-${c.studentTone}`}>{c.answers > 0 ? `${c.accuracyPct}%` : '—'}</b>
+                return (
+                  <article
+                    key={c.chapter.id}
+                    className={`ns9-chapter-card tone-${c.studentTone} ${subjectClass}`}
+                  >
+                    <div className="ns9-ch-top">
+                      <div className="ns9-ch-badges">
+                        <span className={`ns9-ch-subject-tag ${subjectClass}`}>
+                          {isLy ? <IcoZap size={12} /> : (isSinh ? <IcoDna size={12} /> : <IcoFlask size={12} />)}
+                          <span>{isLy ? 'Vật lí' : (isSinh ? 'Sinh học' : 'Hóa học')}</span>
+                        </span>
+                        <span className="ns9-ch-index">Chương {c.orderIndex}</span>
+                      </div>
+                      <span className="ns9-ch-exam-tag" title="Số lượng câu hỏi trong đề thi THPT Quốc gia">
+                        <IcoTarget size={12} />
+                        <span>{c.questionsInExam} · {c.weightLabel}</span>
                       </span>
                     </div>
-                    <div className="ns9-ch-bar-track" aria-hidden="true">
-                      <i style={{ width: `${Math.max(c.answers > 0 ? 8 : 0, c.completionPct)}%` }} />
-                    </div>
-                  </div>
 
-                  <div className="ns9-ch-footer">
-                    <span className={`ns9-ch-status tone-${c.studentTone}`}>
-                      {c.studentStatus}
-                    </span>
+                    <h3 className="ns9-ch-title" onClick={() => openChapter(c.chapter.id)} title="Bấm để vào học chuyên sâu">
+                      {formatMathAndChemSymbols(c.chapter.name)}
+                    </h3>
+                    <p className="ns9-ch-desc">{formatMathAndChemSymbols(c.chapter.desc)}</p>
 
-                    <div className="ns9-ch-btns">
-                      <button
-                        type="button"
-                        className="ns9-ch-btn-ghost"
-                        onClick={() => openChapter(c.chapter.id)}
-                      >
-                        Lý thuyết
-                      </button>
-                      <button
-                        type="button"
-                        className="ns9-ch-btn-primary"
-                        onClick={() => practiceChapter(c.chapter.id, c.wrongDue > 0 ? 'review' : 'fresh')}
-                      >
-                        <span>{c.wrongDue > 0 ? `Ôn ${c.wrongDue} câu sai` : 'Vào học'}</span>
-                        <IcoArrowRight />
-                      </button>
+                    {/* Lộ trình ôn tập logic 4 bước chuẩn GDPT 2018 (Zero-overflow Grid) */}
+                    <div className="ns9-ch-pipeline" aria-label="Lộ trình ôn tập logic 4 bước">
+                      <div className="ns9-pipe-header">
+                        <span className="ns9-pipe-label">
+                          <IcoZap size={12} />
+                          <span>Lộ trình ôn tập 4 bước</span>
+                        </span>
+                        <span className="ns9-pipe-subhint">Bấm bước để học</span>
+                      </div>
+                      <div className="ns9-pipe-grid">
+                        <button
+                          type="button"
+                          className="ns9-pipe-step"
+                          onClick={() => openChapter(c.chapter.id)}
+                          title="Bước 1: Lý thuyết & Sơ đồ tư duy (Infographics / Mindmap)"
+                        >
+                          <span className="ns9-pipe-num">1</span>
+                          <span className="ns9-pipe-txt">Lý thuyết</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ns9-pipe-step"
+                          onClick={() => practiceChapter(c.chapter.id, 'fresh')}
+                          title="Bước 2: Luyện trắc nghiệm 3 cấp độ (Nhận biết – Thông hiểu – Vận dụng)"
+                        >
+                          <span className="ns9-pipe-num">2</span>
+                          <span className="ns9-pipe-txt">Luyện tập</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ns9-pipe-step"
+                          onClick={() => openChapter(c.chapter.id)}
+                          title="Bước 3: Flashcards phản xạ công thức & Bẫy trắc nghiệm"
+                        >
+                          <span className="ns9-pipe-num">3</span>
+                          <span className="ns9-pipe-txt">Flashcard</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`ns9-pipe-step ${c.wrongDue > 0 ? 'step-warning' : ''}`}
+                          onClick={() => practiceChapter(c.chapter.id, c.wrongDue > 0 ? 'review' : 'fresh')}
+                          title={c.wrongDue > 0 ? `Bước 4: Ôn tập ${c.wrongDue} câu hay làm sai` : 'Bước 4: Đề kiểm tra năng lực'}
+                        >
+                          <span className="ns9-pipe-num">{c.wrongDue > 0 ? <IcoAlertTriangle size={11} /> : '4'}</span>
+                          <span className="ns9-pipe-txt">{c.wrongDue > 0 ? `Ôn sai (${c.wrongDue})` : 'Kiểm tra'}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+
+                    {/* Danh sách bài học con chi tiết theo chương (Layout 2 dòng, không cắt chữ) */}
+                    {subLessons.length > 0 && (
+                      <div className="ns9-ch-lessons-box">
+                        <div className="ns9-ch-lessons-header">
+                          <span className="ns9-ch-lessons-title">
+                            <IcoBookOpen size={13} />
+                            <span>Bài học chi tiết ({subLessons.length} bài)</span>
+                          </span>
+                          {subLessons.length > 2 && (
+                            <button
+                              type="button"
+                              className="ns9-ch-lessons-toggle"
+                              onClick={() => toggleExpandLessons(c.chapter.id)}
+                              aria-expanded={isExpanded}
+                            >
+                              {isExpanded ? 'Thu gọn ▴' : `Xem thêm (${subLessons.length}) ▾`}
+                            </button>
+                          )}
+                        </div>
+                        <div className="ns9-ch-lessons-list">
+                          {(isExpanded ? subLessons : subLessons.slice(0, 2)).map((les) => (
+                            <button
+                              key={les.id}
+                              type="button"
+                              className="ns9-ch-lesson-pill"
+                              onClick={() => {
+                                setDedicatedLessonId(les.id);
+                                if (les.subjectKey) setDedicatedSubject(les.subjectKey);
+                                setDedicatedPractice(false);
+                                setActiveTab('study');
+                                syncChapterHash(c.chapter.id);
+                              }}
+                              title={`Học bài: ${les.title}`}
+                            >
+                              <div className="ns9-les-row-top">
+                                <span className="ns9-les-idx">Bài {les.lessonIndex}</span>
+                                <span className="ns9-les-title">{formatMathAndChemSymbols(les.title)}</span>
+                              </div>
+                              <div className="ns9-les-row-sub">
+                                <span className="ns9-les-meta">
+                                  <IcoClock size={11} />
+                                  <span>{les.duration || '25p'} · {les.practiceCount || 8} câu</span>
+                                </span>
+                                {les.tag && <span className="ns9-les-tag">{les.tag}</span>}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Thanh tiến độ & Độ chính xác % (Chuẩn ELEC AI) */}
+                    <div className="ns9-ch-progress-block">
+                      <div className="ns9-ch-stats-row">
+                        <span>
+                          Tiến độ: <b>{c.completionPct}%</b> ({c.answers}/20 câu)
+                        </span>
+                        <span>
+                          Chính xác: <b className={`acc-${c.studentTone}`}>{c.answers > 0 ? `${c.accuracyPct}%` : '—'}</b>
+                        </span>
+                      </div>
+                      <div className="ns9-ch-bar-track" aria-hidden="true">
+                        <i style={{ width: `${Math.max(c.answers > 0 ? 8 : 0, c.completionPct)}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="ns9-ch-footer">
+                      <span className={`ns9-ch-status tone-${c.studentTone}`}>
+                        {c.studentStatus}
+                      </span>
+
+                      <div className="ns9-ch-btns">
+                        <button
+                          type="button"
+                          className="ns9-ch-btn-ghost"
+                          onClick={() => openChapter(c.chapter.id)}
+                          title="Xem lý thuyết, công thức & sơ đồ tư duy"
+                        >
+                          <IcoBookOpen size={13} />
+                          <span>Lý thuyết</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ns9-ch-btn-primary"
+                          onClick={() => practiceChapter(c.chapter.id, c.wrongDue > 0 ? 'review' : 'fresh')}
+                        >
+                          <span>{c.wrongDue > 0 ? `Ôn ${c.wrongDue} câu sai` : 'Vào học'}</span>
+                          <IcoArrowRight />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
@@ -750,7 +1210,10 @@ export default function RoadmapPage() {
 
                         {wq.correctAnswer && (
                           <div className="ns9-wq-ans-box">
-                            <span className="ns9-wq-right">✓ Đáp án đúng: <b>{wq.correctAnswer}</b></span>
+                            <span className="ns9-wq-right" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <IcoCheck size={13} />
+                              <span>Đáp án đúng: <b>{wq.correctAnswer}</b></span>
+                            </span>
                             {wq.distractors.length > 0 && (
                               <small className="ns9-wq-distractors">
                                 Các phương án gây nhiễu: {wq.distractors.join(' · ')}
@@ -775,7 +1238,10 @@ export default function RoadmapPage() {
                               { q: wq.q, options: wq.options, correct: 0 },
                             )}
                           >
-                            <span>✦ Nhờ AI giảng từng bước</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <IcoSparkles size={13} />
+                              <span>Nhờ AI giảng từng bước</span>
+                            </span>
                           </button>
                           {wq.topicId && (
                             <button
@@ -853,6 +1319,11 @@ export default function RoadmapPage() {
           setCardTick((n) => n + 1);
           setAspTick((n) => n + 1);
         }}
+      />
+
+      <StudyMethodologyGuideModal
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
       />
 
       {sheetView && (

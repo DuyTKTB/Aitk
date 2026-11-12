@@ -21,6 +21,7 @@ import {
 } from '../../lib/aspirationService.js';
 import ElecTutorOnboardingModal from './ElecTutorOnboardingModal.jsx';
 import UniversityDetailModal from './UniversityDetailModal.jsx';
+import { getUniversityCover } from '../../data/universityCovers.js';
 import '../../styles/nav-dropdowns.css';
 
 /* ============================================================
@@ -96,12 +97,21 @@ const IcoDown = ({ size = 13, className = '' }) => (
 );
 
 const DEFAULT_EXAM_TARGETS = {
-  THPTQG: 24,
-  HSA: 95,
+  THPTQG: 26,
+  HSA: 100,
   TSA: 65,
   'V-ACT': 800,
   SPT: 22,
   'H-SCA': 68,
+};
+
+const EXAM_SUBTITLES = {
+  THPTQG: '60 bộ đề tuyển chọn chuẩn GDPT',
+  HSA: '12 bộ đề ĐGNL ĐHQGHN',
+  TSA: '10 bộ đề ĐGTD Bách Khoa',
+  'V-ACT': '8 bộ đề ĐGNL ĐHQG TP.HCM',
+  SPT: '6 bộ đề ĐH Sư phạm Hà Nội',
+  'H-SCA': '6 bộ đề ĐH Sư phạm TP.HCM',
 };
 
 function getSchoolThumbBg(school) {
@@ -471,7 +481,7 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                   const scoreVal = isSelected && activeAsp
                     ? activeAsp.targetScore
                     : (state.examTargets?.[ex.id] ?? (ex.defaultTarget || DEFAULT_EXAM_TARGETS[ex.id] || Math.round(ex.scale * 0.75)));
-                  const showCircle = true;
+                  const showCircle = (String(ex.id).toUpperCase() === 'THPTQG' || String(ex.id).toUpperCase() === 'HSA') && Boolean(scoreVal);
 
                   return (
                     <div
@@ -490,7 +500,7 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                     >
                       <div className="sg-exam-info">
                         <b>{ex.name}</b>
-                        <small>{ex.subtitle}</small>
+                        <small>{ex.subtitle || EXAM_SUBTITLES[ex.id] || ex.desc}</small>
                       </div>
 
                       <div className="sg-exam-right">
@@ -582,6 +592,7 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                         ? Math.min(10, Math.round(((asp.targetScore || 24) / 3) * 4) / 4)
                         : 8.5
                     );
+                    const schoolCover = getUniversityCover(asp.school?.code);
                     return (
                       <li
                         key={asp.id}
@@ -597,13 +608,23 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                           {asp.priority}
                         </span>
 
-                        <div
-                          className="sg-wish-thumb"
-                          style={{ background: getSchoolThumbBg(asp.school) }}
-                          aria-hidden="true"
-                        >
-                          <IcoUniversity size={15} />
-                          <small>{(asp.school?.code || 'NV' + asp.priority).slice(0, 4)}</small>
+                        <div className="sg-wish-thumb" aria-hidden="true">
+                          {schoolCover ? (
+                            <img
+                              src={schoolCover}
+                              alt={asp.school?.code || 'Trường'}
+                              className="sg-wish-thumb-img"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div
+                              className="sg-wish-thumb-fallback"
+                              style={{ background: getSchoolThumbBg(asp.school) }}
+                            >
+                              <IcoUniversity size={15} />
+                              <small>{(asp.school?.code || 'NV' + asp.priority).slice(0, 4)}</small>
+                            </div>
+                          )}
                         </div>
 
                         <div className="sg-wish-body">
@@ -867,9 +888,14 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
         onCompleted={(updatedState) => {
           setState(updatedState);
         }}
+        onStartDiagnostic={() => {
+          setTutorOpen(false);
+          setEditingAsp(null);
+          window.location.hash = 'roadmap?mode=diagnostic';
+        }}
       />
 
-      {/* ── MODAL CHI TIẾT ĐỀ ÁN TUYỂN SINH TRƯỜNG ĐH (CHUẨN 9STUDY) ── */}
+      {/* ── MODAL CHI TIẾT ĐỀ ÁN TUYỂN SINH TRƯỜNG ĐH (CHUẨN ELEC AI) ── */}
       <UniversityDetailModal
         open={universityModalOpen}
         schoolId={selectedSchoolId || activeAsp?.school?.code || 'NEU'}

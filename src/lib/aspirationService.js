@@ -78,7 +78,21 @@ export function searchSchools(query = '') {
 }
 
 export function getMajorsBySchool(schoolId, query = '') {
-  const all = (referenceData.majors || []).filter((m) => m.schoolId === schoolId);
+  if (!schoolId) return [];
+  const target = String(schoolId).trim().toUpperCase();
+  const school = getSchoolById(target);
+  const validIds = new Set([target]);
+  if (school) {
+    if (school.id) validIds.add(String(school.id).toUpperCase());
+    if (school.code) validIds.add(String(school.code).toUpperCase());
+    if (school.admissionCode) validIds.add(String(school.admissionCode).toUpperCase());
+    if (school.altCode) validIds.add(String(school.altCode).toUpperCase());
+  }
+
+  const all = (referenceData.majors || []).filter((m) => {
+    const sId = String(m.schoolId || '').toUpperCase();
+    return validIds.has(sId);
+  });
   const q = normalizeText(query);
   if (!q) return all;
   return all.filter(

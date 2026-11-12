@@ -124,7 +124,7 @@ export default function AiPanel({ elements, vip }) {
             <span className="vip-badge">VIP</span>
           </h3>
           <p className="ai-panel-sub">
-            {loading ? 'Đang suy nghĩ…' : 'Trợ lý Hóa học của bạn'}
+            {loading ? 'Đang suy nghĩ…' : 'Trợ lý Khoa học Tự nhiên của bạn'}
           </p>
         </div>
       </div>

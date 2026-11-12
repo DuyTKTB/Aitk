@@ -212,31 +212,17 @@ export default function AIQuizGenerator({ onClose }) {
     let charged = 0;
 
     try {
-      // Trừ credits trước khi gọi AI — theo số câu
+      // Trừ credits trước khi gọi AI — theo số câu (hỗ trợ tham số creditCost)
       if (user?.uid) {
-        const cr = await spendCredit(user.uid, 0);
-        // spendCredit tính 1 + số ảnh; quiz chỉ trừ đúng cost quiz
-        // → Ta cần API riêng: dùng add_credits âm với số tiền cost
-        // Ở đây spendCredit chỉ đủ cho 1 điểm. Để chuẩn, dùng RPC riêng:
-        // (Cách đơn giản: kiểm tra balance >= cost rồi trừ qua refund âm)
-        const needed = cost;
-        // Kiểm tra số dư trước
-        const cr2 = await spendCredit(user.uid, 0);
-        if (!cr2.ok) {
-          setError(`Hết điểm! Còn ${cr2.balance} điểm, cần ${needed}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
+        const cr = await spendCredit(user.uid, 0, cost);
+        if (!cr.ok) {
+          setError(`Hết điểm! Còn ${cr.balance} điểm, cần ${cost} điểm. Nạp thêm tại Trang cá nhân → Gói dùng.`);
           setStep(STEP.TARGET);
-          try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr2.balance } })); } catch {}
+          try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
           return;
         }
-        charged = cr2.cost;
-        // Nếu quiz cần nhiều hơn 1 điểm, trừ thêm phần chênh
-        const extra = cost - cr2.cost;
-        if (extra > 0) {
-          // Gọi trực tiếp RPC add_credits âm — giả định đã import
-          // Để đơn giản, ta import và gọi qua window nếu cần, hoặc bỏ qua
-          // Tạm thời chỉ tính 1 điểm cho quiz
-        }
-        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr2.balance } })); } catch {}
+        charged = cr.cost || cost;
+        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
       }
 
       const textParts = files.filter((f) => f.kind === 'text').map((f) => f.text).join('\n\n---\n\n');

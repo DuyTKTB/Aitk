@@ -184,13 +184,6 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
     }
   };
 
-  /* Tự động kích hoạt AI phân tích một lần nếu có câu sai */
-  useEffect(() => {
-    if (wrongQuestions.length > 0 && !hasRequested && !aiReport && !loading) {
-      handleAnalyzeWithAI();
-    }
-  }, [wrongQuestions.length]);
-
   return (
     <div
       className="ead-card"
@@ -236,7 +229,7 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
               boxShadow: '0 4px 12px rgba(47, 107, 255, 0.25)',
             }}
           >
-            <IcoSpark size={13} /> {aiReport ? 'Phân tích lại' : 'Chẩn đoán với AI'}
+            <IcoSpark size={13} /> {aiReport ? 'Phân tích lại (1 credit)' : 'Chẩn đoán với AI (1 credit)'}
           </button>
         )}
       </div>

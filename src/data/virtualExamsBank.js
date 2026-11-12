@@ -9,8 +9,179 @@
    ============================================================ */
 
 import { builtinQuestions, BUILTIN_TOPICS } from './roadmapExercises.js';
+import {
+  PHYSICS_EXAM_QUESTIONS_1,
+  BIOLOGY_EXAM_QUESTIONS_1,
+  KHTN_INTEGRATED_QUESTIONS_1,
+} from './scienceExamQuestions.js';
 
 export const VIRTUAL_EXAMS = [
+  /* ── 0. BỘ ĐỀ VIP KHOA HỌC TỰ NHIÊN (VẬT LÍ, SINH HỌC & TÍCH HỢP) – 2027 ── */
+  {
+    id: 'vip-khtn-2027-01',
+    subject: 'all',
+    year: 2027,
+    tier: 'VIP',
+    isHot: true,
+    examType: 'THPTQG',
+    sourceType: 'exclusive',
+    badgeLabel: 'TÍCH HỢP KHTN',
+    title: 'Đề thi thử Đánh giá năng lực KHTN 2027 - Tích hợp Vật lí, Hóa học, Sinh học Đề số 01',
+    attemptsCount: 3850,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Hội đồng Khoa học Tự nhiên ELEC AI',
+    institution: 'Đại học Khoa học Tự nhiên & ĐH Sư phạm',
+    gradeScope: 'all',
+    variants: ['01', '02'],
+    questions: KHTN_INTEGRATED_QUESTIONS_1,
+  },
+  {
+    id: 'vip-ly-2027-01',
+    subject: 'ly',
+    year: 2027,
+    tier: 'VIP',
+    isHot: true,
+    examType: 'THPTQG',
+    sourceType: 'exclusive',
+    badgeLabel: 'ĐỘC QUYỀN ELEC AI',
+    title: 'Đề thi thử tốt nghiệp THPTQG 2027 môn Vật lí - Đề chuẩn cấu trúc số 01',
+    attemptsCount: 3120,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Đội ngũ PGS.TS Vật lí ELEC AI',
+    institution: 'ĐH Sư phạm Hà Nội & ĐH Khoa học Tự nhiên',
+    gradeScope: 'all',
+    variants: ['101', '102'],
+    questions: PHYSICS_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'vip-ly-hsa-2027-01',
+    subject: 'ly',
+    year: 2027,
+    tier: 'VIP',
+    isHot: true,
+    examType: 'HSA',
+    sourceType: 'exclusive',
+    badgeLabel: 'ĐỘC QUYỀN ELEC AI',
+    title: 'Đề thi thử ĐGNL ĐHQG Hà Nội (HSA) 2027 - Phần Khoa học Vật lí Đề số 01',
+    attemptsCount: 2680,
+    questionCount: 28,
+    durationMinutes: 45,
+    author: 'Ban chuyên môn Vật lí ĐHQGHN',
+    institution: 'ĐHQG Hà Nội',
+    gradeScope: 'all',
+    questions: PHYSICS_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'vip-sinh-2027-01',
+    subject: 'sinh',
+    year: 2027,
+    tier: 'VIP',
+    isHot: true,
+    examType: 'THPTQG',
+    sourceType: 'exclusive',
+    badgeLabel: 'ĐỘC QUYỀN ELEC AI',
+    title: 'Đề thi thử tốt nghiệp THPTQG 2027 môn Sinh học - Đề chuẩn cấu trúc số 01',
+    attemptsCount: 2980,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Đội ngũ Chuyên gia Sinh học ELEC AI',
+    institution: 'Đại học Y Hà Nội & ĐH Sư phạm',
+    gradeScope: 'all',
+    variants: ['201', '202'],
+    questions: BIOLOGY_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'vip-sinh-hsa-2027-01',
+    subject: 'sinh',
+    year: 2027,
+    tier: 'VIP',
+    isHot: true,
+    examType: 'HSA',
+    sourceType: 'exclusive',
+    badgeLabel: 'ĐỘC QUYỀN ELEC AI',
+    title: 'Đề thi thử ĐGNL ĐHQG Hà Nội (HSA) 2027 - Phần Khoa học Sinh học Đề số 01',
+    attemptsCount: 2420,
+    questionCount: 28,
+    durationMinutes: 45,
+    author: 'Ban chuyên môn Sinh học ĐHQGHN',
+    institution: 'ĐHQG Hà Nội',
+    gradeScope: 'all',
+    questions: BIOLOGY_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'pro-ly-2027-01',
+    subject: 'ly',
+    year: 2027,
+    tier: 'PRO',
+    isHot: false,
+    examType: 'THPTQG',
+    sourceType: 'exclusive',
+    badgeLabel: 'ĐỀ LUYỆN PRO',
+    title: 'Đề khảo sát năng lực Vật lí 12 - Dao động, Sóng cơ & Điện xoay chiều',
+    attemptsCount: 2150,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Tổ Vật lí ELEC AI',
+    institution: 'ELEC AI Physics Lab',
+    gradeScope: '12',
+    questions: PHYSICS_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'pro-sinh-2027-01',
+    subject: 'sinh',
+    year: 2027,
+    tier: 'PRO',
+    isHot: false,
+    examType: 'THPTQG',
+    sourceType: 'exclusive',
+    badgeLabel: 'ĐỀ LUYỆN PRO',
+    title: 'Đề khảo sát năng lực Sinh học 12 - Di truyền phân tử, Tế bào & Quần thể',
+    attemptsCount: 1940,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Tổ Sinh học ELEC AI',
+    institution: 'ELEC AI Biology Lab',
+    gradeScope: '12',
+    questions: BIOLOGY_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'free-ly-2026-ams-01',
+    subject: 'ly',
+    year: 2026,
+    tier: 'FREE',
+    isHot: false,
+    examType: 'THPTQG',
+    sourceType: 'schools',
+    badgeLabel: 'ĐỀ THI THỬ',
+    title: 'Đề thi thử môn Vật lí Lớp 12 THPT Chuyên Hà Nội - Amsterdam (2025–2026)',
+    attemptsCount: 5410,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Tổ Vật lí Chuyên Hà Nội - Amsterdam',
+    institution: 'THPT Chuyên Hà Nội - Amsterdam',
+    gradeScope: '12',
+    questions: PHYSICS_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'free-sinh-2026-lhp-01',
+    subject: 'sinh',
+    year: 2026,
+    tier: 'FREE',
+    isHot: false,
+    examType: 'THPTQG',
+    sourceType: 'schools',
+    badgeLabel: 'ĐỀ THI THỬ',
+    title: 'Đề thi thử môn Sinh học Lớp 12 THPT Chuyên Lê Hồng Phong TP.HCM (2025–2026)',
+    attemptsCount: 4890,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Tổ Sinh học Chuyên Lê Hồng Phong',
+    institution: 'THPT Chuyên Lê Hồng Phong TP.HCM',
+    gradeScope: '12',
+    questions: BIOLOGY_EXAM_QUESTIONS_1,
+  },
   /* ── 1. BỘ ĐỀ VIP ĐỘC QUYỀN 2027 (Tím) ── */
   {
     id: 'vip-2027-06',
@@ -88,7 +259,7 @@ export const VIRTUAL_EXAMS = [
     examType: 'HSA',
     sourceType: 'exclusive',
     badgeLabel: 'ĐỘC QUYỀN ELEC AI',
-    title: 'Đề thi thử ĐGNL ĐHQG Hà Nội (HSA) 2027 - Phần Khoa học Hóa học Đề số 01',
+    title: 'Đề thi thử ĐGNL ĐHQG Hà Nội (HSA) 2027 - Phần Khoa học Tự nhiên Đề số 01',
     attemptsCount: 1840,
     questionCount: 28,
     durationMinutes: 45,
@@ -105,7 +276,7 @@ export const VIRTUAL_EXAMS = [
     examType: 'TSA',
     sourceType: 'exclusive',
     badgeLabel: 'ĐỘC QUYỀN ELEC AI',
-    title: 'Đề thi Đánh giá tư duy Bách Khoa (TSA) 2027 - Tư duy Khoa học Hóa học Đề 01',
+    title: 'Đề thi Đánh giá tư duy Bách Khoa (TSA) 2027 - Tư duy Khoa học Tự nhiên Đề 01',
     attemptsCount: 1620,
     questionCount: 28,
     durationMinutes: 45,
@@ -1068,7 +1239,7 @@ export const CUSTOM_VIRTUAL_EXAMS_KEY = 'elec_custom_virtual_exams_v1';
 
 export function getCustomVirtualExams() {
   try {
-    const raw = localStorage.getItem(CUSTOM_VIRTUAL_EXAMS_KEY);
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CUSTOM_VIRTUAL_EXAMS_KEY) : null;
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     console.warn('[virtualExams] getCustomVirtualExams parse error:', e);
@@ -1078,7 +1249,9 @@ export function getCustomVirtualExams() {
 
 export function saveCustomVirtualExams(exams) {
   try {
-    localStorage.setItem(CUSTOM_VIRTUAL_EXAMS_KEY, JSON.stringify(exams || []));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CUSTOM_VIRTUAL_EXAMS_KEY, JSON.stringify(exams || []));
+    }
     window.dispatchEvent(new CustomEvent('elec-virtual-exams-changed', {
       detail: { exams: exams || [] },
     }));
@@ -1092,7 +1265,10 @@ export function getAllVirtualExams() {
   // Tránh trùng lặp ID nếu admin ghi đè hoặc cấp lại đề
   const customIds = new Set(customList.map((e) => e.id));
   const baseList = VIRTUAL_EXAMS.filter((e) => !customIds.has(e.id));
-  return [...customList, ...baseList];
+  return [...customList, ...baseList].map((e) => ({
+    ...e,
+    subject: e.subject || 'hoa',
+  }));
 }
 
 export function isExamInVirtualRoom(examId) {

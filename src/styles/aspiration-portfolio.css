@@ -1,0 +1,346 @@
+/* ============================================================
+   aspiration-portfolio.css — GIAO DIỆN TỐI ƯU HÓA RỔ NGUYỆN VỌNG & SO SÁNH ĐỐI ĐẦU
+   Phong cách Apple VisionOS Kính mờ, 100% SVG thuần, 0 emoji
+   ============================================================ */
+
+.port-opt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: portFadeIn 0.22s ease-out;
+}
+
+@keyframes portFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.port-opt-modal {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 24px 64px -12px rgba(15, 23, 42, 0.25),
+    0 0 0 1px rgba(37, 99, 235, 0.12);
+  overflow: hidden;
+  animation: portSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes portSlideUp {
+  from {
+    transform: translateY(20px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.port-opt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.6) 100%);
+  gap: 16px;
+}
+
+.port-opt-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.port-opt-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  flex-shrink: 0;
+}
+
+.port-opt-header-text h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.port-opt-header-text p {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.port-opt-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  background: rgba(255, 255, 255, 0.8);
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+}
+
+.port-opt-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+.port-opt-tabs-bar {
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  gap: 8px;
+}
+
+.port-opt-tab {
+  padding: 12px 18px;
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.16s ease;
+}
+
+.port-opt-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 700;
+}
+
+.port-opt-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Tab Sức khỏe hồ sơ ── */
+.port-health-overview-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.port-health-score-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.port-health-score-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.port-health-score-circle.tone-ok {
+  background: #ecfdf5;
+  color: #059669;
+  border: 2px solid #10b981;
+}
+
+.port-health-score-circle.tone-warn {
+  background: #fffbeb;
+  color: #d97706;
+  border: 2px solid #f59e0b;
+}
+
+.port-health-score-circle.tone-err {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 2px solid #ef4444;
+}
+
+.port-health-score-info h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.port-health-score-info p {
+  margin: 3px 0 0;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+/* 3 Tầng nguyện vọng */
+.port-tiers-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.port-tier-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.port-tier-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.port-tier-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.port-tier-badge.tone-ok {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.port-tier-badge.tone-info {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.port-tier-badge.tone-warn {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.port-tier-badge.tone-err {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.port-tier-headline {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.port-tier-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+/* Box Cảnh báo */
+.port-warning-box {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  font-size: 0.84rem;
+  color: #c2410c;
+  line-height: 1.5;
+}
+
+.port-warning-box strong {
+  color: #9a3412;
+}
+
+/* ── Tab So sánh song song đối đầu ── */
+.port-compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.port-compare-select {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.86rem;
+  color: #0f172a;
+  flex: 1;
+  min-width: 200px;
+}
+
+.port-compare-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.port-compare-table th,
+.port-compare-table td {
+  padding: 12px 16px;
+  font-size: 0.84rem;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+}
+
+.port-compare-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+}
+
+.port-compare-table tr:last-child td {
+  border-bottom: none;
+}
+
+.port-compare-table td.highlight {
+  font-weight: 800;
+  color: #2563eb;
+}

@@ -6,6 +6,25 @@
    ============================================================ */
 import { supabase } from './supabase.js';
 
+const CACHE_KEY = 'elec_user_credits_cache';
+
+function getCachedCredits(userId) {
+  if (!userId || typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY}_${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedCredits(userId, data) {
+  if (!userId || !data || typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`${CACHE_KEY}_${userId}`, JSON.stringify(data));
+  } catch { /* ignore quota */ }
+}
+
 /* ============================================================
    BẢNG QUY ĐỔI ELEC AI CREDIT (CHUẨN 1 VNĐ ≈ 1 CREDIT)
    ============================================================ */
@@ -47,6 +66,8 @@ function generateOrderCode() {
 export async function getCredits(userId) {
   if (!userId) return { balance: 0, total_earned: 0, total_spent: 0 };
 
+  const cached = getCachedCredits(userId);
+
   const { data, error } = await supabase
     .from('user_credits')
     .select('*')
@@ -55,6 +76,8 @@ export async function getCredits(userId) {
 
   if (error) {
     console.warn('[credits] getCredits error:', error.message);
+    // Nếu có cache, fallback dùng cache để tránh màn hình giật về 0
+    if (cached) return cached;
     return { balance: 0, total_earned: 0, total_spent: 0 };
   }
 
@@ -67,13 +90,17 @@ export async function getCredits(userId) {
         p_description: 'Quà đăng ký lần đầu 🎁',
       });
       if (rpcErr) throw rpcErr;
-      return { balance: newBal ?? 50, total_earned: 50, total_spent: 0 };
+      const res = { balance: newBal ?? 50, total_earned: 50, total_spent: 0 };
+      setCachedCredits(userId, res);
+      return res;
     } catch (e) {
       console.warn('[credits] signup bonus fail:', e?.message || e);
+      if (cached) return cached;
       return { balance: 0, total_earned: 0, total_spent: 0 };
     }
   }
 
+  setCachedCredits(userId, data);
   return data;
 }
 
@@ -81,7 +108,7 @@ export async function getCredits(userId) {
    TRỪ credits khi dùng AI
    ------------------------------------------------------------
    imageCount: số ảnh gửi kèm (0 = chỉ text)
-   Giá: 1 điểm text + 1 điểm mỗi ảnh
+   Giá: 1 điểm text + 1 điểm mỗi ảnh (hoặc creditCost cụ thể)
    ============================================================ */
 export async function spendCredit(userId, imageCount = 0, creditCost = null) {
   if (!userId) {
@@ -125,6 +152,10 @@ export async function spendCredit(userId, imageCount = 0, creditCost = null) {
 
     if (error) throw error;
 
+    // Cập nhật cache
+    const updated = { ...credits, balance: newBalance, total_spent: (credits.total_spent || 0) + cost };
+    setCachedCredits(userId, updated);
+
     try {
       window.dispatchEvent(new CustomEvent('cs-credit-update', {
         detail: { balance: newBalance, cost },
@@ -159,6 +190,11 @@ export async function refundCredit(userId, amount, reason = 'Hoàn điểm do AI
 
     if (error) throw error;
 
+    const cached = getCachedCredits(userId);
+    if (cached) {
+      setCachedCredits(userId, { ...cached, balance: newBalance });
+    }
+
     try {
       window.dispatchEvent(new CustomEvent('cs-credit-update', {
         detail: { balance: newBalance, refund: amount },
@@ -169,6 +205,38 @@ export async function refundCredit(userId, amount, reason = 'Hoàn điểm do AI
   } catch (e) {
     console.warn('[credits] refundCredit error:', e?.message || e);
     return { ok: false };
+  }
+}
+
+/* ============================================================
+   HELPER: Chạy tác vụ AI có trừ Credit & tự động hoàn điểm khi lỗi
+   ============================================================ */
+export async function runWithCredit(
+  { userId = null, imageCount = 0, cost = null, reason = 'Dùng AI' } = {},
+  taskFn
+) {
+  let charged = 0;
+  if (userId) {
+    const cr = await spendCredit(userId, imageCount, cost);
+    if (!cr.ok) {
+      const err = new Error(
+        `Hết điểm Credit! Còn ${cr.balance} điểm, cần ${cr.needed} điểm. Vui lòng nạp thêm Credit để tiếp tục sử dụng AI.`
+      );
+      err.code = 'OUT_OF_CREDITS';
+      err.balance = cr.balance;
+      err.needed = cr.needed;
+      throw err;
+    }
+    charged = cr.cost || 0;
+  }
+
+  try {
+    return await taskFn();
+  } catch (err) {
+    if (charged > 0 && userId) {
+      await refundCredit(userId, charged, `Hoàn điểm (${reason}): ${err?.message || 'AI lỗi'}`).catch(() => {});
+    }
+    throw err;
   }
 }
 

@@ -172,7 +172,7 @@ export default function HeroLindy({ onSend }) {
         {/* Sidebar */}
         <aside className="hl-sidebar">
           <div className="hl-sidebar-head">
-            <span>Học Hóa</span>
+            <span>Học KHTN</span>
             <span className="hl-sidebar-dot">·</span>
           </div>
           <p className="hl-sidebar-label">Channels</p>

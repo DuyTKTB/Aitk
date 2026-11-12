@@ -17,6 +17,7 @@ import {
   openDm, sendDmMessage, acceptFriendRequest, declineFriendRequest,
   findUsersByName, dmId, MAX_DM_CONVERSATIONS,
 } from '../../lib/social.js';
+import StudentAvatar from '../StudentAvatar.jsx';
 import './social.css';
 
 /* ── Micro SVG ── */
@@ -35,6 +36,8 @@ const ICONS = {
   chat:   'M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-4.9A8.5 8.5 0 1 1 21 11.5z',
   user:   'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5',
   people: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  flame:  'M12 2c1.2 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-5 3-7 0 2 1 3 2 3 0-2 0-4 0-6z',
+  clock:  'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14v4l3 3',
 };
 
 const fmtTime = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -45,34 +48,6 @@ const fmtDay  = (t) => {
   if (d.toDateString() === y.toDateString()) return 'Hôm qua';
   return d.toLocaleDateString('vi-VN');
 };
-
-/* Colour from uid */
-const GRAD = [
-  ['#007aff','#5856d6'], ['#34c759','#30d158'],
-  ['#ff9f0a','#ff6b00'], ['#ff375f','#ff2d55'],
-  ['#5856d6','#af52de'], ['#32ade6','#007aff'],
-  ['#ff6b00','#ff9f0a'], ['#af52de','#5856d6'],
-];
-const avatarGrad = (uid = '') => GRAD[(uid.charCodeAt(0) || 0) % GRAD.length];
-
-function Avatar({ uid, name, size = 32, vip = false }) {
-  const [c1, c2] = avatarGrad(uid);
-  const letter = (name?.[0] || '?').toUpperCase();
-  return (
-    <span
-      className={'sw-avatar sm' + (vip ? ' vip' : '')}
-      style={{
-        width: size, height: size,
-        background: `linear-gradient(135deg,${c1},${c2})`,
-        fontSize: size * .38,
-        flexShrink: 0,
-      }}
-      title={name}
-    >
-      <span>{letter}</span>
-    </span>
-  );
-}
 
 /* ── Conversation list + friend list + requests ── */
 function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenProfile, onAccept, onDecline }) {
@@ -110,7 +85,7 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
           <div className="sw-group-label">Lời mời kết bạn ({requests.length})</div>
           {requests.map((r) => (
             <div key={r.uid} className="sw-person">
-              <Avatar uid={r.uid} name={r.name} size={32} />
+              <StudentAvatar uid={r.uid} name={r.name} size={32} />
               <b className="sw-person-name">{r.name || 'Học sinh'}</b>
               <span className="sw-person-actions">
                 <button type="button" className="sw-mini ok" onClick={() => onAccept(r)} title="Chấp nhận">
@@ -138,7 +113,7 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
               style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 14 }}
               onClick={() => { setResults(null); setSearch(''); onOpenProfile(r.uid, r.name); }}
             >
-              <Avatar uid={r.uid} name={r.name} size={32} vip={r.tier === 'vip'} />
+              <StudentAvatar uid={r.uid} name={r.name} size={32} />
               <b className="sw-person-name">{r.name}</b>
               {r.tier === 'vip' && <span className="sw-vip-chip">VIP</span>}
             </button>
@@ -166,17 +141,20 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
               className={'sw-dm-row' + (unread ? ' unread' : '')}
               onClick={() => onOpenThread(d.id, otherUid, otherName)}
             >
-              <Avatar uid={otherUid} name={otherName} size={38} />
+              <StudentAvatar uid={otherUid} name={otherName} size={38} />
               <span className="sw-dm-info">
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <b>{otherName}</b>
                   {st.count >= 1 && (
-                    <span className="sw-streak-pill" style={{ padding: '0 4px', fontSize: '.62rem' }}>
-                      🔥 {st.count}
+                    <span className="sw-streak-pill" style={{ padding: '0 5px', fontSize: '.62rem', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <Svg d={ICONS.flame} size={11} sw={2} />
+                      <span>{st.count}</span>
                     </span>
                   )}
                   {st.urgent && !st.bothDone && (
-                    <span title="Chuỗi sắp hết hạn (< 3h)" style={{ fontSize: '.68rem' }}>⏳</span>
+                    <span title="Chuỗi sắp hết hạn (< 3h)" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <Svg d={ICONS.clock} size={11} sw={2} />
+                    </span>
                   )}
                 </span>
                 <small>{d.lastText || 'Chưa có tin nhắn'}</small>
@@ -200,7 +178,7 @@ function DmList({ me, dms, friends, requests, unreadMap, onOpenThread, onOpenPro
         {friends.map((f) => (
           <div key={f.uid} className="sw-person">
             <button type="button" className="sw-person-btn" onClick={() => onOpenProfile(f.uid, f.name)}>
-              <Avatar uid={f.uid} name={f.name} size={32} />
+              <StudentAvatar uid={f.uid} name={f.name} size={32} />
               <b className="sw-person-name">{f.name || 'Học sinh'}</b>
             </button>
             <span className="sw-person-actions">
@@ -248,10 +226,10 @@ function DmThread({ me, thread, onBack, onOpenProfile }) {
     if (!canNudgeFriend(thread.peerUid)) return;
     recordFriendNudge(thread.peerUid);
     setNudgeAllowed(false);
-    const nudgeMsg = `👋 ${thread.peerName || 'Bạn'} ơi, vào nhắn tin để cùng giữ chuỗi 🔥 hôm nay nhé! ⏳ Còn ${streakStatus.remainingTimeStr} nữa thôi!`;
+    const nudgeMsg = `${thread.peerName || 'Bạn'} ơi, vào nhắn tin để cùng giữ chuỗi học tập hôm nay nhé! Còn ${streakStatus.remainingTimeStr} nữa thôi!`;
     try {
       await sendDmMessage(thread.dmId, me, nudgeMsg);
-      toast(`🔥 Đã gửi lời nhắc giữ chuỗi tới ${thread.peerName || 'bạn'}`);
+      toast(`Đã gửi lời nhắc giữ chuỗi tới ${thread.peerName || 'bạn'}`);
     } catch {
       toast('Không gửi được lời nhắc');
     }
@@ -287,7 +265,7 @@ function DmThread({ me, thread, onBack, onOpenProfile }) {
           className="sw-thread-name"
           onClick={() => onOpenProfile(thread.peerUid, thread.peerName)}
         >
-          <Avatar uid={thread.peerUid} name={thread.peerName} size={30} />
+          <StudentAvatar uid={thread.peerUid} name={thread.peerName} size={30} />
           <b>{thread.peerName || 'Bạn học'}</b>
         </button>
         {/* Online indicator placeholder */}
@@ -299,16 +277,18 @@ function DmThread({ me, thread, onBack, onOpenProfile }) {
       {/* Friend Streak bar */}
       <div className="sw-friend-streak-bar">
         <div className="sw-streak-info">
-          <span className="sw-streak-pill" title={`Kỷ lục chuỗi của 2 bạn: ${streakStatus.record} ngày`}>
-            🔥 {streakStatus.count} ngày
+          <span className="sw-streak-pill" title={`Kỷ lục chuỗi của 2 bạn: ${streakStatus.record} ngày`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Svg d={ICONS.flame} size={12} sw={2} />
+            <span>{streakStatus.count} ngày</span>
           </span>
           <span className="sw-streak-text" title={streakStatus.statusText}>
             {streakStatus.statusText}
           </span>
         </div>
         {streakStatus.urgent && (
-          <span className="sw-streak-urgent" title="Sắp kết thúc ngày (UTC+7)">
-            ⏳ Còn {streakStatus.remainingTimeStr}
+          <span className="sw-streak-urgent" title="Sắp kết thúc ngày (UTC+7)" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Svg d={ICONS.clock} size={11} sw={2} />
+            <span>Còn {streakStatus.remainingTimeStr}</span>
           </span>
         )}
         {nudgeAllowed && !streakStatus.peerDone && (
@@ -327,7 +307,7 @@ function DmThread({ me, thread, onBack, onOpenProfile }) {
       {/* Messages */}
       <div className="sw-msgs" ref={listRef}>
         {msgs.length === 0 && (
-          <p className="sw-empty">Chưa có tin nhắn —<br />nhắn trước đi! 👋</p>
+          <p className="sw-empty">Chưa có tin nhắn —<br />hãy gửi tin nhắn để bắt đầu trò chuyện nhé!</p>
         )}
         {msgs.map((m, i) => {
           const mine    = m.uid === me.uid;
@@ -351,8 +331,15 @@ function DmThread({ me, thread, onBack, onOpenProfile }) {
                   display: 'flex', alignItems: 'flex-end', gap: '.35rem',
                   flexDirection: mine ? 'row-reverse' : 'row',
                 }}>
-                  {!mine && head && <Avatar uid={m.uid} name={m.name} size={26} />}
-                  {!mine && !head && <span style={{ width: 26, flexShrink: 0 }} />}
+                  {head && (
+                    <StudentAvatar
+                      uid={mine ? me.uid : m.uid}
+                      name={mine ? me.displayName : m.name}
+                      photoURL={mine ? me.photoURL : (m.photoURL || null)}
+                      size={26}
+                    />
+                  )}
+                  {!head && <span style={{ width: 26, flexShrink: 0 }} />}
                   <div className="sw-bubble">
                     <span>{m.text}</span>
                     <small>{fmtTime(m.createdAt)}</small>

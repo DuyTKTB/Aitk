@@ -12,10 +12,15 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { updateProfile } from 'firebase/auth';
-import { auth } from '../../lib/firebase.js';
+import {
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where,
+} from 'firebase/firestore';
+import { auth, db } from '../../lib/firebase.js';
+import { createExam } from '../../lib/classroom.js';
 import { SUBJECTS } from '../../lib/subjects.js';
 import { useTeacherPro } from '../../hooks/useTeacherPro.js';
 import SubjectTeacherPanel from './SubjectTeacherPanel.jsx';
+import UserAvatar from '../UserAvatar.jsx';
 import '../../styles/teacher-profile-section.css';
 
 /* ============ CONSTANTS & DEFAULTS ============ */
@@ -494,6 +499,7 @@ export default function TeacherProfileSection({
   submissionsMap = {},
   questionsCount = 0,
   onNavigate,
+  onExamImported,
   onSay,
 }) {
   const uid = user?.uid || 'guest';
@@ -1049,21 +1055,29 @@ export default function TeacherProfileSection({
     });
   };
 
-  /* ---------- 6. Chia sẻ tài nguyên với đồng nghiệp cùng tổ ---------- */
+  /* ---------- 6. Chia sẻ tài nguyên với đồng nghiệp cùng tổ (Cloud + Local Fallback) ---------- */
+  const extractShareCodeFromUrl = () => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search || '');
+      const fromSearch = searchParams.get('shareCode');
+      if (fromSearch) return fromSearch.trim().toUpperCase();
+      const hash = window.location.hash || '';
+      const qIdx = hash.indexOf('?');
+      if (qIdx !== -1) {
+        const hashParams = new URLSearchParams(hash.slice(qIdx + 1));
+        const fromHash = hashParams.get('shareCode');
+        if (fromHash) return fromHash.trim().toUpperCase();
+      }
+    } catch {
+      /* ignore URL parse errors */
+    }
+    return '';
+  };
+
+  const stripUndefinedDeep = (val) => JSON.parse(JSON.stringify(val ?? null));
+
   const [sharedList, setSharedList] = useState(() =>
-    safeReadArray(shareStorageKey, [
-      {
-        id: 'shr-demo-1',
-        resourceType: 'exam',
-        resourceTitle: exams[0]?.title || `Đề kiểm tra 45 phút ${profile.mainSubject}`,
-        subject: profile.mainSubject || 'Hóa học',
-        colleagueEmail: 'toborgv@truong.edu.vn',
-        colleagueName: 'Nhóm GV cùng tổ bộ môn',
-        permission: 'view',
-        shareCode: 'ORG-KHTN-2026',
-        createdAt: Date.now() - 86400000 * 2,
-      },
-    ])
+    safeReadArray(shareStorageKey, []).filter((x) => x && x.id !== 'shr-demo-1')
   );
 
   const [shareType, setShareType] = useState('exam'); // 'exam' | 'question_set'
@@ -1076,17 +1090,34 @@ export default function TeacherProfileSection({
   const [confirmRevokeShare, setConfirmRevokeShare] = useState(null);
   const [selectedClassForGVBM, setSelectedClassForGVBM] = useState(() => classes[0]?.id || '');
 
+  // Trạng thái nhận & nhân bản tài nguyên từ đồng nghiệp
+  const [shareBusy, setShareBusy] = useState(false);
+  const [receiveCodeInput, setReceiveCodeInput] = useState(() => extractShareCodeFromUrl());
+  const [receiveLookupBusy, setReceiveLookupBusy] = useState(false);
+  const [receivedResource, setReceivedResource] = useState(null);
+  const [receiveError, setReceiveError] = useState('');
+  const [importClassId, setImportClassId] = useState(() => classes[0]?.id || '');
+  const [importingExam, setImportingExam] = useState(false);
+  const autoLookupDoneRef = useRef('');
+
   useEffect(() => {
     if (!selectedClassForGVBM && classes.length > 0) {
       setSelectedClassForGVBM(classes[0].id);
     }
   }, [classes, selectedClassForGVBM]);
 
+  useEffect(() => {
+    if (!importClassId && classes.length > 0) {
+      setImportClassId(classes[0].id);
+    }
+  }, [classes, importClassId]);
+
   const persistShares = useCallback(
     (nextList) => {
-      setSharedList(nextList);
+      const cleaned = (nextList || []).filter((x) => x && x.id !== 'shr-demo-1');
+      setSharedList(cleaned);
       try {
-        localStorage.setItem(shareStorageKey, JSON.stringify(nextList));
+        localStorage.setItem(shareStorageKey, JSON.stringify(cleaned));
       } catch {
         /* ignore */
       }
@@ -1094,7 +1125,94 @@ export default function TeacherProfileSection({
     [shareStorageKey]
   );
 
-  const handleCreateShare = (e) => {
+  // Tải danh sách chia sẻ của GV từ Firestore shared_resources
+  useEffect(() => {
+    let alive = true;
+    const localFiltered = safeReadArray(shareStorageKey, []).filter((x) => x && x.id !== 'shr-demo-1');
+    setSharedList(localFiltered);
+    if (!uid || uid === 'guest') return undefined;
+
+    (async () => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'shared_resources'), where('ownerId', '==', uid))
+        );
+        if (!alive) return;
+        const remote = snap.docs.map((d) => ({ id: d.id, ...d.data(), localOnly: false }));
+        const byCode = new Map();
+        remote.forEach((item) => byCode.set(item.shareCode || item.id, item));
+        localFiltered.forEach((item) => {
+          const key = item.shareCode || item.id;
+          if (!byCode.has(key) && item.localOnly) byCode.set(key, item);
+        });
+        const merged = Array.from(byCode.values()).sort(
+          (a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0)
+        );
+        persistShares(merged);
+      } catch (err) {
+        console.warn('[TeacherProfile] Không thể tải chia sẻ từ Firestore:', err?.message);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [uid, shareStorageKey, persistShares]);
+
+  const handleLookupShareCode = useCallback(
+    async (codeOverride) => {
+      const code = String(typeof codeOverride === 'string' ? codeOverride : receiveCodeInput)
+        .trim()
+        .toUpperCase();
+      if (!code) {
+        setReceiveError('Vui lòng nhập mã chia sẻ (ví dụ: TBM-8K2P1).');
+        setReceivedResource(null);
+        return;
+      }
+
+      setReceiveLookupBusy(true);
+      setReceiveError('');
+      try {
+        if (uid && uid !== 'guest') {
+          try {
+            const snap = await getDoc(doc(db, 'shared_resources', code));
+            if (snap.exists()) {
+              setReceivedResource({ id: snap.id, ...snap.data() });
+              return;
+            }
+          } catch (cloudErr) {
+            console.warn('[TeacherProfile] Tra cứu Firestore thất bại:', cloudErr?.message);
+          }
+        }
+
+        const localMatch = sharedList.find(
+          (item) => String(item.shareCode || '').toUpperCase() === code
+        );
+        if (localMatch) {
+          setReceivedResource(localMatch);
+          return;
+        }
+
+        setReceivedResource(null);
+        setReceiveError(`Không tìm thấy học liệu nào với mã "${code}". Kiểm tra lại mã hoặc quyền truy cập.`);
+      } finally {
+        setReceiveLookupBusy(false);
+      }
+    },
+    [receiveCodeInput, sharedList, uid]
+  );
+
+  // Tự động mở tab Chia sẻ và tra cứu khi truy cập bằng link ?shareCode=...
+  useEffect(() => {
+    const urlCode = extractShareCodeFromUrl();
+    if (!urlCode || autoLookupDoneRef.current === urlCode) return;
+    autoLookupDoneRef.current = urlCode;
+    setActiveProfileTab('sharing');
+    setReceiveCodeInput(urlCode);
+    handleLookupShareCode(urlCode);
+  }, [handleLookupShareCode]);
+
+  const handleCreateShare = async (e) => {
     e.preventDefault();
     if (!colleagueEmail.trim() && !colleagueName.trim()) {
       showLocalBanner('Vui lòng nhập email hoặc tên đồng nghiệp cùng tổ để chia sẻ.', 'err');
@@ -1103,66 +1221,189 @@ export default function TeacherProfileSection({
 
     let resourceTitle = '';
     let resourceSubject = profile.mainSubject || 'Hóa học';
+    let foundExam = null;
     if (shareType === 'exam') {
-      const found = exams.find((x) => x.id === selectedResourceId) || exams[0];
-      resourceTitle = found?.title || customTopicName.trim() || `Đề kiểm tra ${resourceSubject}`;
-      resourceSubject = found?.subject || resourceSubject;
+      foundExam = exams.find((x) => x.id === selectedResourceId) || exams[0] || null;
+      resourceTitle = foundExam?.title || customTopicName.trim() || `Đề kiểm tra ${resourceSubject}`;
+      resourceSubject = foundExam?.subject || resourceSubject;
     } else {
       resourceTitle =
         customTopicName.trim() || `Chuyên đề câu hỏi ${resourceSubject} (${profile.grades[0] || 'Khối 12'})`;
     }
 
     const codeSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const newItem = {
-      id: `shr-${Date.now()}`,
+    const shareCode = `TBM-${codeSuffix}`;
+    const examSnapshot = foundExam
+      ? stripUndefinedDeep({
+          id: foundExam.id,
+          title: foundExam.title || resourceTitle,
+          subject: foundExam.subject || resourceSubject,
+          grade: Number(foundExam.grade) || 0,
+          duration: Number(foundExam.duration) || 45,
+          description: foundExam.description || '',
+          showAnswerAfter: foundExam.showAnswerAfter ?? true,
+          shuffle: foundExam.shuffle ?? false,
+          questions: Array.isArray(foundExam.questions) ? foundExam.questions : [],
+        })
+      : null;
+
+    const basePayload = {
+      ownerId: uid,
+      ownerName: profile.displayName || user?.displayName || 'Giáo viên Bộ môn',
+      ownerEmail: user?.email || '',
       resourceType: shareType,
       resourceTitle,
       subject: resourceSubject,
       colleagueEmail: colleagueEmail.trim(),
       colleagueName: colleagueName.trim() || colleagueEmail.trim().split('@')[0],
       permission: sharePermission,
-      shareCode: `TBM-${codeSuffix}`,
+      shareCode,
+      examId: foundExam?.id || '',
+      ...(examSnapshot ? { examSnapshot } : {}),
       createdAt: Date.now(),
     };
 
-    const next = [newItem, ...sharedList];
-    persistShares(next);
-    setColleagueEmail('');
-    setColleagueName('');
-    setCustomTopicName('');
-    showLocalBanner(`Đã chia sẻ "${resourceTitle}" cho đồng nghiệp cùng tổ.`, 'ok');
-    notify('Đã tạo mã chia sẻ tài nguyên nội bộ tổ bộ môn', 'ok');
+    setShareBusy(true);
+    let syncedCloud = false;
+    try {
+      if (uid && uid !== 'guest') {
+        try {
+          await setDoc(doc(db, 'shared_resources', shareCode), stripUndefinedDeep(basePayload));
+          syncedCloud = true;
+        } catch (cloudErr) {
+          console.warn('[TeacherProfile] Lưu chia sẻ lên Firestore thất bại, giữ bản nội bộ:', cloudErr?.message);
+        }
+      }
+
+      const newItem = { id: shareCode, ...basePayload, localOnly: !syncedCloud };
+      persistShares([newItem, ...sharedList]);
+      setColleagueEmail('');
+      setColleagueName('');
+      setCustomTopicName('');
+      if (syncedCloud) {
+        showLocalBanner(`Đã đồng bộ đám mây & chia sẻ "${resourceTitle}" (mã ${shareCode}).`, 'ok');
+        notify('Đã tạo và đồng bộ link chia sẻ tổ bộ môn lên đám mây', 'ok');
+      } else {
+        showLocalBanner(
+          `Đã tạo mã chia sẻ "${shareCode}" (lưu tạm nội bộ trình duyệt do chưa đồng bộ được Firestore).`,
+          'info'
+        );
+        notify('Đã tạo mã chia sẻ nội bộ (offline/local)', 'info');
+      }
+    } finally {
+      setShareBusy(false);
+    }
   };
 
-  const handleToggleSharePermission = (itemId) => {
+  const handleToggleSharePermission = async (itemId) => {
+    const target = sharedList.find((item) => item.id === itemId);
+    if (!target) return;
+    const nextPerm = target.permission === 'view' ? 'edit' : 'view';
     const next = sharedList.map((item) =>
-      item.id === itemId
-        ? { ...item, permission: item.permission === 'view' ? 'edit' : 'view' }
-        : item
+      item.id === itemId ? { ...item, permission: nextPerm } : item
     );
     persistShares(next);
+
+    if (uid && uid !== 'guest' && target.shareCode) {
+      try {
+        await updateDoc(doc(db, 'shared_resources', target.shareCode), { permission: nextPerm });
+      } catch (err) {
+        console.warn('[TeacherProfile] Cập nhật quyền trên Firestore thất bại:', err?.message);
+      }
+    }
     showLocalBanner('Đã cập nhật quyền truy cập tài nguyên chia sẻ.', 'ok');
   };
 
-  const handleRevokeShare = (item) => {
+  const handleRevokeShare = async (item) => {
     const prev = [...sharedList];
     const next = sharedList.filter((x) => x.id !== item.id);
     persistShares(next);
     setConfirmRevokeShare(null);
-    showLocalBanner(`Đã thu hồi quyền chia sẻ "${item.resourceTitle}".`, 'info', () => {
+
+    if (uid && uid !== 'guest' && item.shareCode) {
+      try {
+        await deleteDoc(doc(db, 'shared_resources', item.shareCode));
+      } catch (err) {
+        console.warn('[TeacherProfile] Xóa chia sẻ trên Firestore thất bại:', err?.message);
+      }
+    }
+
+    showLocalBanner(`Đã thu hồi quyền chia sẻ "${item.resourceTitle}".`, 'info', async () => {
       persistShares(prev);
+      if (uid && uid !== 'guest' && item.shareCode) {
+        try {
+          const { localOnly: _omit, id: _omitId, ...rest } = item;
+          await setDoc(doc(db, 'shared_resources', item.shareCode), stripUndefinedDeep(rest));
+        } catch {
+          /* ignore */
+        }
+      }
       showLocalBanner('Đã hoàn tác thu hồi chia sẻ.', 'ok');
     });
   };
 
+  const handleImportSharedExam = async () => {
+    if (!receivedResource) return;
+    if (receivedResource.permission !== 'edit') {
+      setReceiveError('Tác giả chỉ cấp quyền "Chỉ xem". Hãy nhờ tác giả chuyển sang "Được sửa" để nhân bản đề.');
+      return;
+    }
+    const snap = receivedResource.examSnapshot;
+    const questions = Array.isArray(snap?.questions) ? snap.questions : [];
+    if (questions.length === 0) {
+      setReceiveError('Học liệu này chưa có dữ liệu câu hỏi đề thi để nhân bản vào lớp.');
+      return;
+    }
+    if (!uid || uid === 'guest') {
+      setReceiveError('Bạn cần đăng nhập tài khoản giáo viên để nhân bản đề về lớp.');
+      return;
+    }
+
+    setImportingExam(true);
+    setReceiveError('');
+    try {
+      const clonedQuestions = stripUndefinedDeep(questions);
+      const targetClass = classes.find((c) => c.id === importClassId) || classes[0] || null;
+      const created = await createExam({
+        teacherId: uid,
+        teacherName: profile.displayName || user?.displayName || 'Giáo viên Bộ môn',
+        classId: targetClass?.id || '',
+        title: `${snap?.title || receivedResource.resourceTitle} (Bản sao tổ bộ môn)`,
+        description:
+          snap?.description ||
+          `Nhân bản từ chia sẻ của ${receivedResource.ownerName || 'đồng nghiệp'} (Mã: ${receivedResource.shareCode})`,
+        duration: Number(snap?.duration) || 45,
+        questions: clonedQuestions,
+        subject: snap?.subject || receivedResource.subject || profile.mainSubject || '',
+        grade: Number(snap?.grade) || Number(targetClass?.grade) || 0,
+        shuffle: snap?.shuffle ?? false,
+        showAnswerAfter: snap?.showAnswerAfter ?? true,
+        source: 'colleague-share',
+      });
+      if (typeof onExamImported === 'function') {
+        onExamImported(created);
+      }
+      showLocalBanner(
+        `Đã nhân bản đề "${created.title}" (${clonedQuestions.length} câu)${targetClass ? ` vào lớp ${targetClass.name}` : ''}.`,
+        'ok'
+      );
+      notify(`Đã nhận & nhân bản đề "${created.title}"`, 'ok');
+    } catch (err) {
+      setReceiveError(err?.message || 'Không thể nhân bản đề từ đồng nghiệp. Vui lòng thử lại.');
+    } finally {
+      setImportingExam(false);
+    }
+  };
+
   const copyShareLink = async (item) => {
-    const url = `${window.location.origin}/?shareCode=${item.shareCode}&mode=${item.permission}`;
+    const url = `${window.location.origin}/?shareCode=${item.shareCode}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedShareId(item.id);
       setTimeout(() => setCopiedShareId(''), 1800);
     } catch {
       setCopiedShareId('');
+      showLocalBanner(`Link chia sẻ: ${url}`, 'info');
     }
   };
 
@@ -1219,9 +1460,7 @@ export default function TeacherProfileSection({
                   className="tps-avatar-img"
                 />
               ) : (
-                <div className="tps-avatar-fallback" aria-hidden="true">
-                  {avatarInitial}
-                </div>
+                <UserAvatar photoURL={profile.avatarUrl} size={78} title={profile.displayName} />
               )}
               <button
                 type="button"
@@ -1997,9 +2236,9 @@ export default function TeacherProfileSection({
               </label>
 
               <div className="tps-field tps-field-end">
-                <button type="submit" className="tps-btn tps-btn-primary">
+                <button type="submit" className="tps-btn tps-btn-primary" disabled={shareBusy}>
                   <IcoShare size={15} />
-                  <span>Chia sẻ ngay</span>
+                  <span>{shareBusy ? 'Đang lưu...' : 'Chia sẻ ngay'}</span>
                 </button>
               </div>
             </div>
@@ -2044,6 +2283,7 @@ export default function TeacherProfileSection({
                   <div className="tps-shared-info">
                     <span className="tps-shared-type-badge">
                       {item.resourceType === 'exam' ? 'Đề thi' : 'Chuyên đề'}
+                      {item.localOnly ? ' · Cục bộ' : ''}
                     </span>
                     <strong>{item.resourceTitle}</strong>
                     <small>
@@ -2082,6 +2322,156 @@ export default function TeacherProfileSection({
                   </div>
                 </div>
               ))
+            )}
+          </div>
+
+          <div className="tps-receive-box">
+            <div className="tps-receive-head">
+              <h4>Nhận học liệu / Đề thi từ đồng nghiệp</h4>
+              <p>
+                Dán mã chia sẻ (ví dụ <code>TBM-8K2P1</code>) hoặc mở trực tiếp từ link đồng nghiệp gửi để xem trước và nhân bản đề về lớp.
+              </p>
+            </div>
+
+            <form
+              className="tps-receive-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleLookupShareCode();
+              }}
+            >
+              <input
+                type="text"
+                className="tps-receive-input"
+                value={receiveCodeInput}
+                onChange={(e) => setReceiveCodeInput(e.target.value.toUpperCase())}
+                placeholder="Nhập mã chia sẻ (vd: TBM-8K2P1)..."
+                aria-label="Mã chia sẻ học liệu"
+              />
+              <button
+                type="submit"
+                className="tps-btn tps-btn-primary"
+                disabled={receiveLookupBusy}
+              >
+                {receiveLookupBusy ? 'Đang tìm...' : 'Tìm mã chia sẻ'}
+              </button>
+              {receivedResource && (
+                <button
+                  type="button"
+                  className="tps-btn tps-btn-ghost"
+                  onClick={() => {
+                    setReceivedResource(null);
+                    setReceiveError('');
+                  }}
+                >
+                  Đóng
+                </button>
+              )}
+            </form>
+
+            {receiveError && (
+              <div className="tps-receive-err" role="alert">
+                {receiveError}
+              </div>
+            )}
+
+            {receivedResource && (
+              <div className="tps-receive-preview">
+                <div className="tps-receive-preview-top">
+                  <div>
+                    <div className="tps-receive-badges">
+                      <span className="tps-shared-type-badge">
+                        {receivedResource.resourceType === 'exam' ? 'Đề thi' : 'Chuyên đề'}
+                      </span>
+                      <span className={`tps-perm-pill perm-${receivedResource.permission || 'view'}`}>
+                        {receivedResource.permission === 'edit' ? 'Quyền: Được sửa' : 'Quyền: Chỉ xem'}
+                      </span>
+                    </div>
+                    <h5>{receivedResource.resourceTitle}</h5>
+                    <small>
+                      Môn {receivedResource.subject || 'Chưa rõ'} · Người chia sẻ:{' '}
+                      <b>{receivedResource.ownerName || receivedResource.colleagueName || 'Đồng nghiệp'}</b>
+                      {receivedResource.ownerEmail ? ` (${receivedResource.ownerEmail})` : ''} · Mã:{' '}
+                      <code>{receivedResource.shareCode}</code>
+                      {Array.isArray(receivedResource.examSnapshot?.questions) &&
+                      receivedResource.examSnapshot.questions.length > 0
+                        ? ` · ${receivedResource.examSnapshot.questions.length} câu · ${receivedResource.examSnapshot.duration || 45} phút`
+                        : ''}
+                    </small>
+                  </div>
+                </div>
+
+                {Array.isArray(receivedResource.examSnapshot?.questions) &&
+                receivedResource.examSnapshot.questions.length > 0 ? (
+                  <>
+                    <div className="tps-receive-qpreview">
+                      {receivedResource.examSnapshot.questions.slice(0, 6).map((q, idx) => (
+                        <div key={q.id || idx} className="tps-receive-qitem">
+                          <strong>Câu {idx + 1}:</strong>{' '}
+                          <span>{q.prompt || q.question || q.text || 'Câu hỏi'}</span>
+                        </div>
+                      ))}
+                      {receivedResource.examSnapshot.questions.length > 6 && (
+                        <p className="tps-muted-text">
+                          ...và còn {receivedResource.examSnapshot.questions.length - 6} câu hỏi khác trong đề.
+                        </p>
+                      )}
+                    </div>
+
+                    {receivedResource.permission === 'edit' ? (
+                      <div className="tps-receive-import-bar">
+                        <label>
+                          <span>Chọn lớp nhận đề:</span>
+                          <select
+                            value={importClassId}
+                            onChange={(e) => setImportClassId(e.target.value)}
+                          >
+                            {classes.length === 0 ? (
+                              <option value="">Kho đề cá nhân (Chưa gắn lớp)</option>
+                            ) : (
+                              classes.map((cls) => (
+                                <option key={cls.id} value={cls.id}>
+                                  {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="tps-btn tps-btn-primary"
+                          onClick={handleImportSharedExam}
+                          disabled={importingExam}
+                        >
+                          <IcoCheck size={15} />
+                          <span>{importingExam ? 'Đang nhân bản...' : 'Nhân bản đề vào lớp'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="tps-btn tps-btn-outline"
+                          onClick={() => onNavigate?.('exams')}
+                        >
+                          <span>Mở kho đề</span>
+                          <IcoArrowRight size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="tps-receive-view-notice">
+                        <span>
+                          Tác giả đặt quyền <b>Chỉ xem</b> — bạn có thể xem trước câu hỏi, nhưng cần tác giả chuyển sang quyền <b>Được sửa</b> để nhân bản đề về lớp.
+                        </span>
+                        <button type="button" className="tps-btn tps-btn-sm tps-btn-ghost" disabled>
+                          Nhân bản đề vào lớp (Chỉ xem)
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="tps-muted-text">
+                    Tài nguyên chuyên đề tham khảo (không kèm danh sách câu hỏi đề thi).
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -200,7 +200,7 @@ export default function RoadmapCard() {
           <span className="road-next-tag">NV1 · {aspiration.examType}</span>
           <span className="road-next-name">{nv1.uni} — {nv1.major}</span>
           <span className="road-next-meta">
-            Chuẩn 2025: {nv1.s2025 ?? 'Xét riêng'} · Mục tiêu Hóa: {aspiration.targetChemScore}/10đ
+            Chuẩn 2025: {nv1.s2025 ?? 'Xét riêng'} · Mục tiêu KHTN: {aspiration.targetChemScore}/10đ
           </span>
           <span className="road-next-go" aria-hidden="true">›</span>
         </button>

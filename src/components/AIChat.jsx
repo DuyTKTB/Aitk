@@ -13,15 +13,19 @@ import {
   cancelAllSyncs,
 } from '../lib/aiChatApi.js';
 import AIMark from './AIMark.jsx';
+import UserAvatarLogo from './UserAvatar.jsx';
 import { getQuota, canSend, consumeQuota } from '../lib/quota.js';
-import { spendCredit, refundCredit } from '../lib/creditService.js';
-import { isVipActive } from '../lib/vipService.js';
+import { spendCredit, refundCredit, getCredits } from '../lib/creditService.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
 import { MarkdownLike, CollapsibleText, ReasoningSteps } from './ChatMarkdown.jsx';
 import InteractiveQuizCanvas from './InteractiveQuizCanvas.jsx';
 import { parseQuizFromText } from '../lib/aiQuizParser.js';
+import InteractiveChalkboardCanvas from './InteractiveChalkboardCanvas.jsx';
+import { parseChalkboardFromText } from '../lib/aiChalkboardParser.js';
+import { findRelatedYouTubeVideos } from '../lib/youtubeService.js';
+import { YouTubeVideoSection } from './YouTubeVideoSection.jsx';
 import * as tts from '../lib/tts.js';
 import {
   IcoPlus, IcoChat, IcoTrash, IcoChevron, IcoClose, IcoImage, IcoSend, IcoBrain,
@@ -46,6 +50,49 @@ import '../styles/ai-fullscreen.css';
 import '../styles/styles/ai-chatgpt.css';
 
 /* ============================================================
+   BỘ NHỚ ĐỆM SIÊU TỐC (CACHE) — CHỐNG LAG GIẬT KHI CHAT HOẶC GÕ PHÍM
+   ============================================================ */
+const QUIZ_CACHE = new Map();
+const CB_CACHE = new Map();
+const YT_VIDEOS_CACHE = new Map();
+
+function getCachedQuiz(text) {
+  if (!text) return null;
+  if (QUIZ_CACHE.has(text)) return QUIZ_CACHE.get(text);
+  const res = parseQuizFromText(text);
+  if (QUIZ_CACHE.size > 200) {
+    const firstKey = QUIZ_CACHE.keys().next().value;
+    QUIZ_CACHE.delete(firstKey);
+  }
+  QUIZ_CACHE.set(text, res);
+  return res;
+}
+
+function getCachedChalkboard(text) {
+  if (!text) return null;
+  if (CB_CACHE.has(text)) return CB_CACHE.get(text);
+  const res = parseChalkboardFromText(text);
+  if (CB_CACHE.size > 200) {
+    const firstKey = CB_CACHE.keys().next().value;
+    CB_CACHE.delete(firstKey);
+  }
+  CB_CACHE.set(text, res);
+  return res;
+}
+
+function getCachedRelatedVideos(queryText, limit = 2) {
+  const key = `${limit}:${queryText}`;
+  if (YT_VIDEOS_CACHE.has(key)) return YT_VIDEOS_CACHE.get(key);
+  const res = findRelatedYouTubeVideos(queryText, limit);
+  if (YT_VIDEOS_CACHE.size > 150) {
+    const firstKey = YT_VIDEOS_CACHE.keys().next().value;
+    YT_VIDEOS_CACHE.delete(firstKey);
+  }
+  YT_VIDEOS_CACHE.set(key, res);
+  return res;
+}
+
+/* ============================================================
    CONSTANTS
    ============================================================ */
 const CLASSES = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
@@ -57,28 +104,32 @@ const QUICK_PROMPTS = [
   { icon: 'repeat', label: 'Tạo bài tương tự', prompt: 'Tạo 3 bài tập tương tự để mình luyện thêm (có đáp án).' },
   { icon: 'bug', label: 'Tìm lỗi sai', prompt: 'Chỉ ra lỗi sai thường gặp khi giải dạng bài này.' },
   { icon: 'book', label: 'Tóm tắt lý thuyết', prompt: 'Tóm tắt lý thuyết liên quan cần nhớ để giải dạng bài này.' },
+  { icon: 'wand', label: 'Vẽ bảng phấn 3D', prompt: 'Hãy giải bài này và minh họa bằng bảng phấn 3D sử dụng cú pháp ```chalkboard-mv kèm các câu lệnh dựng hình (Point, Segment, Pyramid, Sphere, Line, v.v.).' },
 ];
 
 const TODAY_FACTS = [
-  { type: 'Phương trình', content: '2H₂ + O₂ → 2H₂O', hint: 'Phản ứng tạo nước — nền tảng của nhiều phản ứng.' },
-  { type: 'Sự thật', content: 'Gold (Au) có thể kéo thành sợi mỏng đến mức 1 gram kéo dài 2.4 km.', hint: 'Kim loại quý có tính dẻo cao nhất.' },
-  { type: 'Mẹo', content: 'Cân bằng phương trình: bắt đầu với nguyên tố xuất hiện ít nhất.', hint: 'Kỹ thuật cân bằng nhanh và chính xác.' },
-  { type: 'Sự thật', content: 'Kim cương và than chì đều là Carbon (C) nhưng cấu trúc khác nhau.', hint: 'Ví dụ điển hình về thù hình.' },
-  { type: 'Phương trình', content: 'Fe + 2HCl → FeCl₂ + H₂', hint: 'Phản ứng thế — kim loại + axit.' },
-  { type: 'Mẹo', content: 'pH = -log[H⁺]. Với [H⁺] = 10⁻³ M thì pH = 3.', hint: 'Nhớ dấu âm trong công thức logarit.' },
-  { type: 'Sự thật', content: 'Nước là chất duy nhất tồn tại tự nhiên ở cả 3 thể.', hint: 'Tính chất đặc biệt nhờ liên kết hydro.' },
-  { type: 'Phương trình', content: 'CaCO₃ → CaO + CO₂', hint: 'Phản ứng phân hủy — nung vôi.' },
+  { type: 'Vật lí · Dao động', content: 'T = 2π√(m/k)', hint: 'Chu kỳ dao động con lắc lò xo phụ thuộc khối lượng m và độ cứng k.' },
+  { type: 'Hóa học · Phản ứng', content: '2H₂ + O₂ → 2H₂O', hint: 'Phản ứng tạo nước — nền tảng của nhiều phản ứng hóa học.' },
+  { type: 'Sinh học · Phân tử', content: '2A + 3G = H (liên kết hiđrô)', hint: 'Nguyên tắc bổ sung: A nối T bằng 2 liên kết, G nối X bằng 3 liên kết hiđrô.' },
+  { type: 'Vật lí · Sóng & Ánh sáng', content: 'c ≈ 300.000 km/s', hint: 'Vận tốc ánh sáng trong chân không — giới hạn tốc độ tối đa của vũ trụ.' },
+  { type: 'Hóa học · Dung dịch', content: 'pH = -log[H⁺]', hint: 'Với [H⁺] = 10⁻³ M thì pH = 3 (môi trường axit).' },
+  { type: 'Sinh học · Mã di truyền', content: '64 bộ ba mã di truyền', hint: '61 bộ ba mã hóa cho 20 loại axit amin; 3 bộ ba kết thúc (UAA, UAG, UGA).' },
+  { type: 'Vật lí · Điện xoay chiều', content: 'Z = √(R² + (Z_L - Z_C)²)', hint: 'Tổng trở mạch RLC nối tiếp đạt cực tiểu Z = R khi xảy ra cộng hưởng điện.' },
+  { type: 'Hóa học · Kim loại', content: 'Ag > Cu > Au > Al > Fe', hint: 'Thứ tự dẫn điện và dẫn nhiệt giảm dần của các kim loại thông dụng.' },
+  { type: 'Sinh học · Quần thể', content: 'p²AA + 2pqAa + q²aa = 1', hint: 'Định luật Hardy - Weinberg về trạng thái cân bằng di truyền của quần thể.' },
 ];
 
 const SUGGESTION_POOL = [
-  { tag: 'Định luật', text: 'Giải thích định luật bảo toàn khối lượng', icon: 'scale' },
-  { tag: 'Bảng tuần hoàn', text: 'Sinh 5 câu hỏi về bảng tuần hoàn', icon: 'table' },
-  { tag: 'Cân bằng PTHH', text: 'Cách cân bằng phương trình Fe + O2', icon: 'flask' },
-  { tag: 'Dung dịch', text: 'Giải thích công thức tính pH', icon: 'drop' },
-  { tag: 'Cấu tạo nguyên tử', text: 'Cách viết cấu hình electron', icon: 'atom' },
-  { tag: 'Mol', text: 'Cách tính số mol và khối lượng chất', icon: 'bolt' },
-  { tag: 'Oxi hóa - khử', text: 'Xác định chất oxi hóa và chất khử', icon: 'bulb' },
-  { tag: 'Liên kết', text: 'Phân biệt liên kết ion và cộng hóa trị', icon: 'steps' },
+  { tag: 'Vật lí · Dao động', text: 'Cách viết phương trình dao động điều hòa x = A cos(wt + phi)', icon: 'wave' },
+  { tag: 'Vật lí · Mạch RLC', text: 'Tính tổng trở và độ lệch pha mạch xoay chiều RLC', icon: 'circuit' },
+  { tag: 'Vật lí · Quang học', text: 'Giải thích hiện tượng giao thoa ánh sáng qua khe Y-âng', icon: 'bolt' },
+  { tag: 'Hóa học · Este', text: 'Phương pháp giải bài toán thủy phân este trong kiềm', icon: 'flask' },
+  { tag: 'Hóa học · Cân bằng', text: 'Cách cân bằng phương trình oxi hóa khử bằng thăng bằng electron', icon: 'flask' },
+  { tag: 'Hóa học · Dung dịch', text: 'Giải thích công thức tính pH và nồng độ mol CM', icon: 'drop' },
+  { tag: 'Sinh học · ADN', text: 'Công thức tính chiều dài gen và số liên kết hydro của ADN', icon: 'dna' },
+  { tag: 'Sinh học · Men-đen', text: 'Cách lập khung Punnett và xác định tỉ lệ phân li kiểu hình F2', icon: 'steps' },
+  { tag: 'Sinh học · Quần thể', text: 'Định luật Hardy - Weinberg và bài toán cân bằng di truyền', icon: 'table' },
+  { tag: 'KHTN · Định luật', text: 'Giải thích định luật bảo toàn khối lượng và cơ năng', icon: 'scale' },
 ];
 
 const pickSuggestions = (seed) => {
@@ -288,13 +339,14 @@ function LiveBackground() {
 }
 
 function UserAvatar({ user, initial, color }) {
-  return (
-    <div className="ds-user-avatar" style={{ background: color, color: '#111' }}>
-      {user?.photoURL
-        ? <img src={user.photoURL} alt="" />
-        : initial}
-    </div>
-  );
+  if (user?.photoURL) {
+    return (
+      <div className="ds-user-avatar" style={{ background: color, color: '#111' }}>
+        <img src={user.photoURL} alt="" />
+      </div>
+    );
+  }
+  return <UserAvatarLogo user={user} size={34} />;
 }
 
 function TodayCard({ onAsk }) {
@@ -449,7 +501,9 @@ export default function AIChat({ onExit }) {
   /* Chế độ học: điều khiển cách AI trả lời (giải chi tiết / gợi ý từng bước / kiểm tra đáp án...) */
   const [mode, setMode] = useLocalStorage('cs-ai-mode', 'auto');
   const [activeInteractiveQuiz, setActiveInteractiveQuiz] = useState(null);
+  const [activeChalkboardLesson, setActiveChalkboardLesson] = useState(null);
   const [plainViewMsgIds, setPlainViewMsgIds] = useState(() => new Set());
+  const [openVideoMsgIds, setOpenVideoMsgIds] = useState(() => new Set());
   const [busyId, setBusyId] = useState(null);
   const [streaming, setStreaming] = useState('');
   const [reasoning, setReasoning] = useState('');
@@ -460,6 +514,7 @@ export default function AIChat({ onExit }) {
   const [copied, setCopied] = useState(null);
   const [quota, setQuota] = useState(() => getQuota(uid, tier));
   const [quotaError, setQuotaError] = useState('');
+  const [credits, setCredits] = useState(null);
   const [query, setQuery] = useState('');
   const [confirmState, setConfirmState] = useState(null);
   const [visible, setVisible] = useState(onAiPage);
@@ -528,6 +583,7 @@ export default function AIChat({ onExit }) {
   // Đóng Canvas khi đổi đoạn chat
   useEffect(() => {
     setActiveInteractiveQuiz(null);
+    setActiveChalkboardLesson(null);
   }, [activeId]);
 
   // Tự động mở Canvas khi AI vừa sinh xong một bộ bài tập trắc nghiệm mới
@@ -536,11 +592,21 @@ export default function AIChat({ onExit }) {
     if (!messages || messages.length === 0) return;
     const last = messages[messages.length - 1];
     if (last && last.role === 'model' && last.text) {
-      const qData = parseQuizFromText(last.text);
+      const qData = getCachedQuiz(last.text);
       if (qData?.quiz && !activeInteractiveQuiz) {
         const isRecent = !last.createdAt || (Date.now() - last.createdAt < 20000);
         if (isRecent) {
           setActiveInteractiveQuiz(qData.quiz);
+          setActiveChalkboardLesson(null);
+        }
+      }
+      // Tự động nhảy sang giao diện Bảng vẽ hình học khi AI vừa giải bài hình ("Giải đến đâu vẽ tới đó")
+      const cbData = getCachedChalkboard(last.text);
+      if (cbData?.lesson && !activeChalkboardLesson) {
+        const isRecent = !last.createdAt || (Date.now() - last.createdAt < 30000);
+        if (isRecent) {
+          setActiveChalkboardLesson(cbData.lesson);
+          setActiveInteractiveQuiz(null);
         }
       }
     }
@@ -628,9 +694,21 @@ export default function AIChat({ onExit }) {
   }, [messages.length, autoSpeak, ttsSupported, loading]);
 
   /* ĐIỀU HƯỚNG */
-  const goProfile = () => { setUserMenuOpen(false); location.hash = 'profile'; };
+  const goProfile = () => {
+    setUserMenuOpen(false);
+    if (!uid) {
+      location.hash = 'login';
+      return;
+    }
+    location.hash = 'profile';
+  };
   const goUpgrade = () => {
     setUserMenuOpen(false);
+    if (!uid) {
+      try { localStorage.setItem('cs-profile-tab', 'upgrade'); } catch { /* */ }
+      location.hash = 'register';
+      return;
+    }
     try { localStorage.setItem('cs-profile-tab', 'upgrade'); } catch { /* */ }
     location.hash = 'profile';
   };
@@ -784,6 +862,23 @@ export default function AIChat({ onExit }) {
   }, [uid, tier]);
 
   useEffect(() => { if (uid) setQuota(getQuota(uid, tier)); }, [uid, tier]);
+
+  useEffect(() => {
+    if (!uid) {
+      setCredits(null);
+      return;
+    }
+    getCredits(uid).then((c) => setCredits(c?.balance ?? 0)).catch(() => {});
+    const onCreditEvt = (e) => {
+      if (e.detail?.balance != null) {
+        setCredits(e.detail.balance);
+      } else if (e.detail?.delta != null) {
+        setCredits((prev) => (prev != null ? prev + e.detail.delta : e.detail.delta));
+      }
+    };
+    window.addEventListener('cs-credit-update', onCreditEvt);
+    return () => window.removeEventListener('cs-credit-update', onCreditEvt);
+  }, [uid]);
   useEffect(() => () => clearTimeout(qTimer.current), []);
 
   useEffect(() => {
@@ -1110,7 +1205,7 @@ export default function AIChat({ onExit }) {
     setQuotaError(
       hasImg
         ? `Bạn đã dùng hết ${tier.quotaImage} lượt gửi ảnh hôm nay. Quay lại vào ngày mai nhé!`
-        : `Bạn đã dùng hết ${tier.quotaText} lượt chat hôm nay. Nâng cấp lên ELECAI VIP để chat không giới hạn!`
+        : `Bạn đã dùng hết ${tier.quotaText} lượt chat hôm nay. Nâng cấp VIP để nhận thêm Credit hoặc nạp thêm điểm để tiếp tục!`
     );
     clearTimeout(qTimer.current);
     qTimer.current = setTimeout(() => setQuotaError(''), 6000);
@@ -1291,10 +1386,8 @@ export default function AIChat({ onExit }) {
 
       const imgCount = images.length;
 
-      const vipActive = uid ? await isVipActive() : false;
-
       let charged = 0;
-      if (uid && !vipActive) {
+      if (uid) {
         const cr = await spendCredit(uid, imgCount);
         if (!cr.ok) {
           setQuotaError(
@@ -1307,7 +1400,7 @@ export default function AIChat({ onExit }) {
         }
         charged = cr.cost;
         try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
-      } else if (!uid) {
+      } else {
         if (denyQuota(imgCount > 0)) return;
         setQuotaError('');
         const nq = consumeQuota(uid, tier, imgCount > 0);
@@ -1402,10 +1495,8 @@ export default function AIChat({ onExit }) {
     const hasImg = msgs[i].parts?.some((p) => p.inlineData) || imgList.length > 0;
     const imgCount = imgList.length || (hasImg ? 1 : 0);
 
-    const vipActive = uid ? await isVipActive() : false;
-
     let charged = 0;
-    if (!free && uid && !vipActive) {
+    if (!free && uid) {
       const cr = await spendCredit(uid, imgCount);
       if (!cr.ok) {
         setQuotaError(`Hết điểm! Còn ${cr.balance}, cần ${cr.needed}. Nạp thêm tại Gói dùng.`);
@@ -1802,6 +1893,11 @@ export default function AIChat({ onExit }) {
                   {tier.key === 'vip' ? <IcoCrown size={12} /> : <IcoSparkle size={12} />}
                   <span>{tier.name}</span>
                 </span>
+                {credits != null && (
+                  <span className="ds-tier-badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)', fontWeight: 700 }}>
+                    {credits.toLocaleString('vi-VN')} credit
+                  </span>
+                )}
                 {tier.key === 'free' && (
                   <button className="ds-tier-upgrade" onClick={goUpgrade} type="button">Nâng cấp</button>
                 )}
@@ -1827,7 +1923,7 @@ export default function AIChat({ onExit }) {
               <b>{userName}{tier.key === 'vip' && <VerifiedBadge isVip size={12} />}</b>
               <span className="ds-user-tier-name">
                 {tier.key === 'vip' ? <IcoCrown size={10} /> : <IcoSparkle size={10} />}
-                {tier.name}
+                {tier.name}{credits != null ? ` · ${credits.toLocaleString('vi-VN')} credit` : ''}
               </span>
             </div>
             <IcoSettings size={14} />
@@ -1866,7 +1962,7 @@ export default function AIChat({ onExit }) {
             <div className="ds-title-block">
               <AIMark size={44} mode={markMode} look animate={visible} />
               <div>
-                <h2 className="ds-page-title">Trợ lý Hóa học</h2>
+                <h2 className="ds-page-title">Trợ lý KHTN (Lý - Hóa - Sinh)</h2>
                 <span className="ds-status" data-s={loading ? 'busy' : 'idle'} aria-live="polite">{statusText}</span>
               </div>
             </div>
@@ -1879,7 +1975,7 @@ export default function AIChat({ onExit }) {
               aria-expanded={hmenu === 'study'}
             >
               <span className="ds-m-title-main">
-                <span>Trợ lý Hóa học</span>
+                <span>Trợ lý KHTN (Lý - Hóa - Sinh)</span>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
               </span>
               <span className="ds-m-title-sub">
@@ -1888,14 +1984,31 @@ export default function AIChat({ onExit }) {
             </button>
 
             <div className="ds-quota">
-              {tier.key === 'vip' ? (
-                <span className="ds-quota-item vip" title="Gói ELECAI VIP — Chat không giới hạn">
+              {tier.key === 'vip' && (
+                <span className="ds-quota-item vip" title="Gói ELECAI VIP — Mở khóa toàn bộ đề thi & tính năng VIP">
                   <IcoCrown size={13} /><span>VIP</span>
                 </span>
-              ) : (
-                <QuotaRing left={quota.textLeft} total={quota.quotaText} label="lượt chat" />
               )}
-              <QuotaRing left={quota.imageLeft} total={quota.quotaImage} label="lượt ảnh" />
+              {uid ? (
+                <button
+                  type="button"
+                  className="ds-credit-pill"
+                  onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
+                  title={`Số dư: ${credits != null ? credits.toLocaleString('vi-VN') : '...'} Credit (Bấm để nạp thêm)`}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-5 0c0 2 3 2.5 3 4.5a3.5 3.5 0 0 1-5 0" />
+                  </svg>
+                  <span>{credits != null ? credits.toLocaleString('vi-VN') : '...'}</span>
+                  <span className="ds-credit-unit">credit</span>
+                </button>
+              ) : (
+                <>
+                  <QuotaRing left={quota.textLeft} total={quota.quotaText} label="lượt chat" />
+                  <QuotaRing left={quota.imageLeft} total={quota.quotaImage} label="lượt ảnh" />
+                </>
+              )}
             </div>
 
             <div className="ds-grade" role="radiogroup" aria-label="Trình độ">
@@ -2039,7 +2152,7 @@ export default function AIChat({ onExit }) {
           )}
         </header>
 
-        <div className={`ds-stage-split ${activeInteractiveQuiz ? 'has-canvas' : ''}`}>
+        <div className={`ds-stage-split ${(activeInteractiveQuiz || activeChalkboardLesson) ? 'has-canvas' : ''}`}>
           <div className="ds-stage-chat">
             <main className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
           {!AI_READY && (
@@ -2149,7 +2262,8 @@ export default function AIChat({ onExit }) {
                           )}
 
                           {(() => {
-                            const quizData = !m.isQuotaError && m.text ? parseQuizFromText(m.text) : null;
+                            const quizData = !m.isQuotaError && m.text ? getCachedQuiz(m.text) : null;
+                            const cbData = !m.isQuotaError && m.text ? getCachedChalkboard(m.text) : null;
                             return (
                               <div className={'ds-msg-content' + (m.isQuotaError ? ' quota-error' : '')}>
                                 {m.isQuotaError ? (
@@ -2197,7 +2311,70 @@ export default function AIChat({ onExit }) {
                                   </div>
                                 ) : (
                                   <CollapsibleText defaultOpen={isLast}>
+                                    {cbData?.lesson && (
+                                      <div
+                                        className={`ds-studio-hero-launcher ${activeChalkboardLesson === cbData.lesson ? 'is-active' : ''}`}
+                                        onClick={() => {
+                                          setActiveChalkboardLesson(cbData.lesson);
+                                          setActiveInteractiveQuiz(null);
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                        title="Bấm để mở Bảng vẽ hình học tương tác trên Canvas (giải đến đâu vẽ tới đó)"
+                                      >
+                                        <div className="ds-studio-hero-info">
+                                          <div className="ds-studio-hero-tag">
+                                            <span className="ds-studio-pulse-dot" />
+                                            <span>{cbData.lesson.baChieu !== false ? 'Studio Hình học 3D' : 'Studio Đồ thị & Hình phẳng'}</span>
+                                            {cbData.lesson.buoc?.length > 0 && (
+                                              <span style={{ opacity: 0.75 }}>· {cbData.lesson.buoc.length} bước</span>
+                                            )}
+                                          </div>
+                                          <h4 className="ds-studio-hero-title">{cbData.lesson.tieuDe}</h4>
+                                        </div>
+                                        <div className="ds-studio-hero-btn">
+                                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                            <polygon points="5 3 19 12 5 21 5 3" />
+                                          </svg>
+                                          <span>{activeChalkboardLesson === cbData.lesson ? 'Đang mở trên Canvas' : 'Xem diễn hoạt'}</span>
+                                        </div>
+                                      </div>
+                                    )}
                                     <MarkdownLike text={m.text || ''} />
+
+                                    {/* GỢI Ý BÀI GIẢNG VIDEO YOUTUBE LIÊN QUAN */}
+                                    {(cbData?.lesson || /(video|bài giảng|clip|youtube|thầy chí|vted|vietjack)/i.test(m.text || '')) && (
+                                      <div className="ds-yt-chat-cta-wrap">
+                                        <button
+                                          type="button"
+                                          className="ds-yt-chat-toggle-btn"
+                                          onClick={() => setOpenVideoMsgIds((prev) => {
+                                            const next = new Set(prev);
+                                            if (next.has(i)) next.delete(i); else next.add(i);
+                                            return next;
+                                          })}
+                                        >
+                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#ff0000' }} aria-hidden="true">
+                                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                          </svg>
+                                          <span>
+                                            {openVideoMsgIds.has(i)
+                                              ? 'Thu gọn bài giảng video YouTube'
+                                              : '📺 Video bài giảng liên quan trên YouTube'}
+                                          </span>
+                                        </button>
+                                        {openVideoMsgIds.has(i) && (
+                                          <div style={{ marginTop: '8px' }}>
+                                            <YouTubeVideoSection
+                                              videos={getCachedRelatedVideos(
+                                                (cbData?.lesson?.tieuDe || '') + ' ' + (m.text || ''),
+                                                2
+                                              )}
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </CollapsibleText>
                                 )}
                               </div>
@@ -2553,13 +2730,24 @@ export default function AIChat({ onExit }) {
       </div>
           </div>
 
-          {activeInteractiveQuiz && (
-            <aside className="ds-stage-canvas-panel" aria-label="Bảng tương tác trắc nghiệm AI">
-              <InteractiveQuizCanvas
-                quiz={activeInteractiveQuiz}
-                uid={uid}
-                onClose={() => setActiveInteractiveQuiz(null)}
-              />
+          {(activeInteractiveQuiz || activeChalkboardLesson) && (
+            <aside
+              className="ds-stage-canvas-panel"
+              aria-label={activeInteractiveQuiz ? 'Bảng tương tác trắc nghiệm AI' : 'Bảng vẽ hình học tương tác'}
+            >
+              {activeInteractiveQuiz && (
+                <InteractiveQuizCanvas
+                  quiz={activeInteractiveQuiz}
+                  uid={uid}
+                  onClose={() => setActiveInteractiveQuiz(null)}
+                />
+              )}
+              {activeChalkboardLesson && !activeInteractiveQuiz && (
+                <InteractiveChalkboardCanvas
+                  lesson={activeChalkboardLesson}
+                  onClose={() => setActiveChalkboardLesson(null)}
+                />
+              )}
             </aside>
           )}
         </div>

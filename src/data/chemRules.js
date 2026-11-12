@@ -1,32 +1,32 @@
 
 export const COMPOUNDS = {
-  'HCl':   { name: 'Axit clohiđric',      type: 'acid', strength: 'strong',
-             ions: ['H+', 'Cl-'], common: 'Dung dịch axit, dạ dày' },
-  'HBr':   { name: 'Axit bromhiđric',     type: 'acid', strength: 'strong',
+  'HCl':   { name: 'Acid clohiđric',      type: 'acid', strength: 'strong',
+             ions: ['H+', 'Cl-'], common: 'Dung dịch acid, dạ dày' },
+  'HBr':   { name: 'Acid bromhiđric',     type: 'acid', strength: 'strong',
              ions: ['H+', 'Br-'] },
-  'HI':    { name: 'Axit iothiđric',      type: 'acid', strength: 'strong',
+  'HI':    { name: 'Acid iothiđric',      type: 'acid', strength: 'strong',
              ions: ['H+', 'I-'] },
-  'HF':    { name: 'Axit flohiđric',      type: 'acid', strength: 'weak',
+  'HF':    { name: 'Acid flohiđric',      type: 'acid', strength: 'weak',
              ions: ['H+', 'F-'], note: 'Ăn mòn thủy tinh' },
-  'H2S':   { name: 'Axit sunfuahiđric',   type: 'acid', strength: 'weak',
+  'H2S':   { name: 'Acid sunfuahiđric',   type: 'acid', strength: 'weak',
              ions: ['2H+', 'S2-'], note: 'Mùi trứng thối, độc' },
-  'H2SO4': { name: 'Axit sunfuric',       type: 'acid', strength: 'strong',
+  'H2SO4': { name: 'Acid sunfuric',       type: 'acid', strength: 'strong',
              ions: ['2H+', 'SO4(2-)'], note: 'Háo nước mạnh, tỏa nhiệt khi pha loãng' },
-  'H2SO3': { name: 'Axit sunfurơ',        type: 'acid', strength: 'weak',
+  'H2SO3': { name: 'Acid sunfurơ',        type: 'acid', strength: 'weak',
              ions: ['2H+', 'SO3(2-)'] },
-  'HNO3':  { name: 'Axit nitric',         type: 'acid', strength: 'strong',
+  'HNO3':  { name: 'Acid nitric',         type: 'acid', strength: 'strong',
              ions: ['H+', 'NO3-'], note: 'Oxi hóa mạnh' },
-  'HNO2':  { name: 'Axit nitrơ',          type: 'acid', strength: 'weak',
+  'HNO2':  { name: 'Acid nitrơ',          type: 'acid', strength: 'weak',
              ions: ['H+', 'NO2-'] },
-  'H2CO3': { name: 'Axit cacbonic',       type: 'acid', strength: 'weak',
+  'H2CO3': { name: 'Acid cacbonic',       type: 'acid', strength: 'weak',
              ions: ['2H+', 'CO3(2-)'], note: 'Không bền, phân hủy thành CO2 + H2O' },
-  'H3PO4': { name: 'Axit photphoric',     type: 'acid', strength: 'medium',
+  'H3PO4': { name: 'Acid photphoric',     type: 'acid', strength: 'medium',
              ions: ['3H+', 'PO4(3-)'] },
-  'HClO':  { name: 'Axit hipoclorơ',      type: 'acid', strength: 'weak',
+  'HClO':  { name: 'Acid hipoclorơ',      type: 'acid', strength: 'weak',
              ions: ['H+', 'ClO-'] },
-  'HClO4': { name: 'Axit pecloric',       type: 'acid', strength: 'strong',
+  'HClO4': { name: 'Acid pecloric',       type: 'acid', strength: 'strong',
              ions: ['H+', 'ClO4-'] },
-  'CH3COOH': { name: 'Axit axetic',       type: 'acid', strength: 'weak',
+  'CH3COOH': { name: 'Acid axetic',       type: 'acid', strength: 'weak',
              ions: ['H+', 'CH3COO-'], note: 'Giấm ăn' },
   'NaOH':  { name: 'Natri hiđroxit',      type: 'base', strength: 'strong',
              ions: ['Na+', 'OH-'], common: 'Xút, xà phòng' },
@@ -58,7 +58,7 @@ export const COMPOUNDS = {
   'CO':    { name: 'Cacbon monoxit',      type: 'oxide', sub: 'neutral',
              note: 'Khí độc, gây ngạt' },
   'SO2':   { name: 'Lưu huỳnh đioxit',    type: 'oxide', sub: 'acidic',
-             note: 'Mùi hắc, gây mưa axit' },
+             note: 'Mùi hắc, gây mưa acid' },
   'SO3':   { name: 'Lưu huỳnh trioxit',   type: 'oxide', sub: 'acidic' },
   'NO':    { name: 'Nitơ monoxit',        type: 'oxide', sub: 'neutral' },
   'NO2':   { name: 'Nitơ đioxit',         type: 'oxide', sub: 'acidic',
@@ -196,8 +196,8 @@ export function classify(formula) {
   return 'unknown';
 }
 const TYPE_NAMES = {
-  acid: 'Axit',
-  base: 'Bazơ',
+  acid: 'Acid',
+  base: 'Base',
   oxide: 'Oxit',
   salt: 'Muối',
   organic: 'Hợp chất hữu cơ',
@@ -234,9 +234,9 @@ function buildReactions(comp) {
       { with: 'Kim loại hoạt động (Na, K, Mg, Al, Zn, Fe)',
         result: 'Muối + H2',
         condition: 'Kim loại đứng trước H trong dãy hoạt động' },
-      { with: 'Bazơ', result: 'Muối + H2O', condition: 'Phản ứng trung hòa' },
-      { with: 'Oxit bazơ', result: 'Muối + H2O' },
-      { with: 'Muối', result: 'Muối mới + Axit mới',
+      { with: 'Base', result: 'Muối + H2O', condition: 'Phản ứng trung hòa' },
+      { with: 'Oxit base', result: 'Muối + H2O' },
+      { with: 'Muối', result: 'Muối mới + Acid mới',
         condition: 'Có kết tủa / khí / chất yếu hơn' },
       { with: 'Quỳ tím', result: 'Quỳ hóa đỏ (pH < 7)' }
     );
@@ -244,31 +244,31 @@ function buildReactions(comp) {
 
   if (t === 'base') {
     reactions.push(
-      { with: 'Axit', result: 'Muối + H2O', condition: 'Phản ứng trung hòa' },
-      { with: 'Oxit axit', result: 'Muối + H2O', condition: 'Với bazơ tan' },
-      { with: 'Muối', result: 'Muối mới + Bazơ mới', condition: 'Có kết tủa' },
+      { with: 'Acid', result: 'Muối + H2O', condition: 'Phản ứng trung hòa' },
+      { with: 'Oxit acid', result: 'Muối + H2O', condition: 'Với base tan' },
+      { with: 'Muối', result: 'Muối mới + Base mới', condition: 'Có kết tủa' },
       { with: 'Quỳ tím', result: 'Quỳ hóa xanh (pH > 7)' },
-      { with: 'Nhiệt phân', result: 'Oxit bazơ + H2O', condition: 'Với bazơ không tan' }
+      { with: 'Nhiệt phân', result: 'Oxit base + H2O', condition: 'Với base không tan' }
     );
   }
 
   if (t === 'oxide') {
     if (comp.sub === 'acidic') {
       reactions.push(
-        { with: 'Nước', result: 'Axit tương ứng' },
-        { with: 'Bazơ tan', result: 'Muối + H2O' },
-        { with: 'Oxit bazơ', result: 'Muối' }
+        { with: 'Nước', result: 'Acid tương ứng' },
+        { with: 'Base tan', result: 'Muối + H2O' },
+        { with: 'Oxit base', result: 'Muối' }
       );
     } else if (comp.sub === 'basic') {
       reactions.push(
-        { with: 'Nước', result: 'Bazơ tương ứng (nếu tan)' },
-        { with: 'Axit', result: 'Muối + H2O' },
-        { with: 'Oxit axit', result: 'Muối' }
+        { with: 'Nước', result: 'Base tương ứng (nếu tan)' },
+        { with: 'Acid', result: 'Muối + H2O' },
+        { with: 'Oxit acid', result: 'Muối' }
       );
     } else if (comp.sub === 'amphoteric') {
       reactions.push(
-        { with: 'Axit', result: 'Muối + H2O' },
-        { with: 'Bazơ tan', result: 'Muối + H2O' }
+        { with: 'Acid', result: 'Muối + H2O' },
+        { with: 'Base tan', result: 'Muối + H2O' }
       );
     } else {
       reactions.push(
@@ -283,9 +283,9 @@ function buildReactions(comp) {
     reactions.push(
       { with: 'Kim loại hoạt động hơn', result: 'Muối mới + Kim loại mới',
         condition: 'Kim loại trước đẩy kim loại sau ra khỏi muối' },
-      { with: 'Axit', result: 'Muối mới + Axit mới',
+      { with: 'Acid', result: 'Muối mới + Acid mới',
         condition: 'Có kết tủa / khí / chất yếu' },
-      { with: 'Bazơ', result: 'Muối mới + Bazơ mới', condition: 'Có kết tủa' },
+      { with: 'Base', result: 'Muối mới + Base mới', condition: 'Có kết tủa' },
       { with: 'Muối', result: '2 muối mới', condition: 'Có kết tủa' },
       { with: 'Nhiệt phân', result: 'Oxit + khí',
         condition: 'Với muối cacbonat, nitrat, ...' }
@@ -304,19 +304,19 @@ function buildReactions(comp) {
         { with: 'O2', result: 'CO2 + H2O' },
         { with: 'Br2 (dd)', result: 'Mất màu da cam', condition: 'Cộng' },
         { with: 'H2 (Ni, t°)', result: 'Ankan' },
-        { with: 'H2O (axit)', result: 'Ancol' }
+        { with: 'H2O (acid)', result: 'Alcohol' }
       );
     } else if (comp.sub === 'alcohol') {
       reactions.push(
-        { with: 'Na', result: 'Natri ancolat + H2' },
-        { with: 'O2 (t°, Cu)', result: 'Anđehit / Xeton' },
-        { with: 'Axit', result: 'Este + H2O', condition: 'Có H2SO4 đặc' }
+        { with: 'Na', result: 'Natri alcoholat + H2' },
+        { with: 'O2 (t°, Cu)', result: 'Aldehyde / Xeton' },
+        { with: 'Acid', result: 'Este + H2O', condition: 'Có H2SO4 đặc' }
       );
     } else if (comp.sub === 'acid') {
       reactions.push(
         { with: 'Kim loại', result: 'Muối + H2' },
-        { with: 'Bazơ', result: 'Muối + H2O' },
-        { with: 'Ancol', result: 'Este + H2O' }
+        { with: 'Base', result: 'Muối + H2O' },
+        { with: 'Alcohol', result: 'Este + H2O' }
       );
     }
   }

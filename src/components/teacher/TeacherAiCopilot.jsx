@@ -25,6 +25,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import mammoth from 'mammoth';
 import { askAI } from '../../lib/ai.js';
+import { runWithCredit } from '../../lib/creditService.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { exportToWord } from '../../lib/examExport.js';
 import { warnStudent, setStudentPaused } from '../../lib/examSession.js';
 import '../../styles/teacher-ai-copilot.css';
@@ -159,6 +161,7 @@ export default function TeacherAiCopilot({
   onClose,
   embedded = false,
 }) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(initialTab); // 'doc-fixer' | 'class-intelligence' | 'proctor-ai' | 'prompt-gen'
 
   /* --- 1. STATE CHO FILE FIXER --- */
@@ -321,15 +324,16 @@ Nhiệm vụ của bạn:
 
       const userPrompt = `Dưới đây là văn bản đề thi thô cần chuẩn hóa:\n\n${rawText.slice(0, 18000)}`;
 
-      let responseText = '';
-      await askAI(
-        [{ role: 'user', content: userPrompt }],
-        (chunk) => {
-          responseText += chunk;
-        },
-        null,
-        { systemPrompt, temperature: 0.2 }
+      const aiRes = await runWithCredit(
+        { userId: user?.uid, cost: 2, reason: 'AI chuẩn hóa file đề thi' },
+        () => askAI(
+          [{ role: 'user', parts: [{ text: userPrompt }] }],
+          null,
+          null,
+          { systemPrompt, temperature: 0.2 }
+        )
       );
+      const responseText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
 
       // Parse JSON an toàn
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -452,15 +456,16 @@ Thông tin lớp học hiện tại:
 - Chuyên đề cần củng cố nhất: Điện phân & Pin điện hóa (${classMetrics.topicStats[3]?.rate}%).
 Hãy trả lời giáo viên bằng phong cách sư phạm, ngắn gọn, có cấu trúc gạch đầu dòng, đưa ra hành động cụ thể.`;
 
-      let aiResponse = '';
-      await askAI(
-        [{ role: 'user', content: text }],
-        (chunk) => {
-          aiResponse += chunk;
-        },
-        null,
-        { systemPrompt, temperature: 0.4 }
+      const aiRes = await runWithCredit(
+        { userId: user?.uid, cost: 1, reason: 'Trợ lý AI lớp học' },
+        () => askAI(
+          [{ role: 'user', parts: [{ text }] }],
+          null,
+          null,
+          { systemPrompt, temperature: 0.4 }
+        )
       );
+      const aiResponse = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
 
       setChatMessages((prev) => [
         ...prev,
@@ -477,7 +482,7 @@ Hãy trả lời giáo viên bằng phong cách sư phạm, ngắn gọn, có c�
         {
           id: `err-${Date.now()}`,
           sender: 'ai',
-          text: 'Xin lỗi thầy cô, kết nối AI bị gián đoạn. Thầy cô thử lại giúp em nhé!',
+          text: err?.code === 'OUT_OF_CREDITS' ? err.message : 'Xin lỗi thầy cô, kết nối AI bị gián đoạn. Thầy cô thử lại giúp em nhé!',
           time: 'Vừa xong',
         },
       ]);

@@ -431,6 +431,19 @@
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
+.pf-m-tab-mascot {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pf-m-tab-btn:hover .pf-m-tab-mascot,
+.pf-m-tab-btn.on .pf-m-tab-mascot {
+  transform: scale(1.2) rotate(-4deg);
+}
+
 .pf-m-tab-btn {
   display: inline-flex !important;
   align-items: center !important;

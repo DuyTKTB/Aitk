@@ -9,6 +9,7 @@ import {
   IconAtom, IconChart, IconClose, IconLogout,
   IconRobot,
 } from './Icons.jsx';
+import UserAvatar from './UserAvatar.jsx';
 
 const IconNotebook = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -35,6 +36,9 @@ const IconChatHeart = ({ size = 20 }) => (
 const CORE_TOOLS = [
   { id: 'table', name: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác', Icon: IconAtom },
   { id: 'notebook', name: 'Sổ tay lỗi sai', desc: 'Luyện câu làm sai', Icon: IconNotebook },
+  { id: 'admission', name: 'Điểm chuẩn & Năng lực', desc: 'Đo độ vừa sức vào trường ĐH', Icon: IconTarget },
+  { id: 'career', name: 'Hướng nghiệp AI', desc: 'Test RIASEC & định hướng ngành', Icon: IconNotebook },
+  { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Tạo quiz & học từ tài liệu cá nhân', Icon: IconNote },
   { id: 'formulas', name: 'Công thức nhanh', desc: 'Mol, pH, vô cơ, hữu cơ', Icon: IconCalc },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Cân bằng phương trình', Icon: IconScale },
   { id: 'analyze', name: 'Phân tích hợp chất', desc: 'Nhận diện chất', Icon: IconMicroscope },
@@ -43,7 +47,7 @@ const CORE_TOOLS = [
   { id: 'grade', name: 'Tính điểm GPA', desc: 'Tính điểm học tập', Icon: IconTarget },
   { id: 'notes', name: 'Ghi chú', desc: 'Ghi chép bài học', Icon: IconNote },
   { id: 'quiz', name: 'Ôn tập Quiz', desc: 'Trắc nghiệm thông minh', Icon: IconQuiz },
-  { id: 'games', name: 'Trò chơi Hóa', desc: '7 mini games giải trí', Icon: IconGamepad },
+  { id: 'games', name: 'Trò chơi Hóa', desc: 'Hệ thống mini game phong phú', Icon: IconGamepad },
 ];
 
 export default function StudySheet({ open, onClose }) {
@@ -88,12 +92,8 @@ export default function StudySheet({ open, onClose }) {
         <div className="ss-content-scroll">
           {/* ----- 1. THẺ HỒ SƠ NGƯỜI DÙNG NHANH ----- */}
           <div className="ss-profile-card">
-            <div className="ss-avatar" style={{ '--av': '#2f6bff' }}>
-              {user?.photoURL ? (
-                <img src={user.photoURL} alt={displayName} />
-              ) : (
-                <span>{initial}</span>
-              )}
+            <div className="ss-avatar" style={{ '--av': '#2f6bff', background: 'transparent' }}>
+              <UserAvatar user={user} size={44} title={displayName} />
             </div>
             <div className="ss-profile-meta">
               <div className="ss-profile-name-row">

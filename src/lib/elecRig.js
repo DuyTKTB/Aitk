@@ -132,7 +132,7 @@ const CREW = [
   {
     id: 'a', base: 'default', k: 1.0, enter: 'left', speed: 0.5,
     w: { idle: 2, walk: 4, wave: 3, jump: 1, cheer: 1, think: 1, dance: 1 },
-    hello: ['Chào bạn! Hôm nay ôn chương nào nè?', 'Xin chào! Mình là Elec 👋', 'Hello! Sẵn sàng học Hóa chưa?'],
+    hello: ['Chào bạn! Hôm nay ôn chương nào nè?', 'Xin chào! Mình là Elec 👋', 'Hello! Sẵn sàng chinh phục KHTN chưa?'],
     lines: ['Làm 5 câu quiz rồi nghỉ nhé?', 'Chuỗi ngày học đừng để đứt nha 🔥', 'Sai không sao, sai là học thêm một điều!'],
     think: ['Hmm… cân bằng cái này sao ta?'],
     cheer: ['Đúng rồi! Giỏi quá!'],
@@ -142,7 +142,7 @@ const CREW = [
     id: 'b', base: 'happy', k: 0.94, enter: 'right', speed: 0.62,
     w: { idle: 1, walk: 3, wave: 1, jump: 3, cheer: 2, think: 0.3, dance: 3 },
     hello: ['Hihi, chào bạn!', 'Cùng học nào! ✨'],
-    lines: ['Hóa học vui lắm luôn!', 'Axit + bazơ → muối + nước!', 'Nhảy chút cho tỉnh táo nè 🎵'],
+    lines: ['Khoa học Tự nhiên vui lắm luôn!', 'Axit + bazơ → muối + nước!', 'Nhảy chút cho tỉnh táo nè 🎵'],
     think: ['Ơ… hay là mình nhảy tiếp nhỉ?'],
     cheer: ['Yeah! Mục tiêu hôm nay xong rồi!'],
     click: ['Hihi!', 'Yeah! Nhảy cùng mình nào 🎶', 'Nhấc mình lên cao nữa đi 😆'],
@@ -159,7 +159,7 @@ const CREW = [
   {
     id: 'd', base: 'default', k: 0.97, enter: 'right', speed: 0.55, winker: true,
     w: { idle: 2, walk: 3, wave: 2, jump: 1, cheer: 1, think: 1, dance: 2 },
-    hello: ['Ê, chào nè 😉', 'Ghé học Hóa với tụi mình nhé!'],
+    hello: ['Ê, chào nè 😉', 'Ghé ôn KHTN với tụi mình nhé!'],
     lines: ['Pha loãng axit: rót axit vào nước nha!', 'Uống nước chưa? H₂O đó 💧', 'Este thơm mùi hoa quả thật luôn đó!'],
     think: ['Hừm, bài này có bẫy không ta?'],
     cheer: ['Quá đỉnh!'],

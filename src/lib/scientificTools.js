@@ -257,6 +257,43 @@ export function idealGas({ p, v, tCelsius, n }) {
   return { temperatureK: r4(numT) };
 }
 
+/**
+ * Hiện tượng quang điện ngoài: hc/λ = A + W_dmax, công thoát A, giới hạn quang điện λ₀
+ */
+export function photoelectricEffect({ lambda, lambda0, workFunctionA }) {
+  const h = 6.626e-34; // J.s
+  const c = 3e8; // m/s
+  const e = 1.6e-19; // C
+
+  let A_Joules = 0;
+  let lam0 = Number(lambda0) || 0;
+
+  if (workFunctionA) {
+    A_Joules = Number(workFunctionA) * e;
+    if (!lam0 && A_Joules > 0) lam0 = (h * c) / A_Joules;
+  } else if (lam0 > 0) {
+    A_Joules = (h * c) / lam0;
+  }
+
+  let epsilon = 0;
+  const lam = Number(lambda) || 0;
+  if (lam > 0) {
+    epsilon = (h * c) / lam;
+  }
+
+  const kineticMax = (epsilon > A_Joules && A_Joules > 0) ? epsilon - A_Joules : 0;
+  const uh = kineticMax > 0 ? kineticMax / e : 0;
+
+  return {
+    limitWavelengthMicron: lam0 > 0 ? r4(lam0 * 1e6) : null,
+    workFunctionEV: A_Joules > 0 ? r4(A_Joules / e) : null,
+    photonEnergyEV: epsilon > 0 ? r4(epsilon / e) : null,
+    kineticMaxEV: kineticMax > 0 ? r4(kineticMax / e) : 0,
+    stoppingVoltageV: r4(uh),
+    occurred: epsilon >= A_Joules && lam > 0 && lam0 > 0,
+  };
+}
+
 /* ============================================================
    3. SINH HỌC (BIOLOGY MOLECULAR ENGINE)
    ============================================================ */
@@ -309,6 +346,92 @@ export function dnaMolecular({ N, L, H, M, A, G }) {
       percentA: r4((numA / totalN) * 100),
       percentG: r4((numG / totalN) * 100),
     } : null,
+  };
+}
+
+/**
+ * Di truyền học Men-đen: Lai một cặp tính trạng (Monohybrid cross)
+ * Ví dụ: P: Aa x Aa -> F1: 1 AA : 2 Aa : 1 aa (75% trội : 25% lặn)
+ */
+export function mendelMonohybrid(p1 = 'Aa', p2 = 'Aa') {
+  const clean1 = String(p1).trim();
+  const clean2 = String(p2).trim();
+  const gametes = (p) => {
+    if (p === 'AA') return [{ g: 'A', p: 1 }];
+    if (p === 'aa') return [{ g: 'a', p: 1 }];
+    if (p === 'Aa' || p === 'aA') return [{ g: 'A', 0.5: 0.5, p: 0.5 }, { g: 'a', p: 0.5 }];
+    return [];
+  };
+
+  const g1 = gametes(clean1);
+  const g2 = gametes(clean2);
+  if (!g1.length || !g2.length) return null;
+
+  const genoCounts = { AA: 0, Aa: 0, aa: 0 };
+  for (const a of g1) {
+    for (const b of g2) {
+      const prob = a.p * b.p;
+      const combined = [a.g, b.g].sort().join('');
+      if (combined === 'AA') genoCounts.AA += prob;
+      else if (combined === 'Aa') genoCounts.Aa += prob;
+      else if (combined === 'aa') genoCounts.aa += prob;
+    }
+  }
+
+  const dom = genoCounts.AA + genoCounts.Aa;
+  const rec = genoCounts.aa;
+
+  return {
+    cross: `${clean1} × ${clean2}`,
+    genotypes: {
+      AA: r4(genoCounts.AA),
+      Aa: r4(genoCounts.Aa),
+      aa: r4(genoCounts.aa),
+    },
+    phenotypes: {
+      dominant: r4(dom),
+      recessive: r4(rec),
+    },
+    ratioGeno: `${Math.round(genoCounts.AA * 4)} AA : ${Math.round(genoCounts.Aa * 4)} Aa : ${Math.round(genoCounts.aa * 4)} aa`,
+    ratioPheno: `${Math.round(dom * 4)} Trội : ${Math.round(rec * 4)} Lặn`,
+  };
+}
+
+/**
+ * Di truyền học quần thể: Định luật Hardy - Weinberg
+ * p(A) + q(a) = 1 => p² AA + 2pq Aa + q² aa = 1
+ */
+export function hardyWeinberg({ p, q, aaFreq }) {
+  let numP = Number(p);
+  let numQ = Number(q);
+
+  if (aaFreq && !numQ) {
+    numQ = Math.sqrt(Number(aaFreq));
+    numP = 1 - numQ;
+  } else if (numP && !numQ) {
+    numQ = 1 - numP;
+  } else if (numQ && !numP) {
+    numP = 1 - numQ;
+  }
+
+  if (numP < 0 || numP > 1 || numQ < 0 || numQ > 1) return null;
+
+  const aa = numQ * numQ;
+  const AA = numP * numP;
+  const Aa = 2 * numP * numQ;
+
+  return {
+    alleleP: r4(numP),
+    alleleQ: r4(numQ),
+    genotypes: {
+      AA: r4(AA),
+      Aa: r4(Aa),
+      aa: r4(aa),
+    },
+    percentAA: r4(AA * 100),
+    percentAa: r4(Aa * 100),
+    percentAaRec: r4(aa * 100),
+    dominantFreq: r4(AA + Aa),
   };
 }
 
@@ -486,6 +609,73 @@ export function runScientificTools(text) {
           value: res.totalNucleotides,
         });
       }
+    }
+  }
+
+  // --- G. SINH HỌC: QUY LUẬT DI TRUYỀN MEN-ĐEN ---
+  const crossMatch = text.match(/\b([Aa]{2})\s*[x×*]\s*([Aa]{2})\b/);
+  if (crossMatch && (s.includes('lai') || s.includes('phép lai') || s.includes('f1') || s.includes('f2') || s.includes('kiểu gen') || s.includes('men-đen') || s.includes('menđen'))) {
+    const p1 = crossMatch[1];
+    const p2 = crossMatch[2];
+    const res = mendelMonohybrid(p1, p2);
+    if (res) {
+      hits.push({
+        subject: 'Sinh học',
+        tool: 'mendel_monohybrid',
+        title: `Quy luật Men-đen — Phép lai ${res.cross}`,
+        lines: [
+          `Tỉ lệ kiểu gen F1: ${res.ratioGeno}`,
+          `Tỉ lệ kiểu hình F1: ${res.ratioPheno}`,
+          `Tỉ lệ đồng hợp trội AA: ${fmt(res.genotypes.AA * 100)}% | Dị hợp Aa: ${fmt(res.genotypes.Aa * 100)}% | Đồng hợp lặn aa: ${fmt(res.genotypes.aa * 100)}%`,
+        ],
+        value: res.phenotypes.dominant,
+      });
+    }
+  }
+
+  // --- H. SINH HỌC: DI TRUYỀN HỌC QUẦN THỂ (HARDY - WEINBERG) ---
+  const pMatch = s.match(/(?:tần số alen\s*a\s*=\s*|p\s*=\s*)(\d+(?:[.,]\d+)?)/i);
+  const qMatch = s.match(/(?:tần số alen\s*a\s*=\s*|q\s*=\s*)(\d+(?:[.,]\d+)?)/i);
+  const aaMatch = s.match(/(?:kiểu gen aa\s*=\s*|đồng hợp lặn\s*=\s*)(\d+(?:[.,]\d+)?)/i);
+  if ((s.includes('quần thể') || s.includes('hardy') || s.includes('cân bằng di truyền')) && (pMatch || qMatch || aaMatch)) {
+    const p = pMatch ? Number(pMatch[1].replace(',', '.')) : undefined;
+    const q = qMatch ? Number(qMatch[1].replace(',', '.')) : undefined;
+    const aaFreq = aaMatch ? Number(aaMatch[1].replace(',', '.')) : undefined;
+    const res = hardyWeinberg({ p, q, aaFreq });
+    if (res) {
+      hits.push({
+        subject: 'Sinh học',
+        tool: 'hardy_weinberg',
+        title: `Cân bằng di truyền Hardy - Weinberg (p = ${fmt(res.alleleP)}, q = ${fmt(res.alleleQ)})`,
+        lines: [
+          `Tần số alen: p(A) = ${fmt(res.alleleP)} | q(a) = ${fmt(res.alleleQ)}`,
+          `Cấu trúc di truyền: ${fmt(res.genotypes.AA)} AA + ${fmt(res.genotypes.Aa)} Aa + ${fmt(res.genotypes.aa)} aa = 1`,
+          `Tỉ lệ phần trăm: ${fmt(res.percentAA)}% AA : ${fmt(res.percentAa)}% Aa : ${fmt(res.percentAaRec)}% aa`,
+        ],
+        value: res.alleleP,
+      });
+    }
+  }
+
+  // --- I. VẬT LÍ: QUANG ĐIỆN NGOÀI & CÔNG THOÁT ---
+  const lam0Match = s.match(/(?:giới hạn quang điện|lambda_?0\s*=\s*|λ₀\s*=\s*)(\d+(?:[.,]\d+)?)\s*(?:um|µm|micromet)?/i);
+  const aEvMatch = s.match(/(?:công thoát\s*(?:a\s*=\s*)?|a\s*=\s*)(\d+(?:[.,]\d+)?)\s*(?:ev)\b/i);
+  if ((s.includes('quang điện') || s.includes('công thoát') || s.includes('giới hạn quang điện')) && (lam0Match || aEvMatch)) {
+    let lambda0 = lam0Match ? Number(lam0Match[1].replace(',', '.')) * 1e-6 : undefined;
+    let workFunctionA = aEvMatch ? Number(aEvMatch[1].replace(',', '.')) : undefined;
+    const res = photoelectricEffect({ lambda0, workFunctionA });
+    if (res && (res.limitWavelengthMicron || res.workFunctionEV)) {
+      hits.push({
+        subject: 'Vật lí',
+        tool: 'photoelectric_effect',
+        title: `Hiện tượng quang điện ngoài (Einstein)`,
+        lines: [
+          res.limitWavelengthMicron ? `Giới hạn quang điện λ₀ = ${fmt(res.limitWavelengthMicron)} µm` : '',
+          res.workFunctionEV ? `Công thoát A = ${fmt(res.workFunctionEV)} eV` : '',
+          `Điều kiện xảy ra quang điện: Bước sóng ánh sáng kích thích λ ≤ λ₀`,
+        ].filter(Boolean),
+        value: res.limitWavelengthMicron || res.workFunctionEV,
+      });
     }
   }
 

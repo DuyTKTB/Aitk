@@ -91,38 +91,92 @@ const IcoTheme = ({ size = 18 }) => (
   </svg>
 );
 
+const IcoPhysics = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="2" />
+    <ellipse cx="12" cy="12" rx="9" ry="3.5" />
+    <ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(60 12 12)" />
+    <ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(120 12 12)" />
+  </svg>
+);
+
+const IcoBio = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 4c4 4 12 4 16 0" />
+    <path d="M4 20c4-4 12-4 16 0" />
+    <path d="M6 8a8 8 0 0 0 12 0" />
+    <path d="M6 16a8 8 0 0 1 12 0" />
+    <line x1="12" y1="2" x2="12" y2="22" strokeWidth="1.5" />
+  </svg>
+);
+
+const IcoChemistry = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10 2v7.31L4.69 17.5A2 2 0 0 0 6.36 21h11.28a2 2 0 0 0 1.67-3.5L14 9.31V2h-4z" />
+    <path d="M8.5 2h7" />
+  </svg>
+);
+
 /* ============================================================
-   DANH SÁCH COMMANDS — dùng SVG thay emoji
+   DANH SÁCH COMMANDS — KHOA HỌC TỰ NHIÊN (VẬT LÍ — HÓA HỌC — SINH HỌC)
    ============================================================ */
 const COMMANDS = [
-  { id: 'home',       group: 'Điều hướng', label: 'Trang chủ',          Icon: IconHome,      keywords: 'home trang chu' },
-  { id: 'ai',         group: 'Điều hướng', label: 'Trợ lý AI',          Icon: IconRobot,     keywords: 'chat ai ELECAI' },
-  { id: 'table',      group: 'Điều hướng', label: 'Bảng tuần hoàn',     Icon: IconAtom,      keywords: 'pt bang tuan hoan' },
-  { id: 'tools',      group: 'Điều hướng', label: 'Công cụ',            Icon: IconTools,     keywords: 'tools cong cu' },
-  { id: 'profile',    group: 'Điều hướng', label: 'Trang cá nhân',      Icon: IconUser,      keywords: 'profile ca nhan' },
-  { id: 'roadmap',    group: 'Điều hướng', label: 'Lộ trình kiến thức', Icon: IcoBook,       keywords: 'roadmap lo trinh kien thuc tien do' },
-  { id: 'roadmap?level=Lớp 12', group: 'Điều hướng', label: 'Lộ trình Lớp 12',   Icon: IcoBook,       keywords: 'roadmap lop 12 lo trinh on thi thpt' },
-  { id: 'roadmap?level=Lớp 11', group: 'Điều hướng', label: 'Lộ trình Lớp 11',   Icon: IcoBook,       keywords: 'roadmap lop 11 lo trinh' },
-  { id: 'formulas',   group: 'Công cụ',    label: 'Công thức nhanh',    Icon: IconCalc,      keywords: 'formula cong thuc' },
-  { id: 'analyze',    group: 'Công cụ',    label: 'Phân tích hợp chất', Icon: IconMicroscope,keywords: 'analyze phan tich' },
-  { id: 'balance',    group: 'Công cụ',    label: 'Cân bằng PTHH',      Icon: IconScale,     keywords: 'balance can bang pthh' },
-  { id: 'pomodoro',   group: 'Công cụ',    label: 'Pomodoro',           Icon: IconTimer,     keywords: 'pomodoro timer' },
-  { id: 'exam',       group: 'Công cụ',    label: 'Đếm ngược kỳ thi',   Icon: IconCalendar,  keywords: 'exam thi' },
-  { id: 'notes',      group: 'Công cụ',    label: 'Ghi chú',            Icon: IconNote,      keywords: 'notes ghi chu' },
-  { id: 'notebook',   group: 'Công cụ',    label: 'Sổ tay câu sai',     Icon: IcoNotebook,   keywords: 'notebook so tay' },
-  { id: 'grade',      group: 'Công cụ',    label: 'Tính điểm',          Icon: IconTarget,    keywords: 'grade tinh diem' },
-  { id: 'quiz',       group: 'Công cụ',    label: 'Ôn tập',             Icon: IconQuiz,      keywords: 'quiz on tap' },
-  { id: 'stats',      group: 'Công cụ',    label: 'Thống kê',           Icon: IconChart,     keywords: 'stats thong ke' },
-  { id: 'games',            group: 'Trò chơi', label: 'Tất cả trò chơi',        Icon: IconGamepad,   keywords: 'games tro choi' },
-  { id: 'games/chicken',    group: 'Trò chơi', label: 'Bắt gà',                 Icon: IcoChicken,    keywords: 'chicken ga' },
-  { id: 'games/slingshot',  group: 'Trò chơi', label: 'Bắn súng',               Icon: IcoTarget,     keywords: 'slingshot ban' },
-  { id: 'games/jeopardy',   group: 'Trò chơi', label: 'Chọn ô may mắn',         Icon: IcoDice,       keywords: 'jeopardy o' },
-  { id: 'games/lab',        group: 'Trò chơi', label: 'Phòng thí nghiệm ảo',    Icon: IcoFlask,      keywords: 'lab phong thi nghiem' },
-  { id: 'games/battle',     group: 'Trò chơi', label: 'Đấu trường nguyên tố',   Icon: IcoSword,      keywords: 'battle dau truong' },
-  { id: 'games/sudoku',     group: 'Trò chơi', label: 'Sudoku hóa học',         Icon: IcoGrid,       keywords: 'sudoku' },
-  { id: 'action:theme',   group: 'Hành động', label: 'Đổi chế độ sáng/tối',    Icon: IcoTheme,      keywords: 'theme dark light' },
-  { id: 'action:newchat', group: 'Hành động', label: 'Tạo chat AI mới',         Icon: IcoPlus,       keywords: 'new chat moi' },
-  { id: 'action:random',  group: 'Hành động', label: 'Đi tới trang ngẫu nhiên', Icon: IcoRandom,     keywords: 'random ngau nhien' },
+  // ── Điều hướng cốt lõi KHTN ──
+  { id: 'home',          group: 'Điều hướng', label: 'Trang chủ KHTN',         Icon: IconHome,      keywords: 'home trang chu khtn vat ly hoa hoc sinh hoc' },
+  { id: 'ai',            group: 'Điều hướng', label: 'Trợ lý AI KHTN (Lý — Hóa — Sinh)', Icon: IconRobot, keywords: 'chat ai khtn gia su giai bai tap vat ly hoa hoc sinh hoc' },
+  { id: 'virtual-exams', group: 'Điều hướng', label: 'Phòng thi ảo KHTN (THPTQG & ĐGNL)', Icon: IconQuiz, keywords: 'phong thi ao luyen de thpt thi thu khtn ly hoa sinh' },
+  { id: 'roadmap',       group: 'Điều hướng', label: 'Lộ trình kiến thức KHTN', Icon: IcoBook,       keywords: 'roadmap lo trinh kien thuc tien do ly hoa sinh' },
+  { id: 'tools',         group: 'Điều hướng', label: 'Bộ công cụ Khoa học Tự nhiên', Icon: IconTools, keywords: 'tools cong cu khtn' },
+  { id: 'profile',       group: 'Điều hướng', label: 'Trang cá nhân & Tiến độ', Icon: IconUser,      keywords: 'profile ca nhan' },
+
+  // ── Môn Vật lí ──
+  { id: 'formulas?subject=ly', group: 'Môn Vật lí', label: 'Sổ tay công thức Vật lí (Cơ, Sóng, Điện, Quang)', Icon: IcoPhysics, keywords: 'vat ly cong thuc dao dong song dien xoay chieu quang hoc hat nhan' },
+  { id: 'tools?subject=ly',    group: 'Môn Vật lí', label: 'Máy tính Vật lí: Dao động điều hòa & Mạch RLC', Icon: IconCalc, keywords: 'may tinh vat ly con lac lo xo don mach rlc tong tro tan so' },
+  { id: 'virtual-exams?subject=ly', group: 'Môn Vật lí', label: 'Đề thi thử THPT Quốc Gia môn Vật lí', Icon: IconQuiz, keywords: 'de thi vat ly thptqg 2026 2027 trac nghiem' },
+
+  // ── Môn Hóa học ──
+  { id: 'table',         group: 'Môn Hóa học', label: 'Bảng tuần hoàn 118 nguyên tố IUPAC', Icon: IconAtom, keywords: 'pt bang tuan hoan nguyen to hoa tri cau hinh e' },
+  { id: 'balance',       group: 'Môn Hóa học', label: 'Cân bằng phương trình Hóa học (PTHH)', Icon: IconScale, keywords: 'balance can bang pthh phan ung oxh khu' },
+  { id: 'analyze',       group: 'Môn Hóa học', label: 'Phân tích hợp chất & phản ứng đặc trưng', Icon: IconMicroscope, keywords: 'analyze phan tich hop chat este kim loai axit' },
+  { id: 'formulas?subject=hoa', group: 'Môn Hóa học', label: 'Sổ tay công thức Hóa học (Mol, CM, pH, Hữu cơ)', Icon: IcoChemistry, keywords: 'cong thuc hoa hoc mol ph dung dich nong do este' },
+  { id: 'virtual-exams?subject=hoa', group: 'Môn Hóa học', label: 'Đề thi thử THPT Quốc Gia môn Hóa học', Icon: IconQuiz, keywords: 'de thi hoa hoc thptqg 2026 2027 trac nghiem' },
+
+  // ── Môn Sinh học ──
+  { id: 'formulas?subject=sinh', group: 'Môn Sinh học', label: 'Sổ tay công thức Sinh học (ADN, Gen, Menđen)', Icon: IcoBio, keywords: 'sinh hoc cong thuc adn arn gen men den quan the nguyen phan giam phan' },
+  { id: 'tools?subject=sinh',    group: 'Môn Sinh học', label: 'Công cụ Sinh học: Mã di truyền & Ma trận lai Menđen', Icon: IconCalc, keywords: 'may tinh sinh hoc codon adn phep lai punnett di truyen' },
+  { id: 'virtual-exams?subject=sinh', group: 'Môn Sinh học', label: 'Đề thi thử THPT Quốc Gia môn Sinh học', Icon: IconQuiz, keywords: 'de thi sinh hoc thptqg 2026 2027 trac nghiem' },
+
+  // ── Ôn luyện & Tiện ích ──
+  { id: 'notebook',      group: 'Ôn luyện',   label: 'Sổ tay câu sai (SRS theo môn)', Icon: IcoNotebook, keywords: 'notebook so tay cau sai on tap' },
+  { id: 'quiz',          group: 'Ôn luyện',   label: 'Quiz phản xạ thông minh (Lý - Hóa - Sinh)', Icon: IconQuiz, keywords: 'quiz on tap khtn' },
+  { id: 'stats',         group: 'Ôn luyện',   label: 'Thống kê năng lực & Điểm Elo 3 môn', Icon: IconChart, keywords: 'stats thong ke elo nang luc' },
+  { id: 'doc-studio',    group: 'Tiện ích',   label: 'AI Doc Studio (Học tài liệu & Tạo quiz)', Icon: IconNote, keywords: 'doc studio tai lieu pdf word tao quiz flashcard' },
+  { id: 'admission',     group: 'Tiện ích',   label: 'Tra cứu điểm chuẩn ĐH (Khối A00, B00, A01, D07)', Icon: IconTarget, keywords: 'tra cuu diem chuan dai hoc xet tuyen khoi a00 b00 a01' },
+  { id: 'career',        group: 'Tiện ích',   label: 'Định hướng nghề nghiệp AI (RIASEC)', Icon: IcoBook, keywords: 'huong nghiep dinh huong nghe riasec holland chon nganh' },
+  { id: 'pomodoro',      group: 'Tiện ích',   label: 'Clock Hub (Pomodoro tập trung & Bấm giờ)', Icon: IconTimer, keywords: 'pomodoro timer dong ho' },
+  { id: 'schedule',      group: 'Tiện ích',   label: 'Thời khóa biểu ôn tập KHTN', Icon: IconCalendar, keywords: 'thoi khoa bieu lich hoc' },
+  { id: 'grade',         group: 'Tiện ích',   label: 'Tính điểm tốt nghiệp & Điểm xét tuyển', Icon: IconTarget, keywords: 'grade tinh diem' },
+  { id: 'leaderboard',   group: 'Tiện ích',   label: 'Bảng xếp hạng chuỗi học tập', Icon: IconChart, keywords: 'leaderboard bang xep hang vinh danh chuoi' },
+  { id: 'my-classes',    group: 'Lớp học',    label: 'Lớp học của tôi', Icon: IconHome, keywords: 'lop hoc my classes bai tap de thi' },
+  { id: 'classroom',     group: 'Lớp học',    label: 'Quản lý lớp (Giáo viên)', Icon: IconTools, keywords: 'quan ly lop giao vien teacher dashboard' },
+
+  // ── Trò chơi Khoa học ──
+  { id: 'games',            group: 'Trò chơi', label: 'Tất cả trò chơi Khoa học', Icon: IconGamepad, keywords: 'games tro choi' },
+  { id: 'games/tugofwar',   group: 'Trò chơi', label: 'Kéo co tri thức (Đấu đội KHTN)', Icon: IconGamepad, keywords: 'keo co tug of war doi khang' },
+  { id: 'games/wheel',      group: 'Trò chơi', label: 'Vòng quay may mắn', Icon: IconGamepad, keywords: 'vong quay may man lucky wheel' },
+  { id: 'games/flip',       group: 'Trò chơi', label: 'Lật mảnh ghép bí mật Khoa học', Icon: IconGamepad, keywords: 'lat manh ghep flip puzzle' },
+  { id: 'games/millionaire', group: 'Trò chơi', label: 'Ai là triệu phú Khoa học', Icon: IconGamepad, keywords: 'ai la trieu phu millionaire' },
+  { id: 'games/racing',     group: 'Trò chơi', label: 'Đua xe tri thức KHTN', Icon: IconGamepad, keywords: 'dua xe racing grand prix' },
+  { id: 'games/mines',      group: 'Trò chơi', label: 'Dò mìn kiến thức Khoa học', Icon: IconGamepad, keywords: 'do min minesweeper' },
+  { id: 'games/duel',       group: 'Trò chơi', label: 'Quiz đối kháng 1v1', Icon: IconGamepad, keywords: 'doi khang duel 1v1' },
+  { id: 'games/lab-3d',     group: 'Trò chơi', label: 'Phòng thí nghiệm ảo 3D', Icon: IcoFlask, keywords: 'lab 3d thi nghiem ba chieu' },
+
+  // ── Hệ thống & Hành động ──
+  { id: 'settings',         group: 'Hệ thống', label: 'Cài đặt giao diện & học tập', Icon: IconTools, keywords: 'cai dat settings' },
+  { id: 'feedback',         group: 'Hệ thống', label: 'Góp ý & Báo lỗi', Icon: IconTools, keywords: 'gop y bao loi feedback' },
+  { id: 'action:theme',     group: 'Hành động', label: 'Đổi chế độ sáng/tối', Icon: IcoTheme, keywords: 'theme dark light' },
+  { id: 'action:newchat',   group: 'Hành động', label: 'Tạo chat AI mới', Icon: IcoPlus, keywords: 'new chat moi' },
+  { id: 'action:random',    group: 'Hành động', label: 'Đi tới trang ngẫu nhiên', Icon: IcoRandom, keywords: 'random ngau nhien' },
 ];
 
 /* Bỏ dấu + hạ chữ thường: gõ "lo trinh" hay "lộ trình" đều ra, gõ "elecai" khớp "ELECAI" */

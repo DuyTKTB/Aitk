@@ -12,6 +12,25 @@ class LofiAudioEngine {
     this.gainNode = null;
     this.loopTimer = null;
     this.noiseNode = null;
+    this.listeners = [];
+  }
+
+  addListener(cb) {
+    if (typeof cb === 'function') {
+      this.listeners.push(cb);
+      cb({ isPlaying: this.isPlaying, mode: this.currentMode, volume: this.volume });
+    }
+    return () => {
+      this.listeners = this.listeners.filter((fn) => fn !== cb);
+    };
+  }
+
+  notify() {
+    this.listeners.forEach((cb) => {
+      try {
+        cb({ isPlaying: this.isPlaying, mode: this.currentMode, volume: this.volume });
+      } catch {}
+    });
   }
 
   initContext() {
@@ -34,6 +53,7 @@ class LofiAudioEngine {
     if (this.gainNode && this.ctx) {
       this.gainNode.gain.setValueAtTime(this.volume, this.ctx.currentTime);
     }
+    this.notify();
   }
 
   /* ---- Chế độ 1: Lofi Synth Chord Chime êm ái ---- */
@@ -174,11 +194,13 @@ class LofiAudioEngine {
     } else if (mode === 'lab') {
       this.playLabBubble();
     }
+    this.notify();
   }
 
   stop() {
     this.isPlaying = false;
     this.stopAll();
+    this.notify();
   }
 
   toggle(mode = null) {

@@ -7,6 +7,8 @@ import { useAuth } from '../../hooks/useAuth.jsx';
 import { getProfile, friendStatus, sendFriendRequest, acceptFriendRequest, openDm } from '../../lib/social.js';
 import { TIERS } from '../../lib/tier.js';
 import VerifiedBadge from '../VerifiedBadge.jsx';
+import UserAvatar from '../UserAvatar.jsx';
+import StudentAvatar from '../StudentAvatar.jsx';
 import './social.css';
 
 const Svg = ({ d, size = 18, sw = 1.8, fill = 'none' }) => (
@@ -110,19 +112,15 @@ export default function ProfileCard({ targetUid, fallbackName = '', onClose, onO
         <button type="button" className="pc-close" onClick={onClose} aria-label="Đóng"><Svg d={P.x} size={16} /></button>
 
         <div className="pc-head">
-          <span className="pc-avatar" style={(() => {
-            const GRAD = [
-              ['#007aff','#5856d6'], ['#34c759','#30d158'],
-              ['#ff9f0a','#ff6b00'], ['#ff375f','#ff2d55'],
-              ['#5856d6','#af52de'], ['#32ade6','#007aff'],
-            ];
-            const [c1, c2] = GRAD[(targetUid?.charCodeAt(0) || 0) % GRAD.length];
-            return { background: `linear-gradient(135deg,${c1},${c2})` };
-          })()}>
-            {profile?.photoURL
-              ? <img src={profile.photoURL} alt="" referrerPolicy="no-referrer" />
-              : <span>{(name[0] || '?').toUpperCase()}</span>}
-          </span>
+          <div className="pc-avatar" style={{ background: 'transparent', boxShadow: 'none', padding: 0 }}>
+            <StudentAvatar
+              uid={targetUid}
+              name={name}
+              photoURL={profile?.photoURL}
+              size={56}
+              title={name}
+            />
+          </div>
           <div className="pc-id">
             <h3>{name}<VerifiedBadge uid={targetUid} size={14} /></h3>
             <span className={'pc-tier' + (isVip ? ' vip' : '')}>

@@ -1,6 +1,6 @@
 /* ============================================================
    AspirationRoadmapHub.jsx — THẺ "LỘ TRÌNH CỦA EM" & BIỂU ĐỒ ĐIỂM/ELO
-   (Chuẩn tinh thần 9Study — Gọn gàng, thực tế, dễ hiểu ngay trong 5 giây)
+   (Chuẩn ELEC AI — Gọn gàng, thực tế, dễ hiểu ngay trong 5 giây)
    ------------------------------------------------------------
    1. Banner Nguyện vọng đang chọn: Trường + Ngành + Tổ hợp + Điểm mục tiêu
       (Đồng bộ trực tiếp với nút chọn Nguyện vọng trên thanh điều hướng).
@@ -28,8 +28,30 @@ import {
   getProgressCommentaryWithAI,
 } from '../../lib/aiTutorService.js';
 import ElecTutorOnboardingModal from '../aspiration/ElecTutorOnboardingModal.jsx';
+import AspirationAiStrategyModal from '../aspiration/AspirationAiStrategyModal.jsx';
+import AspirationPortfolioModal from '../aspiration/AspirationPortfolioModal.jsx';
+import CompetencyRadarCard from './CompetencyRadarCard.jsx';
+import UserAvatar from '../UserAvatar.jsx';
+import { useCurrentSubject } from '../SubjectSwitcher.jsx';
+import { getUniversityCover } from '../../data/universityCovers.js';
+import { getUserProfile } from '../../lib/userProfileService.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 
 /* ── Bộ biểu tượng SVG sắc nét ── */
+const IcoGradCap = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  </svg>
+);
+
+const IcoMapPin = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
 const IcoTarget = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
@@ -70,6 +92,62 @@ const IcoSparkle = () => (
   </svg>
 );
 
+const IcoScale = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z" />
+    <path d="M2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z" />
+    <path d="M7 21h10" />
+    <path d="M12 3v18" />
+    <path d="M3 7h18" />
+  </svg>
+);
+
+const IcoBarChart = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="18" y1="20" x2="18" y2="10" />
+    <line x1="12" y1="20" x2="12" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="14" />
+  </svg>
+);
+
+const IcoCheckCircle = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
+const IcoTrending = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+    <polyline points="17 6 23 6 23 12" />
+  </svg>
+);
+
+const IcoCalendar = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+
+const IcoEdit = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+const IcoInfo = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="16" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12.01" y2="8" />
+  </svg>
+);
+
 /* ── Biểu đồ đường SVG tương tác (Điểm dự đoán | Elo, Zoom 7/14/30 ngày, Ghim mốc) ── */
 function InteractiveProgressChart({
   eloHistory = [],
@@ -77,6 +155,9 @@ function InteractiveProgressChart({
   targetChem10 = 8.5,
   elo = 1200,
 }) {
+  const { subject } = useCurrentSubject?.() || { subject: 'all' };
+  const subjectShort = subject === 'ly' ? 'Lí' : subject === 'sinh' ? 'Sinh' : subject === 'hoa' ? 'Hóa' : 'KHTN';
+
   const [metricMode, setMetricMode] = useState('score'); // 'score' | 'elo'
   const [rangeDays, setRangeDays] = useState(14); // 7 | 14 | 30
   const [pinTarget, setPinTarget] = useState(true);
@@ -89,7 +170,7 @@ function InteractiveProgressChart({
     const raw = (eloHistory || []).slice(-rangeDays);
     if (!raw.length) return [];
     return raw.map((pt, idx) => {
-      // Quy đổi Elo sang điểm Hóa thang 10 mượt mà
+      // Quy đổi Elo sang điểm thang 10 mượt mà
       const safeElo = Number.isFinite(pt.elo) ? pt.elo : 1150;
       const score10 = Math.min(10, Math.max(3.5, Math.round(((safeElo - 900) / 100) * 10) / 10));
       const safeScore = Number.isFinite(score10) ? score10 : 5.5;
@@ -103,7 +184,13 @@ function InteractiveProgressChart({
     });
   }, [eloHistory, rangeDays, safePredictedChem10]);
 
-  if (!series.length) return null;
+  if (!series.length) {
+    return (
+      <div className="ns9-chart-empty-state">
+        <p>Chưa có lịch sử đo và biểu đồ.</p>
+      </div>
+    );
+  }
 
   const W = 680;
   const H = 195;
@@ -159,7 +246,7 @@ function InteractiveProgressChart({
             className={metricMode === 'score' ? 'on' : ''}
             onClick={() => setMetricMode('score')}
           >
-            Điểm Hóa (Thang 10)
+            Điểm {subjectShort} (Thang 10)
           </button>
           <button
             type="button"
@@ -285,7 +372,7 @@ function InteractiveProgressChart({
             <span>Ngày <b>{activePoint.shortDate}</b>:</span>
             <b>
               {metricMode === 'score'
-                ? `${activePoint.score} / 10 điểm Hóa`
+                ? `${activePoint.score} / 10 điểm ${subjectShort}`
                 : `${activePoint.elo} Elo`}
             </b>
             <span>({activePoint.count > 0 ? `Đã làm ${activePoint.count} câu` : 'Điểm duy trì'})</span>
@@ -305,17 +392,29 @@ export default function AspirationRoadmapHub({
   events = [],
   now = Date.now(),
   hideTopBanner = false,
+  hideQuickNavTrio = false,
   onOpenChapter,
   onPracticeChapter,
   onReviewChapter,
   onAiStrategy,
   onOpenDiagnostic,
+  onTabSelect,
 }) {
+  const { user } = useAuth?.() || {};
+  const [profile, setProfile] = useState(() => getUserProfile(uid, user));
   const [tutorModalOpen, setTutorModalOpen] = useState(false);
   const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [syncTick, setSyncTick] = useState(0);
   const [aiComment, setAiComment] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const { subject } = useCurrentSubject?.() || { subject: 'all' };
+  const subjectShort = subject === 'ly' ? 'Lí' : subject === 'sinh' ? 'Sinh' : subject === 'hoa' ? 'Hóa' : 'KHTN';
+
+  useEffect(() => {
+    setProfile(getUserProfile(uid, user));
+  }, [uid, user, syncTick]);
 
   useEffect(() => subscribeAspirationChanges(() => {
     setSyncTick((n) => n + 1);
@@ -392,6 +491,13 @@ export default function AspirationRoadmapHub({
     }
   };
 
+  const studentName = profile?.fullName || user?.displayName || 'Nguyễn Duy TK';
+  const studentEmail = profile?.invoice?.invoiceEmail || user?.email || 'duyfamobo@gmail.com';
+
+  const campusCover = useMemo(() => {
+    return getUniversityCover(activeAsp?.school?.code);
+  }, [activeAsp?.school?.code]);
+
   const cleanMajorName = activeAsp?.major?.name
     ? activeAsp.major.name.replace(/^ngành\s+/i, '')
     : '';
@@ -403,7 +509,7 @@ export default function AspirationRoadmapHub({
           type="button"
           className="ns9-btn-ai"
           onClick={onOpenDiagnostic}
-          title="Làm 12 câu kiểm tra nhanh để đo chính xác Điểm Hóa dự đoán & Elo"
+          title={`Làm 12 câu kiểm tra nhanh để đo chính xác Điểm ${subjectShort} dự đoán & Elo`}
         >
           <IcoBolt />
           <span>{hasEvidence ? 'Đo lại năng lực (12 câu)' : 'Test đầu vào (12 câu)'}</span>
@@ -425,47 +531,75 @@ export default function AspirationRoadmapHub({
         <IcoTarget />
         <span>{activeAsp ? 'Đổi nguyện vọng' : 'Chọn nguyện vọng'}</span>
       </button>
-      {onAiStrategy && (
-        <button
-          type="button"
-          className="ns9-btn-ai"
-          onClick={() => onAiStrategy(data)}
-        >
-          <IcoSparkle />
-          <span>AI Tư vấn</span>
-        </button>
-      )}
+      <button
+        type="button"
+        className="ns9-btn-ai"
+        onClick={() => setAiModalOpen(true)}
+        title="AI tự động phân tích cơ hội trúng tuyển & đưa ra lộ trình 3 giai đoạn theo đúng nguyện vọng"
+      >
+        <IcoSparkle />
+        <span>AI Phân tích Lộ trình</span>
+      </button>
     </div>
   );
 
   return (
     <section className="ns9-hub" aria-label="Bảng điều khiển Lộ trình của em">
-      {/* ── 1. BANNER CÁ NHÂN & CHIP NGUYỆN VỌNG ĐANG CHỌN (NHƯ ẢNH 9 & 10) ── */}
+      {/* ── 1. BANNER CÁ NHÂN & KHUÔN VIÊN TRƯỜNG ĐẠI HỌC (CHUẨN DASHBOARD ELEC AI) ── */}
       {!hideTopBanner && (
-        <div className="ns9-banner">
-          <div className="ns9-banner-left">
-            <span className="ns9-eyebrow">MỤC TIÊU ĐẠI HỌC ĐANG THEO ĐUỔI</span>
-            {activeAsp ? (
-              <div className="ns9-wish-pill-bar">
-                <span className="ns9-wish-badge">NV{activeAsp.priority}</span>
-                <h2 className="ns9-wish-headline">
-                  <b>{activeAsp.school.code}</b>
-                  <span> · {activeAsp.school.name}</span>
-                  <em> — Ngành {cleanMajorName}</em>
-                </h2>
-                <span className="ns9-block-tag">Tổ hợp {activeAsp.block}</span>
+        <div className="ns9-banner-hero-card">
+          <div className="ns9-bh-left">
+            <div className="ns9-bh-user-row">
+              <div className="ns9-bh-avatar" aria-hidden="true" style={{ background: 'transparent', boxShadow: 'none', padding: 0 }}>
+                <UserAvatar user={user} size={48} title={studentName} />
               </div>
-            ) : (
-              <div className="ns9-wish-pill-bar">
-                <h2 className="ns9-wish-headline">
-                  <b>Chưa chọn trường Nguyện vọng 1</b>
-                  <span> — Hãy chọn trường để cá nhân hóa mốc điểm Hóa cần đạt</span>
-                </h2>
+              <div className="ns9-bh-user-meta">
+                <h2 className="ns9-bh-user-name">{studentName}</h2>
+                <span className="ns9-bh-user-email">{studentEmail}</span>
               </div>
-            )}
+            </div>
+
+            <div className="ns9-bh-wish-pills">
+              {activeAsp ? (
+                <>
+                  <div className="ns9-bh-pill school" title={activeAsp.school.name}>
+                    <IcoGradCap />
+                    <span>{activeAsp.school.code} · {activeAsp.school.name}</span>
+                  </div>
+                  <div className="ns9-bh-pill major" title={activeAsp.major?.name}>
+                    <IcoMapPin />
+                    <span>Ngành {cleanMajorName} (Tổ hợp {activeAsp.block})</span>
+                  </div>
+                </>
+              ) : (
+                <div className="ns9-bh-pill empty">
+                  <IcoTarget />
+                  <span>Chưa chọn trường mục tiêu — Hãy chọn để cá nhân hoá lộ trình</span>
+                </div>
+              )}
+            </div>
+
+            {actionButtons}
           </div>
 
-          {actionButtons}
+          {/* Phía phải: Ảnh khuôn viên trường đại học thực tế */}
+          {activeAsp && (
+            <div className="ns9-bh-right-campus">
+              <img
+                src={campusCover}
+                alt={`Khuôn viên ${activeAsp.school.name}`}
+                className="ns9-bh-campus-img"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/img/universities/bka.webp';
+                }}
+              />
+              <div className="ns9-bh-campus-badge">
+                <span className="school-code">{activeAsp.school.code}</span>
+                <span className="target-score">Mục tiêu: {Number.isFinite(targetExamScore) ? targetExamScore : (activeAsp.targetScore ?? 24.75)}đ</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -473,7 +607,7 @@ export default function AspirationRoadmapHub({
       {scheduleEditorOpen && (
         <div className="ns9-schedule-bar" role="region" aria-label="Thiết lập thời gian rảnh mỗi tuần và ngày thi">
           <div className="ns9-sched-group">
-            <span>Thời gian bạn dành cho môn Hóa mỗi tuần:</span>
+            <span>Thời gian bạn dành cho các môn KHTN mỗi tuần:</span>
             <div className="ns9-hour-pills">
               {[
                 [3, '3 giờ/tuần (~25p/ngày)'],
@@ -510,72 +644,140 @@ export default function AspirationRoadmapHub({
       {/* ── 2. THẺ "LỘ TRÌNH CỦA EM": 4 CHỈ SỐ TRÊN 1 HÀNG + BIỂU ĐỒ + 1 CTA CHÍNH ── */}
       <div className="ns9-roadmap-card">
         <div className="ns9-card-top">
-          <div>
-            <h3>Lộ trình của em</h3>
-            <p>
-              Kỳ thi <b>{(activeExam?.name || 'THPTQG').replace(/^Thi\s+/i, '')}</b> · Quy đổi thực tế từ độ chính xác và tốc độ làm bài môn Hóa
+          <div className="ns9-ct-left">
+            <div className="ns9-ct-title-row">
+              <h3>Lộ trình của em</h3>
+              <span className="ns9-header-badge">{(activeExam?.name || 'THPTQG').replace(/^Thi\s+/i, '')}</span>
+            </div>
+            <p className="ns9-ct-sub">
+              {activeAsp?.school?.code ? (
+                <>— Đường đua tới <b>{activeAsp.school.code}</b> ({activeAsp.school.name})</>
+              ) : (
+                <>— Hãy chọn trường mục tiêu để bắt đầu lộ trình cá nhân hóa</>
+              )}
             </p>
           </div>
           <div className="ns9-card-top-right">
-            {hideTopBanner && actionButtons}
-            <span className={`ns9-pace-pill tone-${paceTone}`}>
-              {paceStatus}
-            </span>
+            <button
+              type="button"
+              className="ns9-countdown-pill-btn"
+              onClick={() => setScheduleEditorOpen((v) => !v)}
+              title="Bấm để chỉnh ngày thi & giờ học tuần"
+            >
+              <IcoCalendar />
+              <span>{`T5/${schedule.examDate ? new Date(schedule.examDate).getFullYear() : '2027'} · Còn ${Math.max(1, Math.round(daysUntilExam / 30))} tháng tới ngày thi`}</span>
+              <IcoEdit />
+            </button>
           </div>
         </div>
 
-        {/* 4 CHỈ SỐ TRÊN MỘT HÀNG (NHƯ ẢNH 9 & 10 CỦA 9STUDY) */}
+        {/* 4 CHỈ SỐ TRÊN MỘT HÀNG (CHUẨN 100% ELEC AI DASHBOARD) */}
         <div className="ns9-metrics-row">
+          {/* 1. Điểm dự đoán */}
           <div className="ns9-metric-box">
-            <span className="ns9-metric-label">Điểm Hóa dự đoán</span>
+            <div className="ns9-mb-head">
+              <IcoBarChart />
+              <span className="ns9-metric-label">Điểm dự đoán</span>
+            </div>
             <div className="ns9-metric-value">
-              <strong>{hasEvidence && Number.isFinite(predictedChem10) ? predictedChem10 : '—'}</strong>
-              <small>/ 10 điểm</small>
+              {hasEvidence && Number.isFinite(predictedChem10) ? (
+                <>
+                  <strong>{predictedChem10}</strong>
+                  <small>/ 10 điểm</small>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="ns9-mb-starter-btn"
+                  onClick={onOpenDiagnostic}
+                  title="Làm bài test 5 phút xác định điểm khởi đầu"
+                >
+                  <span className="ns9-mb-starter-val">Đo sau 1 bài test</span>
+                  <span className="ns9-mb-starter-tag">Test 5p ↗</span>
+                </button>
+              )}
             </div>
             <span className="ns9-metric-sub">
               {hasEvidence && predictedExamScore !== null && Number.isFinite(predictedExamScore)
                 ? `Quy đổi ${activeExam?.name || 'Kỳ thi'}: ${predictedExamScore}/${examScale || 30}`
-                : 'Làm 10 câu đầu tiên để mở khóa'}
+                : 'Làm bài test ngắn để AI mở khoá đường điểm'}
             </span>
           </div>
 
+          {/* 2. Mục tiêu */}
           <div className="ns9-metric-box">
-            <span className="ns9-metric-label">Điểm mục tiêu</span>
+            <div className="ns9-mb-head">
+              <IcoTarget />
+              <span className="ns9-metric-label">Mục tiêu</span>
+            </div>
             <div className="ns9-metric-value target">
-              <strong>{Number.isFinite(targetChem10) ? targetChem10 : 8.5}</strong>
-              <small>/ 10 điểm</small>
+              {activeAsp ? (
+                <>
+                  <strong>{Number.isFinite(targetExamScore) ? targetExamScore : (activeAsp.targetScore ?? 26)}</strong>
+                  <small>/ {examScale || 30}</small>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="ns9-mb-starter-btn"
+                  onClick={() => onAiStrategy ? onAiStrategy() : setPortfolioModalOpen(true)}
+                  title="Chọn trường Đại học mục tiêu"
+                >
+                  <span className="ns9-mb-starter-val">Chưa khóa mốc</span>
+                  <span className="ns9-mb-starter-tag">Chọn ngay +</span>
+                </button>
+              )}
             </div>
             <span className="ns9-metric-sub">
-              Tổng kỳ thi: <b>{Number.isFinite(targetExamScore) ? targetExamScore : (activeAsp?.targetScore ?? 24.5)}/{examScale || 30}</b> {activeAsp?.school?.code ? `(${activeAsp.school.code})` : ''}
+              {activeAsp?.school?.code ? activeAsp.school.code : 'Ví dụ: BKA 24.75đ · FTU 27.5đ'}
             </span>
           </div>
 
+          {/* 3. Tiến độ */}
           <div className="ns9-metric-box">
-            <span className="ns9-metric-label">Tiến độ hiện tại</span>
+            <div className="ns9-mb-head">
+              <IcoCheckCircle />
+              <span className="ns9-metric-label">Tiến độ</span>
+            </div>
             <div className="ns9-metric-value">
-              <span className={`ns9-status-tag tone-${paceTone}`}>{paceStatus}</span>
+              {hasEvidence ? (
+                <span className={`ns9-status-tag tone-${paceTone}`}>{paceStatus}</span>
+              ) : (
+                <span className="ns9-status-tag tone-neutral">Sẵn sàng xuất phát</span>
+              )}
             </div>
             <span className="ns9-metric-sub">
-              {!hasEvidence || !Number.isFinite(chemGap10)
-                ? `Mục tiêu cần đạt: ${Number.isFinite(targetChem10) ? targetChem10 : 8.5}/10đ`
-                : chemGap10 > 0
-                  ? `Cần tăng thêm +${chemGap10} điểm Hóa`
-                  : `Đã vượt mục tiêu +${Math.abs(chemGap10)} điểm Hóa`}
+              {hasEvidence ? 'So với lộ trình lý tưởng' : 'Lộ trình 7 ngày đầu cùng ELEC AI'}
             </span>
           </div>
 
+          {/* 4. Elo hiện tại */}
           <div className="ns9-metric-box">
-            <span className="ns9-metric-label">Điểm năng lực (Elo)</span>
+            <div className="ns9-mb-head">
+              <div className="ns9-mb-head-left">
+                <IcoTrending />
+                <span className="ns9-metric-label">Elo hiện tại</span>
+                <span className="ns9-mb-info-icon" title="Điểm Elo phản ánh năng lực thực chiến theo độ khó câu hỏi">
+                  <IcoInfo />
+                </span>
+              </div>
+              <button
+                type="button"
+                className="ns9-mb-radar-btn"
+                onClick={() => setAiModalOpen(true)}
+                title="Mở Radar Năng lực 6 Chiều"
+              >
+                Radar &rsaquo;
+              </button>
+            </div>
             <div className="ns9-metric-value elo">
-              <strong>{Number.isFinite(elo) ? elo : 1000}</strong>
-              <small>Elo</small>
+              <strong>{hasEvidence && Number.isFinite(elo) ? elo : 1000}</strong>
+              {!hasEvidence && <small className="ns9-mb-elo-starter">Khởi điểm</small>}
             </div>
             <span className="ns9-metric-sub">
-              {(Number.isFinite(elo) ? elo : 1000) >= 1600
-                ? 'Hạng Bứt phá (8.5+)'
-                : (Number.isFinite(elo) ? elo : 1000) >= 1380
-                  ? 'Hạng Khá vững (7.0+)'
-                  : 'Hạng Nền tảng · Đang tích lũy'}
+              {hasEvidence && Number.isFinite(elo)
+                ? (elo >= 1600 ? 'Hạng Bứt phá (8.5+)' : elo >= 1380 ? 'Hạng Khá vững (7.0+)' : 'Hạng Nền tảng')
+                : 'Hạng Nền tảng · Tăng sau mỗi đề'}
             </span>
           </div>
         </div>
@@ -647,11 +849,108 @@ export default function AspirationRoadmapHub({
         )}
       </div>
 
+      {/* ── 3. BA KHỐI ĐIỀU HƯỚNG NHANH + LINH VẬT ELEC AI (CHUẨN DASHBOARD) ── */}
+      {!hideQuickNavTrio && (
+        <div className="ns9-quick-nav-trio" role="region" aria-label="Lối tắt tính năng lộ trình">
+          <div
+            className="ns9-qn-card"
+            onClick={() => (onTabSelect ? onTabSelect('subjects') : onOpenChapter?.(chapters[0]?.chapter?.id))}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="ns9-qn-icon target">
+              <IcoTarget />
+            </div>
+            <div className="ns9-qn-body">
+              <h4>Lộ trình mục tiêu</h4>
+              <p>Xem chi tiết các mốc, phân tích khoảng cách tới mục tiêu {activeAsp?.school?.code || 'Đại học'}.</p>
+            </div>
+            <span className="ns9-qn-link">Xem ngay &rarr;</span>
+          </div>
+
+          <div
+            className="ns9-qn-card"
+            onClick={() => (onTabSelect ? onTabSelect('timeline') : setScheduleEditorOpen(true))}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="ns9-qn-icon calendar">
+              <IcoCalendar />
+            </div>
+            <div className="ns9-qn-body">
+              <h4>Lộ trình cá nhân hóa</h4>
+              <p>Kế hoạch cá nhân hóa theo ngày, tuần, tháng bám sát quỹ thời gian {schedule.weeklyFreeHours}h/tuần.</p>
+            </div>
+            <span className="ns9-qn-link">Xem ngay &rarr;</span>
+          </div>
+
+          <div
+            className="ns9-qn-card"
+            onClick={() => (onTabSelect ? onTabSelect('study') : handlePrimaryAction())}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="ns9-qn-icon ai">
+              <IcoSparkle />
+            </div>
+            <div className="ns9-qn-body">
+              <h4>Luyện tập ELEC AI</h4>
+              <p>Phân tích điểm mạnh, điểm yếu và gợi ý cải thiện kiến thức chuyên sâu.</p>
+            </div>
+            <span className="ns9-qn-link">Luyện tập ngay &rarr;</span>
+          </div>
+
+          {/* Linh vật ELEC AI đứng trang trí thân thiện góc dưới */}
+          <div className="ns9-mascot-companion" title="ELEC AI luôn sẵn sàng đồng hành cùng bạn!">
+            <img
+              src="/img/elec/elec-wink.png"
+              alt="Linh vật ELEC AI"
+              className="ns9-mascot-img"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/img/elec/elec-hello.png';
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       <ElecTutorOnboardingModal
         open={tutorModalOpen}
         uid={uid}
         onClose={() => setTutorModalOpen(false)}
         onCompleted={() => setSyncTick((n) => n + 1)}
+        onStartDiagnostic={() => {
+          setTutorModalOpen(false);
+          onOpenDiagnostic?.();
+        }}
+      />
+
+      <AspirationAiStrategyModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        uid={uid}
+        activeAspiration={activeAsp}
+        aspirations={data.aspirations || []}
+        progress={data}
+        schedule={schedule}
+        chapters={chapters}
+        dueByTopic={{}}
+        overview={overview}
+        events={events}
+        predictedScore={predictedExamScore || (predictedChem10 ? predictedChem10 * (examScale / 10) : 24.5)}
+        targetScore={activeAsp?.targetScore || 24.5}
+        examScale={examScale || 30}
+        onAskAiTutor={onAiStrategy ? (prompt) => onAiStrategy({ ...data, customPrompt: prompt }) : null}
+        onStrategyApplied={() => setSyncTick((n) => n + 1)}
+      />
+
+      <AspirationPortfolioModal
+        isOpen={portfolioModalOpen}
+        onClose={() => setPortfolioModalOpen(false)}
+        aspirations={data.aspirations || []}
+        predictedScore={predictedExamScore || (predictedChem10 ? predictedChem10 * (examScale / 10) : 24.5)}
+        examScale={examScale || 30}
       />
     </section>
   );

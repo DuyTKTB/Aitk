@@ -1,0 +1,311 @@
+/* ============================================================
+   digital-omr.css — GIAO DIỆN PHIẾU TÔ TRẮC NGHIỆM OMR 1:1 & BÁO CÁO BẪY ĐỀ
+   Phong cách Apple VisionOS Kính mờ, 100% SVG thuần, 0 emoji
+   ============================================================ */
+
+/* ── Panel Phiếu tô trắc nghiệm OMR ── */
+.omr-panel {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  height: 100%;
+}
+
+.omr-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.omr-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.omr-stats-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.omr-stat-chip {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.omr-stat-chip.done {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.omr-stat-chip.remain {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.omr-stat-chip.flag {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+/* ── Danh sách câu hỏi OMR cuộn ── */
+.omr-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.omr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid transparent;
+  transition: all 0.16s ease;
+}
+
+.omr-row.active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.omr-row:hover {
+  background: #f1f5f9;
+}
+
+.omr-q-num-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 58px;
+}
+
+.omr-q-num {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+}
+
+.omr-flag-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #cbd5e1;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.16s ease;
+}
+
+.omr-flag-btn.flagged {
+  color: #f59e0b;
+}
+
+/* Các nút tròn A, B, C, D (Hiệu ứng tô chì) */
+.omr-bubbles-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.omr-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid #94a3b8;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.omr-bubble:hover {
+  border-color: #475569;
+  transform: scale(1.06);
+}
+
+/* Khi được tô chì: Bóng tròn màu than đậm chuẩn OMR */
+.omr-bubble.filled {
+  background: #1e293b;
+  border-color: #0f172a;
+  color: #ffffff;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(15, 23, 42, 0.2);
+}
+
+/* ── Báo cáo Bẫy đề thi (Exam Trap Report) ── */
+.trap-report-container {
+  margin-top: 16px;
+  padding: 20px 24px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+}
+
+.trap-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.trap-report-title h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trap-report-title p {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.trap-summary-boxes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.trap-sum-box {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.trap-sum-box.trap {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(254, 243, 199, 0.5);
+}
+
+.trap-sum-box.calc {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(239, 246, 255, 0.5);
+}
+
+.trap-sum-box.knowledge {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(254, 242, 242, 0.5);
+}
+
+.trap-sum-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.trap-sum-label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.trap-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trap-item-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.trap-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.trap-item-q-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.trap-tag-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.trap-tag-pill.tone-warn {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.trap-tag-pill.tone-info {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.trap-tag-pill.tone-err {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.trap-item-reason {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.trap-item-advice {
+  margin: 4px 0 0;
+  font-size: 0.76rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+@media (max-width: 680px) {
+  .trap-summary-boxes {
+    grid-template-columns: 1fr;
+  }
+}

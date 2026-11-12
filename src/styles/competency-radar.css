@@ -1,0 +1,279 @@
+/* ============================================================
+   competency-radar.css — GIAO DIỆN BIỂU ĐỒ RADAR 6 CHIỀU & DẢI ĐIỂM GAUSSIAN
+   Phong cách Apple VisionOS Kính mờ (Frosted Glass), 100% SVG thuần, 0 emoji
+   ============================================================ */
+
+.comp-radar-container {
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 20px;
+  padding: 20px 24px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+}
+
+.comp-radar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.comp-radar-title-wrap h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comp-radar-title-wrap p {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.comp-radar-tabs {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.comp-radar-tab-btn {
+  padding: 6px 14px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.comp-radar-tab-btn.active {
+  background: #ffffff;
+  color: #2563eb;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+/* ── Bố cục 2 cột cho Radar View ── */
+.comp-radar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+.comp-radar-chart-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.comp-radar-svg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  overflow: visible;
+}
+
+/* ── Cột danh sách chỉ số ── */
+.comp-axes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comp-axis-row {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  transition: background 0.16s ease;
+}
+
+.comp-axis-row:hover {
+  background: #f1f5f9;
+}
+
+.comp-axis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.comp-axis-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.comp-axis-score {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.comp-axis-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.comp-axis-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+  transition: width 0.5s ease;
+}
+
+.comp-axis-benchmark {
+  font-size: 0.72rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Giao diện Gaussian Bell Curve View ── */
+.comp-gaussian-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comp-gaussian-pills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.comp-gauss-pill {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.comp-gauss-pill.floor {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(240, 253, 244, 0.6);
+}
+
+.comp-gauss-pill.expected {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(239, 246, 255, 0.6);
+}
+
+.comp-gauss-pill.peak {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(245, 243, 255, 0.6);
+}
+
+.comp-gauss-tag {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.comp-gauss-pill.floor .comp-gauss-tag {
+  color: #059669;
+}
+
+.comp-gauss-pill.expected .comp-gauss-tag {
+  color: #2563eb;
+}
+
+.comp-gauss-pill.peak .comp-gauss-tag {
+  color: #7c3aed;
+}
+
+.comp-gauss-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.comp-gauss-val small {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.comp-gauss-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Đồ thị SVG Bell Curve */
+.comp-bell-box {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.comp-bell-svg {
+  width: 100%;
+  height: 160px;
+  overflow: visible;
+}
+
+/* ── Box lời khuyên AI ── */
+.comp-radar-advice-box {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(238, 242, 255, 0.6) 0%, rgba(245, 243, 255, 0.6) 100%);
+  border: 1px solid rgba(199, 210, 254, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.comp-radar-advice-icon {
+  color: #4f46e5;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .comp-radar-grid {
+    grid-template-columns: 1fr;
+  }
+  .comp-gaussian-pills {
+    grid-template-columns: 1fr;
+  }
+}

@@ -6,7 +6,10 @@ import {
   combinatorics,
   harmonicOscillation,
   acCircuits,
+  photoelectricEffect,
   dnaMolecular,
+  mendelMonohybrid,
+  hardyWeinberg,
   runScientificTools,
 } from '../src/lib/scientificTools.js';
 import { runTools } from '../src/lib/aiTools.js';
@@ -84,9 +87,16 @@ describe('Scientific Tools — Physics Engine', () => {
     expect(res.totalImpedanceZ).toBeCloseTo(50, 0);
     expect(res.powerFactorCosPhi).toBeCloseTo(0.8, 1);
   });
+
+  it('tính hiện tượng quang điện ngoài và giới hạn quang điện', () => {
+    // A = 2 eV -> lambda_0 = hc/A = (6.626e-34 * 3e8) / (2 * 1.6e-19) = 0.621 um
+    const res = photoelectricEffect({ workFunctionA: 2 });
+    expect(res.workFunctionEV).toBe(2);
+    expect(res.limitWavelengthMicron).toBeCloseTo(0.62, 1);
+  });
 });
 
-describe('Scientific Tools — Biology Molecular Engine', () => {
+describe('Scientific Tools — Biology Molecular & Genetics Engine', () => {
   it('tính cấu trúc gen ADN từ chiều dài', () => {
     // L = 4080 A -> N = (4080 / 3.4) * 2 = 2400 nu
     const res = dnaMolecular({ L: 4080, H: 3120 });
@@ -94,6 +104,24 @@ describe('Scientific Tools — Biology Molecular Engine', () => {
     expect(res.nucleotides.G).toBe(720); // G = H - N = 3120 - 2400 = 720
     expect(res.nucleotides.A).toBe(480); // A = 1200 - 720 = 480
     expect(res.coils).toBe(120);
+  });
+
+  it('tính phép lai một cặp tính trạng Men-đen', () => {
+    // P: Aa x Aa -> 1 AA : 2 Aa : 1 aa (75% trội : 25% lặn)
+    const res = mendelMonohybrid('Aa', 'Aa');
+    expect(res.ratioGeno).toContain('1 AA : 2 Aa : 1 aa');
+    expect(res.ratioPheno).toContain('3 Trội : 1 Lặn');
+    expect(res.phenotypes.dominant).toBe(0.75);
+    expect(res.phenotypes.recessive).toBe(0.25);
+  });
+
+  it('tính cấu trúc di truyền quần thể Hardy - Weinberg', () => {
+    // p = 0.6 -> q = 0.4 -> AA = 0.36, Aa = 0.48, aa = 0.16
+    const res = hardyWeinberg({ p: 0.6 });
+    expect(res.alleleQ).toBe(0.4);
+    expect(res.genotypes.AA).toBe(0.36);
+    expect(res.genotypes.Aa).toBe(0.48);
+    expect(res.genotypes.aa).toBe(0.16);
   });
 });
 
@@ -110,5 +138,12 @@ describe('Scientific Tools — Dispatcher & Integration with aiTools', () => {
     const osc = hits.find((h) => h.tool === 'harmonic_oscillation');
     expect(osc).toBeTruthy();
     expect(osc.lines.some((l) => l.includes('omega = 20 rad/s'))).toBe(true);
+  });
+
+  it('tự động bắt bài toán phép lai Men-đen từ câu hỏi người dùng', () => {
+    const { hits } = runTools('Cho phép lai Aa x Aa, xác định tỉ lệ phân li kiểu hình ở đời F1');
+    const men = hits.find((h) => h.tool === 'mendel_monohybrid');
+    expect(men).toBeTruthy();
+    expect(men.lines.some((l) => l.includes('3 Trội : 1 Lặn'))).toBe(true);
   });
 });

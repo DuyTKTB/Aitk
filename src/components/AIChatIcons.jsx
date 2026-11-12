@@ -258,6 +258,25 @@ const PROMPT_ICONS = {
       <ellipse cx="12" cy="12" rx="9" ry="3.8" transform="rotate(120 12 12)" />
     </>
   ),
+  /* Sinh học — chuỗi xoắn kép ADN */
+  dna: (
+    <>
+      <path d="M4 4c4 4 12 4 16 0M4 20c4-4 12-4 16 0M6 8.5h12M7.5 12h9M6 15.5h12" />
+    </>
+  ),
+  /* Vật lí — sóng & dao động */
+  wave: (
+    <>
+      <path d="M2 12c2.5-6 5.5-6 8 0s5.5 6 8 0 4-3 4-3" />
+    </>
+  ),
+  /* Vật lí — mạch điện & linh kiện */
+  circuit: (
+    <>
+      <rect x="7" y="9" width="10" height="6" rx="1.5" />
+      <path d="M2 12h5M17 12h5M10 9V6M14 9V6" />
+    </>
+  ),
 };
 
 export const PromptIcon = ({ name, size = 18 }) => (

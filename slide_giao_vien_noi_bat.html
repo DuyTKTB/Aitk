@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1920px;
+    height: 1080px;
+    background: #F4F7FC;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    padding: 70px 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .header {
+    margin-bottom: 25px;
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .title {
+    font-size: 46px;
+    font-weight: 800;
+    color: #112347;
+    letter-spacing: -0.025em;
+  }
+  .brand-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #E0E7FF;
+    color: #1D4ED8;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 999px;
+  }
+  .subtitle {
+    font-size: 21px;
+    color: #64748B;
+    margin-top: 8px;
+    font-weight: 500;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 36px;
+    flex: 1;
+    margin-top: 15px;
+  }
+  .card {
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 40px 42px;
+    border: 1.5px solid #E2E8F0;
+    box-shadow: 0 10px 25px -4px rgba(17, 35, 71, 0.05), 0 4px 12px -2px rgba(17, 35, 71, 0.02);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 20px;
+  }
+  .icon-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #1D4ED8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 6px 16px rgba(29, 78, 216, 0.28);
+  }
+  .icon-box svg {
+    width: 32px;
+    height: 32px;
+    stroke: #FFFFFF;
+    fill: none;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .card-title {
+    font-size: 27px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.02em;
+  }
+  .card-desc {
+    font-size: 19.5px;
+    line-height: 1.65;
+    color: #334155;
+    font-weight: 450;
+  }
+  .card-desc strong {
+    color: #0F172A;
+    font-weight: 700;
+  }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #CBD5E1;
+    color: #64748B;
+    font-size: 16px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title-row">
+      <h1 class="title">Đột phá Khảo thí & Quản trị Lớp học cho Giáo viên</h1>
+      <div class="brand-tag">ELEC AI · Giải phóng sức lao động</div>
+    </div>
+    <p class="subtitle">Giải pháp số hóa toàn diện từ khâu biên soạn đề, phòng thi chống gian lận đến chấm bài tự động</p>
+  </div>
+
+  <div class="grid">
+    <!-- Card 1 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div class="card-title">AutoExam: Bóc tách Word & Đảo đề 5s</div>
+      </div>
+      <p class="card-desc">
+        Kéo thả file Word/PDF đề thi có sẵn: hệ thống <strong>tự bóc tách câu hỏi và nhận diện đáp án in đậm</strong>; chuẩn hóa đủ 3 dạng thức mới 2025 và <strong>tự động hoán vị tạo 4–8 mã đề kèm file in PDF/Word trong 5 giây</strong>.
+      </p>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <div class="card-title">Chấm phiếu A4 bằng Camera Web (OMR)</div>
+      </div>
+      <p class="card-desc">
+        Biến webcam máy tính/điện thoại thành máy chấm thi: thuật toán <strong>Homography nắn phẳng ảnh</strong> và <strong>lọc kênh màu Đỏ</strong> chấm 40 câu trong <strong>1.8 giây</strong> (chuẩn xác 97.1%), điểm tự nhảy vào sổ điểm không cần mua máy quét.
+      </p>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="card-title">Phòng thi Live Proctoring chống gian lận</div>
+      </div>
+      <p class="card-desc">
+        Bảo mật thi trực tuyến đa tầng: <strong>khóa toàn màn hình, bẫy chuyển tab, chặn Copy/F12</strong>; Camera AI nhận diện góc quay mặt, phát hiện vắng mặt hoặc người thứ hai và tính <strong>Risk Score realtime</strong> hỗ trợ thu bài từ xa.
+      </p>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="card-title">Điều hành liên môn & Báo cáo Zalo 1 chạm</div>
+      </div>
+      <p class="card-desc">
+        Mã kết nối GVCN – GVBM an toàn Base32; <strong>giám sát tiến độ bài tập tất cả các môn theo thời gian thực</strong>; tự động phân tích bản đồ nhiệt lỗ hổng kiến thức cả lớp và <strong>xuất phiếu điểm gửi phụ huynh qua Zalo</strong> chỉ bằng 1 click.
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Hệ thống ELEC AI — Nền tảng Chuyển đổi số Giáo dục & Khảo thí THPT</span>
+    <span>https://aitk-ten.vercel.app/</span>
+  </div>
+</body>
+</html>

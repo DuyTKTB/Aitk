@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1920px;
+    height: 1080px;
+    background: #F4F7FC;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    padding: 60px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .header {
+    margin-bottom: 20px;
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .title {
+    font-size: 44px;
+    font-weight: 800;
+    color: #112347;
+    letter-spacing: -0.025em;
+  }
+  .brand-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #E0E7FF;
+    color: #1D4ED8;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 8px 18px;
+    border-radius: 999px;
+  }
+  .subtitle {
+    font-size: 19px;
+    color: #64748B;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-gap: 24px;
+    flex: 1;
+    margin-top: 10px;
+  }
+  .card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    padding: 28px 28px;
+    border: 1.5px solid #E2E8F0;
+    box-shadow: 0 8px 20px -4px rgba(17, 35, 71, 0.05), 0 4px 10px -2px rgba(17, 35, 71, 0.02);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #1D4ED8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.28);
+  }
+  .icon-box svg {
+    width: 26px;
+    height: 26px;
+    stroke: #FFFFFF;
+    fill: none;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .card-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .card-desc {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #334155;
+    font-weight: 450;
+  }
+  .card-desc strong {
+    color: #0F172A;
+    font-weight: 700;
+  }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #CBD5E1;
+    color: #64748B;
+    font-size: 15px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title-row">
+      <h1 class="title">6 Tính năng nổi bật nhất của Website ELEC AI</h1>
+      <div class="brand-tag">ELEC AI · GDPT 2018</div>
+    </div>
+    <p class="subtitle">Hệ sinh thái lớp học số, khảo thí trực tuyến chuẩn 2025 & trợ lý Hóa học AI thế hệ mới</p>
+  </div>
+
+  <div class="grid">
+    <!-- Card 1 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M10 2v7.31L4.65 19.3A2 2 0 0 0 6.4 22h11.2a2 2 0 0 0 1.75-2.7L14 9.31V2z"/><line x1="8.5" y1="2" x2="15.5" y2="2"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+        </div>
+        <div class="card-title">Phòng thí nghiệm ảo 3D & 2D</div>
+      </div>
+      <p class="card-desc">
+        Thực hành Hóa học mô phỏng 3D tương tác vật lý (Three.js): tự tay rót hóa chất, quan sát <strong>kết tủa đổi màu, sủi bọt khí, tỏa nhiệt</strong> theo thời gian thực; tự động kích hoạt chế độ 2D Canvas cho máy cấu hình yếu.
+      </p>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <div class="card-title">Chấm phiếu A4 bằng Camera Web</div>
+      </div>
+      <p class="card-desc">
+        Quét trực tiếp qua webcam laptop hoặc điện thoại: thuật toán <strong>Homography nắn phẳng ảnh</strong> và <strong>lọc kênh màu Đỏ</strong> chấm 40 câu trong <strong>1.8 giây</strong> (chuẩn xác 97.1%), tự lưu điểm vào hệ thống không cần máy quét.
+      </p>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        </div>
+        <div class="card-title">Lộ trình Nguyện vọng ĐH & Rank Elo</div>
+      </div>
+      <p class="card-desc">
+        Tích hợp điểm chuẩn <strong>100+ trường Đại học</strong>; đo năng lực học sinh theo <strong>thuật toán Elo</strong>, tự động vẽ đường mục tiêu đếm ngược từng ngày đến kỳ thi tốt nghiệp và đẩy bài tập bổ khuyết cho các chuyên đề bị hổng.
+      </p>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="m12 3 1.9 4.8a2 2 0 0 0 1.3 1.3L20 11l-4.8 1.9a2 2 0 0 0-1.3 1.3L12 19l-1.9-4.8a2 2 0 0 0-1.3-1.3L4 11l4.8-1.9a2 2 0 0 0 1.3-1.3L12 3z"/></svg>
+        </div>
+        <div class="card-title">AI giải ảnh đề & Zero-Hallucination</div>
+      </div>
+      <p class="card-desc">
+        Chụp ảnh đề bài nhận diện qua OCR, hướng dẫn giải theo phương pháp <strong>gợi mở (Scaffolding)</strong>. Tích hợp lõi tính toán BigInt khử Gauss-Jordan <strong>triệt tiêu hoàn toàn lỗi tính ẩu, bịa số</strong> của AI trong các môn khoa học tự nhiên.
+      </p>
+    </div>
+
+    <!-- Card 5 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="card-title">Phòng thi chống gian lận MediaPipe</div>
+      </div>
+      <p class="card-desc">
+        Khóa toàn màn hình, bẫy chuyển tab, chặn F12/Copy; <strong>Edge AI MediaPipe</strong> nhận diện góc quay mặt, phát hiện vắng mặt hoặc người thứ hai ngay trên webcam máy khách, <strong>bảo mật tuyệt đối, không gửi video lên server</strong>.
+      </p>
+    </div>
+
+    <!-- Card 6 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        </div>
+        <div class="card-title">Sổ câu sai Lặp ngắt quãng (SRS)</div>
+      </div>
+      <p class="card-desc">
+        Tự động gom mọi câu làm sai từ bài thi/bài tập, xếp lịch ôn "phục thù" theo <strong>chu kỳ 1–3–7–14–30 ngày (Ebbinghaus)</strong> với giải thuật SuperMemo SM-2 cho đến khi học sinh nắm vững bản chất, đạt mức Mastered.
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Phần mềm Hệ thống ELEC AI — Nghiên cứu Khoa học Kỹ thuật THPT</span>
+    <span>Nền tảng trực tuyến: aitk-ten.vercel.app</span>
+  </div>
+</body>
+</html>

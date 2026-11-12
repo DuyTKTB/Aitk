@@ -301,7 +301,7 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
                 <li><SvgCheck size={14} /> Toàn bộ đề thi miễn phí & độc quyền kỳ thi THPTQG, HSA, TSA</li>
                 <li><SvgCheck size={14} /> Buổi tổng ôn nhóm trực tiếp cùng giáo viên ELEC AI qua Meet</li>
                 <li><SvgCheck size={14} /> Trợ lý AI giải thích từng bước & chỉ rõ lỗi sai chi tiết</li>
-                <li><SvgCheck size={14} /> Hỏi bài và phân tích ảnh chụp đề không giới hạn 24/7</li>
+                <li><SvgCheck size={14} /> Tặng kèm 300 – 3.000 điểm Credit hỏi bài và giải đề AI chuyên sâu</li>
               </>
             ) : (
               <>

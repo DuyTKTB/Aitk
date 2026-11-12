@@ -30,6 +30,7 @@ import { runTools, verifyToolResults } from './aiTools.js';
 import { retrieve, formatContext, citationsOf } from './aiKnowledge.js';
 import { loadProfile, buildMemoryBlock, compressHistory } from './aiMemory.js';
 import { ocrImages } from './aiOcr.js';
+import { findAppGuideAnswer } from './appGuideKnowledge.js';
 
 const ENV = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' && process.env ? process.env : {});
 
@@ -334,7 +335,7 @@ export function normalizeChemistryText(text) {
   if (!text) return '';
   const cleaned = sanitizeBrandIdentity(text);
   return String(cleaned)
-    .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
+    .split(/(```[\s\S]*?```|`[^`\n]*`|\$\$[\s\S]*?\$\$|\$(?:\\\$|[^$])+\$|\\\[[\s\S]*?\\\]|\\\(.+?\\\)|\\ce\{[^{}]+\})/g)
     .map((part, i) => (i % 2 === 1 ? part : normalizeChemTextOnly(part)))
     .join('');
 }
@@ -344,12 +345,12 @@ export function normalizeChemistryText(text) {
    ============================================================ */
 function prepareGeminiContents(history) {
   return history.map((message) => {
-    if (message.role === 'model') {
-      return { role: 'model', parts: [{ text: message.parts?.[0]?.text || message.text || '' }] };
+    if (message.role === 'model' || message.role === 'assistant') {
+      return { role: 'model', parts: [{ text: message.parts?.[0]?.text || message.text || message.content || '' }] };
     }
     const parts = message.parts || [];
     const textParts = parts.filter((p) => p.text).map((p) => p.text);
-    const text = textParts.join('\n') || message.text || '';
+    const text = textParts.join('\n') || message.text || message.content || '';
     const imageParts = parts.filter((p) => p.inlineData);
 
     const geminiParts = [];
@@ -365,7 +366,7 @@ function prepareGeminiContents(history) {
 function prepareOpenAIMessages(history, systemPrompt) {
   const messages = [{ role: 'system', content: systemPrompt }];
   for (const message of history) {
-    const role = message.role === 'model' ? 'assistant' : 'user';
+    const role = (message.role === 'model' || message.role === 'assistant') ? 'assistant' : 'user';
     if (role === 'assistant') {
       let text = '';
       if (typeof message.content === 'string') text = message.content;
@@ -375,7 +376,7 @@ function prepareOpenAIMessages(history, systemPrompt) {
       continue;
     }
     const parts = Array.isArray(message.parts) ? message.parts : [];
-    const text = parts.filter((p) => p.text).map((p) => p.text).join('\n') || message.text || '';
+    const text = parts.filter((p) => p.text).map((p) => p.text).join('\n') || message.text || message.content || '';
     messages.push({ role, content: text || '' });
   }
   return messages;
@@ -791,6 +792,29 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
   const lastUser = [...historyArr].reverse().find((m) => m.role === 'user');
   const imageParts = (lastUser?.parts || []).filter((p) => p.inlineData);
   const hasImg = imageParts.length > 0;
+
+  /* ---- Hướng dẫn sử dụng & Điều hướng website ELEC AI tức thì ---- */
+  if (!hasImg && options.noGuide !== true) {
+    const guideAnswer = findAppGuideAnswer(plan.contextText);
+    if (guideAnswer) {
+      console.log('[ELEC AI] ✓ App guide instant match');
+      setTimeout(() => onChunk?.(guideAnswer), 20);
+      const p = Promise.resolve({
+        text: guideAnswer,
+        reasoning: 'Truy xuất cẩm nang điều hướng website ELEC AI…',
+        model: 'ELEC Guide/instant',
+        kind: 'guide',
+        citations: [],
+        toolHits: [],
+        verification: null,
+        fromCache: false,
+        toString() { return this.text; },
+        valueOf() { return this.text; },
+      });
+      p.abort = () => {};
+      return p;
+    }
+  }
 
   /* ---- Cache tức thời (không tốn request) ---- */
   if (CACHE_ENABLED && !hasImg && options.noCache !== true) {

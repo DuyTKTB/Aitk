@@ -1,0 +1,59 @@
+# aliases|min|max|supported signature\r
+point,diem|1|2|Point(object, t): t REQUIRED — 0 to 1 along a segment / polyline / polygon / curve / arc, angle on a circle, x on a graph (middle of a segment: Midpoint)\r
+midpoint,trungdiem|1|2|Midpoint(segment) or Midpoint(A, B)\r
+foot,closestpoint,chan,hinhchieu,projection|2|2|Foot(P, line_or_plane)\r
+intersect,giao,giaodiem|2|3|Intersect(a, b[, index_or_other_point]): point for line/line (also segment, ray), line/plane, line/circle, line/sphere, circle/circle in one plane, graph/graph, graph/line, graph/circle (2D); plane/plane gives a line; plane/polyhedron gives the section polygon. Other pairs are not supported. Several points: index 1, 2… or a point to avoid\r
+reflect,doixung,mirror|2|2|Reflect(object, point_or_line_or_plane)\r
+rotate,quay|2|3|Rotate(object, angle[, center_or_axis])\r
+translate,tinhtien|2|2|Translate(object, vector); combined solids (Union / Difference…) cannot be transformed: transform the parts, then combine\r
+dilate,vitu,homothety|2|3|Dilate(object, scale[, center])\r
+centroid,trongtam|1|*|Centroid(A, B, C, ...)\r
+circumcenter,tamngoaitiep,incenter,tamnoitiep,orthocenter,trucctam,tructam|3|3|Circumcenter/Incenter/Orthocenter(A, B, C)\r
+segment,doan,doanthang|1|2|Segment(A, B) or Segment(vector)\r
+line,duongthang|1|2|Line(A, B) or Line(equation)\r
+ray,tia|2|2|Ray(A, B)\r
+vector,vecto|1|2|Vector(A, B) or Vector(tuple)\r
+perpendicular,perpendicularline,vuonggoc,parallel,parallelline,songsong|2|2|Perpendicular/Parallel(P, line_or_plane)\r
+bisector,anglebisector,phangiac|3|3|Bisector(B, A, C)\r
+perpbisector,perpendicularbisector,trungtruc|2|2|PerpBisector(A, B)\r
+tangent,tieptuyen|2|3|Tangent(f, x0) or Tangent(P, circle[, index])\r
+circle,duongtron|1|3|Circle(equation), Circle(center, radius_or_point), Circle(A,B,C), Circle(center,radius,normal)\r
+arc,cung,circulararc|3|3|Arc(center, A, B): from A counterclockwise to ray center→B, radius = distance(center, A)\r
+circumcirculararc,arc3,cungqua3diem,cungqua|3|3|CircumcircularArc(A, M, B): arc from A through M ending exactly at B\r
+polyline,duonggapkhuc,gapkhuc|1|*|Polyline(A, B, C, ...) or Polyline([points]): open broken line (a path)\r
+polygon,dagiac,triangle,quadrilateral,tamgiac,tugiac|1|*|Polygon(A, B, C, ...) or Polygon([points])\r
+angle,goc,danhdaugoc,do|2|3|Angle(A,O,B); measurement also Angle(line_or_plane, line_or_plane)\r
+mark,danhdau,ticks|1|3|Mark(segment[, count]) or Mark(A, B[, count])\r
+text,chu,caption|2|2|Text("label", point)\r
+area,dientich,integralbetween|1|4|Area(f,a,b), Area(f,g,a,b); measurement also Area(polygon / circle / region / sphere surface) — not of a combined solid\r
+region,mien|1|*|Region(linear_inequality && linear_inequality)\r
+curve,duongcong|5|6|Curve(x(t),y(t)[,z(t)],t,a,b)\r
+implicit,implicitcurve,conic,phuongtrinh|1|1|Implicit(equation): numerical planar contour\r
+bars,barchart,bieudocot|2|2|BarChart([positions], [heights])\r
+histogram,tansuat|2|3|Histogram([bounds],[frequencies][,"density" or "frequency"]); default density = frequency/bin_width\r
+pyramid,chop,hinhchop|4|*|Pyramid(base_points..., apex)\r
+prism,langtru|4|*|Prism(base_points..., ONE_top_point_or_height): Prism(A, B, C, D, A1) = box ABCD.A1B1C1D1 (B1, C1, D1 are created); never list the whole top face; the base must be one flat polygon\r
+sphere,matcau|2|2|Sphere(center, nonnegative_radius)\r
+cylinder,tru|3|3|Cylinder(base_center, top_center, radius)\r
+cone,non|3|3|Cone(base_center, apex, radius)\r
+plane,matphang|1|3|Plane(equation), Plane(A,B,C), Plane(point,normal_vector)\r
+section,thietdien|2|2|Section(plane, solid): polyhedra, sphere; cylinder/cone only perpendicular to axis; a combined solid or a solid of revolution gives its real hatched cut face\r
+revolve,khoitronxoay,tronxoay|3|5|Revolve(f,a,b), Revolve(f,g,a,b[,axis]); y between f(x) and g(x); axis = any line in the plane (oblique ok) or a linear function\r
+revolvey|3|5|RevolveY(f,a,b), RevolveY(f,g,a,b[,axis]); x between f(t) and g(t), y=t; axis = any line in the plane (oblique ok)\r
+union,hopkhoi,ghepkhoi|2||Union(solid, solid, ...): solids joined together (attach / glue); the parts are hidden, the joined solid is drawn\r
+difference,hieukhoi,khoet|2||Difference(solid, hole, ...): drill / cut out the following solids from the first (real hole in the drawing)\r
+intersection,giaokhoi|2||Intersection(solid, solid, ...): the common part\r
+hemisphere,bancau|2|3|Hemisphere(center, radius[, dome_direction]): solid half ball, flat face through the center, dome towards dome_direction (default +z)\r
+cut,catbo|1|3|Cut(solid[, plane[, point_kept]]): cutaway view like an engineering drawing — removes the part of the solid on the plane's normal side (or the side without point_kept) and hatches the cut face; Cut(solid) alone cuts through the middle and removes the half facing the viewer\r
+distance,khoangcach|2|2|Distance(object, object)\r
+length,dodai|1|2|Length(object) or Length(A,B)\r
+perimeter,chuvi,radius,bankinh,volume,thetich|1|1|Perimeter/Radius/Volume(object)\r
+slope,hesogoc|1|2|Slope(line) or Slope(f, x0) = f'(x0), slope of the tangent\r
+derivative,daoham|1|2|Derivative(f) = f'(x), Derivative(f, 2) = f''(x): a new function (also write f'(x) directly)\r
+root,nghiem|1|3|Root(f) the only root, Root(f, k) the k-th from the left, Root(f, a, b) the one in [a, b]: point (x, 0)\r
+extremum,cuctri|1|3|Extremum(f) / Extremum(f, k) / Extremum(f, a, b): one extremum point (x, f(x)) where f' changes sign\r
+integral,tichphan|3|3|Integral(f,a,b): adaptive numerical estimate; may fail to converge\r
+ison,thuoc,areperpendicular,vuonggocnhau,areparallel,songsongnhau,areequal,bangnhau|2|2|IsOn/ArePerpendicular/AreParallel/AreEqual(a,b)\r
+arecollinear,thanghang|3|*|AreCollinear(A,B,C,...)\r
+arecoplanar,dongphang,areconcyclic,dongvien|4|*|AreCoplanar/AreConcyclic(A,B,C,D,...)\r
+animate,chuyendong,hoatanh|3|4|t = Animate(start, end, seconds[, "loop"]): a number running evenly from start to end; everything built from t moves; alone on its own line\r

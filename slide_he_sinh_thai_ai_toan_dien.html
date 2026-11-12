@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1920px;
+    height: 1080px;
+    background: #F4F7FC;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    padding: 55px 75px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .header {
+    margin-bottom: 20px;
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .title {
+    font-size: 42px;
+    font-weight: 800;
+    color: #112347;
+    letter-spacing: -0.025em;
+  }
+  .brand-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #E0E7FF;
+    color: #1D4ED8;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 999px;
+  }
+  .subtitle {
+    font-size: 19px;
+    color: #64748B;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .columns-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 30px;
+    flex: 1;
+    margin-top: 10px;
+  }
+  .column-box {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .column-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .col-student {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #BFDBFE;
+  }
+  .col-teacher {
+    background: #F0FDF4;
+    color: #15803D;
+    border: 1px solid #BBF7D0;
+  }
+  .card {
+    background: #FFFFFF;
+    border-radius: 18px;
+    padding: 22px 24px;
+    border: 1.5px solid #E2E8F0;
+    box-shadow: 0 6px 16px -4px rgba(17, 35, 71, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex: 1;
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .icon-student {
+    background: #2563EB;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+  }
+  .icon-teacher {
+    background: #16A34A;
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);
+  }
+  .icon-box svg {
+    width: 22px;
+    height: 22px;
+    stroke: #FFFFFF;
+    fill: none;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .card-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.02em;
+  }
+  .card-desc {
+    font-size: 15.5px;
+    line-height: 1.55;
+    color: #334155;
+    font-weight: 450;
+  }
+  .card-desc strong {
+    color: #0F172A;
+    font-weight: 700;
+  }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #CBD5E1;
+    color: #64748B;
+    font-size: 15px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title-row">
+      <h1 class="title">Hệ Sinh Thái AI Toàn Diện: Học Sinh & Giáo Viên</h1>
+      <div class="brand-tag">ELEC AI · Đột Phá EdTech 2026</div>
+    </div>
+    <p class="subtitle">Bản đồ tính năng AI chuyên sâu kết hợp thị giác máy tính và công cụ tính toán tất định</p>
+  </div>
+
+  <div class="columns-wrap">
+    <!-- CỘT HỌC SINH -->
+    <div class="column-box">
+      <div class="column-header col-student">
+        <span>👨‍🎓 DÀNH CHO HỌC SINH (Học tập thông minh & Cá nhân hóa)</span>
+      </div>
+
+      <!-- Card S1 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="icon-box icon-student">
+            <svg viewBox="0 0 24 24"><path d="m12 3 1.9 4.8a2 2 0 0 0 1.3 1.3L20 11l-4.8 1.9a2 2 0 0 0-1.3 1.3L12 19l-1.9-4.8a2 2 0 0 0-1.3-1.3L4 11l4.8-1.9a2 2 0 0 0 1.3-1.3L12 3z"/></svg>
+          </div>
+          <div class="card-title">AI Giải đề ảnh & Zero-Hallucination</div>
+        </div>
+        <p class="card-desc">
+          Chụp ảnh đề bài nhận diện qua OCR; giảng bài gợi mở <strong>Scaffolding</strong>. Lõi đại số BigInt khử Gauss-Jordan <strong>khóa chặt con số tất định (M, n, pH, tỉ lệ phản ứng)</strong>, triệt tiêu 100% lỗi bịa số.
+        </p>
+      </div>
+
+      <!-- Card S2 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="icon-box icon-student">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          </div>
+          <div class="card-title">Gia sư ELEC Tutor & Rank Elo Nguyện vọng</div>
+        </div>
+        <p class="card-desc">
+          Test chẩn đoán năng lực ban đầu; đo trình độ theo <strong>rank Elo</strong> đối chiếu điểm chuẩn <strong>100+ trường ĐH</strong>. AI phân tích khoảng cách điểm (Gap Analysis) và lập kế hoạch bù lỗ hổng đếm ngược từng ngày.
+        </p>
+      </div>
+
+      <!-- Card S3 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="icon-box icon-student">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          </div>
+          <div class="card-title">AI Sinh Quiz từ File & Sổ câu sai SRS</div>
+        </div>
+        <p class="card-desc">
+          Học sinh tải tài liệu cá nhân lên, <strong>AI tự sinh đề trắc nghiệm tức thì</strong>. Tự gom câu làm sai vào Sổ tay lỗi sai, xếp lịch ôn "phục thù" theo <strong>chu kỳ ngắt quãng 1–3–7–14–30 ngày</strong> đến khi làm chủ kiến thức.
+        </p>
+      </div>
+    </div>
+
+    <!-- CỘT GIÁO VIÊN -->
+    <div class="column-box">
+      <div class="column-header col-teacher">
+        <span>👨‍🏫 DÀNH CHO GIÁO VIÊN (Khảo thí số & Giải phóng sức lao động)</span>
+      </div>
+
+      <!-- Card T1 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="icon-box icon-teacher">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="card-title">AutoExam Studio & Soát đáp án độc lập</div>
+        </div>
+        <p class="card-desc">
+          Kéo thả Word/PDF bóc tách đề trong 5s chuẩn 3 dạng thức 2025. <strong>Cơ chế Soát đáp án độc lập:</strong> AI tự giải lại từng câu mà không nhìn đáp án để đối chiếu, loại bỏ 100% câu hỏi lỗi trước khi giao học sinh.
+        </p>
+      </div>
+
+      <!-- Card T2 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="icon-box icon-teacher">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="card-title">Edge AI Giám thị phòng thi & Chấm OMR A4</div>
+        </div>
+        <p class="card-desc">
+          MediaPipe chạy tại biên phát hiện quay đầu, vắng mặt, người thứ 2 và tính <strong>Risk Score realtime</strong> không tải video lên server. Camera Web OMR nắn phẳng Homography <strong>chấm phiếu A4 trong 1.8s (độ chính xác 97.1%)</strong>.
+        </p>
+      </div>
+
+      <!-- Card T3 -->
+      <div class="card">
+        <div class="card-top">
+          <div class="icon-box icon-teacher">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div class="card-title">Teacher Copilot & Bản đồ nhiệt AI cả lớp</div>
+        </div>
+        <p class="card-desc">
+          Trợ lý AI phân tích phổ điểm, vẽ <strong>Bản đồ nhiệt (Heatmap) lỗ hổng kiến thức</strong> cả lớp; 1-click tự sinh đề phục hồi cho nhóm học sinh yếu và tự soạn nhận xét học bạ gửi phụ huynh qua Zalo.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Hệ thống ELEC AI — Nghiên cứu Khoa học Kỹ thuật THPT (Thông tư 84/2026/TT-BGDĐT)</span>
+    <span>https://aitk-ten.vercel.app/</span>
+  </div>
+</body>
+</html>

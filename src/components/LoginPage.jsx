@@ -168,10 +168,10 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
             <b>ELEC AI</b>
           </div>
           <h2>
-            Học Hóa học<br />
+            Chinh phục KHTN<br />
             <em>thông minh hơn</em>
           </h2>
-          <p>Trợ lý AI, bảng tuần hoàn, cân bằng PTHH và 6 trò chơi học Hóa — tất cả trong một tài khoản.</p>
+          <p>Trợ lý AI 3 môn Lý — Hóa — Sinh, ma trận đề thi chuẩn Bộ GD&ĐT và công cụ giải nhanh — tất cả trong một tài khoản.</p>
           <ul className="lg-points">
             <li>Giải đề từ ảnh chụp, từng bước</li>
             <li>Sinh quiz, sổ câu sai tự động</li>

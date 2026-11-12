@@ -109,6 +109,7 @@ export async function generatePedagogicalInsights({
   className = 'Lớp học',
   subject = 'Hóa học',
   forceRefresh = false,
+  useAi = true,
   signal,
 } = {}) {
   if (!insightsData || !insightsData.submissionCount) {
@@ -118,6 +119,11 @@ export async function generatePedagogicalInsights({
   const cacheKey = makeCacheKey(className, insightsData);
   if (!forceRefresh && cacheMap.has(cacheKey)) {
     return cacheMap.get(cacheKey);
+  }
+
+  // Không tự động trừ Credit khi chưa bấm nút phân tích AI
+  if (!useAi) {
+    return buildAlgorithmicFallback(insightsData, className);
   }
 
   const weakSummary = (insightsData.weakestTopics || [])
@@ -201,6 +207,6 @@ Xuất kết quả duy nhất ở định dạng JSON hợp lệ (không kèm ma
   } catch (err) {
     console.warn('[insightAi] Không gọi được AI, dùng fallback thuật toán:', err.message);
     const fallback = buildAlgorithmicFallback(insightsData, className);
-    return fallback;
+    return { ...fallback, aiError: err?.message || 'Không gọi được AI.' };
   }
 }

@@ -11,6 +11,7 @@ import {
 } from '../lib/userProfileService.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { getUserRole } from '../lib/userRole.js';
+import UserAvatar from './UserAvatar.jsx';
 import '../styles/nav-dropdowns.css';
 
 /* ============================================================
@@ -287,7 +288,7 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
         {/* ── Header thông tin: Avatar tròn lớn bên trái + Tên/Trường/Điểm bên phải (Khớp 100% Ảnh 3) ── */}
         <div className="ns9-uprof-head-row">
           <div className="ns9-uprof-avatar-lg" aria-hidden="true">
-            {user?.photoURL ? <img src={user.photoURL} alt="" /> : <span>{initial}</span>}
+            <UserAvatar user={user} size={48} title={displayName} />
           </div>
 
           <div className="ns9-uprof-head-info">
@@ -465,7 +466,7 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
         title={displayName}
       >
         <span className="ns9-uprof-avatar">
-          {user?.photoURL ? <img src={user.photoURL} alt="" /> : <span>{initial}</span>}
+          <UserAvatar user={user} size={28} title={displayName} />
         </span>
         <svg
           className={'ns9-uprof-chev' + (open ? ' up' : '')}

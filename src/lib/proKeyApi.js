@@ -541,6 +541,24 @@ export async function activateProKey(userId, keyCode) {
     })
     .eq('id', key.id);
 
+  // Quyền lợi VIP / PRO: Tặng kèm Credit AI tương ứng thời hạn gói
+  const creditMetaMatch = (key.note || '').match(/\[CREDIT:(\d+)\]/i);
+  let bonusCredits = creditMetaMatch ? Number(creditMetaMatch[1]) : 0;
+  if (!bonusCredits) {
+    if (key.duration_days >= 300) bonusCredits = 3000;
+    else if (key.duration_days >= 80) bonusCredits = 1000;
+    else if (key.duration_days >= 25) bonusCredits = 300;
+    else bonusCredits = Math.max(100, (key.duration_days || 1) * 10);
+  }
+
+  // Tự động tặng kèm Credit AI vào ví khi kích hoạt gói VIP / PRO
+  try {
+    const { grantActivationCredits } = await import('./creditService.js');
+    await grantActivationCredits(userId, bonusCredits, key.code);
+  } catch (crErr) {
+    console.warn('[proKeyApi] grantActivationCredits for VIP err:', crErr);
+  }
+
   // Nếu là Key Giáo viên PRO (!isVip) -> cập nhật role = 'teacher' trên Supabase profiles
   if (!isVip) {
     try {
@@ -581,7 +599,7 @@ export async function activateProKey(userId, keyCode) {
       ...curSub,
       planName: isVip ? 'VIP' : 'PRO',
       planDesc: isVip
-        ? 'Đặc quyền Bộ đề VIP + Gia sư AI không giới hạn'
+        ? 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi'
         : 'Quản lý không giới hạn lớp học & Đề thi AI',
       durationLabel: `${leftDays} ngày`,
       examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',
@@ -615,6 +633,8 @@ export async function activateProKey(userId, keyCode) {
     ok: true,
     pro: { key: key.code, expiry: newExpiry.toISOString(), plan: isVip ? 'VIP' : 'PRO' },
     expiry: newExpiry.toISOString(),
+    bonusCredits,
+    message: `Kích hoạt thành công ${isVip ? 'Gói VIP Học Sinh' : 'Gói PRO Giáo Viên'}! Đã tặng kèm +${bonusCredits.toLocaleString('vi-VN')} Credit AI vào ví của bạn.`,
   };
 }
 
@@ -697,7 +717,7 @@ export async function getProStatus(userId, userEmail = null) {
               ...curSub,
               planName: targetPlan,
               planDesc: isStudentVip
-                ? 'Đặc quyền Bộ đề VIP + Gia sư AI không giới hạn'
+                ? 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi'
                 : 'Quản lý không giới hạn lớp học & Đề thi AI',
               durationLabel: `${left} ngày`,
               examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',

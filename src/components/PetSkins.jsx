@@ -1,14 +1,36 @@
 /* ============================================================
    PetSkins.jsx — ELEC AI là linh vật DUY NHẤT của web
-   4 mood từ file SVG gốc: default / think / happy / wink.
-   Dùng <SkinPet mood="happy" /> — tự chạy animation (chớp mắt → wink).
+   Bộ nhận diện mới: ảnh PNG tách nền trong suốt chất lượng cao
+   Đầy đủ 20+ biểu cảm tương tác sinh động
    ============================================================ */
 import { usePetAnim } from '../hooks/usePetAnim.js';
-const ELEC_SRC = {
-  default: '/img/elec/elec-default.svg',
-  think: '/img/elec/elec-think.svg',
-  happy: '/img/elec/elec-happy.svg',
-  wink: '/img/elec/elec-wink.svg',
+
+export const ELEC_SRC = {
+  default: '/img/elec/elec-default.png',
+  hello: '/img/elec/elec-hello.png',
+  think: '/img/elec/elec-think.png',
+  happy: '/img/elec/elec-happy.png',
+  wink: '/img/elec/elec-wink.png',
+  sad: '/img/elec/elec-crying.png',
+  crying: '/img/elec/elec-crying.png',
+  angry: '/img/elec/elec-angry.png',
+  shocked: '/img/elec/elec-shocked.png',
+  sleepy: '/img/elec/elec-sleepy.png',
+  love: '/img/elec/elec-love.png',
+  cool: '/img/elec/elec-cool.png',
+  'heart-eyes': '/img/elec/elec-heart-eyes.png',
+  heartEyes: '/img/elec/elec-heart-eyes.png',
+  fighting: '/img/elec/elec-fighting.png',
+  shy: '/img/elec/elec-shy.png',
+  exhausted: '/img/elec/elec-exhausted.png',
+  celebrate: '/img/elec/elec-celebrate.png',
+  grumpy: '/img/elec/elec-grumpy.png',
+  plead: '/img/elec/elec-plead.png',
+  'sleeping-pillow': '/img/elec/elec-sleeping-pillow.png',
+  sleepingPillow: '/img/elec/elec-sleeping-pillow.png',
+  'super-saiyan': '/img/elec/elec-super-saiyan.png',
+  superSaiyan: '/img/elec/elec-super-saiyan.png',
+  suspicious: '/img/elec/elec-suspicious.png',
 };
 
 /* ============================================================
@@ -16,15 +38,28 @@ const ELEC_SRC = {
    ============================================================ */
 export function ElecPet({ mood = 'normal', blink = false, scale = 1, justLeveledUp = false, imgKey }) {
   /* imgKey (từ hành động) đè lên biểu cảm theo mood */
-  let key = imgKey || 'default';
-  if (!imgKey) {
-    if (mood === 'happy') key = 'happy';
-    else if (mood === 'sad' || mood === 'sleepy' || mood === 'hibernating') key = 'think';
-    else if (mood === 'normal' && blink) key = 'wink';
+  let key = 'default';
+  if (imgKey && ELEC_SRC[imgKey]) {
+    key = imgKey;
+  } else if (ELEC_SRC[mood]) {
+    key = mood;
+  } else if (mood === 'normal') {
+    key = blink ? 'wink' : 'default';
+  } else if (mood === 'hibernating') {
+    key = 'sleeping-pillow';
+  } else if (mood === 'sleepy') {
+    key = 'sleepy';
+  } else if (mood === 'sad') {
+    key = 'crying';
+  } else if (mood === 'happy') {
+    key = 'happy';
   }
+
+  const src = ELEC_SRC[key] || ELEC_SRC.default;
+
   return (
     <img
-      src={ELEC_SRC[key]}
+      src={src}
       alt="ELEC AI"
       draggable={false}
       className={justLeveledUp ? 'elec-levelup' : undefined}
@@ -53,9 +88,9 @@ export function SkinPet({ mood = 'normal', justLeveledUp = false, imgKey }) {
 export const PET_SKINS = {
   elec: {
     key: 'elec', name: 'ELEC AI', icon: 'M13 2 4 14h6l-1 8 9-12h-6l1-8z', color: '#2563eb', bg: '#eff6ff',
-    desc: 'Linh vật chính của ELEC AI — năng lượng, thân thiện, mê hóa học', defaultName: 'Elec',
+    desc: 'Linh vật chính của ELEC AI — năng lượng, thân thiện, mê hóa học và khoa học tự nhiên', defaultName: 'Elec',
     stages: ['Tia lệnh', 'Tia sáng', 'Tia điện', 'Sét nhỏ', 'Sét mạnh', 'Siêu dẫn điện'],
-    lines: ['Cùng học hóa nào, mình nạp điện đầy rồi!', 'Bạn xếp hạng mấy rồi? Hỏi mình thử đi!', 'Chơi 1 ván game là mình sạc thêm pin đó!'],
+    lines: ['Cùng học khoa học nào, mình nạp điện đầy rồi!', 'Bạn xếp hạng mấy rồi? Hỏi mình thử đi!', 'Luyện một đề thi ảo là mình sạc thêm pin đó!'],
   },
 };
 

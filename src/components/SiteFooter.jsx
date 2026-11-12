@@ -12,23 +12,23 @@ export default function SiteFooter() {
       <div className="sf-top">
         <div className="sf-brand">
           <b>ELEC AI</b>
-          <small>Trợ lý AI Hóa học cho học sinh 10–12. Học chủ động, hiểu tận gốc.</small>
+          <small>Trợ lý AI Khoa học Tự nhiên cho học sinh 10–12. Học chủ động, hiểu tận gốc 3 môn Lý — Hóa — Sinh.</small>
         </div>
 
         <div className="sf-links">
           <div>
             <b>Sản phẩm</b>
-            <a href="#home">Trang chủ</a>
-            <a href="#tools">Công cụ</a>
-            <a href="#quiz">Ôn tập</a>
-            <a href="#games">Trò chơi</a>
+            <a href="/">Trang chủ</a>
+            <a href="/tai-lieu-hoa-hoc">Công cụ KHTN</a>
+            <a href="/phong-thi-ao">Phòng thi ảo</a>
+            <a href="/tro-choi-khoa-hoc">Trò chơi &amp; Lab 3D</a>
           </div>
           <div>
-            <b>Hỗ trợ</b>
-            <a href="#table">Bảng tuần hoàn</a>
-            <a href="#formulas">Công thức nhanh</a>
-            <a href="#balance">Cân bằng PTHH</a>
-            <a href="#stats">Thống kê</a>
+            <b>Công cụ nổi bật</b>
+            <a href="/bang-tuan-hoan">Bảng tuần hoàn</a>
+            <a href="/cong-thuc-hoa-hoc">Công thức 3 môn KHTN</a>
+            <a href="/can-bang-phuong-trinh-hoa-hoc">Cân bằng PTHH</a>
+            <a href="/lo-trinh-on-thi-thpt-quoc-gia">Lộ trình ôn thi</a>
           </div>
         </div>
       </div>

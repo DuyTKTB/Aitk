@@ -1299,6 +1299,54 @@
   box-shadow: 0 0 0 1px #111;
 }
 
+/* Credit pill in header */
+.ds-credit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.65rem;
+  background: color-mix(in srgb, var(--acc, #3b82f6) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc, #3b82f6) 35%, transparent);
+  border-radius: 999px;
+  font: 700 0.75rem var(--sans, sans-serif);
+  color: var(--ink, #1e293b);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.ds-credit-pill:hover {
+  background: color-mix(in srgb, var(--acc, #3b82f6) 22%, transparent);
+  border-color: var(--acc, #3b82f6);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.ds-credit-pill svg {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.ds-credit-pill .ds-credit-unit {
+  font-size: 0.68rem;
+  opacity: 0.75;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+[data-theme='dark'] .ds-credit-pill {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.38);
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .ds-credit-pill:hover {
+  background: rgba(59, 130, 246, 0.26);
+  border-color: #60a5fa;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+}
+
 /* Quota ring */
 .ds-quota-ring {
   position: relative;
@@ -6006,19 +6054,18 @@ body.on-ai-page::before {
 
 .ds-qc-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 15.5px;
+  font-weight: 700;
   color: #e3e3e3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 78%;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 [data-theme='light'] .ds-qc-title {
-  color: #1f1f1f;
-  font-weight: 600;
+  color: #0f172a;
+  font-weight: 700;
 }
 
 .ds-qc-actions {
@@ -6032,19 +6079,32 @@ body.on-ai-page::before {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: transparent;
-  border: none;
-  color: #9aa0a6;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .ds-qc-btn-icon:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+  transform: scale(1.06);
+}
+
+[data-theme='dark'] .ds-qc-btn-icon {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .ds-qc-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+  transform: scale(1.06);
 }
 
 [data-theme='light'] .ds-qc-btn-icon:hover {
@@ -6681,4 +6741,286 @@ body.on-ai-page::before {
   pointer-events: none;
   animation: gemini-toast-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+}
+
+/* ============================================================
+   AI RESPONSE BEAUTIFICATION — BỐ TRÍ & THẨM MỸ HÀN LÂM ELEC AI
+   ============================================================ */
+
+/* 1. THẺ TIÊU ĐỀ BƯỚC (STEP HEADER CARD) */
+.ds-step-header-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.4rem 0 0.8rem;
+  padding: 9px 14px;
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .ds-step-header-card {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(96, 165, 250, 0.22);
+  border-left-color: #60a5fa;
+}
+
+.ds-step-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.ds-step-header-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+/* 2. THẺ TIÊU ĐỀ PHẦN LA MÃ (SECTION HEADER CARD: I., II., III.) */
+.ds-section-header-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 1.5rem 0 0.85rem;
+  padding: 7px 13px;
+  background: rgba(124, 58, 237, 0.05);
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  border-left: 4px solid #7c3aed;
+  border-radius: 12px;
+}
+
+[data-theme='dark'] .ds-section-header-card {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(167, 139, 250, 0.22);
+  border-left-color: #a78bfa;
+}
+
+.ds-section-badge-roman {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+}
+
+.ds-section-header-title {
+  font-size: 1.04rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* 3. THẺ ĐÁP SỐ CHUẨN XÁC (FINAL ANSWER HERO CARD) */
+.ds-final-answer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 1.4rem 0 1rem;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.03) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .ds-final-answer-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(6, 78, 59, 0.2) 100%);
+  border-color: rgba(52, 211, 153, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.ds-final-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #059669;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .ds-final-answer-badge {
+  color: #34d399;
+}
+
+.ds-final-answer-text {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+/* 4. THẺ MẸO NHỚ BÉ ELEC (PRO TIP BOX) */
+.ds-pro-tip-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 1.2rem 0 0.8rem;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.03) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-left: 4px solid #f59e0b;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.06);
+}
+
+[data-theme='dark'] .ds-pro-tip-box {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(120, 53, 15, 0.2) 100%);
+  border-color: rgba(251, 191, 36, 0.25);
+  border-left-color: #fbbf24;
+}
+
+.ds-pro-tip-icon {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+[data-theme='dark'] .ds-pro-tip-icon {
+  color: #fbbf24;
+}
+
+.ds-pro-tip-content {
+  font-size: 0.95rem;
+  color: var(--ink);
+  line-height: 1.6;
+  flex: 1;
+}
+
+/* 5. THẺ KHỞI ĐỘNG STUDIO BẢNG VẼ 3D TRÊN CHAT */
+.ds-studio-hero-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  margin: 0.6rem 0 1rem;
+  background: linear-gradient(135deg, rgba(26, 115, 232, 0.09) 0%, rgba(147, 51, 234, 0.06) 100%);
+  border: 1.5px solid rgba(66, 133, 244, 0.35);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.08);
+  user-select: none;
+}
+
+[data-theme='dark'] .ds-studio-hero-launcher {
+  background: linear-gradient(135deg, rgba(26, 115, 232, 0.16) 0%, rgba(147, 51, 234, 0.12) 100%);
+  border-color: rgba(96, 165, 250, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.ds-studio-hero-launcher:hover {
+  transform: translateY(-2px);
+  border-color: #2563eb;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18);
+}
+
+.ds-studio-hero-launcher.is-active {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(147, 51, 234, 0.1) 100%);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25), 0 8px 24px rgba(37, 99, 235, 0.15);
+}
+
+.ds-studio-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ds-studio-hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+[data-theme='dark'] .ds-studio-hero-tag {
+  color: #93c5fd;
+}
+
+.ds-studio-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: dsPulseDot 1.8s infinite;
+}
+
+@keyframes dsPulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.ds-studio-hero-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.ds-studio-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  transition: all 0.15s ease;
+}
+
+.ds-studio-hero-btn:hover {
+  transform: scale(1.03);
+}
+
+.ds-math-block {
+  margin: 1rem 0;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  text-align: center;
+}
+
+[data-theme='dark'] .ds-math-block {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.06);
 }

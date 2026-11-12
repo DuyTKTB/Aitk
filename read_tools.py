@@ -1,0 +1,10 @@
+﻿import io,re
+s=io.open("src/components/ToolsPage.jsx",encoding="utf-8",errors="replace").read()
+i=s.find("GeoGebra")
+print("=== GeoGebra context ===")
+print(s[max(0,i-800):i+400])
+print()
+print("=== first tool objects ===")
+j=s.find("const TOOLS")
+if j<0: j=s.find("TOOLS")
+print(s[j:j+1500] if j>0 else "no TOOLS const")

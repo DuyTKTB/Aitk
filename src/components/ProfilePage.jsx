@@ -31,6 +31,8 @@ import {
   addUserReport,
 } from '../data/virtualExamsBank.js';
 import { readStore } from '../lib/roadmapStore.js';
+import UserAvatar from './UserAvatar.jsx';
+import StudentAvatar from './StudentAvatar.jsx';
 import './ProfileFB.css';
 import '../styles/profile-modern-mobile.css';
 import '../styles/profile-apple-luxe.css';
@@ -293,32 +295,21 @@ const PfSvg = {
   ),
 };
 
-/* Linh vật ELEC Tutor minh họa */
+/* Linh vật ELEC AI chính hiệu tách nền */
 function ElecSubMascot() {
   return (
-    <svg className="ns9-sub-mascot" viewBox="0 0 140 150" fill="none" aria-hidden="true">
-      <circle cx="72" cy="78" r="52" fill="rgba(47, 107, 255, 0.1)" />
-      <path d="M24 38l4 8 8 4-8 4-4 8-4-8-8-4 8-4 4-8z" fill="#fbbf24" />
-      <path d="M118 96l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z" fill="#fbbf24" />
-      <ellipse cx="72" cy="112" rx="30" ry="24" fill="#2f6bff" />
-      <ellipse cx="72" cy="114" rx="18" ry="15" fill="#ffffff" />
-      <circle cx="72" cy="114" r="9" fill="#2f6bff" />
-      <text x="68" y="118" fill="#ffffff" fontSize="11" fontWeight="900">E</text>
-      <circle cx="72" cy="68" r="32" fill="#3b82f6" />
-      <ellipse cx="72" cy="72" rx="25" ry="21" fill="#ffffff" />
-      <path d="M40 58c4-18 20-26 32-26s28 8 32 26H40z" fill="#1d4ed8" />
-      <rect x="52" y="38" width="40" height="12" rx="6" fill="#ffffff" />
-      <text x="58" y="47" fill="#1d4ed8" fontSize="8.5" fontWeight="900">ELEC</text>
-      <circle cx="61" cy="71" r="5.5" fill="#0f172a" />
-      <circle cx="83" cy="71" r="5.5" fill="#0f172a" />
-      <circle cx="62.5" cy="69" r="2" fill="#ffffff" />
-      <circle cx="84.5" cy="69" r="2" fill="#ffffff" />
-      <ellipse cx="53" cy="77" rx="4" ry="2.2" fill="#fda4af" />
-      <ellipse cx="91" cy="77" rx="4" ry="2.2" fill="#fda4af" />
-      <path d="M66 78q6 6 12 0" stroke="#ef4444" strokeWidth="2.4" strokeLinecap="round" fill="none" />
-      <circle cx="36" cy="96" r="9" fill="#60a5fa" />
-      <path d="M36 85v-5a3 3 0 0 1 6 0v7" fill="#60a5fa" />
-    </svg>
+    <img
+      src="/img/elec/elec-default.png"
+      alt="ELEC AI"
+      className="ns9-sub-mascot-img"
+      draggable={false}
+      style={{
+        width: '110px',
+        height: '110px',
+        objectFit: 'contain',
+        filter: 'drop-shadow(0 12px 24px rgba(37,99,235,0.22))',
+      }}
+    />
   );
 }
 
@@ -546,8 +537,8 @@ export default function ProfilePage({ credits: propCredits }) {
   const handleShareProfile = async () => {
     const url = window.location.origin + window.location.pathname + '#profile';
     const shareData = {
-      title: `Hồ sơ học tập Hóa học — ${display || 'Học sinh ELEC AI'}`,
-      text: `Khám phá chuỗi ngày học Hóa và bảng thành tích của ${display || 'mình'} trên ELEC AI!`,
+      title: `Hồ sơ học tập Khoa học Tự nhiên — ${display || 'Học sinh ELEC AI'}`,
+      text: `Khám phá chuỗi ngày học KHTN (Lý - Hóa - Sinh) và bảng thành tích của ${display || 'mình'} trên ELEC AI!`,
       url,
     };
     if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare?.(shareData)) {
@@ -674,10 +665,17 @@ export default function ProfilePage({ credits: propCredits }) {
       } catch (err) {
         console.warn('setUserTier error:', err);
       }
+      // Tặng kèm Credit AI tương ứng thời hạn gói VIP
+      const bonusCredits = months >= 12 ? 3000 : months >= 3 ? 1000 : 300;
+      try {
+        await grantActivationCredits(uid, bonusCredits, 'VIP_UPGRADE');
+      } catch (crErr) {
+        console.warn('grantActivationCredits on VIP upgrade error:', crErr);
+      }
       try {
         localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify({
           planName: 'VIP',
-          planDesc: 'Đặc quyền Bộ đề VIP + Gia sư AI không giới hạn',
+          planDesc: 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi',
           durationLabel: `${months} tháng`,
           examAccessLabel: 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi',
           hearts: 99,
@@ -812,7 +810,7 @@ export default function ProfilePage({ credits: propCredits }) {
   const planDesc = isTeacher
     ? 'Toàn quyền quản lý lớp học, biên soạn đề AI & chấm thi tự động'
     : effectivePlanName === 'VIP'
-    ? 'Đặc quyền Bộ đề VIP + Gia sư AI không giới hạn'
+    ? 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi'
     : effectivePlanName === 'PRO'
     ? 'Mở khóa toàn bộ Bộ đề PRO & Giải thích AI chi tiết'
     : (subQuota.planDesc || 'Nội dung miễn phí');
@@ -834,12 +832,12 @@ export default function ProfilePage({ credits: propCredits }) {
   const maxHeartsCount = isTeacher || effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.maxHearts || 5);
 
   const MAIN_TABS = [
-    { id: 'overview', label: 'Tổng quan', icon: PfSvg.crown },
-    { id: 'vip', label: 'Gói VIP & Lộ trình', icon: PfSvg.crown },
-    { id: 'achievements', label: 'Thành tích', icon: PfSvg.star },
-    { id: 'classroom', label: 'Lớp & Bạn', icon: PfSvg.users },
-    { id: 'history', label: 'Hoạt động', icon: PfSvg.history },
-    { id: 'settings', label: 'Chỉnh sửa hồ sơ', icon: PfSvg.settings },
+    { id: 'overview', label: 'Tổng quan', icon: PfSvg.crown, mascot: '/img/elec/elec-hello.png' },
+    { id: 'vip', label: 'Gói VIP & Lộ trình', icon: PfSvg.crown, mascot: '/img/elec/elec-cool.png' },
+    { id: 'achievements', label: 'Thành tích', icon: PfSvg.star, mascot: '/img/elec/elec-celebrate.png' },
+    { id: 'classroom', label: 'Lớp & Bạn', icon: PfSvg.users, mascot: '/img/elec/elec-happy.png' },
+    { id: 'history', label: 'Hoạt động', icon: PfSvg.history, mascot: '/img/elec/elec-think.png' },
+    { id: 'settings', label: 'Chỉnh sửa hồ sơ', icon: PfSvg.settings, mascot: '/img/elec/elec-fighting.png' },
   ];
 
   return (
@@ -863,8 +861,8 @@ export default function ProfilePage({ credits: propCredits }) {
       <div className="pf-m-header-card">
         <div className="pf-m-header-top">
           <div className="pf-m-avatar-wrap">
-            <div className="pf-m-avatar" style={{ '--av': color }}>
-              {user?.photoURL ? <img src={user.photoURL} alt={display} /> : <span>{initial}</span>}
+            <div className="pf-m-avatar" style={{ '--av': color, background: 'transparent', border: 'none' }}>
+              <UserAvatar user={user} size={84} title={display} />
               {uploading && (
                 <div className="pf-avatar-loading">
                   <IcoSpinner size={24} className="pf-spin" />
@@ -1011,7 +1009,11 @@ export default function ProfilePage({ credits: propCredits }) {
               className={`pf-m-tab-btn ${tab === t.id ? 'on' : ''}`}
               onClick={() => selectTab(t.id)}
             >
-              <span aria-hidden="true">{t.icon}</span>
+              {t.mascot ? (
+                <img src={t.mascot} alt="" className="pf-m-tab-mascot" />
+              ) : (
+                <span aria-hidden="true">{t.icon}</span>
+              )}
               <span>{t.label}</span>
             </button>
           ))}
@@ -1293,9 +1295,7 @@ export default function ProfilePage({ credits: propCredits }) {
                 {friends.map((f) => (
                   <div key={f.uid || f.id} className="pf-m-friend-item">
                     <div className="pf-m-friend-left">
-                      <div className="pf-m-friend-avatar">
-                        {(f.displayName || '?').charAt(0).toUpperCase()}
-                      </div>
+                      <StudentAvatar uid={f.uid || f.id} name={f.displayName} photoURL={f.photoURL} size={36} />
                       <div className="pf-m-friend-name">
                         <b>{f.displayName || 'Bạn học'}</b>
                         <small style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>

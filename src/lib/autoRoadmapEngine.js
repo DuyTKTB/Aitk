@@ -17,6 +17,7 @@ import {
   getUserAspirationsState,
   computeStudentProgress,
 } from './aspirationService.js';
+import { getSavedAiStrategy } from './aspirationAiEngine.js';
 import { builtinRawById } from '../data/roadmapExercises.js';
 import { chapterName } from '../data/roadmap.js';
 
@@ -50,6 +51,30 @@ export const CHAPTER_EXAM_WEIGHTS = {
   'c10-thermo': { questionsInExam: '1–2 câu', weightLabel: 'Biến thiên Enthalpy (Mới)', priorityWeight: 8 },
   'c10-rate': { questionsInExam: '1 câu', weightLabel: 'Tốc độ phản ứng', priorityWeight: 7 },
   'c10-halogen': { questionsInExam: '1–2 câu', weightLabel: 'Nhóm Halogen', priorityWeight: 7 },
+  // Vật lí — 14 chuyên đề KHTN
+  'dao-dong-co': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm đề thi Vật lí', priorityWeight: 10 },
+  'song-co': { questionsInExam: '3–4 câu', weightLabel: 'Trọng tâm sóng & giao thoa', priorityWeight: 9 },
+  'dong-dien-xc': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm RLC & cộng hưởng', priorityWeight: 10 },
+  'dao-dong-dien-tu': { questionsInExam: '2 câu', weightLabel: 'Mạch dao động LC', priorityWeight: 8 },
+  'quang-hoc': { questionsInExam: '3 câu', weightLabel: 'Giao thoa & sóng ánh sáng', priorityWeight: 9 },
+  'luong-tu-anh-sang': { questionsInExam: '3 câu', weightLabel: 'Hiện tượng quang điện & photon', priorityWeight: 9 },
+  'hat-nhan-nguyen-tu': { questionsInExam: '3–4 câu', weightLabel: 'Độ hụt khối & phóng xạ', priorityWeight: 9 },
+  'dong-hoc': { questionsInExam: '1–2 câu', weightLabel: 'Chuyển động biến đổi đều', priorityWeight: 7 },
+  'dong-luc-hoc': { questionsInExam: '2 câu', weightLabel: 'Định luật Newton & lực', priorityWeight: 8 },
+  'cac-dinh-luat-bao-toan': { questionsInExam: '2 câu', weightLabel: 'Bảo toàn cơ năng & động lượng', priorityWeight: 8 },
+  'nhiet-hoc': { questionsInExam: '2 câu', weightLabel: 'Nhiệt học & khí lí tưởng', priorityWeight: 8 },
+  'dien-tich-dien-truong': { questionsInExam: '1–2 câu', weightLabel: 'Điện trường & hiệu điện thế', priorityWeight: 7 },
+  // Sinh học — 11 chuyên đề KHTN
+  'di-truyen-hoc': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm quy luật Menđen', priorityWeight: 10 },
+  'sinh-hoc-phan-tu': { questionsInExam: '4 câu', weightLabel: 'ADN, nhân đôi & phiên mã', priorityWeight: 10 },
+  'bien-di-di-truyen': { questionsInExam: '3–4 câu', weightLabel: 'Đột biến gen & NST', priorityWeight: 9 },
+  'ung-dung-di-truyen': { questionsInExam: '2 câu', weightLabel: 'Chọn giống & công nghệ tế bào', priorityWeight: 8 },
+  'tien-hoa': { questionsInExam: '3 câu', weightLabel: 'Thuyết tiến hóa & CLTN', priorityWeight: 8 },
+  'sinh-thai-hoc': { questionsInExam: '4 câu', weightLabel: 'Hệ sinh thái & chuỗi thức ăn', priorityWeight: 9 },
+  'te-bao-hoc': { questionsInExam: '2 câu', weightLabel: 'Cấu trúc & chức năng tế bào', priorityWeight: 7 },
+  'thuc-vat': { questionsInExam: '2 câu', weightLabel: 'Quang hợp & hô hấp thực vật', priorityWeight: 8 },
+  'dong-vat': { questionsInExam: '2 câu', weightLabel: 'Tuần hoàn & cân bằng nội môi', priorityWeight: 8 },
+  'sinh-hoc-co-the': { questionsInExam: '1–2 câu', weightLabel: 'Cảm ứng & sinh sản', priorityWeight: 7 },
 };
 
 export function getDefaultExamDateISO() {
@@ -163,9 +188,16 @@ export function buildAutoRoadmapData({
     paceAdvice = `Tuyệt vời! Điểm dự đoán đã chạm mốc mục tiêu (${targetChem10}đ). Hãy luyện thêm câu Vận dụng và giữ chuỗi ôn tập.`;
   }
 
-  // Phân loại và chấm điểm ưu tiên cho từng chương Hóa học
+  // Lấy chiến lược AI đã lưu (nếu học sinh đã kích hoạt theo nguyện vọng)
+  const savedStrategy = getSavedAiStrategy(uid);
+  const aiBoostTopicIds = new Set(
+    (savedStrategy?.diagnosedTopics || []).slice(0, 3).map((t) => t.id),
+  );
+
+  // Phân loại và chấm điểm ưu tiên cho từng chương Hóa học / KHTN
   const enrichedChapters = (chapters || []).map((c, idx) => {
     const chId = c.chapter.id;
+    const isAiBoosted = aiBoostTopicIds.has(chId);
     const weightInfo = CHAPTER_EXAM_WEIGHTS[chId] || {
       questionsInExam: '1–2 câu',
       weightLabel: 'Chuyên đề nền tảng',
@@ -185,8 +217,8 @@ export function buildAutoRoadmapData({
     let groupKey = 'priority'; // 'priority' | 'learning' | 'mastered'
 
     if (answers === 0) {
-      studentStatus = 'Chưa bắt đầu';
-      studentTone = 'muted';
+      studentStatus = isAiBoosted ? 'Chiến lược AI ưu tiên' : 'Chưa bắt đầu';
+      studentTone = isAiBoosted ? 'info' : 'muted';
       groupKey = 'priority';
     } else if (masteryPct >= 78 && answers >= 8) {
       studentStatus = 'Đã nắm vững';
@@ -197,17 +229,18 @@ export function buildAutoRoadmapData({
       studentTone = 'err';
       groupKey = 'priority';
     } else {
-      studentStatus = 'Đang luyện tập';
+      studentStatus = isAiBoosted ? 'Trọng tâm AI đề xuất' : 'Đang luyện tập';
       studentTone = 'info';
       groupKey = 'learning';
     }
 
-    // Điểm ưu tiên để xếp lịch tự động (chương trọng số cao + đang yếu/nhiều câu sai lên đầu)
+    // Điểm ưu tiên để xếp lịch tự động (chương trọng số cao + AI đề xuất + đang yếu/nhiều câu sai lên đầu)
     const urgencyScore =
       weightInfo.priorityWeight * 10
       + (100 - masteryPct) * 0.65
       + wrongDue * 12
-      + (answers === 0 ? 18 : 0);
+      + (answers === 0 ? 18 : 0)
+      + (isAiBoosted ? 35 : 0);
 
     return {
       ...c,
@@ -237,6 +270,7 @@ export function buildAutoRoadmapData({
   // Khi ở trạng thái "Cần tăng tốc", tự động tăng số câu luyện mỗi phiên từ 10 lên 15 câu
   const isAccelerating = paceStatus === 'Cần tăng tốc';
   const recommendedQuestionsPerSession = isAccelerating ? 15 : 10;
+  const isPrimaryAiBoosted = primaryChapter ? aiBoostTopicIds.has(primaryChapter.chapter.id) : false;
 
   // 1 Hành động chính nổi bật duy nhất trên màn hình
   const primaryAction = primaryChapter
@@ -246,13 +280,17 @@ export function buildAutoRoadmapData({
         mode: primaryChapter.wrongDue >= 3 ? 'review' : 'fresh',
         buttonLabel: primaryChapter.wrongDue >= 3
           ? `Ôn ngay ${primaryChapter.wrongDue} câu hay sai`
-          : 'Luyện tập ngay',
-        headline: primaryChapter.answers === 0
-          ? `Bắt đầu chuyên đề trọng tâm: ${primaryChapter.chapter.name}`
-          : primaryChapter.wrongDue >= 3
-            ? `Xử lý ${primaryChapter.wrongDue} câu sai ở chuyên đề ${primaryChapter.chapter.name}`
-            : `Tăng tốc chuyên đề ${primaryChapter.chapter.name} (Hiện đạt ${primaryChapter.masteryPct}%)`,
-        subline: `${primaryChapter.weightLabel} (${primaryChapter.questionsInExam}) · Làm ${recommendedQuestionsPerSession} câu để nâng khoảng +0.25đ dự đoán`,
+          : (isPrimaryAiBoosted ? 'Luyện chuyên đề mục tiêu' : 'Luyện tập ngay'),
+        headline: isPrimaryAiBoosted
+          ? `Chuyên đề chiến lược AI đề xuất: ${primaryChapter.chapter.name}`
+          : (primaryChapter.answers === 0
+            ? `Bắt đầu chuyên đề trọng tâm: ${primaryChapter.chapter.name}`
+            : primaryChapter.wrongDue >= 3
+              ? `Xử lý ${primaryChapter.wrongDue} câu sai ở chuyên đề ${primaryChapter.chapter.name}`
+              : `Tăng tốc chuyên đề ${primaryChapter.chapter.name} (Hiện đạt ${primaryChapter.masteryPct}%)`),
+        subline: isPrimaryAiBoosted
+          ? `Mục tiêu bứt phá theo nguyện vọng ${activeAsp?.school?.code || 'ĐH'} · Làm ${recommendedQuestionsPerSession} câu để tiến gần điểm chuẩn`
+          : `${primaryChapter.weightLabel} (${primaryChapter.questionsInExam}) · Làm ${recommendedQuestionsPerSession} câu để nâng khoảng +0.25đ dự đoán`,
       }
     : null;
 

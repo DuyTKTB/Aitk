@@ -5,7 +5,7 @@ const BASE_TITLE = 'ELEC AI';
 
 const DEFAULT = {
   siteName: BASE_TITLE,
-  siteDesc: 'Học Hóa học thông minh hơn',
+  siteDesc: 'Học Khoa học Tự nhiên thông minh hơn',
   enableAI: true,
   enableChat: true,
   enablePet: true,
@@ -45,13 +45,16 @@ export function SettingsProvider({ children }) {
     } else if (originalTitle.current.includes(BASE_TITLE)) {
       document.title = originalTitle.current.replace(BASE_TITLE, newName);
     }
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta');
-      metaDesc.name = 'description';
-      document.head.appendChild(metaDesc);
+    // Chỉ ghi đè meta description nếu admin thực sự tùy chỉnh khác mặc định (tránh ghi đè mô tả SEO chi tiết của từng trang)
+    if (settings.siteDesc && settings.siteDesc !== DEFAULT.siteDesc) {
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.name = 'description';
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.content = settings.siteDesc;
     }
-    metaDesc.content = settings.siteDesc || '';
     document.body.classList.toggle('hide-ai', !settings.enableAI);
     document.body.classList.toggle('hide-chat', !settings.enableChat);
     document.body.classList.toggle('hide-pet', !settings.enablePet);

@@ -3,7 +3,7 @@ import { UPGRADE_URL } from '../services/api.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
 
-export default function VipGate({ text = 'Nâng cấp VIP để dùng trợ lý AI Hóa học.' }) {
+export default function VipGate({ text = 'Nâng cấp VIP để dùng trợ lý AI Khoa học Tự nhiên (Lý - Hóa - Sinh).' }) {
   const { user } = useAuth();
   const [state, setState] = useState({ loading: true, show: false });
 

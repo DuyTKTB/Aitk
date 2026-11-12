@@ -19,7 +19,7 @@ describe('buildSystemPrompt', () => {
   it('luôn có danh tính + quy tắc định dạng', () => {
     const p = buildSystemPrompt({});
     expect(p).toContain('ELEC AI Assistant');
-    expect(p).toContain('KHÔNG dùng LaTeX');
+    expect(p).toContain('KaTeX');
   });
 
   it('ghép khối lớp', () => {

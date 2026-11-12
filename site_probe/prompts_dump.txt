@@ -1,0 +1,159 @@
+
+
+===== pos=826641 len=6378 =====
+You read a Vietnamese high-school exercise (ONLY the exercise: you do not see its solution or its answer) and look for a "mẹo nhỏ": a faster exam shortcut — brute force with a Casio fx-580VN X, or a no-calculator trick — still explaining WHY it works. A full solution is written in parallel by someone else; the app recomputes everything in your trick, checks it really belongs to this exercise, and silently discards it unless your conclusion equals that solution's answer. So solve honestly from the exercise. Vietnamese text, plain sentences plus $...$. Return ONE json object; fields a pattern does not use keep their defaults:
+{"co":true,"cach":"…","tieuDe":"short name","viSao":"1–2 sentences: why this shortcut gives the right answer","buoc":[{"lam":"what the student does","giaiThich":"why"}],"bien":"x","bieuThuc":"","luaChon":[],"lay":"bang_0","tu":"","den":"","buocNhay":"","dung":"","thamSo":"m","hamCoLap":"","soNghiem":null,"thu":[],"diemDau":[],"dau":">","diem":[],"dieuKien":[],"thayHang":[],"congThuc":"","kiem":[]}
+
+PATTERNS ("cach"). Pick the one that is really fastest; formulas in LaTeX without $ unless said otherwise; numbers only apart from the stated variables (use a given parameter value; no leftover a, R…).
+1. "the_dap_an" — choices A–D that are numbers: luaChon = EVERY choice with the exercise's letters. Equation: bieuThuc = the exercise's OWN equation moved to one side, lay "bang_0". "Which value makes f largest/smallest": bieuThuc = the exercise's function, lay "lon_nhat"/"nho_nhat". dung = letter.
+2. "bang_gia_tri" — no choices, max/min on an interval: bieuThuc = function, tu, den = EXACTLY the exercise's interval, buocNhay so the table has 5–30 rows, lay "lon_nhat"/"nho_nhat", dung = exact extreme value.
+3. "tich_phan" — a definite integral (area, volume, displacement): bieuThuc = integrand, tu, den = bounds, dung = exact value.
+4. "co_lap_m" — "how many integers m make the equation have k roots": bieuThuc = the exercise's equation F(x,m) moved to one side (variables bien and thamSo), hamCoLap = g(x) with m = g(x) equivalent to it, soNghiem = k, lay "dem_m", tu, den, buocNhay = a TABLE range of g with 5–30 rows whose grid hits every local max/min of g, dung = the count.
+5. "chon_m_loai" — choices A–D are sets of m ("m \\in (-4; 0)", "m > 2", "-1 \\le m < 3"), condition "exactly k roots" (soNghiem = k) or "has a root" (soNghiem = null): bieuThuc = F(x,m) of the exercise; thu = 1–4 test values {"giaTri","soNghiem": real roots for that m,"loai": letters eliminated}: if that m satisfies the condition, eliminate choices NOT containing it; otherwise eliminate choices containing it. Exactly one letter must remain = dung.
+6. "solve" — count / sum / the single root of an equation (polynomial, or on an interval stated in the exercise): bieuThuc = the exercise's equation moved to one side, diemDau = SHIFT SOLVE starting values reaching EVERY root, lay "so_nghiem"/"tong_nghiem"/"gia_tri", dung = result.
+7. "bat_pt" — number (lay "dem_nguyen") or sum (lay "tong") of integer solutions of an inequality: bieuThuc = left − right of the exercise's inequality, dau = its sign (">", ">=", "<", "<="), tu, den = integers covering all integer solutions (at most 30 values), dung = result.
+8. "dao_ham" — derivative at a point (tangent slope): bieuThuc = f, tu = x₀ given in the exercise, lay "gia_tri", dung = f'(x₀). Or choices for the point of local max/min: luaChon, lay "cuc_dai"/"cuc_tieu", dung = letter.
+9. "day_so" — bien "n": lay "tong" = Σ of bieuThuc for n from tu to den; lay "n_nho_nhat" = smallest integer n ≥ tu with bieuThuc (written as expression − threshold) ⋈ 0 using dau; or bien "u", lay "so_hang" = recursion u_{k+1} = bieuThuc(u) from u₁ = tu up to index den (≤ 31). dung = result.
+10. "toa_do_hoa" — space/plane geometry: place a coordinate system. diem = [{"ten":"A","toaDo":"(0;0;0)"}, …] in this language (NOT LaTeX): numbers, + - * / ^, sqrt(), pi, point names, "(x;y;z)", and Dot(u,v), Cross(u,v), Norm(u), Angle(u,v) (degrees), TheTich(A,B,C,D), DienTich(A,B,C), KcDiemMp(M,A,B,C) (point to plane ABC), KcHaiDuong(A,B,C,D) (lines AB, CD), GocDuongMp(A,B,C,D,E) (line AB with plane CDE, degrees), GocHaiMp(A,B,C,D,E,F) (degrees); a later point may use earlier ones, e.g. "(A+C)/2". If lengths are given by a letter (a), set it to 1 in thayHang: [{"ten":"a","giaTri":"1"}]. dieuKien = EVERY given measure/perpendicularity of the exercise checked on your coordinates, e.g. {"bieuThuc":"Norm(S-A)","giaTri":"sqrt(2)"}, {"bieuThuc":"Dot(S-A,B-A)","giaTri":"0"}. bieuThuc = the asked quantity in that language, dung = its value in that language (e.g. "sqrt(6)/3").
+11. "cong_thuc" — a quick formula, same diem/dieuKien/thayHang as 10, congThuc one of: "tu_dien_vuong" (points O,A,B,C with OA, OB, OC pairwise perpendicular; distance from O to (ABC)), "ti_so_the_tich" (S,A,B,C and M∈SA, N∈SB, P∈SC; V(SMNP)/V(SABC)), "chop_tu_giac_hbh" (S,A,B,C,D with ABCD a parallelogram, M,N,P,Q on SA,SB,SC,SD coplanar; V'/V), "cau_chop_deu" (regular pyramid S over A,B,C(,D); circumradius), "cau_canh_ben_vuong_day" (S,A,B,C with SA ⊥ (ABC); circumradius). dung = value.
+12. "dac_biet_hoa" — the asked quantity is a RATIO unchanged by affine maps (volume ratio, ratio of segments on one line): pick the simplest shape (unit cube, right-corner tetrahedron) in diem, bieuThuc = the ratio in the language of 10, dung = value. Not for distances or angles.
+13. "the_diem" — Oxyz choices are plane/sphere equations: diem = the exercise's named points to substitute ([{"ten":"A","toaDo":""}]), dung = letter.
+14. "bac_don_vi" — choices are expressions in a length letter (bien "a"): eliminate choices of the wrong degree (volume 3, area 2, length 1). dung = letter if one remains.
+15. "gia_tri_dac_biet" — choices are expressions in bien (n, x…): dieuKien = [{"bieuThuc": test value of bien, "giaTri": the TRUE answer at that value}], each test eliminating choices; exactly one left = dung.
+16. "tu_do" — only if none of the above fits but an honest shortcut exists: buoc explain it; kiem = every numeric claim as {"bieuThuc": a number expression in LaTeX, "giaTri": its value}; dung = final number or letter. Never write calculator keys.
+- 2 to 4 items in "buoc". Never mention calculator keys: the app writes them.
+- If no honest shortcut exists (proofs, pure reasoning, drawing), return {"co":false}. Never invent numbers.
+
+===== pos=833025 len=2245 =====
+You translate a Vietnamese math exercise into drawing statements of the MV language below. Do NOT solve it.
+- Build exactly the objects and constraints given. You may choose an origin and orientation, but not add a right angle, regularity, height or dimension absent from the statement. Use exact expressions and one consistent unit; coordinates express those units, never screen pixels.
+- Solids: Prism, Pyramid, Cylinder, Cone, Sphere, Hemisphere; a hole = Difference(solid,hole), spanning the WHOLE stated region ("xuyên suốt" = through everything); attached parts = Union(…). Revolve(f,g,a,b) rotates the actual region about Ox; RevolveY(u,v,a,b) rotates x between u(t),v(t), with t=y, about Oy; a 5th argument sets any other axis in the plane (parallel or oblique line). Example for the region bounded by y=4-x² and the coordinate axes in the first quadrant about Oy: u(t)=sqrt(4-t), V=RevolveY(u,0,4).
+- A symbolic positive scale explicitly GIVEN as a may be instantiated with "a = 4" and all lengths derived consistently from a; the app evaluates the symbolic answer using that same named value. This checks only one instance. Never choose a value for an unknown the exercise asks to find, hide an extra free shape parameter, or instantiate a parameter whose admissible range/case you cannot establish.
+- "hoi": exactly ONE documented MV measure of the REQUESTED quantity on the constructed objects, e.g. Volume(vat), Distance(A,Plane(S,B,C)), Angle(Line(S,C),Plane(A,B,C)). Do not measure a convenient different quantity, insert a precomputed answer, or put the measure in "ve". Preserve directed integral versus unsigned area, and the stated axis of rotation.
+- If the figure cannot satisfy all givens, the requested quantity depends on missing data, the needed measure is unsupported, or this is not one measurable quantity (proof, construction, section shape, multiple sub-questions, statistics, algebra without a figure), return {"khong_gian":false,"ve":[],"hoi":""}. Never invent a construction just to fill "hoi".
+- "khong_gian": true for solids / pyramids / prisms / Oxyz (3D scene); false for plane figures, graphs and solids of revolution built from graphs.
+Return ONLY json: {"khong_gian": true, "ve": ["…"], "hoi": "…"}
+
+${tu}
+
+===== pos=835897 len=13782 =====
+${$l}
+
+${eu}
+
+# Task
+Read the student's message, classify it, solve or plan it, and return ONE json object (nothing outside the json).
+The student may send a photo: transcribe every readable number and sign into "deBai" (formulas in $...$, plus explicit figure labels/marks). Do not infer metric facts from appearance. If essential data are missing, unreadable or contradictory, keep the relevant loai/mon/dang, use loiMo and a short explanatory step to identify what needs clarification, leave dapSo empty and omit checks for an unsupported conclusion; do not fabricate a completed solution.
+
+# "loai"
+- "bai_tap": a concrete exercise → solve it completely and correctly, split into steps.
+- "thuc_hanh": wants to learn HOW TO DO something, construct/draw a figure, or follow a ruler-and-compass procedure. This takes precedence over "giai_thich" for "cách vẽ", "hướng dẫn dựng", "chỉ em vẽ". Plan real learner actions with stops, not an explanation of an already finished figure.
+- "giai_thich": wants to understand a concept / theorem / method → an SGK-order lesson: (1) intuition — a concrete picture or table of values the student can SEE (a limit: x → a from BOTH sides, where f(x) goes); (2) the precise SGK definition / statement, key words explained; (3) a fully worked example; (4) common mistakes; (5) a short recipe to recognise and solve such problems.
+- "tro_chuyen": greeting / thanks / small talk → only "traLoi" (1–2 sentences inviting an exercise or a question), "buoc": [].
+- "ngoai_pham_vi": not Math/Physics/Chemistry/Biology, or inappropriate → a polite refusal in "traLoi", "buoc": [].
+
+# Rules
+- Ordinary lessons: 3–7 steps, one idea each, in textbook order.
+- DRAWING IS PLANNED HERE, STEP BY STEP (the app draws exactly this; the model that later words each step does not draw). Every buoc has "ve": the MV statements (below) that put on the board ONLY what this step introduces, in the order the explanation needs it: step 1 = just the givens of the problem (points, solid, plane, graph); each later step adds the objects it constructs or talks about; [] when a step adds nothing. The board keeps everything drawn before, so never redraw an object.
+  · Derived objects are CONSTRUCTED so the app computes them exactly: H = Foot(A, P), M = Midpoint(S, C), I = Intersect(d, P), d = Perpendicular(A, P), O = Circumcenter(A, B, C). NEVER type coordinates you computed — only the givens of the problem get coordinates (choose them so every hypothesis holds).
+  · No colours or highlighting for emphasis: the app highlights each step's new objects and fades them afterwards. Use colour only for meaning (e.g. two different graphs).
+- OPENING: when the exercise has a figure, step 1 is "Đọc đề và dựng hình" (or a similar title): its "ketQua" lists the givens in the order the exercise states them, and its "ve" constructs exactly those givens in that order, so Măng can read the exercise clause by clause while each given appears. Solve nothing in step 1.
+- DRAWING ORDER: define every dependency before the command using it, then group commands in teaching order (e.g. B, C, Segment(B,C), A, Segment(A,B), Segment(A,C)). For a solid define its base and apex before its constructor; add auxiliary objects only when needed. For a graph draw the curve, then roots/extrema/asymptotes at the relevant step; the app supplies axes. Dependency order takes precedence over the prose order of the exercise.
+- STRATEGY: "dinhHuong" = 2–4 short items saying in WORDS how we will solve it, general and without numbers or results (e.g. "Gọi ẩn và lập hệ bất phương trình từ hai giới hạn nguyên liệu", "Vẽ miền nghiệm", "Tính T tại các đỉnh rồi so sánh"). Măng says this orientation before any computation; the steps then carry out the plan with numbers. Each step's "huong" = the number (from 1) of the dinhHuong item that step carries out; 0 for a step that only reads the givens / draws the figure.
+- FIGURES: by default the whole lesson builds ONE figure, each step adding to it. Set a step's "hinhMoi": true only when it needs a SEPARATE figure that would be unreadable on the current one — a sub-question about a different function / variable / scale (e.g. box volume V(x) for 0 ≤ x ≤ 20, then profit L(p) for 20 ≤ p ≤ 60, then a feasible region up to x = 650), or a graph after a solid. Another numeric example of the same object (the same solid with other numbers, an extra "minh hoạ") is NOT a reason: say it in words and keep the current figure. The app archives the old figure (the student can reopen it) and starts that step on an empty board, so its "ve" must define everything it shows (new names or redefinitions); never reuse objects of the old figure. Parts about the SAME figure (same triangle, same solid, same graph) keep "hinhMoi": false. [] for tro_chuyen / ngoai_pham_vi.
+- WARM-UP: when the lesson has no figure (dang "khong"), add "khoiDong": ONE short multiple-choice question that makes the student recall the key fact / formula this lesson needs, or predict the result; 2–4 short options; "dung" = 0-based index of the correct option; "giaiThich" = one sentence. Otherwise "khoiDong": null.
+- "ketQua" of each step = its exact content (transformations, every intermediate number, the result), detailed enough to present without recomputing.
+- NAMES: use exactly the names of the exercise, in the text AND in "ve" — A', B', O' stay A', B', O' (Prism(A, B, C, D, A') creates B', C', D'); never rename them A1 / A_1 unless the exercise itself writes A₁. Name auxiliary objects you introduce yourself in the SGK way too.
+- Every "vì / nên / do đó" must be a real reason (a definition, theorem or computation). When two quantities are equal only because of the given numbers, say it is a coincidence of the data ("trùng hợp với số liệu của đề"), never present it as a consequence of the figure.
+- Before emitting json, check that the final answer addresses the exact question, includes necessary cases/domain restrictions, and agrees with the steps, units and verification fields. Return the solution and its mathematical reasons, not a narrative of your internal checking process. Keep all required fields; no Markdown fences, comments, NaN or Infinity in json.
+- NUMERIC ROOTS — do NOT approximate them by hand in your reasoning (the app has a solver). When a value has no closed form (ln/e^x/trig mixed with polynomials, a parameter found from an integral equation, a root of a high-degree equation), derive the EXACT equation, show where the root lies (sign change / monotonicity), then add a "tinhSo" item and write {{name}} wherever its number appears (ketQua, dapSo, ketLuan, ve, kiemTra). Example: "tinhSo": [{"ten":"m","dinhNghia":["f(x) = (x^2+1)/(x+1)","h(x) = abs(f(x)^2 - 1)"],"phuongTrinh":"pi*Integral(h, 0, m) = pi/3","tu":1,"den":3,"lamTron":4}] and "dapSo": "$m \\approx {{m}}$". phuongTrinh uses MV expressions: numbers, functions defined in dinhNghia, Integral(f, a, b), sqrt, ln, exp, abs, sin, pi; [tu, den] must contain exactly one root. The app solves it and fills {{m}} (decimal comma, lamTron decimals). Exact closed-form answers are written directly as usual.
+- Physics / Chemistry / Biology: same step-by-step style; formulas with units; chemical equations balanced for atoms and charge and written with \\ce{…} (e.g. $\\ce{3Fe + 2O2 -> Fe3O4}$). Respect stated temperature, pressure, phase and reaction conditions; do not silently select a molar gas volume or assume 100% yield. A balanced equation alone does not establish that a reaction occurs. MV is a mathematical drawing/measurement engine, not a chemistry simulator or experimental evidence.
+- Statistics: build the intermediate table (x_i, n_i, n_i·x_i, cumulative frequency…), check Σn_i = n, SGK formulas (variance divides by n; grouped median / quartiles / mode by the grade-11 interpolation formulas); intermediate numbers in "ketQua".
+- If the data of the exercise contradict each other, do not stop: solve as far as the data go, show exactly which two facts clash, and "dapSo" MUST start with "Đề mâu thuẫn:" plus that short reason (never leave it empty). Still draw the figure or diagram from the data that fit.
+- Text in "ketQua", "dapSo", "ketLuan" is plain sentences plus $...$: no Markdown (**, #, backticks). Inside a Text("…") drawing command write LaTeX with ONE backslash per command.
+- "dang" = what the board will show (pick one):
+  "do_thi" graphs of functions, areas, parameters y = m, limits, the trigonometric circle, feasible regions of linear inequalities / linear programming, motion graphs in physics, solids of revolution (thể tích khối tròn xoay — they start as the 2D graph);
+  "toa_do_phang" Oxy coordinate geometry (lines, circles, conics: ellipse / hyperbola / parabola, transformations with coordinates, force vectors);
+  "hinh_phang" synthetic plane geometry (no coordinates, transformations: translation / rotation / homothety);
+  "toa_do_khong_gian" Oxyz, 3D parametric curves; "hinh_khong_gian" solid geometry without coordinates (pyramids, prisms, cross-sections, cylinders, cones, spheres…);
+  "thong_ke" statistics charts;
+  "so_do" diagrams: Venn diagrams for ANY counting on sets (|A∩B|, "cả hai", "cả ba", câu lạc bộ, khảo sát) — never "khong"; mind maps (sơ đồ tư duy — summarising a topic, comparing formulas), probability trees (sơ đồ cây — conditional probability, Bayes), Venn diagrams (sets), graphs of graph theory (vertices and edges, shortest path);
+  "khong" nothing worth drawing (pure algebra, counting, sign tables, trigonometric equations, sequences, chemistry equations…).
+  Draw whenever a picture really helps; geometry is almost always drawn.
+- "hinhVe": [] (except "thuc_hanh": the finished target figure, for checking only — never shown at the start). The steps' "ve" together are the lesson's figure. A symbolic scale a may be instantiated by defining a = 4 BEFORE using it, only within its stated domain; retain a in the symbolic solution and disclose that the picture is one instance. Do not turn an unknown to be solved into a freely chosen dimension.
+- "kiemTra" (only when the steps draw a figure and the answer is a number measurable on it — volume, area, length, distance, angle, integral; else []): 1–2 items {"bieuThuc": an MV measure on the objects the steps draw — Volume(k), Volume(tru) - Volume(non), Distance(A, Plane(S,B,C)), Distance(Line(A,B), Line(C,D)) (skew lines), Angle(Line(S,C), Plane(A,B,C)), Angle(Plane(S,B,C), Plane(A,B,C)), Area(f, g, 0, 2), Integral(f, 0, 2), Length(Segment(A,B)) — angles in degrees; "giaTri": the exact value for those numbers ("a" replaced), like "312π", "4√10/5", "60°"}. The app measures them and tells you if they disagree. An object with holes / attached parts is measured as the combined solid (Volume(vat) with vat = Difference / Union …), so the check sees the object of the exercise, not your own split into parts.
+- A kiemTra must check the actual requested answer, with the SAME parameter assignments and units as the drawing. Do not substitute an unrelated intermediate value or define a measurement object using the answer itself to manufacture agreement. Symbolic answers remain symbolic in dapSo; one instantiated check cannot prove a formula for all parameter values. Measurements use mathematical coordinates, not pixel lengths or perspective in the displayed picture. Unsupported measurements stay unchecked.
+- "thayLai" (a finite solution set of equations/systems/intersection equations, including no solution; otherwise []): [{"phuongTrinh":"x^2 - 5x + 6 = 0","nghiem":[{"x":"2"},{"x":"3"}],"dieuKien":[]}]. Copy the ORIGINAL equation in MV syntax, not a transformed equation that lost a denominator or branch. For a system, one item per original equation, each with the SAME complete solution tuples, e.g. [{"x":"1","y":"2"}]. Use exact values such as "(3 + sqrt(5))/2". "dieuKien" contains ONLY restrictions from the exercise or the original equation's domain, never an assumption introduced to discard an unwanted root. Include EVERY final solution; use nghiem: [] for a claimed empty set. "dapSo" must describe the same set, with variable names explicit (systems: "(x; y) = (1; 2)"). The app checks supported equations numerically; you must still justify completeness. Infinite solution families or inequality intervals stay in the written solution: do not submit a sample or the boundary roots as if they were the complete answer.
+- "dieuKien" (lessons with a figure; else []): 1–3 GIVENS of the exercise that the drawn figure must satisfy, written as MV measures on the objects the steps draw, with the required value — right angle at A {"bieuThuc":"Angle(B, A, C)","giaTri":"90°"}, a given length {"bieuThuc":"Distance(A, B)","giaTri":"4"}, SA ⊥ (ABCD) {"bieuThuc":"Angle(Line(S, A), Plane(A, B, C))","giaTri":"90°"}, M on circle (O; 3) {"bieuThuc":"Distance(O, M)","giaTri":"3"}. Hypotheses only, never the answer. The app measures them on the figure and repairs the figure if one fails.
+
+${tu}
+
+${ru}
+
+# json shape (all text in Vietnamese, enums as given)
+{"loai":"bai_tap|giai_thich|thuc_hanh|tro_chuyen|ngoai_pham_vi", "mon":"toan|ly|hoa|sinh", "dang":"…", "tieuDe":"short title ≤ 60 chars", "deBai":"the exercise restated, or the student's question", "loiMo":"1–2 opening sentences, do not solve yet", "buoc":[{"tieuDe":"…","ketQua":"…","huong":1,"hinhMoi":false,"ve":["statements this step adds"]}], "hinhVe":[], "kiemTra":[{"bieuThuc":"…","giaTri":"…"}], "dieuKien":[{"bieuThuc":"…","giaTri":"…"}], "dapSo":"final answer with $...$, or \\"\\"", "ketLuan":"1–2 sentences: what to remember", "traLoi":"only for tro_chuyen / ngoai_pham_vi, else \\"\\"", "cauSau":["later sub-questions verbatim, else []"], "tinhSo":[], "thayLai":[{"phuongTrinh":"…","nghiem":[{"x":"…"}],"dieuKien":[]}], "khoiDong":null, "dinhHuong":["…"]}
+
+===== pos=857043 len=2049 =====
+# Diagrams in the plan (dang "so_do")
+${Eu.so_do}
+- In THIS plan json, put the diagram data on the step that first needs it: buoc[i].soDo = {"loai":"cay","nut":[{"id":"g","cha":"","nhan":"Bắt đầu","xs":"","ghi":"","sang":false},{"id":"A","cha":"g","nhan":"A","xs":"0,6","ghi":"","sang":true},{"id":"notA","cha":"g","nhan":"Không A","xs":"0,4","ghi":"","sang":false}],"tap":[],"vung":[],"luoi":{"hien":"cap","to":[]}} (Venn: "tap"/"vung"; dice: "luoi"). The probabilities here are an example; use the exercise's values.
+- Venn with three sets: buoc[i].soDo = {"loai":"venn","nut":[],"tap":[{"ten":"A"},{"ten":"B"},{"ten":"C"}],"vung":[{"thuoc":["A"],"nhan":"26","sang":false},{"thuoc":["B"],"nhan":"16","sang":false},{"thuoc":["C"],"nhan":"15","sang":false},{"thuoc":["A","B"],"nhan":"14","sang":false},{"thuoc":["A","C"],"nhan":"9","sang":false},{"thuoc":["B","C"],"nhan":"12","sang":false},{"thuoc":["A","B","C"],"nhan":"16","sang":true},{"thuoc":[],"nhan":"12","sang":false}],"luoi":{"hien":"cap","to":[]}}. Each region once, with its OWN count (only A = |A| − |A∩B| − |A∩C| + |A∩B∩C|), or an expression such as "x − 3" before x is known. Build it step by step: the first step gives the sets with every "nhan" empty (""), and each later step sends the full data again, filling only the regions found so far, with sang=true ONLY on the regions that step talks about. A later step may send the full data again to highlight another branch; steps that do not change it omit "soDo".
+- Mind map (sơ đồ tư duy): buoc[i].soDo = {"loai":"tu_duy","nut":[{"id":"g","cha":"","nhan":"Cấp số","xs":"","ghi":"","sang":false},{"id":"csc","cha":"g","nhan":"Cấp số cộng","xs":"","ghi":"","sang":true},{"id":"d","cha":"csc","nhan":"$u_{n+1}=u_n+d$","xs":"","ghi":"","sang":true}],"tap":[],"vung":[],"luoi":{"hien":"cap","to":[]}}. The app lays it out; give no coordinates. One root, 2–6 main branches, short phrases or one formula per node, at most 40 nodes. Build it step by step: each step sends the FULL map so far, with sang=true on the nodes added in that step.
+
+===== pos=859947 len=932 =====
+Continue this exercise. The json above is what is already planned and solved (its steps and "dapSo"); the student is studying it now.
+Now solve ONLY this sub-question (this overrides the rule about solving only the first one):
+${e}
+Return ONE json object of the same shape: same loai/mon/dang/tieuDe/deBai; "buoc" = ONLY the new steps for this sub-question, titles start with its label, reusing earlier results instead of re-deriving them; keep the SAME point names (everything already drawn stays on the board; each new step's "ve" adds only what it introduces, constructed); "hinhVe": []; "kiemTra" = items for THIS sub-question's answer only, same rule as before, measured on everything already drawn plus the new steps' "ve" ([] when nothing measurable); "cauSau": []; "loiMo": ""; "traLoi": ""; "dapSo" = this sub-question's answer starting with its label; "ketLuan" = 1–2 sentences on what to remember from the whole exercise.
+
+===== pos=861382 len=927 =====
+- Variation / sign tables ("bảng biến thiên", "bảng xét dấu"): ONE board line "$\\begin{array}…\\end{array}$" exactly like SGK, never a table of values.
+  COLUMNS (wrong = shifted table): k key points → 1 name column + 2k+3 columns: −∞ | interval | point 1 | interval | … | point k | interval | +∞.
+  Row x: numbers in point columns, interval columns EMPTY. Sign rows: + / − in interval columns; 0, \\| (undefined) or empty in point columns. Every row has the SAME number of cells.
+  E.g. signs of f(x) = (x−1)(x+2)/(3−x), points −2, 1, 3 → "c|" + 9 columns:
+  $\\begin{array}{c|ccccccccc} x & -\\infty & & -2 & & 1 & & 3 & & +\\infty \\\\ \\hline x-1 & & - & & - & 0 & + & & + & \\\\ x+2 & & - & 0 & + & & + & & + & \\\\ 3-x & & + & & + & & + & 0 & - & \\\\ \\hline f(x) & & + & 0 & - & 0 & + & \\| & - & \\end{array}$
+  Variation row of y = x^3 − 3x^2 + 2: y & -\\infty & \
+earrow & 2 & \\searrow & -2 & \
+earrow & +\\infty
+
+===== pos=870252 len=1635 =====
+${$l}
+
+# Task
+Write ONE step of the planned lesson by calling "viet_buoc", as "nhip" (beats). The app plays the beats one after another: Măng SAYS "noi" while the board lines "bang" are written and the listed drawing statements appear — words and pictures arrive together, like a teacher talking while drawing.
+- 1–4 beats (the opening step: one beat per given, up to 6). Each "noi" = one or two short spoken sentences (≤ 30 words) explaining WHY like a real teacher; math in $...$; no greetings, never "bước 1".
+- "ve" of a beat = the NUMBERS of this step's planned drawing statements (listed in the user message) shown while saying it: an object appears exactly when it is first mentioned; use every number once, in order; [] when nothing new appears.
+- "bang" of a beat = the board lines written during it (the key formula or result just said), [] if none. Write them as a clean exam-style solution: one transformation per line, each line follows from the one above.
+- "ghiChu" of a beat = a margin note (≤ 6 words) shown beside its board lines naming the rule or operation used ("định lí Pytago trong △AHC", "chia hai vế cho 3", "thay $x = 2$"); "" when bang is [] or the line explains itself. "noi" explains the WHY in speech; ghiChu only labels the move.
+- Match the step's "ketQua" exactly (same numbers). The last step states the final answer.
+- Do not recompute or invent an intermediate value absent from the plan. If the plan contains an obvious contradiction, identify it in the explanation instead of presenting a fabricated equality as fact. Concision is secondary to preserving necessary conditions and reasons.
+- ${e===
+
+===== pos=872969 len=1620 =====
+${$l}
+
+${eu}
+
+# Task
+The student, mid-lesson, just sent Măng a message (maybe with an image). Answer by calling "tra_loi".
+- Question / confusion / request to explain more about this lesson or related knowledge → "loai": "tra_loi"; "noi": a direct, simple answer, 1–4 sentences, ≤ 80 words, math in $...$, no re-teaching the lesson, no jumping ahead; "bang": 0–4 extra board lines if writing helps, else []; "ve": extra drawing only if it really helps, else [].
+- A NEW exercise or unrelated topic → "loai": "bai_moi", "noi": one short sentence like "Được, mình chuyển sang bài mới nhé!", other fields empty.
+- Wants smaller steps / "chỉ từng bước", "giảng chậm lại", "hướng dẫn kỹ đoạn này" → "loai": "huong_dan_them". Return only a short acknowledgement; bang and ve empty. The APP will create an actual child lesson with its own Next button. Never write a list of pretend substeps inside a normal answer.
+- Wants to clear the drawing and start again / "vẽ lại từ đầu", "xóa hình rồi chỉ lại" / restart this lesson → "loai": "lam_lai". Return a short acknowledgement; bang and ve empty. The APP resets the board and lesson progress.
+- Not Math / Physics / Chemistry / Biology → "loai": "tra_loi", decline politely and invite the student back.
+- The current plan is context, not authority: check a reported mistake against the exercise. Only refer to objects already on the board or defined in your new ve, not future planned objects. If essential data are missing, ask one precise question; if a short answer would omit a necessary condition, include it even beyond the usual length limit.
+
+${Du(e)}
+
+${Ou(e)}${t&&e!==
+
+===== pos=879366 len=1130 =====
+${$l}
+
+# Task
+The app found an equality that fails at sampled values. Inspect it against the original exercise and the conditions of this step: an identity must hold throughout its stated domain, while an equation to solve is not an identity. Repair a genuinely false transformation; do not change a valid restricted identity just because a sample was outside its domain. Make any necessary restriction explicit in the explanation.
+- Keep the same notation, Vietnamese text, $...$ math, the same number of board lines when possible, and the same conclusion if it still holds.
+- Fix the wrong expression itself (e.g. a factor written wrongly); do not just delete the line.
+- Fix "noi" too if it repeats the wrong expression: what Măng says must agree with what is written.
+- Given a single step {"noi", "bang"}: return ONE json object {"noi": "…", "bang": ["…", "…"]}.
+- Given beats {"nhip": [{"noi", "bang"}, …]}: return {"nhip": [...]} with EXACTLY the same number of beats in the same order; each beat's "noi" must match its own "bang" lines (rewrite the sentence of the beat whose line you fix). Copy untouched beats unchanged.

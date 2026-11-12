@@ -20,7 +20,7 @@ const DESC = {
   'c10-atom': 'Thành phần nguyên tử, đồng vị, orbital và cấu hình electron.',
   'c10-periodic': 'Cấu trúc bảng tuần hoàn, quy luật biến đổi tính chất và ý nghĩa vị trí.',
   'c10-bonding': 'Liên kết ion, cộng hoá trị, liên kết hydrogen và tương tác van der Waals.',
-  'c10-redox': 'Số oxi hoá, chất khử – chất oxi hoá, cân bằng theo phương pháp electron.',
+  'c10-redox': 'Số oxi hóa, chất khử – chất oxi hóa, cân bằng theo phương pháp thăng bằng electron.',
   'c10-energy': 'Biến thiên enthalpy, phản ứng toả nhiệt – thu nhiệt và ứng dụng.',
   'c10-rate': 'Tốc độ phản ứng, các yếu tố ảnh hưởng và vai trò của xúc tác.',
   'c10-halogen': 'Tính chất vật lí – hoá học, điều chế và ứng dụng của nhóm halogen.',
@@ -37,25 +37,25 @@ const DESC = {
   'c12-electro': 'Pin điện hoá, thế điện cực chuẩn, điện phân và ứng dụng công nghiệp.',
   'c12-metal': 'Tính chất chung của kim loại, dãy điện hoá và ăn mòn kim loại.',
   'c12-metal-main': 'Kim loại nhóm IA, IIA, aluminium và hợp chất quan trọng.',
-  'c12-transition': 'Kim loại chuyển tiếp, phức chất, sắt và hợp chất của sắt.',
+  'c12-transition': 'Kim loại chuyển tiếp, phức chất, iron và hợp chất quan trọng.',
   'c12-sustain': 'Hoá học xanh, năng lượng tái tạo, tái chế và phát triển bền vững.',
 };
 
-/* Tên hiển thị gọn cho học sinh; không có trong bảng thì dùng tên ngân hàng */
+/* Tên hiển thị chuẩn danh pháp IUPAC theo Chương trình GDPT 2018 */
 const NAME = {
-  'c10-periodic': 'Bảng tuần hoàn',
-  'c11-nitrogen': 'Nitơ và lưu huỳnh',
-  'c11-hydrocarbon': 'Hiđrocacbon',
-  'c11-alcohol': 'Ancol và phenol',
-  'c11-carbonyl': 'Anđehit – axit cacboxylic',
-  'c12-ester': 'Este – lipit',
-  'c12-carbohydrate': 'Cacbohiđrat',
-  'c12-amine': 'Amin, protein',
-  'c12-polymer': 'Polime',
-  'c12-electro': 'Pin điện & điện phân',
-  'c12-metal': 'Đại cương kim loại',
-  'c12-metal-main': 'Nhôm & kiềm thổ',
-  'c12-transition': 'Sắt & hợp chất',
+  'c10-periodic': 'Bảng tuần hoàn & Định luật tuần hoàn',
+  'c11-nitrogen': 'Nitrogen & Sulfur',
+  'c11-hydrocarbon': 'Hydrocarbon',
+  'c11-alcohol': 'Alcohol & Phenol',
+  'c11-carbonyl': 'Hợp chất Carbonyl & Carboxylic acid',
+  'c12-ester': 'Ester – Lipid',
+  'c12-carbohydrate': 'Carbohydrate',
+  'c12-amine': 'Amine, Amino acid & Protein',
+  'c12-polymer': 'Polymer',
+  'c12-electro': 'Pin điện hóa & Điện phân',
+  'c12-metal': 'Đại cương về kim loại',
+  'c12-metal-main': 'Kim loại nhóm IA, IIA & Aluminium',
+  'c12-transition': 'Kim loại chuyển tiếp & Phức chất',
 };
 
 /* Chương đầu của mỗi khối cần kiến thức cuối khối trước (gợi ý) */
@@ -66,7 +66,7 @@ const CROSS = {
 
 const LEVELS = [
   { key: 'Lớp 10', grade: 10, goal: 'Vững nền tảng: Cấu tạo nguyên tử, bảng tuần hoàn, liên kết và phản ứng.' },
-  { key: 'Lớp 11', grade: 11, goal: 'Mở rộng sang cân bằng hóa học, nitơ – lưu huỳnh và hóa hữu cơ.' },
+  { key: 'Lớp 11', grade: 11, goal: 'Mở rộng sang Cân bằng hóa học, Nitrogen – Sulfur và Hóa học hữu cơ.' },
   { key: 'Lớp 12', grade: 12, goal: 'Về đích: Hệ thống kiến thức, luyện đề thi tốt nghiệp THPT Quốc gia.' },
 ];
 

@@ -14,7 +14,11 @@
 
 /* ============ 1. PHÂN LOẠI TÁC VỤ ============ */
 const CHEM_CUES = /hóa|hoá|mol|nồng độ|\bph\b|dung dịch|chất|phương trình|phản ứng|oxi|axit|bazơ|este|muối|kim loại|nguyên tố|electron|liên kết|cân bằng|điện phân|hữu cơ|hidro|cacbon|%|gam|ml|lít/i;
-const HARD_CUES = /hỗn hợp|hiệu suất|dư|đồng thời|biết rằng|so sánh|điện phân|este|peptit|polymer|chuỗi|sơ đồ|đồ thị|xác định công thức|bảo toàn|tăng giảm|quy đổi|nhiều giai đoạn/i;
+const PHYSICS_CUES = /vật lí|vật lý|dao động|con lắc|chu kì|chu kỳ|tần số|biên độ|vận tốc|gia tốc|lực|công suất|động năng|thế năng|cơ năng|sóng cơ|bước sóng|giao thoa|nhiễu xạ|dòng điện|xoay chiều|điện áp|hiệu điện thế|tụ điện|cuộn cảm|điện trở|tổng trở|quang|khúc xạ|thấu kính|hạt nhân|phóng xạ|năng lượng liên kết|chuyển động|hệ số công suất|quang điện/i;
+const BIOLOGY_CUES = /sinh học|di truyền|nhiễm sắc thể|\badn\b|\barn\b|gen|mã di truyền|axit amin|protein|phiên mã|dịch mã|nhân đôi|đột biến|alen|kiểu gen|kiểu hình|men-đen|menđen|lai một cặp|lai hai cặp|punnett|quần thể|hardy-weinberg|tần số tương đối|hệ sinh thái|chuỗi thức ăn|nuclêôtit|ribôxôm|tế bào/i;
+const MATH_CUES = /toán|hình học|hình chóp|tứ diện|lăng trụ|hình hộp|hình lập phương|mặt cầu|hình nón|hình trụ|khối đa diện|thiết diện|oxyz|vectơ|vecto|đạo hàm|tích phân|nguyên hàm|hàm số|đồ thị|cực trị|tiếp tuyến|khoảng cách|góc giữa|đồng phẳng|vuông góc|song song/i;
+const SCIENCE_CUES = new RegExp(`${CHEM_CUES.source}|${PHYSICS_CUES.source}|${BIOLOGY_CUES.source}|${MATH_CUES.source}`, 'i');
+const HARD_CUES = /hỗn hợp|hiệu suất|dư|đồng thời|biết rằng|so sánh|điện phân|este|peptit|polymer|chuỗi|sơ đồ|đồ thị|xác định công thức|bảo toàn|tăng giảm|quy đổi|nhiều giai đoạn|mạch rlc|cộng hưởng|lệch pha|con lắc vướng đinh|va chạm|chu kỳ bán rã|hoán vị gen|liên kết gen|phả hệ|di truyền liên kết giới tính|cân bằng di truyền/i;
 
 const countNumbers = (s) => (String(s).match(/\d+(?:[.,]\d+)?/g) || []).length;
 
@@ -111,10 +115,10 @@ export function classifyTask(history) {
   // "giải thích / tại sao" là LÝ THUYẾT, không phải bài toán — tách khỏi MATH_CUES ("giải")
   const isTheory = /giải thích|lý thuyết|lí thuyết|bản chất|tại sao|vì sao|cơ chế|phân biệt|nhận biết|trình bày|khái niệm|định nghĩa/i.test(v);
   const wantsSolve = /tính|tìm|xác định|chứng minh|giải bài|giải giúp|bao nhiêu|hãy giải|làm bài/i.test(v);
-  const isChemistry = CHEM_CUES.test(v);
+  const isScience = SCIENCE_CUES.test(v);
   const isProblem = image
     ? true
-    : (wantsSolve && !isTheory && (isChemistry || nums >= 2)) || (isChemistry && nums >= 3);
+    : (wantsSolve && !isTheory && (isScience || nums >= 2)) || (isScience && nums >= 3);
 
   let kind = 'chat';
   if (isCompare) kind = 'compare';
@@ -133,8 +137,8 @@ export function classifyTask(history) {
   const reasoningEffort = hard ? 'high' : kind === 'problem' ? 'medium' : 'low';
   const thinkingBudget = hard ? 8192 : kind === 'problem' ? 3072 : kind === 'theory' ? 1024 : 0;
 
-  const needTools = (kind === 'problem' || kind === 'theory' || image) && (isChemistry || nums >= 1);
-  /* Chat thường và so sánh công cụ không cần dữ liệu Hóa học của app */
+  const needTools = (kind === 'problem' || kind === 'theory' || image) && (isScience || nums >= 1);
+  /* Chat thường và so sánh công cụ không cần dữ liệu KHTN của app */
   const needKnowledge = kind !== 'chat' && kind !== 'compare';
 
   return {

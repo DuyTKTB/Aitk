@@ -2,7 +2,7 @@
 export const PROMPT_CATS = [
   { id: 'huong-dan', name: 'Hướng dẫn dùng', hue: 200, kind: 'guide', guide: true },
   { id: 'prompt-free', name: 'Prompt Free', hue: 280, kind: 'blobs', chat: true },
-  { id: 'hoc',      name: 'Học Hóa',           hue: 165, kind: 'molecule', chat: true },
+  { id: 'hoc',      name: 'Hóa học',           hue: 165, kind: 'molecule', chat: true },
   { id: 'toan',     name: 'Toán học',          hue: 210, kind: 'chart',    chat: true },
   { id: 'ly',       name: 'Vật lý',            hue: 190, kind: 'molecule', chat: true },
   { id: 'sinh',     name: 'Sinh học',          hue: 130, kind: 'molecule', chat: true },
@@ -21,9 +21,9 @@ export const GUIDE_STEPS = [
   {
     num: '01',
     title: 'Chọn đúng nhóm prompt',
-    body: 'Mỗi nhóm (Học Hóa, Toán, Viết, Tạo ảnh, Lập trình…) có phong cách viết khác nhau. Chọn nhóm khớp với việc bạn đang làm để AI trả lời đúng ngữ cảnh.',
+    body: 'Mỗi nhóm (Hóa học, Vật lý, Sinh học, Toán, Viết, Tạo ảnh, Lập trình…) có phong cách viết khác nhau. Chọn nhóm khớp với việc bạn đang làm để AI trả lời đúng ngữ cảnh.',
     tips: [
-      'Học Hóa / Toán / Lý → dùng cho bài tập, lý thuyết, ôn thi',
+      'Hóa / Lý / Sinh / Toán → dùng cho bài tập, lý thuyết, ôn thi',
       'Tạo ảnh / video → prompt viết bằng tiếng Anh, dán vào công cụ AI',
       'Marketing → dùng cho Google Maps, Facebook, TikTok',
     ],

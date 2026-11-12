@@ -12,7 +12,7 @@
    ============================================================ */
 import { buildSubjectGuide, getSubject, SUBJECTS, GENERIC_SUBJECT } from './subjects.js';
 import { buildFileContext } from './fileReader.js';
-import { useCredit } from './creditService.js';
+import { useCredit, refundCredit } from './creditService.js';
 import { collectEnvKeys } from './aiRouter.js';
 
 /* ============ HẰNG SỐ ============ */
@@ -344,8 +344,8 @@ async function callAgnesRaw({ system, userContent, temperature, signal, schema }
 }
 
 export async function callModel({ system, parts, temperature = 0.7, signal, creditCost = null, schema = null }) {
+  let chargedCredit = 0;
   if (_creditUserId) {
-    const hasImg = parts?.some((p) => p.inlineData);
     const imgCount = parts?.filter((p) => p.inlineData)?.length || 0;
     const cr = await useCredit(_creditUserId, imgCount, creditCost);
     if (!cr.ok) {
@@ -353,51 +353,63 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
       const needed = cr.needed || (creditCost ?? (1 + imgCount));
       throw new Error(`Hết điểm! Còn ${cr.balance} điểm, cần ${needed}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
     }
+    chargedCredit = cr.cost || 0;
     try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
   }
 
-  if (customCaller) return customCaller({ system, parts, temperature, signal, schema });
-
-  const errors = [];
-
-  // 1. Thử Google Gemini (các model hoạt động và tự luân chuyển model + nhiều key)
-  if (GEMINI_KEYS.length > 0) {
-    try {
-      return await callGeminiRaw({ system, parts, temperature, signal, schema });
-    } catch (err) {
-      if (err?.name === 'AbortError') throw err;
-      console.warn('[examAiUtils] ⚠️ Gemini gặp sự cố, tự động chuyển sang Groq / Agnes:', err.message);
-      errors.push(`Gemini: ${err.message}`);
+  const refundOnFailure = async (err) => {
+    if (chargedCredit > 0 && _creditUserId) {
+      await refundCredit(_creditUserId, chargedCredit, `Hoàn điểm: ${err?.message || 'AI lỗi'}`).catch(() => {});
     }
-  }
+  };
 
-  // Chuẩn bị nội dung text cho các provider OpenAI-compatible
-  const userContent = (parts || []).map((p) => p.text || '').filter(Boolean).join('\n\n') || 'Bắt đầu';
+  try {
+    if (customCaller) return await customCaller({ system, parts, temperature, signal, schema });
 
-  // 2. Tự động chuyển sang Groq nếu Gemini hết quota / lỗi / hết hạn
-  if (GROQ_KEYS.length > 0) {
-    try {
-      console.info('[examAiUtils] 🔄 Đang xử lý qua Groq API...');
-      return await callGroqRaw({ system, userContent, temperature, signal, schema });
-    } catch (err) {
-      if (err?.name === 'AbortError') throw err;
-      console.warn('[examAiUtils] ⚠️ Groq gặp sự cố, thử Agnes:', err.message);
-      errors.push(`Groq: ${err.message}`);
+    const errors = [];
+
+    // 1. Thử Google Gemini (các model hoạt động và tự luân chuyển model + nhiều key)
+    if (GEMINI_KEYS.length > 0) {
+      try {
+        return await callGeminiRaw({ system, parts, temperature, signal, schema });
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err;
+        console.warn('[examAiUtils] ⚠️ Gemini gặp sự cố, tự động chuyển sang Groq / Agnes:', err.message);
+        errors.push(`Gemini: ${err.message}`);
+      }
     }
-  }
 
-  // 3. Tự động chuyển sang Agnes
-  if (AGNES_KEYS.length > 0) {
-    try {
-      console.info('[examAiUtils] 🔄 Đang xử lý qua Agnes API...');
-      return await callAgnesRaw({ system, userContent, temperature, signal, schema });
-    } catch (err) {
-      if (err?.name === 'AbortError') throw err;
-      errors.push(`Agnes: ${err.message}`);
+    // Chuẩn bị nội dung text cho các provider OpenAI-compatible
+    const userContent = (parts || []).map((p) => p.text || '').filter(Boolean).join('\n\n') || 'Bắt đầu';
+
+    // 2. Tự động chuyển sang Groq nếu Gemini hết quota / lỗi / hết hạn
+    if (GROQ_KEYS.length > 0) {
+      try {
+        console.info('[examAiUtils] 🔄 Đang xử lý qua Groq API...');
+        return await callGroqRaw({ system, userContent, temperature, signal, schema });
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err;
+        console.warn('[examAiUtils] ⚠️ Groq gặp sự cố, thử Agnes:', err.message);
+        errors.push(`Groq: ${err.message}`);
+      }
     }
-  }
 
-  throw new Error(`Tất cả nguồn AI đều bận hoặc hết hạn ngạch:\n${errors.join('\n')}`);
+    // 3. Tự động chuyển sang Agnes
+    if (AGNES_KEYS.length > 0) {
+      try {
+        console.info('[examAiUtils] 🔄 Đang xử lý qua Agnes API...');
+        return await callAgnesRaw({ system, userContent, temperature, signal, schema });
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err;
+        errors.push(`Agnes: ${err.message}`);
+      }
+    }
+
+    throw new Error(`Tất cả nguồn AI đều bận hoặc hết hạn ngạch:\n${errors.join('\n')}`);
+  } catch (err) {
+    await refundOnFailure(err);
+    throw err;
+  }
 }
 
 /* ============ ĐỌC JSON "LỎNG" ============ */

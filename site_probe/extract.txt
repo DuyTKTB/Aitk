@@ -1,0 +1,540 @@
+==================== FETCH / ENDPOINTS ====================
+/api${e}
+/api/ai
+/api/auth/logout
+/api/tts
+/api/tts/config
+/ban-dung.json
+/ve.wasm
+
+==================== ENDPOINT-LIKE TEMPLATES ====================
+/account
+/bai
+/bai-cua-toi
+/bai/${e}
+/bai/${e}/anh
+/bai/${e}/meo
+/bai/${e}/thich
+/bai?${r}
+/ho-so
+/kich-hoat
+/nguoi/${e}
+/quan-tri/cho-phep
+/quan-tri/ma
+/quan-tri/ma/${e}
+/quan-tri/nguoi/${e}
+/quan-tri/nguoi?q=${encodeURIComponent(e)}
+/thong-ke
+
+==================== VIETNAMESE STRINGS (uniq) ====================
+count=510
+${CT(s.user)} chưa hiểu chỗ nào? Hỏi Măng…
+${CT(s.user)} muốn tìm hiểu điều gì?
+${CT(s.user)} đã huỷ đăng nhập. Vẫn học tiếp được nhé.
+${e.ten}: đối tượng đang hiện không có giá trị xác định.
+${e} ${r(o)}, tất cả
+${e} từ ${r(c[0])} đến ${r(c[1])},
+${e}: các cạnh tự cắt nhau; thứ tự nối đỉnh chưa đúng.
+${e}: có ${i.length} tên đỉnh nhưng chỉ ${c.length} vị trí khác nhau; các đỉnh bị trùng.
+${e}: có cạnh dài bằng 0.
+${e}: diện tích bằng 0 hoặc các cạnh triệt tiêu nhau.
+${n.bieuThuc} = ${n.doDuoc} · AI nêu ${n.giaTri} (= ${n.aiNeu})
+${n.bieuThuc} → không kiểm được (${n.lyDo}); AI nêu ${n.giaTri}
+${t.message} (không có nội dung panic — có thể hết bộ nhớ)
+${u}: có ${r.length} nghiệm trên [${t}; ${n}] (≈ ${r.map(e=>+e.toPrecision(6)).join(
+${u}: phương trình không đổi dấu trên [${t}; ${n}] (|vế trái − vế phải| nhỏ nhất ≈ ${e.v.toPrecision(3)} tại ${e.x})
+(ảnh đề bài)
+),ao=/[A-Za-z¡-ÿ]+/g,oo=e=>/[A-Za-z]/.test(e)&&(io.test(e)||/[a-z][ÈÉÊÌÒÓÔÕÝ]/.test(e));function so(e){if(!/[¡-ÿ]/.test(e)||!(e.match(ao)??[]).some(oo))return e;let t=!/[Ā-ɏḀ-ỿ]/.test(e);return e.replace(ao,e=>/[A-Za-z]/.test(e)&&(t||oo(e))?[...e].map(e=>ro.get(e)??e).join(
+),co_lap_m:lS,chon_m_loai:hS,solve:_S,bat_pt:yS,dao_ham:SS,day_so:CS,toa_do_hoa:qS,cong_thuc:$S,dac_biet_hoa:tC,the_diem:nC,bac_don_vi:lC,gia_tri_dac_biet:uC,tu_do:dC},vC=e=>/đáp số|lời giải/.test(e??
+).replace(/đ/g,
+).replace(/đ/gi,
+)} 0 (dòng báo lỗi là x nằm ngoài miền xác định).
+)} và ${i(o[1],
+)} · Măng giải
+)}$, dò và đếm số lần f(x) đổi dấu.
+)}) — cần khoảng chỉ chứa đúng nghiệm bài cần
+)}, bấm =, đếm các nghiệm thực (bỏ nghiệm có i).
+)}, trục tung, $y = ${hs(o[1])}$, $y = ${hs(o[2])}$ quanh ${e}
+, không đổi dấu
+, đổi dấu
+,dinhHuong:[]}:/bayes|dây chuyền/i.test(e)?{loai:
+,talk:"0 không nói (miệng theo biểu cảm) · 1 tự nhép · 2 nhép theo
+- ${t.replace(/ có trong đáp số$/,
+;function Ow(e){let t=e instanceof Error?e.message:String(e);return/^(Măng |Em |Chưa tải|Hình đã thay đổi|Tài khoản|Quyền hỏi Măng|Hôm nay tài khoản|Đăng nhập Google)/.test(t)?t:e instanceof Vl?
+;return Jl(n)||Yl.test(ql(n))}var Zl=(e,t)=>/mâu thuẫn/i.test(e||t),Ql=Kl.split(
+<span class="cong-thuc-loi" role="status">Công thức chưa hiển thị được: <code>${vo(e)}</code></span>
+AI trả lời quá dài nên bị cắt (vượt ${n.max_tokens} token) — tăng maxTokens trong src/ai/baiGiang.ts hoặc hạ mức suy nghĩ
+AI trả về rỗng
+Bài giải
+Bài giảng
+Bài khó nên cần 1–3 phút — Măng không treo đâu nhé…
+Bài này chưa có mẹo nhỏ nào Măng kiểm chứng được.
+Bài này chưa có mẹo nhỏ nào Măng kiểm chứng được. Mình tổng kết nhé!
+Bài này hơi khó, Măng nghĩ kỹ thêm chút nhé…
+Bài này hữu ích
+Bài toán mở, cần gợi mở
+Bài trên trang chủ
+Bán kính
+Báo gần đúng
+Bình thường
+Bình thản
+Bóng đèn ý tưởng
+Bản ghi phiên học · Em có thể quay lại đọc bất cứ lúc nào.
+Bảng mới cho số gần đúng: bấm AC, dò lại với Start = $${zx(t.lan2.tu)}$, End = $${zx(t.lan2.den)}$, Step = $${zx(t.lan2.nhay)}$.
+Bảng nhỏ (đồ thị)
+Bấm = thêm ${Math.max(0,(Bx(e.den)??2)-2)} lần nữa để tới $u_{${e.den}}$.
+Bấm CALC lại, thử lần lượt các đáp án còn lại.
+Bấm CALC, nhập giá trị của một đáp án, bấm =.
+Bấm CALC, nhập lần lượt toạ độ của điểm, bấm =; ra 0 là điểm nằm trên.
+Bấm MENU, chọn chế độ Bảng (TABLE).
+Bấm SHIFT rồi phím ∫ để lấy d/dx.
+Bấm phím tích phân ∫ trên máy.
+Bấm Đọc lại để trình duyệt cho phép phát giọng.
+Bật âm thanh
+Bắt đầu
+Bắt đầu giảng một định nghĩa
+Bắt đầu từ ${e.diemDau[t]}
+Chia sẻ cho đồng nghiệp, học sinh
+Chuyển trọng tâm
+Chào mừng vào bài
+Chép lại đề trong ảnh.
+Chính xác!
+Chóp S.ABCD đáy vuông cạnh 4, SA ⊥ đáy, SA = 4. Bán kính mặt cầu ngoại tiếp R = ?
+Chưa dùng
+Chưa kích hoạt
+Chưa kết nối được giọng Google. Em vẫn có thể học bằng chữ.
+Chưa phát được giọng. Em có thể bấm Đọc lại hoặc học tiếp bằng chữ.
+Chưa phát được giọng. Em có thể học tiếp bằng chữ.
+Chưa phát được âm thanh. Em thử Đọc lại nhé.
+Chưa tìm thấy giọng đọc trên máy. Măng vẫn hiện lời giảng bằng chữ.
+Chưa đo được
+Chưa đúng rồi, đáp án là: ${t.luaChon[t.dung]}.
+Chưa đọc được. Em có thể học tiếp bằng chữ.
+Chạy ngắn
+Chấm sai, lượt 1
+Chấm đúng
+Chỉ lên
+Chỉ phải
+Chỉ trái
+Chỉ vào đồ thị
+Chỉ xem bài
+Chờ AI xử lý
+Chờ xử lý
+Cuộc trò chuyện mới
+Các nghiệm tìm trên đoạn đề cho bằng dò dày.
+Cây có chu trình
+Cây phải có đúng một gốc
+Cùng tìm lời giải
+Cúi cảm ơn
+Cầm trình bày
+Cắt bỏ nửa phía trước để thấy bên trong (mặt cắt gạch chéo)
+Di chuyển và xuất hiện
+Dò cột f(x) tìm giá trị ${i}.
+Dò cột f(x): tìm các dòng f(x) đổi chiều tăng giảm (giá trị cực đại, cực tiểu).
+Dùng công thức nghiệm rồi kiểm tra trên đồ thị
+Dùng hàm Σ( của máy: nhập ${t}, cận dưới $${e.tu}$, cận trên $${e.den}$, bấm =.
+Dùng thước nối A với B; đoạn AB đi qua O.
+Dùng tích vô hướng (•), tích có hướng (×), Abs để lấy độ dài, Angle( để lấy góc, trong menu Vector của máy.
+Email được hỏi ngay
+Enter để gửi · Shift + Enter để xuống dòng · Ctrl + V để dán ảnh
+Ghi lại từng nghiệm máy ra; mỗi điểm xuất phát cho một nghiệm khác nhau.
+Ghim lên đầu
+Giá trị $${gc(e.so)}$ trong đáp số
+Giá trị thoả yêu cầu thì loại các đáp án không chứa nó; không thoả thì loại các đáp án chứa nó.
+Giáo viên
+Giơ tay chiến thắng
+Giải bài tập
+Giải nhanh
+Giải phương trình x² − 5x + 6 = 0
+Giải thích bằng ví dụ
+Giải thích một tay
+Giảng bài
+Giảng từng bước
+Giọng đọc bị ngắt. Em có thể Đọc lại hoặc học tiếp bằng chữ.
+Giới thiệu khái niệm
+Gãi đầu
+Gõ bài tập hoặc câu hỏi · dán ảnh đề bài bằng Ctrl+V
+Gật đầu
+Gợi ý mẹo
+Gửi câu hỏi, chờ trả lời
+Hai tam giác $HBA$ và $ABC$ có chung góc $B$ và cùng có một góc vuông nên đồng dạng.
+Hiểu khái niệm
+Hiện lại
+Hoàn thành bài
+Hoàn tác sửa hình
+Hoá học
+Hình chiếu của $SC$ lên $(ABCD)$ là $AC$
+Hình dựng lại từ đề cho số khác, Măng đang đọc lại đề và giải lại…
+Hình kéo xiên ${e+1}
+Hình trụ
+Hình đã chọn
+Hình đơn giản đã chọn
+Hình đầy đủ
+Hướng dẫn lại từ đầu, chỉ từng thao tác và chờ em làm theo.
+Hướng dẫn vẽ đường tròn bằng compa, từng thao tác một.
+Hướng sự chú ý
+Học cùng Măng, ở mọi nơi.
+Học liên tục quá 25 phút
+Học sinh
+Học sinh bấm nút gợi ý
+Học sinh trả lời đúng
+Hỏi Măng
+Hộp quà
+ID nút phải duy nhất
+Khen cách giải hay
+Không có nút cha
+Không cầm
+Không mở được bài.
+Kiểm tra lại
+Kiểm đổi dấu: tính d/dx tại x hơi nhỏ hơn và hơi lớn hơn đáp án đó (${e.lay===
+Kích hoạt
+Kích hoạt tài khoản
+Kẻ đường cao $AH$ vuông góc với $BC$.
+Kẻ đường kính AB
+Kết quả
+Loại nhanh được ${r.size-o.length} đáp án; các đáp án còn lại vẫn phải tính.
+Làm lại bước này
+Làm lại từ đầu
+Làm lại với các điểm còn lại và các đáp án khác.
+Làm theo từng thao tác, xong rồi bấm tiếp nhé.
+Làm việc với đạo cụ
+Làm xong rồi
+Làm xong · Tổng kết
+Lưu hồ sơ
+Lấy/cất đồ
+Lắc đầu
+Lịch sử trò chuyện
+Lời Măng
+M, N, P, Q không nằm trên các cạnh bên
+Máy chủ chưa cấu hình khóa Google TTS.
+Máy tính bỏ túi
+Mã kích hoạt
+Mình hoàn thành rồi!
+MĂNG GIẢI THÍCH
+Măng bị vấp một chút ở chỗ này. Bấm Thử lại nhé, Măng làm lại ngay.
+Măng giải thích
+Măng kiểm tra thấy hình còn lỗi:
+Măng nói và giảng từng bước, bấm Đi tiếp để sang bước sau
+Măng tô lại đường đi qua dây chuyền ${n===
+Măng đang chuẩn bị bước này…
+Măng đang chuẩn bị đọc đề và dựng hình…
+Măng đang giải tiếp ${Mx(e.cauSau[0])}…
+Măng đang giải và soạn bài…
+Măng đang nghĩ cách giải thích…
+Măng đang phân tích đề bài…
+Măng đang soạn lời giảng bước đầu…
+Măng đang suy nghĩ…
+Măng đang tìm cách giảng dễ hiểu nhất…
+Măng đang viết lời giải…
+Măng đã khôi phục hình trước lần sửa vừa rồi. Mình vẫn ở bước đang học nhé.
+Măng, nhân vật hướng dẫn
+Mất mạng / máy chủ lỗi
+Mặt cầu ngoại tiếp
+Mời bắt đầu
+Mời nhìn vào nội dung
+Mở bài học
+Mở compa 4 cm, đặt mũi nhọn tại O rồi quay một vòng.
+Mở rộng
+Mở rộng thanh bên
+Mục quản trị
+Nghiệm ${qb(e.chu)} có trong đáp số
+Nghiệm đúng phải làm hai vế bằng nhau, nên chuyển hết sang một vế thì thế vào phải ra $0$.
+Người dùng
+Người dùng, mã kích hoạt, email được hỏi ngay, kiểm duyệt bài
+Ngạc nhiên
+Nhảy múa ngắn
+Nhảy mừng
+Nhảy tại chỗ
+Nhấn ý
+Nhập ${t} nhưng thay $${e.bien}$ bằng phím Ans, bấm =: được $u_2$.
+Nhập ${t}, tại x = $${e.tu}$, bấm =.
+Nhập ${t}, tại x bằng giá trị của từng đáp án, bấm =; chọn đáp án cho kết quả 0.
+Nhập biểu thức của một đáp án (ALPHA để gõ biến), bấm CALC, nhập giá trị thử, bấm =.
+Nhập các véc-tơ cần dùng vào VctA, VctB, VctC (mỗi véc-tơ là hiệu toạ độ hai điểm ở bảng toạ độ).
+Nhập f(x) = $${e.hamCoLap}$, bấm =. Máy hỏi g(x) thì bấm = để bỏ qua.
+Nhập f(x) = ${n}, bấm =. Máy hỏi g(x) thì bấm = để bỏ qua.
+Nhập f(x) = ${t}, bấm =. Máy hỏi g(x) thì bấm = để bỏ qua.
+Nhập hàm ${n}, cận dưới $${e.tu}$, cận trên $${e.den}$, bấm =.
+Nhập mã kích hoạt để gửi bài và hỏi Măng.
+Nhập vế trái của phương trình một đáp án (chuyển hết về một vế), dùng ALPHA để gõ x, y, z.
+Nhắc nghỉ giải lao
+Nâng cúp
+Nội dung minh hoạ nằm bên trái màn hình
+Nội dung phiên học
+ONE or TWO short sentences Măng says in this beat, natural spoken Vietnamese, math in $...$.
+Phản hồi bài làm
+Quan sát và làm theo
+Quan tâm
+Quay miền dưới y = √x (0 ≤ x ≤ 4) quanh trục Ox. Thể tích V = ?
+Quyết tâm
+Quản trị
+SOLVE từ ${e.diemDau[t]} không ra một nghiệm của đề
+Sai lần đầu
+Sai từ lượt 3 trở đi
+Sau đó
+Sinh học
+So sánh hai phía
+So số máy hiện với các đáp án, hoặc chép vào ô trả lời ngắn.
+So với giá trị đúng tại giá trị thử; lệch thì loại. Làm lần lượt các đáp án.
+Suy nghĩ cùng học sinh
+Suy nghĩ và khám phá
+Suy tư
+Sơ đồ tư duy tối đa 40 ý
+Số máy hiện là đạo hàm tại điểm đó (hệ số góc tiếp tuyến).
+THỰC HÀNH
+Ta dựng hình chóp $S.ABCD$ với đáy là hình vuông, cạnh $SA$ vuông góc với đáy.
+Ta vẽ mặt cầu $(S)$ tâm $O$ bán kính $2$ cùng hai điểm $A$, $B$.
+Ta vẽ tam giác $ABC$ vuông tại $A$.
+Thao tác ${t+1} có quá nhiều lệnh: chia thành các thao tác nhỏ hơn.
+Thao tác ${t+1} dùng lệnh dựng hàng loạt/xóa bảng: hãy tách thành các thao tác dựng thông thường.
+Thao tác ${t+1} thiếu ve: hãy lập lệnh của riêng thao tác này, [] nếu chỉ hướng dẫn bằng lời.
+Thao tác ${t+1} tạo ${e.length} đối tượng: chỉ tối đa 2, hãy chia nhỏ để học sinh làm theo.
+Thao tác ${t+1}: chỉ nối các đỉnh đã dựng; không dựng nguyên đa giác từ tọa độ hoặc số cạnh.
+Thay các độ dài vào công thức nhanh rồi bấm trực tiếp trên màn hình tính toán (Calculate).
+Thu gọn
+Thu người biến mất
+Thân thiện
+Thước kẻ
+Thầy cô
+Thầy cô đăng nhập Google, kích hoạt tài khoản rồi gửi bài cho Măng nhé. Các bài Măng đã giải vẫn xem được ở
+Thế nghiệm vào đề (các nghiệm đã nêu)
+Thế từng đáp án vào phương trình
+Thống kê từ ${t.tu}
+Thử $${e.thamSo} = ${n.giaTri}$: bấm MENU, chọn Equation/Func → Polynomial → bậc ${a.length-1}, nhập hệ số ${r.join(
+Thử $${e.thamSo} = ${n.giaTri}$: nhập $${n.giaTri}$, bấm SHIFT RCL (STO), A. Vào chế độ Bảng, nhập f(x) = $${wS(e.bieuThuc,e.thamSo,
+Thử một ý tưởng
+Thực hành cần 1–40 thao tác, mỗi thao tác có một điểm dừng.
+Thực hành từng bước
+Tiếp tuyến chạy trên đồ thị
+Trao phần thưởng
+Trình bày hai tay
+Trình duyệt chưa phát được giọng. Em vẫn có thể học bằng chữ.
+Trình duyệt này chưa hỗ trợ giọng đọc.
+Trước hết
+Trước hết ta đọc ra các hệ số $a$, $b$, $c$ của phương trình.
+Trở lại bài chính
+Trở lại bài trước
+Trở lại cuộc trò chuyện
+Trợ lý và trạng thái hệ thống
+Tài khoản
+Tài khoản mới chỉ xem được các bài Măng đã giải.
+Tên, ảnh, tiểu sử hiện trên các bài ${ST(e)} chia sẻ
+Tìm dòng đầu tiên có f(x) ${e.dau.replace(
+Tìm theo đề, lọc theo chủ đề
+Tích phân
+Tính $${zS(e.bieuThuc)}$ từ các véc-tơ đó.
+Tính biệt thức Δ để biết số nghiệm
+Tạm biệt
+Tất cả
+Tập không tồn tại hoặc bị lặp
+Tổng xác suất các nhánh con phải bằng 1; hãy ghi đủ các nhánh
+Tự hào
+Venn hỗ trợ 2–3 tên tập khác nhau
+Viết liền cả lời giải, hình vẽ theo từng bước
+Vì $SA$ vuông góc với đáy nên $AC$ là hình chiếu của $SC$ lên mặt phẳng $(ABCD)$.
+Vươn vai
+Vật lý
+Vẽ ở bước ${r+1}: ${t.buoc[r].tieuDe}
+Về khung ban đầu
+Xem hồ sơ công khai
+Xem lại chuyển động
+Xong một bài/chương
+Xác nhận đúng
+Xác suất nhánh phải là số từ 0 đến 1
+[AI ${e}] ${r.toFixed(1)} giây
+[bảng phấn] bộ vẽ lỗi:
+[bảng] không cắt được:
+[bảng] khởi động lại bộ vẽ không được:
+[bảng] đã khởi động lại bộ vẽ, dựng lại ${n.length} dòng
+[bảng] đã nắn dòng AI viết hỏng:
+[giải bài] gửi kèm ảnh không được, chép đề từ ảnh trước rồi giải:
+[hình] Kiểm tra phản hồi
+]),So=/^[A-Za-zÀ-ÖØ-öø-ɏḀ-ỿ]+/,Co=/[À-ÖØ-öø-ɏḀ-ỿ]/;function wo(e){if(!Co.test(e))return e;let t=
+biểu thức đem thế không phải phương trình của đề
+bình phương
+bậc ${s}: giữ
+bậc ${s}: loại
+bộ vẽ không đo được biểu thức
+các điểm xuất phát chỉ tìm được ${s.size} trong ${i.nghiem.length} nghiệm
+câu ${t[1].toLowerCase()}
+câu tiếp theo
+còn mục lệch
+cô lập m không đúng (m = g(x) không tương đương với phương trình)
+cô tang
+công thức ngoài $: ${n}
+cần véc-tơ
+cộng trừ
+dài $${String(+Math.hypot(t[0]-n[0],t[1]-n[1],t[2]-n[2]).toFixed(4)).replace(
+dương rồi âm là cực đại
+dựng lại từ đề
+giao điểm của ${i(o[0])} và ${i(o[1])}
+giá trị này chưa được thế kiểm
+giá trị thử hoặc giá trị đúng không phải số
+giá trị thử không phải một số
+giá trị đúng ${t.giaTri} → loại ${u.join(
+giới hạn
+giới hạn bởi ${i(o[0])}, ${i(o[1])}, $x = ${hs(o[2])}$ và $x = ${hs(o[3])}$
+giới hạn bởi ${i(o[0])}, trục hoành, $x = ${hs(o[1])}$ và $x = ${hs(o[2])}$
+hàm f(x) = …
+hình chiếu vuông góc của $${o[0]}$ lên ${i(o[1])}
+hỏi thêm
+khoảng
+không có
+không có giá trị nào đem thử
+không hiểu "${n.slice(r,r+8)}"
+không hạn
+không loại được đáp án nào
+không mục nào lệch
+không rõ đề hỏi thể tích, diện tích hay độ dài
+không thoả
+không thoả ${a.filter(e=>!i.includes(e)).join(
+không tìm chắc được hết nghiệm (không phải đa thức và đề không cho đoạn)
+không tính được tại đáp án ${n.nhan}
+không tính được điều kiện ${r.bieuThuc}
+không tính được đại lượng cần tìm
+không xác định
+không đếm chắc được số nghiệm (không phải đa thức và đề không cho đoạn)
+không đọc hết được đáp số
+không đọc được các đáp án trong đề
+không đọc được giá trị AI nêu
+không đọc được hàm số
+không đọc được phương trình
+không đọc được phương trình hoặc hàm sau khi cô lập
+không đọc được toạ độ các điểm
+không đọc được đáp số lời giải theo
+kết luận khác đáp số lời giải
+kết quả mẹo nói khác kết quả app tìm
+kết quả mẹo ra khác đáp số lời giải
+loại hết các đáp án
+lô ga tự nhiên
+lượt xem
+lập phương
+lớn hơn
+lớn hơn hoặc bằng
+mẹo không thế đủ các đáp án của đề
+ngoài điều kiện
+nhỏ hơn
+nhỏ hơn hoặc bằng
+nửa khoảng
+phân số có tử là ${r(t.chu)}, mẫu là ${r(a.chu)}, hết phân số
+phương trình d: …
+phương trình không có nghiệm để SOLVE
+phương trình không phải phương trình của đề
+qua $${o[0]}$, vectơ pháp tuyến $${hs(o[1])}$
+quay hình phẳng giới hạn bởi ${i(o[0])}, trục hoành, $x = ${hs(o[1])}$, $x = ${hs(o[2])}$ quanh ${e}
+quay hình phẳng giới hạn bởi ${i(o[0],
+quay hình phẳng giữa ${i(o[0],
+thiếu điểm xuất phát
+thầy cô
+thử ${e.bien} = ${t.bieuThuc} không loại thêm được đáp án nào
+tiếp tuyến của ${i(o[0])} tại $x = ${hs(o[1])}$
+toạ độ (x, y)
+toạ độ không thoả điều kiện ${r.bieuThuc} = ${r.giaTri}
+trung trực của đoạn $${o[0]}${o[1]}$
+trung điểm của ${i(o[0])}
+trung điểm của đoạn $${o[0]}${o[1]}$
+trị tuyệt đối $1
+trọng tâm tam giác $${o.join(
+trục $Ox$
+trục $Oy$
+trừ cộng
+trực tâm tam giác $${o.join(
+tâm $${o[0]}$, bán kính $${hs(o[1])}$
+tâm $${o[0]}$, đi qua $${o[1]}$
+tâm đường tròn ngoại tiếp tam giác $${o.join(
+tâm đường tròn nội tiếp tam giác $${o.join(
+tích phân
+tương đương
+tại ${e.bien} = ${t.bieuThuc} giá trị đúng là ${l(n)}, mẹo nói ${t.giaTri}
+vê kép
+vô cùng
+với ${e.thamSo} = ${t.giaTri} app đếm được ${i.nghiem.length} nghiệm, mẹo nói ${t.soNghiem}
+với ${e.thamSo} = ${t.giaTri}, đáp án bị loại phải là ${u.join(
+||/vẽ|dựng|compa|thước/i.test(o.danY.deBai+
+} ${n()} còn thắc mắc gì cứ hỏi Măng nhé.
+} Chỗ nào chưa rõ ${t.current} hỏi Măng ngay bên dưới, hoặc gửi bài mới nhé.
+} nghiệm; đếm các số nguyên ${e.thamSo} như vậy.
+} điểm thì phương trình có ${e.soNghiem??
+} đến sản phẩm lỗi nhé.
+}. Chưa giải.
+}},Va={á:
+· ${r.toFixed(1)} giây (${Math.round(t.completion_tokens/Math.max(r,.1))} token/giây)
+· chế độ thử (mock)
+Âm thanh chưa phát được. Em thử Đọc lại nhé.
+Ê, mình có mẹo giải bài này nè! Xem Măng viết nhé.
+âm rồi dương là cực tiểu
+ĂÂÊÔƠƯĐăâêôơưđàảãáạằẳẵắặầẩẫấậèẻẽéẹềểễếệìỉĩíịòỏõóọồổỗốộờởỡớợùủũúụừửữứựỳỷỹýỵ
+Đa giác
+Đang dùng giọng Anh để đọc thử tiếng Việt.
+Đang lưu…
+Đang tìm hiểu
+Đi tiếp
+Đo bằng thước
+Đo lại trên các hình kéo xiên (phải giống nhau)
+Đo lại trên hình: IA = IB = IS ≈ ${dD(t)} = 2√3 — khớp ✓
+Đo lại trên hình: V ≈ ${dD(t)} = 8π — khớp ✓
+Đo lại trên hình: hệ số góc tại x = ±1 bằng 0 — khớp ✓
+Đoạn thẳng
+Đoạn thẳng $${e[1]}${e[2]}$
+Đoạn đọc có một từ quá dài. Em vẫn có thể học tiếp bằng chữ.
+ĐÁP SỐ
+Đánh dấu A, B
+Đáp số
+Đáp xuống
+Đáp án nào cho kết quả ${e.lay===
+Đáp án nào cho kết quả bằng 0 thì chọn.
+Đã khoá
+Đã lưu vào lịch sử
+Đã lưu ✓
+Đã đăng lên trang chủ ·
+Đăng nhập để thả tim
+Đăng nhập để thả tim cho bài hay nhé.
+Đăng xuất
+Đường cong
+Đường gấp khúc
+Đường kính đi qua tâm và dài gấp đôi bán kính.
+Đường ngang $y = ${e.thamSo}$ cắt đồ thị đúng ${e.soNghiem??
+Đường thẳng
+Đường thẳng $${e[1]}${e[2]}$
+Được hỏi, không thời hạn
+Được, mình chuyển sang bài mới nhé!
+Đạo hàm là gì? Giải thích bằng ví dụ dễ hiểu.
+Đặt Start = $${e.tu}$, End = $${(Bx(e.tu)??1)+30-1}$, Step = $1$, bấm =.
+Đặt Start = $${e.tu}$, End = $${e.den}$, Step = $${e.buocNhay}$, bấm =.
+Đặt Start = $${e.tu}$, End = $${e.den}$, Step = $1$, bấm =.
+Đặt thước qua O, đánh dấu hai giao điểm A và B với đường tròn.
+Đếm bước bằng tay
+Đếm các dòng có f(x) ${e.dau.replace(
+Đề nghị thử lại
+ĐỊNH HƯỚNG
+Đọc giá trị ${i} ở bảng mới.
+Đọc/lật sách
+Đồ thị hàm số
+Đồ thị y = x³ − 3x: tiếp tuyến nằm ngang tại những điểm nào?
+Đồng cảm và cá tính
+Đồng hồ cát
+Đứng chờ và sinh hoạt
+Đứng thả lỏng
+đang viết bài (${e.viet.toLocaleString(
+đen ta
+đi qua $${o[0]}$ và $${o[1]}$
+đi qua $${o[0]}$, song song với ${i(o[1])}
+đi qua $${o[0]}$, vuông góc với ${i(o[1])}
+đi qua ba điểm $${o[0]}$, $${o[1]}$, $${o[2]}$
+điểm đem thế không có trong đề
+đáp án ${n.nhan} không giống đề
+đáp án ${t} không phải biểu thức theo ${e.bien}
+đáp án ${t} không phải một tập giá trị của ${e.thamSo}
+đáp án mẹo nói khác đáp án còn lại
+đáp án đúng của lời giải bị loại hoặc không xác định được
+đã nghĩ ${e.nghi.toLocaleString(
+đã nghĩ ${n.nghi.toLocaleString(
+đường thẳng $x = ${hs(o[4])}$
+đường thẳng $y = ${hs(o[4])}$
+đại lượng này đổi khi kéo xiên hình: không đặc biệt hoá được
+đề không có toạ độ điểm và các đáp án
+để hỏi Măng.
+ảnh của ${i(o[0])} qua phép đối xứng qua ${i(o[1])}
+Ẩn bài
+— chỉ hiện một lần, sao chép gửi cho người nhận qua Zalo / Facebook:
+❚❚ Tạm dừng

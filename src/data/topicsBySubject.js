@@ -18,8 +18,8 @@ export const TOPICS_BY_SUBJECT = {
     { id: 'hydrocarbon', name: 'Hydrocarbon' },
     { id: 'dan-xuat-halogen', name: 'Dẫn xuất halogen – alcohol – phenol' },
     { id: 'hop-chat-carbonyl', name: 'Hợp chất carbonyl – carboxylic acid' },
-    { id: 'este-lipid', name: 'Ester – lipid' },
-    { id: 'amine-amino-protein', name: 'Amine, amino acid, protein' },
+    { id: 'este-lipid', name: 'Ester – Lipid' },
+    { id: 'amine-amino-protein', name: 'Amine, amino acid & protein' },
     { id: 'polymer', name: 'Polymer' },
     { id: 'pin-dien-phan', name: 'Pin điện & điện phân' },
     { id: 'dai-cuong-kim-loai', name: 'Đại cương về kim loại' },
@@ -180,6 +180,6 @@ export const getTopicName = (topicId, subject) => {
 };
 
 export const ALL_SUBJECTS_LIST = [
-  'Hóa học', 'Toán', 'Vật lí', 'Sinh học', 'Ngữ văn', 'Tiếng Anh',
-  'Lịch sử', 'Địa lí', 'GDCD', 'Tin học', 'Công nghệ', 'KHTN',
+  'Vật lí', 'Hóa học', 'Sinh học', 'KHTN',
+  'Toán', 'Tiếng Anh', 'Ngữ văn', 'Lịch sử', 'Địa lí', 'GDCD', 'Tin học', 'Công nghệ',
 ];

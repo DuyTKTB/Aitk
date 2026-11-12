@@ -11,10 +11,18 @@ import {
 } from './NotebookIcons.jsx';
 import NotebookGuide from './NotebookGuide.jsx';
 import { topicName, UNCLASSIFIED } from '../data/chemTopics.js';
+import { useCurrentSubject } from './SubjectSwitcher.jsx';
 
-// 🎨 Import CSS chuẩn xác (đã sửa tên file)
+// Import CSS chuan xac
 import './notebook-v2.css';
 import './notebook-guide.css';
+
+const SUBJECT_TABS = [
+  { id: 'all', label: 'Tất cả KHTN', color: '#2563eb' },
+  { id: 'ly', label: 'Vật lí', color: '#8b5cf6' },
+  { id: 'hoa', label: 'Hóa học', color: '#0891b2' },
+  { id: 'sinh', label: 'Sinh học', color: '#059669' },
+];
 
 const DIFFICULTIES = [
   { id: 'all', label: 'Tất cả' },
@@ -35,6 +43,15 @@ export default function WrongNotebook() {
   const [loading, setLoading] = useState(true);
 
   // Filters
+  const { subject: globalSubject, setSubject: setGlobalSubject } = useCurrentSubject();
+  const [filterSubject, setFilterSubject] = useState(globalSubject || 'all');
+
+  useEffect(() => {
+    if (globalSubject && globalSubject !== filterSubject) {
+      setFilterSubject(globalSubject);
+    }
+  }, [globalSubject, filterSubject]);
+
   const [search, setSearch] = useState('');
   const [filterDiff, setFilterDiff] = useState('all');
   /* Cho phép mở sẵn theo chương: #notebook?topic=c11-alcohol
@@ -190,6 +207,17 @@ export default function WrongNotebook() {
       });
     }
 
+    if (filterSubject !== 'all') {
+      arr = arr.filter((it) => {
+        const s = it.subject || it.question?.subject || it.question?.exam?.subject?.id;
+        const sName = (it.question?.exam?.subject?.name || '').toLowerCase();
+        if (filterSubject === 'ly') return s === 'ly' || sName.includes('vật lí');
+        if (filterSubject === 'sinh') return s === 'sinh' || sName.includes('sinh học');
+        if (filterSubject === 'hoa') return s === 'hoa' || sName.includes('hóa học') || (!s && !sName.includes('vật lí') && !sName.includes('sinh học'));
+        return true;
+      });
+    }
+
     if (filterDiff !== 'all') {
       arr = arr.filter((it) => it.question?.difficulty === filterDiff);
     }
@@ -217,7 +245,7 @@ export default function WrongNotebook() {
     });
 
     return arr;
-  }, [items, search, filterDiff, filterTopic, sortBy]);
+  }, [items, search, filterSubject, filterDiff, filterTopic, sortBy]);
 
   /* ============ STATS ============ */
   const stats = useMemo(() => {
@@ -394,9 +422,16 @@ export default function WrongNotebook() {
     <div className="nb">
       {/* ============ HEADER ============ */}
       <header className="nb-head">
-        <div className="nb-head-l">
-          <h1 className="nb-title">Sổ tay của tôi</h1>
-          <p className="nb-sub">Ôn lại câu sai và câu đã lưu để nhớ lâu hơn</p>
+        <div className="nb-head-l" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <img
+            src="/img/elec/elec-suspicious.png"
+            alt="Elec Soi Lỗi Sai"
+            style={{ width: 68, height: 68, objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(37, 99, 235, 0.28))' }}
+          />
+          <div>
+            <h1 className="nb-title">Sổ tay của tôi</h1>
+            <p className="nb-sub">Ôn lại câu sai và câu đã lưu cùng Elec để dọn sạch bẫy đề thi</p>
+          </div>
         </div>
 
         <div className="nb-head-r">
@@ -467,6 +502,33 @@ export default function WrongNotebook() {
         </div>
       </div>
 
+      {/* ============ SUBJECT FILTERS (KHTN) ============ */}
+      <div className="nb-filters" style={{ marginBottom: 8 }}>
+        {SUBJECT_TABS.map((sub) => {
+          const isActive = filterSubject === sub.id;
+          return (
+            <button
+              key={sub.id}
+              type="button"
+              className={'nb-chip' + (isActive ? ' on' : '')}
+              style={isActive ? {
+                background: sub.color,
+                color: '#fff',
+                borderColor: sub.color,
+                fontWeight: 750,
+                boxShadow: `0 4px 16px -2px color-mix(in srgb, ${sub.color} 45%, transparent)`
+              } : undefined}
+              onClick={() => {
+                setFilterSubject(sub.id);
+                setGlobalSubject(sub.id);
+              }}
+            >
+              {sub.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ============ DIFFICULTY FILTERS ============ */}
       <div className="nb-filters">
         {DIFFICULTIES.map((d) => (
@@ -519,8 +581,12 @@ export default function WrongNotebook() {
       {/* ============ LIST ============ */}
       {filtered.length === 0 ? (
         <div className="nb-empty">
-          <span className="nb-empty-ico"><IcoBookOpen size={32} /></span>
-          <h3>{items.length === 0 ? (tab === 'wrong' ? 'Chưa có câu sai nào' : 'Chưa có câu nào được lưu') : 'Không tìm thấy câu nào phù hợp'}</h3>
+          <img
+            src={items.length === 0 ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-shy.png'}
+            alt="Elec Mascot"
+            style={{ width: 105, height: 105, objectFit: 'contain', filter: 'drop-shadow(0 8px 20px rgba(37, 99, 235, 0.25))', marginBottom: 12 }}
+          />
+          <h3>{items.length === 0 ? (tab === 'wrong' ? 'Tuyệt vời! Chưa có câu sai nào' : 'Chưa có câu nào được lưu') : 'Không tìm thấy câu nào phù hợp'}</h3>
           <p>
             {items.length === 0
               ? (tab === 'wrong' ? 'Làm 1 đề trắc nghiệm và trả lời sai vài câu — hệ thống tự ghi vào đây.' : 'Bấm biểu tượng ngôi sao trên câu hỏi để lưu vào đây.')

@@ -1,0 +1,643 @@
+/* ============================================================
+   INTERACTIVE CHALKBOARD CANVAS — ELEC AI NATIVE (CLEAN & HUMAN)
+   Phong cách chuẩn giao diện Trắc nghiệm ELEC AI & Măng Non:
+   Tinh giản, thanh lịch, trang nhã, không máy móc hay rườm rà.
+   ============================================================ */
+
+.ds-geo-canvas-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #ffffff;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Google Sans', 'Be Vietnam Pro', Roboto, sans-serif;
+}
+
+[data-theme='dark'] .ds-geo-canvas-wrap {
+  background: #15171c;
+  color: #e2e8f0;
+}
+
+/* ================= 1. HEADER CHUẨN ELEC AI ================= */
+.ds-qc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .ds-qc-header {
+  background: #15171c;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.ds-geo-header-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ds-geo-header-compass-icon {
+  color: #1a73e8;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ds-qc-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 540px;
+}
+
+[data-theme='dark'] .ds-qc-title {
+  color: #f8fafc;
+}
+
+.ds-qc-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ds-qc-btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ds-qc-btn-icon:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+[data-theme='dark'] .ds-qc-btn-icon {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .ds-qc-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* ================= 2. THANH TIẾN TRÌNH THEO ẢNH NGƯỜI DÙNG ================= */
+.ds-qc-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafbfc;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .ds-qc-subbar {
+  background: #181a20;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.ds-qc-progress-track {
+  flex: 1;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+  max-width: 360px;
+}
+
+[data-theme='dark'] .ds-qc-progress-track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ds-qc-progress-fill {
+  height: 100%;
+  background: #1a73e8;
+  border-radius: 9999px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] .ds-qc-progress-fill {
+  background: #3b82f6;
+}
+
+.ds-qc-step-counter {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-theme='dark'] .ds-qc-step-counter {
+  color: #94a3b8;
+}
+
+.ds-qc-live-dot {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+/* ================= 3. KHUNG VẼ HÌNH HỌC ================= */
+.ds-geo-render-box {
+  position: relative;
+  width: 100%;
+  height: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1.25rem;
+  cursor: grab;
+  touch-action: none;
+  background: #ffffff;
+  transition: height 0.2s ease;
+}
+
+[data-theme='dark'] .ds-geo-render-box {
+  background: #0f1115;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ds-geo-render-box.theme-chalk {
+  background: #173426;
+  border-color: #24523d;
+}
+
+.ds-geo-render-box:active {
+  cursor: grabbing;
+}
+
+.ds-geo-render-box.is-expanded {
+  height: 480px;
+}
+
+.ds-geo-canvas-el {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Tag bước nhỏ góc trên canvas */
+.ds-geo-step-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  user-select: none;
+  pointer-events: none;
+  z-index: 5;
+}
+
+[data-theme='dark'] .ds-geo-step-tag {
+  background: rgba(26, 28, 34, 0.9);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-chalk .ds-geo-step-tag {
+  background: rgba(15, 36, 26, 0.9);
+  color: #fde68a;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Thanh dock điều khiển nổi góc dưới */
+.ds-geo-floating-bar {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 6;
+  padding: 3px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='dark'] .ds-geo-floating-bar {
+  background: rgba(22, 24, 30, 0.92);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.theme-chalk .ds-geo-floating-bar {
+  background: rgba(14, 32, 24, 0.92);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ds-geo-fbtn {
+  background: transparent;
+  border: none;
+  color: #475569;
+  padding: 5px 9px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.ds-geo-fbtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1e293b;
+}
+
+[data-theme='dark'] .ds-geo-fbtn {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .ds-geo-fbtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.ds-geo-fbtn.is-active {
+  background: #1a73e8 !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .ds-geo-fbtn.is-active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.ds-geo-fbtn-group {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 9999px;
+  padding: 2px;
+  margin-right: 2px;
+}
+
+[data-theme='dark'] .ds-geo-fbtn-group {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ds-geo-fbtn-group button {
+  background: transparent;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ds-geo-fbtn-group button:hover {
+  background: #ffffff;
+  color: #1a73e8;
+}
+
+[data-theme='dark'] .ds-geo-fbtn-group button {
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .ds-geo-fbtn-group button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Thước đo HUD */
+.ds-geo-measure-hud {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ds-geo-render-box.is-measuring {
+  cursor: crosshair !important;
+}
+
+.ds-geo-point-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ds-geo-point-tooltip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+}
+
+.ds-geo-point-tooltip-text strong {
+  color: #38bdf8;
+}
+
+/* ================= 4. NỘI DUNG LỜI GIẢI TỪNG BƯỚC ================= */
+.ds-geo-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ds-geo-step-heading {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+[data-theme='dark'] .ds-geo-step-heading {
+  color: #f8fafc;
+}
+
+.ds-geo-step-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  background: #1a73e8;
+  color: #ffffff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ds-geo-step-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #334155;
+}
+
+[data-theme='dark'] .ds-geo-step-desc {
+  color: #cbd5e1;
+}
+
+/* Card ĐÁP SỐ phong cách Măng Non */
+.ds-geo-final-box {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #0f4c3a;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-theme='dark'] .ds-geo-final-box {
+  background: #0d382b;
+}
+
+.ds-geo-final-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a7f3d0;
+}
+
+.ds-geo-final-val {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.5;
+}
+
+/* Khối Bé Elec Mẹo nhớ */
+.ds-geo-mascot-tip {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+[data-theme='dark'] .ds-geo-mascot-tip {
+  background: #181a20;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ds-geo-mascot-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ds-geo-tip-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+[data-theme='dark'] .ds-geo-tip-title {
+  color: #60a5fa;
+}
+
+.ds-geo-tip-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+[data-theme='dark'] .ds-geo-tip-text {
+  color: #94a3b8;
+}
+
+/* ================= 5. FOOTER ĐIỀU HƯỚNG CHUẨN ELEC AI ================= */
+.ds-qc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .ds-qc-footer {
+  background: #15171c;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.ds-qc-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ds-qc-btn {
+  padding: 9px 22px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.ds-qc-btn.secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: none;
+}
+
+.ds-qc-btn.secondary:hover {
+  background: #e2e8f0;
+}
+
+[data-theme='dark'] .ds-qc-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .ds-qc-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ds-qc-btn.ghost {
+  background: transparent;
+  color: #64748b;
+  border: none;
+  padding: 9px 16px;
+}
+
+.ds-qc-btn.ghost:hover:not(:disabled) {
+  color: #1e293b;
+}
+
+[data-theme='dark'] .ds-qc-btn.ghost {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .ds-qc-btn.ghost:hover:not(:disabled) {
+  color: #ffffff;
+}
+
+.ds-qc-btn.ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* NÚT TIẾP THEO MÀU XANH VIÊN NANG (CHUẨN ẢNH 2 CỦA NGƯỜI DÙNG) */
+.ds-qc-btn.solid-blue {
+  background: #1a73e8;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
+}
+
+.ds-qc-btn.solid-blue:hover {
+  background: #1557b0;
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .ds-qc-btn.solid-blue {
+  background: #2563eb;
+}
+
+[data-theme='dark'] .ds-qc-btn.solid-blue:hover {
+  background: #1d4ed8;
+}
+
+.ds-geo-speed-btn {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+[data-theme='dark'] .ds-geo-speed-btn {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+
+.ds-geo-speed-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+[data-theme='dark'] .ds-geo-speed-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}

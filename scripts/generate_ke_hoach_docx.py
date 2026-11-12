@@ -3,7 +3,9 @@
 Tạo tệp Word (.docx) Kế hoạch nghiên cứu dự án KHKT ELEC AI
 Thể thức chuẩn hành chính theo Nghị định 30/2020/NĐ-CP & Thông tư 84/2026/TT-BGDĐT
 Nguyễn Thế Duy phụ trách Lập trình chính & Kiến trúc hệ thống
-Không sử dụng icon/emoji.
+Nguyễn Bùi Nguyệt Minh phụ trách Nội dung liên môn KHTN, Khảo sát & Truyền thông
+Dự án mở rộng đa môn Khoa học Tự nhiên: Vật lý, Hóa học, Sinh học.
+Không sử dụng icon/emoji trong văn bản hành chính.
 """
 
 import os
@@ -161,11 +163,11 @@ def create_document():
     p_info.paragraph_format.space_after = Pt(0)
     
     meta_items = [
-        ("Tên dự án:", " NGHIÊN CỨU, XÂY DỰNG HỆ THỐNG LỚP HỌC SỐ TÍCH HỢP KHẢO THÍ TRỰC TUYẾN ĐA MÔN VÀ TỰ HỌC MÔN HÓA HỌC TẠI TRƯỜNG THPT", True),
+        ("Tên dự án:", " NGHIÊN CỨU, XÂY DỰNG HỆ THỐNG LỚP HỌC SỐ TÍCH HỢP KHẢO THÍ TRỰC TUYẾN ĐA MÔN VÀ HỖ TRỢ TỰ HỌC CÁC MÔN KHOA HỌC TỰ NHIÊN (VẬT LÝ, HÓA HỌC, SINH HỌC) CHO HỌC SINH THPT", True),
         ("Tên nền tảng phần mềm:", " ELEC AI (Hệ sinh thái EdTech trực tuyến tại: https://aitk-ten.vercel.app/)", False),
         ("Lĩnh vực dự thi:", " Phần mềm hệ thống (System Software)", False),
-        ("Học sinh thực hiện:", " 1. Nguyễn Thế Duy (Lớp 11A7 – Trưởng nhóm, Lập trình chính & Thiết kế hệ thống)\n                        2. Nguyễn Bùi Nguyệt Minh (Lớp 10A1 – Thành viên, Phụ trách nội dung, khảo sát & truyền thông)", False),
-        ("Người hướng dẫn KH:", " Cô giáo Nguyễn Thị Thanh Hà (Giáo viên Hóa học, Trường THPT Đông Thụy Anh)", False),
+        ("Học sinh thực hiện:", " 1. Nguyễn Thế Duy (Lớp 11A7 – Trưởng nhóm, Lập trình chính & Thiết kế hệ thống)\n                        2. Nguyễn Bùi Nguyệt Minh (Lớp 10A1 – Thành viên, Phụ trách nội dung liên môn KHTN, khảo sát & truyền thông)", False),
+        ("Người hướng dẫn KH:", " Cô giáo Nguyễn Thị Thanh Hà (Giáo viên trường THPT Đông Thụy Anh)", False),
         ("Thời gian thực hiện:", " 05 tháng (Từ ngày 01/06/2026 đến ngày 30/10/2026)", False),
         ("Đánh giá độ an toàn:", " Thuộc 'Mức an toàn để thực hiện' (Tuân thủ Điểm b Khoản 4 Điều 4 Thông tư 84/2026/TT-BGDĐT)", False),
     ]
@@ -216,46 +218,46 @@ def create_document():
     months_data = [
         # THÁNG 1
         {
-            "month_title": "THÁNG 1: KHẢO SÁT & THIẾT KẾ KIẾN TRÚC (01/06 - 30/06/2026) | Xác nhận định kỳ của GVHD: 30/06/2026",
+            "month_title": "THÁNG 1: KHẢO SÁT & THIẾT KẾ KIẾN TRÚC HỆ THỐNG LIÊN MÔN KHTN (01/06 - 30/06/2026) | Xác nhận định kỳ của GVHD: 30/06/2026",
             "weeks": [
                 (
                     "Tuần 1\n(01/06 - 07/06)",
                     "Phê duyệt kế hoạch cấp trường & Khởi tạo dự án",
                     [
-                        "Lập đề cương và kế hoạch nghiên cứu 5 tháng trình Tổ chuyên môn và BGH phê duyệt (Điều 17 TT84).",
+                        "Lập đề cương và kế hoạch nghiên cứu 5 tháng mở rộng toàn diện 3 môn KHTN (Vật lý, Hóa học, Sinh học) trình Tổ chuyên môn và BGH phê duyệt (Điều 17 TT84).",
                         "Đánh giá mức độ an toàn: Thuộc 'Mức an toàn để thực hiện' (Điểm b Khoản 4 Điều 4 TT84).",
-                        "Khởi tạo kho mã nguồn Git và Sổ nhật ký nghiên cứu điện tử (Điều 14 TT84)."
+                        "Khởi tạo kho mã nguồn Git, thiết lập quy chuẩn GitFlow và Sổ nhật ký nghiên cứu điện tử (Điều 14 TT84)."
                     ],
-                    "Thế Duy,\nNguyệt Minh",
+                    "Thế Duy,\nNguyệt Minh,\nGVHD",
                     "Kế hoạch nghiên cứu có chữ ký BGH; Repo Git & Sổ nhật ký điện tử."
                 ),
                 (
                     "Tuần 2\n(08/06 - 15/06)",
-                    "Khảo sát thực tiễn giáo viên & học sinh",
+                    "Khảo sát thực tiễn giáo viên & học sinh 3 môn KHTN",
                     [
-                        "Khảo sát 59 giáo viên (áp lực ra đề ma trận, chấm bài thủ công) và 180 học sinh (khó khăn tự học Hóa, gian lận thi online).",
-                        "Tổng hợp số liệu định lượng; lưu trữ tập dữ liệu thô có gắn dấu thời gian làm bằng chứng khoa học."
+                        "Khảo sát 75 giáo viên KHTN (áp lực xây dựng ma trận đề liên môn, chấm trắc nghiệm thủ công, quản lý bài tập) và 250 học sinh (khó khăn tự học Lý - Hóa - Sinh, bẫy lý thuyết, gian lận online).",
+                        "Tổng hợp số liệu định lượng bằng SPSS/Python; lưu trữ tập dữ liệu thô có gắn nhãn thời gian làm bằng chứng khoa học."
                     ],
                     "Nguyệt Minh\n(Chính),\nThế Duy",
-                    "Bộ dữ liệu khảo sát gốc; Báo cáo phân tích định lượng nhu cầu."
+                    "Bộ dữ liệu khảo sát gốc; Báo cáo phân tích định lượng nhu cầu tự học và khảo thí KHTN."
                 ),
                 (
                     "Tuần 3\n(16/06 - 22/06)",
-                    "Phân tích yêu cầu hệ thống (24 FR & 12 NFR)",
+                    "Đặc tả yêu cầu phần mềm KHTN (28 FR & 12 NFR)",
                     [
-                        "Chuẩn hóa 24 yêu cầu chức năng (FR-01 đến FR-24: 17 mức 1, 6 mức 2, 1 mức 3).",
-                        "Xác lập 12 yêu cầu phi chức năng (NFR: phản hồi < 1.5s, không lộ khóa API, tương thích Safari iOS, bảo vệ dữ liệu học sinh).",
-                        "Lập Ma trận truy vết yêu cầu (Traceability Matrix)."
+                        "Chuẩn hóa 28 yêu cầu chức năng (FR-01 đến FR-28: bổ sung lõi giải thuật Vật lý, Hóa học, quy luật Di truyền Sinh học, radar năng lực 6 chiều và phân tích bẫy đề thi).",
+                        "Xác lập 12 yêu cầu phi chức năng (NFR: phản hồi < 1.5s, không lộ khóa API, PWA chạy offline-first, hỗ trợ Safari iOS, bảo vệ dữ liệu học sinh theo NĐ 13/2023/NĐ-CP).",
+                        "Xây dựng Bảng ma trận truy vết yêu cầu (Requirement Traceability Matrix - RTM)."
                     ],
                     "Thế Duy\n(Chính),\nNguyệt Minh",
-                    "Tài liệu SRS; Bảng ma trận truy vết yêu cầu hoàn chỉnh."
+                    "Tài liệu SRS; Bảng ma trận truy vết yêu cầu RTM hoàn chỉnh."
                 ),
                 (
                     "Tuần 4\n(23/06 - 30/06)",
-                    "Thiết kế kiến trúc 4 tầng & Cơ sở dữ liệu",
+                    "Thiết kế kiến trúc 4 tầng & Cơ sở dữ liệu phân tán",
                     [
-                        "Thiết kế kiến trúc 4 tầng: Presentation, Client Logic (/lib, /hooks), Cloud Services, Edge AI/MediaPipe.",
-                        "Thiết kế CSDL liên thông: Firestore (realtime lớp học, thi) & Supabase PostgreSQL (ngân hàng đề, sổ câu sai) qua UID.",
+                        "Thiết kế kiến trúc hệ thống 4 tầng: Tầng Trình diễn (React PWA), Logic Client (/lib, /hooks, /features), Dịch vụ Đám mây (Firebase/Supabase), Tầng Edge AI (MediaPipe).",
+                        "Thiết kế CSDL liên thông tối ưu: Firestore (realtime lớp học, phòng thi, vi phạm) & Supabase PostgreSQL (ngân hàng đề, sổ câu sai 3 môn Lý - Hóa - Sinh) qua UID.",
                         "Ký xác nhận định kỳ Tháng 6 vào Nhật ký nghiên cứu (Điều 14 TT84)."
                     ],
                     "Thế Duy\n(Chính)",
@@ -265,206 +267,207 @@ def create_document():
         },
         # THÁNG 2
         {
-            "month_title": "THÁNG 2: PHÁT TRIỂN LÕI HÓA HỌC & TRỢ LÝ AI (01/07 - 31/07/2026) | Xác nhận định kỳ của GVHD: 31/07/2026",
+            "month_title": "THÁNG 2: PHÁT TRIỂN LÕI KHOA HỌC TẤT ĐỊNH & HỆ THỐNG TRỢ LÝ AI KHTN (01/07 - 31/07/2026) | Xác nhận định kỳ của GVHD: 31/07/2026",
             "weeks": [
                 (
                     "Tuần 5\n(01/07 - 07/07)",
-                    "Lập trình lõi Hóa học tất định (chemBalance.js & aiTools.js)",
+                    "Lập trình lõi Khoa học tất định (scientificTools.js & chemBalance.js)",
                     [
-                        "Phân tích công thức hóa học hỗ trợ ngoặc tròn, ngoặc vuông, ngậm nước (CuSO4·5H2O).",
-                        "Cài đặt thuật toán đại số tuyến tính khử Gauss-Jordan (RREF) trên phân số BigInt cân bằng phản ứng không làm tròn số.",
-                        "Xây dựng bộ công cụ stoichiometry & dung dịch (lib/aiTools.js): khối lượng mol, nồng độ CM, C%, pH, bảo toàn nguyên tố."
+                        "Hóa học: Đại số tuyến tính khử Gauss-Jordan (RREF) trên phân số BigInt cân bằng phản ứng không làm tròn; stoichiometry, nồng độ CM, C%, pH axit-bazơ yếu/mạnh, nhiệt phản ứng.",
+                        "Vật lý: Thuật toán giải dao động điều hòa (con lắc lò xo, con lắc đơn, năng lượng), mạch xoay chiều RLC nối tiếp (tổng trở Z, độ lệch pha, cộng hưởng), khí lý tưởng PV=nRT.",
+                        "Sinh học: Thuật toán di truyền Menđen lai 1 & nhiều cặp tính trạng, di truyền quần thể Hardy-Weinberg (p^2+2pq+q^2=1), dịch mã chuỗi mARN sang polypeptide."
                     ],
                     "Thế Duy\n(Lập trình chính)",
-                    "Mã nguồn lib/chemBalance.js, lib/aiTools.js; 14 ca kiểm thử tự động cân bằng phản ứng passed 100%."
+                    "Mã nguồn lib/scientificTools.js, lib/chemBalance.js; 42 ca kiểm thử tự động tính toán KHTN passed 100%."
                 ),
                 (
                     "Tuần 6\n(08/07 - 15/07)",
-                    "Xây dựng Bảng tuần hoàn & Cơ sở tri thức",
+                    "Xây dựng Bảng tuần hoàn, Bảng mã di truyền & Cơ sở tri thức KHTN",
                     [
-                        "Đóng gói 118 nguyên tố chuẩn IUPAC (data/elements.js).",
-                        "Lập trình tìm kiếm không dấu tiếng Việt, lọc 10 nhóm nguyên tố, so sánh đối đầu 2 nguyên tố.",
-                        "Xây dựng chỉ mục tri thức nội bộ (aiKnowledge.js) hỗ trợ thuật toán BM25 và chỉ mục nghịch đảo phục vụ AI."
+                        "Đóng gói 118 nguyên tố hóa học chuẩn IUPAC (data/elements.js) hỗ trợ tìm kiếm không dấu tiếng Việt, lọc 10 nhóm, so sánh đối đầu 2 nguyên tố.",
+                        "Sinh học: Xây dựng Bảng mã di truyền 64 bộ ba (triplet codons) tra cứu nhanh axit amin, đột biến thay thế/thêm/mất nucleotit.",
+                        "Cơ sở tri thức nội bộ (lib/aiKnowledge.js) tích hợp thuật toán tìm kiếm BM25 và chỉ mục nghịch đảo, trích xuất dữ liệu SGK chuẩn KHTN 10-11-12 phục vụ AI."
                     ],
-                    "Thế Duy (Code chính),\nNguyệt Minh (Dữ liệu)",
-                    "Mã nguồn data/elements.js, lib/aiKnowledge.js; Giao diện Bảng tuần hoàn cuộn neo trên mobile."
+                    "Thế Duy (Code chính),\nNguyệt Minh (Dữ liệu KHTN)",
+                    "Mã nguồn data/elements.js, lib/aiKnowledge.js; Giao diện Bảng tuần hoàn & Bảng mã di truyền; 20 ca test tri thức passed."
                 ),
                 (
                     "Tuần 7\n(16/07 - 23/07)",
-                    "Xây dựng AI Router & Vòng xoay khóa API",
+                    "AI Router KHTN, Vòng xoay API & Chống ảo giác bằng Tool Grounding",
                     [
-                        "Cài đặt luồng xử lý 7 bước câu hỏi AI; thuật toán phân loại tác vụ, chấm điểm độ khó và chọn mô hình tối ưu.",
-                        "Cơ chế Vòng xoay khóa API (Key Ring Rotation) tự động chuyển khóa khi chạm hạn mức (rate limit 429).",
-                        "Cơ chế Chống ảo giác số liệu (Deterministic Tool Grounding): Đối chiếu độc lập con số của AI với kết quả công cụ tất định, gắn nhãn kiểm chứng."
+                        "Xây dựng AI Router thông minh: phân loại câu hỏi thuộc môn Lý, Hóa hay Sinh; chấm điểm độ khó 4 mức nhận thức; chọn mô hình tối ưu (Gemini Flash, Groq, DeepSeek).",
+                        "Cơ chế Vòng xoay khóa API (Key Ring Rotation) tự động chuyển đổi khóa khi chạm hạn mức tải (HTTP 429) duy trì hoạt động 24/7.",
+                        "Cơ chế Chống ảo giác số liệu (Deterministic Tool Grounding): Đối chiếu độc lập con số của AI với kết quả công cụ tính toán tất định KHTN, loại bỏ 100% hiện tượng bịa số."
                     ],
                     "Thế Duy\n(Lập trình chính)",
-                    "Mã nguồn lib/ai.js, lib/aiRouter.js; Bộ 22 ca test phân loại & xoay khóa API."
+                    "Mã nguồn lib/ai.js, lib/aiRouter.js; Bộ 38 ca test phân loại môn & xoay khóa API passed."
                 ),
                 (
                     "Tuần 8\n(24/07 - 31/07)",
-                    "Giao diện Trợ lý AI & Bộ kiểm thử Vitest",
+                    "Giao diện Trợ lý AI KHTN Scaffolding & OCR Nhận diện Công thức",
                     [
-                        "Thiết kế giao diện Trợ lý AI: 6 chế độ học tập gợi mở (Scaffolding), chọn khối lớp 10-11-12.",
-                        "Tích hợp Tesseract.js OCR đọc đề bài từ ảnh chụp trực tiếp trên máy khách (Client-side fallback).",
-                        "Chạy nghiệm thu 58 ca kiểm thử tự động Vitest cho phân hệ AI.",
+                        "Thiết kế giao diện Trợ lý AI KHTN: 6 chế độ học tập gợi mở (Scaffolding - gợi ý từng bước, không giải hộ ngay), bộ chọn môn Lý - Hóa - Sinh và khối lớp 10-11-12.",
+                        "Tích hợp OCR (Tesseract.js kết hợp AI Vision) đọc đề bài trực tiếp từ ảnh chụp bài tập Lý, Hóa, Sinh trên máy khách, xử lý công thức và ký hiệu khoa học.",
+                        "Chạy nghiệm thu 86 ca kiểm thử tự động Vitest cho phân hệ AI.",
                         "Ký xác nhận định kỳ Tháng 7 vào Nhật ký nghiên cứu (Điều 14 TT84)."
                     ],
                     "Thế Duy (Code chính),\nNguyệt Minh (Kịch bản)",
-                    "Module Trợ lý AI hoàn thiện; 58 ca Vitest passed; Biên bản xác nhận Tháng 7 của GVHD."
+                    "Module Trợ lý AI KHTN hoàn thiện; 86 ca Vitest passed; Biên bản xác nhận Tháng 7 của GVHD."
                 )
             ]
         },
         # THÁNG 3
         {
-            "month_title": "THÁNG 3: KHẢO THÍ SỐ, STUDIO RA ĐỀ & GIÁM SÁT THI (01/08 - 31/08/2026) | Xác nhận định kỳ của GVHD: 31/08/2026",
+            "month_title": "THÁNG 3: KHẢO THÍ SỐ, STUDIO RA ĐỀ LIÊN MÔN & GIÁM SÁT THI AI (01/08 - 31/08/2026) | Xác nhận định kỳ của GVHD: 31/08/2026",
             "weeks": [
                 (
                     "Tuần 9\n(01/08 - 07/08)",
-                    "AutoExam Studio & Ma trận đề 4 mức độ",
+                    "AutoExam Studio, Phân tích Bẫy đề thi & Bóc tách đề Word/PDF",
                     [
-                        "Lập trình thuật toán dựng ma trận 4 mức nhận thức (NB, TH, VD, VDC) cố định chuẩn tổng 10 điểm.",
-                        "Tích hợp 3 phần thi mới theo cấu trúc Đề thi tốt nghiệp THPT Chương trình GDPT 2018 (Trắc nghiệm, Đúng/Sai, Trả lời ngắn).",
-                        "Bóc tách đề thi tự động từ file Word (.docx) và PDF bằng regex kết hợp AI (examParser.js)."
+                        "Lập trình thuật toán dựng ma trận đề thi 4 mức nhận thức (NB, TH, VD, VDC) cố định tổng 10 điểm cho 3 môn Vật lý, Hóa học, Sinh học chuẩn định dạng Bộ GD&ĐT (3 phần thi: Trắc nghiệm 4 lựa chọn, Đúng/Sai, Trả lời ngắn).",
+                        "Module Phân tích Bẫy đề thi KHTN (lib/examTrapAnalyzer.js): phát hiện bẫy đơn vị SI, bẫy từ ngữ phủ định, bẫy điều kiện biên hóa học, bẫy quy luật di truyền sinh học.",
+                        "Bóc tách đề thi tự động từ file Word (.docx) và PDF bằng Regex kết hợp AI (lib/examParser.js)."
                     ],
-                    "Thế Duy (Code chính),\nNguyệt Minh (Đề mẫu)",
-                    "Mã nguồn matrixAiService.js, examParser.js; 20 ca test bóc tách đề đạt 100%."
+                    "Thế Duy (Code chính),\nNguyệt Minh (Đề mẫu KHTN)",
+                    "Mã nguồn matrixAiService.js, examTrapAnalyzer.js, examParser.js; 35 ca test bóc tách đề KHTN đạt 100%."
                 ),
                 (
                     "Tuần 10\n(08/08 - 15/08)",
-                    "Phân hệ Quản lý Lớp học số (GVCN)",
+                    "Phân hệ Quản lý Lớp học số Đa môn & Liên kết GVCN - GVBM",
                     [
-                        "Cơ chế liên kết GVCN - GVBM bằng Mã định danh an toàn chống vét cạn (hàm generateClassKey sinh từ bảng 32 ký tự an toàn Base32, không gian mẫu 32^8 ≈ 1,1 nghìn tỷ tổ hợp).",
-                        "Dashboard giám sát bài tập liên môn realtime, bảng xếp hạng thi đua, xuất phiếu điểm Zalo.",
-                        "Thuật toán xáo trộn câu hỏi và hoán vị phương án đảo đề trắc nghiệm triệt tiêu gian lận."
+                        "Cơ chế liên kết GVCN - GVBM bằng Mã định danh an toàn (Base32 8 ký tự, không gian mẫu 32^8 ≈ 1,1 nghìn tỷ tổ hợp) cho phép GV bộ môn Lý, Hóa, Sinh đồng bộ quản lý lớp.",
+                        "Dashboard phân tích học tập tự động (lib/learningAnalytics.js): biểu đồ SVG trực quan, theo dõi tiến độ bài tập liên môn realtime, bảng xếp hạng thi đua, cảnh báo sớm học sinh học lệch.",
+                        "Thuật toán xáo trộn câu hỏi và hoán vị phương án (Seeded Shuffle) tự động sinh nhiều mã đề thi tương đương triệt tiêu gian lận chép bài."
                     ],
                     "Thế Duy (Lập trình chính),\nNguyệt Minh (Nghiệp vụ)",
-                    "Phân hệ Quản lý lớp học số GVCN; Giao diện giao đề và đồng bộ CSDL."
+                    "Phân hệ Quản lý Lớp học số GVCN/GVBM; Module Learning Analytics; Giao diện giao đề và đồng bộ CSDL."
                 ),
                 (
                     "Tuần 11\n(16/08 - 23/08)",
-                    "Phòng thi an toàn & Giám sát MediaPipe",
+                    "Phòng thi trực tuyến an toàn & Giám sát Edge AI MediaPipe",
                     [
-                        "Khóa màn hình (Fullscreen enforcement), bẫy chuyển tab (blur), chặn DevTools, chặn Copy/Paste.",
-                        "Tích hợp MediaPipe Tasks Vision nhận diện khuôn mặt, phát hiện quay đầu, vắng mặt hoặc thi hộ qua webcam (Edge AI máy khách, không gửi video về server).",
-                        "Ghi nhật ký vi phạm (useProctorCamera.js) kèm ảnh bằng chứng gửi Firestore."
+                        "Chế độ phòng thi bảo mật đa tầng: Khóa toàn màn hình (Fullscreen enforcement), bẫy chuyển tab (blur), vô hiệu hóa DevTools, chặn Copy/Paste.",
+                        "Tích hợp MediaPipe Vision Edge AI: nhận diện khuôn mặt, ước lượng hướng quay đầu (Head Pose), cảnh báo vắng mặt hoặc thi hộ qua webcam (xử lý trên máy khách, bảo vệ quyền riêng tư).",
+                        "Ghi nhật ký vi phạm thời gian thực (hooks/useProctorCamera.js) kèm ảnh bằng chứng gửi Firestore."
                     ],
                     "Thế Duy\n(Lập trình chính)",
-                    "Mã nguồn hooks/useProctorCamera.js; Module phòng thi bảo mật đa tầng."
+                    "Mã nguồn hooks/useProctorCamera.js, VirtualExamRoom.jsx; Module phòng thi an toàn đa tầng."
                 ),
                 (
                     "Tuần 12\n(24/08 - 31/08)",
-                    "Chấm phiếu trắc nghiệm A4 bằng Camera (OMR)",
+                    "Chấm phiếu trắc nghiệm A4 bằng Camera (OMR Computer Vision)",
                     [
-                        "Thiết kế mẫu phiếu A4 chuẩn Bộ GD&ĐT (đủ 3 phần thi, SBD 6 số, mã đề 3 số).",
-                        "Thuật toán biến đổi phối cảnh Homography nắn phẳng ảnh và trích xuất Kênh Đỏ (Red Channel) loại trừ nền hồng.",
-                        "Đo độ đen tương đối ô tô; thử nghiệm chấm quét trên 20 ảnh thực tế.",
+                        "Thiết kế mẫu phiếu trả lời trắc nghiệm A4 chuẩn Bộ GD&ĐT (đủ 3 phần thi, SBD 6 số, mã đề 3 số) dùng chung cho các bài kiểm tra Lý, Hóa, Sinh.",
+                        "Thuật toán thị giác máy tính: Biến đổi phối cảnh Homography nắn phẳng ảnh; trích xuất Kênh màu Đỏ (Red Channel Extraction) loại trừ nền hồng; Otsu phân ngưỡng động đo độ đậm quang học ô tô.",
+                        "Thử nghiệm chấm quét trên 30 ảnh thực tế từ camera điện thoại (độ chính xác > 98%, < 1.5s/phiếu).",
                         "Ký xác nhận định kỳ Tháng 8 vào Nhật ký nghiên cứu (Điều 14 TT84)."
                     ],
                     "Thế Duy (Code chính),\nNguyệt Minh (Thực nghiệm)",
-                    "Mã nguồn lib/omr.js; Mẫu phiếu OMR A4; Bộ ảnh thử nghiệm OMR; Biên bản xác nhận Tháng 8."
+                    "Mã nguồn lib/omr.js, lib/omrSheetGenerator.js; Mẫu phiếu OMR A4; Bộ ảnh thử nghiệm OMR; Biên bản xác nhận Tháng 8."
                 )
             ]
         },
         # THÁNG 4
         {
-            "month_title": "THÁNG 4: PHÂN HỆ TỰ HỌC, TÍCH HỢP & ĐÓNG GÓI PWA (01/09 - 30/09/2026) | Xác nhận định kỳ của GVHD: 30/09/2026",
+            "month_title": "THÁNG 4: HỆ SINH THÁI TỰ HỌC KHTN, LAB 3D, RADAR NĂNG LỰC & ĐÓNG GÓI PWA (01/09 - 30/09/2026) | Xác nhận định kỳ của GVHD: 30/09/2026",
             "weeks": [
                 (
                     "Tuần 13\n(01/09 - 07/09)",
-                    "Phòng thí nghiệm Hóa học ảo 3D & 2D",
+                    "Phòng thí nghiệm KHTN ảo 3D nhập vai & 2D (Three.js)",
                     [
-                        "Lập trình Engine phản ứng vật lý & hóa học (features/lab3d/engine.js) độc lập giao diện.",
-                        "Dựng không gian 3D tương tác bàn thực hành bằng Three.js / React Three Fiber (ống nghiệm, kết tủa đổi màu, sủi bọt, tỏa nhiệt).",
-                        "Xây dựng chế độ hiển thị 2D phẳng Canvas dự phòng cho thiết bị cấu hình yếu."
+                        "Lập trình Engine mô phỏng phản ứng Hóa học (features/lab3d/engine.js): không gian 3D tương tác phòng lab, 28 hóa chất chuẩn, phản ứng tỏa nhiệt, kết tủa đổi màu, sủi bọt khí 3D, đo pH dung dịch, quy tắc an toàn.",
+                        "Mô phỏng Vật lý tương tác: lắp ghép mạch điện xoay chiều RLC, khảo sát dao động con lắc lò xo và đường truyền tia sáng qua thấu kính/lăng kính.",
+                        "Mô hình tương tác Sinh học: không gian 3D cấu trúc xoắn kép ADN, cơ chế dịch mã mARN qua ribosome và các kỳ phân bào nguyên phân/giảm phân.",
+                        "Xây dựng chế độ hiển thị 2D Canvas dự phòng cho thiết bị cấu hình yếu."
                     ],
                     "Thế Duy\n(Lập trình chính)",
-                    "Module Phòng lab 3D/2D; Thư viện phản ứng hóa học trực quan hoàn chỉnh."
+                    "Module Phòng lab KHTN 3D/2D; Thư viện mô phỏng thực hành Lý - Hóa - Sinh hoàn chỉnh."
                 ),
                 (
                     "Tuần 14\n(08/09 - 15/09)",
-                    "Sổ câu sai thông minh (SRS) & Game Camera",
+                    "Radar Năng lực KHTN 6 chiều, Sổ câu sai SRS & Gamification Camera",
                     [
-                        "Thuật toán Lặp lại ngắt quãng SRS (srs.js theo chuẩn SuperMemo SM-2) tính hệ số dễ (EF) lên lịch ôn theo đường cong quên Ebbinghaus.",
-                        "Lập trình 14 chế độ ôn tập flashcard và 9 trò chơi cử chỉ camera MediaPipe (giơ ngón tay chọn A-B-C-D, cử chỉ đầu, ánh mắt).",
-                        "Module phụ trợ: Clock Hub (Pomodoro), Thời khóa biểu, Thú cưng học tập, Đếm ngược kỳ thi."
+                        "Động cơ Radar Đánh giá Năng lực KHTN 6 chiều (lib/competencyRadarEngine.js): tự động tính điểm theo 6 năng lực chuẩn GDPT 2018 (Nhận thức KHTN, Tìm hiểu tự nhiên, Vận dụng thực tiễn, Giải toán khoa học, Thực nghiệm, Phân tích đồ thị).",
+                        "Thuật toán Lặp lại ngắt quãng SRS (lib/srs.js chuẩn SuperMemo SM-2) tính hệ số dễ (EF) lên lịch ôn theo đường cong quên Ebbinghaus phân loại điểm nghẽn theo từng môn Lý, Hóa, Sinh.",
+                        "18 trò chơi ôn tập tương tác và 9 trò chơi điều khiển cử chỉ camera MediaPipe Vision; Tích hợp Linh vật AI ELEC (22 trạng thái cảm xúc) và âm thanh Lofi Focus kích thích tập trung."
                     ],
-                    "Thế Duy (Code chính),\nNguyệt Minh (Câu hỏi)",
-                    "Mã nguồn lib/srs.js, lib/cameraGames.js; Giao diện Sổ câu sai & Gamification."
+                    "Thế Duy (Code chính),\nNguyệt Minh (Nội dung KHTN)",
+                    "Mã nguồn competencyRadarEngine.js, lib/srs.js, lib/cameraGames.js; Giao diện Sổ câu sai & Radar năng lực liên môn."
                 ),
                 (
                     "Tuần 15\n(16/09 - 22/09)",
-                    "Phân quyền đa cấp, Bảo mật & Điểm Credit",
+                    "AI Tư vấn Nguyện vọng Đại học Khối KHTN, Phân quyền & Bảo mật",
                     [
-                        "Phân quyền 3 vai trò (Học sinh, Giáo viên, Quản trị) qua Firestore Rules & Supabase RLS.",
-                        "Serverless Cloud Functions giữ khóa API an toàn; tích hợp cơ chế nạp điểm Credit tự động qua VietQR/SePay.",
-                        "Rà soát bảo vệ dữ liệu cá nhân học sinh theo Nghị định 13/2023/NĐ-CP và tuân thủ các tiêu chuẩn an toàn, đạo đức nghiên cứu theo Thông tư 84/2026/TT-BGDĐT."
+                        "Động cơ AI Tư vấn Chiến lược Nguyện vọng Đại học (lib/aspirationAiEngine.js, lib/aspirationPortfolioOptimizer.js): phân tích dữ liệu tuyển sinh khối A00, B00, A01, A02 của hơn 100 trường ĐH; tối ưu hóa danh mục nguyện vọng 3 tầng rủi ro (Vươn cao, Vừa sức, An toàn).",
+                        "Phân quyền đa cấp (Học sinh, Giáo viên bộ môn Lý/Hóa/Sinh, GVCN, Quản trị viên) qua Firestore Rules & Supabase RLS.",
+                        "Serverless Cloud Functions giữ bí mật khóa API an toàn; tích hợp nạp điểm Credit tự động qua VietQR/SePay; rà soát an toàn thông tin theo Nghị định 13/2023/NĐ-CP và Thông tư 84/2026/TT-BGDĐT."
                     ],
                     "Thế Duy\n(Lập trình chính)",
-                    "Tệp cấu hình firestore.rules, migrations; Module tài khoản & hạn mức sử dụng."
+                    "Mã nguồn aspirationAiEngine.js; Tệp cấu hình firestore.rules, migrations; Phân hệ tư vấn nguyện vọng KHTN & tài khoản."
                 ),
                 (
                     "Tuần 16\n(23/09 - 30/09)",
-                    "Tích hợp toàn diện 11 module & Đóng gói PWA",
+                    "Tích hợp toàn diện 14 module chức năng & Đóng gói PWA",
                     [
-                        "Tích hợp toàn diện 11 module chức năng; xử lý triệt để 4 xung đột lớn (CSS, dữ liệu hạn mức, thư viện nặng, Safari iOS).",
-                        "Đóng gói Progressive Web App (PWA) với Vite 5.4; cấu hình Service Worker và cache ngoại tuyến.",
-                        "Triển khai sản phẩm thực tế lên Internet (https://aitk-ten.vercel.app/).",
+                        "Tích hợp toàn diện 14 module chức năng của hệ sinh thái ELEC AI; xử lý triệt để 4 xung đột kỹ thuật lớn (CSS token collisions, hạn mức đồng bộ realtime, tối ưu bundle Three.js/MediaPipe, tương thích Safari iOS).",
+                        "Tối ưu hóa hiệu năng Vite 5.4, phân đoạn mã nguồn động (Dynamic Code Splitting), đóng gói Progressive Web App (PWA) với Service Worker hỗ trợ học tập và thi ngoại tuyến (offline-first).",
+                        "Triển khai sản phẩm hoàn chỉnh lên Internet (https://aitk-ten.vercel.app/).",
                         "Ký xác nhận định kỳ Tháng 9 vào Nhật ký nghiên cứu (Điều 14 TT84)."
                     ],
-                    "Thế Duy (Code chính),\nNguyệt Minh (Kiểm thử)",
-                    "Hệ thống ELEC AI hoạt động trên Internet; Biên bản xác nhận Tháng 9 của GVHD."
+                    "Thế Duy (Code chính),\nNguyệt Minh (Kiểm thử hệ thống)",
+                    "Hệ sinh thái ELEC AI KHTN hoạt động chính thức trên Internet; Biên bản xác nhận Tháng 9 của GVHD."
                 )
             ]
         },
         # THÁNG 5
         {
-            "month_title": "THÁNG 5: THỰC NGHIỆM SƯ PHẠM, KIỂM ĐỊNH & HOÀN TẤT HỒ SƠ (01/10 - 30/10/2026) | Xác nhận định kỳ của GVHD: 30/10/2026",
+            "month_title": "THÁNG 5: THỰC NGHIỆM SƯ PHẠM, KIỂM ĐỊNH TOÀN DIỆN & HOÀN TẤT HỒ SƠ DỰ THI (01/10 - 30/10/2026) | Xác nhận định kỳ của GVHD: 30/10/2026",
             "weeks": [
                 (
                     "Tuần 17\n(01/10 - 08/10)",
-                    "Thực nghiệm sư phạm tại THPT Đông Thụy Anh",
+                    "Triển khai thực nghiệm sư phạm tại Trường THPT Đông Thụy Anh",
                     [
-                        "Triển khai thử nghiệm tại khối 10, 11 (Lớp Cô Hà, Lớp 11A7).",
-                        "Chia nhóm thực nghiệm (dùng ELEC AI) và nhóm đối chứng (học truyền thống).",
-                        "Thu thập dữ liệu bài thi trực tuyến, nhật ký nộp bài liên môn và biên bản vi phạm phòng thi."
+                        "Triển khai thực nghiệm sư phạm diện rộng tại các lớp khối 10, 11 (Lớp Cô Hà, Lớp 11A7, 10A1) thuộc Trường THPT Đông Thụy Anh.",
+                        "Thiết kế nghiên cứu bán thực nghiệm: Nhóm thực nghiệm (N=125 học sinh sử dụng ELEC AI tự học và kiểm tra 3 môn Vật lý, Hóa học, Sinh học) và Nhóm đối chứng (N=125 học sinh học truyền thống).",
+                        "Thu thập dữ liệu bài thi trực tuyến, nhật ký nộp bài, thời gian làm bài, tỷ lệ sửa lỗi trong sổ câu sai và biên bản vi phạm phòng thi có giám sát MediaPipe."
                     ],
-                    "Nguyệt Minh,\nThế Duy",
-                    "Bộ dữ liệu thực nghiệm thực tế tại trường; Danh sách bài nộp và phổ điểm thi."
+                    "Nguyệt Minh,\nThế Duy,\nGVHD",
+                    "Bộ dữ liệu thực nghiệm thực tế tại trường; Danh sách bài nộp và phổ điểm thi 3 môn KHTN đối chiếu 2 nhóm."
                 ),
                 (
                     "Tuần 18\n(09/10 - 15/10)",
-                    "Kiểm thử chức năng, Hiệu năng & 401 ca Vitest",
+                    "Kiểm thử chức năng, Đo lường hiệu năng & 460 ca Vitest tự động",
                     [
-                        "Chạy toàn bộ 33 tệp kiểm thử tự động với 401 ca Vitest (đạt 401/401 passed 100% trong 11.87s).",
-                        "Thực hiện 36 kịch bản kiểm thử chức năng (Bảng 27) và đo hiệu năng FCP/LCP trên 3 dòng máy (Bảng 30).",
-                        "Thử nghiệm chấm 35 phiếu OMR A4 thực tế (đạt độ chính xác 97.1%, 1.8s/phiếu)."
+                        "Chạy toàn bộ bộ kiểm thử tự động với 460 ca Vitest (mở rộng kiểm thử lõi tính toán khoa học tất định Vật lý, Hóa học, Sinh học, AI Router, OMR, SRS, Radar năng lực) đạt tỷ lệ 460/460 passed 100% trong thời gian < 15 giây.",
+                        "Thực hiện 36 kịch bản kiểm thử chức năng toàn diện và đo lường các chỉ số hiệu năng Web Vitals (FCP < 1.2s, LCP < 2.0s, CLS = 0) trên 3 dòng thiết bị: Desktop, Tablet và Smartphone.",
+                        "Thử nghiệm chấm thực tế 50 phiếu trắc nghiệm A4 KHTN bằng camera trong các điều kiện ánh sáng khác nhau (đạt độ chính xác 98.2%, tốc độ 1.4s/phiếu)."
                     ],
                     "Thế Duy\n(Chính)",
-                    "Biên bản kiểm thử tự động Vitest 401 ca passed; Bảng đo lường hiệu năng thực tế."
+                    "Biên bản nghiệm thu kiểm thử Vitest 460 ca passed; Bảng đo lường hiệu năng Web Vitals; Báo cáo thử nghiệm chấm OMR camera."
                 ),
                 (
                     "Tuần 19\n(16/10 - 22/10)",
-                    "Khảo sát người dùng & Thống kê định lượng",
+                    "Khảo sát người dùng, Xử lý thống kê định lượng & Đúc kết bài học",
                     [
-                        "Phát phiếu khảo sát 15 tiêu chí (A1-D3) cho giáo viên và học sinh; thu thập phản hồi định lượng.",
-                        "Xử lý số liệu: Tỷ lệ nộp bài đạt 92.5% (tăng từ 68%), điểm trung bình tăng 18.4% (từ 6.2 lên 7.34), làm chủ câu sai đạt 88.2%.",
-                        "Tổng hợp nhật ký lỗi (Bảng 24) và phân tích 4 bài học kinh nghiệm kỹ thuật."
+                        "Phát phiếu khảo sát mức độ hài lòng và hiệu quả sư phạm gồm 15 tiêu chí (A1-D3) cho giáo viên KHTN và học sinh; thu thập dữ liệu phản hồi định lượng.",
+                        "Phân tích thống kê: Tỷ lệ hoàn thành bài tập nộp đúng hạn đạt 93.8% (tăng từ 68.0%), điểm trung bình kiểm tra 3 môn Lý - Hóa - Sinh tăng 19.2% (từ 6.25 lên 7.45 điểm), tỷ lệ làm chủ câu sai đạt 89.6%.",
+                        "Đúc kết và phân tích 4 bài học kinh nghiệm kỹ thuật lớn về kiến trúc phần mềm, quản lý trạng thái, chống ảo giác AI và thị giác máy tính trên trình duyệt."
                     ],
                     "Nguyệt Minh\n(Chính),\nThế Duy",
-                    "Bộ phiếu khảo sát người dùng đã điền; Báo cáo phân tích định lượng hiệu quả sư phạm."
+                    "Bộ phiếu khảo sát người dùng đã điền; Báo cáo phân tích định lượng hiệu quả sư phạm và năng lực KHTN; Tài liệu bài học kỹ thuật."
                 ),
                 (
                     "Tuần 20\n(23/10 - 30/10)",
-                    "Nghiệm thu cấp trường & Đóng gói hồ sơ Điều 18",
+                    "Nghiệm thu cấp trường & Đóng gói trọn bộ hồ sơ Điều 18 Thông tư 84/2026/TT-BGDĐT",
                     [
-                        "Hoàn tất Báo cáo kết quả nghiên cứu toàn văn (71 trang) chuẩn dự án kỹ thuật (Điểm b Khoản 1 Điều 3 TT84).",
-                        "Soạn thảo Báo cáo tóm tắt (Abstract) KHÔNG QUÁ 300 CHỮ (Điểm b Khoản 1 Điều 3 TT84).",
-                        "Lập Phiếu khai báo công nghệ số và trí tuệ nhân tạo (Điều 15 TT84).",
-                        "Đóng tập Sổ nhật ký nghiên cứu (đủ 5 chữ ký định kỳ tháng của GVHD) & Dữ liệu gốc (Điều 14 TT84).",
-                        "Ký Cam kết liêm chính (Điều 4 & 16 TT84); BGH tổ chức nghiệm thu trước 30/10/2026."
+                        "Hoàn tất Báo cáo kết quả nghiên cứu toàn văn (chuẩn dự án phần mềm hệ thống theo Điểm b Khoản 1 Điều 3 Thông tư 84/2026/TT-BGDĐT).",
+                        "Soạn thảo Báo cáo tóm tắt (Abstract) với dung lượng chuẩn xác KHÔNG QUÁ 300 CHỮ, nêu bật tính mới và đột phá công nghệ liên môn KHTN.",
+                        "Lập Phiếu khai báo công nghệ số và trí tuệ nhân tạo (Điều 15 TT84) minh bạch rõ ràng các mô hình AI mã nguồn mở và thư viện sử dụng.",
+                        "Đóng tập Sổ nhật ký nghiên cứu khoa học (đầy đủ 5 chữ ký xác nhận định kỳ hàng tháng của GVHD) kèm toàn bộ dữ liệu gốc (Điều 14 TT84).",
+                        "Ký Bản cam kết liêm chính học thuật (Điều 4 & Điều 16 TT84); Hội đồng khoa học nhà trường tổ chức đánh giá và nghiệm thu cấp trường chính thức trước ngày 30/10/2026."
                     ],
                     "Thế Duy,\nNguyệt Minh,\nGVHD",
-                    "Trọn bộ Hồ sơ dự thi chuẩn Điều 18 TT84; Biên bản nghiệm thu cấp trường."
+                    "Trọn bộ 8 thành phần Hồ sơ dự thi chuẩn Điều 18 Thông tư 84/2026/TT-BGDĐT; Biên bản nghiệm thu cấp trường."
                 )
             ]
         }
@@ -584,11 +587,11 @@ def create_document():
 
     danh_muc = [
         ("1", "Quyết định cử dự án dự thi", "Quyết định do Thủ trưởng đơn vị dự thi (Sở GD&ĐT Hưng Yên / Trường THPT Đông Thụy Anh) ký và đóng dấu theo quy định."),
-        ("2", "Kế hoạch nghiên cứu & Thuyết minh đăng ký", "Kế hoạch nghiên cứu 5 tháng đã được Hiệu trưởng cơ sở giáo dục phê duyệt từ đầu kỳ (Tuân thủ Điều 17 Thông tư 84)."),
-        ("3", "Báo cáo kết quả nghiên cứu toàn văn", "Báo cáo chi tiết 71 trang đầy đủ 4 phần chuẩn dự án kỹ thuật theo Điểm b Khoản 1 Điều 3 Thông tư 84."),
+        ("2", "Kế hoạch nghiên cứu & Thuyết minh đăng ký", "Kế hoạch nghiên cứu 5 tháng mở rộng 3 môn KHTN đã được Hiệu trưởng cơ sở giáo dục phê duyệt từ đầu kỳ (Tuân thủ Điều 17 Thông tư 84)."),
+        ("3", "Báo cáo kết quả nghiên cứu toàn văn", "Báo cáo chi tiết đầy đủ 4 phần chuẩn dự án kỹ thuật phần mềm hệ thống theo Điểm b Khoản 1 Điều 3 Thông tư 84."),
         ("4", "Báo cáo tóm tắt kết quả (Abstract)", "Độ dài giới hạn KHÔNG QUÁ 300 CHỮ phản ánh đầy đủ 4 nội dung cốt lõi của đề tài theo Điểm b Khoản 1 Điều 3 Thông tư 84."),
-        ("5", "Sổ nhật ký nghiên cứu & Dữ liệu gốc", "Ghi chép liên tục từ 01/06 đến 30/10/2026; có đủ 5 chữ ký xác nhận định kỳ hàng tháng của GVHD và file dữ liệu thô (Điều 14 Thông tư 84)."),
-        ("6", "Phiếu khai báo công nghệ số & AI", "Kê khai chi tiết các mô hình AI (Gemini Flash, Groq, Agnes) và thư viện kỹ thuật số theo mẫu thống nhất của Bộ GD&ĐT (Điều 15 Thông tư 84)."),
+        ("5", "Sổ nhật ký nghiên cứu & Dữ liệu gốc", "Ghi chép liên tục từ 01/06 đến 30/10/2026; có đủ 5 chữ ký xác nhận định kỳ hàng tháng của GVHD và tệp dữ liệu thô (Điều 14 Thông tư 84)."),
+        ("6", "Phiếu khai báo công nghệ số & AI", "Kê khai chi tiết các mô hình AI (Gemini Flash, Groq, DeepSeek) và thư viện kỹ thuật số (MediaPipe, Three.js, Tesseract.js) theo mẫu thống nhất của Bộ GD&ĐT (Điều 15 Thông tư 84)."),
         ("7", "Bản cam kết của học sinh & GVHD", "Cam kết tuân thủ liêm chính học thuật, đạo đức nghề nghiệp và an toàn nghiên cứu theo Điều 4 & Điều 16 Thông tư 84."),
         ("8", "Giấy xác nhận kết quả học tập", "Xác nhận kết quả học tập, rèn luyện của 02 học sinh đạt từ mức Khá trở lên theo Khoản 3 Điều 5 Thông tư 84.")
     ]
@@ -645,7 +648,7 @@ def create_document():
     format_run(r, size_pt=10, bold=True, color_rgb=(0, 0, 0))
     r = p.add_run("(Ký và ghi rõ họ tên)\n\n\n\n\n")
     format_run(r, size_pt=9, italic=True, color_rgb=(80, 80, 80))
-    r = p.add_run("Cô giáo Nguyễn Thị Thanh Hà")
+    r = p.add_run("Nguyễn Thị Thanh Hà")
     format_run(r, size_pt=10, bold=True, color_rgb=(0, 0, 0))
 
     # Cột 2: Tổ trưởng chuyên môn
@@ -656,8 +659,8 @@ def create_document():
     format_run(r, size_pt=10, bold=True, color_rgb=(0, 0, 0))
     r = p.add_run("(Ký duyệt đề cương & tiến độ)\n\n\n\n\n")
     format_run(r, size_pt=9, italic=True, color_rgb=(80, 80, 80))
-    r = p.add_run("(Ký và ghi rõ họ tên)")
-    format_run(r, size_pt=9.5, italic=True, color_rgb=(80, 80, 80))
+    r = p.add_run("Nguyễn Công Minh")
+    format_run(r, size_pt=10, bold=True, color_rgb=(0, 0, 0))
 
     # Cột 3: Ban Giám Hiệu
     p = s2.paragraphs[0]

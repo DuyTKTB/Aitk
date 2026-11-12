@@ -4,7 +4,10 @@
      body: { kind: 'bug'|'idea'|'content', message, contact?, context?, clientId, sentAt }
      201/200 → đã nhận.   4xx → dữ liệu sai (không gửi lại).   5xx/mạng → gửi lại sau. */
 
-const URL_ = import.meta.env?.VITE_FEEDBACK_URL || '/api/feedback';
+import { addUserReport } from '../data/virtualExamsBank.js';
+import { supabase } from './supabase.js';
+
+const URL_ = import.meta.env?.VITE_FEEDBACK_URL || null;
 const QUEUE = 'cs-feedback-queue';
 const LAST = 'cs-feedback-last';
 
@@ -26,10 +29,54 @@ export const collectContext = () => ({
 });
 
 async function post(item) {
-  const res = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
-  if (res.ok) return 'sent';
-  if (res.status >= 400 && res.status < 500) throw Object.assign(new Error('rejected'), { status: res.status });
-  return 'retry';
+  // 1. Lưu vào kho báo cáo/phản hồi người dùng nội bộ để hiện ngay trong Profile
+  try {
+    const cId = clientId();
+    addUserReport(cId, {
+      kind: item.kind === 'bug' ? 'report' : 'feedback',
+      category: item.kind === 'bug' ? 'Báo lỗi hệ thống' : item.kind === 'content' ? 'Báo sai đáp án' : 'Góp ý nâng cấp',
+      content: item.message,
+      contact: item.contact,
+      context: item.context,
+      userEmail: item.contact || 'Học sinh ELEC AI',
+      submittedAt: Date.now(),
+    });
+  } catch (err) {
+    console.warn('[feedback] local save warn:', err);
+  }
+
+  // 2. Thử lưu vào Supabase nếu có bảng feedbacks
+  try {
+    if (supabase) {
+      await supabase.from('feedbacks').insert([{
+        kind: item.kind,
+        message: item.message,
+        contact: item.contact,
+        context: item.context,
+        client_id: item.clientId,
+      }]).select().maybeSingle();
+    }
+  } catch {
+    /* bỏ qua nếu bảng chưa tạo */
+  }
+
+  // 3. Nếu cấu hình webhook endpoint ngoài, gửi POST
+  if (URL_) {
+    try {
+      const res = await fetch(URL_, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+      if (res.ok) return 'sent';
+      if (res.status >= 400 && res.status < 500) throw Object.assign(new Error('rejected'), { status: res.status });
+      return 'retry';
+    } catch (e) {
+      if (e.status) throw e;
+    }
+  }
+
+  return 'sent';
 }
 
 /** @returns 'sent' | 'queued' ; ném lỗi nếu server từ chối (4xx) hoặc gửi quá nhanh */
@@ -40,7 +87,7 @@ export async function sendFeedback({ kind, message, contact, withContext }) {
   try {
     if ((await post(item)) === 'sent') return 'sent';
   } catch (e) {
-    if (e.status) throw e;           // 4xx: báo lỗi cho người dùng
+    if (e.status) throw e; // 4xx: báo lỗi cho người dùng
   }
   writeQ([...readQ(), item].slice(-20)); // mạng/5xx: giữ lại, gửi sau
   return 'queued';

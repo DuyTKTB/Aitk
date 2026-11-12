@@ -20,16 +20,16 @@ export const CHEM_TOPICS = [
 
   /* ---------- Lớp 11 ---------- */
   { id: 'c11-equilibrium',  grade: 11, name: 'Cân bằng hóa học' },
-  { id: 'c11-nitrogen',     grade: 11, name: 'Nitrogen & sulfur' },
+  { id: 'c11-nitrogen',     grade: 11, name: 'Nitrogen & Sulfur' },
   { id: 'c11-organic-gen',  grade: 11, name: 'Đại cương hóa học hữu cơ' },
   { id: 'c11-hydrocarbon',  grade: 11, name: 'Hydrocarbon' },
   { id: 'c11-alcohol',      grade: 11, name: 'Dẫn xuất halogen – alcohol – phenol' },
   { id: 'c11-carbonyl',     grade: 11, name: 'Hợp chất carbonyl – carboxylic acid' },
 
   /* ---------- Lớp 12 ---------- */
-  { id: 'c12-ester',        grade: 12, name: 'Ester – lipid' },
+  { id: 'c12-ester',        grade: 12, name: 'Ester – Lipid' },
   { id: 'c12-carbohydrate', grade: 12, name: 'Carbohydrate' },
-  { id: 'c12-amine',        grade: 12, name: 'Amine, amino acid, protein' },
+  { id: 'c12-amine',        grade: 12, name: 'Amine, amino acid & protein' },
   { id: 'c12-polymer',      grade: 12, name: 'Polymer' },
   { id: 'c12-electro',      grade: 12, name: 'Pin điện & điện phân' },
   { id: 'c12-metal',        grade: 12, name: 'Đại cương về kim loại' },

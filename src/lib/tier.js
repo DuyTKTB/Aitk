@@ -35,7 +35,7 @@ export const TIERS = {
     quotaImage: 30,
     unlimitedText: true,
     color: '#ffb020',
-    desc: 'Gói VIP — Chat không giới hạn, 30 ảnh mỗi ngày.',
+    desc: 'Gói VIP — Mở khóa 100% đề thi & tính năng VIP, tặng kèm Credit AI.',
   },
 };
 

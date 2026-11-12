@@ -55,12 +55,12 @@ export default function UpgradePrompt({ open, feature, onClose, onUpgrade }) {
 
         <p className="upgrade-prompt-desc">
           Nâng cấp lên <b>ELECAI VIP</b> để mở khóa toàn bộ tính năng cao cấp:
-          so sánh công cụ bằng AI, hỏi AI không giới hạn, ưu tiên xử lý, và nhiều thứ khác.
+          kho đề thi VIP, AI phân tích nguyên tố, tặng kèm Credit hỏi bài AI, và nhiều thứ khác.
         </p>
 
         <ul className="upgrade-prompt-feats">
-          <li><IcoSparkle size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />So sánh công cụ AI thông minh</li>
-          <li><IconInfinity size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Chat AI không giới hạn</li>
+          <li><IcoSparkle size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Mở khóa 100% Đề thi & Phòng luyện VIP</li>
+          <li><IconZap size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Tặng kèm Credit AI &amp; Ưu đãi nạp điểm</li>
           <li><IconZap size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Ưu tiên xử lý, phản hồi nhanh</li>
           <li><IconBook size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Bộ đề chuyên sâu theo lớp</li>
           <li><IconBan size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Không quảng cáo</li>

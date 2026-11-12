@@ -124,7 +124,7 @@ export default function UniversityDetailModal({
           <div className="udm-banner-overlay" />
         </div>
 
-        {/* ── 2. CARD TIÊU ĐỀ XANH DƯƠNG RỘNG (NHƯ ẢNH MẪU 9STUDY) ── */}
+        {/* ── 2. CARD TIÊU ĐỀ XANH DƯƠNG RỘNG (CHUẨN ELEC AI) ── */}
         <div className="udm-title-card">
           <div className="udm-title-info">
             <h2>{scheme.schoolName}</h2>
@@ -288,7 +288,7 @@ export default function UniversityDetailModal({
                 <p><b>Học bổng & hỗ trợ:</b> {scheme.tuition?.scholarships || 'Chính sách học bổng khuyến khích học tập dành cho sinh viên xuất sắc.'}</p>
               </section>
 
-              {/* Linh vật Elec màu xanh góc dưới phải (Lấy từ /img/elec/elec-default.svg trong public) */}
+              {/* Linh vật Elec màu xanh góc dưới phải (Lấy từ /img/elec/elec-default.png trong public) */}
               <div
                 className="udm-mascot-fab"
                 onClick={() => {
@@ -298,12 +298,12 @@ export default function UniversityDetailModal({
                 title="Hỏi trợ lý ELEC AI về trường này"
               >
                 <img
-                  src="/img/elec/elec-default.svg"
+                  src="/img/elec/elec-default.png"
                   alt="ELEC AI Mascot"
                   className="udm-mascot-img"
                   onError={(e) => {
                     // Fallback an toàn nếu đường dẫn khác
-                    e.currentTarget.src = '/elec.svg';
+                    e.currentTarget.src = '/img/elec/elec-default.png';
                   }}
                 />
                 <span className="udm-mascot-text">Hỏi ELEC AI về {scheme.admissionCode}</span>

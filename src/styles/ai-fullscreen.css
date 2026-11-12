@@ -309,7 +309,7 @@ body.on-ai-page .ds-page .ds-input-wrap {
   body.on-ai-page .ds-page .ds-mode-select,
   body.on-ai-page .ds-page .ds-hbtn[aria-label='Toggle đọc tự động'],
   body.on-ai-page .ds-page .ds-hbtn[aria-label='Tải cuộc trò chuyện'],
-  body.on-ai-page .ds-page .ds-quota > :nth-child(2) {
+  body.on-ai-page .ds-page .ds-quota > .ds-quota-ring:nth-of-type(2) {
     display: none !important;
   }
 
