@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chính Sách Bảo Mật — ELEC Science AI (ELEC AI)</title>
+    <meta
+      name="description"
+      content="Chính sách bảo mật và an toàn dữ liệu người dùng của nền tảng học tập &amp; khảo thí ELEC Science AI (ELEC AI) tại https://www.elecai.id.vn/."
+    />
+    <meta name="author" content="Nguyễn Thế Duy — Nhà sáng lập ELEC Science AI" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://www.elecai.id.vn/chinh-sach-bao-mat" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #070d1a;
+        --card: #0f172a;
+        --border: rgba(148, 163, 184, 0.18);
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --pri: #3b82f6;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+        background: var(--bg); color: var(--text); line-height: 1.75;
+      }
+      .wrap { max-width: 860px; margin: 0 auto; padding: 36px 20px 64px; }
+      .top-nav {
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 28px; font-size: 14px;
+      }
+      .top-nav a { color: var(--muted); text-decoration: none; }
+      .top-nav a:hover { color: #fff; }
+      h1 { font-size: clamp(24px, 3.8vw, 34px); margin: 0 0 8px; }
+      .meta { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+      .card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 16px; padding: 24px; margin-bottom: 18px;
+      }
+      .card h2 { margin: 0 0 10px; font-size: 19px; color: #fff; }
+      .card p, .card li { color: #cbd5e1; font-size: 15px; }
+      ul { margin: 8px 0 0; padding-left: 20px; }
+      li { margin-bottom: 8px; }
+      a.inline { color: #93c5fd; text-decoration: underline; }
+      footer {
+        margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);
+        font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      }
+      footer a { color: #93c5fd; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="top-nav" aria-label="Điều hướng">
+        <a href="/">← Quay lại trang chủ ELEC Science AI</a>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <a href="/gioi-thieu">Giới thiệu</a>
+          <a href="/nha-sang-lap">Nhà sáng lập</a>
+          <a href="/dieu-khoan-su-dung">Điều khoản sử dụng</a>
+        </div>
+      </nav>
+
+      <header>
+        <h1>Chính Sách Bảo Mật Dữ Liệu — ELEC Science AI</h1>
+        <p class="meta">Cập nhật lần cuối: 12/11/2026 · Áp dụng cho website https://www.elecai.id.vn/</p>
+      </header>
+
+      <main>
+        <section class="card">
+          <h2>1. Nguyên tắc chung</h2>
+          <p>
+            <strong>ELEC Science AI (ELEC AI)</strong> cam kết tôn trọng và bảo vệ quyền riêng tư của học sinh, giáo viên và người dùng truy cập nền tảng. Chính sách này giải thích rõ loại dữ liệu nào được thu thập, cách xử lý và các biện pháp bảo vệ dữ liệu đang được áp dụng.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>2. Các loại dữ liệu được xử lý</h2>
+          <ul>
+            <li><strong>Thông tin tài khoản cơ bản:</strong> Họ tên hiển thị, địa chỉ email đăng ký, vai trò học sinh/giáo viên và cấu hình khối lớp mục tiêu nhằm đồng bộ tiến độ học tập giữa các thiết bị.</li>
+            <li><strong>Dữ liệu học tập:</strong> Lịch sử làm bài quiz, kết quả phòng thi ảo, điểm Elo, sổ tay câu sai (SRS), ghi chú cá nhân và tiến độ lớp học.</li>
+            <li><strong>Nội dung câu hỏi &amp; ảnh đề bài:</strong> Văn bản hoặc hình ảnh bài tập bạn chủ động tải lên để Trợ lý AI phân tích, tóm tắt tài liệu (AI Doc Studio) hoặc chấm phiếu OMR.</li>
+            <li><strong>Dữ liệu giám sát phòng thi (chỉ khi bật theo yêu cầu đề thi của giáo viên):</strong> Hệ thống sử dụng công nghệ thị giác máy tính <strong>MediaPipe</strong> chạy trực tiếp cục bộ trên trình duyệt để phát hiện bất thường (vắng mặt, có người thứ hai, rời màn hình). Khi có vi phạm vượt ngưỡng quy định của bài thi, ảnh chụp bằng chứng mới được lưu phục vụ giáo viên bộ môn kiểm tra.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <h2>3. Mục đích sử dụng dữ liệu</h2>
+          <ul>
+            <li>Cung cấp đúng chức năng giải bài tập KHTN, đề xuất lộ trình ôn tập cá nhân hóa và lưu giữ sổ tay lỗi sai.</li>
+            <li>Hỗ trợ giáo viên giao đề, chấm điểm tự động và thống kê kết quả lớp học của chính lớp đó.</li>
+            <li>Đảm bảo tính công bằng, minh bạch trong phòng thi trực tuyến khi giáo viên kích hoạt chế độ giám sát.</li>
+            <li>Cải thiện độ ổn định, bảo mật hệ thống và ngăn chặn truy cập trái phép.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <h2>4. Cam kết không chia sẻ dữ liệu thương mại</h2>
+          <p>
+            ELEC Science AI <strong>không bán, không cho thuê và không chia sẻ dữ liệu cá nhân</strong> của học sinh hay giáo viên cho bên thứ ba phục vụ quảng cáo. Mọi truy vấn API AI và lưu trữ đám mây đều tuân thủ kiểm soát phân quyền theo từng tài khoản và lớp học.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>5. Quyền của người dùng &amp; Liên hệ</h2>
+          <p>
+            Người dùng có quyền xem, chỉnh sửa thông tin hồ sơ, xóa lịch sử học tập hoặc yêu cầu xóa tài khoản. Mọi thắc mắc về bảo mật dữ liệu xin liên hệ trực tiếp Nhà sáng lập &amp; Quản trị viên hệ thống:
+            <strong>Nguyễn Thế Duy (Duy TK / Tk Media)</strong> qua Facebook chính thức
+            <a class="inline" href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer">https://www.facebook.com/nguyentheduytk</a>
+            hoặc trang <a class="inline" href="/nha-sang-lap">Nhà sáng lập ELEC AI</a>.
+          </p>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2026 ELEC Science AI — Nhà sáng lập: Nguyễn Thế Duy</span>
+        <span>
+          <a href="/gioi-thieu">Giới thiệu</a> ·
+          <a href="/nha-sang-lap">Nhà sáng lập</a> ·
+          <a href="/dieu-khoan-su-dung">Điều khoản sử dụng</a>
+        </span>
+      </footer>
+    </div>
+  </body>
+</html>

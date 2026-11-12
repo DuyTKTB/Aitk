@@ -3,10 +3,16 @@
    - Điều hướng: mạng trước, rớt thì dùng bản đã lưu, cuối cùng /offline.html
    - File tĩnh cùng origin: trả bản cache ngay, cập nhật nền (stale-while-revalidate)
    - /api/* và mọi request không phải GET: KHÔNG đụng (chat ELECAI, phản hồi, đăng nhập) */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `ELECAI-shell-${VERSION}`;
 const ASSETS = `ELECAI-assets-${VERSION}`;
 const PRECACHE = ['/', '/offline.html', '/manifest.json', '/favicon.ico', '/img/logo.png'];
+const STATIC_INFO_PATHS = new Set([
+  '/nha-sang-lap', '/nha-sang-lap.html',
+  '/gioi-thieu', '/gioi-thieu.html',
+  '/chinh-sach-bao-mat', '/chinh-sach-bao-mat.html',
+  '/dieu-khoan-su-dung', '/dieu-khoan-su-dung.html',
+]);
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)));
@@ -29,9 +35,19 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
 
   if (req.mode === 'navigate') {
+    if (STATIC_INFO_PATHS.has(url.pathname)) {
+      e.respondWith(fetch(req).catch(async () => (await caches.match(req)) || (await caches.match('/offline.html'))));
+      return;
+    }
     e.respondWith(
       fetch(req)
-        .then((res) => { const copy = res.clone(); caches.open(SHELL).then((c) => c.put('/', copy)); return res; })
+        .then((res) => {
+          if (url.pathname === '/') {
+            const copy = res.clone();
+            caches.open(SHELL).then((c) => c.put('/', copy));
+          }
+          return res;
+        })
         .catch(async () => (await caches.match('/')) || (await caches.match('/offline.html')))
     );
     return;

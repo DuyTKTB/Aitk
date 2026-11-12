@@ -37,6 +37,9 @@
 ## Liên kết chính thức
 
 - Trang chủ: https://www.elecai.id.vn/
+- Giới thiệu chi tiết về nền tảng: https://www.elecai.id.vn/gioi-thieu
 - Tiểu sử Nhà sáng lập (Nguyễn Thế Duy): https://www.elecai.id.vn/nha-sang-lap
 - Facebook Nhà sáng lập (Nguyễn Thế Duy): https://www.facebook.com/nguyentheduytk
+- Chính sách bảo mật: https://www.elecai.id.vn/chinh-sach-bao-mat
+- Điều khoản sử dụng: https://www.elecai.id.vn/dieu-khoan-su-dung
 - Sitemap: https://www.elecai.id.vn/sitemap.xml

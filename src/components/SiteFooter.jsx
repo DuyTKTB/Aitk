@@ -30,6 +30,13 @@ export default function SiteFooter() {
             <a href="/can-bang-phuong-trinh-hoa-hoc">Cân bằng PTHH</a>
             <a href="/lo-trinh-on-thi-thpt-quoc-gia">Lộ trình ôn thi</a>
           </div>
+          <div>
+            <b>Giới thiệu &amp; Chính sách</b>
+            <a href="/gioi-thieu">Giới thiệu ELEC AI</a>
+            <a href="/nha-sang-lap">Nhà sáng lập Nguyễn Thế Duy</a>
+            <a href="/chinh-sach-bao-mat">Chính sách bảo mật</a>
+            <a href="/dieu-khoan-su-dung">Điều khoản sử dụng</a>
+          </div>
         </div>
       </div>
 

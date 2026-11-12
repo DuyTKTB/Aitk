@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI) — Nền Tảng KHTN Chuẩn 2026</title>
+    <meta
+      name="description"
+      content="Giới thiệu toàn diện về ELEC Science AI (ELEC AI / ELECAI) — nền tảng học tập, trợ lý AI Vật lí - Hóa học - Sinh học, phòng thi ảo THPTQG &amp; ĐGNL, giám sát MediaPipe và ôn tập SRS do Nguyễn Thế Duy sáng lập."
+    />
+    <meta name="author" content="Nguyễn Thế Duy (Duy TK / Tk Media) — Nhà sáng lập ELEC Science AI" />
+    <meta
+      name="keywords"
+      content="giới thiệu ELEC AI, ELEC Science AI là gì, ELECAI, Nguyễn Thế Duy, nhà sáng lập ELEC AI, học KHTN Lý Hóa Sinh, phòng thi ảo GDPT 2018, bảng tuần hoàn 118 nguyên tố, cân bằng PTHH"
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
+    <link rel="canonical" href="https://www.elecai.id.vn/gioi-thieu" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="ELEC Science AI" />
+    <meta property="og:title" content="Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI)" />
+    <meta
+      property="og:description"
+      content="Hệ sinh thái học tập &amp; khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) toàn diện cho học sinh và giáo viên, sáng lập bởi Nguyễn Thế Duy."
+    />
+    <meta property="og:url" content="https://www.elecai.id.vn/gioi-thieu" />
+    <meta property="og:image" content="https://www.elecai.id.vn/img/og-image.png" />
+    <meta property="og:locale" content="vi_VN" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "AboutPage",
+            "@id": "https://www.elecai.id.vn/gioi-thieu#webpage",
+            "url": "https://www.elecai.id.vn/gioi-thieu",
+            "name": "Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI)",
+            "description": "Tổng quan kiến trúc, sứ mệnh, toàn bộ phân hệ công cụ học tập & khảo thí KHTN và thông tin nhà sáng lập Nguyễn Thế Duy của ELEC Science AI.",
+            "inLanguage": "vi-VN",
+            "dateModified": "2026-11-12",
+            "isPartOf": { "@id": "https://www.elecai.id.vn/#website" },
+            "about": { "@id": "https://www.elecai.id.vn/#app" },
+            "mainEntity": { "@id": "https://www.elecai.id.vn/#org" }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://www.elecai.id.vn/gioi-thieu#breadcrumb",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Trang chủ ELEC AI", "item": "https://www.elecai.id.vn/" },
+              { "@type": "ListItem", "position": 2, "name": "Giới thiệu ELEC Science AI", "item": "https://www.elecai.id.vn/gioi-thieu" }
+            ]
+          }
+        ]
+      }
+    </script>
+
+    <style>
+      :root {
+        --bg: #070d1a;
+        --card: #0f172a;
+        --border: rgba(148, 163, 184, 0.18);
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --pri: #3b82f6;
+        --pri-soft: rgba(59, 130, 246, 0.14);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 45%), var(--bg);
+        color: var(--text);
+        line-height: 1.75;
+      }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 36px 20px 64px; }
+      .top-nav {
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 28px; font-size: 14px;
+      }
+      .top-nav a { color: var(--muted); text-decoration: none; }
+      .top-nav a:hover { color: #fff; }
+      .nav-links { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+      .badge {
+        display: inline-block; padding: 4px 12px; border-radius: 999px;
+        background: var(--pri-soft); color: #93c5fd; font-size: 13px; font-weight: 600; margin-bottom: 12px;
+      }
+      h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.25; margin: 0 0 12px; }
+      .lead { font-size: 17px; color: #cbd5e1; margin: 0 0 28px; }
+      .card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 16px; padding: 24px; margin-bottom: 20px;
+      }
+      .card h2 { margin: 0 0 12px; font-size: 21px; color: #fff; }
+      .card h3 { margin: 18px 0 8px; font-size: 17px; color: #93c5fd; }
+      .card p { margin: 0 0 12px; color: #cbd5e1; }
+      .card p:last-child { margin-bottom: 0; }
+      .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 12px; }
+      .mini-box {
+        padding: 16px; border-radius: 12px; border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.72);
+      }
+      .mini-box b { display: block; color: #fff; margin-bottom: 6px; font-size: 15px; }
+      .mini-box p { margin: 0; font-size: 14px; color: #cbd5e1; }
+      ul { margin: 8px 0 0; padding-left: 20px; color: #cbd5e1; }
+      li { margin-bottom: 8px; }
+      a.inline { color: #93c5fd; text-decoration: underline; }
+      .cta-btn {
+        display: inline-block; padding: 10px 18px; border-radius: 10px;
+        background: var(--pri); color: #fff !important; font-weight: 600; text-decoration: none; font-size: 14px;
+      }
+      .cta-btn:hover { background: #2563eb; }
+      footer {
+        margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);
+        font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      }
+      footer a { color: #93c5fd; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="top-nav" aria-label="Điều hướng">
+        <a href="/">← Quay lại trang chủ ELEC Science AI</a>
+        <div class="nav-links">
+          <a href="/nha-sang-lap">Nhà sáng lập</a>
+          <a href="/chinh-sach-bao-mat">Chính sách bảo mật</a>
+          <a href="/dieu-khoan-su-dung">Điều khoản</a>
+          <a class="cta-btn" href="/">Mở ứng dụng</a>
+        </div>
+      </nav>
+
+      <header>
+        <span class="badge">Tổng quan nền tảng EdTech KHTN</span>
+        <h1>Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI)</h1>
+        <p class="lead">
+          <strong>ELEC Science AI</strong> (thường gọi là <strong>ELEC AI</strong> hoặc <strong>ELECAI</strong>, địa chỉ chính thức <a class="inline" href="https://www.elecai.id.vn/">https://www.elecai.id.vn/</a>) là nền tảng học tập, trợ lý AI và khảo thí trực tuyến chuyên sâu về <strong>Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học)</strong> theo Chương trình Giáo dục Phổ thông 2018 tại Việt Nam, do <strong>Nguyễn Thế Duy (Duy TK / Tk Media)</strong> sáng lập và phát triển.
+        </p>
+      </header>
+
+      <main>
+        <section class="card">
+          <h2>1. Sứ mệnh &amp; Bài toán mà ELEC Science AI giải quyết</h2>
+          <p>
+            Học sinh THCS, THPT (đặc biệt lớp 10, 11, 12 ôn thi Tốt nghiệp THPT Quốc gia và Đánh giá năng lực) thường gặp 3 rào cản lớn khi học Khoa học Tự nhiên: (1) Công cụ học tập nằm rải rác ở nhiều nơi, (2) Lời giải trên mạng chỉ đưa đáp án cuối mà thiếu giải thích bản chất từng bước, và (3) Thiếu cơ chế theo dõi lỗ hổng kiến thức để ôn lại đúng thời điểm sắp quên.
+          </p>
+          <p>
+            <strong>ELEC Science AI</strong> hợp nhất toàn bộ quy trình <em>Hỏi — Hiểu — Thực hành — Khảo thí — Ghi nhớ dài hạn</em> trong một ứng dụng web duy nhất hoạt động mượt mà trên cả máy tính lẫn điện thoại.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>2. Hệ sinh thái tính năng dành cho Học sinh</h2>
+          <div class="grid-2">
+            <div class="mini-box">
+              <b>Trợ lý AI giải KHTN từng bước</b>
+              <p>Hỗ trợ gõ chữ hoặc tải ảnh đề bài Vật lí, Hóa học, Sinh học. Cung cấp 6 chế độ học: Tự động, Giải chi tiết, Gợi ý từng bước (không lộ đáp án ngay), Kiểm tra đáp án, Ôn lý thuyết và Tạo bài tương tự.</p>
+            </div>
+            <div class="mini-box">
+              <b>Phòng thi ảo THPTQG &amp; ĐGNL</b>
+              <p>Luyện đề bấm giờ thật theo cấu trúc 3 phần mới của Bộ GD&amp;ĐT (Trắc nghiệm nhiều lựa chọn, Đúng/Sai, Trả lời ngắn) cho Lý – Hóa – Sinh và kỳ thi ĐGNL (HSA, TSA, V-ACT).</p>
+            </div>
+            <div class="mini-box">
+              <b>Lộ trình Elo &amp; Sổ tay lỗi sai SRS</b>
+              <p>Đo năng lực theo chuyên đề qua điểm Elo và nguyện vọng đại học. Câu làm sai tự động lưu vào Sổ tay lỗi sai và lên lịch ôn lại bằng thuật toán lặp lại ngắt quãng <strong>SRS (SuperMemo SM-2)</strong>.</p>
+            </div>
+            <div class="mini-box">
+              <b>Bảng tuần hoàn 118 nguyên tố IUPAC</b>
+              <p>Tra cứu tương tác số hiệu nguyên tử, nguyên tử khối, cấu hình electron, độ âm điện, trạng thái và so sánh trực quan tính chất các nguyên tố.</p>
+            </div>
+            <div class="mini-box">
+              <b>Máy cân bằng PTHH &amp; Công thức</b>
+              <p>Cân bằng phương trình hóa học chính xác bằng đại số tuyến tính, phân tích chất oxi hóa – chất khử, kèm sổ tay công thức trọng tâm Lý – Hóa – Sinh.</p>
+            </div>
+            <div class="mini-box">
+              <b>Lab 3D, Trò chơi &amp; AI Doc Studio</b>
+              <p>Phòng thí nghiệm Hóa học 3D tương tác, 6+ trò chơi ôn tập khoa học, Bảng phấn tương tác, AI Doc Studio tóm tắt PDF/Flashcard và định hướng nghề nghiệp RIASEC.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>3. Hệ sinh thái tính năng dành cho Giáo viên &amp; Nhà trường</h2>
+          <ul>
+            <li><strong>Tạo đề đa nguồn:</strong> Soạn đề từ ngân hàng câu hỏi, trích xuất tự động từ file PDF/Word hoặc sinh đề theo ma trận bằng AI.</li>
+            <li><strong>Quản lý lớp học &amp; Giao đề:</strong> Tạo lớp theo bộ môn, duyệt học sinh qua mã lớp/đường dẫn, giao bài thi theo khung giờ và cấu hình thi lại.</li>
+            <li><strong>Giám sát phòng thi trực tiếp &amp; Chống gian lận:</strong> Hỗ trợ chế độ toàn màn hình, giới hạn chuyển tab, chặn sao chép và giám sát camera tùy chọn bằng <strong>MediaPipe</strong> xử lý trực tiếp trên trình duyệt người dùng.</li>
+            <li><strong>Chấm phiếu OMR &amp; Phân tích lớp học:</strong> Quét chấm phiếu trắc nghiệm A4 qua camera (OMR), chấm bài giấy và thống kê chi tiết tỷ lệ đúng/sai theo từng câu hỏi, từng chuyên đề.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <h2>4. Nền tảng công nghệ &amp; Nguyên tắc minh bạch AI</h2>
+          <p>
+            ELEC Science AI được xây dựng theo kiến trúc Web hiện đại (React, Vite, Firebase/Supabase, KaTeX hiển thị công thức chuẩn xác, MediaPipe Vision, Three.js cho Lab 3D), kết hợp giữa **công cụ tính toán khoa học xác định (Scientific Calculators)** và **mô hình AI ngôn ngữ đa phương thức** để hạn chế sai số tính toán thuần túy.
+          </p>
+          <p>
+            Hệ thống cũng công bố rõ giới hạn của AI trong học tập: lời giải AI mang tính chất hướng dẫn tham khảo, luôn khuyến khích học sinh đọc từng bước và đối chiếu với sách giáo khoa GDPT 2018.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>5. Thông tin Nhà sáng lập (Founder)</h2>
+          <p>
+            <strong>ELEC Science AI (ELEC AI)</strong> được sáng lập và trực tiếp phát triển bởi <strong>Nguyễn Thế Duy</strong> (biệt danh <strong>Tk Media / Duy TK</strong>, sinh sống tại Thái Bình). Trước khi xây dựng ELEC AI và nền tảng PhotobothNe (<a class="inline" href="https://photobothne.io.vn/" rel="noopener noreferrer">photobothne.io.vn</a>), Duy từng giữ vai trò Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh.
+          </p>
+          <p>
+            Xem tiểu sử đầy đủ tại <a class="inline" href="/nha-sang-lap">https://www.elecai.id.vn/nha-sang-lap</a> hoặc kết nối qua Facebook chính thức:
+            <a class="inline" href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer">https://www.facebook.com/nguyentheduytk</a>.
+          </p>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2026 ELEC Science AI — Nhà sáng lập: Nguyễn Thế Duy</span>
+        <span>
+          <a href="/nha-sang-lap">Tiểu sử Nhà sáng lập</a> ·
+          <a href="/chinh-sach-bao-mat">Chính sách bảo mật</a> ·
+          <a href="/dieu-khoan-su-dung">Điều khoản sử dụng</a>
+        </span>
+      </footer>
+    </div>
+  </body>
+</html>

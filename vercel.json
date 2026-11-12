@@ -17,11 +17,31 @@
   ],
   "rewrites": [
     {
+      "source": "/__/auth/(.*)",
+      "destination": "https://duyheheh-2a269.firebaseapp.com/__/auth/$1"
+    },
+    {
+      "source": "/__/firebase/(.*)",
+      "destination": "https://duyheheh-2a269.firebaseapp.com/__/firebase/$1"
+    },
+    {
       "source": "/nha-sang-lap",
       "destination": "/nha-sang-lap.html"
     },
     {
-      "source": "/((?!api/|assets/|img/|video/|robots\\.txt|sitemap\\.xml|llms\\.txt|nha-sang-lap(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
+      "source": "/gioi-thieu",
+      "destination": "/gioi-thieu.html"
+    },
+    {
+      "source": "/chinh-sach-bao-mat",
+      "destination": "/chinh-sach-bao-mat.html"
+    },
+    {
+      "source": "/dieu-khoan-su-dung",
+      "destination": "/dieu-khoan-su-dung.html"
+    },
+    {
+      "source": "/((?!api/|assets/|img/|video/|__/auth/|__/firebase/|robots\\.txt|sitemap\\.xml|llms\\.txt|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ],
