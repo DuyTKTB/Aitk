@@ -41,7 +41,67 @@
       "destination": "/dieu-khoan-su-dung.html"
     },
     {
-      "source": "/((?!api/|assets/|img/|video/|__/auth/|__/firebase/|robots\\.txt|sitemap\\.xml|llms\\.txt|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
+      "source": "/tro-ly-ai-giai-hoa",
+      "destination": "/tro-ly-ai-giai-hoa.html"
+    },
+    {
+      "source": "/phong-thi-ao",
+      "destination": "/phong-thi-ao.html"
+    },
+    {
+      "source": "/bang-tuan-hoan",
+      "destination": "/bang-tuan-hoan.html"
+    },
+    {
+      "source": "/can-bang-phuong-trinh-hoa-hoc",
+      "destination": "/can-bang-phuong-trinh-hoa-hoc.html"
+    },
+    {
+      "source": "/lo-trinh-on-thi-thpt-quoc-gia",
+      "destination": "/lo-trinh-on-thi-thpt-quoc-gia.html"
+    },
+    {
+      "source": "/cong-thuc-hoa-hoc",
+      "destination": "/cong-thuc-hoa-hoc.html"
+    },
+    {
+      "source": "/tai-lieu-hoa-hoc",
+      "destination": "/tai-lieu-hoa-hoc.html"
+    },
+    {
+      "source": "/tinh-diem-xet-tuyen-dai-hoc",
+      "destination": "/tinh-diem-xet-tuyen-dai-hoc.html"
+    },
+    {
+      "source": "/tra-cuu-diem-chuan",
+      "destination": "/tra-cuu-diem-chuan.html"
+    },
+    {
+      "source": "/dinh-huong-nghe-nghiep",
+      "destination": "/dinh-huong-nghe-nghiep.html"
+    },
+    {
+      "source": "/tro-choi-khoa-hoc",
+      "destination": "/tro-choi-khoa-hoc.html"
+    },
+    {
+      "source": "/ai-doc-studio",
+      "destination": "/ai-doc-studio.html"
+    },
+    {
+      "source": "/bang-phan-tuong-tac",
+      "destination": "/bang-phan-tuong-tac.html"
+    },
+    {
+      "source": "/quiz",
+      "destination": "/quiz.html"
+    },
+    {
+      "source": "/bang-xep-hang",
+      "destination": "/bang-xep-hang.html"
+    },
+    {
+      "source": "/((?!api/|assets/|img/|video/|__/auth/|__/firebase/|robots\\.txt|sitemap\\.xml|llms\\.txt|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ],
