@@ -140,6 +140,7 @@ const TRACK = [
 ];
 
 const FAQS = [
+  { cat: 'Cơ bản', icon: 'bulb', q: 'Ai là nhà sáng lập ELEC AI (ELEC Science AI)?', a: 'Nhà sáng lập (Founder) và người phát triển chính của ELEC Science AI (ELEC AI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, tại Thái Bình). Bạn có thể xem tiểu sử tại /nha-sang-lap hoặc kết nối qua Facebook chính thức: https://www.facebook.com/nguyentheduytk.' },
   { cat: 'Cơ bản', icon: 'bulb', q: 'Mình có phải trả phí không?', a: 'Phần lớn công cụ dùng miễn phí: bảng tuần hoàn, cân bằng PTHH, quiz, sổ câu sai, trò chơi, thư viện tài liệu. Một số tính năng nâng cao như AI Tạo Đề và Hỏi AI trong từng nguyên tố thuộc gói VIP.' },
   { cat: 'AI', icon: 'bot', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp hoặc dán ảnh đề (tối đa 10 ảnh một lần), AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
   { cat: 'AI', icon: 'target', q: 'Kết quả của AI có chính xác tuyệt đối không?', a: 'Không. AI có thể sai, nhất là bài tính toán dài. Hãy đọc kỹ từng bước và đối chiếu với sách giáo khoa khi cần. AI được thiết kế để hỗ trợ, không thay thế bạn.' },

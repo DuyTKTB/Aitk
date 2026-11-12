@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { translateAuthError } from '../lib/firebase.js';
 import RegisterFlow from './RegisterFlow.jsx';
 import './login-page.css';
 
@@ -139,7 +140,10 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
   const google = async () => {
     setErr(''); setBusy(true);
     try { await loginWithGoogle(); onDone?.(); }
-    catch { setErr('Không đăng nhập được bằng Google.'); }
+    catch (e2) {
+      const code = String(e2?.code || '');
+      setErr(code ? translateAuthError(code) : 'Không đăng nhập được bằng Google.');
+    }
     finally { setBusy(false); }
   };
 

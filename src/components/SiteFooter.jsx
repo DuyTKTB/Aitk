@@ -35,7 +35,21 @@ export default function SiteFooter() {
 
       {/* Copyright */}
       <div className="sf-bot">
-        <small>© 2026 · bycode Duy TK</small>
+        <small>
+          © 2026 ELEC AI · Nhà sáng lập:{' '}
+          <a href="/nha-sang-lap" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+            Nguyễn Thế Duy (Duy TK)
+          </a>{' '}
+          ·{' '}
+          <a
+            href="https://www.facebook.com/nguyentheduytk"
+            target="_blank"
+            rel="me noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'underline' }}
+          >
+            Facebook
+          </a>
+        </small>
         <small style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           Made with <IconFlask size={13} style={{ color: 'var(--pri, #2563eb)' }} /> in Vietnam
         </small>

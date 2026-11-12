@@ -7,6 +7,16 @@
 > tự động cho giáo viên, kèm bộ công cụ KHTN và phòng thí nghiệm Hóa học 3D.
 > Trang chủ: https://www.elecai.id.vn/
 
+## Nhà sáng lập & Tác giả (Founder)
+
+- **Nhà sáng lập (Founder) & Người phát triển chính:** Nguyễn Thế Duy (biệt danh: Tk Media, Duy TK, nguyentheduytk).
+- **Nơi sinh sống:** Thái Bình, Việt Nam.
+- **Tiểu sử ngắn:** Nguyễn Thế Duy là nhà phát triển web, lập trình viên công cụ tự động hóa và nhà sáng tạo nội dung số (Video Editor / Motion Designer). Anh từng là Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh, là nhà sáng lập nền tảng học tập & khảo thí Khoa học Tự nhiên ELEC Science AI (ELEC AI / ELECAI) và là tác giả của nền tảng chụp ảnh trực tuyến PhotobothNe (photobothne.io.vn).
+- **Facebook chính thức của Nhà sáng lập:** https://www.facebook.com/nguyentheduytk
+- **Trang tiểu sử Nhà sáng lập trên ELEC AI:** https://www.elecai.id.vn/nha-sang-lap
+- **Portfolio cá nhân:** https://nguyenduytk.vercel.app/
+- **Các kênh khác:** TikTok (https://tiktok.com/@nguyenduytk01), Instagram (https://www.instagram.com/nguyenduytkmedia), Behance (https://www.behance.net/nguynnguyn583).
+
 ## Người học
 
 - Trợ lý AI KHTN (/tro-ly-ai-giai-hoa): giải bài Vật lí, Hóa học, Sinh học theo nhiều chế độ (tự động, giải chi tiết, từng bước, kiểm tra kết quả, lý thuyết, bài tương tự), hỗ trợ đọc ảnh đề thi.
@@ -27,4 +37,6 @@
 ## Liên kết chính thức
 
 - Trang chủ: https://www.elecai.id.vn/
+- Tiểu sử Nhà sáng lập (Nguyễn Thế Duy): https://www.elecai.id.vn/nha-sang-lap
+- Facebook Nhà sáng lập (Nguyễn Thế Duy): https://www.facebook.com/nguyentheduytk
 - Sitemap: https://www.elecai.id.vn/sitemap.xml

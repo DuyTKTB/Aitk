@@ -17,7 +17,11 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|img/|video/|robots\\.txt|sitemap\\.xml|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
+      "source": "/nha-sang-lap",
+      "destination": "/nha-sang-lap.html"
+    },
+    {
+      "source": "/((?!api/|assets/|img/|video/|robots\\.txt|sitemap\\.xml|llms\\.txt|nha-sang-lap(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ],
