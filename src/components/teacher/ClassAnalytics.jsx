@@ -759,6 +759,30 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
     downloadCsv(`so-lieu-lop-${(cls.name || 'lop').replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   };
 
+  const handleExportVnEdu = () => {
+    if (!data || !cls) return;
+    const rows = [
+      ['STT', 'Họ và tên học sinh', 'Email', 'Lớp', 'Điểm kiểm tra TX', 'Điểm ĐGK', 'Điểm CKK', 'Điểm TB', 'Đánh giá học lực', 'Số bài nộp'],
+    ];
+    data.students.forEach((s, idx) => {
+      const avg10 = s.count ? (s.accuracy / 10).toFixed(1) : '';
+      const status = Number(avg10) >= 8.0 ? 'Giỏi' : (Number(avg10) >= 6.5 ? 'Khá' : (Number(avg10) >= 5.0 ? 'Đạt' : (avg10 ? 'Chưa đạt' : 'Chưa thi')));
+      rows.push([
+        idx + 1,
+        s.name || 'Học sinh',
+        s.email || '',
+        cls.name || '',
+        avg10,
+        avg10,
+        avg10,
+        avg10,
+        status,
+        s.count || 0,
+      ]);
+    });
+    downloadCsv(`bang-diem-vnEdu-SMAS-${(cls.name || 'lop').replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  };
+
   const handleRetryLoad = () => {
     if (classId) feedCache.delete(classId);
     setReloadNonce((n) => n + 1);
@@ -887,10 +911,19 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
           <button
             type="button"
             className="ta-btn primary"
+            onClick={handleExportVnEdu}
+            title="Xuất bảng điểm theo chuẩn mẫu vnEdu / SMAS (Excel/CSV)"
+            style={{ background: '#059669', borderColor: '#059669' }}
+          >
+            <IcoDownload /> Xuất vnEdu / SMAS
+          </button>
+          <button
+            type="button"
+            className="ta-btn"
             onClick={handleExportCsv}
             title="Xuất bảng số liệu lớp ra file CSV (Excel)"
           >
-            <IcoDownload /> Xuất CSV
+            <IcoDownload /> Xuất CSV chi tiết
           </button>
         </div>
       </header>

@@ -336,6 +336,157 @@ function InsightSkeleton() {
 }
 
 /* ============================================================
+   FLOE-STYLE SAAS VISUAL COMPONENTS (CARDS, STACKS, COVERS)
+   ============================================================ */
+function FloeAvatarStack({ count = 35, names = [] }) {
+  const displayNames = names.length > 0 ? names.slice(0, 3) : ['A', 'B', 'C'];
+  const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];
+  return (
+    <div className="t-avatar-stack" title={`${count} học sinh`}>
+      {displayNames.map((n, i) => (
+        <span
+          key={i}
+          className="t-avatar-circle"
+          style={{ background: colors[i % colors.length] }}
+        >
+          {String(n || 'H').charAt(0).toUpperCase()}
+        </span>
+      ))}
+      {count > 3 && (
+        <span className="t-avatar-circle more">
+          +{count - 3}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function getSubjectGradClass(subject) {
+  const s = String(subject || '').toLowerCase();
+  if (s.includes('hóa') || s.includes('chem')) return 'grad-chem';
+  if (s.includes('lý') || s.includes('vật lí') || s.includes('phys')) return 'grad-phys';
+  if (s.includes('sinh') || s.includes('bio')) return 'grad-bio';
+  if (s.includes('toán') || s.includes('math')) return 'grad-math';
+  if (s.includes('khtn') || s.includes('khoa học')) return 'grad-khtn';
+  return 'grad-default';
+}
+
+function FloeWorkflowCard({
+  exam,
+  liveSession,
+  cls,
+  submissions = [],
+  onStart,
+  onViewLive,
+  onDetail,
+  starting = false,
+}) {
+  const pcts = submissions.map(pctOf);
+  const avg = submissions.length ? Math.round(avgOf(pcts)) : null;
+  const memberCount = cls?.members?.length || 40;
+  const subCount = submissions.length;
+  const subPct = memberCount > 0 ? Math.min(100, Math.round((subCount / memberCount) * 100)) : 0;
+  const liveCount = liveSession
+    ? Math.max(0, (liveSession.stats?.joined || 0) - (liveSession.stats?.submitted || 0))
+    : 0;
+
+  const subject = exam.subject || cls?.subject || 'Hóa học';
+  const gradClass = getSubjectGradClass(subject);
+
+  return (
+    <article className="t-workflow-card" onClick={() => onDetail(exam)}>
+      <div className={`t-workflow-cover ${gradClass}`}>
+        <div className={`t-workflow-status-notch ${liveSession ? 'live' : ''}`}>
+          {liveSession ? (
+            <>
+              <span className="pulse-dot" />
+              <span>● Đang thi ({liveCount} HS)</span>
+            </>
+          ) : exam.isDraft ? (
+            <span>Nháp</span>
+          ) : (
+            <span>Đã giao</span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="t-workflow-cover-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDetail(exam);
+          }}
+          title="Xem chi tiết & thao tác"
+        >
+          ···
+        </button>
+      </div>
+
+      <div className="t-workflow-body">
+        <div className="t-workflow-meta">
+          <span>{exam.duration || 45} phút</span>
+          <span>•</span>
+          <span>{(exam.questions || []).length || 40} câu</span>
+          <span>•</span>
+          <span style={{ fontWeight: 600, color: 'var(--t-accent)' }}>
+            Lớp {cls?.name || 'Chung'}
+          </span>
+        </div>
+
+        <h3 className="t-workflow-title" title={exam.title}>
+          {exam.title}
+        </h3>
+
+        <div className="t-workflow-progress">
+          <div className="t-workflow-progress-info">
+            <span>{subCount > 0 ? `${subCount}/${memberCount} đã nộp` : 'Chưa có bài nộp'}</span>
+            <span>{avg != null ? `Điểm TB: ${avg}%` : `${subPct}%`}</span>
+          </div>
+          <div className="t-workflow-progress-track">
+            <div className="t-workflow-progress-bar" style={{ width: `${Math.max(6, subPct)}%` }} />
+          </div>
+        </div>
+
+        <div className="t-workflow-footer" onClick={(e) => e.stopPropagation()}>
+          <FloeAvatarStack count={memberCount} names={cls?.members?.map((m) => m.name || m.studentName || '')} />
+
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            {liveSession ? (
+              <button
+                type="button"
+                className="vt-btn sm primary"
+                style={{ background: '#059669', borderColor: '#059669', fontSize: '0.74rem', padding: '0.3rem 0.75rem' }}
+                onClick={() => onViewLive(liveSession.id)}
+              >
+                Giám sát LIVE ({liveCount})
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="vt-btn sm primary"
+                style={{ fontSize: '0.74rem', padding: '0.3rem 0.75rem' }}
+                onClick={() => onStart(exam)}
+                disabled={starting}
+              >
+                {starting ? 'Đang mở...' : 'Bắt đầu thi'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="vt-btn sm"
+              style={{ fontSize: '0.74rem', padding: '0.3rem 0.65rem' }}
+              onClick={() => onDetail(exam)}
+            >
+              Chi tiết
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* ============================================================
    MAIN
    ============================================================ */
 export default function TeacherDashboard({ onExit } = {}) {
@@ -2244,40 +2395,71 @@ export default function TeacherDashboard({ onExit } = {}) {
             </div>
           )}
 
-          {/* 4 THẺ CHỈ SỐ SƯ PHẠM (GRID CÂN ĐỐI 25% ĐỀU NHAU) */}
+          {/* 4 THẺ CHỈ SỐ SƯ PHẠM (FLOE STYLE: ICON PASTEL, TREND & TABULAR NUMS) */}
           <div className="t-kpi-grid">
-            <div className="t-kpi-card" onClick={() => goSection('classes')}>
-              <span className="t-kpi-label">Tổng học sinh</span>
+            <div className="t-kpi-card tone-blue" onClick={() => goSection('classes')}>
+              <div className="t-kpi-head">
+                <span className="t-kpi-label">Tổng học sinh</span>
+                <div className="t-kpi-icon-badge">
+                  <IcoUsers size={19} />
+                </div>
+              </div>
               <span className="t-kpi-num">{classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)}</span>
-              <span className="t-kpi-meta">{classes.length} lớp chủ nhiệm · {linkedClasses.length} lớp bộ môn</span>
+              <div className="t-kpi-meta">
+                <span>{classes.length} lớp chủ nhiệm · {linkedClasses.length} bộ môn</span>
+                <span className="t-kpi-trend-pill ok">● Đang học</span>
+              </div>
             </div>
 
-            <div className="t-kpi-card" onClick={() => goSection('exams')}>
-              <span className="t-kpi-label">Kho đề thi đã soạn</span>
+            <div className="t-kpi-card tone-violet" onClick={() => goSection('exams')}>
+              <div className="t-kpi-head">
+                <span className="t-kpi-label">Kho đề thi đã soạn</span>
+                <div className="t-kpi-icon-badge">
+                  <IcoBook size={19} />
+                </div>
+              </div>
               <span className="t-kpi-num">{exams.length}</span>
-              <span className="t-kpi-meta">{countBy('ready')} đề đã giao vào lớp</span>
+              <div className="t-kpi-meta">
+                <span>{countBy('ready')} đề đã giao vào lớp</span>
+                <span className="t-kpi-trend-pill ok">GDPT 2025</span>
+              </div>
             </div>
 
-            <div className="t-kpi-card" onClick={() => goSection('analytics')}>
-              <span className="t-kpi-label">Điểm trung bình lớp</span>
+            <div className="t-kpi-card tone-emerald" onClick={() => goSection('analytics')}>
+              <div className="t-kpi-head">
+                <span className="t-kpi-label">Điểm trung bình lớp</span>
+                <div className="t-kpi-icon-badge">
+                  <IcoChart size={19} />
+                </div>
+              </div>
               <span className="t-kpi-num">{subsInRange.length ? `${avgScore10} / 10` : '—'}</span>
-              <span className="t-kpi-meta">{passRate}% học sinh đạt chuẩn (≥ 5.0)</span>
+              <div className="t-kpi-meta">
+                <span>{passRate}% học sinh đạt chuẩn</span>
+                <span className="t-kpi-trend-pill ok">≥ 5.0 điểm</span>
+              </div>
             </div>
 
             <div
-              className="t-kpi-card"
+              className="t-kpi-card tone-rose"
               onClick={() => goSection('analytics')}
-              style={{ borderColor: atRiskStudents.length > 0 ? '#fca5a5' : undefined }}
             >
-              <span className="t-kpi-label" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
-                Học sinh cần phụ đạo
-              </span>
-              <span className="t-kpi-num" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
+              <div className="t-kpi-head">
+                <span className="t-kpi-label" style={{ color: atRiskStudents.length > 0 ? '#e11d48' : undefined }}>
+                  Học sinh cần phụ đạo
+                </span>
+                <div className="t-kpi-icon-badge">
+                  <IcoAlert size={19} />
+                </div>
+              </div>
+              <span className="t-kpi-num" style={{ color: atRiskStudents.length > 0 ? '#e11d48' : undefined }}>
                 {atRiskStudents.length}
               </span>
-              <span className="t-kpi-meta">
-                {atRiskStudents.length > 0 ? `${atRiskStudents.length} em dưới 5.0 điểm cần kèm` : 'Tất cả học sinh đạt yêu cầu'}
-              </span>
+              <div className="t-kpi-meta">
+                <span>{atRiskStudents.length > 0 ? `${atRiskStudents.length} em dưới 5.0 điểm` : 'Tất cả đạt chuẩn'}</span>
+                <span className={`t-kpi-trend-pill ${atRiskStudents.length > 0 ? 'warn' : 'ok'}`}>
+                  {atRiskStudents.length > 0 ? 'Cần kèm cặp' : 'Tốt'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -2319,7 +2501,8 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const tints = ['tint-lavender', 'tint-sky', 'tint-peach', 'tint-mint'];
                   const tint = tints[idx % tints.length];
                   const classExams = exams.filter((e) => e.classId === c.id);
-                  const membersCount = c.members?.length || 0;
+                  const members = c.members || [];
+                  const membersCount = members.length;
                   return (
                     <div
                       key={c.id}
@@ -2339,17 +2522,16 @@ export default function TeacherDashboard({ onExit } = {}) {
 
                       <h3 className="t-folder-name">{c.name}</h3>
                       <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
-                        {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''}
+                        {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''} · <b>{classExams.length}</b> đề
                       </span>
 
-                      <div className="t-folder-foot">
-                        <span><b>{membersCount}</b> học sinh · <b>{classExams.length}</b> đề</span>
+                      <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
+                        <FloeAvatarStack count={membersCount} names={members.map((m) => m.name || m.studentName || '')} />
                         <button
                           type="button"
                           className="vt-btn sm primary"
                           style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             setSelectedClass(c);
                             goSection('create');
                           }}
@@ -2365,6 +2547,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const tints = ['tint-sky', 'tint-mint', 'tint-lavender', 'tint-peach'];
                   const tint = tints[(idx + 2) % tints.length];
                   const classExams = exams.filter((e) => e.classId === c.id);
+                  const members = c.members || [];
                   return (
                     <div
                       key={c.id}
@@ -2378,17 +2561,16 @@ export default function TeacherDashboard({ onExit } = {}) {
 
                       <h3 className="t-folder-name">{c.name}</h3>
                       <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
-                        Môn {c.subject || primarySubject}
+                        Môn {c.subject || primarySubject} · <b>{classExams.length}</b> đề
                       </span>
 
-                      <div className="t-folder-foot">
-                        <span><b>{classExams.length}</b> đề môn mình</span>
+                      <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
+                        <FloeAvatarStack count={members.length} names={members.map((m) => m.name || m.studentName || '')} />
                         <button
                           type="button"
                           className="vt-btn sm primary"
                           style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             setSelectedClass(c);
                             goSection('create');
                           }}
@@ -2397,6 +2579,63 @@ export default function TeacherDashboard({ onExit } = {}) {
                         </button>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* KHỐI WORKFLOWS: ĐỀ THI NỔI BẬT & PHIÊN KHẢO THÍ (PHONG CÁCH FLOE WORKFLOWS 7) */}
+          <div className="t-workflows-section">
+            <div className="t-workflows-header">
+              <div className="t-folders-title-wrap">
+                <h2 className="t-folders-title">Đề thi nổi bật &amp; Khảo thí</h2>
+                <span className="t-badge-count">{exams.length}</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={() => goSection('exams')}
+                >
+                  Xem toàn bộ kho đề ({exams.length}) →
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn sm primary"
+                  onClick={openNewExam}
+                >
+                  + Soạn đề mới (N)
+                </button>
+              </div>
+            </div>
+
+            {exams.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem', background: 'var(--t-surface-1)', borderRadius: 20, border: '1px solid var(--t-border)' }}>
+                <p style={{ margin: '0 0 1rem', color: 'var(--t-ink-muted)' }}>Chưa có đề thi nào trong kho. Hãy bắt đầu tạo đề kiểm tra đầu tiên:</p>
+                <button type="button" className="vt-btn primary" onClick={openNewExam}>
+                  + Tạo đề thi AI chuẩn GDPT 2025
+                </button>
+              </div>
+            ) : (
+              <div className="t-workflows-grid">
+                {exams.slice(0, 6).map((ex) => {
+                  const live = liveSessions.find((s) => s.examId === ex.id);
+                  const cls = classById[ex.classId];
+                  const subs = submissionsMap[ex.id] || [];
+                  return (
+                    <FloeWorkflowCard
+                      key={ex.id}
+                      exam={ex}
+                      liveSession={live}
+                      cls={cls}
+                      submissions={subs}
+                      onStart={handleStartSession}
+                      onViewLive={(sid) => setViewingSessionId(sid)}
+                      onDetail={(e) => setDetailExamModal(e)}
+                      starting={startingId === ex.id}
+                    />
                   );
                 })}
               </div>
@@ -2737,95 +2976,111 @@ export default function TeacherDashboard({ onExit } = {}) {
                   </div>
                 </div>
 
-                <div className={classViewMode === 'list' ? 'vt-stackcards' : 'vt-grid'}>
-                  <button type="button" className="vt-card vt-add-card" onClick={() => setShowCreateClass(true)}>
-                    <span className="vt-fab static">+</span>
-                    <b>Tạo lớp mới (Phím N)</b>
-                    <small>Học sinh vào lớp bằng mã lớp</small>
+                <div className={classViewMode === 'list' ? 'vt-stackcards' : 't-folders-grid'}>
+                  <button
+                    type="button"
+                    className="t-folder-card"
+                    style={{
+                      border: '2px dashed var(--t-border)',
+                      background: 'var(--t-surface-1)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      minHeight: 180,
+                    }}
+                    onClick={() => setShowCreateClass(true)}
+                  >
+                    <span style={{ fontSize: '2rem', color: 'var(--t-accent)', lineHeight: 1 }}>+</span>
+                    <b style={{ color: 'var(--t-ink)', fontSize: '0.95rem' }}>Tạo lớp mới (Phím N)</b>
+                    <small style={{ color: 'var(--t-ink-muted)' }}>Cấp mã lớp cho học sinh tự tham gia</small>
                   </button>
 
-                  {filteredClasses.map((cls) => {
+                  {filteredClasses.map((cls, idx) => {
                     const members = cls.members || [];
                     const classExams = exams.filter((e) => e.classId === cls.id);
                     const pendingCount = cls.pendingMembers?.length || 0;
+                    const tints = ['tint-lavender', 'tint-sky', 'tint-peach', 'tint-mint'];
+                    const tint = tints[idx % tints.length];
                     return (
-                      <article key={cls.id} className="vt-card vt-class vt-folder-card">
-                        <header style={{ cursor: 'pointer' }} onClick={() => setSelectedClass(cls)}>
-                          <MemoAvatar name={cls.name} size={46} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              <h3 style={{ margin: 0 }}>{cls.name}</h3>
-                              <span className="t-role-badge homeroom">Chủ nhiệm</span>
-                            </div>
-                            <small>{cls.subject || 'Đa môn'} · {classExams.length} đề · {members.length} HS</small>
+                      <article
+                        key={cls.id}
+                        className={`t-folder-card ${tint}`}
+                        onClick={() => { setSelectedClass(cls); setDetailTab('overview'); }}
+                      >
+                        <div className="t-folder-top">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <span className="t-role-badge homeroom">Chủ nhiệm</span>
+                            {pendingCount > 0 && (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#b45309', background: '#fef3c7', padding: '0.15rem 0.5rem', borderRadius: 999 }}>
+                                ● {pendingCount} chờ duyệt
+                              </span>
+                            )}
                           </div>
-                          <i className="vt-count" title="Sĩ số lớp">{members.length}</i>
-                        </header>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }} onClick={(e) => e.stopPropagation()}>
+                            <span
+                              className="t-folder-code"
+                              onClick={() => copyText(cls.key, cls.id, 'Đã sao chép mã lớp')}
+                              title="Bấm để sao chép mã lớp"
+                              style={{ cursor: 'pointer' }}
+                            >
+                              Mã: <code style={{ fontWeight: 700 }}>{cls.key}</code>
+                            </span>
+                            <button
+                              type="button"
+                              className="vt-icon-btn"
+                              aria-label="Chia sẻ mã QR"
+                              onClick={() => setShareClass(cls)}
+                              title="Chia sẻ mã QR"
+                            >
+                              QR
+                            </button>
+                          </div>
+                        </div>
+
+                        <h3 className="t-folder-name" style={{ fontSize: '1.2rem' }}>{cls.name}</h3>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                          {cls.subject || 'Đa môn'} {cls.grade ? `· Khối ${cls.grade}` : ''} · <b>{classExams.length}</b> đề thi
+                        </span>
 
                         {pendingCount > 0 && (
                           <div
                             style={{
                               display: 'flex',
                               alignItems: 'center',
+                              justifyContent: 'space-between',
                               gap: '.45rem',
-                              padding: '.48rem .75rem',
+                              padding: '.45rem .75rem',
                               borderRadius: 12,
-                              background: 'color-mix(in srgb, #f59e0b 14%, var(--vt-tint))',
-                              border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)',
+                              background: '#fffbeb',
+                              border: '1px solid #fde68a',
                               color: '#b45309',
-                              font: '700 .78rem var(--sans)',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <IcoBell size={14} />
-                            <span
-                              style={{ flex: 1, cursor: 'pointer' }}
-                              onClick={() => setSelectedClass(cls)}
-                            >
-                              {pendingCount} HS chờ duyệt
-                            </span>
+                            <span>{pendingCount} học sinh chờ vào lớp</span>
                             <button
                               type="button"
                               className="vt-btn sm primary"
-                              style={{ padding: '0.22rem 0.55rem', fontSize: '0.72rem' }}
-                              onClick={(e) => { e.stopPropagation(); handleApproveAll(cls); }}
-                              title="Duyệt tất cả học sinh đang chờ vào lớp"
+                              style={{ padding: '0.2rem 0.55rem', fontSize: '0.7rem' }}
+                              onClick={() => handleApproveAll(cls)}
+                              title="Duyệt tất cả học sinh đang chờ"
                             >
                               Duyệt tất cả
                             </button>
                           </div>
                         )}
 
-                        <div className="vt-keybox">
-                          <IcoKey size={15} />
-                          <code title="Mã lớp dành cho học sinh">{cls.key}</code>
-                          <button
-                            type="button"
-                            className="vt-icon-btn"
-                            aria-label="Sao chép mã lớp"
-                            onClick={() => copyText(cls.key, cls.id, 'Đã sao chép mã lớp')}
-                            title="Sao chép mã lớp 1 chạm"
-                          >
-                            {copiedKey === cls.id ? <IcoCheckCircle size={15} /> : <IcoCopy size={15} />}
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-icon-btn"
-                            aria-label="Mở mã QR của lớp"
-                            onClick={() => setShareClass(cls)}
-                            title="Chia sẻ mã QR"
-                          >
-                            QR
-                          </button>
-                        </div>
-
                         {cls.announcement?.text && (
                           <div style={{
-                            fontSize: '0.78rem',
+                            fontSize: '0.76rem',
                             color: 'var(--ink)',
-                            background: 'color-mix(in srgb, var(--acc) 10%, var(--surface-2))',
-                            padding: '0.4rem 0.65rem',
+                            background: 'rgba(255, 255, 255, 0.7)',
+                            padding: '0.35rem 0.6rem',
                             borderRadius: 10,
-                            border: '1px solid color-mix(in srgb, var(--acc) 22%, transparent)',
+                            border: '1px solid var(--t-border)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.4rem',
@@ -2837,35 +3092,28 @@ export default function TeacherDashboard({ onExit } = {}) {
                           </div>
                         )}
 
-                        <footer>
-                          <button
-                            type="button"
-                            className="vt-btn sm"
-                            onClick={() => { setDetailTab('teachers'); setSelectedClass(cls); }}
-                            title="Quản lý & Mời giáo viên các môn Toán, Lý, Hóa, Sinh... vào dạy lớp này"
-                            style={{ background: 'var(--t-accent-subtle)', color: 'var(--t-accent)', fontWeight: 700 }}
-                          >
-                            GV Bộ môn
-                          </button>
-                          <button type="button" className="vt-btn sm" onClick={() => { setDetailTab('overview'); setSelectedClass(cls); }}>
-                            Chi tiết
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-btn sm"
-                            onClick={() => { setNoticeClass(cls); setNoticeDraft(cls.announcement?.text || ''); }}
-                            title="Ghim thông báo cho lớp"
-                          >
-                            Ghim tin
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-btn sm primary"
-                            onClick={() => { setSelectedClass(cls); goSection('create'); }}
-                          >
-                            Giao đề
-                          </button>
-                        </footer>
+                        <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
+                          <FloeAvatarStack count={members.length} names={members.map((m) => m.name || m.studentName || '')} />
+                          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              className="vt-btn sm"
+                              onClick={() => { setDetailTab('teachers'); setSelectedClass(cls); }}
+                              title="Mời GV Bộ môn"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.72rem' }}
+                            >
+                              GV Bộ môn
+                            </button>
+                            <button
+                              type="button"
+                              className="vt-btn sm primary"
+                              onClick={() => { setSelectedClass(cls); goSection('create'); }}
+                              style={{ padding: '0.25rem 0.65rem', fontSize: '0.72rem' }}
+                            >
+                              Giao đề →
+                            </button>
+                          </div>
+                        </div>
                       </article>
                     );
                   })}
@@ -2895,110 +3143,22 @@ export default function TeacherDashboard({ onExit } = {}) {
             return tsMs(b.ex.createdAt) - tsMs(a.ex.createdAt);
           });
 
-        /* ❗ Thẻ đề bóc thành hàm dùng chung — nhóm theo lớp và danh sách phẳng cùng dùng */
+        /* ❗ Thẻ đề Floe Workflow Cards phong cách hiện đại */
         const renderExamCard = ({ ex, liveSession, st }) => {
           const cls = classById[ex.classId];
           const subs = submissionsMap[ex.id] || [];
-          const pcts = subs.map(pctOf);
-          const avg = subs.length ? Math.round(avgOf(pcts)) : null;
-          const best = subs.length ? Math.round(Math.max(...pcts)) : null;
-          const memberCount = cls?.members?.length || 0;
-          const liveDoingCount = liveSession
-            ? Math.max(0, (liveSession.stats?.joined || 0) - (liveSession.stats?.submitted || 0))
-            : 0;
-          const subject = (() => {
-            const own = detectExamSubject(ex);
-            if (own !== '—') return own;
-            return cls?.subject || cls?._mySubject || '—';
-          })();
-          const isAi = isAiGeneratedExam(ex);
-          const opensMs = tsMs(ex.opensAt);
-          const closesMs = tsMs(ex.closesAt);
-
           return (
-            <article
+            <FloeWorkflowCard
               key={ex.id}
-              className={'vt-exam-clean-card' + (st.key === 'live' ? ' live' : '')}
-              onClick={() => setDetailExamModal(ex)}
-            >
-              <div className="vt-ecc-main">
-                <div className="vt-ecc-tags">
-                  <span className={'vt-chip ' + st.key}>
-                    {st.key === 'live' && <IcoDot size={7} />} {st.label}
-                  </span>
-                  {liveSession && (
-                    <span
-                      className="vt-chip"
-                      style={{
-                        background: 'color-mix(in srgb, #10b981 18%, transparent)',
-                        color: '#059669',
-                        fontWeight: 800,
-                      }}
-                    >
-                      ● {liveDoingCount} HS đang thi
-                    </span>
-                  )}
-                  {subject && subject !== '—' && (
-                    <span className="vt-chip" style={{ background: 'color-mix(in srgb, #8b5cf6 12%, transparent)', color: '#7c3aed' }}>
-                      <IcoSubject size={11} /> {subject}
-                    </span>
-                  )}
-                  <span className="vt-chip" style={{ background: 'var(--vt-tint)', color: 'var(--ink)' }}>
-                    Lớp {cls?.name || '—'}
-                  </span>
-                </div>
-
-                <h3 className="vt-ecc-title">{ex.title}</h3>
-
-                <div className="vt-ecc-meta">
-                  <span>{(ex.questions || []).length} câu</span>
-                  <span className="dot">•</span>
-                  <span>{ex.duration} phút</span>
-                  <span className="dot">•</span>
-                  <span>{subs.length ? `${subs.length}/${memberCount || '?'} đã nộp` : 'Chưa có bài nộp'}</span>
-                  {avg != null && (
-                    <>
-                      <span className="dot">•</span>
-                      <span className="highlight">Điểm TB: {avg}%</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="vt-ecc-actions" onClick={(e) => e.stopPropagation()}>
-                {liveSession ? (
-                  <button type="button" className="vt-btn primary" onClick={() => setViewingSessionId(liveSession.id)}>
-                    <IcoVideo size={14} /> Giám sát ({liveDoingCount})
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="vt-btn primary"
-                    onClick={() => handleStartSession(ex)}
-                    disabled={startingId === ex.id || st.key === 'closed'}
-                  >
-                    {startingId === ex.id ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                        Đang mở...
-                      </span>
-                    ) : (
-                      <><IcoPlay size={14} /> Bắt đầu thi</>
-                    )}
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="vt-ecc-btn-detail"
-                  onClick={() => setDetailExamModal(ex)}
-                  title="Bấm để xem chi tiết, thống kê và toàn bộ thao tác"
-                >
-                  <span>Chi tiết</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
-              </div>
-            </article>
+              exam={ex}
+              liveSession={liveSession}
+              cls={cls}
+              submissions={subs}
+              onStart={handleStartSession}
+              onViewLive={(sid) => setViewingSessionId(sid)}
+              onDetail={(e) => setDetailExamModal(e)}
+              starting={startingId === ex.id}
+            />
           );
         };
 
@@ -3152,7 +3312,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               </div>
             ) : (
               examGroupMode === 'flat' ? (
-                <div className="vt-stackcards">
+                <div className="t-workflows-grid">
                   {list.map(renderExamCard)}
                 </div>
               ) : (
@@ -3165,7 +3325,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                           type="button"
                           onClick={() => toggleGroup(g.key)}
                           className="vt-card"
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.8rem', padding: '.7rem .95rem', cursor: 'pointer', textAlign: 'left' }}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.8rem', padding: '.7rem .95rem', cursor: 'pointer', textAlign: 'left', borderRadius: 16 }}
                         >
                           <span style={{ width: 42, height: 42, borderRadius: 13, background: 'var(--t-accent-subtle)', color: 'var(--t-accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" /></svg>
@@ -3195,7 +3355,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                                   <span style={{ height: 1, flex: 1, background: 'var(--soft)' }} />
                                   <small style={{ color: 'var(--t-ink-muted)', font: '600 .72rem var(--t-font-sans)' }}>{m.items.length} đề</small>
                                 </div>
-                                <div className="vt-stackcards">
+                                <div className="t-workflows-grid">
                                   {m.items.map(renderExamCard)}
                                 </div>
                               </div>
