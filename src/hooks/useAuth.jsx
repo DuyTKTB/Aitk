@@ -17,6 +17,9 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, uploadAvatar as fbUploadAvatar } from '../lib/firebase.js';
 import { supabase } from '../lib/supabase.js';
 import { getTier } from '../lib/tier.js';
+import { saveUserProfile, syncUserProfileFromCloud } from '../lib/userProfileService.js';
+import { canonicalizeEmail } from '../lib/authValidation.js';
+import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
 
 const AuthContext = createContext(null);
 
@@ -46,6 +49,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [tier, setTier] = useState(null);
   const [ready, setReady] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const mountedRef = useRef(true);
 
@@ -80,6 +84,13 @@ export function AuthProvider({ children }) {
         setUser(enriched ? { ...enriched } : u);
         setIsLoggedIn(true);
 
+        // Đồng bộ hồ sơ & khảo sát từ Firestore về LocalStorage cho đúng user hiện tại
+        syncUserProfileFromCloud(u.uid, u)
+          .catch(() => {})
+          .finally(() => {
+            if (mountedRef.current) setProfileReady(true);
+          });
+
         try {
           const t = await getTier(u.uid);
           if (mountedRef.current) setTier(t);
@@ -95,6 +106,7 @@ export function AuthProvider({ children }) {
             const parsed = JSON.parse(devMock);
             setUser(parsed);
             setIsLoggedIn(true);
+            setProfileReady(true);
             setTier({ key: 'vip', name: 'VIP', desc: 'Đặc quyền VIP' });
             if (mountedRef.current) setReady(true);
             return;
@@ -102,6 +114,7 @@ export function AuthProvider({ children }) {
         }
         setUser(null);
         setIsLoggedIn(false);
+        setProfileReady(false);
         setTier(null);
       }
       if (mountedRef.current) setReady(true);
@@ -127,25 +140,62 @@ export function AuthProvider({ children }) {
   /* ============ REGISTER ============ */
   const register = useCallback(async (email, password, displayName, opts = {}) => {
     /* role chỉ nhận student/teacher — rules cũng chặn nếu cố gửi giá trị khác */
-    const { role = 'student', school = '', termsAcceptedAt = 0 } = opts;
+    const {
+      role = 'student',
+      lastName = '',
+      firstName = '',
+      school = '',
+      province = '',
+      ward = '',
+      addressDetail = '',
+      grade = '',
+      birthDate = '',
+      phone = '',
+      termsAcceptedAt = 0,
+    } = opts;
+    const cleanSchool = school ? String(school).trim().slice(0, 80) : '';
+    const cleanProvince = province ? String(province).trim() : '';
+    const cleanWard = ward ? String(ward).trim().slice(0, 60) : '';
+    const cleanAddress = addressDetail ? String(addressDetail).trim().slice(0, 120) : '';
+    const cleanGrade = grade ? String(grade).trim() : (role === 'teacher' ? 'Sinh viên / Giáo viên' : '');
+
     const cred = await createUserWithEmailAndPassword(auth, email, password);
 
     if (displayName) {
       await updateProfile(cred.user, { displayName });
     }
 
+    const nowIso = new Date().toISOString();
     try {
       await setDoc(doc(db, 'users', cred.user.uid), {
         role,
         email,
+        canonicalEmail: canonicalizeEmail(email),
         displayName: displayName || '',
-        createdAt: new Date().toISOString(),
-        ...(school ? { school: String(school).trim().slice(0, 80) } : {}),
+        authProvider: 'password',
+        createdAt: nowIso,
+        lastLoginAt: nowIso,
+        ...(cleanSchool ? { school: cleanSchool } : {}),
         ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
       }, { merge: true });
     } catch (e) {
       console.warn('Không lưu user metadata:', e);
     }
+
+    // Khởi tạo đầy đủ hồ sơ thật từ form đăng ký (Họ, Tên, Trường, Xã/Phường, Tỉnh...)
+    saveUserProfile(cred.user.uid, {
+      ...(lastName ? { lastName } : {}),
+      ...(firstName ? { firstName } : {}),
+      fullName: displayName || '',
+      ...(birthDate ? { birthDate } : {}),
+      ...(phone ? { phone } : {}),
+      ...(cleanProvince ? { province: cleanProvince } : {}),
+      ...(cleanWard ? { ward: cleanWard } : {}),
+      ...(cleanAddress ? { addressDetail: cleanAddress } : {}),
+      ...(cleanGrade ? { grade: cleanGrade } : {}),
+      ...(cleanSchool ? { highSchool: cleanSchool } : {}),
+      survey: { role: role === 'teacher' ? 'teacher' : 'student' },
+    });
 
     try {
       const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
@@ -167,14 +217,19 @@ export function AuthProvider({ children }) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
 
     try {
-      const snap = await getDoc(doc(db, 'users', cred.user.uid));
+      const userRef = doc(db, 'users', cred.user.uid);
+      const snap = await getDoc(userRef);
       if (snap.exists()) {
         const role = snap.data()?.role || 'student';
         const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-        meta[cred.user.uid] = { role, email };
+        meta[cred.user.uid] = { role, email: cred.user.email || email };
         localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+        setDoc(userRef, { lastLoginAt: new Date().toISOString() }, { merge: true }).catch(() => {});
       }
     } catch { /* ignore */ }
+
+    await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
+    if (mountedRef.current) setProfileReady(true);
 
     // Force refresh token để lấy claim mới (quan trọng sau khi setAdminClaim)
     const enriched = await enrichUser(cred.user, true);
@@ -184,25 +239,54 @@ export function AuthProvider({ children }) {
   }, []);
 
   /* ============ LOGIN GOOGLE ============ */
-  const loginWithGoogle = useCallback(async () => {
+  const loginWithGoogle = useCallback(async (opts = {}) => {
+    const requestedRole = opts?.role === 'teacher' ? 'teacher' : 'student';
+    const cleanSchool = opts?.school ? String(opts.school).trim().slice(0, 80) : '';
+    const termsAcceptedAt = Number(opts?.termsAcceptedAt) || 0;
+
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     const cred = await signInWithPopup(auth, provider);
+    const nowIso = new Date().toISOString();
 
     try {
-      const snap = await getDoc(doc(db, 'users', cred.user.uid));
+      const userRef = doc(db, 'users', cred.user.uid);
+      const snap = await getDoc(userRef);
       if (!snap.exists()) {
-        await setDoc(doc(db, 'users', cred.user.uid), {
-          role: 'student',
-          email: cred.user.email,
+        await setDoc(userRef, {
+          role: requestedRole,
+          email: cred.user.email || '',
+          canonicalEmail: canonicalizeEmail(cred.user.email || ''),
           displayName: cred.user.displayName || '',
-          createdAt: new Date().toISOString(),
+          photoURL: cred.user.photoURL || '',
+          authProvider: 'google',
+          createdAt: nowIso,
+          lastLoginAt: nowIso,
+          ...(cleanSchool ? { school: cleanSchool } : {}),
+          ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
         });
+        saveUserProfile(cred.user.uid, {
+          fullName: cred.user.displayName || '',
+          ...(cleanSchool ? { highSchool: cleanSchool } : {}),
+          ...(requestedRole === 'teacher'
+            ? { grade: 'Sinh viên / Giáo viên', survey: { role: 'teacher' } }
+            : { survey: { role: 'student' } }),
+        });
+      } else {
+        // Cập nhật thông tin xác thực mới nhất từ Google nhưng không ghi đè hồ sơ đã chỉnh tay hay role
+        setDoc(userRef, {
+          lastLoginAt: nowIso,
+          ...(cred.user.photoURL ? { photoURL: cred.user.photoURL } : {}),
+        }, { merge: true }).catch(() => {});
       }
-      const role = snap.exists() ? snap.data()?.role : 'student';
+      const role = snap.exists() ? (snap.data()?.role || 'student') : requestedRole;
       const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
       meta[cred.user.uid] = { role, email: cred.user.email };
       localStorage.setItem('cs-user-meta', JSON.stringify(meta));
     } catch { /* ignore */ }
+
+    await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
+    if (mountedRef.current) setProfileReady(true);
 
     const enriched = await enrichUser(cred.user, true);
     if (mountedRef.current && enriched) setUser({ ...enriched });
@@ -219,6 +303,7 @@ export function AuthProvider({ children }) {
   const updateDisplayName = useCallback(async (name) => {
     if (!auth.currentUser) throw new Error('Chưa đăng nhập');
     await updateProfile(auth.currentUser, { displayName: name });
+    setDoc(doc(db, 'users', auth.currentUser.uid), { displayName: name }, { merge: true }).catch(() => {});
     await auth.currentUser.reload();
     const enriched = await enrichUser(auth.currentUser);
     if (mountedRef.current && enriched) setUser({ ...enriched });
@@ -242,7 +327,15 @@ export function AuthProvider({ children }) {
 
   /* ============ RESET PASSWORD ============ */
   const resetPassword = useCallback(async (email) => {
-    await sendPasswordResetEmail(auth, email);
+    try {
+      await requestBrandedPasswordReset(email);
+    } catch (e) {
+      const code = String(e?.code || '');
+      if (code === 'OTP_COOLDOWN' || code === 'HTTP_400') {
+        throw e;
+      }
+      await sendPasswordResetEmail(auth, email);
+    }
   }, []);
 
   /* ============ REFRESH USER ============ */
@@ -274,6 +367,7 @@ export function AuthProvider({ children }) {
     user,
     tier,
     ready,
+    profileReady,
     isLoggedIn,
     // Tiện: dùng trực tiếp không cần gọi isAdmin(user)
     isAdmin: user?.isAdmin === true,

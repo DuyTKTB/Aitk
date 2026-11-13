@@ -5,6 +5,7 @@
    - claimWelcomeBonus: nhận 5 điểm 1 LẦN DUY NHẤT
    ============================================================ */
 import { supabase } from './supabase.js';
+import { auth } from './firebase.js';
 
 const CACHE_KEY = 'elec_user_credits_cache';
 
@@ -82,6 +83,11 @@ export async function getCredits(userId) {
   }
 
   if (!data) {
+    // Chống tạo nick Gmail giả farm 50 Credit miễn phí: chỉ cấp khi email đã xác thực (Google luôn verified)
+    const currentUser = auth?.currentUser;
+    if (currentUser && currentUser.uid === userId && !currentUser.emailVerified) {
+      return { balance: 0, total_earned: 0, total_spent: 0, unverifiedBlocked: true };
+    }
     try {
       const { data: newBal, error: rpcErr } = await supabase.rpc('add_credits', {
         p_user_id: userId,

@@ -491,8 +491,8 @@ export default function AspirationRoadmapHub({
     }
   };
 
-  const studentName = profile?.fullName || user?.displayName || 'Nguyễn Duy TK';
-  const studentEmail = profile?.invoice?.invoiceEmail || user?.email || 'duyfamobo@gmail.com';
+  const studentName = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Học viên';
+  const studentEmail = profile?.invoice?.invoiceEmail || user?.email || '';
 
   const campusCover = useMemo(() => {
     return getUniversityCover(activeAsp?.school?.code);

@@ -1,0 +1,270 @@
+/* ============================================================
+   verify-email-gate.css — Cổng xác thực Gmail (Light & Dark chuẩn tương phản)
+   ============================================================ */
+
+.veg-wrap {
+  --veg-bg: #eef3ff;
+  --veg-card: #ffffff;
+  --veg-card-sub: #f8fafc;
+  --veg-ink: #0f172a;
+  --veg-mut: #475569;
+  --veg-line: rgba(15, 23, 42, 0.12);
+  --veg-acc: #2563eb;
+  --veg-acc-soft: rgba(37, 99, 235, 0.1);
+  --veg-input-bg: #f8fafc;
+
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(600px circle at 15% 15%, rgba(37, 99, 235, 0.12), transparent 60%),
+    radial-gradient(500px circle at 85% 85%, rgba(14, 165, 233, 0.12), transparent 60%),
+    var(--veg-bg);
+  color: var(--veg-ink);
+  font-family: inherit;
+}
+
+[data-theme='dark'] .veg-wrap {
+  --veg-bg: #04071a;
+  --veg-card: rgba(15, 23, 42, 0.94);
+  --veg-card-sub: rgba(30, 41, 59, 0.72);
+  --veg-ink: #f1f5f9;
+  --veg-mut: #94a3b8;
+  --veg-line: rgba(148, 163, 184, 0.22);
+  --veg-acc: #3b82f6;
+  --veg-acc-soft: rgba(59, 130, 246, 0.16);
+  --veg-input-bg: rgba(30, 41, 59, 0.78);
+
+  background:
+    radial-gradient(600px circle at 15% 15%, rgba(37, 99, 235, 0.2), transparent 60%),
+    radial-gradient(500px circle at 85% 85%, rgba(56, 189, 248, 0.14), transparent 60%),
+    var(--veg-bg);
+}
+
+.veg-card {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px;
+  padding: 28px 26px 24px;
+  background: var(--veg-card);
+  border: 1px solid var(--veg-line);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='dark'] .veg-card {
+  box-shadow: 0 28px 72px rgba(2, 6, 23, 0.65);
+}
+
+.veg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.veg-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--veg-ink);
+}
+
+.veg-brand img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.veg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: var(--veg-acc-soft);
+  color: var(--veg-acc);
+}
+
+.veg-head h1 {
+  margin: 0 0 6px;
+  font-size: 1.38rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--veg-ink);
+}
+
+.veg-head p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--veg-mut);
+}
+
+.veg-email-pill {
+  color: var(--veg-acc);
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.veg-otp-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.veg-otp-box {
+  height: 54px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 1.38rem;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border-radius: 12px;
+  border: 1.5px solid var(--veg-line);
+  background: var(--veg-input-bg);
+  color: var(--veg-ink);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.veg-otp-box:focus,
+.veg-otp-box.filled {
+  border-color: var(--veg-acc);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.veg-steps {
+  margin: 0;
+  padding: 14px 16px 14px 32px;
+  border-radius: 14px;
+  background: var(--veg-card-sub);
+  border: 1px solid var(--veg-line);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--veg-ink);
+}
+
+.veg-steps li + li {
+  margin-top: 2px;
+}
+
+.veg-msg {
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.veg-msg.ok {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #047857;
+}
+
+[data-theme='dark'] .veg-msg.ok {
+  color: #34d399;
+}
+
+.veg-msg.err {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #dc2626;
+}
+
+[data-theme='dark'] .veg-msg.err {
+  color: #f87171;
+}
+
+.veg-primary-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 18px;
+  font-weight: 700;
+  font-size: 0.94rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.veg-primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.veg-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.veg-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.veg-sec-btn {
+  flex: 1;
+  min-width: 140px;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--veg-card-sub);
+  border: 1px solid var(--veg-line);
+  color: var(--veg-ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.veg-sec-btn:hover:not(:disabled) {
+  border-color: var(--veg-acc);
+  color: var(--veg-acc);
+}
+
+.veg-sec-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.veg-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--veg-line);
+  font-size: 0.82rem;
+  color: var(--veg-mut);
+}
+
+.veg-link-btn {
+  background: none;
+  border: 0;
+  color: var(--veg-acc);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.83rem;
+  padding: 0;
+}
+
+.veg-link-btn:hover {
+  text-decoration: underline;
+}

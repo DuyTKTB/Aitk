@@ -81,12 +81,16 @@ import FeedbackModal from './components/FeedbackModal.jsx';
 import CreditTopUp from './components/CreditTopUp.jsx';
 import StreakModal from './components/StreakModal.jsx';
 import ElecIntroLoader, { PageLoader } from './components/ElecIntroLoader.jsx';
+const OnboardingSurveyModal = lazy(() => import('./components/OnboardingSurveyModal.jsx'));
+const VerifyEmailGate = lazy(() => import('./components/VerifyEmailGate.jsx'));
+const AuthActionPage = lazy(() => import('./components/AuthActionPage.jsx'));
 
 /* ============ HOOKS + LIB ============ */
 import { useAuth } from './hooks/useAuth.jsx';
 import { useTeacherPro } from './hooks/useTeacherPro.js';
 import { useSeoHead, ROUTE_SEO } from './hooks/useSeoHead.js';
 import { getUserRole } from './lib/userRole.js';
+import { getUserProfile } from './lib/userProfileService.js';
 import { getCredits, onCreditsChange } from './lib/creditService.js';
 import { setExamAiUserId } from './lib/examAiUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
@@ -228,6 +232,7 @@ const CLEAN_PATH_MAP = {
   'tro-choi-khoa-hoc': 'games',
   'bang-xep-hang': 'leaderboard',
   'quiz': 'quiz',
+  'auth-action': 'auth-action',
 };
 
 const readPage = () => {
@@ -237,7 +242,7 @@ const readPage = () => {
   const raw = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0].replace(/^\/+/, '');
   const h = raw;
   if (h) {
-    if (h === 'login' || h === 'register') return h;
+    if (h === 'login' || h === 'register' || h === 'auth-action') return h;
     if (GAME_ROUTES.includes(h)) return h;
     if (h.startsWith('exam/')) return h;
     if (h === 'truong' || h.startsWith('truong/')) return h;
@@ -246,7 +251,13 @@ const readPage = () => {
     if (PAGES.some((p) => p[0] === h)) return h;
   }
 
-  // 2. Khi hash rỗng hoặc chưa chọn, kiểm tra pathname SEO sạch
+  // 2. Link xác thực / đặt lại mật khẩu từ Firebase Action URL (?mode=...&oobCode=...)
+  const searchParams = new URLSearchParams(window.location.search || '');
+  if (searchParams.get('oobCode') && searchParams.get('mode')) {
+    return 'auth-action';
+  }
+
+  // 3. Khi hash rỗng hoặc chưa chọn, kiểm tra pathname SEO sạch
   const path = (window.location.pathname || '').replace(/^\/+/, '').split('/')[0];
   if (CLEAN_PATH_MAP[path]) return CLEAN_PATH_MAP[path];
 
@@ -290,9 +301,10 @@ const pageMeta = (page) => {
 
 /* ============ MAIN APP ============ */
 export default function App() {
-  const { ready, isLoggedIn, user, logout } = useAuth();
+  const { ready, profileReady, isLoggedIn, user, logout } = useAuth();
   const pro = useTeacherPro();
   const [hashTick, setHashTick] = useState(0);
+  const [surveyOpen, setSurveyOpen] = useState(false);
 
   const rawPage = useMemo(() => readPage(), [hashTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const page = !isLoggedIn && rawPage === '404' ? 'home' : rawPage;
@@ -329,6 +341,27 @@ export default function App() {
     window.addEventListener('elec-virtual-exam-mode', onVexMode);
     return () => window.removeEventListener('elec-virtual-exam-mode', onVexMode);
   }, []);
+
+  /* ============ ONBOARDING SURVEY AUTO-OPEN ============ */
+  useEffect(() => {
+    const onManualOpen = () => setSurveyOpen(true);
+    window.addEventListener('elec-open-onboarding-survey', onManualOpen);
+    return () => window.removeEventListener('elec-open-onboarding-survey', onManualOpen);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn || !user?.uid || !profileReady) return;
+    const needsVerify =
+      !user.emailVerified &&
+      user.providerData?.some((p) => p.providerId === 'password') &&
+      !isAdmin(user);
+    if (needsVerify) return;
+    if (page.startsWith('exam/') || page === 'admin') return;
+    const prof = getUserProfile(user.uid, user);
+    if (!prof?.survey?.completed && !prof?.survey?.skippedAt) {
+      setSurveyOpen(true);
+    }
+  }, [isLoggedIn, user?.uid, user?.emailVerified, profileReady, page, user]);
 
   /* ============ LOAD CREDITS ============ */
   useEffect(() => {
@@ -531,6 +564,14 @@ export default function App() {
     return null;
   }
 
+  if (page === 'auth-action') {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AuthActionPage />
+      </Suspense>
+    );
+  }
+
   const PUBLIC_SEO_PAGES = [
     'ai', 'table', 'balance', 'formulas', 'roadmap', 'study', 'grade',
     'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
@@ -611,6 +652,21 @@ export default function App() {
           authOpen={page === 'login' || page === 'register' || page === 'profile' || page.startsWith('exam/')}
           authMode={page === 'register' ? 'register' : 'login'}
         />
+      </Suspense>
+    );
+  }
+
+  /* ============ EMAIL VERIFICATION GATE (chống Gmail ảo) ============ */
+  const needsEmailVerification = Boolean(
+    user &&
+    !user.emailVerified &&
+    user.providerData?.some((p) => p.providerId === 'password') &&
+    !isAdmin(user)
+  );
+  if (needsEmailVerification) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <VerifyEmailGate />
       </Suspense>
     );
   }
@@ -772,6 +828,14 @@ export default function App() {
       <FeedbackModal />
       <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />
       <StreakModal />
+      {surveyOpen && (
+        <Suspense fallback={null}>
+          <OnboardingSurveyModal
+            open={surveyOpen}
+            onClose={() => setSurveyOpen(false)}
+          />
+        </Suspense>
+      )}
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
       {/* {page === 'home' && <ElecBuddies />} */}
 

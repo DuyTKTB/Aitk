@@ -63,7 +63,6 @@ export async function register(email, password, displayName, opts = {}) {
     await updateProfile(cred.user, { displayName: displayName.trim() });
   }
 
-  // Lưu user metadata vào Firestore
   try {
     await setDoc(doc(db, 'users', cred.user.uid), {
       role,
@@ -75,7 +74,6 @@ export async function register(email, password, displayName, opts = {}) {
     console.warn('Không lưu được user metadata:', e);
   }
 
-  // Cache local để đọc nhanh
   try {
     const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
     meta[cred.user.uid] = { role, email };

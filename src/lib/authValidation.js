@@ -21,8 +21,21 @@ export const COMMON_PASSWORDS = [
 export const DISPOSABLE_DOMAINS = [
   'mailinator.com', 'tempmail.com', 'temp-mail.org', 'guerrillamail.com',
   '10minutemail.com', 'yopmail.com', 'sharklasers.com', 'trashmail.com',
-  'getnada.com', 'dispostable.com',
+  'getnada.com', 'dispostable.com', 'tempmailo.com', 'mohmal.com',
+  'emailondeck.com', 'fakeinbox.com', 'maildrop.cc', 'trashmail.io',
+  'minuteinbox.com', 'throwawaymail.com', 'mailnesia.com', 'mintemail.com',
+  'guerrillamailblock.com', 'tempr.email', 'dropmail.me', '1secmail.com',
 ];
+
+const COMMON_DOMAIN_TYPOS = {
+  'gmai.com': 'gmail.com',
+  'gmial.com': 'gmail.com',
+  'gmal.com': 'gmail.com',
+  'gnail.com': 'gmail.com',
+  'gmail.co': 'gmail.com',
+  'gmail.con': 'gmail.com',
+  'yaho.com': 'yahoo.com',
+};
 
 /* Bỏ dấu tiếng Việt để so sánh "nguyễn văn an" với "nguyenvanan" */
 export function deaccent(s = '') {
@@ -37,13 +50,48 @@ export function normalizeEmail(v) {
   return String(v ?? '').trim().toLowerCase();
 }
 
+/**
+ * Chuẩn hóa Gmail về dạng gốc để chống nhân bản 1 Gmail thành nhiều nick
+ * (bỏ dấu chấm trước @, bỏ phần +alias, gộp googlemail.com -> gmail.com).
+ */
+export function canonicalizeEmail(email) {
+  const e = normalizeEmail(email);
+  const [local = '', domain = ''] = e.split('@');
+  if (!local || !domain) return e;
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const cleanLocal = local.split('+')[0].replace(/\./g, '');
+    return `${cleanLocal}@gmail.com`;
+  }
+  return e;
+}
+
+export function splitFullName(fullName = '') {
+  const clean = String(fullName ?? '').trim().replace(/\s+/g, ' ');
+  if (!clean) return { lastName: '', firstName: '' };
+  const parts = clean.split(' ');
+  if (parts.length === 1) return { lastName: '', firstName: parts[0] };
+  const firstName = parts.pop();
+  return { lastName: parts.join(' '), firstName };
+}
+
+export function joinNameParts(lastName = '', firstName = '') {
+  return [String(lastName ?? '').trim(), String(firstName ?? '').trim()]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function validateEmail(email) {
   const e = normalizeEmail(email);
   if (!e) return { ok: false, error: 'Nhập email của bạn.' };
   if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(e)) return { ok: false, error: 'Email không hợp lệ.' };
   const domain = e.split('@')[1] || '';
+  if (COMMON_DOMAIN_TYPOS[domain]) {
+    return { ok: false, error: `Email có vẻ sai chính tả (@${domain}). Ý bạn là @${COMMON_DOMAIN_TYPOS[domain]}?` };
+  }
   if (DISPOSABLE_DOMAINS.includes(domain)) {
-    return { ok: false, error: 'Không dùng được email tạm thời. Hãy dùng email thật để nhận thông báo lớp.' };
+    return { ok: false, error: 'Không dùng được email tạm thời. Hãy dùng email thật để xác thực tài khoản.' };
   }
   return { ok: true, error: '', value: e };
 }

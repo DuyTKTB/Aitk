@@ -4,6 +4,7 @@ import {
   passwordChecks, passwordScore, passwordStrengthLabel, mapAuthError,
   nextFailure, lockRemaining, formatDuration, emptyLockState,
   MAX_FAILS, LOCK_MS, MIN_PASSWORD, normalizeEmail, deaccent,
+  canonicalizeEmail, splitFullName, joinNameParts,
 } from '../src/lib/authValidation.js';
 
 describe('email', () => {
@@ -149,5 +150,17 @@ describe('thông báo lỗi & khoá thử', () => {
 
   it('deaccent bỏ dấu tiếng Việt', () => {
     expect(deaccent('Nguyễn Văn Ánh')).toBe('nguyen van anh');
+  });
+
+  it('chuẩn hóa canonicalEmail chống nhân bản Gmail bằng dấu chấm & dấu cộng', () => {
+    expect(canonicalizeEmail('N.guyen.Van.A+clone1@gmail.com')).toBe('nguyenvana@gmail.com');
+    expect(canonicalizeEmail('nguyenvana@googlemail.com')).toBe('nguyenvana@gmail.com');
+    expect(validateEmail('test@gmai.com').ok).toBe(false);
+  });
+
+  it('tách và ghép Họ - Tên chuẩn tiếng Việt', () => {
+    expect(splitFullName('Nguyễn Văn An')).toEqual({ lastName: 'Nguyễn Văn', firstName: 'An' });
+    expect(splitFullName('An')).toEqual({ lastName: '', firstName: 'An' });
+    expect(joinNameParts('Nguyễn Văn', 'An')).toBe('Nguyễn Văn An');
   });
 });

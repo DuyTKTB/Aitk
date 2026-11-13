@@ -209,7 +209,7 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
     userProfile?.fullName ||
     user?.displayName ||
     user?.email?.split('@')[0] ||
-    'Nguyễn Duy TK';
+    'Thành viên ELEC AI';
 
   const nameParts = displayName.trim().split(/\s+/);
   const initial = (nameParts.length >= 2 ? nameParts[1].charAt(0) : displayName.trim().charAt(0)).toUpperCase();
@@ -224,10 +224,13 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
     school?.name ||
     activeWish?.schoolName ||
     userProfile?.highSchool ||
-    'Học Viện An Ninh Nhân Dân';
+    user?.email ||
+    'Chưa cập nhật trường';
 
-  const displayScore = activeWish?.targetScore ?? aspProfile?.lastAttemptScore ?? 26;
-  const majorDisplay = activeWish?.majorName ? `(1) ${activeWish.majorName}` : '(1) Ngành An ninh mạng...';
+  const displayScore = activeWish?.targetScore ?? aspProfile?.lastAttemptScore ?? null;
+  const majorDisplay = activeWish?.majorName
+    ? `(1) ${activeWish.majorName}`
+    : (userProfile?.grade || 'Chưa chọn nguyện vọng');
 
   // Tự động đóng khi hash thay đổi hoặc khi dropdown khác mở
   useEffect(() => {
@@ -323,9 +326,11 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
                   {schoolDisplay}
                 </span>
                 <div className="ns9-uprof-wish-row">
-                  <span className="ns9-uprof-score-pill">
-                    {displayScore} điểm
-                  </span>
+                  {displayScore != null && (
+                    <span className="ns9-uprof-score-pill">
+                      {displayScore} điểm
+                    </span>
+                  )}
                   <span className="ns9-uprof-major-pill" title={activeWish?.majorName || majorDisplay}>
                     {majorDisplay}
                   </span>

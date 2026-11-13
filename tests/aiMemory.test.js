@@ -84,4 +84,20 @@ describe('buildMemoryBlock', () => {
   it('rỗng khi không có gì', () => {
     expect(buildMemoryBlock({})).toBe('');
   });
+
+  it('đưa thông tin khảo sát AI (mục tiêu, môn, trình độ, phong cách) vào ngữ cảnh', () => {
+    const block = buildMemoryBlock({
+      profile: {
+        grade: 'Lớp 12',
+        goal: 'thptqg',
+        subjects: ['hoa_hoc', 'vat_ly'],
+        examBlock: 'A00',
+        currentLevel: 'kha_gioi',
+        aiStyle: 'socratic',
+      },
+    });
+    expect(block).toContain('Ôn thi THPT Quốc gia');
+    expect(block).toContain('Hóa học, Vật lí (Khối A00)');
+    expect(block).toContain('Socratic');
+  });
 });

@@ -81,7 +81,7 @@ export default function PetWidget() {
     return () => window.removeEventListener(USER_PROFILE_CHANGE_EVENT, onProfileUpdate);
   }, [uid, user]);
 
-  const studentName = userProfile?.fullName || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Nguyễn Duy TK');
+  const studentName = userProfile?.fullName || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Bạn');
   const userAvatar = user?.photoURL || userProfile?.avatar || userProfile?.photoURL || null;
   const nameParts = studentName.trim().split(/\s+/);
   const userInitial = (nameParts.length >= 2 ? nameParts[1].charAt(0) : studentName.trim().charAt(0)).toUpperCase();
@@ -396,15 +396,17 @@ export default function PetWidget() {
     if (nv1?.school) {
       return `${nv1.school.name || nv1.school.code} — ${nv1.major?.name || 'Ngành mục tiêu'}`;
     }
-    return 'ANND — Ngành An ninh mạng và phòng chống tội phạm công nghệ cao';
-  }, [aspState]);
+    return userProfile?.highSchool
+      ? `${userProfile.highSchool}${userProfile?.grade ? ` · ${userProfile.grade}` : ''}`
+      : 'Chưa đặt nguyện vọng mục tiêu';
+  }, [aspState, userProfile]);
 
   const userSchoolGoal = useMemo(() => {
     const nv1 = aspState?.aspirations?.[0];
     if (nv1?.school?.code) {
-      return `${nv1.school.code} · ${nv1.major?.name ? (nv1.major.name.length > 20 ? nv1.major.name.slice(0, 20) + '...' : nv1.major.name) : 'A0T'}`;
+      return `${nv1.school.code} · ${nv1.major?.name ? (nv1.major.name.length > 20 ? nv1.major.name.slice(0, 20) + '...' : nv1.major.name) : nv1.block || 'Mục tiêu'}`;
     }
-    return userProfile?.highSchool || 'ANND · A0T';
+    return userProfile?.highSchool || userProfile?.grade || 'Chưa cập nhật trường';
   }, [aspState, userProfile]);
 
   const formatTimer = (secs) => {
@@ -902,37 +904,8 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
     ]);
   };
 
-  // Sample aspirations if none created
   const displayAspirations = useMemo(() => {
-    if (aspState?.aspirations && aspState.aspirations.length > 0) {
-      return aspState.aspirations;
-    }
-    return [
-      {
-        id: 'asp_1',
-        school: { name: 'Học Viện An Ninh Nhân Dân', code: 'ANND' },
-        major: { name: 'Ngành An ninh mạng và phòng chống tội phạm công nghệ cao' },
-        targetScore: 26,
-        predictedScore: null,
-        status: 'safe',
-      },
-      {
-        id: 'asp_2',
-        school: { name: 'Đại Học Sư Phạm Thái Nguyên', code: 'DHS' },
-        major: { name: 'Sư phạm Tiếng Anh' },
-        targetScore: 23,
-        predictedScore: null,
-        status: 'warning',
-      },
-      {
-        id: 'asp_3',
-        school: { name: 'Học Viện An Ninh Nhân Dân', code: 'ANND' },
-        major: { name: 'Ngành An ninh mạng và phòng...' },
-        targetScore: 23,
-        predictedScore: null,
-        status: 'danger',
-      },
-    ];
+    return Array.isArray(aspState?.aspirations) ? aspState.aspirations : [];
   }, [aspState]);
 
   return (
@@ -1133,7 +1106,7 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     <div className="ns9-sa-header">
                       <span className="ns9-sa-title">TIẾN ĐỘ NGUYỆN VỌNG</span>
                       <div className="ns9-sa-dropdown-btn">
-                        <span>NV1: ANND</span>
+                        <span>{displayAspirations[0]?.school?.code ? `NV1: ${displayAspirations[0].school.code}` : 'Chưa chọn NV'}</span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
@@ -1141,24 +1114,32 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     </div>
 
                     <div className="ns9-sa-list">
-                      {displayAspirations.map((asp, idx) => (
-                        <div key={asp.id || idx} className="ns9-sa-item">
-                          <div className="ns9-sa-item-left">
-                            <span className="ns9-sa-school-name">
-                              {asp.school?.name || asp.school?.code} — {asp.major?.name || ''}
-                            </span>
-                            <span className="ns9-sa-score-line">
-                              {idx === 0
-                                ? `Mục tiêu: ${asp.targetScore || 26}đ · Dự đoán: —`
-                                : `Dự đoán: — / ${asp.targetScore || 23}đ`}
-                            </span>
-                          </div>
-                          <div className="ns9-sa-item-right">
-                            <span className={`ns9-sa-dot dot-${idx === 0 ? 'blue' : idx === 1 ? 'orange' : 'red'}`} />
-                            <span className="ns9-sa-dash">—</span>
-                          </div>
+                      {displayAspirations.length === 0 ? (
+                        <div className="ns9-sa-item" style={{ justifyContent: 'center', textAlign: 'center', padding: '10px 8px' }}>
+                          <span className="ns9-sa-score-line">
+                            Bạn chưa thêm nguyện vọng Đại học. Vào mục <b>Lộ trình</b> để chọn trường mục tiêu nhé!
+                          </span>
                         </div>
-                      ))}
+                      ) : (
+                        displayAspirations.map((asp, idx) => (
+                          <div key={asp.id || idx} className="ns9-sa-item">
+                            <div className="ns9-sa-item-left">
+                              <span className="ns9-sa-school-name">
+                                {asp.school?.name || asp.school?.code} — {asp.major?.name || ''}
+                              </span>
+                              <span className="ns9-sa-score-line">
+                                {idx === 0
+                                  ? `Mục tiêu: ${asp.targetScore || 26}đ · Dự đoán: —`
+                                  : `Dự đoán: — / ${asp.targetScore || 23}đ`}
+                              </span>
+                            </div>
+                            <div className="ns9-sa-item-right">
+                              <span className={`ns9-sa-dot dot-${idx === 0 ? 'blue' : idx === 1 ? 'orange' : 'red'}`} />
+                              <span className="ns9-sa-dash">—</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 

@@ -3,9 +3,11 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import {
   getUserProfile,
   saveUserProfile,
+  validateProfileFields,
   VIETNAM_PROVINCES,
   GRADES_LIST,
 } from '../lib/userProfileService.js';
+import { joinNameParts } from '../lib/authValidation.js';
 import { getSubscriptionAndQuota, getUserReports } from '../data/virtualExamsBank.js';
 import UserAvatar from './UserAvatar.jsx';
 import '../styles/profile-edit-section.css';
@@ -76,14 +78,19 @@ export default function ProfileEditSection({
   const reportList = propReports || getUserReports(uid);
   const referralCode = propIdentCode || (uid ? `ELECAI-${uid.slice(0, 6).toUpperCase()}` : 'VIP2026');
 
-  // Form State thông tin cá nhân
-  const [fullName, setFullName] = useState('');
+  // Form State thông tin cá nhân (khởi tạo rỗng, tuyệt đối không dùng dữ liệu giả)
+  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
-  const [birthDate, setBirthDate] = useState('2008-08-09');
+  const [birthDate, setBirthDate] = useState('');
   const [phone, setPhone] = useState('');
-  const [province, setProvince] = useState('Hà Nội');
-  const [grade, setGrade] = useState('Lớp 12');
+  const [province, setProvince] = useState('');
+  const [ward, setWard] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+  const [grade, setGrade] = useState('');
   const [highSchool, setHighSchool] = useState('');
+  const [surveyState, setSurveyState] = useState(null);
+  const [formErr, setFormErr] = useState('');
 
   // Invoice state
   const [buyerName, setBuyerName] = useState('');
@@ -109,29 +116,39 @@ export default function ProfileEditSection({
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
 
-  // Load data
+  // Load data & lắng nghe đồng bộ từ cloud / khảo sát
   useEffect(() => {
-    if (!uid) return;
-    const prof = getUserProfile(uid, user);
-    setFullName(prof.fullName || user?.displayName || 'Nguyễn Duy TK');
-    setEmail(user?.email || 'duyfamaboc@gmail.com');
-    setBirthDate(prof.birthDate || '2008-08-09');
-    setPhone(prof.phone || '0982695615');
-    setProvince(prof.province || 'Hà Nội');
-    setGrade(prof.grade || 'Lớp 12');
-    setHighSchool(prof.highSchool || 'THPT Chuyên Hà Nội - Amsterdam');
+    if (!uid) return undefined;
+    const applyProfile = () => {
+      const prof = getUserProfile(uid, user);
+      setLastName(prof.lastName || '');
+      setFirstName(prof.firstName || '');
+      setEmail(user?.email || '');
+      setBirthDate(prof.birthDate || '');
+      setPhone(prof.phone || '');
+      setProvince(prof.province || '');
+      setWard(prof.ward || '');
+      setAddressDetail(prof.addressDetail || '');
+      setGrade(prof.grade || '');
+      setHighSchool(prof.highSchool || '');
+      setSurveyState(prof.survey || null);
 
-    if (prof.invoice) {
-      setBuyerName(prof.invoice.buyerName || user?.displayName || '');
-      setBuyerAddress(prof.invoice.address || '');
-      setCompanyName(prof.invoice.companyName || '');
-      setTaxCode(prof.invoice.taxCode || '');
-      setInvoiceEmail(prof.invoice.invoiceEmail || user?.email || '');
-    }
+      if (prof.invoice) {
+        setBuyerName(prof.invoice.buyerName || user?.displayName || '');
+        setBuyerAddress(prof.invoice.address || '');
+        setCompanyName(prof.invoice.companyName || '');
+        setTaxCode(prof.invoice.taxCode || '');
+        setInvoiceEmail(prof.invoice.invoiceEmail || user?.email || '');
+      }
 
-    if (prof.notifications) {
-      setNotifications(prof.notifications);
-    }
+      if (prof.notifications) {
+        setNotifications(prof.notifications);
+      }
+    };
+
+    applyProfile();
+    window.addEventListener('elec-user-profile-change', applyProfile);
+    return () => window.removeEventListener('elec-user-profile-change', applyProfile);
   }, [uid, user]);
 
   const showToast = (text) => {
@@ -139,34 +156,46 @@ export default function ProfileEditSection({
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  const fullName = joinNameParts(lastName, firstName);
+
   // Lưu thông tin cá nhân
   const handleSaveInfo = async (e) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      alert('Vui lòng nhập họ và tên của em.');
+    setFormErr('');
+    if (!firstName.trim()) {
+      setFormErr('Vui lòng nhập Tên của bạn.');
+      return;
+    }
+    const check = validateProfileFields({ fullName, birthDate, phone });
+    if (!check.ok) {
+      const firstErr = Object.values(check.errors)[0];
+      setFormErr(firstErr);
       return;
     }
 
     setSaving(true);
     try {
-      // Lưu vào profile service (localStorage + Supabase)
       saveUserProfile(uid, {
-        fullName: fullName.trim(),
-        birthDate,
-        phone: phone.trim(),
+        lastName: lastName.trim(),
+        firstName: firstName.trim(),
+        fullName: check.cleaned.fullName,
+        birthDate: check.cleaned.birthDate,
+        phone: check.cleaned.phone,
         province,
+        ward: ward.trim(),
+        addressDetail: addressDetail.trim(),
         grade,
         highSchool: highSchool.trim(),
       });
 
       // Đồng bộ vào Auth Display Name nếu khác
-      if (fullName.trim() !== user?.displayName) {
-        await updateDisplayName(fullName.trim());
+      if (check.cleaned.fullName !== (user?.displayName || '')) {
+        await updateDisplayName(check.cleaned.fullName);
       }
 
       showToast('Đã lưu thay đổi hồ sơ thành công!');
     } catch (err) {
-      alert('Lỗi lưu thông tin: ' + (err?.message || 'Vui lòng thử lại.'));
+      setFormErr('Lỗi lưu thông tin: ' + (err?.message || 'Vui lòng thử lại.'));
     } finally {
       setSaving(false);
     }
@@ -432,7 +461,7 @@ export default function ProfileEditSection({
            CỘT PHẢI: FORM CHÍNH THEO TAB CHỌN
            ============================================================ */}
         <div className="ns9-pe-col-right">
-          {/* TAB 1: THÔNG TIN CÁ NHÂN (Khớp 100% Ảnh 1) */}
+          {/* TAB 1: THÔNG TIN CÁ NHÂN */}
           {activeSubTab === 'info' && (
             <form onSubmit={handleSaveInfo}>
               <div className="ns9-pe-form-header">
@@ -448,24 +477,73 @@ export default function ProfileEditSection({
                 </div>
               </div>
 
+              {isGoogle && (!birthDate || !phone || !province || !highSchool) && (
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(37, 99, 235, 0.08)',
+                  border: '1px solid rgba(37, 99, 235, 0.22)',
+                  marginBottom: 16,
+                  fontSize: '0.84rem',
+                  lineHeight: 1.5,
+                  color: '#1e40af',
+                }}>
+                  <b>Lưu ý tài khoản Google:</b> Google chỉ tự động cung cấp Họ tên, Email và Ảnh đại diện.
+                  Các thông tin còn lại (Ngày sinh, SĐT, Tỉnh/TP, Lớp, Trường) hiện đang để trống để bạn tự điền chính xác.
+                </div>
+              )}
+
+              {formErr && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#dc2626',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  marginBottom: 14,
+                }}>
+                  {formErr}
+                </div>
+              )}
+
               <div className="ns9-pe-form-grid">
-                {/* Hàng 1: Họ và tên * & Email */}
+                {/* Hàng 1: Họ & Tên */}
                 <div className="ns9-pe-field">
                   <label className="ns9-pe-label">
-                    Họ và tên <span className="ns9-pe-req">*</span>
+                    Họ &amp; tên đệm
                   </label>
                   <input
                     type="text"
                     className="ns9-pe-input"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nguyễn Duy TK"
-                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="VD: Nguyễn Văn"
+                    maxLength={40}
                   />
                 </div>
 
                 <div className="ns9-pe-field">
-                  <label className="ns9-pe-label">Email</label>
+                  <label className="ns9-pe-label">
+                    Tên <span className="ns9-pe-req">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="ns9-pe-input"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="VD: An"
+                    maxLength={20}
+                    required
+                  />
+                </div>
+
+                {/* Hàng 2: Email & Ngày tháng năm sinh */}
+                <div className="ns9-pe-field">
+                  <label className="ns9-pe-label">
+                    Email {user?.emailVerified ? '(Đã xác thực)' : '(Chưa xác thực)'}
+                  </label>
                   <input
                     type="email"
                     className="ns9-pe-input"
@@ -475,10 +553,9 @@ export default function ProfileEditSection({
                   />
                 </div>
 
-                {/* Hàng 2: Ngày tháng năm sinh * & Số điện thoại * */}
                 <div className="ns9-pe-field">
                   <label className="ns9-pe-label">
-                    Ngày tháng năm sinh <span className="ns9-pe-req">*</span>
+                    Ngày tháng năm sinh
                   </label>
                   <div className="ns9-pe-input-box">
                     <input
@@ -486,14 +563,14 @@ export default function ProfileEditSection({
                       className="ns9-pe-input"
                       value={birthDate}
                       onChange={(e) => setBirthDate(e.target.value)}
-                      required
                     />
                   </div>
                 </div>
 
+                {/* Hàng 3: Số điện thoại & Lớp */}
                 <div className="ns9-pe-field">
                   <label className="ns9-pe-label">
-                    Số điện thoại <span className="ns9-pe-req">*</span>
+                    Số điện thoại
                   </label>
                   <div className="ns9-pe-input-box">
                     <span className="ns9-pe-input-ico">
@@ -506,16 +583,31 @@ export default function ProfileEditSection({
                       className="ns9-pe-input has-ico"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0982695615"
-                      required
+                      placeholder="VD: 0912345678 (tuỳ chọn)"
                     />
                   </div>
                 </div>
 
-                {/* Hàng 3: Tỉnh / Thành phố * & Lớp * */}
                 <div className="ns9-pe-field">
                   <label className="ns9-pe-label">
-                    Tỉnh / Thành phố <span className="ns9-pe-req">*</span>
+                    Lớp / Đối tượng
+                  </label>
+                  <select
+                    className="ns9-pe-input"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                  >
+                    <option value="">Chọn lớp / vai trò</option>
+                    {GRADES_LIST.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Hàng 4: Tỉnh / Thành phố & Phường / Xã / Đặc khu */}
+                <div className="ns9-pe-field">
+                  <label className="ns9-pe-label">
+                    Tỉnh / Thành phố
                   </label>
                   <div className="ns9-pe-input-box">
                     <span className="ns9-pe-input-ico">
@@ -528,7 +620,6 @@ export default function ProfileEditSection({
                       className="ns9-pe-input has-ico"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
-                      required
                     >
                       <option value="">Chọn tỉnh / thành phố</option>
                       {VIETNAM_PROVINCES.map((prov) => (
@@ -540,41 +631,84 @@ export default function ProfileEditSection({
 
                 <div className="ns9-pe-field">
                   <label className="ns9-pe-label">
-                    Lớp <span className="ns9-pe-req">*</span>
+                    Phường / Xã / Đặc khu
                   </label>
-                  <select
+                  <input
+                    type="text"
                     className="ns9-pe-input"
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    required
-                  >
-                    <option value="">Chọn lớp</option>
-                    {GRADES_LIST.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
+                    value={ward}
+                    onChange={(e) => setWard(e.target.value)}
+                    placeholder="VD: Phường Dịch Vọng / Xã Tân Lập"
+                    maxLength={60}
+                  />
                 </div>
 
-                {/* Hàng 4: Trường THPT đang học * (chiếm full 2 cột) */}
-                <div className="ns9-pe-field is-full">
+                {/* Hàng 5: Thôn / Xóm / Số nhà & Trường */}
+                <div className="ns9-pe-field">
                   <label className="ns9-pe-label">
-                    Trường THPT đang học <span className="ns9-pe-req">*</span>
+                    Thôn / Xóm / Số nhà (tuỳ chọn)
+                  </label>
+                  <input
+                    type="text"
+                    className="ns9-pe-input"
+                    value={addressDetail}
+                    onChange={(e) => setAddressDetail(e.target.value)}
+                    placeholder="VD: Số 12, Thôn Đông"
+                    maxLength={120}
+                  />
+                </div>
+
+                <div className="ns9-pe-field">
+                  <label className="ns9-pe-label">
+                    Trường THPT đang học / công tác
                   </label>
                   <input
                     type="text"
                     className="ns9-pe-input"
                     value={highSchool}
                     onChange={(e) => setHighSchool(e.target.value)}
-                    placeholder="THPT Chuyên Hà Nội - Amsterdam"
-                    required
+                    placeholder="Nhập tên trường (VD: THPT Lê Quý Đôn)"
                   />
                 </div>
+              </div>
+
+              {/* Khối trạng thái Khảo sát cá nhân hóa AI */}
+              <div style={{
+                marginTop: 18,
+                padding: '14px 16px',
+                borderRadius: 14,
+                background: 'rgba(15, 23, 42, 0.03)',
+                border: '1px solid rgba(148, 163, 184, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}>
+                <div>
+                  <strong style={{ fontSize: '0.88rem', display: 'block' }}>
+                    Khảo sát cá nhân hóa Gia sư AI
+                  </strong>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    {surveyState?.completed
+                      ? 'Đã hoàn thành khảo sát — ELEC AI đang điều chỉnh câu trả lời theo mục tiêu của bạn.'
+                      : 'Chưa làm khảo sát — dành 30 giây để AI hiểu trình độ và phong cách học của bạn.'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="ns9-pe-back-btn"
+                  style={{ width: 'auto', height: 38, padding: '0 14px', borderRadius: 10, fontSize: '0.82rem', fontWeight: 700 }}
+                  onClick={() => window.dispatchEvent(new CustomEvent('elec-open-onboarding-survey', { detail: { force: true } }))}
+                >
+                  {surveyState?.completed ? 'Cập nhật khảo sát AI' : 'Làm khảo sát ngay'}
+                </button>
               </div>
 
               {/* Dưới cùng: Ghi chú & Nút lưu thay đổi */}
               <div className="ns9-pe-form-footer">
                 <span className="ns9-pe-footer-note">
-                  Kiểm tra lại thông tin rồi bấm lưu.
+                  Hồ sơ được đồng bộ an toàn lên đám mây theo tài khoản của bạn.
                 </span>
                 <button
                   type="submit"
@@ -657,7 +791,7 @@ export default function ProfileEditSection({
                     className="ns9-pe-input"
                     value={buyerAddress}
                     onChange={(e) => setBuyerAddress(e.target.value)}
-                    placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                    placeholder="Số nhà, đường, phường/xã, tỉnh/thành phố"
                   />
                 </div>
               </div>

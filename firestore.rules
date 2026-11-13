@@ -510,5 +510,12 @@ service cloud.firestore {
       allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
 
+    // ===============================================================
+    // 17. EMAIL OTP CODES — Chỉ Admin SDK trên server đọc/ghi
+    // ===============================================================
+    match /email_otp_codes/{uid} {
+      allow read, write: if false;
+    }
+
   }
 }

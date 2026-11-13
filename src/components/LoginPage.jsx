@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { translateAuthError } from '../lib/firebase.js';
+import {
+  requestResetPasswordOtp,
+  verifyResetPasswordOtp,
+  sanitizeOtpInput,
+} from '../lib/emailOtp.js';
+import { BRAND_EMAIL } from '../lib/emailTemplates.js';
+import { validatePassword } from '../lib/authValidation.js';
 import RegisterFlow from './RegisterFlow.jsx';
 import './login-page.css';
 
@@ -84,12 +91,14 @@ const IcoTeacher = ({ size = 20 }) => (
    MAIN
    ============================================================ */
 export default function LoginPage({ initialMode = 'login', onDone }) {
-  const { login, register, loginWithGoogle, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState(initialMode);
+  const [forgotStep, setForgotStep] = useState('email'); // 'email' | 'otp'
+  const [otpCode, setOtpCode] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmNewPass, setConfirmNewPass] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('student');
   const [showPass, setShowPass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -97,28 +106,60 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
   const [tick, setTick] = useState(false);
   const firstRef = useRef(null);
 
-  useEffect(() => { setMode(initialMode); }, [initialMode]);
+  useEffect(() => {
+    setMode(initialMode);
+    setForgotStep('email');
+  }, [initialMode]);
 
   useEffect(() => {
+    if (mode === 'register') return undefined;
     const t = setTimeout(() => firstRef.current?.focus(), 80);
     return () => clearTimeout(t);
-  }, [mode]);
+  }, [mode, forgotStep]);
 
-  const isLogin = mode === 'login';
   const isForgot = mode === 'forgot';
 
   const submit = async (e) => {
     e.preventDefault();
     setErr(''); setInfo(''); setBusy(true);
     try {
-      if (isForgot) {
-        await resetPassword(email);
-        setInfo('Đã gửi link đặt lại mật khẩu tới email của bạn.');
-      } else if (isLogin) {
-        await login(email, pass);
-        onDone?.();
+      if (isForgot && forgotStep === 'email') {
+        try {
+          await requestResetPasswordOtp(email);
+          setForgotStep('otp');
+          setInfo(`Đã gửi mã OTP 6 số từ ${BRAND_EMAIL} tới ${email}. Kiểm tra hộp thư (cả mục Spam).`);
+        } catch (otpErr) {
+          const code = String(otpErr?.code || '');
+          if (code === 'HTTP_404' || code === 'OTP_PROVIDER_NOT_CONFIGURED') {
+            // Dự phòng chỉ khi môi trường chưa có route/provider /api/email-otp
+            await resetPassword(email);
+            setInfo('Đã gửi liên kết đặt lại mật khẩu tới email của bạn.');
+          } else {
+            throw otpErr;
+          }
+        }
+      } else if (isForgot && forgotStep === 'otp') {
+        const check = validatePassword(newPass, { email });
+        if (!check.ok) {
+          setErr(check.errors[0]);
+          setBusy(false);
+          return;
+        }
+        if (newPass !== confirmNewPass) {
+          setErr('Mật khẩu nhập lại không khớp.');
+          setBusy(false);
+          return;
+        }
+        await verifyResetPasswordOtp({ email, code: otpCode, newPassword: newPass });
+        setMode('login');
+        setForgotStep('email');
+        setOtpCode('');
+        setNewPass('');
+        setConfirmNewPass('');
+        setPass('');
+        setInfo('Đổi mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.');
       } else {
-        await register(email, pass, name, { role });
+        await login(email, pass);
         onDone?.();
       }
     } catch (e2) {
@@ -126,10 +167,9 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
       setErr(
         msg.includes('invalid-credential') || msg.includes('wrong-password') ? 'Email hoặc mật khẩu không đúng.'
         : msg.includes('user-not-found') ? 'Tài khoản không tồn tại.'
-        : msg.includes('email-already-in-use') ? 'Email này đã được đăng ký.'
-        : msg.includes('weak-password') ? 'Mật khẩu cần ít nhất 6 ký tự.'
         : msg.includes('invalid-email') ? 'Email không hợp lệ.'
         : msg.includes('too-many-requests') ? 'Quá nhiều lần thử. Vui lòng đợi vài phút.'
+        : (e2?.message && !msg.startsWith('auth/')) ? e2.message
         : 'Có lỗi xảy ra, vui lòng thử lại.'
       );
     } finally {
@@ -148,7 +188,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
   };
 
   const switchMode = (m) => {
-    setMode(m); setErr(''); setInfo(''); setTick((t) => !t);
+    setMode(m); setForgotStep('email'); setErr(''); setInfo(''); setTick((t) => !t);
   };
 
   return (
@@ -196,14 +236,14 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
             <>
           <header className="lg-head">
             <h1>
-              {isForgot ? 'Đặt lại mật khẩu'
-                : isLogin ? 'Chào mừng trở lại'
-                : 'Tạo tài khoản mới'}
+              {isForgot ? (forgotStep === 'otp' ? 'Nhập mã OTP 6 số' : 'Đặt lại mật khẩu') : 'Chào mừng trở lại'}
             </h1>
             <p>
-              {isForgot ? 'Nhập email để nhận link đặt lại.'
-                : isLogin ? 'Đăng nhập để tiếp tục học.'
-                : 'Miễn phí, chỉ mất vài giây.'}
+              {isForgot
+                ? (forgotStep === 'otp'
+                  ? `Nhập mã 6 số vừa gửi tới ${email} và mật khẩu mới của bạn.`
+                  : 'Nhập email để nhận mã OTP 6 số đặt lại mật khẩu ngay tại đây.')
+                : 'Đăng nhập bằng Google hoặc Email đã xác thực để tiếp tục học.'}
             </p>
           </header>
 
@@ -216,39 +256,81 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                 disabled={busy}
               >
                 <IcoGoogle size={20} />
-                <span>Tiếp tục với Google</span>
+                <span>{busy ? 'Đang kết nối Google…' : 'Tiếp tục với Google'}</span>
               </button>
-              <div className="lg-divider"><span>hoặc</span></div>
+              <div className="lg-divider"><span>hoặc đăng nhập bằng Email</span></div>
             </>
           )}
 
           <form className="lg-form" onSubmit={submit} key={tick}>
-            {!isLogin && !isForgot && (
+            {(!isForgot || forgotStep === 'email') && (
               <label className="lg-field">
-                <span className="lg-field-ic"><IcoUser /></span>
+                <span className="lg-field-ic"><IcoMail /></span>
                 <input
                   ref={firstRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Tên hiển thị"
-                  autoComplete="name"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  autoComplete="email"
+                  required
                 />
               </label>
             )}
 
-            <label className="lg-field">
-              <span className="lg-field-ic"><IcoMail /></span>
-              <input
-                ref={!isLogin || isForgot ? undefined : firstRef}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
-                autoComplete="email"
-                required
-              />
-            </label>
+            {isForgot && forgotStep === 'otp' && (
+              <>
+                <label className="lg-field">
+                  <span className="lg-field-ic"><IcoMail /></span>
+                  <input
+                    ref={firstRef}
+                    type="text"
+                    inputMode="numeric"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(sanitizeOtpInput(e.target.value))}
+                    placeholder="Mã OTP 6 chữ số"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    required
+                    style={{ letterSpacing: '0.2em', fontWeight: 700, fontFamily: 'monospace' }}
+                  />
+                </label>
+
+                <label className="lg-field">
+                  <span className="lg-field-ic"><IcoLock /></span>
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    value={newPass}
+                    onChange={(e) => setNewPass(e.target.value)}
+                    placeholder="Mật khẩu mới (≥ 8 ký tự)"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="lg-eye"
+                    onClick={() => setShowPass((s) => !s)}
+                    aria-label={showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showPass ? <IcoEyeOff /> : <IcoEye />}
+                  </button>
+                </label>
+
+                <label className="lg-field">
+                  <span className="lg-field-ic"><IcoLock /></span>
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    value={confirmNewPass}
+                    onChange={(e) => setConfirmNewPass(e.target.value)}
+                    placeholder="Nhập lại mật khẩu mới"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                  />
+                </label>
+              </>
+            )}
 
             {!isForgot && (
               <label className="lg-field">
@@ -258,7 +340,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
                   placeholder="Mật khẩu"
-                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  autoComplete="current-password"
                   minLength={6}
                   required
                 />
@@ -273,43 +355,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
               </label>
             )}
 
-            {/* ===== CHỌN VAI TRÒ (chỉ khi đăng ký) ===== */}
-            {!isLogin && !isForgot && (
-              <div className="lg-role">
-                <span className="lg-role-label">Bạn là:</span>
-                <div className="lg-role-options">
-                  <button
-                    type="button"
-                    className={'lg-role-btn' + (role === 'student' ? ' on' : '')}
-                    onClick={() => setRole('student')}
-                  >
-                    <IcoStudent />
-                    <div>
-                      <b>Học sinh</b>
-                      <small>Tham gia lớp, làm bài</small>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className={'lg-role-btn' + (role === 'teacher' ? ' on' : '')}
-                    onClick={() => setRole('teacher')}
-                  >
-                    <IcoTeacher />
-                    <div>
-                      <b>Giáo viên</b>
-                      <small>Tạo lớp, giao đề</small>
-                    </div>
-                  </button>
-                </div>
-                {role === 'teacher' && (
-                  <p className="lg-role-note">
-                    Sau khi đăng ký, cần liên hệ Admin để nhận KEY PRO kích hoạt.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {isLogin && (
+            {!isForgot && (
               <button
                 type="button"
                 className="lg-forgot"
@@ -333,9 +379,9 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                 <span className="lg-spinner" aria-hidden="true" />
               ) : (
                 <>
-                  {isForgot ? 'Gửi link đặt lại'
-                    : isLogin ? 'Đăng nhập'
-                    : 'Tạo tài khoản'}
+                  {isForgot
+                    ? (forgotStep === 'otp' ? 'Xác nhận & Đổi mật khẩu' : 'Gửi mã OTP 6 số')
+                    : 'Đăng nhập'}
                   <IcoArrow />
                 </>
               )}
@@ -347,15 +393,10 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
               <button type="button" onClick={() => switchMode('login')}>
                 Quay lại đăng nhập
               </button>
-            ) : isLogin ? (
+            ) : (
               <p>
                 Chưa có tài khoản?{' '}
                 <button type="button" onClick={() => switchMode('register')}>Đăng ký</button>
-              </p>
-            ) : (
-              <p>
-                Đã có tài khoản?{' '}
-                <button type="button" onClick={() => switchMode('login')}>Đăng nhập</button>
               </p>
             )}
           </footer>

@@ -1,0 +1,352 @@
+/* ============================================================
+   onboarding-survey.css — Modal khảo sát định hướng AI khi đăng ký
+   Hỗ trợ mượt cả Light & Dark theme, mobile & desktop
+   ============================================================ */
+
+.osv-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  background: rgba(5, 10, 28, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: osvFadeIn 0.2s ease-out;
+}
+
+@keyframes osvFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.osv-modal {
+  --osv-bg: #ffffff;
+  --osv-card: #f8fafc;
+  --osv-ink: #0f172a;
+  --osv-mut: #64748b;
+  --osv-line: rgba(15, 23, 42, 0.12);
+  --osv-acc: #2563eb;
+  --osv-acc-soft: rgba(37, 99, 235, 0.1);
+
+  width: 100%;
+  max-width: 640px;
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  background: var(--osv-bg);
+  color: var(--osv-ink);
+  border: 1px solid var(--osv-line);
+  border-radius: 24px;
+  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.35);
+  padding: 24px 26px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+[data-theme='dark'] .osv-modal {
+  --osv-bg: #0f172a;
+  --osv-card: #1e293b;
+  --osv-ink: #f1f5f9;
+  --osv-mut: #94a3b8;
+  --osv-line: rgba(148, 163, 184, 0.2);
+  --osv-acc: #3b82f6;
+  --osv-acc-soft: rgba(59, 130, 246, 0.16);
+}
+
+.osv-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.osv-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.osv-brand img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.osv-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--osv-acc-soft);
+  color: var(--osv-acc);
+}
+
+.osv-skip-btn {
+  border: 1px solid var(--osv-line);
+  background: transparent;
+  color: var(--osv-mut);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.osv-skip-btn:hover {
+  color: var(--osv-ink);
+  border-color: var(--osv-ink);
+}
+
+.osv-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.osv-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--osv-card);
+  overflow: hidden;
+}
+
+.osv-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #06b6d4);
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.osv-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--osv-mut);
+  font-weight: 600;
+}
+
+.osv-verify-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--osv-ink);
+}
+
+.osv-verify-btn {
+  border: 0;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.osv-verify-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.osv-head h2 {
+  margin: 0 0 4px;
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.osv-head p {
+  margin: 0;
+  font-size: 0.87rem;
+  color: var(--osv-mut);
+  line-height: 1.5;
+}
+
+.osv-section-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--osv-mut);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.osv-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.osv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.osv-chip {
+  border: 1.5px solid var(--osv-line);
+  background: var(--osv-card);
+  color: var(--osv-ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.osv-chip:hover {
+  border-color: var(--osv-acc);
+}
+
+.osv-chip.on {
+  border-color: var(--osv-acc);
+  background: var(--osv-acc-soft);
+  color: var(--osv-acc);
+  font-weight: 700;
+}
+
+.osv-opt-card {
+  text-align: left;
+  border: 1.5px solid var(--osv-line);
+  background: var(--osv-card);
+  color: var(--osv-ink);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.osv-opt-card:hover {
+  border-color: var(--osv-acc);
+}
+
+.osv-opt-card.on {
+  border-color: var(--osv-acc);
+  background: var(--osv-acc-soft);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.osv-opt-card b {
+  font-size: 0.89rem;
+  font-weight: 700;
+}
+
+.osv-opt-card small {
+  font-size: 0.77rem;
+  color: var(--osv-mut);
+  line-height: 1.4;
+}
+
+.osv-inputs-row {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 10px;
+}
+
+.osv-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--osv-line);
+  background: var(--osv-card);
+  color: var(--osv-ink);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.osv-input:focus {
+  border-color: var(--osv-acc);
+}
+
+.osv-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--osv-line);
+}
+
+.osv-btn {
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--osv-line);
+  background: transparent;
+  color: var(--osv-ink);
+  transition: all 0.15s ease;
+}
+
+.osv-btn.primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+.osv-btn.primary:hover {
+  transform: translateY(-1px);
+}
+
+.osv-summary-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.osv-summary-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--osv-card);
+  border: 1px solid var(--osv-line);
+}
+
+.osv-summary-item span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--osv-mut);
+  font-weight: 600;
+}
+
+.osv-summary-item strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .osv-modal {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+  .osv-grid-2,
+  .osv-inputs-row,
+  .osv-summary-list {
+    grid-template-columns: 1fr;
+  }
+}

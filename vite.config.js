@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /* Tự động gộp các biến môi trường VITE_* bị lặp dòng trong file .env (ví dụ nhiều dòng VITE_GEMINI_KEY=...)
    thành chuỗi phân cách bởi dấu phẩy để Vite và Client nhận đầy đủ tất cả API keys. */
@@ -57,8 +58,72 @@ const BIG_VENDORS = [
   [/node_modules[\\/](framer-motion|gsap)[\\/]/, 'vendor-motion'],
 ];
 
+/* Middleware chạy API /api/email-otp trực tiếp trong vite dev (không đóng gói vào client build) */
+function devEmailOtpApiPlugin() {
+  const loadServerEnv = () => {
+    for (const file of ['.env', '.env.local']) {
+      const p = path.resolve(process.cwd(), file);
+      if (!fs.existsSync(p)) continue;
+      try {
+        for (const raw of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
+          const line = raw.trim();
+          if (!line || line.startsWith('#')) continue;
+          const eq = line.indexOf('=');
+          if (eq <= 0) continue;
+          const k = line.slice(0, eq).trim();
+          let v = line.slice(eq + 1).trim();
+          if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+            v = v.slice(1, -1);
+          }
+          if (!k.startsWith('VITE_') && v) {
+            process.env[k] = v;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+  };
+
+  return {
+    name: 'dev-email-otp-api',
+    configureServer(server) {
+      server.middlewares.use('/api/email-otp', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          loadServerEnv();
+          const chunks = [];
+          for await (const chunk of req) chunks.push(chunk);
+          req.body = Buffer.concat(chunks).toString('utf8');
+
+          let statusCode = 200;
+          const wrappedRes = {
+            status(code) {
+              statusCode = code;
+              return wrappedRes;
+            },
+            json(payload) {
+              res.statusCode = statusCode;
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(payload));
+              return wrappedRes;
+            },
+          };
+
+          // Cache-busting (?t=Date.now()) để Node ESM luôn nạp phiên bản mới nhất từ disk khi sửa code hoặc đổi key
+          const apiFileUrl = `${pathToFileURL(path.resolve(process.cwd(), 'api/email-otp.js')).href}?t=${Date.now()}`;
+          const mod = await import(/* @vite-ignore */ apiFileUrl);
+          return await mod.default(req, wrappedRes);
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ ok: false, message: err?.message || 'Lỗi server dev OTP' }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), devEmailOtpApiPlugin()],
   worker: {
     format: 'es',
   },

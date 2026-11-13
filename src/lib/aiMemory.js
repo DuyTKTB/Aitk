@@ -22,13 +22,34 @@ const hasStorage = () => {
 };
 
 export function loadProfile(uid) {
-  if (!uid || !hasStorage()) return { grade: '', weakTopics: [], lastSeen: 0, notes: '' };
+  if (!uid || !hasStorage()) {
+    return {
+      grade: '',
+      weakTopics: [],
+      lastSeen: 0,
+      notes: '',
+      role: '',
+      goal: '',
+      subjects: [],
+      examBlock: '',
+      currentLevel: '',
+      aiStyle: '',
+      dailyMinutes: 0,
+    };
+  }
   const p = safeParse(localStorage.getItem(PROFILE_PREFIX + uid), null);
   return {
     grade: p?.grade || '',
     weakTopics: Array.isArray(p?.weakTopics) ? p.weakTopics : [],
     notes: p?.notes || '',
     lastSeen: p?.lastSeen || 0,
+    role: p?.role || '',
+    goal: p?.goal || '',
+    subjects: Array.isArray(p?.subjects) ? p.subjects : [],
+    examBlock: p?.examBlock || '',
+    currentLevel: p?.currentLevel || '',
+    aiStyle: p?.aiStyle || '',
+    dailyMinutes: Number(p?.dailyMinutes) || 0,
   };
 }
 
@@ -111,10 +132,54 @@ export function compressHistory(history, { keep = 8 } = {}) {
   return { recent: list.slice(cut), olderSummary: summarizeMessages(older) };
 }
 
+const GOAL_LABELS = {
+  thptqg: 'Ôn thi THPT Quốc gia',
+  dgnl: 'Ôn thi ĐGNL / ĐGTD',
+  hoc_tot: 'Củng cố kiến thức trên lớp & nâng GPA',
+  hsg: 'Ôn thi Học sinh giỏi / chuyên sâu',
+  giang_day: 'Giảng dạy, soạn đề & hỗ trợ lớp học',
+};
+
+const LEVEL_LABELS = {
+  mat_goc: 'Cần lấy lại nền tảng cơ bản (hãy giải thích chậm, rõ từng khái niệm)',
+  trung_binh: 'Trung bình – khá (mục tiêu 6.5–7.5đ, ưu tiên chắc câu nhận biết & thông hiểu)',
+  kha_gioi: 'Khá – giỏi (mục tiêu 8.0–8.75đ, chú trọng vận dụng & tránh bẫy)',
+  thu_khoa: 'Mục tiêu 9+ / Thủ khoa (ưu tiên bài vận dụng cao, giải nhanh & tối ưu)',
+};
+
+const AI_STYLE_LABELS = {
+  step_by_step: 'Giải chi tiết từng bước từ công thức đến đáp số',
+  socratic: 'Gợi mở tư duy Socratic (hướng dẫn từng gợi ý để người học tự tìm ra bước tiếp theo trước khi chốt)',
+  concise: 'Ngắn gọn, súc tích, tập trung công thức cốt lõi và mẹo giải nhanh',
+  friendly: 'Thân thiện, gần gũi, khích lệ tinh thần học tập',
+};
+
+const SUBJECT_LABELS = {
+  vat_ly: 'Vật lí',
+  hoa_hoc: 'Hóa học',
+  sinh_hoc: 'Sinh học',
+  toan: 'Toán học',
+};
+
 /* ============ KHỐI NGỮ CẢNH CHO PROMPT ============ */
 export function buildMemoryBlock({ profile, olderSummary } = {}) {
   const parts = [];
+  if (profile?.role === 'teacher') parts.push('Vai trò người dùng: Giáo viên.');
   if (profile?.grade) parts.push(`Người học đang ở ${profile.grade}.`);
+  if (profile?.goal) {
+    parts.push(`Mục tiêu chính: ${GOAL_LABELS[profile.goal] || profile.goal}.`);
+  }
+  if (Array.isArray(profile?.subjects) && profile.subjects.length) {
+    const subjText = profile.subjects.map((s) => SUBJECT_LABELS[s] || s).join(', ');
+    const blockText = profile.examBlock && profile.examBlock !== 'other' ? ` (Khối ${profile.examBlock})` : '';
+    parts.push(`Môn quan tâm: ${subjText}${blockText}.`);
+  }
+  if (profile?.currentLevel) {
+    parts.push(`Trình độ hiện tại: ${LEVEL_LABELS[profile.currentLevel] || profile.currentLevel}.`);
+  }
+  if (profile?.aiStyle) {
+    parts.push(`Phong cách hướng dẫn mong muốn: ${AI_STYLE_LABELS[profile.aiStyle] || profile.aiStyle}.`);
+  }
   if (profile?.weakTopics?.length) {
     parts.push(
       `Chủ đề người học còn yếu (cần chú ý, giải thích kỹ hơn): ${profile.weakTopics
