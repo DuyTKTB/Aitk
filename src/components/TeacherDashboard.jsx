@@ -1779,8 +1779,8 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const topProps = {
     overview: {
-      title: `Chào ${user?.displayName || user?.email || 'thầy cô'}`,
-      subtitle: 'Tổng quan lớp học và phòng thi của bạn',
+      title: 'Tổng quan Giảng dạy',
+      subtitle: `Thầy/Cô ${user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}`,
     },
     analytics: {
       title: 'Số liệu & Phân tích lớp học',
@@ -2141,238 +2141,304 @@ export default function TeacherDashboard({ onExit } = {}) {
       />
 
       {/* ============================================================
-          TỔNG QUAN — KHÔNG GIAN SƯ PHẠM ĐA VAI TRÒ CHUẨN BỘ GD&ĐT
+          TỔNG QUAN — KHÔNG GIAN SƯ PHẠM FLOE-STYLE GỌN GÀNG & TIỆN LỢI
          ============================================================ */}
       {section === 'overview' && (
-        <div className="t-bento-12">
-          {/* HEADER CHÀO MỪNG & PHÂN ĐỊNH 2 VAI TRÒ CHỦ NHIỆM - BỘ MÔN */}
-          <div className="t-col-12">
-            <div
-              style={{
-                background: 'var(--t-surface-1)',
-                border: '1px solid var(--t-border)',
-                borderRadius: 20,
-                padding: '1.2rem 1.45rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '1rem',
-                boxShadow: 'var(--t-shadow-sm)',
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--t-ink)', letterSpacing: '-0.02em' }}>
-                  Xin chào, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}
-                </h2>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span className="t-role-badge homeroom" title="Lớp do bạn trực tiếp làm chủ nhiệm, quản lý sĩ số và mời GV bộ môn">
-                    Chủ nhiệm: <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh)
-                  </span>
-                  <span className="t-role-badge subject" title="Lớp bạn được liên kết phân công dạy bộ môn">
-                    Dạy bộ môn: <b>{linkedClasses.length} lớp</b> (Môn: <b>{primarySubject}</b>)
-                  </span>
-                </div>
-              </div>
+        <div className="t-workspace-container">
+          {/* HEADER CHÍNH: LỜI CHÀO & PHÂN ĐỊNH VAI TRÒ */}
+          <div className="t-header-row">
+            <div>
+              <h1 className="t-header-title">
+                Xin chào, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}
+              </h1>
+              <p className="t-header-sub">
+                Chủ nhiệm <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh) · Dạy bộ môn: <b>{linkedClasses.length} lớp</b> {primarySubject ? `(Môn: ${primarySubject})` : ''}
+              </p>
+            </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <div style={{ display: 'inline-flex', background: 'var(--t-surface-2)', border: '1px solid var(--t-border)', borderRadius: 999, padding: '0.2rem', gap: '0.2rem' }} role="group" aria-label="Khoảng thời gian thống kê">
-                  {[
-                    { k: '7', label: '7 ngày' },
-                    { k: '30', label: '30 ngày' },
-                    { k: '90', label: '90 ngày' },
-                    { k: 'all', label: 'Cả năm' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.k}
-                      type="button"
-                      onClick={() => setRange(opt.k)}
-                      style={{
-                        padding: '0.32rem 0.72rem',
-                        borderRadius: 999,
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        background: range === opt.k ? 'var(--t-accent)' : 'transparent',
-                        color: range === opt.k ? 'var(--t-accent-ink)' : 'var(--t-ink-muted)',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div className="t-range-pills" role="group" aria-label="Khoảng thời gian thống kê">
+                {[
+                  { k: '7', label: '7 ngày' },
+                  { k: '30', label: '30 ngày' },
+                  { k: '90', label: '90 ngày' },
+                  { k: 'all', label: 'Cả năm' },
+                ].map((opt) => (
+                  <button
+                    key={opt.k}
+                    type="button"
+                    className={`t-range-pill ${range === opt.k ? 'active' : ''}`}
+                    onClick={() => setRange(opt.k)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* HÀNG PHÍM TẮT THAO TÁC NHANH */}
-          <div className="t-col-12">
-            <div className="t-quick-actions-bar">
-              <button type="button" className="t-quick-btn primary" onClick={openNewExam}>
-                Tạo đề mới (N)
-              </button>
-              <button type="button" className="t-quick-btn" onClick={() => goSection('create')}>
-                Nhập từ Word
-              </button>
-              <button type="button" className="t-quick-btn" onClick={() => goSection('sessions')}>
-                Phòng thi trực tuyến
-              </button>
-              <button type="button" className="t-quick-btn" onClick={() => goSection('paper')}>
-                Chấm phiếu A4
-              </button>
-              <button type="button" className="t-quick-btn" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
-                Tạo lớp mới
-              </button>
-            </div>
+          {/* HÀNG PHÍM TẮT THAO TÁC NHANH (TIỆN LỢI 1-CHẠM) */}
+          <div className="t-quick-actions-bar">
+            <button type="button" className="t-quick-btn primary" onClick={openNewExam}>
+              + Tạo đề mới (N)
+            </button>
+            <button type="button" className="t-quick-btn" onClick={() => goSection('create')}>
+              Nhập từ Word
+            </button>
+            <button type="button" className="t-quick-btn" onClick={() => goSection('sessions')}>
+              Phòng thi trực tuyến
+            </button>
+            <button type="button" className="t-quick-btn" onClick={() => goSection('paper')}>
+              Chấm phiếu A4
+            </button>
+            <button type="button" className="t-quick-btn" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
+              + Tạo lớp mới
+            </button>
           </div>
 
           {/* BẢNG NHẮC VIỆC CẦN LÀM NGAY (CHỈ HIỆN KHI CÓ NHIỆM VỤ THẬT) */}
           {(totalPendingMembers > 0 || totalPendingRetry > 0 || liveSessions.length > 0) && (
-            <div className="t-col-12">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
-                {totalPendingMembers > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.85rem 1.15rem', borderRadius: 14,
-                    background: 'color-mix(in srgb, #f59e0b 12%, var(--t-surface-1))',
-                    border: '1.5px solid #f59e0b', gap: '0.75rem',
-                  }}>
-                    <div>
-                      <strong style={{ fontSize: '0.92rem', color: '#b45309' }}>{totalPendingMembers} Học sinh chờ duyệt vào lớp</strong>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Cần phê duyệt để học sinh vào làm bài thi</p>
-                    </div>
-                    <button type="button" className="vt-btn sm primary" onClick={() => goSection('classes')}>Duyệt ngay</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
+              {totalPendingMembers > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.85rem 1.15rem', borderRadius: 14,
+                  background: 'color-mix(in srgb, #f59e0b 12%, var(--t-surface-1))',
+                  border: '1.5px solid #f59e0b', gap: '0.75rem',
+                }}>
+                  <div>
+                    <strong style={{ fontSize: '0.92rem', color: '#b45309' }}>{totalPendingMembers} Học sinh chờ duyệt vào lớp</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Cần phê duyệt để học sinh vào làm bài thi</p>
                   </div>
-                )}
-                {totalPendingRetry > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.85rem 1.15rem', borderRadius: 14,
-                    background: 'color-mix(in srgb, #8b5cf6 12%, var(--t-surface-1))',
-                    border: '1.5px solid #8b5cf6', gap: '0.75rem',
-                  }}>
-                    <div>
-                      <strong style={{ fontSize: '0.92rem', color: '#7c3aed' }}>{totalPendingRetry} Học sinh xin thi lại</strong>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Học sinh gặp sự cố mạng hoặc nộp nhầm</p>
-                    </div>
-                    <button type="button" className="vt-btn sm" onClick={() => goSection('retry')} style={{ background: '#8b5cf6', color: '#fff' }}>Xem yêu cầu</button>
+                  <button type="button" className="vt-btn sm primary" onClick={() => goSection('classes')}>Duyệt ngay</button>
+                </div>
+              )}
+              {totalPendingRetry > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.85rem 1.15rem', borderRadius: 14,
+                  background: 'color-mix(in srgb, #8b5cf6 12%, var(--t-surface-1))',
+                  border: '1.5px solid #8b5cf6', gap: '0.75rem',
+                }}>
+                  <div>
+                    <strong style={{ fontSize: '0.92rem', color: '#7c3aed' }}>{totalPendingRetry} Học sinh xin thi lại</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Học sinh gặp sự cố mạng hoặc nộp nhầm</p>
                   </div>
-                )}
-                {liveSessions.length > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.85rem 1.15rem', borderRadius: 14,
-                    background: 'color-mix(in srgb, #10b981 12%, var(--t-surface-1))',
-                    border: '1.5px solid #10b981', gap: '0.75rem',
-                  }}>
-                    <div>
-                      <strong style={{ fontSize: '0.92rem', color: '#059669' }}>{liveSessions.length} Phòng thi trực tuyến đang mở</strong>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>{liveSessions[0]?.title} đang diễn ra</p>
-                    </div>
-                    <button type="button" className="vt-btn sm" onClick={() => goSection('sessions')} style={{ background: '#10b981', color: '#fff' }}>Vào giám sát</button>
+                  <button type="button" className="vt-btn sm" onClick={() => goSection('retry')} style={{ background: '#8b5cf6', color: '#fff' }}>Xem yêu cầu</button>
+                </div>
+              )}
+              {liveSessions.length > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.85rem 1.15rem', borderRadius: 14,
+                  background: 'color-mix(in srgb, #10b981 12%, var(--t-surface-1))',
+                  border: '1.5px solid #10b981', gap: '0.75rem',
+                }}>
+                  <div>
+                    <strong style={{ fontSize: '0.92rem', color: '#059669' }}>{liveSessions.length} Phòng thi trực tuyến đang mở</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>{liveSessions[0]?.title} đang diễn ra</p>
                   </div>
-                )}
-              </div>
+                  <button type="button" className="vt-btn sm" onClick={() => goSection('sessions')} style={{ background: '#10b981', color: '#fff' }}>Vào giám sát</button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* 4 THẺ CHỈ SỐ SƯ PHẠM TRỌNG TÂM (THANG ĐIỂM 10 & TIẾN ĐỘ) */}
-          <div className="t-col-3">
-            <MemoBentoCard interactive onClick={() => goSection('classes')}>
-              <MemoStatBig
-                value={classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)}
-                label="Tổng học sinh"
-                suffix=" em"
-                delta={classes.length}
-                deltaLabel={`${classes.length} lớp CN · ${linkedClasses.length} lớp BM`}
-              />
-            </MemoBentoCard>
-          </div>
+          {/* 4 THẺ CHỈ SỐ SƯ PHẠM (GRID CÂN ĐỐI 25% ĐỀU NHAU) */}
+          <div className="t-kpi-grid">
+            <div className="t-kpi-card" onClick={() => goSection('classes')}>
+              <span className="t-kpi-label">Tổng học sinh</span>
+              <span className="t-kpi-num">{classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)}</span>
+              <span className="t-kpi-meta">{classes.length} lớp chủ nhiệm · {linkedClasses.length} lớp bộ môn</span>
+            </div>
 
-          <div className="t-col-3">
-            <MemoBentoCard interactive onClick={() => goSection('exams')}>
-              <MemoStatBig
-                value={exams.length}
-                label="Kho đề thi đã soạn"
-                suffix=" đề"
-                delta={countBy('ready')}
-                deltaLabel="đã giao vào lớp"
-              />
-            </MemoBentoCard>
-          </div>
+            <div className="t-kpi-card" onClick={() => goSection('exams')}>
+              <span className="t-kpi-label">Kho đề thi đã soạn</span>
+              <span className="t-kpi-num">{exams.length}</span>
+              <span className="t-kpi-meta">{countBy('ready')} đề đã giao vào lớp</span>
+            </div>
 
-          <div className="t-col-3">
-            <MemoBentoCard interactive onClick={() => goSection('analytics')}>
-              <MemoStatBig
-                value={subsInRange.length ? avgScore10 : '—'}
-                label="Điểm trung bình lớp"
-                suffix={subsInRange.length ? ' / 10' : ''}
-                delta={passRate}
-                deltaLabel="% đạt chuẩn (≥ 5.0)"
-              />
-            </MemoBentoCard>
-          </div>
+            <div className="t-kpi-card" onClick={() => goSection('analytics')}>
+              <span className="t-kpi-label">Điểm trung bình lớp</span>
+              <span className="t-kpi-num">{subsInRange.length ? `${avgScore10} / 10` : '—'}</span>
+              <span className="t-kpi-meta">{passRate}% học sinh đạt chuẩn (≥ 5.0)</span>
+            </div>
 
-          <div className="t-col-3">
-            <MemoBentoCard
-              interactive
-              tone={atRiskStudents.length > 0 ? 'dark' : 'default'}
+            <div
+              className="t-kpi-card"
               onClick={() => goSection('analytics')}
+              style={{ borderColor: atRiskStudents.length > 0 ? '#fca5a5' : undefined }}
             >
-              <MemoStatBig
-                value={atRiskStudents.length}
-                label="Học sinh cần phụ đạo"
-                suffix=" em"
-                delta={atRiskStudents.length > 0 ? atRiskStudents.length : 0}
-                deltaLabel="dưới 5.0 điểm"
-              />
-            </MemoBentoCard>
+              <span className="t-kpi-label" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
+                Học sinh cần phụ đạo
+              </span>
+              <span className="t-kpi-num" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
+                {atRiskStudents.length}
+              </span>
+              <span className="t-kpi-meta">
+                {atRiskStudents.length > 0 ? `${atRiskStudents.length} em dưới 5.0 điểm cần kèm` : 'Tất cả học sinh đạt yêu cầu'}
+              </span>
+            </div>
           </div>
 
-          {/* KHỐI 1: PHỔ ĐIỂM CHUẨN 4 MỨC ĐỘ BỘ GD&ĐT */}
-          <div className="t-col-7">
-            <MemoBentoCard>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+          {/* KHỐI FOLDERS: LỚP HỌC PHỤ TRÁCH (THIẾT KẾ DẠNG FOLDER CARD NHƯ FLOE) */}
+          <div className="t-folders-section">
+            <div className="t-folders-header">
+              <div className="t-folders-title-wrap">
+                <h2 className="t-folders-title">Lớp học của tôi</h2>
+                <span className="t-badge-count">{classes.length + linkedClasses.length}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={() => goSection('link')}
+                >
+                  Nhận lớp bộ môn
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn sm primary"
+                  onClick={() => { goSection('classes'); setShowCreateClass(true); }}
+                >
+                  + Tạo lớp mới
+                </button>
+              </div>
+            </div>
+
+            {classes.length === 0 && linkedClasses.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem', background: 'var(--t-surface-1)', borderRadius: 20, border: '1px solid var(--t-border)' }}>
+                <p style={{ margin: '0 0 1rem', color: 'var(--t-ink-muted)' }}>Chưa có lớp học nào. Bắt đầu tạo lớp học đầu tiên ngay:</p>
+                <button type="button" className="vt-btn primary" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
+                  + Tạo lớp chủ nhiệm
+                </button>
+              </div>
+            ) : (
+              <div className="t-folders-grid">
+                {classes.map((c, idx) => {
+                  const tints = ['tint-lavender', 'tint-sky', 'tint-peach', 'tint-mint'];
+                  const tint = tints[idx % tints.length];
+                  const classExams = exams.filter((e) => e.classId === c.id);
+                  const membersCount = c.members?.length || 0;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`t-folder-card ${tint}`}
+                      onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                    >
+                      <div className="t-folder-top">
+                        <span className="t-role-badge homeroom">Chủ nhiệm</span>
+                        <span
+                          className="t-folder-code"
+                          onClick={(e) => { e.stopPropagation(); copyText(c.key, c.id, 'Đã sao chép mã lớp'); }}
+                          title="Bấm để sao chép mã lớp"
+                        >
+                          Mã: <code style={{ fontWeight: 700 }}>{c.key}</code>
+                        </span>
+                      </div>
+
+                      <h3 className="t-folder-name">{c.name}</h3>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                        {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''}
+                      </span>
+
+                      <div className="t-folder-foot">
+                        <span><b>{membersCount}</b> học sinh · <b>{classExams.length}</b> đề</span>
+                        <button
+                          type="button"
+                          className="vt-btn sm primary"
+                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClass(c);
+                            goSection('create');
+                          }}
+                        >
+                          Giao đề →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {linkedClasses.map((c, idx) => {
+                  const tints = ['tint-sky', 'tint-mint', 'tint-lavender', 'tint-peach'];
+                  const tint = tints[(idx + 2) % tints.length];
+                  const classExams = exams.filter((e) => e.classId === c.id);
+                  return (
+                    <div
+                      key={c.id}
+                      className={`t-folder-card ${tint}`}
+                      onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                    >
+                      <div className="t-folder-top">
+                        <span className="t-role-badge subject">Bộ môn: {c.subject || primarySubject}</span>
+                        <span className="t-folder-code">CN: {c.ownerName || c.teacherName || 'Đồng nghiệp'}</span>
+                      </div>
+
+                      <h3 className="t-folder-name">{c.name}</h3>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                        Môn {c.subject || primarySubject}
+                      </span>
+
+                      <div className="t-folder-foot">
+                        <span><b>{classExams.length}</b> đề môn mình</span>
+                        <button
+                          type="button"
+                          className="vt-btn sm primary"
+                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClass(c);
+                            goSection('create');
+                          }}
+                        >
+                          Giao đề →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 2 CỘT CÂN ĐỐI: PHỔ ĐIỂM BỘ GD&ĐT & TOP CÂU HỎI SAI */}
+          <div className="t-split-grid">
+            {/* CỘT 1: PHỔ ĐIỂM */}
+            <div className="t-split-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--t-ink)' }}>
-                    Phổ điểm chuẩn Bộ GD&amp;ĐT (Thang điểm 10)
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)' }}>
+                    Phổ điểm học lực chuẩn Bộ GD&amp;ĐT
                   </h3>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
-                    {subsInRange.length} bài nộp trong {range === 'all' ? 'toàn bộ thời gian' : `${range} ngày qua`}
+                    Thang điểm 10 · {subsInRange.length} bài nộp ({range === 'all' ? 'toàn bộ thời gian' : `${range} ngày qua`})
                   </p>
                 </div>
                 <button type="button" className="vt-btn sm" onClick={() => goSection('analytics')}>
-                  Chi tiết phổ điểm
+                  Chi tiết
                 </button>
               </div>
 
               <div className="ta-score-distribution">
                 <div className="ta-score-bar-track">
                   {scoreDistOverview.pcts.gioi > 0 && (
-                    <div className="ta-score-seg gioi" style={{ width: `${scoreDistOverview.pcts.gioi}%` }} title={`Giỏi: ${scoreDistOverview.gioi} HS (${scoreDistOverview.pcts.gioi}%)`}>
-                      {scoreDistOverview.pcts.gioi >= 8 ? `${scoreDistOverview.pcts.gioi}%` : ''}
-                    </div>
+                    <div className="ta-score-seg gioi" style={{ width: `${scoreDistOverview.pcts.gioi}%` }} title={`Giỏi: ${scoreDistOverview.gioi} HS (${scoreDistOverview.pcts.gioi}%)`} />
                   )}
                   {scoreDistOverview.pcts.kha > 0 && (
-                    <div className="ta-score-seg kha" style={{ width: `${scoreDistOverview.pcts.kha}%` }} title={`Khá: ${scoreDistOverview.kha} HS (${scoreDistOverview.pcts.kha}%)`}>
-                      {scoreDistOverview.pcts.kha >= 8 ? `${scoreDistOverview.pcts.kha}%` : ''}
-                    </div>
+                    <div className="ta-score-seg kha" style={{ width: `${scoreDistOverview.pcts.kha}%` }} title={`Khá: ${scoreDistOverview.kha} HS (${scoreDistOverview.pcts.kha}%)`} />
                   )}
                   {scoreDistOverview.pcts.tb > 0 && (
-                    <div className="ta-score-seg tb" style={{ width: `${scoreDistOverview.pcts.tb}%` }} title={`Trung bình: ${scoreDistOverview.tb} HS (${scoreDistOverview.pcts.tb}%)`}>
-                      {scoreDistOverview.pcts.tb >= 8 ? `${scoreDistOverview.pcts.tb}%` : ''}
-                    </div>
+                    <div className="ta-score-seg tb" style={{ width: `${scoreDistOverview.pcts.tb}%` }} title={`Trung bình: ${scoreDistOverview.tb} HS (${scoreDistOverview.pcts.tb}%)`} />
                   )}
                   {scoreDistOverview.pcts.yeu > 0 && (
-                    <div className="ta-score-seg yeu" style={{ width: `${scoreDistOverview.pcts.yeu}%` }} title={`Yếu / Cần phụ đạo: ${scoreDistOverview.yeu} HS (${scoreDistOverview.pcts.yeu}%)`}>
-                      {scoreDistOverview.pcts.yeu >= 8 ? `${scoreDistOverview.pcts.yeu}%` : ''}
-                    </div>
+                    <div className="ta-score-seg yeu" style={{ width: `${scoreDistOverview.pcts.yeu}%` }} title={`Yếu: ${scoreDistOverview.yeu} HS (${scoreDistOverview.pcts.yeu}%)`} />
                   )}
                 </div>
 
                 <div className="ta-score-cards">
-                  <div className="ta-score-card" onClick={() => goSection('analytics')} style={{ cursor: 'pointer' }}>
+                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
                     <div className="ta-score-card-top">
                       <span className="ta-score-dot gioi" />
                       <span>Giỏi (8 - 10)</span>
@@ -2381,7 +2447,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <span className="ta-score-card-pct">{scoreDistOverview.pcts.gioi}%</span>
                   </div>
 
-                  <div className="ta-score-card" onClick={() => goSection('analytics')} style={{ cursor: 'pointer' }}>
+                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
                     <div className="ta-score-card-top">
                       <span className="ta-score-dot kha" />
                       <span>Khá (6.5 - 7.9)</span>
@@ -2390,16 +2456,16 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <span className="ta-score-card-pct">{scoreDistOverview.pcts.kha}%</span>
                   </div>
 
-                  <div className="ta-score-card" onClick={() => goSection('analytics')} style={{ cursor: 'pointer' }}>
+                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
                     <div className="ta-score-card-top">
                       <span className="ta-score-dot tb" />
-                      <span>Trung bình (5 - 6.4)</span>
+                      <span>TB (5 - 6.4)</span>
                     </div>
                     <span className="ta-score-card-val">{scoreDistOverview.tb} <small style={{ fontSize: '0.72rem' }}>em</small></span>
                     <span className="ta-score-card-pct">{scoreDistOverview.pcts.tb}%</span>
                   </div>
 
-                  <div className="ta-score-card" onClick={() => goSection('analytics')} style={{ cursor: 'pointer' }}>
+                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
                     <div className="ta-score-card-top">
                       <span className="ta-score-dot yeu" />
                       <span>Yếu (&lt; 5.0)</span>
@@ -2411,19 +2477,17 @@ export default function TeacherDashboard({ onExit } = {}) {
                   </div>
                 </div>
               </div>
-            </MemoBentoCard>
-          </div>
+            </div>
 
-          {/* KHỐI 2: TOP CÂU HỎI SAI NHIỀU NHẤT (LỖ HỔNG KIẾN THỨC) */}
-          <div className="t-col-5">
-            <MemoBentoCard>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+            {/* CỘT 2: TOP CÂU HỎI SAI */}
+            <div className="t-split-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--t-ink)' }}>
-                    Top câu hỏi sai nhiều nhất
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)' }}>
+                    Câu hỏi học sinh sai nhiều nhất
                   </h3>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.76rem', color: 'var(--t-ink-muted)' }}>
-                    Các lỗ hổng kiến thức cần chữa bài trên lớp
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                    Lỗ hổng kiến thức cần chữa bài trên lớp
                   </p>
                 </div>
                 <button type="button" className="vt-btn sm" onClick={() => goSection('analytics')}>
@@ -2432,237 +2496,85 @@ export default function TeacherDashboard({ onExit } = {}) {
               </div>
 
               {(!classInsights?.hardest || classInsights.hardest.length === 0) ? (
-                <div style={{ textAlign: 'center', padding: '1.5rem 0.5rem', color: 'var(--t-ink-muted)', fontSize: '0.84rem' }}>
-                  Chưa có câu hỏi nào bị sai nhiều trong đợt này. Lớp làm bài rất tốt!
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--t-ink-muted)', fontSize: '0.84rem' }}>
+                  Chưa có câu hỏi nào bị sai nhiều. Lớp làm bài rất tốt!
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {classInsights.hardest.slice(0, 3).map((q, idx) => (
-                    <div key={idx} style={{
-                      padding: '0.65rem 0.85rem',
-                      borderRadius: 12,
-                      background: 'var(--t-surface-2)',
-                      border: '1px solid var(--t-border)',
-                      display: 'flex',
-                      gap: '0.75rem',
-                      alignItems: 'center',
-                    }}>
-                      <span style={{
-                        padding: '3px 7px', borderRadius: 8, fontSize: '0.74rem', fontWeight: 800,
-                        background: '#fee2e2', color: '#b91c1c', flexShrink: 0,
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {classInsights.hardest.slice(0, 3).map((q, idx) => {
+                    const rawTitle = q.questionText || q.topic || `Câu hỏi #${idx + 1}`;
+                    const cleanTitle = rawTitle.replace(/^(ĐỀ[-_\s]KIỂM[-_\s]TRA[^\n]+?)(Câu\s*\d+|Bài\s*\d+|$)/i, '$2').trim() || rawTitle;
+                    return (
+                      <div key={idx} style={{
+                        padding: '0.75rem 0.95rem',
+                        borderRadius: 12,
+                        background: 'var(--t-surface-2)',
+                        border: '1px solid var(--t-border)',
+                        display: 'flex',
+                        gap: '0.75rem',
+                        alignItems: 'center',
                       }}>
-                        {100 - (q.pctCorrect || 0)}% sai
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, color: 'var(--t-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {q.questionText || q.topic || `Câu hỏi #${idx + 1}`}
-                        </p>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--t-ink-muted)' }}>
-                          {q.examTitle ? `${q.examTitle} · ` : ''}{q.correctCount}/{q.totalAttempts} em đúng
+                        <span style={{
+                          padding: '4px 8px', borderRadius: 8, fontSize: '0.72rem', fontWeight: 700,
+                          background: '#fee2e2', color: '#b91c1c', flexShrink: 0,
+                        }}>
+                          {100 - (q.pctCorrect || 0)}% sai
                         </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </MemoBentoCard>
-          </div>
-
-          {/* KHỐI 3: DANH SÁCH LỚP HỌC PHỤ TRÁCH (PHÂN ĐỊNH RÕ CHỦ NHIỆM VS BỘ MÔN) */}
-          <div className="t-col-12">
-            <MemoBentoCard>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--t-ink)' }}>
-                    Danh sách Lớp học phụ trách
-                  </h3>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--t-ink-muted)' }}>
-                    {classes.length} Lớp chủ nhiệm · {linkedClasses.length} Lớp dạy bộ môn
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    className="vt-btn sm primary"
-                    onClick={() => { goSection('classes'); setClassSectionTab('my'); }}
-                  >
-                    Xem tất cả ({classes.length + linkedClasses.length} lớp)
-                  </button>
-                </div>
-              </div>
-
-              {classes.length === 0 && linkedClasses.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--t-ink-muted)' }}>
-                  <p>Chưa có lớp học nào. Hãy bấm "Tạo lớp mới" hoặc nhập mã nhận lớp để bắt đầu.</p>
-                  <button
-                    type="button"
-                    className="vt-btn sm primary"
-                    onClick={() => { goSection('classes'); setShowCreateClass(true); }}
-                  >
-                    + Tạo lớp chủ nhiệm đầu tiên
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-                  {classes.slice(0, 3).map((c) => {
-                    const membersCount = c.members?.length || 0;
-                    const classExams = exams.filter((e) => e.classId === c.id);
-                    return (
-                      <div
-                        key={c.id}
-                        style={{
-                          background: 'var(--t-surface-2)',
-                          border: '1.5px solid var(--t-border)',
-                          borderRadius: 16,
-                          padding: '1.15rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                            <MemoAvatar name={c.name} size={42} />
-                            <div>
-                              <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--t-ink)' }}>
-                                {c.name}
-                              </h4>
-                              <span style={{ fontSize: '0.74rem', color: 'var(--t-ink-muted)' }}>
-                                Mã lớp: <code style={{ color: 'var(--t-accent)', fontWeight: 700 }}>{c.key}</code>
-                              </span>
-                            </div>
-                          </div>
-                          <span className="t-role-badge homeroom">Chủ nhiệm</span>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--t-ink-muted)', borderTop: '1px solid var(--t-border-subtle)', paddingTop: '0.55rem' }}>
-                          <span>{membersCount} học sinh</span>
-                          <span>{classExams.length} đề thi</span>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.45rem', marginTop: 'auto' }}>
-                          <button
-                            type="button"
-                            className="vt-btn sm"
-                            style={{ flex: 1, fontSize: '0.76rem' }}
-                            onClick={() => { setDetailTab('teachers'); setSelectedClass(c); }}
-                            title="Mời & quản lý giáo viên các bộ môn vào lớp này"
-                          >
-                            GV Bộ môn
-                          </button>
-                          <button
-                            type="button"
-                            className="vt-btn sm primary"
-                            style={{ flex: 1, fontSize: '0.76rem' }}
-                            onClick={() => { setSelectedClass(c); goSection('create'); }}
-                          >
-                            Giao đề
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {linkedClasses.slice(0, 2).map((c) => {
-                    const classExams = exams.filter((e) => e.classId === c.id);
-                    return (
-                      <div
-                        key={c.id}
-                        style={{
-                          background: 'var(--t-surface-2)',
-                          border: '1.5px solid var(--t-border)',
-                          borderRadius: 16,
-                          padding: '1.15rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                            <MemoAvatar name={c.name} size={42} />
-                            <div>
-                              <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--t-ink)' }}>
-                                {c.name}
-                              </h4>
-                              <span style={{ fontSize: '0.74rem', color: 'var(--t-ink-muted)' }}>
-                                CN: {c.ownerName || c.teacherName || 'Đồng nghiệp'}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="t-role-badge subject">Bộ môn: {c.subject || primarySubject}</span>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--t-ink-muted)', borderTop: '1px solid var(--t-border-subtle)', paddingTop: '0.55rem' }}>
-                          <span>{c.members?.length || 0} học sinh</span>
-                          <span>{classExams.length} đề môn mình</span>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.45rem', marginTop: 'auto' }}>
-                          <button
-                            type="button"
-                            className="vt-btn sm primary"
-                            style={{ width: '100%', fontSize: '0.76rem' }}
-                            onClick={() => {
-                              setExtCreate(true);
-                              setExtClass(c);
-                              goSection('create');
-                            }}
-                          >
-                            ⚡ Giao đề môn này
-                          </button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: '0.84rem', fontWeight: 600, color: 'var(--t-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={rawTitle}>
+                            {cleanTitle}
+                          </p>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--t-ink-muted)' }}>
+                            {q.examTitle ? `${q.examTitle.slice(0, 32)}... · ` : ''}{q.correctCount}/{q.totalAttempts} em đúng
+                          </span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               )}
-            </MemoBentoCard>
+            </div>
           </div>
 
-          {/* CHI TIẾT AI PHÂN TÍCH LỖ HỔNG KIẾN THỨC (COLLAPSIBLE) */}
-          <div className="t-col-12" style={{ marginTop: '0.5rem' }}>
-            <details
+          {/* TRỢ LÝ PHÂN TÍCH AI (COLLAPSIBLE TỰ NHIÊN) */}
+          <details
+            style={{
+              background: 'var(--t-surface-1)',
+              border: '1px solid var(--t-border)',
+              borderRadius: 18,
+              padding: '0.85rem 1.15rem',
+            }}
+          >
+            <summary
               style={{
-                background: 'var(--t-surface)',
-                border: '1px solid var(--t-border)',
-                borderRadius: 18,
-                padding: '0.85rem 1.15rem',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.92rem',
+                color: 'var(--t-ink)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                listStyle: 'none',
               }}
             >
-              <summary
-                style={{
-                  cursor: 'pointer',
-                  fontWeight: 800,
-                  fontSize: '0.92rem',
-                  color: 'var(--t-ink)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  listStyle: 'none',
-                }}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <IcoSparkles size={16} /> Trợ lý Phân tích AI &amp; Gợi ý lỗ hổng kiến thức ({classes[0]?.name || 'Toàn bộ lớp học'})
-                </span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--t-accent)', fontWeight: 700 }}>
-                  Bấm để mở rộng / thu gọn ▾
-                </span>
-              </summary>
-              <div style={{ marginTop: '0.85rem' }}>
-                <ErrorBoundary>
-                  <Suspense fallback={<InsightSkeleton />}>
-                    <InsightPanel
-                      insightsData={classInsights}
-                      className={classes[0]?.name || 'Toàn bộ lớp học'}
-                      subject={primarySubject}
-                      onOpenAiStudio={(preset) => openNewExam(preset)}
-                    />
-                  </Suspense>
-                </ErrorBoundary>
-              </div>
-            </details>
-          </div>
+              <span>Trợ lý Phân tích AI &amp; Gợi ý khắc phục lỗ hổng kiến thức ({classes[0]?.name || 'Toàn bộ lớp'})</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--t-accent)', fontWeight: 600 }}>
+                Mở rộng / Thu gọn ▾
+              </span>
+            </summary>
+            <div style={{ marginTop: '0.85rem' }}>
+              <ErrorBoundary>
+                <Suspense fallback={<InsightSkeleton />}>
+                  <InsightPanel
+                    insightsData={classInsights}
+                    className={classes[0]?.name || 'Toàn bộ lớp học'}
+                    subject={primarySubject}
+                    onOpenAiStudio={(preset) => openNewExam(preset)}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+          </details>
         </div>
       )}
 
