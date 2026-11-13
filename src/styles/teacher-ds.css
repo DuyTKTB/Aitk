@@ -1283,6 +1283,281 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
+
+  /* ============================================================
+     13. HUB SUBNAV HEADER & DUAL-ROLE CLASSROOMS ARCHITECTURE
+     ============================================================ */
+  .t-hub-subnav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.85rem 1.15rem;
+    margin-bottom: 1.25rem;
+    background: var(--t-surface-1);
+    border: 1px solid var(--t-border);
+    border-radius: var(--t-r-lg, 16px);
+    box-shadow: var(--t-shadow-sm);
+  }
+
+  .t-hub-subnav-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .t-hub-subnav-title {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 800;
+    color: var(--t-ink);
+  }
+
+  .t-hub-subnav-desc {
+    font-size: 0.78rem;
+    color: var(--t-ink-muted);
+  }
+
+  .t-hub-subnav-pills {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem;
+    background: var(--t-surface-2);
+    border: 1px solid var(--t-border-subtle);
+    border-radius: var(--t-r-pill);
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .t-hub-subnav-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.42rem 0.95rem;
+    border-radius: var(--t-r-pill);
+    border: none;
+    background: transparent;
+    color: var(--t-ink-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .t-hub-subnav-pill:hover {
+    color: var(--t-ink);
+  }
+
+  .t-hub-subnav-pill.active {
+    background: var(--t-accent);
+    color: var(--t-accent-ink);
+    box-shadow: var(--t-shadow-lime, 0 0 12px rgba(200, 245, 66, 0.3));
+  }
+
+  .t-pill-badge-live {
+    background: #ef4444;
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  .t-pill-badge-warn {
+    background: #f59e0b;
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  /* Dual-Role Classrooms Hub */
+  .t-role-hub-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .t-role-summary-banner {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .t-role-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 16px;
+    background: var(--t-surface-1);
+    border: 1.5px solid var(--t-border);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .t-role-card:hover {
+    border-color: var(--t-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .t-role-card.active {
+    border-color: var(--t-accent);
+    box-shadow: 0 0 0 1.5px var(--t-accent);
+    background: color-mix(in srgb, var(--t-accent) 6%, var(--t-surface-1));
+  }
+
+  .t-role-card.is-homeroom .t-role-icon {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+  }
+
+  .t-role-card.is-subject .t-role-icon {
+    background: linear-gradient(135deg, #059669, #0d9488);
+  }
+
+  .t-role-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .t-role-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 0.15rem;
+  }
+
+  .t-role-name {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 800;
+    color: var(--t-ink-muted);
+  }
+
+  .t-role-stat {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--t-ink);
+  }
+
+  .t-role-meta {
+    font-size: 0.78rem;
+    color: var(--t-ink-muted);
+  }
+
+  .t-classes-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--t-border);
+  }
+
+  .t-classes-tabs {
+    display: inline-flex;
+    background: var(--t-surface-2);
+    border: 1px solid var(--t-border-subtle);
+    border-radius: var(--t-r-pill);
+    padding: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .t-classes-tab {
+    padding: 0.45rem 1.05rem;
+    border-radius: var(--t-r-pill);
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 800;
+    background: transparent;
+    color: var(--t-ink-muted);
+    transition: all 0.15s ease;
+  }
+
+  .t-classes-tab:hover {
+    color: var(--t-ink);
+  }
+
+  .t-classes-tab.active {
+    background: var(--t-accent);
+    color: var(--t-accent-ink);
+    box-shadow: var(--t-shadow-lime);
+  }
+
+  /* Quick Actions Bar trên Tổng quan */
+  .t-quick-actions-bar {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 0.85rem;
+  }
+
+  .t-quick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.15rem;
+    border-radius: var(--t-r-pill);
+    background: var(--t-surface-1);
+    border: 1px solid var(--t-border);
+    color: var(--t-ink);
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .t-quick-btn:hover {
+    background: var(--t-surface-2);
+    border-color: var(--t-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .t-quick-btn.primary {
+    background: var(--t-accent);
+    color: var(--t-accent-ink);
+    border-color: var(--t-accent);
+    box-shadow: var(--t-shadow-lime);
+  }
+
+  /* Role Tag Badge trên thẻ lớp */
+  .t-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+  .t-role-badge.homeroom {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+    border: 1px solid rgba(37, 99, 235, 0.3);
+  }
+  .t-role-badge.subject {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
 }
 
 @layer utilities {

@@ -452,14 +452,14 @@ export function DashFrame({
   const isTopbarElem = (child) =>
     React.isValidElement(child) && (child.type === Topbar || child.type?.isTopbar);
 
-  /* Chọn 4 mục chính cho thanh đáy di động + nút Menu */
-  const mobilePrimaryKeys = ['overview', 'classes', 'exams', 'paper'];
+  /* Chọn 5 mục chính cho thanh đáy di động + nút Menu */
+  const mobilePrimaryKeys = ['overview', 'classes', 'exams', 'sessions', 'analytics'];
   const matchedTeacherItems = mobilePrimaryKeys
-    .map((k) => items.find((it) => it.key === k))
+    .map((k) => items.find((it) => it.key === k || (it.matchKeys && it.matchKeys.includes(k))))
     .filter(Boolean);
   const mobilePrimaryItems = matchedTeacherItems.length >= 3
     ? matchedTeacherItems
-    : items.slice(0, 4);
+    : items.slice(0, 5);
   const isAdminScope = className.includes('ad-scope') || items.some((it) => it.key === 'dashboard');
 
    return (
@@ -473,7 +473,7 @@ export function DashFrame({
         <nav className="t-rail-nav" aria-label="Điều hướng giáo viên">
           {items.map((it, idx) => {
             const I = it.Icon;
-            const on = active === it.key;
+            const on = it.matchKeys ? it.matchKeys.includes(active) : (active === it.key);
             const prevGroup = idx > 0 ? items[idx - 1].group : null;
             const showGroup = it.group && it.group !== prevGroup;
             return (
@@ -547,7 +547,7 @@ export function DashFrame({
       <nav className="t-mobile-bottom-nav" aria-label="Điều hướng nhanh trên di động">
         {mobilePrimaryItems.map((it) => {
           const I = it.Icon;
-          const on = active === it.key;
+          const on = it.matchKeys ? it.matchKeys.includes(active) : (active === it.key);
           return (
             <button
               key={it.key}
@@ -616,7 +616,7 @@ export function DashFrame({
             <div className="t-mobile-sheet-grid">
               {items.map((it) => {
                 const I = it.Icon;
-                const on = active === it.key;
+                const on = it.matchKeys ? it.matchKeys.includes(active) : (active === it.key);
                 return (
                   <button
                     key={it.key}

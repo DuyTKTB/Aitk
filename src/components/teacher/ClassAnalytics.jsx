@@ -677,22 +677,59 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
 
   const heatTopics = useMemo(() => (data ? data.classTopics.slice(0, 10) : []), [data]);
 
+  /* Phổ điểm 4 mức độ chuẩn Bộ GD&ĐT (Thang điểm 10) */
+  const scoreDist = useMemo(() => {
+    if (!data) return { gioi: 0, kha: 0, tb: 0, yeu: 0, total: 0, pcts: { gioi: 0, kha: 0, tb: 0, yeu: 0 } };
+    const validSubs = Object.values(filteredSubsMap || {}).flat();
+    const scores = validSubs.map((s) => {
+      const tot = Number(s.totalPoints) || 10;
+      const sc = Number(s.score) || 0;
+      return (sc / tot) * 10;
+    });
+    const sample = scores.length
+      ? scores
+      : data.students.filter((s) => s.count > 0).map((s) => ((s.accuracy || 0) / 10));
+    const total = sample.length || 1;
+    const gioi = sample.filter((s) => s >= 8.0).length;
+    const kha = sample.filter((s) => s >= 6.5 && s < 8.0).length;
+    const tb = sample.filter((s) => s >= 5.0 && s < 6.5).length;
+    const yeu = sample.filter((s) => s < 5.0).length;
+
+    return {
+      gioi,
+      kha,
+      tb,
+      yeu,
+      total: sample.length,
+      pcts: {
+        gioi: Math.round((gioi / total) * 100),
+        kha: Math.round((kha / total) * 100),
+        tb: Math.round((tb / total) * 100),
+        yeu: Math.round((yeu / total) * 100),
+      },
+    };
+  }, [data, filteredSubsMap]);
+
   /* Lọc và sắp xếp danh sách học sinh */
   const filteredStudents = useMemo(() => {
     if (!data) return [];
     const q = studentQuery.trim().toLowerCase();
     let list = data.students.filter((s) => {
       if (q && !`${s.name || ''} ${s.email || ''}`.toLowerCase().includes(q)) return false;
-      if (studentFilter === 'risk') return (s.mastery !== null && s.mastery < 40) || s.flags.length > 0;
+      if (studentFilter === 'gioi') return s.accuracy >= 80;
+      if (studentFilter === 'kha') return s.accuracy >= 65 && s.accuracy < 80;
+      if (studentFilter === 'tb') return s.accuracy >= 50 && s.accuracy < 65;
+      if (studentFilter === 'yeu' || studentFilter === 'risk') return s.accuracy < 50 || s.flags.length > 0;
       if (studentFilter === 'nosub') return s.count === 0;
-      if (studentFilter === 'good') return s.mastery !== null && s.mastery >= 75;
+      if (studentFilter === 'good') return s.accuracy >= 65;
       return true;
     });
     list = [...list].sort((a, b) => {
-      if (studentSort === 'mastery-desc') return (b.mastery ?? -1) - (a.mastery ?? -1);
       if (studentSort === 'acc-desc') return (b.accuracy ?? -1) - (a.accuracy ?? -1);
+      if (studentSort === 'acc-asc') return (a.accuracy ?? 999) - (b.accuracy ?? 999);
       if (studentSort === 'subs-desc') return (b.count || 0) - (a.count || 0);
-      return (a.mastery ?? 999) - (b.mastery ?? 999);
+      if (studentSort === 'name-asc') return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+      return (b.accuracy ?? -1) - (a.accuracy ?? -1);
     });
     return list;
   }, [data, studentQuery, studentFilter, studentSort]);
@@ -877,47 +914,140 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
         </div>
       )}
 
+      {/* 4 THẺ KPI CHUẨN SƯ PHẠM BỘ GD&ĐT */}
       <div className="ta-kpis">
         <Kpi
-          label="Điểm TB lớp"
-          value={kpi.avgPct}
-          unit="%"
-          hint={`${kpi.submitted} bài nộp`}
+          label="Điểm TB (Thang 10)"
+          value={kpi.avgPct !== null ? (kpi.avgPct / 10).toFixed(1) : '—'}
+          unit="/10"
+          hint={`${kpi.submitted} bài đã nộp`}
           icon="trend"
-          diff={cmpKpi && kpi.avgPct !== null && cmpKpi.avgPct !== null ? kpi.avgPct - cmpKpi.avgPct : null}
+          diff={cmpKpi && kpi.avgPct !== null && cmpKpi.avgPct !== null ? Number(((kpi.avgPct - cmpKpi.avgPct) / 10).toFixed(1)) : null}
         />
         <Kpi
-          label="Tỷ lệ đạt"
+          label="Tỷ lệ trên TB (≥5.0)"
           value={kpi.passRate}
           unit="%"
-          hint="từ 50% trở lên"
+          hint={`${scoreDist.gioi + scoreDist.kha + scoreDist.tb} em đạt chuẩn`}
           icon="check"
           diff={cmpKpi && kpi.passRate !== null && cmpKpi.passRate !== null ? kpi.passRate - cmpKpi.passRate : null}
         />
         <Kpi
-          label="Mastery TB"
-          value={kpi.masteryAvg}
-          unit="/100"
-          hint={`${kpi.dataCoverage}% học sinh đủ dữ liệu`}
+          label="Học lực Khá - Giỏi"
+          value={scoreDist.pcts.gioi + scoreDist.pcts.kha}
+          unit="%"
+          hint={`${scoreDist.gioi + scoreDist.kha} học sinh (≥6.5 điểm)`}
           icon="award"
-          diff={cmpKpi && kpi.masteryAvg !== null && cmpKpi.masteryAvg !== null ? kpi.masteryAvg - cmpKpi.masteryAvg : null}
         />
         <Kpi
-          label="Cần chú ý"
-          value={kpi.atRisk}
+          label="Cần phụ đạo (<5.0)"
+          value={scoreDist.yeu}
           unit=" em"
-          hint="Mastery dưới 40"
+          hint={scoreDist.yeu > 0 ? `${scoreDist.pcts.yeu}% học sinh yếu` : 'Không có học sinh yếu'}
           icon="alert"
-          tone={kpi.atRisk ? 'bad' : undefined}
+          tone={scoreDist.yeu > 0 ? 'bad' : undefined}
+          onClick={() => { setStudentFilter('yeu'); setActiveTab('students'); }}
         />
         <Kpi
-          label="Chưa nộp"
+          label="Chưa nộp bài"
           value={kpi.noSub}
           unit=" em"
-          hint="trong đợt đang xem"
+          hint="Cần đôn đốc nộp bài"
           icon="clock"
-          tone={kpi.noSub ? 'mid' : undefined}
+          tone={kpi.noSub > 0 ? 'mid' : undefined}
+          onClick={() => { setStudentFilter('nosub'); setActiveTab('students'); }}
         />
+      </div>
+
+      {/* THANH PHỔ ĐIỂM 4 MỨC ĐỘ CHUẨN BỘ GD&ĐT */}
+      <div className="ta-card" style={{ marginBottom: '1.1rem' }}>
+        <div className="ta-card-head" style={{ marginBottom: '0.4rem' }}>
+          <div>
+            <h3>Phổ điểm lớp chuẩn Bộ GD&amp;ĐT (Thang điểm 10)</h3>
+            <span className="ta-card-sub">Phân bố năng lực: Giỏi (8.0 - 10) · Khá (6.5 - 7.9) · Trung bình (5.0 - 6.4) · Yếu (&lt; 5.0)</span>
+          </div>
+        </div>
+
+        <div className="ta-score-distribution">
+          <div className="ta-score-bar-track">
+            {scoreDist.pcts.gioi > 0 && (
+              <div className="ta-score-seg gioi" style={{ width: `${scoreDist.pcts.gioi}%` }} title={`Giỏi: ${scoreDist.gioi} HS (${scoreDist.pcts.gioi}%)`}>
+                {scoreDist.pcts.gioi >= 8 ? `${scoreDist.pcts.gioi}%` : ''}
+              </div>
+            )}
+            {scoreDist.pcts.kha > 0 && (
+              <div className="ta-score-seg kha" style={{ width: `${scoreDist.pcts.kha}%` }} title={`Khá: ${scoreDist.kha} HS (${scoreDist.pcts.kha}%)`}>
+                {scoreDist.pcts.kha >= 8 ? `${scoreDist.pcts.kha}%` : ''}
+              </div>
+            )}
+            {scoreDist.pcts.tb > 0 && (
+              <div className="ta-score-seg tb" style={{ width: `${scoreDist.pcts.tb}%` }} title={`Trung bình: ${scoreDist.tb} HS (${scoreDist.pcts.tb}%)`}>
+                {scoreDist.pcts.tb >= 8 ? `${scoreDist.pcts.tb}%` : ''}
+              </div>
+            )}
+            {scoreDist.pcts.yeu > 0 && (
+              <div className="ta-score-seg yeu" style={{ width: `${scoreDist.pcts.yeu}%` }} title={`Yếu / Cần phụ đạo: ${scoreDist.yeu} HS (${scoreDist.pcts.yeu}%)`}>
+                {scoreDist.pcts.yeu >= 8 ? `${scoreDist.pcts.yeu}%` : ''}
+              </div>
+            )}
+          </div>
+
+          <div className="ta-score-cards">
+            <div
+              className={`ta-score-card ${studentFilter === 'gioi' ? 'is-active' : ''}`}
+              onClick={() => { setStudentFilter(studentFilter === 'gioi' ? 'all' : 'gioi'); setActiveTab('students'); }}
+              title="Bấm để lọc danh sách học sinh Giỏi"
+            >
+              <div className="ta-score-card-top">
+                <span className="ta-score-dot gioi" />
+                <span>Giỏi &amp; Xuất sắc (8 - 10)</span>
+              </div>
+              <span className="ta-score-card-val">{scoreDist.gioi} <small style={{ fontSize: '0.74rem', fontWeight: 500 }}>em</small></span>
+              <span className="ta-score-card-pct">{scoreDist.pcts.gioi}% sĩ số</span>
+            </div>
+
+            <div
+              className={`ta-score-card ${studentFilter === 'kha' ? 'is-active' : ''}`}
+              onClick={() => { setStudentFilter(studentFilter === 'kha' ? 'all' : 'kha'); setActiveTab('students'); }}
+              title="Bấm để lọc danh sách học sinh Khá"
+            >
+              <div className="ta-score-card-top">
+                <span className="ta-score-dot kha" />
+                <span>Khá (6.5 - 7.9)</span>
+              </div>
+              <span className="ta-score-card-val">{scoreDist.kha} <small style={{ fontSize: '0.74rem', fontWeight: 500 }}>em</small></span>
+              <span className="ta-score-card-pct">{scoreDist.pcts.kha}% sĩ số</span>
+            </div>
+
+            <div
+              className={`ta-score-card ${studentFilter === 'tb' ? 'is-active' : ''}`}
+              onClick={() => { setStudentFilter(studentFilter === 'tb' ? 'all' : 'tb'); setActiveTab('students'); }}
+              title="Bấm để lọc danh sách học sinh Trung bình"
+            >
+              <div className="ta-score-card-top">
+                <span className="ta-score-dot tb" />
+                <span>Trung bình (5 - 6.4)</span>
+              </div>
+              <span className="ta-score-card-val">{scoreDist.tb} <small style={{ fontSize: '0.74rem', fontWeight: 500 }}>em</small></span>
+              <span className="ta-score-card-pct">{scoreDist.pcts.tb}% sĩ số</span>
+            </div>
+
+            <div
+              className={`ta-score-card ${studentFilter === 'yeu' ? 'is-active' : ''}`}
+              onClick={() => { setStudentFilter(studentFilter === 'yeu' ? 'all' : 'yeu'); setActiveTab('students'); }}
+              title="Bấm để lọc danh sách học sinh Yếu cần kèm"
+            >
+              <div className="ta-score-card-top">
+                <span className="ta-score-dot yeu" />
+                <span>Yếu / Cần kèm (&lt;5)</span>
+              </div>
+              <span className="ta-score-card-val" style={{ color: scoreDist.yeu > 0 ? '#ef4444' : undefined }}>
+                {scoreDist.yeu} <small style={{ fontSize: '0.74rem', fontWeight: 500 }}>em</small>
+              </span>
+              <span className="ta-score-card-pct">{scoreDist.pcts.yeu}% sĩ số</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* BẢNG SO SÁNH HAI LỚP (KHI BẬT SO SÁNH) */}
@@ -1154,9 +1284,11 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
                 aria-label="Lọc nhóm học sinh"
               >
                 <option value="all">Tất cả ({data.students.length})</option>
-                <option value="risk">Cần chú ý ({kpi.atRisk})</option>
-                <option value="nosub">Chưa nộp ({kpi.noSub})</option>
-                <option value="good">Đạt tốt (≥75)</option>
+                <option value="gioi">Giỏi &amp; Xuất sắc ({scoreDist.gioi})</option>
+                <option value="kha">Khá ({scoreDist.kha})</option>
+                <option value="tb">Trung bình ({scoreDist.tb})</option>
+                <option value="yeu">Yếu / Cần phụ đạo ({scoreDist.yeu})</option>
+                <option value="nosub">Chưa nộp bài ({kpi.noSub})</option>
               </select>
               <select
                 className="ta-select"
@@ -1164,10 +1296,10 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
                 onChange={(e) => setStudentSort(e.target.value)}
                 aria-label="Sắp xếp học sinh"
               >
-                <option value="mastery-asc">Mastery: Thấp → Cao</option>
-                <option value="mastery-desc">Mastery: Cao → Thấp</option>
                 <option value="acc-desc">Điểm TB: Cao → Thấp</option>
+                <option value="acc-asc">Điểm TB: Thấp → Cao (Ưu tiên HS yếu)</option>
                 <option value="subs-desc">Số bài: Nhiều → Ít</option>
+                <option value="name-asc">Họ tên: A → Z</option>
               </select>
               <div className="ta-ranges" role="group" aria-label="Chế độ xem học sinh">
                 <button
@@ -1228,30 +1360,43 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
                 <thead>
                   <tr>
                     <th>Học sinh</th>
-                    <th>Mastery</th>
-                    <th className="ta-num">Bài</th>
-                    <th className="ta-num">TB</th>
-                    <th>Chương yếu nhất</th>
-                    <th>Cờ</th>
+                    <th className="ta-num">Điểm TB (10)</th>
+                    <th>Xếp loại học lực</th>
+                    <th className="ta-num">Bài nộp</th>
+                    <th>Chương cần ôn</th>
+                    <th>Cảnh báo</th>
                     <th className="ta-num">Nộp gần nhất</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((s) => (
-                    <tr key={s.id} tabIndex={0} onClick={() => setDrawerId(s.id)} onKeyDown={(e) => { if (e.key === 'Enter') setDrawerId(s.id); }}>
-                      <td className="ta-strong">{s.name}</td>
-                      <td><MasteryBar score={s.mastery} /></td>
-                      <td className="ta-num">{s.count}</td>
-                      <td className="ta-num">{s.count ? `${s.accuracy}%` : '—'}</td>
-                      <td>{s.weakest ? `${s.weakest.topic} · ${s.weakest.rate}%` : '—'}</td>
-                      <td>
-                        {s.flags.length === 0 ? <span className="ta-flag-ok">ổn</span> : s.flags.map((f) => (
-                          <span key={f.key} className={`ta-flag flag-${f.key}`}>{f.label}</span>
-                        ))}
-                      </td>
-                      <td className="ta-num">{fmtDate(s.lastAt)}</td>
-                    </tr>
-                  ))}
+                  {filteredStudents.map((s) => {
+                    const sc10 = s.count ? (s.accuracy / 10).toFixed(1) : '—';
+                    const rankLabel = s.count === 0 ? 'Chưa nộp' : (s.accuracy >= 80 ? 'Giỏi' : s.accuracy >= 65 ? 'Khá' : s.accuracy >= 50 ? 'Trung bình' : 'Yếu / Cần kèm');
+                    const rankTone = s.count === 0 ? 'na' : (s.accuracy >= 80 ? 'ex' : s.accuracy >= 65 ? 'good' : s.accuracy >= 50 ? 'mid' : 'bad');
+                    return (
+                      <tr key={s.id} tabIndex={0} onClick={() => setDrawerId(s.id)} onKeyDown={(e) => { if (e.key === 'Enter') setDrawerId(s.id); }}>
+                        <td className="ta-strong">{s.name}</td>
+                        <td className="ta-num" style={{ fontWeight: 800, fontSize: '0.94rem' }}>{sc10}</td>
+                        <td>
+                          <span className={`ta-rank-badge tone-${rankTone}`} style={{
+                            padding: '2px 8px', borderRadius: 999, fontSize: '0.74rem', fontWeight: 800,
+                            background: rankTone === 'ex' ? '#dcfce7' : rankTone === 'good' ? '#dbeafe' : rankTone === 'mid' ? '#fef3c7' : rankTone === 'bad' ? '#fee2e2' : '#f3f4f6',
+                            color: rankTone === 'ex' ? '#15803d' : rankTone === 'good' ? '#1d4ed8' : rankTone === 'mid' ? '#b45309' : rankTone === 'bad' ? '#b91c1c' : '#4b5563',
+                          }}>
+                            {rankLabel}
+                          </span>
+                        </td>
+                        <td className="ta-num">{s.count}</td>
+                        <td>{s.weakest ? `${s.weakest.topic} (${s.weakest.rate}%)` : '—'}</td>
+                        <td>
+                          {s.flags.length === 0 ? <span className="ta-flag-ok">Ổn định</span> : s.flags.map((f) => (
+                            <span key={f.key} className={`ta-flag flag-${f.key}`}>{f.label}</span>
+                          ))}
+                        </td>
+                        <td className="ta-num">{fmtDate(s.lastAt)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

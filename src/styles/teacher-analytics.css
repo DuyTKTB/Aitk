@@ -1086,3 +1086,113 @@
   gap: 0.6rem;
   border-color: rgba(220, 38, 38, 0.35);
 }
+
+/* ============================================================
+   PHỔ ĐIỂM 4 MỨC ĐỘ CHUẨN BỘ GD&ĐT & THƯỚC ĐO SƯ PHẠM
+   ============================================================ */
+.ta-pedagogic-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .ta-pedagogic-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ta-score-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.ta-score-bar-track {
+  height: 28px;
+  background: var(--ta-soft);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid var(--ta-line);
+}
+
+.ta-score-seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ta-score-seg.gioi { background: #10b981; }
+.ta-score-seg.kha { background: #3b82f6; }
+.ta-score-seg.tb { background: #f59e0b; }
+.ta-score-seg.yeu { background: #ef4444; }
+
+.ta-score-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.65rem;
+}
+
+.ta-score-card {
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: var(--ta-panel);
+  border: 1px solid var(--ta-line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ta-score-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--ta-ink);
+}
+
+.ta-score-card.is-active {
+  border-color: var(--ta-good);
+  box-shadow: 0 0 0 1px var(--ta-good);
+}
+
+.ta-score-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.ta-score-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.ta-score-dot.gioi { background: #10b981; }
+.ta-score-dot.kha { background: #3b82f6; }
+.ta-score-dot.tb { background: #f59e0b; }
+.ta-score-dot.yeu { background: #ef4444; }
+
+.ta-score-card-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ta-ink);
+}
+
+.ta-score-card-pct {
+  font-size: 0.72rem;
+  color: var(--ta-mut);
+}
+
