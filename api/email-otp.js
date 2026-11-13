@@ -274,9 +274,109 @@ async function sendBrandedEmail({ toEmail, subject, text = '', html, replyTo = B
   throw new Error('OTP_PROVIDER_NOT_CONFIGURED');
 }
 
+// ------------------------------------------------------------
+// Rate Limiting & Anti-DDoS Tầng Ứng Dụng (In-Memory Sliding Window)
+// ------------------------------------------------------------
+const IP_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 phút
+const IP_MAX_SEND_REQUESTS = 5; // Tối đa 5 lần gửi OTP / IP / 10 phút
+const IP_MAX_VERIFY_REQUESTS = 15; // Tối đa 15 lần xác thực / IP / 10 phút
+const ipRateStore = new Map();
+
+function cleanOldIpRecords(now) {
+  if (ipRateStore.size > 2000) {
+    for (const [k, v] of ipRateStore.entries()) {
+      if (now - v.resetAt > 0) {
+        ipRateStore.delete(k);
+      }
+    }
+  }
+}
+
+export function getClientIp(req) {
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (xForwardedFor) {
+    return String(xForwardedFor).split(',')[0].trim();
+  }
+  return req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1';
+}
+
+function checkIpRateLimit(ip, type = 'send', now = Date.now()) {
+  cleanOldIpRecords(now);
+  const key = `${type}_${ip}`;
+  const record = ipRateStore.get(key) || { count: 0, resetAt: now + IP_RATE_WINDOW_MS };
+
+  if (now > record.resetAt) {
+    record.count = 1;
+    record.resetAt = now + IP_RATE_WINDOW_MS;
+    ipRateStore.set(key, record);
+    return { allowed: true, remaining: (type === 'send' ? IP_MAX_SEND_REQUESTS : IP_MAX_VERIFY_REQUESTS) - 1 };
+  }
+
+  const limit = type === 'send' ? IP_MAX_SEND_REQUESTS : IP_MAX_VERIFY_REQUESTS;
+  if (record.count >= limit) {
+    const retryAfterSec = Math.max(1, Math.ceil((record.resetAt - now) / 1000));
+    return { allowed: false, retryAfterSec };
+  }
+
+  record.count += 1;
+  ipRateStore.set(key, record);
+  return { allowed: true, remaining: limit - record.count };
+}
+
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin || req.headers.referer;
+  if (!origin) return true;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    return (
+      host === 'elecai.id.vn' ||
+      host === 'www.elecai.id.vn' ||
+      host.endsWith('.elecai.id.vn') ||
+      host.endsWith('.vercel.app') ||
+      host === 'localhost' ||
+      host === '127.0.0.1'
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function verifyTurnstileToken(token, clientIp) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret || !token) return true;
+  try {
+    const form = new URLSearchParams();
+    form.append('secret', secret);
+    form.append('response', token);
+    if (clientIp) form.append('remoteip', clientIp);
+
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: form,
+    });
+    const outcome = await r.json();
+    return Boolean(outcome.success);
+  } catch (e) {
+    console.warn('[Turnstile] Lỗi kiểm tra:', e?.message || e);
+    return true; // Fail-open khi mạng lỗi để không ảnh hưởng người dùng thật
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, message: 'Method Not Allowed' });
+  }
+
+  // 1. Chống Buffer Flood (Kích thước payload tối đa 32KB)
+  const rawLen = Number(req.headers['content-length'] || 0);
+  if (rawLen > 32768) {
+    return res.status(413).json({ ok: false, message: 'Payload quá lớn.' });
+  }
+
+  // 2. Chống CSRF & Cross-Domain API Abuse (Kiểm tra Origin / Referer)
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ ok: false, message: 'Yêu cầu từ nguồn không được cấp phép.' });
   }
 
   if (!hasEmailProviderConfig()) {
@@ -302,6 +402,33 @@ export default async function handler(req, res) {
   const action = body.action;
   const now = Date.now();
   const appName = process.env.OTP_APP_NAME || 'ELEC AI';
+  const clientIp = getClientIp(req);
+
+  // 3. Bẫy Bot Honeypot (Bot tự động điền trường ẩn sẽ bị bỏ qua và trả về OK giả)
+  if (body.hp_website || body.bot_trap || body.address_extra) {
+    return res.status(200).json({ ok: true, sentTo: body.email || 'ok' });
+  }
+
+  // 4. Rate Limiting theo địa chỉ IP (Chống Spam / DoS API)
+  const isSendAction = action === 'send_reset_otp' || action === 'forgot_password' || action === 'send';
+  const ipCheck = checkIpRateLimit(clientIp, isSendAction ? 'send' : 'verify', now);
+  if (!ipCheck.allowed) {
+    return res.status(429).json({
+      ok: false,
+      code: 'IP_RATE_LIMITED',
+      retryAfterSec: ipCheck.retryAfterSec,
+      message: `Địa chỉ IP của bạn đang gửi quá nhiều yêu cầu. Vui lòng thử lại sau ${ipCheck.retryAfterSec} giây.`,
+    });
+  }
+
+  // 5. Xác thực Cloudflare Turnstile (nếu có cung cấp token)
+  const turnstileToken = body.turnstileToken || req.headers['cf-turnstile-response'];
+  if (process.env.TURNSTILE_SECRET_KEY && turnstileToken) {
+    const isTokenValid = await verifyTurnstileToken(turnstileToken, clientIp);
+    if (!isTokenValid) {
+      return res.status(403).json({ ok: false, code: 'CAPTCHA_FAILED', message: 'Xác thực bảo vệ bot thất bại.' });
+    }
+  }
 
   /* ============================================================
      1. QUÊN MẬT KHẨU BẰNG MÃ OTP 6 SỐ (Gửi mã)

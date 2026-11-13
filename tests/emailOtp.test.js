@@ -19,6 +19,7 @@ import {
   hashOtpCode,
   verifyOtpHash,
   buildCustomActionLink,
+  getClientIp,
 } from '../api/email-otp.js';
 
 describe('emailOtp — Xác thực Gmail bằng mã 6 số', () => {
@@ -81,5 +82,20 @@ describe('emailOtp — Xác thực Gmail bằng mã 6 số', () => {
       'https://duyheheh-2a269.firebaseapp.com/__/auth/action?mode=resetPassword&oobCode=XYZ123&apiKey=k'
     );
     expect(customUrl).toBe('https://www.elecai.id.vn/#auth-action?mode=resetPassword&oobCode=XYZ123');
+  });
+
+  it('bảo vệ IP và trích xuất đúng IP người dùng từ headers', () => {
+    const reqWithForwarded = {
+      headers: { 'x-forwarded-for': '113.190.23.45, 10.0.0.1' },
+    };
+    expect(getClientIp(reqWithForwarded)).toBe('113.190.23.45');
+
+    const reqWithRealIp = {
+      headers: { 'x-real-ip': '113.190.23.99' },
+    };
+    expect(getClientIp(reqWithRealIp)).toBe('113.190.23.99');
+
+    const reqDefault = { headers: {} };
+    expect(getClientIp(reqDefault)).toBe('127.0.0.1');
   });
 });
