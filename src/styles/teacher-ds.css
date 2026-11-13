@@ -1491,7 +1491,7 @@
   }
 
   /* ============================================================
-     14. FLOE-STYLE WORKSPACE ARCHITECTURE (GỌN GÀNG & TIỆN LỢI)
+     14. MODERN SAAS WORKSPACE ARCHITECTURE (TASKLIFY / DODO / QUEST)
      ============================================================ */
   .t-workspace-container {
     display: flex;
@@ -1499,29 +1499,140 @@
     gap: 1.5rem;
     width: 100%;
     margin: 0 auto;
+    font-family: var(--t-font-sans);
   }
 
-  .t-header-row {
+  /* Hero Welcome Section (Tasklify / DoDo style) */
+  .t-hero-welcome {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
+    align-items: flex-start;
+    gap: 1.25rem;
     flex-wrap: wrap;
-    margin-bottom: 0.25rem;
+    padding-bottom: 0.25rem;
   }
 
-  .t-header-title {
-    margin: 0;
-    font-size: 1.55rem;
+  .t-hero-welcome-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1 1 360px;
+  }
+
+  .t-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: #f5f3ff;
+    color: #7c3aed;
+    font-size: 0.75rem;
     font-weight: 700;
-    letter-spacing: -0.025em;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+  [data-theme='dark'] .t-hero-badge {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+
+  .t-hero-title {
+    margin: 0.2rem 0 0;
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    color: var(--t-ink);
+    line-height: 1.25;
+  }
+
+  .t-hero-desc {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--t-ink-muted);
+    line-height: 1.5;
+  }
+
+  .t-hero-welcome-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  /* Tasklify AI Announcement Banner (Image 1) */
+  .t-tasklify-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    padding: 0.9rem 1.25rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.45) 0%, rgba(243, 232, 255, 0.65) 100%);
+    border: 1px solid rgba(216, 180, 254, 0.45);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  }
+  [data-theme='dark'] .t-tasklify-banner {
+    background: linear-gradient(135deg, rgba(88, 28, 135, 0.2) 0%, rgba(30, 27, 75, 0.35) 100%);
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+
+  .t-tasklify-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex: 1 1 300px;
+  }
+
+  .t-tasklify-banner-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  }
+
+  .t-tasklify-banner-title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
     color: var(--t-ink);
   }
 
-  .t-header-sub {
-    margin: 0.25rem 0 0;
-    font-size: 0.84rem;
+  .t-tasklify-banner-desc {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
     color: var(--t-ink-muted);
+  }
+
+  .t-tasklify-banner-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .t-tasklify-banner-btn:hover {
+    background: #1e293b;
+    transform: translateX(2px);
+  }
+  [data-theme='dark'] .t-tasklify-banner-btn {
+    background: #ffffff;
+    color: #0f172a;
   }
 
   /* Range Selector Pills */
@@ -1543,21 +1654,73 @@
     background: transparent;
     color: var(--t-ink-muted);
     transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
   }
   .t-range-pill:hover {
     color: var(--t-ink);
   }
   .t-range-pill.active {
-    background: var(--t-accent);
+    background: #0f172a;
     color: #ffffff;
     font-weight: 700;
   }
-  [data-theme='light'] .t-range-pill.active {
-    background: #2563eb;
-    color: #ffffff;
+  [data-theme='dark'] .t-range-pill.active {
+    background: var(--t-accent);
+    color: #0e0e10;
   }
 
-  /* 4 KPI Grid Cân đối 25% (Floe Style với Icon Pastel & Trend) */
+  /* Quick Actions Bar with Rich SVG Icons */
+  .t-quick-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+  }
+
+  .t-quick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 1.15rem;
+    border-radius: 14px;
+    border: 1px solid var(--t-border);
+    background: var(--t-surface-1);
+    color: var(--t-ink);
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .t-quick-btn svg {
+    color: var(--t-accent);
+    flex-shrink: 0;
+  }
+  .t-quick-btn:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+    box-shadow: 0 6px 16px -2px rgba(15, 23, 42, 0.07);
+    color: var(--t-ink);
+  }
+  .t-quick-btn.primary {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+  }
+  .t-quick-btn.primary svg {
+    color: #c8f542;
+  }
+  .t-quick-btn.primary:hover {
+    background: #1e293b;
+    border-color: #1e293b;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.25);
+  }
+
+  /* 4 Metric Cards (Tasklify Image 1 style) */
   .t-kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1574,20 +1737,20 @@
     background: var(--t-surface-1);
     border: 1px solid var(--t-border);
     border-radius: 20px;
-    padding: 1.25rem 1.4rem;
+    padding: 1.35rem 1.45rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    box-shadow: var(--t-shadow-card);
+    box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.04), 0 12px 24px -4px rgba(15, 23, 42, 0.04);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;
   }
   .t-kpi-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--t-border-strong);
-    box-shadow: var(--t-shadow-float);
+    transform: translateY(-3px);
+    border-color: #cbd5e1;
+    box-shadow: 0 16px 32px -6px rgba(15, 23, 42, 0.08);
   }
 
   .t-kpi-head {
@@ -1596,45 +1759,57 @@
     align-items: center;
   }
 
-  .t-kpi-label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--t-ink-muted);
-  }
-
-  .t-kpi-icon-badge {
+  .t-kpi-icon-box {
     width: 38px;
     height: 38px;
-    border-radius: 12px;
+    border-radius: 11px;
+    background: #0f172a;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
-  .t-kpi-card.tone-blue .t-kpi-icon-badge { background: #eff6ff; color: #2563eb; }
-  .t-kpi-card.tone-violet .t-kpi-icon-badge { background: #f5f3ff; color: #7c3aed; }
-  .t-kpi-card.tone-emerald .t-kpi-icon-badge { background: #ecfdf5; color: #059669; }
-  .t-kpi-card.tone-rose .t-kpi-icon-badge { background: #fff1f2; color: #e11d48; }
+  [data-theme='dark'] .t-kpi-icon-box {
+    background: #27272a;
+    color: #ffffff;
+  }
 
-  [data-theme='dark'] .t-kpi-card.tone-blue .t-kpi-icon-badge { background: rgba(37,99,235,0.2); color: #60a5fa; }
-  [data-theme='dark'] .t-kpi-card.tone-violet .t-kpi-icon-badge { background: rgba(124,58,237,0.2); color: #a78bfa; }
-  [data-theme='dark'] .t-kpi-card.tone-emerald .t-kpi-icon-badge { background: rgba(5,150,105,0.2); color: #34d399; }
-  [data-theme='dark'] .t-kpi-card.tone-rose .t-kpi-icon-badge { background: rgba(225,29,72,0.2); color: #fb7185; }
+  .t-kpi-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--t-ink-muted);
+    transition: color 0.15s ease;
+  }
+  .t-kpi-card:hover .t-kpi-link {
+    color: var(--t-accent);
+  }
 
   .t-kpi-num {
-    font-size: 2.1rem;
-    font-weight: 700;
-    letter-spacing: -0.03em;
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
     color: var(--t-ink);
     font-variant-numeric: tabular-nums;
     line-height: 1.15;
-    margin: 0.1rem 0;
+    margin: 0.15rem 0;
+  }
+
+  .t-kpi-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--t-ink-muted);
   }
 
   .t-kpi-meta {
     font-size: 0.76rem;
     color: var(--t-ink-faint);
     margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--t-border-subtle);
     display: flex;
     align-items: center;
     justify-content: space-between;

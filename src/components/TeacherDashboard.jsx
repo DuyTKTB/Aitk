@@ -215,6 +215,61 @@ const IcoLock = (p) => (
   </Svg>
 );
 
+const IcoPlus = (p) => (
+  <Svg {...p} sw={2.2}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </Svg>
+);
+
+const IcoCamera = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </Svg>
+);
+
+const IcoSchool = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M2 22h20" />
+    <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+    <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
+  </Svg>
+);
+
+const IcoGradCap = (p) => (
+  <Svg {...p} sw={1.8}>
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  </Svg>
+);
+
+const IcoArrowRight = (p) => (
+  <Svg {...p} sw={2}>
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </Svg>
+);
+
+const IcoDotsVertical = (p) => (
+  <Svg {...p} sw={2}>
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="5" r="1.5" />
+    <circle cx="12" cy="19" r="1.5" />
+  </Svg>
+);
+
+const IcoQrCode = (p) => (
+  <Svg {...p} sw={1.8}>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <line x1="7" y1="17" x2="7" y2="17.01" />
+    <line x1="17" y1="7" x2="17" y2="7.01" />
+  </Svg>
+);
+
 import {
   DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
   tsMs, fmtMMSS, fmtClock, downloadCsv,
@@ -400,12 +455,18 @@ function FloeWorkflowCard({
           {liveSession ? (
             <>
               <span className="pulse-dot" />
-              <span>● Đang thi ({liveCount} HS)</span>
+              <span style={{ fontWeight: 800 }}>Đang thi LIVE ({liveCount} HS)</span>
             </>
           ) : exam.isDraft ? (
-            <span>Nháp</span>
+            <>
+              <IcoFileDoc size={12} />
+              <span>Bản nháp</span>
+            </>
           ) : (
-            <span>Đã giao</span>
+            <>
+              <IcoCheckCircle size={12} />
+              <span>Đã giao bài</span>
+            </>
           )}
         </div>
 
@@ -418,18 +479,22 @@ function FloeWorkflowCard({
           }}
           title="Xem chi tiết & thao tác"
         >
-          ···
+          <IcoDotsVertical size={15} />
         </button>
       </div>
 
       <div className="t-workflow-body">
         <div className="t-workflow-meta">
-          <span>{exam.duration || 45} phút</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <IcoClock size={12} /> {exam.duration || 45} phút
+          </span>
           <span>•</span>
-          <span>{(exam.questions || []).length || 40} câu</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <IcoGradCap size={12} /> {(exam.questions || []).length || 40} câu
+          </span>
           <span>•</span>
-          <span style={{ fontWeight: 600, color: 'var(--t-accent)' }}>
-            Lớp {cls?.name || 'Chung'}
+          <span style={{ fontWeight: 600, color: 'var(--t-accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <IcoSchool size={12} /> Lớp {cls?.name || 'Chung'}
           </span>
         </div>
 
@@ -439,7 +504,9 @@ function FloeWorkflowCard({
 
         <div className="t-workflow-progress">
           <div className="t-workflow-progress-info">
-            <span>{subCount > 0 ? `${subCount}/${memberCount} đã nộp` : 'Chưa có bài nộp'}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <IcoUsers size={12} /> {subCount > 0 ? `${subCount}/${memberCount} đã nộp` : 'Chưa có bài nộp'}
+            </span>
             <span>{avg != null ? `Điểm TB: ${avg}%` : `${subPct}%`}</span>
           </div>
           <div className="t-workflow-progress-track">
@@ -455,29 +522,29 @@ function FloeWorkflowCard({
               <button
                 type="button"
                 className="vt-btn sm primary"
-                style={{ background: '#059669', borderColor: '#059669', fontSize: '0.74rem', padding: '0.3rem 0.75rem' }}
+                style={{ background: '#059669', borderColor: '#059669', fontSize: '0.74rem', padding: '0.3rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 onClick={() => onViewLive(liveSession.id)}
               >
-                Giám sát LIVE ({liveCount})
+                <IcoVideo size={13} /> Giám sát ({liveCount})
               </button>
             ) : (
               <button
                 type="button"
                 className="vt-btn sm primary"
-                style={{ fontSize: '0.74rem', padding: '0.3rem 0.75rem' }}
+                style={{ fontSize: '0.74rem', padding: '0.3rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 onClick={() => onStart(exam)}
                 disabled={starting}
               >
-                {starting ? 'Đang mở...' : 'Bắt đầu thi'}
+                <IcoPlay size={13} /> {starting ? 'Đang mở...' : 'Bắt đầu thi'}
               </button>
             )}
             <button
               type="button"
               className="vt-btn sm"
-              style={{ fontSize: '0.74rem', padding: '0.3rem 0.65rem' }}
+              style={{ fontSize: '0.74rem', padding: '0.3rem 0.65rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               onClick={() => onDetail(exam)}
             >
-              Chi tiết
+              <IcoEye size={13} /> Chi tiết
             </button>
           </div>
         </div>
@@ -1930,8 +1997,8 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const topProps = {
     overview: {
-      title: 'Tổng quan Giảng dạy',
-      subtitle: `Thầy/Cô ${user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}`,
+      title: 'Lớp học & Giảng dạy',
+      subtitle: 'Trung tâm điều hành khảo thí & quản lý học sinh',
     },
     analytics: {
       title: 'Số liệu & Phân tích lớp học',
@@ -2273,7 +2340,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       }}
     >
       <Topbar
-        {...topProps}
+        {...(topProps[section] || {})}
         onOpenAiCopilot={() => setAiChatOpen((v) => !v)}
         search={section !== 'create' && section !== 'simulator' && section !== 'bank' && section !== 'profile' && section !== 'analytics' && section !== 'link' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
@@ -2292,22 +2359,25 @@ export default function TeacherDashboard({ onExit } = {}) {
       />
 
       {/* ============================================================
-          TỔNG QUAN — KHÔNG GIAN SƯ PHẠM FLOE-STYLE GỌN GÀNG & TIỆN LỢI
+          TỔNG QUAN — MODERN SAAS WORKSPACE (TASKLIFY / DODO / QUEST)
          ============================================================ */}
       {section === 'overview' && (
         <div className="t-workspace-container">
-          {/* HEADER CHÍNH: LỜI CHÀO & PHÂN ĐỊNH VAI TRÒ */}
-          <div className="t-header-row">
-            <div>
-              <h1 className="t-header-title">
-                Xin chào, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}
+          {/* HERO GREETING & THỜI GIAN THỐNG KÊ (TASKLIFY / DODO STYLE) */}
+          <div className="t-hero-welcome">
+            <div className="t-hero-welcome-left">
+              <div className="t-hero-badge">
+                <IcoSparkles size={14} /> Không gian Sư phạm GDPT 2025
+              </div>
+              <h1 className="t-hero-title">
+                Chào mừng trở lại, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'} 👋
               </h1>
-              <p className="t-header-sub">
-                Chủ nhiệm <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh) · Dạy bộ môn: <b>{linkedClasses.length} lớp</b> {primarySubject ? `(Môn: ${primarySubject})` : ''}
+              <p className="t-hero-desc">
+                Chủ nhiệm <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh) · Phụ trách bộ môn: <b>{linkedClasses.length} lớp</b> {primarySubject ? `(Môn: ${primarySubject})` : ''}
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div className="t-hero-welcome-right">
               <div className="t-range-pills" role="group" aria-label="Khoảng thời gian thống kê">
                 {[
                   { k: '7', label: '7 ngày' },
@@ -2321,29 +2391,47 @@ export default function TeacherDashboard({ onExit } = {}) {
                     className={`t-range-pill ${range === opt.k ? 'active' : ''}`}
                     onClick={() => setRange(opt.k)}
                   >
-                    {opt.label}
+                    <IcoCalendar size={13} /> {opt.label}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* HÀNG PHÍM TẮT THAO TÁC NHANH (TIỆN LỢI 1-CHẠM) */}
+          {/* TASKLIFY AI ANNOUNCEMENT BANNER (ẢNH THAM KHẢO 1) */}
+          <div className="t-tasklify-banner">
+            <div className="t-tasklify-banner-left">
+              <div className="t-tasklify-banner-icon">
+                <IcoSparkles size={18} />
+              </div>
+              <div>
+                <strong className="t-tasklify-banner-title">Trợ lý AI GDPT 2025 đã sẵn sàng</strong>
+                <p className="t-tasklify-banner-desc">
+                  Soạn đề trắc nghiệm thông minh theo Thông tư mới: 4 lựa chọn, Đúng/Sai &amp; Trả lời ngắn chỉ trong 10 giây.
+                </p>
+              </div>
+            </div>
+            <button type="button" className="t-tasklify-banner-btn" onClick={openNewExam}>
+              Tạo đề AI ngay <IcoArrowRight size={14} />
+            </button>
+          </div>
+
+          {/* HÀNG PHÍM TẮT THAO TÁC NHANH (CÓ ĐỦ SVG ICONS) */}
           <div className="t-quick-actions-bar">
             <button type="button" className="t-quick-btn primary" onClick={openNewExam}>
-              + Tạo đề mới (N)
+              <IcoSparkles size={16} /> + Tạo đề mới (N)
             </button>
             <button type="button" className="t-quick-btn" onClick={() => goSection('create')}>
-              Nhập từ Word
+              <IcoFileDoc size={16} /> Nhập từ Word (.docx)
             </button>
             <button type="button" className="t-quick-btn" onClick={() => goSection('sessions')}>
-              Phòng thi trực tuyến
+              <IcoVideo size={16} /> Phòng thi trực tuyến
             </button>
             <button type="button" className="t-quick-btn" onClick={() => goSection('paper')}>
-              Chấm phiếu A4
+              <IcoCamera size={16} /> Chấm phiếu A4
             </button>
             <button type="button" className="t-quick-btn" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
-              + Tạo lớp mới
+              <IcoSchool size={16} /> + Tạo lớp mới
             </button>
           </div>
 
@@ -2395,44 +2483,53 @@ export default function TeacherDashboard({ onExit } = {}) {
             </div>
           )}
 
-          {/* 4 THẺ CHỈ SỐ SƯ PHẠM (FLOE STYLE: ICON PASTEL, TREND & TABULAR NUMS) */}
+          {/* 4 THẺ CHỈ SỐ SƯ PHẠM (CHUẨN TASKLIFY ẢNH 1: ICON BOX ĐEN, BIG NUM, VIEW DETAILS) */}
           <div className="t-kpi-grid">
-            <div className="t-kpi-card tone-blue" onClick={() => goSection('classes')}>
+            <div className="t-kpi-card" onClick={() => goSection('classes')}>
               <div className="t-kpi-head">
-                <span className="t-kpi-label">Tổng học sinh</span>
-                <div className="t-kpi-icon-badge">
-                  <IcoUsers size={19} />
+                <div className="t-kpi-icon-box">
+                  <IcoUsers size={20} />
                 </div>
+                <span className="t-kpi-link">
+                  Chi tiết <IcoChevronRight size={13} />
+                </span>
               </div>
               <span className="t-kpi-num">{classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)}</span>
+              <span className="t-kpi-label">Tổng học sinh hoạt động</span>
               <div className="t-kpi-meta">
                 <span>{classes.length} lớp chủ nhiệm · {linkedClasses.length} bộ môn</span>
                 <span className="t-kpi-trend-pill ok">● Đang học</span>
               </div>
             </div>
 
-            <div className="t-kpi-card tone-violet" onClick={() => goSection('exams')}>
+            <div className="t-kpi-card" onClick={() => goSection('exams')}>
               <div className="t-kpi-head">
-                <span className="t-kpi-label">Kho đề thi đã soạn</span>
-                <div className="t-kpi-icon-badge">
-                  <IcoBook size={19} />
+                <div className="t-kpi-icon-box">
+                  <IcoBook size={20} />
                 </div>
+                <span className="t-kpi-link">
+                  Kho đề <IcoChevronRight size={13} />
+                </span>
               </div>
               <span className="t-kpi-num">{exams.length}</span>
+              <span className="t-kpi-label">Kho đề thi đã soạn</span>
               <div className="t-kpi-meta">
                 <span>{countBy('ready')} đề đã giao vào lớp</span>
                 <span className="t-kpi-trend-pill ok">GDPT 2025</span>
               </div>
             </div>
 
-            <div className="t-kpi-card tone-emerald" onClick={() => goSection('analytics')}>
+            <div className="t-kpi-card" onClick={() => goSection('analytics')}>
               <div className="t-kpi-head">
-                <span className="t-kpi-label">Điểm trung bình lớp</span>
-                <div className="t-kpi-icon-badge">
-                  <IcoChart size={19} />
+                <div className="t-kpi-icon-box">
+                  <IcoChart size={20} />
                 </div>
+                <span className="t-kpi-link">
+                  Phổ điểm <IcoChevronRight size={13} />
+                </span>
               </div>
               <span className="t-kpi-num">{subsInRange.length ? `${avgScore10} / 10` : '—'}</span>
+              <span className="t-kpi-label">Điểm trung bình toàn khóa</span>
               <div className="t-kpi-meta">
                 <span>{passRate}% học sinh đạt chuẩn</span>
                 <span className="t-kpi-trend-pill ok">≥ 5.0 điểm</span>
@@ -2440,19 +2537,22 @@ export default function TeacherDashboard({ onExit } = {}) {
             </div>
 
             <div
-              className="t-kpi-card tone-rose"
+              className="t-kpi-card"
               onClick={() => goSection('analytics')}
             >
               <div className="t-kpi-head">
-                <span className="t-kpi-label" style={{ color: atRiskStudents.length > 0 ? '#e11d48' : undefined }}>
-                  Học sinh cần phụ đạo
-                </span>
-                <div className="t-kpi-icon-badge">
-                  <IcoAlert size={19} />
+                <div className="t-kpi-icon-box" style={{ background: atRiskStudents.length > 0 ? '#ef4444' : undefined }}>
+                  <IcoAlert size={20} />
                 </div>
+                <span className="t-kpi-link">
+                  Danh sách <IcoChevronRight size={13} />
+                </span>
               </div>
-              <span className="t-kpi-num" style={{ color: atRiskStudents.length > 0 ? '#e11d48' : undefined }}>
+              <span className="t-kpi-num" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
                 {atRiskStudents.length}
+              </span>
+              <span className="t-kpi-label" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
+                Học sinh cần kèm phụ đạo
               </span>
               <div className="t-kpi-meta">
                 <span>{atRiskStudents.length > 0 ? `${atRiskStudents.length} em dưới 5.0 điểm` : 'Tất cả đạt chuẩn'}</span>
@@ -2467,23 +2567,30 @@ export default function TeacherDashboard({ onExit } = {}) {
           <div className="t-folders-section">
             <div className="t-folders-header">
               <div className="t-folders-title-wrap">
-                <h2 className="t-folders-title">Lớp học của tôi</h2>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <IcoSchool size={22} style={{ color: 'var(--t-accent)' }} />
+                  <h2 className="t-folders-title" style={{ margin: 0 }}>Lớp học của tôi</h2>
+                </span>
                 <span className="t-badge-count">{classes.length + linkedClasses.length}</span>
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                 <button
                   type="button"
                   className="vt-btn sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                   onClick={() => goSection('link')}
                 >
-                  Nhận lớp bộ môn
+                  <IcoKey size={14} />
+                  <span>Nhận lớp bộ môn</span>
                 </button>
                 <button
                   type="button"
                   className="vt-btn sm primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                   onClick={() => { goSection('classes'); setShowCreateClass(true); }}
                 >
-                  + Tạo lớp mới
+                  <IcoPlus size={14} />
+                  <span>Tạo lớp mới</span>
                 </button>
               </div>
             </div>
@@ -2492,7 +2599,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               <div style={{ textAlign: 'center', padding: '2.5rem', background: 'var(--t-surface-1)', borderRadius: 20, border: '1px solid var(--t-border)' }}>
                 <p style={{ margin: '0 0 1rem', color: 'var(--t-ink-muted)' }}>Chưa có lớp học nào. Bắt đầu tạo lớp học đầu tiên ngay:</p>
                 <button type="button" className="vt-btn primary" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
-                  + Tạo lớp chủ nhiệm
+                  <IcoPlus size={15} /> Tạo lớp chủ nhiệm
                 </button>
               </div>
             ) : (
@@ -2510,7 +2617,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                       onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
                     >
                       <div className="t-folder-top">
-                        <span className="t-role-badge homeroom">Chủ nhiệm</span>
+                        <span className="t-role-badge homeroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <IcoSchool size={12} /> Chủ nhiệm
+                        </span>
                         <span
                           className="t-folder-code"
                           onClick={(e) => { e.stopPropagation(); copyText(c.key, c.id, 'Đã sao chép mã lớp'); }}
@@ -2521,8 +2630,8 @@ export default function TeacherDashboard({ onExit } = {}) {
                       </div>
 
                       <h3 className="t-folder-name">{c.name}</h3>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
-                        {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''} · <b>{classExams.length}</b> đề
+                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)', display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                        <IcoBook size={12} /> {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''} · <b>{classExams.length}</b> đề
                       </span>
 
                       <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
@@ -2530,13 +2639,13 @@ export default function TeacherDashboard({ onExit } = {}) {
                         <button
                           type="button"
                           className="vt-btn sm primary"
-                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem' }}
+                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                           onClick={() => {
                             setSelectedClass(c);
                             goSection('create');
                           }}
                         >
-                          Giao đề →
+                          <IcoSparkles size={12} /> Giao đề →
                         </button>
                       </div>
                     </div>
@@ -2555,13 +2664,15 @@ export default function TeacherDashboard({ onExit } = {}) {
                       onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
                     >
                       <div className="t-folder-top">
-                        <span className="t-role-badge subject">Bộ môn: {c.subject || primarySubject}</span>
+                        <span className="t-role-badge subject" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <IcoBook size={12} /> Bộ môn: {c.subject || primarySubject}
+                        </span>
                         <span className="t-folder-code">CN: {c.ownerName || c.teacherName || 'Đồng nghiệp'}</span>
                       </div>
 
                       <h3 className="t-folder-name">{c.name}</h3>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
-                        Môn {c.subject || primarySubject} · <b>{classExams.length}</b> đề
+                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <IcoGradCap size={12} /> Môn {c.subject || primarySubject} · <b>{classExams.length}</b> đề
                       </span>
 
                       <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
@@ -2569,13 +2680,13 @@ export default function TeacherDashboard({ onExit } = {}) {
                         <button
                           type="button"
                           className="vt-btn sm primary"
-                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem' }}
+                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                           onClick={() => {
                             setSelectedClass(c);
                             goSection('create');
                           }}
                         >
-                          Giao đề →
+                          <IcoSparkles size={12} /> Giao đề →
                         </button>
                       </div>
                     </div>
@@ -2589,7 +2700,10 @@ export default function TeacherDashboard({ onExit } = {}) {
           <div className="t-workflows-section">
             <div className="t-workflows-header">
               <div className="t-folders-title-wrap">
-                <h2 className="t-folders-title">Đề thi nổi bật &amp; Khảo thí</h2>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <IcoBook size={22} style={{ color: 'var(--t-accent)' }} />
+                  <h2 className="t-folders-title" style={{ margin: 0 }}>Đề thi nổi bật &amp; Khảo thí</h2>
+                </span>
                 <span className="t-badge-count">{exams.length}</span>
               </div>
 
@@ -2597,16 +2711,21 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <button
                   type="button"
                   className="vt-btn sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                   onClick={() => goSection('exams')}
                 >
-                  Xem toàn bộ kho đề ({exams.length}) →
+                  <IcoBook size={14} />
+                  <span>Xem kho đề ({exams.length})</span>
+                  <IcoChevronRight size={13} />
                 </button>
                 <button
                   type="button"
                   className="vt-btn sm primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                   onClick={openNewExam}
                 >
-                  + Soạn đề mới (N)
+                  <IcoPlus size={14} />
+                  <span>Soạn đề mới (N)</span>
                 </button>
               </div>
             </div>
@@ -2615,7 +2734,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               <div style={{ textAlign: 'center', padding: '2.5rem', background: 'var(--t-surface-1)', borderRadius: 20, border: '1px solid var(--t-border)' }}>
                 <p style={{ margin: '0 0 1rem', color: 'var(--t-ink-muted)' }}>Chưa có đề thi nào trong kho. Hãy bắt đầu tạo đề kiểm tra đầu tiên:</p>
                 <button type="button" className="vt-btn primary" onClick={openNewExam}>
-                  + Tạo đề thi AI chuẩn GDPT 2025
+                  <IcoPlus size={15} /> Tạo đề thi AI chuẩn GDPT 2025
                 </button>
               </div>
             ) : (
@@ -2648,15 +2767,17 @@ export default function TeacherDashboard({ onExit } = {}) {
             <div className="t-split-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <IcoChart size={18} style={{ color: 'var(--t-accent)' }} />
                     Phổ điểm học lực chuẩn Bộ GD&amp;ĐT
                   </h3>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
                     Thang điểm 10 · {subsInRange.length} bài nộp ({range === 'all' ? 'toàn bộ thời gian' : `${range} ngày qua`})
                   </p>
                 </div>
-                <button type="button" className="vt-btn sm" onClick={() => goSection('analytics')}>
-                  Chi tiết
+                <button type="button" className="vt-btn sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => goSection('analytics')}>
+                  <span>Chi tiết</span>
+                  <IcoChevronRight size={13} />
                 </button>
               </div>
 
@@ -2722,15 +2843,17 @@ export default function TeacherDashboard({ onExit } = {}) {
             <div className="t-split-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <IcoAlert size={18} style={{ color: '#ef4444' }} />
                     Câu hỏi học sinh sai nhiều nhất
                   </h3>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
                     Lỗ hổng kiến thức cần chữa bài trên lớp
                   </p>
                 </div>
-                <button type="button" className="vt-btn sm" onClick={() => goSection('analytics')}>
-                  Xem tất cả
+                <button type="button" className="vt-btn sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => goSection('analytics')}>
+                  <span>Xem tất cả</span>
+                  <IcoChevronRight size={13} />
                 </button>
               </div>
 
@@ -2796,7 +2919,10 @@ export default function TeacherDashboard({ onExit } = {}) {
                 listStyle: 'none',
               }}
             >
-              <span>Trợ lý Phân tích AI &amp; Gợi ý khắc phục lỗ hổng kiến thức ({classes[0]?.name || 'Toàn bộ lớp'})</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <IcoSparkles size={16} style={{ color: 'var(--t-accent)' }} />
+                Trợ lý Phân tích AI &amp; Gợi ý khắc phục lỗ hổng kiến thức ({classes[0]?.name || 'Toàn bộ lớp'})
+              </span>
               <span style={{ fontSize: '0.78rem', color: 'var(--t-accent)', fontWeight: 600 }}>
                 Mở rộng / Thu gọn ▾
               </span>

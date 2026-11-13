@@ -200,9 +200,9 @@
     --t-r-sm: 10px;
     --t-r-xs: 6px;
 
-    /* Font Chữ */
-    --t-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-    --t-font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    /* Font Chữ Hiện Đại Chuẩn SaaS (Tasklify & DoDo) */
+    --t-font-sans: 'Plus Jakarta Sans', 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --t-font-display: 'Plus Jakarta Sans', 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
     /* Chuyển Động & Easing */
     --t-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
