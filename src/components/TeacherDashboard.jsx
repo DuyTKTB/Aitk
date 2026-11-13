@@ -1931,7 +1931,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'create' ? 'active' : ''}`}
           onClick={() => goSection('create')}
         >
-          <IcoSparkles size={15} /> AI Tạo đề &amp; Word
+          AI Tạo đề &amp; Word
         </button>
         <button
           type="button"
@@ -1940,7 +1940,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'exams' ? 'active' : ''}`}
           onClick={() => goSection('exams')}
         >
-          <IcoBook size={15} /> Kho đề thi ({exams.length})
+          Kho đề thi ({exams.length})
         </button>
         <button
           type="button"
@@ -1949,7 +1949,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'bank' ? 'active' : ''}`}
           onClick={() => goSection('bank')}
         >
-          <IcoLibrary size={15} /> Ngân hàng câu hỏi
+          Ngân hàng câu hỏi
         </button>
         <button
           type="button"
@@ -1958,7 +1958,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'simulator' ? 'active' : ''}`}
           onClick={() => goSection('simulator')}
         >
-          <IcoShuffle size={15} /> Mô phỏng &amp; Đảo đề
+          Mô phỏng &amp; Đảo đề
         </button>
       </div>
     </div>
@@ -1969,7 +1969,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     <div className="t-hub-subnav-bar">
       <div className="t-hub-subnav-info">
         <h2 className="t-hub-subnav-title">Khảo thí &amp; Chấm thi</h2>
-        <span className="t-hub-subnav-desc">Phòng thi trực tuyến LIVE, Chấm phiếu trắc nghiệm A4 &amp; Duyệt xin thi lại</span>
+        <span className="t-hub-subnav-desc">Phòng thi trực tuyến, Chấm phiếu trắc nghiệm A4 &amp; Duyệt xin thi lại</span>
       </div>
       <div className="t-hub-subnav-pills" role="tablist" aria-label="Nhóm khảo thí &amp; chấm thi">
         <button
@@ -1979,7 +1979,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'sessions' ? 'active' : ''}`}
           onClick={() => goSection('sessions')}
         >
-          <IcoVideo size={15} /> Phòng thi LIVE {liveSessions.length > 0 && <span className="t-pill-badge-live">{liveSessions.length}</span>}
+          Phòng thi trực tuyến {liveSessions.length > 0 && <span className="t-pill-badge-live">{liveSessions.length}</span>}
         </button>
         <button
           type="button"
@@ -1988,7 +1988,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'paper' ? 'active' : ''}`}
           onClick={() => goSection('paper')}
         >
-          <IcoScan size={15} /> Chấm phiếu trắc nghiệm A4
+          Chấm phiếu trắc nghiệm A4
         </button>
         <button
           type="button"
@@ -1997,7 +1997,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           className={`t-hub-subnav-pill ${section === 'retry' ? 'active' : ''}`}
           onClick={() => goSection('retry')}
         >
-          <IcoBell size={15} /> Duyệt xin thi lại {totalPendingRetry > 0 && <span className="t-pill-badge-warn">{totalPendingRetry}</span>}
+          Duyệt xin thi lại {totalPendingRetry > 0 && <span className="t-pill-badge-warn">{totalPendingRetry}</span>}
         </button>
       </div>
     </div>
@@ -2162,15 +2162,15 @@ export default function TeacherDashboard({ onExit } = {}) {
               }}
             >
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: 'var(--t-ink)' }}>
-                  Xin chào, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'} 👋
+                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--t-ink)', letterSpacing: '-0.02em' }}>
+                  Xin chào, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}
                 </h2>
-                <div style={{ display: 'flex', gap: '0.55rem', marginTop: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <span className="t-role-badge homeroom" title="Lớp do bạn trực tiếp làm chủ nhiệm, quản lý sĩ số và mời GV bộ môn">
-                    🎓 Chủ nhiệm: <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh)
+                    Chủ nhiệm: <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh)
                   </span>
                   <span className="t-role-badge subject" title="Lớp bạn được liên kết phân công dạy bộ môn">
-                    🔬 Dạy bộ môn: <b>{linkedClasses.length} lớp</b> (Môn: <b>{primarySubject}</b>)
+                    Dạy bộ môn: <b>{linkedClasses.length} lớp</b> (Môn: <b>{primarySubject}</b>)
                   </span>
                 </div>
               </div>
@@ -2206,23 +2206,23 @@ export default function TeacherDashboard({ onExit } = {}) {
             </div>
           </div>
 
-          {/* HÀNG PHÍM TẮT THAO TÁC NHANH 1 CHẠM */}
+          {/* HÀNG PHÍM TẮT THAO TÁC NHANH */}
           <div className="t-col-12">
             <div className="t-quick-actions-bar">
               <button type="button" className="t-quick-btn primary" onClick={openNewExam}>
-                <IcoSparkles size={16} /> AI Tạo đề mới (Phím N)
+                Tạo đề mới (N)
               </button>
               <button type="button" className="t-quick-btn" onClick={() => goSection('create')}>
-                <IcoFileDoc size={16} /> Nhập đề từ file Word
+                Nhập từ Word
               </button>
               <button type="button" className="t-quick-btn" onClick={() => goSection('sessions')}>
-                <IcoVideo size={16} /> Phòng thi trực tiếp (LIVE)
+                Phòng thi trực tuyến
               </button>
               <button type="button" className="t-quick-btn" onClick={() => goSection('paper')}>
-                <IcoScan size={16} /> Chấm phiếu trắc nghiệm A4
+                Chấm phiếu A4
               </button>
               <button type="button" className="t-quick-btn" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
-                <IcoUsers size={16} /> + Tạo / Nhận lớp mới
+                Tạo lớp mới
               </button>
             </div>
           </div>
@@ -2239,7 +2239,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     border: '1.5px solid #f59e0b', gap: '0.75rem',
                   }}>
                     <div>
-                      <strong style={{ fontSize: '0.92rem', color: '#b45309' }}>🔔 {totalPendingMembers} Học sinh chờ duyệt vào lớp</strong>
+                      <strong style={{ fontSize: '0.92rem', color: '#b45309' }}>{totalPendingMembers} Học sinh chờ duyệt vào lớp</strong>
                       <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Cần phê duyệt để học sinh vào làm bài thi</p>
                     </div>
                     <button type="button" className="vt-btn sm primary" onClick={() => goSection('classes')}>Duyệt ngay</button>
@@ -2253,7 +2253,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     border: '1.5px solid #8b5cf6', gap: '0.75rem',
                   }}>
                     <div>
-                      <strong style={{ fontSize: '0.92rem', color: '#7c3aed' }}>⚡ {totalPendingRetry} Học sinh xin thi lại</strong>
+                      <strong style={{ fontSize: '0.92rem', color: '#7c3aed' }}>{totalPendingRetry} Học sinh xin thi lại</strong>
                       <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Học sinh gặp sự cố mạng hoặc nộp nhầm</p>
                     </div>
                     <button type="button" className="vt-btn sm" onClick={() => goSection('retry')} style={{ background: '#8b5cf6', color: '#fff' }}>Xem yêu cầu</button>
@@ -2267,7 +2267,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     border: '1.5px solid #10b981', gap: '0.75rem',
                   }}>
                     <div>
-                      <strong style={{ fontSize: '0.92rem', color: '#059669' }}>🎥 {liveSessions.length} Phòng thi LIVE đang mở</strong>
+                      <strong style={{ fontSize: '0.92rem', color: '#059669' }}>{liveSessions.length} Phòng thi trực tuyến đang mở</strong>
                       <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>{liveSessions[0]?.title} đang diễn ra</p>
                     </div>
                     <button type="button" className="vt-btn sm" onClick={() => goSection('sessions')} style={{ background: '#10b981', color: '#fff' }}>Vào giám sát</button>
@@ -2532,7 +2532,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                               </span>
                             </div>
                           </div>
-                          <span className="t-role-badge homeroom">🎓 Chủ nhiệm</span>
+                          <span className="t-role-badge homeroom">Chủ nhiệm</span>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--t-ink-muted)', borderTop: '1px solid var(--t-border-subtle)', paddingTop: '0.55rem' }}>
@@ -2556,7 +2556,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                             style={{ flex: 1, fontSize: '0.76rem' }}
                             onClick={() => { setSelectedClass(c); goSection('create'); }}
                           >
-                            + Giao đề
+                            Giao đề
                           </button>
                         </div>
                       </div>
@@ -2590,7 +2590,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                               </span>
                             </div>
                           </div>
-                          <span className="t-role-badge subject">🔬 Bộ môn: {c.subject || primarySubject}</span>
+                          <span className="t-role-badge subject">Bộ môn: {c.subject || primarySubject}</span>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--t-ink-muted)', borderTop: '1px solid var(--t-border-subtle)', paddingTop: '0.55rem' }}>
@@ -2701,93 +2701,46 @@ export default function TeacherDashboard({ onExit } = {}) {
 
         return (
           <>
-            {/* KHỐI CHUYỂN ĐỔI 2 VAI TRÒ CHỦ NHIỆM - BỘ MÔN */}
-            <div className="t-role-hub-header">
-              <div className="t-role-summary-banner">
-                <div
-                  className={`t-role-card is-homeroom ${classSectionTab === 'my' ? 'active' : ''}`}
+            {/* TOOLBAR CHUYỂN ĐỔI VAI TRÒ CHỦ NHIỆM - BỘ MÔN */}
+            <div className="t-classes-toolbar">
+              <div className="t-classes-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={classSectionTab === 'my'}
+                  className={`t-classes-tab ${classSectionTab === 'my' ? 'active' : ''}`}
                   onClick={() => setClassSectionTab('my')}
                 >
-                  <div className="t-role-icon">🎓</div>
-                  <div className="t-role-info">
-                    <span className="t-role-name">Giáo viên Chủ nhiệm</span>
-                    <strong className="t-role-stat">{classes.length} Lớp tôi chủ nhiệm</strong>
-                    <span className="t-role-meta">
-                      {classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh
-                      {totalPendingMembers > 0 ? ` · ${totalPendingMembers} em chờ duyệt` : ' · Sĩ số ổn định'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className={`vt-btn sm ${classSectionTab === 'my' ? 'primary' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setClassSectionTab('my'); }}
-                  >
-                    Xem lớp
-                  </button>
-                </div>
-
-                <div
-                  className={`t-role-card is-subject ${classSectionTab === 'linked' ? 'active' : ''}`}
+                  Lớp chủ nhiệm ({classes.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={classSectionTab === 'linked'}
+                  className={`t-classes-tab ${classSectionTab === 'linked' ? 'active' : ''}`}
                   onClick={() => setClassSectionTab('linked')}
                 >
-                  <div className="t-role-icon">🔬</div>
-                  <div className="t-role-info">
-                    <span className="t-role-name">Giáo viên Bộ môn</span>
-                    <strong className="t-role-stat">{linkedClasses.length} Lớp dạy bộ môn</strong>
-                    <span className="t-role-meta">
-                      Môn phụ trách: <b>{primarySubject || 'Tự chọn'}</b> · Giao đề &amp; Chấm thi
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className={`vt-btn sm ${classSectionTab === 'linked' ? 'primary' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setClassSectionTab('linked'); }}
-                  >
-                    Xem lớp
-                  </button>
-                </div>
+                  Lớp dạy bộ môn ({linkedClasses.length})
+                </button>
               </div>
 
-              <div className="t-classes-action-bar">
-                <div className="t-classes-tabs" role="tablist">
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {classSectionTab === 'my' ? (
+                  <button type="button" className="vt-btn sm primary" onClick={() => setShowCreateClass(true)}>
+                    + Tạo lớp mới (N)
+                  </button>
+                ) : (
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={classSectionTab === 'my'}
-                    className={`t-classes-tab ${classSectionTab === 'my' ? 'active' : ''}`}
-                    onClick={() => setClassSectionTab('my')}
+                    className="vt-btn sm primary"
+                    onClick={() => {
+                      const el = document.querySelector('input[placeholder*="11A7"]');
+                      if (el) el.focus();
+                    }}
                   >
-                    🎓 Lớp tôi chủ nhiệm ({classes.length})
+                    Nhập mã nhận lớp
                   </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={classSectionTab === 'linked'}
-                    className={`t-classes-tab ${classSectionTab === 'linked' ? 'active' : ''}`}
-                    onClick={() => setClassSectionTab('linked')}
-                  >
-                    🔬 Lớp tôi dạy bộ môn ({linkedClasses.length})
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  {classSectionTab === 'my' ? (
-                    <button type="button" className="vt-btn sm primary" onClick={() => setShowCreateClass(true)}>
-                      + Tạo lớp chủ nhiệm mới (Phím N)
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="vt-btn sm primary"
-                      onClick={() => {
-                        const el = document.querySelector('input[placeholder*="11A7"]');
-                        if (el) el.focus();
-                      }}
-                    >
-                      🔗 Nhập mã nhận lớp bộ môn
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
@@ -2890,7 +2843,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                               <h3 style={{ margin: 0 }}>{cls.name}</h3>
-                              <span className="t-role-badge homeroom">🎓 Chủ nhiệm</span>
+                              <span className="t-role-badge homeroom">Chủ nhiệm</span>
                             </div>
                             <small>{cls.subject || 'Đa môn'} · {classExams.length} đề · {members.length} HS</small>
                           </div>
@@ -2980,10 +2933,10 @@ export default function TeacherDashboard({ onExit } = {}) {
                             title="Quản lý & Mời giáo viên các môn Toán, Lý, Hóa, Sinh... vào dạy lớp này"
                             style={{ background: 'var(--t-accent-subtle)', color: 'var(--t-accent)', fontWeight: 700 }}
                           >
-                            <IcoUsers size={13} /> GV Bộ môn
+                            GV Bộ môn
                           </button>
                           <button type="button" className="vt-btn sm" onClick={() => { setDetailTab('overview'); setSelectedClass(cls); }}>
-                            <IcoEye size={13} /> Chi tiết
+                            Chi tiết
                           </button>
                           <button
                             type="button"
@@ -2991,14 +2944,14 @@ export default function TeacherDashboard({ onExit } = {}) {
                             onClick={() => { setNoticeClass(cls); setNoticeDraft(cls.announcement?.text || ''); }}
                             title="Ghim thông báo cho lớp"
                           >
-                            <IcoPin size={12} /> Ghim tin
+                            Ghim tin
                           </button>
                           <button
                             type="button"
                             className="vt-btn sm primary"
                             onClick={() => { setSelectedClass(cls); goSection('create'); }}
                           >
-                            <IcoBook size={13} /> + Giao đề
+                            Giao đề
                           </button>
                         </footer>
                       </article>
