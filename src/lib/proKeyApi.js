@@ -355,10 +355,13 @@ export async function adminGrantVipDirect({ userId, durationDays = 365, note = '
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(subKey, JSON.stringify(next));
-    localStorage.setItem('cs-vip-status', JSON.stringify({ isPro: true, plan: 'VIP', expiry: newExpiry, daysLeft: days }));
-    window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: next }));
-    window.dispatchEvent(new CustomEvent('cs-vip-update'));
-    window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    const { auth } = await import('./firebase.js');
+    if (auth?.currentUser?.uid === uid) {
+      localStorage.setItem('cs-vip-status', JSON.stringify({ isPro: true, plan: 'VIP', expiry: newExpiry, daysLeft: days }));
+      window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: next }));
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    }
   } catch {}
 
   return data;
@@ -400,12 +403,15 @@ export async function adminRevokeVipDirect(userId) {
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(subKey, JSON.stringify(next));
-    localStorage.removeItem('cs-vip-status');
-    localStorage.removeItem('cs-vip');
-    localStorage.removeItem('cs-user-tier');
-    window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: next }));
-    window.dispatchEvent(new CustomEvent('cs-vip-update'));
-    window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    const { auth } = await import('./firebase.js');
+    if (auth?.currentUser?.uid === uid) {
+      localStorage.removeItem('cs-vip-status');
+      localStorage.removeItem('cs-vip');
+      localStorage.removeItem('cs-user-tier');
+      window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: next }));
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    }
   } catch {}
 }
 
@@ -532,14 +538,19 @@ export async function activateProKey(userId, keyCode) {
     }, { onConflict: 'user_id' });
   if (e2) return { ok: false, error: e2.message };
 
-  // đánh dấu key đã dùng
-  await supabase
-    .from('pro_keys')
-    .update({
-      used_by: userId,
-      used_at: new Date().toISOString(),
-    })
-    .eq('id', key.id);
+  // Đánh dấu key đã dùng (nếu là voucher dùng nhiều lần và còn lượt thì không khóa used_by)
+  const shouldLockKey = !discMeta.isDiscount
+    || discMeta.maxUses <= 1
+    || (discMeta.usedCount + 1) >= discMeta.maxUses;
+  if (shouldLockKey) {
+    await supabase
+      .from('pro_keys')
+      .update({
+        used_by: userId,
+        used_at: new Date().toISOString(),
+      })
+      .eq('id', key.id);
+  }
 
   // Quyền lợi VIP / PRO: Tặng kèm Credit AI tương ứng thời hạn gói
   const creditMetaMatch = (key.note || '').match(/\[CREDIT:(\d+)\]/i);

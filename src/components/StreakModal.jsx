@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useLiveStreak } from '../hooks.js';
+import { useLiveStreak, getStreakData } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { getSubscriptionAndQuota } from '../data/virtualExamsBank.js';
+import { getCredits, spendCredit, grantActivationCredits } from '../lib/creditService.js';
 
 /* ============================================================
    StreakModal.jsx — BẢO VỆ CHUỖI STREAK & THƯỞNG MỐC NGÀY
@@ -134,29 +134,58 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
   });
 
   const [noticeMsg, setNoticeMsg] = useState(null);
+  const [buyingFreeze, setBuyingFreeze] = useState(false);
 
-  // Mua thêm khiên bảo vệ bằng 50 Điểm AI
-  const handleBuyFreeze = () => {
+  // Mua thêm khiên bảo vệ bằng 50 Điểm AI (trừ thật từ ví Credit)
+  const handleBuyFreeze = async () => {
+    if (buyingFreeze) return;
+    if (!uid || uid === 'guest') {
+      setNoticeMsg({ ok: false, text: 'Vui lòng đăng nhập để dùng 50 Điểm AI Credit mua Khiên Đóng Băng.' });
+      return;
+    }
+    setBuyingFreeze(true);
     try {
-      const quota = getSubscriptionAndQuota(uid);
-      const curCredits = Number(quota.bonusPoints || 0) + Number(quota.aiCreditsMax || 30);
-      if (curCredits < 50) {
-        setNoticeMsg({ ok: false, text: 'Bạn cần tối thiểu 50 Điểm AI để trang bị thêm Khiên Đóng Băng.' });
+      const cr = await getCredits(uid);
+      if ((Number(cr?.balance) || 0) < 50) {
+        setNoticeMsg({ ok: false, text: 'Bạn cần tối thiểu 50 Điểm AI Credit để trang bị thêm Khiên Đóng Băng.' });
+        return;
+      }
+      const spent = await spendCredit(uid, 0, 50);
+      if (!spent?.ok) {
+        setNoticeMsg({ ok: false, text: 'Không đủ 50 Điểm AI Credit để trang bị Khiên Đóng Băng.' });
         return;
       }
       const nextCount = freezeCount + 1;
       setFreezeCount(nextCount);
       localStorage.setItem(FREEZE_KEY, String(nextCount));
-      setNoticeMsg({ ok: true, text: 'Trang bị Khiên Đóng Băng thành công! Chuỗi ngày của bạn được bảo vệ an toàn.' });
+      setNoticeMsg({ ok: true, text: 'Trang bị Khiên Đóng Băng thành công (-50 Điểm AI)! Chuỗi ngày của bạn được bảo vệ an toàn.' });
     } catch {
-      setNoticeMsg({ ok: true, text: 'Trang bị Khiên Đóng Băng thành công! Chuỗi ngày của bạn được bảo vệ an toàn.' });
+      setNoticeMsg({ ok: false, text: 'Không thể kết nối ví Credit lúc này. Vui lòng thử lại sau.' });
+    } finally {
+      setBuyingFreeze(false);
     }
   };
 
   // Nhận phần thưởng cột mốc
-  const handleClaimMilestone = (milestoneDays, rewardLabel) => {
+  const handleClaimMilestone = async (milestoneDays, rewardLabel, rewardCredits = 0, passTier = null) => {
     if (streakDays < milestoneDays) return;
     if (claimedList.includes(milestoneDays)) return;
+
+    if (!uid || uid === 'guest') {
+      setNoticeMsg({ ok: false, text: 'Vui lòng đăng nhập để nhận thưởng cột mốc vào tài khoản.' });
+      return;
+    }
+
+    if (rewardCredits > 0) {
+      await grantActivationCredits(uid, rewardCredits, `STREAK_${milestoneDays}`).catch(() => {});
+    }
+    if (passTier) {
+      try {
+        const passes = JSON.parse(localStorage.getItem('cs-streak-passes') || '{}');
+        passes[passTier] = (Number(passes[passTier]) || 0) + 1;
+        localStorage.setItem('cs-streak-passes', JSON.stringify(passes));
+      } catch { /* ignore */ }
+    }
 
     const next = [...claimedList, milestoneDays];
     setClaimedList(next);
@@ -168,9 +197,16 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
 
   if (!isOpen || typeof document === 'undefined') return null;
 
-  // Lịch 7 ngày trong tuần
+  // Lịch 7 ngày trong tuần dựa trên lastDay & streakDays thực tế
   const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-  const todayIndex = (new Date().getDay() + 6) % 7; // T2 là 0, CN là 6
+  const nowDate = new Date();
+  const todayIndex = (nowDate.getDay() + 6) % 7; // T2 là 0, CN là 6
+  const todayMidnight = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+  const streakInfo = getStreakData();
+  const lastParts = String(streakInfo?.last || '').split('-').map(Number);
+  const lastStudyMs = lastParts.length === 3 && lastParts.every(Number.isFinite)
+    ? new Date(lastParts[0], lastParts[1] - 1, lastParts[2]).getTime()
+    : NaN;
 
   const modalNode = (
     <div
@@ -313,9 +349,12 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
             marginBottom: 20,
           }}>
             {daysOfWeek.map((dayLabel, idx) => {
-              const isPast = idx < todayIndex;
               const isToday = idx === todayIndex;
-              const isDone = (isPast && streakDays > 0) || (isToday && hasStreakToday);
+              const dayMs = todayMidnight + (idx - todayIndex) * 864e5;
+              const diffFromLast = Number.isFinite(lastStudyMs)
+                ? Math.round((lastStudyMs - dayMs) / 864e5)
+                : -1;
+              const isDone = streakDays > 0 && diffFromLast >= 0 && diffFromLast < streakDays;
               return (
                 <div key={dayLabel} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: '0.72rem', fontWeight: 700, color: isToday ? '#ea580c' : 'var(--mut, #64748b)' }}>
@@ -403,10 +442,10 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { days: 3, label: '+30 Điểm AI Credit', reward: '30 Điểm AI' },
-                { days: 7, label: '+70 Điểm AI & Huy hiệu Lửa Kiên Trì', reward: '70 Điểm AI & Huy hiệu' },
-                { days: 14, label: 'Mở khóa 1 đề thi PRO miễn phí', reward: '1 Đề thi PRO' },
-                { days: 30, label: 'Mở khóa 1 đề thi VIP Độc Quyền', reward: '1 Đề thi VIP' },
+                { days: 3, label: '+30 Điểm AI Credit', reward: '30 Điểm AI', credits: 30 },
+                { days: 7, label: '+70 Điểm AI & Huy hiệu Lửa Kiên Trì', reward: '70 Điểm AI & Huy hiệu', credits: 70 },
+                { days: 14, label: 'Mở khóa 1 đề thi PRO miễn phí', reward: '1 Đề thi PRO', credits: 100, passTier: 'PRO' },
+                { days: 30, label: 'Mở khóa 1 đề thi VIP Độc Quyền', reward: '1 Đề thi VIP', credits: 200, passTier: 'VIP' },
               ].map((m) => {
                 const canClaim = streakDays >= m.days;
                 const isClaimed = claimedList.includes(m.days);
@@ -456,7 +495,7 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
                     ) : canClaim ? (
                       <button
                         type="button"
-                        onClick={() => handleClaimMilestone(m.days, m.reward)}
+                        onClick={() => handleClaimMilestone(m.days, m.reward, m.credits, m.passTier)}
                         style={{
                           background: 'linear-gradient(135deg, #ea580c, #f97316)',
                           color: '#ffffff',

@@ -14,6 +14,7 @@ import { runWithCredit } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
 import { createPaperExam } from '../../lib/paperStore.js';
+import { keyToStored } from '../../lib/paperGrade.js';
 import {
   STANDARD_TEMPLATES,
   generateTemplateQuestions,
@@ -335,9 +336,8 @@ export default function WordDocxEditor({
   const [examCode, setExamCode] = useState(initialExam?.code || '101');
   const [schoolYear, setSchoolYear] = useState('2025 - 2026');
 
-  // Danh sách câu hỏi
-  const [questions, setQuestions] = useState(() => {
-    return (initialExam?.questions || []).map((q, idx) => ({
+  const normalizeEditorQuestions = (rawList = []) =>
+    (rawList || []).map((q, idx) => ({
       ...q,
       id: q.id || `q_${idx + 1}`,
       part: q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1),
@@ -352,7 +352,11 @@ export default function WordDocxEditor({
       answer: q.answer !== undefined ? String(q.answer) : '',
       correct: q.correct !== undefined ? Number(q.correct) : 0,
     }));
-  });
+
+  // Danh sách câu hỏi
+  const [questions, setQuestions] = useState(() => normalizeEditorQuestions(initialExam?.questions));
+  const questionsRef = useRef(questions);
+  questionsRef.current = questions;
 
   // Ribbon state
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'insert' | 'ai' | 'layout'
@@ -360,6 +364,9 @@ export default function WordDocxEditor({
   const [fontSize, setFontSize] = useState('13pt');
   const [lineSpacing, setLineSpacing] = useState('1.25');
   const [textAlign, setTextAlign] = useState('left');
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [isTwoColumn, setIsTwoColumn] = useState(false);
   const [showExplain, setShowExplain] = useState(true);
@@ -522,18 +529,32 @@ export default function WordDocxEditor({
     }
   }, [open, initialExam]);
 
-  // Tự động nhận diện môn học khi nhận đề thi mới
+  // Đồng bộ toàn bộ metadata, câu hỏi và lịch sử Undo/Redo khi nạp initialExam mới
   useEffect(() => {
-    if (initialExam?.questions?.length) {
+    if (!initialExam) return;
+    if (initialExam.headerInfo?.deptName) setDeptName(initialExam.headerInfo.deptName);
+    if (initialExam.headerInfo?.schoolName) setSchoolName(initialExam.headerInfo.schoolName);
+    if (initialExam.title) setExamName(initialExam.title);
+    if (initialExam.duration) setDuration(String(initialExam.duration));
+    if (initialExam.code) setExamCode(initialExam.code);
+    if (initialExam.questions?.length) {
+      const normalized = normalizeEditorQuestions(initialExam.questions);
+      setQuestions(normalized);
+      setHistory([JSON.stringify(normalized)]);
+      setHistoryIdx(0);
       const detected = detectExamSubjectAndGrade({
-        fileName: initialExam.title || examName || '',
+        fileName: initialExam.title || '',
         text: initialExam.title || '',
-        questions: initialExam.questions,
+        questions: normalized,
       });
       if (detected?.subject && (!initialExam.subject || initialExam.subject === 'Vật lí')) {
         setSubject(detected.subject);
+      } else if (initialExam.subject) {
+        setSubject(initialExam.subject);
       }
-      if (detected?.grade) {
+      if (initialExam.grade) {
+        setGrade(String(initialExam.grade));
+      } else if (detected?.grade) {
         setGrade(String(detected.grade));
       }
     }
@@ -586,9 +607,11 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
       });
       const parsed = await parseExamDocxFile(blob);
       if (parsed?.questions?.length) {
-        setQuestions(parsed.questions);
-        if (parsed.detected?.subject) setSubject(parsed.detected.subject);
-        if (parsed.detected?.grade) setGrade(String(parsed.detected.grade));
+        commitQuestions(parsed.questions);
+        const detectedSub = parsed.subject || parsed.detected?.subject;
+        const detectedGrade = parsed.grade || parsed.detected?.grade;
+        if (detectedSub) setSubject(detectedSub);
+        if (detectedGrade) setGrade(String(detectedGrade));
         const p1Count = parsed.questions.filter((q) => q.part === 1 || q.type === 'single_choice').length;
         const p2Count = parsed.questions.filter((q) => q.part === 2 || q.type === 'true_false').length;
         const p3Count = parsed.questions.filter((q) => q.part === 3 || q.type === 'short_answer').length;
@@ -928,7 +951,11 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
               shufflePart2Statements: true,
             });
 
-      const keys = buildPaperKeysFromVersions(versions);
+      const rawKeys = buildPaperKeysFromVersions(versions);
+      const keys = {};
+      Object.entries(rawKeys).forEach(([c, k]) => {
+        keys[c] = keyToStored(k);
+      });
       const counts = {
         p1: matrixStats.p1,
         p2: matrixStats.p2,
@@ -987,24 +1014,33 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
     }
   };
 
-  // Selected question & history
+  // Selected question & history (khởi tạo snapshot gốc để Undo được từ lần sửa đầu tiên)
   const [selectedQId, setSelectedQId] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [historyIdx, setHistoryIdx] = useState(-1);
+  const [history, setHistory] = useState(() => [JSON.stringify(questions)]);
+  const [historyIdx, setHistoryIdx] = useState(0);
   const [isBusy, setIsBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
   const imageUploadRef = useRef(null);
 
-  // Lưu lịch sử phục vụ Undo / Redo
-  const pushHistory = (newQs) => {
-    setHistory((prev) => [...prev.slice(0, historyIdx + 1), JSON.stringify(newQs)]);
-    setHistoryIdx((prev) => prev + 1);
+  // Áp dụng cập nhật câu hỏi + lưu lịch sử ngoài setState updater để tương thích React StrictMode
+  const commitQuestions = (nextOrUpdater) => {
+    const prev = questionsRef.current || [];
+    const updated = typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater;
+    questionsRef.current = updated;
+    setQuestions(updated);
+    const snap = JSON.stringify(updated);
+    setHistory((hPrev) => {
+      const base = hPrev.length ? hPrev.slice(0, historyIdx + 1) : [JSON.stringify(prev)];
+      return [...base, snap];
+    });
+    setHistoryIdx((idx) => (history.length ? idx + 1 : 1));
   };
 
   const handleUndo = () => {
     if (historyIdx > 0) {
       const prevQs = JSON.parse(history[historyIdx - 1]);
+      questionsRef.current = prevQs;
       setQuestions(prevQs);
       setHistoryIdx((i) => i - 1);
     }
@@ -1013,6 +1049,7 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
   const handleRedo = () => {
     if (historyIdx < history.length - 1) {
       const nextQs = JSON.parse(history[historyIdx + 1]);
+      questionsRef.current = nextQs;
       setQuestions(nextQs);
       setHistoryIdx((i) => i + 1);
     }
@@ -1020,45 +1057,33 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
   // Cập nhật câu hỏi
   const updateQuestion = (id, field, val) => {
-    setQuestions((prev) => {
-      const updated = prev.map((q) => (q.id === id ? { ...q, [field]: val } : q));
-      pushHistory(updated);
-      return updated;
-    });
+    commitQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, [field]: val } : q)));
   };
 
   const updateOptionText = (qId, optIdx, text) => {
-    setQuestions((prev) => {
-      const updated = prev.map((q) => {
+    commitQuestions((prev) =>
+      prev.map((q) => {
         if (q.id !== qId) return q;
         const opts = [...(q.options || [])];
         opts[optIdx] = text;
         return { ...q, options: opts };
-      });
-      pushHistory(updated);
-      return updated;
-    });
+      })
+    );
   };
 
   const updateTfStatement = (qId, sIdx, field, val) => {
-    setQuestions((prev) => {
-      const updated = prev.map((q) => {
+    commitQuestions((prev) =>
+      prev.map((q) => {
         if (q.id !== qId) return q;
         const stmts = [...(q.statements || [])];
         stmts[sIdx] = { ...stmts[sIdx], [field]: val };
         return { ...q, statements: stmts };
-      });
-      pushHistory(updated);
-      return updated;
-    });
+      })
+    );
   };
 
   const deleteQuestion = (id) => {
-    setQuestions((prev) => {
-      const updated = prev.filter((q) => q.id !== id);
-      pushHistory(updated);
-      return updated;
-    });
+    commitQuestions((prev) => prev.filter((q) => q.id !== id));
   };
 
   // Thêm câu hỏi mới
@@ -1081,11 +1106,7 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
       explain: '',
       points: part === 2 ? 1.0 : part === 3 ? 0.25 : 0.25,
     };
-    setQuestions((prev) => {
-      const updated = [...prev, newQ];
-      pushHistory(updated);
-      return updated;
-    });
+    commitQuestions((prev) => [...prev, newQ]);
     setSelectedQId(newId);
   };
 
@@ -1701,9 +1722,33 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                   </select>
                 </div>
                 <div className="wde-ribbon-row">
-                  <button type="button" className="wde-tool-btn" title="In đậm (Ctrl+B)"><IcoBold size={13} /></button>
-                  <button type="button" className="wde-tool-btn" title="In nghiêng (Ctrl+I)"><IcoItalic size={13} /></button>
-                  <button type="button" className="wde-tool-btn" title="Gạch chân (Ctrl+U)"><IcoUnderline size={13} /></button>
+                  <button
+                    type="button"
+                    className={`wde-tool-btn ${isBold ? 'active' : ''}`}
+                    onClick={() => setIsBold((v) => !v)}
+                    aria-pressed={isBold}
+                    title="In đậm (Ctrl+B)"
+                  >
+                    <IcoBold size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`wde-tool-btn ${isItalic ? 'active' : ''}`}
+                    onClick={() => setIsItalic((v) => !v)}
+                    aria-pressed={isItalic}
+                    title="In nghiêng (Ctrl+I)"
+                  >
+                    <IcoItalic size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`wde-tool-btn ${isUnderline ? 'active' : ''}`}
+                    onClick={() => setIsUnderline((v) => !v)}
+                    aria-pressed={isUnderline}
+                    title="Gạch chân (Ctrl+U)"
+                  >
+                    <IcoUnderline size={13} />
+                  </button>
                   <button
                     type="button"
                     className="wde-tool-btn"
@@ -1975,6 +2020,9 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
               fontSize,
               lineHeight: lineSpacing,
               textAlign,
+              fontWeight: isBold ? 700 : undefined,
+              fontStyle: isItalic ? 'italic' : undefined,
+              textDecoration: isUnderline ? 'underline' : undefined,
               transform: `scale(${zoom / 100})`,
               transformOrigin: 'top center',
             }}
@@ -2394,22 +2442,30 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                   <table className="wde-key-table">
                     <thead>
                       <tr>
-                        <th colSpan={Math.min(part1Questions.length, 10)}>Phần I: Trắc nghiệm 4 lựa chọn</th>
+                        <th colSpan={Math.min(part1Questions.length, 10)}>Phần I: Trắc nghiệm 4 lựa chọn ({part1Questions.length} câu)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        {part1Questions.slice(0, 10).map((_, i) => (
-                          <td key={i} style={{ fontWeight: 700 }}>Câu {i + 1}</td>
-                        ))}
-                      </tr>
-                      <tr>
-                        {part1Questions.slice(0, 10).map((q, i) => (
-                          <td key={i} style={{ color: '#185abd', fontWeight: 800 }}>
-                            {q.correct >= 0 ? LETTERS[q.correct] : '-'}
-                          </td>
-                        ))}
-                      </tr>
+                      {Array.from({ length: Math.ceil(part1Questions.length / 10) }, (_, rowIdx) => {
+                        const start = rowIdx * 10;
+                        const slice = part1Questions.slice(start, start + 10);
+                        return (
+                          <React.Fragment key={rowIdx}>
+                            <tr>
+                              {slice.map((_, i) => (
+                                <td key={start + i} style={{ fontWeight: 700 }}>Câu {start + i + 1}</td>
+                              ))}
+                            </tr>
+                            <tr>
+                              {slice.map((q, i) => (
+                                <td key={start + i} style={{ color: '#185abd', fontWeight: 800 }}>
+                                  {Number.isInteger(q.correct) && q.correct >= 0 && q.correct < LETTERS.length ? LETTERS[q.correct] : '-'}
+                                </td>
+                              ))}
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -2602,16 +2658,22 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                               className="wde-bridge-btn primary"
                               onClick={async () => {
                                 await exportToWord({
-                                  deptName,
-                                  schoolName,
-                                  examName: `${examName} - Mã ${curVar.code}`,
+                                  examTitle: `${examName} - Mã ${curVar.code}`,
                                   subject,
                                   grade,
-                                  duration,
+                                  duration: Number(duration) || 45,
                                   code: curVar.code,
-                                  schoolYear,
                                   questions: curQs,
                                   includeAnswers: false,
+                                  headerInfo: {
+                                    deptName,
+                                    schoolName,
+                                    examName: `${examName} - Mã ${curVar.code}`,
+                                    subject,
+                                    grade,
+                                    schoolYear,
+                                    duration: Number(duration) || 45,
+                                  },
                                 });
                               }}
                             >
@@ -2662,16 +2724,22 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                   onClick={async () => {
                     for (const v of shuffledVariants) {
                       await exportToWord({
-                        deptName,
-                        schoolName,
-                        examName: `${examName} - Mã ${v.code}`,
+                        examTitle: `${examName} - Mã ${v.code}`,
                         subject,
                         grade,
-                        duration,
+                        duration: Number(duration) || 45,
                         code: v.code,
-                        schoolYear,
                         questions: v.questions,
                         includeAnswers: true,
+                        headerInfo: {
+                          deptName,
+                          schoolName,
+                          examName: `${examName} - Mã ${v.code}`,
+                          subject,
+                          grade,
+                          schoolYear,
+                          duration: Number(duration) || 45,
+                        },
                       });
                     }
                     onSay?.('Đã xuất toàn bộ 4 mã đề Word kèm đáp án!', 'success');

@@ -143,9 +143,14 @@ function renderInline(text) {
  * Nhận diện dòng có phương trình hóa học độc lập
  */
 function isEquationLine(line) {
-  if (!line) return false;
-  return /(?:->|→|⟶|=+>|⇌)/.test(line) &&
-    (/\+/.test(line) || /[A-Z][a-z]?\d/.test(line));
+  if (!line || line.length > 160) return false;
+  if (/[*`[\]#?!]/.test(line) || /^(?:[-*•]|\d+\.)\s/.test(line)) return false;
+  if (!/(?:->|→|⟶|=+>|⇌|<=>)/.test(line)) return false;
+  if (!(/\+/.test(line) || /[A-Z][a-z]?\d/.test(line))) return false;
+  const words = line.match(/\b[a-zà-ỹ]{3,}\b/gi) || [];
+  const allowedChemWords = new Set(['dư', 'đktc', 'đkc', 'nhiệt', 'đun', 'nóng', 'lạnh', 'đặc', 'loãng', 'tạo', 'mol', 'khí', 'rắn', 'lỏng', 'chậm', 'nhanh', 'hoặc']);
+  const proseCount = words.filter((w) => !allowedChemWords.has(w.toLowerCase()) && /[a-zà-ỹ]/.test(w[0])).length;
+  return proseCount <= 1;
 }
 
 /**
@@ -155,10 +160,11 @@ function isEquationLine(line) {
 export const MarkdownLike = memo(function MarkdownLike({ text }) {
   const lines = useMemo(() => {
     const raw = String(text || '');
-    // Tự động ngắt dòng chuẩn nếu các tiêu đề ### hoặc bullet * bị dính liền trên 1 dòng
+    // Tự động ngắt dòng chuẩn nếu các tiêu đề ### hoặc bullet bị dính liền trên 1 dòng (tránh tách dấu - / * trong biểu thức toán)
     const normalized = raw
       .replace(/([^\n])\s*(#{1,6}\s+)/g, '$1\n\n$2')
-      .replace(/([^\n])\s+([*•-]\s+)/g, '$1\n$2');
+      .replace(/([.:;!?)\]])\s+([*•-]\s+)/g, '$1\n$2')
+      .replace(/([^\n])\s+(•\s+)/g, '$1\n$2');
     return normalized.split('\n');
   }, [text]);
 

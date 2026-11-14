@@ -10,6 +10,7 @@ import './landing-3d.css';
 import './landing-more.css';
 import { Audience, Bento, ExamFlow, Beyond, Trust, StartSteps } from './LandingSections.jsx';
 import { IconDefs, FaqIcon, AtomOrbit, Molecule, Crystal, Helix, Flask } from './Art3D.jsx';
+import { addUserReport } from '../data/virtualExamsBank.js';
 
 const LoginPage = lazy(() => import('./LoginPage.jsx'));
 
@@ -924,6 +925,22 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
 
   const sendFeedback = (e) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const message = String(fd.get('fb-msg') || '').trim();
+    const email = String(fd.get('fb-email') || '').trim();
+    if (!message) return;
+    try {
+      addUserReport('guest', {
+        kind: fbType === 'bug' ? 'report' : 'feedback',
+        category: fbType || 'idea',
+        content: message,
+        userEmail: email || 'Khách (Landing)',
+        rating: 5,
+        submittedAt: Date.now(),
+      });
+    } catch { /* ignore storage errors */ }
+    form.reset();
     setFbSent(true);
     setTimeout(() => { setFbOpen(false); setTimeout(() => setFbSent(false), 300); }, 1400);
   };

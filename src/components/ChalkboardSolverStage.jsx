@@ -139,7 +139,7 @@ export default function ChalkboardSolverStage({
     } catch (e) {
       console.error('[ChalkboardSolverStage Session Error]:', e);
     }
-  }, [lesson, activeStep, totalSteps, redraw]);
+  }, [loadingWasm, lesson, activeStep, totalSteps, redraw]);
 
   // Cập nhật khi resize
   useEffect(() => {

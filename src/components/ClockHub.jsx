@@ -609,11 +609,17 @@ function AlarmTab() {
     return () => clearInterval(id);
   }, []);
 
+  const matchesAlarmDay = (alarmDays, date) => {
+    if (!Array.isArray(alarmDays) || !alarmDays.some(Boolean)) return true;
+    const idx = (date.getDay() + 6) % 7; // 0=T2 .. 6=CN
+    return Boolean(alarmDays[idx]);
+  };
+
   // Check alarms
   useEffect(() => {
     const hhmm = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     alarms.forEach((a) => {
-      if (a.time + ':00' === hhmm && a.enabled) {
+      if (a.enabled && matchesAlarmDay(a.days, now) && a.time + ':00' === hhmm) {
         SOUND_PRESETS.classic();
         notify('Báo thức!', a.label || a.time);
       }
@@ -644,9 +650,13 @@ function AlarmTab() {
     alarms.forEach((a) => {
       if (!a.enabled) return;
       const [h, m] = a.time.split(':').map(Number);
-      const t = new Date();
+      const t = new Date(now);
       t.setHours(h, m, 0, 0);
       if (t <= now) t.setDate(t.getDate() + 1);
+      for (let d = 0; d < 7 && !matchesAlarmDay(a.days, t); d++) {
+        t.setDate(t.getDate() + 1);
+      }
+      if (!matchesAlarmDay(a.days, t)) return;
       const ms = t - now;
       if (ms < closestMs) { closestMs = ms; closest = { ...a, at: t, ms }; }
     });

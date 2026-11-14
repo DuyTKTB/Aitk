@@ -100,7 +100,8 @@ exports.askAI = functions
     const userId = decodedToken.uid;
 
     // 2️⃣ Lấy user credit từ Firestore
-    const userDoc = await db.collection('users').doc(userId).get();
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
     if (!userDoc.exists) {
       return res.status(404).json({error: 'User not found'});
     }
@@ -136,14 +137,18 @@ exports.askAI = functions
       return res.status(400).json({error: `Unknown provider: ${provider}`});
     }
 
-    // 5️⃣ Trừ credit
+    // 5️⃣ Trừ credit bằng Transaction (chống race condition khi gọi song song)
     const tokensUsed = response.tokensUsed || 0;
-    const newCredits = credits - tokensUsed;
-
-    await db.collection('users').doc(userId).update({
-      credits: newCredits,
-      lastAICall: admin.firestore.FieldValue.serverTimestamp(),
-      totalTokensUsed: admin.firestore.FieldValue.increment(tokensUsed)
+    const newCredits = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const cur = Number(snap.data()?.credits || 0);
+      const updated = Math.max(0, cur - tokensUsed);
+      tx.update(userRef, {
+        credits: updated,
+        lastAICall: admin.firestore.FieldValue.serverTimestamp(),
+        totalTokensUsed: admin.firestore.FieldValue.increment(tokensUsed),
+      });
+      return updated;
     });
 
     // 6️⃣ Trả response
@@ -171,22 +176,34 @@ async function callGemini(model, messages, temperature = 0.7, maxTokens = 2000) 
   const apiKey = await getSecretKey('GEMINI_API_KEY');
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent';
 
+  const systemTexts = (messages || [])
+    .filter((m) => m.role === 'system' && m.content)
+    .map((m) => String(m.content));
+  const contents = (messages || [])
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
+      parts: [{ text: String(m.content || '') }],
+    }));
+
+  const payload = {
+    contents,
+    generationConfig: {
+      temperature,
+      maxOutputTokens: maxTokens,
+    },
+  };
+  if (systemTexts.length > 0) {
+    payload.systemInstruction = { parts: [{ text: systemTexts.join('\n\n') }] };
+  }
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey
     },
-    body: JSON.stringify({
-      contents: messages.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{text: m.content}]
-      })),
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens
-      }
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
@@ -194,7 +211,7 @@ async function callGemini(model, messages, temperature = 0.7, maxTokens = 2000) 
   }
 
   const data = await response.json();
-  const text = data.candidates[0]?.content?.parts[0]?.text || '';
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   const inputTokens = data.usageMetadata?.promptTokenCount || 0;
   const outputTokens = data.usageMetadata?.candidatesTokenCount || 0;
 
@@ -230,7 +247,7 @@ async function callGroq(model, messages, temperature = 0.7, maxTokens = 2000) {
   }
 
   const data = await response.json();
-  const text = data.choices[0]?.message?.content || '';
+  const text = data?.choices?.[0]?.message?.content || '';
   const inputTokens = data.usage?.prompt_tokens || 0;
   const outputTokens = data.usage?.completion_tokens || 0;
 
@@ -266,7 +283,7 @@ async function callAgnes(model, messages, temperature = 0.7, maxTokens = 2000) {
   }
 
   const data = await response.json();
-  const text = data.choices[0]?.message?.content || '';
+  const text = data?.choices?.[0]?.message?.content || '';
   const inputTokens = data.usage?.prompt_tokens || 0;
   const outputTokens = data.usage?.completion_tokens || 0;
 
@@ -368,18 +385,25 @@ exports.askAIBatch = functions
        }
      }
 
-     // 5️⃣ Cập nhật total credits
-     await db.collection('users').doc(userId).update({
-       credits,
-       lastAICall: admin.firestore.FieldValue.serverTimestamp(),
-       totalTokensUsed: admin.firestore.FieldValue.increment(totalTokensUsed)
+     // 5️⃣ Trừ total credits bằng Transaction
+     const userRef = db.collection('users').doc(userId);
+     const creditsRemaining = await db.runTransaction(async (tx) => {
+       const snap = await tx.get(userRef);
+       const cur = Number(snap.data()?.credits || 0);
+       const updated = Math.max(0, cur - totalTokensUsed);
+       tx.update(userRef, {
+         credits: updated,
+         lastAICall: admin.firestore.FieldValue.serverTimestamp(),
+         totalTokensUsed: admin.firestore.FieldValue.increment(totalTokensUsed),
+       });
+       return updated;
      });
 
      // 6️⃣ Trả batch results
      return res.status(200).json({
        ok: true,
        results,
-       creditsRemaining: credits,
+       creditsRemaining,
        totalTokensUsed
      });
    } catch (error) {

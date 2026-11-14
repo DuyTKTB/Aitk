@@ -1117,8 +1117,8 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
                                 cursor: 'pointer',
                                 fontSize: '0.75rem',
                                 fontWeight: 800,
-                                background: stmt.answer !== false ? '#10b981' : 'transparent',
-                                color: stmt.answer !== false ? '#fff' : 'var(--mut)',
+                                background: stmt.answer === true ? '#10b981' : 'transparent',
+                                color: stmt.answer === true ? '#fff' : 'var(--mut)',
                               }}
                             >
                               Đúng

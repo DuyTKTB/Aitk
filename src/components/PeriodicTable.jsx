@@ -98,7 +98,12 @@ export default function PeriodicTable({ preview = false }) {
     if (study) {
       setRevealed((r) => {
         const n = new Set(r);
-        if (n.has(e.atomicNumber)) n.delete(e.atomicNumber); else n.add(e.atomicNumber);
+        if (n.has(e.atomicNumber)) {
+          n.delete(e.atomicNumber);
+        } else {
+          n.add(e.atomicNumber);
+          setStudyStats((st) => ({ ...st, ok: st.ok + 1 }));
+        }
         return n;
       });
       return;
@@ -118,7 +123,7 @@ export default function PeriodicTable({ preview = false }) {
   useEffect(() => {
     if (!gridRef.current) return;
     const onKey = (ev) => {
-      if (/INPUT|TEXTAREA|SELECT/.test(ev.target.tagName)) return;
+      if (/INPUT|TEXTAREA|SELECT|BUTTON|A/.test(ev.target.tagName) || ev.target?.isContentEditable) return;
       if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '].includes(ev.key)) return;
       if (!cursor) {
         setCursor({ g: 1, p: 1 });
@@ -225,7 +230,7 @@ export default function PeriodicTable({ preview = false }) {
 
       {!preview && (
         <p className="hint">
-          {study && `Chế độ học: ${studyStats.ok} đúng / ${studyStats.no} sai. `}
+          {study && `Chế độ học: đã ôn ${revealed.size}/${ELEMENTS.length} nguyên tố (lật: ${studyStats.ok} lượt). `}
           {filtering && !study ? `${matches.size} nguyên tố phù hợp. ` : ''}
           {!study && 'Bấm số nhóm/chu kỳ để làm nổi bật. Shift+Click chọn 2 nguyên tố để so sánh. Dùng phím ←→↑↓ di chuyển.'}
         </p>

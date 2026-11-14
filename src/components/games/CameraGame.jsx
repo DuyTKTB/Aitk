@@ -124,21 +124,44 @@ export default function CameraGame({ gameId, onExit }) {
   const cam = useGameCamera({ mode: game.mode, enabled: phase !== 'over' });
   const { signals } = cam;
 
+  const signalsRef = useRef(signals); signalsRef.current = signals;
+  const qiRef = useRef(0); qiRef.current = qi;
+  const livesRef = useRef(3); livesRef.current = lives;
+  const qLenRef = useRef(0); qLenRef.current = questions.length;
+  const timersRef = useRef([]);
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+  }, []);
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter((x) => x !== id);
+      fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+  useEffect(() => clearTimers, [clearTimers]);
+
   const lockedRef = useRef(null); lockedRef.current = locked;
   const holdRef = useRef(0);
   const challengeRef = useRef({ startedAt: 0, progress: 0, claps: 0, lastClap: 0 });
 
   const resetRound = useCallback(() => {
+    clearTimers();
     setLocked(null); setVerdict(null); setHold(0); setSlotHint(-1);
     setChallenge(''); setChallengePhase(null);
     setHideWatch(false); setGate(false); setGateWon(false); setGateLate(false);
     holdRef.current = 0; challengeRef.current = { startedAt: 0, progress: 0, claps: 0, lastClap: 0 };
-  }, []);
+  }, [clearTimers]);
 
   const advance = useCallback(() => {
     resetRound();
+    if (livesRef.current <= 0 || qiRef.current + 1 >= qLenRef.current) {
+      setPhase('over');
+      return;
+    }
     setQi((v) => v + 1);
-    setLives((l) => (l <= 0 ? 0 : l));
   }, [resetRound]);
 
   const loadQ = useCallback(async () => {
@@ -181,12 +204,29 @@ export default function CameraGame({ gameId, onExit }) {
     const ok = !!chosen?.isRight;
     setLocked(idx);
     setVerdict(ok ? 'right' : 'wrong');
-    if (ok) { setScore((s) => s + 100 + streak * 10); setStreak((s) => s + 1); }
-    else { setStreak(0); setLives((l) => l - 1); }
+    if (ok) {
+      setScore((s) => s + 100 + streak * 10);
+      setStreak((s) => s + 1);
+    } else {
+      setStreak(0);
+      const nextLives = livesRef.current - 1;
+      livesRef.current = nextLives;
+      setLives(nextLives);
+      setHold(0); setSlotHint(-1);
+      if (nextLives <= 0) {
+        later(() => { resetRound(); setPhase('over'); }, 1100);
+      } else {
+        later(() => advance(), 1100);
+      }
+      return;
+    }
     setHold(0); setSlotHint(-1);
 
-    if (!ok) { setTimeout(() => advance(), 1100); return; }
-    if (game.mode === 'freeze') { setChallengePhase('run'); challengeRef.current.startedAt = Date.now(); setTimeout(() => advance(), 4000); return; }
+    if (game.mode === 'freeze') {
+      setChallengePhase('run');
+      challengeRef.current = { startedAt: Date.now(), progress: 0, claps: 0, lastClap: 0 };
+      return;
+    }
     if (game.mode === 'hide') { setHideWatch(true); return; }
     if (game.mode === 'smile' || game.mode === 'faces') return;
     if (game.mode in CHALLENGE_MS) {
@@ -203,8 +243,8 @@ export default function CameraGame({ gameId, onExit }) {
       challengeRef.current = { startedAt: Date.now(), progress: 0, claps: 0, lastClap: 0 };
       return;
     }
-    setTimeout(() => advance(), 1100);
-  }, [opts, streak, game.mode, advance]);
+    later(() => advance(), 1100);
+  }, [opts, streak, game.mode, advance, later, resetRound]);
 
   const settleRef = useRef(null); settleRef.current = settle;
 
@@ -217,7 +257,7 @@ export default function CameraGame({ gameId, onExit }) {
 
     const iv = setInterval(() => {
       const m = game.mode;
-      const s = signals;
+      const s = signalsRef.current;
       const isLocked = lockedRef.current != null;
 
       /* ---- A. chốt đáp án bằng camera (khi CHƯA lock) ---- */
@@ -264,14 +304,32 @@ export default function CameraGame({ gameId, onExit }) {
         const dt = Date.now() - el.startedAt;
         let hit = false;
 
+        if (m === 'freeze') {
+          if (s.motion > 0.28) {
+            setChallengePhase('fail');
+            const nl = livesRef.current - 1;
+            livesRef.current = nl;
+            setLives(nl);
+            later(() => (nl <= 0 ? (resetRound(), setPhase('over')) : advance()), 900);
+            return;
+          }
+          setHold(Math.min(1, dt / 3500));
+          if (dt >= 3500) {
+            setChallengePhase('ok');
+            setScore((v) => v + 40);
+            later(advance, 900);
+            return;
+          }
+        }
+
         if (m === 'exercise') {
           if (challenge.includes('cao quá đầu')) hit = s.faces > 0 && s.wristY != null && s.wristY < s.noseY - 0.02;
           else if (challenge.includes('rộng')) hit = s.handPresent && s.spread > 0.55;
           else if (challenge.includes('xuôi')) hit = s.faces > 0 && s.wristY != null && s.wristY > 0.72;
           if (hit) el.progress = Math.min(1, el.progress + 120 / 2500);
           setHold(el.progress);
-          if (dt > 7000) { setChallengePhase('fail'); setTimeout(advance, 900); return; }
-          if (el.progress >= 1) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.exercise); setTimeout(advance, 900); return; }
+          if (dt > 7000) { setChallengePhase('fail'); later(advance, 900); return; }
+          if (el.progress >= 1) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.exercise); later(advance, 900); return; }
         }
 
         if (m === 'emotion') {
@@ -281,21 +339,21 @@ export default function CameraGame({ gameId, onExit }) {
           else if (challenge.startsWith('NGHIÊM')) hit = s.browDown > 0.45 && s.smile < 0.25;
           if (hit) el.progress = Math.min(1, el.progress + 120 / 2000);
           setHold(el.progress);
-          if (dt > 6000) { setChallengePhase('fail'); setTimeout(advance, 900); return; }
-          if (el.progress >= 1) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.emotion); setTimeout(advance, 900); return; }
+          if (dt > 6000) { setChallengePhase('fail'); later(advance, 900); return; }
+          if (el.progress >= 1) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.emotion); later(advance, 900); return; }
         }
 
         if (m === 'stare') {
-          if (s.blink > 0.5) { setChallengePhase('fail'); setTimeout(advance, 900); return; }
+          if (s.blink > 0.5) { setChallengePhase('fail'); later(advance, 900); return; }
           setHold(Math.min(1, dt / 8000));
-          if (dt > 8000) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.stare); setTimeout(advance, 900); return; }
+          if (dt > 8000) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.stare); later(advance, 900); return; }
         }
 
         if (m === 'squat') {
           if (s.noseY > 0.62) el.progress = Math.min(1, el.progress + 120 / 2000);
           setHold(el.progress);
-          if (dt > 6000) { setChallengePhase('fail'); setTimeout(advance, 900); return; }
-          if (el.progress >= 1) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.squat); setTimeout(advance, 900); return; }
+          if (dt > 6000) { setChallengePhase('fail'); later(advance, 900); return; }
+          if (el.progress >= 1) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.squat); later(advance, 900); return; }
         }
 
         if (m === 'clap') {
@@ -304,8 +362,8 @@ export default function CameraGame({ gameId, onExit }) {
           }
           el.progress = Math.min(1, el.claps / 3);
           setHold(el.progress);
-          if (el.claps >= 3) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.clap); setTimeout(advance, 900); return; }
-          if (dt > 6000) { setChallengePhase('fail'); setTimeout(advance, 900); return; }
+          if (el.claps >= 3) { setChallengePhase('ok'); setScore((v) => v + CORRECT_BONUS.clap); later(advance, 900); return; }
+          if (dt > 6000) { setChallengePhase('fail'); later(advance, 900); return; }
         }
       }
 
@@ -328,9 +386,11 @@ export default function CameraGame({ gameId, onExit }) {
         if (s.faces > 0) {
           setHideWatch(false);
           setVerdict('caught');
-          setLives((l) => l - 1);
+          const nl = livesRef.current - 1;
+          livesRef.current = nl;
+          setLives(nl);
           holdRef.current = 0; setHold(0);
-          setTimeout(advance, 1100);
+          later(() => (nl <= 0 ? (resetRound(), setPhase('over')) : advance()), 1100);
         } else {
           holdRef.current = Math.min(1, holdRef.current + 120 / 3000);
           setHold(holdRef.current);
@@ -348,18 +408,29 @@ export default function CameraGame({ gameId, onExit }) {
       }
     }, 120);
     return () => clearInterval(iv);
-  }, [phase, q, signals, opts, game.mode, game.holdMs, challenge, challengePhase, hideWatch, gate, gateWon, gateLate]); // eslint-disable-line
+  }, [phase, q, opts, game.mode, game.holdMs, challenge, challengePhase, hideWatch, gate, gateWon, gateLate, advance, later, resetRound]); // eslint-disable-line
 
   /* ---- mode hands: hẹn đèn xanh ---- */
   useEffect(() => {
-    if (phase !== 'play' || game.mode !== 'hands' || !q || locked != null || gate) return undefined;
-    const wait = setTimeout(() => { setGate(true); setTimeout(() => setGateLate(true), 2000); }, 2000 + Math.random() * 3000);
-    return () => clearTimeout(wait);
-  }, [qi, phase, game.mode, q, gate]); // eslint-disable-line
+    if (phase !== 'play' || game.mode !== 'hands' || !q || locked != null || gate || gateWon || gateLate) return undefined;
+    let lateTimer = null;
+    const wait = setTimeout(() => {
+      setGate(true);
+      lateTimer = setTimeout(() => {
+        setGateLate(true);
+        later(advance, 1200);
+      }, 2000);
+    }, 2000 + Math.random() * 3000);
+    return () => {
+      clearTimeout(wait);
+      if (lateTimer) clearTimeout(lateTimer);
+    };
+  }, [qi, phase, game.mode, q, locked, gate, gateWon, gateLate, advance, later]); // eslint-disable-line
 
   const answerClick = (idx) => {
     if (locked != null) return;
     if (game.mode === 'fingers' || game.mode === 'look' || game.mode === 'point' || game.mode === 'lean') return;
+    if (game.mode === 'hands' && !gateWon) return;
     settle(idx);
   };
 
@@ -368,7 +439,7 @@ export default function CameraGame({ gameId, onExit }) {
   const verdictRef = useRef(null); verdictRef.current = verdict;
 
   /* ================= RENDER ================= */
-  if (phase === 'over') {
+  if (phase === 'over' || over) {
     return <GameOverModal title={`${game.name} — Kết thúc`} score={score} onRestart={start} />;
   }
 
@@ -379,7 +450,7 @@ export default function CameraGame({ gameId, onExit }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '1rem' }}>
           <button
             type="button"
-            onClick={() => (phase === 'play' ? setPhase('over') : onExit?.())}
+            onClick={() => (onExit ? onExit() : setPhase('over'))}
             title="Thoát"
             style={{ width: 38, height: 38, borderRadius: 'var(--t-r-md, 14px)', border: '1px solid var(--t-border)', background: 'var(--t-surface-2, #fff)', color: 'var(--t-ink)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
           >

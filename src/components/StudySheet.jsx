@@ -52,7 +52,7 @@ const CORE_TOOLS = [
 
 export default function StudySheet({ open, onClose }) {
   const { user, tier, logout } = useAuth();
-  const { count: streakDays, hasStreakToday } = useLiveStreak();
+  const { count: streakDays, isToday: hasStreakToday } = useLiveStreak();
 
   useEffect(() => {
     if (!open) return undefined;

@@ -85,13 +85,13 @@ export default function ClassChat({ onOpenProfile }) {
     const st = getClassStreakStatus(liveClassDoc, user.uid);
     const today = getVietnamDateKey();
     const warnKey = `cs_class_urgent_warn_${liveClassDoc.id}_${today}`;
-    if (st.urgent && !st.completedToday) {
+    if (st.urgent && !st.completedToday && user?.uid) {
       try {
         if (!localStorage.getItem(warnKey)) {
           localStorage.setItem(warnKey, '1');
           sendClassMessage(
             liveClassDoc.id,
-            { uid: 'system', displayName: 'Hệ thống' },
+            { uid: user.uid, displayName: 'Hệ thống', isSystem: true },
             `⏳ Lớp chỉ còn ${st.remainingTimeStr} để giữ chuỗi! Còn thiếu ${st.remainingNeeded} bạn nữa, cùng nhau cố lên nhé! 🔥`
           );
         }

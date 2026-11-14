@@ -238,11 +238,12 @@ export default function AIQuizGenerator({ onClose }) {
       const history = [{ role: 'user', parts }];
 
       let fullText = '';
-      await new Promise((resolve, reject) => {
+      const res = await new Promise((resolve, reject) => {
         const p = askAI(history, (chunk) => { fullText = chunk; });
         p.then(resolve).catch(reject);
         p.abort = p.abort || (() => {});
       });
+      if (!fullText && res?.text) fullText = res.text;
 
       const cleaned = fullText
         .replace(/```json\s*/gi, '')

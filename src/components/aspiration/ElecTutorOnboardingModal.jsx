@@ -269,7 +269,12 @@ export default function ElecTutorOnboardingModal({
   }, [selectedBlock, targetScore, exam.scale]);
 
   const portfolioEvaluation = useMemo(() => {
-    return evaluatePortfolioHealth(userState.aspirations, 24.5, exam.scale);
+    const nv1Target = Number(userState.aspirations?.[0]?.targetScore);
+    const fallbackPred = exam.scale === 30 ? 24.5 : Number((exam.scale * 0.82).toFixed(1));
+    const estimatedPred = Number.isFinite(nv1Target) && nv1Target > 0 && nv1Target <= exam.scale
+      ? Number((nv1Target * 0.94).toFixed(1))
+      : fallbackPred;
+    return evaluatePortfolioHealth(userState.aspirations, estimatedPred, exam.scale);
   }, [userState.aspirations, exam.scale]);
 
   useEffect(() => {

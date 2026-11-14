@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import GameBar from './GameBar.jsx';
 import QuestionBankPicker from './QuestionBankPicker.jsx';
 import sound from '../../lib/gameSound.js';
+import { normalizeChoiceQuestionList } from '../../lib/gameQuestionBank.js';
 import {
   SvgTrophy,
   SvgRobot,
@@ -50,7 +51,7 @@ export default function MillionaireGame() {
   const [questions, setQuestions] = useState(() => {
     try {
       const saved = localStorage.getItem('cs-game:millionaire:questions');
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeChoiceQuestionList(JSON.parse(saved), DEFAULT_15_QUESTIONS);
     } catch {}
     return DEFAULT_15_QUESTIONS;
   });
@@ -433,9 +434,11 @@ export default function MillionaireGame() {
         <QuestionBankPicker
           mode="list"
           maxCount={15}
-          onApply={(picked) => {
-            if (picked && picked.length >= 10) {
-              setQuestions(picked);
+          onApply={(picked, how) => {
+            const converted = normalizeChoiceQuestionList(picked);
+            const nextList = how === 'append' ? [...questions, ...converted] : converted;
+            if (nextList.length >= 10) {
+              setQuestions(nextList);
               handleRestart();
             } else {
               alert('Cần ít nhất 10-15 câu hỏi cho gameshow!');

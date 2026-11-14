@@ -344,7 +344,8 @@ function isAllowedOrigin(req) {
 
 async function verifyTurnstileToken(token, clientIp) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret || !token) return true;
+  if (!secret) return true;
+  if (!token) return false;
   try {
     const form = new URLSearchParams();
     form.append('secret', secret);
@@ -398,7 +399,12 @@ export default async function handler(req, res) {
 
   const db = getFirestore(app);
   const authAdmin = getAuth(app);
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+  let body = {};
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+  } catch {
+    return res.status(400).json({ ok: false, code: 'INVALID_JSON', message: 'Dữ liệu JSON không hợp lệ.' });
+  }
   const action = body.action;
   const now = Date.now();
   const appName = process.env.OTP_APP_NAME || 'ELEC AI';
@@ -421,12 +427,16 @@ export default async function handler(req, res) {
     });
   }
 
-  // 5. Xác thực Cloudflare Turnstile (nếu có cung cấp token)
+  // 5. Xác thực Cloudflare Turnstile khi server đã cấu hình TURNSTILE_SECRET_KEY
   const turnstileToken = body.turnstileToken || req.headers['cf-turnstile-response'];
-  if (process.env.TURNSTILE_SECRET_KEY && turnstileToken) {
+  if (process.env.TURNSTILE_SECRET_KEY && isSendAction) {
     const isTokenValid = await verifyTurnstileToken(turnstileToken, clientIp);
     if (!isTokenValid) {
-      return res.status(403).json({ ok: false, code: 'CAPTCHA_FAILED', message: 'Xác thực bảo vệ bot thất bại.' });
+      return res.status(403).json({
+        ok: false,
+        code: 'CAPTCHA_FAILED',
+        message: 'Vui lòng hoàn tất xác thực bảo vệ bot (Turnstile) trước khi tiếp tục.',
+      });
     }
   }
 

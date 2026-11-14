@@ -396,8 +396,9 @@ export default function StatsPage() {
           try {
             const classSubs = await getSubmissionsByStudent(uid);
             for (const sub of classSubs || []) {
-              const total = sub.total || 40;
-              const correct = sub.correct ?? Math.round(((sub.score || 0) / 10) * total);
+              const total = sub.totalQuestions ?? sub.total ?? 40;
+              const totalPts = sub.totalPoints || 10;
+              const correct = sub.correctCount ?? sub.correct ?? Math.round(((sub.score || 0) / totalPts) * total);
               combined.push({
                 id: `class-${sub.id}`,
                 total_questions: total,

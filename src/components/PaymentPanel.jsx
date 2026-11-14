@@ -80,7 +80,7 @@ const ALL_PACKAGES = {
   'gv-1m':  { id: 'gv-1m',  role: 'teacher', label: 'ELEC AI Giáo Viên PRO — 1 tháng', months: 1, amount: 149000, badge: null },
 };
 
-export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, customPackage }) {
+export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCheckStatus, onClose, customPackage }) {
   const [panelRole, setPanelRole] = useState(() => customPackage?.role || 'student');
   const [selected, setSelected] = useState(() => customPackage?.key || (panelRole === 'student' ? 'hs-12m' : 'gv-12m'));
   const [step, setStep] = useState(() => (customPackage ? 'qr' : 'select'));
@@ -98,6 +98,7 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
   const rawPkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-12m'];
   const finalAmount = appliedDiscount ? appliedDiscount.finalPrice : rawPkg.amount;
   const isFree = Boolean(appliedDiscount?.isFree);
+  const discountUserId = userId || identCode;
 
   const pkg = useMemo(() => ({
     ...rawPkg,
@@ -109,8 +110,9 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
 
   const transferContent = useMemo(() => {
     const cleanId = String(identCode || '').replace(/^ELECAI-?/i, '');
-    return `ELEC ${cleanId || 'VIP2026'}`;
-  }, [identCode]);
+    const prefix = panelRole === 'teacher' ? 'ELECAI PRO' : 'ELECAI VIP';
+    return `${prefix} ${cleanId || 'VIP2026'}`;
+  }, [identCode, panelRole]);
 
   const qrUrl = useMemo(() => {
     const params = new URLSearchParams({
@@ -127,7 +129,7 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
     setDiscountLoading(true);
     setDiscountMsg(null);
     try {
-      const res = await verifyDiscountCode({ code, originalPrice: rawPkg.amount, userId: identCode });
+      const res = await verifyDiscountCode({ code, originalPrice: rawPkg.amount, userId: discountUserId });
       if (res.ok) {
         setAppliedDiscount(res);
         setDiscountMsg({ ok: true, text: res.message });
@@ -156,15 +158,27 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
   }, [customPackage?.initialDiscountCode]);
 
   const handleFreeActivation = async () => {
+    if (!appliedDiscount?.code) return;
     setActivatingFree(true);
     try {
-      if (appliedDiscount?.keyId) {
-        await recordDiscountUsage({ keyId: appliedDiscount.keyId, userId: identCode });
+      // Re-verify discount server-side right before granting free access
+      const verified = await verifyDiscountCode({
+        code: appliedDiscount.code,
+        originalPrice: rawPkg.amount,
+        userId: discountUserId,
+      });
+      if (!verified?.ok || !verified?.isFree) {
+        setAppliedDiscount(null);
+        setDiscountMsg({ ok: false, text: verified?.error || 'Mã ưu đãi không còn hợp lệ hoặc không giảm 100%.' });
+        return;
+      }
+      if (verified.keyId) {
+        await recordDiscountUsage({ keyId: verified.keyId, userId: discountUserId });
       }
       await onPaymentSuccess?.({
         ...pkg,
         amount: 0,
-        discountCode: appliedDiscount?.code,
+        discountCode: verified.code,
         isFree: true,
       });
       alert('Chúc mừng! Gói tài khoản đã được kích hoạt thành công với mã ưu đãi.');
@@ -214,11 +228,13 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
   const checkStatus = async (silent = false) => {
     if (!silent) setChecking(true);
     try {
-      const result = await onPaymentSuccess?.(pkg);
-      if (result?.isVip || result?.isPro || result?.ok) {
-        alert('Chúc mừng! Tài khoản của bạn đã được nâng cấp thành công.');
-        onClose?.();
-        return;
+      if (typeof onCheckStatus === 'function') {
+        const result = await onCheckStatus(pkg);
+        if (result?.isVip || result?.isPro || result?.ok) {
+          alert('Chúc mừng! Tài khoản của bạn đã được nâng cấp thành công.');
+          onClose?.();
+          return;
+        }
       }
       if (!silent) {
         alert('Hệ thống chưa ghi nhận giao dịch.\nVui lòng đợi thêm 15-30 giây và bấm lại.');
@@ -235,6 +251,40 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
     const sec = s % 60;
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
+
+  const renderDiscountSection = () => (
+    <div className="apl-pay-discount-section">
+      {!appliedDiscount ? (
+        <div className="apl-pay-discount-form">
+          <input
+            type="text"
+            placeholder="Mã giảm giá / Voucher (nếu có)"
+            value={couponInput}
+            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+            className="apl-pay-discount-input"
+          />
+          <button
+            type="button"
+            className="apl-pay-discount-btn"
+            onClick={() => handleApplyDiscount()}
+            disabled={discountLoading || !couponInput.trim()}
+          >
+            {discountLoading ? 'Kiểm tra…' : 'Áp dụng'}
+          </button>
+        </div>
+      ) : (
+        <div className="apl-pay-discount-applied">
+          <span>✓ {appliedDiscount.message}</span>
+          <button type="button" className="apl-pay-discount-remove" onClick={handleRemoveDiscount}>
+            Gỡ bỏ
+          </button>
+        </div>
+      )}
+      {discountMsg && !discountMsg.ok && (
+        <small style={{ color: '#ef4444', fontSize: '0.78rem' }}>{discountMsg.text}</small>
+      )}
+    </div>
+  );
 
   const filteredPackages = Object.entries(ALL_PACKAGES).filter(
     ([, p]) => p.role === panelRole
@@ -314,37 +364,7 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
           </ul>
 
           {/* Ô nhập mã giảm giá / Voucher */}
-          <div className="apl-pay-discount-section">
-            {!appliedDiscount ? (
-              <div className="apl-pay-discount-form">
-                <input
-                  type="text"
-                  placeholder="Mã giảm giá / Voucher (nếu có)"
-                  value={couponInput}
-                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                  className="apl-pay-discount-input"
-                />
-                <button
-                  type="button"
-                  className="apl-pay-discount-btn"
-                  onClick={() => handleApplyDiscount()}
-                  disabled={discountLoading || !couponInput.trim()}
-                >
-                  {discountLoading ? 'Kiểm tra…' : 'Áp dụng'}
-                </button>
-              </div>
-            ) : (
-              <div className="apl-pay-discount-applied">
-                <span>✓ {appliedDiscount.message}</span>
-                <button type="button" className="apl-pay-discount-remove" onClick={handleRemoveDiscount}>
-                  Gỡ bỏ
-                </button>
-              </div>
-            )}
-            {discountMsg && !discountMsg.ok && (
-              <small style={{ color: '#ef4444', fontSize: '0.78rem' }}>{discountMsg.text}</small>
-            )}
-          </div>
+          {renderDiscountSection()}
 
           <button
             type="button"
@@ -383,6 +403,8 @@ export default function PaymentPanel({ identCode, onPaymentSuccess, onClose, cus
               {pkg.label}
             </span>
           </div>
+
+          {renderDiscountSection()}
 
           {/* Nếu được miễn phí 100% qua mã ưu đãi */}
           {isFree ? (

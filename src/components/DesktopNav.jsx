@@ -320,13 +320,19 @@ export default function DesktopNav({
   isPro,
   userRole,
   credits,
+  toolOpen: toolOpenProp,
+  onToolOpen,
+  navRef,
   onSearch,
   onToggleTheme,
   onLogout,
 }) {
-  const [toolOpen, setToolOpen] = useState(false);
+  const [localToolOpen, setLocalToolOpen] = useState(false);
   const [toolFolder, setToolFolder] = useState('all');
-  const wrapRef = useRef(null);
+  const localRef = useRef(null);
+  const toolOpen = toolOpenProp !== undefined ? toolOpenProp : localToolOpen;
+  const setToolOpen = onToolOpen || setLocalToolOpen;
+  const wrapRef = navRef || localRef;
   const { user, isLoggedIn } = useAuth();
   const { count: streakCount, isToday: hasStreakToday } = useLiveStreak();
   const { playing: introPlaying } = useElecIntro();

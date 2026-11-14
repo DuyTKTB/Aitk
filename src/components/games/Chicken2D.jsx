@@ -3,6 +3,7 @@ import QuestionEditor from './QuestionEditor';
 import GameOverModal from './GameOverModal';
 import { GAME_PRESETS } from '../../data/gamePresets';
 import { sound } from '../../lib/gameSound';
+import { normalizeBankQuestionList } from '../../lib/gameQuestionBank';
 
 const FIELD_W = 900;
 const FIELD_H = 560;
@@ -221,7 +222,7 @@ export default function Chicken2D() {
   const [questions, setQuestions] = useState(() => {
     try {
       const raw = localStorage.getItem('cs-game:chicken:questions');
-      return raw ? JSON.parse(raw) : GAME_PRESETS.chicken;
+      return raw ? normalizeBankQuestionList(JSON.parse(raw), GAME_PRESETS.chicken) : GAME_PRESETS.chicken;
     } catch { return GAME_PRESETS.chicken; }
   });
 

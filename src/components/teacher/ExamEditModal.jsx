@@ -256,6 +256,12 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
       setQuestions((qs) => qs.map((qq, k) => (
         k === tgt.i ? { ...qq, options: (qq.options || []).map((o, k2) => (k2 === tgt.oi ? next : o)) } : qq
       )));
+    } else if (tgt.type === 'stmt') {
+      setQuestions((qs) => qs.map((qq, k) => (
+        k === tgt.i ? { ...qq, statements: (qq.statements || []).map((s, k2) => (k2 === tgt.si ? { ...s, text: next } : s)) } : qq
+      )));
+    } else if (tgt.type === 'sa') {
+      patchQ(tgt.i, { answer: next });
     } else {
       patchQ(tgt.i, { q: next });
     }
@@ -385,7 +391,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
             options: [],
             correct: -1,
             answer: vi,
-            accepted: [...new Set([vi, vi.replace(',', '.')])].filter(Boolean),
+            accepted: [...new Set([vi, vi.replace(',', '.'), ...(q.accepted || [])].map((x) => String(x ?? '').trim()))].filter(Boolean),
           };
         }
         const kept = (q.options || [])
@@ -773,6 +779,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
                               style={P.input}
                               value={st.text || ''}
                               placeholder={`Nhận định ${String.fromCharCode(97 + k)}`}
+                              onFocus={(e) => { fieldRef.current = e.target; targetRef.current = { type: 'stmt', i, si: k }; }}
                               onChange={(e) => patchQ(i, { statements: q.statements.map((x, j) => (j === k ? { ...x, text: e.target.value } : x)) })}
                             />
                             <select
@@ -794,6 +801,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
                           style={P.input}
                           value={q.answer ?? ''}
                           placeholder="VD: 12,5"
+                          onFocus={(e) => { fieldRef.current = e.target; targetRef.current = { type: 'sa', i }; }}
                           onChange={(e) => patchQ(i, { answer: e.target.value })}
                         />
                         <small style={{ display: 'block', marginTop: '.3rem', color: 'var(--t-ink-muted)', font: '500 .68rem var(--t-font-sans)' }}>

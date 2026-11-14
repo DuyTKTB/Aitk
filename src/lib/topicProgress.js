@@ -49,7 +49,9 @@ async function loadFromDb(uid) {
   /* MOT nguon duy nhat: roadmapEvidence da gop Firestore + Supabase + phien luyen
      va co cache rieng, nen khong query lai exam_attempts/user_answers o day. */
   const res = await loadEvidence(uid);
-  return summarizeByTopic(res.events);
+  const summary = summarizeByTopic(res.events);
+  writeCache(uid, summary);
+  return summary;
 }
 /* Xoá cache sau khi làm bài xong (gọi ở nơi nộp bài nếu cần) */
 export function invalidateTopicProgress(uid) {

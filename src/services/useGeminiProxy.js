@@ -1,7 +1,7 @@
 // Gọi 1 lần ở main.jsx (sau khi import examAiUtils) để bỏ VITE_GEMINI_API_KEY khỏi bundle:
 //   import './lib/useGeminiProxy.js';
-import { setModelCaller } from './examAiUtils.js';
-import { auth } from './firebase.js'; // đổi theo export auth thực tế của app
+import { setModelCaller } from '../lib/examAiUtils.js';
+import { auth } from '../lib/firebase.js'; // đổi theo export auth thực tế của app
 
 setModelCaller(async ({ system, parts, temperature, signal }) => {
   const token = await auth.currentUser?.getIdToken();

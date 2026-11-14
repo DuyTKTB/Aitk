@@ -17361,33 +17361,41 @@ export function findLessonById(lessonId) {
   return null;
 }
 
+function matchDedicatedChapter(chapterId) {
+  if (!chapterId) return null;
+  const q = String(chapterId).toLowerCase();
+  const entries = Object.entries(DEDICATED_LESSONS);
+  for (const [subjectKey, chapters] of entries) {
+    const exact = chapters.find((ch) => ch.chapterId.toLowerCase() === q);
+    if (exact) return { subjectKey, ch: exact };
+  }
+  for (const [subjectKey, chapters] of entries) {
+    const fuzzy = chapters.find((ch) => {
+      const cid = ch.chapterId.toLowerCase();
+      return cid.includes(q) || q.includes(cid) || ch.chapterName.toLowerCase().includes(q);
+    });
+    if (fuzzy) return { subjectKey, ch: fuzzy };
+  }
+  return null;
+}
+
 /**
  * Tra cứu bài học đầu tiên của một chương
  */
 export function findLessonByChapterId(chapterId) {
-  if (!chapterId) return null;
-  const q = String(chapterId).toLowerCase();
-  for (const [subjectKey, chapters] of Object.entries(DEDICATED_LESSONS)) {
-    for (const ch of chapters) {
-      if (
-        ch.chapterId.toLowerCase() === q ||
-        ch.chapterId.toLowerCase().includes(q) ||
-        q.includes(ch.chapterId.toLowerCase()) ||
-        ch.chapterName.toLowerCase().includes(q)
-      ) {
-        if (ch.lessons && ch.lessons.length > 0) {
-          return {
-            ...ch.lessons[0],
-            lessonIndex: 1,
-            chapterId: ch.chapterId,
-            chapterName: ch.chapterName,
-            chapterNum: ch.chapterNum,
-            subjectKey,
-            chapter: ch,
-          };
-        }
-      }
-    }
+  const hit = matchDedicatedChapter(chapterId);
+  if (!hit) return null;
+  const { subjectKey, ch } = hit;
+  if (ch.lessons && ch.lessons.length > 0) {
+    return {
+      ...ch.lessons[0],
+      lessonIndex: 1,
+      chapterId: ch.chapterId,
+      chapterName: ch.chapterName,
+      chapterNum: ch.chapterNum,
+      subjectKey,
+      chapter: ch,
+    };
   }
   return null;
 }
@@ -17396,25 +17404,14 @@ export function findLessonByChapterId(chapterId) {
  * Lấy danh sách toàn bộ các bài học con thuộc một chương
  */
 export function findLessonsByChapter(chapterId) {
-  if (!chapterId) return [];
-  const q = String(chapterId).toLowerCase();
-  for (const [subjectKey, chapters] of Object.entries(DEDICATED_LESSONS)) {
-    for (const ch of chapters) {
-      if (
-        ch.chapterId.toLowerCase() === q ||
-        ch.chapterId.toLowerCase().includes(q) ||
-        q.includes(ch.chapterId.toLowerCase()) ||
-        ch.chapterName.toLowerCase().includes(q)
-      ) {
-        return ch.lessons.map((l, index) => ({
-          ...l,
-          lessonIndex: index + 1,
-          chapterId: ch.chapterId,
-          chapterName: ch.chapterName,
-          subjectKey,
-        }));
-      }
-    }
-  }
-  return [];
+  const hit = matchDedicatedChapter(chapterId);
+  if (!hit) return [];
+  const { subjectKey, ch } = hit;
+  return (ch.lessons || []).map((l, index) => ({
+    ...l,
+    lessonIndex: index + 1,
+    chapterId: ch.chapterId,
+    chapterName: ch.chapterName,
+    subjectKey,
+  }));
 }

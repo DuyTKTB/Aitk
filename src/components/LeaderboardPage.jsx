@@ -64,11 +64,11 @@ export default function LeaderboardPage() {
       setLoading(true);
       try {
         // 1. Fetch Classes
-        const classesSnap = await getDocs(query(collection(db, 'classes'), limit(40)));
+        const classesSnap = await getDocs(query(collection(db, 'classes'), limit(200)));
         const classesData = classesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
         // 2. Fetch Users
-        const usersSnap = await getDocs(query(collection(db, 'users'), limit(50)));
+        const usersSnap = await getDocs(query(collection(db, 'users'), limit(200)));
         const usersData = usersSnap.docs.map((d) => ({ uid: d.id, ...d.data() }));
 
         if (!alive) return;
@@ -89,9 +89,11 @@ export default function LeaderboardPage() {
       id: c.id,
       name: c.name || 'Lớp học',
       memberCount: Number(c.memberCount) || (c.members?.length) || 1,
-      streak: Number(c.streak?.count) || (Math.floor(Math.random() * 12) + 2), // realistic baseline
-      record: Number(c.streak?.record) || (Number(c.streak?.count) || 14),
+      streak: Number(c.streak?.count) || 0,
+      record: Number(c.streak?.record) || Number(c.streak?.count) || 0,
       teacherName: c.teacherName || 'Giáo viên bộ môn',
+      memberIds: Array.isArray(c.memberIds) ? c.memberIds : [],
+      teacherId: c.teacherId || '',
     }));
     list.sort((a, b) => b.streak - a.streak || b.record - a.record);
     return list;
@@ -103,11 +105,11 @@ export default function LeaderboardPage() {
       const pub = u.public || {};
       return {
         uid: u.uid,
-        name: u.displayName || u.name || 'Học sinh',
-        xp: Number(pub.xp) || (Math.floor(Math.random() * 2500) + 300),
-        level: Number(pub.level) || 1,
-        streak: Number(pub.streak) || (Math.floor(Math.random() * 10) + 1),
-        vip: u.tier === 'vip' || !!u.vip,
+        name: u.displayName || pub.name || u.name || 'Học sinh',
+        xp: Number(pub.xp ?? u.xp) || 0,
+        level: Number(pub.level ?? u.level) || 1,
+        streak: Number(pub.streak ?? u.streak) || 0,
+        vip: u.tier === 'vip' || pub.tier === 'vip' || !!u.vip,
       };
     });
     list.sort((a, b) => b.xp - a.xp || b.level - a.level);
@@ -127,11 +129,19 @@ export default function LeaderboardPage() {
   const top3 = activeList[2];
   const restList = activeList.slice(3);
 
-  // User standing
+  // User standing (tab-aware)
   const myStandingIndex = useMemo(() => {
     if (!user?.uid) return -1;
+    if (tab === 'classes') {
+      return rankedClasses.findIndex(
+        (c) => c.teacherId === user.uid || c.memberIds?.includes(user.uid)
+      );
+    }
+    if (tab === 'students') {
+      return rankedStudents.findIndex((s) => s.uid === user.uid);
+    }
     return rankedPersonalStreaks.findIndex((s) => s.uid === user.uid);
-  }, [rankedPersonalStreaks, user?.uid]);
+  }, [tab, rankedClasses, rankedStudents, rankedPersonalStreaks, user?.uid]);
 
   return (
     <div className="lb-page">
@@ -375,9 +385,14 @@ export default function LeaderboardPage() {
           targetUid={profileTarget.uid}
           fallbackName={profileTarget.name}
           onClose={() => setProfileTarget(null)}
-          onOpenDm={() => {
+          onOpenDm={(dmId) => {
+            const target = profileTarget;
             setProfileTarget(null);
-            window.location.hash = '#my-classes';
+            window.dispatchEvent(
+              new CustomEvent('elec-open-dm', {
+                detail: { dmId, peerUid: target.uid, peerName: target.name },
+              })
+            );
           }}
         />
       )}

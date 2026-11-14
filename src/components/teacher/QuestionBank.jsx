@@ -572,8 +572,8 @@ export default function QuestionBank({
       ]);
       setList(qs);
       setAllTags(tags);
-      if (qs.length > 0 && !activeId) {
-        setActiveId(qs[0].id);
+      if (qs.length > 0) {
+        setActiveId((prev) => prev || qs[0].id);
       }
     } catch (e) {
       console.warn('[QuestionBank] Lỗi tải ngân hàng:', e);
@@ -582,7 +582,7 @@ export default function QuestionBank({
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, say, activeId]);
+  }, [user?.uid, say]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -670,8 +670,20 @@ export default function QuestionBank({
         if (stem.length >= 10) normStems.push({ stem, subject: q.subject, qObj: q });
       }
 
+      const qType = getQuestionType(q, customMeta);
       const opts = Array.isArray(q.options) ? q.options : [];
-      const badAnswer = opts.length < 2 || typeof q.correct !== 'number' || q.correct < 0 || q.correct >= opts.length || !String(opts[q.correct] || '').trim();
+      let badAnswer = false;
+      if (qType === 'true_false') {
+        if (Array.isArray(q.statements) && q.statements.length > 0) {
+          badAnswer = q.statements.length < 2 || q.statements.some((s) => !String(s?.text || '').trim());
+        } else {
+          badAnswer = opts.length < 2 || typeof q.correct !== 'number' || q.correct < 0 || q.correct >= opts.length;
+        }
+      } else if (qType === 'short_answer') {
+        badAnswer = !String(q.answer ?? '').trim() && !(Array.isArray(q.accepted) && q.accepted.some((a) => String(a ?? '').trim()));
+      } else {
+        badAnswer = opts.length < 2 || typeof q.correct !== 'number' || q.correct < 0 || q.correct >= opts.length || !String(opts[q.correct] || '').trim();
+      }
       const noExplain = !q.explain || String(q.explain).trim().length < 6;
 
       map[q.id] = {
@@ -683,7 +695,7 @@ export default function QuestionBank({
       };
     });
     return map;
-  }, [list]);
+  }, [list, customMeta]);
 
   /* Đếm số lượng cho cây thư mục & các bộ lọc */
   const counts = useMemo(() => {
@@ -955,9 +967,15 @@ export default function QuestionBank({
           topicId: item.topicId || '',
           level: item.level || '',
           tags: item.tags || [],
+          type: item.type || 'single_choice',
           q: item.q,
           options: item.options || [],
-          correct: item.correct || 0,
+          correct: typeof item.correct === 'number' ? item.correct : 0,
+          ...(Array.isArray(item.statements) ? { statements: item.statements } : {}),
+          ...(item.answer !== undefined ? { answer: item.answer } : {}),
+          ...(Array.isArray(item.accepted) ? { accepted: item.accepted } : {}),
+          ...(item.image ? { image: item.image } : {}),
+          ...(item.imageCaption ? { imageCaption: item.imageCaption } : {}),
           explain: item.explain || '',
           points: item.points || 1,
         });
@@ -1138,9 +1156,20 @@ export default function QuestionBank({
     const selectedQuestions = list.filter((q) => selectedIds.has(q.id));
     if (!selectedQuestions.length) return;
 
-    const gameQuestions = selectedQuestions.map((q) => {
+    const choiceQuestions = selectedQuestions.filter((q) => {
+      const qType = getQuestionType(q, customMeta);
+      if (qType === 'true_false' || qType === 'short_answer') return false;
       const opts = (q.options || []).map((o) => String(o || '').trim()).filter(Boolean);
-      const ci = typeof q.correct === 'number' ? q.correct : 0;
+      return opts.length >= 2 && typeof q.correct === 'number' && q.correct >= 0 && q.correct < opts.length;
+    });
+    if (!choiceQuestions.length) {
+      say('Chỉ câu hỏi Trắc nghiệm nhiều lựa chọn mới có thể nạp vào Game.');
+      return;
+    }
+
+    const gameQuestions = choiceQuestions.map((q) => {
+      const opts = (q.options || []).map((o) => String(o || '').trim()).filter(Boolean);
+      const ci = Number(q.correct) || 0;
       return {
         id: q.id,
         question: q.q || '',
@@ -1158,7 +1187,10 @@ export default function QuestionBank({
     const key = `cs-game:${gameId}:questions`;
     try {
       localStorage.setItem(key, JSON.stringify(gameQuestions));
-      say(`Đã nạp ${gameQuestions.length} câu hỏi vào Game thành công!`);
+      const skipped = selectedQuestions.length - gameQuestions.length;
+      say(skipped > 0
+        ? `Đã nạp ${gameQuestions.length} câu trắc nghiệm vào Game (bỏ qua ${skipped} câu Đúng/Sai hoặc Điền ngắn).`
+        : `Đã nạp ${gameQuestions.length} câu hỏi vào Game thành công!`);
     } catch (e) {
       say('Lỗi lưu câu hỏi vào game: ' + e.message);
     }
@@ -1350,44 +1382,94 @@ export default function QuestionBank({
       const subj = activeQuestion.subject || 'Hóa học';
       const gradeNum = activeQuestion.grade || 12;
       const topicTitle = getTopicName(activeQuestion.topicId, subj) || subj;
-      const optsText = (activeQuestion.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
-      const prompt = `Hãy sáng tạo 1 câu hỏi trắc nghiệm MỚI tương tự (cùng dạng kiến thức, thay đổi số liệu hoặc ngữ cảnh thực tế, KHÔNG sao chép nguyên văn) dựa trên câu gốc môn ${subj} Lớp ${gradeNum} (Chuyên đề: ${topicTitle}):
+      const qType = getQuestionType(activeQuestion, customMeta);
+      const safeCorrIdx = typeof activeQuestion.correct === 'number' && activeQuestion.correct >= 0 ? activeQuestion.correct : 0;
+      const optsText = qType === 'true_false' && Array.isArray(activeQuestion.statements)
+        ? activeQuestion.statements.map((st, idx) => `${String.fromCharCode(97 + idx)}) ${st.text || ''} [${st.answer ? 'Đúng' : 'Sai'}]`).join('\n')
+        : qType === 'short_answer'
+          ? `Đáp án đúng gốc: ${activeQuestion.answer ?? activeQuestion.accepted?.[0] ?? ''}`
+          : `${(activeQuestion.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n')}\nĐáp án đúng gốc: ${String.fromCharCode(65 + safeCorrIdx)}`;
+      const jsonSchemaHint = qType === 'true_false'
+        ? `{\n  "q": "Nội dung câu dẫn Đúng/Sai mới",\n  "statements": [{"text": "Mệnh đề a", "answer": true}, {"text": "Mệnh đề b", "answer": false}, {"text": "Mệnh đề c", "answer": true}, {"text": "Mệnh đề d", "answer": false}],\n  "explain": "Lời giải chi tiết từng ý a, b, c, d"\n}`
+        : qType === 'short_answer'
+          ? `{\n  "q": "Nội dung câu trả lời ngắn mới",\n  "answer": "12,5",\n  "explain": "Lời giải chi tiết từng bước"\n}`
+          : `{\n  "q": "Nội dung câu hỏi mới hoàn chỉnh",\n  "options": ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],\n  "correct": 0,\n  "explain": "Lời giải chi tiết từng bước để tính ra đáp án đúng"\n}`;
+      const prompt = `Hãy sáng tạo 1 câu hỏi MỚI tương tự (cùng dạng kiến thức, thay đổi số liệu hoặc ngữ cảnh thực tế, KHÔNG sao chép nguyên văn) dựa trên câu gốc môn ${subj} Lớp ${gradeNum} (Chuyên đề: ${topicTitle}):
 Câu gốc: ${activeQuestion.q}
-Các phương án gốc:
 ${optsText}
-Đáp án đúng gốc: ${String.fromCharCode(65 + (activeQuestion.correct || 0))}
 
 Chỉ trả về DUY NHẤT JSON hợp lệ (không thêm chữ thừa):
-{
-  "q": "Nội dung câu hỏi mới hoàn chỉnh",
-  "options": ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
-  "correct": 0,
-  "explain": "Lời giải chi tiết từng bước để tính ra đáp án đúng"
-}`;
+${jsonSchemaHint}`;
       const raw = await callBankAI({ prompt, cost: 1, reason: 'AI sinh câu tương tự' });
       const parsed = parseJsonLoose(raw);
-      if (!parsed?.q || !Array.isArray(parsed?.options) || parsed.options.length < 4) {
+      if (!parsed?.q) {
         throw new Error('AI trả về định dạng câu hỏi chưa đầy đủ, vui lòng thử lại.');
       }
-      const cleanOpts = parsed.options.slice(0, 4).map(stripOptPrefix);
-      const corrIdx = Math.min(3, Math.max(0, Number(parsed.correct) || 0));
+      if (qType === 'true_false' && Array.isArray(parsed.statements) && parsed.statements.length >= 2) {
+        setAiResult({
+          kind: 'similar',
+          title: 'Đã sinh 1 câu hỏi Đúng/Sai tương tự bằng AI',
+          question: {
+            type: 'true_false',
+            q: String(parsed.q).trim(),
+            statements: parsed.statements.slice(0, 4).map((s) => ({ text: String(s?.text || '').trim(), answer: s?.answer === true })),
+            options: [],
+            correct: -1,
+            explain: String(parsed.explain || '').trim(),
+            subject: subj,
+            grade: gradeNum,
+            topicId: activeQuestion.topicId || '',
+            level: normalizeLevel(activeQuestion.level) || 'thông hiểu',
+            points: activeQuestion.points || 1,
+            tags: [...(activeQuestion.tags || [])],
+          },
+        });
+      } else if (qType === 'short_answer' && (parsed.answer !== undefined && parsed.answer !== null && String(parsed.answer).trim() !== '')) {
+        const vi = String(parsed.answer).trim().replace(/\./g, ',');
+        setAiResult({
+          kind: 'similar',
+          title: 'Đã sinh 1 câu trả lời ngắn tương tự bằng AI',
+          question: {
+            type: 'short_answer',
+            q: String(parsed.q).trim(),
+            answer: vi,
+            accepted: [...new Set([vi, vi.replace(/,/g, '.')])],
+            options: [],
+            correct: -1,
+            explain: String(parsed.explain || '').trim(),
+            subject: subj,
+            grade: gradeNum,
+            topicId: activeQuestion.topicId || '',
+            level: normalizeLevel(activeQuestion.level) || 'thông hiểu',
+            points: activeQuestion.points || 1,
+            tags: [...(activeQuestion.tags || [])],
+          },
+        });
+      } else {
+        if (!Array.isArray(parsed?.options) || parsed.options.length < 4) {
+          throw new Error('AI trả về định dạng câu hỏi chưa đầy đủ, vui lòng thử lại.');
+        }
+        const cleanOpts = parsed.options.slice(0, 4).map(stripOptPrefix);
+        const corrIdx = Math.min(3, Math.max(0, Number(parsed.correct) || 0));
 
-      setAiResult({
-        kind: 'similar',
-        title: 'Đã sinh 1 câu hỏi tương tự bằng AI',
-        question: {
-          q: String(parsed.q).trim(),
-          options: cleanOpts,
-          correct: corrIdx,
-          explain: String(parsed.explain || '').trim(),
-          subject: subj,
-          grade: gradeNum,
-          topicId: activeQuestion.topicId || '',
-          level: normalizeLevel(activeQuestion.level) || 'thông hiểu',
-          points: activeQuestion.points || 1,
-          tags: [...(activeQuestion.tags || [])],
-        },
-      });
+        setAiResult({
+          kind: 'similar',
+          title: 'Đã sinh 1 câu hỏi tương tự bằng AI',
+          question: {
+            type: 'single_choice',
+            q: String(parsed.q).trim(),
+            options: cleanOpts,
+            correct: corrIdx,
+            explain: String(parsed.explain || '').trim(),
+            subject: subj,
+            grade: gradeNum,
+            topicId: activeQuestion.topicId || '',
+            level: normalizeLevel(activeQuestion.level) || 'thông hiểu',
+            points: activeQuestion.points || 1,
+            tags: [...(activeQuestion.tags || [])],
+          },
+        });
+      }
     } catch (err) {
       setAiError(err?.message || 'Không gọi được AI lúc này.');
     } finally {
@@ -1403,19 +1485,32 @@ Chỉ trả về DUY NHẤT JSON hợp lệ (không thêm chữ thừa):
     try {
       const subj = activeQuestion.subject || 'Hóa học';
       const gradeNum = activeQuestion.grade || 12;
-      const correctIdx = activeQuestion.correct || 0;
-      const correctLetter = String.fromCharCode(65 + correctIdx);
-      const optsText = (activeQuestion.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+      const qType = getQuestionType(activeQuestion, customMeta);
+      let promptBody = '';
+      let endRequirement = '';
+      if (qType === 'true_false' && Array.isArray(activeQuestion.statements)) {
+        const stText = activeQuestion.statements.map((s, idx) => `${String.fromCharCode(97 + idx)}) ${s.text || ''} (${s.answer ? 'Đúng' : 'Sai'})`).join('\n');
+        promptBody = `Các ý Đúng/Sai:\n${stText}`;
+        endRequirement = 'Giải thích rõ từng ý a), b), c), d) vì sao Đúng hoặc Sai.';
+      } else if (qType === 'short_answer') {
+        const ans = activeQuestion.answer ?? activeQuestion.accepted?.[0] ?? '';
+        promptBody = `Đáp án trả lời ngắn: ${ans}`;
+        endRequirement = `Kết thúc bằng: "Vậy đáp án đúng là ${ans}."`;
+      } else {
+        const correctIdx = typeof activeQuestion.correct === 'number' && activeQuestion.correct >= 0 ? activeQuestion.correct : 0;
+        const correctLetter = String.fromCharCode(65 + correctIdx);
+        const optsText = (activeQuestion.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+        promptBody = `Các phương án:\n${optsText}\nĐáp án quy ước: ${correctLetter}`;
+        endRequirement = `Kết thúc bằng: "Vậy chọn đáp án ${correctLetter}."`;
+      }
       const prompt = `Viết lời giải chi tiết từng bước, dễ hiểu cho học sinh THPT (môn ${subj} Lớp ${gradeNum}) cho câu hỏi sau:
 Câu hỏi: ${activeQuestion.q}
-Các phương án:
-${optsText}
-Đáp án quy ước: ${correctLetter}
+${promptBody}
 
 Yêu cầu:
 - Trình bày ngắn gọn, rõ công thức/phương trình/lập luận từng bước.
 - Nếu phát hiện đáp án quy ước sai khoa học, hãy cảnh báo nhẹ và nêu đáp án chính xác.
-- Kết thúc bằng: "Vậy chọn đáp án ${correctLetter}."`;
+- ${endRequirement}`;
 
       const text = await callBankAI({ prompt, cost: 1, reason: 'AI viết lời giải chi tiết' });
       setAiResult({
@@ -1649,20 +1744,28 @@ Trả về DUY NHẤT JSON:
     if (!filtered.length) return;
     try {
       const rows = filtered.map((q, idx) => {
-        const opts = [0, 1, 2, 3, 4, 5].map((i) => q.options?.[i] ?? '');
+        const qType = getQuestionType(q, customMeta);
+        const opts = qType === 'true_false' && Array.isArray(q.statements)
+          ? [0, 1, 2, 3].map((i) => (q.statements[i] ? `${String.fromCharCode(97 + i)}) ${q.statements[i].text || ''}` : ''))
+          : [0, 1, 2, 3, 4, 5].map((i) => q.options?.[i] ?? '');
+        const corrStr = qType === 'true_false' && Array.isArray(q.statements)
+          ? q.statements.slice(0, 4).map((s) => (s.answer ? 'Đ' : 'S')).join('-')
+          : qType === 'short_answer'
+            ? String(q.answer ?? q.accepted?.[0] ?? '')
+            : (typeof q.correct === 'number' && q.correct >= 0 ? String.fromCharCode(65 + q.correct) : '');
         return {
           stt: idx + 1,
           subject: q.subject || '',
           grade: q.grade || '',
           topic: q.topicId ? getTopicName(q.topicId, q.subject) : '',
           level: LEVEL_META[normalizeLevel(q.level)]?.short || q.level || '',
-          qtype: TYPE_LABEL[getQuestionType(q, customMeta)] || 'Trắc nghiệm',
+          qtype: TYPE_LABEL[qType] || 'Trắc nghiệm',
           question: q.q,
-          optA: opts[0],
-          optB: opts[1],
-          optC: opts[2],
-          optD: opts[3],
-          correct: String.fromCharCode(65 + (q.correct || 0)),
+          optA: opts[0] || '',
+          optB: opts[1] || '',
+          optC: opts[2] || '',
+          optD: opts[3] || '',
+          correct: corrStr,
           explain: q.explain || '',
           points: q.points || 1,
           tags: (q.tags || []).join('; '),

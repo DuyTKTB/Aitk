@@ -89,9 +89,23 @@ const IcoRefresh = () => (
   </svg>
 );
 
-function Kpi({ label, value, unit, hint, tone, diff, icon: iconType }) {
+function Kpi({ label, value, unit, hint, tone, diff, icon: iconType, onClick }) {
+  const interactiveProps = onClick
+    ? {
+        role: 'button',
+        tabIndex: 0,
+        onClick,
+        onKeyDown: (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(e);
+          }
+        },
+        style: { cursor: 'pointer' },
+      }
+    : {};
   return (
-    <div className={`ta-kpi${tone ? ` is-${tone}` : ''}`}>
+    <div className={`ta-kpi${tone ? ` is-${tone}` : ''}${onClick ? ' is-clickable' : ''}`} {...interactiveProps}>
       <div className="ta-kpi-top">
         <span className="ta-kpi-label">{label}</span>
         {iconType && (
@@ -308,7 +322,7 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
               />
             )}
             {/* Đường so sánh */}
-            {compareSeries.length > 1 && (
+            {compareSeries.filter((pt) => pt?.value !== null && pt?.value !== undefined).length > 1 && (
               <polyline
                 fill="none"
                 stroke="#0f9d76"
@@ -316,7 +330,11 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
                 strokeDasharray="5 3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                points={compareSeries.map((pt, i) => `${padL + (i + 0.5) * slotW},${yOf(pt.value || 0)}`).join(' ')}
+                points={compareSeries
+                  .map((pt, i) => ({ pt, i }))
+                  .filter(({ pt }) => pt?.value !== null && pt?.value !== undefined)
+                  .map(({ pt, i }) => `${padL + (i + 0.5) * slotW},${yOf(pt.value)}`)
+                  .join(' ')}
               />
             )}
             {series.map((pt, i) => {
@@ -639,7 +657,14 @@ export default function ClassAnalytics({
   }, [feed.exams, exams, classId, submissionsMap, cls]);
 
   const feedSubs = useMemo(() => {
-    if (!feed.exams.length) return submissionsMap;
+    if (!feed.exams.length) {
+      const scoped = {};
+      feedExams.forEach((ex) => {
+        const list = (submissionsMap?.[ex.id] || []).filter((s) => !s.classId || s.classId === classId);
+        if (list.length) scoped[ex.id] = list;
+      });
+      return scoped;
+    }
     const merged = { ...(feed.submissionsMap || {}) };
     feedExams.forEach((ex) => {
       const baseList = merged[ex.id] || [];
@@ -733,20 +758,27 @@ export default function ClassAnalytics({
     }
     const cExams = compareFeed.exams.length ? compareFeed.exams : exams.filter((e) => e.classId === compareClassId);
     const cSubs = compareFeed.exams.length ? compareFeed.submissionsMap : submissionsMap;
-    const pts = [];
+    const cPts = [];
     cExams.forEach((ex) => {
       const subs = cSubs[ex.id] || [];
       if (!subs.length) return;
       const avg = Math.round(
         subs.reduce((acc, s) => acc + ((Number(s.score) || 0) / Math.max(1, Number(s.totalPoints) || 1)) * 100, 0) / subs.length,
       );
-      pts.push({
+      cPts.push({
         key: ex.id,
         label: ex.title || 'Đề',
         value: avg,
       });
     });
-    return pts.slice(-8);
+    if (!cPts.length) return [];
+    const normTitle = (v) => String(v || '').trim().toLowerCase();
+    return chartSeries.map((pt) => {
+      const hit = cPts.find((c) => c.key === pt.key) || cPts.find((c) => normTitle(c.label) === normTitle(pt.label));
+      return hit
+        ? { key: pt.key, label: hit.label, value: hit.value }
+        : { key: pt.key, label: pt.label, value: null };
+    });
   }, [compareMode, compareData, chartSource, chartSeries, compareFeed, exams, compareClassId, submissionsMap]);
 
   const drawerStudent = useMemo(
@@ -756,18 +788,10 @@ export default function ClassAnalytics({
 
   const heatTopics = useMemo(() => (data ? data.classTopics.slice(0, 10) : []), [data]);
 
-  /* Phổ điểm 4 mức độ chuẩn Bộ GD&ĐT (Thang điểm 10) */
+  /* Phổ điểm 4 mức độ chuẩn Bộ GD&ĐT (Thang điểm 10, tính theo từng học sinh) */
   const scoreDist = useMemo(() => {
     if (!data) return { gioi: 0, kha: 0, tb: 0, yeu: 0, total: 0, pcts: { gioi: 0, kha: 0, tb: 0, yeu: 0 } };
-    const validSubs = Object.values(filteredSubsMap || {}).flat();
-    const scores = validSubs.map((s) => {
-      const tot = Number(s.totalPoints) || 10;
-      const sc = Number(s.score) || 0;
-      return (sc / tot) * 10;
-    });
-    const sample = scores.length
-      ? scores
-      : data.students.filter((s) => s.count > 0).map((s) => ((s.accuracy || 0) / 10));
+    const sample = data.students.filter((s) => s.count > 0).map((s) => ((s.accuracy || 0) / 10));
     const total = sample.length || 1;
     const gioi = sample.filter((s) => s >= 8.0).length;
     const kha = sample.filter((s) => s >= 6.5 && s < 8.0).length;
@@ -781,13 +805,13 @@ export default function ClassAnalytics({
       yeu,
       total: sample.length,
       pcts: {
-        gioi: Math.round((gioi / total) * 100),
-        kha: Math.round((kha / total) * 100),
-        tb: Math.round((tb / total) * 100),
-        yeu: Math.round((yeu / total) * 100),
+        gioi: sample.length ? Math.round((gioi / total) * 100) : 0,
+        kha: sample.length ? Math.round((kha / total) * 100) : 0,
+        tb: sample.length ? Math.round((tb / total) * 100) : 0,
+        yeu: sample.length ? Math.round((yeu / total) * 100) : 0,
       },
     };
-  }, [data, filteredSubsMap]);
+  }, [data]);
 
   /* Lọc và sắp xếp danh sách học sinh */
   const filteredStudents = useMemo(() => {

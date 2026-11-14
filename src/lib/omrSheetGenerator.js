@@ -58,19 +58,21 @@ function renderSection1(items) {
       PHẦN I. Thí sinh trả lời từ câu 1 đến câu ${items.length}. Mỗi câu chọn 1 đáp án.
     </div>
     <div class="p1-cols" style="grid-template-columns: repeat(${cols.length}, 1fr);">
-      ${cols.map((col) => `
+      ${cols.map((col, colIdx) => {
+        const offset = cols.slice(0, colIdx).reduce((sum, c) => sum + c.length, 0);
+        return `
         <div class="p1-col">
-          ${col.map((q) => `
+          ${col.map((q, qIdx) => `
             <div class="q-item">
-              <span class="q-num">${q.num}.</span>
+              <span class="q-num">${offset + qIdx + 1}.</span>
               <span class="bubble">A</span>
               <span class="bubble">B</span>
               <span class="bubble">C</span>
               <span class="bubble">D</span>
             </div>
           `).join('')}
-        </div>
-      `).join('')}
+        </div>`;
+      }).join('')}
     </div>
   `;
 }
@@ -81,7 +83,7 @@ function renderSection1(items) {
 function renderSection2(items) {
   if (items.length === 0) return '';
 
-  const numCols = items.length <= 4 ? 2 : items.length <= 8 ? 4 : 4;
+  const numCols = items.length <= 4 ? 2 : 4;
   const cols = splitIntoColumns(items, numCols);
 
   return `
@@ -89,9 +91,11 @@ function renderSection2(items) {
       PHẦN II. Câu trắc nghiệm Đúng/Sai (Từ câu 1 đến câu ${items.length}). Mỗi ý a), b), c), d) chọn Đúng hoặc Sai.
     </div>
     <div class="p2-cols" style="grid-template-columns: repeat(${cols.length}, 1fr);">
-      ${cols.map((col) => col.map((q) => `
+      ${cols.map((col, colIdx) => {
+        const offset = cols.slice(0, colIdx).reduce((sum, c) => sum + c.length, 0);
+        return col.map((q, qIdx) => `
         <div class="p2-col">
-          <strong>Câu ${q.num}</strong>
+          <strong>Câu ${offset + qIdx + 1}</strong>
           ${['a', 'b', 'c', 'd'].map((sub) => `
             <div class="p2-row">
               <span>${sub})</span>
@@ -100,13 +104,14 @@ function renderSection2(items) {
             </div>
           `).join('')}
         </div>
-      `).join('')).join('')}
+      `).join('');
+      }).join('')}
     </div>
   `;
 }
 
 /**
- * Render khối Phần III (Trả lời ngắn).
+ * Render khối Phần III (Trả lời ngắn — 4 cột ký tự chuẩn Bộ GD&ĐT 2025).
  */
 function renderSection3(items) {
   if (items.length === 0) return '';
@@ -115,18 +120,22 @@ function renderSection3(items) {
 
   return `
     <div class="sec-title">
-      PHẦN III. Câu trắc nghiệm trả lời ngắn (Từ câu 1 đến câu ${items.length}). Tô số tương ứng đáp án.
+      PHẦN III. Câu trắc nghiệm trả lời ngắn (Từ câu 1 đến câu ${items.length}). Tô tối đa 4 cột giá trị (gồm dấu "-" ở cột 1, dấu "," ở cột 2-3 và chữ số 0-9).
     </div>
     <div class="p3-cols" style="grid-template-columns: repeat(${numCols}, 1fr);">
-      ${items.map((q) => `
+      ${items.map((_, qIdx) => `
         <div class="p3-col">
-          <strong>Câu ${q.num}</strong>
+          <strong>Câu ${qIdx + 1}</strong>
           <div class="p3-signs">
             <span class="bubble sm">-</span>
             <span class="bubble sm">,</span>
+            <span class="bubble sm">,</span>
+            <span class="bubble sm" style="visibility:hidden">·</span>
           </div>
           ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `
             <div class="p3-digit-row">
+              <span class="bubble sm">${digit}</span>
+              <span class="bubble sm">${digit}</span>
               <span class="bubble sm">${digit}</span>
               <span class="bubble sm">${digit}</span>
             </div>
@@ -305,10 +314,10 @@ export function printOmrSheetA4({
         </div>
         ${Array.from({ length: 10 }).map((_, r) => `
           <div class="bubble-row">
-            ${Array.from({ length: 3 }).map((c) => {
-              // Đánh dấu mã đề tương ứng nếu có
-              const digitPos = code ? code[r] || code[c] : null;
-              return `<span class="bubble sm">${r}</span>`;
+            ${Array.from({ length: 3 }).map((__, col) => {
+              const codeStr = String(code || '').padStart(3, '0');
+              const isFilled = Boolean(code && codeStr[col] === String(r));
+              return `<span class="bubble sm" style="${isFilled ? 'background:#1e293b;color:#fff;border-color:#1e293b;' : ''}">${r}</span>`;
             }).join('')}
           </div>
         `).join('')}

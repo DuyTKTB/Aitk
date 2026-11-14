@@ -3,6 +3,8 @@
    Dùng cho dashboard giáo viên và prompt tạo đề.
    ============================================================ */
 
+import { scoreQuestion, isAnswered } from './examScoring.js';
+
 const pctOf = (s) => (s.totalPoints > 0 ? (s.score / s.totalPoints) * 100 : 0);
 
 function stem(text) {
@@ -66,10 +68,11 @@ export function buildClassInsights({ exams = [], submissionsMap = {}, rangeDays 
       let ok = 0;
       list.forEach((s) => {
         const d = s.detail?.[i];
-        const picked = d?.picked ?? s.answers?.[i];
-        if (typeof picked !== 'number' && !d) return;
+        const rawAns = s.answers?.[i];
+        if (!d && !isAnswered(qq, rawAns)) return;
         rated += 1;
-        if (d?.isCorrect || picked === qq.correct) ok += 1;
+        const okFlag = typeof d?.isCorrect === 'boolean' ? d.isCorrect : scoreQuestion(qq, rawAns).isCorrect;
+        if (okFlag) ok += 1;
       });
       if (!rated) return;
       const rate = Math.round((ok / rated) * 100);

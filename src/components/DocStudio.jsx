@@ -435,20 +435,36 @@ export default function DocStudio() {
   /* CLOUD SYNC — Firestore users/{uid}/docStudioDocs/library */
   const isCtxVip = ctxTier === 'vip' || ctxTier?.key === 'vip';
   const [cloud, setCloud] = useState('idle');
+  const cloudLoadedRef = useRef(false);
+
   useEffect(() => {
-    if (!uid || !isCtxVip) return undefined;
+    if (!uid) { setLocalTier('anon'); return; }
+    let off = false;
+    getTier(uid).then((t) => { if (!off) setLocalTier(t?.key === 'vip' ? 'vip' : 'free'); }).catch(() => { if (!off) setLocalTier('free'); });
+    return () => { off = true; };
+  }, [uid]);
+
+  const isVip = isCtxVip || localTier === 'vip';
+
+  useEffect(() => {
+    if (!uid || !isVip) return undefined;
+    let active = true;
     (async () => {
       try {
         const snap = await fsGetDoc(fsDoc(db, 'users', uid, 'docStudioDocs', 'library'));
-        if (snap.exists() && Array.isArray(snap.data().docs) && snap.data().docs.length) {
+        if (active && snap.exists() && Array.isArray(snap.data().docs) && snap.data().docs.length) {
           setDocs(snap.data().docs);
         }
       } catch { /* giữ bản local */ }
+      finally {
+        if (active) cloudLoadedRef.current = true;
+      }
     })();
+    return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, isCtxVip]);
+  }, [uid, isVip]);
   useEffect(() => {
-    if (!uid || !isCtxVip || !docs.length) return undefined;
+    if (!uid || !isVip || !cloudLoadedRef.current) return undefined;
     setCloud('syncing');
     const t = setTimeout(() => {
       fsSetDoc(fsDoc(db, 'users', uid, 'docStudioDocs', 'library'), { docs, at: Date.now() })
@@ -456,7 +472,7 @@ export default function DocStudio() {
         .catch(() => setCloud('error'));
     }, 800);
     return () => clearTimeout(t);
-  }, [docs, uid, ctxTier]); // eslint-disable-line
+  }, [docs, uid, isVip]);
   const [activeId, setActiveId] = useState(null);
   const [tab, setTab] = useState('summary');
   const [busy, setBusy] = useState(null);       // { step, label }
@@ -471,14 +487,6 @@ export default function DocStudio() {
   const [delId, setDelId] = useState(null);
   const cancelRef = useRef(0);
 
-  useEffect(() => {
-    if (!uid) { setLocalTier('anon'); return; }
-    let off = false;
-    getTier(uid).then((t) => { if (!off) setLocalTier(t?.key === 'vip' ? 'vip' : 'free'); }).catch(() => { if (!off) setLocalTier('free'); });
-    return () => { off = true; };
-  }, [uid]);
-
-  const isVip = ctxTier?.key === 'vip' || localTier === 'vip';
   const checking = !isVip && (localTier === 'loading' || (uid && ctxTier == null && localTier === 'loading'));
   const active = docs.find((d) => d.id === activeId) || null;
 

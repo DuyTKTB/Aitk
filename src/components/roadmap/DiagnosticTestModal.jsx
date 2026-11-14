@@ -89,7 +89,7 @@ export default function DiagnosticTestModal({
           topicId: tId,
           total: list.length,
           correct: correctCount,
-          durationSec: secPerTopic,
+          durationMs: secPerTopic * 1000,
           source: 'practice',
           answers: list.map((x) => ({ qid: x.q.id, ok: x.ok })),
         });

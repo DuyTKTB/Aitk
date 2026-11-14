@@ -55,21 +55,25 @@ export default function ExamCountdown() {
   }, [exams, now]);
   useEffect(() => {
     if (!notifyOn || !('Notification' in window) || Notification.permission !== 'granted') return;
+    const patches = {};
     for (const x of good) {
       const diff = stamp(x) - now;
       if (diff <= 0) continue;
       const key1d = `${x.id}-1d`;
       const key1h = `${x.id}-1h`;
-      if (diff < 864e5 && !notified[key1d]) {
+      if (diff < 864e5 && !notified[key1d] && !patches[key1d]) {
         try { new Notification('📅 Còn 1 ngày!', { body: `${x.name} — ${x.subject || ''}` }); } catch {}
-        setNotified({ ...notified, [key1d]: true });
+        patches[key1d] = true;
       }
-      if (diff < 36e5 && !notified[key1h]) {
+      if (diff < 36e5 && !notified[key1h] && !patches[key1h]) {
         try { new Notification('⏰ Còn 1 giờ!', { body: `${x.name} — chuẩn bị thôi!` }); } catch {}
-        setNotified({ ...notified, [key1h]: true });
+        patches[key1h] = true;
       }
     }
-  }, [now, notifyOn]);
+    if (Object.keys(patches).length > 0) {
+      setNotified((prev) => ({ ...prev, ...patches }));
+    }
+  }, [good, now, notifyOn, notified, setNotified]);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const cancel = () => { setForm(EMPTY); setEditId(null); };

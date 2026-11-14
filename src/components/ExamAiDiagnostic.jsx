@@ -363,6 +363,12 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
               <button
                 type="button"
                 onClick={() => {
+                  const isTeacherRole = typeof localStorage !== 'undefined' && (() => {
+                    try {
+                      const v = JSON.parse(localStorage.getItem('cs-vip-status') || '{}');
+                      return Boolean(v?.isPro && v?.plan === 'PRO');
+                    } catch { return false; }
+                  })();
                   const payload = {
                     title: `Đề ôn bù hổng: ${weakestTopic.name}`,
                     topic: weakestTopic.name,
@@ -370,9 +376,17 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
                     hint: `Được tạo tự động từ bài kiểm tra trước (Học sinh đang bị yếu dạng bài này, độ chính xác ${weakestTopic.accuracy}%).`,
                   };
                   try {
-                    localStorage.setItem('aes_remedial_preset', JSON.stringify(payload));
-                  } catch {}
-                  window.location.hash = '#classroom';
+                    if (isTeacherRole) {
+                      localStorage.setItem('aes_remedial_preset', JSON.stringify(payload));
+                      window.location.hash = '#classroom';
+                    } else {
+                      const prompt = `Hãy tạo cho mình đề luyện tập nhanh 10 câu bám sát chuyên đề "${weakestTopic.name}" (hiện mình đạt ${weakestTopic.accuracy}%). Sau khi mình làm xong hoặc hỏi, hãy giải thích chi tiết từng câu và bẫy thường gặp nhé!`;
+                      localStorage.setItem('cs-ai-draft', prompt);
+                      window.location.hash = '#ai';
+                    }
+                  } catch {
+                    window.location.hash = '#ai';
+                  }
                 }}
                 style={{
                   background: 'linear-gradient(135deg, #2f6bff 0%, #8b5cf6 100%)',

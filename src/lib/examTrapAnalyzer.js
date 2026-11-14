@@ -101,13 +101,29 @@ export function analyzeExamTraps({ questions = [], answers = {}, detail = [] }) 
   let knowledgeCount = 0;
 
   questions.forEach((q, idx) => {
+    const qType = q.type || 'single_choice';
+    const d = detail?.[idx];
     const studentAns = answers[idx] ?? answers[q.id];
-    const correctAns = q.correct ?? q.correctIndex ?? 0;
+    if (qType !== 'single_choice') {
+      // Nếu có detail từ scoreExam cho câu Đ/S hoặc TLN sai -> ghi nhận vào lỗ hổng kiến thức
+      if (d && d.isCorrect === false && (studentAns !== undefined && studentAns !== null && studentAns !== '')) {
+        knowledgeCount += 1;
+        trapItems.push({
+          questionIndex: idx + 1,
+          questionText: q.question || q.q || q.text || '',
+          studentAnswer: qType === 'short_answer' ? String(studentAns) : 'Chưa đúng đủ 4 ý Đ/S',
+          correctAnswer: qType === 'short_answer' ? String(q.answer ?? d.correct ?? '') : 'Xem chi tiết từng ý a-d',
+          diagnosis: diagnoseQuestionError(q, -1, -1),
+        });
+      }
+      return;
+    }
 
-    // Kiểm tra đúng/sai
-    const isCorrect = Number(studentAns) === Number(correctAns);
-    if (!isCorrect && studentAns !== undefined && studentAns !== null) {
-      const diag = diagnoseQuestionError(q, Number(studentAns), Number(correctAns));
+    const correctAns = q.correct ?? q.correctIndex ?? 0;
+    const pickedIdx = typeof studentAns === 'number' ? studentAns : Number(studentAns);
+    const isCorrect = Number.isFinite(pickedIdx) && pickedIdx === Number(correctAns);
+    if (!isCorrect && studentAns !== undefined && studentAns !== null && studentAns !== -1) {
+      const diag = diagnoseQuestionError(q, pickedIdx, Number(correctAns));
       if (diag) {
         if (diag.type === 'trap') trapCount += 1;
         else if (diag.type === 'calc') calcCount += 1;
@@ -115,9 +131,9 @@ export function analyzeExamTraps({ questions = [], answers = {}, detail = [] }) 
 
         trapItems.push({
           questionIndex: idx + 1,
-          questionText: q.question || q.text || '',
-          studentAnswer: q.options?.[studentAns] || `Lựa chọn ${studentAns}`,
-          correctAnswer: q.options?.[correctAns] || `Đáp án ${correctAns}`,
+          questionText: q.question || q.q || q.text || '',
+          studentAnswer: q.options?.[pickedIdx] || `Lựa chọn ${'ABCD'[pickedIdx] || studentAns}`,
+          correctAnswer: q.options?.[correctAns] || `Đáp án ${'ABCD'[correctAns] || correctAns}`,
           diagnosis: diag,
         });
       }

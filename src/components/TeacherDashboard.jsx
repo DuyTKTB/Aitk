@@ -1061,6 +1061,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     cmdOpen, confirmState, scheduleExamModal, showCreateClass, showClassPicker,
     shareClass, bellOpen, detailExamModal, selectedExam,
     editingExam, previewExam, selectedClass, section,
+    aiChatOpen, copyExamTarget,
   ]);
 
   const showAdminLink = checkAdmin(user);
@@ -1215,30 +1216,32 @@ export default function TeacherDashboard({ onExit } = {}) {
       }
 
       const priorityExams = combinedExams.slice(0, 8);
-      const subsMap = { ...submissionsMap };
+      const priorityPatch = {};
       await Promise.all(priorityExams.map(async (e) => {
         try {
           const s = await getSubmissionsByExam(e.id);
-          subsMap[e.id] = s;
+          priorityPatch[e.id] = s;
         } catch {
-          if (!subsMap[e.id]) subsMap[e.id] = [];
+          // keep existing cached submissions for this exam on network error
         }
       }));
-      setSubmissionsMap({ ...subsMap });
+      setSubmissionsMap((prev) => ({ ...prev, ...priorityPatch }));
 
       if (combinedExams.length > 8) {
         const remaining = combinedExams.slice(8);
         Promise.all(remaining.map(async (e) => {
           try {
             const s = await getSubmissionsByExam(e.id);
-            return { id: e.id, subs: s };
+            return { id: e.id, subs: s, ok: true };
           } catch {
-            return { id: e.id, subs: subsMap[e.id] || [] };
+            return { id: e.id, subs: [], ok: false };
           }
         })).then((results) => {
           setSubmissionsMap((prev) => {
             const next = { ...prev };
-            results.forEach((r) => { next[r.id] = r.subs; });
+            results.forEach((r) => {
+              if (r.ok || !next[r.id]) next[r.id] = r.subs;
+            });
             return next;
           });
         });
@@ -1341,15 +1344,28 @@ export default function TeacherDashboard({ onExit } = {}) {
     const ids = allClassIdsKey.split(',');
     const unsubs = ids.map((cid) =>
       listenSubmissionsByClass(cid, (list) => {
-        if (!list || !list.length) return;
+        const safeList = Array.isArray(list) ? list : [];
         setSubmissionsMap((prev) => {
           const next = { ...prev };
-          list.forEach((sub) => {
+          const incomingIds = new Set(safeList.map((s) => s.id).filter(Boolean));
+          Object.keys(next).forEach((eid) => {
+            const oldArr = next[eid] || [];
+            if (oldArr.some((s) => s?.classId === cid)) {
+              const kept = oldArr.filter((s) => s?.classId !== cid || incomingIds.has(s.id));
+              if (kept.length !== oldArr.length) next[eid] = kept;
+            }
+          });
+          const touchedExams = new Set();
+          safeList.forEach((sub) => {
             if (!sub.examId) return;
-            if (!next[sub.examId]) next[sub.examId] = [];
-            const idx = next[sub.examId].findIndex((x) => x.id === sub.id);
-            if (idx >= 0) next[sub.examId][idx] = sub;
-            else next[sub.examId] = [sub, ...next[sub.examId]];
+            if (!touchedExams.has(sub.examId)) {
+              touchedExams.add(sub.examId);
+              next[sub.examId] = [...(next[sub.examId] || [])];
+            }
+            const arr = next[sub.examId];
+            const idx = arr.findIndex((x) => x.id === sub.id);
+            if (idx >= 0) arr[idx] = sub;
+            else arr.unshift(sub);
           });
           return next;
         });

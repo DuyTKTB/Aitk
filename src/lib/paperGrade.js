@@ -199,19 +199,34 @@ export function answersToRead(ans = {}) {
   };
 }
 
-/* Lưu và đọc đáp án dạng chuỗi */
+const normTFChar = (c) => {
+  const ch = String(c || '').trim().toUpperCase();
+  if (ch === 'D' || ch === 'Đ' || ch === 'T') return 'D';
+  if (ch === 'S' || ch === 'F') return 'S';
+  if (ch === '*') return '*';
+  return '';
+};
+
+/* Lưu và đọc đáp án dạng chuỗi (chấp nhận cả Đ/S và T/F cũng như chuỗi/mảng) */
 export function keyToStored(key = {}) {
+  const p1Arr = Array.isArray(key.p1) ? key.p1 : String(key.p1 || '').split('');
+  const p2Arr = Array.isArray(key.p2) ? key.p2 : [];
+  const p3Arr = Array.isArray(key.p3) ? key.p3 : [];
   return {
-    p1: (key.p1 || []).map((c) => c || '-').join(''),
-    p2: (key.p2 || []).map((q) => (q || []).map((c) => c || '-').join('')),
-    p3: (key.p3 || []).map((q) => (q || []).join('|')),
+    p1: p1Arr.map((c) => ('ABCD*'.includes(String(c || '').toUpperCase()) ? String(c).toUpperCase() : '-')).join(''),
+    p2: p2Arr.map((q) => (Array.isArray(q) ? q : String(q || '').split('')).map((c) => normTFChar(c) || '-').join('')),
+    p3: p3Arr.map((q) => (Array.isArray(q) ? q.join('|') : String(q || ''))),
   };
 }
 export function keyFromStored(s = {}) {
+  const p1Raw = Array.isArray(s.p1) ? s.p1 : String(s.p1 || '').split('');
   return {
-    p1: String(s.p1 || '').split('').map((c) => ('ABCD*'.includes(c) ? c : '')),
-    p2: (s.p2 || []).map((q) => String(q).split('').map((c) => ('DS*'.includes(c) ? c : ''))),
-    p3: (s.p3 || []).map((q) => String(q).split('|').map((x) => x.trim()).filter(Boolean)),
+    p1: p1Raw.map((c) => {
+      const u = String(c || '').toUpperCase();
+      return 'ABCD*'.includes(u) ? u : '';
+    }),
+    p2: (s.p2 || []).map((q) => (Array.isArray(q) ? q : String(q || '').split('')).map((c) => normTFChar(c))),
+    p3: (s.p3 || []).map((q) => (Array.isArray(q) ? q : String(q || '').split('|')).map((x) => String(x).trim()).filter(Boolean)),
   };
 }
 

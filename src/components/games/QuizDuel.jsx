@@ -9,8 +9,8 @@ import { useAuth } from '../../hooks/useAuth.jsx';
 import { useLocalStorage } from '../../hooks.js';
 import { db } from '../../lib/firebase.js';
 import {
-  collection, doc, setDoc, updateDoc, deleteDoc, query, where, limit,
-  getDocs, onSnapshot,
+  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, query, where, limit,
+  onSnapshot,
 } from 'firebase/firestore';
 import { fetchBankQuestions } from '../../lib/gameQuestionBank.js';
 
@@ -34,6 +34,12 @@ export default function QuizDuel() {
   const [wl, setWl] = useLocalStorage('cs-duel-wl', { w: 0, l: 0, d: 0 });
   const [now, setNow] = useState(Date.now());
   const stateRef = useRef(null); stateRef.current = { uid, name };
+  const openHostIdRef = useRef(null);
+  useEffect(() => () => {
+    if (openHostIdRef.current) {
+      deleteDoc(doc(db, 'duels', openHostIdRef.current)).catch(() => {});
+    }
+  }, []);
 
   /* Danh sách phòng đang chờ */
   useEffect(() => {
@@ -57,6 +63,7 @@ export default function QuizDuel() {
 
   /* Lắng nghe phòng hiện tại */
   const [duel, setDuel] = useState(null);
+  openHostIdRef.current = duel?.status === 'open' && duel?.host?.uid === uid ? duel.id : null;
   useEffect(() => {
     if (!duelCode) { setDuel(null); return undefined; }
     return onSnapshot(doc(db, 'duels', duelCode), (snap) => {
@@ -104,16 +111,17 @@ export default function QuizDuel() {
     const c = String(code || '').trim().toUpperCase();
     if (!c) return;
     try {
-      const snap = await getDocs(query(collection(db, 'duels'), limit(50)));
-      const target = snap.docs.find((d) => d.id === c);
-      if (!target) { setErr('Không tìm thấy phòng — kiểm tra lại mã.'); return; }
+      const target = await getDoc(doc(db, 'duels', c));
+      if (!target.exists()) { setErr('Không tìm thấy phòng — kiểm tra lại mã.'); return; }
       const d = target.data();
       if (d.status !== 'open') { setErr('Phòng đã bắt đầu hoặc đã xong.'); return; }
       if (d.host?.uid === uid) { setDuelCode(c); return; }
+      const nowMs = Date.now();
       await updateDoc(doc(db, 'duels', c), {
         guest: { uid, name },
         status: 'playing',
-        startedAt: Date.now(),
+        startedAt: nowMs,
+        qStartedAt: nowMs,
       });
       setDuelCode(c);
     } catch (e) {
@@ -128,10 +136,15 @@ export default function QuizDuel() {
     if (idx == null || idx >= duel.qs.length) return;
     const mine = duel.picks?.[uid] || [];
     if (mine.length > idx) return; // đã chọn
-    const bonus = Math.max(0, Math.round(50 * (1 - (spentMs || QUESTION_MS) / QUESTION_MS)));
+    const oppUid = uid === duel.host?.uid ? duel.guest?.uid : duel.host?.uid;
+    const oppAnswered = oppUid ? (duel.picks?.[oppUid] || []).length > idx : false;
+    const clampedSpent = Math.max(0, Math.min(Number(spentMs) || 0, QUESTION_MS));
+    const bonus = Math.max(0, Math.round(50 * (1 - clampedSpent / QUESTION_MS)));
     const pts = optIdx === duel.qs[idx].correct ? 100 + bonus : 0;
     const nextPicks = [...mine, { o: optIdx, t: pts }];
-    await updateDoc(doc(db, 'duels', duel.id), { [`picks.${uid}`]: nextPicks });
+    const updates = { [`picks.${uid}`]: nextPicks };
+    if (oppAnswered) updates.qStartedAt = Date.now();
+    await updateDoc(doc(db, 'duels', duel.id), updates);
   };
 
   const currentIdx = (d) => {
@@ -152,11 +165,14 @@ export default function QuizDuel() {
 
   /* Kết thúc: cả 2 trả lời đủ 5 câu */
   const finished = duel && duel.status === 'playing' && currentIdx(duel) >= duel.qs.length;
+  const recordedDuelRef = useRef(null);
   useEffect(() => {
     if (!finished || !duel || !uid) return;
     if (duel.status !== 'done') {
       updateDoc(doc(db, 'duels', duel.id), { status: 'done', endedAt: Date.now() }).catch(() => {});
     }
+    if (recordedDuelRef.current === duel.id) return;
+    recordedDuelRef.current = duel.id;
     const oppUid = uid === duel.host?.uid ? duel.guest?.uid : duel.host?.uid;
     const my = (duel.picks?.[uid] || []).reduce((s, p) => s + (p.t || 0), 0);
     const opp = (duel.picks?.[oppUid] || []).reduce((s, p) => s + (p.t || 0), 0);
@@ -196,8 +212,8 @@ export default function QuizDuel() {
     const oppName = (uid === duel.host?.uid ? duel.guest?.name : duel.host?.name) || 'Đối thủ';
     const q = idx != null && idx < duel.qs.length ? duel.qs[idx] : null;
     const mine = duel.picks?.[uid] || [];
-    const qStartAt = duel.startedAt || 0;
-    const spent = now - qStartAt - idx * QUESTION_MS;
+    const qStartAt = idx === 0 ? (duel.startedAt || 0) : (duel.qStartedAt || duel.startedAt || 0);
+    const spent = Math.max(0, now - qStartAt);
     const waiting = duel.status === 'playing' && mine.length <= idx && (duel.picks?.[oppUid] || []).length <= idx;
 
     return (

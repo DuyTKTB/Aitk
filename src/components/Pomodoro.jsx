@@ -86,10 +86,13 @@ export default function Pomodoro() {
   // Session note
   const [noteModal, setNoteModal] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
+  const [savedNotes, setSavedNotes] = useLocalStorage('cs-pomo-notes', []);
 
   const endAt = useRef(0);
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  const timerOptsRef = useRef({ cfg, autoNext, sound, cycleCount, notifyUser });
+  timerOptsRef.current = { cfg, autoNext, sound, cycleCount, notifyUser };
 
   useEffect(() => {
     if (notify && 'Notification' in window && Notification.permission === 'default') {
@@ -107,6 +110,7 @@ export default function Pomodoro() {
   useEffect(() => {
     if (!run) return undefined;
     endAt.current = Date.now() + left * 1000;
+    let nextTimer = null;
     const id = setInterval(() => {
       const l = Math.max(0, Math.round((endAt.current - Date.now()) / 1000));
       setLeft(l);
@@ -114,38 +118,42 @@ export default function Pomodoro() {
         clearInterval(id);
         setRun(false);
         const m = modeRef.current;
-        if (sound) playDoneSound();
+        const { cfg: curCfg, autoNext: curAutoNext, sound: curSound, cycleCount: curCycle, notifyUser: curNotify } = timerOptsRef.current;
+        if (curSound) playDoneSound();
 
         if (m === 'focus') {
           setSessions((s) => s + 1);
           recordDailyStreak();
           const k = dayKey();
           setHistory((h) => ({ ...h, [k]: (h[k] || 0) + 1 }));
-          const newCycle = cycleCount + 1;
+          const newCycle = curCycle + 1;
           setCycleCount(newCycle);
           const next = newCycle % 4 === 0 ? 'long' : 'short';
           setDoneMsg(`Hoàn thành 1 phiên Focus! Nghỉ ${next === 'long' ? 'dài' : 'ngắn'} thôi.`);
-          notifyUser('Hết giờ Focus', 'Nghỉ ngơi nào!');
+          curNotify('Hết giờ Focus', 'Nghỉ ngơi nào!');
           setNoteModal(true);
-          if (autoNext) {
-            setTimeout(() => {
+          if (curAutoNext) {
+            nextTimer = setTimeout(() => {
               setMode(next);
-              setLeft(cfg[next] * 60);
+              setLeft(timerOptsRef.current.cfg[next] * 60);
             }, 1500);
           }
         } else {
           setDoneMsg('Hết giờ nghỉ! Quay lại Focus nào.');
-          notifyUser('⏰ Hết giờ nghỉ', 'Quay lại Focus thôi!');
-          if (autoNext) {
-            setTimeout(() => {
+          curNotify('⏰ Hết giờ nghỉ', 'Quay lại Focus thôi!');
+          if (curAutoNext) {
+            nextTimer = setTimeout(() => {
               setMode('focus');
-              setLeft(cfg.focus * 60);
+              setLeft(timerOptsRef.current.cfg.focus * 60);
             }, 1500);
           }
         }
       }
     }, 250);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      if (nextTimer) clearTimeout(nextTimer);
+    };
     // eslint-disable-next-line
   }, [run]);
 
@@ -246,6 +254,13 @@ export default function Pomodoro() {
   };
 
   const saveNote = () => {
+    const text = sessionNote.trim();
+    if (text) {
+      setSavedNotes((prev) => [
+        { id: Date.now(), text, mode: modeRef.current, at: new Date().toISOString() },
+        ...(Array.isArray(prev) ? prev : []),
+      ].slice(0, 50));
+    }
     setNoteModal(false);
     setSessionNote('');
     setDoneMsg('Đã lưu ghi chú phiên học!');
@@ -737,6 +752,16 @@ export default function Pomodoro() {
                   autoFocus
                 />
               </label>
+              {Array.isArray(savedNotes) && savedNotes.length > 0 && (
+                <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Ghi chú gần đây ({savedNotes.length}):</div>
+                  {savedNotes.slice(0, 3).map((n) => (
+                    <div key={n.id} style={{ padding: '4px 0', borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
+                      {n.text}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <footer className="pomo-modal-foot">
               <button

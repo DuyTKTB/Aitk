@@ -7,6 +7,7 @@ import QuestionEditor from './QuestionEditor';
 import GameOverModal from './GameOverModal';
 import { GAME_PRESETS } from '../../data/gamePresets';
 import { sound } from '../../lib/gameSound';
+import { normalizeBankQuestionList } from '../../lib/gameQuestionBank';
 import GameBar from './GameBar';
 import { GIcon } from './GameIcons';
 import { getPalette } from '../../lib/threeUtils';
@@ -82,7 +83,7 @@ export default function ChickenGame3D() {
   const [questions, setQuestions] = useState(() => {
     try {
       const raw = localStorage.getItem('cs-game:chicken:questions');
-      return raw ? JSON.parse(raw) : GAME_PRESETS.chicken;
+      return raw ? normalizeBankQuestionList(JSON.parse(raw), GAME_PRESETS.chicken) : GAME_PRESETS.chicken;
     } catch {
       return GAME_PRESETS.chicken;
     }
@@ -144,6 +145,17 @@ export default function ChickenGame3D() {
     } catch {}
   }, [leaderboard]);
 
+  const timersRef = useRef([]);
+  const later = (fn, ms) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter((x) => x !== id);
+      fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  };
+  useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
+
   useEffect(() => {
     if (phase !== 'playing') return;
     if (!config.timeLimit) return;
@@ -155,11 +167,11 @@ export default function ChickenGame3D() {
       setCombo(0);
       const newLives = lives - 1;
       setLives(newLives);
-      setTimeout(() => {
-        if (newLives <= 0) endGame(false);
-        else nextQuestion(qIndex);
+      const id = later(() => {
+        if (newLives <= 0) endGame(false, score);
+        else nextQuestion(qIndex, score);
       }, 1500);
-      return;
+      return () => clearTimeout(id);
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
@@ -194,6 +206,8 @@ export default function ChickenGame3D() {
 
   const startGame = () => {
     if (!questions.length) return;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
     setScore(0);
     setCombo(0);
     setLives(3);
@@ -203,10 +217,10 @@ export default function ChickenGame3D() {
     setChickens(buildQuestion(0));
   };
 
-  const nextQuestion = (currentIdx) => {
+  const nextQuestion = (currentIdx, latestScore = score) => {
     const next = currentIdx + 1;
     if (next >= questions.length) {
-      endGame(true);
+      endGame(true, latestScore);
       return;
     }
     setQIndex(next);
@@ -227,9 +241,10 @@ export default function ChickenGame3D() {
         )
       );
       const bonus = Math.round(100 * (1 + combo * 0.1));
-      setScore((s) => s + bonus);
+      const nextScore = score + bonus;
+      setScore(nextScore);
       setCombo((c) => c + 1);
-      setTimeout(() => nextQuestion(qIndex), 900);
+      later(() => nextQuestion(qIndex, nextScore), 900);
     } else {
       sound.wrong();
       setChickens((cs) =>
@@ -238,20 +253,21 @@ export default function ChickenGame3D() {
       setCombo(0);
       const newLives = lives - 1;
       setLives(newLives);
-      setTimeout(() => {
-        if (newLives <= 0) endGame(false);
-        else nextQuestion(qIndex);
+      later(() => {
+        if (newLives <= 0) endGame(false, score);
+        else nextQuestion(qIndex, score);
       }, 1400);
     }
   };
 
-  const endGame = (won) => {
+  const endGame = (won, overrideScore) => {
     setPhase('over');
     if (won) sound.win();
     else sound.lose();
 
-    if (config.playerName.trim() && score > 0) {
-      const entry = { name: config.playerName.trim(), score, date: Date.now() };
+    const finalScore = typeof overrideScore === 'number' ? overrideScore : score;
+    if (config.playerName.trim() && finalScore > 0) {
+      const entry = { name: config.playerName.trim(), score: finalScore, date: Date.now() };
       const next = [...leaderboard, entry]
         .sort((a, b) => b.score - a.score)
         .slice(0, 10);

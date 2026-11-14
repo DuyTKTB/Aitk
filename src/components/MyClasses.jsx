@@ -33,6 +33,7 @@ import { classifyPct, bandLabel, resolveBands } from '../lib/learningAnalytics.j
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { getUserRole } from '../lib/userRole.js';
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
+import { scoreQuestion } from '../lib/examScoring.js';
 import { recordGamificationResult } from '../hooks/useGamification.js';
 import { recordActivity } from '../lib/progress.js';
 import '../styles/class-apple.css';
@@ -770,9 +771,9 @@ export default function MyClasses() {
     const wrongItems = [];
     const ansMap = sub?.answers || {};
     ex.questions.forEach((q, idx) => {
-      const userPicked = Array.isArray(ansMap) ? ansMap[idx] : ansMap[q.id || idx];
-      const correct = q.correctAnswer ?? q.answer;
-      const isCorrect = userPicked != null && correct != null && String(userPicked).trim().toUpperCase() === String(correct).trim().toUpperCase();
+      const userPicked = Array.isArray(ansMap) ? ansMap[idx] : ansMap[q.id ?? idx];
+      const detailOk = sub?.detail?.[idx]?.isCorrect;
+      const isCorrect = typeof detailOk === 'boolean' ? detailOk : scoreQuestion(q, userPicked).isCorrect;
       if (!isCorrect) {
         wrongItems.push({
           question: q,

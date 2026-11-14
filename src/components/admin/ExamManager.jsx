@@ -821,14 +821,28 @@ function PublishToVirtualModal({ exam, onClose, onPublished }) {
   const [isHot, setIsHot] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      let exportedQuestions = [];
+      if (exam?.id) {
+        try {
+          const exported = await exportExamData(exam.id);
+          if (Array.isArray(exported?.questions)) {
+            exportedQuestions = exported.questions;
+          }
+        } catch (fetchErr) {
+          console.warn('[ExamManager] Could not fetch full questions for virtual publish:', fetchErr);
+        }
+      }
+      const count = exportedQuestions.length || questionCount(exam) || 28;
       const res = publishExamToVirtual({
         ...exam,
         tier,
         examType,
+        questionCount: count,
+        customQuestions: exportedQuestions,
         durationMinutes: Number(duration) || 50,
         year: Number(year) || 2026,
         author,

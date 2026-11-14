@@ -1586,6 +1586,7 @@ export default function ExamJoin({ token, onExit }) {
           onExit={onExit}
           onRequestRetry={openRetryModal}
           sending={sendingRetry}
+          onViewResult={prevSubmission ? () => { setResult(prevSubmission); setStage('result'); } : undefined}
         />
         {retryModalOpen && (
           <RetryRequestModal

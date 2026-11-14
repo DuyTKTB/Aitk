@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchExamQuestions, createAttempt, saveUserAnswer, submitAttempt } from '../lib/examApi.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 
@@ -19,6 +19,7 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
   const [timeLeft, setTimeLeft] = useState((exam?.duration || 45) * 60);
   const [startedAt] = useState(Date.now());
   const [submitted, setSubmitted] = useState(false);
+  const [resultSummary, setResultSummary] = useState(null);
   const [saveError, setSaveError] = useState('');
   useEffect(() => {
     let alive = true;
@@ -89,24 +90,27 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
       }
     }
 
-    onExit?.();
-  }, [submitted, startedAt, questions, answers, total, attemptId, onExit]);
+    setResultSummary({ score, correct, wrong, blank, total, timeSpent });
+  }, [submitted, startedAt, questions, answers, total, attemptId]);
+
+  const submitRef = useRef(handleSubmit);
+  submitRef.current = handleSubmit;
+
   useEffect(() => {
-    if (mode !== 'exam' || !questions.length) return undefined;
-    if (submitted) return undefined;
+    if (mode !== 'exam' || !questions.length || submitted) return undefined;
 
     const t = setInterval(() => {
       setTimeLeft((s) => {
         if (s <= 1) {
           clearInterval(t);
-          setTimeout(() => handleSubmit(), 0);
+          setTimeout(() => submitRef.current?.(), 0);
           return 0;
         }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [mode, questions.length, handleSubmit, submitted]);
+  }, [mode, questions.length, submitted]);
 
   const toggleFlag = (id) => {
     setFlags((f) => {
@@ -134,6 +138,47 @@ export default function ExamTaking({ exam, mode = 'practice', onExit }) {
 
   if (loading) return <div className="eb-loading">Đang tải câu hỏi…</div>;
   if (!q) return <div className="eb-empty"><p>Đề thi chưa có câu hỏi.</p></div>;
+
+  if (resultSummary) {
+    return (
+      <div className="et">
+        <div className="et-head">
+          <button className="et-back" onClick={onExit}>‹ Quay lại</button>
+          <div className="et-info">
+            <span className="et-info-title">{exam.title}</span>
+            <span className="et-info-mode">Kết quả bài làm</span>
+          </div>
+          <button className="et-submit" onClick={onExit}>Hoàn tất</button>
+        </div>
+        <div className="et-body" style={{ display: 'block', maxWidth: 820, margin: '24px auto', padding: '0 16px' }}>
+          <div className="et-question" style={{ padding: 24 }}>
+            <h2 style={{ margin: '0 0 8px' }}>Điểm số: {resultSummary.score.toFixed(2)} / 10</h2>
+            <p style={{ color: 'var(--mut)', margin: '0 0 18px' }}>
+              Đúng <b>{resultSummary.correct}</b> · Sai <b>{resultSummary.wrong}</b> · Bỏ trống <b>{resultSummary.blank}</b> · Thời gian {Math.floor(resultSummary.timeSpent / 60)}p {resultSummary.timeSpent % 60}s
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {questions.map((item, idx) => {
+                const chosenId = answers[idx];
+                const chosenOpt = item.answers?.find((a) => a.id === chosenId);
+                const rightOpt = item.answers?.find((a) => a.is_correct);
+                return (
+                  <div key={item.id || idx} style={{ padding: 12, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                      Câu {idx + 1}: {chosenOpt?.is_correct ? 'Đúng' : chosenId ? 'Sai' : 'Chưa làm'}
+                    </div>
+                    <p style={{ margin: '0 0 6px' }}>{item.content}</p>
+                    {chosenOpt && <div style={{ fontSize: '.85rem' }}>Bạn chọn: <b>{chosenOpt.label}. {chosenOpt.content}</b></div>}
+                    {rightOpt && <div style={{ fontSize: '.85rem', color: '#059669' }}>Đáp án đúng: <b>{rightOpt.label}. {rightOpt.content}</b></div>}
+                    {item.explanation && <p style={{ fontSize: '.83rem', color: 'var(--mut)', marginTop: 6 }}>{item.explanation}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="et">

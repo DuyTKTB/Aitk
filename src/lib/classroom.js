@@ -544,15 +544,10 @@ export function defaultProctor() {
 export async function updateTeacherExam(examId, patch) {
   if (!examId) throw new Error('Thiếu examId.');
   try {
-    await Promise.race([
-      updateDoc(doc(db, 'exams', examId), stripUndefined({
-        ...patch,
-        updatedAt: serverTimestamp(),
-      })),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]).catch((err) => {
-      console.warn('[updateTeacherExam] updateDoc warning:', err?.message);
-    });
+    await updateDoc(doc(db, 'exams', examId), stripUndefined({
+      ...patch,
+      updatedAt: serverTimestamp(),
+    }));
     return true;
   } catch (e) {
     console.error('[updateTeacherExam] Lỗi:', e.code, e.message);
@@ -708,12 +703,7 @@ export async function startAttempt({ examId, student, forceNew = false }) {
       autoSubmitted: false,
       cameraStatus: 'off',
     };
-    await Promise.race([
-      setDoc(ref, data),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]).catch((err) => {
-      console.warn('[startAttempt] setDoc warning:', err?.message);
-    });
+    await setDoc(ref, data);
     return { id: attemptId, ...data, restored: false, submitted: false };
   } catch (e) {
     console.error('[startAttempt] Lỗi:', e.code, e.message);
@@ -726,10 +716,7 @@ export async function saveAttemptAnswers({ examId, studentId, answers }) {
   const attemptId = `${examId}_${studentId}`;
   const ref = doc(db, 'exams', examId, 'attempts', attemptId);
   try {
-    await Promise.race([
-      updateDoc(ref, stripUndefined({ answers })),
-      new Promise((resolve) => setTimeout(resolve, 1500)),
-    ]).catch(() => {});
+    await updateDoc(ref, stripUndefined({ answers }));
   } catch (e) {
     if (e.code !== 'not-found') {
       console.warn('[saveAttemptAnswers] Lỗi:', e.code, e.message);
@@ -889,9 +876,7 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
     subId = `${examId}_${student.id}_${att?.startedAt || Date.now()}`;
     const subDocRef = doc(db, 'submissions', subId);
 
-    setDoc(subDocRef, stripUndefined(data)).catch((err) => {
-      console.warn('[_submitExamImpl] setDoc background warning:', err?.message);
-    });
+    await setDoc(subDocRef, stripUndefined(data));
   } catch (e) {
     console.error('[submitExam] Ghi submission lỗi:', e.code, e.message);
     const errText = friendlyFirestoreError(e, 'lưu bài nộp');

@@ -8,10 +8,21 @@ export default function VipGate({ text = 'Nâng cấp VIP để dùng trợ lý 
   const [state, setState] = useState({ loading: true, show: false });
 
   useEffect(() => {
-    // Check localStorage trước (sync, nhanh)
+    // Check localStorage trước (sync, nhanh) — hỗ trợ cả key mới cs-vip-status và key cũ cs-vip
     let isVipLocal = false;
     try {
-      isVipLocal = localStorage.getItem('cs-vip') === 'true';
+      const rawStatus = localStorage.getItem('cs-vip-status');
+      if (rawStatus) {
+        const parsed = JSON.parse(rawStatus);
+        const expMs = parsed?.expiry ? new Date(parsed.expiry).getTime() : null;
+        const notExpired = !expMs || Number.isNaN(expMs) || expMs > Date.now();
+        if (notExpired && (parsed?.isPro || parsed?.isVip || parsed?.vip)) {
+          isVipLocal = true;
+        }
+      }
+      if (!isVipLocal && localStorage.getItem('cs-vip') === 'true') {
+        isVipLocal = true;
+      }
     } catch { /* */ }
 
     if (isVipLocal) {

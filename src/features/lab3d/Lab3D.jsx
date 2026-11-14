@@ -228,10 +228,26 @@ export default function Lab3D() {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
   }, [walk, containers]);
 
+  const timersRef = useRef([]);
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter((t) => t !== id);
+      fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+  }, []);
+  useEffect(() => () => clearTimers(), [clearTimers]);
+
   /* Đèn cồn: gia nhiệt + kiểm tra phản ứng nhiệt phân (Cu(OH)2 -> CuO) */
   useEffect(() => {
     if (!burnerLit) return undefined;
     const iv = setInterval(() => {
+      let pendingHeatEvents = [];
       setContainers((cs) => {
         const next = { ...cs };
         const heatEvents = [];
@@ -248,18 +264,19 @@ export default function Lab3D() {
           if (evs.length) heatEvents.push({ instrument: id, events: evs });
           next[id] = cloned;
         }
-        if (heatEvents.length) {
-          setLog((l) => {
-            let cur = l;
-            for (const h of heatEvents) {
-              cur = logEntry(cur, { act: 'heat', instrument: h.instrument, events: h.events });
-            }
-            return cur;
-          });
-          setToast(heatEvents[0].events.map((e) => e.text).join(' '));
-        }
+        pendingHeatEvents = heatEvents;
         return next;
       });
+      if (pendingHeatEvents.length) {
+        setLog((l) => {
+          let cur = l;
+          for (const h of pendingHeatEvents) {
+            cur = logEntry(cur, { act: 'heat', instrument: h.instrument, events: h.events });
+          }
+          return cur;
+        });
+        setToast(pendingHeatEvents[0].events.map((e) => e.text).join(' '));
+      }
     }, 1400);
     return () => clearInterval(iv);
   }, [burnerLit]);
@@ -363,7 +380,9 @@ export default function Lab3D() {
     pushUndo();
     if (sound) sfx.pour();
     const container = cloneContainers(selectedContainer);
-    const res = addChemical(container, chem, Number(amount));
+    const isSolid = CHEMS[chem]?.state === 'solid';
+    const qty = isSolid ? (CHEMS[chem].solidGram || 3) : Number(amount);
+    const res = addChemical(container, chem, qty);
     if (!res.ok) { setToast(res.reason); return; }
     const pourColor = CHEMS[chem]?.color || '#cfe3f2';
     updateContainer(selected, {
@@ -374,12 +393,12 @@ export default function Lab3D() {
       pouring: true,
       pourColor,
     });
-    setTimeout(() => updateContainer(selected, { pouring: false }), 900);
+    later(() => updateContainer(selected, { pouring: false }), 900);
     setLog((l) => logEntry(l, {
       act: 'pour',
       chem,
-      ml: CHEMS[chem]?.state === 'solid' ? (CHEMS[chem].solidGram || 3) : Number(amount),
-      isSolid: CHEMS[chem]?.state === 'solid',
+      ml: qty,
+      isSolid,
       instrument: selected,
       events: res.events,
     }));
@@ -414,7 +433,7 @@ export default function Lab3D() {
         pourColor: selectedContainer.color || '#cfe3f2',
       },
     }));
-    setTimeout(() => updateContainer(transferTarget, { pouring: false }), 900);
+    later(() => updateContainer(transferTarget, { pouring: false }), 900);
     setLog((l) => logEntry(l, {
       act: 'transfer',
       from: selected,
@@ -450,7 +469,7 @@ export default function Lab3D() {
       return;
     }
     updateContainer(selected, { stir: true });
-    setTimeout(() => updateContainer(selected, { stir: false }), 2200);
+    later(() => updateContainer(selected, { stir: false }), 2200);
     setLog((l) => logEntry(l, { act: 'stir', instrument: selected }));
     setToast('Đã khuấy đều hỗn hợp.');
   };
@@ -464,6 +483,7 @@ export default function Lab3D() {
   };
 
   const resetSession = () => {
+    clearTimers();
     pushUndo();
     setContainers(initialContainers());
     setLog([]);
@@ -496,11 +516,11 @@ export default function Lab3D() {
       await setDoc(doc(db, 'users', user.uid, 'lab3dSessions', session.id), payload);
       setSaveState('saved');
       setToast('Đã lưu toàn bộ trạng thái bàn thí nghiệm lên Cloud.');
-      setTimeout(() => setSaveState('idle'), 2500);
+      later(() => setSaveState('idle'), 2500);
     } catch {
       setSaveState('error');
       setToast('Đã lưu bản sao cục bộ trên máy (Cloud tạm bận).');
-      setTimeout(() => setSaveState('idle'), 3500);
+      later(() => setSaveState('idle'), 3500);
     }
   };
 
@@ -910,7 +930,7 @@ export default function Lab3D() {
             step="5"
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            disabled={!CHEMS[chem]?.state || CHEMS[chem]?.state === 'indicator'}
+            disabled={!CHEMS[chem]?.state || CHEMS[chem]?.state === 'indicator' || CHEMS[chem]?.state === 'solid'}
             title="Lượng hóa chất thêm vào"
           />
           <b className="lab-amount">

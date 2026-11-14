@@ -179,72 +179,74 @@ export default function JeopardyGame() {
 
     if (activeTile.special === 'double') points *= 2;
 
+    let nextTeams;
     if (activeTile.special === 'steal') {
       const otherTeams = teams.filter((_, i) => i !== currentTurn).sort((a, b) => b.score - a.score);
       const victim = otherTeams[0];
       const stolen = Math.min(victim?.score || 0, points);
-      setTeams((ts) =>
-        ts.map((t, i) => {
-          if (i === currentTurn) return { ...t, score: t.score + points };
-          if (t.id === victim?.id) return { ...t, score: t.score - stolen };
-          return t;
-        })
-      );
+      nextTeams = teams.map((t, i) => {
+        if (i === currentTurn) return { ...t, score: t.score + points };
+        if (t.id === victim?.id) return { ...t, score: t.score - stolen };
+        return t;
+      });
     } else {
-      setTeams((ts) => ts.map((t, i) => (i === currentTurn ? { ...t, score: t.score + points } : t)));
+      nextTeams = teams.map((t, i) => (i === currentTurn ? { ...t, score: t.score + points } : t));
     }
-
+    setTeams(nextTeams);
     sound.correct();
-    setTiles((ts) => ts.map((t) =>
+    const nextTiles = tiles.map((t) =>
       t.catIdx === activeTile.catIdx && t.qIdx === activeTile.qIdx
         ? { ...t, used: true }
         : t
-    ));
+    );
+    setTiles(nextTiles);
     setTimeout(() => {
       closeTile();
-      checkEnd();
+      checkEnd(nextTiles, nextTeams);
     }, 800);
   };
 
   const markWrong = () => {
     if (!activeTile) return;
     sound.wrong();
-    setTiles((ts) => ts.map((t) =>
+    const nextTiles = tiles.map((t) =>
       t.catIdx === activeTile.catIdx && t.qIdx === activeTile.qIdx
         ? { ...t, used: true }
         : t
-    ));
+    );
+    setTiles(nextTiles);
     setCurrentTurn((currentTurn + 1) % teams.length);
     setTimeout(() => {
       closeTile();
-      checkEnd();
+      checkEnd(nextTiles, teams);
     }, 600);
   };
 
   const skipTurn = () => {
     if (!activeTile) return;
     sound.click();
-    setTiles((ts) => ts.map((t) =>
+    const nextTiles = tiles.map((t) =>
       t.catIdx === activeTile.catIdx && t.qIdx === activeTile.qIdx
         ? { ...t, used: true }
         : t
-    ));
+    );
+    setTiles(nextTiles);
     setCurrentTurn((currentTurn + 1) % teams.length);
-    closeTile();
+    setTimeout(() => {
+      closeTile();
+      checkEnd(nextTiles, teams);
+    }, 250);
   };
 
-  const checkEnd = () => {
-    setTiles((ts) => {
-      const allUsed = ts.every((t) => t.used);
-      if (allUsed) {
-        setTimeout(() => {
-          setWinner([...teams].sort((a, b) => b.score - a.score)[0]);
-          setPhase('over');
-          sound.win();
-        }, 400);
-      }
-      return ts;
-    });
+  const checkEnd = (updatedTiles, latestTeams = teams) => {
+    const allUsed = (updatedTiles || []).length > 0 && updatedTiles.every((t) => t.used);
+    if (allUsed) {
+      setTimeout(() => {
+        setWinner([...latestTeams].sort((a, b) => b.score - a.score)[0]);
+        setPhase('over');
+        sound.win();
+      }, 400);
+    }
   };
 
   const remaining = useMemo(() => tiles.filter((t) => !t.used).length, [tiles]);

@@ -157,7 +157,7 @@ export default function ChalkboardView({
       console.error('[Chalkboard Setup Error]:', err);
       setError(err.message);
     }
-  }, [currentLesson, activeStep, sandboxMode, customCommands, redrawCanvas, onStepChange]);
+  }, [loading, currentLesson, activeStep, sandboxMode, customCommands, redrawCanvas, onStepChange]);
 
   // Tự động đo đạc kiểm định cơ học
   useEffect(() => {
@@ -180,7 +180,7 @@ export default function ChalkboardView({
     });
     setVerificationResults(results);
     setIsMeasuring(false);
-  }, [currentLesson, activeStep]);
+  }, [loading, currentLesson, activeStep]);
 
   // Cập nhật khi resize cửa sổ
   useEffect(() => {

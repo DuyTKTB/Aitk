@@ -28,26 +28,38 @@ const DAY_MS = 86400000;
 export const CHAPTER_EXAM_WEIGHTS = {
   // Lớp 12 — Trọng tâm thi Đại học (chiếm ~70-75% đề thi)
   'c12-ester': { questionsInExam: '3–4 câu', weightLabel: 'Trọng tâm đề thi', priorityWeight: 10 },
+  'c12-carbohydrate': { questionsInExam: '2–3 câu', weightLabel: 'Trọng tâm đề thi', priorityWeight: 9 },
   'c12-carb': { questionsInExam: '2–3 câu', weightLabel: 'Trọng tâm đề thi', priorityWeight: 9 },
   'c12-amine': { questionsInExam: '3–4 câu', weightLabel: 'Hay ra câu phân loại', priorityWeight: 10 },
+  'c12-polymer': { questionsInExam: '2–3 câu', weightLabel: 'Dễ lấy điểm trọn vẹn', priorityWeight: 8 },
   'c12-poly': { questionsInExam: '2–3 câu', weightLabel: 'Dễ lấy điểm trọn vẹn', priorityWeight: 8 },
   'c12-electro': { questionsInExam: '3–4 câu', weightLabel: 'Trọng tâm chương trình mới', priorityWeight: 10 },
   'c12-metal': { questionsInExam: '3–4 câu', weightLabel: 'Trọng tâm vô cơ', priorityWeight: 9 },
+  'c12-metal-main': { questionsInExam: '2–3 câu', weightLabel: 'Thực tiễn & Nhận biết', priorityWeight: 8 },
   'c12-group': { questionsInExam: '2–3 câu', weightLabel: 'Thực tiễn & Nhận biết', priorityWeight: 8 },
+  'c12-transition': { questionsInExam: '1–2 câu', weightLabel: 'Điểm 8.5–10 (Mới GDPT 2018)', priorityWeight: 7 },
   'c12-complex': { questionsInExam: '1–2 câu', weightLabel: 'Điểm 8.5–10 (Mới GDPT 2018)', priorityWeight: 7 },
+  'c12-sustain': { questionsInExam: '1 câu', weightLabel: 'Hóa học & phát triển bền vững', priorityWeight: 6 },
   // Lớp 11 — Nền tảng Hữu cơ & Cân bằng (~20% đề thi)
+  'c11-equilibrium': { questionsInExam: '2 câu', weightLabel: 'Nền tảng tính pH & chuẩn độ', priorityWeight: 9 },
   'c11-eq': { questionsInExam: '2 câu', weightLabel: 'Nền tảng tính pH & chuẩn độ', priorityWeight: 9 },
+  'c11-nitrogen': { questionsInExam: '1–2 câu', weightLabel: 'Hóa vô cơ thực tiễn', priorityWeight: 7 },
   'c11-n-s': { questionsInExam: '1–2 câu', weightLabel: 'Hóa vô cơ thực tiễn', priorityWeight: 7 },
+  'c11-organic-gen': { questionsInExam: '1–2 câu', weightLabel: 'Gốc hữu cơ & phổ IR/MS', priorityWeight: 9 },
   'c11-organic': { questionsInExam: '1–2 câu', weightLabel: 'Gốc hữu cơ & phổ IR/MS', priorityWeight: 9 },
+  'c11-hydrocarbon': { questionsInExam: '2 câu', weightLabel: 'Nền tảng Hydrocarbon', priorityWeight: 8 },
   'c11-hc': { questionsInExam: '2 câu', weightLabel: 'Nền tảng Hydrocarbon', priorityWeight: 8 },
   'c11-halide': { questionsInExam: '1 câu', weightLabel: 'Bổ trợ chuỗi phản ứng', priorityWeight: 6 },
   'c11-alcohol': { questionsInExam: '2 câu', weightLabel: 'Hay gặp trong bài tổng hợp', priorityWeight: 8 },
   'c11-carbonyl': { questionsInExam: '2 câu', weightLabel: 'Tráng bạc & Carboxylic acid', priorityWeight: 9 },
   // Lớp 10 — Gốc Nguyên tử, Liên kết, Nhiệt & Động hóa học (~10% đề thi)
   'c10-atom': { questionsInExam: '1 câu', weightLabel: 'Gốc cấu hình electron', priorityWeight: 8 },
+  'c10-periodic': { questionsInExam: '1 câu', weightLabel: 'Quy luật tuần hoàn', priorityWeight: 8 },
   'c10-table': { questionsInExam: '1 câu', weightLabel: 'Quy luật tuần hoàn', priorityWeight: 8 },
+  'c10-bonding': { questionsInExam: '1 câu', weightLabel: 'Liên kết & tương tác phân tử', priorityWeight: 7 },
   'c10-bond': { questionsInExam: '1 câu', weightLabel: 'Liên kết & tương tác phân tử', priorityWeight: 7 },
   'c10-redox': { questionsInExam: '1–2 câu', weightLabel: 'Bảo toàn electron cốt lõi', priorityWeight: 10 },
+  'c10-energy': { questionsInExam: '1–2 câu', weightLabel: 'Biến thiên Enthalpy (Mới)', priorityWeight: 8 },
   'c10-thermo': { questionsInExam: '1–2 câu', weightLabel: 'Biến thiên Enthalpy (Mới)', priorityWeight: 8 },
   'c10-rate': { questionsInExam: '1 câu', weightLabel: 'Tốc độ phản ứng', priorityWeight: 7 },
   'c10-halogen': { questionsInExam: '1–2 câu', weightLabel: 'Nhóm Halogen', priorityWeight: 7 },
@@ -380,8 +392,9 @@ export function buildAutoRoadmapData({
   (events || []).forEach((ev) => {
     if (!ev || !ev.qid) return;
     const prev = qErrorMap.get(ev.qid) || { qid: ev.qid, topicId: ev.topicId, wrongTimes: 0, rightTimes: 0, lastAt: 0 };
-    if (ev.ok === false) prev.wrongTimes += 1;
-    else if (ev.ok === true) prev.rightTimes += 1;
+    const isOk = typeof ev.correct === 'boolean' ? ev.correct : ev.ok;
+    if (isOk === false) prev.wrongTimes += 1;
+    else if (isOk === true) prev.rightTimes += 1;
     if ((ev.at || 0) > prev.lastAt) prev.lastAt = ev.at || 0;
     qErrorMap.set(ev.qid, prev);
   });

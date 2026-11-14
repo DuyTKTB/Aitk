@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { translateAuthError } from '../lib/firebase.js';
+import { db, translateAuthError } from '../lib/firebase.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
 import ProfileStats from './ProfileStats.jsx';
@@ -13,7 +14,7 @@ import SubscriptionTiers from './SubscriptionTiers.jsx';
 import { getCredits, grantActivationCredits } from '../lib/creditService.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { setUserTier } from '../lib/tier.js';
-import { adminGrantProDirect } from '../lib/proKeyApi.js';
+import { adminGrantProDirect, getProStatus } from '../lib/proKeyApi.js';
 import { setUserRole } from '../lib/userRole.js';
 import { getStreakData, liveStreak, dayKey } from '../hooks.js';
 import { getClassesByStudent } from '../lib/classroom.js';
@@ -385,6 +386,23 @@ export default function ProfilePage({ credits: propCredits }) {
   const identCode = useMemo(() => 'ELECAI-' + hashStr(email || 'guest').toString(16).slice(0, 6).toUpperCase(), [email]);
   const pwScore = pwStrength(newPw);
 
+  /* Đồng bộ identCode lên Firestore để Webhook SePay tra cứu chính xác khi chuyển khoản */
+  useEffect(() => {
+    if (!uid || !identCode) return;
+    let alive = true;
+    const ref = doc(db, 'users', uid);
+    getDoc(ref)
+      .then((snap) => {
+        if (!alive || !snap.exists()) return;
+        if (snap.data()?.identCode !== identCode) {
+          return setDoc(ref, { identCode }, { merge: true });
+        }
+        return null;
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [uid, identCode]);
+
   /* Email ẩn/hiện an toàn */
   const maskedEmail = useMemo(() => {
     if (!email) return '—';
@@ -619,108 +637,132 @@ export default function ProfilePage({ credits: propCredits }) {
   const sendVerify = run(sendVerifyEmail, () => ok('Đã gửi email xác thực. Kiểm tra hộp thư (cả mục Spam).'));
   const checkVerify = run(refreshUser, (u) => (u?.emailVerified ? ok('Email đã được xác thực.') : fail('Email vẫn chưa xác thực.')));
 
-  const handlePaymentSuccess = useCallback(async (completedPkg) => {
-    const targetPkg = completedPkg || customPkg;
-    const role = targetPkg?.role || (pro?.isPro ? 'teacher' : 'student');
-    const months = Number(targetPkg?.months) || 12;
-    const days = months * 30;
-    const expiryDate = new Date(Date.now() + days * 86400000).toISOString();
-    const pkgLabel = targetPkg?.label || (role === 'teacher' ? 'ELEC AI Giáo Viên PRO' : 'ELEC AI Học Sinh VIP');
-
-    // 1. Nếu là Giáo Viên PRO
-    if (role === 'teacher') {
-      try {
-        setUserRole(uid, 'teacher');
-      } catch {}
-      try {
-        await adminGrantProDirect({ userId: uid, durationDays: days, note: pkgLabel });
-      } catch (err) {
-        console.warn('adminGrantProDirect error:', err);
-      }
-      try {
-        localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify({
-          planName: 'PRO',
-          planDesc: 'Quản lý không giới hạn lớp học & Đề thi AI',
-          durationLabel: `${months} tháng`,
-          examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',
-          hearts: 99,
-          maxHearts: 99,
-          expiry: expiryDate,
-        }));
-        localStorage.setItem('cs-vip-status', JSON.stringify({
-          isPro: true,
-          plan: 'PRO',
-          expiry: expiryDate,
-          daysLeft: days,
-        }));
-      } catch {}
-      window.dispatchEvent(new CustomEvent('cs-vip-update'));
-      window.dispatchEvent(new CustomEvent('cs-tier-update'));
-      window.dispatchEvent(new CustomEvent('user-profile-change'));
-      await pro?.refresh?.();
-    } else {
-      // 2. Nếu là Học Sinh VIP
-      try {
-        await setUserTier(uid, 'vip');
-      } catch (err) {
-        console.warn('setUserTier error:', err);
-      }
-      // Tặng kèm Credit AI tương ứng thời hạn gói VIP
-      const bonusCredits = months >= 12 ? 3000 : months >= 3 ? 1000 : 300;
-      try {
-        await grantActivationCredits(uid, bonusCredits, 'VIP_UPGRADE');
-      } catch (crErr) {
-        console.warn('grantActivationCredits on VIP upgrade error:', crErr);
-      }
-      try {
-        localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify({
-          planName: 'VIP',
-          planDesc: 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi',
-          durationLabel: `${months} tháng`,
-          examAccessLabel: 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi',
-          hearts: 99,
-          maxHearts: 99,
-          expiry: expiryDate,
-        }));
-        localStorage.setItem('cs-vip-status', JSON.stringify({
-          isPro: true,
-          plan: 'VIP',
-          expiry: expiryDate,
-          daysLeft: days,
-        }));
-      } catch {}
-      window.dispatchEvent(new CustomEvent('cs-vip-update'));
-      window.dispatchEvent(new CustomEvent('cs-tier-update'));
-      window.dispatchEvent(new CustomEvent('user-profile-change'));
-      await refreshTier();
-      await refreshUser();
-    }
-
-    // 3. Ghi lại lịch sử giao dịch vào subQuota
+  const applyLocalUpgradeState = useCallback(async ({ role, months, days, expiryDate, pkgLabel, amountText, bonusCredits = 0 }) => {
+    try {
+      localStorage.setItem('cs-vip-status', JSON.stringify({
+        isPro: true,
+        isVip: role !== 'teacher',
+        plan: role === 'teacher' ? 'PRO' : 'VIP',
+        expiry: expiryDate,
+        daysLeft: days,
+      }));
+    } catch {}
     try {
       const curSub = getSubscriptionAndQuota(uid);
       const newTx = {
         id: 'TX-' + Date.now().toString(36).toUpperCase(),
         title: `Nâng cấp thành công gói ${pkgLabel}`,
-        amount: targetPkg?.amount ? `${Number(targetPkg.amount).toLocaleString('vi-VN')} đ` : 'Đã thanh toán',
+        amount: amountText,
         status: 'Thành công',
         at: new Date().toLocaleString('vi-VN'),
       };
       const updatedSub = {
         ...curSub,
         planName: role === 'teacher' ? 'PRO' : 'VIP',
+        planDesc: role === 'teacher'
+          ? 'Quản lý không giới hạn lớp học & Đề thi AI'
+          : 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi',
         durationLabel: `${months} tháng`,
+        examAccessLabel: role === 'teacher' ? 'Toàn bộ đề FREE, PRO, VIP' : 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi',
         hearts: 99,
         maxHearts: 99,
+        expiry: expiryDate,
         transactions: [newTx, ...(curSub.transactions || [])],
       };
       localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify(updatedSub));
       setSubQuota(updatedSub);
     } catch {}
+    window.dispatchEvent(new CustomEvent('cs-vip-update'));
+    window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    window.dispatchEvent(new CustomEvent('user-profile-change'));
+    await pro?.refresh?.();
+    await refreshTier();
+    await refreshUser();
+    if (bonusCredits > 0 && uid) {
+      await getCredits(uid).catch(() => {});
+    }
+  }, [uid, pro, refreshTier, refreshUser]);
 
+  const handleCheckPaymentStatus = useCallback(async () => {
+    if (!uid) return { ok: false };
+    try {
+      const [proStatus, userSnap] = await Promise.all([
+        getProStatus(uid, email).catch(() => null),
+        getDoc(doc(db, 'users', uid)).catch(() => null),
+      ]);
+      const data = userSnap?.exists() ? userSnap.data() : {};
+      const vipExpRaw = data?.vipExpiresAt || data?.vipUntil || data?.proUntil;
+      const vipExpMs = vipExpRaw?.toMillis ? vipExpRaw.toMillis() : (vipExpRaw ? new Date(vipExpRaw).getTime() : 0);
+      const isFirestoreVip = data?.tier === 'vip' || data?.tier === 'pro' || data?.pro === true || vipExpMs > Date.now();
+      const isActive = Boolean(proStatus?.isPro || isFirestoreVip);
+      if (!isActive) return { ok: false };
+
+      const isTeacherActive = Boolean(
+        (proStatus?.isPro && proStatus?.isTeacherPro !== false) || data?.role === 'teacher' || data?.plan === 'PRO'
+      );
+      const expiryDate = proStatus?.expiry || (vipExpMs ? new Date(vipExpMs).toISOString() : new Date(Date.now() + 365 * 864e5).toISOString());
+      const days = Math.max(1, Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 864e5));
+      await applyLocalUpgradeState({
+        role: isTeacherActive ? 'teacher' : 'student',
+        months: Math.max(1, Math.round(days / 30)),
+        days,
+        expiryDate,
+        pkgLabel: isTeacherActive ? 'ELEC AI Giáo Viên PRO' : 'ELEC AI Học Sinh VIP',
+        amountText: 'Đã xác nhận',
+        bonusCredits: 1,
+      });
+      ok('Tài khoản đã được xác nhận nâng cấp thành công!');
+      return { isVip: true, isPro: true, ok: true };
+    } catch {
+      return { ok: false };
+    }
+  }, [uid, email, applyLocalUpgradeState, ok]);
+
+  const handlePaymentSuccess = useCallback(async (completedPkg) => {
+    const targetPkg = completedPkg || customPkg;
+    // Chỉ cho phép kích hoạt trực tiếp từ client khi có mã ưu đãi giảm 100% đã được xác thực
+    if (!targetPkg?.isFree) {
+      return handleCheckPaymentStatus();
+    }
+    const role = targetPkg?.role || 'student';
+    const months = Number(targetPkg?.months) || 12;
+    const days = months * 30;
+    const expiryDate = new Date(Date.now() + days * 86400000).toISOString();
+    const pkgLabel = targetPkg?.label || (role === 'teacher' ? 'ELEC AI Giáo Viên PRO' : 'ELEC AI Học Sinh VIP');
+
+    if (role === 'teacher') {
+      try { setUserRole(uid, 'teacher'); } catch {}
+      try {
+        await adminGrantProDirect({ userId: uid, durationDays: days, note: `${pkgLabel} (${targetPkg.discountCode || 'FREE'})` });
+      } catch (err) {
+        console.warn('adminGrantProDirect error:', err);
+      }
+    } else {
+      try {
+        await setUserTier(uid, 'vip');
+      } catch (err) {
+        console.warn('setUserTier error:', err);
+      }
+      const bonusCredits = months >= 12 ? 3000 : months >= 3 ? 1000 : 300;
+      try {
+        await grantActivationCredits(uid, bonusCredits, targetPkg.discountCode || 'VIP_VOUCHER');
+      } catch (crErr) {
+        console.warn('grantActivationCredits on VIP upgrade error:', crErr);
+      }
+    }
+
+    await applyLocalUpgradeState({
+      role,
+      months,
+      days,
+      expiryDate,
+      pkgLabel,
+      amountText: 'Miễn phí (Voucher)',
+      bonusCredits: 1,
+    });
     ok(`Nâng cấp thành công gói ${pkgLabel}!`);
     return { isVip: true, isPro: true, ok: true };
-  }, [uid, customPkg, pro, refreshTier, refreshUser, ok]);
+  }, [uid, customPkg, handleCheckPaymentStatus, applyLocalUpgradeState, ok]);
 
   const handleRedeemCode = async (e) => {
     e.preventDefault();
@@ -1328,7 +1370,7 @@ export default function ProfilePage({ credits: propCredits }) {
           </div>
 
           {/* Giáo viên PRO */}
-          {(pro.isPro || user?.role === 'teacher') && (
+          {(isTeacher || user?.role === 'teacher') && (
             <div className="pf-m-card">
               <TeacherProPanel />
             </div>
@@ -1561,7 +1603,9 @@ export default function ProfilePage({ credits: propCredits }) {
             </button>
             <PaymentPanel
               identCode={identCode}
+              userId={uid}
               onPaymentSuccess={handlePaymentSuccess}
+              onCheckStatus={handleCheckPaymentStatus}
               onClose={() => setShowPayment(false)}
               customPackage={customPkg}
             />

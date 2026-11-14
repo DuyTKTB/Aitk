@@ -195,7 +195,7 @@ export function listenMyDms(uid, cb) {
   if (!uid) { cb([]); return () => {}; }
   const q = query(collection(db, 'dms'), where('members', 'array-contains', uid));
   return onSnapshot(q, (snap) => {
-    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((d) => !d.hidden?.[uid]);
     rows.sort((a, b) => {
       const otherA = (a.members || []).find((u) => u !== uid) || '';
       const otherB = (b.members || []).find((u) => u !== uid) || '';
@@ -305,8 +305,12 @@ async function _legacySendDmMessage(dmIdStr, me, text) {
 }
 
 /* Rời/xóa hội thoại (chỉ mình thôi — người kia vẫn thấy) */
-export async function deleteDmForMe(dmIdStr) {
+export async function deleteDmForMe(dmIdStr, uid) {
   if (!dmIdStr) return;
+  if (uid) {
+    await updateDoc(doc(db, 'dms', dmIdStr), { [`hidden.${uid}`]: true });
+    return;
+  }
   await deleteDoc(doc(db, 'dms', dmIdStr));
 }
 
@@ -330,10 +334,12 @@ export async function sendClassMessage(classId, me, text) {
     await addDoc(collection(db, 'classes', classId, 'chat'), {
       uid: me.uid,
       name: me.displayName || 'Bạn',
+      ...(me.isSystem ? { isSystem: true } : {}),
       text: t,
       createdAt: Date.now(),
     });
 
+    if (me.isSystem) return;
     const isValid = isValidStreakMessage(t);
     if (!isValid) return;
 
@@ -396,7 +402,7 @@ export async function sendClassMessage(classId, me, text) {
 
     if (justReachedThreshold) {
       await addDoc(collection(db, 'classes', classId, 'chat'), {
-        uid: 'system',
+        uid: me.uid,
         name: 'Hệ thống',
         isSystem: true,
         text: `🔥 Lớp ${cls.name || ''} đã hoàn thành chỉ tiêu giữ chuỗi ngày thứ ${count}!`,
@@ -405,7 +411,7 @@ export async function sendClassMessage(classId, me, text) {
 
       if (milestoneHit) {
         await addDoc(collection(db, 'classes', classId, 'chat'), {
-          uid: 'system',
+          uid: me.uid,
           name: 'Hệ thống',
           isSystem: true,
           isMilestone: true,

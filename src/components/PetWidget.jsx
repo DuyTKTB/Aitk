@@ -114,6 +114,11 @@ export default function PetWidget() {
   const [showChatHistoryDropdown, setShowChatHistoryDropdown] = useState(false);
   const [historyTab, setHistoryTab] = useState('history'); // 'history' | 'persona'
 
+  useEffect(() => {
+    setSessions(loadStoredSessions());
+    setActiveSessionId(null);
+  }, [SESSIONS_STORAGE_KEY]);
+
   // Modal open state
   const [isOpen, setIsOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState('plan'); // 'stats' | 'plan' | 'chat'
@@ -347,20 +352,21 @@ export default function PetWidget() {
     let t = null;
     if (focusRunning && focusSeconds > 0) {
       t = setInterval(() => {
-        setFocusSeconds((prev) => {
-          if (prev <= 1) {
-            setFocusRunning(false);
-            try { sound.win(); } catch {}
-            lofiAudio.stop();
-            alert('Đã hoàn thành phiên tập trung Pomodoro! Bạn hãy nghỉ ngơi một chút nhé.');
-            return focusTotalSeconds;
-          }
-          return prev - 1;
-        });
+        setFocusSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
       }, 1000);
     }
     return () => clearInterval(t);
-  }, [focusRunning, focusTotalSeconds]);
+  }, [focusRunning, focusSeconds]);
+
+  useEffect(() => {
+    if (focusRunning && focusSeconds === 0) {
+      setFocusRunning(false);
+      setFocusSeconds(focusTotalSeconds);
+      try { sound.win(); } catch {}
+      lofiAudio.stop();
+      alert('Đã hoàn thành phiên tập trung Pomodoro! Bạn hãy nghỉ ngơi một chút nhé.');
+    }
+  }, [focusRunning, focusSeconds, focusTotalSeconds]);
 
   // Auto-scroll chat
   useEffect(() => {

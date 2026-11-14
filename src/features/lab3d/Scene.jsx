@@ -149,8 +149,10 @@ function CameraRig({ view, focus, walk, keysRef }) {
   const { camera, controls } = useThree();
   const target = useRef(new THREE.Vector3(...VIEWS.room.target));
   const desired = useRef(new THREE.Vector3(...VIEWS.room.pos));
+  const transitioningRef = useRef(true);
 
   useEffect(() => {
+    transitioningRef.current = true;
     if (focus?.pos) {
       const [fx, fy, fz] = focus.pos;
       desired.current.set(fx, fy + 0.36, fz + 0.65);
@@ -164,6 +166,7 @@ function CameraRig({ view, focus, walk, keysRef }) {
 
   useFrame((state, dt) => {
     if (walk) return;
+    let movedByKeys = false;
     if (keysRef?.current) {
       const k = keysRef.current;
       const speed = (k.shift ? 3.2 : 1.8) * dt;
@@ -173,21 +176,33 @@ function CameraRig({ view, focus, walk, keysRef }) {
       if (k.a) dir.x -= 1;
       if (k.d) dir.x += 1;
       if (dir.lengthSq() > 0) {
+        movedByKeys = true;
+        transitioningRef.current = true;
         dir.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), state.camera.rotation.y);
-        desired.current.addScaledVector(dir, speed);
-        target.current.addScaledVector(dir, speed);
+        desired.current.copy(camera.position).addScaledVector(dir, speed);
+        if (controls) target.current.copy(controls.target).addScaledVector(dir, speed);
+        desired.current.x = THREE.MathUtils.clamp(desired.current.x, -ROOM.w / 2 + 0.6, ROOM.w / 2 - 0.6);
+        desired.current.z = THREE.MathUtils.clamp(desired.current.z, -ROOM.d / 2 + 0.6, ROOM.d / 2 - 0.6);
       }
-      desired.current.x = THREE.MathUtils.clamp(desired.current.x, -ROOM.w / 2 + 0.6, ROOM.w / 2 - 0.6);
-      desired.current.z = THREE.MathUtils.clamp(desired.current.z, -ROOM.d / 2 + 0.6, ROOM.d / 2 - 0.6);
     }
-    camera.position.lerp(desired.current, Math.min(1, dt * 4.5));
-    if (controls) controls.target.lerp(target.current, Math.min(1, dt * 4.5));
+    if (transitioningRef.current || movedByKeys) {
+      camera.position.lerp(desired.current, Math.min(1, dt * 4.5));
+      if (controls) controls.target.lerp(target.current, Math.min(1, dt * 4.5));
+      if (
+        !movedByKeys
+        && camera.position.distanceToSquared(desired.current) < 0.0005
+        && (!controls || controls.target.distanceToSquared(target.current) < 0.0005)
+      ) {
+        transitioningRef.current = false;
+      }
+    }
   });
 
   return (
     <OrbitControls
       makeDefault
       enabled={!walk}
+      onStart={() => { transitioningRef.current = false; }}
       enablePan={false}
       minDistance={0.35}
       maxDistance={8.5}
@@ -363,6 +378,7 @@ function ErlenmeyerGlass(props) {
     ];
     return new THREE.LatheGeometry(pts, 32);
   }, []);
+  useEffect(() => () => geo.dispose(), [geo]);
   return <mesh geometry={geo} {...props}><meshPhysicalMaterial color="#e8f2f8" transparent opacity={0.3} roughness={0.05} metalness={0} transmission={0.65} thickness={0.04} ior={1.45} side={THREE.DoubleSide} /></mesh>;
 }
 
@@ -377,6 +393,7 @@ function BeakerGlass(props) {
     ];
     return new THREE.LatheGeometry(pts, 32);
   }, []);
+  useEffect(() => () => geo.dispose(), [geo]);
   return (
     <group {...props}>
       <mesh geometry={geo}>
@@ -633,6 +650,12 @@ function Room({ onPickChem, selectedChem, onWashSelected }) {
   const floorTex = useMemo(() => tileTexture(), []);
   const benchTex = useMemo(() => benchTexture(), []);
   const periodic = useMemo(() => periodicTexture(), []);
+  useEffect(() => () => {
+    floorTex.dispose();
+    benchTex.dispose();
+    periodic.dispose();
+    if (typeof document !== 'undefined') document.body.style.cursor = 'auto';
+  }, [floorTex, benchTex, periodic]);
   const bottles = [
     { id: 'HCl', label: 'HCl', color: '#dbe7f4' },
     { id: 'H2SO4', label: 'H2SO4', color: '#e8eef4' },

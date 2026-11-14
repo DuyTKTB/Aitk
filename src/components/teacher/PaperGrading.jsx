@@ -968,14 +968,22 @@ function PaperGrade({
       /* Giữ cả phiếu trùng SBD, chỉ đánh dấu — xem chú thích ở luồng chấm ảnh hàng loạt */
       setItems((cur) => [...cur, item]);
 
-      const key = keys[code] || { p1: [], p2: [], p3: [] };
-      const grade = gradeSheet(read, key, counts, scoring);
+      const key = codeKnown ? keys[code] : null;
+      const grade = key ? gradeSheet(read, key, counts, scoring) : null;
 
-      sound.cheer?.();
-      setCameraFeedback({
-        ok: true,
-        msg: `Đã quét · SBD: ${read.sbd || '---'} · Mã đề: ${code || '---'} · Điểm: ${fmt(grade?.score10)}/10`,
-      });
+      if (codeKnown) {
+        sound.cheer?.();
+        setCameraFeedback({
+          ok: true,
+          msg: `Đã quét · SBD: ${read.sbd || '---'} · Mã đề: ${code || '---'} · Điểm: ${fmt(grade?.score10)}/10`,
+        });
+      } else {
+        sound.wrong?.();
+        setCameraFeedback({
+          ok: false,
+          msg: `Đã chụp · SBD: ${read.sbd || '---'} · Mã đề "${read.code || '---'}" chưa có đáp án trong kỳ thi, cần kiểm tra lại!`,
+        });
+      }
     } catch (e) {
       sound.wrong?.();
       setCameraFeedback({ ok: false, msg: 'Lỗi: ' + e.message });
@@ -1061,16 +1069,26 @@ function PaperGrade({
     const res = await savePaperResults(paper.id, mappedItems);
 
     // Tự động đồng bộ điểm vào Lớp học (Firestore submissions) nếu bài đã gán lớp
+    let syncError = null;
     if (res.ok && paper.classId) {
-      syncPaperResultsToSubmissions(paper, mappedItems).catch((err) => {
-        console.warn('[PaperGrading] syncPaperResultsToSubmissions error:', err);
-      });
+      const syncRes = await syncPaperResultsToSubmissions(paper, mappedItems).catch((err) => ({
+        ok: false,
+        error: err?.message || 'Lỗi đồng bộ lớp học',
+      }));
+      if (syncRes && !syncRes.ok) {
+        syncError = syncRes.error;
+        console.warn('[PaperGrading] syncPaperResultsToSubmissions warning:', syncError);
+      }
     }
 
     setSaving(false);
     if (res.ok) {
       setItems((cur) => cur.map((c) => (toSave.some((s) => s.id === c.id) ? { ...c, saved: true, edited: false } : c)));
-      say(`Đã lưu thành công ${res.saved} bài chấm${paper.classId ? ' và đồng bộ vào Lớp học' : ''}!`);
+      if (syncError) {
+        say(`Đã lưu ${res.saved} bài chấm, nhưng đồng bộ Lớp học thất bại: ${syncError}`, 'warning');
+      } else {
+        say(`Đã lưu thành công ${res.saved} bài chấm${paper.classId ? ' và đồng bộ vào Lớp học' : ''}!`);
+      }
     } else {
       say(res.error, 'error');
     }

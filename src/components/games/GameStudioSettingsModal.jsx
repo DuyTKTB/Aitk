@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { isAdmin } from '../../lib/isAdmin.js';
 import sound from '../../lib/gameSound.js';
+import { normalizeBankQuestionList, normalizeChoiceQuestionList } from '../../lib/gameQuestionBank.js';
+
+const BANK_FORMAT_TABS = new Set(['chicken', 'slingshot']);
 import {
   SvgTrophy,
   SvgTimer,
@@ -76,7 +79,7 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
   const [questions, setQuestions] = useState(() => {
     try {
       const saved = localStorage.getItem(`cs-game:${activeTab}:questions`);
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeChoiceQuestionList(JSON.parse(saved), []);
     } catch {}
     return [];
   });
@@ -101,7 +104,7 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
       setGameConfig(savedCfg ? JSON.parse(savedCfg) : (DEFAULT_CONFIGS[activeTab] || { timer: 25 }));
 
       const savedQ = localStorage.getItem(`cs-game:${activeTab}:questions`);
-      setQuestions(savedQ ? JSON.parse(savedQ) : []);
+      setQuestions(savedQ ? normalizeChoiceQuestionList(JSON.parse(savedQ), []) : []);
     } catch {}
     setSaveSuccess('');
   }, [activeTab]);
@@ -157,8 +160,11 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
   // Lưu cấu hình game (Công khai)
   const handleSaveGameConfig = () => {
     try {
+      const normalizedOut = BANK_FORMAT_TABS.has(activeTab)
+        ? normalizeBankQuestionList(questions, [])
+        : normalizeChoiceQuestionList(questions, []);
       localStorage.setItem(`cs-game:${activeTab}:config`, JSON.stringify(gameConfig));
-      localStorage.setItem(`cs-game:${activeTab}:questions`, JSON.stringify(questions));
+      localStorage.setItem(`cs-game:${activeTab}:questions`, JSON.stringify(normalizedOut));
       sound.ding();
       setSaveSuccess(`Đã lưu cài đặt cho ${ALL_GAMES_METADATA.find((g) => g.id === activeTab)?.name}!`);
       setTimeout(() => setSaveSuccess(''), 3000);
@@ -180,7 +186,13 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
   const handleUpdateOption = (qIdx, optIdx, val) => {
     setQuestions((prev) => {
       const next = [...prev];
-      const opts = [...(next[qIdx].options || [])];
+      const existing = Array.isArray(next[qIdx]?.options)
+        ? next[qIdx].options
+        : ['Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D'];
+      const len = Math.max(4, optIdx + 1, existing.length);
+      const opts = Array.from({ length: len }, (_, i) =>
+        existing[i] != null ? existing[i] : `Lựa chọn ${String.fromCharCode(65 + i)}`
+      );
       opts[optIdx] = val;
       next[qIdx] = { ...next[qIdx], options: opts };
       return next;

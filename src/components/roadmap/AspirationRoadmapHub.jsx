@@ -665,7 +665,11 @@ export default function AspirationRoadmapHub({
               title="Bấm để chỉnh ngày thi & giờ học tuần"
             >
               <IcoCalendar />
-              <span>{`T5/${schedule.examDate ? new Date(schedule.examDate).getFullYear() : '2027'} · Còn ${Math.max(1, Math.round(daysUntilExam / 30))} tháng tới ngày thi`}</span>
+              <span>{(() => {
+                const d = schedule?.examDate ? new Date(schedule.examDate) : null;
+                const valid = d && !Number.isNaN(d.getTime());
+                return `T${valid ? d.getMonth() + 1 : 6}/${valid ? d.getFullYear() : 2027} · Còn ${Math.max(1, Math.round(daysUntilExam / 30))} tháng tới ngày thi`;
+              })()}</span>
               <IcoEdit />
             </button>
           </div>

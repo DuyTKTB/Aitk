@@ -38,6 +38,17 @@ const IcoTrash = ({ size = 14 }) => (
 
 const ANSWERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_OPTS = 6;
+const Q_TYPES = [
+  { id: 'single_choice', label: 'Trắc nghiệm 4 chọn 1' },
+  { id: 'true_false', label: 'Đúng / Sai (4 ý)' },
+  { id: 'short_answer', label: 'Trả lời ngắn / Điền số' },
+];
+
+const normalizeFormType = (item) => {
+  if (item?.type === 'true_false' || (Array.isArray(item?.statements) && item.statements.length > 0)) return 'true_false';
+  if (item?.type === 'short_answer' || (!item?.options?.length && (item?.answer !== undefined || item?.accepted?.length))) return 'short_answer';
+  return 'single_choice';
+};
 
 const LEVELS = ['', 'nhận biết', 'thông hiểu', 'vận dụng', 'vận dụng cao'];
 const GRADES_OPT = [0, 6, 7, 8, 9, 10, 11, 12];
@@ -50,9 +61,16 @@ export default function QuestionBankForm({
   onClose,
   saving = false,
 }) {
+  const [qType, setQType] = useState(() => normalizeFormType(initial));
   const [q, setQ] = useState(initial?.q || '');
   const [options, setOptions] = useState(initial?.options?.length ? initial.options : ['', '', '', '']);
-  const [correct, setCorrect] = useState(typeof initial?.correct === 'number' ? initial.correct : 0);
+  const [correct, setCorrect] = useState(typeof initial?.correct === 'number' && initial.correct >= 0 ? initial.correct : 0);
+  const [statements, setStatements] = useState(() => (
+    Array.isArray(initial?.statements) && initial.statements.length
+      ? [0, 1, 2, 3].map((i) => ({ text: initial.statements[i]?.text || '', answer: initial.statements[i]?.answer === true }))
+      : [0, 1, 2, 3].map(() => ({ text: '', answer: true }))
+  ));
+  const [shortAnswer, setShortAnswer] = useState(() => String(initial?.answer ?? (initial?.accepted?.[0] || '')));
   const [explain, setExplain] = useState(initial?.explain || '');
   const [points, setPoints] = useState(initial?.points || 1);
   const [subject, setSubject] = useState(initial?.subject || defaultSubject || 'Hóa học');
@@ -111,6 +129,45 @@ export default function QuestionBankForm({
 
   const handleSubmit = (another = false) => {
     if (!q.trim()) { setError('Chưa có nội dung câu hỏi.'); return; }
+
+    const base = {
+      type: qType,
+      q: q.trim(),
+      explain: explain.trim(),
+      points: Number(points) || (qType === 'true_false' ? 1 : 0.25),
+      subject: subject.trim(),
+      grade: Number(grade) || 0,
+      topicId: topicId.trim(),
+      level: level.trim(),
+      tags,
+    };
+
+    if (qType === 'true_false') {
+      const cleanedStmts = statements.map((s) => ({
+        text: String(s?.text || '').trim(),
+        answer: s?.answer === true,
+      }));
+      if (cleanedStmts.some((s) => !s.text)) {
+        setError('Câu Đúng/Sai cần nhập đủ nội dung cả 4 ý a, b, c, d.');
+        return;
+      }
+      setError('');
+      onSave?.({ ...base, options: [], correct: -1, statements: cleanedStmts }, { another: another === true });
+      return;
+    }
+
+    if (qType === 'short_answer') {
+      const vi = String(shortAnswer ?? '').trim().replace(/\./g, ',');
+      if (!vi) {
+        setError('Câu Trả lời ngắn cần nhập đáp án.');
+        return;
+      }
+      const accepted = [...new Set([vi, vi.replace(/,/g, '.'), ...(initial?.accepted || []).map((x) => String(x ?? '').trim())])].filter(Boolean);
+      setError('');
+      onSave?.({ ...base, options: [], correct: -1, answer: vi, accepted }, { another: another === true });
+      return;
+    }
+
     if (options.filter((o) => o.trim()).length < 2) { setError('Cần ít nhất 2 đáp án.'); return; }
     if (!options[correct]?.trim()) { setError('Đáp án đúng chưa có nội dung.'); return; }
 
@@ -124,16 +181,9 @@ export default function QuestionBankForm({
 
     setError('');
     onSave?.({
-      q: q.trim(),
+      ...base,
       options: kept,
       correct: newCorrect >= 0 ? newCorrect : 0,
-      explain: explain.trim(),
-      points: Number(points) || 1,
-      subject: subject.trim(),
-      grade: Number(grade) || 0,
-      topicId: topicId.trim(),
-      level: level.trim(),
-      tags,
     }, { another: another === true });
   };
 
@@ -221,6 +271,14 @@ export default function QuestionBankForm({
             </label>
           </div>
 
+          {/* Dạng câu hỏi chuẩn GDPT 2025 */}
+          <label className="qb-field">
+            <span>Dạng câu hỏi</span>
+            <select value={qType} onChange={(e) => setQType(e.target.value)} disabled={saving}>
+              {Q_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+          </label>
+
           {/* Câu hỏi */}
           <label className="qb-field">
             <span>Nội dung câu hỏi</span>
@@ -241,52 +299,91 @@ export default function QuestionBankForm({
             </div>
           )}
 
-          {/* Đáp án */}
-          <div className="qb-field">
-            <span>Đáp án (chọn nút tròn làm đáp án đúng)</span>
-            {options.map((opt, i) => (
-              <div key={i} className={'qb-opt-row' + (correct === i ? ' correct' : '')}>
-                <input
-                  type="radio"
-                  name="qb-correct"
-                  checked={correct === i}
-                  onChange={() => setCorrect(i)}
-                  disabled={saving}
-                  aria-label={`Đáp án ${ANSWERS[i]} là đáp án đúng`}
-                />
-                <span className="qb-opt-key">{ANSWERS[i]}</span>
-                <input
-                  type="text"
-                  value={opt}
-                  onChange={(e) => updateOption(i, e.target.value)}
-                  placeholder={`Đáp án ${ANSWERS[i]}`}
-                  disabled={saving}
-                />
-                {options.length > 2 && (
-                  <button
-                    type="button"
-                    className="qb-icon-btn danger"
-                    onClick={() => removeOption(i)}
+          {/* Đáp án theo từng dạng câu hỏi */}
+          {qType === 'true_false' ? (
+            <div className="qb-field">
+              <span>4 mệnh đề Đúng / Sai</span>
+              {statements.map((st, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '.45rem', alignItems: 'center', marginBottom: '.35rem' }}>
+                  <span className="qb-opt-key">{String.fromCharCode(97 + idx)})</span>
+                  <input
+                    type="text"
+                    value={st.text}
+                    onChange={(e) => setStatements((prev) => prev.map((x, j) => (j === idx ? { ...x, text: e.target.value } : x)))}
+                    placeholder={`Mệnh đề ${String.fromCharCode(97 + idx)}`}
                     disabled={saving}
-                    aria-label={`Xóa đáp án ${ANSWERS[i]}`}
+                    style={{ flex: 1 }}
+                  />
+                  <select
+                    value={st.answer === true ? 'Đ' : 'S'}
+                    onChange={(e) => setStatements((prev) => prev.map((x, j) => (j === idx ? { ...x, answer: e.target.value === 'Đ' } : x)))}
+                    disabled={saving}
+                    style={{ width: 88, flexShrink: 0 }}
                   >
-                    <IcoTrash size={12} />
-                  </button>
-                )}
-              </div>
-            ))}
-            {options.length < MAX_OPTS && (
-              <button
-                type="button"
-                className="qb-chip"
-                onClick={addOption}
+                    <option value="Đ">Đúng</option>
+                    <option value="S">Sai</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          ) : qType === 'short_answer' ? (
+            <label className="qb-field">
+              <span>Đáp án trả lời ngắn (VD: 12,5 hoặc 4)</span>
+              <input
+                type="text"
+                value={shortAnswer}
+                onChange={(e) => setShortAnswer(e.target.value)}
+                placeholder="Nhập đáp án số hoặc cụm từ ngắn..."
                 disabled={saving}
-                style={{ alignSelf: 'flex-start', marginTop: '.3rem' }}
-              >
-                <IcoPlus size={12} /> Thêm đáp án
-              </button>
-            )}
-          </div>
+              />
+            </label>
+          ) : (
+            <div className="qb-field">
+              <span>Đáp án (chọn nút tròn làm đáp án đúng)</span>
+              {options.map((opt, i) => (
+                <div key={i} className={'qb-opt-row' + (correct === i ? ' correct' : '')}>
+                  <input
+                    type="radio"
+                    name="qb-correct"
+                    checked={correct === i}
+                    onChange={() => setCorrect(i)}
+                    disabled={saving}
+                    aria-label={`Đáp án ${ANSWERS[i]} là đáp án đúng`}
+                  />
+                  <span className="qb-opt-key">{ANSWERS[i]}</span>
+                  <input
+                    type="text"
+                    value={opt}
+                    onChange={(e) => updateOption(i, e.target.value)}
+                    placeholder={`Đáp án ${ANSWERS[i]}`}
+                    disabled={saving}
+                  />
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      className="qb-icon-btn danger"
+                      onClick={() => removeOption(i)}
+                      disabled={saving}
+                      aria-label={`Xóa đáp án ${ANSWERS[i]}`}
+                    >
+                      <IcoTrash size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {options.length < MAX_OPTS && (
+                <button
+                  type="button"
+                  className="qb-chip"
+                  onClick={addOption}
+                  disabled={saving}
+                  style={{ alignSelf: 'flex-start', marginTop: '.3rem' }}
+                >
+                  <IcoPlus size={12} /> Thêm đáp án
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Lời giải + Điểm — gọn 2 cột */}
           <div className="qb-row-2">

@@ -282,9 +282,9 @@ export async function linkTeacherWithKey(rawKey, user, subjectHint = '') {
 
 export async function unlinkTeacher(classId, teacherId, { by = '', byName = '', teacherName = '', subject = '' } = {}) {
   if (!classId || !teacherId) throw new Error('Thiếu thông tin liên kết.');
-  await deleteDoc(doc(db, 'class_teachers', linkDocId(classId, teacherId)));
 
-  /* Chủ nhiệm cần biết giáo viên đã rời lớp (nếu chính họ là người gỡ thì bỏ qua) */
+  /* Gửi thông báo TRƯỚC khi xóa class_teachers vì firestore.rules kiểm tra
+     linkedToClass(classId, request.auth.uid) khi giáo viên bộ môn tự gỡ liên kết. */
   try {
     const cSnap = await getDoc(doc(db, 'classes', classId));
     const cls = cSnap.exists() ? cSnap.data() : null;
@@ -303,6 +303,9 @@ export async function unlinkTeacher(classId, teacherId, { by = '', byName = '', 
   } catch (e) {
     console.warn('[classTeachers] không gửi được thông báo gỡ liên kết:', e?.code || e?.message);
   }
+
+  await deleteDoc(doc(db, 'class_teachers', linkDocId(classId, teacherId)));
+
   await logTeacherEvent({
     classId,
     action: 'teacher_unlink',

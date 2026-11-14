@@ -279,12 +279,16 @@ export function toolSolution(text, formulas) {
   }
 
   if (/\bpH\b/i.test(desub(text)) && C != null && C > 0) {
-    const isBase = /bazơ|bazo|NaOH|KOH|Ba\(OH\)2|Ca\(OH\)2/i.test(text);
-    const protic = /H2SO4|H₂SO₄/i.test(text) ? 2 : 1;
-    const conc = isBase ? C : C * protic;
+    const normT = desub(text);
+    const isBase = /bazơ|bazo|kiềm|NaOH|KOH|Ba\(OH\)2|Ca\(OH\)2|LiOH/i.test(normT);
+    const protic = isBase
+      ? (/Ba\(OH\)2|Ca\(OH\)2/i.test(normT) ? 2 : 1)
+      : (/H2SO4/i.test(normT) ? 2 : 1);
+    const conc = C * protic;
     const pH = isBase ? 14 + Math.log10(conc) : -Math.log10(conc);
+    const ionLabel = isBase ? '[OH⁻]' : '[H⁺]';
     lines.push(
-      `[H⁺] ≈ ${fmt(conc)} M → pH ≈ ${fmt(pH)}`,
+      `${ionLabel} ≈ ${fmt(conc)} M → pH ≈ ${fmt(pH)}`,
       'Giả thiết: chất điện li mạnh phân li hoàn toàn; nếu là axit/bazơ yếu thì pH thực tế khác (cần Ka/Kb).'
     );
   }

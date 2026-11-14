@@ -155,3 +155,109 @@ export function buildJeopardyCategories(eligible, topicIds, { perCategory = 5 } 
 
   return { categories, dropped };
 }
+
+/**
+ * Chuẩn hóa 1 câu hỏi (từ ngân hàng `{ question, correct: string, wrong }` hoặc
+ * dạng quiz `{ q, options, correct: index }`) về cùng dạng quiz chuẩn:
+ * `{ q, options, correct: number, explain }`.
+ */
+export function normalizeChoiceQuestion(item) {
+  if (!item || typeof item !== 'object') return null;
+
+  if (Array.isArray(item.options) && item.options.length >= 2) {
+    const rawOpts = Array.from(item.options, (o, idx) =>
+      o == null || String(o).trim() === '' ? `Lựa chọn ${String.fromCharCode(65 + idx)}` : String(o)
+    );
+    let correctIdx = typeof item.correct === 'number'
+      ? item.correct
+      : (typeof item.correct === 'string' && /^\d+$/.test(item.correct.trim())
+        ? Number(item.correct.trim())
+        : rawOpts.indexOf(String(item.correct ?? '')));
+    if (!Number.isInteger(correctIdx) || correctIdx < 0 || correctIdx >= rawOpts.length) {
+      correctIdx = 0;
+    }
+    return {
+      ...item,
+      q: String(item.q ?? item.question ?? '').trim() || 'Câu hỏi',
+      options: rawOpts,
+      correct: correctIdx,
+      explain: item.explain ?? item.explanation ?? '',
+    };
+  }
+
+  const text = String(item.question ?? item.q ?? '').trim();
+  const rightStr = String(item.correct ?? '').trim();
+  const wrongArr = Array.isArray(item.wrong) ? item.wrong.map((w) => String(w ?? '').trim()).filter(Boolean) : [];
+  if (!text || !rightStr || wrongArr.length === 0) return null;
+
+  const opts = shuffle([rightStr, ...wrongArr.slice(0, 3)]);
+  const correctIdx = opts.indexOf(rightStr);
+  return {
+    q: text,
+    options: opts,
+    correct: correctIdx >= 0 ? correctIdx : 0,
+    explain: item.explanation ?? item.explain ?? '',
+    ...(item.difficulty ? { difficulty: item.difficulty } : {}),
+    ...(item.question_id ? { question_id: item.question_id } : {}),
+    ...(item.topic_id ? { topic_id: item.topic_id } : {}),
+  };
+}
+
+/** Chuẩn hóa mảng câu hỏi sang dạng quiz `{ q, options, correct: index }`. */
+export function normalizeChoiceQuestionList(list, fallback = []) {
+  if (!Array.isArray(list)) return fallback;
+  const out = list.map(normalizeChoiceQuestion).filter(Boolean);
+  return out.length ? out : fallback;
+}
+
+/**
+ * Chuẩn hóa 1 câu hỏi về dạng ngân hàng `{ question, correct: string, wrong: string[], explanation }`.
+ */
+export function normalizeBankQuestion(item) {
+  if (!item || typeof item !== 'object') return null;
+
+  if (typeof item.question === 'string' && typeof item.correct === 'string' && Array.isArray(item.wrong)) {
+    const qText = item.question.trim();
+    const rightStr = item.correct.trim();
+    const wrongArr = item.wrong.map((w) => String(w ?? '').trim()).filter(Boolean);
+    if (!qText || !rightStr || wrongArr.length === 0) return null;
+    return {
+      ...item,
+      question: qText,
+      correct: rightStr,
+      wrong: wrongArr,
+      explanation: item.explanation ?? item.explain ?? '',
+    };
+  }
+
+  if (Array.isArray(item.options) && item.options.length >= 2) {
+    const qText = String(item.q ?? item.question ?? '').trim();
+    if (!qText) return null;
+    const rawOpts = Array.from(item.options, (o, idx) =>
+      o == null || String(o).trim() === '' ? `Lựa chọn ${String.fromCharCode(65 + idx)}` : String(o).trim()
+    );
+    let idx = Number(item.correct);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= rawOpts.length) idx = 0;
+    const rightStr = rawOpts[idx];
+    const wrongArr = rawOpts.filter((_, i) => i !== idx);
+    if (!rightStr || wrongArr.length === 0) return null;
+    return {
+      question: qText,
+      correct: rightStr,
+      wrong: wrongArr,
+      explanation: item.explain ?? item.explanation ?? '',
+      ...(item.difficulty ? { difficulty: item.difficulty } : {}),
+      ...(item.question_id ? { question_id: item.question_id } : {}),
+      ...(item.topic_id ? { topic_id: item.topic_id } : {}),
+    };
+  }
+
+  return null;
+}
+
+/** Chuẩn hóa mảng câu hỏi sang dạng ngân hàng `{ question, correct: string, wrong }`. */
+export function normalizeBankQuestionList(list, fallback = []) {
+  if (!Array.isArray(list)) return fallback;
+  const out = list.map(normalizeBankQuestion).filter(Boolean);
+  return out.length ? out : fallback;
+}

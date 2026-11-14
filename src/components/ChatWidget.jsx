@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
-import { useLocalStorage, useLiveStreak } from '../hooks.js';
+import { useLocalStorage, useLiveStreak, recordDailyStreak } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useToast } from '../ui/index.jsx';
 import { isValidStreakMessage } from '../lib/chatStreak.js';
@@ -404,8 +404,24 @@ export default function ChatWidget() {
 
   useEffect(() => {
     const handleOpenChat = () => setOpen((prev) => !prev);
+    const handleOpenDm = (e) => {
+      const detail = e?.detail;
+      setOpen(true);
+      setActiveTab('friends');
+      if (detail?.peerUid) {
+        setActiveDmThread({
+          dmId: detail.dmId,
+          peerUid: detail.peerUid,
+          peerName: detail.peerName || 'Bạn học',
+        });
+      }
+    };
     window.addEventListener('elec-open-community-chat', handleOpenChat);
-    return () => window.removeEventListener('elec-open-community-chat', handleOpenChat);
+    window.addEventListener('elec-open-dm', handleOpenDm);
+    return () => {
+      window.removeEventListener('elec-open-community-chat', handleOpenChat);
+      window.removeEventListener('elec-open-dm', handleOpenDm);
+    };
   }, []);
 
   useEffect(() => {
@@ -988,13 +1004,19 @@ export default function ChatWidget() {
             )}
 
             {activeTab === 'friends' && (
-              <DmPanel
-                me={user || { uid: 'anonymous', displayName: name }}
-                thread={activeDmThread}
-                setThread={setActiveDmThread}
-                onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })}
-                unreadMap={{}}
-              />
+              user?.uid ? (
+                <DmPanel
+                  me={user}
+                  thread={activeDmThread}
+                  setThread={setActiveDmThread}
+                  onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })}
+                  unreadMap={{}}
+                />
+              ) : (
+                <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--sw-ink2, #64748b)', fontSize: '.85rem' }}>
+                  Vui lòng đăng nhập để kết bạn và nhắn tin riêng.
+                </div>
+              )
             )}
 
             {activeTab === 'community' && (

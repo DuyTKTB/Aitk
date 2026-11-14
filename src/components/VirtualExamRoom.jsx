@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { db } from '../lib/firebase.js';
+import { getProStatus } from '../lib/proKeyApi.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { isAdmin } from '../lib/isAdmin.js';
 import { useCurrentSubject } from './SubjectSwitcher.jsx';
@@ -19,7 +22,7 @@ import {
 import PaymentPanel from './PaymentPanel.jsx';
 import SubscriptionTiers from './SubscriptionTiers.jsx';
 import { saveSession } from '../lib/roadmapStore.js';
-import { recordAttemptScore, getAspirationProfile, ASPIRATION_CHANGE_EVENT } from '../lib/aspirationService.js';
+import { recordAttemptScore, getAspirationProfile, getExamById, ASPIRATION_CHANGE_EVENT } from '../lib/aspirationService.js';
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
 import { recordActivity } from '../lib/progress.js';
 import { recordDailyStreak } from '../hooks.js';
@@ -34,7 +37,7 @@ import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.js
 import DigitalOmrSheet from './exam/DigitalOmrSheet.jsx';
 import ExamTrapReport from './exam/ExamTrapReport.jsx';
 import ExamModeModal from './exam/ExamModeModal.jsx';
-import { isAnswered, countAnswered, packAnswers, scoreExam } from '../lib/examScoring.js';
+import { isAnswered, countAnswered, packAnswers, scoreExam, scoreQuestion } from '../lib/examScoring.js';
 import { buildLayout } from '../lib/examLayout.js';
 import '../styles/classroom.css';
 import '../styles/exam-types.css';
@@ -746,20 +749,26 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
     const g = scoreExam(exam.questions, arr);
     const detail = g.detail || [];
     const correctCount = g.correctCount ?? detail.filter((d) => d.isCorrect).length;
-    const score10 = Number(((correctCount / Math.max(1, exam.questions.length)) * 10).toFixed(2));
+    const maxTotal = exam.questions.reduce((s, q) => s + (Number(q?.points) || 1), 0);
+    const earnedTotal = typeof g.score === 'number'
+      ? g.score
+      : detail.reduce((s, d) => s + (Number(d?.earned) || 0), 0);
+    const score10 = maxTotal > 0 ? Number(((earnedTotal / maxTotal) * 10).toFixed(2)) : 0;
     const timeSpent = Math.max(1, Math.round((Date.now() - (startTimeRef.current || Date.now())) / 1000));
 
     /* Lưu thống kê vào Lộ trình theo chuyên đề */
     const topicBuckets = {};
     exam.questions.forEach((q, i) => {
-      const isOk = answersRef.current[i] === q.correct;
+      const isOk = typeof detail[i]?.isCorrect === 'boolean'
+        ? detail[i].isCorrect
+        : answersRef.current[i] === q.correct;
       const tid = q.topicId || 'c12-ester';
       if (!topicBuckets[tid]) topicBuckets[tid] = [];
-      topicBuckets[tid].push({ questionId: q.id, correct: isOk });
+      topicBuckets[tid].push({ qid: q.id, questionId: q.id, ok: isOk, correct: isOk });
     });
 
     Object.entries(topicBuckets).forEach(([topicId, ansList]) => {
-      const okInTopic = ansList.filter((a) => a.correct).length;
+      const okInTopic = ansList.filter((a) => a.ok).length;
       saveSession(uid, {
         topicId,
         total: ansList.length,
@@ -771,8 +780,9 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
 
     /* Lưu điểm vào Nguyện vọng & Lịch sử Phòng thi ảo */
     const asp = getAspirationProfile(uid);
-    const scaleFactor = asp.selectedExamId === 'THPTQG' ? 3 : 1;
-    recordAttemptScore(uid, Number((score10 * scaleFactor).toFixed(1)));
+    const examMeta = getExamById(asp?.selectedExamId);
+    const examScale = Number(examMeta?.scale) || 30;
+    recordAttemptScore(uid, Number(((score10 / 10) * examScale).toFixed(1)));
 
     /* Lưu câu sai vào Sổ tay lỗi dùng chung (WrongNotebook) */
     try {
@@ -1262,23 +1272,42 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                         type="button"
                         className="ns9-practice-check-btn"
                         onClick={() => setPracticeRevealed((prev) => ({ ...prev, [qi]: true }))}
-                        disabled={answers[qi] === undefined}
-                        title={answers[qi] === undefined ? 'Vui lòng chọn đáp án trước khi kiểm tra' : 'Xem đáp án và lời giải'}
+                        disabled={!isAnswered(q, answers[qi])}
+                        title={!isAnswered(q, answers[qi]) ? 'Vui lòng trả lời câu hỏi trước khi kiểm tra' : 'Xem đáp án và lời giải'}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         <span>Kiểm tra đáp án & Xem lời giải chi tiết</span>
                       </button>
-                    ) : (
+                    ) : (() => {
+                      const qScore = scoreQuestion(q, answers[qi]);
+                      const formatVal = (val) => {
+                        if (val === undefined || val === null || val === '') return 'trống';
+                        if (q.type === 'true_false' && Array.isArray(val)) {
+                          const labels = ['a', 'b', 'c', 'd'];
+                          return val
+                            .map((item, idx) => (typeof item === 'boolean' ? `${labels[idx] || idx + 1}) ${item ? 'Đ' : 'S'}` : null))
+                            .filter(Boolean)
+                            .join(', ') || 'trống';
+                        }
+                        if (typeof val === 'number' && q.type !== 'true_false' && q.type !== 'short_answer') {
+                          return val >= 0 ? String.fromCharCode(65 + val) : 'trống';
+                        }
+                        if (Array.isArray(val)) return val.join(' / ');
+                        return String(val);
+                      };
+                      const pickedLabel = formatVal(qScore.picked);
+                      const correctLabel = formatVal(qScore.correct);
+                      return (
                       <div className="ns9-practice-sol-card">
-                        <div className={`ns9-practice-sol-header ${answers[qi] === q.correct ? 'is-correct' : 'is-wrong'}`}>
-                          {answers[qi] === q.correct ? (
+                        <div className={`ns9-practice-sol-header ${qScore.isCorrect ? 'is-correct' : 'is-wrong'}`}>
+                          {qScore.isCorrect ? (
                             <>
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                                 <polyline points="20 6 9 17 4 12" />
                               </svg>
-                              <b>Chính xác! Đáp án đúng là {q.correct}</b>
+                              <b>Chính xác! Đáp án đúng là {correctLabel}</b>
                             </>
                           ) : (
                             <>
@@ -1286,7 +1315,7 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                                 <line x1="18" y1="6" x2="6" y2="18" />
                                 <line x1="6" y1="6" x2="18" y2="18" />
                               </svg>
-                              <b>Chưa chính xác! Bạn chọn {answers[qi] || 'trống'} — Đáp án đúng là {q.correct}</b>
+                              <b>{qScore.earned > 0 ? `Đúng một phần (${qScore.earned}/${qScore.max} điểm)!` : 'Chưa chính xác!'} Bạn chọn {pickedLabel} — Đáp án đúng là {correctLabel}</b>
                             </>
                           )}
                         </div>
@@ -1297,7 +1326,8 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                           </div>
                         )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1453,9 +1483,65 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
     return () => window.removeEventListener('elec-quota-changed', onQuota);
   }, [uid]);
 
+  const examIdentCode = useMemo(() => {
+    let h = 0;
+    const s = user?.email || 'guest';
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return 'ELECAI-' + h.toString(16).slice(0, 6).toUpperCase();
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!showPayment || !uid || !examIdentCode) return;
+    const ref = doc(db, 'users', uid);
+    getDoc(ref)
+      .then((snap) => {
+        if (snap.exists() && snap.data()?.identCode !== examIdentCode) {
+          return setDoc(ref, { identCode: examIdentCode }, { merge: true });
+        }
+        return null;
+      })
+      .catch(() => {});
+  }, [showPayment, uid, examIdentCode]);
+
+  const handleCheckExamPayment = useCallback(async () => {
+    if (!uid) return { ok: false };
+    try {
+      const [proStatus, userSnap] = await Promise.all([
+        getProStatus(uid, user?.email).catch(() => null),
+        getDoc(doc(db, 'users', uid)).catch(() => null),
+      ]);
+      const data = userSnap?.exists() ? userSnap.data() : {};
+      const vipExpRaw = data?.vipExpiresAt || data?.vipUntil || data?.proUntil;
+      const vipExpMs = vipExpRaw?.toMillis ? vipExpRaw.toMillis() : (vipExpRaw ? new Date(vipExpRaw).getTime() : 0);
+      const isActive = Boolean(proStatus?.isPro || data?.tier === 'vip' || data?.tier === 'pro' || data?.pro === true || vipExpMs > Date.now());
+      if (!isActive) return { ok: false };
+
+      const isTeacherPlan = Boolean((proStatus?.isPro && proStatus?.isTeacherPro !== false) || data?.role === 'teacher' || data?.plan === 'PRO');
+      const updated = {
+        ...subQuota,
+        planName: isTeacherPlan ? 'PRO' : 'VIP',
+        durationLabel: 'Đã kích hoạt',
+        hearts: 99,
+        maxHearts: 99,
+      };
+      try {
+        localStorage.setItem(`elec_sub_quota_v1_${uid || 'guest'}`, JSON.stringify(updated));
+        localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify(updated));
+      } catch {}
+      setSubQuota(updated);
+      setShowPayment(false);
+      await pro?.refresh?.();
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+      return { isVip: true, isPro: isTeacherPlan, ok: true };
+    } catch {
+      return { ok: false };
+    }
+  }, [uid, user?.email, subQuota, pro]);
+
   const isAdminUser = Boolean(isAdmin(user));
-  const isTeacher = Boolean(pro.isPro || user?.role === 'teacher');
-  const isVipUser = Boolean(subQuota?.planName === 'VIP' || pro?.plan === 'VIP' || user?.tier === 'vip');
+  const isTeacher = Boolean((pro.isPro && pro.isTeacherPro !== false) || user?.role === 'teacher');
+  const isVipUser = Boolean(subQuota?.planName === 'VIP' || pro?.isStudentVip || pro?.plan === 'VIP' || user?.tier === 'vip');
 
   const userPlan = useMemo(() => {
     if (isAdminUser) return 'ADMIN';
@@ -1516,7 +1602,6 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
       }
     }
 
-    consumeExamHeart(uid);
     setVariantPickerExam(null);
     const preparedExam = chosenVariant
       ? {
@@ -1532,6 +1617,9 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
 
   const handleConfirmStartExamMode = ({ practiceMode, viewMode }) => {
     if (!modeModalExam) return;
+    if (userPlan === 'FREE') {
+      consumeExamHeart(uid);
+    }
     setActiveExam({
       ...modeModalExam,
       practiceMode,
@@ -1558,7 +1646,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         if (res.isDiscount) {
           setVoucherMsg({ ok: true, text: res.message || 'Mã ưu đãi hợp lệ! Đang mở bảng thanh toán...' });
           setTimeout(() => {
-            const custom = upgradeModalExam?.accessTier === 'VIP'
+            const custom = upgradeModalExam?.tier === 'VIP'
               ? { key: 'hs-12m', role: 'student', label: 'ELEC AI VIP — 12 tháng', amount: 499000, initialDiscountCode: voucherCode.trim() }
               : { key: 'hs-1m', role: 'student', label: 'ELEC AI Học Sinh — 1 tháng', amount: 79000, initialDiscountCode: voucherCode.trim() };
             setPaymentPkg(custom);
@@ -2205,13 +2293,16 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               <SvgClose size={18} />
             </button>
             <PaymentPanel
-              identCode={user?.email ? 'ELECAI-' + user.email.split('@')[0] : 'VIP2027'}
+              identCode={examIdentCode}
+              userId={uid}
               customPackage={paymentPkg}
-              onPaymentSuccess={(pkg) => {
+              onCheckStatus={handleCheckExamPayment}
+              onPaymentSuccess={async (pkg) => {
+                if (!pkg?.isFree) return handleCheckExamPayment();
                 const updated = {
                   ...subQuota,
                   planName: pkg?.role === 'teacher' ? 'PRO' : 'VIP',
-                  durationLabel: 'Trọn mùa thi 2027',
+                  durationLabel: 'Ưu đãi Voucher 100%',
                   hearts: 99,
                   maxHearts: 99,
                 };
@@ -2223,10 +2314,10 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                 setShowPayment(false);
                 if (uid) {
                   import('../lib/creditService.js').then(({ grantActivationCredits }) => {
-                    grantActivationCredits(uid, 1000, 'VIP_UPGRADE').catch(() => {});
+                    grantActivationCredits(uid, 300, pkg.discountCode || 'VIP_VOUCHER').catch(() => {});
                   });
                 }
-                alert(`Nâng cấp thành công gói ${pkg?.label || 'VIP'}! Toàn bộ đề thi VIP đã được mở khóa và bạn được tặng +1.000 điểm Credit AI.`);
+                return { isVip: true, isPro: pkg?.role === 'teacher', ok: true };
               }}
               onClose={() => setShowPayment(false)}
             />

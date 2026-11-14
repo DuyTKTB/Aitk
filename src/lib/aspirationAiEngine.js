@@ -81,9 +81,11 @@ export const CORE_TOPICS_BY_SUBJECT = {
     { id: 'c12-electro', name: 'Điện hóa học & Pin Galvani', examShare: '3–4 câu', weight: 10, phase: 2, gain: '+0.75đ' },
     { id: 'c12-amine', name: 'Amine, Amino acid & Peptide', examShare: '3–4 câu', weight: 10, phase: 2, gain: '+0.75đ' },
     { id: 'c10-redox', name: 'Phản ứng Oxi hóa - Khử & Cân bằng electron', examShare: '2–3 câu', weight: 9, phase: 1, gain: '+0.5đ' },
-    { id: 'c12-carb', name: 'Carbohydrate (Glucose, Fructose, Tinh bột)', examShare: '2–3 câu', weight: 9, phase: 1, gain: '+0.5đ' },
+    { id: 'c12-carbohydrate', name: 'Carbohydrate (Glucose, Fructose, Tinh bột)', examShare: '2–3 câu', weight: 9, phase: 1, gain: '+0.5đ' },
     { id: 'c12-metal', name: 'Đại cương Kim loại & Ăn mòn kim loại', examShare: '3 câu', weight: 9, phase: 2, gain: '+0.5đ' },
-    { id: 'c12-complex', name: 'Hợp chất phức chất (Mới GDPT 2018)', examShare: '1–2 câu', weight: 8, phase: 3, gain: '+0.5đ' },
+    { id: 'c12-metal-main', name: 'Kim loại nhóm IA, IIA & Aluminium', examShare: '2–3 câu', weight: 8, phase: 2, gain: '+0.5đ' },
+    { id: 'c12-polymer', name: 'Polymer & Vật liệu tổng hợp', examShare: '2 câu', weight: 8, phase: 3, gain: '+0.5đ' },
+    { id: 'c12-transition', name: 'Kim loại chuyển tiếp & Phức chất (Mới GDPT 2018)', examShare: '1–2 câu', weight: 8, phase: 3, gain: '+0.5đ' },
   ],
   ly: [
     { id: 'dao-dong-co', name: 'Dao động cơ học (Con lắc lò xo, Con lắc đơn)', examShare: '4–5 câu', weight: 10, phase: 1, gain: '+1.0đ' },
@@ -301,14 +303,16 @@ export function generateStrategicRoadmap({
   weeklyFreeHours = 4.5,
   blockCode = 'A00',
   diagnosedTopics = [],
+  examScale = 30,
 }) {
+  const safeScale = Number(examScale) > 0 ? Number(examScale) : 30;
   const safeWeeks = Math.max(4, weeksUntilExam);
   const phase1Weeks = Math.max(1, Math.round(safeWeeks * 0.3));
   const phase2Weeks = Math.max(2, Math.round(safeWeeks * 0.45));
   const phase3Weeks = Math.max(1, safeWeeks - phase1Weeks - phase2Weeks);
 
-  const safePredicted = Number.isFinite(predictedScore) ? predictedScore : 18.0;
-  const safeTarget = Number.isFinite(targetScore) ? targetScore : 25.5;
+  const safePredicted = Number.isFinite(predictedScore) ? predictedScore : Number((safeScale * 0.6).toFixed(1));
+  const safeTarget = Number.isFinite(targetScore) ? targetScore : Number((safeScale * 0.85).toFixed(1));
   const scoreGap = Math.max(0, safeTarget - safePredicted);
 
   // Mốc điểm kỳ vọng qua từng phase
@@ -332,7 +336,7 @@ export function generateStrategicRoadmap({
       badge: 'Nền tảng 7.5+',
       badgeTone: 'info',
       durationLabel: `${phase1Weeks} tuần (${Math.round(phase1Weeks * weeklyFreeHours)} giờ)`,
-      targetMilestone: `Chạm mốc ${targetPhase1}/30 điểm`,
+      targetMilestone: `Chạm mốc ${targetPhase1}/${safeScale} điểm`,
       focusDesc: 'Khóa chặt toàn bộ lý thuyết cốt lõi, không để rơi điểm ở các câu Nhận biết - Thông hiểu.',
       keyTasks: [
         'Quét sạch lý thuyết cơ bản và các phản ứng cốt lõi',
@@ -347,7 +351,7 @@ export function generateStrategicRoadmap({
       badge: 'Bứt phá 8.5+',
       badgeTone: 'warn',
       durationLabel: `${phase2Weeks} tuần (${Math.round(phase2Weeks * weeklyFreeHours)} giờ)`,
-      targetMilestone: `Chạm mốc ${targetPhase2}/30 điểm`,
+      targetMilestone: `Chạm mốc ${targetPhase2}/${safeScale} điểm`,
       focusDesc: 'Tấn công các dạng toán Vận dụng: cân bằng phản ứng khó, đồ thị dao động, bài tập di truyền tổ hợp.',
       keyTasks: [
         'Thành thạo phương pháp giải nhanh: Bảo toàn electron, bảo toàn khối lượng, tỉ lệ kiểu gen',
@@ -362,7 +366,7 @@ export function generateStrategicRoadmap({
       badge: 'Chinh phục 9.0 – 10',
       badgeTone: 'ok',
       durationLabel: `${phase3Weeks} tuần (${Math.round(phase3Weeks * weeklyFreeHours)} giờ)`,
-      targetMilestone: `Vượt ngưỡng mục tiêu: ${targetPhase3}/30 điểm`,
+      targetMilestone: `Vượt ngưỡng mục tiêu: ${targetPhase3}/${safeScale} điểm`,
       focusDesc: 'Luyện đề chuẩn ma trận Bộ GD&ĐT, rèn bản lĩnh thi cử, tối ưu tốc độ và tránh bẫy tinh vi.',
       keyTasks: [
         'Luyện đề thi thử chuẩn cấu trúc 50 phút với đồng hồ đếm ngược',
@@ -428,11 +432,12 @@ export function buildComprehensiveAiStrategy({
   // 4. Lập lộ trình chiến lược 3 giai đoạn
   const strategicRoadmap = generateStrategicRoadmap({
     targetScore,
-    predictedScore: predictedScore || 18.0,
+    predictedScore: predictedScore ?? Number((examScale * 0.6).toFixed(1)),
     weeksUntilExam,
     weeklyFreeHours,
     blockCode,
     diagnosedTopics,
+    examScale,
   });
 
   // 5. Khuyến nghị AI cốt lõi

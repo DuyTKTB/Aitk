@@ -231,9 +231,9 @@ export default function WrongNotebook() {
       const qb = b.question;
       switch (sortBy) {
         case 'recent':
-          return (b.last_wrong_at || b.saved_at || 0) - (a.last_wrong_at || a.saved_at || 0);
+          return (new Date(b.last_wrong_at || b.saved_at || 0).getTime() || 0) - (new Date(a.last_wrong_at || a.saved_at || 0).getTime() || 0);
         case 'oldest':
-          return (a.last_wrong_at || a.saved_at || 0) - (b.last_wrong_at || b.saved_at || 0);
+          return (new Date(a.last_wrong_at || a.saved_at || 0).getTime() || 0) - (new Date(b.last_wrong_at || b.saved_at || 0).getTime() || 0);
         case 'wrongCount':
           return (b.wrong_count || 0) - (a.wrong_count || 0);
         case 'difficulty': {
@@ -289,10 +289,12 @@ export default function WrongNotebook() {
   const handleBulkMastered = async () => {
     if (selected.size === 0) return;
     if (!confirm(`Đánh dấu ${selected.size} câu đã hiểu?`)) return;
-    const count = selected.size;
+    const ids = [...selected];
+    const count = ids.length;
     try {
-      await Promise.all([...selected].map((qid) => markMastered(uid, qid)));
-      setWrongQs((qs) => qs.filter((q) => !selected.has(q.question.id)));
+      ids.forEach((qid) => markQuestionMastered(uid, qid));
+      await Promise.all(ids.map((qid) => markMastered(uid, qid).catch(() => {})));
+      setWrongQs((qs) => qs.filter((q) => !selected.has(q.question?.id ?? q.questionId ?? q.id)));
       setSelected(new Set());
       showToast(`Đã xử lý ${count} câu`);
     } catch (e) {
@@ -325,7 +327,7 @@ export default function WrongNotebook() {
 
   const selectAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
-    else setSelected(new Set(filtered.map((x) => x.question.id)));
+    else setSelected(new Set(filtered.map((x) => x.question?.id ?? x.questionId ?? x.id).filter(Boolean)));
   };
 
   /* ============ COPY / EXPORT / IMPORT ============ */

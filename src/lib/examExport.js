@@ -394,7 +394,12 @@ export async function buildExamDocBlob({
           new TableRow({
             children: [
               new TableCell({ borders: tableBorder, children: [new Paragraph({ children: [new TextRun({ text: 'Đ/A', bold: true, size: 20, color: '047857' })] })] }),
-              ...slice.map((q) => new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String.fromCharCode(65 + (q.correct || 0)), bold: true, size: 20, color: '047857' })] })] })),
+              ...slice.map((q) => {
+                const ansText = Number.isInteger(q.correct) && q.correct >= 0 && q.correct < 26
+                  ? String.fromCharCode(65 + q.correct)
+                  : '—';
+                return new TableCell({ borders: tableBorder, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: ansText, bold: true, size: 20, color: '047857' })] })] });
+              }),
             ],
           }),
         );
@@ -505,8 +510,9 @@ export async function buildExamDocBlob({
 
       // In đáp án
       if (q.type === 'single_choice' || !q.type) {
-        const correctLetter = String.fromCharCode(65 + (q.correct || 0));
-        const correctOptText = q.options?.[q.correct] ? `: ${fmt(q.options[q.correct])}` : '';
+        const hasValidCorrect = Number.isInteger(q.correct) && q.correct >= 0 && q.correct < 26;
+        const correctLetter = hasValidCorrect ? String.fromCharCode(65 + q.correct) : 'Chưa gán';
+        const correctOptText = hasValidCorrect && q.options?.[q.correct] ? `: ${fmt(q.options[q.correct])}` : '';
         children.push(
           new Paragraph({
             indent: { left: 240 },

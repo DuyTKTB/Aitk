@@ -1166,38 +1166,78 @@ export const VIRTUAL_EXAMS = [
 ];
 
 /* Sinh danh sách câu hỏi cho một đề thi cụ thể từ ngân hàng câu hỏi chuyên sâu */
-export function buildExamQuestionsForPaper(examPaper) {
-  // Ưu tiên câu hỏi tùy chỉnh do Admin nhập hoặc tải từ hệ thống
-  if (Array.isArray(examPaper?.customQuestions) && examPaper.customQuestions.length > 0) {
-    return examPaper.customQuestions.map((q, idx) => ({
-      id: q.id || `cq-${examPaper.id}-${idx}`,
-      prompt: q.prompt || q.question || `Câu hỏi ${idx + 1}`,
-      question: q.question || q.prompt || `Câu hỏi ${idx + 1}`,
-      options: Array.isArray(q.options)
-        ? q.options.map((opt) => (typeof opt === 'string' ? opt : opt?.text || ''))
-        : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'],
-      correct: typeof q.correct === 'number' ? q.correct : (typeof q.answer === 'number' ? q.answer : 0),
-      explain: q.explain || q.explanation || '',
-      explanation: q.explanation || q.explain || '',
-      tag: q.tag || examPaper.title || 'Đề thi phòng thi ảo',
-      difficulty: q.difficulty || 'medium',
+function normalizePaperQuestion(q, idx, prefix, fallbackTag) {
+  const text = q.q || q.prompt || q.question || q.content || `Câu hỏi ${idx + 1}`;
+  const rawType = q.type === 'single_choice' ? 'choice' : q.type;
+  const inferredType = rawType
+    || (Array.isArray(q.statements) && q.statements.length > 0
+      ? 'true_false'
+      : (!Array.isArray(q.options) && (q.answer !== undefined || q.correctAnswer !== undefined || Array.isArray(q.accepted)) ? 'short_answer' : 'choice'));
+
+  let statements = Array.isArray(q.statements) ? q.statements : undefined;
+  if (inferredType === 'true_false' && !statements && Array.isArray(q.options)) {
+    statements = q.options.map((opt, i) => ({
+      id: String(opt?.label || String.fromCharCode(97 + i)).toLowerCase(),
+      text: typeof opt === 'string' ? opt : (opt?.text || opt?.content || ''),
+      answer: Boolean(opt?.isCorrect ?? opt?.is_correct ?? opt?.answer),
     }));
   }
 
-  if (Array.isArray(examPaper?.questions) && examPaper.questions.length > 0 && examPaper.questions[0]?.options) {
-    return examPaper.questions.map((q, idx) => ({
-      id: q.id || `eq-${examPaper.id}-${idx}`,
-      prompt: q.prompt || q.question || `Câu hỏi ${idx + 1}`,
-      question: q.question || q.prompt || `Câu hỏi ${idx + 1}`,
-      options: Array.isArray(q.options)
-        ? q.options.map((opt) => (typeof opt === 'string' ? opt : opt?.text || ''))
-        : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'],
-      correct: typeof q.correct === 'number' ? q.correct : (typeof q.answer === 'number' ? q.answer : 0),
-      explain: q.explain || q.explanation || '',
-      explanation: q.explanation || q.explain || '',
-      tag: q.tag || examPaper.title || 'Đề thi hệ thống',
-      difficulty: q.difficulty || 'medium',
-    }));
+  let correctIdx = 0;
+  if (typeof q.correct === 'number') {
+    correctIdx = q.correct;
+  } else if (typeof q.answer === 'number' && inferredType === 'choice') {
+    correctIdx = q.answer;
+  } else if (Array.isArray(q.options)) {
+    const foundIdx = q.options.findIndex((o) => o && typeof o === 'object' && (o.isCorrect || o.is_correct));
+    if (foundIdx >= 0) {
+      correctIdx = foundIdx;
+    } else if (typeof q.correctAnswer === 'string' && q.correctAnswer.trim()) {
+      const letterIdx = ['A', 'B', 'C', 'D'].indexOf(q.correctAnswer.trim().toUpperCase());
+      if (letterIdx >= 0) correctIdx = letterIdx;
+    }
+  }
+
+  const shortAns = inferredType === 'short_answer'
+    ? (q.answer ?? q.correctAnswer ?? q.shortAnswer ?? (q.options?.[0]?.content ?? q.options?.[0]?.text ?? ''))
+    : q.answer;
+
+  return {
+    id: q.id || `${prefix}-${idx}`,
+    q: text,
+    prompt: q.prompt || q.question || q.content || text,
+    question: q.question || q.prompt || q.content || text,
+    type: inferredType,
+    ...(q.part != null ? { part: q.part } : {}),
+    ...(statements ? { statements } : {}),
+    ...(shortAns !== undefined ? { answer: shortAns } : {}),
+    ...(Array.isArray(q.accepted) ? { accepted: q.accepted } : {}),
+    ...(q.tolerance !== undefined ? { tolerance: q.tolerance } : {}),
+    ...(q.points !== undefined ? { points: q.points } : {}),
+    ...(q.topicId || q.topic ? { topicId: q.topicId || q.topic } : {}),
+    options: Array.isArray(q.options) && inferredType === 'choice'
+      ? q.options.map((opt) => (typeof opt === 'string' ? opt : (opt?.text || opt?.content || '')))
+      : (inferredType === 'true_false' || inferredType === 'short_answer' ? [] : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D']),
+    correct: correctIdx,
+    explain: q.explain || q.explanation || '',
+    explanation: q.explanation || q.explain || '',
+    tag: q.tag || fallbackTag,
+    difficulty: q.difficulty || 'medium',
+  };
+}
+
+export function buildExamQuestionsForPaper(examPaper) {
+  // Ưu tiên câu hỏi tùy chỉnh do Admin nhập hoặc tải từ hệ thống
+  if (Array.isArray(examPaper?.customQuestions) && examPaper.customQuestions.length > 0) {
+    return examPaper.customQuestions.map((q, idx) =>
+      normalizePaperQuestion(q, idx, `cq-${examPaper.id}`, examPaper.title || 'Đề thi phòng thi ảo')
+    );
+  }
+
+  if (Array.isArray(examPaper?.questions) && examPaper.questions.length > 0 && (examPaper.questions[0]?.options || examPaper.questions[0]?.statements || examPaper.questions[0]?.type)) {
+    return examPaper.questions.map((q, idx) =>
+      normalizePaperQuestion(q, idx, `eq-${examPaper.id}`, examPaper.title || 'Đề thi hệ thống')
+    );
   }
 
   const topics = examPaper?.topics?.length ? examPaper.topics : BUILTIN_TOPICS;
@@ -1252,9 +1292,11 @@ export function saveCustomVirtualExams(exams) {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(CUSTOM_VIRTUAL_EXAMS_KEY, JSON.stringify(exams || []));
     }
-    window.dispatchEvent(new CustomEvent('elec-virtual-exams-changed', {
-      detail: { exams: exams || [] },
-    }));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('elec-virtual-exams-changed', {
+        detail: { exams: exams || [] },
+      }));
+    }
   } catch (e) {
     console.error('[virtualExams] saveCustomVirtualExams error:', e);
   }
@@ -1287,10 +1329,19 @@ export function publishExamToVirtual(examData) {
   const examType = (examData.examType || examData.exam_type || 'THPTQG').toUpperCase();
   const defaultBadge = tier === 'VIP' ? 'ĐỘC QUYỀN ELEC AI' : tier === 'PRO' ? 'ĐỀ CHÍNH THỨC' : 'ĐỀ LUYỆN TẬP';
 
+  const rawQuestions = Array.isArray(examData.customQuestions) && examData.customQuestions.length > 0
+    ? examData.customQuestions
+    : (Array.isArray(examData.questions) ? examData.questions : []);
+  const validCustomQuestions = rawQuestions.filter(
+    (q) => q && typeof q === 'object' && (q.q || q.prompt || q.question || q.content)
+  );
+  const countFromRelation = Number(examData.questions?.[0]?.count) || 0;
+
   const entry = {
     id,
     adminExamId: examData.id,
     year: Number(examData.year) || new Date().getFullYear(),
+    subject: examData.subject || examData.detected?.subject || 'hoa',
     tier: ['VIP', 'PRO', 'FREE'].includes(tier) ? tier : 'PRO',
     isHot: examData.isHot !== undefined ? Boolean(examData.isHot) : true,
     examType,
@@ -1298,13 +1349,13 @@ export function publishExamToVirtual(examData) {
     badgeLabel: examData.badgeLabel || defaultBadge,
     title: examData.title || 'Đề thi phòng thi ảo ELEC AI',
     attemptsCount: Number(examData.attempt_count || examData.attemptsCount) || 0,
-    questionCount: Number(examData.questionCount || examData.question_count || examData.questions?.length) || 28,
+    questionCount: Number(examData.questionCount || examData.question_count || validCustomQuestions.length || countFromRelation) || 28,
     durationMinutes: Number(examData.durationMinutes || examData.duration) || 50,
     author: examData.author || 'Đội ngũ giáo viên ELEC AI',
     institution: examData.institution || (examData.subject?.name ? `Tổ bộ môn ${examData.subject.name}` : 'Ban Chuyên Môn'),
     gradeScope: String(examData.gradeScope || examData.grade?.name || 'all').replace(/[^0-9]/g, '') || 'all',
     topics: Array.isArray(examData.topics) && examData.topics.length ? examData.topics : ['c12-ester', 'c12-electro', 'c11-nitrogen'],
-    customQuestions: Array.isArray(examData.customQuestions || examData.questions) ? (examData.customQuestions || examData.questions) : [],
+    customQuestions: validCustomQuestions,
     createdAt: examData.created_at || new Date().toISOString(),
     publishedToVirtualAt: new Date().toISOString(),
   };
@@ -1572,7 +1623,9 @@ export async function redeemActivationCode(uid, rawCode) {
       };
     }
   }
-  const addedPoints = POINTS_PER_CODE_ENTRY; // Mỗi lượt nhập được cộng đúng 15 điểm
+  const addedPoints = matchedPlan && matchedPlan.bonusAmount !== undefined
+    ? Number(matchedPlan.bonusAmount) || 0
+    : (matchedPlan?.planName ? 0 : POINTS_PER_CODE_ENTRY);
   const nextCreditsMax = (Number(cur.aiCreditsMax) || 30) + addedPoints;
   const nextBonusPoints = (Number(cur.bonusPoints) || 0) + addedPoints;
 
@@ -1592,7 +1645,7 @@ export async function redeemActivationCode(uid, rawCode) {
         id: 'TX-' + Date.now().toString(36).toUpperCase(),
         title: matchedPlan ? matchedPlan.txTitle : `Nhập mã giới thiệu ${code} (+${addedPoints} điểm)`,
         code,
-        amount: `+${addedPoints} điểm`,
+        amount: addedPoints > 0 ? `+${addedPoints} điểm` : (matchedPlan?.planName || 'Kích hoạt'),
         status: 'Thành công',
         at: new Date().toLocaleString('vi-VN'),
       },

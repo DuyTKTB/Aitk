@@ -383,10 +383,10 @@ export default function AspirationAiStrategyModal({
                   </div>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a' }}>
-                      Độ bền vững rổ nguyện vọng: <b>{portfolioAnalysis.healthLabel}</b>
+                      Độ bền vững rổ nguyện vọng: <b>{portfolioAnalysis.statusLabel}</b>
                     </h3>
                     <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#64748b' }}>
-                      {portfolioAnalysis.summary}
+                      {portfolioAnalysis.warnings?.[0] || portfolioAnalysis.recommendations?.[0] || 'Danh mục nguyện vọng của bạn đang ở trạng thái tốt.'}
                     </p>
                   </div>
                 </div>
@@ -475,11 +475,18 @@ export default function AspirationAiStrategyModal({
                     onChange={(e) => setCompareIdA(e.target.value)}
                     className="ai-strat-select"
                   >
-                    {allMajors.map((m) => (
-                      <option key={`a-${m.id}`} value={m.id}>
-                        {m.schoolCode} — {m.name} ({m.cutoffScore}đ)
-                      </option>
-                    ))}
+                    {allMajors.map((m) => {
+                      const sCode = (referenceData.schools || []).find((s) => s.id === m.schoolId)?.code || m.schoolId || '';
+                      const cutoff = (m.cutoffs || []).find((c) => c.examId === 'THPTQG' && c.year === 2025)?.score
+                        ?? (m.cutoffs || []).find((c) => c.examId === 'THPTQG')?.score
+                        ?? m.cutoffs?.[0]?.score
+                        ?? '—';
+                      return (
+                        <option key={`a-${m.id}`} value={m.id}>
+                          {sCode} — {m.name} ({cutoff}đ)
+                        </option>
+                      );
+                    })}
                   </select>
                   <span className="ai-strat-vs-badge">VS</span>
                   <select
@@ -487,37 +494,53 @@ export default function AspirationAiStrategyModal({
                     onChange={(e) => setCompareIdB(e.target.value)}
                     className="ai-strat-select"
                   >
-                    {allMajors.map((m) => (
-                      <option key={`b-${m.id}`} value={m.id}>
-                        {m.schoolCode} — {m.name} ({m.cutoffScore}đ)
-                      </option>
-                    ))}
+                    {allMajors.map((m) => {
+                      const sCode = (referenceData.schools || []).find((s) => s.id === m.schoolId)?.code || m.schoolId || '';
+                      const cutoff = (m.cutoffs || []).find((c) => c.examId === 'THPTQG' && c.year === 2025)?.score
+                        ?? (m.cutoffs || []).find((c) => c.examId === 'THPTQG')?.score
+                        ?? m.cutoffs?.[0]?.score
+                        ?? '—';
+                      return (
+                        <option key={`b-${m.id}`} value={m.id}>
+                          {sCode} — {m.name} ({cutoff}đ)
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
-                {comparisonData && comparisonData.items && (
+                {Array.isArray(comparisonData) && comparisonData.length > 0 && (
                   <div className="ai-strat-compare-grid">
-                    {comparisonData.items.map((item, idx) => (
-                      <div key={idx} className="ai-strat-comp-card">
-                        <div className="ai-strat-comp-top">
-                          <span className="ai-strat-school-badge">{item.schoolCode}</span>
-                          <strong>{item.schoolName}</strong>
+                    {comparisonData.map((item) => {
+                      const cutoffVal = item.cutoffs?.thpt2025 !== '—'
+                        ? item.cutoffs.thpt2025
+                        : (item.cutoffs?.thpt2024 !== '—' ? item.cutoffs.thpt2024 : (item.cutoffs?.hsa !== '—' ? item.cutoffs.hsa : item.cutoffs?.tsa));
+                      const careerList = String(item.career || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      return (
+                        <div key={item.majorId} className="ai-strat-comp-card">
+                          <div className="ai-strat-comp-top">
+                            <span className="ai-strat-school-badge">{item.school?.code}</span>
+                            <strong>{item.school?.name}</strong>
+                          </div>
+                          <h4 style={{ margin: '8px 0 4px', fontSize: '0.96rem', color: '#0f172a' }}>{item.majorName}</h4>
+                          <div style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '8px' }}>
+                            Khối: <b>{item.blocks?.join(', ')}</b> · Học phí: <b>{item.tuition}</b>
+                          </div>
+                          <div className="ai-strat-comp-score-row">
+                            <span>Điểm chuẩn:</span>
+                            <b>{cutoffVal !== '—' && cutoffVal !== undefined ? `${cutoffVal} điểm` : 'Chưa công bố'}</b>
+                          </div>
+                          <div className="ai-strat-comp-tags">
+                            {careerList.map((cp, cIdx) => (
+                              <span key={cIdx} className="ai-strat-comp-pill">{cp}</span>
+                            ))}
+                          </div>
                         </div>
-                        <h4 style={{ margin: '8px 0 4px', fontSize: '0.96rem', color: '#0f172a' }}>{item.majorName}</h4>
-                        <div style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '8px' }}>
-                          Khối: <b>{item.blocks?.join(', ')}</b> · Học phí: <b>{item.tuitionYear}</b>
-                        </div>
-                        <div className="ai-strat-comp-score-row">
-                          <span>Điểm chuẩn:</span>
-                          <b>{item.cutoffScore} điểm</b>
-                        </div>
-                        <div className="ai-strat-comp-tags">
-                          {(item.careerProspects || []).map((cp, cIdx) => (
-                            <span key={cIdx} className="ai-strat-comp-pill">{cp}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

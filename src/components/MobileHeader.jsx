@@ -13,7 +13,7 @@ import '../styles/nav-dropdowns.css';
      [Logo] [Mục tiêu kỳ thi] [🔥 Chuỗi] [⚡ XP] [Tìm kiếm] [Theme] [Menu]
      [Thanh chọn môn KHTN: Tất cả | Vật lí | Hóa học | Sinh học]
    ============================================================ */
-export default function MobileHeader({ page, theme, userRole = 'student', isPro = false, credits, onSearch, onToggleTheme }) {
+export default function MobileHeader({ page, theme, userRole = 'student', isPro = false, credits, onSearch, onToggleTheme, onMenu }) {
   const { user, logout } = useAuth();
   const { count: streakCount, isToday: hasStreakToday } = useLiveStreak();
   const { playing: introPlaying } = useElecIntro();
@@ -116,6 +116,23 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
             isTeacher={isTeacher}
             onLogout={logout}
           />
+
+          {/* Nút Menu mở ngăn học tập trên Mobile */}
+          {typeof onMenu === 'function' && (
+            <button
+              type="button"
+              className="mhead-btn"
+              onClick={onMenu}
+              aria-label="Mở menu học tập"
+              title="Mở menu học tập"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" aria-hidden="true">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
       </header>
 

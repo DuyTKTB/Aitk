@@ -798,7 +798,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
     const guideAnswer = findAppGuideAnswer(plan.contextText);
     if (guideAnswer) {
       console.log('[ELEC AI] ✓ App guide instant match');
-      setTimeout(() => onChunk?.(guideAnswer), 20);
+      onChunk?.(guideAnswer);
       const p = Promise.resolve({
         text: guideAnswer,
         reasoning: 'Truy xuất cẩm nang điều hướng website ELEC AI…',
@@ -821,7 +821,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
     const cached = getCached(plan.recentHistory, systemPrompt, task.kind);
     if (cached) {
       console.log(`[ELEC AI] ✓ Cache hit (${cached.model})`);
-      setTimeout(() => onChunk?.(cached.text), 30);
+      onChunk?.(cached.text);
       // Đáp án lấy từ cache vẫn được tự kiểm tra (miễn phí, chỉ so số)
       const verification = toolHits.length && options.verify !== false
         ? verifyToolResults(cached.text, toolHits)

@@ -13,8 +13,9 @@
    ============================================================ */
 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase.js';
+import { auth, db } from './firebase.js';
 import { supabase } from './supabase.js';
+import { getUserRole } from './userRole.js';
 import { saveProfile as saveAiMemoryProfile } from './aiMemory.js';
 import { splitFullName, joinNameParts } from './authValidation.js';
 
@@ -405,20 +406,32 @@ export function saveUserProfile(uid, data, opts = {}) {
     console.warn('[userProfile] save to localStorage failed:', err);
   }
 
-  // Đồng bộ lên Firestore users/{uid} (không đụng trường `role` để luôn hợp lệ firestore.rules)
+  // Đồng bộ lên Firestore users/{uid} (không đụng trường `role` khi cập nhật; bổ sung role/email khi tạo mới để khớp firestore.rules)
   if (!opts.skipCloud && uid && uid !== 'guest') {
-    setDoc(
-      doc(db, 'users', uid),
-      {
-        ...(updated.fullName ? { displayName: updated.fullName } : {}),
-        ...(updated.highSchool ? { school: updated.highSchool } : {}),
-        profile: updated,
-        profileUpdatedAt: now,
-      },
-      { merge: true }
-    ).catch((err) => {
-      console.warn('[userProfile] sync to Firestore error:', err?.message || err);
-    });
+    (async () => {
+      try {
+        const userRef = doc(db, 'users', uid);
+        const snap = await getDoc(userRef);
+        const curUser = auth?.currentUser;
+        const basePayload = {
+          ...(updated.fullName ? { displayName: updated.fullName } : {}),
+          ...(updated.highSchool ? { school: updated.highSchool } : {}),
+          profile: updated,
+          profileUpdatedAt: now,
+        };
+        if (!snap.exists()) {
+          const resolvedRole = getUserRole(curUser);
+          basePayload.uid = uid;
+          basePayload.email = String(updated.email || curUser?.email || '');
+          basePayload.role = resolvedRole === 'teacher' ? 'teacher' : 'student';
+          basePayload.tier = 'free';
+          basePayload.createdAt = now;
+        }
+        await setDoc(userRef, basePayload, { merge: true });
+      } catch (err) {
+        console.warn('[userProfile] sync to Firestore error:', err?.message || err);
+      }
+    })();
 
     // Đồng bộ best-effort sang Supabase profiles (các cột cơ bản nếu tồn tại)
     supabase

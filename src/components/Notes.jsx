@@ -76,7 +76,9 @@ export default function Notes() {
         const id = path.slice(1);
         if (id.includes('/')) return n;
         if (data === null) return n.filter((x) => x.id !== id);
-        return n.some((x) => x.id === id) ? n : [...n, { id, ...data }];
+        return n.some((x) => x.id === id)
+          ? n.map((x) => (x.id === id ? { id, ...data } : x))
+          : [...n, { id, ...data }];
       });
     });
     return () => es.close();
@@ -108,10 +110,12 @@ export default function Notes() {
         setNotes((n) => n.map((x) => (x.id === editing.id ? { ...x, ...base } : x)));
       } else {
         try {
-          await fetch(`${DB}/notes/${editing.id}.json`, {
+          const r = await fetch(`${DB}/notes/${editing.id}.json`, {
             method: 'PATCH',
             body: JSON.stringify(base),
           });
+          if (!r.ok) throw new Error();
+          setNotes((n) => n.map((x) => (x.id === editing.id ? { ...x, ...base } : x)));
         } catch {
           setErr('Sửa thất bại.');
           return;
@@ -200,11 +204,25 @@ export default function Notes() {
     } catch { /* */ }
   };
 
-  const undoDelete = () => {
+  const undoDelete = async () => {
     if (!undoNote) return;
-    setNotes((n) => [...n, undoNote]);
+    const restored = undoNote;
+    setNotes((n) => (n.some((x) => x.id === restored.id) ? n : [...n, restored]));
     setUndoNote(null);
-    showToast('Đã hoàn tác');
+    if (localMode) {
+      showToast('Đã hoàn tác');
+      return;
+    }
+    try {
+      const res = await fetch(`${DB}/notes/${restored.id}.json`, {
+        method: 'PUT',
+        body: JSON.stringify(restored),
+      });
+      if (!res.ok) throw new Error('restore failed');
+      showToast('Đã hoàn tác');
+    } catch {
+      showToast('Không thể khôi phục lên máy chủ', 'err');
+    }
   };
 
   /* ---------- Edit ---------- */

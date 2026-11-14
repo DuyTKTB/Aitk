@@ -868,6 +868,7 @@ function findTargetStudent(query, { classes = [], submissionsMap = {} }) {
 export default function TeacherFloatingChat({
   user,
   classes = [],
+  linkedClasses = [],
   exams = [],
   submissionsMap = {},
   liveSessions = [],
@@ -934,6 +935,7 @@ export default function TeacherFloatingChat({
     err?.code === 'OUT_OF_CREDITS' ? err.message : (fallback || err?.message || 'Kết nối AI tạm thời gián đoạn.');
 
   const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
   const bodyEndRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -2033,8 +2035,8 @@ Trả về duy nhất đối tượng JSON hợp lệ:
   };
 
   // XỬ LÝ 4: Gửi tin nhắn & Xử lý TRÍ TUỆ NHÂN TẠO ĐA NGỮ CẢNH
-  const handleSend = async (userPrompt) => {
-    const query = (userPrompt || input).trim();
+  const handleSend = async (userPrompt, overridePrompt) => {
+    const query = (overridePrompt || userPrompt || input).trim();
     if (!query) return;
 
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -3008,7 +3010,17 @@ Trả về duy nhất đối tượng JSON:
       !norm.includes('giao đề') && !norm.includes('giao bài') && !norm.includes('soạn')
     ) {
       if (isGuidanceQuery) {
-        // Đã được xử lý ở phần Hướng dẫn quy trình, nếu lọt vào đây thì thoát
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'bot_class_guide_' + Date.now(),
+            sender: 'bot',
+            text: `Để tạo lớp học mới (VD: **${extractValidNewClassName(query) || '11A5'}**), Thầy/Cô vào tab **Lớp học & Liên kết** -> nhấn **+ Tạo lớp mới**, điền tên lớp, khối lớp và môn học, hoặc bấm nút bên dưới để mở trực tiếp:`,
+            navSuggestions: [{ label: 'Mở Quản lý Lớp học', sec: 'classes' }],
+            time: timeStr,
+          },
+        ]);
         return;
       }
 
@@ -4526,7 +4538,7 @@ HƯỚNG DẪN TRẢ LỜI:
                               handleCreateClassDirectly(btn.className);
                             }
                             if (btn.action === 'query_class') {
-                              handleSend(null, `tổng quan lớp ${btn.className}`);
+                              handleSend(`tổng quan lớp ${btn.className}`);
                             }
                           }}
                         >
@@ -4682,6 +4694,7 @@ HƯỚNG DẪN TRẢ LỜI:
               </button>
 
               <input
+                ref={inputRef}
                 type="text"
                 className="tfc-input"
                 value={input}

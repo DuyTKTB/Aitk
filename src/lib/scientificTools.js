@@ -402,19 +402,20 @@ export function mendelMonohybrid(p1 = 'Aa', p2 = 'Aa') {
  * p(A) + q(a) = 1 => p² AA + 2pq Aa + q² aa = 1
  */
 export function hardyWeinberg({ p, q, aaFreq }) {
-  let numP = Number(p);
-  let numQ = Number(q);
+  let numP = p !== undefined && p !== null && p !== '' ? Number(p) : NaN;
+  let numQ = q !== undefined && q !== null && q !== '' ? Number(q) : NaN;
 
-  if (aaFreq && !numQ) {
+  if (aaFreq !== undefined && aaFreq !== null && Number.isNaN(numQ)) {
     numQ = Math.sqrt(Number(aaFreq));
-    numP = 1 - numQ;
-  } else if (numP && !numQ) {
+    if (Number.isNaN(numP)) numP = 1 - numQ;
+  } else if (!Number.isNaN(numP) && Number.isNaN(numQ)) {
     numQ = 1 - numP;
-  } else if (numQ && !numP) {
+  } else if (!Number.isNaN(numQ) && Number.isNaN(numP)) {
     numP = 1 - numQ;
   }
 
-  if (numP < 0 || numP > 1 || numQ < 0 || numQ > 1) return null;
+  if (!Number.isFinite(numP) || !Number.isFinite(numQ)) return null;
+  if (numP < 0 || numP > 1 || numQ < 0 || numQ > 1 || Math.abs(numP + numQ - 1) > 1e-4) return null;
 
   const aa = numQ * numQ;
   const AA = numP * numP;
@@ -481,9 +482,15 @@ export function runScientificTools(text) {
   // Dạng: "y = (2x+1)/(x-1)" hoặc "tiệm cận của hàm số y = (x+3)/(2x-4)"
   const ratMatch = s.match(/y\s*=\s*\(?\s*([+-]?\d*)\s*x\s*([+-]\s*\d+)\s*\)?\s*\/\s*\(?\s*([+-]?\d*)\s*x\s*([+-]\s*\d+)\s*\)?/i);
   if (ratMatch) {
-    const a = Number(ratMatch[1] || 1);
+    const parseCoeff = (raw) => {
+      const cleaned = String(raw ?? '').replace(/\s+/g, '');
+      if (!cleaned || cleaned === '+') return 1;
+      if (cleaned === '-') return -1;
+      return Number(cleaned);
+    };
+    const a = parseCoeff(ratMatch[1]);
     const b = Number(ratMatch[2].replace(/\s+/g, ''));
-    const c = Number(ratMatch[3] || 1);
+    const c = parseCoeff(ratMatch[3]);
     const d = Number(ratMatch[4].replace(/\s+/g, ''));
 
     const res = analyzeRationalFunction(a, b, c, d);
@@ -634,12 +641,14 @@ export function runScientificTools(text) {
   }
 
   // --- H. SINH HỌC: DI TRUYỀN HỌC QUẦN THỂ (HARDY - WEINBERG) ---
-  const pMatch = s.match(/(?:tần số alen\s*a\s*=\s*|p\s*=\s*)(\d+(?:[.,]\d+)?)/i);
-  const qMatch = s.match(/(?:tần số alen\s*a\s*=\s*|q\s*=\s*)(\d+(?:[.,]\d+)?)/i);
+  const alleleAUpper = text.match(/tần số alen\s*A\s*=\s*(\d+(?:[.,]\d+)?)/)
+    || text.match(/\bp\s*=\s*(\d+(?:[.,]\d+)?)/i);
+  const alleleALower = text.match(/tần số alen\s*a\s*=\s*(\d+(?:[.,]\d+)?)/)
+    || text.match(/\bq\s*=\s*(\d+(?:[.,]\d+)?)/i);
   const aaMatch = s.match(/(?:kiểu gen aa\s*=\s*|đồng hợp lặn\s*=\s*)(\d+(?:[.,]\d+)?)/i);
-  if ((s.includes('quần thể') || s.includes('hardy') || s.includes('cân bằng di truyền')) && (pMatch || qMatch || aaMatch)) {
-    const p = pMatch ? Number(pMatch[1].replace(',', '.')) : undefined;
-    const q = qMatch ? Number(qMatch[1].replace(',', '.')) : undefined;
+  if ((s.includes('quần thể') || s.includes('hardy') || s.includes('cân bằng di truyền')) && (alleleAUpper || alleleALower || aaMatch)) {
+    const p = alleleAUpper ? Number(alleleAUpper[1].replace(',', '.')) : undefined;
+    const q = alleleALower ? Number(alleleALower[1].replace(',', '.')) : undefined;
     const aaFreq = aaMatch ? Number(aaMatch[1].replace(',', '.')) : undefined;
     const res = hardyWeinberg({ p, q, aaFreq });
     if (res) {

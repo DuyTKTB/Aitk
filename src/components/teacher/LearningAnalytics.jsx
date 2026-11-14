@@ -187,6 +187,14 @@ export default function LearningAnalytics({
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState('');
 
+  useEffect(() => {
+    const nextBands = resolveBands(classInfo?.bandThresholds);
+    setBands(nextBands);
+    setBandDraft(nextBands);
+    setFocusSubject('');
+    setBandMsg('');
+  }, [classId, classInfo?.bandThresholds]);
+
   const saveBands = async () => {
     const next = resolveBands(bandDraft);
     setSavingBands(true);

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import QuestionEditor from './QuestionEditor';
 import GameOverModal from './GameOverModal';
 import { sound } from '../../lib/gameSound';
+import { normalizeBankQuestionList } from '../../lib/gameQuestionBank';
 import { GIcon } from './GameIcons';
 import GameBar from './GameBar';
 import FieldFit from './FieldFit';
@@ -107,7 +108,7 @@ export default function SlingshotGame() {
   const [questions, setQuestions] = useState(() => {
     try {
       const raw = localStorage.getItem('cs-game:slingshot:questions');
-      return raw ? JSON.parse(raw) : [];
+      return raw ? normalizeBankQuestionList(JSON.parse(raw), []) : [];
     } catch { return []; }
   });
   const [config, setConfig] = useState(() => {
@@ -221,9 +222,22 @@ export default function SlingshotGame() {
     return list;
   }, [questions, config.targetCount, config.powerups]);
 
+  const timersRef = useRef([]);
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter((x) => x !== id);
+      fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+  useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
+
   /* ===== START ===== */
   const startGame = () => {
     if (!questions.length) return;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
     setScores([0, 0]); setCombo(0); setMaxCombo(0); setMistakes(0); setBullseyes(0); setLives(3); setQIndex(0); setTurn(0);
     wrongLogRef.current = []; answeredRef.current = 0; correctRef.current = 0;
     setPaused(false); setIsRecord(false);
@@ -235,9 +249,9 @@ export default function SlingshotGame() {
     setTrail([]);
   };
 
-  const nextQuestion = (idx) => {
+  const nextQuestion = (idx, finalScores = scores) => {
     const next = idx + 1;
-    if (next >= questions.length) { endGame(true); return; }
+    if (next >= questions.length) { endGame(true, finalScores); return; }
     setQIndex(next);
     if (config.twoPlayer) setTurn((t) => 1 - t);
     setTargets(buildTargets(next));
@@ -250,18 +264,18 @@ export default function SlingshotGame() {
   const spawnFloat = (x, y, text, color) => {
     const id = Math.random().toString(36).slice(2);
     setFloats((f) => [...f, { id, x, y, text, color }]);
-    setTimeout(() => setFloats((f) => f.filter((it) => it.id !== id)), 900);
+    later(() => setFloats((f) => f.filter((it) => it.id !== id)), 900);
   };
 
   const triggerWrong = () => {
     setFlash('wrong');
     setShake(true);
-    setTimeout(() => setFlash(null), 400);
-    setTimeout(() => setShake(false), 420);
+    later(() => setFlash(null), 400);
+    later(() => setShake(false), 420);
   };
   const triggerCorrectFlash = () => {
     setFlash('correct');
-    setTimeout(() => setFlash(null), 350);
+    later(() => setFlash(null), 350);
   };
   const showComboBanner = (n) => {
     clearTimeout(bannerTimer.current);
@@ -286,8 +300,8 @@ export default function SlingshotGame() {
       const nl = lives - 1;
       setLives(nl);
       setTargets((ts) => ts.map((t) => (t.isBonus ? t : { ...t, hit: true })));
-      setTimeout(() => { if (nl <= 0) endGame(false); else nextQuestion(qIndex); }, 1200);
-      return;
+      const tid = later(() => { if (nl <= 0) endGame(false, scores); else nextQuestion(qIndex, scores); }, 1200);
+      return () => clearTimeout(tid);
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
@@ -382,7 +396,9 @@ export default function SlingshotGame() {
 
       const bonus = Math.round(100 * (1 + combo * 0.15) * tierMult);
       const who = config.twoPlayer ? turn : 0;
-      setScores((s) => { const n = [...s]; n[who] += bonus; return n; });
+      const nextScores = [...scores];
+      nextScores[who] += bonus;
+      setScores(nextScores);
       spawnFloat(t.x, t.y - 20, `+${bonus}`, 'var(--acc)');
       if (tierLabel) spawnFloat(t.x, t.y - 44, tierLabel, tierMult > 1 ? '#ffb020' : 'var(--mut)');
 
@@ -392,7 +408,7 @@ export default function SlingshotGame() {
         if (nc > 0 && nc % 5 === 0) showComboBanner(nc);
         return nc;
       });
-      setTimeout(() => nextQuestion(qIndex), 800);
+      later(() => nextQuestion(qIndex, nextScores), 800);
     } else {
       sound.wrong();
       triggerWrong();
@@ -402,14 +418,15 @@ export default function SlingshotGame() {
       setMistakes((m) => m + 1);
       const nl = lives - 1;
       setLives(nl);
-      setTimeout(() => { if (nl <= 0) endGame(false); else nextQuestion(qIndex); }, 1200);
+      later(() => { if (nl <= 0) endGame(false, scores); else nextQuestion(qIndex, scores); }, 1200);
     }
   };
 
-  const endGame = (won) => {
+  const endGame = (won, finalScores = scores) => {
     setPhase('over');
     if (won) sound.win(); else sound.lose();
-    const finalScore = config.twoPlayer ? Math.max(scores[0], scores[1]) : scores[0];
+    const sArr = Array.isArray(finalScores) ? finalScores : scores;
+    const finalScore = config.twoPlayer ? Math.max(sArr[0], sArr[1]) : sArr[0];
     setIsRecord(!config.twoPlayer && finalScore > 0 && finalScore > (leaderboard[0]?.score || 0));
     if (!config.twoPlayer && config.playerName.trim() && finalScore > 0) {
       const entry = { name: config.playerName.trim(), score: finalScore, date: Date.now() };

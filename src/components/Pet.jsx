@@ -432,12 +432,16 @@ export default function Pet({ mini = false }) {
   const scale = getScale(st) * moodK;
   const atomN = mood === 'hibernating' ? Math.min(ATOM_COUNT[st], 4) : ATOM_COUNT[st];
 
-  /* Animation frame — ngọn lửa bập bùng */
+  /* Animation frame — ngọn lửa bập bùng (throttled ~15fps) */
   useEffect(() => {
     let raf;
+    let lastUpdate = 0;
     const start = performance.now();
     const tick = (now) => {
-      setTime((now - start) / 1000);
+      if (!document.hidden && now - lastUpdate >= 66) {
+        lastUpdate = now;
+        setTime((now - start) / 1000);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -448,15 +452,19 @@ export default function Pet({ mini = false }) {
   useEffect(() => {
     if (mood === 'hibernating' || mood === 'sleepy') return;
     let timer;
+    let innerTimer;
     const schedule = () => {
       timer = setTimeout(() => {
         setBlink(true);
-        setTimeout(() => setBlink(false), 160);
+        innerTimer = setTimeout(() => setBlink(false), 160);
         schedule();
       }, 2800 + Math.random() * 3200);
     };
     schedule();
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(innerTimer);
+    };
   }, [mood]);
 
   /* Nhìn theo chuột */
@@ -477,17 +485,26 @@ export default function Pet({ mini = false }) {
 
   /* Detect level up */
   useEffect(() => {
+    let timer;
     if (prevStageRef.current !== null && st > prevStageRef.current) {
       setJustLeveledUp(true);
-      setTimeout(() => setJustLeveledUp(false), 2200);
+      timer = setTimeout(() => setJustLeveledUp(false), 2200);
     }
     prevStageRef.current = st;
+    return () => clearTimeout(timer);
   }, [st]);
 
   const gid = `fl-${mini ? 'mini' : 'full'}`;
   const dropY = Math.sin(time * 2.2) * 3;
   const flameTf = `translate(${CX} ${B}) scale(${scale}) translate(${-CX} ${-B})`;
   const glowing = mood !== 'hibernating';
+  const moodLabelMap = {
+    happy: 'Vui vẻ',
+    normal: 'Bình thường',
+    sleepy: 'Buồn ngủ',
+    sad: 'Buồn',
+    hibernating: 'Ngủ đông',
+  };
 
   return (
     <div className={mini ? 'petmini' : 'card pet'} ref={wrapRef}>
@@ -495,7 +512,7 @@ export default function Pet({ mini = false }) {
         viewBox="0 0 200 190"
         className={'crystal crystal-' + mood + (justLeveledUp ? ' crystal-levelup' : '')}
         role="img"
-        aria-label={`Ember: ${STAGES[st][1]} — ${MOODS[mood]}`}
+        aria-label={`Ember: ${STAGES[st][1]} — ${moodLabelMap[mood] || mood}`}
       >
         <defs>
           <radialGradient id={gid + '-body'} cx="0.5" cy="0.62" r="0.62">

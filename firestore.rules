@@ -51,7 +51,9 @@ service cloud.firestore {
         !('role' in request.resource.data) ||
         request.resource.data.role == resource.data.role ||
         isAdmin()
-      )) || isAdmin();
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['tier', 'plan', 'pro', 'vip', 'vipExpiresAt', 'vipUntil', 'proUntil', 'vipUpgradedAt', 'lastPayment', 'processedTxIds', 'credits'])
+      ) || isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -97,13 +99,21 @@ service cloud.firestore {
       );
     }
 
+    /* Thành viên lớp học cập nhật điểm chuỗi (streak) của lớp khi nhắn tin */
+    function classStreakOnly() {
+      return sameCore()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['streak'])
+        && (request.auth.uid in resource.data.get('memberIds', [])
+            || resource.data.teacherId == request.auth.uid);
+    }
+
     match /classes/{classId} {
       allow read: if signedIn();
 
       allow create: if signedIn()
         && request.resource.data.teacherId == request.auth.uid;
 
-      allow update: if signedIn() && (classOwner(classId) || selfJoin() || selfLeave());
+      allow update: if signedIn() && (classOwner(classId) || selfJoin() || selfLeave() || classStreakOnly());
 
       allow delete: if signedIn() && classOwner(classId);
     }
@@ -344,10 +354,17 @@ service cloud.firestore {
          thống kê đề/lớp, và học sinh xem bài làm của mình). */
       allow read: if signedIn();
 
-      allow create: if signedIn()
-        && request.resource.data.studentId == request.auth.uid
-        && request.resource.data.examId is string
-        && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId));
+      allow create: if signedIn() && (
+        (request.resource.data.studentId == request.auth.uid
+          && request.resource.data.examId is string
+          && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)))
+        ||
+        (request.resource.data.isPaperOmr == true
+          && request.resource.data.classId is string
+          && classOwner(request.resource.data.classId)
+          && request.resource.data.paperId is string
+          && exists(/databases/$(database)/documents/paperExams/$(request.resource.data.paperId)))
+      );
 
       /* Nộp lại cùng một lượt (setDoc trùng id) là update → vẫn cho chính chủ bài */
       allow update: if signedIn() && (
@@ -513,6 +530,14 @@ service cloud.firestore {
     // ===============================================================
     match /email_otp_codes/{uid} {
       allow read, write: if false;
+    }
+
+    // ===============================================================
+    // 18. SITE CONFIG — Cấu hình toàn cục (bảo trì, thông báo)
+    // ===============================================================
+    match /siteConfig/{docId} {
+      allow read: if true;
+      allow write: if signedIn();
     }
 
   }

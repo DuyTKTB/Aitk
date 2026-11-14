@@ -516,7 +516,22 @@ export default function App() {
 
   /* ============ HASH + KEYBOARD + CLICK ============ */
   useEffect(() => {
+    const syncSubjectFromHash = () => {
+      try {
+        const rawHash = window.location.hash || '';
+        const qIdx = rawHash.indexOf('?');
+        if (qIdx === -1) return;
+        const params = new URLSearchParams(rawHash.slice(qIdx + 1));
+        const subj = params.get('subject');
+        if (subj && ['all', 'ly', 'hoa', 'sinh'].includes(subj)) {
+          localStorage.setItem('elec-current-subject', subj);
+          window.dispatchEvent(new CustomEvent('elec-subject-change', { detail: subj }));
+        }
+      } catch {}
+    };
+    syncSubjectFromHash();
     const onHash = () => {
+      syncSubjectFromHash();
       setHashTick((x) => x + 1);
       setMenu(false);
       setToolOpen(false);
@@ -693,7 +708,9 @@ export default function App() {
 
     /* ============ CLASSROOM ROUTES ============ */
     if (page === 'classroom') {
-      if (pro.isPro || isAdmin(user)) return <TeacherDashboard />;
+      if ((pro.isPro && pro.isTeacherPro !== false) || userRole === 'teacher' || isAdmin(user)) {
+        return <TeacherDashboard />;
+      }
       return <StudentClass />;
     }
     if (page === 'my-classes') {
@@ -811,9 +828,9 @@ export default function App() {
   const isAiPage = page === 'ai';
   /* Khu giáo viên (Lớp học + AutoExam Studio...) cũng chạy toàn màn hình, không có nav chính.
      Học sinh vào #classroom vẫn thấy giao diện thường. */
-  const isTeacherPage = page === 'classroom' && (pro.isPro || isAdmin(user));
+  const isTeacherPage = page === 'classroom' && ((pro.isPro && pro.isTeacherPro !== false) || userRole === 'teacher' || isAdmin(user));
   /* Khi vào làm bài trong Phòng thi ảo (#quiz / #virtual-exams): ẩn toàn bộ Nav, Mascot, ChatWidget, Footer giống hệt ExamJoin */
-  const isVirtualExamRoom = (page === 'quiz' || page === 'virtual-exams' || page === 'exam') && (virtualExamActive || (typeof document !== 'undefined' && document.body?.dataset?.virtualExamActive === '1'));
+  const isVirtualExamRoom = (page === 'quiz' || page === 'virtual-exams') && (virtualExamActive || (typeof document !== 'undefined' && document.body?.dataset?.virtualExamActive === '1'));
   const isFullPage = isAiPage || isTeacherPage || isVirtualExamRoom;
 
   return (

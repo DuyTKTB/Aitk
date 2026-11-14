@@ -253,17 +253,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
         setActivationMsg({ ok: true, text: res.message || 'Kích hoạt thành công!' });
         setActivationCode('');
       } else {
-        // Fallback sang grantActivationCredits
-        const grant = await grantActivationCredits(effectiveUserId, 15, clean);
-        if (grant.ok) {
-          const fresh = await getCredits(effectiveUserId);
-          setBalance(fresh.balance);
-          onCreditUpdate?.(fresh.balance);
-          setActivationMsg({ ok: true, text: `Kích hoạt thành công! +15 ELEC Credit đã được cộng vào tài khoản.` });
-          setActivationCode('');
-        } else {
-          setActivationMsg({ ok: false, text: res.error || 'Mã kích hoạt không đúng hoặc đã qua sử dụng.' });
-        }
+        setActivationMsg({ ok: false, text: res.error || 'Mã kích hoạt không đúng hoặc đã qua sử dụng.' });
       }
     } catch (err) {
       setActivationMsg({ ok: false, text: err?.message || 'Lỗi khi kích hoạt mã. Vui lòng thử lại.' });
@@ -328,12 +318,13 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
   };
 
   const handleCheckStatus = async () => {
+    const effectiveUserId = userId || 'guest_user';
     setChecking(true);
     try {
       if (orderData?.order?.id) {
         const order = await checkOrderStatus(orderData.order.id);
         if (order?.status === 'paid') {
-          const fresh = await getCredits(userId);
+          const fresh = await getCredits(effectiveUserId);
           setBalance(fresh.balance);
           onCreditUpdate?.(fresh.balance);
           alert('Thanh toán thành công! ELEC AI Credit đã được cộng ngay vào tài khoản của em.');
@@ -341,7 +332,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
           return;
         }
       }
-      const fresh = await getCredits(userId);
+      const fresh = await getCredits(effectiveUserId);
       setBalance(fresh.balance);
       onCreditUpdate?.(fresh.balance);
       alert(`Đang chờ ngân hàng xác nhận giao dịch (${orderData?.transferContent || 'ELEC'}).\nSố dư hiện tại: ${fresh.balance.toLocaleString('vi-VN')} ELEC Credit.`);
@@ -397,7 +388,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
                 {/* Pill số dư */}
                 <div className="ns9-cr-balance-badge">
                   <span>Số dư:</span>
-                  <b>{balance != null ? balance.toLocaleString('vi-VN') : '997'} ELEC Credit</b>
+                  <b>{balance != null ? balance.toLocaleString('vi-VN') : '0'} ELEC Credit</b>
                 </div>
               </div>
 

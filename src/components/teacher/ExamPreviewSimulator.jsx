@@ -441,19 +441,36 @@ export default function ExamPreviewSimulator({
   const [exporting, setExporting] = useState(null);
   const paperRef = useRef(null);
   const simQuestionsRef = useRef(simQuestions);
+  const simAnswersRef = useRef(simAnswers);
+  const examSyncKey = useMemo(() => JSON.stringify({
+    id: exam?.id || '',
+    title: exam?.title || matrix?.title || '',
+    subject: exam?.subject || matrix?.subject || '',
+    duration: exam?.duration || matrix?.duration || 30,
+    grade: exam?.grade || matrix?.grade || '12',
+    qs: (questions || []).map((q) => q?.id || q?.q || q?.text || ''),
+  }), [exam, matrix, questions]);
+  const lastExamSyncKeyRef = useRef(examSyncKey);
 
   useEffect(() => {
     simQuestionsRef.current = simQuestions;
   }, [simQuestions]);
 
   useEffect(() => {
+    simAnswersRef.current = simAnswers;
+  }, [simAnswers]);
+
+  useEffect(() => {
+    if (lastExamSyncKeyRef.current === examSyncKey) return;
+    lastExamSyncKeyRef.current = examSyncKey;
     setEditData({
       examTitle: exam.title || matrix?.title || 'Đề kiểm tra',
       subject: exam.subject || matrix?.subject || 'Hóa học',
       duration: exam.duration || matrix?.duration || 30,
+      grade: exam.grade || matrix?.grade || '12',
       questions: [...questions],
     });
-  }, [exam, matrix, questions]);
+  }, [examSyncKey, exam, matrix, questions]);
 
   useEffect(() => {
     setSimTimeLeft(editData.duration * 60);
@@ -495,7 +512,7 @@ export default function ExamPreviewSimulator({
       const p2Count = editData.questions.filter((q) => q.type === 'true_false').length;
       const p3Count = editData.questions.filter((q) => q.type === 'short_answer').length;
       const counts = {
-        p1: Math.max(1, p1Count || editData.questions.length),
+        p1: p1Count,
         p2: p2Count,
         p3: p3Count,
       };
@@ -582,14 +599,20 @@ export default function ExamPreviewSimulator({
 
   const handleRestoreHistory = (entry) => {
     if (!entry) return;
+    const cfg = entry.config || {};
     setShuffleConfig({
-      codeCount: entry.config?.codeCount || entry.codeCount || 4,
-      seedInput: String(entry.config?.seedInput ?? entry.seedInput ?? '2025'),
-      shuffleQuestions: entry.config?.shuffleQuestions ?? true,
-      shuffleOptions: entry.config?.shuffleOptions ?? true,
-      keepDifficultyGroups: entry.config?.keepDifficultyGroups ?? true,
-      keepLinkedGroups: entry.config?.keepLinkedGroups ?? true,
-      smartSpecialOptions: entry.config?.smartSpecialOptions ?? true,
+      codeCount: cfg.codeCount || entry.codeCount || 4,
+      seedInput: String(cfg.seedInput ?? entry.seedInput ?? '2025'),
+      shuffleQuestions: cfg.shuffleQuestions ?? true,
+      shuffleOptions: cfg.shuffleOptions ?? true,
+      shufflePart1: cfg.shufflePart1 ?? cfg.shuffleQuestions ?? true,
+      shufflePart1Options: cfg.shufflePart1Options ?? cfg.shuffleOptions ?? true,
+      shufflePart2: cfg.shufflePart2 ?? true,
+      shufflePart2Statements: cfg.shufflePart2Statements ?? true,
+      shufflePart3: cfg.shufflePart3 ?? true,
+      keepDifficultyGroups: cfg.keepDifficultyGroups ?? true,
+      keepLinkedGroups: cfg.keepLinkedGroups ?? true,
+      smartSpecialOptions: cfg.smartSpecialOptions ?? true,
     });
     setLockedIndices(Array.isArray(entry.lockedIndices) ? entry.lockedIndices : []);
     sound.cheer();
@@ -629,6 +652,11 @@ export default function ExamPreviewSimulator({
         codeCount: shuffleConfig.codeCount,
         shuffleQuestions: shuffleConfig.shuffleQuestions,
         shuffleOptions: shuffleConfig.shuffleOptions,
+        shufflePart1: shuffleConfig.shufflePart1,
+        shufflePart1Options: shuffleConfig.shufflePart1Options,
+        shufflePart2: shuffleConfig.shufflePart2,
+        shufflePart2Statements: shuffleConfig.shufflePart2Statements,
+        shufflePart3: shuffleConfig.shufflePart3,
         keepDifficultyGroups: shuffleConfig.keepDifficultyGroups,
         keepLinkedGroups: shuffleConfig.keepLinkedGroups,
         smartSpecialOptions: shuffleConfig.smartSpecialOptions,
@@ -659,13 +687,14 @@ export default function ExamPreviewSimulator({
 
   /* ---------- TIMER ---------- */
   useEffect(() => {
-    if (simSubmitted || simTimeLeft <= 0) return undefined;
+    if (simSubmitted) return undefined;
     const t = setInterval(() => {
       setSimTimeLeft((s) => {
-        if (s <= 1) {
+        if (s <= 0) return 0;
+        if (s === 1) {
           clearInterval(t);
           setTimeout(() => {
-            const result = gradeSimulation(simQuestionsRef.current, simAnswers);
+            const result = gradeSimulation(simQuestionsRef.current, simAnswersRef.current);
             setSimScore(result);
             setSimSubmitted(true);
             sound.cheer();
@@ -676,7 +705,7 @@ export default function ExamPreviewSimulator({
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [simSubmitted, simTimeLeft, simAnswers]);
+  }, [simSubmitted]);
 
   /* ---------- SUBMIT ---------- */
   const handleSubmitSimulation = useCallback(() => {

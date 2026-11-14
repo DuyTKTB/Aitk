@@ -14,21 +14,30 @@ exports.askAIBatch = aiProxy.askAIBatch;
    ============================================================ */
 const CONFIG = {
   WEBHOOK_SECRET: process.env.ELECAI_WEBHOOK_SECRET || 'CHANGE_ME_SECRET',
+  // Hỗ trợ đầy đủ bảng giá Học Sinh (VIP) & Giáo Viên (PRO) + Legacy
   PRICE_MAP: {
     // Legacy rates
-    50000: 1,
-    250000: 6,
-    450000: 12,
-    // Modern VIP Tiers (Học Bá, Báaa Khíiii, Thủ Khoa)
-    399000: 3,
-    499000: 6,
-    599000: 3,
-    699000: 12,
-    899000: 12,
-    999000: 6,
-    1399000: 12,
+    50000:   { months: 1,  tier: 'vip', role: 'student' },
+    250000:  { months: 6,  tier: 'vip', role: 'student' },
+    450000:  { months: 12, tier: 'vip', role: 'student' },
+    // Học sinh VIP (ALL_PACKAGES + SubscriptionTiers)
+    79000:   { months: 1,  tier: 'vip', role: 'student' },
+    199000:  { months: 3,  tier: 'vip', role: 'student' },
+    299000:  { months: 3,  tier: 'vip', role: 'student' },
+    349000:  { months: 6,  tier: 'vip', role: 'student' },
+    399000:  { months: 3,  tier: 'vip', role: 'student' },
+    499000:  { months: 12, tier: 'vip', role: 'student' },
+    599000:  { months: 3,  tier: 'vip', role: 'student' },
+    699000:  { months: 12, tier: 'vip', role: 'student' },
+    899000:  { months: 12, tier: 'vip', role: 'student' },
+    999000:  { months: 6,  tier: 'vip', role: 'student' },
+    1399000: { months: 12, tier: 'vip', role: 'student' },
+    // Giáo viên PRO
+    149000:  { months: 1,  tier: 'pro', role: 'teacher' },
+    590000:  { months: 6,  tier: 'pro', role: 'teacher' },
+    990000:  { months: 12, tier: 'pro', role: 'teacher' },
   },
-  CONTENT_REGEX: /ELECAI\s+VIP\s+([A-Z0-9-]+)/i,
+  CONTENT_REGEX: /ELECAI\s*(?:VIP|PRO)?\s+([A-Z0-9-]+)/i,
 };
 
 /* ============================================================
@@ -54,10 +63,11 @@ exports.elecaiWebhook = functions.https.onRequest(async (req, res) => {
     const results = [];
 
     for (const tx of transactions) {
+      const txId = String(tx.id || tx.tid || tx.referenceCode || '').trim();
       const description = tx.description || tx.content || '';
       const amount = Number(tx.amount || tx.transferAmount || 0);
 
-      console.log('[Webhook] Giao dịch:', { description, amount });
+      console.log('[Webhook] Giao dịch:', { txId, description, amount });
 
       const match = description.match(CONFIG.CONTENT_REGEX);
       if (!match) {
@@ -66,14 +76,18 @@ exports.elecaiWebhook = functions.https.onRequest(async (req, res) => {
       }
 
       const identCode = match[1].toUpperCase();
-      const months = CONFIG.PRICE_MAP[amount];
-      if (!months) {
+      const identCandidates = identCode.startsWith('ELECAI-')
+        ? [identCode, identCode.replace(/^ELECAI-/, '')]
+        : [identCode, `ELECAI-${identCode}`];
+      const planInfo = CONFIG.PRICE_MAP[amount];
+      if (!planInfo) {
         results.push({ status: 'skipped', reason: 'invalid_amount', amount });
         continue;
       }
+      const { months, tier: targetTier, role: targetRole } = planInfo;
 
       const snapshot = await db.collection('users')
-        .where('identCode', '==', identCode)
+        .where('identCode', 'in', identCandidates)
         .limit(1)
         .get();
 
@@ -86,26 +100,41 @@ exports.elecaiWebhook = functions.https.onRequest(async (req, res) => {
       const userDoc = snapshot.docs[0];
       const userData = userDoc.data();
 
+      // Chống xử lý trùng cùng 1 giao dịch webhook
+      const processedIds = Array.isArray(userData.processedTxIds) ? userData.processedTxIds : [];
+      if (txId && processedIds.includes(txId)) {
+        results.push({ status: 'skipped', reason: 'duplicate_tx', txId, uid: userDoc.id });
+        continue;
+      }
+
       const now = admin.firestore.Timestamp.now();
       const currentExpiry = userData.vipExpiresAt?.toDate?.() || new Date();
       const baseDate = currentExpiry > new Date() ? currentExpiry : new Date();
       const newExpiry = new Date(baseDate);
       newExpiry.setMonth(newExpiry.getMonth() + months);
 
-      await userDoc.ref.update({
-        tier: 'vip',
+      const updatePayload = {
+        tier: targetTier,
+        vip: targetTier === 'vip',
+        pro: targetTier === 'pro',
         vipExpiresAt: admin.firestore.Timestamp.fromDate(newExpiry),
+        vipUntil: newExpiry.toISOString(),
         vipUpgradedAt: now,
         lastPayment: {
+          txId: txId || null,
           amount,
           months,
           description,
           paidAt: now,
         },
-      });
+        ...(txId ? { processedTxIds: [txId, ...processedIds].slice(0, 30) } : {}),
+        ...(targetRole === 'teacher' && userData.role !== 'admin' ? { role: 'teacher' } : {}),
+      };
 
-      console.log(`[Webhook] ✅ VIP cho ${userDoc.id} (${identCode}) — ${months} tháng`);
-      results.push({ status: 'success', uid: userDoc.id, identCode, months });
+      await userDoc.ref.update(updatePayload);
+
+      console.log(`[Webhook] ✅ ${targetTier.toUpperCase()} cho ${userDoc.id} (${identCode}) — ${months} tháng`);
+      results.push({ status: 'success', uid: userDoc.id, identCode, months, tier: targetTier });
     }
 
     return res.status(200).json({ ok: true, results });
@@ -171,23 +200,39 @@ exports.expireVip = functions.pubsub
 exports.syncIdentCode = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   try {
-    const { uid, identCode } = req.body || {};
-    if (!uid || !identCode) {
-      return res.status(400).json({ ok: false, error: 'Missing uid or identCode' });
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!token) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized: missing token' });
+    }
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(token);
+    } catch {
+      return res.status(401).json({ ok: false, error: 'Unauthorized: invalid token' });
     }
 
-    await db.collection('users').doc(uid).set(
-      { identCode },
+    const { uid, identCode } = req.body || {};
+    if (uid && uid !== decoded.uid) {
+      return res.status(403).json({ ok: false, error: 'Forbidden: uid mismatch' });
+    }
+    const cleanCode = String(identCode || '').trim().toUpperCase();
+    if (!/^[A-Z0-9-]{4,32}$/.test(cleanCode)) {
+      return res.status(400).json({ ok: false, error: 'Invalid identCode' });
+    }
+
+    await db.collection('users').doc(decoded.uid).set(
+      { identCode: cleanCode },
       { merge: true }
     );
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, uid: decoded.uid, identCode: cleanCode });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message });
   }

@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase.js';
 
 const KEY = 'app-settings-v1';
 const BASE_TITLE = 'ELEC AI';
@@ -34,6 +36,27 @@ export function SettingsProvider({ children }) {
     }
   });
 
+  // Đồng bộ cấu hình toàn cục từ Firestore (siteConfig/global)
+  useEffect(() => {
+    if (!db) return undefined;
+    try {
+      const ref = doc(db, 'siteConfig', 'global');
+      const unsub = onSnapshot(
+        ref,
+        (snap) => {
+          if (snap.exists()) {
+            const remote = snap.data() || {};
+            setSettings((prev) => ({ ...DEFAULT, ...prev, ...remote }));
+          }
+        },
+        () => {}
+      );
+      return () => unsub();
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   const originalTitle = useRef(typeof document !== 'undefined' ? document.title : BASE_TITLE);
   useEffect(() => {
     const newName = settings.siteName || BASE_TITLE;
@@ -67,11 +90,20 @@ export function SettingsProvider({ children }) {
   }, [settings]);
 
   const updateSettings = (patch) => {
-    setSettings((s) => ({ ...s, ...patch }));
+    setSettings((s) => {
+      const next = { ...s, ...patch };
+      if (db) {
+        setDoc(doc(db, 'siteConfig', 'global'), { ...next, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+      }
+      return next;
+    });
   };
 
   const resetSettings = () => {
     setSettings(DEFAULT);
+    if (db) {
+      setDoc(doc(db, 'siteConfig', 'global'), { ...DEFAULT, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+    }
   };
 
   return (

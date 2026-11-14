@@ -22,6 +22,8 @@ const loadKatex = () => {
   return katexPromise;
 };
 
+const MATH_SPLIT_RE = /(\$\$[\s\S]+?\$\$|\$(?:\\\$|[^$])+\$)/g;
+
 /**
  * Chuẩn hóa các delimiter công thức Toán & Hóa học về chuẩn $...$ và $$...$$
  */
@@ -32,9 +34,11 @@ export function normalizeMathString(text) {
   s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_, math) => `$$${math.trim()}$$`);
   // Convert \( ... \) inline math to $ ... $
   s = s.replace(/\\\(([\s\S]+?)\\\)/g, (_, math) => `$${math.trim()}$`);
-  // If \ce{...} is outside of $, wrap in $\ce{...}$ so KaTeX mhchem renders it
-  s = s.replace(/(^|[^\$])(\\ce\{[^{}]+\})/g, '$1$$$2$$');
-  return s;
+  // If \ce{...} is outside of $...$ or $$...$$, wrap in $\ce{...}$ so KaTeX mhchem renders it
+  return s
+    .split(MATH_SPLIT_RE)
+    .map((seg, idx) => (idx % 2 === 1 ? seg : seg.replace(/(\\ce\{(?:[^{}]|\{[^{}]*\})+\})/g, '$$$1$$')))
+    .join('');
 }
 
 const MATH_RE = /(\$\$[\s\S]+?\$\$|\$(?:\\\$|[^$])+\$)/g;

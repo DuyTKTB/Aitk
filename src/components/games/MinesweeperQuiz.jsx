@@ -9,8 +9,8 @@
    • Mở hết các ô an toàn → thưởng 300 + qua ván mới (mìn nhiều hơn).
    • 3 mạng — câu hỏi lấy từ ngân hàng đề đã xuất bản (Supabase).
    ============================================================ */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchBankQuestions, pickRandom } from '../../lib/gameQuestionBank.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchBankQuestions, normalizeChoiceQuestion, pickRandom } from '../../lib/gameQuestionBank.js';
 import GameOverModal from './GameOverModal.jsx';
 
 const SIZE = 4;          // 4×4 = 16 ô
@@ -43,15 +43,36 @@ export default function MinesweeperQuiz({ onExit }) {
   const [pickedOpt, setPickedOpt] = useState(null);
   const [verdict, setVerdict] = useState(null);
   const [cleared, setCleared] = useState(0);
+  const timersRef = useRef([]);
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter((x) => x !== id);
+      fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+  useEffect(() => () => { timersRef.current.forEach(clearTimeout); }, []);
 
   /* ---- nạp câu hỏi: chia 2 kho dễ/khó ---- */
   const loadQ = useCallback(async () => {
     setLoadingQ(true); setQErr('');
     try {
-      const pool = await fetchBankQuestions({ maxAnswerLen: 80, minWrong: 1, pool: 400 });
-      const easy = pool.filter((x) => x.difficulty === 'easy' || x.difficulty === 'medium');
-      const hard = pool.filter((x) => x.difficulty === 'hard' || x.difficulty === 'extreme');
-      setPool({ easy: easy.length ? easy : pool, hard: hard.length ? hard : pool });
+      const res = await fetchBankQuestions({ maxAnswerLen: 80, minWrong: 1, pool: 400 });
+      const raw = Array.isArray(res) ? res : (res?.eligible || []);
+      const all = raw
+        .map((item) => {
+          const norm = normalizeChoiceQuestion(item);
+          return norm ? { ...norm, question: norm.q } : null;
+        })
+        .filter(Boolean);
+      if (!all.length) {
+        setQErr('Ngân hàng câu hỏi chưa có câu phù hợp.');
+        return;
+      }
+      const easy = all.filter((x) => x.difficulty === 'easy' || x.difficulty === 'medium');
+      const hard = all.filter((x) => x.difficulty === 'hard' || x.difficulty === 'extreme');
+      setPool({ easy: easy.length ? easy : all, hard: hard.length ? hard : all });
     } catch (e) {
       setQErr(e.message || 'Không tải được câu hỏi.');
     } finally {
@@ -71,6 +92,8 @@ export default function MinesweeperQuiz({ onExit }) {
   }, []);
 
   const startGame = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
     setRound(0); setScore(0); setLives(3); setCleared(0);
     setPhase('play');
     newRound(0);
@@ -91,12 +114,11 @@ export default function MinesweeperQuiz({ onExit }) {
 
   const answer = (oi) => {
     if (picked == null || !q) return;
-    const opts = q.options || [];
     const ok = oi === q.correct;
     setPickedOpt(oi);
     setVerdict(ok ? 'right' : 'wrong');
 
-    setTimeout(() => {
+    later(() => {
       if (ok) {
         const pts = qKind === 'defuse' ? 150 : 100;
         setScore((s) => s + pts + round * 25);
@@ -118,15 +140,17 @@ export default function MinesweeperQuiz({ onExit }) {
 
   /* ---- ván mới khi dò hết ô an toàn ---- */
   useEffect(() => {
-    if (phase !== 'play' || !grid) return;
+    if (phase !== 'play' || !grid) return undefined;
     const safeLeft2 = grid.filter((c) => !c.mine && !c.revealed).length;
     if (safeLeft2 === 0) {
       setCleared((c) => c + 1);
       setScore((s) => s + 300);
       const r = round + 1;
       setRound(r);
-      setTimeout(() => newRound(r), 900);
+      const id = later(() => newRound(r), 900);
+      return () => clearTimeout(id);
     }
+    return undefined;
   }, [grid, phase]); // eslint-disable-line
 
   if (lives <= 0 && phase !== 'over') {

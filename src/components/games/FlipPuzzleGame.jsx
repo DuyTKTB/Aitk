@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import GameBar from './GameBar.jsx';
 import QuestionBankPicker from './QuestionBankPicker.jsx';
 import sound from '../../lib/gameSound.js';
+import { normalizeChoiceQuestionList } from '../../lib/gameQuestionBank.js';
 import {
   SvgTrophy,
   SvgKey,
@@ -58,7 +59,7 @@ export default function FlipPuzzleGame() {
   const [questions, setQuestions] = useState(() => {
     try {
       const saved = localStorage.getItem('cs-game:flip:questions');
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeChoiceQuestionList(JSON.parse(saved), DEFAULT_QUESTIONS_9);
     } catch {}
     return DEFAULT_QUESTIONS_9;
   });
@@ -408,9 +409,11 @@ export default function FlipPuzzleGame() {
         <QuestionBankPicker
           mode="list"
           maxCount={15}
-          onApply={(picked) => {
-            if (picked && picked.length >= 9) {
-              setQuestions(picked);
+          onApply={(picked, how) => {
+            const converted = normalizeChoiceQuestionList(picked);
+            const nextList = how === 'append' ? [...questions, ...converted] : converted;
+            if (nextList.length >= 9) {
+              setQuestions(nextList);
               sound.ding();
             } else {
               alert('Cần ít nhất 9 câu hỏi cho 9 mảnh ghép!');

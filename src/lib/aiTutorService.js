@@ -128,13 +128,13 @@ function extractJsonObject(rawText) {
 async function callSingleTurnJson(promptText) {
   let fullText = '';
   const history = [{ role: 'user', parts: [{ text: promptText }] }];
-  await callAiEngine(
+  const res = await callAiEngine(
     history,
     (chunk) => { fullText = chunk; },
     null,
     `${ELEC_TUTOR_SYSTEM_PROMPT}\nCHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON HỢP LỆ, KHÔNG THÊM LỜI DẪN BÊN NGOÀI.`,
   );
-  return fullText;
+  return fullText || res?.text || '';
 }
 
 /**

@@ -171,6 +171,13 @@ export default function ChemSudoku() {
     });
   };
 
+  const hintTimerRef = useRef(null);
+  const winTimerRef = useRef(null);
+  useEffect(() => () => {
+    clearTimeout(hintTimerRef.current);
+    clearTimeout(winTimerRef.current);
+  }, []);
+
   const useHint = () => {
     if (phase !== 'playing') return;
     for (let r = 0; r < 9; r++) {
@@ -178,22 +185,31 @@ export default function ChemSudoku() {
         if (board[r][c] === 0) {
           const solution = solveSudoku(board);
           if (solution) {
-            setBoard(solution);
+            const next = board.map((row) => [...row]);
+            next[r][c] = solution[r][c];
+            setBoard(next);
+            setNotes((n) => {
+              const copy = { ...n };
+              delete copy[`${r},${c}`];
+              return copy;
+            });
             setHintCell({ row: r, col: c });
             setHintsUsed((h) => h + 1);
             setMistakes((m) => m + 1);
             sound.correct?.();
-            setTimeout(() => setHintCell(null), 2000);
-            if (isComplete(solution)) {
-              setTimeout(() => {
+            clearTimeout(hintTimerRef.current);
+            hintTimerRef.current = setTimeout(() => setHintCell(null), 2000);
+            if (isComplete(next)) {
+              clearTimeout(winTimerRef.current);
+              winTimerRef.current = setTimeout(() => {
                 setPhase('won');
                 sound.win?.();
                 const key = difficulty;
                 const current = bestTimes[key];
                 if (!current || seconds < current) {
-                  const next = { ...bestTimes, [key]: seconds };
-                  setBestTimes(next);
-                  try { localStorage.setItem('cs-game:sudoku:best', JSON.stringify(next)); } catch {}
+                  const updated = { ...bestTimes, [key]: seconds };
+                  setBestTimes(updated);
+                  try { localStorage.setItem('cs-game:sudoku:best', JSON.stringify(updated)); } catch {}
                 }
               }, 500);
             }

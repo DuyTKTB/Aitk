@@ -154,7 +154,7 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
   const isTeacher = Boolean(
     isTeacherProp ||
     role === 'teacher' ||
-    teacherPro?.isPro
+    (teacherPro?.isPro && teacherPro?.isTeacherPro !== false)
   );
 
   useEffect(() => {

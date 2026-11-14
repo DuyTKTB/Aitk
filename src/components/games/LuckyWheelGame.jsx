@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import GameBar from './GameBar.jsx';
 import QuestionBankPicker from './QuestionBankPicker.jsx';
 import sound from '../../lib/gameSound.js';
+import { normalizeChoiceQuestionList } from '../../lib/gameQuestionBank.js';
 import {
   SvgGift,
   SvgQuestion,
@@ -76,7 +77,7 @@ export default function LuckyWheelGame() {
   const [questions, setQuestions] = useState(() => {
     try {
       const saved = localStorage.getItem('cs-game:wheel:questions');
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeChoiceQuestionList(JSON.parse(saved), DEFAULT_QUESTIONS);
     } catch {}
     return DEFAULT_QUESTIONS;
   });
@@ -510,9 +511,10 @@ export default function LuckyWheelGame() {
         <QuestionBankPicker
           mode="list"
           maxCount={30}
-          onApply={(picked) => {
-            if (picked && picked.length > 0) {
-              setQuestions(picked);
+          onApply={(picked, how) => {
+            const converted = normalizeChoiceQuestionList(picked);
+            if (converted.length > 0) {
+              setQuestions((prev) => (how === 'append' ? [...prev, ...converted] : converted));
               sound.ding();
             }
             setShowBankPicker(false);

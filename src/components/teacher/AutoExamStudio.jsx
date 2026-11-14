@@ -581,7 +581,7 @@ export default function AutoExamStudio({
       const savedSlots = localStorage.getItem('aes_slots');
       const savedSubject = localStorage.getItem('aes_subject');
 
-      if (savedSubject && THPT_SUBJECTS.includes(savedSubject)) {
+      if (!initialClass?.subject && savedSubject && THPT_SUBJECTS.includes(savedSubject)) {
         setSelectedSubject(savedSubject);
       }
       if (savedChat) {

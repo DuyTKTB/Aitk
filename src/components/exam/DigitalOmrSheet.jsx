@@ -6,6 +6,7 @@
    ============================================================ */
 
 import '../../styles/digital-omr.css';
+import { isAnswered } from '../../lib/examScoring.js';
 
 /* ── Bộ Icon SVG thuần (0 emoji) ── */
 const IcoSheet = () => (
@@ -37,7 +38,7 @@ export default function DigitalOmrSheet({
   onJumpToQuestion,
 }) {
   const totalQ = questions.length;
-  const answeredCount = Object.keys(answers).filter((k) => answers[k] !== undefined && answers[k] !== null).length;
+  const answeredCount = questions.reduce((cnt, q, idx) => (isAnswered(q, answers[idx] ?? answers[q?.id]) ? cnt + 1 : cnt), 0);
   const flaggedCount = Object.values(flags).filter(Boolean).length;
   const remainCount = Math.max(0, totalQ - answeredCount);
 
@@ -96,25 +97,44 @@ export default function DigitalOmrSheet({
                 </span>
               </div>
 
-              {/* 4 Nút tròn tô chì A, B, C, D */}
-              <div className="omr-bubbles-group" role="radiogroup" aria-label={`Đáp án câu ${idx + 1}`}>
-                {LETTERS.map((letter, optIdx) => {
-                  const isFilled = Number(currentAnswer) === optIdx;
-                  return (
-                    <button
-                      key={letter}
-                      type="button"
-                      role="radio"
-                      aria-checked={isFilled}
-                      className={`omr-bubble ${isFilled ? 'filled' : ''}`}
-                      onClick={() => onSelectAnswer?.(idx, optIdx)}
-                      title={`Tô đáp án ${letter} cho Câu ${idx + 1}`}
-                    >
-                      {letter}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Nút tô chì A-D cho MCQ, hoặc thẻ trạng thái cho câu Đúng/Sai & Trả lời ngắn */}
+              {(!q.type || q.type === 'single_choice') ? (
+                <div className="omr-bubbles-group" role="radiogroup" aria-label={`Đáp án câu ${idx + 1}`}>
+                  {LETTERS.map((letter, optIdx) => {
+                    const isFilled = typeof currentAnswer === 'number' && currentAnswer === optIdx;
+                    return (
+                      <button
+                        key={letter}
+                        type="button"
+                        role="radio"
+                        aria-checked={isFilled}
+                        className={`omr-bubble ${isFilled ? 'filled' : ''}`}
+                        onClick={() => onSelectAnswer?.(idx, optIdx)}
+                        title={`Tô đáp án ${letter} cho Câu ${idx + 1}`}
+                      >
+                        {letter}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onJumpToQuestion?.(idx)}
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 999,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: isAnswered(q, currentAnswer) ? 'rgba(16,185,129,0.14)' : 'transparent',
+                    color: isAnswered(q, currentAnswer) ? '#059669' : 'var(--mut, #64748b)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {q.type === 'true_false' ? 'Đ/S' : 'Điền số'} · {isAnswered(q, currentAnswer) ? 'Đã làm' : 'Chưa làm'}
+                </button>
+              )}
             </div>
           );
         })}
