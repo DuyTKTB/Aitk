@@ -101,7 +101,7 @@ const Ico = {
 };
 
 export default function RegisterFlow({ onDone, onBack }) {
-  const { register, loginWithGoogle } = useAuth();
+  const { register, loginWithGoogle, authRedirectError, clearAuthRedirectError } = useAuth();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     lastName: '',
@@ -140,6 +140,12 @@ export default function RegisterFlow({ onDone, onBack }) {
   useEffect(() => {
     if (step === 1) firstInputRef.current?.focus();
   }, [step]);
+
+  useEffect(() => {
+    if (!authRedirectError) return;
+    setErr(translateAuthError(authRedirectError));
+    clearAuthRedirectError?.();
+  }, [authRedirectError, clearAuthRedirectError]);
 
   const fullName = useMemo(
     () => joinNameParts(form.lastName, form.firstName),
@@ -218,8 +224,8 @@ export default function RegisterFlow({ onDone, onBack }) {
     setErr('');
     setBusy(true);
     try {
-      await loginWithGoogle({ role: form.role, school: form.school.trim(), termsAcceptedAt: Date.now() });
-      onDone?.();
+      const signedInUser = await loginWithGoogle({ role: form.role, school: form.school.trim(), termsAcceptedAt: Date.now() });
+      if (signedInUser) onDone?.();
     } catch (e2) {
       const code = String(e2?.code || '');
       setErr(code ? translateAuthError(code) : 'Không đăng ký được bằng Google.');

@@ -258,6 +258,12 @@ export function translateAuthError(code) {
     'auth/account-exists-with-different-credential':
       'Email này đã đăng ký bằng phương thức khác (Email/Mật khẩu).',
     'auth/internal-error': 'Lỗi hệ thống, vui lòng thử lại sau.',
+    'auth/user-disabled': 'Tài khoản này đã bị vô hiệu hóa.',
+    'auth/web-storage-unsupported': 'Trình duyệt đang chặn cookie hoặc bộ nhớ cục bộ nên không thể đăng nhập.',
+    'auth/operation-not-supported-in-this-environment':
+      'Trình duyệt hiện tại chưa hỗ trợ cửa sổ đăng nhập này.',
+    'auth/timeout': 'Kết nối Google bị quá thời gian chờ, vui lòng thử lại.',
+    'auth/invalid-api-key': 'Cấu hình Firebase API key chưa hợp lệ.',
     'auth/facebook-popup-blocked': 'Trình duyệt chặn popup Facebook.',
     'auth/invalid-oauth-provider': 'Facebook Login chưa được cấu hình.',
   };

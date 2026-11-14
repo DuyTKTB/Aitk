@@ -91,7 +91,7 @@ const IcoTeacher = ({ size = 20 }) => (
    MAIN
    ============================================================ */
 export default function LoginPage({ initialMode = 'login', onDone }) {
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword, authRedirectError, clearAuthRedirectError } = useAuth();
   const [mode, setMode] = useState(initialMode);
   const [forgotStep, setForgotStep] = useState('email'); // 'email' | 'otp'
   const [otpCode, setOtpCode] = useState('');
@@ -110,6 +110,12 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
     setMode(initialMode);
     setForgotStep('email');
   }, [initialMode]);
+
+  useEffect(() => {
+    if (!authRedirectError) return;
+    setErr(translateAuthError(authRedirectError));
+    clearAuthRedirectError?.();
+  }, [authRedirectError, clearAuthRedirectError]);
 
   useEffect(() => {
     if (mode === 'register') return undefined;
@@ -179,8 +185,10 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
 
   const google = async () => {
     setErr(''); setBusy(true);
-    try { await loginWithGoogle(); onDone?.(); }
-    catch (e2) {
+    try {
+      const signedInUser = await loginWithGoogle();
+      if (signedInUser) onDone?.();
+    } catch (e2) {
       const code = String(e2?.code || '');
       setErr(code ? translateAuthError(code) : 'Không đăng nhập được bằng Google.');
     }

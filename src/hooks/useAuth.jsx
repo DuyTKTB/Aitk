@@ -10,6 +10,8 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from 'firebase/auth';
@@ -22,6 +24,63 @@ import { canonicalizeEmail } from '../lib/authValidation.js';
 import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
 
 const AuthContext = createContext(null);
+const GOOGLE_REDIRECT_OPTS_KEY = 'elec-google-redirect-opts';
+const POPUP_FALLBACK_CODES = new Set([
+  'auth/popup-blocked',
+  'auth/operation-not-supported-in-this-environment',
+]);
+
+function createGoogleProvider() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return provider;
+}
+
+/**
+ * Khởi tạo hoặc cập nhật hồ sơ Firestore + LocalStorage cho tài khoản Google.
+ */
+async function syncGoogleUserDocument(firebaseUser, opts = {}) {
+  const requestedRole = opts?.role === 'teacher' ? 'teacher' : 'student';
+  const cleanSchool = opts?.school ? String(opts.school).trim().slice(0, 80) : '';
+  const termsAcceptedAt = Number(opts?.termsAcceptedAt) || 0;
+  const nowIso = new Date().toISOString();
+
+  try {
+    const userRef = doc(db, 'users', firebaseUser.uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        role: requestedRole,
+        email: firebaseUser.email || '',
+        canonicalEmail: canonicalizeEmail(firebaseUser.email || ''),
+        displayName: firebaseUser.displayName || '',
+        photoURL: firebaseUser.photoURL || '',
+        authProvider: 'google',
+        createdAt: nowIso,
+        lastLoginAt: nowIso,
+        ...(cleanSchool ? { school: cleanSchool } : {}),
+        ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
+      });
+      saveUserProfile(firebaseUser.uid, {
+        fullName: firebaseUser.displayName || '',
+        ...(cleanSchool ? { highSchool: cleanSchool } : {}),
+        ...(requestedRole === 'teacher'
+          ? { grade: 'Sinh viên / Giáo viên', survey: { role: 'teacher' } }
+          : { survey: { role: 'student' } }),
+      });
+    } else {
+      // Cập nhật thông tin xác thực mới nhất từ Google nhưng không ghi đè hồ sơ đã chỉnh tay hay role
+      setDoc(userRef, {
+        lastLoginAt: nowIso,
+        ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
+      }, { merge: true }).catch(() => {});
+    }
+    const role = snap.exists() ? (snap.data()?.role || 'student') : requestedRole;
+    const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+    meta[firebaseUser.uid] = { role, email: firebaseUser.email };
+    localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+  } catch { /* ignore */ }
+}
 
 /* ============================================================
    Gán custom claims vào user object
@@ -51,7 +110,10 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authRedirectError, setAuthRedirectError] = useState('');
   const mountedRef = useRef(true);
+
+  const clearAuthRedirectError = useCallback(() => setAuthRedirectError(''), []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -60,7 +122,27 @@ export function AuthProvider({ children }) {
 
   /* ============ AUTH STATE ============ */
   useEffect(() => {
+    // Hoàn tất phiên đăng nhập Google nếu vừa quay lại từ signInWithRedirect (khi popup bị chặn)
+    const redirectPromise = getRedirectResult(auth)
+      .then(async (cred) => {
+        let savedOpts = {};
+        try {
+          savedOpts = JSON.parse(sessionStorage.getItem(GOOGLE_REDIRECT_OPTS_KEY) || '{}') || {};
+          sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY);
+        } catch { /* ignore */ }
+        if (cred?.user) {
+          await syncGoogleUserDocument(cred.user, savedOpts);
+        }
+      })
+      .catch((err) => {
+        try { sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY); } catch { /* ignore */ }
+        const code = String(err?.code || '');
+        if (code && mountedRef.current) setAuthRedirectError(code);
+        console.error('[useAuth] Google redirect error:', code, err?.message);
+      });
+
     const unsub = onAuthStateChanged(auth, async (u) => {
+      await redirectPromise;
       if (!mountedRef.current) return;
 
       if (u) {
@@ -240,51 +322,29 @@ export function AuthProvider({ children }) {
 
   /* ============ LOGIN GOOGLE ============ */
   const loginWithGoogle = useCallback(async (opts = {}) => {
-    const requestedRole = opts?.role === 'teacher' ? 'teacher' : 'student';
-    const cleanSchool = opts?.school ? String(opts.school).trim().slice(0, 80) : '';
-    const termsAcceptedAt = Number(opts?.termsAcceptedAt) || 0;
-
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const cred = await signInWithPopup(auth, provider);
-    const nowIso = new Date().toISOString();
-
+    setAuthRedirectError('');
+    const provider = createGoogleProvider();
+    let cred;
     try {
-      const userRef = doc(db, 'users', cred.user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          role: requestedRole,
-          email: cred.user.email || '',
-          canonicalEmail: canonicalizeEmail(cred.user.email || ''),
-          displayName: cred.user.displayName || '',
-          photoURL: cred.user.photoURL || '',
-          authProvider: 'google',
-          createdAt: nowIso,
-          lastLoginAt: nowIso,
-          ...(cleanSchool ? { school: cleanSchool } : {}),
-          ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
-        });
-        saveUserProfile(cred.user.uid, {
-          fullName: cred.user.displayName || '',
-          ...(cleanSchool ? { highSchool: cleanSchool } : {}),
-          ...(requestedRole === 'teacher'
-            ? { grade: 'Sinh viên / Giáo viên', survey: { role: 'teacher' } }
-            : { survey: { role: 'student' } }),
-        });
-      } else {
-        // Cập nhật thông tin xác thực mới nhất từ Google nhưng không ghi đè hồ sơ đã chỉnh tay hay role
-        setDoc(userRef, {
-          lastLoginAt: nowIso,
-          ...(cred.user.photoURL ? { photoURL: cred.user.photoURL } : {}),
-        }, { merge: true }).catch(() => {});
+      cred = await signInWithPopup(auth, provider);
+    } catch (err) {
+      const code = String(err?.code || '');
+      if (POPUP_FALLBACK_CODES.has(code)) {
+        try {
+          sessionStorage.setItem(GOOGLE_REDIRECT_OPTS_KEY, JSON.stringify({
+            role: opts?.role === 'teacher' ? 'teacher' : 'student',
+            school: opts?.school ? String(opts.school).trim().slice(0, 80) : '',
+            termsAcceptedAt: Number(opts?.termsAcceptedAt) || 0,
+          }));
+        } catch { /* ignore */ }
+        await signInWithRedirect(auth, provider);
+        return null;
       }
-      const role = snap.exists() ? (snap.data()?.role || 'student') : requestedRole;
-      const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-      meta[cred.user.uid] = { role, email: cred.user.email };
-      localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-    } catch { /* ignore */ }
+      console.error('[useAuth] Google login error:', code, err?.message);
+      throw err;
+    }
 
+    await syncGoogleUserDocument(cred.user, opts);
     await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
     if (mountedRef.current) setProfileReady(true);
 
@@ -374,6 +434,8 @@ export function AuthProvider({ children }) {
     register,
     login,
     loginWithGoogle,
+    authRedirectError,
+    clearAuthRedirectError,
     logout,
     updateDisplayName,
     changePassword,

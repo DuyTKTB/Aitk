@@ -3,7 +3,7 @@
    - Điều hướng: mạng trước, rớt thì dùng bản đã lưu, cuối cùng /offline.html
    - File tĩnh cùng origin: trả bản cache ngay, cập nhật nền (stale-while-revalidate)
    - /api/* và mọi request không phải GET: KHÔNG đụng (chat ELECAI, phản hồi, đăng nhập) */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = `ELECAI-shell-${VERSION}`;
 const ASSETS = `ELECAI-assets-${VERSION}`;
 const PRECACHE = ['/', '/offline.html', '/manifest.json', '/favicon.ico', '/img/logo.png'];
@@ -32,7 +32,12 @@ self.addEventListener('message', (e) => { if (e.data === 'SKIP_WAITING') self.sk
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  if (
+    req.method !== 'GET' ||
+    url.origin !== location.origin ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/__/')
+  ) return;
 
   if (req.mode === 'navigate') {
     if (STATIC_INFO_PATHS.has(url.pathname)) {
