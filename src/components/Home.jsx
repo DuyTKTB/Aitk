@@ -489,7 +489,12 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
 
             <div className="ns9-uh-unsel-mascot-box">
               <div className="ns9-uh-unsel-speech">
-                <span>Cùng Elec đặt mục tiêu nào! ✨</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  Cùng Elec đặt mục tiêu nào!
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z" />
+                  </svg>
+                </span>
               </div>
               <img
                 src="/img/elec/elec-hello.png"

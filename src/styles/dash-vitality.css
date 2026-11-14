@@ -156,15 +156,15 @@ body > .vt:not(.t-shell) {
 .vt-tabs::-webkit-scrollbar { display: none; }
 .vt-tab {
   position: relative; padding: .55rem 0; border: 0; background: none; cursor: pointer; white-space: nowrap;
-  font: italic 700 1rem var(--sans); color: var(--acc); opacity: .6; transition: opacity .2s;
+  font: 700 .95rem var(--sans); color: var(--acc); opacity: .65; transition: opacity .2s;
 }
-.vt-tab:hover { opacity: .9; }
+.vt-tab:hover { opacity: .92; }
 .vt-tab.on { opacity: 1; }
 .vt-tab.on::after { content: ''; position: absolute; left: 0; bottom: 0; width: 62%; height: 3px; border-radius: 3px; background: var(--acc); }
 .vt-tab em { font-style: normal; font-size: .72rem; margin-left: .35rem; padding: .05rem .4rem; border-radius: 999px; background: var(--vt-tint2); }
 
 .vt-title { flex: 1; min-width: 0; padding-left: .3rem; }
-.vt-title h1 { font: 800 clamp(1.3rem, 2.4vw, 1.75rem)/1.15 var(--sans); letter-spacing: -.03em; font-style: italic; color: var(--acc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-title h1 { font: 800 clamp(1.25rem, 2.2vw, 1.65rem)/1.2 var(--sans); letter-spacing: -.03em; font-style: normal; color: var(--acc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vt-title p { font: 500 .85rem var(--sans); color: var(--mut); margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .vt-search {

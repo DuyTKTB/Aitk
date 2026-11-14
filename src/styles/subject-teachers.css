@@ -18,7 +18,9 @@
   color: var(--st-ink);
 }
 
-[data-theme='dark'] .st {
+[data-theme='dark'] .st,
+.dark .st,
+.t-shell[data-theme='dark'] .st {
   --st-line: rgba(255, 255, 255, 0.11);
   --st-soft: rgba(255, 255, 255, 0.05);
   --st-card: #1b1c22;
@@ -239,10 +241,18 @@
 .st-badge.tone-good { background: rgba(37, 99, 235, 0.13); color: #1d4ed8; }
 .st-badge.tone-na { background: var(--st-soft); color: var(--st-mut); }
 
-[data-theme='dark'] .st-badge.tone-ex { color: #34d399; }
-[data-theme='dark'] .st-badge.tone-mid { color: #fbbf24; }
-[data-theme='dark'] .st-badge.tone-bad { color: #f87171; }
-[data-theme='dark'] .st-badge.tone-good { color: #93b4ff; }
+[data-theme='dark'] .st-badge.tone-ex,
+.dark .st-badge.tone-ex,
+.t-shell[data-theme='dark'] .st-badge.tone-ex { color: #34d399; }
+[data-theme='dark'] .st-badge.tone-mid,
+.dark .st-badge.tone-mid,
+.t-shell[data-theme='dark'] .st-badge.tone-mid { color: #fbbf24; }
+[data-theme='dark'] .st-badge.tone-bad,
+.dark .st-badge.tone-bad,
+.t-shell[data-theme='dark'] .st-badge.tone-bad { color: #f87171; }
+[data-theme='dark'] .st-badge.tone-good,
+.dark .st-badge.tone-good,
+.t-shell[data-theme='dark'] .st-badge.tone-good { color: #93b4ff; }
 
 /* ---------- Filters ---------- */
 .st-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }

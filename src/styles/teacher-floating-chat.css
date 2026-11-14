@@ -4,74 +4,109 @@
    ============================================================ */
 
 /* ============================================================
-   1. FLOATING LAUNCHER BUTTON (NÚT NỔI LUÔN HIỆN DIỆN GÓC DƯỚI PHẢI)
+   1. FLOATING LAUNCHER ORB (GỌN NHẸ 50PX — KHÔNG CHE KHUẤT NÚT)
    ============================================================ */
 .tfc-launcher-wrap {
   position: fixed;
-  bottom: 22px;
-  right: 22px;
+  bottom: 20px;
+  right: 20px;
   z-index: 99990;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
+.tfc-launcher-tooltip {
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 6px 12px;
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.25;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  white-space: nowrap;
+}
+
+.tfc-launcher-tooltip strong {
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.tfc-launcher-tooltip span {
+  font-size: 0.68rem;
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.tfc-launcher-wrap:hover .tfc-launcher-tooltip,
+.tfc-launcher-wrap:focus-within .tfc-launcher-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .tfc-launcher-btn {
-  border: none;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
   background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
   color: #ffffff;
-  padding: 10px 18px 10px 14px;
-  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   cursor: pointer;
-  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(15, 23, 42, 0.1);
-  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 0.88rem;
-  letter-spacing: -0.01em;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.35), 0 2px 8px rgba(15, 23, 42, 0.14);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
   user-select: none;
+  position: relative;
+}
+
+.tfc-launcher-btn.has-alert {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  box-shadow: 0 10px 26px rgba(220, 38, 38, 0.4), 0 2px 8px rgba(15, 23, 42, 0.14);
 }
 
 .tfc-launcher-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.45), 0 4px 10px rgba(15, 23, 42, 0.15);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.45), 0 4px 12px rgba(15, 23, 42, 0.18);
 }
 
 .tfc-launcher-btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(0) scale(0.95);
 }
 
 .tfc-launcher-avatar {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   overflow: visible;
 }
 
-.tfc-launcher-logo-img {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  border-radius: 50%;
+.tfc-launcher-mascot {
   display: block;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.14));
 }
 
 .tfc-live-pulse-dot {
   position: absolute;
   top: -2px;
   right: -2px;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #10b981;
   border: 2px solid #ffffff;
@@ -88,22 +123,23 @@
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
-.tfc-launcher-text {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  line-height: 1.2;
+.tfc-status-dot.alert {
+  background: #ef4444;
 }
 
-.tfc-launcher-title {
-  font-weight: 800;
-  font-size: 0.86rem;
-}
-
-.tfc-launcher-sub {
-  font-weight: 500;
-  font-size: 0.7rem;
-  opacity: 0.88;
+@media (max-width: 960px) {
+  .tfc-launcher-wrap {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    right: 14px;
+  }
+  .tfc-launcher-btn {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+  }
+  .tfc-launcher-tooltip {
+    display: none;
+  }
 }
 
 /* ============================================================
@@ -1549,6 +1585,129 @@
   max-height: 420px;
   overflow-y: auto;
   white-space: pre-wrap;
+}
+
+/* ============================================================
+   DARK MODE STUDIO SUPPORT FOR FLOATING AI AGENT
+   ============================================================ */
+[data-theme='dark'] .tfc-window {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(59, 130, 246, 0.16);
+}
+
+[data-theme='dark'] .tfc-header {
+  background: linear-gradient(180deg, rgba(30, 58, 138, 0.32) 0%, #0f172a 100%);
+  border-bottom-color: rgba(148, 163, 184, 0.18);
+}
+
+[data-theme='dark'] .tfc-header-avatar {
+  background: #1e293b;
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+[data-theme='dark'] .tfc-header-title {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .tfc-header-pill {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+[data-theme='dark'] .tfc-header-status {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .tfc-icon-btn {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .tfc-icon-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+[data-theme='dark'] .tfc-context-radar {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .tfc-radar-title {
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .tfc-body {
+  background: #0b1220;
+}
+
+[data-theme='dark'] .tfc-msg.bot .tfc-bubble {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .tfc-msg.bot .tfc-msg-avatar {
+  background: #1e293b;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+[data-theme='dark'] .tfc-chip {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .tfc-chip:hover {
+  background: #273549;
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .tfc-footer {
+  background: #0f172a;
+  border-top-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .tfc-input-container {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+[data-theme='dark'] .tfc-input {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .tfc-audit-card,
+[data-theme='dark'] .tfc-wizard-card,
+[data-theme='dark'] .tfc-doctor-card,
+[data-theme='dark'] .tfc-diag-box {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .tfc-audit-title,
+[data-theme='dark'] .tfc-wizard-title,
+[data-theme='dark'] .tfc-doctor-title {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .tfc-audit-body {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+@media (max-width: 520px) {
+  .tfc-window {
+    right: 10px;
+    left: 10px;
+    bottom: 138px;
+    width: auto;
+    max-width: none;
+    height: 68vh;
+  }
 }
 
 

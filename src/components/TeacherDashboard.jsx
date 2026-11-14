@@ -14,7 +14,6 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { isAdmin as checkAdmin } from '../lib/isAdmin.js';
 import { buildClassInsights } from '../lib/classInsights.js';
 import { listMyLinkedClasses } from '../lib/classTeachers.js';
-import { addQuestionsBatch } from '../lib/questionBank.js';
 import { notifyClassOwner } from '../lib/notices.js';
 import {
   groupNotices, unreadCount, noticeSummary,
@@ -64,23 +63,17 @@ import {
   getSessionsByTeacher,
   timeRemaining,
 } from '../lib/examSession.js';
-import ExamCreate from './ExamCreate.jsx';
 import ClassDetailModal from './ClassDetailModal.jsx';
 import LinkedClassesPanel from './teacher/LinkedClassesPanel.jsx';
-import {
-  BentoCard,
-  StatBig,
-  SchedulePill,
-  RatingDots,
-  AvatarStack,
-  SidePanel,
-  PillTabs,
-  Chip,
-} from './teacher/ui/index.js';
 import ExamEditModal from './teacher/ExamEditModal.jsx';
 import ClassAnalytics from './teacher/ClassAnalytics.jsx';
 import LinkClassPanel from './teacher/LinkClassPanel.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
+import {
+  exportStyledWorkbook,
+  classifyExamGradeColumn,
+  computeStudentPeriodGrades,
+} from '../lib/excelExport.js';
 
 const LiveProctorView = lazy(() => import('./LiveProctorView.jsx'));
 const CreateExamPage = lazy(() => import('./teacher/CreateExamPage.jsx'));
@@ -93,6 +86,7 @@ const TeacherProfileSection = lazy(() => import('./teacher/TeacherProfileSection
 const ExamImporter = lazy(() => import('./teacher/ExamImporter.jsx'));
 const WordDocxEditor = lazy(() => import('./teacher/WordDocxEditor.jsx'));
 import TeacherFloatingChat from './teacher/TeacherFloatingChat.jsx';
+import { ElecFlaskBrandSvg, ElecMascot } from './teacher/ElecBrandMark.jsx';
 
 /* ============ SVG ICONS (NO EMOJI) ============ */
 const Svg = ({ size = 18, sw = 2, children }) => (
@@ -145,10 +139,8 @@ const IcoEye = (p) => (
   </Svg>
 );
 
-const IcoSparkles = (p) => (
-  <Svg {...p} sw={1.8}>
-    <path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" />
-  </Svg>
+const IcoSparkles = ({ variant = 'current', size = 18, className, style }) => (
+  <ElecFlaskBrandSvg variant={variant} size={size} className={className} style={style} />
 );
 
 const IcoPin = (p) => (
@@ -270,9 +262,237 @@ const IcoQrCode = (p) => (
   </Svg>
 );
 
+const IcoCheckSvg = (p) => (
+  <Svg {...p} sw={2.2}>
+    <path d="M20 6L9 17l-5-5" />
+  </Svg>
+);
+
+const IcoCrossSvg = (p) => (
+  <Svg {...p} sw={2.2}>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </Svg>
+);
+
+const AcademicCrestSvg = ({ size = 15 }) => (
+  <ElecFlaskBrandSvg variant="gradient" size={size} />
+);
+
+const AiStudioHeroSvg = ({ className = '' }) => (
+  <svg className={className} width="160" height="76" viewBox="0 0 160 76" fill="none" aria-hidden="true">
+    <circle cx="112" cy="38" r="32" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" />
+    <circle cx="112" cy="38" r="20" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M112 10v56M84 38h56" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
+    <polygon points="48,14 58,28 48,42 38,28" stroke="currentColor" strokeWidth="1.5" />
+    <circle cx="144" cy="18" r="6" fill="currentColor" />
+  </svg>
+);
+
+const SparklineSvg = ({ values = [32, 45, 40, 58, 54, 72], color = 'currentColor', id = 'kpi-sp' }) => {
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = Math.max(max - min, 1);
+  const w = 68;
+  const h = 28;
+  const pts = values.map((v, i) => {
+    const x = Math.round((i / Math.max(values.length - 1, 1)) * (w - 4) + 2);
+    const y = Math.round(h - 4 - ((v - min) / span) * (h - 8));
+    return [x, y];
+  });
+  const line = pts.map(([x, y]) => `${x},${y}`).join(' ');
+  const area = `${pts[0][0]},${h} ${line} ${pts[pts.length - 1][0]},${h}`;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill={`url(#${id})`} />
+      <polyline points={line} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2.8" fill={color} />
+    </svg>
+  );
+};
+
+const MiniRingSvg = ({ pct = 0, color = '#2563eb', size = 40 }) => {
+  const safePct = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  const r = 15;
+  const c = 2 * Math.PI * r;
+  const offset = c - (safePct / 100) * c;
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" aria-hidden="true">
+      <circle cx="19" cy="19" r={r} fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="3.5" />
+      <circle
+        cx="19"
+        cy="19"
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform="rotate(-90 19 19)"
+      />
+      <text
+        x="19"
+        y="21.5"
+        textAnchor="middle"
+        fontSize="9.2"
+        fontWeight="800"
+        fill="currentColor"
+      >
+        {safePct}%
+      </text>
+    </svg>
+  );
+};
+
+const DonutDistributionSvg = ({ dist, total = 0 }) => {
+  const segs = [
+    { key: 'gioi', count: dist?.gioi || 0, color: '#10b981' },
+    { key: 'kha', count: dist?.kha || 0, color: '#3b82f6' },
+    { key: 'tb', count: dist?.tb || 0, color: '#f59e0b' },
+    { key: 'yeu', count: dist?.yeu || 0, color: '#ef4444' },
+  ];
+  const sum = segs.reduce((s, item) => s + item.count, 0);
+  const r = 46;
+  const circ = 2 * Math.PI * r;
+  let acc = 0;
+
+  return (
+    <div className="t-donut-box">
+      <svg width="124" height="124" viewBox="0 0 124 124" aria-label="Biểu đồ phổ điểm tròn">
+        <circle cx="62" cy="62" r={r} fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="14" />
+        {sum > 0 &&
+          segs.map((seg) => {
+            if (seg.count <= 0) return null;
+            const dash = (seg.count / sum) * circ;
+            const dashOffset = circ - acc;
+            acc += dash;
+            return (
+              <circle
+                key={seg.key}
+                cx="62"
+                cy="62"
+                r={r}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth="14"
+                strokeDasharray={`${Math.max(0, dash - 2)} ${circ}`}
+                strokeDashoffset={dashOffset}
+                transform="rotate(-90 62 62)"
+              />
+            );
+          })}
+        <text x="62" y="59" textAnchor="middle" fontSize="20" fontWeight="800" fill="currentColor">
+          {total}
+        </text>
+        <text x="62" y="75" textAnchor="middle" fontSize="10.5" fontWeight="600" fill="currentColor" opacity="0.62">
+          bài nộp
+        </text>
+      </svg>
+    </div>
+  );
+};
+
+const SubjectWatermarkSvg = ({ index = 0, variant = '', className = '' }) => {
+  const v = variant || String(index % 4);
+  if (v === 'grad-chem' || v === '0') {
+    return (
+      <svg className={className} viewBox="0 0 120 120" fill="none" aria-hidden="true">
+        <polygon points="60,16 94,36 94,76 60,96 26,76 26,36" stroke="currentColor" strokeWidth="6" />
+        <polygon points="60,32 80,44 80,68 60,80 40,68 40,44" stroke="currentColor" strokeWidth="4" />
+        <circle cx="60" cy="56" r="10" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (v === 'grad-phys' || v === '1') {
+    return (
+      <svg className={className} viewBox="0 0 120 120" fill="none" aria-hidden="true">
+        <ellipse cx="60" cy="60" rx="44" ry="18" transform="rotate(30 60 60)" stroke="currentColor" strokeWidth="5" />
+        <ellipse cx="60" cy="60" rx="44" ry="18" transform="rotate(-30 60 60)" stroke="currentColor" strokeWidth="5" />
+        <ellipse cx="60" cy="60" rx="44" ry="18" transform="rotate(90 60 60)" stroke="currentColor" strokeWidth="5" />
+        <circle cx="60" cy="60" r="8" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (v === 'grad-bio' || v === '2') {
+    return (
+      <svg className={className} viewBox="0 0 120 120" fill="none" aria-hidden="true">
+        <rect x="24" y="22" width="32" height="32" rx="10" fill="currentColor" />
+        <rect x="64" y="22" width="32" height="32" rx="16" stroke="currentColor" strokeWidth="6" />
+        <rect x="24" y="64" width="32" height="32" rx="16" stroke="currentColor" strokeWidth="6" />
+        <rect x="64" y="64" width="32" height="32" rx="10" fill="currentColor" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={className} viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <circle cx="60" cy="60" r="42" stroke="currentColor" strokeWidth="6" />
+      <circle cx="60" cy="60" r="26" stroke="currentColor" strokeWidth="5" strokeDasharray="8 6" />
+      <circle cx="60" cy="60" r="10" fill="currentColor" />
+    </svg>
+  );
+};
+
+function TeacherAgendaStrip({ liveCount = 0, classesCount = 0, atRiskCount = 0, onGo }) {
+  const now = new Date();
+  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - 3 + i);
+    return {
+      key: d.toISOString().slice(0, 10),
+      dow: dayNames[d.getDay()],
+      date: d.getDate(),
+      isToday: i === 3,
+      hasEvent: i === 3 || (liveCount > 0 && i === 4) || (classesCount > 0 && i === 1),
+    };
+  });
+
+  return (
+    <div className="t-agenda-card">
+      <div className="t-agenda-info">
+        <h3 className="t-agenda-title">
+          <IcoCalendar size={16} /> Lịch giảng dạy &amp; khảo thí trong tuần
+        </h3>
+        <p className="t-agenda-sub">
+          {liveCount > 0
+            ? `Đang có ${liveCount} phòng thi trực tuyến đang mở`
+            : `${classesCount} lớp đang theo dõi · ${atRiskCount} học sinh cần kèm phụ đạo`}
+        </p>
+      </div>
+
+      <div className="t-agenda-days" role="list">
+        {days.map((d) => (
+          <button
+            key={d.key}
+            type="button"
+            className={`t-agenda-day ${d.isToday ? 'today' : ''}`}
+            onClick={() => onGo(liveCount > 0 ? 'sessions' : 'analytics')}
+            title={d.isToday ? 'Hôm nay' : `Ngày ${d.date}`}
+          >
+            <span className="t-agenda-dow">{d.dow}</span>
+            <span className="t-agenda-num">{d.date}</span>
+            {d.hasEvent && <span className="t-agenda-dot" />}
+          </button>
+        ))}
+      </div>
+
+      <button type="button" className="vt-btn sm" onClick={() => onGo('sessions')}>
+        <IcoVideo size={14} /> Giám sát
+      </button>
+    </div>
+  );
+}
+
 import {
   DashFrame, Topbar, Modal, ConfirmDialog, Donut, TrendChart, Avatar,
-  tsMs, fmtMMSS, fmtClock, downloadCsv,
+  tsMs, fmtMMSS, fmtClock,
 } from './DashShell.jsx';
 import {
   IcoPlay, IcoStop, IcoRefresh, IcoUsers, IcoBook, IcoChart, IcoClock,
@@ -333,18 +553,94 @@ function normalizeExamForPreview(exam) {
   };
 }
 
-function exportExamCsv(exam, subs) {
-  const sorted = [...subs].sort((a, b) => b.score - a.score);
-  const rows = [['Hạng', 'Họ tên', 'Điểm', 'Tổng điểm', '%', 'Câu đúng', 'Tổng câu', 'Thời gian (phút)', 'Số vi phạm', 'Tự động nộp']];
-  sorted.forEach((s, i) => {
-    rows.push([
-      i + 1, s.studentName, s.score, s.totalPoints, Math.round(pctOf(s)),
-      s.correctCount, s.totalQuestions, Math.round((s.timeSpent || 0) / 60),
-      s.violationCount || 0, s.autoSubmitted ? 'Có' : 'Không',
-    ]);
-  });
+async function exportExamCsv(exam, subs) {
+  const sorted = [...subs].sort((a, b) => (b.score || 0) - (a.score || 0));
   const safe = (exam.title || 'de-thi').replace(/[^\p{L}\p{N}]+/gu, '-');
-  downloadCsv(`diem-${safe}.csv`, rows);
+  const qStats = (exam.questions || []).map((q, qIdx) => {
+    let ok = 0;
+    let total = 0;
+    sorted.forEach((s) => {
+      const d = s.detail?.[qIdx];
+      if (!d) return;
+      total += 1;
+      if (d.isCorrect) ok += 1;
+    });
+    return {
+      stt: qIdx + 1,
+      question: String(q.q || '').slice(0, 140),
+      topic: q.topic || 'Chưa phân loại',
+      correctRate: total ? Math.round((ok / total) * 100) / 100 : null,
+      answeredCount: total,
+    };
+  });
+
+  await exportStyledWorkbook({
+    filename: `bang-diem-${safe}.xlsx`,
+    mascot: 'celebrate',
+    sheets: [
+      {
+        name: 'Bảng điểm Đề thi',
+        mascot: 'celebrate',
+        title: `BẢNG ĐIỂM CHI TIẾT — ${(exam.title || 'ĐỀ KIỂM TRA').toUpperCase()}`,
+        subtitle: `Tổng số ${sorted.length} bài nộp · Môn: ${exam.subject || 'Tổng hợp'} · Thời lượng: ${exam.duration || 45} phút`,
+        columns: [
+          { header: 'Hạng', key: 'rank', align: 'center', width: 8 },
+          { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+          { header: 'Điểm', key: 'score', align: 'center', numFmt: '0.0', width: 10 },
+          { header: 'Tổng điểm', key: 'totalPoints', align: 'center', width: 12 },
+          { header: 'Thang 10', key: 'score10', align: 'center', numFmt: '0.0', isScore10: true, width: 12 },
+          { header: 'Tỉ lệ (%)', key: 'pct', align: 'center', numFmt: '0%', width: 12 },
+          { header: 'Số câu đúng', key: 'correctCount', align: 'center', width: 13 },
+          { header: 'Tổng câu', key: 'totalQ', align: 'center', width: 11 },
+          { header: 'Thời gian (phút)', key: 'mins', align: 'center', width: 15 },
+          { header: 'Vi phạm', key: 'violations', align: 'center', width: 11 },
+          { header: 'Xếp loại', key: 'band', align: 'center', isScoreBand: true, width: 15 },
+          { header: 'Nộp tự động', key: 'autoSub', align: 'center', width: 13 },
+        ],
+        rows: sorted.map((s, i) => {
+          const pctVal = pctOf(s);
+          const sc10 = Math.round((pctVal / 10) * 10) / 10;
+          const band = sc10 >= 8.0 ? 'Giỏi' : (sc10 >= 6.5 ? 'Khá' : (sc10 >= 5.0 ? 'Đạt' : 'Chưa đạt'));
+          return {
+            rank: i + 1,
+            name: s.studentName || 'Học sinh',
+            score: Number(s.score) || 0,
+            totalPoints: Number(s.totalPoints) || 10,
+            score10: sc10,
+            pct: Math.round(pctVal) / 100,
+            correctCount: s.correctCount || 0,
+            totalQ: s.totalQuestions || (exam.questions?.length || 0),
+            mins: Math.round((s.timeSpent || 0) / 60),
+            violations: s.violationCount || 0,
+            band,
+            autoSub: s.autoSubmitted ? 'Có' : 'Không',
+          };
+        }),
+        summaryRow: {
+          labelCol: 1,
+          label: 'TRUNG BÌNH TOÀN BÀI THI',
+          cells: {
+            score10: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(E${dataStartRow}:E${dataEndRow}),1),"")` }),
+            pct: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(AVERAGE(F${dataStartRow}:F${dataEndRow}),0)` }),
+          },
+        },
+      },
+      ...(qStats.length > 0 ? [{
+        name: 'Phân tích Câu hỏi',
+        mascot: 'think',
+        title: `PHÂN TÍCH ĐỘ KHÓ TỪNG CÂU — ${(exam.title || 'ĐỀ THI').toUpperCase()}`,
+        subtitle: 'Tỉ lệ học sinh trả lời đúng từng câu giúp nhận diện câu hỏi cần chữa trên lớp',
+        columns: [
+          { header: 'Câu', key: 'stt', align: 'center', width: 8 },
+          { header: 'Nội dung câu hỏi (tóm tắt)', key: 'question', align: 'left', width: 46, wrapText: true },
+          { header: 'Chuyên đề', key: 'topic', align: 'left', width: 22 },
+          { header: 'Số lượt chấm', key: 'answeredCount', align: 'center', width: 14 },
+          { header: 'Tỉ lệ đúng (%)', key: 'correctRate', align: 'center', numFmt: '0%', width: 16 },
+        ],
+        rows: qStats,
+      }] : []),
+    ],
+  });
 }
 
 function detectExamSubject(exam) {
@@ -364,8 +660,6 @@ function isAiGeneratedExam(exam) {
    MEMOIZED COMPONENTS
    ============================================================ */
 const MemoAvatar = memo(Avatar);
-const MemoBentoCard = memo(BentoCard);
-const MemoStatBig = memo(StatBig);
 
 /* ============================================================
    SKELETON LOADERS
@@ -451,6 +745,7 @@ function FloeWorkflowCard({
   return (
     <article className="t-workflow-card" onClick={() => onDetail(exam)}>
       <div className={`t-workflow-cover ${gradClass}`}>
+        <SubjectWatermarkSvg variant={gradClass} className="t-workflow-cover-watermark" />
         <div className={`t-workflow-status-notch ${liveSession ? 'live' : ''}`}>
           {liveSession ? (
             <>
@@ -593,6 +888,14 @@ export default function TeacherDashboard({ onExit } = {}) {
   /* Lớp đã liên kết (giáo viên bộ môn) — để thẻ đề hiện đúng tên lớp, môn, chủ nhiệm */
   const [linkedClasses, setLinkedClasses] = useState([]);
 
+  /* Danh sách hợp nhất Lớp chủ nhiệm + Lớp bộ môn (dùng chung cho Ngân hàng, Chấm A4, Mô phỏng) */
+  const allTeacherClasses = useMemo(() => {
+    const map = new Map();
+    classes.forEach((c) => { if (c?.id) map.set(c.id, c); });
+    linkedClasses.forEach((c) => { if (c?.id && !map.has(c.id)) map.set(c.id, c); });
+    return [...map.values()];
+  }, [classes, linkedClasses]);
+
   /* Chuông thông báo (notices: liên kết mới / gỡ liên kết / đề mới) */
   /* Đề đang lưu chế độ công khai (chặn bấm nhiều lần) */
   const [savingVis, setSavingVis] = useState('');
@@ -622,18 +925,13 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [copyExamTarget, setCopyExamTarget] = useState(null);
   const [copyTargetClassId, setCopyTargetClassId] = useState('');
   const [copyExamBusy, setCopyExamBusy] = useState(false);
-  const [syncingBank, setSyncingBank] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [shareClass, setShareClass] = useState(null);
   const [renameDraft, setRenameDraft] = useState('');
-  const [noticeClass, setNoticeClass] = useState(null);
-  const [noticeDraft, setNoticeDraft] = useState('');
-  const [noticeSaving, setNoticeSaving] = useState(false);
 
   const [selectedClass, setSelectedClass] = useState(null);
 
   /* Giáo viên bộ môn: giao đề vào lớp của chủ nhiệm khác bằng mã lớp */
-  const [extOpen, setExtOpen] = useState(false);
   const [extKey, setExtKey] = useState('');
   const [extBusy, setExtBusy] = useState(false);
   const [extErr, setExtErr] = useState('');
@@ -641,11 +939,11 @@ export default function TeacherDashboard({ onExit } = {}) {
   /* true = đang tạo đề cho lớp đã liên kết (dùng đúng trang 3 tab như mục "AI Tạo đề") */
   const [extCreate, setExtCreate] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
-  const [showExamCreate, setShowExamCreate] = useState(false);
   const [showClassPicker, setShowClassPicker] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState(null);
   const [previewExam, setPreviewExam] = useState(null);
   const [detailExamModal, setDetailExamModal] = useState(null);
+  const openNewExamRef = useRef(null);
 
   const [confirmState, setConfirmState] = useState(null);
   const [toast, setToast] = useState(null);
@@ -731,9 +1029,8 @@ export default function TeacherDashboard({ onExit } = {}) {
         if (showCreateClass) { setShowCreateClass(false); return; }
         if (showClassPicker) { setShowClassPicker(false); return; }
         if (shareClass) { setShareClass(null); return; }
-        if (noticeClass) { setNoticeClass(null); return; }
         if (bellOpen) { setBellOpen(false); return; }
-        if (extOpen) { setExtOpen(false); return; }
+        if (detailExamModal) { setDetailExamModal(null); return; }
         if (selectedExam) { setSelectedExam(null); return; }
         if (editingExam) { setEditingExam(null); return; }
         if (previewExam) { setPreviewExam(null); return; }
@@ -755,14 +1052,14 @@ export default function TeacherDashboard({ onExit } = {}) {
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         if (section === 'classes') setShowCreateClass(true);
-        else goSection('create');
+        else openNewExamRef.current?.();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     cmdOpen, confirmState, scheduleExamModal, showCreateClass, showClassPicker,
-    shareClass, noticeClass, bellOpen, extOpen, selectedExam,
+    shareClass, bellOpen, detailExamModal, selectedExam,
     editingExam, previewExam, selectedClass, section,
   ]);
 
@@ -811,7 +1108,12 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const goSection = (key) => {
-    setSection(key);
+    if (key === 'link') {
+      setSection('classes');
+      setClassSectionTab('linked');
+    } else {
+      setSection(key);
+    }
     setSubTab('all');
     setSearch('');
     /* Rời trang tạo đề → bỏ khoá lớp của luồng "giao đề lớp khác",
@@ -835,7 +1137,6 @@ export default function TeacherDashboard({ onExit } = {}) {
         return;
       }
       setExtClass(found);
-      setExtOpen(false);
       setExtKey('');
     } catch (e) {
       setExtErr(e?.message || 'Không tìm được lớp.');
@@ -1100,8 +1401,8 @@ export default function TeacherDashboard({ onExit } = {}) {
       : null;
     setAiPreset(validPreset);
 
-    if (classes.length === 0) {
-      say('Hãy tạo lớp trước khi tạo đề', 'error');
+    if (classes.length === 0 && linkedClasses.length === 0) {
+      say('Hãy tạo hoặc liên kết lớp trước khi tạo đề', 'error');
       goSection('classes');
       return;
     }
@@ -1127,8 +1428,33 @@ export default function TeacherDashboard({ onExit } = {}) {
       console.warn('[TeacherDashboard] refresh trước AI Studio lỗi:', e);
     }
 
-    if (classes.length === 1) {
+    if (validPreset?.classId) {
+      const ownTarget = classes.find((c) => c.id === validPreset.classId);
+      if (ownTarget) {
+        setExtCreate(false);
+        setExtClass(null);
+        setSelectedClass(ownTarget);
+        goSection('create');
+        return;
+      }
+      const linkedTarget = linkedClasses.find((c) => c.id === validPreset.classId);
+      if (linkedTarget) {
+        setSelectedClass(null);
+        setExtClass(linkedTarget);
+        setExtCreate(true);
+        goSection('create');
+        return;
+      }
+    }
+
+    if (classes.length === 1 && linkedClasses.length === 0) {
       setSelectedClass(classes[0]);
+      goSection('create');
+      return;
+    }
+    if (classes.length === 0 && linkedClasses.length === 1) {
+      setExtClass(linkedClasses[0]);
+      setExtCreate(true);
       goSection('create');
       return;
     }
@@ -1146,6 +1472,8 @@ export default function TeacherDashboard({ onExit } = {}) {
       say('Không sao chép được', 'error');
     }
   }, [say]);
+
+  openNewExamRef.current = openNewExam;
 
   const handleCreateClass = async () => {
     if (!newClassName.trim()) return;
@@ -1226,40 +1554,6 @@ export default function TeacherDashboard({ onExit } = {}) {
       setCopyExamBusy(false);
     }
   };
-
-  /* Đồng bộ toàn bộ câu hỏi từ Kho đề thi vào Ngân hàng câu hỏi */
-  const handleSyncExamsToBank = useCallback(async () => {
-    if (!exams.length || syncingBank) return;
-    setSyncingBank(true);
-    try {
-      const batch = [];
-      for (const ex of exams) {
-        const qs = Array.isArray(ex.questions) ? ex.questions : [];
-        for (const q of qs) {
-          if (!q?.q) continue;
-          batch.push({
-            ...q,
-            subject: q.subject || ex.subject || 'Hóa học',
-            grade: String(q.grade || ex.grade || '12'),
-            topic: q.topic || ex.title || 'Tổng hợp',
-            difficulty: q.difficulty || 'thông hiểu',
-            source: 'exam-sync',
-          });
-        }
-      }
-      if (!batch.length) {
-        say('Các đề hiện tại chưa có câu hỏi nào để đồng bộ.', 'error');
-        return;
-      }
-      const res = await addQuestionsBatch(batch, user?.uid);
-      const addedCount = Array.isArray(res) ? res.length : (res?.added ?? batch.length);
-      say(`Đã đồng bộ ${addedCount} câu hỏi từ ${exams.length} đề thi vào Ngân hàng câu hỏi!`, 'success');
-    } catch (e) {
-      say('Không đồng bộ được vào Ngân hàng: ' + (e.message || e), 'error');
-    } finally {
-      setSyncingBank(false);
-    }
-  }, [exams, syncingBank, user?.uid, say]);
 
   const handleStartSession = useCallback(async (exam) => {
     setStartingId(exam.id);
@@ -1449,24 +1743,38 @@ export default function TeacherDashboard({ onExit } = {}) {
     }
   };
 
-  /* Xuất danh sách học sinh của 1 lớp ra CSV (Mục D4) */
-  const exportClassRosterCsv = useCallback((cls) => {
+  /* Xuất danh sách học sinh của 1 lớp ra Excel (.xlsx) */
+  const exportClassRosterCsv = useCallback(async (cls) => {
     const members = cls?.members || [];
     const pending = cls?.pendingMembers || [];
     if (!members.length && !pending.length) {
       say('Lớp chưa có học sinh nào để xuất danh sách', 'error');
       return;
     }
-    const rows = [['STT', 'Họ và tên', 'Email', 'Trạng thái', 'Mã lớp']];
-    members.forEach((m, idx) => {
-      rows.push([idx + 1, m.name || 'Học sinh', m.email || '', 'Chính thức', cls.key || '']);
-    });
-    pending.forEach((m, idx) => {
-      rows.push([members.length + idx + 1, m.name || 'Học sinh', m.email || '', 'Chờ duyệt', cls.key || '']);
-    });
     const safe = (cls.name || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
-    downloadCsv(`danh-sach-hoc-sinh-${safe}.csv`, rows);
-    say(`Đã xuất danh sách ${members.length} học sinh lớp ${cls.name}`, 'success');
+    const rosterRows = [
+      ...members.map((m, idx) => ({ stt: idx + 1, name: m.name || 'Học sinh', email: m.email || '', status: 'Chính thức', key: cls.key || '' })),
+      ...pending.map((m, idx) => ({ stt: members.length + idx + 1, name: m.name || 'Học sinh', email: m.email || '', status: 'Chờ duyệt', key: cls.key || '' })),
+    ];
+    await exportStyledWorkbook({
+      filename: `danh-sach-hoc-sinh-${safe}.xlsx`,
+      mascot: 'hello',
+      sheets: [{
+        name: 'Danh sách Học sinh',
+        mascot: 'hello',
+        title: `DANH SÁCH THÀNH VIÊN LỚP ${(cls.name || '').toUpperCase()}`,
+        subtitle: `Chính thức: ${members.length} HS · Chờ duyệt: ${pending.length} HS · Mã lớp: ${cls.key || '—'}`,
+        columns: [
+          { header: 'STT', key: 'stt', align: 'center', width: 8 },
+          { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 28 },
+          { header: 'Email', key: 'email', align: 'left', width: 30 },
+          { header: 'Trạng thái', key: 'status', align: 'center', isScoreBand: true, width: 16 },
+          { header: 'Mã lớp', key: 'key', align: 'center', width: 14 },
+        ],
+        rows: rosterRows,
+      }],
+    });
+    say(`Đã xuất danh sách ${members.length} học sinh lớp ${cls.name} (.xlsx)`, 'success');
   }, [say]);
 
   const reloadClass = async (id) => {
@@ -1524,28 +1832,6 @@ export default function TeacherDashboard({ onExit } = {}) {
     const r = await updateClass(cls.id, { name: next });
     say(r.ok ? 'Đã đổi tên lớp' : r.error, r.ok ? 'success' : 'error');
     if (r.ok) { setRenameDraft(''); await reloadClass(cls.id); await refresh(); }
-  };
-
-  const handleSaveNotice = async () => {
-    if (!noticeClass) return;
-    setNoticeSaving(true);
-    try {
-      const text = noticeDraft.trim();
-      const r = await updateClass(noticeClass.id, {
-        announcement: text ? { text, updatedAt: Date.now() } : null,
-      });
-      if (r.ok) {
-        say(text ? 'Đã ghim thông báo lên lớp' : 'Đã xóa thông báo', 'success');
-        setNoticeClass(null);
-        await refresh();
-      } else {
-        say(r.error || 'Lỗi lưu thông báo', 'error');
-      }
-    } catch (e) {
-      say(e.message || 'Lỗi kết nối', 'error');
-    } finally {
-      setNoticeSaving(false);
-    }
   };
 
   const handleRegenKey = (cls) => {
@@ -1814,47 +2100,101 @@ export default function TeacherDashboard({ onExit } = {}) {
     return [...set].sort((a, b) => a.localeCompare(b, 'vi'));
   }, [exams]);
 
-  const exportAllCsv = () => {
+  const exportAllCsv = async () => {
     if (subsInRange.length === 0) { say('Chưa có bài nộp để xuất', 'error'); return; }
-    const examTitle = Object.fromEntries(exams.map((e) => [e.id, e.title]));
-    const rows = [['Đề', 'Họ tên', 'Điểm', 'Tổng điểm', '%', 'Câu đúng', 'Tổng câu', 'Vi phạm']];
-    subsInRange.forEach((s) => rows.push([
-      examTitle[s.examId] || s.examId, s.studentName, s.score, s.totalPoints,
-      Math.round(pctOf(s)), s.correctCount, s.totalQuestions, s.violationCount || 0,
-    ]));
-    downloadCsv('bang-diem-tong-hop.csv', rows);
-    say('Đã xuất bảng điểm', 'success');
+    const examById = Object.fromEntries(exams.map((e) => [e.id, e]));
+    await exportStyledWorkbook({
+      filename: `bang-diem-tong-hop-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      mascot: 'celebrate',
+      sheets: [{
+        name: 'Tổng hợp Bài nộp',
+        mascot: 'celebrate',
+        title: 'BẢNG ĐIỂM TỔNG HỢP TẤT CẢ CÁC LỚP',
+        subtitle: `Tổng hợp ${subsInRange.length} lượt nộp bài trong khoảng thời gian đang lọc`,
+        columns: [
+          { header: 'STT', key: 'stt', align: 'center', width: 8 },
+          { header: 'Đề kiểm tra', key: 'exam', align: 'left', width: 32 },
+          { header: 'Học sinh', key: 'student', align: 'left', width: 25 },
+          { header: 'Điểm', key: 'score', align: 'center', numFmt: '0.0', width: 10 },
+          { header: 'Tổng điểm', key: 'total', align: 'center', width: 12 },
+          { header: 'Thang 10', key: 'sc10', align: 'center', numFmt: '0.0', isScore10: true, width: 12 },
+          { header: 'Tỉ lệ (%)', key: 'pct', align: 'center', numFmt: '0%', width: 12 },
+          { header: 'Câu đúng', key: 'correct', align: 'center', width: 12 },
+          { header: 'Tổng câu', key: 'totalQ', align: 'center', width: 12 },
+          { header: 'Vi phạm', key: 'violations', align: 'center', width: 11 },
+        ],
+        rows: subsInRange.map((s, idx) => {
+          const p = pctOf(s);
+          return {
+            stt: idx + 1,
+            exam: examById[s.examId]?.title || s.examId,
+            student: s.studentName || 'Học sinh',
+            score: Number(s.score) || 0,
+            total: Number(s.totalPoints) || 10,
+            sc10: Math.round((p / 10) * 10) / 10,
+            pct: Math.round(p) / 100,
+            correct: s.correctCount || 0,
+            totalQ: s.totalQuestions || 0,
+            violations: s.violationCount || 0,
+          };
+        }),
+      }],
+    });
+    say('Đã xuất bảng điểm tổng hợp Excel (.xlsx)', 'success');
   };
 
-  const exportClassCsv = useCallback((cls, clsExams, subsMap) => {
+  const exportClassCsv = useCallback(async (cls, clsExams, subsMap) => {
     if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất', 'error'); return; }
     const members = cls.members || [];
-    const header = ['Học sinh', 'Email', ...clsExams.map((e, i) => `Đề ${i + 1}`), 'Điểm TB', 'Cao nhất'];
-    const rows = [header];
+    const safe = (cls.name || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
 
-    members.forEach((m) => {
-      const row = [m.name, m.email || ''];
-      const scores = [];
-      clsExams.forEach((ex) => {
+    const columns = [
+      { header: 'STT', key: 'stt', align: 'center', width: 8 },
+      { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 25 },
+      { header: 'Email', key: 'email', align: 'left', width: 26 },
+      ...clsExams.slice(0, 14).map((ex, i) => ({
+        header: `[${classifyExamGradeColumn(ex).toUpperCase()}] Đề ${i + 1}`,
+        key: `ex_${ex.id}`,
+        align: 'center',
+        numFmt: '0.0',
+        isScore10: true,
+        width: 14,
+      })),
+      { header: 'Điểm TB (/10)', key: 'tb', align: 'center', numFmt: '0.0', isScore10: true, width: 14 },
+      { header: 'Xếp loại', key: 'status', align: 'center', isScoreBand: true, width: 16 },
+    ];
+
+    const rows = members.map((m, idx) => {
+      const grades = computeStudentPeriodGrades(m, clsExams, subsMap);
+      const rowObj = {
+        stt: idx + 1,
+        name: m.name || 'Học sinh',
+        email: m.email || '',
+        tb: grades.tb,
+        status: grades.status,
+      };
+      clsExams.slice(0, 14).forEach((ex) => {
         const sub = (subsMap[ex.id] || []).find((x) => x.studentId === m.id);
-        if (sub) {
-          const pct = Math.round((sub.score / (sub.totalPoints || 1)) * 100);
-          row.push(`${pct}%`);
-          scores.push(pct);
-        } else {
-          row.push('');
-        }
+        rowObj[`ex_${ex.id}`] = sub
+          ? Math.round((Math.max(0, Number(sub.score) || 0) / Math.max(1, Number(sub.totalPoints) || 10)) * 100) / 10
+          : null;
       });
-      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : '';
-      const best = scores.length ? Math.max(...scores) : '';
-      row.push(avg === '' ? '' : `${avg}%`);
-      row.push(best === '' ? '' : `${best}%`);
-      rows.push(row);
+      return rowObj;
     });
 
-    const safe = cls.name.replace(/[^\p{L}\p{N}]+/gu, '-');
-    downloadCsv(`bang-diem-${safe}.csv`, rows);
-    say('Đã xuất bảng điểm lớp ' + cls.name, 'success');
+    await exportStyledWorkbook({
+      filename: `bang-diem-${safe}.xlsx`,
+      mascot: 'celebrate',
+      sheets: [{
+        name: 'Bảng điểm Lớp',
+        mascot: 'celebrate',
+        title: `BẢNG ĐIỂM LỚP ${(cls.name || '').toUpperCase()}`,
+        subtitle: `Tổng hợp ${members.length} học sinh · ${clsExams.length} đề thi (Thang điểm 10)`,
+        columns,
+        rows,
+      }],
+    });
+    say(`Đã xuất bảng điểm Excel lớp ${cls.name}`, 'success');
   }, [say]);
 
   /* ---------- EARLY RETURN ---------- */
@@ -1909,6 +2249,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       label: 'Quản lý Lớp học',
       Icon: IcoUsers,
       badge: totalPendingMembers > 0 ? totalPendingMembers : null,
+      count: (classes.length + linkedClasses.length) || null,
       live: totalPendingMembers > 0,
       group: 'Lớp học & Giảng dạy',
     },
@@ -1920,6 +2261,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       shortLabel: 'Kho đề',
       label: 'Biên soạn & Kho đề',
       Icon: IcoBook,
+      count: exams.length || null,
       group: 'Biên soạn & Khảo thí',
     },
 
@@ -2239,7 +2581,6 @@ export default function TeacherDashboard({ onExit } = {}) {
             user={user}
             onSay={say}
             onAssign={(classInfo) => {
-              setExtOpen(false);
               setExtClass(classInfo);
               setExtCreate(true);
               goSection('create');
@@ -2248,7 +2589,6 @@ export default function TeacherDashboard({ onExit } = {}) {
               setSessions((prev) => (
                 prev.some((s) => s.id === session.id) ? prev : [session, ...prev]
               ));
-              setExtOpen(false);
               setViewingSessionId(session.id);
             }}
           />
@@ -2332,7 +2672,11 @@ export default function TeacherDashboard({ onExit } = {}) {
         setCmdQuery('');
         setCmdIndex(0);
       }}
-      onOpenAiCopilot={() => setAiDrawerOpen(true)}
+      onOpenAiCopilot={() => setAiChatOpen((v) => !v)}
+      user={user}
+      roleLabel={linkedClasses.length > 0 ? `${classes.length} CN · ${linkedClasses.length} BM` : `${classes.length} lớp CN`}
+      quickAction={{ label: 'Tạo đề AI', onClick: openNewExam }}
+      onOpenProfile={() => goSection('profile')}
       exitLabel="Về ELEC AI"
       onExit={() => {
         if (onExit) onExit();
@@ -2345,11 +2689,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         search={section !== 'create' && section !== 'simulator' && section !== 'bank' && section !== 'profile' && section !== 'analytics' && section !== 'link' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
           on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0 || unreadNotices > 0,
-          onClick: () => {
-            if (totalPendingRetry > 0) goSection('retry');
-            else if (totalPendingMembers > 0) goSection('classes');
-            else goBell();
-          },
+          onClick: goBell,
           title: [
             liveSessions.length ? `${liveSessions.length} phòng LIVE` : '',
             totalPendingRetry ? `${totalPendingRetry} yêu cầu thi lại` : '',
@@ -2363,202 +2703,342 @@ export default function TeacherDashboard({ onExit } = {}) {
          ============================================================ */}
       {section === 'overview' && (
         <div className="t-workspace-container">
-          {/* HERO GREETING & THỜI GIAN THỐNG KÊ (TASKLIFY / DODO STYLE) */}
-          <div className="t-hero-welcome">
-            <div className="t-hero-welcome-left">
-              <div className="t-hero-badge">
-                <IcoSparkles size={14} /> Không gian Sư phạm GDPT 2025
-              </div>
-              <h1 className="t-hero-title">
-                Chào mừng trở lại, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'} 👋
-              </h1>
-              <p className="t-hero-desc">
-                Chủ nhiệm <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} học sinh) · Phụ trách bộ môn: <b>{linkedClasses.length} lớp</b> {primarySubject ? `(Môn: ${primarySubject})` : ''}
-              </p>
-            </div>
+          {/* ASYMMETRIC BENTO COMMAND GRID (REF 1 + REF 2 + REF 3) */}
+          <div className="t-cmd-grid">
+            <div className="t-cmd-left">
+              {/* HERO GREETING & THỜI GIAN THỐNG KÊ */}
+              <div className="t-hero-welcome">
+                <div className="t-hero-welcome-left">
+                  <div className="t-hero-badge">
+                    <AcademicCrestSvg size={14} /> Không gian Sư phạm GDPT 2025
+                  </div>
+                  <h1 className="t-hero-title">
+                    Chào mừng trở lại, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}
+                  </h1>
+                  <div className="t-hero-role-chips">
+                    <span className="t-role-pill gvcn">
+                      <IcoSchool size={13} /> Chủ nhiệm: <b>{classes.length} lớp</b> ({classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} HS)
+                    </span>
+                    <span className="t-role-pill gvbm">
+                      <IcoBook size={13} /> Bộ môn: <b>{linkedClasses.length} lớp</b> {primarySubject ? `· ${primarySubject}` : ''}
+                    </span>
+                  </div>
+                </div>
 
-            <div className="t-hero-welcome-right">
-              <div className="t-range-pills" role="group" aria-label="Khoảng thời gian thống kê">
-                {[
-                  { k: '7', label: '7 ngày' },
-                  { k: '30', label: '30 ngày' },
-                  { k: '90', label: '90 ngày' },
-                  { k: 'all', label: 'Cả năm' },
-                ].map((opt) => (
-                  <button
-                    key={opt.k}
-                    type="button"
-                    className={`t-range-pill ${range === opt.k ? 'active' : ''}`}
-                    onClick={() => setRange(opt.k)}
-                  >
-                    <IcoCalendar size={13} /> {opt.label}
+                <div className="t-hero-welcome-right">
+                  <div className="t-hero-right-stack">
+                    <div className="t-range-pills" role="group" aria-label="Khoảng thời gian thống kê">
+                      {[
+                        { k: '7', label: '7 ngày' },
+                        { k: '30', label: '30 ngày' },
+                        { k: '90', label: '90 ngày' },
+                        { k: 'all', label: 'Cả năm' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.k}
+                          type="button"
+                          className={`t-range-pill ${range === opt.k ? 'active' : ''}`}
+                          onClick={() => setRange(opt.k)}
+                        >
+                          <IcoCalendar size={13} /> {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="t-hero-mascot-wrap" aria-hidden="true">
+                      <ElecMascot mood="hello" size={60} className="t-hero-mascot" alt="Nhân vật ELEC AI chào mừng" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2x2 PRIORITY BENTO QUADRANT + CENTRAL ELEC BRAND SEAL (REF 3) */}
+              <div className="t-quad-card">
+                <div className="t-quad-head">
+                  <h2>Chỉ số Sư phạm Trọng tâm</h2>
+                  <span className="t-badge-count">{range === 'all' ? 'Cả năm' : `${range} ngày qua`}</span>
+                </div>
+                <div className="t-quad-grid">
+                  <button type="button" className="t-quad-tile tone-blue" onClick={() => goSection('classes')}>
+                    <div className="t-quad-tile-top">
+                      <span className="t-quad-tile-label">Học sinh &amp; Lớp học</span>
+                      <span className="t-quad-arrow" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M7 7h10v10" /></svg>
+                      </span>
+                    </div>
+                    <div>
+                      <div className="t-quad-val">{classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)} em</div>
+                      <div className="t-quad-sub">{classes.length} chủ nhiệm · {linkedClasses.length} bộ môn</div>
+                    </div>
                   </button>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          {/* TASKLIFY AI ANNOUNCEMENT BANNER (ẢNH THAM KHẢO 1) */}
-          <div className="t-tasklify-banner">
-            <div className="t-tasklify-banner-left">
-              <div className="t-tasklify-banner-icon">
-                <IcoSparkles size={18} />
-              </div>
-              <div>
-                <strong className="t-tasklify-banner-title">Trợ lý AI GDPT 2025 đã sẵn sàng</strong>
-                <p className="t-tasklify-banner-desc">
-                  Soạn đề trắc nghiệm thông minh theo Thông tư mới: 4 lựa chọn, Đúng/Sai &amp; Trả lời ngắn chỉ trong 10 giây.
-                </p>
-              </div>
-            </div>
-            <button type="button" className="t-tasklify-banner-btn" onClick={openNewExam}>
-              Tạo đề AI ngay <IcoArrowRight size={14} />
-            </button>
-          </div>
+                  <button type="button" className="t-quad-tile tone-violet" onClick={() => goSection('exams')}>
+                    <div className="t-quad-tile-top">
+                      <span className="t-quad-tile-label">Kho đề GDPT 2025</span>
+                      <span className="t-quad-arrow" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M7 7h10v10" /></svg>
+                      </span>
+                    </div>
+                    <div>
+                      <div className="t-quad-val">{exams.length} đề</div>
+                      <div className="t-quad-sub">{countBy('ready')} đề đã phát hành</div>
+                    </div>
+                  </button>
 
-          {/* HÀNG PHÍM TẮT THAO TÁC NHANH (CÓ ĐỦ SVG ICONS) */}
-          <div className="t-quick-actions-bar">
-            <button type="button" className="t-quick-btn primary" onClick={openNewExam}>
-              <IcoSparkles size={16} /> + Tạo đề mới (N)
-            </button>
-            <button type="button" className="t-quick-btn" onClick={() => goSection('create')}>
-              <IcoFileDoc size={16} /> Nhập từ Word (.docx)
-            </button>
-            <button type="button" className="t-quick-btn" onClick={() => goSection('sessions')}>
-              <IcoVideo size={16} /> Phòng thi trực tuyến
-            </button>
-            <button type="button" className="t-quick-btn" onClick={() => goSection('paper')}>
-              <IcoCamera size={16} /> Chấm phiếu A4
-            </button>
-            <button type="button" className="t-quick-btn" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
-              <IcoSchool size={16} /> + Tạo lớp mới
-            </button>
-          </div>
+                  <button type="button" className="t-quad-tile tone-emerald" onClick={() => goSection('analytics')}>
+                    <div className="t-quad-tile-top">
+                      <span className="t-quad-tile-label">Điểm TB &amp; Đạt chuẩn</span>
+                      <span className="t-quad-arrow" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M7 7h10v10" /></svg>
+                      </span>
+                    </div>
+                    <div>
+                      <div className="t-quad-val">{subsInRange.length ? `${avgScore10} / 10` : '—'}</div>
+                      <div className="t-quad-sub">{passRate}% đạt chuẩn (≥ 5.0)</div>
+                    </div>
+                  </button>
 
-          {/* BẢNG NHẮC VIỆC CẦN LÀM NGAY (CHỈ HIỆN KHI CÓ NHIỆM VỤ THẬT) */}
-          {(totalPendingMembers > 0 || totalPendingRetry > 0 || liveSessions.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
-              {totalPendingMembers > 0 && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '0.85rem 1.15rem', borderRadius: 14,
-                  background: 'color-mix(in srgb, #f59e0b 12%, var(--t-surface-1))',
-                  border: '1.5px solid #f59e0b', gap: '0.75rem',
-                }}>
-                  <div>
-                    <strong style={{ fontSize: '0.92rem', color: '#b45309' }}>{totalPendingMembers} Học sinh chờ duyệt vào lớp</strong>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Cần phê duyệt để học sinh vào làm bài thi</p>
+                  <button
+                    type="button"
+                    className={`t-quad-tile ${atRiskStudents.length > 0 ? 'tone-amber' : ''}`}
+                    onClick={() => goSection('analytics')}
+                  >
+                    <div className="t-quad-tile-top">
+                      <span className="t-quad-tile-label">Học sinh cần phụ đạo</span>
+                      <span className="t-quad-arrow" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M7 7h10v10" /></svg>
+                      </span>
+                    </div>
+                    <div>
+                      <div className="t-quad-val" style={{ color: atRiskStudents.length > 0 ? 'var(--t-bad)' : undefined }}>
+                        {atRiskStudents.length} em
+                      </div>
+                      <div className="t-quad-sub">
+                        {atRiskStudents.length > 0 ? 'Dưới 5.0 · Bấm xem hồ sơ kèm' : 'Tất cả đạt chuẩn an toàn'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className="t-quad-seal" title="ELEC AI Logomark" aria-hidden="true" style={{ background: '#ffffff' }}>
+                    <ElecFlaskBrandSvg size={46} variant="gradient" />
                   </div>
-                  <button type="button" className="vt-btn sm primary" onClick={() => goSection('classes')}>Duyệt ngay</button>
                 </div>
-              )}
-              {totalPendingRetry > 0 && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '0.85rem 1.15rem', borderRadius: 14,
-                  background: 'color-mix(in srgb, #8b5cf6 12%, var(--t-surface-1))',
-                  border: '1.5px solid #8b5cf6', gap: '0.75rem',
-                }}>
-                  <div>
-                    <strong style={{ fontSize: '0.92rem', color: '#7c3aed' }}>{totalPendingRetry} Học sinh xin thi lại</strong>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>Học sinh gặp sự cố mạng hoặc nộp nhầm</p>
-                  </div>
-                  <button type="button" className="vt-btn sm" onClick={() => goSection('retry')} style={{ background: '#8b5cf6', color: '#fff' }}>Xem yêu cầu</button>
-                </div>
-              )}
-              {liveSessions.length > 0 && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '0.85rem 1.15rem', borderRadius: 14,
-                  background: 'color-mix(in srgb, #10b981 12%, var(--t-surface-1))',
-                  border: '1.5px solid #10b981', gap: '0.75rem',
-                }}>
-                  <div>
-                    <strong style={{ fontSize: '0.92rem', color: '#059669' }}>{liveSessions.length} Phòng thi trực tuyến đang mở</strong>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>{liveSessions[0]?.title} đang diễn ra</p>
-                  </div>
-                  <button type="button" className="vt-btn sm" onClick={() => goSection('sessions')} style={{ background: '#10b981', color: '#fff' }}>Vào giám sát</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 4 THẺ CHỈ SỐ SƯ PHẠM (CHUẨN TASKLIFY ẢNH 1: ICON BOX ĐEN, BIG NUM, VIEW DETAILS) */}
-          <div className="t-kpi-grid">
-            <div className="t-kpi-card" onClick={() => goSection('classes')}>
-              <div className="t-kpi-head">
-                <div className="t-kpi-icon-box">
-                  <IcoUsers size={20} />
-                </div>
-                <span className="t-kpi-link">
-                  Chi tiết <IcoChevronRight size={13} />
-                </span>
-              </div>
-              <span className="t-kpi-num">{classes.reduce((sum, c) => sum + (c.members?.length || 0), 0)}</span>
-              <span className="t-kpi-label">Tổng học sinh hoạt động</span>
-              <div className="t-kpi-meta">
-                <span>{classes.length} lớp chủ nhiệm · {linkedClasses.length} bộ môn</span>
-                <span className="t-kpi-trend-pill ok">● Đang học</span>
               </div>
             </div>
 
-            <div className="t-kpi-card" onClick={() => goSection('exams')}>
-              <div className="t-kpi-head">
-                <div className="t-kpi-icon-box">
-                  <IcoBook size={20} />
+            {/* CỘT PHẢI: VIỆC CẦN LÀM HÔM NAY + LỊCH KHẢO THÍ TUẦN (REF 2 & REF 3) */}
+            <div className="t-cmd-right">
+              <div className="t-checklist-card">
+                <div className="t-checklist-head">
+                  <h3>Việc cần xử lý hôm nay</h3>
+                  <button
+                    type="button"
+                    className="t-split-more-btn"
+                    onClick={() => setAiChatOpen(true)}
+                  >
+                    <ElecFlaskBrandSvg size={13} variant="gradient" /> Hỏi Agent
+                  </button>
                 </div>
-                <span className="t-kpi-link">
-                  Kho đề <IcoChevronRight size={13} />
-                </span>
-              </div>
-              <span className="t-kpi-num">{exams.length}</span>
-              <span className="t-kpi-label">Kho đề thi đã soạn</span>
-              <div className="t-kpi-meta">
-                <span>{countBy('ready')} đề đã giao vào lớp</span>
-                <span className="t-kpi-trend-pill ok">GDPT 2025</span>
-              </div>
-            </div>
 
-            <div className="t-kpi-card" onClick={() => goSection('analytics')}>
-              <div className="t-kpi-head">
-                <div className="t-kpi-icon-box">
-                  <IcoChart size={20} />
-                </div>
-                <span className="t-kpi-link">
-                  Phổ điểm <IcoChevronRight size={13} />
-                </span>
-              </div>
-              <span className="t-kpi-num">{subsInRange.length ? `${avgScore10} / 10` : '—'}</span>
-              <span className="t-kpi-label">Điểm trung bình toàn khóa</span>
-              <div className="t-kpi-meta">
-                <span>{passRate}% học sinh đạt chuẩn</span>
-                <span className="t-kpi-trend-pill ok">≥ 5.0 điểm</span>
-              </div>
-            </div>
+                <div className="t-task-list">
+                  {liveSessions.length > 0 && (
+                    <button type="button" className="t-task-row highlight" onClick={() => goSection('sessions')}>
+                      <span className="t-task-icon"><IcoVideo size={17} /></span>
+                      <span className="t-task-body">
+                        <strong>{liveSessions.length} Phòng thi trực tuyến đang mở</strong>
+                        <small>{liveSessions[0]?.title || 'Phiên thi đang diễn ra'} · Giám sát ngay</small>
+                      </span>
+                      <span className="t-task-pill">LIVE</span>
+                    </button>
+                  )}
 
-            <div
-              className="t-kpi-card"
-              onClick={() => goSection('analytics')}
-            >
-              <div className="t-kpi-head">
-                <div className="t-kpi-icon-box" style={{ background: atRiskStudents.length > 0 ? '#ef4444' : undefined }}>
-                  <IcoAlert size={20} />
+                  {totalPendingRetry > 0 && (
+                    <button
+                      type="button"
+                      className={`t-task-row ${liveSessions.length === 0 ? 'highlight' : ''}`}
+                      onClick={() => goSection('retry')}
+                    >
+                      <span className="t-task-icon"><IcoClock size={17} /></span>
+                      <span className="t-task-body">
+                        <strong>{totalPendingRetry} Đơn xin thi lại chờ duyệt</strong>
+                        <small>Học sinh báo sự cố mạng / nộp nhầm bài</small>
+                      </span>
+                      <span className="t-task-pill">Duyệt</span>
+                    </button>
+                  )}
+
+                  {totalPendingMembers > 0 && (
+                    <button
+                      type="button"
+                      className={`t-task-row ${liveSessions.length === 0 && totalPendingRetry === 0 ? 'highlight' : ''}`}
+                      onClick={() => goSection('classes')}
+                    >
+                      <span className="t-task-icon"><IcoUsers size={17} /></span>
+                      <span className="t-task-body">
+                        <strong>{totalPendingMembers} Học sinh chờ duyệt vào lớp</strong>
+                        <small>Phê duyệt thành viên mới để nhận đề thi</small>
+                      </span>
+                      <span className="t-task-pill">{totalPendingMembers} chờ</span>
+                    </button>
+                  )}
+
+                  {atRiskStudents.length > 0 && (
+                    <button
+                      type="button"
+                      className={`t-task-row ${liveSessions.length === 0 && totalPendingRetry === 0 && totalPendingMembers === 0 ? 'highlight' : ''}`}
+                      onClick={() => openNewExam({
+                        classId: classes[0]?.id || '',
+                        subject: primarySubject || 'Hóa học',
+                        title: `Đề ôn tập củng cố (${atRiskStudents.length} HS < 5.0)`,
+                        topics: (classInsights?.hardest || []).map((q) => q.topic).filter(Boolean).slice(0, 3),
+                        count: 10,
+                        gradeType: 'tx',
+                        hint: `Đề phụ đạo tự động cho ${atRiskStudents.length} học sinh dưới 5.0 điểm.`,
+                        remedialStudents: atRiskStudents.map((s) => s.studentName),
+                      })}
+                    >
+                      <span className="t-task-icon"><ElecFlaskBrandSvg size={17} variant="gradient" /></span>
+                      <span className="t-task-body">
+                        <strong>Tạo đề ôn AI cho {atRiskStudents.length} HS &lt; 5.0</strong>
+                        <small>1 chạm sinh đề củng cố kiến thức hổng</small>
+                      </span>
+                      <span className="t-task-pill">AI 10 câu</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className={`t-task-row ${liveSessions.length === 0 && totalPendingRetry === 0 && totalPendingMembers === 0 && atRiskStudents.length === 0 ? 'highlight' : ''}`}
+                    onClick={openNewExam}
+                  >
+                    <span className="t-task-icon"><IcoPlus size={17} /></span>
+                    <span className="t-task-body">
+                      <strong>Soạn đề 3 phần GDPT 2025 cùng AI</strong>
+                      <small>Phần I · Đúng/Sai · Trả lời ngắn chuẩn Thông tư</small>
+                    </span>
+                    <span className="t-task-pill">Mở Studio</span>
+                  </button>
+
+                  <button type="button" className="t-task-row" onClick={() => { goSection('classes'); setClassSectionTab('linked'); }}>
+                    <span className="t-task-icon"><IcoBook size={17} /></span>
+                    <span className="t-task-body">
+                      <strong>Giao đề lớp Bộ môn &amp; Xuất vnEdu</strong>
+                      <small>{linkedClasses.length} lớp đã liên kết · Xuất Excel 1 chạm</small>
+                    </span>
+                    <span className="t-task-pill">{linkedClasses.length} lớp</span>
+                  </button>
                 </div>
-                <span className="t-kpi-link">
-                  Danh sách <IcoChevronRight size={13} />
-                </span>
               </div>
-              <span className="t-kpi-num" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
-                {atRiskStudents.length}
-              </span>
-              <span className="t-kpi-label" style={{ color: atRiskStudents.length > 0 ? '#dc2626' : undefined }}>
-                Học sinh cần kèm phụ đạo
-              </span>
-              <div className="t-kpi-meta">
-                <span>{atRiskStudents.length > 0 ? `${atRiskStudents.length} em dưới 5.0 điểm` : 'Tất cả đạt chuẩn'}</span>
-                <span className={`t-kpi-trend-pill ${atRiskStudents.length > 0 ? 'warn' : 'ok'}`}>
-                  {atRiskStudents.length > 0 ? 'Cần kèm cặp' : 'Tốt'}
-                </span>
+
+              <TeacherAgendaStrip
+                liveCount={liveSessions.length}
+                classesCount={classes.length + linkedClasses.length}
+                atRiskCount={atRiskStudents.length}
+                onGo={goSection}
+              />
+
+              {/* BẢNG PHÍM TẮT THAO TÁC NHANH (BỔ SUNG KHOẢNG TRỐNG BENTO PHẢI) */}
+              <div className="t-action-dock-card">
+                <div className="t-action-dock-head">
+                  <h3>Thao tác nhanh &amp; Công cụ</h3>
+                  <span className="t-badge-count">8 phím tắt</span>
+                </div>
+                <div className="t-action-dock-grid">
+                  <button
+                    type="button"
+                    className="t-action-dock-tile is-primary"
+                    onClick={() => openNewExam({ initialTab: 'ai' })}
+                  >
+                    <span className="t-action-dock-ico"><ElecFlaskBrandSvg size={16} variant="gradient" /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Tạo đề bằng AI</strong>
+                      <small>AI Studio 3 phần</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-slate"
+                    onClick={() => openNewExam({ initialTab: 'manual' })}
+                  >
+                    <span className="t-action-dock-ico"><IcoPlus size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Tạo đề mới (N)</strong>
+                      <small>Soạn đề thủ công</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-blue"
+                    onClick={() => openNewExam({ initialTab: 'file' })}
+                  >
+                    <span className="t-action-dock-ico"><IcoFileDoc size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Nhập từ Word</strong>
+                      <small>File .docx có sẵn</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-indigo"
+                    onClick={() => goSection('exams')}
+                  >
+                    <span className="t-action-dock-ico"><IcoMonitor size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Mở phòng thi</strong>
+                      <small>Chọn đề phát LIVE</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`t-action-dock-tile ${liveSessions.length > 0 ? 'tone-emerald is-live' : 'tone-emerald'}`}
+                    onClick={() => goSection('sessions')}
+                  >
+                    <span className="t-action-dock-ico"><IcoVideo size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Phòng thi trực tuyến</strong>
+                      <small>{liveSessions.length > 0 ? `${liveSessions.length} phòng đang mở` : 'Giám sát phòng thi'}</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-amber"
+                    onClick={() => goSection('paper')}
+                  >
+                    <span className="t-action-dock-ico"><IcoCamera size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Chấm phiếu A4</strong>
+                      <small>Quét OMR tự động</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-violet"
+                    onClick={() => { goSection('classes'); setShowCreateClass(true); }}
+                  >
+                    <span className="t-action-dock-ico"><IcoSchool size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Tạo lớp mới</strong>
+                      <small>Mở lớp chủ nhiệm</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-teal"
+                    onClick={() => goSection('analytics')}
+                  >
+                    <span className="t-action-dock-ico"><IcoChart size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Số liệu &amp; Excel</strong>
+                      <small>Phổ điểm · vnEdu</small>
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2578,7 +3058,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   type="button"
                   className="vt-btn sm"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                  onClick={() => goSection('link')}
+                  onClick={() => { goSection('classes'); setClassSectionTab('linked'); }}
                 >
                   <IcoKey size={14} />
                   <span>Nhận lớp bộ môn</span>
@@ -2610,14 +3090,16 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const classExams = exams.filter((e) => e.classId === c.id);
                   const members = c.members || [];
                   const membersCount = members.length;
+                  const readyRatio = exams.length > 0 ? Math.min(100, Math.max(12, Math.round((classExams.length / Math.max(1, exams.length)) * 100))) : 25;
                   return (
                     <div
                       key={c.id}
                       className={`t-folder-card ${tint}`}
                       onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
                     >
+                      <SubjectWatermarkSvg index={idx} className="t-folder-watermark" />
                       <div className="t-folder-top">
-                        <span className="t-role-badge homeroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span className="t-role-badge homeroom">
                           <IcoSchool size={12} /> Chủ nhiệm
                         </span>
                         <span
@@ -2629,24 +3111,41 @@ export default function TeacherDashboard({ onExit } = {}) {
                         </span>
                       </div>
 
-                      <h3 className="t-folder-name">{c.name}</h3>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)', display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                        <IcoBook size={12} /> {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''} · <b>{classExams.length}</b> đề
-                      </span>
+                      <div className="t-folder-body">
+                        <h3 className="t-folder-name">{c.name}</h3>
+                        <span className="t-folder-meta">
+                          <IcoBook size={12} /> {c.subject || 'Đa môn'} {c.grade ? `· Khối ${c.grade}` : ''} · <b>{classExams.length}</b> đề
+                        </span>
+                        <div className="t-folder-progress-wrap">
+                          <div className="t-folder-progress-track">
+                            <div className="t-folder-progress-fill" style={{ width: `${readyRatio}%` }} />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t-ink-2)' }}>{membersCount} HS</span>
+                        </div>
+                      </div>
 
                       <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
                         <FloeAvatarStack count={membersCount} names={members.map((m) => m.name || m.studentName || '')} />
-                        <button
-                          type="button"
-                          className="vt-btn sm primary"
-                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                          onClick={() => {
-                            setSelectedClass(c);
-                            goSection('create');
-                          }}
-                        >
-                          <IcoSparkles size={12} /> Giao đề →
-                        </button>
+                        <div className="t-folder-foot-actions">
+                          <button
+                            type="button"
+                            className="vt-btn sm"
+                            onClick={() => {
+                              setSelectedClass(c);
+                              goSection('create');
+                            }}
+                          >
+                            <IcoSparkles size={12} /> Giao đề
+                          </button>
+                          <button
+                            type="button"
+                            className="t-folder-arrow-btn"
+                            aria-label={`Mở lớp ${c.name}`}
+                            onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                          >
+                            <IcoArrowRight size={15} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2657,37 +3156,50 @@ export default function TeacherDashboard({ onExit } = {}) {
                   const tint = tints[(idx + 2) % tints.length];
                   const classExams = exams.filter((e) => e.classId === c.id);
                   const members = c.members || [];
+                  const linkedCount = members.length;
                   return (
                     <div
                       key={c.id}
                       className={`t-folder-card ${tint}`}
                       onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
                     >
+                      <SubjectWatermarkSvg index={idx + 2} className="t-folder-watermark" />
                       <div className="t-folder-top">
-                        <span className="t-role-badge subject" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span className="t-role-badge subject">
                           <IcoBook size={12} /> Bộ môn: {c.subject || primarySubject}
                         </span>
                         <span className="t-folder-code">CN: {c.ownerName || c.teacherName || 'Đồng nghiệp'}</span>
                       </div>
 
-                      <h3 className="t-folder-name">{c.name}</h3>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--t-ink-muted)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        <IcoGradCap size={12} /> Môn {c.subject || primarySubject} · <b>{classExams.length}</b> đề
-                      </span>
+                      <div className="t-folder-body">
+                        <h3 className="t-folder-name">{c.name}</h3>
+                        <span className="t-folder-meta">
+                          <IcoGradCap size={12} /> Môn {c.subject || primarySubject} · <b>{classExams.length}</b> đề đã giao
+                        </span>
+                      </div>
 
                       <div className="t-folder-foot" onClick={(e) => e.stopPropagation()}>
-                        <FloeAvatarStack count={members.length} names={members.map((m) => m.name || m.studentName || '')} />
-                        <button
-                          type="button"
-                          className="vt-btn sm primary"
-                          style={{ padding: '0.28rem 0.75rem', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                          onClick={() => {
-                            setSelectedClass(c);
-                            goSection('create');
-                          }}
-                        >
-                          <IcoSparkles size={12} /> Giao đề →
-                        </button>
+                        <FloeAvatarStack count={linkedCount} names={members.map((m) => m.name || m.studentName || '')} />
+                        <div className="t-folder-foot-actions">
+                          <button
+                            type="button"
+                            className="vt-btn sm"
+                            onClick={() => {
+                              setSelectedClass(c);
+                              goSection('create');
+                            }}
+                          >
+                            <IcoSparkles size={12} /> Giao đề
+                          </button>
+                          <button
+                            type="button"
+                            className="t-folder-arrow-btn"
+                            aria-label={`Mở lớp ${c.name}`}
+                            onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                          >
+                            <IcoArrowRight size={15} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2765,75 +3277,79 @@ export default function TeacherDashboard({ onExit } = {}) {
           <div className="t-split-grid">
             {/* CỘT 1: PHỔ ĐIỂM */}
             <div className="t-split-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="t-split-card-head">
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <IcoChart size={18} style={{ color: 'var(--t-accent)' }} />
+                  <h3 className="t-split-card-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    <IcoChart size={17} style={{ color: 'var(--t-accent)' }} />
                     Phổ điểm học lực chuẩn Bộ GD&amp;ĐT
                   </h3>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                  <p className="t-split-card-sub">
                     Thang điểm 10 · {subsInRange.length} bài nộp ({range === 'all' ? 'toàn bộ thời gian' : `${range} ngày qua`})
                   </p>
                 </div>
-                <button type="button" className="vt-btn sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => goSection('analytics')}>
+                <button type="button" className="t-split-more-btn" onClick={() => goSection('analytics')}>
                   <span>Chi tiết</span>
                   <IcoChevronRight size={13} />
                 </button>
               </div>
 
-              <div className="ta-score-distribution">
-                <div className="ta-score-bar-track">
-                  {scoreDistOverview.pcts.gioi > 0 && (
-                    <div className="ta-score-seg gioi" style={{ width: `${scoreDistOverview.pcts.gioi}%` }} title={`Giỏi: ${scoreDistOverview.gioi} HS (${scoreDistOverview.pcts.gioi}%)`} />
-                  )}
-                  {scoreDistOverview.pcts.kha > 0 && (
-                    <div className="ta-score-seg kha" style={{ width: `${scoreDistOverview.pcts.kha}%` }} title={`Khá: ${scoreDistOverview.kha} HS (${scoreDistOverview.pcts.kha}%)`} />
-                  )}
-                  {scoreDistOverview.pcts.tb > 0 && (
-                    <div className="ta-score-seg tb" style={{ width: `${scoreDistOverview.pcts.tb}%` }} title={`Trung bình: ${scoreDistOverview.tb} HS (${scoreDistOverview.pcts.tb}%)`} />
-                  )}
-                  {scoreDistOverview.pcts.yeu > 0 && (
-                    <div className="ta-score-seg yeu" style={{ width: `${scoreDistOverview.pcts.yeu}%` }} title={`Yếu: ${scoreDistOverview.yeu} HS (${scoreDistOverview.pcts.yeu}%)`} />
-                  )}
-                </div>
+              <div className="t-donut-layout">
+                <DonutDistributionSvg dist={scoreDistOverview} total={subsInRange.length} />
 
-                <div className="ta-score-cards">
-                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
-                    <div className="ta-score-card-top">
-                      <span className="ta-score-dot gioi" />
-                      <span>Giỏi (8 - 10)</span>
-                    </div>
-                    <span className="ta-score-card-val">{scoreDistOverview.gioi} <small style={{ fontSize: '0.72rem' }}>em</small></span>
-                    <span className="ta-score-card-pct">{scoreDistOverview.pcts.gioi}%</span>
+                <div className="ta-score-distribution">
+                  <div className="ta-score-bar-track">
+                    {scoreDistOverview.pcts.gioi > 0 && (
+                      <div className="ta-score-seg gioi" style={{ width: `${scoreDistOverview.pcts.gioi}%` }} title={`Giỏi: ${scoreDistOverview.gioi} HS (${scoreDistOverview.pcts.gioi}%)`} />
+                    )}
+                    {scoreDistOverview.pcts.kha > 0 && (
+                      <div className="ta-score-seg kha" style={{ width: `${scoreDistOverview.pcts.kha}%` }} title={`Khá: ${scoreDistOverview.kha} HS (${scoreDistOverview.pcts.kha}%)`} />
+                    )}
+                    {scoreDistOverview.pcts.tb > 0 && (
+                      <div className="ta-score-seg tb" style={{ width: `${scoreDistOverview.pcts.tb}%` }} title={`Trung bình: ${scoreDistOverview.tb} HS (${scoreDistOverview.pcts.tb}%)`} />
+                    )}
+                    {scoreDistOverview.pcts.yeu > 0 && (
+                      <div className="ta-score-seg yeu" style={{ width: `${scoreDistOverview.pcts.yeu}%` }} title={`Yếu: ${scoreDistOverview.yeu} HS (${scoreDistOverview.pcts.yeu}%)`} />
+                    )}
                   </div>
 
-                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
-                    <div className="ta-score-card-top">
-                      <span className="ta-score-dot kha" />
-                      <span>Khá (6.5 - 7.9)</span>
+                  <div className="ta-score-cards">
+                    <div className="ta-score-card" onClick={() => goSection('analytics')}>
+                      <div className="ta-score-card-top">
+                        <span className="ta-score-dot gioi" />
+                        <span>Giỏi (8 - 10)</span>
+                      </div>
+                      <span className="ta-score-card-val">{scoreDistOverview.gioi} <small style={{ fontSize: '0.72rem' }}>em</small></span>
+                      <span className="ta-score-card-pct">{scoreDistOverview.pcts.gioi}%</span>
                     </div>
-                    <span className="ta-score-card-val">{scoreDistOverview.kha} <small style={{ fontSize: '0.72rem' }}>em</small></span>
-                    <span className="ta-score-card-pct">{scoreDistOverview.pcts.kha}%</span>
-                  </div>
 
-                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
-                    <div className="ta-score-card-top">
-                      <span className="ta-score-dot tb" />
-                      <span>TB (5 - 6.4)</span>
+                    <div className="ta-score-card" onClick={() => goSection('analytics')}>
+                      <div className="ta-score-card-top">
+                        <span className="ta-score-dot kha" />
+                        <span>Khá (6.5 - 7.9)</span>
+                      </div>
+                      <span className="ta-score-card-val">{scoreDistOverview.kha} <small style={{ fontSize: '0.72rem' }}>em</small></span>
+                      <span className="ta-score-card-pct">{scoreDistOverview.pcts.kha}%</span>
                     </div>
-                    <span className="ta-score-card-val">{scoreDistOverview.tb} <small style={{ fontSize: '0.72rem' }}>em</small></span>
-                    <span className="ta-score-card-pct">{scoreDistOverview.pcts.tb}%</span>
-                  </div>
 
-                  <div className="ta-score-card" onClick={() => goSection('analytics')}>
-                    <div className="ta-score-card-top">
-                      <span className="ta-score-dot yeu" />
-                      <span>Yếu (&lt; 5.0)</span>
+                    <div className="ta-score-card" onClick={() => goSection('analytics')}>
+                      <div className="ta-score-card-top">
+                        <span className="ta-score-dot tb" />
+                        <span>TB (5 - 6.4)</span>
+                      </div>
+                      <span className="ta-score-card-val">{scoreDistOverview.tb} <small style={{ fontSize: '0.72rem' }}>em</small></span>
+                      <span className="ta-score-card-pct">{scoreDistOverview.pcts.tb}%</span>
                     </div>
-                    <span className="ta-score-card-val" style={{ color: scoreDistOverview.yeu > 0 ? '#ef4444' : undefined }}>
-                      {scoreDistOverview.yeu} <small style={{ fontSize: '0.72rem' }}>em</small>
-                    </span>
-                    <span className="ta-score-card-pct">{scoreDistOverview.pcts.yeu}%</span>
+
+                    <div className="ta-score-card" onClick={() => goSection('analytics')}>
+                      <div className="ta-score-card-top">
+                        <span className="ta-score-dot yeu" />
+                        <span>Yếu (&lt; 5.0)</span>
+                      </div>
+                      <span className="ta-score-card-val" style={{ color: scoreDistOverview.yeu > 0 ? 'var(--t-bad)' : undefined }}>
+                        {scoreDistOverview.yeu} <small style={{ fontSize: '0.72rem' }}>em</small>
+                      </span>
+                      <span className="ta-score-card-pct">{scoreDistOverview.pcts.yeu}%</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2841,20 +3357,47 @@ export default function TeacherDashboard({ onExit } = {}) {
 
             {/* CỘT 2: TOP CÂU HỎI SAI */}
             <div className="t-split-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="t-split-card-head">
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--t-ink)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <IcoAlert size={18} style={{ color: '#ef4444' }} />
+                  <h3 className="t-split-card-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    <IcoAlert size={17} style={{ color: 'var(--t-bad)' }} />
                     Câu hỏi học sinh sai nhiều nhất
                   </h3>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--t-ink-muted)' }}>
+                  <p className="t-split-card-sub">
                     Lỗ hổng kiến thức cần chữa bài trên lớp
                   </p>
                 </div>
-                <button type="button" className="vt-btn sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => goSection('analytics')}>
-                  <span>Xem tất cả</span>
-                  <IcoChevronRight size={13} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {(classInsights?.hardest?.length || 0) > 0 && (
+                    <button
+                      type="button"
+                      className="t-split-more-btn"
+                      style={{
+                        background: 'var(--t-indigo-soft, rgba(79,70,229,.12))',
+                        color: 'var(--t-indigo, #4f46e5)',
+                        borderColor: 'rgba(79,70,229,.28)',
+                        fontWeight: 700,
+                      }}
+                      title="Mở AI Studio tạo đề phụ đạo nhắm đúng các câu hay sai nhất"
+                      onClick={() => openNewExam({
+                        classId: classes[0]?.id || linkedClasses[0]?.id || '',
+                        subject: primarySubject || 'Hóa học',
+                        title: 'Ôn tập sửa lỗi hay sai nhiều',
+                        topics: (classInsights?.hardest || []).map((q) => q.topic).filter(Boolean).slice(0, 3),
+                        count: 10,
+                        gradeType: 'tx',
+                        hint: 'Tập trung khắc phục các câu hỏi có tỉ lệ sai cao nhất trong lớp.',
+                      })}
+                    >
+                      <ElecFlaskBrandSvg size={13} variant="duo" />
+                      <span>Tạo đề ôn AI</span>
+                    </button>
+                  )}
+                  <button type="button" className="t-split-more-btn" onClick={() => goSection('analytics')}>
+                    <span>Xem tất cả</span>
+                    <IcoChevronRight size={13} />
+                  </button>
+                </div>
               </div>
 
               {(!classInsights?.hardest || classInsights.hardest.length === 0) ? (
@@ -2862,34 +3405,28 @@ export default function TeacherDashboard({ onExit } = {}) {
                   Chưa có câu hỏi nào bị sai nhiều. Lớp làm bài rất tốt!
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <div className="t-hardest-list">
                   {classInsights.hardest.slice(0, 3).map((q, idx) => {
                     const rawTitle = q.questionText || q.topic || `Câu hỏi #${idx + 1}`;
                     const cleanTitle = rawTitle.replace(/^(ĐỀ[-_\s]KIỂM[-_\s]TRA[^\n]+?)(Câu\s*\d+|Bài\s*\d+|$)/i, '$2').trim() || rawTitle;
+                    const wrongPct = Math.max(0, Math.min(100, 100 - (q.pctCorrect ?? 0)));
+                    const okCount = q.correctCount ?? 0;
+                    const totalCount = q.totalAttempts ?? 0;
                     return (
-                      <div key={idx} style={{
-                        padding: '0.75rem 0.95rem',
-                        borderRadius: 12,
-                        background: 'var(--t-surface-2)',
-                        border: '1px solid var(--t-border)',
-                        display: 'flex',
-                        gap: '0.75rem',
-                        alignItems: 'center',
-                      }}>
-                        <span style={{
-                          padding: '4px 8px', borderRadius: 8, fontSize: '0.72rem', fontWeight: 700,
-                          background: '#fee2e2', color: '#b91c1c', flexShrink: 0,
-                        }}>
-                          {100 - (q.pctCorrect || 0)}% sai
-                        </span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: '0.84rem', fontWeight: 600, color: 'var(--t-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={rawTitle}>
-                            {cleanTitle}
-                          </p>
-                          <span style={{ fontSize: '0.74rem', color: 'var(--t-ink-muted)' }}>
-                            {q.examTitle ? `${q.examTitle.slice(0, 32)}... · ` : ''}{q.correctCount}/{q.totalAttempts} em đúng
-                          </span>
+                      <div key={idx} className="t-hardest-item">
+                        <div style={{ flexShrink: 0, color: 'var(--t-ink)' }}>
+                          <MiniRingSvg pct={wrongPct} color="#ef4444" size={40} />
                         </div>
+                        <div className="t-hardest-info">
+                          <div className="t-hardest-title" title={rawTitle}>
+                            {cleanTitle}
+                          </div>
+                          <div className="t-hardest-sub">
+                            {q.examTitle ? `${q.examTitle.slice(0, 28)}... · ` : ''}
+                            {totalCount > 0 ? `${okCount}/${totalCount} em đúng` : `${wrongPct}% tỷ lệ sai`}
+                          </div>
+                        </div>
+                        <span className="t-hardest-stat">{wrongPct}% sai</span>
                       </div>
                     );
                   })}
@@ -2943,10 +3480,6 @@ export default function TeacherDashboard({ onExit } = {}) {
         </div>
       )}
 
-      {/* ============================================================
-          TRUNG TÂM LIÊN KẾT LỚP & GIAO ĐỀ LỚP KHÁC (HỢP NHẤT)
-         ============================================================ */}
-      {section === 'link' && renderUnifiedLinkedClassesHub()}
 
       {section === 'analytics' && (
         <ClassAnalytics
@@ -2955,6 +3488,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           submissionsMap={submissionsMap}
           loading={loading}
           onRetry={refresh}
+          onCreateRemedialExam={(preset) => openNewExam(preset)}
         />
       )}
 
@@ -2978,6 +3512,28 @@ export default function TeacherDashboard({ onExit } = {}) {
 
         return (
           <>
+            {/* PHÂN ĐỊNH VAI TRÒ CHỦ NHIỆM vs BỘ MÔN */}
+            <div className="t-role-guide-banner">
+              <div className="t-role-guide-item">
+                <div className="t-role-guide-ico gvcn">
+                  <IcoSchool size={18} />
+                </div>
+                <div>
+                  <strong>Giáo viên Chủ nhiệm (GVCN)</strong>
+                  <p>Quản lý danh sách học sinh gốc, duyệt tham gia, tạo mã mời đồng nghiệp dạy bộ môn và xem phổ điểm toàn diện.</p>
+                </div>
+              </div>
+              <div className="t-role-guide-item">
+                <div className="t-role-guide-ico gvbm">
+                  <IcoBook size={18} />
+                </div>
+                <div>
+                  <strong>Giáo viên Bộ môn (GVBM)</strong>
+                  <p>Nhận lớp qua mã liên kết của GVCN, giao đề kiểm tra riêng theo phân môn và theo dõi điểm bộ môn phụ trách.</p>
+                </div>
+              </div>
+            </div>
+
             {/* TOOLBAR CHUYỂN ĐỔI VAI TRÒ CHỦ NHIỆM - BỘ MÔN */}
             <div className="t-classes-toolbar">
               <div className="t-classes-tabs" role="tablist">
@@ -2988,7 +3544,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   className={`t-classes-tab ${classSectionTab === 'my' ? 'active' : ''}`}
                   onClick={() => setClassSectionTab('my')}
                 >
-                  Lớp chủ nhiệm ({classes.length})
+                  <IcoSchool size={14} /> Lớp chủ nhiệm ({classes.length})
                 </button>
                 <button
                   type="button"
@@ -2997,14 +3553,14 @@ export default function TeacherDashboard({ onExit } = {}) {
                   className={`t-classes-tab ${classSectionTab === 'linked' ? 'active' : ''}`}
                   onClick={() => setClassSectionTab('linked')}
                 >
-                  Lớp dạy bộ môn ({linkedClasses.length})
+                  <IcoBook size={14} /> Lớp dạy bộ môn ({linkedClasses.length})
                 </button>
               </div>
 
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 {classSectionTab === 'my' ? (
                   <button type="button" className="vt-btn sm primary" onClick={() => setShowCreateClass(true)}>
-                    + Tạo lớp mới (N)
+                    <IcoPlus size={14} /> Tạo lớp mới (N)
                   </button>
                 ) : (
                   <button
@@ -3015,7 +3571,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                       if (el) el.focus();
                     }}
                   >
-                    Nhập mã nhận lớp
+                    <IcoKey size={14} /> Nhập mã nhận lớp
                   </button>
                 )}
               </div>
@@ -3107,7 +3663,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     type="button"
                     className="t-folder-card"
                     style={{
-                      border: '2px dashed var(--t-border)',
+                      border: '2px dashed var(--t-border-strong)',
                       background: 'var(--t-surface-1)',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -3116,9 +3672,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                     }}
                     onClick={() => setShowCreateClass(true)}
                   >
-                    <span style={{ fontSize: '2rem', color: 'var(--t-accent)', lineHeight: 1 }}>+</span>
+                    <div className="t-kpi-icon-box" style={{ width: 42, height: 42 }}>
+                      <IcoPlus size={20} />
+                    </div>
                     <b style={{ color: 'var(--t-ink)', fontSize: '0.95rem' }}>Tạo lớp mới (Phím N)</b>
-                    <small style={{ color: 'var(--t-ink-muted)' }}>Cấp mã lớp cho học sinh tự tham gia</small>
+                    <small style={{ color: 'var(--t-ink-3)' }}>Cấp mã lớp cho học sinh tự tham gia</small>
                   </button>
 
                   {filteredClasses.map((cls, idx) => {
@@ -3133,12 +3691,15 @@ export default function TeacherDashboard({ onExit } = {}) {
                         className={`t-folder-card ${tint}`}
                         onClick={() => { setSelectedClass(cls); setDetailTab('overview'); }}
                       >
+                        <SubjectWatermarkSvg index={idx} className="t-folder-watermark" />
                         <div className="t-folder-top">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            <span className="t-role-badge homeroom">Chủ nhiệm</span>
+                            <span className="t-role-badge homeroom">
+                              <IcoSchool size={12} /> Chủ nhiệm
+                            </span>
                             {pendingCount > 0 && (
                               <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#b45309', background: '#fef3c7', padding: '0.15rem 0.5rem', borderRadius: 999 }}>
-                                ● {pendingCount} chờ duyệt
+                                {pendingCount} chờ duyệt
                               </span>
                             )}
                           </div>
@@ -3159,7 +3720,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                               onClick={() => setShareClass(cls)}
                               title="Chia sẻ mã QR"
                             >
-                              QR
+                              <IcoQrCode size={15} />
                             </button>
                           </div>
                         </div>
@@ -3178,9 +3739,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                               gap: '.45rem',
                               padding: '.45rem .75rem',
                               borderRadius: 12,
-                              background: '#fffbeb',
-                              border: '1px solid #fde68a',
-                              color: '#b45309',
+                              background: 'rgba(245, 158, 11, 0.13)',
+                              border: '1px solid rgba(245, 158, 11, 0.34)',
+                              color: 'var(--t-warn, #d97706)',
                               fontSize: '0.76rem',
                               fontWeight: 700,
                             }}
@@ -3233,7 +3794,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                             <button
                               type="button"
                               className="vt-btn sm primary"
-                              onClick={() => { setSelectedClass(cls); goSection('create'); }}
+                              onClick={() => { setSelectedClass(cls); openNewExam({ classId: cls.id }); }}
                               style={{ padding: '0.25rem 0.65rem', fontSize: '0.72rem' }}
                             >
                               Giao đề →
@@ -3513,12 +4074,85 @@ export default function TeacherDashboard({ onExit } = {}) {
             return (b.startedAtMs || 0) - (a.startedAtMs || 0);
           });
 
+        const totalSubmittedAll = sessions.reduce((sum, s) => sum + (s.stats?.submitted || 0), 0);
+        const totalViolAll = sessions.reduce((sum, s) => sum + (s.stats?.violationCount || 0), 0);
+
         return (
           <>
             {renderAssessmentHubNav()}
+
+            {/* TRUNG TÂM ĐIỀU HÀNH KHẢO THÍ & PHÒNG GIÁM SÁT AI */}
+            <section className="t-exam-cmd-hero" aria-label="Trung tâm Điều hành Khảo thí AI">
+              <div className="t-exam-cmd-left">
+                <div className="t-exam-cmd-mascot-box">
+                  <ElecMascot
+                    mood={liveSessions.length > 0 ? 'cool' : 'fighting'}
+                    size={68}
+                    alt="ELEC AI Giám thị"
+                  />
+                </div>
+                <div className="t-exam-cmd-copy">
+                  <div className="t-exam-cmd-eyebrow">
+                    <ElecFlaskBrandSvg size={15} variant="gradient" />
+                    <span>ELEC AI Proctor Studio</span>
+                    {liveSessions.length > 0 ? (
+                      <span className="t-exam-cmd-live-pill">
+                        <span className="t-exam-cmd-pulse-dot" /> Đang giám sát {liveSessions.length} phòng LIVE
+                      </span>
+                    ) : (
+                      <span className="t-exam-cmd-ready-pill">Sẵn sàng mở phòng thi</span>
+                    )}
+                  </div>
+                  <h2 className="t-exam-cmd-title">Trung tâm Khảo thí &amp; Phòng Giám sát AI</h2>
+                  <p className="t-exam-cmd-sub">
+                    Theo dõi tiến độ làm bài theo thời gian thực, phát hiện chuyển tab/bất thường bằng AI và can thiệp kịp thời.
+                  </p>
+                </div>
+              </div>
+
+              <div className="t-exam-cmd-right">
+                <div className="t-exam-cmd-stats">
+                  <div className="t-exam-cmd-stat">
+                    <strong>{liveSessions.length}</strong>
+                    <span>Phòng LIVE</span>
+                  </div>
+                  <div className="t-exam-cmd-stat">
+                    <strong>{roomStudents}</strong>
+                    <span>Đang làm bài</span>
+                  </div>
+                  <div className="t-exam-cmd-stat">
+                    <strong>{totalSubmittedAll}</strong>
+                    <span>Lượt đã nộp</span>
+                  </div>
+                  <div className={`t-exam-cmd-stat ${totalViolAll > 0 ? 'is-alert' : ''}`}>
+                    <strong>{totalViolAll}</strong>
+                    <span>Cảnh báo AI</span>
+                  </div>
+                </div>
+                <div className="t-exam-cmd-actions">
+                  {liveSessions.length > 0 && (
+                    <button
+                      type="button"
+                      className="vt-btn sm primary"
+                      onClick={() => setViewingSessionId(liveSessions[0].id)}
+                    >
+                      <IcoMonitor size={14} /> Vào phòng Giám sát LIVE
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="vt-btn sm"
+                    onClick={() => goSection('exams')}
+                  >
+                    <IcoPlus size={14} /> Mở phòng thi mới
+                  </button>
+                </div>
+              </div>
+            </section>
+
             <div className="vt-range" style={{ flexWrap: 'wrap', gap: '0.6rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0 }}>Phiên thi</h2>
+                <h2 style={{ margin: 0 }}>Danh sách Phiên thi ({list.length})</h2>
                 {roomStudents > 0 && (
                   <span style={{ padding: '0.28rem 0.7rem', borderRadius: 999, background: 'rgba(16,185,129,0.15)', color: '#059669', fontSize: '0.76rem', fontWeight: 800 }}>
                     ● {roomStudents} học sinh đang làm bài trực tiếp
@@ -3637,6 +4271,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                               ● {doingNow} học sinh đang làm bài
                             </div>
                           )}
+                          {viol > 0 && (
+                            <div className="t-session-ai-flag">
+                              <ElecFlaskBrandSvg size={12} variant="current" /> AI ghi nhận {viol} tín hiệu cần rà soát
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -3690,7 +4329,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải bộ mô phỏng...</p></div>}>
               <TeacherSimulatorHub
                 teacherExams={exams}
-                classes={classes}
+                classes={allTeacherClasses}
                 initialImportedExam={simulatorInitialExam}
                 onImportPreset={async (presetData) => {
                   try {
@@ -3757,7 +4396,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           <ErrorBoundary>
             <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
               <QuestionBank
-                classes={classes}
+                classes={allTeacherClasses}
                 onSoftExamCreated={(exam) => {
                   if (exam?.id) {
                     setExams((prev) => [exam, ...prev.filter((x) => x.id !== exam.id)]);
@@ -3779,7 +4418,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           {renderAssessmentHubNav()}
           <ErrorBoundary>
             <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải chấm phiếu A4...</p></div>}>
-              <PaperGrading classes={classes} exams={exams} />
+              <PaperGrading classes={allTeacherClasses} exams={exams} />
             </Suspense>
           </ErrorBoundary>
         </>
@@ -3794,10 +4433,20 @@ export default function TeacherDashboard({ onExit } = {}) {
             <TeacherProfileSection
               user={user}
               classes={classes}
+              linkedClasses={linkedClasses}
+              sessions={sessions}
               exams={exams}
               submissionsMap={submissionsMap}
-              onNavigate={(sec, cls) => {
-                if (cls) setSelectedClass(cls);
+              onNavigate={(sec, arg) => {
+                if (sec === 'create') {
+                  openNewExam(arg && typeof arg === 'object' ? arg : null);
+                  return;
+                }
+                if (sec === 'classes' && arg?.id) {
+                  const isLinked = (linkedClasses || []).some((lc) => lc.id === arg.id);
+                  setClassSectionTab(isLinked ? 'linked' : 'my');
+                  setSelectedClass(arg);
+                }
                 goSection(sec);
               }}
               onExamImported={(exam) => {
@@ -4344,23 +4993,27 @@ export default function TeacherDashboard({ onExit } = {}) {
                   >
                     <IcoFileDoc size={15} /> Mở trong Word Office 365
                   </button>
-                  <button
-                    type="button"
-                    className="vt-edm-tool-btn"
-                    onClick={() => { setDetailExamModal(null); setEditingExam(ex); }}
-                    title="Chỉnh sửa nội dung câu hỏi, đáp án, cấu hình thi"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
-                    Chỉnh sửa đề
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-edm-tool-btn"
-                    onClick={() => { setDetailExamModal(null); openScheduleModal(ex); }}
-                    title="Đặt lịch giờ mở đề và đóng đề tự động"
-                  >
-                    <IcoCalendar size={15} /> Đặt lịch mở/đóng
-                  </button>
+                  {(!ex.teacherId || ex.teacherId === user?.uid) && (
+                    <>
+                      <button
+                        type="button"
+                        className="vt-edm-tool-btn"
+                        onClick={() => { setDetailExamModal(null); setEditingExam(ex); }}
+                        title="Chỉnh sửa nội dung câu hỏi, đáp án, cấu hình thi"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
+                        Chỉnh sửa đề
+                      </button>
+                      <button
+                        type="button"
+                        className="vt-edm-tool-btn"
+                        onClick={() => { setDetailExamModal(null); openScheduleModal(ex); }}
+                        title="Đặt lịch giờ mở đề và đóng đề tự động"
+                      >
+                        <IcoCalendar size={15} /> Đặt lịch mở/đóng
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     className="vt-edm-tool-btn"
@@ -4396,19 +5049,21 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="vt-edm-tool-btn"
-                    onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất CSV', 'error'))}
-                    title="Xuất bảng điểm ra file CSV"
+                    onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất Excel', 'error'))}
+                    title="Xuất bảng điểm ra file Excel (.xlsx)"
                   >
-                    <IcoDownload size={15} /> Xuất điểm CSV
+                    <IcoDownload size={15} /> Xuất Excel (.xlsx)
                   </button>
-                  <button
-                    type="button"
-                    className="vt-edm-tool-btn danger"
-                    onClick={() => { setDetailExamModal(null); handleDeleteExam(ex); }}
-                    title="Xóa vĩnh viễn đề thi này"
-                  >
-                    <IcoTrash size={15} /> Xóa đề thi
-                  </button>
+                  {(!ex.teacherId || ex.teacherId === user?.uid) && (
+                    <button
+                      type="button"
+                      className="vt-edm-tool-btn danger"
+                      onClick={() => { setDetailExamModal(null); handleDeleteExam(ex); }}
+                      title="Xóa vĩnh viễn đề thi này"
+                    >
+                      <IcoTrash size={15} /> Xóa đề thi
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -4615,22 +5270,38 @@ export default function TeacherDashboard({ onExit } = {}) {
       {showClassPicker && (
         <Modal title="Tạo đề cho lớp nào?" size="sm" onClose={() => setShowClassPicker(false)}>
           <ul className="vt-group picker">
-            {classes.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowClassPicker(false);
-                    setSelectedClass(c);
-                    goSection('create');
-                  }}
-                >
-                  <MemoAvatar name={c.name} size={44} />
-                  <div><b>{c.name}</b><small>{c.members?.length || 0} học sinh</small></div>
-                  <IcoChevronRight size={14} />
-                </button>
-              </li>
-            ))}
+            {[...classes, ...linkedClasses].map((c) => {
+              const isLinkedCls = Boolean(c._linked) || (!classes.some((o) => o.id === c.id) && linkedClasses.some((l) => l.id === c.id));
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowClassPicker(false);
+                      if (isLinkedCls) {
+                        setSelectedClass(null);
+                        setExtClass(c);
+                        setExtCreate(true);
+                      } else {
+                        setExtClass(null);
+                        setExtCreate(false);
+                        setSelectedClass(c);
+                      }
+                      goSection('create');
+                    }}
+                  >
+                    <MemoAvatar name={c.name} size={44} />
+                    <div>
+                      <b>{c.name}</b>
+                      <small>
+                        {isLinkedCls ? `Lớp Bộ môn${c._mySubject ? ` · ${c._mySubject}` : ''}` : `${c.members?.length || 0} học sinh`}
+                      </small>
+                    </div>
+                    <IcoChevronRight size={14} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </Modal>
       )}
@@ -4737,13 +5408,14 @@ export default function TeacherDashboard({ onExit } = {}) {
       )}
 
       {/* ============ CHI TIẾT LỚP ============ */}
-      {selectedClass && !showExamCreate && section !== 'create' && (
+      {selectedClass && section !== 'create' && (
         <ClassDetailModal
           classInfo={selectedClass}
           initialTab={detailTab}
           exams={exams.filter((e) => e.classId === selectedClass.id)}
           onClose={() => { setSelectedClass(null); setDetailTab('overview'); }}
           onExportCsv={exportClassCsv}
+          onExportRoster={exportClassRosterCsv}
           onOpenExam={(examId) => {
             setSelectedClass(null);
             const ex = exams.find((e) => e.id === examId);
@@ -4763,21 +5435,6 @@ export default function TeacherDashboard({ onExit } = {}) {
           onApproveRetry={handleApproveRetry}
           onDenyRetry={handleDenyRetry}
           onToggleAllowance={handleToggleAllowance}
-        />
-      )}
-
-      {/* ============ MODAL TẠO ĐỀ CŨ ============ */}
-      {showExamCreate && selectedClass && (
-        <ExamCreate
-          classInfo={selectedClass}
-          onClose={() => { setShowExamCreate(false); setSelectedClass(null); }}
-          onCreated={async () => {
-            subsCacheRef.current = {};
-            await refresh();
-            setShowExamCreate(false);
-            setSelectedClass(null);
-            say('Đã tạo đề', 'success');
-          }}
         />
       )}
 
@@ -4828,52 +5485,6 @@ export default function TeacherDashboard({ onExit } = {}) {
         </Modal>
       )}
 
-      {noticeClass && (
-        <Modal title={`Ghim thông báo: ${noticeClass.name}`} size="sm" onClose={() => setNoticeClass(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '0.2rem 0' }}>
-            <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--mut)', lineHeight: 1.45 }}>
-              Thông báo này sẽ được ghim nổi bật ngay đầu trang "Lớp học của tôi" của toàn bộ học sinh trong lớp {noticeClass.name}.
-            </p>
-            <textarea
-              autoFocus
-              rows={4}
-              value={noticeDraft}
-              onChange={(e) => setNoticeDraft(e.target.value)}
-              placeholder="Ví dụ: Nhớ ôn tập chương Este - Lipit trước giờ kiểm tra thứ Năm nhé các em!"
-              style={{
-                width: '100%',
-                padding: '0.75rem 0.9rem',
-                borderRadius: 12,
-                border: '1px solid var(--line)',
-                background: 'var(--panel)',
-                color: 'var(--ink)',
-                font: '500 0.9rem var(--sans)',
-                resize: 'vertical',
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.4rem' }}>
-              {noticeClass.announcement?.text && (
-                <button
-                  type="button"
-                  className="vt-btn sm danger"
-                  onClick={() => { setNoticeDraft(''); setTimeout(handleSaveNotice, 0); }}
-                  disabled={noticeSaving}
-                >
-                  Gỡ thông báo
-                </button>
-              )}
-              <button type="button" className="vt-btn sm" onClick={() => setNoticeClass(null)} disabled={noticeSaving}>
-                Hủy
-              </button>
-              <button type="button" className="vt-btn sm primary" onClick={handleSaveNotice} disabled={noticeSaving}>
-                {noticeSaving ? 'Đang lưu…' : 'Ghim thông báo'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* ============ CONFIRM ============ */}
       <ConfirmDialog
         open={!!confirmState}
@@ -4906,7 +5517,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       {editingExam && (
         <ExamEditModal
           exam={editingExam}
-          classes={classes}
+          classes={[...classes, ...(linkedClasses || []).filter((lc) => !classes.some((mc) => mc.id === lc.id))]}
           onClose={() => setEditingExam(null)}
           onSaved={(updated) => {
             setExams((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
@@ -4931,7 +5542,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           { id: 'act-shuffle', group: 'Lệnh nhanh', title: 'Mở Mô phỏng & Đảo mã đề (4 bước)', sub: 'Đảo 2–8 mã đề, xem song song & in A4', run: () => goSection('simulator') },
           { id: 'act-bank', group: 'Lệnh nhanh', title: 'Mở Ngân hàng câu hỏi 3 vùng', sub: 'Tìm kiếm toàn văn, phát hiện câu trùng & AI giải chi tiết', run: () => goSection('bank') },
           { id: 'act-paper', group: 'Lệnh nhanh', title: 'Chấm phiếu trắc nghiệm A4 bằng Camera/Ảnh', sub: 'Quét phiếu OMR & kiểm tra ô nghi ngờ', run: () => goSection('paper') },
-          { id: 'act-export-csv', group: 'Lệnh nhanh', title: 'Xuất bảng điểm tổng hợp toàn bộ lớp (CSV)', sub: `${subsInRange.length} bài nộp trong khoảng đang chọn`, run: () => exportAllCsv() },
+          { id: 'act-export-csv', group: 'Lệnh nhanh', title: 'Xuất bảng điểm tổng hợp toàn bộ lớp (Excel .xlsx)', sub: `${subsInRange.length} bài nộp trong khoảng đang chọn`, run: () => exportAllCsv() },
           ...navItems.map((it) => ({
             id: `nav-${it.key}`,
             group: `Chuyển trang · ${it.group || 'Điều hướng'}`,
@@ -4944,14 +5555,17 @@ export default function TeacherDashboard({ onExit } = {}) {
           })),
         ];
 
-        const classItems = classes.map((c) => ({
+        const classItems = [
+          ...classes.map((c) => ({ c, isLinked: false })),
+          ...(linkedClasses || []).filter((lc) => !classes.some((mc) => mc.id === lc.id)).map((c) => ({ c, isLinked: true })),
+        ].map(({ c, isLinked }) => ({
           id: `cls-${c.id}`,
-          group: 'Lớp học của tôi',
+          group: isLinked ? 'Lớp bộ môn' : 'Lớp học của tôi',
           title: `Lớp ${c.name}`,
-          sub: `Mã lớp: ${c.key} · ${c.members?.length || 0} học sinh`,
+          sub: `${isLinked ? 'Bộ môn · ' : ''}Mã lớp: ${c.key || '---'} · ${c.members?.length || 0} học sinh`,
           run: () => {
             goSection('classes');
-            setClassSectionTab('my');
+            setClassSectionTab(isLinked ? 'linked' : 'my');
             setSelectedClass(c);
           },
         }));
@@ -4967,15 +5581,18 @@ export default function TeacherDashboard({ onExit } = {}) {
           },
         }));
 
-        const studentItems = classes.flatMap((c) =>
+        const studentItems = [
+          ...classes.map((c) => ({ c, isLinked: false })),
+          ...(linkedClasses || []).filter((lc) => !classes.some((mc) => mc.id === lc.id)).map((c) => ({ c, isLinked: true })),
+        ].flatMap(({ c, isLinked }) =>
           (c.members || []).map((m) => ({
             id: `stu-${c.id}-${m.id}`,
             group: 'Học sinh',
             title: m.name || 'Học sinh',
-            sub: `Lớp ${c.name}${m.email ? ` · ${m.email}` : ''}`,
+            sub: `Lớp ${c.name}${isLinked ? ' (Bộ môn)' : ''}${m.email ? ` · ${m.email}` : ''}`,
             run: () => {
               goSection('classes');
-              setClassSectionTab('my');
+              setClassSectionTab(isLinked ? 'linked' : 'my');
               setSelectedClass(c);
             },
           }))
@@ -5074,7 +5691,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
               <div className="t-cmd-foot">
                 <span>↑↓ để di chuyển · Enter để chọn · Esc để đóng</span>
-                <span>{classes.length} lớp · {exams.length} đề thi</span>
+                <span>{classes.length + linkedClasses.length} lớp · {exams.length} đề thi</span>
               </div>
             </div>
           </div>
@@ -5088,9 +5705,9 @@ export default function TeacherDashboard({ onExit } = {}) {
         <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải trình nhập đề...</p></div>}>
           <ExamImporter
             isModal={true}
-            classes={classes}
-            defaultSubject={classes[0]?.subject || 'Hóa học'}
-            defaultGrade={classes[0]?.grade || '12'}
+            classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
+            defaultSubject={primarySubject || classes[0]?.subject || 'Toán học'}
+            defaultGrade={classes[0]?.grade || linkedClasses[0]?.grade || '12'}
             onClose={() => setImporterModalOpen(false)}
             onSendToMixer={(data) => {
               setImporterModalOpen(false);
@@ -5100,17 +5717,21 @@ export default function TeacherDashboard({ onExit } = {}) {
             onCreateSoftExam={async (examData) => {
               setImporterModalOpen(false);
               try {
+                const targetClassId = examData.classId !== undefined
+                  ? examData.classId
+                  : (classes[0]?.id || linkedClasses[0]?.id || '');
                 const created = await createExam({
                   teacherId: user.uid,
                   teacherName: user.displayName || user.email,
-                  classId: examData.classId || classes[0]?.id || '',
+                  classId: targetClassId,
+                  isDraft: Boolean(examData.isDraft || !targetClassId),
                   title: examData.title || 'Đề nhập từ file Word',
                   duration: Number(examData.duration) || 45,
                   questions: examData.questions || [],
-                  subject: examData.subject || 'Hóa học',
+                  subject: examData.subject || primarySubject || 'Toán học',
                   grade: examData.grade || '12',
-                  shuffle: true,
-                  showAnswerAfter: true,
+                  shuffle: examData.shuffle ?? true,
+                  showAnswerAfter: examData.showAnswerAfter ?? true,
                   source: 'word-importer',
                 });
                 if (created?.id) {
@@ -5134,19 +5755,24 @@ export default function TeacherDashboard({ onExit } = {}) {
             open={wordEditorOpen}
             onClose={() => setWordEditorOpen(false)}
             initialExam={wordEditorExam || (exams && exams[0]) || null}
-            classes={classes}
+            classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
             onSaveToClass={async (newExam) => {
               try {
-                const targetClassId = newExam?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+                const targetClassId = newExam?.classId !== undefined
+                  ? newExam.classId
+                  : (classes[0]?.id || linkedClasses[0]?.id || '');
                 const created = await createExam({
                   teacherId: user.uid,
                   teacherName: user.displayName || user.email,
                   classId: targetClassId,
+                  isDraft: !targetClassId,
                   title: newExam.title || 'Đề soạn từ Word Office 365',
                   questions: newExam.questions || [],
                   duration: Number(newExam.duration || newExam.timeLimitMinutes) || 45,
                   allowRetake: Boolean(newExam.allowRetake),
-                  subject: newExam.subject || 'Hóa học',
+                  shuffle: Boolean(newExam.shuffleVariants ?? true),
+                  proctor: newExam.antiCheat ? { blockTabSwitch: true } : undefined,
+                  subject: newExam.subject || primarySubject || 'Toán học',
                   grade: newExam.grade || '12',
                   source: 'word-editor-365',
                 });
@@ -5173,6 +5799,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         exams={exams}
         submissionsMap={submissionsMap}
         liveSessions={liveSessions}
+        teacherSubject={primarySubject}
         activeSection={section}
         activeSubTab={subTab}
         selectedClass={selectedClass}
@@ -5188,15 +5815,18 @@ export default function TeacherDashboard({ onExit } = {}) {
         }}
         onCreateExam={async (newExam) => {
           try {
-            const targetClassId = newExam?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+            const targetClassId = newExam?.classId !== undefined
+              ? newExam.classId
+              : (classes[0]?.id || linkedClasses[0]?.id || '');
             const created = await createExam({
               teacherId: user.uid,
               teacherName: user.displayName || user.email,
               classId: targetClassId,
+              isDraft: !targetClassId,
               title: newExam?.title || 'Đề thi từ AI Trợ lý',
               duration: Number(newExam?.duration) || 45,
               questions: newExam?.questions || [],
-              subject: newExam?.subject || 'Hóa học',
+              subject: newExam?.subject || primarySubject || 'Toán học',
               grade: newExam?.grade || '12',
               shuffle: true,
               showAnswerAfter: true,
@@ -5216,7 +5846,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           try {
             const createdCls = await createClass({
               name: (name || 'Lớp mới').trim(),
-              subject: subject || newClassSubject || 'Hóa học',
+              subject: subject || newClassSubject || primarySubject || 'Toán học',
               grade: String(grade || newClassGrade || '12'),
               teacherId: user.uid,
               teacherName: user.displayName || user.email,
@@ -5358,8 +5988,11 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
                   <span>
                     Câu {idx + 1} ({type === 'true_false' ? 'Đúng/Sai 4 ý' : type === 'short_answer' ? 'Trả lời ngắn' : 'Trắc nghiệm'})
                   </span>
-                  <span style={{ color: isOk ? '#10b981' : '#ef4444' }}>
-                    {isOk ? '✓ Chính xác' : '✕ Sai / Chưa trọn vẹn'} ({d.earned ?? (isOk ? (q.points || 1) : 0)}/{q.points || 1} đ)
+                  <span className="t-grade-status-pill" style={{ color: isOk ? '#10b981' : '#ef4444' }}>
+                    {isOk ? <IcoCheckSvg size={14} /> : <IcoCrossSvg size={14} />}
+                    <span>
+                      {isOk ? 'Chính xác' : 'Sai / Chưa trọn vẹn'} ({d.earned ?? (isOk ? (q.points || 1) : 0)}/{q.points || 1} đ)
+                    </span>
                   </span>
                 </div>
                 <p style={{ margin: '0 0 0.45rem', fontSize: '0.86rem', fontWeight: 600 }}>{q.q}</p>
@@ -5379,12 +6012,13 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.35rem', fontSize: '0.78rem' }}>
                     {q.statements.map((st, si) => {
                       const pickedVal = d.picked?.[st.key] ?? d.picked?.[si];
-                      const match = pickedVal === st.correct;
+                      const expectedVal = st.answer !== undefined ? st.answer : st.correct;
+                      const match = pickedVal === expectedVal;
                       return (
                         <div key={st.key || si} style={{ padding: '0.3rem 0.5rem', borderRadius: 8, background: 'rgba(15,23,42,0.2)' }}>
                           <b>{st.key || String.fromCharCode(97 + si)})</b> {st.text}{' '}
                           <span style={{ color: match ? '#10b981' : '#ef4444', fontWeight: 700 }}>
-                            [HS: {pickedVal === true ? 'Đ' : pickedVal === false ? 'S' : '—'} | Chuẩn: {st.correct ? 'Đ' : 'S'}]
+                            [HS: {pickedVal === true ? 'Đ' : pickedVal === false ? 'S' : '—'} | Chuẩn: {expectedVal ? 'Đ' : 'S'}]
                           </span>
                         </div>
                       );
@@ -5458,7 +6092,7 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
         <header className="vt-card-head">
           <h4>Bảng xếp hạng (Bấm vào học sinh để xem bài làm chi tiết)</h4>
           <button type="button" className="vt-btn sm" onClick={() => onExport?.(subs)}>
-            <IcoDownload size={13} /> Xuất CSV
+            <IcoDownload size={13} /> Xuất Excel (.xlsx)
           </button>
         </header>
         <ol className="vt-rank">

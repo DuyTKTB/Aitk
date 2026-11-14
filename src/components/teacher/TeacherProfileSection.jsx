@@ -21,6 +21,13 @@ import { SUBJECTS } from '../../lib/subjects.js';
 import { useTeacherPro } from '../../hooks/useTeacherPro.js';
 import SubjectTeacherPanel from './SubjectTeacherPanel.jsx';
 import UserAvatar from '../UserAvatar.jsx';
+import {
+  ElecFlaskBrandSvg,
+  ElecMascot,
+  normalizeSubjectName,
+  subjectsMatch,
+  countUniqueStudentsInClasses,
+} from './ElecBrandMark.jsx';
 import '../../styles/teacher-profile-section.css';
 
 /* ============ CONSTANTS & DEFAULTS ============ */
@@ -42,7 +49,7 @@ const DEFAULT_PROFILE = {
   school: 'THPT Chuyên',
   department: 'Tổ Khoa học Tự nhiên',
   mainSubject: 'Hóa học',
-  subSubjects: ['Khoa học tự nhiên'],
+  subSubjects: [],
   grades: ['Khối 10', 'Khối 11', 'Khối 12'],
   bio: 'Giáo viên bộ môn tâm huyết với phương pháp kiểm tra đánh giá năng lực và cá nhân hóa lộ trình học tập.',
 };
@@ -127,9 +134,7 @@ const IcoAward = (p) => (
 );
 
 const IcoSparkles = (p) => (
-  <Svg {...p}>
-    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z" />
-  </Svg>
+  <ElecFlaskBrandSvg size={p?.size || 17} variant="gradient" className={p?.className} />
 );
 
 const IcoTrendUp = (p) => (
@@ -495,6 +500,8 @@ function MiniSubjectTrendSvg({ points = [] }) {
 export default function TeacherProfileSection({
   user,
   classes = [],
+  linkedClasses = [],
+  sessions = [],
   exams = [],
   submissionsMap = {},
   questionsCount = 0,
@@ -516,6 +523,7 @@ export default function TeacherProfileSection({
       avatarUrl: saved.avatarUrl || user?.photoURL || '',
     };
   });
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState(profile);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -523,15 +531,118 @@ export default function TeacherProfileSection({
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    setAvatarFailed(false);
+  }, [profile.avatarUrl]);
+
+  /* Hợp nhất Lớp Chủ nhiệm + Lớp Bộ môn liên kết (không trùng id) */
+  const allClasses = useMemo(() => {
+    const map = new Map();
+    [...classes, ...linkedClasses].forEach((c) => {
+      if (c && c.id && !map.has(c.id)) map.set(c.id, c);
+    });
+    return [...map.values()];
+  }, [classes, linkedClasses]);
+
+  /* Số liệu chuẩn xác đồng bộ trực tiếp từ hệ thống */
+  const profileMetrics = useMemo(() => {
+    const homeroomStudents = countUniqueStudentsInClasses(classes);
+    const linkedStudents = countUniqueStudentsInClasses(linkedClasses);
+    const uniqueStudents = countUniqueStudentsInClasses(allClasses);
+    const totalQuestionsFromExams = exams.reduce(
+      (sum, ex) =>
+        sum +
+        (Array.isArray(ex.questions)
+          ? ex.questions.length
+          : Number(ex.questionCount || ex.questionsCount || 0)),
+      0
+    );
+    const totalQuestions = Math.max(Number(questionsCount) || 0, totalQuestionsFromExams);
+
+    let totalSubmissions = 0;
+    const allScores = [];
+    const countedExamIds = new Set();
+    exams.forEach((ex) => {
+      countedExamIds.add(ex.id);
+      const subs = submissionsMap[ex.id] || [];
+      totalSubmissions += subs.length;
+      subs.forEach((s) => {
+        const sc = getScore10(s);
+        if (sc !== null) allScores.push(sc);
+      });
+    });
+    // Cộng thêm bài nộp nếu submissionsMap có examId chưa nằm trong filtered exams
+    Object.entries(submissionsMap).forEach(([examId, subs]) => {
+      if (countedExamIds.has(examId) || !Array.isArray(subs)) return;
+      totalSubmissions += subs.length;
+      subs.forEach((s) => {
+        const sc = getScore10(s);
+        if (sc !== null) allScores.push(sc);
+      });
+    });
+
+    const overallAvg10 =
+      allScores.length > 0
+        ? Number((allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1))
+        : null;
+    const liveSessionsCount = sessions.filter((s) => s.status === 'live').length;
+
+    const draftExams = exams.filter(
+      (e) => e.isDraft || e.status === 'draft' || e.kind === 'draft'
+    ).length;
+    const readyExams = Math.max(0, exams.length - draftExams);
+
+    return {
+      homeroomCount: classes.length,
+      linkedCount: linkedClasses.length,
+      totalClasses: allClasses.length,
+      homeroomStudents,
+      linkedStudents,
+      uniqueStudents,
+      totalExams: exams.length,
+      readyExams,
+      draftExams,
+      totalQuestions,
+      totalSubmissions,
+      overallAvg10,
+      liveSessionsCount,
+      totalSessionsCount: sessions.length,
+    };
+  }, [classes, linkedClasses, allClasses, exams, submissionsMap, questionsCount, sessions]);
+
+  useEffect(() => {
+    let active = true;
     const saved = safeReadJson(profileStorageKey, DEFAULT_PROFILE);
-    const merged = {
+    const mergedLocal = {
       ...saved,
       displayName: saved.displayName || user?.displayName || user?.email?.split('@')[0] || 'Giáo viên Bộ môn',
       avatarUrl: saved.avatarUrl || user?.photoURL || '',
     };
-    setProfile(merged);
-    setProfileDraft(merged);
-  }, [profileStorageKey, user?.displayName, user?.email, user?.photoURL]);
+    setProfile(mergedLocal);
+    setProfileDraft(mergedLocal);
+
+    if (uid && uid !== 'guest') {
+      getDoc(doc(db, 'users', uid))
+        .then((snap) => {
+          if (!active || !snap.exists()) return;
+          const remote = snap.data()?.teacherProfile;
+          if (remote && typeof remote === 'object') {
+            const next = {
+              ...mergedLocal,
+              ...remote,
+              displayName: remote.displayName || mergedLocal.displayName,
+              avatarUrl: remote.avatarUrl || mergedLocal.avatarUrl,
+            };
+            setProfile(next);
+            setProfileDraft(next);
+            try {
+              localStorage.setItem(profileStorageKey, JSON.stringify(next));
+            } catch { /* ignore */ }
+          }
+        })
+        .catch(() => { /* fallback localStorage */ });
+    }
+    return () => { active = false; };
+  }, [uid, profileStorageKey, user?.displayName, user?.email, user?.photoURL]);
 
   const teacherPro = useTeacherPro();
   const pkgStatus = useMemo(() => resolvePackageStatus(user, teacherPro), [user, teacherPro]);
@@ -549,6 +660,19 @@ export default function TeacherProfileSection({
   const showLocalBanner = useCallback((text, tone = 'ok', undoFn = null) => {
     setBannerMsg({ text, tone, undoFn });
   }, []);
+
+  const persistRemoteTeacherFields = useCallback(async (fields) => {
+    if (!uid || uid === 'guest') return;
+    try {
+      const uRef = doc(db, 'users', uid);
+      const snap = await getDoc(uRef);
+      if (snap.exists()) {
+        await updateDoc(uRef, { ...fields, updatedAt: Date.now() });
+      }
+    } catch (err) {
+      console.warn('TeacherProfileSection Firestore sync skipped:', err?.message || err);
+    }
+  }, [uid]);
 
   const handleSaveProfile = async (e) => {
     if (e) e.preventDefault();
@@ -569,12 +693,14 @@ export default function TeacherProfileSection({
           /* Không chặn lưu localStorage nếu offline */
         }
       }
+      await persistRemoteTeacherFields({ teacherProfile: nextProfile });
       setProfile(nextProfile);
       setEditingProfile(false);
       showLocalBanner('Đã cập nhật hồ sơ giáo viên bộ môn.', 'ok', () => {
         try {
           localStorage.setItem(profileStorageKey, JSON.stringify(prevProfile));
         } catch { /* ignore */ }
+        persistRemoteTeacherFields({ teacherProfile: prevProfile });
         setProfile(prevProfile);
         setProfileDraft(prevProfile);
         showLocalBanner('Đã hoàn tác thông tin hồ sơ trước đó.', 'info');
@@ -616,37 +742,36 @@ export default function TeacherProfileSection({
     });
   };
 
-  /* ---------- 2. Tổng hợp Bảng điều khiển theo môn ---------- */
+  /* ---------- 2. Tổng hợp Bảng điều khiển theo môn (Chuẩn hóa & Đồng bộ) ---------- */
   const subjectStats = useMemo(() => {
     const teacherSubjects = [
       profile.mainSubject,
       ...(Array.isArray(profile.subSubjects) ? profile.subSubjects : []),
-    ].filter(Boolean);
+    ]
+      .map(normalizeSubjectName)
+      .filter(Boolean);
 
-    const examSubjects = exams.map((ex) => ex.subject).filter(Boolean);
-    const classSubjects = classes.map((c) => c.subject).filter(Boolean);
+    const examSubjects = exams.map((ex) => normalizeSubjectName(ex.subject)).filter(Boolean);
+    const classSubjects = allClasses.map((c) => normalizeSubjectName(c.subject)).filter(Boolean);
 
-    const uniqueSubjects = [
-      ...new Set([
-        ...teacherSubjects,
-        ...examSubjects,
-        ...classSubjects,
-      ]),
-    ];
+    const uniqueMap = new Map();
+    [...teacherSubjects, ...examSubjects, ...classSubjects].forEach((s) => {
+      const k = s.toLowerCase();
+      if (!uniqueMap.has(k)) uniqueMap.set(k, s);
+    });
+    const uniqueSubjects = [...uniqueMap.values()];
     if (uniqueSubjects.length === 0) {
-      uniqueSubjects.push('Hóa học', 'Khoa học tự nhiên');
+      uniqueSubjects.push('Hóa học');
     }
 
-    const totalClassStudents = classes.reduce(
-      (sum, c) => sum + (Array.isArray(c.members) ? c.members.length : Number(c.studentCount) || 0),
-      0
-    );
-
-    return uniqueSubjects.map((subjName) => {
+    const rows = uniqueSubjects.map((subjName) => {
+      const subjClasses = allClasses.filter((c) => subjectsMatch(c.subject, subjName));
       const subjExams = exams
         .filter((ex) => {
-          const s = (ex.subject || '').trim().toLowerCase();
-          return s === subjName.trim().toLowerCase() || (!s && subjName === profile.mainSubject);
+          const targetClass = allClasses.find((c) => c.id === ex.classId);
+          const examSubj = ex.subject || targetClass?.subject || '';
+          if (examSubj) return subjectsMatch(examSubj, subjName);
+          return subjectsMatch(subjName, profile.mainSubject);
         })
         .sort((a, b) => toMs(a.createdAt) - toMs(b.createdAt));
 
@@ -665,13 +790,13 @@ export default function TeacherProfileSection({
         const subs = Array.isArray(submissionsMap[ex.id]) ? submissionsMap[ex.id] : [];
         totalSubmissions += subs.length;
 
-        const targetClass = classes.find((c) => c.id === ex.classId);
+        const targetClass = allClasses.find((c) => c.id === ex.classId);
         const classSize = Array.isArray(targetClass?.members)
           ? targetClass.members.length
-          : totalClassStudents > 0
-            ? Math.max(subs.length, Math.round(totalClassStudents / Math.max(1, classes.length)))
-            : Math.max(subs.length, 1);
-        expectedSubmissions += classSize;
+          : Number(targetClass?.studentCount || 0) > 0
+            ? Number(targetClass.studentCount)
+            : subs.length;
+        expectedSubmissions += Math.max(subs.length, classSize);
 
         const examScores = subs.map(getScore10).filter((v) => v !== null);
         allScores.push(...examScores);
@@ -697,9 +822,7 @@ export default function TeacherProfileSection({
       const submitRate =
         expectedSubmissions > 0
           ? Math.min(100, Math.round((totalSubmissions / expectedSubmissions) * 100))
-          : subjExams.length > 0 && totalSubmissions > 0
-            ? 100
-            : 0;
+          : 0;
 
       const last4 = trendPoints.slice(-4);
       let trendDirection = 'flat';
@@ -712,7 +835,8 @@ export default function TeacherProfileSection({
 
       return {
         subject: subjName,
-        isMain: subjName === profile.mainSubject,
+        isMain: subjectsMatch(subjName, profile.mainSubject),
+        classesCount: subjClasses.length,
         examsCount: subjExams.length,
         questionsCount: qCount,
         avgScore10,
@@ -723,7 +847,13 @@ export default function TeacherProfileSection({
         trendDelta,
       };
     });
-  }, [profile.mainSubject, profile.subSubjects, exams, classes, submissionsMap]);
+
+    return rows.sort((a, b) => {
+      if (a.isMain !== b.isMain) return a.isMain ? -1 : 1;
+      if (b.examsCount !== a.examsCount) return b.examsCount - a.examsCount;
+      return b.classesCount - a.classesCount;
+    });
+  }, [profile.mainSubject, profile.subSubjects, exams, allClasses, submissionsMap]);
 
   /* ---------- 3. Huy hiệu và Thành tựu nhẹ nhàng ---------- */
   const achievements = useMemo(() => {
@@ -738,10 +868,10 @@ export default function TeacherProfileSection({
     );
     const effectiveQuestionBank = Math.max(Number(questionsCount) || 0, totalQuestionsFromExams);
 
-    /* Kiểm tra lớp có chuỗi tăng điểm 3 đề liền */
+    /* Kiểm tra lớp có chuỗi tăng điểm 3 đề liền (cả GVCN & Bộ môn) */
     let bestStreak = 0;
     let streakClassName = '';
-    classes.forEach((cls) => {
+    allClasses.forEach((cls) => {
       const clsExams = exams
         .filter((e) => e.classId === cls.id)
         .sort((a, b) => toMs(a.createdAt) - toMs(b.createdAt));
@@ -859,13 +989,13 @@ export default function TeacherProfileSection({
         badgeLabel: `${Math.max(shuffledOrAntiCheatCount, totalExams > 0 ? 1 : 0)}/5 đề`,
       },
     ];
-  }, [exams, classes, submissionsMap, questionsCount, subjectStats]);
+  }, [exams, allClasses, submissionsMap, questionsCount, subjectStats]);
 
   /* ---------- 4. Gợi ý hôm nay từ AI (AI Daily Pedagogical Suggestions) ---------- */
   const aiDailySuggestions = useMemo(() => {
-    /* 1. Lớp nào cần ôn tập */
+    /* 1. Lớp nào cần ôn tập (GVCN + Bộ môn) */
     let weakestClass = null;
-    classes.forEach((cls) => {
+    allClasses.forEach((cls) => {
       const clsExams = exams.filter((e) => e.classId === cls.id);
       const scores = [];
       let subsCount = 0;
@@ -999,7 +1129,7 @@ export default function TeacherProfileSection({
               onAction: () => onNavigate?.('analytics'),
             },
     };
-  }, [classes, exams, submissionsMap, profile.mainSubject, onNavigate]);
+  }, [allClasses, exams, submissionsMap, profile.mainSubject, onNavigate]);
 
   /* ---------- 5. Cài đặt cá nhân cho Đề thi (Personal Exam Settings) ---------- */
   const [examPrefs, setExamPrefs] = useState(() => {
@@ -1013,7 +1143,37 @@ export default function TeacherProfileSection({
     return saved;
   });
 
-  const handleSaveExamPrefs = (e) => {
+  useEffect(() => {
+    let active = true;
+    const baseDefault = {
+      ...DEFAULT_EXAM_PREFS,
+      defaultSubject: profile.mainSubject || 'Hóa học',
+      headerSchoolName: (profile.school || 'TRƯỜNG THPT CHUYÊN').toUpperCase(),
+      headerSubjectGroup: (profile.department || 'TỔ KHOA HỌC TỰ NHIÊN').toUpperCase(),
+      footerTeacherSign: profile.displayName || '',
+    };
+    const localSaved = safeReadJson(examPrefsStorageKey, baseDefault);
+    setExamPrefs(localSaved);
+
+    if (uid && uid !== 'guest') {
+      getDoc(doc(db, 'users', uid))
+        .then((snap) => {
+          if (!active || !snap.exists()) return;
+          const remotePrefs = snap.data()?.teacherExamPrefs;
+          if (remotePrefs && typeof remotePrefs === 'object') {
+            const mergedPrefs = { ...baseDefault, ...localSaved, ...remotePrefs };
+            setExamPrefs(mergedPrefs);
+            try {
+              localStorage.setItem(examPrefsStorageKey, JSON.stringify(mergedPrefs));
+            } catch { /* ignore */ }
+          }
+        })
+        .catch(() => { /* fallback localStorage */ });
+    }
+    return () => { active = false; };
+  }, [uid, examPrefsStorageKey]);
+
+  const handleSaveExamPrefs = async (e) => {
     if (e) e.preventDefault();
     const prevPrefs = safeReadJson(examPrefsStorageKey, DEFAULT_EXAM_PREFS);
     try {
@@ -1021,17 +1181,19 @@ export default function TeacherProfileSection({
     } catch (err) {
       console.warn('TeacherProfileSection save examPrefs error:', err);
     }
+    await persistRemoteTeacherFields({ teacherExamPrefs: examPrefs });
     showLocalBanner('Đã lưu cài đặt cá nhân cho Đề thi.', 'ok', () => {
       try {
         localStorage.setItem(examPrefsStorageKey, JSON.stringify(prevPrefs));
       } catch { /* ignore */ }
+      persistRemoteTeacherFields({ teacherExamPrefs: prevPrefs });
       setExamPrefs(prevPrefs);
       showLocalBanner('Đã hoàn tác cài đặt đề thi trước đó.', 'info');
     });
     notify('Đã lưu cấu hình mẫu đề thi cá nhân', 'ok');
   };
 
-  const handleResetExamPrefs = () => {
+  const handleResetExamPrefs = async () => {
     const prevPrefs = { ...examPrefs };
     const resetVal = {
       ...DEFAULT_EXAM_PREFS,
@@ -1046,11 +1208,13 @@ export default function TeacherProfileSection({
     } catch (err) {
       console.warn('TeacherProfileSection reset examPrefs error:', err);
     }
+    await persistRemoteTeacherFields({ teacherExamPrefs: resetVal });
     showLocalBanner('Đã khôi phục cài đặt đề thi về mặc định.', 'info', () => {
       setExamPrefs(prevPrefs);
       try {
         localStorage.setItem(examPrefsStorageKey, JSON.stringify(prevPrefs));
       } catch { /* ignore */ }
+      persistRemoteTeacherFields({ teacherExamPrefs: prevPrefs });
       showLocalBanner('Đã hoàn tác khôi phục mặc định.', 'ok');
     });
   };
@@ -1096,7 +1260,7 @@ export default function TeacherProfileSection({
   const [receiveLookupBusy, setReceiveLookupBusy] = useState(false);
   const [receivedResource, setReceivedResource] = useState(null);
   const [receiveError, setReceiveError] = useState('');
-  const [importClassId, setImportClassId] = useState(() => classes[0]?.id || '');
+  const [importClassId, setImportClassId] = useState(() => classes[0]?.id || linkedClasses[0]?.id || '');
   const [importingExam, setImportingExam] = useState(false);
   const autoLookupDoneRef = useRef('');
 
@@ -1107,10 +1271,10 @@ export default function TeacherProfileSection({
   }, [classes, selectedClassForGVBM]);
 
   useEffect(() => {
-    if (!importClassId && classes.length > 0) {
-      setImportClassId(classes[0].id);
+    if (!importClassId && allClasses.length > 0) {
+      setImportClassId(allClasses[0].id);
     }
-  }, [classes, importClassId]);
+  }, [allClasses, importClassId]);
 
   const persistShares = useCallback(
     (nextList) => {
@@ -1363,18 +1527,19 @@ export default function TeacherProfileSection({
     setReceiveError('');
     try {
       const clonedQuestions = stripUndefinedDeep(questions);
-      const targetClass = classes.find((c) => c.id === importClassId) || classes[0] || null;
+      const targetClass = allClasses.find((c) => c.id === importClassId) || allClasses[0] || null;
       const created = await createExam({
         teacherId: uid,
         teacherName: profile.displayName || user?.displayName || 'Giáo viên Bộ môn',
         classId: targetClass?.id || '',
+        isDraft: !targetClass?.id,
         title: `${snap?.title || receivedResource.resourceTitle} (Bản sao tổ bộ môn)`,
         description:
           snap?.description ||
           `Nhân bản từ chia sẻ của ${receivedResource.ownerName || 'đồng nghiệp'} (Mã: ${receivedResource.shareCode})`,
         duration: Number(snap?.duration) || 45,
         questions: clonedQuestions,
-        subject: snap?.subject || receivedResource.subject || profile.mainSubject || '',
+        subject: snap?.subject || receivedResource.subject || targetClass?.subject || profile.mainSubject || '',
         grade: Number(snap?.grade) || Number(targetClass?.grade) || 0,
         shuffle: snap?.shuffle ?? false,
         showAnswerAfter: snap?.showAnswerAfter ?? true,
@@ -1447,20 +1612,38 @@ export default function TeacherProfileSection({
       )}
 
       {/* ============================================================
-         1. THÔNG TIN HỒ SƠ GIÁO VIÊN BỘ MÔN (HEADER CARD THU GỌN)
+         1. THÔNG TIN HỒ SƠ GIÁO VIÊN (ELEC EDUCATOR IDENTITY STUDIO)
          ============================================================ */}
       <div className="tps-bento-card tps-header-card">
+        <div className="tps-cover-band">
+          <div className="tps-cover-brand">
+            <ElecFlaskBrandSvg size={15} variant="duo" />
+            <span>HỒ SƠ CHUYÊN MÔN ELEC AI</span>
+          </div>
+          <div className="tps-cover-stats-mini">
+            <span>{profileMetrics.totalClasses} lớp đang dạy</span>
+            <span>·</span>
+            <span>{profileMetrics.uniqueStudents} học sinh</span>
+            <span>·</span>
+            <span>{profileMetrics.totalExams} đề thi</span>
+          </div>
+        </div>
+
         <div className="tps-header-top" style={{ borderBottom: editingProfile ? '1px solid var(--tps-line)' : 'none', paddingBottom: editingProfile ? '0.75rem' : 0 }}>
           <div className="tps-avatar-block">
             <div className="tps-avatar-ring">
-              {profile.avatarUrl ? (
+              {profile.avatarUrl && !avatarFailed ? (
                 <img
                   src={profile.avatarUrl}
                   alt={profile.displayName}
+                  referrerPolicy="no-referrer"
                   className="tps-avatar-img"
+                  onError={() => setAvatarFailed(true)}
                 />
               ) : (
-                <UserAvatar photoURL={profile.avatarUrl} size={78} title={profile.displayName} />
+                <div className="tps-avatar-fallback" title={profile.displayName}>
+                  <ElecMascot mood="cool" size={56} alt={profile.displayName} />
+                </div>
               )}
               <button
                 type="button"
@@ -1491,11 +1674,15 @@ export default function TeacherProfileSection({
                 <span>{profile.department}</span>
               </div>
 
-              {/* Dải chip chuyên môn & lớp phụ trách sắp xếp khoa học */}
+              {profile.bio && (
+                <p className="tps-bio">{profile.bio}</p>
+              )}
+
+              {/* Dải chip chuyên môn & lớp GVCN / GVBM tách bạch */}
               <div className="tps-chip-row" style={{ marginTop: '0.35rem' }}>
                 <span className="tps-chip tps-chip-primary" title="Môn giảng dạy chính">
                   <SubjectIcon subjectName={profile.mainSubject} size={13} />
-                  <b>{profile.mainSubject}</b>
+                  <b>{normalizeSubjectName(profile.mainSubject) || profile.mainSubject}</b>
                 </span>
                 {(profile.subSubjects || []).map((s) => (
                   <span key={s} className="tps-chip tps-chip-soft" title="Môn kiêm nhiệm">
@@ -1507,22 +1694,37 @@ export default function TeacherProfileSection({
                     {g}
                   </span>
                 ))}
-                {classes.slice(0, 5).map((cls) => {
+                {classes.slice(0, 4).map((cls) => {
                   const rawName = String(cls.name || '').trim();
                   const displayName = rawName.toLowerCase().startsWith('lớp') ? rawName : `Lớp ${rawName}`;
                   return (
                     <button
-                      key={cls.id}
+                      key={`cn-${cls.id}`}
                       type="button"
-                      className="tps-chip tps-chip-class-btn"
+                      className="tps-chip tps-chip-class-btn is-homeroom"
                       onClick={() => onNavigate?.('classes', cls)}
-                      title={`Mở chi tiết ${displayName}`}
+                      title={`Lớp Chủ nhiệm: ${displayName} (${cls.members?.length || 0} HS)`}
                     >
-                      <span>{displayName}</span>
+                      <span>GVCN · {displayName}</span>
                     </button>
                   );
                 })}
-                {classes.length === 0 && (
+                {linkedClasses.slice(0, 4).map((cls) => {
+                  const rawName = String(cls.name || '').trim();
+                  const displayName = rawName.toLowerCase().startsWith('lớp') ? rawName : `Lớp ${rawName}`;
+                  return (
+                    <button
+                      key={`bm-${cls.id}`}
+                      type="button"
+                      className="tps-chip tps-chip-class-btn is-linked"
+                      onClick={() => onNavigate?.('classes', cls)}
+                      title={`Lớp Bộ môn: ${displayName}`}
+                    >
+                      <span>GVBM · {displayName}</span>
+                    </button>
+                  );
+                })}
+                {allClasses.length === 0 && (
                   <button
                     type="button"
                     className="tps-chip tps-chip-class-btn"
@@ -1535,25 +1737,65 @@ export default function TeacherProfileSection({
             </div>
           </div>
 
-          <div className="tps-header-actions" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="tps-btn tps-btn-sm tps-btn-primary"
-              onClick={() => onNavigate?.('create', { subject: profile.mainSubject })}
-            >
-              <span>+ Soạn đề {profile.mainSubject}</span>
-            </button>
-            <button
-              type="button"
-              className="tps-btn tps-btn-sm tps-btn-outline"
-              onClick={() => {
-                setProfileDraft(profile);
-                setEditingProfile((v) => !v);
-              }}
-            >
-              <IcoEdit size={14} />
-              <span>{editingProfile ? 'Đóng' : 'Sửa hồ sơ'}</span>
-            </button>
+          <div className="tps-header-right-col">
+            <ElecMascot mood="celebrate" size={78} className="tps-header-mascot" alt="ELEC AI Chúc mừng" />
+            <div className="tps-header-actions" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="tps-btn tps-btn-sm tps-btn-primary"
+                onClick={() => onNavigate?.('create', { subject: profile.mainSubject })}
+              >
+                <span>+ Soạn đề {profile.mainSubject}</span>
+              </button>
+              <button
+                type="button"
+                className="tps-btn tps-btn-sm tps-btn-outline"
+                onClick={() => {
+                  setProfileDraft(profile);
+                  setEditingProfile((v) => !v);
+                }}
+              >
+                <IcoEdit size={14} />
+                <span>{editingProfile ? 'Đóng' : 'Sửa hồ sơ'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 THẺ SỐ LIỆU THỰC TẾ ĐỒNG BỘ 100% */}
+        <div className="tps-profile-kpi-grid" aria-label="Thống kê hồ sơ giáo viên thực tế">
+          <div className="tps-profile-kpi-tile">
+            <span className="tps-kpi-label">Phụ trách lớp &amp; Học sinh</span>
+            <strong className="tps-kpi-value">{profileMetrics.totalClasses} lớp · {profileMetrics.uniqueStudents} HS</strong>
+            <span className="tps-kpi-sub">
+              Chủ nhiệm {profileMetrics.homeroomCount} lớp ({profileMetrics.homeroomStudents} HS) · Bộ môn {profileMetrics.linkedCount} lớp
+            </span>
+          </div>
+          <div className="tps-profile-kpi-tile">
+            <span className="tps-kpi-label">Ngân hàng &amp; Kho đề</span>
+            <strong className="tps-kpi-value">{profileMetrics.totalExams} đề thi</strong>
+            <span className="tps-kpi-sub">
+              {profileMetrics.draftExams > 0
+                ? `${profileMetrics.readyExams} đã giao · ${profileMetrics.draftExams} nháp · `
+                : ''}
+              {profileMetrics.totalQuestions} câu hỏi chuẩn GDPT 2025
+            </span>
+          </div>
+          <div className="tps-profile-kpi-tile">
+            <span className="tps-kpi-label">Lượt nộp &amp; Điểm TB</span>
+            <strong className="tps-kpi-value">
+              {profileMetrics.overallAvg10 !== null ? `${profileMetrics.overallAvg10}/10` : 'Chưa có điểm'}
+            </strong>
+            <span className="tps-kpi-sub">{profileMetrics.totalSubmissions} bài nộp đã chấm tự động</span>
+          </div>
+          <div className="tps-profile-kpi-tile">
+            <span className="tps-kpi-label">Khảo thí &amp; Giám sát AI</span>
+            <strong className="tps-kpi-value">
+              {profileMetrics.liveSessionsCount > 0 ? `${profileMetrics.liveSessionsCount} phòng LIVE` : `${profileMetrics.totalSessionsCount} phiên thi`}
+            </strong>
+            <span className="tps-kpi-sub">
+              {profileMetrics.liveSessionsCount > 0 ? 'Đang bật giám sát AI thời gian thực' : 'Bấm tab Khảo thí để mở phòng thi'}
+            </span>
           </div>
         </div>
 
@@ -2426,12 +2668,12 @@ export default function TeacherProfileSection({
                             value={importClassId}
                             onChange={(e) => setImportClassId(e.target.value)}
                           >
-                            {classes.length === 0 ? (
+                            {allClasses.length === 0 ? (
                               <option value="">Kho đề cá nhân (Chưa gắn lớp)</option>
                             ) : (
-                              classes.map((cls) => (
+                              allClasses.map((cls) => (
                                 <option key={cls.id} value={cls.id}>
-                                  {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''}
+                                  {cls.name}{cls.grade ? ` (Khối ${cls.grade})` : ''}{cls._linked ? ' · Bộ môn' : ''}
                                 </option>
                               ))
                             )}

@@ -38,6 +38,7 @@ function UserAvatar({
         src={customPhoto}
         alt={label}
         title={label}
+        referrerPolicy="no-referrer"
         className={`ns9-user-avatar-img ${className}`}
         style={{
           width: size,

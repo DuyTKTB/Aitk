@@ -19,7 +19,8 @@ import { useAuth } from '../../hooks/useAuth.jsx';
 import MathText from '../MathText.jsx';
 import QuestionBankForm from './QuestionBankForm.jsx';
 import ExamImporter from './ExamImporter.jsx';
-import { downloadCsv } from '../DashShell.jsx';
+import { exportStyledWorkbook } from '../../lib/excelExport.js';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import {
   getQuestions, deleteQuestion, deleteQuestionsBatch, addQuestion, updateQuestion, addQuestionsBatch,
   getAllTags, findDuplicate, norm, questionKey,
@@ -131,10 +132,8 @@ const IcoAlert = (p) => (
 );
 const IcoCheck = (p) => <Svg {...p}><polyline points="20 6 9 17 4 12" /></Svg>;
 const IcoClose = (p) => <Svg {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Svg>;
-const IcoSparkles = (p) => (
-  <Svg {...p}>
-    <path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
-  </Svg>
+const IcoSparkles = ({ size = 15, className = '', style }) => (
+  <ElecFlaskBrandSvg size={size} variant="current" className={className} style={style} />
 );
 const IcoChart = (p) => (
   <Svg {...p}>
@@ -805,6 +804,14 @@ export default function QuestionBank({
         ? [...activeQuestion.options]
         : ['', '', '', ''],
       correct: typeof activeQuestion.correct === 'number' ? activeQuestion.correct : 0,
+      statements: Array.isArray(activeQuestion.statements) && activeQuestion.statements.length
+        ? [0, 1, 2, 3].map((idx) => ({
+            text: activeQuestion.statements[idx]?.text || '',
+            answer: activeQuestion.statements[idx]?.answer === true,
+          }))
+        : [0, 1, 2, 3].map(() => ({ text: '', answer: true })),
+      answer: String(activeQuestion.answer ?? activeQuestion.accepted?.[0] ?? ''),
+      accepted: Array.isArray(activeQuestion.accepted) ? [...activeQuestion.accepted] : [],
       explain: activeQuestion.explain || '',
       subject: activeQuestion.subject || 'Hóa học',
       grade: Number(activeQuestion.grade) || 0,
@@ -1217,10 +1224,12 @@ export default function QuestionBank({
     try {
       const primarySubj = draftExamItems[0]?.subject || filterSubject || 'Hóa học';
       const primaryGrade = draftExamItems[0]?.grade || filterGrade || 12;
+      const targetClassId = draftClassId || classes[0]?.id || '';
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
-        classId: draftClassId || classes[0]?.id || '',
+        classId: targetClassId,
+        isDraft: !targetClassId,
         title: draftTitle.trim() || `Đề kiểm tra ${primarySubj} (${draftExamItems.length} câu)`,
         description: `Soạn từ Ngân hàng câu hỏi · Ước tính ${draftStats.estMinutes} phút`,
         duration: Number(draftDuration) || draftStats.estMinutes || 45,
@@ -1249,35 +1258,65 @@ export default function QuestionBank({
      ============================================================ */
   const handleSaveQuickEdit = async () => {
     if (!activeQuestion || !quickDraft) return;
-    const cleanOpts = (quickDraft.options || []).map((o) => String(o || '').trim()).filter(Boolean);
     if (!quickDraft.q.trim()) {
       say('Nội dung câu hỏi không được để trống');
       return;
     }
-    if (cleanOpts.length < 2) {
-      say('Cần ít nhất 2 phương án trả lời');
-      return;
-    }
-    const safeCorrect = quickDraft.correct >= 0 && quickDraft.correct < cleanOpts.length ? quickDraft.correct : 0;
-    const typeTag = `loai:${quickDraft.type || 'single_choice'}`;
+    const qType = quickDraft.type || 'single_choice';
+    const typeTag = `loai:${qType}`;
     const mergedTags = [...(quickDraft.tags || []).filter((t) => !t.startsWith('loai:')), typeTag];
+
+    const patch = {
+      type: qType,
+      q: quickDraft.q.trim(),
+      explain: quickDraft.explain.trim(),
+      subject: quickDraft.subject,
+      grade: Number(quickDraft.grade) || 0,
+      topicId: quickDraft.topicId,
+      level: quickDraft.level,
+      points: Number(quickDraft.points) || 1,
+      tags: mergedTags,
+    };
+
+    if (qType === 'true_false') {
+      const sts = (quickDraft.statements || []).slice(0, 4).map((s) => ({
+        text: String(s?.text || '').trim(),
+        answer: s?.answer === true,
+      }));
+      if (sts.some((s) => !s.text)) {
+        say('Câu Đúng/Sai cần nhập đủ nội dung cả 4 ý a-d');
+        return;
+      }
+      patch.statements = sts;
+      patch.options = [];
+      patch.correct = -1;
+    } else if (qType === 'short_answer') {
+      const rawAns = String(quickDraft.answer || '').trim().replace(/\./g, ',');
+      if (!rawAns) {
+        say('Câu Điền ngắn cần nhập đáp án');
+        return;
+      }
+      patch.answer = rawAns;
+      patch.accepted = [...new Set([rawAns, rawAns.replace(/,/g, '.'), ...(quickDraft.accepted || []).filter(Boolean)])];
+      patch.options = [];
+      patch.correct = -1;
+    } else {
+      const kept = (quickDraft.options || [])
+        .map((o, idx) => ({ text: String(o || '').trim(), idx }))
+        .filter((x) => x.text);
+      if (kept.length < 2) {
+        say('Cần ít nhất 2 phương án trả lời');
+        return;
+      }
+      const mappedCorrect = kept.findIndex((x) => x.idx === Number(quickDraft.correct));
+      patch.options = kept.map((x) => x.text);
+      patch.correct = mappedCorrect >= 0 ? mappedCorrect : 0;
+    }
 
     setSaving(true);
     try {
-      const patch = {
-        q: quickDraft.q.trim(),
-        options: cleanOpts,
-        correct: safeCorrect,
-        explain: quickDraft.explain.trim(),
-        subject: quickDraft.subject,
-        grade: Number(quickDraft.grade) || 0,
-        topicId: quickDraft.topicId,
-        level: quickDraft.level,
-        points: Number(quickDraft.points) || 1,
-        tags: mergedTags,
-      };
       await updateQuestion(activeQuestion.id, patch);
-      updateCustomMeta(activeQuestion.id, { type: quickDraft.type || 'single_choice' });
+      updateCustomMeta(activeQuestion.id, { type: qType });
       setList((arr) => arr.map((x) => (x.id === activeQuestion.id ? { ...x, ...patch } : x)));
       say('Đã lưu sửa nhanh câu hỏi');
     } catch (e) {
@@ -1605,28 +1644,64 @@ Trả về DUY NHẤT JSON:
   /* ============================================================
      NHẬP / XUẤT ĐA ĐỊNH DẠNG (CSV, WORD, PDF, EXAM IMPORTER)
      ============================================================ */
-  const handleExportCsv = () => {
-    const rows = [['Môn', 'Lớp', 'Chuyên đề', 'Độ khó', 'Loại câu', 'Câu hỏi', 'A', 'B', 'C', 'D', 'E', 'F', 'Đáp án đúng', 'Lời giải', 'Điểm', 'Tag', 'Số lần dùng']];
-    filtered.forEach((q) => {
-      const opts = [0, 1, 2, 3, 4, 5].map((i) => q.options?.[i] ?? '');
-      rows.push([
-        q.subject || '',
-        q.grade || '',
-        q.topicId ? getTopicName(q.topicId, q.subject) : '',
-        LEVEL_META[normalizeLevel(q.level)]?.short || q.level || '',
-        TYPE_LABEL[getQuestionType(q, customMeta)] || 'Trắc nghiệm',
-        q.q,
-        ...opts,
-        String.fromCharCode(65 + (q.correct || 0)),
-        q.explain || '',
-        q.points || 1,
-        (q.tags || []).join('; '),
-        q.usageCount || 0,
-      ]);
-    });
-    downloadCsv(`ngan-hang-cau-hoi-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-    setShowExportMenu(false);
-    say(`Đã xuất ${filtered.length} câu ra file CSV/Excel`);
+  const handleExportCsv = async () => {
+    if (!filtered.length) return;
+    try {
+      const rows = filtered.map((q, idx) => {
+        const opts = [0, 1, 2, 3, 4, 5].map((i) => q.options?.[i] ?? '');
+        return {
+          stt: idx + 1,
+          subject: q.subject || '',
+          grade: q.grade || '',
+          topic: q.topicId ? getTopicName(q.topicId, q.subject) : '',
+          level: LEVEL_META[normalizeLevel(q.level)]?.short || q.level || '',
+          qtype: TYPE_LABEL[getQuestionType(q, customMeta)] || 'Trắc nghiệm',
+          question: q.q,
+          optA: opts[0],
+          optB: opts[1],
+          optC: opts[2],
+          optD: opts[3],
+          correct: String.fromCharCode(65 + (q.correct || 0)),
+          explain: q.explain || '',
+          points: q.points || 1,
+          tags: (q.tags || []).join('; '),
+          usage: q.usageCount || 0,
+        };
+      });
+      await exportStyledWorkbook({
+        filename: `ngan-hang-cau-hoi-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        mascot: 'think',
+        sheets: [{
+          name: 'Ngân hàng Câu hỏi',
+          mascot: 'think',
+          title: 'KHO HỌC LIỆU & NGÂN HÀNG CÂU HỎI ELEC AI',
+          subtitle: `Tổng số ${filtered.length} câu hỏi đang lọc · Chuẩn chương trình GDPT 2025`,
+          columns: [
+            { header: 'STT', key: 'stt', align: 'center', width: 7 },
+            { header: 'Môn', key: 'subject', align: 'center', width: 12 },
+            { header: 'Khối', key: 'grade', align: 'center', width: 9 },
+            { header: 'Chuyên đề / Chương', key: 'topic', align: 'left', width: 22 },
+            { header: 'Mức độ', key: 'level', align: 'center', width: 11 },
+            { header: 'Loại câu', key: 'qtype', align: 'center', width: 14 },
+            { header: 'Nội dung câu hỏi', key: 'question', align: 'left', width: 42, wrapText: true },
+            { header: 'Đáp án A', key: 'optA', align: 'left', width: 20, wrapText: true },
+            { header: 'Đáp án B', key: 'optB', align: 'left', width: 20, wrapText: true },
+            { header: 'Đáp án C', key: 'optC', align: 'left', width: 20, wrapText: true },
+            { header: 'Đáp án D', key: 'optD', align: 'left', width: 20, wrapText: true },
+            { header: 'Đáp án đúng', key: 'correct', align: 'center', width: 13 },
+            { header: 'Lời giải chi tiết', key: 'explain', align: 'left', width: 32, wrapText: true },
+            { header: 'Điểm', key: 'points', align: 'center', width: 9 },
+            { header: 'Tag', key: 'tags', align: 'left', width: 16 },
+            { header: 'Lượt dùng', key: 'usage', align: 'center', width: 11 },
+          ],
+          rows,
+        }],
+      });
+      setShowExportMenu(false);
+      say(`Đã xuất ${filtered.length} câu ra Excel (.xlsx)`);
+    } catch (e) {
+      say(e?.message || 'Không xuất được file Excel', 'error');
+    }
   };
 
   const handleExportWord = async () => {
@@ -1801,7 +1876,7 @@ Trả về DUY NHẤT JSON:
             {showExportMenu && (
               <div className="qb-export-menu" role="menu">
                 <button type="button" onClick={handleExportCsv}>
-                  <IcoFileText size={15} /> Xuất Excel / CSV (.csv)
+                  <IcoFileText size={15} /> Xuất Excel (.xlsx)
                 </button>
                 <button type="button" onClick={handleExportWord}>
                   <IcoFileText size={15} /> Xuất đề Word (.docx)
@@ -2931,31 +3006,77 @@ Trả về DUY NHẤT JSON:
                       </select>
                     </label>
 
-                    <div className="qb-field">
-                      <span>Phương án & Đáp án đúng (chọn nút tròn)</span>
-                      {quickDraft.options.map((opt, idx) => (
-                        <div key={idx} className={'qb-opt-row' + (quickDraft.correct === idx ? ' correct' : '')}>
-                          <input
-                            type="radio"
-                            name="qb-quick-correct"
-                            checked={quickDraft.correct === idx}
-                            onChange={() => setQuickDraft((d) => ({ ...d, correct: idx }))}
-                          />
-                          <span className="qb-opt-key">{String.fromCharCode(65 + idx)}</span>
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setQuickDraft((d) => ({
-                                ...d,
-                                options: d.options.map((o, k) => (k === idx ? val : o)),
-                              }));
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    {quickDraft.type === 'true_false' ? (
+                      <div className="qb-field">
+                        <span>4 nhận định Đúng / Sai (a–d)</span>
+                        {(quickDraft.statements || []).slice(0, 4).map((st, idx) => (
+                          <div key={idx} className="qb-opt-row" style={{ gap: '0.45rem' }}>
+                            <span className="qb-opt-key">{'abcd'[idx]}</span>
+                            <input
+                              type="text"
+                              value={st.text || ''}
+                              placeholder={`Nội dung ý ${'abcd'[idx]})`}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setQuickDraft((d) => ({
+                                  ...d,
+                                  statements: (d.statements || []).map((s, k) => (k === idx ? { ...s, text: val } : s)),
+                                }));
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className={`vt-btn sm ${st.answer ? 'primary' : ''}`}
+                              style={{ minWidth: 58, justifyContent: 'center' }}
+                              onClick={() => {
+                                setQuickDraft((d) => ({
+                                  ...d,
+                                  statements: (d.statements || []).map((s, k) => (k === idx ? { ...s, answer: !s.answer } : s)),
+                                }));
+                              }}
+                            >
+                              {st.answer ? 'Đúng' : 'Sai'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : quickDraft.type === 'short_answer' ? (
+                      <label className="qb-field">
+                        <span>Đáp án trả lời ngắn (VD: 12,5 hoặc -4)</span>
+                        <input
+                          type="text"
+                          value={quickDraft.answer || ''}
+                          placeholder="Nhập đáp án chuẩn..."
+                          onChange={(e) => setQuickDraft((d) => ({ ...d, answer: e.target.value }))}
+                        />
+                      </label>
+                    ) : (
+                      <div className="qb-field">
+                        <span>Phương án & Đáp án đúng (chọn nút tròn)</span>
+                        {quickDraft.options.map((opt, idx) => (
+                          <div key={idx} className={'qb-opt-row' + (quickDraft.correct === idx ? ' correct' : '')}>
+                            <input
+                              type="radio"
+                              name="qb-quick-correct"
+                              checked={quickDraft.correct === idx}
+                              onChange={() => setQuickDraft((d) => ({ ...d, correct: idx }))}
+                            />
+                            <span className="qb-opt-key">{String.fromCharCode(65 + idx)}</span>
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setQuickDraft((d) => ({
+                                  ...d,
+                                  options: d.options.map((o, k) => (k === idx ? val : o)),
+                                }));
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <label className="qb-field">
                       <span>Lời giải chi tiết</span>

@@ -17,6 +17,7 @@
        vì gửi tin nhắn regex "TẠM DỪNG".
      • Nút đổi thành toggle "Tạm dừng HS này" / "Cho làm tiếp".
    ============================================================ */
+import { ElecFlaskBrandSvg, ElecMascot } from './teacher/ElecBrandMark.jsx';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   listenSession,
@@ -41,8 +42,9 @@ import {
 } from '../lib/sessionIcons.jsx';
 import {
   DashFrame, Topbar, Modal, Donut, TrendChart, Avatar,
-  fmtMMSS, fmtClock, downloadCsv,
+  fmtMMSS, fmtClock,
 } from './DashShell.jsx';
+import { exportStyledWorkbook } from '../lib/excelExport.js';
 
 /* ============================================================
    HELPERS
@@ -473,6 +475,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
 
   /* AI Giám thị thông minh & Tự động nhắc nhở */
   const [aiAutoWarn, setAiAutoWarn] = useState(true);
+  const [aiDiagOpen, setAiDiagOpen] = useState(false);
   const [aiProctorFeed, setAiProctorFeed] = useState([
     {
       id: 'init-1',
@@ -512,6 +515,13 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
   }, []);
 
   useEffect(() => {
+    seenViolRef.current = new Map();
+    loadedRef.current = false;
+    setLogs([]);
+    setAiProctorFeed([]);
+  }, [sessionId]);
+
+  useEffect(() => {
     if (!sessionId) return undefined;
     return listenSession(sessionId, (s) => setSession(s));
   }, [sessionId]);
@@ -536,7 +546,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
               ? 'med'
               : 'low';
 
-          fresh.push({ id: `${st.id}-${i}`, studentId: st.id, studentName: st.studentName, severity, ...viol });
+          fresh.push({ ...viol, id: `${st.id}-${i}`, studentId: st.id, studentName: st.studentName, severity });
 
           // AI Tự động gửi nhắc nhở khi phát hiện vi phạm MỚI theo thời gian thực
           if (loadedRef.current && aiAutoWarn && st.status === 'examining') {
@@ -714,30 +724,143 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     say(`Đã nhắc ${targets.length} học sinh`);
   };
 
-  const exportReport = () => {
-    if (!session || students.length === 0) { say('Chưa có học sinh để xuất'); return; }
-    const rows = [
-      ['BÁO CÁO PHÒNG THI', session.title],
-      ['Lớp', classNameProp || session.classId],
-      ['Giáo viên', session.teacherName],
-      ['Bắt đầu', session.startedAtMs ? new Date(session.startedAtMs).toLocaleString('vi-VN') : ''],
-      ['Kết thúc', isEnded ? new Date(session.endedAtMs || Date.now()).toLocaleString('vi-VN') : 'Chưa kết thúc'],
-      [],
-      ['Học sinh', 'Trạng thái', 'Đã trả lời', 'Tạm dừng', 'Vi phạm nặng', 'Vi phạm nhẹ', 'Vào phòng', 'Chi tiết vi phạm'],
-    ];
-    students.forEach((st) => {
-      const detail = (st.violations || [])
-        .map((v) => `${fmtClock(v.at)} ${violationMeta(v.type).label}`)
-        .join(' | ');
-      rows.push([
-        st.studentName, st.status, st.answered || 0,
-        st.paused ? 'Có' : 'Không',
-        hardCount(st), softCount(st), fmtClock(st.joinedAtMs), detail,
-      ]);
+  /* Điểm minh bạch toàn phòng & chẩn đoán AI thời gian thực */
+  const roomDiagnostics = useMemo(() => {
+    const flagged = students.filter((s) => {
+      if (s.status !== 'examining') return false;
+      const vs = s.violations || [];
+      return vs.length > 0 || ['stale', 'none', 'off'].includes(camState(s, now));
     });
-    const safe = (session.title || 'phong-thi').replace(/[^\p{L}\p{N}]+/gu, '-');
-    downloadCsv(`bao-cao-${safe}.csv`, rows);
-    say('Đã xuất báo cáo');
+    const hardViolators = flagged.filter((s) =>
+      (s.violations || []).some((v) => v.severity === 'hard') || (s.violations || []).length >= 3
+    );
+    const stalled = students.filter(
+      (s) => s.status === 'examining' && !s.paused && Number(s.answered || 0) === 0
+    );
+    const total = Math.max(1, students.length);
+    const penalty = hardViolators.length * 14 + Math.max(0, flagged.length - hardViolators.length) * 6 + stats.offline * 3;
+    const integrityPct = students.length === 0 ? 100 : Math.max(20, Math.min(100, Math.round(100 - (penalty / total) * 2)));
+    return { flagged, hardViolators, stalled, integrityPct };
+  }, [students, stats.offline, now]);
+
+  const handleWarnFlaggedGroup = async () => {
+    const targets = roomDiagnostics.flagged;
+    if (!targets.length) {
+      say('Phòng thi hiện tại chưa ghi nhận nhóm cần nhắc nhở.');
+      return;
+    }
+    setActioning(true);
+    try {
+      await Promise.all(
+        targets.map((st) =>
+          warnStudent({
+            sessionId,
+            studentId: st.id,
+            message: `[ELEC AI Giám thị] Em ${st.studentName} vui lòng giữ camera rõ mặt và không rời khỏi màn hình làm bài thi!`,
+          })
+        )
+      );
+      say(`Đã gửi nhắc nhở đồng loạt tới ${targets.length} thí sinh cần chú ý`);
+    } catch (e) {
+      say(e?.message || 'Không gửi được nhắc nhở nhóm');
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const exportReport = async () => {
+    if (!session || students.length === 0) { say('Chưa có học sinh để xuất'); return; }
+    try {
+      const safe = (session.title || 'phong-thi').replace(/[^\p{L}\p{N}]+/gu, '-');
+      const startStr = session.startedAtMs ? new Date(session.startedAtMs).toLocaleString('vi-VN') : '—';
+      const endStr = isEnded ? new Date(session.endedAtMs || Date.now()).toLocaleString('vi-VN') : 'Đang diễn ra';
+      const typeCount = {};
+      logs.forEach((l) => { typeCount[l.type] = (typeCount[l.type] || 0) + 1; });
+      const violationTypes = Object.entries(typeCount).sort((a, b) => b[1] - a[1]);
+
+      await exportStyledWorkbook({
+        filename: `bao-cao-giam-thi-${safe}.xlsx`,
+        mascot: 'cool',
+        sheets: [
+          {
+            name: 'Nhật ký Giám sát',
+            mascot: 'cool',
+            title: `BIÊN BẢN GIÁM SÁT PHÒNG THI — ${(session.title || '').toUpperCase()}`,
+            subtitle: `Lớp ${classNameProp || session.classId} · GV coi thi: ${session.teacherName || 'Giáo viên'}`,
+            meta: [
+              { label: 'Bắt đầu', value: startStr },
+              { label: 'Kết thúc', value: endStr },
+              { label: 'Thí sinh', value: `${students.length} em` },
+              { label: 'Vi phạm ghi nhận', value: `${logs.length} sự kiện` },
+            ],
+            columns: [
+              { header: 'STT', key: 'stt', align: 'center', width: 8 },
+              { header: 'Họ và tên thí sinh', key: 'name', align: 'left', width: 26 },
+              { header: 'Trạng thái', key: 'status', align: 'center', isScoreBand: true, width: 15 },
+              { header: 'Đã trả lời', key: 'answered', align: 'center', width: 12 },
+              { header: 'Tạm dừng', key: 'paused', align: 'center', width: 12 },
+              { header: 'Vi phạm nặng', key: 'hard', align: 'center', width: 14 },
+              { header: 'Vi phạm nhẹ', key: 'soft', align: 'center', width: 14 },
+              { header: 'Mức liêm chính', key: 'integrity', align: 'center', isScoreBand: true, width: 18 },
+              { header: 'Vào phòng', key: 'joined', align: 'center', width: 13 },
+              { header: 'Chi tiết vi phạm', key: 'detail', align: 'left', width: 38, wrapText: true },
+            ],
+            rows: students.map((st, idx) => {
+              const hard = hardCount(st);
+              const soft = softCount(st);
+              const detail = (st.violations || [])
+                .map((v) => `${fmtClock(v.at)} ${violationMeta(v.type).label}`)
+                .join(' | ');
+              const integrity = hard > 0 ? 'Cảnh báo nặng' : (soft > 0 ? 'Cần chú ý' : 'Liêm chính cao');
+              return {
+                stt: idx + 1,
+                name: st.studentName,
+                status: st.status,
+                answered: st.answered || 0,
+                paused: st.paused ? 'Có' : 'Không',
+                hard,
+                soft,
+                integrity,
+                joined: fmtClock(st.joinedAtMs),
+                detail: detail || 'Không có vi phạm',
+              };
+            }),
+            summaryRow: {
+              labelCol: 1,
+              label: `TỔNG KẾT PHÒNG THI (${students.length} thí sinh)`,
+              cells: {
+                hard: ({ dataStartRow, dataEndRow }) => ({ formula: `SUM(F${dataStartRow}:F${dataEndRow})` }),
+                soft: ({ dataStartRow, dataEndRow }) => ({ formula: `SUM(G${dataStartRow}:G${dataEndRow})` }),
+              },
+            },
+          },
+          ...(violationTypes.length > 0 ? [{
+            name: 'Phân loại Vi phạm',
+            mascot: 'think',
+            title: `THỐNG KÊ LOẠI VI PHẠM — ${(session.title || '').toUpperCase()}`,
+            subtitle: `Tổng hợp ${logs.length} cảnh báo bất thường trong phiên thi`,
+            columns: [
+              { header: 'STT', key: 'stt', align: 'center', width: 8 },
+              { header: 'Loại vi phạm', key: 'label', align: 'left', width: 32 },
+              { header: 'Mức độ', key: 'severity', align: 'center', isScoreBand: true, width: 16 },
+              { header: 'Số lần ghi nhận', key: 'count', align: 'center', width: 16 },
+            ],
+            rows: violationTypes.map(([t, n], idx) => {
+              const m = violationMeta(t);
+              return {
+                stt: idx + 1,
+                label: m.label,
+                severity: m.severity === 'hard' ? 'Vi phạm nặng' : 'Vi phạm nhẹ',
+                count: n,
+              };
+            }),
+          }] : []),
+        ],
+      });
+      say('Đã xuất biên bản giám thị Excel (.xlsx)');
+    } catch (e) {
+      say(e?.message || 'Không xuất được file Excel');
+    }
   };
 
   /* ---------- LOADING ---------- */
@@ -801,96 +924,151 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
       {/* ============================================================
           AI GIÁM THỊ THÔNG MINH & TỰ ĐỘNG NHẮC NHỞ
           ============================================================ */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
-          border: '1px solid #bfdbfe',
-          borderRadius: 16,
-          padding: '10px 16px',
-          marginBottom: 12,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-          boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 260 }}>
-          <span
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              background: '#2563eb',
-              color: '#fff',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)',
-              flexShrink: 0,
-            }}
-          >
-            <IcoShield size={17} />
+      {/* AI GIÁM THỊ PHÒNG THI THÔNG MINH ELEC (DARK/LIGHT SAFE) */}
+      <div className="t-proctor-ai-banner">
+        <div className="t-proctor-ai-left">
+          <ElecMascot
+            mood={roomDiagnostics.hardViolators.length > 0 || stats.violators > 0 ? 'suspicious' : 'cool'}
+            size={48}
+            alt="ELEC Giám thị AI"
+          />
+          <span className="t-proctor-ai-badge" aria-hidden="true">
+            <ElecFlaskBrandSvg size={20} variant="duo" />
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <strong style={{ fontSize: '0.86rem', color: '#1e3a8a' }}>
-                AI Giám Thị Phòng Thi Thông Minh
-              </strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <strong className="t-proctor-ai-title">ELEC AI Giám Thị Phòng Thi</strong>
               <span
                 style={{
-                  background: '#dcfce7',
-                  color: '#15803d',
+                  background: isEnded ? 'rgba(100,116,139,0.16)' : 'rgba(16,185,129,0.16)',
+                  color: isEnded ? 'var(--mut)' : '#059669',
                   padding: '2px 8px',
                   borderRadius: 99,
                   fontSize: '0.7rem',
                   fontWeight: 800,
                 }}
               >
-                ● LIVE
+                {isEnded ? 'ĐÃ KẾT THÚC' : '● LIVE PROCTOR'}
               </span>
             </div>
-            <div
-              style={{
-                fontSize: '0.76rem',
-                color: '#3b82f6',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                marginTop: 2,
-              }}
-            >
-              {aiProctorFeed[0]?.messageSent || 'Đang tự động theo dõi vi phạm và hỗ trợ bảo vệ phòng thi.'}
+            <div className="t-proctor-ai-desc">
+              {aiProctorFeed[0]?.messageSent || 'Đang tự động theo dõi vi phạm và bảo vệ công bằng phòng thi.'}
             </div>
           </div>
         </div>
 
-        <label
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            background: '#fff',
-            padding: '6px 12px',
-            borderRadius: 99,
-            border: '1px solid #cbd5e1',
-            fontSize: '0.78rem',
-            fontWeight: 800,
-            color: '#0f172a',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={aiAutoWarn}
-            onChange={(e) => setAiAutoWarn(e.target.checked)}
-            style={{ width: 16, height: 16, accentColor: '#2563eb' }}
-          />
-          <span>AI Tự động gửi nhắc nhở thí sinh khi vi phạm</span>
-        </label>
+        <div className="t-proctor-ai-controls">
+          <div className="t-proctor-integrity-box" title="Chỉ số minh bạch phòng thi dựa trên vi phạm & kết nối">
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--mut)' }}>Minh bạch:</span>
+            <strong
+              className={`t-proctor-integrity-val ${
+                roomDiagnostics.integrityPct < 70
+                  ? 'danger'
+                  : roomDiagnostics.integrityPct < 90
+                    ? 'warn'
+                    : ''
+              }`}
+            >
+              {roomDiagnostics.integrityPct}%
+            </strong>
+          </div>
+
+          <button
+            type="button"
+            className={`vt-btn sm ${aiDiagOpen ? 'primary' : ''}`}
+            onClick={() => setAiDiagOpen((v) => !v)}
+          >
+            <ElecFlaskBrandSvg size={14} variant={aiDiagOpen ? 'current' : 'gradient'} />
+            <span>{aiDiagOpen ? 'Đóng rà soát AI' : 'AI Rà soát toàn phòng'}</span>
+          </button>
+
+          <label className="t-proctor-toggle-pill">
+            <input
+              type="checkbox"
+              checked={aiAutoWarn}
+              onChange={(e) => setAiAutoWarn(e.target.checked)}
+              style={{ width: 15, height: 15, accentColor: '#2563eb' }}
+            />
+            <span>AI Tự động nhắc vi phạm</span>
+          </label>
+        </div>
       </div>
+
+      {aiDiagOpen && (
+        <section className="t-proctor-diag-panel" aria-label="AI Rà soát toàn phòng">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ElecFlaskBrandSvg size={17} variant="gradient" />
+              <strong style={{ fontSize: '0.9rem', color: 'var(--ink)' }}>
+                Báo cáo rà soát phòng thi tức thời ({students.length} thí sinh)
+              </strong>
+            </div>
+            {!isEnded && roomDiagnostics.flagged.length > 0 && (
+              <button
+                type="button"
+                className="vt-btn sm primary"
+                disabled={actioning}
+                onClick={handleWarnFlaggedGroup}
+              >
+                <IcoBell size={13} /> Nhắc đồng loạt {roomDiagnostics.flagged.length} em cần chú ý
+              </button>
+            )}
+          </div>
+
+          <div className="t-proctor-diag-grid">
+            <div className="t-proctor-diag-item">
+              <strong>Vi phạm mức cao / Lặp lại ({roomDiagnostics.hardViolators.length})</strong>
+              <p>
+                {roomDiagnostics.hardViolators.length > 0
+                  ? roomDiagnostics.hardViolators.map((x) => shortName(x.studentName)).slice(0, 4).join(', ')
+                  : 'Chưa phát hiện hành vi rời màn hình nhiều lần hoặc DevTools.'}
+              </p>
+            </div>
+            <div className="t-proctor-diag-item">
+              <strong>Mất camera / Tín hiệu yếu ({stats.camBad + stats.offline})</strong>
+              <p>
+                {stats.camBad + stats.offline > 0
+                  ? `${stats.camBad} thí sinh mất camera, ${stats.offline} mất kết nối tạm thời.`
+                  : 'Toàn bộ thí sinh online đều giữ kết nối & camera ổn định.'}
+              </p>
+            </div>
+            <div className="t-proctor-diag-item">
+              <strong>Chưa ghi nhận câu trả lời ({roomDiagnostics.stalled.length})</strong>
+              <p>
+                {roomDiagnostics.stalled.length > 0
+                  ? `${roomDiagnostics.stalled.length} em đang mở đề nhưng chưa chọn đáp án nào.`
+                  : 'Tất cả thí sinh đang làm bài đều có tiến độ trả lời.'}
+              </p>
+            </div>
+          </div>
+
+          {aiProctorFeed.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <small style={{ fontWeight: 800, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                Nhật ký cảnh báo AI gần nhất
+              </small>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {aiProctorFeed.slice(0, 4).map((item) => (
+                  <span
+                    key={item.id}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      fontSize: '0.73rem',
+                      fontWeight: 600,
+                      background: 'var(--vt-tint)',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--soft)',
+                    }}
+                  >
+                    <b>{item.time}</b> · {item.studentName}: {item.messageSent}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* HERO */}
       <div className="vt-row-hero">
@@ -1164,7 +1342,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
               <div className="vt-card">
                 <header className="vt-card-head">
                   <h3 className="vt-card-title">Tổng kết phòng thi</h3>
-                  <button type="button" className="vt-btn primary" onClick={exportReport}><IcoDownload size={14} /> Xuất CSV</button>
+                  <button type="button" className="vt-btn primary" onClick={exportReport}><IcoDownload size={14} /> Xuất Excel (.xlsx)</button>
                 </header>
                 <div className="vt-stat-tiles">
                   <div><b>{students.length}</b><span>đã vào</span></div>

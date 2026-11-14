@@ -33,9 +33,18 @@ export const norm = (s) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Khóa nhận diện câu trùng: nội dung câu + các đáp án (không phân biệt dấu/hoa thường). */
-export const questionKey = (item) =>
-  norm(item?.q) + '|' + (item?.options || []).map(norm).join('|');
+/** Khóa nhận diện câu trùng: hỗ trợ cả Trắc nghiệm 4 lựa chọn, Đúng/Sai 4 ý và Trả lời ngắn. */
+export const questionKey = (item) => {
+  const type = item?.type || (Array.isArray(item?.statements) ? 'true_false' : item?.answer !== undefined && !(item?.options?.length) ? 'short_answer' : 'single_choice');
+  if (type === 'true_false') {
+    const sts = (item?.statements || []).map((s) => `${norm(s?.text)}:${s?.answer ? 1 : 0}`).join('|');
+    return `tf|${norm(item?.q)}|${sts}`;
+  }
+  if (type === 'short_answer') {
+    return `sa|${norm(item?.q)}|${norm(item?.answer)}`;
+  }
+  return norm(item?.q) + '|' + (item?.options || []).map(norm).join('|');
+};
 
 /** Tìm câu đã có trong `list` giống hệt `item`. */
 export const findDuplicate = (list, item) => {
@@ -56,31 +65,63 @@ const cleanTags = (tags) =>
 
 const cleanPoints = (p) => (Number(p) > 0 ? Number(p) : 1);
 
-/** Chuẩn hóa + kiểm tra 1 câu. Trả về object sạch, hoặc ném lỗi có thông điệp tiếng Việt. */
+/** Chuẩn hóa + kiểm tra 1 câu (hỗ trợ Trắc nghiệm, Đúng/Sai 4 ý và Trả lời ngắn). */
 function buildQuestion(raw, teacherId) {
   if (!raw?.q?.trim()) throw new Error('Câu hỏi rỗng');
-  if (!Array.isArray(raw.options) || raw.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
-  const options = raw.options.map((o) => String(o || '').trim());
-  const correct = Number(raw.correct);
-  if (!Number.isInteger(correct) || correct < 0 || correct >= options.length || !options[correct]) {
-    throw new Error('Đáp án đúng không hợp lệ');
-  }
-  return {
+  const type = raw.type || (Array.isArray(raw.statements) ? 'true_false' : (raw.answer !== undefined && !(raw.options?.length)) ? 'short_answer' : 'single_choice');
+  const base = {
     teacherId,
+    type,
     subject: String(raw.subject || '').trim(),
     grade: Number(raw.grade) || 0,
     topicId: String(raw.topicId || '').trim(),
     level: String(raw.level || '').trim(),
     tags: cleanTags(raw.tags),
     q: String(raw.q).trim(),
-    options,
-    correct,
     explain: String(raw.explain || '').trim(),
     points: cleanPoints(raw.points),
     usageCount: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
+
+  if (type === 'true_false') {
+    const sts = Array.isArray(raw.statements) ? raw.statements : [];
+    if (sts.length === 0) throw new Error('Câu Đúng/Sai cần ít nhất 1 mệnh đề');
+    return {
+      ...base,
+      statements: sts.map((s, idx) => ({
+        key: s?.key || String.fromCharCode(97 + idx),
+        text: String(s?.text || '').trim(),
+        answer: !!(s?.answer ?? s?.correct),
+      })),
+      options: [],
+      correct: 0,
+    };
+  }
+
+  if (type === 'short_answer') {
+    const ans = String(raw.answer ?? '').trim();
+    if (!ans) throw new Error('Câu trả lời ngắn thiếu đáp án chuẩn');
+    const accepted = Array.isArray(raw.accepted)
+      ? raw.accepted.map((a) => String(a || '').trim()).filter(Boolean)
+      : [ans];
+    return {
+      ...base,
+      answer: ans,
+      accepted,
+      options: [],
+      correct: 0,
+    };
+  }
+
+  if (!Array.isArray(raw.options) || raw.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
+  const options = raw.options.map((o) => String(o || '').trim());
+  const correct = Number(raw.correct);
+  if (!Number.isInteger(correct) || correct < 0 || correct >= options.length || !options[correct]) {
+    throw new Error('Đáp án đúng không hợp lệ');
+  }
+  return { ...base, options, correct };
 }
 
 /* ============================================================
@@ -149,23 +190,34 @@ export async function addQuestionsBatch({ teacherId, questions, skipDuplicates =
 export async function updateQuestion(questionId, patch) {
   if (!questionId) throw new Error('Thiếu questionId');
 
-  const allowed = ['subject', 'grade', 'topicId', 'level', 'tags', 'q', 'options', 'correct', 'explain', 'points'];
+  const allowed = ['type', 'subject', 'grade', 'topicId', 'level', 'tags', 'q', 'options', 'correct', 'statements', 'answer', 'accepted', 'explain', 'points'];
   const data = { updatedAt: serverTimestamp() };
 
   for (const k of allowed) {
     if (patch[k] === undefined) continue;
     if (k === 'tags') data[k] = cleanTags(patch[k]);
     else if (k === 'options') data[k] = (patch[k] || []).map((o) => String(o || '').trim());
-    else if (k === 'points') data[k] = cleanPoints(patch[k]);
+    else if (k === 'statements') {
+      data[k] = (patch[k] || []).map((s, idx) => ({
+        key: s?.key || String.fromCharCode(97 + idx),
+        text: String(s?.text || '').trim(),
+        answer: !!(s?.answer ?? s?.correct),
+      }));
+    } else if (k === 'accepted') {
+      data[k] = Array.isArray(patch[k]) ? patch[k].map((a) => String(a || '').trim()).filter(Boolean) : [];
+    } else if (k === 'points') data[k] = cleanPoints(patch[k]);
     else if (k === 'correct' || k === 'grade') data[k] = Number(patch[k]) || 0;
     else data[k] = String(patch[k] || '').trim();
   }
 
-  if (data.options && data.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
-  if (data.options && patch.correct !== undefined) {
-    const c = data.correct;
-    if (c < 0 || c >= data.options.length || !data.options[c]) {
-      throw new Error('Đáp án đúng không hợp lệ');
+  const effectiveType = data.type || patch.type;
+  if (effectiveType !== 'true_false' && effectiveType !== 'short_answer') {
+    if (data.options && data.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
+    if (data.options && patch.correct !== undefined) {
+      const c = data.correct;
+      if (c < 0 || c >= data.options.length || !data.options[c]) {
+        throw new Error('Đáp án đúng không hợp lệ');
+      }
     }
   }
 

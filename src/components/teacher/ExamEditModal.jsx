@@ -209,15 +209,18 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
   const [title, setTitle] = useState(exam.title || '');
   const [description, setDescription] = useState(exam.description || '');
   const [duration, setDuration] = useState(exam.duration || 15);
+  const [subject, setSubject] = useState(exam.subject || '');
+  const [grade, setGrade] = useState(exam.grade ? String(exam.grade) : '');
   const [classId, setClassId] = useState(exam.classId || '');
   const [showAnswerAfter, setShowAnswerAfter] = useState(exam.showAnswerAfter ?? true);
   const [allowRetry, setAllowRetry] = useState(exam.allowRetry ?? false);
   const [shuffle, setShuffle] = useState(exam.shuffle ?? false);
   // [2.1] Thêm state displayMode
   const [displayMode, setDisplayMode] = useState(exam.displayMode || 'auto');
+  const [gradeType, setGradeType] = useState(exam.gradeType || '');
 
-  const [opensAt, setOpensAt] = useState(exam.opensAt?.seconds ? toLocalInput(exam.opensAt) : '');
-  const [closesAt, setClosesAt] = useState(exam.closesAt?.seconds ? toLocalInput(exam.closesAt) : '');
+  const [opensAt, setOpensAt] = useState(() => (exam.opensAt ? toLocalInput(exam.opensAt) : ''));
+  const [closesAt, setClosesAt] = useState(() => (exam.closesAt ? toLocalInput(exam.closesAt) : ''));
 
   const [proctor, setProctor] = useState(() => ({
     fullscreenLock: true, tabSwitchLimit: 3, blockCopyPaste: true, strictMode: true,
@@ -385,11 +388,14 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
             accepted: [...new Set([vi, vi.replace(',', '.')])].filter(Boolean),
           };
         }
-        const options = (q.options || []).map((o) => String(o).trim()).filter(Boolean);
+        const kept = (q.options || [])
+          .map((o, idx) => ({ text: String(o).trim(), idx }))
+          .filter((x) => x.text);
+        const mappedCorrect = kept.findIndex((x) => x.idx === Number(q.correct));
         return {
           ...base,
-          options,
-          correct: Math.max(0, Math.min(Number(q.correct) || 0, options.length - 1)),
+          options: kept.map((x) => x.text),
+          correct: mappedCorrect >= 0 ? mappedCorrect : 0,
         };
       });
       const sumPoints = round2(cleaned.reduce((s, q) => s + q.points, 0));
@@ -398,11 +404,14 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
         title: title.trim(),
         description: description.trim(),
         duration: Number(duration),
+        subject: subject.trim(),
+        grade: grade.trim(),
         classId: classId || '',
         showAnswerAfter,
         allowRetry,
         shuffle,
         displayMode, // [2.3] Lưu displayMode
+        gradeType: ['tx', 'dgk', 'ckk'].includes(gradeType) ? gradeType : '',
         opensAt: opensAt ? new Date(opensAt) : null,
         closesAt: closesAt ? new Date(closesAt) : null,
         proctor,
@@ -412,7 +421,10 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
       onSaved?.({
         ...exam,
         title: title.trim(), description: description.trim(), duration: Number(duration),
-        classId: classId || '', showAnswerAfter, allowRetry, shuffle, displayMode, proctor,
+        subject: subject.trim(), grade: grade.trim(),
+        classId: classId || '', showAnswerAfter, allowRetry, shuffle, displayMode,
+        gradeType: ['tx', 'dgk', 'ckk'].includes(gradeType) ? gradeType : '',
+        proctor,
         opensAt: opensAt ? new Date(opensAt) : null,
         closesAt: closesAt ? new Date(closesAt) : null,
         questions: cleaned, totalPoints: sumPoints,
@@ -462,6 +474,16 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
           <textarea style={{ ...P.input, marginBottom: '.7rem', minHeight: 60, resize: 'vertical' }} value={description} onChange={(e) => setDescription(e.target.value)} />
           <Row>
             <div>
+              <label style={P.label}>Môn học</label>
+              <input style={P.input} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="VD: Hóa học, Toán học..." />
+            </div>
+            <div>
+              <label style={P.label}>Khối lớp</label>
+              <input style={P.input} value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="VD: 10, 11, 12" />
+            </div>
+          </Row>
+          <Row>
+            <div>
               <label style={P.label}>Thời gian (phút)</label>
               <input type="number" min="1" max="300" style={P.input} value={duration} onChange={(e) => setDuration(e.target.value)} />
             </div>
@@ -489,6 +511,16 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
               <option value="auto">Tự động (có bài đọc → đề giấy, ngược lại → từng câu)</option>
               <option value="single">Từng câu A, B, C, D (mỗi lần 1 câu, có Trước / Tiếp)</option>
               <option value="paper">Đề giấy — cuộn liên tục, chọn đáp án liên tục</option>
+            </select>
+          </div>
+
+          <div style={{ marginTop: '.7rem' }}>
+            <label style={P.label}>Cột điểm vnEdu / SMAS (Thông tư 22)</label>
+            <select style={P.input} value={gradeType} onChange={(e) => setGradeType(e.target.value)}>
+              <option value="">Tự động nhận diện theo tiêu đề &amp; thời gian</option>
+              <option value="tx">Thường xuyên — TX (Hệ số 1)</option>
+              <option value="dgk">Đánh giá giữa kỳ — ĐGK (Hệ số 2)</option>
+              <option value="ckk">Đánh giá cuối kỳ — CKK (Hệ số 3)</option>
             </select>
           </div>
 
@@ -851,7 +883,12 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
 
 function toLocalInput(ts) {
   try {
-    const d = typeof ts?.toMillis === 'function' ? new Date(ts.toMillis()) : new Date(ts);
+    if (ts == null || ts === '') return '';
+    let d;
+    if (typeof ts?.toMillis === 'function') d = new Date(ts.toMillis());
+    else if (typeof ts?.seconds === 'number') d = new Date(ts.seconds * 1000);
+    else d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   } catch { return ''; }

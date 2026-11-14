@@ -291,23 +291,21 @@ service cloud.firestore {
          (ExamJoin kiểm tra memberIds) + rule nộp bài bên dưới. */
       allow read: if signedIn();
 
-      // Tạo đề: phải là chủ lớp, hoặc GVBM đã liên kết của chính lớp đó
+      // Tạo đề: chủ lớp, GVBM đã liên kết, hoặc bản nháp cá nhân chưa gắn lớp
       allow create: if signedIn()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.classId is string
-        && (classOwner(request.resource.data.classId)
+        && ((request.resource.data.classId == '' && request.resource.data.isDraft == true)
+            || classOwner(request.resource.data.classId)
             || exists(/databases/$(database)/documents/class_teachers/$(request.resource.data.classId + '_' + request.auth.uid)));
 
-      // Sửa: chỉ tác giả đề hoặc chủ lớp; không được đổi lớp / đổi tác giả
+      // Sửa: tác giả đề (hoặc admin); tránh GVCN ghi đè/xóa nhầm đề của GVBM khác
       allow update: if signedIn()
-        && (resource.data.teacherId == request.auth.uid || classOwner(resource.data.classId))
-        && request.resource.data.classId == resource.data.classId
+        && (resource.data.teacherId == request.auth.uid || isAdmin())
         && request.resource.data.teacherId == resource.data.teacherId;
 
       allow delete: if signedIn()
-        && (resource.data.teacherId == request.auth.uid
-            || classOwner(resource.data.classId)
-            || isAdmin());
+        && (resource.data.teacherId == request.auth.uid || isAdmin());
 
       // Đáp án riêng tư của đề — hiện không có client nào dùng
       match /private/{docId} {

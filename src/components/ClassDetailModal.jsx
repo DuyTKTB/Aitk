@@ -191,6 +191,7 @@ export default function ClassDetailModal({
   initialTab = 'overview',
   onClose,
   onExportCsv,
+  onExportRoster,
   onOpenExam,
   onApprove,
   onReject,
@@ -468,9 +469,9 @@ export default function ClassDetailModal({
                 type="button"
                 className="vt-btn sm"
                 onClick={() => onExportCsv(classInfo, exams, submissionsMap)}
-                title="Xuất bảng điểm lớp ra CSV"
+                title="Xuất bảng điểm lớp ra Excel (.xlsx)"
               >
-                <IconDownload size={13} /> Xuất CSV
+                <IconDownload size={13} /> Xuất Excel (.xlsx)
               </button>
             )}
             <button type="button" className="cd-close" onClick={onClose} aria-label="Đóng">
@@ -783,6 +784,16 @@ export default function ClassDetailModal({
                         Chưa làm <em>{studentsStats.filter((s) => s.doneCount === 0).length}</em>
                       </button>
                     </div>
+                    {onExportRoster && (
+                      <button
+                        type="button"
+                        className="cd-btn sm"
+                        onClick={() => onExportRoster(classInfo)}
+                        title="Xuất danh sách học sinh lớp ra Excel (.xlsx)"
+                      >
+                        <IconDownload size={13} /> Xuất DS lớp (.xlsx)
+                      </button>
+                    )}
                   </div>
 
                   {filteredStudents.length === 0 ? (
@@ -1117,7 +1128,7 @@ export default function ClassDetailModal({
                     className="vt-btn sm"
                     onClick={() => onExportCsv?.(classInfo, exams, submissionsMap)}
                   >
-                    <IconDownload size={13} /> Xuất CSV
+                    <IconDownload size={13} /> Xuất Excel (.xlsx)
                   </button>
                 )}
               </div>

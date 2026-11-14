@@ -1,12 +1,10 @@
 /* ============================================================
    teacher-ds.css — Unified Design System cho Khu Vực Giáo Viên
-   Sử dụng CSS Layers: @layer tokens, base, components, utilities;
-   Không dùng !important (trừ prefers-reduced-motion)
+   Unlayered để không bị index.css / theme-sandra.css ghi đè
    ============================================================ */
 
 @import './teacher-tokens.css';
 
-@layer base {
   .t-root {
     background-color: var(--t-bg);
     color: var(--t-ink);
@@ -76,9 +74,7 @@
       background: var(--t-surface-1);
     }
   }
-}
 
-@layer components {
   /* ============================================================
      1. BENTO CARD & NOTCH (ẢNH 1: HUBSPOT CRM WORKSPACE)
      ============================================================ */
@@ -2228,15 +2224,12 @@
     flex-direction: column;
     gap: 0.85rem;
   }
-}
 
-@layer utilities {
   .t-flex-between { display: flex; align-items: center; justify-content: space-between; }
   .t-flex-center { display: flex; align-items: center; justify-content: center; }
   .t-text-muted { color: var(--t-ink-muted); }
   .t-text-lime { color: var(--t-accent); }
   .t-text-purple { color: var(--t-accent-2); }
-}
 
 /* ============================================================
    BẢN IN A4 CHUẨN BỘ GD&ĐT (@media print)

@@ -17,16 +17,17 @@ import {
 import {
   DEFAULT_SCORING, DEFAULT_COUNTS, MAX_COUNTS,
   parseKeyP1, parseKeyP2, parseKeyP3, keyToTextP1, keyToTextP2, keyToTextP3,
-  keyToStored, keyFromStored, keyP1FromExam, gradeSheet, maxScore, checkKey,
+  keyToStored, keyFromStored, keyP1FromExam, keyP2FromExam, keyP3FromExam, gradeSheet, maxScore, checkKey,
   parseRoster, answersToRead, resultsToRows, round2,
   computePaperAnalytics,
 } from '../../lib/paperGrade.js';
 import {
   listPaperExams, createPaperExam, updatePaperExam, deletePaperExam,
-  listPaperResults, savePaperResults, syncPaperResultsToSubmissions,
+  listPaperResults, savePaperResults, deletePaperResult, syncPaperResultsToSubmissions,
 } from '../../lib/paperStore.js';
 import sound from '../../lib/gameSound.js';
-import { downloadCsv } from '../DashShell.jsx';
+import { exportStyledWorkbook } from '../../lib/excelExport.js';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
 import '../../styles/paper-grading.css';
 
@@ -46,7 +47,9 @@ const IcoTrash = (p) => <Svg {...p}><polyline points="3 6 5 6 21 6" /><path d="M
 const IcoEdit = (p) => <Svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
 const IcoX = (p) => <Svg {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Svg>;
 const IcoDownload = (p) => <Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></Svg>;
-const IcoSpark = (p) => <Svg {...p}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" /></Svg>;
+const IcoSpark = ({ size = 16, className = '', style }) => (
+  <ElecFlaskBrandSvg size={size} variant="gradient" className={className} style={style} />
+);
 const IcoZoomIn = (p) => <Svg {...p}><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></Svg>;
 const IcoRotate = (p) => <Svg {...p}><path d="M21 12a9 9 0 1 1-3-6.7" /><polyline points="21 4 21 10 15 10" /></Svg>;
 
@@ -410,6 +413,7 @@ export default function PaperGrading({ classes = [], exams = [] }) {
 function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) {
   const [title, setTitle] = useState(initial?.title || '');
   const [classId, setClassId] = useState(initial?.classId || '');
+  const [linkedExamId, setLinkedExamId] = useState(initial?.linkedExamId || '');
   const [counts, setCounts] = useState({ ...DEFAULT_COUNTS, ...(initial?.counts || {}) });
   const [scoring, setScoring] = useState({ ...DEFAULT_SCORING, ...(initial?.scoring || {}) });
   const [codes, setCodes] = useState(() => {
@@ -465,11 +469,29 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
   const importFromExam = (examId) => {
     const ex = exams.find((e) => e.id === examId);
     if (!ex) return;
-    const k = keyP1FromExam(ex, MAX_COUNTS.p1);
-    const filled = k.filter(Boolean).length;
-    setCur({ p1: keyToTextP1(k) });
-    setCount('p1', Math.min(MAX_COUNTS.p1, Math.max(counts.p1, ex.questions?.length || 0)));
-    say(`Đã lấy ${filled} đáp án Phần I từ đề "${ex.title}"`);
+    const qs = ex.questions || [];
+    const p1N = qs.filter((q) => !q?.type && q?.part !== 2 && q?.part !== 3 && !q?.statements?.length || q?.type === 'single_choice' || q?.part === 1).length;
+    const p2N = qs.filter((q) => q?.type === 'true_false' || q?.part === 2 || (Array.isArray(q?.statements) && q.statements.length > 0)).length;
+    const p3N = qs.filter((q) => q?.type === 'short_answer' || q?.part === 3 || (q?.answer !== undefined && !(q?.options?.length))).length;
+    const k1 = keyP1FromExam(ex, MAX_COUNTS.p1);
+    const k2 = keyP2FromExam(ex, MAX_COUNTS.p2);
+    const k3 = keyP3FromExam(ex, MAX_COUNTS.p3);
+    const filled1 = k1.filter(Boolean).length;
+    const filled2 = k2.filter((arr) => arr.some(Boolean)).length;
+    const filled3 = k3.filter((arr) => arr.length > 0).length;
+    setCur({
+      p1: keyToTextP1(k1),
+      p2: keyToTextP2(k2),
+      p3: keyToTextP3(k3),
+    });
+    setCounts((c) => ({
+      p1: p1N > 0 ? Math.min(MAX_COUNTS.p1, p1N) : c.p1,
+      p2: p2N > 0 ? Math.min(MAX_COUNTS.p2, p2N) : (p1N + p3N > 0 ? 0 : c.p2),
+      p3: p3N > 0 ? Math.min(MAX_COUNTS.p3, p3N) : (p1N + p2N > 0 ? 0 : c.p3),
+    }));
+    setLinkedExamId(ex.id);
+    if (!classId && ex.classId) setClassId(ex.classId);
+    say(`Đã lấy đáp án từ đề "${ex.title}": P.I (${filled1}c), P.II (${filled2}c), P.III (${filled3}c)`);
   };
 
   const handleSubmit = (e) => {
@@ -492,6 +514,7 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
     onSave({
       title: title.trim(),
       classId: classId || null,
+      linkedExamId: linkedExamId || null,
       counts,
       scoring,
       keys,
@@ -951,7 +974,7 @@ function PaperGrade({
       sound.cheer?.();
       setCameraFeedback({
         ok: true,
-        msg: `✓ SBD: ${read.sbd || '---'} · Mã đề: ${code || '---'} · Điểm: ${fmt(grade?.score10)}/10`,
+        msg: `Đã quét · SBD: ${read.sbd || '---'} · Mã đề: ${code || '---'} · Điểm: ${fmt(grade?.score10)}/10`,
       });
     } catch (e) {
       sound.wrong?.();
@@ -979,10 +1002,28 @@ function PaperGrade({
     if (!removed) return;
     setItems((cur) => cur.filter((c) => c.id !== id));
     if (editId === id) setEditId(null);
+    if (removed.saved && paper?.id && removed.id) {
+      deletePaperResult(paper.id, removed.id).catch((e) => say(`Lỗi xóa khỏi đám mây: ${e.message}`, 'error'));
+    }
     say(`Đã bỏ phiếu SBD ${removed.sbd || removed.fileName}`, 'warn', {
       undoLabel: 'Hoàn tác',
       onUndo: () => {
         setItems((cur) => [...cur, removed]);
+        if (removed.saved && paper?.id && removed.read) {
+          savePaperResults(paper.id, [{
+            id: removed.id,
+            sbd: removed.sbd,
+            code: removed.code,
+            studentId: removed.studentId,
+            studentName: removed.studentName,
+            p1: removed.read.p1,
+            p2: removed.read.p2,
+            p3: removed.read.p3,
+            grade: removed.grade,
+            needsReview: removed.needsReview,
+            fileName: removed.fileName,
+          }]).catch(() => {});
+        }
         say('Đã khôi phục phiếu vào danh sách');
       },
     });
@@ -1013,6 +1054,7 @@ function PaperGrade({
     if (needs && !window.confirm(`Còn ${needs} phiếu đánh dấu "cần xem lại". Vẫn lưu?`)) return;
     setSaving(true);
     const mappedItems = toSave.map((r) => ({
+      id: r.saved ? r.id : null,
       sbd: r.sbd, code: r.code, studentId: r.studentId, studentName: r.studentName,
       p1: r.read.p1, p2: r.read.p2, p3: r.read.p3, grade: r.grade, needsReview: r.needsReview, fileName: r.fileName,
     }));
@@ -1034,11 +1076,50 @@ function PaperGrade({
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!okRows.length) return;
-    const rows = resultsToRows(okRows.slice().sort((a, b) => String(a.sbd).localeCompare(String(b.sbd))), paper);
-    downloadCsv(`ket-qua-${(paper.title || 'cham-phieu').replace(/[^\p{L}\p{N}]+/gu, '-')}.csv`, rows);
-    say('Đã xuất file bảng điểm Excel (CSV UTF-8)');
+    try {
+      const sortedOk = okRows.slice().sort((a, b) => String(a.sbd).localeCompare(String(b.sbd)));
+      const rawRows = resultsToRows(sortedOk, paper);
+      const headers = rawRows[0] || ['SBD', 'Họ và tên', 'Mã đề', 'Thang 10'];
+      const body = rawRows.slice(1);
+      const cols = headers.map((h, idx) => {
+        const lower = String(h || '').toLowerCase();
+        const isTen = lower.includes('thang 10') || lower.includes('điểm') || lower.includes('diem');
+        return {
+          header: String(h || `Cột ${idx + 1}`),
+          key: `c${idx}`,
+          align: lower.includes('tên') || lower.includes('ghi chú') ? 'left' : 'center',
+          isScore10: isTen && !lower.includes('tổng'),
+          numFmt: isTen ? '0.0' : undefined,
+        };
+      });
+      const mappedRows = body.map((r) => {
+        const obj = {};
+        headers.forEach((_h, idx) => {
+          const val = r[idx];
+          const num = Number(val);
+          obj[`c${idx}`] = cols[idx].numFmt && val !== '' && !Number.isNaN(num) ? num : val;
+        });
+        return obj;
+      });
+      const safe = (paper.title || 'cham-phieu').replace(/[^\p{L}\p{N}]+/gu, '-');
+      await exportStyledWorkbook({
+        filename: `ket-qua-cham-phieu-${safe}.xlsx`,
+        mascot: 'celebrate',
+        sheets: [{
+          name: 'Kết quả Chấm phiếu',
+          mascot: 'celebrate',
+          title: `KẾT QUẢ CHẤM PHIẾU TRẮC NGHIỆM A4 — ${(paper.title || '').toUpperCase()}`,
+          subtitle: `Đã chấm ${sortedOk.length} phiếu · Điểm TB: ${fmt(stats.avg)}/10 · Cao nhất: ${fmt(stats.max)} · Thấp nhất: ${fmt(stats.min)}`,
+          columns: cols,
+          rows: mappedRows,
+        }],
+      });
+      say('Đã xuất bảng điểm chấm phiếu Excel (.xlsx)');
+    } catch (e) {
+      say(e?.message || 'Không xuất được file Excel', 'error');
+    }
   };
 
   const editing = graded.find((g) => g.id === editId) || null;
@@ -1110,7 +1191,7 @@ function PaperGrade({
             </div>
             <div className="pg-head-actions">
               <button type="button" className="vt-btn sm" onClick={handleExport} disabled={!okRows.length}>
-                <IcoDownload size={13} /> Xuất Excel (CSV)
+                <IcoDownload size={13} /> Xuất Excel (.xlsx)
               </button>
               <button type="button" className="vt-btn sm primary" onClick={handleSave} disabled={saving || !okRows.length}>
                 <IcoCheck size={13} /> {saving ? 'Đang lưu…' : 'Lưu kết quả lên Cloud'}
@@ -1480,25 +1561,29 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
               <>
                 <h4>Phần II: Đúng / Sai ({counts.p2} câu)</h4>
                 <div className="pg-p2grid">
-                  {Array.from({ length: counts.p2 }, (_, q) => (
-                    <div key={q} className="pg-p2cell">
-                      <b>Câu {q + 1}</b>
-                      {[0, 1, 2, 3].map((y) => (
-                        <label
-                          key={y}
-                          className={issueAt((x) => x.part === 'p2' && x.q === q + 1 && x.y === 'abcd'[y]) ? 'sus' : ''}
-                        >
-                          <span>{'abcd'[y]}</span>
-                          <select value={read.p2?.[q]?.[y] || ''} onChange={(e) => setP2(q, y, e.target.value)}>
-                            <option value="">—</option>
-                            <option value="D">Đ</option>
-                            <option value="S">S</option>
-                            {read.p2?.[q]?.[y] === '*' && <option value="*">*</option>}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                  ))}
+                  {Array.from({ length: counts.p2 }, (_, q) => {
+                    const p2Sus = [0, 1, 2, 3].some((y) => issueAt((x) => x.part === 'p2' && x.q === q + 1 && x.y === 'abcd'[y]));
+                    if (onlySuspicious && !p2Sus) return null;
+                    return (
+                      <div key={q} className="pg-p2cell">
+                        <b>Câu {q + 1}</b>
+                        {[0, 1, 2, 3].map((y) => (
+                          <label
+                            key={y}
+                            className={issueAt((x) => x.part === 'p2' && x.q === q + 1 && x.y === 'abcd'[y]) ? 'sus' : ''}
+                          >
+                            <span>{'abcd'[y]}</span>
+                            <select value={read.p2?.[q]?.[y] || ''} onChange={(e) => setP2(q, y, e.target.value)}>
+                              <option value="">—</option>
+                              <option value="D">Đ</option>
+                              <option value="S">S</option>
+                              {read.p2?.[q]?.[y] === '*' && <option value="*">*</option>}
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -1507,16 +1592,20 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
               <>
                 <h4>Phần III: Trả lời ngắn ({counts.p3} câu)</h4>
                 <div className="pg-p3grid">
-                  {Array.from({ length: counts.p3 }, (_, q) => (
-                    <label key={q} className={'pg-field' + (issueAt((x) => x.part === 'p3' && x.q === q + 1) ? ' sus' : '')}>
-                      <span>Câu {q + 1}</span>
-                      <input
-                        value={read.p3?.[q] || ''}
-                        maxLength={6}
-                        onChange={(e) => setP3(q, e.target.value.replace(/[^\d,.\-?]/g, ''))}
-                      />
-                    </label>
-                  ))}
+                  {Array.from({ length: counts.p3 }, (_, q) => {
+                    const p3Sus = issueAt((x) => x.part === 'p3' && x.q === q + 1);
+                    if (onlySuspicious && !p3Sus) return null;
+                    return (
+                      <label key={q} className={'pg-field' + (p3Sus ? ' sus' : '')}>
+                        <span>Câu {q + 1}</span>
+                        <input
+                          value={read.p3?.[q] || ''}
+                          maxLength={6}
+                          onChange={(e) => setP3(q, e.target.value.replace(/[^\d,.\-?]/g, ''))}
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </>
             )}

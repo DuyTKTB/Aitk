@@ -21,6 +21,11 @@ import { createExamSession, getSessionByExam } from '../../lib/examSession.js';
 import { Modal } from '../DashShell.jsx';
 import ExamEditModal from './ExamEditModal.jsx';
 import ExamManagePanel from '../ExamManagePanel.jsx';
+import {
+  classifyExamGradeColumn,
+  computeStudentPeriodGrades,
+  exportStyledWorkbook,
+} from '../../lib/excelExport.js';
 import '../../styles/subject-teachers.css';
 
 const fmtDate = (ms) => {
@@ -57,9 +62,155 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
   const [resultsOf, setResultsOf] = useState(''); // examId đang xem kết quả
   const [confirmId, setConfirmId] = useState(''); // examId chờ xác nhận mở phòng
   const [busy, setBusy] = useState('');
+  const [exportingClassId, setExportingClassId] = useState('');
   const [editCtx, setEditCtx] = useState(null); // { exam, item } — mở Chỉnh sửa chi tiết
   const [manageCtx, setManageCtx] = useState(null); // { exam, item } — gia hạn/đóng–mở/nhân bản/chấm lại
   const [confirmRemoveCtx, setConfirmRemoveCtx] = useState(null); // { item, exam } — xác nhận xóa đề
+
+  const exportLinkedClassXlsx = async (item) => {
+    setExportingClassId(item.classId);
+    try {
+      let data = detail[item.classId];
+      if (!data || data.loading) {
+        data = await fetchClassDetail(item);
+        setDetail((d) => ({ ...d, [item.classId]: data }));
+      }
+      const clsName = item.cls?.name || item.className || item.classId;
+      const subsByExam = data?.subs || {};
+      const members = Array.isArray(item.cls?.members) ? [...item.cls.members] : [];
+      const seenIds = new Set(members.map((m) => m.id || m.uid));
+      item.mine.forEach((ex) => {
+        (subsByExam[ex.id] || []).forEach((s) => {
+          const sid = s.studentId || s.uid;
+          if (sid && !seenIds.has(sid)) {
+            seenIds.add(sid);
+            members.push({ id: sid, name: s.studentName || 'Học sinh', email: s.studentEmail || '' });
+          }
+        });
+      });
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await exportStyledWorkbook({
+        filename: `bang-diem-GVBM-${clsName.replace(/\s+/g, '-')}-${dateStr}.xlsx`,
+        mascot: 'cool',
+        sheets: [
+          {
+            name: 'Bảng điểm Bộ môn',
+            mascot: 'cool',
+            title: `BẢNG ĐIỂM GIÁO VIÊN BỘ MÔN — ${clsName.toUpperCase()}`,
+            subtitle: `Môn ${item.subject || 'Chuyên môn'} · GVBM: ${user?.displayName || user?.email || ''} · Hệ số TX(1) · ĐGK(2) · CKK(3)`,
+            meta: [
+              { label: 'Lớp giảng dạy', value: clsName },
+              { label: 'GV Chủ nhiệm', value: item.cls?.teacherName || '—' },
+              { label: 'Số đề đã giao', value: `${item.mine.length} đề` },
+            ],
+            columns: [
+              { header: 'STT', key: 'stt', align: 'center', width: 7 },
+              { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+              { header: 'Email', key: 'email', align: 'left', width: 28 },
+              { header: 'TX (HS1)', key: 'tx', align: 'center', numFmt: '0.0', isScore10: true, width: 13 },
+              { header: 'ĐGK (HS2)', key: 'dgk', align: 'center', numFmt: '0.0', isScore10: true, width: 13 },
+              { header: 'CKK (HS3)', key: 'ckk', align: 'center', numFmt: '0.0', isScore10: true, width: 13 },
+              { header: 'Điểm TB', key: 'tb', align: 'center', numFmt: '0.0', isScore10: true, width: 13 },
+              { header: 'Đánh giá', key: 'status', align: 'center', isScoreBand: true, width: 16 },
+              { header: 'Số bài nộp', key: 'subCount', align: 'center', width: 12 },
+            ],
+            rows: members.map((m, idx) => {
+              const sid = m.id || m.uid;
+              const grades = computeStudentPeriodGrades({ id: sid, name: m.name }, item.mine, subsByExam);
+              return {
+                stt: idx + 1,
+                name: m.name || 'Học sinh',
+                email: m.email || '',
+                tx: grades.tx,
+                dgk: grades.dgk,
+                ckk: grades.ckk,
+                tb: grades.tb,
+                status: grades.status,
+                subCount: grades.subCount,
+              };
+            }),
+          },
+          {
+            name: 'Đề đã giao',
+            mascot: 'happy',
+            title: `DANH SÁCH ĐỀ KIỂM TRA ĐÃ GIAO — ${clsName.toUpperCase()}`,
+            subtitle: `Tổng hợp ${item.mine.length} đề do giáo viên bộ môn phát hành`,
+            columns: [
+              { header: 'STT', key: 'stt', align: 'center', width: 7 },
+              { header: 'Tên đề kiểm tra', key: 'title', align: 'left', width: 34 },
+              { header: 'Cột điểm', key: 'bucket', align: 'center', width: 12 },
+              { header: 'Thời gian (phút)', key: 'duration', align: 'center', width: 16 },
+              { header: 'Số bài nộp', key: 'subCount', align: 'center', width: 13 },
+              { header: 'Điểm TB (10)', key: 'avg10', align: 'center', numFmt: '0.0', isScore10: true, width: 14 },
+            ],
+            rows: item.mine.map((ex, idx) => {
+              const subs = subsByExam[ex.id] || [];
+              const avg = subs.length
+                ? Math.round((subs.reduce((a, s) => a + ((Number(s.score) || 0) / Math.max(1, Number(s.totalPoints) || 10)) * 10, 0) / subs.length) * 10) / 10
+                : null;
+              return {
+                stt: idx + 1,
+                title: ex.title || 'Đề kiểm tra',
+                bucket: classifyExamGradeColumn(ex).toUpperCase(),
+                duration: Number(ex.duration) || 45,
+                subCount: subs.length,
+                avg10: avg,
+              };
+            }),
+          },
+        ],
+      });
+      onSay?.(`Đã xuất bảng điểm Excel lớp ${clsName}`, 'success');
+    } catch (e) {
+      onSay?.(`Không xuất được Excel: ${e?.message || e}`, 'error');
+    } finally {
+      setExportingClassId('');
+    }
+  };
+
+  const exportLinkedExamXlsx = async (item, ex, subs = []) => {
+    try {
+      const clsName = item.cls?.name || item.className || item.classId;
+      const safeTitle = (ex.title || 'de-thi').replace(/[^\p{L}\p{N}]+/gu, '-').slice(0, 32);
+      const sorted = [...subs].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+      await exportStyledWorkbook({
+        filename: `ket-qua-${safeTitle}-${clsName.replace(/\s+/g, '-')}.xlsx`,
+        mascot: 'happy',
+        sheets: [
+          {
+            name: 'Kết quả bài thi',
+            mascot: 'happy',
+            title: `KẾT QUẢ ĐỀ: ${(ex.title || 'ĐỀ KIỂM TRA').toUpperCase()}`,
+            subtitle: `Lớp ${clsName} · Cột điểm ${classifyExamGradeColumn(ex).toUpperCase()} · ${sorted.length} bài nộp`,
+            columns: [
+              { header: 'STT', key: 'stt', align: 'center', width: 7 },
+              { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+              { header: 'Điểm (Thang 10)', key: 'score10', align: 'center', numFmt: '0.0', isScore10: true, width: 15 },
+              { header: 'Đúng / Tổng câu', key: 'ratio', align: 'center', width: 15 },
+              { header: 'Hình thức nộp', key: 'mode', align: 'center', width: 16 },
+              { header: 'Thời điểm nộp', key: 'submitted', align: 'center', width: 20 },
+            ],
+            rows: sorted.map((s, idx) => {
+              const tot = Math.max(1, Number(s.totalPoints) || 10);
+              const sc10 = Math.round(((Number(s.score) || 0) / tot) * 100) / 10;
+              return {
+                stt: idx + 1,
+                name: s.studentName || 'Học sinh',
+                score10: sc10,
+                ratio: s.totalQuestions ? `${s.correctCount || 0}/${s.totalQuestions}` : `${s.score || 0}/${tot}`,
+                mode: (s.isPaperOmr || s.source === 'paper-omr') ? 'Phiếu A4 OMR' : 'Thi trực tuyến',
+                submitted: fmtDateTime(toMs(s.submittedAt)),
+              };
+            }),
+          },
+        ],
+      });
+      onSay?.(`Đã xuất Excel đề "${ex.title}"`, 'success');
+    } catch (e) {
+      onSay?.(`Không xuất được Excel đề: ${e?.message || e}`, 'error');
+    }
+  };
 
   const load = useCallback(async () => {
     if (!user?.uid) return;
@@ -241,7 +392,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
                   {' · '}liên kết {fmtDate(toMs(item.linkedAt) || item.linkedAtMs)}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="st-btn primary"
@@ -255,6 +406,15 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
                   })}
                 >
                   Giao đề
+                </button>
+                <button
+                  type="button"
+                  className="st-btn"
+                  disabled={exportingClassId === item.classId}
+                  onClick={() => exportLinkedClassXlsx(item)}
+                  title="Xuất bảng điểm GVBM (.xlsx) có Mascot ELEC & hệ số Thông tư 22"
+                >
+                  {exportingClassId === item.classId ? 'Đang xuất…' : 'Xuất Excel (.xlsx)'}
                 </button>
                 <button type="button" className="st-btn" onClick={() => openClassDetail(item)}>
                   {isOpen ? 'Thu gọn' : `Đề đã giao (${item.mine.length})`}
@@ -356,6 +516,14 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
                                   title="Gia hạn, đóng/mở đề, nhân bản, phân tích, chấm lại"
                                 >
                                   Quản lý
+                                </button>
+                                <button
+                                  type="button"
+                                  className="st-btn ghost"
+                                  onClick={() => exportLinkedExamXlsx(item, ex, subs)}
+                                  title="Xuất kết quả bài kiểm tra ra file Excel (.xlsx)"
+                                >
+                                  Excel
                                 </button>
                                 <button
                                   type="button"

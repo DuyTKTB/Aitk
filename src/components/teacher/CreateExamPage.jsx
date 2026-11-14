@@ -16,6 +16,7 @@ import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useToast } from '../admin/AdminUI.jsx';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import './create-exam-page.css';
 
 const IcoDoc = ({ size = 16 }) => (
@@ -34,11 +35,7 @@ const IcoUpload = ({ size = 16 }) => (
   </svg>
 );
 const IcoSparkle = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" />
-    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
-  </svg>
+  <ElecFlaskBrandSvg size={size} variant="gradient" />
 );
 
 /* ---------- Nháp tạo thủ công (autosave, theo lớp) ---------- */
@@ -77,15 +74,26 @@ export default function CreateExamPage({
 }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [tab, setTab] = useState('ai');
+  const [tab, setTab] = useState(() => {
+    const t = initialPreset?.initialTab;
+    return (t === 'ai' || t === 'manual' || t === 'file') ? t : 'ai';
+  });
   const [initialData, setInitialData] = useState(null);
   const [saving, setSaving] = useState(false);
   const dirtyRef = useRef(false);
   const [pendingDraft, setPendingDraft] = useState(() => readManualDraft(classInfo?.id));
   const [confirmOverwritePayload, setConfirmOverwritePayload] = useState(null);
 
+  useEffect(() => {
+    const nextTab = initialPreset?.initialTab;
+    if (nextTab === 'ai' || nextTab === 'manual' || nextTab === 'file') {
+      setTab(nextTab);
+    }
+  }, [initialPreset]);
+
   /* FIX #3: Ref tới form instance để gọi replaceContent() thay vì remount */
   const formRef = useRef(null);
+  const aiMetaRef = useRef(null);
 
   /* Cảnh báo khi đóng/tải lại tab lúc còn nội dung chưa lưu */
   useEffect(() => {
@@ -121,12 +129,20 @@ export default function CreateExamPage({
   const applyAiPayloadToForm = useCallback((payload) => {
     const { questions, meta, warnings = [] } = payload;
 
+    aiMetaRef.current = {
+      classId: meta.classId,
+      subject: meta.subject || '',
+      grade: meta.grade ? String(meta.grade) : '',
+      gradeType: meta.gradeType || '',
+    };
+
     // Truyền dữ liệu vào form qua ref thay vì remount
     if (formRef.current?.replaceContent) {
       formRef.current.replaceContent({
         title: meta.title || `Đề AI tạo ${new Date().toLocaleDateString('vi-VN')}`,
         description: meta.description || '',
         duration: meta.duration || 45,
+        gradeType: meta.gradeType || '',
         questions: questions.map((q) => {
           const type = q.type || 'single_choice';
           const base = {
@@ -174,33 +190,41 @@ export default function CreateExamPage({
 
   /* Lưu đề */
   const handleSave = async (data) => {
-    const targetClassId = data.classId || classInfo?.id || classes[0]?.id;
-    if (!targetClassId) {
-      toast.error('Thiếu thông tin lớp.');
-      return;
-    }
+    const aiMeta = aiMetaRef.current || {};
+    const resolvedClassId = data.isDraft
+      ? ''
+      : (data.classId !== undefined ? (data.classId || aiMeta.classId || '') : (aiMeta.classId || classInfo?.id || classes[0]?.id || ''));
+    const targetClassId = resolvedClassId;
+    const isDraft = Boolean(data.isDraft || !targetClassId);
+    const targetClassObj = (classes || []).find((c) => c.id === targetClassId) || classInfo;
     setSaving(true);
     try {
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
-        classId: targetClassId,
+        classId: targetClassId || '',
+        isDraft,
         title: data.title,
         description: data.description,
         duration: data.duration,
         questions: data.questions,
+        subject: data.subject || aiMeta.subject || targetClassObj?.subject || '',
+        grade: data.grade || aiMeta.grade || (targetClassObj?.grade ? String(targetClassObj.grade) : ''),
         showAnswerAfter: data.showAnswerAfter,
         allowRetry: data.allowRetry,
         shuffle: data.shuffle,
         opensAt: data.opensAt,
         closesAt: data.closesAt,
         proctor: data.proctor,
+        gradeType: data.gradeType || aiMeta.gradeType || '',
         source: data.source || '',
         kind: data.kind || '',
       });
-      toast.success(`Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
+      toast.success(isDraft
+        ? `Đã lưu bản nháp cá nhân "${data.title}" (${data.questions.length} câu)`
+        : `Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
       clearDraft();
-      clearManualDraft(targetClassId);
+      if (targetClassId) clearManualDraft(targetClassId);
       dirtyRef.current = false;
       onDone?.(exam);
       return exam;
@@ -332,18 +356,24 @@ export default function CreateExamPage({
           classes={classes.length ? classes : classInfo ? [classInfo] : []}
           allowBank={false}
           allowSoftExam
-          onCreateSoftExam={async ({ title, duration, classId, subject, grade, questions, sourceFile }) => {
+          onCreateSoftExam={async ({ title, duration, classId, subject, grade, gradeType, antiCheat, shuffleVariants, questions, sourceFile }) => {
+            const targetCid = classId !== undefined ? classId : (classInfo?.id || '');
             await handleSave({
               title,
               description: sourceFile ? `Nhập từ file ${sourceFile}` : 'Đề mềm nhập từ file',
               duration,
+              subject: subject || classInfo?.subject || '',
+              grade: grade || classInfo?.grade || '',
+              gradeType: gradeType || '',
               questions: questions.map((q) => ({ ...q, subject, grade })),
               showAnswerAfter: true,
               allowRetry: false,
-              shuffle: false,
+              shuffle: Boolean(shuffleVariants),
+              proctor: antiCheat === false ? { camera: 'off', fullscreenLock: false, tabSwitchLimit: 0, blockCopyPaste: false, strictMode: false } : undefined,
               source: 'file-import',
               kind: 'soft',
-              classId: classId || classInfo?.id,
+              classId: targetCid,
+              isDraft: !targetCid,
             });
           }}
         />

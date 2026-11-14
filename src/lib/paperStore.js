@@ -37,6 +37,7 @@ export async function createPaperExam(data) {
     const payload = {
       teacherId: data.teacherId,
       classId: data.classId || null,
+      linkedExamId: data.linkedExamId || null,
       title: data.title || 'Bài chấm phiếu',
       counts: data.counts,
       scoring: data.scoring,
@@ -92,22 +93,32 @@ export async function listPaperResults(examId) {
 }
 
 /* Lưu nhiều phiếu. Có SBD hợp lệ → id = SBD (quét lại cùng SBD sẽ ghi đè, không trùng).
-   Chưa có SBD → id tự sinh. */
+   Chưa có SBD → dùng id sẵn có hoặc tự sinh. Xóa id cũ nếu SBD thay đổi. */
 export async function savePaperResults(examId, items) {
   try {
     for (let i = 0; i < items.length; i += 400) {
       const b = writeBatch(db);
       items.slice(i, i + 400).forEach((r) => {
-        const rid = /^\d{3,8}$/.test(r.sbd || '') ? `sbd_${r.sbd}` : doc(collection(db, 'paperExams', examId, 'results')).id;
+        const rid = /^\d{3,8}$/.test(r.sbd || '')
+          ? `sbd_${r.sbd}`
+          : (r.id || doc(collection(db, 'paperExams', examId, 'results')).id);
+        if (r.id && r.id !== rid) {
+          b.delete(doc(db, 'paperExams', examId, 'results', r.id));
+        }
+        const safeGrade = {
+          total: r.grade?.total ?? 0,
+          max: r.grade?.max ?? 10,
+          score10: r.grade?.score10 ?? 0,
+          parts: r.grade?.parts || null,
+          detail: r.grade?.detail || null,
+        };
         b.set(doc(db, 'paperExams', examId, 'results', rid), {
           sbd: r.sbd || '',
           code: r.code || '',
           studentId: r.studentId || null,
           studentName: r.studentName || '',
-          answers: { p1: r.p1, p2: r.p2.map((q) => q.map((c) => c || '-').join('')), p3: r.p3 },
-          grade: {
-            total: r.grade.total, max: r.grade.max, score10: r.grade.score10, parts: r.grade.parts,
-          },
+          answers: { p1: r.p1, p2: (r.p2 || []).map((q) => (q || []).map((c) => c || '-').join('')), p3: r.p3 },
+          grade: safeGrade,
           needsReview: !!r.needsReview,
           fileName: r.fileName || '',
           gradedAt: serverTimestamp(),
@@ -123,34 +134,39 @@ export async function savePaperResults(examId, items) {
 }
 
 export async function deletePaperResult(examId, rid) {
+  if (!examId || !rid) return;
   await deleteDoc(doc(db, 'paperExams', examId, 'results', rid));
 }
 
 /* Đồng bộ điểm bài chấm A4 vào danh sách bài nộp (submissions) của lớp học */
-export async function syncPaperResultsToSubmissions(paper, items) {
+export async function syncPaperResultsToSubmissions(paper, items, targetExamId = '') {
   if (!paper || !paper.classId || !Array.isArray(items) || !items.length) {
     return { ok: false, error: 'Bài chấm chưa gắn với lớp học cụ thể.' };
   }
+  const linkedExamId = targetExamId || paper.linkedExamId || paper.id;
   try {
     for (let i = 0; i < items.length; i += 400) {
       const b = writeBatch(db);
-      items.slice(i, i + 400).forEach((r) => {
-        const studentId = r.studentId || r.sbd || `omr_${r.code}_${Math.random().toString(36).slice(2, 6)}`;
-        const subId = `omr_${paper.id}_${studentId}`;
+      items.slice(i, i + 400).forEach((r, idx) => {
+        const studentId = r.studentId || r.sbd || r.id || `omr_${r.code || '000'}_${i + idx}`;
+        const subId = `omr_${linkedExamId}_${studentId}`;
         const score10 = Number(r.grade?.score10 ?? (r.grade?.total ? ((r.grade.total / (r.grade.max || 10)) * 10).toFixed(1) : 0));
+        const totalQ = paper.counts ? (paper.counts.p1 + paper.counts.p2 + paper.counts.p3) : 28;
         b.set(doc(db, 'submissions', subId), {
-          examId: paper.id,
+          examId: linkedExamId,
+          paperId: paper.id,
           examTitle: paper.title || 'Bài thi phiếu A4',
           classId: paper.classId,
           studentId: String(studentId),
           studentName: r.studentName || (r.sbd ? `Học sinh SBD ${r.sbd}` : 'Học sinh phiếu A4'),
           score: score10,
           totalPoints: 10,
-          correctCount: Math.round((score10 / 10) * (paper.counts ? (paper.counts.p1 + paper.counts.p2 + paper.counts.p3) : 28)),
-          totalQuestions: paper.counts ? (paper.counts.p1 + paper.counts.p2 + paper.counts.p3) : 28,
+          correctCount: Math.round((score10 / 10) * totalQ),
+          totalQuestions: totalQ,
           submittedAt: serverTimestamp(),
           graded: true,
           isPaperOmr: true,
+          source: 'paper-omr',
           sbd: r.sbd || '',
           paperCode: r.code || '',
         }, { merge: true });

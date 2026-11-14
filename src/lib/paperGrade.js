@@ -294,3 +294,44 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
     hardestP1,
   };
 }
+
+/* Trích đáp án Phần II (Đúng/Sai) từ đề online đã soạn */
+export function keyP2FromExam(exam, n = MAX_COUNTS.p2) {
+  const qs = (exam?.questions || []).filter(
+    (q) => q?.type === 'true_false' || q?.part === 2 || (Array.isArray(q?.statements) && q.statements.length > 0),
+  );
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const sts = qs[i]?.statements || [];
+    const arr = [0, 1, 2, 3].map((k) => {
+      const a = sts[k]?.answer;
+      return typeof a === 'boolean' ? (a ? 'D' : 'S') : '';
+    });
+    out.push(arr);
+  }
+  return out;
+}
+
+/* Trích đáp án Phần III (Trả lời ngắn) từ đề online đã soạn */
+export function keyP3FromExam(exam, n = MAX_COUNTS.p3) {
+  const qs = (exam?.questions || []).filter(
+    (q) => q?.type === 'short_answer' || q?.part === 3 || (q?.answer !== undefined && !(q?.options?.length)),
+  );
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const q = qs[i];
+    if (!q) {
+      out.push([]);
+      continue;
+    }
+    const vals = [];
+    const pushVal = (v) => {
+      const s = String(v ?? '').trim();
+      if (s && !vals.includes(s)) vals.push(s);
+    };
+    pushVal(q.answer);
+    if (Array.isArray(q.accepted)) q.accepted.forEach(pushVal);
+    out.push(vals);
+  }
+  return out;
+}

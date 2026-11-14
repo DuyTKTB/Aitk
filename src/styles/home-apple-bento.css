@@ -2491,10 +2491,10 @@
 /* ── Hàng giữa Hero: Lịch sử đã hỏi gần đây & Linh vật trang trí sinh động ── */
 .ns9-uh-mid-area {
   display: grid;
-  grid-template-columns: 1fr 200px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(136px, 172px);
+  gap: 16px;
   align-items: center;
-  padding: 14px 20px;
+  padding: 14px 18px;
   border-radius: 24px;
   background: rgba(248, 250, 252, 0.88);
   border: 1px solid rgba(226, 232, 240, 0.85);
@@ -2517,21 +2517,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   margin-bottom: 2px;
-  white-space: nowrap;
 }
 
 .ns9-uh-recent-title {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 0.96rem;
+  font-size: 0.92rem;
   font-weight: 850;
   color: var(--mut, #64748b);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  white-space: nowrap;
 }
 
 .ns9-uh-open-companion-link {
@@ -2643,7 +2642,8 @@
   align-items: center;
   position: relative;
   flex-shrink: 0;
-  width: 200px;
+  width: 100%;
+  max-width: 172px;
   padding: 2px 0 0;
   user-select: none;
 }
@@ -2652,16 +2652,16 @@
   position: relative;
   background: #ffffff;
   color: #0f172a;
-  font-size: 1.05rem;
-  font-weight: 850;
-  padding: 8px 16px;
-  border-radius: 16px;
+  font-size: 0.94rem;
+  font-weight: 800;
+  padding: 7px 12px;
+  border-radius: 14px;
   box-shadow: 0 4px 18px rgba(37, 99, 235, 0.15), 0 2px 6px rgba(0, 0, 0, 0.04);
   border: 1.5px solid rgba(219, 234, 254, 0.95);
-  max-width: 195px;
+  max-width: 168px;
   text-align: center;
   margin-bottom: 8px;
-  line-height: 1.38;
+  line-height: 1.35;
   letter-spacing: -0.015em;
   animation: mascotSpeechFloat 3s ease-in-out infinite;
 }
@@ -2689,13 +2689,41 @@
 }
 
 .ns9-uh-mascot-sticker {
-  width: 170px;
-  height: 190px;
+  width: 142px;
+  height: 158px;
   object-fit: contain;
   filter: drop-shadow(0 12px 28px rgba(37, 99, 235, 0.35));
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
   animation: mascotGentleBreathe 4s ease-in-out infinite;
+}
+
+@media (max-width: 1220px) {
+  .ns9-uh-mid-area {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .ns9-uh-mascot-deco {
+    flex-direction: row;
+    max-width: none;
+    justify-content: flex-start;
+    gap: 14px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(148, 163, 184, 0.35);
+  }
+  .ns9-uh-mascot-speech {
+    margin-bottom: 0;
+    max-width: none;
+    order: 2;
+  }
+  .ns9-uh-mascot-speech::after {
+    display: none;
+  }
+  .ns9-uh-mascot-sticker {
+    width: 68px;
+    height: 76px;
+    order: 1;
+  }
 }
 .ns9-uh-mascot-sticker:hover {
   transform: scale(1.08) rotate(3deg);

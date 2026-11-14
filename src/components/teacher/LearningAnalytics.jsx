@@ -32,6 +32,7 @@ import {
   saveAnalyticsReport, getAnalyticsReport, savedReportStaleness,
 } from '../../lib/analyticsReports.js';
 import { Donut, TrendChart } from '../DashShell.jsx';
+import { exportStyledWorkbook } from '../../lib/excelExport.js';
 import { BarChart, HBarChart, StatValue } from './analyticsCharts.jsx';
 import '../../styles/learning-analytics.css';
 
@@ -202,48 +203,94 @@ export default function LearningAnalytics({
     }
   };
 
-  /* ---------- xuất bảng điểm/xếp loại theo môn ---------- */
-  const exportCsv = () => {
-    const head = [
-      'Môn', 'Học sinh', 'Email', 'Bài đã làm', 'Số đề của môn',
-      'Điểm TB (%)', 'Cao nhất (%)', 'Thấp nhất (%)', 'Xếp loại',
-    ];
-    const lines = [head];
-    (subjects || []).forEach((s) => {
+  /* ---------- xuất bảng điểm/xếp loại theo môn (.xlsx) ---------- */
+  const exportCsv = async () => {
+    const safeName = String(classInfo?.name || classId || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
+    const detailRows = [];
+    const summaryRows = [];
+    (subjects || []).forEach((s, idx) => {
       const rows = [...((analytics.subjectDetails?.[s.subject]?.students) || [])]
         .sort((a, b) => {
           if (a.avgPct === null) return 1;
           if (b.avgPct === null) return -1;
           return b.avgPct - a.avgPct;
         });
+      const validPcts = rows.map((r) => r.avgPct).filter((v) => v !== null && v !== undefined);
+      const subjAvg = validPcts.length ? Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length) : null;
+      summaryRows.push({
+        stt: idx + 1,
+        subject: s.subject,
+        exams: s.exams || 0,
+        students: rows.length,
+        avgPct: subjAvg !== null ? subjAvg / 100 : null,
+      });
       if (!rows.length) {
-        lines.push([s.subject, '(chưa có học sinh)', '', '', s.exams, '', '', '', '']);
+        detailRows.push({
+          subject: s.subject,
+          name: '(chưa có học sinh)',
+          email: '',
+          attempts: 0,
+          expected: s.exams || 0,
+          avgPct: null,
+          bestPct: null,
+          worstPct: null,
+          band: 'Chưa đủ dữ liệu',
+        });
         return;
       }
-      rows.forEach((st) => lines.push([
-        s.subject,
-        st.name,
-        st.email || '',
-        st.attempts,
-        st.expected,
-        st.avgPct ?? '',
-        st.bestPct ?? '',
-        st.worstPct ?? '',
-        st.band ? bandLabel(st.band) : 'Chưa đủ dữ liệu',
-      ]));
+      rows.forEach((st) => {
+        detailRows.push({
+          subject: s.subject,
+          name: st.name,
+          email: st.email || '',
+          attempts: st.attempts,
+          expected: st.expected,
+          avgPct: st.avgPct !== null && st.avgPct !== undefined ? st.avgPct / 100 : null,
+          bestPct: st.bestPct !== null && st.bestPct !== undefined ? st.bestPct / 100 : null,
+          worstPct: st.worstPct !== null && st.worstPct !== undefined ? st.worstPct / 100 : null,
+          band: st.band ? bandLabel(st.band) : 'Chưa đủ dữ liệu',
+        });
+      });
     });
 
-    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const csv = '\uFEFF' + lines.map((r) => r.map(esc).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    const safeName = String(classInfo?.name || classId || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
-    a.href = url;
-    a.download = `xep-loai-theo-mon-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    await exportStyledWorkbook({
+      filename: `phan-tich-nang-luc-${safeName}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      mascot: 'cool',
+      sheets: [
+        {
+          name: 'Xếp loại theo Môn',
+          mascot: 'cool',
+          title: `PHÂN TÍCH HỌC LỰC THEO BỘ MÔN — LỚP ${(classInfo?.name || safeName).toUpperCase()}`,
+          subtitle: `Tổng hợp xếp loại từng học sinh theo bộ môn · Hệ thống Phân tích AI ELEC`,
+          columns: [
+            { header: 'Môn học', key: 'subject', align: 'left', width: 18 },
+            { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+            { header: 'Email', key: 'email', align: 'left', width: 26 },
+            { header: 'Đã làm', key: 'attempts', align: 'center', width: 10 },
+            { header: 'Số đề môn', key: 'expected', align: 'center', width: 11 },
+            { header: 'Điểm TB (%)', key: 'avgPct', align: 'center', numFmt: '0%', width: 14 },
+            { header: 'Cao nhất (%)', key: 'bestPct', align: 'center', numFmt: '0%', width: 14 },
+            { header: 'Thấp nhất (%)', key: 'worstPct', align: 'center', numFmt: '0%', width: 14 },
+            { header: 'Xếp loại', key: 'band', align: 'center', isScoreBand: true, width: 18 },
+          ],
+          rows: detailRows,
+        },
+        ...(summaryRows.length > 0 ? [{
+          name: 'Tổng quan Môn học',
+          mascot: 'happy',
+          title: `TỔNG QUAN CÁC BỘ MÔN — LỚP ${(classInfo?.name || safeName).toUpperCase()}`,
+          subtitle: 'So sánh điểm trung bình và mật độ đề kiểm tra giữa các môn',
+          columns: [
+            { header: 'STT', key: 'stt', align: 'center', width: 8 },
+            { header: 'Môn học', key: 'subject', align: 'left', width: 22 },
+            { header: 'Số đề đã giao', key: 'exams', align: 'center', width: 15 },
+            { header: 'Số HS có bài', key: 'students', align: 'center', width: 15 },
+            { header: 'Điểm TB (%)', key: 'avgPct', align: 'center', numFmt: '0%', width: 15 },
+          ],
+          rows: summaryRows,
+        }] : []),
+      ],
+    });
   };
 
   /* ---------- hoạt động giáo viên (số liệu) ---------- */
@@ -837,7 +884,7 @@ export default function LearningAnalytics({
             <div className="la-ov-head">
               <h4>Tổng quan theo môn — điểm và xếp loại học sinh</h4>
               <button type="button" className="la-btn" onClick={exportCsv}>
-                Xuất CSV
+                Xuất Excel (.xlsx)
               </button>
             </div>
 

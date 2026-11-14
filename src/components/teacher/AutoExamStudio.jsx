@@ -45,6 +45,7 @@ import sound from '../../lib/gameSound.js';
 import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import AIMark from '../AIMark.jsx';
 import { IconAlert } from '../Icons.jsx';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 
 import '../../styles/autoexam-studio.css';
 
@@ -65,7 +66,9 @@ const Svg = ({ size = 16, children, className = '' }) => (
     {children}
   </svg>
 );
-const IcoSpark = (p) => <Svg {...p}><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" /></Svg>;
+const IcoSpark = ({ size = 16, className = '', style }) => (
+  <ElecFlaskBrandSvg size={size} variant="current" className={className} style={style} />
+);
 const IcoSend = (p) => <Svg {...p}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></Svg>;
 const IcoPaperclip = (p) => <Svg {...p}><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></Svg>;
 const IcoSim = (p) => <Svg {...p}><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></Svg>;
@@ -365,6 +368,7 @@ export default function AutoExamStudio({
 
   // Publish options
   const [publishTitle, setPublishTitle] = useState('');
+  const [publishGradeType, setPublishGradeType] = useState('');
   const [publishShuffle, setPublishShuffle] = useState(true);
   const [publishCamera, setPublishCamera] = useState('off');
   const [cameraChecks, setCameraChecks] = useState({
@@ -446,8 +450,9 @@ export default function AutoExamStudio({
   const greetingData = useMemo(() => {
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
-    const rawName = user?.displayName?.trim()?.split(/\s+/)?.pop() || user?.email?.split('@')?.[0] || 'thầy cô';
-    const teacherName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+    const rawDisplay = user?.displayName?.trim() || '';
+    const emailName = user?.email?.split('@')?.[0] || '';
+    const teacherName = rawDisplay || emailName || 'thầy cô';
     return { timeGreeting, teacherName };
   }, [user]);
 
@@ -1650,7 +1655,8 @@ export default function AutoExamStudio({
   };
 
   const handleExecutePublish = async () => {
-    if (!selectedClassId || !questions.length) return;
+    if (!questions.length) return;
+    if (!selectedClassId && typeof onGenerated !== 'function') return;
     setIsPublishing(true);
     try {
       // ⭐ FIX: Nếu có onGenerated → đẩy dữ liệu sang form thủ công
@@ -1663,6 +1669,8 @@ export default function AutoExamStudio({
             duration: selectedDuration,
             subject: selectedSubject,
             grade: selectedGrade,
+            classId: selectedClassId,
+            gradeType: publishGradeType,
           },
           warnings: questions.filter((q) => (q.warns || []).length > 0),
         });
@@ -1678,6 +1686,9 @@ export default function AutoExamStudio({
         teacherId: user.uid,
         teacherName: user.displayName || user.email || 'Giáo viên',
         classId: selectedClassId,
+        subject: selectedSubject,
+        grade: selectedGrade,
+        gradeType: publishGradeType,
         title: publishTitle || matrixData?.title || `Đề ${topic || selectedSubject} Lớp ${selectedGrade}`,
         description: `Đề khảo thí môn ${selectedSubject} ${questions.length} câu phân hóa 4 mức độ GDPT 2018.`,
         duration: selectedDuration,
@@ -3216,6 +3227,16 @@ export default function AutoExamStudio({
                 <span>Tổng số câu: <strong>{questions.length}</strong></span>
                 <span>Thang điểm: <strong>10.0đ</strong></span>
               </div>
+
+              <label className="aes-field" style={{ marginTop: 10 }}>
+                <span>Cột điểm vnEdu / SMAS (Thông tư 22)</span>
+                <select value={publishGradeType} onChange={(e) => setPublishGradeType(e.target.value)}>
+                  <option value="">Tự động nhận diện theo tiêu đề &amp; thời lượng</option>
+                  <option value="tx">Thường xuyên — TX (Hệ số 1)</option>
+                  <option value="dgk">Đánh giá giữa kỳ — ĐGK (Hệ số 2)</option>
+                  <option value="ckk">Đánh giá cuối kỳ — CKK (Hệ số 3)</option>
+                </select>
+              </label>
 
               {typeof onGenerated !== 'function' && (
                 <>

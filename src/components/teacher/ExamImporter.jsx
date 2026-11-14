@@ -22,6 +22,7 @@ import { runWithCredit } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import WordDocxEditor from './WordDocxEditor.jsx';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 
 /* Tiện ích sửa JSON và phân tích chuyên đề GDPT 2025 */
 function cleanJsonString(raw) {
@@ -1585,9 +1586,7 @@ const IcoBolt = ({ size = 15 }) => (
   </SvgWrap>
 );
 const IcoSparkles = ({ size = 15 }) => (
-  <SvgWrap size={size}>
-    <path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
-  </SvgWrap>
+  <ElecFlaskBrandSvg size={size} variant="gradient" />
 );
 const IcoTarget = ({ size = 14 }) => (
   <SvgWrap size={size}>
@@ -3348,8 +3347,8 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
                   style={{
                     margin: '8px 0',
                     padding: '10px 14px',
-                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                    border: '1px solid #fde68a',
+                    background: 'var(--t-warn-soft, rgba(217, 119, 6, 0.11))',
+                    border: '1px solid rgba(217, 119, 6, 0.35)',
                     borderRadius: 12,
                     display: 'flex',
                     alignItems: 'center',
@@ -3359,14 +3358,14 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ display: 'inline-flex', padding: 6, borderRadius: 8, background: '#fef3c7', color: '#b45309' }}>
+                    <span style={{ display: 'inline-flex', padding: 6, borderRadius: 8, background: 'rgba(217, 119, 6, 0.16)', color: 'var(--t-warn, #b45309)' }}>
                       <IcoSparkles size={16} />
                     </span>
                     <div>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#92400e' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--t-warn, #92400e)' }}>
                         BÁC SĨ AI: CHẨN ĐOÁN &amp; BỔ SUNG ĐỦ 3 PHẦN GDPT 2025
                       </div>
-                      <div style={{ fontSize: '0.73rem', color: '#78350f', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.73rem', color: 'var(--t-ink-2, #78350f)', marginTop: 2 }}>
                         File hiện có <b>{stats.p1} câu Phần I</b>. Đang thiếu <b>{Math.max(0, 4 - stats.p2)} câu Phần II</b> (Đúng/Sai) và <b>{Math.max(0, 6 - stats.p3)} câu Phần III</b> (Trả lời ngắn).
                       </div>
                     </div>
@@ -3805,7 +3804,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
         <ExamPreviewSimulator
           exam={{
             title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề kiểm tra',
-            subject: defaultSubject || classInfo?.subject || 'Hóa học',
+            subject: detectedSubject || defaultSubject || classInfo?.subject || 'Hóa học',
             duration: Number(duration) || 45,
             grade: detectedGrade || defaultGrade || classInfo?.grade || '12',
             questions: buildNormalizedQuestions(items),
@@ -3825,7 +3824,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
           onClose={() => setOpenWordEditor(false)}
           initialExam={{
             title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề kiểm tra',
-            subject: detectedSubject || defaultSubject || classInfo?.subject || 'Vật lí',
+            subject: detectedSubject || defaultSubject || classInfo?.subject || 'Hóa học',
             grade: detectedGrade || defaultGrade || classInfo?.grade || 12,
             duration: Number(duration) || 45,
             questions: buildNormalizedQuestions(items),
@@ -3835,7 +3834,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
             if (onCreateSoftExam) {
               await onCreateSoftExam({
                 ...newExam,
-                classId: classId || classInfo?.id || classes[0]?.id,
+                classId: newExam?.classId || classId || classInfo?.id || classes[0]?.id,
               });
             }
           }}

@@ -1614,3 +1614,143 @@
     font-size: 0.76rem;
   }
 }
+
+/* ============================================================
+   ELEC TEACHER IDENTITY STUDIO — UPGRADED HEADER & TRUE KPI
+   ============================================================ */
+.tps-header-card {
+  position: relative;
+  overflow: hidden;
+  padding-top: 0 !important;
+}
+
+.tps-cover-band {
+  margin: 0 -1.35rem 1rem;
+  padding: 0.58rem 1.35rem;
+  background: linear-gradient(120deg, #1d4ed8 0%, #4338ca 52%, #0284c7 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tps-cover-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tps-cover-stats-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tps-header-right-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.tps-header-mascot {
+  filter: drop-shadow(0 8px 16px rgba(37, 99, 235, 0.22));
+  transition: transform 0.2s ease;
+}
+
+.tps-header-card:hover .tps-header-mascot {
+  transform: translateY(-3px) rotate(2deg);
+}
+
+.tps-chip-class-btn.is-homeroom {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.28);
+  color: #1d4ed8;
+}
+
+.tps-chip-class-btn.is-linked {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #047857;
+}
+
+[data-theme='dark'] .tps-chip-class-btn.is-homeroom {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+}
+
+[data-theme='dark'] .tps-chip-class-btn.is-linked {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+}
+
+.tps-profile-kpi-grid {
+  margin-top: 1rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--tps-line);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 0.65rem;
+}
+
+.tps-profile-kpi-tile {
+  padding: 0.72rem 0.9rem;
+  border-radius: 14px;
+  background: var(--tps-soft);
+  border: 1px solid var(--tps-line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.tps-profile-kpi-tile:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.32);
+}
+
+.tps-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--tps-mut);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tps-kpi-value {
+  font-size: 1.08rem;
+  font-weight: 850;
+  color: var(--tps-ink);
+  letter-spacing: -0.02em;
+}
+
+.tps-kpi-sub {
+  font-size: 0.72rem;
+  color: var(--tps-mut);
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .tps-header-right-col {
+    width: 100%;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tps-header-mascot {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}

@@ -20,7 +20,7 @@ import {
   hasPositionalOption,
   analyzePositionalOptions,
 } from '../../lib/examShuffle.js';
-import { downloadCsv } from '../DashShell.jsx';
+import { exportStyledWorkbook } from '../../lib/excelExport.js';
 import sound from '../../lib/gameSound.js';
 import { getSubject } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
@@ -818,14 +818,36 @@ export default function ExamPreviewSimulator({
     }
   };
 
-  const handleDownloadAnswerMatrixCsv = () => {
-    const rows = [['Mã đề', 'Câu', 'Đáp án', 'Câu gốc'], ...answerKeyRows(shuffledExams)];
-    downloadCsv(
-      `dap-an-${(editData.examTitle || 'de').replace(/[^\p{L}\p{N}]+/gu, '-')}.csv`,
-      rows
-    );
-    sound.cheer();
-    showToast(`Đã tải bảng đáp án của ${shuffledExams.length} mã đề (CSV)`, 'success');
+  const handleDownloadAnswerMatrixCsv = async () => {
+    try {
+      const matrixRows = answerKeyRows(shuffledExams).map((r) => ({
+        code: r[0],
+        qNum: r[1],
+        answer: r[2],
+        orig: r[3],
+      }));
+      await exportStyledWorkbook({
+        filename: `dap-an-ma-de-${(editData.examTitle || 'de').replace(/[^\p{L}\p{N}]+/gu, '-')}.xlsx`,
+        mascot: 'cool',
+        sheets: [{
+          name: 'Ma trận Đáp án',
+          mascot: 'cool',
+          title: `MA TRẬN ĐÁP ÁN ĐẢO MÃ ĐỀ — ${(editData.examTitle || 'ĐỀ THI').toUpperCase()}`,
+          subtitle: `Tổng hợp ${shuffledExams.length} mã đề chuẩn hóa · Hệ thống Trộn đề & Khảo thí ELEC AI`,
+          columns: [
+            { header: 'Mã đề', key: 'code', align: 'center', width: 12 },
+            { header: 'Câu trên mã đề', key: 'qNum', align: 'center', width: 16 },
+            { header: 'Đáp án đúng', key: 'answer', align: 'center', width: 16 },
+            { header: 'Câu gốc tương ứng', key: 'orig', align: 'center', width: 18 },
+          ],
+          rows: matrixRows,
+        }],
+      });
+      sound.cheer();
+      showToast(`Đã tải ma trận đáp án ${shuffledExams.length} mã đề (Excel .xlsx)`, 'success');
+    } catch (e) {
+      showToast(e?.message || 'Không xuất được file Excel', 'error');
+    }
   };
 
   /* ---------- OMR ---------- */
@@ -905,24 +927,42 @@ export default function ExamPreviewSimulator({
     });
   }, [classStudentList, shuffledExams, assignStrategy, assignSeed]);
 
-  const handleExportStudentCodesCsv = () => {
-    const rows = [
-      ['STT', 'Mã HS', 'Họ và tên', 'Vị trí ngồi', 'Mã đề được giao', 'Đề thi'],
-      ...studentCodeAssignments.map((r) => [
-        r.order,
-        r.code,
-        r.name,
-        r.seat,
-        r.examCode,
-        editData.examTitle,
-      ]),
-    ];
-    downloadCsv(
-      `phan-ma-de-${(selectedClassObj?.name || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-')}.csv`,
-      rows
-    );
-    sound.cheer();
-    showToast('Đã tải danh sách phân công mã đề cho học sinh (CSV)', 'success');
+  const handleExportStudentCodesCsv = async () => {
+    try {
+      const clsName = selectedClassObj?.name || 'Lớp';
+      await exportStyledWorkbook({
+        filename: `phan-ma-de-${clsName.replace(/[^\p{L}\p{N}]+/gu, '-')}.xlsx`,
+        mascot: 'happy',
+        sheets: [{
+          name: 'Danh sách Phân mã',
+          mascot: 'happy',
+          title: `DANH SÁCH PHÂN MÃ ĐỀ PHÒNG THI — ${clsName.toUpperCase()}`,
+          subtitle: `Đề thi: ${editData.examTitle || 'Bài kiểm tra'} · ${studentCodeAssignments.length} thí sinh · ${shuffledExams.length} mã đề`,
+          columns: [
+            { header: 'STT', key: 'order', align: 'center', width: 8 },
+            { header: 'Mã HS / SBD', key: 'code', align: 'center', width: 14 },
+            { header: 'Họ và tên thí sinh', key: 'name', align: 'left', width: 28 },
+            { header: 'Vị trí ngồi', key: 'seat', align: 'center', width: 14 },
+            { header: 'Mã đề giao', key: 'examCode', align: 'center', width: 14 },
+            { header: 'Đề kiểm tra', key: 'examTitle', align: 'left', width: 28 },
+            { header: 'Ký nộp bài', key: 'sign', align: 'center', width: 16 },
+          ],
+          rows: studentCodeAssignments.map((r) => ({
+            order: r.order,
+            code: r.code,
+            name: r.name,
+            seat: r.seat,
+            examCode: r.examCode,
+            examTitle: editData.examTitle,
+            sign: '',
+          })),
+        }],
+      });
+      sound.cheer();
+      showToast('Đã tải danh sách phân công mã đề cho học sinh (Excel .xlsx)', 'success');
+    } catch (e) {
+      showToast(e?.message || 'Không xuất được file Excel', 'error');
+    }
   };
 
   const handleAssignToExamRoom = () => {
@@ -1792,9 +1832,9 @@ export default function ExamPreviewSimulator({
           <div className="eps-shuffle-layout">
             <div className="eps-shuffle-head">
               <div>
-                <h3 className="eps-shuffle-title">Dự Đoán Phổ Điểm & Độ Khó Tổng Thể</h3>
+                <h3 className="eps-shuffle-title">Ước Lượng Độ Khó &amp; Phổ Điểm Tham Khảo (Heuristic)</h3>
                 <p className="eps-shuffle-sub">
-                  Mô hình ước lượng từ ma trận nhận thức (NB / TH / VD / VDC) và thời lượng làm bài {editData.duration} phút.
+                  Mô hình ước lượng sơ bộ từ tỷ lệ mức độ NB / TH / VD / VDC và thời lượng {editData.duration} phút (chỉ mang tính tham khảo sư phạm, không thay thế số liệu thi thật).
                 </p>
               </div>
               <button
@@ -2146,7 +2186,7 @@ export default function ExamPreviewSimulator({
                     className="eps-shuffle-tab"
                     onClick={handleDownloadAnswerMatrixCsv}
                   >
-                    <IcoDownload size={13} /> Xuất CSV
+                    <IcoDownload size={13} /> Xuất Excel (.xlsx)
                   </button>
                 </div>
               </div>
@@ -2272,9 +2312,9 @@ export default function ExamPreviewSimulator({
                     className="eps-print-code-btn"
                     style={{ borderStyle: 'dashed' }}
                     onClick={handleDownloadAnswerMatrixCsv}
-                    title="Tải bảng đáp án của tất cả mã đề (CSV)"
+                    title="Tải bảng đáp án của tất cả mã đề (Excel .xlsx)"
                   >
-                    Đáp án tất cả mã (CSV)
+                    Đáp án tất cả mã (.xlsx)
                   </button>
                 </div>
                 <div className="eps-export-btns">
@@ -2679,7 +2719,7 @@ export default function ExamPreviewSimulator({
                     className="eps-nav-btn"
                     onClick={handleExportStudentCodesCsv}
                   >
-                    <IcoDownload size={14} /> Tải danh sách phân mã (CSV)
+                    <IcoDownload size={14} /> Tải phân mã (Excel .xlsx)
                   </button>
                   <button
                     type="button"

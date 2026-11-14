@@ -1,0 +1,3311 @@
+/* ==========================================================================
+   ELEC AI — Teacher Studio v2.0 (Unified SaaS Craft)
+   Unlayered cascade-safe overrides scoped strictly under .t-shell.
+   Synthesizes: Tasklify Pro, LearnSphere, DoDo, Quest & Robert Smith craft.
+   ========================================================================== */
+
+.t-root.t-shell,
+.t-shell {
+  --t-bg: #f6f6f3;
+  --t-surface-0: #ffffff;
+  --t-surface-1: #fafaf8;
+  --t-surface-2: #f1f0eb;
+  --t-ink: #111827;
+  --t-ink-2: #4b5563;
+  --t-ink-3: #6b7280;
+  --t-border: rgba(17, 24, 39, 0.085);
+  --t-border-strong: rgba(17, 24, 39, 0.16);
+  --t-accent: #2563eb;
+  --t-accent-2: #7c3aed;
+  --t-accent-soft: rgba(37, 99, 235, 0.09);
+  --t-ok: #059669;
+  --t-ok-soft: rgba(5, 150, 105, 0.1);
+  --t-warn: #d97706;
+  --t-warn-soft: rgba(217, 119, 6, 0.11);
+  --t-bad: #dc2626;
+  --t-bad-soft: rgba(220, 38, 38, 0.095);
+  --t-charcoal: #14161b;
+  --t-charcoal-ink: #ffffff;
+  --t-shadow-xs: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --t-shadow-sm: 0 2px 6px rgba(17, 24, 39, 0.045), 0 1px 2px rgba(17, 24, 39, 0.03);
+  --t-shadow-md: 0 10px 26px -8px rgba(17, 24, 39, 0.09), 0 4px 10px -4px rgba(17, 24, 39, 0.04);
+  --t-radius-sm: 8px;
+  --t-radius-md: 12px;
+  --t-radius-lg: 16px;
+  --t-radius-xl: 20px;
+
+  /* Bridge legacy component tokens (.vt-*, .la-*, .st-*, .ta-*, .tps-root) */
+  --bg: var(--t-bg);
+  --panel: var(--t-surface-0);
+  --ink: var(--t-ink);
+  --mut: var(--t-ink-2);
+  --line: var(--t-border);
+  --soft: var(--t-surface-2);
+  --acc: var(--t-accent);
+  --acc-text: #ffffff;
+
+  background: var(--t-bg);
+  color: var(--t-ink);
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.t-root.t-shell[data-theme='dark'],
+.t-shell[data-theme='dark'] {
+  --t-bg: #0c0e13;
+  --t-surface-0: #131720;
+  --t-surface-1: #181d28;
+  --t-surface-2: #1f2533;
+  --t-ink: #f3f5f8;
+  --t-ink-2: #a8b3c5;
+  --t-ink-3: #798499;
+  --t-border: rgba(255, 255, 255, 0.09);
+  --t-border-strong: rgba(255, 255, 255, 0.17);
+  --t-accent: #60a5fa;
+  --t-accent-2: #a78bfa;
+  --t-accent-soft: rgba(96, 165, 250, 0.14);
+  --t-ok: #34d399;
+  --t-ok-soft: rgba(52, 211, 153, 0.14);
+  --t-warn: #fbbf24;
+  --t-warn-soft: rgba(251, 191, 36, 0.14);
+  --t-bad: #f87171;
+  --t-bad-soft: rgba(248, 113, 113, 0.14);
+  --t-charcoal: #c8f542;
+  --t-charcoal-ink: #0f1115;
+  --t-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --t-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.28);
+  --t-shadow-md: 0 14px 30px -10px rgba(0, 0, 0, 0.5);
+
+  --bg: var(--t-bg);
+  --panel: var(--t-surface-0);
+  --ink: var(--t-ink);
+  --mut: var(--t-ink-2);
+  --line: var(--t-border);
+  --soft: var(--t-surface-2);
+  --acc: #60a5fa;
+  --acc-text: #0b1120;
+}
+
+/* ---- 1. Neutralize unlayered global CSS leaks (index.css & theme-sandra.css) ---- */
+.t-shell *:not([class*='katex']):not(code):not(pre):not(kbd):not(.t-mono):not(.mono):not(.vt-code) {
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.t-shell h1,
+.t-shell h2,
+.t-shell h3,
+.t-shell h4,
+.t-shell .vt-tab,
+.t-shell .vt-title h1,
+.t-shell .t-hero-title {
+  font-style: normal;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  text-transform: none;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin-top: 0;
+}
+
+.t-shell h1 {
+  font-size: clamp(1.35rem, 2.1vw, 1.68rem);
+  font-weight: 800;
+  color: var(--t-ink);
+}
+
+.t-shell h2 {
+  font-size: 1.18rem;
+  font-weight: 750;
+  color: var(--t-ink);
+}
+
+.t-shell h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--t-ink);
+}
+
+.t-shell h4 {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--t-ink);
+}
+
+.t-shell button,
+.t-shell [role='button'] {
+  font-style: normal;
+  text-transform: none;
+}
+
+.t-shell input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.t-shell select,
+.t-shell textarea {
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--t-ink);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border-strong);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.t-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):focus,
+.t-shell select:focus,
+.t-shell textarea:focus {
+  outline: none;
+  border-color: var(--t-accent);
+  box-shadow: 0 0 0 3px var(--t-accent-soft);
+}
+
+.t-shell svg {
+  flex-shrink: 0;
+}
+
+/* ---- 2. Shell Chrome: Sidebar & Topbar (Floe + Tasklify SaaS finish) ---- */
+.t-shell .t-aside {
+  width: 248px;
+  background: var(--t-surface-0);
+  border-right: 1px solid var(--t-border);
+  padding: 16px 12px;
+}
+
+.t-shell .t-brand {
+  padding: 6px 10px 14px;
+  border-bottom: 1px solid var(--t-border);
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.t-shell .t-brand-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--t-ink);
+}
+
+.t-shell .t-brand-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t-ink-3);
+}
+
+.t-shell .t-nav-group-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--t-ink-3);
+  padding: 12px 10px 6px;
+}
+
+.t-shell .t-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t-ink-2);
+  font-size: 13.2px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-nav-btn:hover {
+  background: var(--t-surface-2);
+  color: var(--t-ink);
+}
+
+.t-shell .t-nav-btn.active {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  font-weight: 700;
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .t-nav-btn.active svg {
+  color: var(--t-charcoal-ink);
+}
+
+.t-shell .t-nav-badge {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--t-surface-2);
+  color: var(--t-ink-2);
+}
+
+.t-shell .t-nav-btn.active .t-nav-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.t-shell[data-theme='dark'] .t-nav-btn.active .t-nav-badge {
+  background: rgba(15, 17, 21, 0.2);
+}
+
+.t-shell .t-main {
+  background: var(--t-bg);
+}
+
+.t-shell .t-topbar {
+  background: color-mix(in srgb, var(--t-surface-0) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--t-border);
+  min-height: 62px;
+  padding: 10px 24px;
+}
+
+.t-shell .t-topbar-title {
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--t-ink);
+  margin: 0;
+}
+
+.t-shell .t-topbar-sub {
+  font-size: 12px;
+  color: var(--t-ink-3);
+  margin: 2px 0 0;
+}
+
+.t-shell .t-content {
+  padding: 22px 26px 40px;
+  max-width: 1420px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Topbar AI Copilot CTA + Icon buttons */
+.t-shell .t-btn-ai,
+.t-shell .vt-btn-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+  color: #ffffff;
+  font-size: 12.8px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -3px rgba(37, 99, 235, 0.42);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.t-shell .t-btn-ai:hover,
+.t-shell .vt-btn-ai:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 6px 16px -3px rgba(37, 99, 235, 0.48);
+}
+
+.t-shell .t-icon-btn,
+.t-shell .vt-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-0);
+  color: var(--t-ink-2);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-icon-btn:hover,
+.t-shell .vt-icon-btn:hover {
+  background: var(--t-surface-2);
+  color: var(--t-ink);
+  border-color: var(--t-border-strong);
+}
+
+/* ---- 3. Hero Welcome, Studio Banner & Time Range Pills (Quest + Tasklify Pro) ---- */
+.t-shell .t-overview-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.t-shell .t-hero-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  border-radius: var(--t-radius-lg);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-hero-welcome-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.t-shell .t-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--t-surface-2);
+  border: 1px solid var(--t-border);
+  color: var(--t-ink-2);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.t-shell .t-hero-badge svg {
+  color: var(--t-accent);
+}
+
+.t-shell .t-hero-title {
+  margin: 0;
+  font-size: clamp(1.32rem, 2vw, 1.62rem);
+  font-weight: 800;
+  color: var(--t-ink);
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.t-shell .t-hero-desc {
+  margin: 0;
+  font-size: 13.2px;
+  color: var(--t-ink-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  line-height: 1.5;
+}
+
+.t-shell .t-hero-role-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.t-shell .t-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+
+.t-shell .t-role-pill.gvcn {
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+.t-shell .t-role-pill.gvbm {
+  background: rgba(124, 58, 237, 0.09);
+  color: var(--t-accent-2);
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+.t-shell .t-hero-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-range-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--t-surface-2);
+  border: 1px solid var(--t-border);
+}
+
+.t-shell .t-range-pill {
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--t-ink-2);
+  font-size: 12.2px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.t-shell .t-range-pill:hover {
+  color: var(--t-ink);
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.t-shell[data-theme='dark'] .t-range-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.t-shell .t-range-pill.active {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  box-shadow: var(--t-shadow-xs);
+}
+
+/* Tasklify Studio AI Banner */
+.t-shell .t-tasklify-banner {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border-radius: var(--t-radius-lg);
+  background: linear-gradient(110deg, var(--t-surface-0) 0%, color-mix(in srgb, var(--t-accent-soft) 55%, var(--t-surface-0)) 100%);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .t-tasklify-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.t-shell .t-tasklify-banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -4px rgba(37, 99, 235, 0.45);
+  flex-shrink: 0;
+}
+
+.t-shell .t-tasklify-banner-title {
+  display: block;
+  font-size: 13.8px;
+  font-weight: 750;
+  color: var(--t-ink);
+  margin-bottom: 2px;
+}
+
+.t-shell .t-tasklify-banner-desc {
+  margin: 0;
+  font-size: 12.6px;
+  color: var(--t-ink-2);
+  line-height: 1.45;
+}
+
+.t-shell .t-tasklify-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.t-shell .t-tasklify-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  font-size: 12.6px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
+}
+
+.t-shell .t-tasklify-banner-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--t-shadow-sm);
+}
+
+/* Quick Actions Toolbar */
+.t-shell .t-quick-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-0);
+  color: var(--t-ink);
+  font-size: 12.8px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: var(--t-shadow-xs);
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.t-shell .t-quick-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--t-border-strong);
+  background: var(--t-surface-1);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-quick-btn svg {
+  color: var(--t-ink-2);
+}
+
+.t-shell .t-quick-btn.primary {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  border-color: var(--t-charcoal);
+  font-weight: 700;
+}
+
+.t-shell .t-quick-btn.primary svg {
+  color: var(--t-charcoal-ink);
+}
+
+.t-shell .t-quick-btn.primary:hover {
+  opacity: 0.92;
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+}
+
+/* ---- 4. Bento KPI Grid (Tasklify Pro Dark Squircle Icons + DoDo Mini Rings/Sparklines) ---- */
+.t-shell .t-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.t-shell .t-kpi-grid > .t-kpi-card,
+.t-shell .t-kpi-grid > .t-kpi-card:first-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  grid-column: auto;
+  grid-row: auto;
+  width: auto;
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: var(--t-radius-lg);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.t-shell .t-kpi-grid > .t-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--t-shadow-md);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-kpi-head,
+.t-shell .t-kpi-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.t-shell .t-kpi-icon-box,
+.t-shell .t-kpi-squircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: #14161b;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(17, 24, 39, 0.16);
+  flex-shrink: 0;
+}
+
+.t-shell[data-theme='dark'] .t-kpi-icon-box,
+.t-shell[data-theme='dark'] .t-kpi-squircle {
+  background: #222938;
+  color: #f3f5f8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.t-shell .t-kpi-icon-box.accent,
+.t-shell .t-kpi-squircle.accent {
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  color: #ffffff;
+}
+
+.t-shell .t-kpi-icon-box.warn,
+.t-shell .t-kpi-squircle.warn {
+  background: linear-gradient(135deg, #c2410c 0%, #ef4444 100%);
+  color: #ffffff;
+}
+
+.t-shell .t-kpi-link,
+.t-shell .t-kpi-detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--t-ink-3);
+  transition: color 140ms ease;
+}
+
+.t-shell .t-kpi-card:hover .t-kpi-link,
+.t-shell .t-kpi-card:hover .t-kpi-detail-link {
+  color: var(--t-ink);
+}
+
+.t-shell .t-kpi-card-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.t-shell .t-kpi-num,
+.t-shell .t-kpi-val {
+  display: block;
+  font-size: clamp(1.42rem, 2.1vw, 1.78rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  color: var(--t-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.t-shell .t-kpi-label,
+.t-shell .t-kpi-lbl {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.6px;
+  font-weight: 650;
+  color: var(--t-ink-2);
+}
+
+.t-shell .t-kpi-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--t-border);
+  font-size: 11.4px;
+  color: var(--t-ink-3);
+}
+
+.t-shell .t-kpi-trend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.t-shell .t-kpi-trend-pill.ok {
+  background: var(--t-ok-soft);
+  color: var(--t-ok);
+}
+
+.t-shell .t-kpi-trend-pill.warn {
+  background: var(--t-bad-soft);
+  color: var(--t-bad);
+}
+
+.t-shell .t-kpi-viz {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* ---- 5. Section Headers ---- */
+.t-shell .t-folders-section,
+.t-shell .t-workflows-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.t-shell .t-folders-header,
+.t-shell .t-workflows-header,
+.t-shell .t-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-folders-title-wrap,
+.t-shell .t-sec-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.t-shell .t-folders-title,
+.t-shell .t-sec-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--t-ink);
+}
+
+.t-shell .t-badge-count,
+.t-shell .t-sec-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--t-surface-2);
+  border: 1px solid var(--t-border);
+  font-size: 11.5px;
+  font-weight: 750;
+  color: var(--t-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 6. LearnSphere Pastel Class & Folder Cards ---- */
+.t-shell .t-folders-grid,
+.t-shell .t-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.t-shell .t-folder-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 178px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--t-radius-xl);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: #ede9fe;
+  box-shadow: var(--t-shadow-xs);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.t-shell .t-folder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--t-shadow-md);
+  border-color: rgba(17, 24, 39, 0.14);
+}
+
+.t-shell .t-folder-card.tint-lavender {
+  background: linear-gradient(145deg, #ece8ff 0%, #ddd6fe 100%);
+}
+.t-shell .t-folder-card.tint-sky {
+  background: linear-gradient(145deg, #e0f4ff 0%, #c8ebfc 100%);
+}
+.t-shell .t-folder-card.tint-peach {
+  background: linear-gradient(145deg, #fff0e2 0%, #fde1ca 100%);
+}
+.t-shell .t-folder-card.tint-mint {
+  background: linear-gradient(145deg, #e0f9ee 0%, #c8f3df 100%);
+}
+
+.t-shell[data-theme='dark'] .t-folder-card {
+  border: 1px solid var(--t-border);
+}
+.t-shell[data-theme='dark'] .t-folder-card.tint-lavender {
+  background: linear-gradient(145deg, rgba(124, 58, 237, 0.2) 0%, rgba(79, 70, 229, 0.12) 100%);
+  border-color: rgba(167, 139, 250, 0.26);
+}
+.t-shell[data-theme='dark'] .t-folder-card.tint-sky {
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.2) 0%, rgba(37, 99, 235, 0.11) 100%);
+  border-color: rgba(96, 165, 250, 0.26);
+}
+.t-shell[data-theme='dark'] .t-folder-card.tint-peach {
+  background: linear-gradient(145deg, rgba(249, 115, 22, 0.19) 0%, rgba(234, 88, 12, 0.1) 100%);
+  border-color: rgba(251, 146, 60, 0.26);
+}
+.t-shell[data-theme='dark'] .t-folder-card.tint-mint {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border-color: rgba(52, 211, 153, 0.26);
+}
+
+.t-shell .t-folder-watermark {
+  position: absolute;
+  right: -8px;
+  bottom: -12px;
+  width: 136px;
+  height: 136px;
+  color: rgba(255, 255, 255, 0.56);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.t-shell[data-theme='dark'] .t-folder-watermark {
+  color: rgba(255, 255, 255, 0.08);
+}
+
+.t-shell .t-folder-top,
+.t-shell .t-folder-head,
+.t-shell .t-folder-body,
+.t-shell .t-folder-foot,
+.t-shell .t-folder-name {
+  position: relative;
+  z-index: 1;
+}
+
+.t-shell .t-folder-top,
+.t-shell .t-folder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-role-badge,
+.t-shell .t-folder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 750;
+  background: rgba(255, 255, 255, 0.78);
+  color: #111827;
+  backdrop-filter: blur(4px);
+}
+
+.t-shell .t-role-badge.homeroom {
+  background: rgba(255, 255, 255, 0.85);
+  color: #1d4ed8;
+}
+
+.t-shell .t-role-badge.subject {
+  background: rgba(255, 255, 255, 0.85);
+  color: #6d28d9;
+}
+
+.t-shell[data-theme='dark'] .t-role-badge,
+.t-shell[data-theme='dark'] .t-folder-chip {
+  background: rgba(15, 17, 21, 0.62);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.t-shell[data-theme='dark'] .t-role-badge.homeroom {
+  color: #93c5fd;
+}
+
+.t-shell[data-theme='dark'] .t-role-badge.subject {
+  color: #c4b5fd;
+}
+
+.t-shell .t-folder-code {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--t-ink-2);
+}
+
+.t-shell[data-theme='dark'] .t-folder-code {
+  background: rgba(15, 17, 21, 0.55);
+  color: #cbd5e1;
+}
+
+.t-shell .t-folder-name {
+  margin: 0 0 2px;
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--t-ink);
+}
+
+.t-shell .t-folder-meta {
+  position: relative;
+  z-index: 1;
+  font-size: 12.2px;
+  font-weight: 600;
+  color: var(--t-ink-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-folder-progress-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.t-shell .t-folder-progress-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.12);
+  overflow: hidden;
+}
+
+.t-shell[data-theme='dark'] .t-folder-progress-track {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.t-shell .t-folder-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #14161b;
+  transition: width 300ms ease;
+}
+
+.t-shell[data-theme='dark'] .t-folder-progress-fill {
+  background: #c8f542;
+}
+
+.t-shell .t-folder-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.t-shell .t-folder-foot-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.t-shell .t-folder-arrow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  color: #111827;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.t-shell[data-theme='dark'] .t-folder-arrow-btn {
+  background: rgba(15, 17, 21, 0.72);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f3f5f8;
+}
+
+.t-shell .t-folder-card:hover .t-folder-arrow-btn,
+.t-shell .t-folder-arrow-btn:hover {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  border-color: transparent;
+  transform: translateX(2px);
+}
+
+/* Avatar Stack inside class/exam cards */
+.t-shell .t-avatar-stack {
+  display: flex;
+  align-items: center;
+}
+
+.t-shell .t-avatar-circle,
+.t-shell .t-avatar-stack-dot {
+  width: 25px;
+  height: 25px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.8px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-left: -7px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+.t-shell .t-avatar-circle:first-child,
+.t-shell .t-avatar-stack-dot:first-child {
+  margin-left: 0;
+}
+
+.t-shell .t-avatar-circle.more {
+  background: var(--t-surface-2);
+  color: var(--t-ink-2);
+  font-size: 9.5px;
+  border-color: var(--t-surface-0);
+}
+
+.t-shell .t-avatar-stack-more {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t-ink-2);
+}
+
+.t-shell[data-theme='dark'] .t-avatar-circle,
+.t-shell[data-theme='dark'] .t-avatar-stack-dot {
+  border-color: #161b26;
+}
+
+/* ---- 7. Floe Exam Workflow Cards ---- */
+.t-shell .t-workflows-grid,
+.t-shell .t-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.t-shell .t-workflow-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--t-radius-lg);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  overflow: hidden;
+  box-shadow: var(--t-shadow-sm);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.t-shell .t-workflow-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--t-shadow-md);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-workflow-cover {
+  position: relative;
+  height: 78px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+}
+
+.t-shell .t-workflow-cover.grad-chem {
+  background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
+}
+.t-shell .t-workflow-cover.grad-phys {
+  background: linear-gradient(135deg, #0284c7 0%, #0d9488 100%);
+}
+.t-shell .t-workflow-cover.grad-bio {
+  background: linear-gradient(135deg, #059669 0%, #65a30d 100%);
+}
+.t-shell .t-workflow-cover.grad-math {
+  background: linear-gradient(135deg, #4338ca 0%, #db2777 100%);
+}
+.t-shell .t-workflow-cover.grad-khtn {
+  background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+}
+
+.t-shell .t-workflow-cover-watermark {
+  position: absolute;
+  right: 28px;
+  bottom: -18px;
+  width: 96px;
+  height: 96px;
+  color: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.t-shell .t-workflow-cover-btn {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(15, 23, 42, 0.28);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.t-shell .t-workflow-cover-btn:hover {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.t-shell .t-workflow-status-notch {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
+  font-size: 11px;
+  font-weight: 750;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.t-shell .t-workflow-status-notch.live {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.t-shell .pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.t-shell .t-workflow-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.t-shell .t-workflow-meta,
+.t-shell .t-workflow-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11.6px;
+  color: var(--t-ink-3);
+}
+
+.t-shell .t-workflow-title {
+  margin: 0;
+  font-size: 14.2px;
+  font-weight: 750;
+  color: var(--t-ink);
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.t-shell .t-workflow-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.t-shell .t-workflow-progress-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--t-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.t-shell .t-workflow-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--t-surface-2);
+  overflow: hidden;
+}
+
+.t-shell .t-workflow-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--t-charcoal);
+  transition: width 300ms ease;
+}
+
+.t-shell .t-workflow-footer,
+.t-shell .t-workflow-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--t-border);
+}
+
+/* ---- 8. Lower Overview Bento: Phổ điểm Donut + Câu sai + Week Agenda (DoDo & Robert Smith) ---- */
+.t-shell .t-split-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.t-shell .t-split-grid > .t-split-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  grid-column: auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding: 20px;
+  border-radius: var(--t-radius-lg);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-split-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-split-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--t-ink);
+  line-height: 1.35;
+}
+
+.t-shell .t-split-card-sub {
+  margin: 3px 0 0;
+  font-size: 12.2px;
+  color: var(--t-ink-3);
+}
+
+.t-shell .t-split-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-split-more-btn:hover {
+  background: var(--t-surface-2);
+  border-color: var(--t-border-strong);
+}
+
+/* Donut + Bars layout inside Phổ điểm card */
+.t-shell .t-donut-layout {
+  display: grid;
+  grid-template-columns: 158px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.t-shell .t-donut-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  border-radius: var(--t-radius-md);
+  background: var(--t-surface-1);
+  border: 1px solid var(--t-border);
+}
+
+.t-shell .ta-score-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.t-shell .ta-score-bar-track {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--t-surface-2);
+  gap: 2px;
+}
+
+.t-shell .ta-score-seg {
+  height: 100%;
+  transition: width 300ms ease;
+}
+
+.t-shell .ta-score-seg.gioi { background: #10b981; }
+.t-shell .ta-score-seg.kha { background: #3b82f6; }
+.t-shell .ta-score-seg.tb { background: #f59e0b; }
+.t-shell .ta-score-seg.yeu { background: #ef4444; }
+
+.t-shell .ta-score-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.t-shell .ta-score-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--t-surface-1);
+  border: 1px solid var(--t-border);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.t-shell .ta-score-card:hover {
+  border-color: var(--t-border-strong);
+  background: var(--t-surface-0);
+  transform: translateY(-1px);
+}
+
+.t-shell .ta-score-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.6px;
+  font-weight: 650;
+  color: var(--t-ink-2);
+}
+
+.t-shell .ta-score-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.t-shell .ta-score-dot.gioi { background: #10b981; }
+.t-shell .ta-score-dot.kha { background: #3b82f6; }
+.t-shell .ta-score-dot.tb { background: #f59e0b; }
+.t-shell .ta-score-dot.yeu { background: #ef4444; }
+
+.t-shell .ta-score-card-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--t-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.t-shell .ta-score-card-pct {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--t-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hardest question items with SVG percentage error rings */
+.t-shell .t-hardest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.t-shell .t-hardest-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 13px;
+  border-radius: var(--t-radius-md);
+  background: var(--t-surface-1);
+  border: 1px solid var(--t-border);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.t-shell .t-hardest-item:hover {
+  border-color: var(--t-border-strong);
+  background: var(--t-surface-0);
+}
+
+.t-shell .t-hardest-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.t-shell .t-hardest-title {
+  font-size: 12.8px;
+  font-weight: 700;
+  color: var(--t-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-hardest-sub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--t-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-hardest-stat {
+  flex-shrink: 0;
+  font-size: 11.4px;
+  font-weight: 700;
+  color: var(--t-bad);
+  background: var(--t-bad-soft);
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Robert Smith / DoDo Week Strip & Agenda Card */
+.t-shell .t-agenda-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 20px;
+  border-radius: var(--t-radius-lg);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-agenda-info {
+  min-width: 0;
+}
+
+.t-shell .t-agenda-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--t-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.t-shell .t-agenda-sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--t-ink-3);
+}
+
+.t-shell .t-agenda-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(38px, 1fr));
+  gap: 8px;
+}
+
+.t-shell .t-agenda-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  background: var(--t-surface-1);
+  border: 1px solid var(--t-border);
+  color: var(--t-ink);
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.t-shell .t-agenda-day:hover {
+  border-color: var(--t-border-strong);
+  transform: translateY(-1px);
+}
+
+.t-shell .t-agenda-day.today {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  border-color: transparent;
+}
+
+.t-shell .t-agenda-dow {
+  font-size: 10.5px;
+  font-weight: 700;
+  opacity: 0.72;
+}
+
+.t-shell .t-agenda-num {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-shell .t-agenda-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--t-accent);
+}
+
+.t-shell .t-agenda-day.today .t-agenda-dot {
+  background: var(--t-charcoal-ink);
+}
+
+.t-shell .t-tasklify-ai-deco {
+  position: absolute;
+  right: 160px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.14;
+  z-index: 0;
+}
+
+/* ---- 9. Secondary Views Harmonization (.vt-*, .la-*, .st-*, .ta-*, .tps-root) ---- */
+.t-shell .t-classes-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--t-radius-md);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+}
+
+.t-shell .t-classes-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--t-surface-2);
+}
+
+.t-shell .t-classes-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--t-ink-2);
+  font-size: 12.6px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.t-shell .t-classes-tab.active {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  font-weight: 750;
+}
+
+.t-shell .vt-head {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--t-border);
+  margin-bottom: 16px;
+}
+
+.t-shell .vt-title h1 {
+  font-size: 1.38rem;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.t-shell .vt-tabs {
+  background: var(--t-surface-2);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--t-border);
+  gap: 4px;
+}
+
+.t-shell .vt-tab {
+  font-style: normal;
+  font-size: 12.6px;
+  font-weight: 650;
+  padding: 7px 14px;
+  border-radius: 9px;
+  color: var(--t-ink-2);
+}
+
+.t-shell .vt-tab.is-active {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .vt-card,
+.t-shell .t-card,
+.t-shell .la-card,
+.t-shell .tps-card {
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-lg);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .vt-btn,
+.t-shell .t-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12.6px;
+  font-weight: 650;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-0);
+  color: var(--t-ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.t-shell .vt-btn.sm,
+.t-shell .t-btn.sm {
+  padding: 6px 11px;
+  font-size: 12px;
+  border-radius: 9px;
+}
+
+.t-shell .vt-btn:hover,
+.t-shell .t-btn:hover {
+  background: var(--t-surface-2);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .vt-btn-primary,
+.t-shell .t-btn-primary,
+.t-shell .vt-btn.primary {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+  border-color: var(--t-charcoal);
+  font-weight: 700;
+}
+
+.t-shell .vt-btn-primary:hover,
+.t-shell .t-btn-primary:hover,
+.t-shell .vt-btn.primary:hover {
+  opacity: 0.92;
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+}
+
+/* Role Distinction Banner in Quản lý Lớp học (GVCN vs GVBM) */
+.t-shell .t-role-guide-banner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.t-shell .t-role-guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: var(--t-radius-md);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .t-role-guide-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.t-shell .t-role-guide-ico.gvcn {
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+}
+
+.t-shell .t-role-guide-ico.gvbm {
+  background: rgba(124, 58, 237, 0.11);
+  color: var(--t-accent-2);
+}
+
+.t-shell .t-role-guide-item strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--t-ink);
+  margin-bottom: 2px;
+}
+
+.t-shell .t-role-guide-item p {
+  margin: 0;
+  font-size: 11.8px;
+  color: var(--t-ink-2);
+  line-height: 1.45;
+}
+
+/* SVG inline check/cross pill for grading review */
+.t-shell .t-grade-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.2px;
+  font-weight: 700;
+}
+
+/* ---- 10. Responsive Breakpoints ---- */
+@media (max-width: 1200px) {
+  .t-shell .t-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .t-shell .t-donut-layout {
+    grid-template-columns: 1fr;
+  }
+  .t-shell .t-agenda-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1020px) {
+  .t-shell .t-split-grid,
+  .t-shell .t-role-guide-banner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .tfc-launcher-wrap {
+    bottom: 84px;
+    right: 14px;
+  }
+  .tfc-launcher-btn {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+  }
+  .tfc-launcher-tooltip {
+    display: none;
+  }
+}
+
+/* ============================================================
+   ELEC MASCOTS, KHẢO THÍ COMMAND CENTER & PROCTOR AI DARK/LIGHT
+   ============================================================ */
+.t-shell .t-hero-right-stack {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-hero-welcome-right {
+  margin-left: auto;
+}
+
+.t-shell .t-hero-mascot-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.t-shell .t-hero-mascot {
+  filter: drop-shadow(0 8px 18px rgba(37, 99, 235, 0.18));
+  transition: transform 220ms ease;
+}
+
+.t-shell .t-hero-welcome:hover .t-hero-mascot {
+  transform: translateY(-2px) rotate(-2deg);
+}
+
+.t-shell .t-banner-mascot {
+  filter: drop-shadow(0 6px 12px rgba(37, 99, 235, 0.18));
+  flex-shrink: 0;
+}
+
+/* Live Exam Command Center (Phiên thi & Khảo thí) */
+.t-shell .t-exam-cmd-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  border-radius: var(--t-radius-lg);
+  background: linear-gradient(125deg, var(--t-surface-0) 0%, color-mix(in srgb, var(--t-accent-soft) 60%, var(--t-surface-0)) 100%);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-exam-cmd-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.t-shell .t-exam-cmd-mascot-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.16));
+  border: 1px solid color-mix(in srgb, var(--t-accent) 22%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.t-shell .t-exam-cmd-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--t-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.t-shell .t-exam-cmd-live-pill,
+.t-shell .t-exam-cmd-ready-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.8px;
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.t-shell .t-exam-cmd-live-pill {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.t-shell .t-exam-cmd-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.t-shell .t-exam-cmd-ready-pill {
+  background: var(--t-surface-2);
+  color: var(--t-ink-2);
+  border: 1px solid var(--t-border);
+}
+
+.t-shell .t-exam-cmd-title {
+  margin: 0 0 3px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--t-ink);
+  letter-spacing: -0.02em;
+}
+
+.t-shell .t-exam-cmd-sub {
+  margin: 0;
+  font-size: 12.6px;
+  color: var(--t-ink-2);
+  line-height: 1.45;
+}
+
+.t-shell .t-exam-cmd-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 1 1 320px;
+}
+
+.t-shell .t-exam-cmd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(76px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.t-shell .t-exam-cmd-stat {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.t-shell .t-exam-cmd-stat strong {
+  font-size: 1.05rem;
+  font-weight: 850;
+  color: var(--t-ink);
+}
+
+.t-shell .t-exam-cmd-stat span {
+  font-size: 10.8px;
+  font-weight: 700;
+  color: var(--t-ink-2);
+}
+
+.t-shell .t-exam-cmd-stat.is-alert {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.t-shell .t-exam-cmd-stat.is-alert strong {
+  color: #dc2626;
+}
+
+.t-shell .t-exam-cmd-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.t-shell .t-session-ai-flag {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  font-size: 11.2px;
+  font-weight: 750;
+}
+
+.t-shell[data-theme='dark'] .t-session-ai-flag {
+  color: #fbbf24;
+}
+
+/* LiveProctor AI Banner & Diagnostic Studio (Dark & Light Mode Safe) */
+.t-proctor-ai-banner {
+  background: linear-gradient(125deg, color-mix(in srgb, #2563eb 10%, var(--panel, #ffffff)) 0%, color-mix(in srgb, #4f46e5 12%, var(--panel, #ffffff)) 100%);
+  border: 1px solid color-mix(in srgb, #2563eb 28%, var(--soft, rgba(15, 23, 42, 0.1)));
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.t-proctor-ai-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.t-proctor-ai-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.t-proctor-ai-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.t-proctor-ai-desc {
+  font-size: 0.78rem;
+  color: var(--mut, #475569);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.t-proctor-ai-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.t-proctor-integrity-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--soft, rgba(15, 23, 42, 0.1));
+}
+
+.t-proctor-integrity-val {
+  font-size: 0.88rem;
+  font-weight: 850;
+  color: #059669;
+}
+
+.t-proctor-integrity-val.warn {
+  color: #d97706;
+}
+
+.t-proctor-integrity-val.danger {
+  color: #dc2626;
+}
+
+.t-proctor-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  background: var(--panel, #ffffff);
+  color: var(--ink, #0f172a);
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--soft, rgba(15, 23, 42, 0.12));
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+.t-proctor-diag-panel {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--panel, #ffffff);
+  border: 1px solid color-mix(in srgb, #2563eb 28%, var(--soft, rgba(15, 23, 42, 0.1)));
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.t-proctor-diag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.t-proctor-diag-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--vt-tint, rgba(15, 23, 42, 0.03));
+  border: 1px solid var(--soft, rgba(15, 23, 42, 0.08));
+}
+
+.t-proctor-diag-item strong {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--ink, #0f172a);
+  margin-bottom: 2px;
+}
+
+.t-proctor-diag-item p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--mut, #64748b);
+  line-height: 1.4;
+}
+
+[data-theme='dark'] .t-proctor-integrity-val {
+  color: #34d399;
+}
+
+[data-theme='dark'] .t-proctor-integrity-val.warn {
+  color: #fbbf24;
+}
+
+[data-theme='dark'] .t-proctor-integrity-val.danger {
+  color: #f87171;
+}
+
+@media (max-width: 720px) {
+  .t-shell .t-hero-mascot-wrap,
+  .t-shell .t-banner-mascot {
+    display: none;
+  }
+  .t-shell .t-exam-cmd-right {
+    align-items: flex-start;
+  }
+  .t-shell .t-exam-cmd-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .t-shell .t-content {
+    padding: 14px 14px 136px;
+  }
+  .t-shell .t-topbar {
+    padding: 10px 14px;
+  }
+  .t-shell .t-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .t-shell .t-hero-welcome {
+    padding: 14px 16px;
+  }
+  .t-shell .t-hero-welcome-right {
+    width: 100%;
+    max-width: 100%;
+  }
+  .t-shell .t-range-pills {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .t-shell .t-range-pill {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 6px 9px;
+    font-size: 11.6px;
+  }
+  .t-shell .t-agenda-days {
+    gap: 4px;
+  }
+}
+
+/* ============================================================
+   V3 UPGRADE: COLLAPSIBLE RAIL, REF 1/2/3 TOPBAR & BENTO COMMAND HUB
+   ============================================================ */
+.t-shell .t-rail-sidebar {
+  width: 272px;
+  background: var(--t-surface-0);
+  border-right: 1px solid var(--t-border);
+  padding: 14px 0 10px;
+  display: flex;
+  flex-direction: column;
+  transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.t-shell .t-rail-sidebar.collapsed {
+  width: 74px;
+}
+
+.t-shell .t-rail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 12px;
+  border-bottom: 1px solid var(--t-border);
+  margin-bottom: 8px;
+}
+
+.t-shell .t-rail-sidebar.collapsed .t-rail-header {
+  flex-direction: column;
+  padding: 0 8px 10px;
+  gap: 8px;
+}
+
+.t-shell .t-rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 4px;
+  margin: 0;
+  border: 0;
+  width: auto;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.t-shell .t-rail-logo-text {
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  color: var(--t-ink);
+  opacity: 1;
+  width: auto;
+}
+
+.t-shell .t-rail-sidebar.collapsed .t-rail-logo-text,
+.t-shell .t-rail-sidebar.collapsed .t-rail-group-label,
+.t-shell .t-rail-sidebar.collapsed .t-rail-btn-label,
+.t-shell .t-rail-sidebar.collapsed .t-rail-btn-count,
+.t-shell .t-rail-sidebar.collapsed .t-rail-user-meta {
+  display: none;
+}
+
+.t-shell .t-rail-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-rail-collapse-btn:hover {
+  background: var(--t-surface-2);
+  color: var(--t-ink);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-rail-nav {
+  padding: 4px 8px 18px;
+  gap: 3px;
+}
+
+.t-shell .t-rail-sidebar.collapsed .t-rail-nav {
+  padding: 4px 10px 18px;
+  align-items: center;
+}
+
+.t-shell .t-rail-group-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--t-ink-3);
+  padding: 10px 10px 4px;
+}
+
+.t-shell .t-rail-group-divider {
+  height: 1px;
+  background: var(--t-border);
+  margin: 6px 8px;
+}
+
+.t-shell .t-rail-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t-ink-2);
+  font-size: 12.6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 120ms ease;
+}
+
+.t-shell .t-rail-btn-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 961px) and (max-width: 1180px) {
+  .t-shell .t-rail-sidebar:not(.collapsed) {
+    width: 256px;
+  }
+  .t-shell .t-rail-btn {
+    gap: 6px;
+    padding: 8px 7px;
+    font-size: 12.1px;
+  }
+}
+
+.t-shell .t-rail-sidebar.collapsed .t-rail-btn {
+  width: 46px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+.t-shell .t-rail-btn:hover {
+  background: var(--t-surface-2);
+  color: var(--t-ink);
+}
+
+.t-shell .t-rail-btn.active {
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+  border-color: color-mix(in srgb, var(--t-accent) 24%, transparent);
+  font-weight: 750;
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell[data-theme='dark'] .t-rail-btn.active {
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(167, 139, 250, 0.14));
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+.t-shell .t-rail-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.t-shell .t-rail-btn-count {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--t-surface-2);
+  color: var(--t-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.t-shell .t-rail-btn.active .t-rail-btn-count {
+  background: color-mix(in srgb, var(--t-accent) 16%, transparent);
+  color: var(--t-accent);
+}
+
+.t-shell .t-rail-sidebar.expanded .t-rail-btn-badge {
+  position: static;
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: var(--t-bad);
+  color: #ffffff;
+}
+
+.t-shell .t-rail-sidebar.collapsed .t-rail-btn-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 2px 5px;
+  font-size: 9.5px;
+  border-radius: 999px;
+  background: var(--t-bad);
+  color: #ffffff;
+}
+
+.t-shell .t-rail-footer {
+  background: var(--t-surface-0);
+  border-top: 1px solid var(--t-border);
+  padding: 10px 10px 4px;
+  gap: 6px;
+}
+
+.t-shell .t-rail-user-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-rail-user-card:hover {
+  background: var(--t-surface-2);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-rail-sidebar.collapsed .t-rail-user-card {
+  justify-content: center;
+  padding: 6px;
+}
+
+.t-shell .t-rail-user-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.t-shell .t-rail-user-meta b {
+  font-size: 12.2px;
+  font-weight: 750;
+  color: var(--t-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-rail-user-meta small {
+  font-size: 10.5px;
+  color: var(--t-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Upgraded Topbar (Ref 1/2/3: Quick Pill, Live Date, ELEC Agent, Profile Chip) */
+.t-shell .t-topbar-slim {
+  height: auto;
+  min-height: 62px;
+  padding: 10px 22px;
+  background: color-mix(in srgb, var(--t-surface-0) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--t-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.t-shell .t-top-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.t-shell .t-top-heading {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.t-shell .t-top-title {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--t-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-top-sub {
+  margin: 0;
+  font-size: 11.8px;
+  color: var(--t-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.t-shell .t-top-seg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--t-surface-2);
+  border: 1px solid var(--t-border);
+}
+
+.t-shell .t-top-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--t-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.t-shell .t-top-seg-btn.active {
+  background: var(--t-surface-0);
+  color: var(--t-ink);
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .t-top-seg-btn.accent {
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+}
+
+.t-shell .t-top-seg-btn.accent:hover {
+  opacity: 0.92;
+}
+
+.t-shell .t-top-date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink-2);
+  font-size: 11.8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.t-shell .t-top-ai-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 12.2px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: transform 140ms ease, filter 140ms ease;
+  white-space: nowrap;
+}
+
+.t-shell .t-top-ai-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.t-shell .t-top-profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-top-profile-chip:hover {
+  background: var(--t-surface-2);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-top-profile-meta {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.t-shell .t-top-profile-meta b {
+  font-size: 11.8px;
+  font-weight: 750;
+  max-width: 115px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-top-profile-meta small {
+  font-size: 10px;
+  color: var(--t-ink-3);
+}
+
+/* Streamlined Hub Subnav Bar (Tasklify Pro style) */
+.t-shell .t-hub-subnav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--t-radius-md);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .t-hub-subnav-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.t-shell .t-hub-subnav-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--t-ink);
+}
+
+.t-shell .t-hub-subnav-desc {
+  font-size: 11.6px;
+  color: var(--t-ink-3);
+}
+
+.t-shell .t-hub-subnav-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--t-surface-2);
+  border: 1px solid var(--t-border);
+  flex-wrap: wrap;
+}
+
+.t-shell .t-hub-subnav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--t-ink-2);
+  font-size: 12.4px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.t-shell .t-hub-subnav-pill.active {
+  background: var(--t-surface-0);
+  color: var(--t-ink);
+  box-shadow: var(--t-shadow-xs);
+}
+
+.t-shell .t-pill-badge-live,
+.t-shell .t-pill-badge-warn {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.t-shell .t-pill-badge-live {
+  background: var(--t-ok);
+  color: #ffffff;
+}
+
+.t-shell .t-pill-badge-warn {
+  background: var(--t-bad);
+  color: #ffffff;
+}
+
+/* ============================================================
+   OVERVIEW V3 ASYMMETRIC BENTO MATRIX (REF 1 + REF 2 + REF 3)
+   ============================================================ */
+.t-shell .t-cmd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(350px, 1.06fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.t-shell .t-cmd-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.t-shell .t-cmd-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 2x2 Quadrant Priority Matrix with Central ELEC Brand Seal (Ref 3) */
+.t-shell .t-quad-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 18px;
+  border-radius: var(--t-radius-xl);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-quad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+.t-shell .t-quad-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.t-shell .t-quad-grid {
+  position: relative;
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(124px, 1fr);
+  gap: 14px;
+}
+
+.t-shell .t-quad-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  text-align: left;
+  cursor: pointer;
+  min-height: 112px;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.t-shell .t-quad-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--t-shadow-md);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-quad-tile.tone-blue {
+  background: color-mix(in srgb, var(--t-accent) 9%, var(--t-surface-0));
+  border-color: color-mix(in srgb, var(--t-accent) 22%, var(--t-border));
+}
+
+.t-shell .t-quad-tile.tone-amber {
+  background: color-mix(in srgb, #f59e0b 10%, var(--t-surface-0));
+  border-color: color-mix(in srgb, #f59e0b 24%, var(--t-border));
+}
+
+.t-shell .t-quad-tile.tone-emerald {
+  background: color-mix(in srgb, #10b981 9%, var(--t-surface-0));
+  border-color: color-mix(in srgb, #10b981 22%, var(--t-border));
+}
+
+.t-shell .t-quad-tile.tone-violet {
+  background: color-mix(in srgb, #8b5cf6 9%, var(--t-surface-0));
+  border-color: color-mix(in srgb, #8b5cf6 22%, var(--t-border));
+}
+
+.t-shell .t-quad-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.t-shell .t-quad-tile-label {
+  font-size: 12.2px;
+  font-weight: 700;
+  color: var(--t-ink-2);
+}
+
+.t-shell .t-quad-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-0);
+  color: var(--t-ink);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.t-shell .t-quad-tile:hover .t-quad-arrow {
+  transform: translate(2px, -2px);
+  background: var(--t-charcoal);
+  color: var(--t-charcoal-ink);
+}
+
+.t-shell .t-quad-val {
+  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--t-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.t-shell .t-quad-sub {
+  font-size: 11.6px;
+  color: var(--t-ink-3);
+  font-weight: 600;
+}
+
+.t-shell .t-quad-seal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--t-surface-0);
+  border: 4px solid var(--t-bg);
+  box-shadow: var(--t-shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Checklist + Priority Messages Card (Ref 2 & Ref 3 Right Rail) */
+.t-shell .t-checklist-card {
+  padding: 18px;
+  border-radius: var(--t-radius-xl);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.t-shell .t-checklist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.t-shell .t-checklist-head h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.t-shell .t-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.t-shell .t-task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 13px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.t-shell .t-task-row:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--t-shadow-sm);
+  border-color: var(--t-border-strong);
+}
+
+.t-shell .t-task-row.highlight {
+  background: #14161b;
+  color: #ffffff;
+  border-color: #14161b;
+  box-shadow: 0 12px 24px -10px rgba(15, 23, 42, 0.55);
+}
+
+.t-shell[data-theme='dark'] .t-task-row.highlight {
+  background: linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.t-shell .t-task-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--t-surface-0);
+  color: var(--t-accent);
+  border: 1px solid var(--t-border);
+  flex-shrink: 0;
+}
+
+.t-shell .t-task-row.highlight .t-task-icon {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.t-shell .t-task-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.t-shell .t-task-body strong {
+  font-size: 12.6px;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-task-body small {
+  font-size: 11.2px;
+  opacity: 0.78;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-task-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10.6px;
+  font-weight: 800;
+  background: var(--t-surface-2);
+  color: var(--t-ink-2);
+  flex-shrink: 0;
+}
+
+.t-shell .t-task-row.highlight .t-task-pill {
+  background: #c8f542;
+  color: #0f1115;
+}
+
+.t-shell .t-cmd-right .t-agenda-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'info action'
+    'days days';
+  align-items: center;
+  gap: 10px;
+  padding: 13px 15px;
+  overflow: hidden;
+}
+
+.t-shell .t-cmd-right .t-agenda-info {
+  grid-area: info;
+}
+
+.t-shell .t-cmd-right .t-agenda-card > button:last-child {
+  grid-area: action;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.t-shell .t-cmd-right .t-agenda-days {
+  grid-area: days;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+}
+
+.t-shell .t-cmd-right .t-agenda-day {
+  min-width: 0;
+  padding: 6px 2px;
+}
+
+/* Action Dock Card (Bento Quick-Launch Tools under Agenda) */
+.t-shell .t-action-dock-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 13px 15px;
+  border-radius: var(--t-radius-xl);
+  background: var(--t-surface-0);
+  border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-action-dock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.t-shell .t-action-dock-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--t-ink);
+}
+
+.t-shell .t-action-dock-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  flex: 1;
+  align-content: stretch;
+}
+
+.t-shell .t-action-dock-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--t-border);
+  background: var(--t-surface-1);
+  color: var(--t-ink);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.t-shell .t-action-dock-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--t-shadow-sm);
+  border-color: var(--t-border-strong);
+  background: var(--t-surface-0);
+}
+
+.t-shell .t-action-dock-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--t-surface-2);
+  color: var(--t-ink-2);
+}
+
+.t-shell .t-action-dock-tile.tone-slate .t-action-dock-ico {
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-slate .t-action-dock-ico {
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+}
+
+.t-shell .t-action-dock-tile.tone-blue .t-action-dock-ico {
+  background: color-mix(in srgb, #2563eb 12%, transparent);
+  color: #2563eb;
+}
+
+.t-shell .t-action-dock-tile.tone-indigo .t-action-dock-ico {
+  background: color-mix(in srgb, #4f46e5 12%, transparent);
+  color: #4f46e5;
+}
+
+.t-shell .t-action-dock-tile.tone-emerald .t-action-dock-ico {
+  background: color-mix(in srgb, #059669 12%, transparent);
+  color: #059669;
+}
+
+.t-shell .t-action-dock-tile.tone-amber .t-action-dock-ico {
+  background: color-mix(in srgb, #d97706 13%, transparent);
+  color: #d97706;
+}
+
+.t-shell .t-action-dock-tile.tone-violet .t-action-dock-ico {
+  background: color-mix(in srgb, #7c3aed 12%, transparent);
+  color: #7c3aed;
+}
+
+.t-shell .t-action-dock-tile.tone-teal .t-action-dock-ico {
+  background: color-mix(in srgb, #0d9488 12%, transparent);
+  color: #0d9488;
+}
+
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-blue .t-action-dock-ico { color: #60a5fa; }
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-indigo .t-action-dock-ico { color: #818cf8; }
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-emerald .t-action-dock-ico { color: #34d399; }
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-amber .t-action-dock-ico { color: #fbbf24; }
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-violet .t-action-dock-ico { color: #a78bfa; }
+.t-shell[data-theme='dark'] .t-action-dock-tile.tone-teal .t-action-dock-ico { color: #2dd4bf; }
+
+.t-shell .t-action-dock-tile.is-primary {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.45);
+}
+
+.t-shell .t-action-dock-tile.is-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #4338ca);
+  border-color: transparent;
+}
+
+.t-shell .t-action-dock-tile.is-primary .t-action-dock-ico {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.t-shell .t-action-dock-tile.is-live {
+  border-color: color-mix(in srgb, var(--t-ok) 45%, var(--t-border));
+}
+
+.t-shell .t-action-dock-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.t-shell .t-action-dock-copy strong {
+  font-size: 11.9px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-action-dock-copy small {
+  font-size: 10.2px;
+  font-weight: 600;
+  color: var(--t-ink-3);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.t-shell .t-action-dock-tile.is-primary .t-action-dock-copy small {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+@media (max-width: 1120px) {
+  .t-shell .t-cmd-grid {
+    grid-template-columns: 1fr;
+  }
+  .t-shell .t-top-date-pill,
+  .t-shell .t-top-profile-meta {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .t-shell .t-quad-grid {
+    grid-template-columns: 1fr;
+  }
+  .t-shell .t-quad-seal {
+    display: none;
+  }
+  .t-shell .t-top-seg-pill {
+    display: none;
+  }
+  .t-shell .t-action-dock-card {
+    padding: 14px;
+  }
+  .t-shell .t-action-dock-tile {
+    padding: 9px;
+    gap: 8px;
+  }
+  .t-shell .t-action-dock-ico {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 380px) {
+  .t-shell .t-action-dock-grid {
+    grid-template-columns: 1fr;
+  }
+}

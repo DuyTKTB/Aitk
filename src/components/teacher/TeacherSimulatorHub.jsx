@@ -16,6 +16,7 @@ import { hasPositionalOption, generateShuffledVersions } from '../../lib/examShu
 import { exportBundleZip, exportToWord } from '../../lib/examExport.js';
 import { normLevel } from '../../lib/matrixAiService.js';
 import sound from '../../lib/gameSound.js';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import '../../styles/teacher-simulator-hub.css';
 
 const HISTORY_STORAGE_KEY = 'cs-shuffle-history-v1';
@@ -42,7 +43,9 @@ const IcoClock = (p) => <Svg {...p}><circle cx="12" cy="12" r="10" /><polyline p
 const IcoPrinter = (p) => <Svg {...p}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></Svg>;
 const IcoShuffle = (p) => <Svg {...p}><polyline points="16 3 21 3 21 8" /><line x1="4" y1="20" x2="21" y2="3" /><polyline points="21 16 21 21 16 21" /><line x1="15" y1="15" x2="21" y2="21" /><line x1="4" y1="4" x2="9" y2="9" /></Svg>;
 const IcoBook = (p) => <Svg {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></Svg>;
-const IcoSpark = (p) => <Svg {...p}><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" /></Svg>;
+const IcoSpark = ({ size = 16, className = '', style }) => (
+  <ElecFlaskBrandSvg size={size} variant="current" className={className} style={style} />
+);
 const IcoPlay = (p) => <Svg {...p}><polygon points="5 3 19 12 5 21 5 3" /></Svg>;
 const IcoSearch = (p) => <Svg {...p}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></Svg>;
 const IcoGrid = (p) => <Svg {...p}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></Svg>;
@@ -169,15 +172,28 @@ export default function TeacherSimulatorHub({
     }
   }, [initialImportedExam]);
 
-  // "2. THÔNG TIN TRANG ĐẦU CỦA ĐỀ THI"
-  const [headerInfo, setHeaderInfo] = useState({
-    deptName: 'Sở GD - ĐT Quảng Trị',
-    schoolName: 'THPT Nguyễn Chí Thanh',
-    examName: 'KIỂM TRA ĐÁNH GIÁ GIỮA KÌ I',
-    subject: 'Hóa học',
-    grade: '12',
-    schoolYear: '2026 - 2027',
-    duration: 45,
+  // "2. THÔNG TIN TRANG ĐẦU CỦA ĐỀ THI" (Đọc từ Hồ sơ Giáo viên nếu đã lưu)
+  const [headerInfo, setHeaderInfo] = useState(() => {
+    let prefs = null;
+    try {
+      const uidKey = initialImportedExam?.teacherId || 'guest';
+      const raw = localStorage.getItem(`cs-teacher-exam-prefs-v1:${uidKey}`)
+        || localStorage.getItem('cs-teacher-exam-prefs-v1:guest')
+        || (() => {
+          const hit = Object.keys(localStorage).find((k) => k.startsWith('cs-teacher-exam-prefs-v1:'));
+          return hit ? localStorage.getItem(hit) : null;
+        })();
+      if (raw) prefs = JSON.parse(raw);
+    } catch { /* ignore */ }
+    return {
+      deptName: prefs?.headerDeptName || 'SỞ GIÁO DỤC VÀ ĐÀO TẠO',
+      schoolName: prefs?.headerSchoolName || 'TRƯỜNG THPT',
+      examName: initialImportedExam?.title || '',
+      subject: initialImportedExam?.subject || 'Hóa học',
+      grade: initialImportedExam?.grade ? String(initialImportedExam.grade) : '12',
+      schoolYear: '2026 - 2027',
+      duration: Number(initialImportedExam?.duration) || 45,
+    };
   });
 
   // "3. CẤU HÌNH TRỘN"
@@ -216,12 +232,24 @@ export default function TeacherSimulatorHub({
     sound.pop();
     setInitialTab(tab);
     setInitialWizardStep(step);
+    const resolvedTitle = exam.title || headerInfo.examName || 'Đề kiểm tra';
+    const resolvedSubject = exam.subject || headerInfo.subject || 'Hóa học';
+    const resolvedDuration = Number(exam.duration) || Number(headerInfo.duration) || 45;
+    const resolvedGrade = exam.grade ? String(exam.grade) : (headerInfo.grade || '12');
     setActiveExam({
       ...exam,
-      title: headerInfo.examName || exam.title || 'Đề kiểm tra',
-      subject: headerInfo.subject || exam.subject || 'Hóa học',
-      duration: Number(headerInfo.duration) || exam.duration || 45,
-      headerInfo,
+      title: resolvedTitle,
+      subject: resolvedSubject,
+      duration: resolvedDuration,
+      grade: resolvedGrade,
+      gradeType: exam.gradeType || '',
+      headerInfo: {
+        ...headerInfo,
+        examName: resolvedTitle,
+        subject: resolvedSubject,
+        duration: resolvedDuration,
+        grade: resolvedGrade,
+      },
       shuffleConfig: {
         codeCount,
         seedInput: String(exam.seed || '2025'),
@@ -603,25 +631,25 @@ export default function TeacherSimulatorHub({
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: '0.73rem', fontWeight: 800 }}>
-                  <span style={{ background: '#eef2ff', color: '#3730a3', border: '1px solid #c7d2fe', padding: '3px 9px', borderRadius: 99 }}>
+                  <span style={{ background: 'var(--t-accent-soft, rgba(37, 99, 235, 0.12))', color: 'var(--t-accent, #3730a3)', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '3px 9px', borderRadius: 99 }}>
                     Phần I: {loadedStats.parts.p1} · Phần II: {loadedStats.parts.p2} · Phần III: {loadedStats.parts.p3}
                   </span>
                   <span
                     style={{
-                      background: loadedStats.validAnswerCount === loadedStats.total ? '#dcfce7' : '#fef3c7',
-                      color: loadedStats.validAnswerCount === loadedStats.total ? '#166534' : '#92400e',
-                      border: loadedStats.validAnswerCount === loadedStats.total ? '1px solid #86efac' : '1px solid #fde68a',
+                      background: loadedStats.validAnswerCount === loadedStats.total ? 'var(--t-ok-soft, rgba(5, 150, 105, 0.12))' : 'var(--t-warn-soft, rgba(217, 119, 6, 0.12))',
+                      color: loadedStats.validAnswerCount === loadedStats.total ? 'var(--t-ok, #166534)' : 'var(--t-warn, #92400e)',
+                      border: loadedStats.validAnswerCount === loadedStats.total ? '1px solid rgba(5, 150, 105, 0.35)' : '1px solid rgba(217, 119, 6, 0.35)',
                       padding: '3px 9px',
                       borderRadius: 99,
                     }}
                   >
                     Đáp án đúng: {loadedStats.validAnswerCount}/{loadedStats.total} câu
                   </span>
-                  <span style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '3px 9px', borderRadius: 99 }}>
+                  <span style={{ background: 'var(--t-surface-2, #f1f5f9)', color: 'var(--t-ink-2, #334155)', border: '1px solid var(--t-border-strong, #cbd5e1)', padding: '3px 9px', borderRadius: 99 }}>
                     Mức độ: NB {loadedStats.counts.nb} · TH {loadedStats.counts.th} · VD {loadedStats.counts.vd} · VDC {loadedStats.counts.vdc}
                   </span>
                   {loadedStats.imageCount > 0 && (
-                    <span style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', padding: '3px 9px', borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ background: 'var(--t-accent-soft, rgba(2, 132, 199, 0.12))', color: 'var(--t-accent, #0369a1)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '3px 9px', borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <IcoImage size={12} /> {loadedStats.imageCount} hình vẽ
                     </span>
                   )}

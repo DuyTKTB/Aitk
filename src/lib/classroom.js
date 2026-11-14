@@ -358,6 +358,26 @@ export async function updateClass(classId, patch = {}) {
   const data = {};
   if (typeof patch.name === 'string' && patch.name.trim()) data.name = patch.name.trim().slice(0, 48);
   if (typeof patch.subject === 'string') data.subject = patch.subject.trim().slice(0, 40);
+  if (patch.grade !== undefined && patch.grade !== null) {
+    const g = Number(patch.grade);
+    if (!Number.isNaN(g) && g >= 1 && g <= 12) data.grade = g;
+  }
+  if (patch.announcement !== undefined) {
+    data.announcement = patch.announcement === null
+      ? null
+      : {
+          text: String(patch.announcement?.text || '').trim().slice(0, 500),
+          updatedAt: Date.now(),
+        };
+  }
+  if (patch.bandThresholds && typeof patch.bandThresholds === 'object') {
+    const b = patch.bandThresholds;
+    data.bandThresholds = {
+      good: Number(b.good) || 8,
+      fair: Number(b.fair) || 6.5,
+      pass: Number(b.pass) || 5,
+    };
+  }
   if (!Object.keys(data).length) return { ok: false, error: 'Không có thay đổi.' };
   data.updatedAt = serverTimestamp();
   try {
@@ -415,6 +435,8 @@ export async function createExam({
   kind = '',
   subject = '',
   grade = 0,
+  gradeType = '',
+  isDraft = false,
   /* 'private' = chỉ thành viên lớp vào được (mặc định); 'public' = ai có link cũng làm được */
   visibility = 'private',
 }) {
@@ -425,6 +447,7 @@ export async function createExam({
     teacherId,
     teacherName,
     classId: classId || '',
+    isDraft: !!isDraft,
     visibility: visibility === 'public' ? 'public' : 'private',
     visibilityUpdatedAt: null,
     title: title || 'Đề kiểm tra',
@@ -445,6 +468,7 @@ export async function createExam({
   if (kind) data.kind = kind;
   if (subject) data.subject = subject;
   if (grade) data.grade = Number(grade) || 0;
+  if (gradeType && ['tx', 'dgk', 'ckk'].includes(gradeType)) data.gradeType = gradeType;
   try {
     const newDocRef = doc(collection(db, 'exams'));
     const examData = { id: newDocRef.id, ...data };

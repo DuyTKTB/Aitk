@@ -1,9 +1,10 @@
 /* ============================================================
    teacher-tokens.css — Design Tokens Duy Nhất Khu Vực Giáo Viên
-   ELEC AI Teacher Workspace (HubSpot Dark Bento + Light Glass)
+   ELEC AI Teacher Workspace (Tasklify × LearnSphere × DoDo × Quest)
+   NOTE: Unlayered so unlayered global CSS (index.css / theme-sandra.css)
+         can never override teacher workspace tokens.
    ============================================================ */
 
-@layer tokens {
   :root,
   [data-theme='dark'] {
     /* --- BẢNG MÀU DARK BENTO (ẢNH 1: HUBSPOT CRM WORKSPACE) --- */
@@ -101,33 +102,33 @@
   }
 
   [data-theme='light'] {
-    /* --- BẢNG MÀU FLOE CLEAN SAAS (TỐI GIẢN, THOÁNG ĐÃNG, TIỆN LỢI) --- */
-    --t-bg: #f8fafc;
-    --t-surface-0: #ffffff;
+    /* --- BẢNG MÀU WARM STUDIO SAAS (TASKLIFY / DODO / QUEST) --- */
+    --t-bg: #f5f6f4;
+    --t-surface-0: #fafaf9;
     --t-surface-1: #ffffff;
-    --t-surface-2: #ffffff;
-    --t-surface-3: #f1f5f9;
-    --t-surface-glass: rgba(255, 255, 255, 0.9);
-    --t-border: #e2e8f0;
-    --t-border-subtle: #f1f5f9;
-    --t-border-strong: #cbd5e1;
+    --t-surface-2: #f9fafb;
+    --t-surface-3: #f1f3f5;
+    --t-surface-glass: rgba(255, 255, 255, 0.92);
+    --t-border: rgba(15, 23, 42, 0.08);
+    --t-border-subtle: rgba(15, 23, 42, 0.05);
+    --t-border-strong: rgba(15, 23, 42, 0.16);
 
-    /* Màu Nhấn Xanh Tươi Sáng Hiện Đại */
+    /* Màu Nhấn Tươi Sáng & Độ Tương Phản Cao */
     --t-accent: #2563eb;
     --t-accent-hover: #1d4ed8;
     --t-accent-subtle: #eff6ff;
-    --t-accent-glow: rgba(37, 99, 235, 0.15);
+    --t-accent-glow: rgba(37, 99, 235, 0.16);
     --t-accent-ink: #ffffff;
 
-    --t-accent-2: #8b5cf6;
+    --t-accent-2: #7c3aed;
     --t-accent-2-subtle: #f5f3ff;
-    --t-accent-3: #06b6d4;
+    --t-accent-3: #0891b2;
 
     /* Chữ Light Mode */
-    --t-ink: #0f172a;
-    --t-ink-2: #334155;
-    --t-ink-muted: #64748b;
-    --t-ink-faint: #94a3b8;
+    --t-ink: #111827;
+    --t-ink-2: #374151;
+    --t-ink-muted: #6b7280;
+    --t-ink-faint: #9ca3af;
 
     /* Tương thích ngược & Cầu nối Vitality Admin (Light Glass) */
     --ts-ink: var(--t-ink);
@@ -224,4 +225,3 @@
     --ts-shadow: var(--t-shadow-card);
     --ts-shadow-lg: var(--t-shadow-float);
   }
-}

@@ -13,10 +13,11 @@
    "chưa đủ dữ liệu" chứ không hiển thị 0.
    ============================================================ */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildClassAnalytics, masteryLabel, rateTone, MASTERY_PARTS } from '../../lib/teacherAnalytics.js';
 import { getExamsByClass, getSubmissionsByExam } from '../../lib/classroom.js';
-import { downloadCsv } from '../DashShell.jsx';
+import { computeStudentPeriodGrades, classifyExamGradeColumn, exportStyledWorkbook } from '../../lib/excelExport.js';
+import { ElecFlaskBrandSvg, ElecMascot } from './ElecBrandMark.jsx';
 import { IconClose } from '../Icons.jsx';
 import '../../styles/teacher-analytics.css';
 
@@ -455,13 +456,32 @@ function StudentDrawer({ student, onClose }) {
           <p className="ta-note">Chưa nộp bài nào.</p>
         ) : (
           <ul className="ta-sublist">
-            {[...student.subs].slice(-5).reverse().map((s) => (
-              <li key={`${s.examId}-${s.id || s.studentId}`}>
-                <span>{s.examTitle || 'Đề'}</span>
-                <b>{Math.round((Number(s.score) / (Number(s.totalPoints) || 1)) * 100)}%</b>
-                <small>{fmtDate(toMs(s.submittedAt))}</small>
-              </li>
-            ))}
+            {[...student.subs].slice(-8).reverse().map((s) => {
+              const isOmr = !!(s.isPaperOmr || s.source === 'paper-omr');
+              return (
+                <li key={`${s.examId}-${s.id || s.studentId}`}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {s.examTitle || 'Đề'}
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '1px 6px',
+                        borderRadius: 999,
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        background: isOmr ? 'var(--t-warn-soft, rgba(217, 119, 6, 0.14))' : 'var(--t-accent-soft, rgba(37, 99, 235, 0.12))',
+                        color: isOmr ? 'var(--t-warn, #b45309)' : 'var(--t-accent, #1d4ed8)',
+                      }}
+                    >
+                      {isOmr ? 'Phiếu A4 OMR' : 'Online'}
+                    </span>
+                  </span>
+                  <b>{Math.round((Number(s.score) / (Number(s.totalPoints) || 1)) * 100)}%</b>
+                  <small>{fmtDate(toMs(s.submittedAt))}</small>
+                </li>
+              );
+            })}
           </ul>
         )}
       </aside>
@@ -469,7 +489,19 @@ function StudentDrawer({ student, onClose }) {
   );
 }
 
-export default function ClassAnalytics({ classes = [], exams = [], submissionsMap = {}, loading = false }) {
+const fmtClassLabel = (name) => {
+  const s = String(name || '').trim();
+  if (!s) return '—';
+  return /^lớp\s+/i.test(s) ? s : `Lớp ${s}`;
+};
+
+export default function ClassAnalytics({
+  classes = [],
+  exams = [],
+  submissionsMap = {},
+  loading = false,
+  onCreateRemedialExam = null,
+}) {
   const [classId, setClassId] = useState(() => (classes[0] ? classes[0].id : ''));
   const [range, setRange] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -481,6 +513,14 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
 
   /* Tính năng nâng cấp D4: Biểu đồ đường/cột + So sánh 2 lớp + Lọc/Sắp xếp/Lưới học sinh + Tab thu gọn */
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'students' | 'heatmap'
+  const studentsTabRef = useRef(null);
+  const jumpToStudentsFilter = (filterVal) => {
+    setStudentFilter((prev) => (prev === filterVal ? 'all' : filterVal));
+    setActiveTab('students');
+    setTimeout(() => {
+      studentsTabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
   const [chartType, setChartType] = useState('bar'); // 'bar' | 'line'
   const [chartSource, setChartSource] = useState('exams'); // 'exams' | 'topics'
   const [compareMode, setCompareMode] = useState(false);
@@ -571,8 +611,47 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
     return () => { alive = false; };
   }, [compareMode, compareClassId, fetchClassData]);
 
-  const feedExams = feed.exams.length ? feed.exams : exams.filter((e) => e.classId === classId);
-  const feedSubs = feed.exams.length ? feed.submissionsMap : submissionsMap;
+  const feedExams = useMemo(() => {
+    const base = feed.exams.length ? [...feed.exams] : exams.filter((e) => e.classId === classId);
+    const seen = new Set(base.map((e) => e.id));
+    exams.filter((e) => e.classId === classId && !seen.has(e.id)).forEach((e) => {
+      seen.add(e.id);
+      base.push(e);
+    });
+    Object.entries(submissionsMap || {}).forEach(([exId, list]) => {
+      if (seen.has(exId) || !Array.isArray(list) || !list.length) return;
+      const clsSubs = list.filter((s) => s.classId === classId);
+      if (!clsSubs.length) return;
+      const first = clsSubs[0];
+      seen.add(exId);
+      base.push({
+        id: exId,
+        classId,
+        title: first.examTitle || 'Phiếu chấm A4 (OMR)',
+        subject: first.subject || cls?.subject || '',
+        teacherId: first.teacherId || cls?.teacherId || '',
+        teacherName: first.teacherName || '',
+        isPaperOmr: !!(first.isPaperOmr || first.source === 'paper-omr'),
+        createdAt: first.submittedAt || null,
+      });
+    });
+    return base;
+  }, [feed.exams, exams, classId, submissionsMap, cls]);
+
+  const feedSubs = useMemo(() => {
+    if (!feed.exams.length) return submissionsMap;
+    const merged = { ...(feed.submissionsMap || {}) };
+    feedExams.forEach((ex) => {
+      const baseList = merged[ex.id] || [];
+      const liveList = (submissionsMap?.[ex.id] || []).filter((s) => !s.classId || s.classId === classId);
+      if (!liveList.length) return;
+      const byId = new Map();
+      baseList.forEach((s, idx) => byId.set(s.id || `b-${idx}`, s));
+      liveList.forEach((s, idx) => byId.set(s.id || `l-${idx}`, s));
+      merged[ex.id] = Array.from(byId.values());
+    });
+    return merged;
+  }, [feed.exams.length, feed.submissionsMap, feedExams, submissionsMap, classId]);
 
   /* Áp dụng bộ lọc khoảng ngày tuỳ chỉnh (nếu range === 'custom') */
   const filteredSubsMap = useMemo(() => {
@@ -734,53 +813,343 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
     return list;
   }, [data, studentQuery, studentFilter, studentSort]);
 
-  /* Xuất CSV số liệu lớp */
-  const handleExportCsv = () => {
-    if (!data || !cls) return;
-    const rows = [
-      ['Lớp', 'Học sinh', 'Email', 'Số bài nộp', 'Điểm TB (%)', 'Mastery (/100)', 'Xếp loại Mastery', 'Chương yếu nhất', 'Tỉ lệ chương yếu (%)', 'Cờ cảnh báo', 'Nộp gần nhất'],
-    ];
-    data.students.forEach((s) => {
-      const meta = masteryLabel(s.mastery);
-      rows.push([
-        cls.name,
-        s.name || 'Học sinh',
-        s.email || '',
-        s.count || 0,
-        s.count ? `${s.accuracy}%` : '—',
-        s.mastery === null ? '—' : s.mastery,
-        meta.label,
-        s.weakest ? s.weakest.topic : '—',
-        s.weakest ? `${s.weakest.rate}%` : '—',
-        s.flags.length ? s.flags.map((f) => f.label).join('; ') : 'Ổn',
-        s.lastAt ? new Date(s.lastAt).toLocaleString('vi-VN') : '—',
-      ]);
-    });
-    downloadCsv(`so-lieu-lop-${(cls.name || 'lop').replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  /* Xuất Excel (.xlsx) báo cáo chi tiết đa sheet kèm Mascot ELEC & bản quyền */
+  const handleExportExcel = async () => {
+    if (!data || !cls || exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      const classLabel = cls.name || 'Lớp';
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const classExList = feedExams.filter((e) => !e.classId || e.classId === classId);
+      const safeAvgPct = data.kpi?.avgPct ?? 0;
+
+      const atRiskRows = data.students
+        .filter((s) => (s.mastery !== null && s.mastery < 50) || (s.flags && s.flags.length > 0))
+        .map((s, idx) => ({
+          stt: idx + 1,
+          name: s.name || 'Học sinh',
+          email: s.email || '',
+          count: s.count || 0,
+          score10: s.count ? Math.round((s.accuracy / 10) * 10) / 10 : null,
+          mastery: s.mastery ?? '',
+          weakTopic: s.weakest ? s.weakest.topic : 'Chưa xác định',
+          weakRate: s.weakest ? s.weakest.rate / 100 : null,
+          flags: s.flags.map((f) => f.label).join(' · ') || 'Cần theo dõi',
+        }));
+
+      const sheets = [
+        {
+          name: 'Tổng hợp Học lực',
+          mascot: 'cool',
+          title: `BÁO CÁO SỐ LIỆU & PHỔ ĐIỂM — ${classLabel.toUpperCase()}`,
+          subtitle: `Phân tích năng lực học sinh · ${data.kpi.students} học sinh · ${data.kpi.exams} đề kiểm tra · TB lớp ${safeAvgPct}%`,
+          meta: [
+            { label: 'Lớp học', value: classLabel },
+            { label: 'Sĩ số', value: `${data.kpi.students} HS` },
+            { label: 'Tổng bài nộp', value: `${data.kpi.submitted} lượt` },
+            { label: 'Tỉ lệ đạt (≥5.0)', value: data.kpi.passRate !== null ? `${data.kpi.passRate}%` : '—' },
+            { label: 'Mastery TB', value: data.kpi.masteryAvg !== null ? `${data.kpi.masteryAvg}/100` : '—' },
+          ],
+          statsStrip: ({ dataStartRow, dataEndRow }) => [
+            { value: 'Tổng số HS:' },
+            { value: { formula: `COUNTA(B${dataStartRow}:B${dataEndRow})`, result: data.students.length }, align: 'center' },
+            { value: 'Điểm TB lớp (/10):' },
+            { value: { formula: `IFERROR(ROUND(AVERAGE(F${dataStartRow}:F${dataEndRow}),1),"—")`, result: safeAvgPct ? Math.round((safeAvgPct / 10) * 10) / 10 : 0 }, align: 'center', numFmt: '0.0' },
+            { value: 'HS Giỏi:' },
+            { value: { formula: `COUNTIF(H${dataStartRow}:H${dataEndRow},"Giỏi")`, result: data.students.filter((s) => s.accuracy >= 80).length }, fill: 'FFDCFCE7', color: 'FF166534' },
+            { value: 'Cần kèm (<5.0):' },
+            { value: { formula: `COUNTIF(F${dataStartRow}:F${dataEndRow},"<5")`, result: data.students.filter((s) => s.count > 0 && s.accuracy < 50).length }, fill: 'FFFEE2E2', color: 'FF991B1B' },
+          ],
+          columns: [
+            { header: 'STT', key: 'stt', align: 'center', width: 8 },
+            { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+            { header: 'Email', key: 'email', align: 'left', width: 28 },
+            { header: 'Số bài nộp', key: 'count', align: 'center', width: 12 },
+            { header: 'Điểm TB (%)', key: 'pct', align: 'center', numFmt: '0%', width: 14 },
+            { header: 'Thang 10', key: 'score10', align: 'center', numFmt: '0.0', isScore10: true, width: 12 },
+            { header: 'Mastery (/100)', key: 'mastery', align: 'center', width: 14 },
+            { header: 'Xếp loại', key: 'rank', align: 'center', isScoreBand: true, width: 16 },
+            { header: 'Chương yếu nhất', key: 'weakTopic', align: 'left', width: 24 },
+            { header: 'Đúng chương yếu', key: 'weakRate', align: 'center', numFmt: '0%', width: 16 },
+            { header: 'Cờ cảnh báo', key: 'flags', align: 'left', width: 24, wrapText: true },
+            { header: 'Nộp gần nhất', key: 'lastAt', align: 'center', width: 16 },
+          ],
+          rows: data.students.map((s, idx) => {
+            const grades = computeStudentPeriodGrades(s, classExList, filteredSubsMap);
+            return {
+              stt: idx + 1,
+              name: s.name || 'Học sinh',
+              email: s.email || '',
+              count: s.count || 0,
+              pct: s.count ? Math.round(s.accuracy) / 100 : null,
+              score10: grades.tb,
+              mastery: s.mastery ?? '',
+              rank: grades.status,
+              weakTopic: s.weakest ? s.weakest.topic : 'Không phát hiện lỗ hổng',
+              weakRate: s.weakest ? s.weakest.rate / 100 : null,
+              flags: s.flags.map((f) => f.label).join(' · ') || 'Bình thường',
+              lastAt: s.lastAt ? new Date(s.lastAt).toLocaleDateString('vi-VN') : 'Chưa nộp',
+            };
+          }),
+          summaryRow: {
+            labelCol: 1,
+            label: 'TRUNG BÌNH TOÀN LỚP',
+            cells: {
+              count: ({ dataStartRow, dataEndRow }) => ({ formula: `SUM(D${dataStartRow}:D${dataEndRow})` }),
+              pct: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(AVERAGE(E${dataStartRow}:E${dataEndRow}),0)` }),
+              score10: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(F${dataStartRow}:F${dataEndRow}),1),"")` }),
+              mastery: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(G${dataStartRow}:G${dataEndRow}),0),"")` }),
+            },
+          },
+        },
+        {
+          name: 'Phân tích Chuyên đề',
+          mascot: 'think',
+          title: `BẢN ĐỒ CHUYÊN ĐỀ & LỖ HỔNG KIẾN THỨC — ${classLabel.toUpperCase()}`,
+          subtitle: 'Thống kê tỉ lệ trả lời đúng theo từng chương GDPT 2025 (Xếp từ yếu nhất tới vững nhất)',
+          columns: [
+            { header: 'STT', key: 'stt', align: 'center', width: 8 },
+            { header: 'Chuyên đề / Chương', key: 'topic', align: 'left', width: 34 },
+            { header: 'Số câu đúng', key: 'ok', align: 'center', width: 14 },
+            { header: 'Tổng lượt trả lời', key: 'rated', align: 'center', width: 18 },
+            { header: 'Tỉ lệ đúng (%)', key: 'rate', align: 'center', numFmt: '0%', width: 16 },
+            { header: 'Đánh giá ưu tiên', key: 'level', align: 'center', isScoreBand: true, width: 22 },
+          ],
+          rows: data.classTopics.map((t, idx) => ({
+            stt: idx + 1,
+            topic: t.topic,
+            ok: t.ok,
+            rated: t.rated,
+            rate: (t.rate || 0) / 100,
+            level: t.rate < 50 ? 'Cần kèm ngay' : (t.rate < 70 ? 'Cần ôn tập' : 'Đã vững'),
+          })),
+        },
+      ];
+
+      if (atRiskRows.length > 0) {
+        sheets.push({
+          name: 'HS Cần phụ đạo',
+          mascot: 'think',
+          title: `DANH SÁCH HỌC SINH CẦN KÈM CẶP — ${classLabel.toUpperCase()}`,
+          subtitle: `Phát hiện ${atRiskRows.length} học sinh có Mastery < 50 hoặc có cờ cảnh báo cần hỗ trợ sớm`,
+          columns: [
+            { header: 'STT', key: 'stt', align: 'center', width: 8 },
+            { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+            { header: 'Email', key: 'email', align: 'left', width: 28 },
+            { header: 'Số bài nộp', key: 'count', align: 'center', width: 12 },
+            { header: 'Thang 10', key: 'score10', align: 'center', numFmt: '0.0', isScore10: true, width: 12 },
+            { header: 'Mastery', key: 'mastery', align: 'center', width: 12 },
+            { header: 'Chương yếu nhất', key: 'weakTopic', align: 'left', width: 24 },
+            { header: 'Đúng chương yếu', key: 'weakRate', align: 'center', numFmt: '0%', width: 16 },
+            { header: 'Cảnh báo', key: 'flags', align: 'left', width: 26, isScoreBand: true },
+          ],
+          rows: atRiskRows,
+        });
+      }
+
+      if (data.teachers && data.teachers.length > 0) {
+        sheets.push({
+          name: 'Phân công GVBM',
+          mascot: 'happy',
+          title: `HOẠT ĐỘNG GIÁO VIÊN BỘ MÔN — ${classLabel.toUpperCase()}`,
+          subtitle: `Tổng hợp ${data.teachers.length} giáo viên đang giảng dạy và giao đề tại lớp ${classLabel}`,
+          columns: [
+            { header: 'STT', key: 'stt', align: 'center', width: 8 },
+            { header: 'Giáo viên', key: 'name', align: 'left', width: 26 },
+            { header: 'Bộ môn', key: 'subject', align: 'left', width: 18 },
+            { header: 'Số đề đã giao', key: 'exams', align: 'center', width: 15 },
+            { header: 'Lượt nộp bài', key: 'subs', align: 'center', width: 15 },
+            { header: 'Độ phủ HS (%)', key: 'cov', align: 'center', numFmt: '0%', width: 16 },
+            { header: 'Điểm TB (%)', key: 'avg', align: 'center', numFmt: '0%', width: 15 },
+          ],
+          rows: data.teachers.map((t, idx) => ({
+            stt: idx + 1,
+            name: t.teacherName,
+            subject: t.subject || 'Chưa gắn môn',
+            exams: t.examCount || 0,
+            subs: t.submissions || 0,
+            cov: t.coverage !== null && t.coverage !== undefined ? t.coverage / 100 : null,
+            avg: t.pctAvg !== null && t.pctAvg !== undefined ? t.pctAvg / 100 : null,
+          })),
+        });
+      }
+
+      await exportStyledWorkbook({
+        filename: `bao-cao-lop-${classLabel.replace(/\s+/g, '-')}-${dateStr}.xlsx`,
+        mascot: 'cool',
+        sheets,
+      });
+    } finally {
+      setExportingExcel(false);
+    }
   };
 
-  const handleExportVnEdu = () => {
-    if (!data || !cls) return;
-    const rows = [
-      ['STT', 'Họ và tên học sinh', 'Email', 'Lớp', 'Điểm kiểm tra TX', 'Điểm ĐGK', 'Điểm CKK', 'Điểm TB', 'Đánh giá học lực', 'Số bài nộp'],
-    ];
-    data.students.forEach((s, idx) => {
-      const avg10 = s.count ? (s.accuracy / 10).toFixed(1) : '';
-      const status = Number(avg10) >= 8.0 ? 'Giỏi' : (Number(avg10) >= 6.5 ? 'Khá' : (Number(avg10) >= 5.0 ? 'Đạt' : (avg10 ? 'Chưa đạt' : 'Chưa thi')));
-      rows.push([
-        idx + 1,
-        s.name || 'Học sinh',
-        s.email || '',
-        cls.name || '',
-        avg10,
-        avg10,
-        avg10,
-        avg10,
-        status,
-        s.count || 0,
-      ]);
-    });
-    downloadCsv(`bang-diem-vnEdu-SMAS-${(cls.name || 'lop').replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  /* Xuất Bảng điểm vnEdu / SMAS (.xlsx) chuẩn Thông tư 22 (tách TX / ĐGK / CKK thật + công thức ĐTB) */
+  const handleExportVnEdu = async () => {
+    if (!data || !cls || exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      const classLabel = cls.name || 'Lớp';
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const classExList = feedExams.filter((e) => !e.classId || e.classId === classId);
+      const bucketCounts = classExList.reduce((acc, ex) => {
+        const k = classifyExamGradeColumn(ex);
+        acc[k] += 1;
+        return acc;
+      }, { tx: 0, dgk: 0, ckk: 0 });
+
+      const enrichedStudents = data.students.map((s) => ({
+        student: s,
+        grades: computeStudentPeriodGrades(s, classExList, filteredSubsMap),
+      }));
+
+      const examDetailCols = [
+        { header: 'STT', key: 'stt', align: 'center', width: 8 },
+        { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+        { header: 'Lớp', key: 'clsName', align: 'center', width: 12 },
+        ...classExList.slice(0, 18).map((ex) => {
+          const tag = classifyExamGradeColumn(ex).toUpperCase();
+          const shortTitle = (ex.title || 'Đề').slice(0, 26);
+          return {
+            header: `[${tag}] ${shortTitle}`,
+            key: `ex_${ex.id}`,
+            align: 'center',
+            numFmt: '0.0',
+            isScore10: true,
+            width: 18,
+          };
+        }),
+      ];
+
+      await exportStyledWorkbook({
+        filename: `bang-diem-vnEdu-SMAS-${classLabel.replace(/\s+/g, '-')}-${dateStr}.xlsx`,
+        mascot: 'celebrate',
+        sheets: [
+          {
+            name: 'Bảng điểm vnEdu - SMAS',
+            mascot: 'celebrate',
+            title: `BẢNG ĐIỂM TỔNG HỢP VNEDU / SMAS — ${classLabel.toUpperCase()}`,
+            subtitle: `Chuẩn Thông tư 22 · Hệ số thực: ${bucketCounts.tx} đề TX (HS1) · ${bucketCounts.dgk} đề ĐGK (HS2) · ${bucketCounts.ckk} đề CKK (HS3)`,
+            meta: [
+              { label: 'Lớp', value: classLabel },
+              { label: 'Sĩ số', value: `${data.students.length} học sinh` },
+              { label: 'Quy đổi TB', value: 'Tự động tính bằng công thức Excel theo hệ số TX(1) · ĐGK(2) · CKK(3)' },
+            ],
+            statsStrip: ({ dataStartRow, dataEndRow }) => [
+              { value: 'Giỏi (≥8.0):' },
+              {
+                value: { formula: `COUNTIF(I${dataStartRow}:I${dataEndRow},"Giỏi")`, result: enrichedStudents.filter((x) => x.grades.status === 'Giỏi').length },
+                fill: 'FFDCFCE7',
+                color: 'FF166534',
+              },
+              { value: 'Khá (6.5–7.9):' },
+              {
+                value: { formula: `COUNTIF(I${dataStartRow}:I${dataEndRow},"Khá")`, result: enrichedStudents.filter((x) => x.grades.status === 'Khá').length },
+                fill: 'FFDBEAFE',
+                color: 'FF1E40AF',
+              },
+              { value: 'Đạt (5.0–6.4):' },
+              {
+                value: { formula: `COUNTIF(I${dataStartRow}:I${dataEndRow},"Đạt")`, result: enrichedStudents.filter((x) => x.grades.status === 'Đạt').length },
+                fill: 'FFFEF3C7',
+                color: 'FF92400E',
+              },
+              { value: 'Chưa đạt (<5.0):' },
+              {
+                value: { formula: `COUNTIF(I${dataStartRow}:I${dataEndRow},"Chưa đạt")`, result: enrichedStudents.filter((x) => x.grades.status === 'Chưa đạt').length },
+                fill: 'FFFEE2E2',
+                color: 'FF991B1B',
+              },
+              { value: 'Chưa thi:' },
+              {
+                value: { formula: `COUNTIF(I${dataStartRow}:I${dataEndRow},"Chưa thi")`, result: enrichedStudents.filter((x) => x.grades.status === 'Chưa thi').length },
+                fill: 'FFF1F5F9',
+                color: 'FF64748B',
+              },
+            ],
+            columns: [
+              { header: 'STT', key: 'stt', align: 'center', width: 8 },
+              { header: 'Họ và tên học sinh', key: 'name', align: 'left', width: 26 },
+              { header: 'Email', key: 'email', align: 'left', width: 28 },
+              { header: 'Lớp', key: 'clsName', align: 'center', width: 12 },
+              { header: 'Điểm TX (HS1)', key: 'tx', align: 'center', numFmt: '0.0', isScore10: true, width: 14 },
+              { header: 'Điểm ĐGK (HS2)', key: 'dgk', align: 'center', numFmt: '0.0', isScore10: true, width: 15 },
+              { header: 'Điểm CKK (HS3)', key: 'ckk', align: 'center', numFmt: '0.0', isScore10: true, width: 15 },
+              {
+                header: 'Điểm TB',
+                key: 'tbFormula',
+                align: 'center',
+                numFmt: '0.0',
+                isScore10: true,
+                width: 13,
+                getValue: (row, _idx, excelRow) => ({
+                  formula: `IF(AND(E${excelRow}="",F${excelRow}="",G${excelRow}=""),"",ROUND((IF(ISNUMBER(E${excelRow}),E${excelRow},0)+IF(ISNUMBER(F${excelRow}),F${excelRow}*2,0)+IF(ISNUMBER(G${excelRow}),G${excelRow}*3,0))/(IF(ISNUMBER(E${excelRow}),1,0)+IF(ISNUMBER(F${excelRow}),2,0)+IF(ISNUMBER(G${excelRow}),3,0)),1))`,
+                  result: row.tb !== null ? row.tb : '',
+                }),
+              },
+              {
+                header: 'Đánh giá học lực',
+                key: 'statusFormula',
+                align: 'center',
+                isScoreBand: true,
+                width: 18,
+                getValue: (row, _idx, excelRow) => ({
+                  formula: `IF(H${excelRow}="","Chưa thi",IF(H${excelRow}>=8,"Giỏi",IF(H${excelRow}>=6.5,"Khá",IF(H${excelRow}>=5,"Đạt","Chưa đạt"))))`,
+                  result: row.status,
+                }),
+              },
+              { header: 'Số bài nộp', key: 'subCount', align: 'center', width: 12 },
+              { header: 'Nhận xét sư phạm', key: 'note', align: 'left', width: 26 },
+            ],
+            rows: enrichedStudents.map(({ student: s, grades }, idx) => ({
+              stt: idx + 1,
+              name: s.name || 'Học sinh',
+              email: s.email || '',
+              clsName: classLabel,
+              tx: grades.tx,
+              dgk: grades.dgk,
+              ckk: grades.ckk,
+              tb: grades.tb,
+              status: grades.status,
+              subCount: grades.subCount,
+              note: s.weakest ? `Cần ôn: ${s.weakest.topic}` : (grades.subCount > 0 ? 'Tiến độ ổn định' : 'Chưa phát sinh bài nộp'),
+            })),
+            summaryRow: {
+              labelCol: 1,
+              label: 'ĐIỂM TRUNG BÌNH TOÀN LỚP',
+              cells: {
+                tx: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(E${dataStartRow}:E${dataEndRow}),1),"")` }),
+                dgk: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(F${dataStartRow}:F${dataEndRow}),1),"")` }),
+                ckk: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(G${dataStartRow}:G${dataEndRow}),1),"")` }),
+                tbFormula: ({ dataStartRow, dataEndRow }) => ({ formula: `IFERROR(ROUND(AVERAGE(H${dataStartRow}:H${dataEndRow}),1),"")` }),
+                subCount: ({ dataStartRow, dataEndRow }) => ({ formula: `SUM(J${dataStartRow}:J${dataEndRow})` }),
+              },
+            },
+          },
+          ...(classExList.length > 0 ? [{
+            name: 'Chi tiết theo Đề',
+            mascot: 'happy',
+            title: `CHI TIẾT ĐIỂM TỪNG BÀI KIỂM TRA — ${classLabel.toUpperCase()}`,
+            subtitle: 'Thang điểm 10 cho từng đề đã giao (Cột trống = học sinh chưa nộp đề đó)',
+            columns: examDetailCols,
+            rows: data.students.map((s, idx) => {
+              const rowObj = { stt: idx + 1, name: s.name || 'Học sinh', clsName: classLabel };
+              classExList.slice(0, 18).forEach((ex) => {
+                const sub = (s.subs || []).find((x) => x.examId === ex.id);
+                rowObj[`ex_${ex.id}`] = sub
+                  ? Math.round((Math.max(0, Number(sub.score) || 0) / Math.max(1, Number(sub.totalPoints) || 10)) * 100) / 10
+                  : null;
+              });
+              return rowObj;
+            }),
+          }] : []),
+        ],
+      });
+    } finally {
+      setExportingExcel(false);
+    }
   };
 
   const handleRetryLoad = () => {
@@ -834,13 +1203,19 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
   return (
     <section className="ta">
       <header className="ta-head">
-        <div className="ta-head-titles">
-          <h2>Số liệu lớp</h2>
-          <p>
-            {cls?.name} · {kpi.students} học sinh · {kpi.exams} đề
-            {kpi.teachers > 1 ? ` của ${kpi.teachers} giáo viên` : ''} · {kpi.submitted} bài nộp
-            {kpi.topics.length === 0 && ' · chưa có câu nào gắn chương'}
-          </p>
+        <div className="ta-head-brand">
+          <div className="ta-head-mascot" aria-hidden="true">
+            <ElecMascot mood="cool" size={44} />
+          </div>
+          <div className="ta-head-titles">
+            <h2><ElecFlaskBrandSvg size={18} /> Số liệu &amp; Phổ điểm lớp</h2>
+            <p>
+              {fmtClassLabel(cls?.name)} · {kpi.students} HS chính thức
+              {data.students.length > kpi.students ? ` (+${data.students.length - kpi.students} ngoài DS)` : ''} · {kpi.exams} đề
+              {kpi.teachers > 1 ? ` của ${kpi.teachers} giáo viên` : ''} · {kpi.submitted} bài nộp
+              {kpi.topics.length === 0 && ' · chưa có câu nào gắn chương'}
+            </p>
+          </div>
         </div>
         <div className="ta-head-controls">
           {classes.length > 1 && (
@@ -910,20 +1285,21 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
           </div>
           <button
             type="button"
-            className="ta-btn primary"
+            className="ta-btn ta-btn--excel-vnedu primary"
+            disabled={exportingExcel}
             onClick={handleExportVnEdu}
-            title="Xuất bảng điểm theo chuẩn mẫu vnEdu / SMAS (Excel/CSV)"
-            style={{ background: '#059669', borderColor: '#059669' }}
+            title="Xuất bảng điểm Excel (.xlsx) chuẩn vnEdu / SMAS có Mascot ELEC & công thức Thông tư 22"
           >
-            <IcoDownload /> Xuất vnEdu / SMAS
+            <IcoDownload /> {exportingExcel ? 'Đang tạo Excel…' : 'Xuất Excel vnEdu (.xlsx)'}
           </button>
           <button
             type="button"
-            className="ta-btn"
-            onClick={handleExportCsv}
-            title="Xuất bảng số liệu lớp ra file CSV (Excel)"
+            className="ta-btn ta-btn--excel-detail"
+            disabled={exportingExcel}
+            onClick={handleExportExcel}
+            title="Xuất báo cáo số liệu lớp đa sheet Excel (.xlsx) kèm biểu bảng & danh sách cần phụ đạo"
           >
-            <IcoDownload /> Xuất CSV chi tiết
+            <IcoDownload /> {exportingExcel ? 'Đang xuất…' : 'Xuất Báo cáo (.xlsx)'}
           </button>
         </div>
       </header>
@@ -1088,7 +1464,7 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
         <div className="ta-card ta-compare-card">
           <div className="ta-card-head">
             <div>
-              <h3>So sánh trực tiếp: Lớp {cls?.name} và Lớp {compareCls.name}</h3>
+              <h3>So sánh trực tiếp: {fmtClassLabel(cls?.name)} và {fmtClassLabel(compareCls.name)}</h3>
               <span className="ta-card-sub">Đối chiếu các chỉ số học tập trọng tâm trong cùng khoảng thời gian</span>
             </div>
           </div>
@@ -1097,8 +1473,8 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
               <thead>
                 <tr>
                   <th>Chỉ số</th>
-                  <th className="num">Lớp {cls?.name}</th>
-                  <th className="num">Lớp {compareCls.name}</th>
+                  <th className="num">{fmtClassLabel(cls?.name)}</th>
+                  <th className="num">{fmtClassLabel(compareCls.name)}</th>
                   <th className="num">Chênh lệch</th>
                 </tr>
               </thead>
@@ -1133,7 +1509,7 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
       )}
 
       {/* THANH CHUYỂN TAB GỌN GÀNG */}
-      <div className="ta-subtabs" role="tablist" aria-label="Chế độ xem số liệu lớp">
+      <div ref={studentsTabRef} className="ta-subtabs" role="tablist" aria-label="Chế độ xem số liệu lớp">
         <button
           type="button"
           role="tab"
@@ -1225,6 +1601,29 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
                   <h3>Câu hỏi hay sai nhất</h3>
                   <span className="ta-card-sub">Các câu tỉ lệ đúng thấp cần chữa trên lớp</span>
                 </div>
+                {onCreateRemedialExam && data.hardest.length > 0 && (
+                  <button
+                    type="button"
+                    className="ta-btn primary"
+                    style={{ whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      const weakTopics = [...new Set(data.hardest.map((q) => q.topic).filter(Boolean))].slice(0, 3);
+                      onCreateRemedialExam({
+                        classId,
+                        subject: cls?.subject || exams.find((e) => e.classId === classId)?.subject || '',
+                        title: `Ôn tập củng cố — Lớp ${cls?.name || ''}`,
+                        topics: weakTopics.length ? weakTopics : ['Trọng tâm cần ôn tập'],
+                        count: 10,
+                        gradeType: 'tx',
+                        hint: `Tập trung bù hổng kiến thức từ ${data.hardest.slice(0, 3).length} câu hỏi hay sai nhất lớp ${cls?.name || ''}.`,
+                        remedialStudents: data.students.filter((s) => s.count > 0 && s.accuracy < 50).map((s) => s.name),
+                      });
+                    }}
+                    title="Tạo ngay đề ôn tập 10 câu tập trung vào các chuyên đề học sinh hay sai nhất"
+                  >
+                    <ElecFlaskBrandSvg size={14} variant="white" /> Tạo đề ôn AI
+                  </button>
+                )}
               </div>
               {data.hardest.length === 0 ? (
                 <p className="ta-note">Chưa có dữ liệu câu hỏi hay sai trong khoảng thời gian này.</p>
@@ -1298,10 +1697,35 @@ export default function ClassAnalytics({ classes = [], exams = [], submissionsMa
         <div className="ta-card">
           <div className="ta-card-head">
             <div>
-              <h3>Danh sách học sinh ({filteredStudents.length}/{data.students.length})</h3>
+              <h3>
+                Danh sách học sinh ({filteredStudents.length}/{data.students.length}
+                {data.students.length > kpi.students ? ` · gồm ${kpi.students} thành viên + ${data.students.length - kpi.students} ngoài DS` : ''})
+              </h3>
               <span className="ta-card-sub">Bấm vào học sinh để xem hồ sơ năng lực 5 thành phần</span>
             </div>
             <div className="ta-student-toolbar">
+              {onCreateRemedialExam && scoreDist.yeu > 0 && (
+                <button
+                  type="button"
+                  className="ta-btn primary"
+                  onClick={() => {
+                    const yeuStudents = data.students.filter((s) => s.count > 0 && s.accuracy < 50);
+                    const weakTopics = [...new Set(yeuStudents.map((s) => s.weakest?.topic).filter(Boolean))].slice(0, 3);
+                    onCreateRemedialExam({
+                      classId,
+                      subject: cls?.subject || exams.find((e) => e.classId === classId)?.subject || '',
+                      title: `Phụ đạo củng cố (${yeuStudents.length} HS) — Lớp ${cls?.name || ''}`,
+                      topics: weakTopics.length ? weakTopics : ['Kiến thức nền tảng trọng tâm'],
+                      count: 10,
+                      gradeType: 'tx',
+                      hint: `Đề ôn dành riêng cho ${yeuStudents.length} học sinh dưới 5.0 của lớp ${cls?.name || ''}.`,
+                      remedialStudents: yeuStudents.map((s) => s.name),
+                    });
+                  }}
+                >
+                  <ElecFlaskBrandSvg size={14} variant="white" /> Tạo đề phụ đạo AI ({scoreDist.yeu} HS)
+                </button>
+              )}
               <input
                 type="search"
                 className="ta-search-input"

@@ -28,6 +28,7 @@ import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import { getCurrentTabInfo, buildTabDetailedAnalysis } from '../../lib/tabContextAnalyzer.js';
 const WordDocxEditor = React.lazy(() => import('./WordDocxEditor.jsx'));
 import { MarkdownLike } from '../ChatMarkdown.jsx';
+import { ElecFlaskBrandSvg, ElecMascot } from './ElecBrandMark.jsx';
 import '../../styles/teacher-floating-chat.css';
 
 /* ============ SVG ICONS (STROKE 1.8PX, ZERO EMOJI) ============ */
@@ -49,10 +50,7 @@ const Svg = ({ size = 18, sw = 1.8, children, className = '' }) => (
 );
 
 const IcoSparkles = (p) => (
-  <Svg {...p}>
-    <path d="m12 3 1.9 4.8a2 2 0 0 0 1.3 1.3L20 11l-4.8 1.9a2 2 0 0 0-1.3 1.3L12 19l-1.9-4.8a2 2 0 0 0-1.3-1.3L4 11l4.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
-    <path d="M19 19l1 2 1-2 2-1-2-1-1-2-1 2-2 1 2 1z" />
-  </Svg>
+  <ElecFlaskBrandSvg size={p?.size || 16} variant="current" className={p?.className} />
 );
 
 const IcoSend = (p) => (
@@ -658,7 +656,7 @@ export function findTargetClassInQuery(query, classes = [], exams = [], submissi
             id: ex.classId || `virtual_${exNorm}`,
             name: ex.className,
             grade: ex.grade || mentioned.match(/^(10|11|12)/)?.[1] || '12',
-            subject: ex.subject || 'Hóa học',
+            subject: ex.subject || classes.find((c) => c.id === ex.classId)?.subject || classes[0]?.subject || '',
             _isVirtualFromExam: true,
           };
         }
@@ -671,11 +669,13 @@ export function findTargetClassInQuery(query, classes = [], exams = [], submissi
         if (sub.className) {
           const subNorm = normalizeText(sub.className);
           if (subNorm === normM || subNorm.includes(normM) || normM.includes(subNorm)) {
+            const matchedCls = classes.find((c) => c.id === sub.classId || normalizeText(c.name) === subNorm);
+            const matchedEx = (exams || []).find((ex) => ex.id === sub.examId || ex.classId === sub.classId);
             return {
               id: sub.classId || `virtual_${subNorm}`,
               name: sub.className,
-              grade: mentioned.match(/^(10|11|12)/)?.[1] || '12',
-              subject: 'Hóa học',
+              grade: sub.grade || matchedCls?.grade || mentioned.match(/^(10|11|12)/)?.[1] || '12',
+              subject: sub.subject || matchedEx?.subject || matchedCls?.subject || classes[0]?.subject || '',
               _isVirtualFromSub: true,
             };
           }
@@ -871,6 +871,7 @@ export default function TeacherFloatingChat({
   exams = [],
   submissionsMap = {},
   liveSessions = [],
+  teacherSubject = '',
   onOpenSimulator,
   onCreateExam,
   onOpenImporter,
@@ -888,6 +889,15 @@ export default function TeacherFloatingChat({
   wordEditorOpen: propWordEditorOpen = false,
   wordEditorExam: propWordEditorExam = null,
 }) {
+  const inferredSubject = useMemo(() => {
+    const clean = String(teacherSubject || '').trim();
+    if (clean) return clean;
+    const clsWithSubj = (classes || []).find((c) => c?.subject);
+    if (clsWithSubj?.subject) return clsWithSubj.subject;
+    const examWithSubj = (exams || []).find((ex) => ex?.subject);
+    return examWithSubj?.subject || 'Toán học';
+  }, [teacherSubject, classes, exams]);
+
   const [internalOpen, setInternalOpen] = useState(initialOpen);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = (val) => {
@@ -931,7 +941,7 @@ export default function TeacherFloatingChat({
     if (!className) return;
     const gradeMatch = String(className).match(/^(10|11|12)/);
     const grade = gradeMatch ? gradeMatch[1] : '12';
-    const subject = classes[0]?.subject || 'Hóa học';
+    const subject = inferredSubject;
 
     if (onCreateClass) {
       try {
@@ -1146,7 +1156,7 @@ export default function TeacherFloatingChat({
     try {
       const filename = await exportToWord({
         examTitle: exam.title || 'Đề kiểm tra',
-        subject: exam.subject || 'Hóa học',
+        subject: exam.subject || inferredSubject,
         duration: exam.duration || 45,
         code: '101',
         questions: exam.questions,
@@ -1155,7 +1165,7 @@ export default function TeacherFloatingChat({
           deptName: 'SỞ GIÁO DỤC VÀ ĐÀO TẠO',
           schoolName: 'TRƯỜNG THPT',
           examName: (exam.title || 'ĐỀ KIỂM TRA ĐÁNH GIÁ CHUẨN GDPT 2025').toUpperCase(),
-          subject: exam.subject || 'Hóa học',
+          subject: exam.subject || inferredSubject,
           grade: String(exam.grade || '12'),
           schoolYear: '2026 - 2027',
           duration: exam.duration || 45,
@@ -1182,7 +1192,7 @@ export default function TeacherFloatingChat({
     const needP3 = Math.max(0, 6 - p3Count);
 
     const sampleStems = exam.questions.slice(0, 5).map((q, i) => `${i + 1}. ${q.q || ''}`).join('\n');
-    const subject = exam.subject || 'Hóa học';
+    const subject = exam.subject || inferredSubject;
     const grade = exam.grade || '12';
 
     const prompt = `Bạn là chuyên gia ra đề ${subject} lớp ${grade} chuẩn GDPT 2025 của Bộ Giáo dục và Đào tạo.
@@ -1520,8 +1530,8 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
 
   // KHỞI TẠO INTERACTIVE EXAM WIZARD (TƯ VẤN & SOẠN ĐỀ)
   const handleStartExamWizard = (initialConfig = {}) => {
-    const defaultGrade = String(classes[0]?.grade || '12');
-    const defaultSubject = classes[0]?.subject || 'Hóa học';
+    const defaultGrade = String(classes[0]?.grade || linkedClasses?.[0]?.grade || '12');
+    const defaultSubject = inferredSubject || 'Hóa học';
     const chosenSubject = initialConfig.subject || defaultSubject;
     const chosenGrade = initialConfig.grade || defaultGrade;
     const availableTopics = getTopicsForSubjectAndGrade(chosenSubject, chosenGrade);
@@ -1552,7 +1562,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
       prev.map((m) => {
         if (m.wizardData && m.wizardData.id === wizardId) {
           const nextWz = { ...m.wizardData, ...patch };
-          const curSub = patch.subject || nextWz.subject || 'Hóa học';
+          const curSub = patch.subject || nextWz.subject || inferredSubject || 'Hóa học';
           const curGrade = patch.grade || nextWz.grade || '12';
           if ((patch.grade && patch.grade !== m.wizardData.grade) || (patch.subject && patch.subject !== m.wizardData.subject)) {
             const tops = getTopicsForSubjectAndGrade(curSub, curGrade);
@@ -1571,9 +1581,9 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
     setIsTyping(true);
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const isFullGdpt = wzData.format === 'gdpt2025';
-    const targetTopic = wzData.topic || 'Este - Lipit';
-    const subject = wzData.subject || 'Hóa học';
+    const subject = wzData.subject || inferredSubject || 'Hóa học';
     const grade = wzData.grade || '12';
+    const targetTopic = wzData.topic || getTopicsForSubjectAndGrade(subject, grade)[0] || 'Kiến thức trọng tâm';
     const duration = isFullGdpt ? 50 : 15;
 
     onSay?.(`AI đang biên soạn đề ${duration} phút chuyên đề ${targetTopic} chuẩn 3 phần...`, 'info');
@@ -1674,12 +1684,14 @@ Trả về duy nhất JSON:
         const [resP1, resP2P3] = await runWithCredit(
           { userId: user?.uid, cost: 3, reason: 'Tạo đề kiểm tra 45-90 phút AI' },
           async () => {
+            let p1Err = null;
+            let p2Err = null;
             const pair = await Promise.all([
-              askAI(promptP1, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch(() => null),
-              askAI(promptP2P3, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch(() => null),
+              askAI(promptP1, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch((e) => { p1Err = e; return null; }),
+              askAI(promptP2P3, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch((e) => { p2Err = e; return null; }),
             ]);
             if (!pair[0] && !pair[1]) {
-              throw new Error('Không kết nối được AI để sinh đề.');
+              throw new Error(p1Err?.message || p2Err?.message || 'Không kết nối được AI để sinh đề.');
             }
             return pair;
           }
@@ -1937,18 +1949,23 @@ Trả về duy nhất JSON:
   const handleRunCognitiveRx = async (studentName, topicName) => {
     setIsTyping(true);
     const targetStudent = studentName || 'Học sinh';
-    const targetTopic = topicName || 'Hóa học hữu cơ & Phản ứng este';
+    const detectedSubj = detectExamSubjectAndGrade({
+      text: `${targetStudent} ${topicName || ''}`,
+      fileName: '',
+    }).subject;
+    const rxSubject = detectedSubj || inferredSubject;
+    const targetTopic = topicName || `Kiến thức trọng tâm môn ${rxSubject}`;
 
     try {
-      const rxPrompt = `Bạn là chuyên gia sư phạm Hóa học GDPT 2025. Học sinh "${targetStudent}" đang gặp lỗ hổng kiến thức nghiêm trọng phần "${targetTopic}".
-Hãy chẩn đoán 3 lớp sai sót (Bẫy đề, Khái niệm, Kỹ năng) và biên soạn đúng 3 bài tập trắc nghiệm 4 lựa chọn A, B, C, D đặc trị để phục hồi toàn diện.
+      const rxPrompt = `Bạn là chuyên gia sư phạm môn ${rxSubject} GDPT 2025. Học sinh "${targetStudent}" đang gặp lỗ hổng kiến thức nghiêm trọng phần "${targetTopic}".
+Hãy chẩn đoán 3 lớp sai sót (Bẫy đề, Khái niệm, Kỹ năng) và biên soạn đúng 3 bài tập trắc nghiệm 4 lựa chọn A, B, C, D đặc trị môn ${rxSubject} để phục hồi toàn diện.
 Mỗi câu hỏi phải có 4 phương án độc lập, 1 đáp án đúng, và lời giải bóc tách chi tiết nguyên nhân sai sót.
 Trả về duy nhất đối tượng JSON hợp lệ:
 {
   "layers": [
-    { "tag": "Lớp 1: Bẫy Đề", "desc": "Bỏ sót từ khóa phủ định và điều kiện phản ứng..." },
-    { "tag": "Lớp 2: Khái Niệm", "desc": "Nhầm lẫn giữa bản chất các nhóm định chức..." },
-    { "tag": "Lớp 3: Kỹ Năng", "desc": "Điểm nghẽn khi thiết lập phương trình bảo toàn..." }
+    { "tag": "Lớp 1: Bẫy Đề", "desc": "Bỏ sót từ khóa phủ định và điều kiện đề bài..." },
+    { "tag": "Lớp 2: Khái Niệm", "desc": "Nhầm lẫn bản chất định nghĩa / công thức trọng tâm..." },
+    { "tag": "Lớp 3: Kỹ Năng", "desc": "Điểm nghẽn khi thiết lập biểu thức hoặc tính toán..." }
   ],
   "remedialQuestions": [
     {
@@ -1974,46 +1991,20 @@ Trả về duy nhất đối tượng JSON hợp lệ:
     }
   ]
 }`;
-      let parsed = null;
-      try {
-        const rxRes = await callCopilotAI(rxPrompt, {}, 1, 'Kê đơn ôn tập AI cho học sinh');
-        const genText = typeof rxRes === 'string' ? rxRes : (rxRes?.text || '');
-        parsed = parseExamJsonSafe(genText);
-      } catch (rxErr) {
-        if (rxErr?.code === 'OUT_OF_CREDITS') throw rxErr;
+      const rxRes = await callCopilotAI(rxPrompt, {}, 1, 'Kê đơn ôn tập AI cho học sinh');
+      const genText = typeof rxRes === 'string' ? rxRes : (rxRes?.text || '');
+      const parsed = parseExamJsonSafe(genText);
+
+      if (!parsed?.layers?.length || !parsed?.remedialQuestions?.length) {
+        throw new Error(`AI chưa trả về được đơn bài tập môn ${rxSubject} hợp lệ. Thầy/Cô vui lòng thử lại.`);
       }
 
       const rxData = {
         student: targetStudent,
         topic: targetTopic,
-        layers: parsed?.layers?.length ? parsed.layers : [
-          { tag: 'Lớp 1: Bẫy Đề', desc: 'Bỏ sót từ khóa phủ định "không no" và điều kiện xúc tác nhiệt độ.' },
-          { tag: 'Lớp 2: Khái Niệm', desc: 'Nhầm lẫn giữa phản ứng thủy phân este đơn chức và este của phenol.' },
-          { tag: 'Lớp 3: Kỹ Năng', desc: 'Lúng túng khi đặt ẩn giải hệ phương trình bảo toàn electron.' },
-        ],
-        remedialQuestions: parsed?.remedialQuestions?.length ? parsed.remedialQuestions : [
-          {
-            q: 'Câu 1 (Chữa bẫy đề): Đun nóng este X với dung dịch NaOH thu được natri fomat và ancol etylic. Công thức cấu tạo thu gọn của X là gì?',
-            options: ['A. HCOOC2H5', 'B. CH3COOCH3', 'C. HCOOCH3', 'D. C2H5COOCH3'],
-            correct: 0,
-            ans: 'A. HCOOC2H5',
-            explain: 'Natri fomat là HCOONa, ancol etylic là C2H5OH -> Este là HCOOC2H5 (ethyl formate).'
-          },
-          {
-            q: 'Câu 2 (Chữa khái niệm): Thủy phân hoàn toàn 1 mol phenyl axetat (CH3COOC6H5) trong dung dịch NaOH đun nóng cần tối đa bao nhiêu mol NaOH?',
-            options: ['A. 1 mol', 'B. 2 mol', 'C. 3 mol', 'D. 4 mol'],
-            correct: 1,
-            ans: 'B. 2 mol',
-            explain: 'Phenyl axetat là este của phenol: CH3COOC6H5 + 2NaOH -> CH3COONa + C6H5ONa + H2O. Tỉ lệ mol este : NaOH là 1 : 2.'
-          },
-          {
-            q: 'Câu 3 (Chữa kỹ năng): Đốt cháy hoàn toàn 0,1 mol một este no, đơn chức, mạch hở X thu được bao nhiêu mol CO2 và H2O?',
-            options: ['A. nCO2 > nH2O', 'B. nCO2 < nH2O', 'C. nCO2 = nH2O', 'D. nCO2 = 2nH2O'],
-            correct: 2,
-            ans: 'C. nCO2 = nH2O',
-            explain: 'Este no đơn chức mạch hở có CTPT CnH2nO2 -> Khi đốt cháy luôn cho nCO2 = nH2O.'
-          },
-        ],
+        subject: rxSubject,
+        layers: parsed.layers,
+        remedialQuestions: parsed.remedialQuestions,
       };
 
       setIsTyping(false);
@@ -2022,24 +2013,22 @@ Trả về duy nhất đối tượng JSON hợp lệ:
         {
           id: 'bot_rx_' + Date.now(),
           sender: 'bot',
-          text: `Hồ sơ chẩn đoán bệnh lý tư duy & Đơn thuốc học tập cho ${targetStudent}:`,
+          text: `Hồ sơ chẩn đoán bệnh lý tư duy & Đơn thuốc học tập (${rxSubject}) cho ${targetStudent}:`,
           rxData,
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
     } catch (err) {
       setIsTyping(false);
-      if (err?.code === 'OUT_OF_CREDITS') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: 'bot_rx_err_' + Date.now(),
-            sender: 'bot',
-            text: err.message,
-            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot_rx_err_' + Date.now(),
+          sender: 'bot',
+          text: aiErrMsg(err, `Không thể tạo đơn bài tập phục hồi môn ${rxSubject} lúc này. Vui lòng thử lại sau.`),
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
     }
   };
 
@@ -2856,51 +2845,17 @@ Trả về duy nhất đối tượng JSON:
           points: 0.25,
         }));
 
-        let finalQuestions = [...p1, ...p2, ...p3];
+        const finalQuestions = [...p1, ...p2, ...p3];
         if (!finalQuestions.length) {
-          finalQuestions = [
-            {
-              id: 'q1',
-              q: 'Este X có công thức phân tử C4H8O2, khi thủy phân trong NaOH thu được ancol metylic. Tên gọi IUPAC của X là gì?',
-              options: ['A. methyl formate', 'B. methyl propanoate', 'C. ethyl ethanoate', 'D. propyl formate'],
-              correct: 1,
-              level: 'TH',
-              part: 1,
-              type: 'single_choice',
-              points: 0.25,
-              explain: 'Thủy phân tạo ancol metylic (CH3OH) -> este có dạng RCOOCH3. C4H8O2 -> C2H5COOCH3 (methyl propanoate).'
-            },
-            {
-              id: 'q2',
-              q: 'Cho este đơn chức X tác dụng với dung dịch NaOH đun nóng, thu được muối Y và ancol Z. Đốt cháy hoàn toàn Z thu được CO2 và H2O có tỉ lệ mol 1:2. Tên của X có thể là?',
-              options: ['A. ethyl acetate', 'B. methyl formate', 'C. phenyl acetate', 'D. benzyl formate'],
-              correct: 1,
-              level: 'TH',
-              part: 1,
-              type: 'single_choice',
-              points: 0.25,
-              explain: 'Đốt cháy Z có nCO2 : nH2O = 1 : 2 -> ancol là CH3OH -> Este có gốc -CH3.'
-            },
-            {
-              id: 'q3',
-              q: 'Chất béo nào sau đây tồn tại ở trạng thái lỏng ở nhiệt độ thường (25 °C)?',
-              options: ['A. Triolein', 'B. Tristearin', 'C. Tripalmitin', 'D. Axit stearic'],
-              correct: 0,
-              level: 'NB',
-              part: 1,
-              type: 'single_choice',
-              points: 0.25,
-              explain: 'Triolein chứa gốc axit béo không no (C17H33COO)3C3H5 nên ở trạng thái lỏng ở nhiệt độ phòng.'
-            }
-          ];
+          throw new Error('AI chưa sinh được câu hỏi hợp lệ cho đề kiểm tra này. Thầy/Cô vui lòng thử lại hoặc diễn đạt rõ hơn chủ đề.');
         }
 
         const agentExam = {
           id: 'exam_agent_' + Date.now(),
           title: parsed?.title || `Đề giao tự động: ${query.slice(0, 28)}...`,
-          subject: 'Hóa học',
+          subject: subject,
           grade: grade,
-          classId: targetClass.id,
+          classId: targetClass.id === 'c_auto' ? '' : targetClass.id,
           duration: 15,
           totalQuestions: finalQuestions.length,
           questions: finalQuestions,
@@ -3118,7 +3073,7 @@ Thầy/Cô có muốn em hỗ trợ soạn đề hoặc giao bài kiểm tra cho
       const gradeMatch = clsName.match(/^(10|11|12)/);
       const grade = gradeMatch ? gradeMatch[1] : (norm.includes('10') ? '10' : norm.includes('11') ? '11' : '12');
       const detectedInfo = detectExamSubjectAndGrade({ text: query, fileName: '' });
-      const subject = detectedInfo.subject || classes[0]?.subject || 'Hóa học';
+      const subject = detectedInfo.subject || inferredSubject || 'Hóa học';
 
       // Nếu giáo viên ra lệnh tạo khẩn cấp (vd: "tạo ngay lớp 11A5" hoặc "xác nhận tạo")
       const isUrgentCreate = norm.includes('tạo ngay') || norm.includes('tạo luôn') || norm.includes('xác nhận tạo');
@@ -3644,24 +3599,29 @@ HƯỚNG DẪN TRẢ LỜI:
           1. NÚT NỔI LAUNCHER GÓC DƯỚI PHẢI
           ============================================================ */}
       <div className="tfc-launcher-wrap">
+        <span className="tfc-launcher-tooltip" aria-hidden="true">
+          <strong>ELEC AI Agent</strong>
+          <span>
+            {realViolationsCount > 0
+              ? `${realViolationsCount} cảnh báo LIVE`
+              : `${classes.length} lớp · ${exams.length} đề thi`}
+          </span>
+        </span>
         <button
           type="button"
-          className="tfc-launcher-btn"
+          className={`tfc-launcher-btn ${isOpen ? 'is-open' : ''} ${realViolationsCount > 0 ? 'has-alert' : ''}`}
           onClick={() => setIsOpen((v) => !v)}
-          title="ELEC AI Agent (Cố vấn Sư phạm &amp; Khảo thí GDPT 2025)"
+          title="ELEC AI Agent (Cố vấn Sư phạm & Khảo thí GDPT 2025)"
           aria-label="ELEC AI Agent"
         >
           <div className="tfc-launcher-avatar">
-            <img src="/img/logo.png" alt="ELEC AI" className="tfc-launcher-logo-img" />
+            <ElecMascot
+              mood={isOpen ? 'happy' : realViolationsCount > 0 ? 'suspicious' : 'cool'}
+              size={36}
+              alt="ELEC AI"
+              className="tfc-launcher-mascot"
+            />
             <div className={`tfc-live-pulse-dot ${realViolationsCount > 0 ? 'alert' : ''}`} />
-          </div>
-          <div className="tfc-launcher-text">
-            <span className="tfc-launcher-title">ELEC AI Agent</span>
-            <span className="tfc-launcher-sub">
-              {realViolationsCount > 0
-                ? `${realViolationsCount} vi phạm LIVE`
-                : `${classes.length} lớp · ${exams.length} đề thi`}
-            </span>
           </div>
         </button>
       </div>
@@ -3687,16 +3647,29 @@ HƯỚNG DẪN TRẢ LỜI:
           <div className="tfc-header">
             <div className="tfc-header-left">
               <div className="tfc-header-avatar">
-                <img src="/img/logo.png" alt="ELEC AI" className="tfc-header-logo-img" />
+                <ElecMascot
+                  mood={isTyping ? 'think' : realViolationsCount > 0 ? 'suspicious' : 'hello'}
+                  size={36}
+                  alt="ELEC AI"
+                />
               </div>
               <div className="tfc-header-meta">
                 <div className="tfc-header-title-row">
+                  <ElecFlaskBrandSvg size={15} variant="gradient" />
                   <span className="tfc-header-title">ELEC AI Agent</span>
-                  <span className="tfc-header-pill">Bản quyền GDPT 2025</span>
+                  <span className="tfc-header-pill">
+                    {classes.length} lớp · {exams.length} đề{liveSessions.length > 0 ? ` · ${liveSessions.length} LIVE` : ''}
+                  </span>
                 </div>
                 <div className="tfc-header-status">
-                  <div className="tfc-status-dot" />
-                  <span>Sẵn sàng thực thi tự động &amp; Kê đơn học tập</span>
+                  <div className={`tfc-status-dot ${realViolationsCount > 0 ? 'alert' : ''}`} />
+                  <span>
+                    {isTyping
+                      ? 'ELEC đang phân tích & tổng hợp...'
+                      : realViolationsCount > 0
+                        ? `Đang theo dõi ${realViolationsCount} tín hiệu giám sát LIVE`
+                        : 'Sẵn sàng soạn đề GDPT 2025 & cố vấn lớp học'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -3736,11 +3709,11 @@ HƯỚNG DẪN TRẢ LỜI:
               justifyContent: 'space-between',
               gap: 8,
               padding: '8px 14px',
-              background: '#fffbeb',
-              borderBottom: '1px solid #fde68a',
+              background: 'var(--t-warn-soft, rgba(217, 119, 6, 0.12))',
+              borderBottom: '1px solid rgba(217, 119, 6, 0.35)',
               fontSize: '0.78rem',
               fontWeight: 600,
-              color: '#92400e',
+              color: 'var(--t-warn, #92400e)',
             }}>
               <span>Làm mới lại cuộc trò chuyện này?</span>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -3750,9 +3723,9 @@ HƯỚNG DẪN TRẢ LỜI:
                   style={{
                     padding: '3px 10px',
                     borderRadius: 6,
-                    border: '1px solid #d97706',
-                    background: '#fff',
-                    color: '#92400e',
+                    border: '1px solid var(--t-warn, #d97706)',
+                    background: 'var(--t-surface-0, #fff)',
+                    color: 'var(--t-warn, #92400e)',
                     fontSize: '0.74rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -3810,7 +3783,7 @@ HƯỚNG DẪN TRẢ LỜI:
               <div key={m.id} className={`tfc-msg ${m.sender}`}>
                 <div className="tfc-msg-avatar">
                   {m.sender === 'bot' ? (
-                    <img src="/img/logo.png" alt="ELEC AI" className="tfc-msg-logo-img" />
+                    <ElecMascot mood="happy" size={26} alt="ELEC AI" />
                   ) : (
                     'GV'
                   )}
@@ -3979,14 +3952,14 @@ HƯỚNG DẪN TRẢ LỜI:
                         ))}
                       </div>
 
-                      <div style={{ marginTop: '4px', padding: '6px 8px', background: '#ffffff', borderRadius: 10, border: '1px solid #fde68a' }}>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#92400e', marginBottom: '4px' }}>
+                      <div style={{ marginTop: '4px', padding: '6px 8px', background: 'var(--t-surface-0, #ffffff)', borderRadius: 10, border: '1px solid rgba(217, 119, 6, 0.35)' }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--t-warn, #92400e)', marginBottom: '4px' }}>
                           3 Bài tập đặc trị phục hồi:
                         </div>
                         {m.rxData.remedialQuestions.map((rq, ri) => (
-                          <div key={ri} style={{ fontSize: '0.74rem', color: '#1e293b', marginBottom: '4px' }}>
+                          <div key={ri} style={{ fontSize: '0.74rem', color: 'var(--t-ink, #1e293b)', marginBottom: '4px' }}>
                             <b>{rq.q}</b>
-                            <div style={{ color: '#15803d', fontSize: '0.7rem' }}>Đáp án: {rq.ans}</div>
+                            <div style={{ color: 'var(--t-ok, #15803d)', fontSize: '0.7rem' }}>Đáp án: {rq.ans}</div>
                           </div>
                         ))}
                       </div>
@@ -4015,12 +3988,12 @@ HƯỚNG DẪN TRẢ LỜI:
                                 type: 'single_choice',
                                 points: 1.0,
                               }));
-                              const targetClassId = classes[0]?.id || '';
+                              const targetClassId = classes[0]?.id || linkedClasses?.[0]?.id || '';
                               const rxExam = {
                                 id: 'rx_exam_' + Date.now(),
                                 title: `Đơn thuốc học tập: ${m.rxData.topic} (${m.rxData.student})`,
-                                subject: 'Hóa học',
-                                grade: String(classes[0]?.grade || '12'),
+                                subject: m.rxData.subject || inferredSubject || 'Hóa học',
+                                grade: String(classes[0]?.grade || linkedClasses?.[0]?.grade || '12'),
                                 classId: targetClassId,
                                 duration: 15,
                                 totalQuestions: qList.length,
@@ -4053,11 +4026,11 @@ HƯỚNG DẪN TRẢ LỜI:
                       <div className="tfc-wizard-sec">
                         <span className="tfc-wizard-label">1. Môn học &amp; Khối lớp:</span>
                         <div className="tfc-pill-row" style={{ marginBottom: 6 }}>
-                          {['Hóa học', 'Toán học', 'Vật lí', 'Sinh học', 'Tiếng Anh'].map((sub) => (
+                          {Array.from(new Set([inferredSubject, 'Hóa học', 'Toán học', 'Vật lí', 'Sinh học', 'Tiếng Anh'].filter(Boolean))).map((sub) => (
                             <button
                               key={sub}
                               type="button"
-                              className={`tfc-pill-btn ${(m.wizardData.subject || 'Hóa học') === sub ? 'active' : ''}`}
+                              className={`tfc-pill-btn ${(m.wizardData.subject || inferredSubject || 'Hóa học') === sub ? 'active' : ''}`}
                               onClick={() => handleUpdateWizard(m.wizardData.id, { subject: sub })}
                             >
                               {sub}
@@ -4101,7 +4074,7 @@ HƯỚNG DẪN TRẢ LỜI:
 
                       {/* Bước 3: Chuyên đề kiến thức */}
                       <div className="tfc-wizard-sec">
-                        <span className="tfc-wizard-label">3. Chuyên đề kiến thức trọng tâm ({m.wizardData.subject || 'Hóa học'} {m.wizardData.grade || '12'}):</span>
+                        <span className="tfc-wizard-label">3. Chuyên đề kiến thức trọng tâm ({m.wizardData.subject || inferredSubject || 'Hóa học'} {m.wizardData.grade || '12'}):</span>
                         <div className="tfc-pill-row">
                           {getTopicsForSubjectAndGrade(m.wizardData.subject, m.wizardData.grade).map((tp) => (
                             <button
@@ -4170,7 +4143,7 @@ HƯỚNG DẪN TRẢ LỜI:
                         <span className="tfc-doctor-title">
                           <IcoFileDoc size={15} /> Bác Sĩ Chẩn Đoán &amp; Sửa File Word
                         </span>
-                        <span className="tfc-wizard-badge" style={{ background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }}>
+                        <span className="tfc-wizard-badge" style={{ background: 'var(--t-warn-soft, rgba(217, 119, 6, 0.14))', color: 'var(--t-warn, #b45309)', borderColor: 'rgba(217, 119, 6, 0.35)' }}>
                           {m.doctorData.isCompliant ? 'Đạt chuẩn 3 phần' : 'Cần chuẩn hóa'}
                         </span>
                       </div>
@@ -4392,7 +4365,15 @@ HƯỚNG DẪN TRẢ LỜI:
                             type="button"
                             className="tfc-btn-action"
                             style={{ padding: '3px 8px', fontSize: '0.68rem' }}
-                            onClick={() => handleRunCognitiveRx(st.studentName, m.realWeakest?.[0]?.topic || 'Hóa học hữu cơ')}
+                            onClick={() => handleRunCognitiveRx(
+                              st.studentName,
+                              m.realWeakest?.[0]?.topic
+                                || getTopicsForSubjectAndGrade(
+                                  inferredSubject || 'Hóa học',
+                                  String(classes[0]?.grade || linkedClasses?.[0]?.grade || '12')
+                                )[0]
+                                || 'Kiến thức trọng tâm'
+                            )}
                           >
                             <IcoBrain size={11} /> Kê đơn phục hồi
                           </button>

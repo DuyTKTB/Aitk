@@ -20,6 +20,7 @@ import {
 } from '../../lib/examTemplates.js';
 import '@casualoffice/docs/styles.css';
 import '../../styles/word-docx-editor.css';
+import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 
 const DocxEditor = React.lazy(() =>
   import('@casualoffice/docs').then((m) => ({ default: m.DocxEditor }))
@@ -148,9 +149,7 @@ const IcoImage = (p) => (
   </Svg>
 );
 const IcoSparkles = (p) => (
-  <Svg {...p}>
-    <path d="m12 3 1.9 4.8a2 2 0 0 0 1.3 1.3L20 11l-4.8 1.9a2 2 0 0 0-1.3 1.3L12 19l-1.9-4.8a2 2 0 0 0-1.3-1.3L4 11l4.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
-  </Svg>
+  <ElecFlaskBrandSvg size={p?.size || 15} variant="gradient" className={p?.className} />
 );
 const IcoPlus = (p) => (
   <Svg {...p}>
@@ -307,7 +306,6 @@ export default function WordDocxEditor({
   onSay = null,
 }) {
   const { user } = useAuth();
-  if (!open) return null;
 
   // Header info
   const [deptName, setDeptName] = useState(initialExam?.headerInfo?.deptName || 'SỞ GIÁO DỤC VÀ ĐÀO TẠO');
@@ -392,9 +390,10 @@ export default function WordDocxEditor({
     });
 
     const total = questions.length;
+    const isMathSub = /toán/i.test(String(subject || ''));
     const p1Score = p1 * 0.25;
     const p2Score = p2 * 1.0;
-    const p3Score = p3 * 0.5;
+    const p3Score = p3 * (isMathSub ? 0.5 : 0.25);
     const totalScore = p1Score + p2Score + p3Score;
 
     return {
@@ -405,12 +404,21 @@ export default function WordDocxEditor({
       vdPct: total > 0 ? Math.round((vd / total) * 100) : 0,
       vdcPct: total > 0 ? Math.round((vdc / total) * 100) : 0,
       totalScore,
+      part3Unit: isMathSub ? 0.5 : 0.25,
     };
-  }, [questions]);
+  }, [questions, subject]);
 
   // Project Ecosystem Modals State (Liên kết hệ sinh thái ELEC AI)
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState(classes?.[0]?.id || (classes?.[0]?.name ? classes[0].name : ''));
+
+  useEffect(() => {
+    if (!classes?.length) return;
+    const exists = classes.some((c) => c.id === selectedClassId || c.name === selectedClassId);
+    if (!selectedClassId || !exists) {
+      setSelectedClassId(classes[0]?.id || classes[0]?.name || '');
+    }
+  }, [classes, selectedClassId]);
   const [assignDuration, setAssignDuration] = useState(String(initialExam?.duration || '45'));
   const [assignAntiCheat, setAssignAntiCheat] = useState(true);
   const [assignShuffle, setAssignShuffle] = useState(true);
@@ -880,10 +888,11 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
         p2: matrixStats.p2,
         p3: matrixStats.p3,
       };
+      const isMathSubject = /toán/i.test(String(subject || ''));
       const scoring = {
         p1: 0.25,
-        p2: [0.1, 0.25, 0.5, 1.0],
-        p3: 0.5,
+        p2: [0, 0.1, 0.25, 0.5, 1.0],
+        p3: isMathSubject ? 0.5 : 0.25,
       };
 
       const targetClass = (classes || []).find(
@@ -1151,12 +1160,17 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
     if (!onSaveToClass) return;
     setIsBusy(true);
     try {
+      const targetClass = (classes || []).find((c) => c.id === selectedClassId || c.name === selectedClassId);
       await onSaveToClass({
         title: examName,
         subject,
         grade,
         duration: Number(duration) || 45,
         questions,
+        classId: targetClass?.id || selectedClassId || '',
+        className: targetClass?.name || '',
+        antiCheat: assignAntiCheat,
+        shuffleVariants: assignShuffle,
       });
       onSay?.(`Đã lưu đề "${examName}" vào danh sách lớp thành công!`, 'success');
       onClose?.();
@@ -1171,6 +1185,8 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
   const part1Questions = useMemo(() => questions.filter((q) => q.part === 1 || q.type === 'single_choice' || (!q.part && !q.type)), [questions]);
   const part2Questions = useMemo(() => questions.filter((q) => q.part === 2 || q.type === 'true_false'), [questions]);
   const part3Questions = useMemo(() => questions.filter((q) => q.part === 3 || q.type === 'short_answer'), [questions]);
+
+  if (!open) return null;
 
   return (
     <div className="wde-overlay">
@@ -2411,17 +2427,11 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     {(classes && classes.length > 0) ? (
                       classes.map((cls) => (
                         <option key={cls.id || cls.name} value={cls.id || cls.name}>
-                          {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''} • {cls.studentCount || (cls.students?.length) || 0} học sinh
+                          {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''} • {cls.members?.length || cls.studentCount || (cls.students?.length) || 0} học sinh
                         </option>
                       ))
                     ) : (
-                      <>
-                        <option value="11A5">Lớp 11A5 (Khối 11)</option>
-                        <option value="11A9">Lớp 11A9 (Khối 11)</option>
-                        <option value="11A10">Lớp 11A10 (Khối 11)</option>
-                        <option value="11A7">Lớp 11A7 (Khối 11)</option>
-                        <option value="12A1">Lớp 12A1 (Khối 12)</option>
-                      </>
+                      <option value="">-- Chưa có lớp nào (sẽ lưu vào Kho cá nhân) --</option>
                     )}
                   </select>
                 </div>
@@ -2654,7 +2664,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                   <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
                     <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: 600 }}>Phần III (Trả Lời Ngắn)</div>
                     <div style={{ fontSize: '18px', fontWeight: 700, color: '#7e22ce' }}>{matrixStats.p3} / 6 câu</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{(matrixStats.p3 * 0.25).toFixed(2)} / 1.50 điểm</div>
+                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{(matrixStats.p3 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} / {(6 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} điểm</div>
                   </div>
                 </div>
 
@@ -2730,29 +2740,29 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                         <div style={{ fontSize: '11px', color: '#64748b' }}>Điểm trung bình</div>
                         <div style={{ fontSize: '20px', fontWeight: 700, color: '#185abd' }}>{simResults.avg}</div>
                       </div>
-                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', color: '#166534' }}>Tỷ lệ đạt (&gt;= 5.0)</div>
-                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#15803d' }}>{simResults.passRate}%</div>
+                      <div style={{ background: 'var(--t-ok-soft, rgba(5, 150, 105, 0.1))', border: '1px solid rgba(5, 150, 105, 0.3)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--t-ok, #166534)' }}>Tỷ lệ đạt (&gt;= 5.0)</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--t-ok, #15803d)' }}>{simResults.passRate}%</div>
                       </div>
-                      <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', color: '#6b21a8' }}>Tỷ lệ giỏi (&gt;= 8.0)</div>
-                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#7e22ce' }}>{simResults.excellentRate}%</div>
+                      <div style={{ background: 'rgba(124, 58, 237, 0.11)', border: '1px solid rgba(124, 58, 237, 0.3)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--t-accent-2, #6b21a8)' }}>Tỷ lệ giỏi (&gt;= 8.0)</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--t-accent-2, #7e22ce)' }}>{simResults.excellentRate}%</div>
                       </div>
-                      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', color: '#92400e' }}>Biên độ điểm</div>
-                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#b45309' }}>{simResults.min} - {simResults.max}</div>
+                      <div style={{ background: 'var(--t-warn-soft, rgba(217, 119, 6, 0.11))', border: '1px solid rgba(217, 119, 6, 0.35)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--t-warn, #92400e)' }}>Biên độ điểm</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--t-warn, #b45309)' }}>{simResults.min} - {simResults.max}</div>
                       </div>
                     </div>
 
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
-                      <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
+                    <div style={{ background: 'var(--t-surface-1, #f8fafc)', border: '1px solid var(--t-border, #e2e8f0)', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--t-ink, #1e293b)', marginBottom: 8 }}>
                         Top 3 câu hỏi học sinh hay bị lừa / sai nhiều nhất:
                       </div>
                       {simResults.topTraps && simResults.topTraps.length > 0 ? (
                         simResults.topTraps.map((trap) => (
-                          <div key={trap.rank} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '5px 0', borderBottom: '1px solid #f1f5f9' }}>
-                            <span style={{ color: '#475569' }}>Top {trap.rank}: {trap.qText}</span>
-                            <span style={{ fontWeight: 700, color: '#dc2626' }}>{trap.wrongRate}% thí sinh sai</span>
+                          <div key={trap.rank} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '5px 0', borderBottom: '1px solid var(--t-border, #f1f5f9)' }}>
+                            <span style={{ color: 'var(--t-ink-2, #475569)' }}>Top {trap.rank}: {trap.qText}</span>
+                            <span style={{ fontWeight: 700, color: 'var(--t-bad, #dc2626)' }}>{trap.wrongRate}% thí sinh sai</span>
                           </div>
                         ))
                       ) : (
@@ -3100,7 +3110,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                   <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#475569', lineHeight: '1.6' }}>
                     <li>Phần I: <strong>{matrixStats.p1} câu</strong> (0.25 điểm / câu)</li>
                     <li>Phần II: <strong>{matrixStats.p2} câu</strong> (Đúng 1 ý: 0.1đ; 2 ý: 0.25đ; 3 ý: 0.5đ; 4 ý: 1.0đ)</li>
-                    <li>Phần III: <strong>{matrixStats.p3} câu</strong> (0.50 điểm / câu trả lời ngắn)</li>
+                    <li>Phần III: <strong>{matrixStats.p3} câu</strong> ({(matrixStats.part3Unit ?? 0.25).toFixed(2)} điểm / câu trả lời ngắn)</li>
                     <li>Bảng đáp án: Tự động tổng hợp từ 4 mã đề hoán vị (101 - 104).</li>
                   </ul>
                 </div>
@@ -3190,8 +3200,8 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     <tr>
                       <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần III: Trả lời ngắn</td>
                       <td>{matrixStats.p3}</td>
-                      <td>0.50 đ</td>
-                      <td>{(matrixStats.p3 * 0.5).toFixed(2)} đ</td>
+                      <td>{(/toán/i.test(String(subject || '')) ? 0.5 : 0.25).toFixed(2)} đ</td>
+                      <td>{(matrixStats.p3 * (/toán/i.test(String(subject || '')) ? 0.5 : 0.25)).toFixed(2)} đ</td>
                       <td>{matrixStats.total > 0 ? Math.round((matrixStats.p3 / matrixStats.total) * 100) : 0}%</td>
                     </tr>
                     <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
@@ -3268,7 +3278,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
 ## Môn: ${subject} - Khối: ${grade}
 - Phần I (Trắc nghiệm 4 lựa chọn): ${matrixStats.p1} câu (${(matrixStats.p1 * 0.25).toFixed(2)} điểm)
 - Phần II (Đúng/Sai): ${matrixStats.p2} câu (${(matrixStats.p2 * 1.0).toFixed(2)} điểm)
-- Phần III (Trả lời ngắn): ${matrixStats.p3} câu (${(matrixStats.p3 * 0.5).toFixed(2)} điểm)
+- Phần III (Trả lời ngắn): ${matrixStats.p3} câu (${(matrixStats.p3 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} điểm)
 - Tổng điểm: ${matrixStats.totalScore.toFixed(2)} điểm
 
 ### Phân bố mức độ nhận thức Bloom:

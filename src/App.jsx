@@ -607,7 +607,12 @@ export default function App() {
             zIndex: 1000,
             boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
           }}>
-            <span>✨ Bạn đang xem bản trải nghiệm mở của <strong>ELEC AI</strong>.</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z" />
+              </svg>
+              <span>Bạn đang xem bản trải nghiệm mở của <strong>ELEC AI</strong>.</span>
+            </span>
             <a
               href="/#/register"
               style={{

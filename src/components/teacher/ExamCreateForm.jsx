@@ -278,6 +278,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   const [showAnswerAfter, setShowAnswerAfter] = useState(initial?.showAnswerAfter ?? true);
   const [allowRetry, setAllowRetry] = useState(initial?.allowRetry ?? false);
   const [shuffle, setShuffle] = useState(initial?.shuffle ?? true);
+  const [gradeType, setGradeType] = useState(initial?.gradeType || '');
   const [opensAt, setOpensAt] = useState(initial?.opensAt || '');
   const [closesAt, setClosesAt] = useState(initial?.closesAt || '');
   const [error, setError] = useState('');
@@ -313,6 +314,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       if (data.title !== undefined) setTitle(data.title);
       if (data.description !== undefined) setDescription(data.description);
       if (data.duration !== undefined) setDuration(data.duration);
+      if (data.gradeType !== undefined) setGradeType(data.gradeType || '');
       if (Array.isArray(data.questions) && data.questions.length > 0) {
         setQuestions(data.questions.map(toFormQuestion));
       }
@@ -326,6 +328,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     if (initial.title !== undefined) setTitle(initial.title || '');
     if (initial.description !== undefined) setDescription(initial.description || '');
     if (initial.duration !== undefined) setDuration(initial.duration || 45);
+    if (initial.gradeType !== undefined) setGradeType(initial.gradeType || '');
     if (Array.isArray(initial.questions) && initial.questions.length > 0) {
       setQuestions(initial.questions.map(toFormQuestion));
     }
@@ -344,11 +347,11 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     if (!onSnapshot) return undefined;
     const t = setTimeout(() => {
       onSnapshot({
-        title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor,
+        title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, gradeType, opensAt, closesAt, proctor,
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, opensAt, closesAt, proctor]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, gradeType, opensAt, closesAt, proctor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPoints = useMemo(
     () => round2(questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0)),
@@ -597,6 +600,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       showAnswerAfter,
       allowRetry,
       shuffle,
+      gradeType,
       opensAt: localToIso(opensAt),
       closesAt: localToIso(closesAt),
       proctor,
@@ -665,6 +669,16 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
               />
             </label>
           </div>
+
+          <label className="cep-field">
+            <span>Cột điểm vnEdu / SMAS (Thông tư 22)</span>
+            <select value={gradeType} onChange={(e) => setGradeType(e.target.value)}>
+              <option value="">Tự động nhận diện theo tên đề &amp; thời gian</option>
+              <option value="tx">Kiểm tra thường xuyên — TX (Hệ số 1)</option>
+              <option value="dgk">Đánh giá giữa kỳ — ĐGK (Hệ số 2)</option>
+              <option value="ckk">Đánh giá cuối kỳ — CKK (Hệ số 3)</option>
+            </select>
+          </label>
 
           <div className="cep-chips">
             <label className={'cep-check' + (showAnswerAfter ? ' on' : '')}>
