@@ -293,9 +293,23 @@ export default function AutoExamStudio({
   const [inputMessage, setInputMessage] = useState('');
   const [activeHubTab] = useState('exam');
 
-  // Cập nhật môn học khi chọn lớp khác
+  // Đồng bộ lớp khi danh sách classes tải xong hoặc initialClass thay đổi
   useEffect(() => {
-    const c = classes.find((cls) => cls.id === selectedClassId);
+    if (initialClass?.id && !selectedClassId) {
+      setSelectedClassId(initialClass.id);
+      return;
+    }
+    if (classes?.length && (!selectedClassId || !classes.some((c) => c.id === selectedClassId))) {
+      const preferred = initialClass?.id && classes.some((c) => c.id === initialClass.id)
+        ? initialClass.id
+        : classes[0].id;
+      setSelectedClassId(preferred || '');
+    }
+  }, [classes, initialClass?.id, selectedClassId]);
+
+  // Cập nhật môn học và khối lớp THPT khi chọn lớp khác
+  useEffect(() => {
+    const c = classes.find((cls) => cls.id === selectedClassId) || initialClass;
     if (c?.subject) {
       if (/sinh/i.test(c.subject)) setSelectedSubject('Sinh học');
       else if (/hóa|hoa/i.test(c.subject)) setSelectedSubject('Hóa học');
@@ -303,11 +317,18 @@ export default function AutoExamStudio({
       else if (/toán|toan/i.test(c.subject)) setSelectedSubject('Toán học');
       else setSelectedSubject(c.subject);
     }
-  }, [selectedClassId, classes]);
+    const gStr = c?.grade ? String(c.grade) : '';
+    if (THPT_GRADES.includes(gStr)) {
+      setSelectedGrade(gStr);
+    }
+  }, [selectedClassId, classes, initialClass]);
 
   // Interview flow
   const [step, setStep] = useState(0);
-  const [selectedGrade, setSelectedGrade] = useState('12');
+  const [selectedGrade, setSelectedGrade] = useState(() => {
+    const g = String(initialClass?.grade || classes[0]?.grade || '12');
+    return THPT_GRADES.includes(g) ? g : '12';
+  });
   const [selectedCount, setSelectedCount] = useState(10);
   const [selectedDuration, setSelectedDuration] = useState(30);
   const [selectedFormat, setSelectedFormat] = useState(FORMAT_GDPT);
@@ -1650,13 +1671,11 @@ export default function AutoExamStudio({
   /* ============ XUẤT BẢN ============ */
   const handleOpenPublishModal = () => {
     if (!questions.length) { showToast('Chưa có câu hỏi nào', 'error'); return; }
-    if (!selectedClassId) { showToast('Chọn lớp để gán đề', 'error'); return; }
     setShowPublishModal(true);
   };
 
   const handleExecutePublish = async () => {
     if (!questions.length) return;
-    if (!selectedClassId && typeof onGenerated !== 'function') return;
     setIsPublishing(true);
     try {
       // ⭐ FIX: Nếu có onGenerated → đẩy dữ liệu sang form thủ công
@@ -1669,7 +1688,7 @@ export default function AutoExamStudio({
             duration: selectedDuration,
             subject: selectedSubject,
             grade: selectedGrade,
-            classId: selectedClassId,
+            classId: selectedClassId || '',
             gradeType: publishGradeType,
           },
           warnings: questions.filter((q) => (q.warns || []).length > 0),
@@ -1682,10 +1701,12 @@ export default function AutoExamStudio({
 
       // Fallback: gọi createExam trực tiếp (nếu không có onGenerated)
       const targetClass = classes.find((c) => c.id === selectedClassId);
+      const targetClassId = targetClass?.id || '';
       const newExam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email || 'Giáo viên',
-        classId: selectedClassId,
+        classId: targetClassId,
+        isDraft: !targetClassId,
         subject: selectedSubject,
         grade: selectedGrade,
         gradeType: publishGradeType,
@@ -1704,7 +1725,12 @@ export default function AutoExamStudio({
       });
       sound.cheer();
       setShowPublishModal(false);
-      showToast(`Đã xuất bản vào lớp ${targetClass?.name || ''}`, 'success');
+      showToast(
+        targetClassId
+          ? `Đã xuất bản vào lớp ${targetClass?.name || ''}`
+          : 'Đã lưu bản nháp vào Kho đề (chưa gắn lớp)',
+        'success'
+      );
       setTimeout(() => onDone?.(newExam), 1200);
     } catch (err) {
       showToast(`Lỗi xuất bản: ${err.message}`, 'error');
@@ -3211,6 +3237,7 @@ export default function AutoExamStudio({
                   <span>Lớp áp dụng</span>
                   <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)}>
                     {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="">Lưu nháp cá nhân (chưa gắn lớp)</option>
                   </select>
                 </label>
                 <label className="aes-field">

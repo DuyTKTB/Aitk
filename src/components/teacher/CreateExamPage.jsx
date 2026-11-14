@@ -91,6 +91,10 @@ export default function CreateExamPage({
     }
   }, [initialPreset]);
 
+  useEffect(() => {
+    setPendingDraft(readManualDraft(classInfo?.id));
+  }, [classInfo?.id]);
+
   /* FIX #3: Ref tới form instance để gọi replaceContent() thay vì remount */
   const formRef = useRef(null);
   const aiMetaRef = useRef(null);
@@ -143,6 +147,7 @@ export default function CreateExamPage({
         description: meta.description || '',
         duration: meta.duration || 45,
         gradeType: meta.gradeType || '',
+        classId: meta.classId !== undefined ? meta.classId : (classInfo?.id || ''),
         questions: questions.map((q) => {
           const type = q.type || 'single_choice';
           const base = {
@@ -191,18 +196,17 @@ export default function CreateExamPage({
   /* Lưu đề */
   const handleSave = async (data) => {
     const aiMeta = aiMetaRef.current || {};
-    const resolvedClassId = data.isDraft
+    const targetClassId = data.isDraft
       ? ''
-      : (data.classId !== undefined ? (data.classId || aiMeta.classId || '') : (aiMeta.classId || classInfo?.id || classes[0]?.id || ''));
-    const targetClassId = resolvedClassId;
+      : (data.classId !== undefined ? (data.classId || '') : (aiMeta.classId || classInfo?.id || classes[0]?.id || ''));
     const isDraft = Boolean(data.isDraft || !targetClassId);
-    const targetClassObj = (classes || []).find((c) => c.id === targetClassId) || classInfo;
+    const targetClassObj = (classes || []).find((c) => c.id === targetClassId) || (!isDraft ? classInfo : null);
     setSaving(true);
     try {
       const exam = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
-        classId: targetClassId || '',
+        classId: targetClassId,
         isDraft,
         title: data.title,
         description: data.description,
@@ -222,9 +226,11 @@ export default function CreateExamPage({
       });
       toast.success(isDraft
         ? `Đã lưu bản nháp cá nhân "${data.title}" (${data.questions.length} câu)`
-        : `Đã tạo đề "${data.title}" với ${data.questions.length} câu`);
+        : `Đã tạo đề "${data.title}" với ${data.questions.length} câu cho ${targetClassObj?.name || 'lớp'}`);
       clearDraft();
+      clearManualDraft(classInfo?.id);
       if (targetClassId) clearManualDraft(targetClassId);
+      aiMetaRef.current = null;
       dirtyRef.current = false;
       onDone?.(exam);
       return exam;
@@ -343,6 +349,7 @@ export default function CreateExamPage({
           onDirty={(d) => { dirtyRef.current = d; }}
           onSnapshot={handleSnapshot}
           classInfo={classInfo}
+          classes={classes.length ? classes : classInfo ? [classInfo] : []}
           onSave={handleSave}
           onCancel={onCancel}
           saving={saving}

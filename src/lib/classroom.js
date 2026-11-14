@@ -422,6 +422,27 @@ export async function deleteClass(classId) {
   }
 }
 
+export const MAX_FIRESTORE_EXAM_BYTES = 950 * 1024;
+
+/** Ước lượng dung lượng byte UTF-8 của payload trước khi ghi Firestore (giới hạn 1 MiB). */
+export function estimateFirestoreDocBytes(data) {
+  const seen = new WeakSet();
+  const safeJson = JSON.stringify(data, (_, value) => {
+    if (value && typeof value === 'object') {
+      if (seen.has(value)) return undefined;
+      seen.add(value);
+      // Bỏ qua sentinel của Firebase (serverTimestamp, Timestamp...) khi ước lượng thô
+      if (typeof value._methodName === 'string') return '__sentinel__';
+    }
+    return value;
+  });
+  if (!safeJson) return 0;
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(safeJson).length;
+  }
+  return safeJson.length * 2;
+}
+
 /* ============================================================
    EXAMS
    ============================================================ */
@@ -440,14 +461,19 @@ export async function createExam({
   /* 'private' = chỉ thành viên lớp vào được (mặc định); 'public' = ai có link cũng làm được */
   visibility = 'private',
 }) {
+  if (!teacherId) {
+    throw new Error('Không xác định được tài khoản giáo viên.');
+  }
+  const cleanClassId = typeof classId === 'string' ? classId.trim() : '';
+  const effectiveIsDraft = !cleanClassId ? true : Boolean(isDraft);
   const totalPoints = Math.round((questions || []).reduce((s, q) => s + (Number(q.points) || 1), 0) * 100) / 100;
 
   const data = {
     token: generateExamToken(),
     teacherId,
     teacherName,
-    classId: classId || '',
-    isDraft: !!isDraft,
+    classId: cleanClassId,
+    isDraft: effectiveIsDraft,
     visibility: visibility === 'public' ? 'public' : 'private',
     visibilityUpdatedAt: null,
     title: title || 'Đề kiểm tra',
@@ -469,15 +495,23 @@ export async function createExam({
   if (subject) data.subject = subject;
   if (grade) data.grade = Number(grade) || 0;
   if (gradeType && ['tx', 'dgk', 'ckk'].includes(gradeType)) data.gradeType = gradeType;
+
+  const cleanData = stripUndefined(data);
+  const estimatedBytes = estimateFirestoreDocBytes(cleanData);
+  if (estimatedBytes > MAX_FIRESTORE_EXAM_BYTES) {
+    const mb = (estimatedBytes / 1024 / 1024).toFixed(2);
+    throw new Error(
+      `Đề thi quá lớn (~${mb} MB), vượt giới hạn 1 MB của hệ thống do chứa nhiều ảnh dung lượng cao. Vui lòng nén hoặc bớt hình ảnh rồi lưu lại.`
+    );
+  }
+
   try {
     const newDocRef = doc(collection(db, 'exams'));
     const examData = { id: newDocRef.id, ...data };
-    setDoc(newDocRef, stripUndefined(data)).catch((err) => {
-      console.warn('[createExam] setDoc background warning:', err?.message);
-    });
+    await setDoc(newDocRef, cleanData);
     return examData;
   } catch (e) {
-    console.error('[createExam] Lỗi:', e.code, e.message);
+    console.error('[createExam] Lỗi:', e?.code, e?.message);
     throw new Error(friendlyFirestoreError(e, 'tạo đề'));
   }
 }

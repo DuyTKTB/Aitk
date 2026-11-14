@@ -608,7 +608,7 @@ Chỉ trả JSON: {"title":"Tên đề ngắn gọn","topics":["..."],"aiPedagog
     customPrompt ? `Yêu cầu thêm của giáo viên: ${customPrompt}` : '',
     classInsights ? `Phân tích lớp:\n${String(classInsights).slice(0, 800)}` : '',
     `DANH SÁCH Ô CẦN ĐẶT TÊN:\n${slotLines}`,
-    textParts.length ? `Tài liệu tham khảo:\n${textParts.join('\n\n').slice(0, 2500)}` : '',
+    textParts.length ? `Tài liệu tham khảo:\n${textParts.join('\n\n').slice(0, 4000)}` : '',
   ].filter(Boolean).join('\n\n');
 
   const meta = {
@@ -1301,7 +1301,7 @@ export async function generateQuestionsFromApprovedMatrix({
 
   const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
   const refText = textParts.length
-    ? `Tài liệu tham khảo (chỉ để bám nội dung, KHÔNG chép nguyên vào câu hỏi):\n${textParts.join('\n').slice(0, 1800)}`
+    ? `Tài liệu tham khảo (chỉ để bám nội dung, KHÔNG chép nguyên vào câu hỏi):\n${textParts.join('\n').slice(0, 4000)}`
     : '';
   const systems = {};
   const sysOf = (t) => (systems[t] ||= buildSystem(t, subject, grade));

@@ -4,6 +4,7 @@
    ============================================================ */
 
 import { detectExamSubjectAndGrade } from './subjectClassifier.js';
+import { compressImageDataUrl, isUnsupportedVectorDataUrl } from './imageUtils.js';
 
 const LETTERS = 'ABCDEF';
 const UL_TAGS = new Set(['U', 'INS', 'MARK']);
@@ -181,12 +182,13 @@ export const preprocessDocxBuffer = async (arrayBuffer) => {
     const JSZip = (await import('jszip')).default;
     const zip = await JSZip.loadAsync(arrayBuffer);
 
-    // Thu thập toàn bộ hình ảnh có sẵn trong thư mục word/media/
+    // Thu thập toàn bộ hình ảnh hiển thị được trong thư mục word/media/ (bỏ WMF/EMF)
     for (const [relPath, fileObj] of Object.entries(zip.files)) {
       if (relPath.startsWith('word/media/') && !fileObj.dir) {
         try {
-          const b64 = await fileObj.async('base64');
           const ext = relPath.split('.').pop().toLowerCase();
+          if (ext === 'wmf' || ext === 'emf') continue;
+          const b64 = await fileObj.async('base64');
           const mime = ext === 'png' ? 'image/png' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : ext === 'svg' ? 'image/svg+xml' : 'image/png';
           mediaImages[relPath.replace('word/', '')] = `data:${mime};base64,${b64}`;
         } catch (_) {}
@@ -199,7 +201,7 @@ export const preprocessDocxBuffer = async (arrayBuffer) => {
     let xmlStr = await docFile.async('string');
 
     // 1. Chuyển <m:oMath>...</m:oMath> thành <w:r><w:t>...</w:t></w:r>
-    if (xmlStr.includes(':oMath')) {
+    if (xmlStr.includes(':oMath') && typeof DOMParser !== 'undefined' && typeof XMLSerializer !== 'undefined') {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlStr, 'application/xml');
       const oMaths = Array.from(xmlDoc.getElementsByTagNameNS('*', 'oMath'));
@@ -401,10 +403,14 @@ export const readDocx = async (file) => {
       convertImage: mammoth.images.imgElement(async (image) => {
         try {
           const ct = String(image.contentType || 'image/png').toLowerCase();
+          if (ct.includes('wmf') || ct.includes('emf')) return { src: '' };
           const b64 = await image.read('base64');
           if (b64) {
+            const rawUrl = `data:${ct};base64,${b64}`;
+            if (isUnsupportedVectorDataUrl(rawUrl)) return { src: '' };
+            const safeUrl = (await compressImageDataUrl(rawUrl)) || rawUrl;
             const idx = extractedImages.length;
-            extractedImages.push(`data:${ct};base64,${b64}`);
+            extractedImages.push(safeUrl);
             return { src: `__DOCX_IMG_${idx}__` };
           }
           return { src: '' };
@@ -415,13 +421,15 @@ export const readDocx = async (file) => {
     }
   );
 
-  // Nếu trong zip có ảnh media mà Mammoth bỏ sót, bổ sung thêm để không bao giờ mất ảnh
-  if (mediaImages) {
-    Object.values(mediaImages).forEach((dataUrl) => {
-      if (!extractedImages.includes(dataUrl)) {
-        extractedImages.push(dataUrl);
+  // Chỉ bổ sung từ mediaImages khi Mammoth chưa trích xuất được ảnh nào (tránh trùng lặp/logo thừa)
+  if (mediaImages && extractedImages.length === 0) {
+    for (const dataUrl of Object.values(mediaImages)) {
+      if (!dataUrl || isUnsupportedVectorDataUrl(dataUrl)) continue;
+      const safeUrl = (await compressImageDataUrl(dataUrl)) || dataUrl;
+      if (safeUrl && !extractedImages.includes(safeUrl)) {
+        extractedImages.push(safeUrl);
       }
-    });
+    }
   }
 
   const { lines, subSupFormulas } = htmlToLines(value);

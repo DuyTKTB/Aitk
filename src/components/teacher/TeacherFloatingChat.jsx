@@ -4719,7 +4719,8 @@ HƯỚNG DẪN TRẢ LỜI:
           <WordDocxEditor
             open={wordEditorOpen}
             onClose={() => setWordEditorOpen(false)}
-            initialExam={wordEditorExam || (exams && exams[0]) || null}
+            initialExam={wordEditorExam || null}
+            initialClassId={selectedClass?.id || classes?.[0]?.id || ''}
             classes={classes}
             onSaveToClass={async (ex) => {
               if (onCreateExam) await onCreateExam(ex);

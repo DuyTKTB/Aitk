@@ -1746,11 +1746,13 @@ Trả về DUY NHẤT JSON:
     await refresh();
   };
 
-  const handleCreateSoftExam = async ({ title, duration, classId, subject, grade, questions: qs, sourceFile }) => {
+  const handleCreateSoftExam = async ({ title, duration, classId, isDraft, subject, grade, questions: qs, sourceFile }) => {
+    const cleanClassId = typeof classId === 'string' ? classId.trim() : '';
     const exam = await createExam({
       teacherId: user.uid,
       teacherName: user.displayName || user.email,
-      classId,
+      classId: cleanClassId,
+      isDraft: isDraft ?? !cleanClassId,
       title,
       description: sourceFile ? `Nhập từ file ${sourceFile}` : 'Đề mềm nhập từ file',
       duration,
@@ -1763,7 +1765,11 @@ Trả về DUY NHẤT JSON:
       subject,
       grade,
     });
-    say(`Đã tạo đề mềm "${exam.title}" (${qs.length} câu)`);
+    say(
+      cleanClassId
+        ? `Đã tạo đề mềm "${exam.title}" (${qs.length} câu)`
+        : `Đã lưu bản nháp "${exam.title}" (${qs.length} câu)`
+    );
     setShowImporter(false);
     onSoftExamCreated?.(exam);
   };

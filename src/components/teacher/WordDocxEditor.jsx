@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { exportToWord, exportMatrixDocx, buildExamDocBlob, exportBundleZip } from '../../lib/examExport.js';
 import { generateShuffledVersions, answerKeyRows } from '../../lib/examShuffle.js';
 import { parseExamDocxFile } from '../../lib/examDocxParser.js';
+import { fileToCompressedDataUrl } from '../../lib/imageUtils.js';
 import { detectExamSubjectAndGrade, SUPPORTED_SUBJECTS } from '../../lib/subjectClassifier.js';
 import { askAI } from '../../lib/ai.js';
 import { runWithCredit } from '../../lib/creditService.js';
@@ -300,6 +301,7 @@ export default function WordDocxEditor({
   open = false,
   onClose = null,
   initialExam = null,
+  initialClassId = '',
   classes = [],
   onSaveToClass = null,
   onSaveToBank = null,
@@ -410,18 +412,30 @@ export default function WordDocxEditor({
 
   // Project Ecosystem Modals State (Liên kết hệ sinh thái ELEC AI)
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedClassId, setSelectedClassId] = useState(classes?.[0]?.id || (classes?.[0]?.name ? classes[0].name : ''));
+  const [selectedClassId, setSelectedClassId] = useState(() => {
+    const firstValid = (classes || []).find((c) => c?.id);
+    if (initialClassId && (classes || []).some((c) => c?.id === initialClassId)) {
+      return initialClassId;
+    }
+    return firstValid?.id || '';
+  });
 
   useEffect(() => {
-    if (!classes?.length) return;
-    const exists = classes.some((c) => c.id === selectedClassId || c.name === selectedClassId);
-    if (!selectedClassId || !exists) {
-      setSelectedClassId(classes[0]?.id || classes[0]?.name || '');
-    }
-  }, [classes, selectedClassId]);
+    const validClasses = (classes || []).filter((c) => c?.id);
+    if (!validClasses.length) return;
+    if (selectedClassId && validClasses.some((c) => c.id === selectedClassId)) return;
+    const preferred = initialClassId && validClasses.some((c) => c.id === initialClassId)
+      ? initialClassId
+      : validClasses[0].id;
+    setSelectedClassId(preferred);
+  }, [classes, initialClassId, selectedClassId]);
   const [assignDuration, setAssignDuration] = useState(String(initialExam?.duration || '45'));
   const [assignAntiCheat, setAssignAntiCheat] = useState(true);
   const [assignShuffle, setAssignShuffle] = useState(true);
+
+  useEffect(() => {
+    if (duration) setAssignDuration(String(duration));
+  }, [duration]);
 
   const [showShuffleModal, setShowShuffleModal] = useState(false);
   const [activeShuffleCode, setActiveShuffleCode] = useState('101');
@@ -600,22 +614,33 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
       onSay?.('Chức năng giao đề chưa được liên kết với máy chủ!', 'error');
       return;
     }
+    if (!questions.length) {
+      onSay?.('Chưa có câu hỏi nào! Hãy nhập file Word và đồng bộ hoặc thêm câu hỏi trước khi giao.', 'error');
+      return;
+    }
     setIsBusy(true);
     try {
-      const targetClass = (classes || []).find((c) => c.id === selectedClassId || c.name === selectedClassId);
-      const targetName = targetClass?.name || selectedClassId || 'Lớp học';
+      const targetClass = (classes || []).find((c) => c?.id && c.id === selectedClassId) || null;
+      const targetClassId = targetClass?.id || '';
+      const targetName = targetClass?.name || 'Kho đề cá nhân (Nháp)';
       await onSaveToClass({
         title: examName,
         subject,
         grade,
         duration: Number(assignDuration) || 45,
         questions,
-        classId: targetClass?.id || selectedClassId,
+        classId: targetClassId,
+        isDraft: !targetClassId,
         className: targetName,
         antiCheat: assignAntiCheat,
         shuffleVariants: assignShuffle,
       });
-      onSay?.(`Đã giao bài kiểm tra "${examName}" cho lớp ${targetName} thành công!`, 'success');
+      onSay?.(
+        targetClassId
+          ? `Đã giao bài kiểm tra "${examName}" cho lớp ${targetName} thành công!`
+          : `Đã lưu bản nháp "${examName}" vào Kho đề cá nhân!`,
+        'success'
+      );
       setShowAssignModal(false);
     } catch (err) {
       onSay?.('Lỗi giao đề cho lớp: ' + err.message, 'error');
@@ -736,18 +761,39 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
     if (!file) return;
+    if (/\.doc$/i.test(file.name)) {
+      onSay?.('File đang ở định dạng .doc cũ. Vui lòng mở bằng Word → Lưu thành .docx rồi nạp lại.', 'error');
+      return;
+    }
     setIsConvertingDocx(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setDocxBuffer(ev.target.result);
+    setMsg('Đang nạp và tự động nhận diện câu hỏi từ file Word...');
+    try {
+      const buffer = await file.arrayBuffer();
+      setDocxBuffer(buffer);
       setExamName(file.name.replace(/\.docx$/i, ''));
+
+      const parsed = await parseExamDocxFile(file);
+      if (parsed?.questions?.length) {
+        setQuestions(parsed.questions);
+        if (parsed.subject) setSubject(parsed.subject);
+        if (parsed.grade) setGrade(String(parsed.grade));
+        pushHistory(parsed.questions);
+        onSay?.(`Đã nạp file "${file.name}" và nhận diện ${parsed.questions.length} câu hỏi!`, 'success');
+      } else {
+        setQuestions([]);
+        onSay?.(`Đã nạp file "${file.name}". Chưa phát hiện mẫu "Câu 1...", Thầy/Cô có thể bấm "Đồng bộ Word" hoặc bổ sung câu hỏi.`, 'warning');
+      }
+    } catch (err) {
+      console.warn('Lỗi nạp file Word:', err);
+      onSay?.('Không đọc được file Word: ' + (err?.message || 'Lỗi định dạng'), 'error');
+    } finally {
       setIsConvertingDocx(false);
-      onSay?.(`Đã nạp file Word thành công: ${file.name}`, 'success');
-    };
-    reader.readAsArrayBuffer(file);
+      setMsg('');
+    }
   };
 
   // Đồng bộ từ Chế độ Sư phạm sang Chế độ Word Casual Docs
@@ -1043,17 +1089,17 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
     setSelectedQId(newId);
   };
 
-  // Chèn ảnh vào câu hỏi đang chọn
-  const handleImageUpload = (e) => {
+  // Chèn ảnh vào câu hỏi đang chọn (tự nén JPEG nhẹ để tương thích Firestore 1MB)
+  const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedQId) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const base64 = evt.target.result;
-      updateQuestion(selectedQId, 'image', base64);
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    if (!file || !selectedQId) return;
+    try {
+      const base64 = await fileToCompressedDataUrl(file, { maxW: 900, quality: 0.75 });
+      if (base64) updateQuestion(selectedQId, 'image', base64);
+    } catch (err) {
+      onSay?.(err?.message || 'Không đọc được ảnh tải lên', 'error');
+    }
   };
 
   // Chèn ký hiệu vào câu hỏi đang chọn
@@ -1160,14 +1206,16 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
     if (!onSaveToClass) return;
     setIsBusy(true);
     try {
-      const targetClass = (classes || []).find((c) => c.id === selectedClassId || c.name === selectedClassId);
+      const targetClass = (classes || []).find((c) => c?.id && c.id === selectedClassId) || null;
+      const targetClassId = targetClass?.id || '';
       await onSaveToClass({
         title: examName,
         subject,
         grade,
         duration: Number(duration) || 45,
         questions,
-        classId: targetClass?.id || selectedClassId || '',
+        classId: targetClassId,
+        isDraft: !targetClassId,
         className: targetClass?.name || '',
         antiCheat: assignAntiCheat,
         shuffleVariants: assignShuffle,
@@ -2424,12 +2472,15 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     onChange={(e) => setSelectedClassId(e.target.value)}
                     style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff' }}
                   >
-                    {(classes && classes.length > 0) ? (
-                      classes.map((cls) => (
-                        <option key={cls.id || cls.name} value={cls.id || cls.name}>
-                          {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''} • {cls.members?.length || cls.studentCount || (cls.students?.length) || 0} học sinh
-                        </option>
-                      ))
+                    {(classes && classes.some((c) => c?.id)) ? (
+                      <>
+                        {classes.filter((c) => c?.id).map((cls) => (
+                          <option key={cls.id} value={cls.id}>
+                            {cls.name} {cls.grade ? `(Khối ${cls.grade})` : ''} • {cls.members?.length || cls.studentCount || (cls.students?.length) || 0} học sinh
+                          </option>
+                        ))}
+                        <option value="">-- Lưu nháp cá nhân (chưa gắn lớp) --</option>
+                      </>
                     ) : (
                       <option value="">-- Chưa có lớp nào (sẽ lưu vào Kho cá nhân) --</option>
                     )}

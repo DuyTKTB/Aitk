@@ -111,9 +111,14 @@ export async function readFile(file) {
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
       throw new Error(`File "${file.name}" quá lớn (tối đa ${MAX_FILE_MB} MB).`);
     }
-    const mammoth = await import('mammoth/mammoth.browser.js');
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
+    const [mammothMod, { preprocessDocxBuffer }] = await Promise.all([
+      import('mammoth/mammoth.browser.js'),
+      import('./examDocxParser.js'),
+    ]);
+    const mammoth = mammothMod.default || mammothMod;
+    const rawBuffer = await file.arrayBuffer();
+    const { buffer } = await preprocessDocxBuffer(rawBuffer);
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer || rawBuffer });
     const text = String(result?.value || '').trim();
     if (!text) throw new Error(`File "${file.name}" không có nội dung text.`);
     return { ...base, text };

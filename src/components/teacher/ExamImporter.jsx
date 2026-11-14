@@ -21,6 +21,7 @@ import { askAI } from '../../lib/ai.js';
 import { runWithCredit } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
+import { compressImageDataUrl, fileToCompressedDataUrl, isUnsupportedVectorDataUrl } from '../../lib/imageUtils.js';
 import WordDocxEditor from './WordDocxEditor.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 
@@ -475,8 +476,11 @@ const readDocx = async (file) => {
           }
           const b64 = await image.read('base64');
           if (!b64) return { src: '' };
+          const rawUrl = `data:${ct};base64,${b64}`;
+          if (isUnsupportedVectorDataUrl(rawUrl)) return { src: '' };
+          const safeUrl = (await compressImageDataUrl(rawUrl)) || rawUrl;
           const idx = extractedImages.length;
-          extractedImages.push(`data:${ct};base64,${b64}`);
+          extractedImages.push(safeUrl);
           return { src: `__DOCX_IMG_${idx}__` };
         } catch {
           return { src: '' };
@@ -2463,6 +2467,7 @@ export default function ExamImporter({
   const [detectedGrade, setDetectedGrade] = useState(defaultGrade || '');
   const [duration, setDuration] = useState('45');
   const [classId, setClassId] = useState(classInfo?.id || classes[0]?.id || '');
+  const userPickedClassRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -2473,7 +2478,7 @@ export default function ExamImporter({
   }, [initialEnglishMode]);
 
   useEffect(() => {
-    if (!classId && (classInfo?.id || classes[0]?.id)) {
+    if (!userPickedClassRef.current && !classId && (classInfo?.id || classes[0]?.id)) {
       setClassId(classInfo?.id || classes[0]?.id);
     }
   }, [classInfo?.id, classes, classId]);
@@ -2921,28 +2926,29 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
     patch(it.id, { level: next });
   };
 
-  /* Upload hình ảnh bổ sung cho 1 câu hỏi */
-  const handleUploadQuestionImage = (id, file) => {
+  /* Upload hình ảnh bổ sung cho 1 câu hỏi (tự nén JPEG nhẹ để không vượt giới hạn 1MB Firestore) */
+  const handleUploadQuestionImage = async (id, file) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        patch(id, { image: reader.result });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file, { maxW: 900, quality: 0.75 });
+      if (dataUrl) patch(id, { image: dataUrl });
+    } catch (err) {
+      setMsg(err?.message || 'Không đọc được hình ảnh.');
+    }
   };
 
-  /* Chuẩn hóa danh sách câu hỏi để xuất sang Ngân hàng / Trộn đề / Tạo đề */
-  const buildNormalizedQuestions = (sourceList = valid.length ? valid : items) =>
+  /* Chuẩn hóa danh sách câu hỏi để xuất sang Ngân hàng / Trộn đề / Tạo đề (giữ đủ câu, không tự ý cắt bỏ) */
+  const buildNormalizedQuestions = (sourceList = items) =>
     sourceList.map((it) => {
+      const resolvedSubject = detectedSubject || defaultSubject || classInfo?.subject || 'Hóa học';
+      const resolvedGrade = Number(detectedGrade || defaultGrade || classInfo?.grade || 12) || 12;
       const meta = {
         ...(it.topic ? { topic: it.topic } : {}),
         level: it.level || 'nb',
         ...(it.image ? { image: it.image } : {}),
         ...(it.optionImages ? { optionImages: it.optionImages } : {}),
-        subject: defaultSubject || classInfo?.subject || 'Hóa học',
-        grade: Number(defaultGrade || classInfo?.grade || 12) || 12,
+        subject: resolvedSubject,
+        grade: resolvedGrade,
       };
       if (it.type === 'true_false') {
         return {
@@ -3018,19 +3024,20 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
     setOpenMixerModal(true);
   };
 
-  /* 3. Tạo đề thi cho lớp */
+  /* 3. Tạo đề thi cho lớp (hoặc lưu nháp cá nhân nếu chưa chọn lớp) */
   const handleCreateExamClick = async () => {
-    const listToCreate = buildNormalizedQuestions();
+    const listToCreate = buildNormalizedQuestions(items);
     if (!listToCreate.length) {
-      setMsg('Chưa có câu hỏi hợp lệ nào để tạo đề.');
+      setMsg('Chưa có câu hỏi nào để tạo đề.');
       return;
     }
     if (!onCreateSoftExam) return;
-    const targetClassId = classId || classInfo?.id || classes[0]?.id;
-    if (!targetClassId) {
-      setMsg('Vui lòng chọn hoặc tạo ít nhất một lớp học trước khi tạo đề.');
-      return;
-    }
+    const targetClassId = userPickedClassRef.current
+      ? classId
+      : (classId || classInfo?.id || classes[0]?.id || '');
+    const targetClassObj = (classes || []).find((c) => c.id === targetClassId) || null;
+    const resolvedSubject = detectedSubject || defaultSubject || targetClassObj?.subject || classInfo?.subject || 'Toán học';
+    const resolvedGrade = Number(detectedGrade || defaultGrade || targetClassObj?.grade || classInfo?.grade || 12) || 12;
     setBusy(true);
     setMsg('');
     try {
@@ -3038,12 +3045,17 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
         title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề nhập từ file Word',
         duration: Number(duration) > 0 ? Number(duration) : 45,
         classId: targetClassId,
-        subject: detectedSubject || defaultSubject || classInfo?.subject || 'Toán học',
-        grade: detectedGrade || defaultGrade || classInfo?.grade || 12,
+        isDraft: !targetClassId,
+        subject: resolvedSubject,
+        grade: resolvedGrade,
         questions: listToCreate,
         sourceFile: fileName || null,
       });
-      setMsg(`Đã tạo đề thành công từ ${listToCreate.length} câu hỏi!`);
+      setMsg(
+        targetClassId
+          ? `Đã tạo đề thành công từ ${listToCreate.length} câu hỏi!`
+          : `Đã lưu bản nháp (${listToCreate.length} câu hỏi) vào Kho đề!`
+      );
     } catch (e) {
       setMsg(e.message || 'Lỗi khi tạo đề.');
     } finally {
@@ -3746,15 +3758,19 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
               {classes.length > 0 && (
                 <select
                   className="wimp-input"
-                  style={{ width: 150 }}
+                  style={{ width: 170 }}
                   value={classId}
-                  onChange={(e) => setClassId(e.target.value)}
+                  onChange={(e) => {
+                    userPickedClassRef.current = true;
+                    setClassId(e.target.value);
+                  }}
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
                       Lớp {c.name || c.title}
                     </option>
                   ))}
+                  <option value="">Lưu nháp (chưa gắn lớp)</option>
                 </select>
               )}
             </>
@@ -3784,7 +3800,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
               disabled={!items.length || busy}
               onClick={handleCreateExamClick}
             >
-              <IcoCheck size={14} /> Tạo đề cho lớp ({items.length})
+              <IcoCheck size={14} /> {classId ? 'Tạo đề cho lớp' : 'Lưu nháp vào Kho'} ({items.length})
             </button>
           )}
 
@@ -3807,12 +3823,28 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
             subject: detectedSubject || defaultSubject || classInfo?.subject || 'Hóa học',
             duration: Number(duration) || 45,
             grade: detectedGrade || defaultGrade || classInfo?.grade || '12',
+            classId: classId || classInfo?.id || classes[0]?.id || '',
             questions: buildNormalizedQuestions(items),
           }}
           questions={buildNormalizedQuestions(items)}
           classes={classes}
           defaultTab="config"
           initialWizardStep={2}
+          onAssignShuffled={onCreateSoftExam ? async (assignPayload) => {
+            const targetCid = assignPayload?.classId ?? classId ?? '';
+            await onCreateSoftExam({
+              title: assignPayload?.title || title || fileName.replace(/\.[^.]+$/, '') || 'Đề kiểm tra',
+              duration: Number(assignPayload?.duration) || Number(duration) || 45,
+              classId: targetCid,
+              isDraft: assignPayload?.isDraft ?? !targetCid,
+              subject: assignPayload?.subject || detectedSubject || defaultSubject || classInfo?.subject || 'Hóa học',
+              grade: assignPayload?.grade || detectedGrade || defaultGrade || classInfo?.grade || 12,
+              questions: assignPayload?.questions || buildNormalizedQuestions(items),
+              sourceFile: fileName || null,
+              shuffleVariants: true,
+            });
+            setOpenMixerModal(false);
+          } : undefined}
           onClose={() => setOpenMixerModal(false)}
         />
       )}
@@ -3830,11 +3862,14 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
             questions: buildNormalizedQuestions(items),
           }}
           classes={classes}
+          initialClassId={classId || classInfo?.id || classes[0]?.id || ''}
           onSaveToClass={async (newExam) => {
             if (onCreateSoftExam) {
+              const targetCid = newExam?.classId !== undefined ? newExam.classId : (classId || classInfo?.id || classes[0]?.id || '');
               await onCreateSoftExam({
                 ...newExam,
-                classId: newExam?.classId || classId || classInfo?.id || classes[0]?.id,
+                classId: targetCid,
+                isDraft: newExam?.isDraft ?? !targetCid,
               });
             }
           }}

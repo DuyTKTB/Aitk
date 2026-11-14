@@ -423,11 +423,20 @@ export default function ExamPreviewSimulator({
 
   // Step 4: Assign to Exam Room & Auto-assign codes to students
   const [selectedClassId, setSelectedClassId] = useState(
-    exam.classId || classes[0]?.id || 'default-class'
+    exam.classId || classes[0]?.id || ''
   );
   const [assignStrategy, setAssignStrategy] = useState('alternating'); // 'alternating' | 'random-balanced'
   const [assignSeed, setAssignSeed] = useState(1);
   const [assignedSuccess, setAssignedSuccess] = useState(null);
+
+  useEffect(() => {
+    if (!classes?.length) return;
+    if (selectedClassId && classes.some((c) => c.id === selectedClassId)) return;
+    const preferred = exam.classId && classes.some((c) => c.id === exam.classId)
+      ? exam.classId
+      : classes[0].id;
+    setSelectedClassId(preferred || '');
+  }, [classes, exam.classId, selectedClassId]);
 
   const [exporting, setExporting] = useState(null);
   const paperRef = useRef(null);
@@ -965,18 +974,32 @@ export default function ExamPreviewSimulator({
     }
   };
 
-  const handleAssignToExamRoom = () => {
+  const handleAssignToExamRoom = async () => {
+    const resolvedQuestions = editData.questions?.length ? editData.questions : questions;
+    if (!resolvedQuestions.length) {
+      showToast('Đề chưa có câu hỏi nào để giao vào phòng thi.', 'error');
+      return;
+    }
+    const targetClassObj = selectedClassObj || (classes.length === 1 ? classes[0] : null);
+    const resolvedClassId = targetClassObj?.id || '';
+    const resolvedClassName = targetClassObj?.name || 'Kho đề cá nhân (Nháp)';
     const roomPin = String(Math.floor(100000 + Math.random() * 900000));
+    const resolvedTitle = editData.examTitle || exam.title || 'Đề thi đã trộn mã';
     const payload = {
       id: `assign-${Date.now()}`,
       assignedAt: new Date().toISOString(),
       roomPin,
       examId: exam.id || `exam-${Date.now()}`,
-      examTitle: editData.examTitle,
-      subject: editData.subject,
-      duration: editData.duration,
-      classId: selectedClassId,
-      className: selectedClassObj?.name || 'Lớp 12A1',
+      title: resolvedTitle,
+      examTitle: resolvedTitle,
+      subject: editData.subject || exam.subject || targetClassObj?.subject || 'Hóa học',
+      grade: exam.grade || targetClassObj?.grade || '12',
+      duration: Number(editData.duration) || 45,
+      questions: resolvedQuestions,
+      classId: resolvedClassId,
+      isDraft: !resolvedClassId,
+      className: resolvedClassName,
+      showAnswerAfter: exam.showAnswerAfter ?? true,
       codeCount: shuffledExams.length,
       seedInput: shuffleConfig.seedInput,
       versions: shuffledExams.map((v) => ({
@@ -987,15 +1010,19 @@ export default function ExamPreviewSimulator({
       studentAssignments: studentCodeAssignments,
     };
 
-    const existing = readJsonStorage(ASSIGNED_STORAGE_KEY, []);
-    writeJsonStorage(ASSIGNED_STORAGE_KEY, [payload, ...existing].slice(0, 30));
-    saveToShuffleHistory(`Giao phòng thi ${payload.className} (PIN ${roomPin})`);
-    setAssignedSuccess(payload);
-    if (typeof onAssignShuffled === 'function') {
-      onAssignShuffled(payload);
+    try {
+      if (typeof onAssignShuffled === 'function') {
+        await onAssignShuffled(payload);
+      }
+      const existing = readJsonStorage(ASSIGNED_STORAGE_KEY, []);
+      writeJsonStorage(ASSIGNED_STORAGE_KEY, [payload, ...existing].slice(0, 30));
+      saveToShuffleHistory(`Giao phòng thi ${payload.className} (PIN ${roomPin})`);
+      setAssignedSuccess(payload);
+      sound.cheer();
+      showToast(`Đã giao ${shuffledExams.length} mã đề vào Phòng thi (${payload.className})!`, 'success');
+    } catch (err) {
+      showToast(err?.message || 'Không giao được đề vào phòng thi.', 'error');
     }
-    sound.cheer();
-    showToast(`Đã giao ${shuffledExams.length} mã đề vào Phòng thi (${payload.className})!`, 'success');
   };
 
   /* ---------- EDIT ---------- */
@@ -2674,17 +2701,16 @@ export default function ExamPreviewSimulator({
                       onChange={(e) => setSelectedClassId(e.target.value)}
                     >
                       {classes.length > 0 ? (
-                        classes.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            Lớp {c.name} ({c.members?.length || c.students?.length || 12} học sinh)
-                          </option>
-                        ))
-                      ) : (
                         <>
-                          <option value="default-class">Lớp 12A1 — Chọn lọc (12 học sinh)</option>
-                          <option value="class-12a2">Lớp 12A2 — Thực nghiệm (12 học sinh)</option>
-                          <option value="class-11a1">Lớp 11A1 — Chuyên Hóa (12 học sinh)</option>
+                          {classes.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              Lớp {c.name} ({c.members?.length || c.students?.length || 0} học sinh)
+                            </option>
+                          ))}
+                          <option value="">-- Lưu nháp cá nhân (chưa gắn lớp) --</option>
                         </>
+                      ) : (
+                        <option value="">-- Chưa có lớp nào (sẽ lưu nháp vào Kho đề) --</option>
                       )}
                     </select>
                   </label>

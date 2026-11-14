@@ -1394,6 +1394,37 @@ export default function TeacherDashboard({ onExit } = {}) {
     })();
   }, [selectedClass?.id]);
 
+  /* Helper dùng chung sau khi tạo/nhập/trộn đề thành công: đồng bộ state, mở thư mục lớp và báo GVCN nếu là lớp liên kết */
+  const handleExamPersisted = useCallback((createdExam, { navigateToExams = true } = {}) => {
+    if (!createdExam?.id) return null;
+    subsCacheRef.current = {};
+    setExams((prev) => [createdExam, ...prev.filter((x) => x.id !== createdExam.id)]);
+    const groupKey = createdExam.classId || '__none__';
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      next.add(groupKey);
+      return next;
+    });
+    const targetCls = [...classes, ...linkedClasses].find((c) => c.id === createdExam.classId);
+    if (targetCls?._linked && targetCls?.teacherId && targetCls.teacherId !== user?.uid) {
+      notifyClassOwner({
+        type: 'exam_assigned',
+        toUid: targetCls.teacherId,
+        actorId: user.uid,
+        actorName: user.displayName || user.email || 'Giáo viên',
+        classId: targetCls.id,
+        className: targetCls.name,
+        subject: createdExam.subject || targetCls.subject || '',
+        title: createdExam.title || 'Đề mới',
+        body: `vừa giao đề “${createdExam.title || 'Đề mới'}” cho lớp ${targetCls.name || ''}.`,
+        tab: 'exams',
+      }).catch(() => {});
+    }
+    if (navigateToExams) goSection('exams');
+    refresh().catch(() => {});
+    return targetCls || null;
+  }, [classes, linkedClasses, user, refresh]);
+
   /* FIX #5: Refresh trước khi mở AI Studio + hỗ trợ truyền Preset từ InsightPanel */
   const openNewExam = async (presetOrEvent = null) => {
     const validPreset = (presetOrEvent && typeof presetOrEvent === 'object' && !presetOrEvent.nativeEvent && !presetOrEvent.target)
@@ -1409,21 +1440,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
     try {
       subsCacheRef.current = {};
-      const freshExams = await getExamsByTeacher(user.uid);
-      const freshSubs = {};
-      await Promise.all(
-        freshExams.slice(0, 8).map(async (e) => {
-          try {
-            const subs = await getSubmissionsByExam(e.id);
-            freshSubs[e.id] = subs;
-            subsCacheRef.current[e.id] = subs;
-          } catch {
-            freshSubs[e.id] = [];
-          }
-        })
-      );
-      setExams(freshExams);
-      setSubmissionsMap(freshSubs);
+      await refresh();
     } catch (e) {
       console.warn('[TeacherDashboard] refresh trước AI Studio lỗi:', e);
     }
@@ -4333,11 +4350,15 @@ export default function TeacherDashboard({ onExit } = {}) {
                 initialImportedExam={simulatorInitialExam}
                 onImportPreset={async (presetData) => {
                   try {
-                    const targetClassId = presetData?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+                    const targetClassId = presetData?.classId !== undefined
+                      ? presetData.classId
+                      : (classes[0]?.id || linkedClasses[0]?.id || '');
+                    const isDraft = Boolean(presetData?.isDraft || !targetClassId);
                     const created = await createExam({
                       teacherId: user.uid,
                       teacherName: user.displayName || user.email,
-                      classId: targetClassId,
+                      classId: isDraft ? '' : targetClassId,
+                      isDraft,
                       title: presetData?.title || 'Đề kiểm tra từ Word',
                       description: presetData?.description || 'Nhập từ bộ Trộn Đề Thi',
                       duration: Number(presetData?.duration) || 45,
@@ -4346,24 +4367,33 @@ export default function TeacherDashboard({ onExit } = {}) {
                       grade: presetData?.grade || '12',
                       shuffle: true,
                       showAnswerAfter: true,
-                      source: 'word-mixer',
+                      source: presetData?.sourceFile ? 'word-importer' : 'word-mixer',
                     });
-                    if (created?.id) {
-                      setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
-                    }
-                    say(`Đã lưu đề “${created.title}” vào Kho đề thi!`, 'success');
+                    const targetCls = handleExamPersisted(created, { navigateToExams: false });
+                    say(
+                      targetCls
+                        ? `Đã lưu đề “${created.title}” vào lớp ${targetCls.name}!`
+                        : `Đã lưu bản nháp “${created.title}” vào Kho đề thi!`,
+                      'success'
+                    );
+                    return created;
                   } catch (err) {
                     say('Không lưu được đề: ' + (err?.message || err), 'error');
+                    throw err;
                   }
                 }}
                 onAssignShuffled={async (assignPayload) => {
                   try {
-                    const targetClassId = assignPayload?.classId || classes[0]?.id || linkedClasses[0]?.id || '';
+                    const targetClassId = assignPayload?.classId !== undefined
+                      ? assignPayload.classId
+                      : (classes[0]?.id || linkedClasses[0]?.id || '');
+                    const isDraft = Boolean(assignPayload?.isDraft || !targetClassId);
                     const created = await createExam({
                       teacherId: user.uid,
                       teacherName: user.displayName || user.email,
-                      classId: targetClassId,
-                      title: assignPayload?.title || 'Đề thi đã trộn mã',
+                      classId: isDraft ? '' : targetClassId,
+                      isDraft,
+                      title: assignPayload?.title || assignPayload?.examTitle || 'Đề thi đã trộn mã',
                       description: assignPayload?.description || '',
                       duration: Number(assignPayload?.duration) || 45,
                       questions: assignPayload?.questions || [],
@@ -4373,12 +4403,17 @@ export default function TeacherDashboard({ onExit } = {}) {
                       showAnswerAfter: assignPayload?.showAnswerAfter ?? true,
                       source: 'shuffled-assign',
                     });
-                    if (created?.id) {
-                      setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
-                    }
-                    say(`Đã giao đề “${created.title}” thành công!`, 'success');
+                    const targetCls = handleExamPersisted(created, { navigateToExams: false });
+                    say(
+                      targetCls
+                        ? `Đã giao đề “${created.title}” cho lớp ${targetCls.name}!`
+                        : `Đã lưu bản nháp “${created.title}” vào Kho đề!`,
+                      'success'
+                    );
+                    return created;
                   } catch (err) {
                     say('Không giao được đề: ' + (err?.message || err), 'error');
+                    throw err;
                   }
                 }}
               />
@@ -4801,38 +4836,16 @@ export default function TeacherDashboard({ onExit } = {}) {
                 grades={[]}
                 subjects={[]}
                 onDone={async (createdExam) => {
-                  subsCacheRef.current = {};
-                  if (createdExam?.id) {
-                    setExams((prev) => {
-                      if (prev.some((x) => x.id === createdExam.id)) return prev;
-                      return [createdExam, ...prev];
-                    });
-                  }
-                  // Chuyển ngay lập tức sang Kho Đề thi (Realtime UI phản hồi lập tức)
+                  const wasExt = Boolean(extCreate && extClass);
+                  const prevExtClass = extClass;
                   setSelectedClass(null);
                   setExtClass(null);
                   setExtCreate(false);
                   setAiPreset(null);
-                  goSection('exams');
-
-                  if (extCreate && extClass) {
-                    /* Báo cho chủ nhiệm: có đề mới trong lớp của họ */
-                    notifyClassOwner({
-                      type: 'exam_assigned',
-                      toUid: extClass.teacherId,
-                      actorId: user.uid,
-                      actorName: user.displayName || user.email || 'Giáo viên',
-                      classId: extClass.id,
-                      className: extClass.name,
-                      subject: createdExam?.subject || extClass.subject || '',
-                      title: createdExam?.title || 'Đề mới',
-                      body: `vừa giao đề “${createdExam?.title || 'Đề mới'}” cho lớp ${extClass.name || ''}.`,
-                      tab: 'exams',
-                    }).catch(() => {});
-                    say(`Đã giao đề cho lớp ${extClass.name || ''}`.trim(), 'success');
+                  const targetCls = handleExamPersisted(createdExam, { navigateToExams: true });
+                  if (wasExt && prevExtClass) {
+                    say(`Đã giao đề cho lớp ${targetCls?.name || prevExtClass.name || ''}`.trim(), 'success');
                   }
-                  // Đồng bộ nền, không chặn giao diện và không đè mất đề vừa tạo
-                  refresh().catch(() => {});
                 }}
                 onCancel={() => {
                   setSelectedClass(null);
@@ -5705,6 +5718,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải trình nhập đề...</p></div>}>
           <ExamImporter
             isModal={true}
+            classInfo={selectedClass || classes[0] || linkedClasses[0] || null}
             classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
             defaultSubject={primarySubject || classes[0]?.subject || 'Toán học'}
             defaultGrade={classes[0]?.grade || linkedClasses[0]?.grade || '12'}
@@ -5715,16 +5729,16 @@ export default function TeacherDashboard({ onExit } = {}) {
               goSection('simulator');
             }}
             onCreateSoftExam={async (examData) => {
-              setImporterModalOpen(false);
               try {
                 const targetClassId = examData.classId !== undefined
                   ? examData.classId
                   : (classes[0]?.id || linkedClasses[0]?.id || '');
+                const isDraft = Boolean(examData.isDraft || !targetClassId);
                 const created = await createExam({
                   teacherId: user.uid,
                   teacherName: user.displayName || user.email,
-                  classId: targetClassId,
-                  isDraft: Boolean(examData.isDraft || !targetClassId),
+                  classId: isDraft ? '' : targetClassId,
+                  isDraft,
                   title: examData.title || 'Đề nhập từ file Word',
                   duration: Number(examData.duration) || 45,
                   questions: examData.questions || [],
@@ -5734,12 +5748,17 @@ export default function TeacherDashboard({ onExit } = {}) {
                   showAnswerAfter: examData.showAnswerAfter ?? true,
                   source: 'word-importer',
                 });
-                if (created?.id) {
-                  setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
-                }
-                say('Đã lưu đề vào Kho Đề Lớp thành công!', 'success');
+                const targetCls = handleExamPersisted(created, { navigateToExams: true });
+                setImporterModalOpen(false);
+                say(
+                  targetCls
+                    ? `Đã lưu đề “${created.title}” vào lớp ${targetCls.name} thành công!`
+                    : `Đã lưu bản nháp “${created.title}” vào Kho đề!`,
+                  'success'
+                );
               } catch (e) {
-                say(e.message || 'Lỗi lưu đề', 'err');
+                say(e.message || 'Lỗi lưu đề', 'error');
+                throw e;
               }
             }}
           />
@@ -5754,18 +5773,20 @@ export default function TeacherDashboard({ onExit } = {}) {
           <WordDocxEditor
             open={wordEditorOpen}
             onClose={() => setWordEditorOpen(false)}
-            initialExam={wordEditorExam || (exams && exams[0]) || null}
+            initialExam={wordEditorExam || null}
+            initialClassId={selectedClass?.id || classes[0]?.id || ''}
             classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
             onSaveToClass={async (newExam) => {
               try {
                 const targetClassId = newExam?.classId !== undefined
                   ? newExam.classId
                   : (classes[0]?.id || linkedClasses[0]?.id || '');
+                const isDraft = Boolean(newExam?.isDraft || !targetClassId);
                 const created = await createExam({
                   teacherId: user.uid,
                   teacherName: user.displayName || user.email,
-                  classId: targetClassId,
-                  isDraft: !targetClassId,
+                  classId: isDraft ? '' : targetClassId,
+                  isDraft,
                   title: newExam.title || 'Đề soạn từ Word Office 365',
                   questions: newExam.questions || [],
                   duration: Number(newExam.duration || newExam.timeLimitMinutes) || 45,
@@ -5776,16 +5797,20 @@ export default function TeacherDashboard({ onExit } = {}) {
                   grade: newExam.grade || '12',
                   source: 'word-editor-365',
                 });
-                if (created?.id) {
-                  setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
-                }
-                say(`Đã lưu đề "${newExam.title || 'Mới'}" vào kho thành công!`, 'success');
+                const targetCls = handleExamPersisted(created, { navigateToExams: true });
+                say(
+                  targetCls
+                    ? `Đã lưu đề “${created.title}” vào lớp ${targetCls.name} thành công!`
+                    : `Đã lưu bản nháp “${created.title}” vào Kho đề!`,
+                  'success'
+                );
                 setWordEditorOpen(false);
               } catch (err) {
-                say(err.message || 'Lỗi khi lưu đề thi', 'err');
+                say(err.message || 'Lỗi khi lưu đề thi', 'error');
+                throw err;
               }
             }}
-            onSay={(msg, type) => say(msg, type === 'error' ? 'err' : 'success')}
+            onSay={(msg, type) => say(msg, type === 'error' ? 'error' : 'success')}
           />
         </Suspense>
       )}
@@ -5818,11 +5843,12 @@ export default function TeacherDashboard({ onExit } = {}) {
             const targetClassId = newExam?.classId !== undefined
               ? newExam.classId
               : (classes[0]?.id || linkedClasses[0]?.id || '');
+            const isDraft = Boolean(newExam?.isDraft || !targetClassId);
             const created = await createExam({
               teacherId: user.uid,
               teacherName: user.displayName || user.email,
-              classId: targetClassId,
-              isDraft: !targetClassId,
+              classId: isDraft ? '' : targetClassId,
+              isDraft,
               title: newExam?.title || 'Đề thi từ AI Trợ lý',
               duration: Number(newExam?.duration) || 45,
               questions: newExam?.questions || [],
@@ -5832,13 +5858,16 @@ export default function TeacherDashboard({ onExit } = {}) {
               showAnswerAfter: true,
               source: 'ai-assistant',
             });
-            if (created?.id) {
-              setExams((prev) => [created, ...prev.filter((x) => x.id !== created.id)]);
-            }
-            say(`Đã lưu đề "${newExam.title}" vào Kho Đề Lớp!`, 'success');
-            goSection('exams');
+            const targetCls = handleExamPersisted(created, { navigateToExams: true });
+            say(
+              targetCls
+                ? `Đã lưu đề “${created.title}” vào lớp ${targetCls.name}!`
+                : `Đã lưu bản nháp “${created.title}” vào Kho đề!`,
+              'success'
+            );
           } catch (e) {
-            say(e.message || 'Lỗi khi lưu đề', 'err');
+            say(e.message || 'Lỗi khi lưu đề', 'error');
+            throw e;
           }
         }}
         onOpenImporter={() => setImporterModalOpen(true)}

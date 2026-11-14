@@ -262,6 +262,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   onDirty,
   onSnapshot,
   classInfo,
+  classes = [],
   onSave,
   onCancel,
   saving = false,
@@ -270,6 +271,9 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   const [title, setTitle] = useState(initial?.title || '');
   const [description, setDescription] = useState(initial?.description || '');
   const [duration, setDuration] = useState(initial?.duration || 45);
+  const [classId, setClassId] = useState(() => (
+    initial?.classId !== undefined ? initial.classId : (classInfo?.id || classes[0]?.id || '')
+  ));
   const [questions, setQuestions] = useState(
     initial?.questions?.length
       ? initial.questions.map(toFormQuestion)
@@ -308,6 +312,12 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     retentionDays: 30,
   });
 
+  useEffect(() => {
+    if (!classId && !initial?.classId && (classInfo?.id || classes[0]?.id)) {
+      setClassId(classInfo?.id || classes[0]?.id);
+    }
+  }, [classInfo?.id, classes, classId, initial?.classId]);
+
   /* Expose replaceContent() cho CreateExamPage (khi nhận đề từ AI Studio hoặc khôi phục nháp) */
   useImperativeHandle(ref, () => ({
     replaceContent(data = {}) {
@@ -315,6 +325,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       if (data.description !== undefined) setDescription(data.description);
       if (data.duration !== undefined) setDuration(data.duration);
       if (data.gradeType !== undefined) setGradeType(data.gradeType || '');
+      if (data.classId !== undefined) setClassId(data.classId || '');
       if (Array.isArray(data.questions) && data.questions.length > 0) {
         setQuestions(data.questions.map(toFormQuestion));
       }
@@ -329,6 +340,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     if (initial.description !== undefined) setDescription(initial.description || '');
     if (initial.duration !== undefined) setDuration(initial.duration || 45);
     if (initial.gradeType !== undefined) setGradeType(initial.gradeType || '');
+    if (initial.classId !== undefined) setClassId(initial.classId || '');
     if (Array.isArray(initial.questions) && initial.questions.length > 0) {
       setQuestions(initial.questions.map(toFormQuestion));
     }
@@ -347,7 +359,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     if (!onSnapshot) return undefined;
     const t = setTimeout(() => {
       onSnapshot({
-        title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, gradeType, opensAt, closesAt, proctor,
+        title, description, duration, classId, questions, showAnswerAfter, allowRetry, shuffle, gradeType, opensAt, closesAt, proctor,
       });
     }, 800);
     return () => clearTimeout(t);
@@ -596,6 +608,8 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       title: title.trim(),
       description: description.trim(),
       duration: Number(duration) || 45,
+      classId,
+      isDraft: !classId,
       questions: cleanQuestions(),
       showAnswerAfter,
       allowRetry,
@@ -670,15 +684,28 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
             </label>
           </div>
 
-          <label className="cep-field">
-            <span>Cột điểm vnEdu / SMAS (Thông tư 22)</span>
-            <select value={gradeType} onChange={(e) => setGradeType(e.target.value)}>
-              <option value="">Tự động nhận diện theo tên đề &amp; thời gian</option>
-              <option value="tx">Kiểm tra thường xuyên — TX (Hệ số 1)</option>
-              <option value="dgk">Đánh giá giữa kỳ — ĐGK (Hệ số 2)</option>
-              <option value="ckk">Đánh giá cuối kỳ — CKK (Hệ số 3)</option>
-            </select>
-          </label>
+          <div className="cep-row">
+            <label className="cep-field">
+              <span>Giao cho lớp</span>
+              <select value={classId} onChange={(e) => setClassId(e.target.value)}>
+                {(classes.length ? classes : (classInfo ? [classInfo] : [])).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name || c.title || c.id}{c.grade ? ` (Khối ${c.grade})` : ''}
+                  </option>
+                ))}
+                <option value="">Lưu nháp cá nhân (chưa gắn lớp)</option>
+              </select>
+            </label>
+            <label className="cep-field">
+              <span>Cột điểm vnEdu / SMAS (Thông tư 22)</span>
+              <select value={gradeType} onChange={(e) => setGradeType(e.target.value)}>
+                <option value="">Tự động nhận diện theo tên đề &amp; thời gian</option>
+                <option value="tx">Kiểm tra thường xuyên — TX (Hệ số 1)</option>
+                <option value="dgk">Đánh giá giữa kỳ — ĐGK (Hệ số 2)</option>
+                <option value="ckk">Đánh giá cuối kỳ — CKK (Hệ số 3)</option>
+              </select>
+            </label>
+          </div>
 
           <div className="cep-chips">
             <label className={'cep-check' + (showAnswerAfter ? ' on' : '')}>
