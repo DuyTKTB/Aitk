@@ -1982,13 +1982,17 @@
 /* Khung in PDF ẩn */
 .qb-pdf-print-sheet {
   position: fixed;
-  left: -9999px;
+  left: 0;
   top: 0;
+  z-index: -9999;
+  opacity: 0;
+  pointer-events: none;
   width: 780px;
-  padding: 32px;
+  padding: 20px 24px;
   background: #ffffff;
   color: #111827;
   font-family: 'Be Vietnam Pro', sans-serif;
+  overflow: visible;
 }
 .qb-pdf-q-block {
   margin-bottom: 14px;

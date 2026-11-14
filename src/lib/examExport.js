@@ -614,6 +614,51 @@ export async function exportToWord({
 /* ============================================================
    2. EXPORT PDF (từ DOM element)
    ============================================================ */
+export function findSafeCanvasCutY(ctx, width, idealEndY, minY) {
+  const topY = Math.max(0, Math.floor(minY));
+  const botY = Math.max(topY + 1, Math.floor(idealEndY));
+  if (!ctx || width <= 0 || botY <= topY) return botY;
+
+  const bandH = botY - topY + 1;
+  const imgData = ctx.getImageData(0, topY, width, bandH);
+  const data = imgData?.data;
+  if (!data) return botY;
+
+  const stepX = width > 900 ? 2 : 1;
+  const isRowBlank = (rowIdx) => {
+    const rowOff = rowIdx * width * 4;
+    for (let x = 0; x < width; x += stepX) {
+      const i = rowOff + x * 4;
+      if (data[i + 3] > 20 && (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const gaps = [];
+  let gapStart = -1;
+  for (let r = bandH - 1; r >= 0; r--) {
+    if (isRowBlank(r)) {
+      if (gapStart === -1) gapStart = r;
+    } else if (gapStart !== -1) {
+      const h = gapStart - r;
+      if (h >= 3) gaps.push({ centerY: topY + Math.floor((gapStart + r + 1) / 2), h });
+      gapStart = -1;
+    }
+  }
+  if (gapStart !== -1) {
+    const h = gapStart + 1;
+    if (h >= 3) gaps.push({ centerY: topY + Math.floor(gapStart / 2), h });
+  }
+
+  if (!gaps.length) return botY;
+  const wideGap = gaps.find((g) => g.h >= 10);
+  if (wideGap) return wideGap.centerY;
+  gaps.sort((a, b) => b.h - a.h || b.centerY - a.centerY);
+  return gaps[0].centerY;
+}
+
 export async function exportToPDF({
   element,
   examTitle = 'Đề kiểm tra',
@@ -621,14 +666,51 @@ export async function exportToPDF({
 }) {
   if (!element) throw new Error('Cần truyền element DOM để chụp');
 
+  try {
+    await document.fonts?.ready;
+  } catch { /* ignore */ }
+
+  // Đảm bảo ảnh bên trong DOM tải xong trước khi chụp canvas
+  const imgs = Array.from(element.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+        setTimeout(resolve, 2500);
+      });
+    })
+  );
+
+  const elHeight = Math.max(1, element.scrollHeight || element.offsetHeight || 1000);
+  // Giới hạn chiều cao canvas < 14500px để không bị trắng trang trên đề dài
+  const renderScale = elHeight * 2 > 14000 ? Math.max(1.2, Math.floor((14000 / elHeight) * 100) / 100) : 2;
+
   const canvas = await html2canvas(element, {
-    scale: 2,
+    scale: renderScale,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
+    onclone: (clonedDoc, clonedEl) => {
+      if (clonedDoc?.documentElement) clonedDoc.documentElement.style.colorScheme = 'light';
+      if (clonedEl) {
+        clonedEl.style.position = 'relative';
+        clonedEl.style.left = '0';
+        clonedEl.style.top = '0';
+        clonedEl.style.visibility = 'visible';
+        clonedEl.style.opacity = '1';
+        clonedEl.style.boxShadow = 'none';
+        clonedEl.style.borderRadius = '0';
+        clonedEl.style.background = '#ffffff';
+        clonedEl.style.color = '#0f172a';
+        if (clonedEl.classList?.contains('a4-printable-paper') || clonedEl.classList?.contains('qb-pdf-print-sheet')) {
+          clonedEl.style.padding = '12px 16px';
+        }
+      }
+    },
   });
 
-  const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -637,21 +719,53 @@ export async function exportToPDF({
 
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const imgWidth = pageWidth - 20;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const marginX = 11;
+  const marginTop = 11;
+  const marginBottom = 13;
+  const usableW = pageWidth - marginX * 2;
+  const usableH = pageHeight - marginTop - marginBottom;
 
-  let heightLeft = imgHeight;
-  let position = 10;
+  const pxPerMm = canvas.width / usableW;
+  const maxSlicePx = Math.max(100, Math.floor(usableH * pxPerMm));
+  const fullCtx = canvas.getContext('2d', { willReadFrequently: true });
 
-  pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-  heightLeft -= (pageHeight - 20);
-
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight + 10;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-    heightLeft -= (pageHeight - 20);
+  const slices = [];
+  let startY = 0;
+  while (startY < canvas.height) {
+    const remaining = canvas.height - startY;
+    if (remaining <= maxSlicePx) {
+      slices.push({ startY, heightPx: remaining });
+      break;
+    }
+    const idealEndY = startY + maxSlicePx;
+    const minSearchY = startY + Math.floor(maxSlicePx * 0.72);
+    let cutY = findSafeCanvasCutY(fullCtx, canvas.width, idealEndY, minSearchY);
+    if (cutY <= startY + 40) cutY = idealEndY;
+    slices.push({ startY, heightPx: cutY - startY });
+    startY = cutY;
   }
+
+  const sliceCanvas = document.createElement('canvas');
+  sliceCanvas.width = canvas.width;
+  const sliceCtx = sliceCanvas.getContext('2d');
+
+  slices.forEach((sl, idx) => {
+    if (idx > 0) pdf.addPage();
+    sliceCanvas.height = sl.heightPx;
+    sliceCtx.fillStyle = '#ffffff';
+    sliceCtx.fillRect(0, 0, sliceCanvas.width, sl.heightPx);
+    sliceCtx.drawImage(canvas, 0, sl.startY, canvas.width, sl.heightPx, 0, 0, canvas.width, sl.heightPx);
+
+    const sliceImg = sliceCanvas.toDataURL('image/png');
+    const sliceH = sl.heightPx / pxPerMm;
+    pdf.addImage(sliceImg, 'PNG', marginX, marginTop, usableW, sliceH, undefined, 'FAST');
+
+    if (slices.length > 1) {
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(`Trang ${idx + 1}/${slices.length}`, pageWidth - marginX, pageHeight - 5.5, { align: 'right' });
+    }
+  });
 
   const filename = `${safeFilename(examTitle)}-Ma${code}.pdf`;
   pdf.save(filename);

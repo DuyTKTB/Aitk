@@ -81,19 +81,13 @@ async function extractText(file, onProgress) {
     return { text: (await file.text()).slice(0, MAX_CHARS), pages: 0 };
   }
   if (/\.pdf$/i.test(file.name)) {
-    const pdfjs = await import('pdfjs-dist');
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-    const total = Math.min(MAX_PAGES, pdf.numPages);
-    let text = '';
-    for (let i = 1; i <= total; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map((it) => it.str).join(' ') + '\n';
-      onProgress?.(i, total);
-      if (text.length > MAX_CHARS) break;
-    }
-    return { text: text.slice(0, MAX_CHARS), pages: pdf.numPages };
+    const { readExamPdfFile } = await import('../lib/pdfExamReader.js');
+    const res = await readExamPdfFile(file, {
+      maxPages: MAX_PAGES,
+      ocrFallback: true,
+      onProgress: (p) => onProgress?.(p?.page || 1, p?.total || 1),
+    });
+    return { text: String(res.text || '').slice(0, MAX_CHARS), pages: res.totalPdfPages || res.pages };
   }
   return { text: null, pages: 0 };
 }

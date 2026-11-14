@@ -32,8 +32,23 @@ vi.mock('firebase/firestore', () => ({
 
 import { createExam, estimateFirestoreDocBytes, MAX_FIRESTORE_EXAM_BYTES } from '../src/lib/classroom.js';
 import { compressImageDataUrl, estimateDataUrlBytes, isUnsupportedVectorDataUrl } from '../src/lib/imageUtils.js';
-import { preprocessDocxBuffer, parseLines, extractImgTokens } from '../src/lib/examDocxParser.js';
+import {
+  preprocessDocxBuffer,
+  parseLines,
+  extractImgTokens,
+  textToLines,
+  readTf,
+  htmlToLines,
+  parsePastedAnswerKey,
+} from '../src/lib/examDocxParser.js';
 import { readFile } from '../src/lib/fileReader.js';
+import {
+  reconstructPdfPageLines,
+  stripRepeatedPageHeadersFooters,
+  maybeFixVietnameseEncoding,
+  detectMojibakeOrScanned,
+} from '../src/lib/pdfExamReader.js';
+import { findSafeCanvasCutY } from '../src/lib/examExport.js';
 
 async function buildSampleDocxBuffer({ documentXml, media = {} }) {
   const zip = new JSZip();
@@ -223,5 +238,324 @@ describe('examDocxParser & fileReader — bóc tách Word (.docx) an toàn', () 
     expect(parsed.questions[1].statements.map((s) => s.answer)).toEqual([true, false, true, false]);
     expect(parsed.questions[2].type).toBe('short_answer');
     expect(parsed.questions[2].answer).toBe('0,1');
+  });
+
+  it('nhận diện chính xác Phần II Đúng/Sai và Phần III Trả lời ngắn với nhiều biến thể tiêu đề & không tiêu đề', () => {
+    const rawText = [
+      'A. TRẮC NGHIỆM NHIỀU LỰA CHỌN',
+      'Câu 1. Số oxi hóa của Fe trong Fe2O3 là',
+      'A. +2   B. +3   C. 0   D. +6',
+      'Lời giải: Chọn B vì oxi hóa là đúng quy tắc.',
+      'Ⅱ. PHẦN ĐÚNG SAI',
+      'Câu 1. Xét các nhận định sau về ester:',
+      'a) Phản ứng thủy phân trong kiềm là xà phòng hóa.',
+      'b) Tất cả ester đều làm mất màu brom.',
+      'c) Etyl axetat có công thức CH3COOC2H5.',
+      'd) Ester thường nhẹ hơn nước.',
+      'Lời giải: Ý đúng: a, c, d',
+      'Câu 2. Câu này chỉ gạch chân 1 ý vẫn là Đúng/Sai vì dùng a) b) c) d):',
+      'a) Nhận định 1.',
+      'b) Nhận định 2.',
+      'c) Nhận định 3.',
+      'd) Nhận định 4.',
+      'C. TRẢ LỜI NGẮN',
+      'Câu 1. Tính tổng hệ số cân bằng tối giản của phản ứng Fe + HCl -> FeCl2 + H2.',
+      'Đáp án đúng là 5',
+    ].join('\n');
+
+    const parsed = parseLines(textToLines(rawText), []);
+    expect(parsed.questions).toHaveLength(4);
+    expect(parsed.questions[0].type).toBe('single_choice');
+    expect(parsed.questions[0].correct).toBe(1);
+    expect(parsed.questions[1].type).toBe('true_false');
+    expect(parsed.questions[1].statements.map((s) => s.answer)).toEqual([true, false, true, true]);
+    expect(parsed.questions[2].type).toBe('true_false');
+    expect(parsed.questions[2].statements).toHaveLength(4);
+    expect(parsed.questions[3].type).toBe('short_answer');
+    expect(parsed.questions[3].answer).toBe('5');
+  });
+
+  it('không nhận nhầm "là đúng" trong lời giải trắc nghiệm và không nhầm a) b) c) d) không gạch chân', () => {
+    // Không hề ghi PHẦN II hay PHẦN III
+    const rawLines = textToLines(
+      [
+        'Câu 1. Phương án nào đúng?',
+        'A. 1   B. 2   C. 3   D. 4',
+        'Lời giải: Nhận định A là đúng và B đã sai nên chọn A.',
+        'Câu 2. Đánh giá tính đúng sai của các mệnh đề sau:',
+        'a) Số nguyên tố nhỏ nhất là 2.',
+        'b) Mọi số nguyên tố đều là số lẻ.',
+        'c) Hai đường thẳng song song không có điểm chung.',
+        'd) Căn bậc hai của 9 là 3 và -3.',
+        'Câu 3. Có bao nhiêu số nguyên dương thỏa mãn x < 5?',
+        'Đáp án: 4',
+      ].join('\n')
+    );
+
+    const parsed = parseLines(rawLines, []);
+    expect(parsed.questions).toHaveLength(3);
+    expect(parsed.questions[0].type).toBe('single_choice');
+    expect(parsed.questions[0].correct).toBe(0);
+    expect(parsed.questions[1].type).toBe('true_false');
+    expect(parsed.questions[2].type).toBe('short_answer');
+    expect(parsed.questions[2].answer).toBe('4');
+    expect(readTf('nhan dinh la dung va da sai')).toBeNull();
+  });
+
+  it('khôi phục thứ tự A, B, C, D từ bảng Word 2x2 xếp theo cột (A|C, B|D)', () => {
+    const mk = (t, fromTable = false) => ({
+      t,
+      m: '0'.repeat(t.length),
+      u: '0'.repeat(t.length),
+      b: '0'.repeat(t.length),
+      fromTable,
+    });
+    const parsed = parseLines(
+      [
+        mk('Câu 1. Kim loại nào dẫn điện tốt nhất?'),
+        mk('A. Sắt  C. Bạc', true),
+        mk('B. Nhôm  D. Đồng', true),
+        mk('Đáp án: C'),
+      ],
+      []
+    );
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.questions[0].options).toEqual(['Sắt', 'Nhôm', 'Bạc', 'Đồng']);
+    expect(parsed.questions[0].correct).toBe(2);
+  });
+
+  it('preprocessDocxBuffer giữ gạch chân/shading <w:shd> kể cả khi có <w:u w:val="none"/>', async () => {
+    const shadedDocXml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:body>' +
+      '<w:p><w:r><w:t>Câu 1. Đáp án nào được tô vàng?</w:t></w:r></w:p>' +
+      '<w:p><w:r><w:t>A. Sai</w:t></w:r></w:p>' +
+      '<w:p><w:r><w:rPr><w:u w:val="none"/><w:shd w:val="clear" w:fill="FFFF00"/></w:rPr><w:t>B. Đúng</w:t></w:r></w:p>' +
+      '<w:p><w:r><w:t>C. Sai 2</w:t></w:r></w:p>' +
+      '<w:p><w:r><w:t>D. Sai 3</w:t></w:r></w:p>' +
+      '</w:body></w:document>';
+
+    const buf = await buildSampleDocxBuffer({ documentXml: shadedDocXml });
+    const out = await preprocessDocxBuffer(buf);
+    const zip = await JSZip.loadAsync(out.buffer);
+    const modXml = await zip.file('word/document.xml').async('string');
+    expect(modXml).toContain('<w:u w:val="single"/>');
+  });
+
+  it('htmlToLines giữ danh sách <ol type="a"> và danh sách trong bảng/sau đoạn dẫn có ảnh', () => {
+    if (typeof DOMParser === 'undefined') return;
+    const html = `
+      <p>PHẦN II. Câu trắc nghiệm đúng sai</p>
+      <p>Câu 1. Quan sát hình sau:</p>
+      <p><img src="__DOCX_IMG_0__" /></p>
+      <ol type="a">
+        <li>Ý thứ nhất</li>
+        <li>Ý thứ hai</li>
+        <li>Ý thứ ba</li>
+        <li>Ý thứ tư</li>
+      </ol>
+      <table>
+        <tr><td><p>Câu 2. Bảng chứa list:</p><ol><li>A1</li><li>B1</li><li>C1</li><li>D1</li></ol></td></tr>
+      </table>
+    `;
+    const { lines } = htmlToLines(html);
+    const parsed = parseLines(lines, ['data:image/png;base64,AAA=']);
+    expect(parsed.questions).toHaveLength(2);
+    expect(parsed.questions[0].type).toBe('true_false');
+    expect(parsed.questions[0].statements).toHaveLength(4);
+    expect(parsed.questions[0].image).toBe('data:image/png;base64,AAA=');
+    expect(parsed.questions[1].statements).toHaveLength(4);
+  });
+
+  it('parsePastedAnswerKey gán đáp án nhanh đồng thời cho cả 3 phần GDPT 2025', () => {
+    const qs = [
+      { id: 'q1', num: 1, type: 'single_choice', options: ['1', '2', '3', '4'], correct: -1 },
+      { id: 'q2', num: 2, type: 'single_choice', options: ['1', '2', '3', '4'], correct: -1 },
+      {
+        id: 'q3',
+        num: 1,
+        type: 'true_false',
+        statements: [
+          { text: 'a', answer: null },
+          { text: 'b', answer: null },
+          { text: 'c', answer: null },
+          { text: 'd', answer: null },
+        ],
+      },
+      { id: 'q4', num: 1, type: 'short_answer', answer: '' },
+    ];
+    const keyInput = [
+      'PHẦN I',
+      '1.B  2.D',
+      'PHẦN II',
+      'Câu 1: aĐ bS cĐ dĐ',
+      'PHẦN III',
+      'Câu 1: 12,5',
+    ].join('\n');
+
+    const res = parsePastedAnswerKey(keyInput, qs);
+    expect(res.counts).toEqual({ p1: 2, p2: 1, p3: 1 });
+    expect(res.updates.get(0)).toMatchObject({ type: 'single_choice', correct: 1 });
+    expect(res.updates.get(1)).toMatchObject({ type: 'single_choice', correct: 3 });
+    expect(res.updates.get(2)).toMatchObject({ type: 'true_false', tfAns: [true, false, true, true] });
+    expect(res.updates.get(3)).toMatchObject({ type: 'short_answer', answer: '12,5' });
+  });
+
+  it('reconstructPdfPageLines khôi phục công thức mũ/chỉ số dưới, lọc watermark xoay, giữ đáp án gạch chân/đỏ từ bảng 2x2', () => {
+    const item = (str, x, y, w, h = 11, trOverride = null) => ({
+      str,
+      width: w,
+      height: h,
+      transform: trOverride || [h, 0, 0, h, x, y],
+    });
+    const pdfItems = [
+      // Watermark xoay chéo — phải bị loại
+      item('TAILIEU VIP', 200, 420, 120, 28, [18, 16, -16, 18, 200, 420]),
+      // Câu 1 bị tách vụn + chỉ số dưới H₂O + x² + số thập phân
+      item('C', 50, 740, 8),
+      item('âu', 58, 740, 14),
+      item('1.', 76, 740, 10),
+      item('H', 92, 740, 8),
+      item('2', 100, 737, 5, 7),
+      item('SO', 105, 740, 14),
+      item('4', 119, 737, 5, 7),
+      item('và', 130, 740, 14),
+      item('x', 150, 740, 7),
+      item('2', 157, 745, 5, 7),
+      item('có', 168, 740, 14),
+      item('m =', 188, 740, 18),
+      item('12', 210, 740, 12),
+      item(',5', 222, 740, 10),
+      // Hàng 1 bảng 2x2: A. 10g   C. 30g
+      item('A. 10g', 55, 710, 45),
+      item('C. 30g', 300, 710, 45),
+      // Hàng 2 bảng 2x2: B. 20g (được gạch chân)   D. 40g
+      item('B. 20g', 55, 690, 45),
+      item('D. 40g', 300, 690, 45),
+    ];
+
+    const marks = {
+      underlines: [{ x1: 54, x2: 102, y: 688 }],
+      highlights: [],
+      redTextPoints: [],
+    };
+    const lines = reconstructPdfPageLines(pdfItems, marks, { pageWidth: 595 });
+    expect(lines.some((l) => l.t.includes('TAILIEU VIP'))).toBe(false);
+    expect(lines[0].t).toBe('Câu 1. H₂SO₄ và x² có m = 12,5');
+    expect(lines[1].fromTable).toBe(true);
+    expect(lines[2].fromTable).toBe(true);
+
+    const parsed = parseLines(lines, []);
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.questions[0].type).toBe('single_choice');
+    expect(parsed.questions[0].options).toEqual(['10g', '20g', '30g', '40g']);
+    expect(parsed.questions[0].correct).toBe(1);
+  });
+
+  it('reconstructPdfPageLines tách chuẩn trang đề thi 2 cột báo & stripRepeatedPageHeadersFooters xóa tiêu đề lặp', () => {
+    const it = (str, x, y, w = 85) => ({ str, width: w, height: 11, transform: [11, 0, 0, 11, x, y] });
+    const p1 = reconstructPdfPageLines(
+      [
+        it('Sở GD&ĐT — Đề thi thử', 180, 810, 180),
+        it('Câu 1. Cột trái 1?', 45, 760),
+        it('Câu 2. Cột trái 2?', 45, 680),
+        it('Câu 3. Cột phải 1?', 320, 760),
+        it('Câu 4. Cột phải 2?', 320, 680),
+        it('Trang 1/2', 270, 30, 50),
+      ],
+      {},
+      { pageWidth: 595 }
+    );
+    const p2 = reconstructPdfPageLines(
+      [
+        it('Sở GD&ĐT — Đề thi thử', 180, 810, 180),
+        it('Câu 5. Trang sau', 45, 760),
+        it('Trang 2/2', 270, 30, 50),
+      ],
+      {},
+      { pageWidth: 595 }
+    );
+
+    const merged = stripRepeatedPageHeadersFooters([p1, p2]);
+    expect(merged.map((l) => l.t)).toEqual([
+      'Câu 1. Cột trái 1?',
+      'Câu 2. Cột trái 2?',
+      'Câu 3. Cột phải 1?',
+      'Câu 4. Cột phải 2?',
+      'Câu 5. Trang sau',
+    ]);
+  });
+
+  it('parseLines khôi phục chính xác đề GDPT 2025 xuất PDF gồm Phần I/II/III trùng STT Câu 1, bảng đáp án & hướng dẫn giải', () => {
+    const exportedText = [
+      'PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn',
+      'Câu 1: Kim loại nào dẫn điện tốt nhất?',
+      'A . Ag   B . Cu   C . Al   D . Fe',
+      'PHẦN II. Câu trắc nghiệm đúng sai',
+      'Câu 1: Cho dung dịch NaOH tác dụng HCl:',
+      'a ) Xảy ra phản ứng trung hòa.',
+      'b ) Không tỏa nhiệt.',
+      'c ) Tạo muối NaCl.',
+      'd ) pH sau phản ứng luôn bằng 1.',
+      'PHẦN III. Câu trắc nghiệm trả lời ngắn',
+      'Câu 1: Tính khối lượng NaCl tạo thành (gam)?',
+      'Trả lời: ...........................................',
+      'BẢNG ĐÁP ÁN THAM KHẢO (MÃ ĐỀ 101)',
+      'Phần trắc nghiệm:',
+      '1',
+      'A',
+      '1  A',
+      'Phần đúng/sai:',
+      'Câu a b c d',
+      '1 Đ S Đ S',
+      'Phần trả lời ngắn:',
+      'Câu 1: 11,7 hoặc 11.7',
+      'HƯỚNG DẪN GIẢI VÀ ĐÁP ÁN CHI TIẾT (MÃ ĐỀ 101)',
+      'Câu 1: Bạc (Ag) là kim loại dẫn điện tốt nhất.',
+    ].join('\n');
+
+    const res = parseLines(textToLines(exportedText), []);
+    expect(res.questions).toHaveLength(3);
+    expect(res.questions[0].type).toBe('single_choice');
+    expect(res.questions[0].correct).toBe(0);
+    expect(res.questions[0].explain).toContain('Bạc (Ag)');
+    expect(res.questions[1].type).toBe('true_false');
+    expect(res.questions[1].statements.map((s) => s.answer)).toEqual([true, false, true, false]);
+    expect(res.questions[2].type).toBe('short_answer');
+    expect(res.questions[2].q).not.toContain('....');
+    expect(res.questions[2].answer).toBe('11,7');
+  });
+
+  it('maybeFixVietnameseEncoding & detectMojibakeOrScanned xử lý đúng TCVN3 và phát hiện lỗi font/scan', () => {
+    expect(maybeFixVietnameseEncoding('C©u 1: Hãa häc h÷u c¬')).toBe('Câu 1: Hóa học hữu cơ');
+    expect(detectMojibakeOrScanned('   ', { itemCount: 0 }).isScanned).toBe(true);
+    expect(detectMojibakeOrScanned('\uFFFD\uFFFD\uFFFD\uE001abc\uFFFD\uFFFD\uFFFD\uE002\uFFFD', { itemCount: 10 }).isGarbled).toBe(true);
+  });
+
+  it('findSafeCanvasCutY cắt tại khoảng trắng giữa 2 câu thay vì cắt ngang dòng chữ khi xuất PDF', () => {
+    const w = 20;
+    const h = 150;
+    const buf = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      // Hàng 70..95 và 119..145 có chữ đậm (#111); hàng 96..118 là khoảng trắng nền trắng (#fff)
+      const isDark = (y >= 70 && y <= 95) || (y >= 119 && y <= 145);
+      const val = isDark ? 20 : 255;
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        buf[i] = val;
+        buf[i + 1] = val;
+        buf[i + 2] = val;
+        buf[i + 3] = 255;
+      }
+    }
+    const mockCtx = {
+      getImageData: (_sx, sy, sw, sh) => ({
+        data: buf.slice(sy * w * 4, (sy + sh) * w * 4),
+      }),
+    };
+    const cutY = findSafeCanvasCutY(mockCtx, w, 135, 80);
+    expect(cutY).toBeGreaterThanOrEqual(96);
+    expect(cutY).toBeLessThanOrEqual(118);
   });
 });

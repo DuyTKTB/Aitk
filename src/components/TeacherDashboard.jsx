@@ -5717,7 +5717,9 @@ export default function TeacherDashboard({ onExit } = {}) {
       {importerModalOpen && (
         <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải trình nhập đề...</p></div>}>
           <ExamImporter
+            open={importerModalOpen}
             isModal={true}
+            allowSoftExam={true}
             classInfo={selectedClass || classes[0] || linkedClasses[0] || null}
             classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
             defaultSubject={primarySubject || classes[0]?.subject || 'Toán học'}

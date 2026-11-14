@@ -57,21 +57,13 @@ async function readFile(file) {
 
   if (type === 'application/pdf' || /\.pdf$/i.test(name)) {
     try {
-      const pdfjs = await import('pdfjs-dist/build/pdf.mjs').catch(() => null);
-      if (pdfjs) {
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-        let fullText = '';
-        for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          fullText += content.items.map((it) => it.str).join(' ') + '\n';
-        }
-        return { kind: 'text', text: fullText, fileName: file.name };
+      const { readExamPdfFile } = await import('../lib/pdfExamReader.js');
+      const res = await readExamPdfFile(file, { maxPages: 30, ocrFallback: true });
+      if (res.text && res.text.trim().length > 10) {
+        return { kind: 'text', text: res.text, fileName: file.name };
       }
     } catch (e) {
-      console.warn('[AIQuizGen] PDF.js lỗi:', e);
+      console.warn('[AIQuizGen] PDF reader lỗi:', e);
     }
     throw new Error('Không đọc được PDF. Hãy chụp ảnh trang PDF rồi upload lại.');
   }

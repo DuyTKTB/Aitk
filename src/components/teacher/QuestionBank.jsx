@@ -534,6 +534,7 @@ export default function QuestionBank({
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const searchInputRef = useRef(null);
   const pdfPrintRef = useRef(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const deferredSearch = useDeferredValue(search);
 
@@ -1724,18 +1725,23 @@ Trả về DUY NHẤT JSON:
   };
 
   const handleExportPdf = async () => {
-    if (filtered.length === 0 || !pdfPrintRef.current) return;
+    if (filtered.length === 0) return;
     setShowExportMenu(false);
-    say('Đang kết xuất file PDF...');
+    setPdfExporting(true);
+    say(`Đang kết xuất ${filtered.length} câu ra PDF (giữ công thức & hình ảnh)...`);
     try {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 80))));
+      if (!pdfPrintRef.current) throw new Error('Không khởi tạo được khung kết xuất PDF');
       await exportToPDF({
         element: pdfPrintRef.current,
         examTitle: `Ngan-hang-cau-hoi-${filterSubject || 'Tong-hop'}`,
         code: 'PDF',
       });
-      say('Đã tải xuống file PDF');
+      say(`Đã tải xuống PDF (${filtered.length} câu hỏi)`);
     } catch (e) {
       say(e.message || 'Lỗi xuất PDF');
+    } finally {
+      setPdfExporting(false);
     }
   };
 
@@ -3653,25 +3659,78 @@ Trả về DUY NHẤT JSON:
         />
       )}
 
-      {/* Khung in PDF ẩn dùng cho exportToPDF */}
-      <div className="qb-pdf-print-sheet" ref={pdfPrintRef} aria-hidden="true">
-        <h2>NGÂN HÀNG CÂU HỎI — {filterSubject ? filterSubject.toUpperCase() : 'TỔNG HỢP'}</h2>
-        <p>Tổng số: {filtered.length} câu hỏi · Ngày xuất: {new Date().toLocaleDateString('vi-VN')}</p>
-        <hr />
-        {filtered.slice(0, 60).map((q, idx) => (
-          <div key={q.id} className="qb-pdf-q-block">
-            <p><b>Câu {idx + 1}:</b> {q.q}</p>
-            <div className="qb-pdf-opts">
-              {(q.options || []).map((opt, oIdx) => (
-                <span key={oIdx}>
-                  <b>{String.fromCharCode(65 + oIdx)}.</b> {opt}{'   '}
-                </span>
-              ))}
-            </div>
-            <small>Đáp án đúng: {String.fromCharCode(65 + (q.correct || 0))} {q.explain ? `— Lời giải: ${q.explain}` : ''}</small>
-          </div>
-        ))}
-      </div>
+      {/* Khung in PDF ẩn — mount động khi xuất để kết xuất đầy đủ MathText, 3 loại câu hỏi & hình ảnh */}
+      {pdfExporting && (
+        <div className="qb-pdf-print-sheet" ref={pdfPrintRef} aria-hidden="true">
+          <h2 style={{ margin: '0 0 6px', fontSize: '1.15rem', color: '#0f172a' }}>
+            NGÂN HÀNG CÂU HỎI — {filterSubject ? filterSubject.toUpperCase() : 'TỔNG HỢP'}
+          </h2>
+          <p style={{ margin: '0 0 10px', fontSize: '0.88rem', color: '#475569' }}>
+            Tổng số: {filtered.length} câu hỏi · Ngày xuất: {new Date().toLocaleDateString('vi-VN')}
+          </p>
+          <hr style={{ margin: '0 0 14px', borderColor: '#cbd5e1' }} />
+          {filtered.map((q, idx) => {
+            const qType = q.type === 'tf' || q.type === 'true_false'
+              ? 'true_false'
+              : q.type === 'sa' || q.type === 'short_answer'
+                ? 'short_answer'
+                : 'single_choice';
+            const tfAnsLabel = qType === 'true_false'
+              ? (q.statements || []).slice(0, 4).map((st, sIdx) => `${'abcd'[sIdx]}) ${st?.answer ? 'Đ' : 'S'}`).join(' · ')
+              : '';
+            const saAnsLabel = qType === 'short_answer'
+              ? (Array.isArray(q.accepted) && q.accepted.length > 0 ? q.accepted.join(' | ') : (q.answer ?? ''))
+              : '';
+            const mcAnsLetter = String.fromCharCode(65 + (Number.isInteger(q.correct) ? q.correct : 0));
+
+            return (
+              <div key={q.id || idx} className="qb-pdf-q-block">
+                <p style={{ margin: '0 0 6px', lineHeight: 1.55 }}>
+                  <b>Câu {idx + 1}:</b> <MathText text={q.q || ''} />
+                </p>
+                {q.image && (
+                  <img
+                    src={q.image}
+                    alt={q.imageAlt || `Hình câu ${idx + 1}`}
+                    style={{ display: 'block', maxWidth: '65%', maxHeight: 180, margin: '4px 0 8px', objectFit: 'contain' }}
+                  />
+                )}
+                {qType === 'single_choice' && (
+                  <div className="qb-pdf-opts">
+                    {(q.options || []).map((opt, oIdx) => (
+                      <div key={oIdx} style={{ marginBottom: 3 }}>
+                        <b>{String.fromCharCode(65 + oIdx)}.</b> <MathText text={opt || ''} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {qType === 'true_false' && (
+                  <div className="qb-pdf-opts">
+                    {(q.statements || []).slice(0, 4).map((st, sIdx) => (
+                      <div key={sIdx} style={{ marginBottom: 3 }}>
+                        <b>{'abcd'[sIdx]})</b> <MathText text={st?.text || ''} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <small style={{ display: 'block', marginTop: 4, color: '#1e3a8a', lineHeight: 1.45 }}>
+                  <b>Đáp án đúng:</b>{' '}
+                  {qType === 'true_false'
+                    ? (tfAnsLabel || '(Chưa có)')
+                    : qType === 'short_answer'
+                      ? (saAnsLabel || '(Chưa có)')
+                      : mcAnsLetter}
+                  {q.explain ? (
+                    <>
+                      {' '}— <i>Lời giải:</i> <MathText text={q.explain} />
+                    </>
+                  ) : null}
+                </small>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

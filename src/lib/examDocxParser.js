@@ -35,10 +35,15 @@ export const toUnicodeSub = (str) => {
   return `_${s.length > 1 ? `{${s}}` : s}`;
 };
 
+const ROMAN_FOLD_MAP = {
+  '\u2160': 'I', '\u2161': 'II', '\u2162': 'III', '\u2163': 'IV', '\u2164': 'V',
+  '\u2170': 'i', '\u2171': 'ii', '\u2172': 'iii', '\u2173': 'iv', '\u2174': 'v',
+};
+
 export const fold = (s) =>
   String(s || '')
     .split('')
-    .map((c) => (c === 'đ' || c === 'Đ' ? 'd' : c.normalize('NFD')[0]))
+    .map((c) => (ROMAN_FOLD_MAP[c] ? ROMAN_FOLD_MAP[c] : c === 'đ' || c === 'Đ' ? 'd' : c.normalize('NFD')[0]))
     .join('')
     .toLowerCase();
 
@@ -84,19 +89,33 @@ export const textToLines = (raw) => {
 
 /* ----- Regex nhận diện ----- */
 const Q_RE = /^(?:(?:cau(?:\s*hoi)?|bai|question|q)\s*(\d{1,3})\s*[.:)\-–]?|(\d{1,3})[.)](?!\d)|\[\s*(\d{1,3})\s*\])\s*/;
-const OPT_RE = /^[*✓✔]?\s*\(?([A-Fa-f])[.)]\s*/;
+const OPT_RE = /^[*✓✔]?\s*(?:\(([A-Fa-f])\)|\[([A-Fa-f])\]|([A-F]\s*:|[A-Fa-f]\s*[.)]))\s*/;
 const ANS_LETTER_RES = [
   /^(?:dap\s*an(?:\s*dung)?|answer)\s*(?:la\s*)?[:\-.]?\s*\(?([a-f])\)?(?![a-z0-9])(.*)$/,
   /^(?:da|ans|key)\s*[:\-.]\s*\(?([a-f])\)?(?![a-z0-9])(.*)$/,
 ];
 const ANS_TEXT_RE = /^(?:dap\s*an(?:\s*dung)?|answer)\s*[:\-.]\s*(.+)$/;
 const EXPLAIN_RE = /^(?:giai thich|loi giai(?: chi tiet)?|huong dan(?: giai)?|answer\s*:|explanation|explain)\s*(?:[:\-.]\s*(.*))?$/;
-const KEY_HEAD_RE = /^(?:bang\s*)?dap\s*an(?:\s*(?:chi tiet|tham khao|goi y))?\s*[:\-]?\s*/;
+const KEY_HEAD_RE = /^(?:bang\s*)?dap\s*an(?:\s*(?:va\s*thang\s*diem|chi\s*tiet|tham\s*khao|goi\s*y))?(?:\s*\([^)]*\))?\s*[:\-]?\s*/;
 const KEY_PAIR_RE = /(?:cau\s*)?(\d{1,3})\s*[.:\-–)=]*\s*([a-f])\b/g;
-const SECTION_RE = /^(?:phan|part|section)\s+(?:[ivx]+|\d+)\b/;
+const SECTION_PREFIX_RE = /^(?:phan|part|section|dang)\s+(?:[ivx]+|\d+|trac nghiem|nhieu lua chon|dung\s*[\/\-–]?\s*sai|tra loi ngan)\b/;
+const SECTION_ALT_RE = /^(?!cau\s*\d)(?:(?:i{1,3}|[1-3]|[a-c])\s*[.:)\-–]\s*)?(?:cau\s*(?:hoi\s*)?)?(?:trac nghiem\s*(?:nhieu\s*lua\s*chon|dung\s*[\/\-–]?\s*sai|tra\s*loi\s*ngan)|phan\s*dung\s*[\/\-–]?\s*sai|dung\s*(?:\/|-|–)\s*sai|cau\s*dung\s*sai|tra\s*loi\s*ngan|tu\s*luan\s*ngan|dien\s*ket\s*qua)\b/;
+const SECTION_BANNER_RE = /^thi sinh tra loi tu cau\b.*(?:\btrong moi y\s*a\)?,?\s*b\)?|\bchon\s+(?:mot|1)\s+phuong\s+an|\btra loi ngan|\bdung hoac sai|\bdien ket qua)/;
+const isSectionLine = (f) =>
+  Boolean(f && f.length <= 220 && (SECTION_PREFIX_RE.test(f) || SECTION_ALT_RE.test(f) || SECTION_BANNER_RE.test(f)));
 const LEVEL_TAG_RE = /^\s*(?:[\[(]\s*(nb|th|vd|vdc|nhan\s*biet|thong\s*hieu|van\s*dung\s*cao|van\s*dung)\s*[\])]\s*[:.\-–]?\s*)/i;
 const SA_NUM = '([+-]?\\d[\\d.,]*)(?![\\d])';
-const TF_PAIR_RE = /([a-d])\s*[-:.)=]?\s*(dung|sai|d|s)(?![a-z])/g;
+const TF_PAIR_RE = /(?:^|(?<=[^a-z0-9]))([a-d])\s*[-:.)=]?\s*(dung|sai|d|s)(?![a-z0-9])/g;
+
+const matchOptPrefix = (str) => {
+  const m = String(str || '').match(OPT_RE);
+  if (!m) return null;
+  const raw = m[1] || m[2] || (m[3] ? m[3].trim()[0] : '');
+  if (!raw) return null;
+  const isLowerLetter = raw === raw.toLowerCase() && ['a', 'b', 'c', 'd'].includes(raw);
+  const isLowerParen = Boolean(isLowerLetter && m[3] && m[3].trimEnd().endsWith(')'));
+  return { full: m[0], len: m[0].length, letter: raw, isLowerLetter, isLowerParen };
+};
 
 export const parseAndStripLevelTag = (text) => {
   const s = String(text || '');
@@ -227,18 +246,22 @@ export const preprocessDocxBuffer = async (arrayBuffer) => {
       (_, rId) => `<w:drawing><wp:inline><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="${rId}"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`
     );
 
-    // 3. Đánh dấu gạch chân cho đáp án được tô màu hoặc highlight
+    // 3. Đánh dấu gạch chân cho đáp án được tô màu, highlight hoặc tô nền <w:shd>
     xmlStr = xmlStr.replace(
       /<w:rPr>([\s\S]*?)<\/w:rPr>/g,
       (full, inner) => {
-        if (/<w:u\b/.test(inner)) return full;
+        if (/<w:u\b(?![^>]*w:val="none")/.test(inner)) return full;
         const hasHighlight = /<w:highlight\s+w:val="(?!none")[^"]+"/.test(inner);
+        const shdMatch = inner.match(/<w:shd\b[^>]*w:fill="([^"]+)"/i);
+        const shdVal = shdMatch ? shdMatch[1].toUpperCase() : '';
+        const hasShading =
+          Boolean(shdVal) && !/^(?:AUTO|FFFFFF|F8FAFC|F1F5F9|FAFAFA|000000|CLEAR)$/.test(shdVal);
         const colorMatch = inner.match(/<w:color\s+w:val="([^"]+)"/i);
         const colorVal = colorMatch ? colorMatch[1].toUpperCase() : '';
         const isColoredAnswer =
           colorVal &&
           !/^(?:AUTO|000000|0F172A|1E293B|334155|475569|111827|222222|333333)$/.test(colorVal);
-        if (hasHighlight || isColoredAnswer) {
+        if (hasHighlight || hasShading || isColoredAnswer) {
           return `<w:rPr>${inner}<w:u w:val="single"/></w:rPr>`;
         }
         return full;
@@ -335,14 +358,25 @@ export const htmlToLines = (html) => {
   let imgs = 0;
   let subSupFormulas = 0;
   let qn = 0;
+  let hasOpenQuestion = false;
   const newAcc = () => ({ t: '', m: '', u: '', b: '', imgs: 0, formulas: 0 });
+
+  const isLowerAlphaList = (olEl) => {
+    const tAttr = (olEl.getAttribute('type') || '').trim();
+    const st = (olEl.getAttribute('style') || '').toLowerCase();
+    return tAttr === 'a' || /lower-alpha|lower-latin/.test(st);
+  };
 
   const walk = (parent, depth, listsOnly) => {
     for (const el of parent.children) {
       const tag = el.tagName;
       if (tag === 'OL' || tag === 'UL') {
         const prev = el.previousElementSibling;
-        const asOpts = tag === 'OL' && (depth > 0 || (prev && /^(P|H\d)$/.test(prev.tagName) && isQStart(prev.textContent || '')));
+        const prevIsQ = Boolean(prev && /^(P|H\d)$/.test(prev.tagName) && isQStart(prev.textContent || ''));
+        const asOpts =
+          tag === 'OL' &&
+          (depth > 0 || prevIsQ || (hasOpenQuestion && el.children.length >= 2 && el.children.length <= 6));
+        const lowerAlpha = isLowerAlphaList(el);
         let i = 0;
         for (const li of el.children) {
           i++;
@@ -353,28 +387,58 @@ export const htmlToLines = (html) => {
           let prefix = '';
           const probe = acc.t.trim();
           if (tag === 'OL') {
-            if (asOpts) { if (!isOptStart(probe)) prefix = `${LETTERS[i - 1] || 'F'}. `; }
-            else { qn++; if (!isQStart(probe)) prefix = `Câu ${qn}. `; }
+            if (asOpts) {
+              if (!isOptStart(probe)) {
+                prefix = lowerAlpha
+                  ? `${LETTERS[i - 1]?.toLowerCase() || 'f'}) `
+                  : `${LETTERS[i - 1] || 'F'}. `;
+              }
+            } else {
+              qn++;
+              if (!isQStart(probe)) prefix = `Câu ${qn}. `;
+            }
           }
           flushAcc(lines, acc, prefix);
           walk(li, depth + 1, true);
         }
+        if (asOpts) hasOpenQuestion = false;
       } else if (tag === 'TABLE') {
         el.querySelectorAll('tr').forEach((tr) => {
+          const cells = Array.from(tr.children).filter((c) => c.tagName === 'TH' || c.tagName === 'TD');
+          const hasRichBlocks = cells.some((td) => td.querySelector('ol, ul'));
+          if (hasRichBlocks) {
+            cells.forEach((td) => walk(td, depth + 1, false));
+            return;
+          }
           const acc = newAcc();
-          tr.querySelectorAll('th,td').forEach((td) => {
+          cells.forEach((td, idx) => {
+            if (idx > 0) {
+              acc.t += '  '; acc.m += '00'; acc.u += '00'; acc.b += '00';
+            }
             collect(td, { u: false, b: false }, acc);
-            acc.t += ' '; acc.m += '0'; acc.u += '0'; acc.b += '0';
           });
           imgs += acc.imgs;
           subSupFormulas += acc.formulas;
+          const beforeLen = lines.length;
           flushAcc(lines, acc);
+          if (cells.length > 1) {
+            for (let liIdx = beforeLen; liIdx < lines.length; liIdx++) {
+              lines[liIdx].fromTable = true;
+            }
+          }
         });
       } else if (!listsOnly) {
         const acc = newAcc();
         collect(el, { u: false, b: false }, acc);
         imgs += acc.imgs;
         subSupFormulas += acc.formulas;
+        const txt = acc.t.trim();
+        const txtFold = fold(txt);
+        if (isSectionLine(txtFold) || KEY_HEAD_RE.test(txtFold)) {
+          hasOpenQuestion = false;
+        } else if (isQStart(txt)) {
+          hasOpenQuestion = true;
+        }
         flushAcc(lines, acc);
         walk(el, depth, true);
       }
@@ -481,26 +545,40 @@ export const classifySmartLevel = (qText, type = 'mcq', explain = '') => {
   return 'nb';
 };
 
-const sectType = (f) => {
-  if (/dung\s*(?:\/|-|–|hoac)?\s*sai|true\s*\/?\s*false/.test(f)) return 'tf';
-  if (/tra loi ngan|dien so|dien ket qua|short answer|ket qua bang so/.test(f)) return 'sa';
-  if (/^(?:phan|part|section)\s+(?:ii|2)\b/.test(f)) return 'tf';
-  if (/^(?:phan|part|section)\s+(?:iii|3)\b/.test(f)) return 'sa';
+export const sectType = (f) => {
+  if (/dung\s*(?:\/|-|–|hoac|hay|,)?\s*sai|true\s*(?:\/|-|–|or)?\s*false|moi y\s*a\)?,?\s*b\)?/.test(f)) return 'tf';
+  if (/tra loi ngan|dien\s*(?:so|ket qua|dap an)|short\s*answer|ket qua bang so|tu luan ngan/.test(f)) return 'sa';
+  if (/nhieu lua chon|multiple\s*choice|chon\s*(?:mot|1)\s*phuong an|khach quan/.test(f)) return 'mc';
+  if (/^(?:phan|part|section|dang)\s+(?:ii|2)\b|^ii[.:)\-\s]|^b[.:)\-\s]+(?:cau\s*)?dung/.test(f)) return 'tf';
+  if (/^(?:phan|part|section|dang)\s+(?:iii|3)\b|^iii[.:)\-\s]|^c[.:)\-\s]+(?:cau\s*)?tra loi/.test(f)) return 'sa';
   return 'mc';
 };
 
 const bareSectType = (f) => {
-  const m = f.match(/^(?:phan|part|section)\s+(iii|ii|i|3|2|1)\b[^a-z]*$/);
+  const m = f.match(/^(?:phan|part|section|dang)\s+(iii|ii|i|3|2|1)\b[^a-z]*$/);
   return m ? ({ i: 'mc', 1: 'mc', ii: 'tf', 2: 'tf', iii: 'sa', 3: 'sa' })[m[1]] : null;
 };
 
-const readTf = (txt) => {
+export const readTf = (txt) => {
   const t = String(txt || '').trim();
   const pairs = {};
   let m;
   TF_PAIR_RE.lastIndex = 0;
   while ((m = TF_PAIR_RE.exec(t))) pairs[m[1]] = m[2][0] === 'd';
   if (['a', 'b', 'c', 'd'].every((k) => k in pairs)) return ['a', 'b', 'c', 'd'].map((k) => pairs[k]);
+
+  // Hỗ trợ dạng "Ý đúng: a, c" hoặc "Các mệnh đề sai: b, d"
+  const onlyList = t.match(
+    /^(?:(?:cac\s*)?(?:y|menh de|phat bieu|cau)\s*)?(?:chon\s*)?(dung|sai)(?:\s*la)?\s*[:=\-]\s*([a-d](?:\s*(?:,|;|&|\bva\b|\s)\s*[a-d])*)\s*[.]?$/
+  );
+  if (onlyList) {
+    const isTrueGroup = onlyList[1] === 'dung';
+    const mentioned = new Set((onlyList[2].match(/[a-d]/g) || []));
+    if (mentioned.size >= 1 && mentioned.size <= 4) {
+      return ['a', 'b', 'c', 'd'].map((k) => (mentioned.has(k) ? isTrueGroup : !isTrueGroup));
+    }
+  }
+
   const tok = t.split(/[^a-z]+/).filter(Boolean);
   if (tok.length === 4 && tok.every((x) => /^(?:dung|sai|d|s)$/.test(x))) return tok.map((x) => x[0] === 'd');
   const comp = t.replace(/[^a-z]/g, '');
@@ -525,7 +603,7 @@ const readKey = (f) => {
   return { pairs, clean: pairs.length > 0 && leftover.length <= 6 };
 };
 
-const extractMcqAnswerFromExplain = (explainStr) => {
+export const extractMcqAnswerFromExplain = (explainStr) => {
   const f = fold(explainStr || '');
   if (!f) return -1;
   const patterns = [
@@ -554,7 +632,10 @@ export const parseLines = (lines, extractedImages = []) => {
   let cur = null;
   let lastNum = 0;
   let inKey = false;
+  let inExplainAppendix = false;
+  let explainTarget = null;
   let pendingNums = null;
+  let pendingKeyNum = null;
   let keyFound = false;
   let currentGroupPassage = '';
   let currentGroupInstruction = '';
@@ -568,11 +649,13 @@ export const parseLines = (lines, extractedImages = []) => {
   };
 
   const pushOpt = (seg) => {
-    const m = seg.t.match(OPT_RE);
-    if (!m) return;
-    const rawLetter = m[1];
-    const isLowerLetter = rawLetter === rawLetter.toLowerCase() && ['a', 'b', 'c', 'd'].includes(rawLetter);
-    const body = sliceLine(seg, m[0].length);
+    const om = matchOptPrefix(seg.t);
+    if (!om) return;
+    const rawLetter = om.letter;
+    const isLowerLetter = om.isLowerLetter;
+    const isLowerParen = om.isLowerParen;
+    const declaredIdx = LETTERS.indexOf(rawLetter.toUpperCase());
+    const body = sliceLine(seg, om.len);
     let text = body.t.trim();
     let star = /^[*✓✔]/.test(seg.t);
     if (/\*\s*$/.test(text)) { star = true; text = text.replace(/\s*\*+\s*$/, ''); }
@@ -611,30 +694,57 @@ export const parseLines = (lines, extractedImages = []) => {
       bLetterMarked,
       star,
       isLowerLetter,
+      isLowerParen,
+      declaredIdx,
     });
     cur.mode = 'opts';
   };
 
   const addOptions = (ln, k) => {
-    const first = ln.t.match(OPT_RE)[1];
-    const upper = first === first.toUpperCase();
+    const firstOm = matchOptPrefix(ln.t);
+    if (!firstOm) return;
+    const upper = firstOm.letter === firstOm.letter.toUpperCase();
+    const firstIdx = LETTERS.indexOf(firstOm.letter.toUpperCase());
     const cuts = [0];
-    for (let j = k + 1; j < LETTERS.length; j++) {
-      const L = upper ? LETTERS[j] : LETTERS[j].toLowerCase();
-      const re = new RegExp('\\s[*✓✔]?\\(?' + L + '[.)]\\s*\\S', 'g');
-      re.lastIndex = cuts[cuts.length - 1] + 1;
-      const mm = re.exec(ln.t);
-      if (!mm) break;
-      cuts.push(mm.index + 1);
+
+    if (ln.fromTable) {
+      // Trên cùng 1 hàng của bảng (kể cả bố cục cột A|C, B|D): tách mọi nhãn cùng kiểu chữ tăng dần từ trái sang phải
+      let lastIdx = firstIdx;
+      const casePool = upper ? 'A-F' : 'a-f';
+      const trailPat = upper ? '([A-F]:|[A-F][.)])' : '([a-f][.)])';
+      const re = new RegExp(`\\s[*✓✔]?(?:\\(([${casePool}])\\)|\\[([${casePool}])\\]|${trailPat})\\s*\\S`, 'g');
+      re.lastIndex = firstOm.len;
+      let mm;
+      while ((mm = re.exec(ln.t))) {
+        const ch = (mm[1] || mm[2] || (mm[3] ? mm[3][0] : '')).toUpperCase();
+        const idx = LETTERS.indexOf(ch);
+        if (idx > lastIdx && !cur.opts.some((o) => o.declaredIdx === idx)) {
+          const offset = mm[0].search(/[^\s]/);
+          cuts.push(mm.index + offset);
+          lastIdx = idx;
+        }
+      }
+    } else {
+      for (let j = Math.max(k + 1, firstIdx + 1); j < LETTERS.length; j++) {
+        const L = upper ? LETTERS[j] : LETTERS[j].toLowerCase();
+        const colonAlt = upper ? '|' + L + ':' : '';
+        const re = new RegExp('\\s[*✓✔]?(?:\\(' + L + '\\)|\\[' + L + '\\]|' + L + '[.)]' + colonAlt + ')\\s*\\S', 'g');
+        re.lastIndex = cuts[cuts.length - 1] + 1;
+        const mm = re.exec(ln.t);
+        if (!mm) break;
+        cuts.push(mm.index + 1);
+      }
     }
     cuts.forEach((c, i) => pushOpt(trimLine(sliceLine(ln, c, cuts[i + 1]))));
   };
 
   const findInlineStart = (t) => {
-    const m = /\s[*✓✔]?\(?([Aa])[.)]\s*\S/.exec(t);
+    const m = /\s[*✓✔]?(?:\(([Aa])\)|\[([Aa])\]|([Aa][.)]|A:))\s*\S/.exec(t);
     if (!m) return -1;
-    const L = m[1] === 'A' ? 'B' : 'b';
-    return new RegExp('\\s\\(?' + L + '[.)]\\s*\\S').test(t.slice(m.index + 2)) ? m.index + 1 : -1;
+    const ch = (m[1] || m[2] || (m[3] ? m[3][0] : 'A'));
+    const L = ch === 'A' ? 'B' : 'b';
+    const colonAlt = ch === 'A' ? '|B:' : '';
+    return new RegExp('\\s[*✓✔]?(?:\\(' + L + '\\)|\\[' + L + '\\]|' + L + '[.)]' + colonAlt + ')\\s*\\S').test(t.slice(m.index + 2)) ? m.index + 1 : -1;
   };
 
   const absorb = (raw) => {
@@ -647,17 +757,34 @@ export const parseLines = (lines, extractedImages = []) => {
       return;
     }
 
-    const next = cur.opts.length;
-    const m = ln.t.match(OPT_RE);
-    if (cur.mode !== 'explain' && cur.mode !== 'skip' && m && LETTERS.indexOf(m[1].toUpperCase()) === next) {
-      addOptions(ln, next);
+    // Dòng kẻ chấm trống "Trả lời: ............" trong đề in / PDF trả lời ngắn
+    if (/^tra\s*loi\s*[:.]?\s*(?:[._\-…\s]{3,}|\[\s*\])$/.test(fold(ln.t))) {
+      if (cur.opts.length === 0) cur._sawBlankSaLine = true;
       return;
+    }
+
+    const next = cur.opts.length;
+    const om = matchOptPrefix(ln.t);
+    if (cur.mode !== 'explain' && cur.mode !== 'skip' && om) {
+      const idx = LETTERS.indexOf(om.letter.toUpperCase());
+      const isSequential = idx === next;
+      const isTableOutOfOrder =
+        raw.fromTable &&
+        cur.opts.length > 0 &&
+        cur.opts.length < 6 &&
+        idx >= 0 &&
+        idx <= 3 &&
+        !cur.opts.some((o) => o.declaredIdx === idx);
+      if (isSequential || isTableOutOfOrder) {
+        addOptions({ ...ln, fromTable: Boolean(raw.fromTable) }, next);
+        return;
+      }
     }
     if (next === 0 && cur.mode === 'stem') {
       const mi = findInlineStart(ln.t);
       if (mi > 0) {
         cur.stem += (cur.stem ? ' ' : '') + ln.t.slice(0, mi).trim();
-        addOptions(sliceLine(ln, mi), 0);
+        addOptions({ ...sliceLine(ln, mi), fromTable: Boolean(raw.fromTable) }, 0);
         return;
       }
     }
@@ -688,12 +815,12 @@ export const parseLines = (lines, extractedImages = []) => {
       continue;
     }
 
-    if ((m = f.match(/^(?:(?:cau|stt)\s+)?(\d{1,3}(?:\s+\d{1,3}){2,})$/))) {
-      pendingNums = m[1].trim().split(/\s+/).map(Number);
+    if ((m = f.match(/^(?:(?:cau(?:\s*hoi)?|stt|ma\s*de)\s+)?(\d{1,3}(?:\s*[|\s]\s*\d{1,3}){2,})$/))) {
+      pendingNums = m[1].trim().split(/[\s|]+/).map(Number);
       continue;
     }
-    if (pendingNums && (m = f.match(/^(?:(?:dap\s*an|da)\s+)?((?:[a-f]\s+){2,}[a-f])$/))) {
-      const letters = m[1].trim().split(/\s+/);
+    if (pendingNums && (m = f.match(/^(?:(?:dap\s*an|da)\s+)?((?:[a-f][\s|]+){2,}[a-f])$/))) {
+      const letters = m[1].trim().split(/[\s|]+/);
       if (letters.length === pendingNums.length) {
         pendingNums.forEach((n, j) => addKey(n, letters[j].toUpperCase()));
         pendingNums = null;
@@ -704,16 +831,79 @@ export const parseLines = (lines, extractedImages = []) => {
     }
     pendingNums = null;
 
+    if (
+      qs.length >= 2 &&
+      (inKey || keyQueue.size > 0 || tfKey.size > 0 || saKey.size > 0) &&
+      /^(?:huong\s*dan\s*giai(?:\s*(?:va\s*dap\s*an)?\s*chi\s*tiet)?|loi\s*giai\s*chi\s*tiet|dap\s*an\s*(?:va\s*)?(?:huong\s*dan\s*giai|loi\s*giai)|giai\s*chi\s*tiet)(?:\s*\([^)]*\))?\s*[:\-]?\s*$/.test(f)
+    ) {
+      inExplainAppendix = true;
+      inKey = false;
+      cur = null;
+      explainTarget = null;
+      pendingKeyNum = null;
+      continue;
+    }
+
+    if (inExplainAppendix) {
+      const qmApp = f.match(Q_RE);
+      if (qmApp) {
+        const nApp = Number(qmApp[1] ?? qmApp[2] ?? qmApp[3]);
+        explainTarget = qs.find((qItem) => qItem.num === nApp && !qItem.explain) || qs.find((qItem) => qItem.num === nApp) || null;
+        if (explainTarget) {
+          const bodyApp = ln.t.slice(qmApp[0].length).trim();
+          if (bodyApp) explainTarget.explain += (explainTarget.explain ? '\n' : '') + bodyApp;
+        }
+        continue;
+      }
+      if (!isSectionLine(f) && explainTarget) {
+        explainTarget.explain += (explainTarget.explain ? ' ' : '') + ln.t;
+        continue;
+      }
+    }
+
     if (inKey) {
-      if (SECTION_RE.test(f)) { keySect = sectType(f) !== 'mc' ? sectType(f) : (bareSectType(f) || 'mc'); continue; }
+      if (
+        isSectionLine(f) ||
+        /^(?:(?:cau|stt)\s+[a-d](?:\s+[a-d]){2,3}|ma\s*de\b.*|bang\s*dap\s*an\b.*|dap\s*an\s*\(?ma\s*de\b.*)$/.test(f)
+      ) {
+        pendingKeyNum = null;
+        if (isSectionLine(f)) keySect = sectType(f) !== 'mc' ? sectType(f) : (bareSectType(f) || 'mc');
+        continue;
+      }
+      if (keySect === 'mc') {
+        if (pendingKeyNum !== null && /^[a-f]$/.test(f)) {
+          addKey(pendingKeyNum, f.toUpperCase());
+          pendingKeyNum = null;
+          continue;
+        }
+        if (/^(?:cau\s*)?\d{1,3}$/.test(f)) {
+          pendingKeyNum = Number(f.replace(/\D/g, ''));
+          continue;
+        }
+      }
+      pendingKeyNum = null;
       if (keySect === 'tf' || keySect === 'sa') {
-        const k = f.match(/^(?:cau\s*)?(\d{1,2})\s*[.:)\-]?\s*(.+)$/);
+        const fClean = f.replace(/\s*\|\s*/g, ' ');
+        if (keySect === 'sa') {
+          const saPairs = [];
+          const multiSaRe = /(?:^|\s)(?:cau\s*)?(\d{1,3})\s*[.:)\-=]+\s*([+-]?\d[\d.,]*(?:\/\d+)?)(?=\s|$|;|hoac|or)/g;
+          let msPair;
+          while ((msPair = multiSaRe.exec(fClean))) saPairs.push([Number(msPair[1]), msPair[2].replace(/[.,]+$/, '')]);
+          if (saPairs.length >= 2 || (saPairs.length === 1 && saPairs[0][0] > 0 && saPairs[0][0] <= 100)) {
+            saPairs.forEach(([n, val]) => {
+              if (!saKey.has(n)) saKey.set(n, []);
+              saKey.get(n).push(val);
+            });
+            continue;
+          }
+        }
+        const k = fClean.match(/^(?:cau\s*)?(\d{1,2})\s*[.:)\-]?\s*(.+)$/);
         if (k) {
           if (keySect === 'tf') {
             const arr = readTf(k[2]);
             if (arr) { const n = Number(k[1]); if (!tfKey.has(n)) tfKey.set(n, []); tfKey.get(n).push(arr); continue; }
           } else {
-            const v = k[2].match(new RegExp('^' + SA_NUM + '\\s*$'));
+            const v = k[2].match(/^([+-]?\d[\d.,]*(?:\/\d+)?)(?:\s+(?:hoac|hay|or)\b.*)?$/);
             if (v) { const n = Number(k[1]); if (!saKey.has(n)) saKey.set(n, []); saKey.get(n).push(v[1].replace(/[.,]+$/, '')); continue; }
           }
         }
@@ -725,14 +915,14 @@ export const parseLines = (lines, extractedImages = []) => {
 
     if (cur && cur.mode !== 'explain') {
       const mt = f.match(/^(?:dap an|da|answer|key)\s*(?:dung)?\s*[:\-.=]\s*(.+)$/);
-      if (mt && (cur.type === 'tf' || cur.type === 'mc')) {
+      if (mt && (cur.type === 'tf' || (cur.type === 'mc' && cur.opts.length >= 2 && cur.opts.length <= 4))) {
         const arr = readTf(mt[1]);
-        if (arr && (cur.type === 'tf' || cur.opts.length === 4)) {
+        if (arr) {
           cur.type = 'tf'; cur.tfAns = arr; cur.explicit = -2; cur.mode = 'skip';
           continue;
         }
       }
-      const ms = f.match(new RegExp('^(?:dap an|da|answer|ket qua|kq|dap so)\\s*(?:dung)?\\s*[:\\-.=]\\s*' + SA_NUM));
+      const ms = f.match(/^(?:dap an|da|answer|ket qua|kq|dap so|tra loi)\s*(?:dung)?\s*(?:la\s*)?[:\-.=]?\s*([+-]?\d[\d.,]*(?:\/\d+)?)(?![\d/])/);
       if (ms && (cur.type === 'sa' || (cur.type === 'mc' && cur.opts.length === 0))) {
         cur.type = 'sa'; cur.saAns = ms[1].replace(/[.,]+$/, ''); cur.explicit = -2; cur.mode = 'skip';
         continue;
@@ -765,13 +955,16 @@ export const parseLines = (lines, extractedImages = []) => {
       const rest = f.slice(head[0].length);
       const here = readKey(rest);
       const nextF = lines[i + 1] ? fold(trimLine(lines[i + 1]).t) : '';
-      if (here.pairs.length >= 1 || readKey(nextF).pairs.length >= 2 || /^(?:cau\s+)?\d/.test(nextF) || SECTION_RE.test(nextF)) {
+      if (here.pairs.length >= 1 || readKey(nextF).pairs.length >= 2 || /^(?:cau\s+)?\d/.test(nextF) || isSectionLine(nextF)) {
         inKey = true; cur = null; keySect = 'mc';
         here.pairs.forEach(([n, L]) => addKey(n, L));
         continue;
       }
     } else {
-      const r = readKey(f);
+      const looksLikeOptionRow =
+        Boolean(matchOptPrefix(ln.t)) &&
+        (/\s[*✓✔]?(?:\([Bb]\)|\[[Bb]\]|B:|B[.)]|b[.)])\s*\S/.test(ln.t) || (cur && cur.mode !== 'explain' && cur.opts.length < 6));
+      const r = looksLikeOptionRow ? { clean: false, pairs: [] } : readKey(f);
       if (r.clean && r.pairs.length >= 3) {
         inKey = true; cur = null;
         r.pairs.forEach(([n, L]) => addKey(n, L));
@@ -779,7 +972,7 @@ export const parseLines = (lines, extractedImages = []) => {
       }
     }
 
-    if (SECTION_RE.test(f)) {
+    if (isSectionLine(f)) {
       cur = null;
       lastNum = 0;
       sect = sectType(f) !== 'mc' ? sectType(f) : (bareSectType(f) || 'mc');
@@ -811,7 +1004,7 @@ export const parseLines = (lines, extractedImages = []) => {
         };
         qs.push(cur);
         lastNum = n;
-        absorb(sliceLine(ln, qm[0].length));
+        absorb({ ...sliceLine(ln, qm[0].length), fromTable: Boolean(lines[i].fromTable) });
         continue;
       }
     }
@@ -821,30 +1014,73 @@ export const parseLines = (lines, extractedImages = []) => {
       continue;
     }
 
-    absorb(ln);
+    absorb({ ...ln, fromTable: Boolean(lines[i].fromTable) });
   }
 
   let idSeq = 0;
   let hadAnyLevelTag = false;
+  const hasAnyStructuredOpts = qs.some((qItem) => qItem.opts.length >= 2);
 
-  const questions = qs.map((c) => {
-    if (c.type === 'tf' && !c.tfAns) { const a = tfKey.get(c.num)?.shift(); if (a) c.tfAns = a; }
-    if (c.type === 'sa' && !c.saAns) { const a = saKey.get(c.num)?.shift(); if (a) c.saAns = a; }
-
-    if (c.type === 'mc' && c.opts.length === 4) {
-      const allLowerAbcd = c.opts.every((o) => o.isLowerLetter);
-      const uCount = c.opts.filter((o) => o.uMarked || o.star).length;
-      const hasInlineTf = c.opts.some((o) => /\s*[-–:→(]+\s*(đúng|sai)\s*\)?\s*$/i.test(o.t));
-      if (allLowerAbcd && (uCount > 1 || hasInlineTf || c.tfAns)) {
-        c.type = 'tf';
+  const questions = qs.map((c, cIdx) => {
+    // Khôi phục thứ tự A, B, C, D nếu lấy từ bảng 2 cột xếp theo cột (A C / B D)
+    if (
+      c.opts.length >= 2 &&
+      c.opts.length <= 6 &&
+      c.opts.every((o) => Number.isInteger(o.declaredIdx) && o.declaredIdx >= 0 && o.declaredIdx < c.opts.length)
+    ) {
+      const uniq = new Set(c.opts.map((o) => o.declaredIdx));
+      const alreadySorted = c.opts.every((o, idx) => o.declaredIdx === idx);
+      if (uniq.size === c.opts.length && !alreadySorted) {
+        c.opts.sort((a, b) => a.declaredIdx - b.declaredIdx);
       }
     }
 
-    if (c.type === 'mc' && c.opts.length === 0 && !c.saAns) {
-      const explainNum = c.explain.match(/(?:đáp\s*án|đa|đáp\s*số|kết\s*quả|kq)\s*[:=]\s*([+-]?\d[\d.,]*)/i);
-      if (explainNum) {
+    if (!c.tfAns && tfKey.get(c.num)?.length && c.opts.length >= 2 && c.opts.length <= 4 && (c.type === 'tf' || c.opts.some((o) => o.isLowerLetter))) {
+      c.type = 'tf';
+      c.tfAns = tfKey.get(c.num).shift();
+    }
+    if (!c.saAns && saKey.get(c.num)?.length && c.opts.length === 0) {
+      c.type = 'sa';
+      c.saAns = saKey.get(c.num).shift();
+    }
+
+    const hasInlineTf = c.opts.some((o) => /\s*[-–:→(\[]+\s*(đúng|sai)\s*[)\]]?\s*$/i.test(o.t));
+    const hasExplicitMcqKey = (c.explicit !== null && c.explicit >= 0) || keyQueue.has(c.num);
+    const allLowerAbcd = c.opts.length >= 2 && c.opts.every((o) => o.isLowerLetter);
+    const allLowerParen = c.opts.length >= 2 && c.opts.every((o) => o.isLowerParen);
+
+    if (c.type === 'mc' && (c.opts.length === 4 || (allLowerParen && c.opts.length >= 2))) {
+      const uCount = c.opts.filter((o) => o.uMarked || o.star).length;
+      const explainTf = c.explain ? readTf(fold(c.explain)) : null;
+      const hasTfCue = /dung hay sai|dung hoac sai|trong moi y|moi menh de|chon dung|xet tinh dung sai/.test(fold(c.stem));
+      if (
+        hasInlineTf ||
+        c.tfAns ||
+        explainTf ||
+        (allLowerAbcd && (uCount > 1 || (allLowerParen && !hasExplicitMcqKey) || (hasTfCue && !hasExplicitMcqKey)))
+      ) {
+        c.type = 'tf';
+      }
+    } else if (
+      c.type === 'tf' &&
+      c.opts.length >= 3 &&
+      c.opts.every((o) => !o.isLowerLetter) &&
+      !c.tfAns &&
+      !hasInlineTf &&
+      hasExplicitMcqKey
+    ) {
+      c.type = 'mc';
+    }
+
+    if (c.type === 'mc' && c.opts.length === 0) {
+      const explainNum = c.explain.match(/(?:đáp\s*án|đa|đáp\s*số|kết\s*quả|kq|trả\s*lời)\s*(?:đúng)?\s*(?:là\s*)?[:=]?\s*([+-]?\d[\d.,]*(?:\/\d+)?)/i);
+      const hasSaStemCue = /tra loi ngan|ket qua|dap so|gia tri cua|co bao nhieu|bang bao nhieu|tinh tong|tim so|lam tron|dat gia tri/.test(fold(c.stem));
+      const isTrailingAfterOpts = hasAnyStructuredOpts && qs.slice(cIdx + 1).every((later) => later.opts.length === 0);
+      if (c.saAns || explainNum || c._sawBlankSaLine) {
         c.type = 'sa';
-        c.saAns = explainNum[1].replace(/[.,]+$/, '');
+        if (!c.saAns && explainNum) c.saAns = explainNum[1].replace(/[.,]+$/, '');
+      } else if (!hasExplicitMcqKey && (hasSaStemCue || isTrailingAfterOpts)) {
+        c.type = 'sa';
       }
     }
 
@@ -1095,4 +1331,147 @@ export async function parseExamDocxFile(file) {
       successRate: 100,
     },
   };
+}
+
+/* Chuẩn hóa type câu hỏi giữa parser ('single_choice') và studio UI */
+export const normalizeImporterType = (t) =>
+  t === 'true_false' || t === 'tf'
+    ? 'true_false'
+    : t === 'short_answer' || t === 'sa'
+      ? 'short_answer'
+      : 'single_choice';
+
+/* Phân tích bảng đáp án dán nhanh cho cả Phần I (ABCD), Phần II (Đúng/Sai), Phần III (Trả lời ngắn) */
+export function parsePastedAnswerKey(raw, currentQuestions = []) {
+  const input = String(raw || '').trim();
+  const list = Array.isArray(currentQuestions) ? currentQuestions : [];
+  const p1Indices = [];
+  const p2Indices = [];
+  const p3Indices = [];
+  list.forEach((q, idx) => {
+    const t = normalizeImporterType(q?.type);
+    if (t === 'true_false') p2Indices.push(idx);
+    else if (t === 'short_answer') p3Indices.push(idx);
+    else p1Indices.push(idx);
+  });
+
+  // Nếu người dùng dán chuỗi chữ cái thuần (vd: ABCD ABCD hoặc 1A 2B 3C) và không có marker Phần II/III
+  const fAll = fold(input);
+  const compactLetters = input.toUpperCase().replace(/[^A-F]/g, '');
+  const looksPureMcqLetters =
+    compactLetters.length > 0 &&
+    !/[0-9]/.test(input) &&
+    !/phan\s*(?:ii|iii)|dung\s*sai|tra\s*loi\s*ngan/i.test(fAll) &&
+    input.replace(/[A-Fa-f\s,;.|/\\-]/g, '').length === 0;
+
+  const updates = new Map();
+  let p1Count = 0;
+  let p2Count = 0;
+  let p3Count = 0;
+
+  if (looksPureMcqLetters && p1Indices.length > 0) {
+    const letters = compactLetters.split('');
+    p1Indices.forEach((qIdx, pos) => {
+      if (pos >= letters.length) return;
+      const optIdx = LETTERS.indexOf(letters[pos]);
+      const q = list[qIdx];
+      if (optIdx >= 0 && optIdx < (q?.options?.length || 6)) {
+        updates.set(qIdx, { type: 'single_choice', correct: optIdx, src: 'nhập nhanh' });
+        p1Count++;
+      }
+    });
+    return { updates, counts: { p1: p1Count, p2: p2Count, p3: p3Count } };
+  }
+
+  let sectHint = null; // 'mc' | 'tf' | 'sa' | null
+  let seqP1 = 0;
+  let seqP2 = 0;
+  let seqP3 = 0;
+
+  const findTargetIndex = (part, num) => {
+    const pool = part === 'tf' ? p2Indices : part === 'sa' ? p3Indices : p1Indices;
+    const byNum = pool.find((idx) => Number(list[idx]?.num) === num && !updates.has(idx));
+    if (byNum !== undefined) return byNum;
+    const byNumAny = pool.find((idx) => Number(list[idx]?.num) === num);
+    if (byNumAny !== undefined) return byNumAny;
+    const pos = num - 1;
+    return pos >= 0 && pos < pool.length ? pool[pos] : -1;
+  };
+
+  input.replace(/\r/g, '').split('\n').forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) return;
+    const f = fold(line);
+    if (isSectionLine(f)) {
+      sectHint = sectType(f) !== 'mc' ? sectType(f) : (bareSectType(f) || 'mc');
+      return;
+    }
+
+    // Dòng dạng "Câu 1: aĐ bS cĐ dS" hoặc "1. Đ S Đ S"
+    const numPref = f.match(/^(?:cau\s*)?(\d{1,3})\s*[.:)\-=]+\s*(.+)$/);
+    const tfArr = readTf(numPref ? numPref[2] : f);
+    if (tfArr && (sectHint === 'tf' || (!sectHint && p2Indices.length > 0 && /d|s/.test(numPref ? numPref[2] : f)))) {
+      const targetIdx = numPref
+        ? findTargetIndex('tf', Number(numPref[1]))
+        : (seqP2 < p2Indices.length ? p2Indices[seqP2++] : -1);
+      if (targetIdx >= 0) {
+        updates.set(targetIdx, { type: 'true_false', tfAns: tfArr, src: 'nhập nhanh' });
+        p2Count++;
+        return;
+      }
+    }
+
+    // Dòng trả lời ngắn (Phần III)
+    if (sectHint === 'sa' || (!sectHint && p1Indices.length === 0 && p2Indices.length === 0 && p3Indices.length > 0)) {
+      const multiSa = [];
+      const re = /(?:^|\s)(?:cau\s*)?(\d{1,3})\s*[.:)\-=]+\s*([^\s;|]+)(?=\s|$|;)/g;
+      let mm;
+      while ((mm = re.exec(line))) multiSa.push([Number(mm[1]), mm[2].trim()]);
+      if (multiSa.length >= 1) {
+        multiSa.forEach(([num, ans]) => {
+          const targetIdx = findTargetIndex('sa', num);
+          if (targetIdx >= 0) {
+            updates.set(targetIdx, { type: 'short_answer', answer: ans.replace(/[.,]+$/, ''), src: 'nhập nhanh' });
+            p3Count++;
+          }
+        });
+        return;
+      }
+      if (seqP3 < p3Indices.length) {
+        updates.set(p3Indices[seqP3++], { type: 'short_answer', answer: line, src: 'nhập nhanh' });
+        p3Count++;
+        return;
+      }
+    }
+
+    // Dòng cặp MCQ ("1.A 2.B 3.C" hoặc "Câu 1: B")
+    const r = readKey(f);
+    if (r.pairs.length > 0) {
+      r.pairs.forEach(([num, L]) => {
+        const targetIdx = findTargetIndex('mc', num);
+        const optIdx = LETTERS.indexOf(L);
+        if (targetIdx >= 0 && optIdx >= 0 && optIdx < (list[targetIdx]?.options?.length || 6)) {
+          updates.set(targetIdx, { type: 'single_choice', correct: optIdx, src: 'nhập nhanh' });
+          p1Count++;
+        }
+      });
+      return;
+    }
+
+    // Chuỗi chữ cái MCQ trên 1 dòng
+    const lineLetters = line.toUpperCase().replace(/[^A-F]/g, '');
+    if (lineLetters && line.replace(/[A-Fa-f\s,;.|/\\-]/g, '').length === 0) {
+      lineLetters.split('').forEach((L) => {
+        if (seqP1 >= p1Indices.length) return;
+        const targetIdx = p1Indices[seqP1++];
+        const optIdx = LETTERS.indexOf(L);
+        if (optIdx >= 0 && optIdx < (list[targetIdx]?.options?.length || 6)) {
+          updates.set(targetIdx, { type: 'single_choice', correct: optIdx, src: 'nhập nhanh' });
+          p1Count++;
+        }
+      });
+    }
+  });
+
+  return { updates, counts: { p1: p1Count, p2: p2Count, p3: p3Count } };
 }

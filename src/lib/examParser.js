@@ -13,7 +13,8 @@
    ============================================================ */
 
 import { callModel, parseJsonLoose } from './examAiUtils.js';
-import { parseExamDocxFile } from './examDocxParser.js';
+import { parseExamDocxFile, parseLines, textToLines } from './examDocxParser.js';
+import { readExamPdfFile } from './pdfExamReader.js';
 import { detectExamSubjectAndGrade } from './subjectClassifier.js';
 
 const MAX_PAGES = 500;
@@ -132,120 +133,34 @@ export async function extractTextFromFile(file, onProgress, signal) {
   throw new Error(`Định dạng không hỗ trợ: ${file.name}`);
 }
 
-async function loadPdfJs() {
-  const pdfjs = await import('pdfjs-dist');
-  try {
-    const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-    pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-  } catch {
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-  }
-  return pdfjs;
-}
-
-function itemsToText(items) {
-  if (!items?.length) return '';
-  let lastY = null;
-  const lines = [];
-  let line = '';
-  for (const it of items) {
-    const str = String(it.str || '');
-    if (!str) continue;
-    const y = it.transform ? it.transform[5] : 0;
-    if (lastY != null && Math.abs(y - lastY) > 3.5) {
-      if (line.trim()) lines.push(line.trim());
-      line = str;
-    } else {
-      const needSpace = line && !/\s$/.test(line) && !/^\s/.test(str);
-      line += (needSpace ? ' ' : '') + str;
-    }
-    lastY = y;
-  }
-  if (line.trim()) lines.push(line.trim());
-  return lines.join('\n');
-}
-
-async function pageToCanvas(page, scale = 1.6) {
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.min(viewport.width, 1600);
-  canvas.height = Math.round(viewport.height * (canvas.width / viewport.width));
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const fit = page.getViewport({ scale: canvas.width / viewport.width * scale });
-  canvas.height = Math.round(fit.height);
-  await page.render({ canvasContext: ctx, viewport: fit }).promise;
-  return canvas;
-}
-
 async function extractFromPDF(file, onProgress, signal) {
   onProgress?.({ stage: 'reading', percent: 5 });
-  const pdfjs = await loadPdfJs();
   throwIfAborted(signal);
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-  const totalPages = pdf.numPages;
-  if (totalPages > MAX_PAGES) {
-    throw new Error(`PDF có ${totalPages} trang (tối đa ${MAX_PAGES}). Hãy chia file nhỏ hơn.`);
-  }
-
-  onProgress?.({ stage: 'reading', percent: 8, totalPages });
-
-  let fullText = '';
-  let imagePages = 0;
-  const scanIndexes = [];
-
-  for (let i = 1; i <= totalPages; i++) {
-    throwIfAborted(signal);
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const text = itemsToText(content.items);
-    if (text.replace(/\s/g, '').length < 25) {
-      imagePages++;
-      scanIndexes.push(i);
-    }
-    fullText += (text ? text : '') + '\n\n';
-    if (i % 3 === 0 || i === totalPages) {
+  const res = await readExamPdfFile(file, {
+    maxPages: MAX_PAGES,
+    ocrFallback: true,
+    ocrPageCap: OCR_PAGE_CAP,
+    onProgress: (p) => {
       onProgress?.({
         stage: 'reading',
-        percent: 8 + Math.round((i / totalPages) * 32),
-        current: i,
-        totalPages,
+        percent: Math.min(48, Math.round((p?.percent || 10) * 0.48)),
+        current: p?.page,
+        totalPages: p?.total,
       });
-    }
-  }
+    },
+    signal,
+  });
 
-  const scannedHeavy = imagePages > totalPages * 0.45 || fullText.replace(/\s/g, '').length < 80;
-  if (scannedHeavy && scanIndexes.length) {
-    const toOcr = scanIndexes.slice(0, OCR_PAGE_CAP);
-    let ocrText = '';
-    for (let n = 0; n < toOcr.length; n++) {
-      throwIfAborted(signal);
-      onProgress?.({
-        stage: 'reading',
-        percent: 40 + Math.round((n / toOcr.length) * 15),
-        message: `OCR trang ${toOcr[n]}/${totalPages}...`,
-      });
-      try {
-        const page = await pdf.getPage(toOcr[n]);
-        const canvas = await pageToCanvas(page);
-        ocrText += '\n' + await ocrSource(canvas, null);
-      } catch (e) {
-        console.warn('[examParser] OCR page fail', toOcr[n], e);
-      }
-    }
-    if (ocrText.trim().length > fullText.trim().length) fullText = ocrText;
-    else fullText += '\n' + ocrText;
-    if (scanIndexes.length > OCR_PAGE_CAP) {
-      fullText += `\n\n[Chỉ OCR ${OCR_PAGE_CAP}/${scanIndexes.length} trang scan. Phần còn lại dùng AI nếu cần.]`;
-    }
+  if (res.totalPdfPages > MAX_PAGES) {
+    throw new Error(`PDF có ${res.totalPdfPages} trang (tối đa ${MAX_PAGES}). Hãy chia file nhỏ hơn.`);
   }
 
   return {
-    kind: scannedHeavy ? 'scanned-pdf' : 'text',
-    text: normalizeText(fullText),
-    pages: totalPages,
-    imagePages,
+    kind: res.usedOcr ? 'scanned-pdf' : 'pdf',
+    text: normalizeText(res.text),
+    lines: res.lines || [],
+    pages: res.pages,
+    imagePages: res.scannedPages.length + res.garbledPages.length,
   };
 }
 
@@ -731,29 +646,68 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
   }
 
   onProgress?.({ stage: 'extracting', percent: 4 });
-  const { text, pages, imagePages, kind } = await extractTextFromFile(file, onProgress, signal);
+  const { text, lines: pdfLines, pages, imagePages, kind } = await extractTextFromFile(file, onProgress, signal);
 
   if (!text || text.replace(/\s/g, '').length < 10) {
     throw new Error('Không đọc được nội dung trong file. Thử file khác hoặc ảnh rõ hơn.');
   }
 
   onProgress?.({ stage: 'regex', percent: 52 });
-  const regexQuestions = parseQuestionsFromText(text);
-  const expectedCount = countQuestionMarkers(text);
+  // Ưu tiên bộ parser GDPT 2025 thống nhất (3 phần + gạch chân/màu PDF + bảng 2 cột)
+  let regexQuestions = [];
+  try {
+    const docLines = pdfLines?.length ? pdfLines : textToLines(text);
+    const parsedDoc = parseLines(docLines, []);
+    if (parsedDoc?.questions?.length) {
+      regexQuestions = parsedDoc.questions.map((q, idx) => {
+        const type = q.type === 'true_false' || q.type === 'tf'
+          ? 'true_false'
+          : q.type === 'short_answer' || q.type === 'sa'
+            ? 'short_answer'
+            : 'single_choice';
+        const part = type === 'true_false' ? 2 : type === 'short_answer' ? 3 : 1;
+        const ok =
+          type === 'true_false'
+            ? Boolean(q.q && q.statements?.length >= 2)
+            : type === 'short_answer'
+              ? Boolean(q.q)
+              : Boolean(q.q && (q.options || []).length >= MIN_OPTS);
+        const needsAnswer =
+          type === 'true_false'
+            ? !q.statements?.some((s) => s.answer !== null)
+            : type === 'short_answer'
+              ? !q.answer
+              : q.correct == null || q.correct < 0;
+        return {
+          ...q,
+          num: q.num || idx + 1,
+          part,
+          type,
+          options: q.options || [],
+          correct: typeof q.correct === 'number' ? q.correct : -1,
+          points: q.points || (part === 2 ? 1.0 : 0.25),
+          _ok: ok,
+          _needsAnswer: needsAnswer,
+        };
+      });
+    }
+  } catch { /* fallback bên dưới */ }
+
+  if (!regexQuestions.length) {
+    regexQuestions = parseQuestionsFromText(text);
+  }
+  const expectedCount = Math.max(countQuestionMarkers(text), regexQuestions.length);
   const successRate = qualityRate(regexQuestions, expectedCount);
 
   let finalQuestions = regexQuestions;
   let usedAI = false;
   let warning = '';
 
-  // Điều kiện needAI tối ưu:
-  // - < 50% → cần AI đọc lại toàn bộ
-  // - Có 0 câu OK → cần AI
-  // - Có > 3 câu nghi hỏng (thiếu đáp án hoặc < 4 options) → AI check
-  // - PDF scan + < 90% → AI
-  const lowQuality = regexQuestions.filter(
-    (q) => q._needsAnswer || (q.options || []).length < 4
-  );
+  const lowQuality = regexQuestions.filter((q) => {
+    if (q.type === 'true_false') return !q.statements?.length || q.statements.every((s) => s.answer === null);
+    if (q.type === 'short_answer') return !q.answer;
+    return q._needsAnswer || (q.options || []).length < 4;
+  });
 
   const needAI =
     successRate < REGEX_FALLBACK_RATE ||
