@@ -249,7 +249,9 @@ service cloud.firestore {
     //     Chỉ chủ lớp đọc/ghi; không lộ dữ liệu lớp khác.
     // ===============================================================
     match /class_analytics_reports/{reportId} {
-      allow read: if signedIn() && classOwner(resource.data.classId);
+      // Cho phép get doc chưa tồn tại (resource == null) để getAnalyticsReport không bị permission-denied lần đầu.
+      allow get: if signedIn() && (resource == null || classOwner(resource.data.classId));
+      allow list: if signedIn() && classOwner(resource.data.classId);
 
       allow create, update: if signedIn()
         && classOwner(request.resource.data.classId)

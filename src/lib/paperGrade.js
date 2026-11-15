@@ -147,10 +147,19 @@ export function checkKey(key, counts) {
   return miss;
 }
 
+/** Phân loại 1 câu hỏi vào Phần I (1), Phần II (2) hoặc Phần III (3) theo chuẩn GDPT 2025. */
+export function classifyExamQuestionPart(q) {
+  if (!q || typeof q !== 'object') return 1;
+  if (q.type === 'true_false' || q.part === 2 || (Array.isArray(q.statements) && q.statements.length > 0)) return 2;
+  if (q.type === 'short_answer' || q.part === 3 || (q.answer !== undefined && q.answer !== '' && !(q.options?.length))) return 3;
+  return 1;
+}
+
 /* Đáp án Phần I từ đề online có sẵn */
 export function keyP1FromExam(exam, n = 40) {
   const out = new Array(n).fill('');
-  (exam?.questions || []).slice(0, n).forEach((q, i) => {
+  const p1Questions = (exam?.questions || []).filter((q) => classifyExamQuestionPart(q) === 1);
+  p1Questions.slice(0, n).forEach((q, i) => {
     if (typeof q.correct === 'number' && q.correct >= 0 && q.correct < 4) out[i] = 'ABCD'[q.correct];
   });
   return out;
@@ -312,9 +321,7 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
 
 /* Trích đáp án Phần II (Đúng/Sai) từ đề online đã soạn */
 export function keyP2FromExam(exam, n = MAX_COUNTS.p2) {
-  const qs = (exam?.questions || []).filter(
-    (q) => q?.type === 'true_false' || q?.part === 2 || (Array.isArray(q?.statements) && q.statements.length > 0),
-  );
+  const qs = (exam?.questions || []).filter((q) => classifyExamQuestionPart(q) === 2);
   const out = [];
   for (let i = 0; i < n; i++) {
     const sts = qs[i]?.statements || [];
@@ -329,9 +336,7 @@ export function keyP2FromExam(exam, n = MAX_COUNTS.p2) {
 
 /* Trích đáp án Phần III (Trả lời ngắn) từ đề online đã soạn */
 export function keyP3FromExam(exam, n = MAX_COUNTS.p3) {
-  const qs = (exam?.questions || []).filter(
-    (q) => q?.type === 'short_answer' || q?.part === 3 || (q?.answer !== undefined && !(q?.options?.length)),
-  );
+  const qs = (exam?.questions || []).filter((q) => classifyExamQuestionPart(q) === 3);
   const out = [];
   for (let i = 0; i < n; i++) {
     const q = qs[i];

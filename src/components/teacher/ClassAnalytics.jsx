@@ -528,6 +528,7 @@ export default function ClassAnalytics({
   const [teacherFilter, setTeacherFilter] = useState('all');
   const [feed, setFeed] = useState({ exams: [], submissionsMap: {}, loading: false, error: '' });
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [exportError, setExportError] = useState('');
 
   /* Tính năng nâng cấp D4: Biểu đồ đường/cột + So sánh 2 lớp + Lọc/Sắp xếp/Lưới học sinh + Tab thu gọn */
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'students' | 'heatmap'
@@ -842,6 +843,7 @@ export default function ClassAnalytics({
   /* Xuất Excel (.xlsx) báo cáo chi tiết đa sheet kèm Mascot ELEC & bản quyền */
   const handleExportExcel = async () => {
     if (!data || !cls || exportingExcel) return;
+    setExportError('');
     setExportingExcel(true);
     try {
       const classLabel = cls.name || 'Lớp';
@@ -1005,6 +1007,9 @@ export default function ClassAnalytics({
         mascot: 'cool',
         sheets,
       });
+    } catch (err) {
+      console.error('[ClassAnalytics] handleExportExcel error:', err);
+      setExportError(err?.message || 'Không xuất được file báo cáo Excel. Vui lòng thử lại.');
     } finally {
       setExportingExcel(false);
     }
@@ -1013,6 +1018,7 @@ export default function ClassAnalytics({
   /* Xuất Bảng điểm vnEdu / SMAS (.xlsx) chuẩn Thông tư 22 (tách TX / ĐGK / CKK thật + công thức ĐTB) */
   const handleExportVnEdu = async () => {
     if (!data || !cls || exportingExcel) return;
+    setExportError('');
     setExportingExcel(true);
     try {
       const classLabel = cls.name || 'Lớp';
@@ -1171,6 +1177,9 @@ export default function ClassAnalytics({
           }] : []),
         ],
       });
+    } catch (err) {
+      console.error('[ClassAnalytics] handleExportVnEdu error:', err);
+      setExportError(err?.message || 'Không xuất được bảng điểm vnEdu / SMAS. Vui lòng thử lại.');
     } finally {
       setExportingExcel(false);
     }
@@ -1327,6 +1336,13 @@ export default function ClassAnalytics({
           </button>
         </div>
       </header>
+
+      {exportError && (
+        <div className="ta-state ta-state--error" role="alert" style={{ padding: '0.65rem 0.9rem', marginBottom: '0.75rem' }}>
+          <span>{exportError}</span>
+          <button type="button" className="ta-btn" onClick={() => setExportError('')}>Đóng</button>
+        </div>
+      )}
 
       {/* Bộ lọc khoảng ngày tuỳ chỉnh */}
       {range === 'custom' && (

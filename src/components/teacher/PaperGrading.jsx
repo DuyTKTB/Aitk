@@ -17,7 +17,8 @@ import {
 import {
   DEFAULT_SCORING, DEFAULT_COUNTS, MAX_COUNTS,
   parseKeyP1, parseKeyP2, parseKeyP3, keyToTextP1, keyToTextP2, keyToTextP3,
-  keyToStored, keyFromStored, keyP1FromExam, keyP2FromExam, keyP3FromExam, gradeSheet, maxScore, checkKey,
+  keyToStored, keyFromStored, keyP1FromExam, keyP2FromExam, keyP3FromExam,
+  classifyExamQuestionPart, gradeSheet, maxScore, checkKey,
   parseRoster, answersToRead, resultsToRows, round2,
   computePaperAnalytics,
 } from '../../lib/paperGrade.js';
@@ -470,9 +471,15 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
     const ex = exams.find((e) => e.id === examId);
     if (!ex) return;
     const qs = ex.questions || [];
-    const p1N = qs.filter((q) => !q?.type && q?.part !== 2 && q?.part !== 3 && !q?.statements?.length || q?.type === 'single_choice' || q?.part === 1).length;
-    const p2N = qs.filter((q) => q?.type === 'true_false' || q?.part === 2 || (Array.isArray(q?.statements) && q.statements.length > 0)).length;
-    const p3N = qs.filter((q) => q?.type === 'short_answer' || q?.part === 3 || (q?.answer !== undefined && !(q?.options?.length))).length;
+    let p1N = 0;
+    let p2N = 0;
+    let p3N = 0;
+    qs.forEach((q) => {
+      const part = classifyExamQuestionPart(q);
+      if (part === 2) p2N += 1;
+      else if (part === 3) p3N += 1;
+      else p1N += 1;
+    });
     const k1 = keyP1FromExam(ex, MAX_COUNTS.p1);
     const k2 = keyP2FromExam(ex, MAX_COUNTS.p2);
     const k3 = keyP3FromExam(ex, MAX_COUNTS.p3);

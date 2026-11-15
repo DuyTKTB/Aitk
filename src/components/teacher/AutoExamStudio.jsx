@@ -1568,11 +1568,13 @@ export default function AutoExamStudio({
     }
   };
 
+  const isSupportedBankType = (q) => ['single_choice', 'true_false', 'short_answer'].includes(q?.type || 'single_choice');
+
   const handleSaveQuestionToBank = async (idx) => {
     if (!user?.uid || !questions[idx] || savingBankIdx !== null) return;
     const q = questions[idx];
-    if ((q.type || 'single_choice') !== 'single_choice') {
-      showToast('Ngân hàng hiện chỉ lưu câu trắc nghiệm 4 lựa chọn.', 'info');
+    if (!isSupportedBankType(q)) {
+      showToast('Ngân hàng hiện chỉ lưu câu Trắc nghiệm, Đúng/Sai và Trả lời ngắn.', 'info');
       return;
     }
     setSavingBankIdx(idx);
@@ -1580,6 +1582,7 @@ export default function AutoExamStudio({
       await addQuestion({
         teacherId: user.uid,
         ...q,
+        type: q.type || 'single_choice',
         subject: selectedSubject,
         grade: Number(selectedGrade) || 12,
       });
@@ -1595,23 +1598,24 @@ export default function AutoExamStudio({
 
   const handleSaveAllToBank = async () => {
     if (!user?.uid || !questions.length || isSavingAllToBank) return;
-    const mcq = questions.filter((q) => (q.type || 'single_choice') === 'single_choice');
-    if (!mcq.length) { showToast('Không có câu trắc nghiệm 4 lựa chọn để lưu.', 'info'); return; }
+    const eligible = questions.filter(isSupportedBankType);
+    if (!eligible.length) { showToast('Không có câu hỏi hợp lệ để lưu vào Ngân hàng.', 'info'); return; }
     setIsSavingAllToBank(true);
     try {
       const res = await addQuestionsBatch({
         teacherId: user.uid,
-        questions: mcq.map((q) => ({
+        questions: eligible.map((q) => ({
           ...q,
+          type: q.type || 'single_choice',
           subject: selectedSubject,
           grade: Number(selectedGrade) || 12,
         })),
         skipDuplicates: true,
       });
       sound.cheer();
-      const skippedTypes = questions.length - mcq.length;
-      showToast(`Đã lưu ${res.count} câu vào Ngân hàng (bỏ qua ${res.skipped} câu trùng${skippedTypes ? `, ${skippedTypes} câu Đúng/Sai–Trả lời ngắn chưa hỗ trợ` : ''})`, 'success');
-      setSavedBankKeys(new Set(questions.map((q, i) => ((q.type || 'single_choice') === 'single_choice' ? i : -1)).filter((i) => i >= 0)));
+      const skippedTypes = questions.length - eligible.length;
+      showToast(`Đã lưu ${res.count} câu vào Ngân hàng (bỏ qua ${res.skipped} câu trùng${skippedTypes ? `, ${skippedTypes} câu dạng khác chưa hỗ trợ` : ''})`, 'success');
+      setSavedBankKeys(new Set(questions.map((q, i) => (isSupportedBankType(q) ? i : -1)).filter((i) => i >= 0)));
     } catch (err) {
       showToast(err.message || 'Lỗi lưu ngân hàng', 'error');
     } finally {
@@ -1690,6 +1694,13 @@ export default function AutoExamStudio({
             grade: selectedGrade,
             classId: selectedClassId || '',
             gradeType: publishGradeType,
+            showAnswerAfter: publishShowAnswer,
+            shuffle: publishShuffle,
+            proctor: {
+              ...defaultProctor(),
+              camera: publishCamera,
+              cameraChecks: { ...defaultProctor().cameraChecks, ...cameraChecks },
+            },
           },
           warnings: questions.filter((q) => (q.warns || []).length > 0),
         });

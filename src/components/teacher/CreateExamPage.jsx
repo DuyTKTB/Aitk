@@ -148,6 +148,10 @@ export default function CreateExamPage({
         duration: meta.duration || 45,
         gradeType: meta.gradeType || '',
         classId: meta.classId !== undefined ? meta.classId : (classInfo?.id || ''),
+        showAnswerAfter: meta.showAnswerAfter,
+        shuffle: meta.shuffle,
+        allowRetry: meta.allowRetry,
+        proctor: meta.proctor,
         questions: questions.map((q) => {
           const type = q.type || 'single_choice';
           const base = {

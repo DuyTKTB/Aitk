@@ -13,7 +13,7 @@
      • Tích hợp nút "Lấy câu hỏi từ Ngân hàng" (ExamPickerFromBank).
      • Bộ chia điểm nhanh: Chuẩn THPT 2025 hoặc Chia đều tổng 10 điểm.
    ============================================================ */
-import { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import ExamPickerFromBank from './ExamPickerFromBank.jsx';
 
@@ -332,33 +332,46 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     }
   }, [classInfo?.id, classes, classId, initial?.classId]);
 
+  const applyExternalData = useCallback((data = {}) => {
+    if (!data || typeof data !== 'object') return;
+    if (data.title !== undefined) setTitle(data.title || '');
+    if (data.description !== undefined) setDescription(data.description || '');
+    if (data.duration !== undefined) setDuration(data.duration || 45);
+    if (data.gradeType !== undefined) setGradeType(data.gradeType || '');
+    if (data.classId !== undefined) setClassId(data.classId || '');
+    if (data.showAnswerAfter !== undefined) setShowAnswerAfter(Boolean(data.showAnswerAfter));
+    if (data.allowRetry !== undefined) setAllowRetry(Boolean(data.allowRetry));
+    if (data.shuffle !== undefined) setShuffle(Boolean(data.shuffle));
+    if (data.opensAt !== undefined) setOpensAt(data.opensAt || '');
+    if (data.closesAt !== undefined) setClosesAt(data.closesAt || '');
+    if (data.proctor && typeof data.proctor === 'object') {
+      setProctor((prev) => ({
+        ...prev,
+        ...data.proctor,
+        cameraChecks: {
+          ...(prev.cameraChecks || {}),
+          ...(data.proctor.cameraChecks || {}),
+        },
+      }));
+    }
+    if (Array.isArray(data.questions) && data.questions.length > 0) {
+      setQuestions(data.questions.map(toFormQuestion));
+    }
+  }, []);
+
   /* Expose replaceContent() cho CreateExamPage (khi nhận đề từ AI Studio hoặc khôi phục nháp) */
   useImperativeHandle(ref, () => ({
     replaceContent(data = {}) {
-      if (data.title !== undefined) setTitle(data.title);
-      if (data.description !== undefined) setDescription(data.description);
-      if (data.duration !== undefined) setDuration(data.duration);
-      if (data.gradeType !== undefined) setGradeType(data.gradeType || '');
-      if (data.classId !== undefined) setClassId(data.classId || '');
-      if (Array.isArray(data.questions) && data.questions.length > 0) {
-        setQuestions(data.questions.map(toFormQuestion));
-      }
+      applyExternalData(data);
       setError('');
     },
-  }), []);
+  }), [applyExternalData]);
 
   /* Đồng bộ lại khi initial thay đổi (VD bấm Khôi phục bản nháp) */
   useEffect(() => {
     if (!initial) return;
-    if (initial.title !== undefined) setTitle(initial.title || '');
-    if (initial.description !== undefined) setDescription(initial.description || '');
-    if (initial.duration !== undefined) setDuration(initial.duration || 45);
-    if (initial.gradeType !== undefined) setGradeType(initial.gradeType || '');
-    if (initial.classId !== undefined) setClassId(initial.classId || '');
-    if (Array.isArray(initial.questions) && initial.questions.length > 0) {
-      setQuestions(initial.questions.map(toFormQuestion));
-    }
-  }, [initial]);
+    applyExternalData(initial);
+  }, [initial, applyExternalData]);
 
   /* Báo cho trang cha biết form đang có nội dung */
   useEffect(() => {

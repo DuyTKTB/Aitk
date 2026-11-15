@@ -54,6 +54,7 @@ import {
   keyP1FromExam,
   keyP2FromExam,
   keyP3FromExam,
+  classifyExamQuestionPart,
   gradeSheet,
   computePaperAnalytics,
 } from '../src/lib/paperGrade.js';
@@ -66,7 +67,9 @@ import {
 import {
   updateClass,
   createExam,
+  duplicateExam,
 } from '../src/lib/classroom.js';
+import { getDoc } from 'firebase/firestore';
 
 beforeEach(() => {
   batchSetCalls.length = 0;
@@ -280,5 +283,70 @@ describe('OMR sync, empty Word template & Firestore rules regression checks', ()
     expect(rules).toContain('(classOwner(request.resource.data.classId) || linkedToClass(request.resource.data.classId, request.auth.uid))');
     expect(rules).toMatch(/allow update:[\s\S]*subOmrManager\(\)/);
     expect(rules).toMatch(/allow delete:[\s\S]*subOmrManager\(\)/);
+  });
+
+  it('firestore.rules cho phép get doc class_analytics_reports khi chưa tồn tại (resource == null)', () => {
+    const rules = fs.readFileSync(path.resolve('firestore.rules'), 'utf8');
+    expect(rules).toMatch(/match \/class_analytics_reports\/\{reportId\}[\s\S]*allow get:\s*if signedIn\(\) && \(resource == null \|\| classOwner\(resource\.data\.classId\)\)/);
+    expect(rules).toMatch(/match \/class_analytics_reports\/\{reportId\}[\s\S]*allow list:\s*if signedIn\(\) && classOwner\(resource\.data\.classId\)/);
+  });
+
+  it('classifyExamQuestionPart và keyP1FromExam không đếm trùng hay rò đáp án Phần II/III sang Phần I', () => {
+    const mixedExam = {
+      questions: [
+        { type: 'true_false', statements: [{ text: 'a', answer: true }], correct: 2 },
+        { type: 'short_answer', answer: '7,5', correct: 1 },
+        { q: 'Legacy câu trả lời ngắn không type', answer: '42', correct: 3 },
+        { type: 'single_choice', q: 'MCQ đầu tiên', options: ['A', 'B', 'C', 'D'], correct: 1 },
+        { q: 'MCQ legacy không type', options: ['A', 'B', 'C', 'D'], correct: 3 },
+      ],
+    };
+    const parts = mixedExam.questions.map(classifyExamQuestionPart);
+    expect(parts).toEqual([2, 3, 3, 1, 1]);
+    expect(keyP1FromExam(mixedExam, 4)).toEqual(['B', 'D', '', '']);
+    expect(keyP2FromExam(mixedExam, 1)).toEqual([['D', '', '', '']]);
+    expect(keyP3FromExam(mixedExam, 2)).toEqual([['7,5'], ['42']]);
+  });
+
+  it('duplicateExam giữ nguyên subject, grade, gradeType, allowRetry, shuffle và proctor', async () => {
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      id: 'exam_src',
+      data: () => ({
+        teacherId: 'gv_1',
+        teacherName: 'Thầy Nam',
+        classId: 'cls_12a',
+        title: 'Kiểm tra Giữa kỳ I',
+        description: 'Đề chuẩn 3 phần',
+        duration: 45,
+        questions: [{ type: 'single_choice', q: 'C1', options: ['A', 'B', 'C', 'D'], correct: 0 }],
+        showAnswerAfter: false,
+        allowRetry: true,
+        shuffle: false,
+        proctor: { camera: 'required', strictMode: true },
+        subject: 'Vật lí',
+        grade: 12,
+        gradeType: 'dgk',
+      }),
+    });
+
+    const dup = await duplicateExam('exam_src', { classId: 'cls_12b' });
+    expect(dup).toMatchObject({
+      classId: 'cls_12b',
+      title: 'Kiểm tra Giữa kỳ I (bản sao)',
+      subject: 'Vật lí',
+      grade: 12,
+      gradeType: 'dgk',
+      showAnswerAfter: false,
+      allowRetry: true,
+      shuffle: false,
+      proctor: { camera: 'required', strictMode: true },
+    });
+    expect(setDocCalls).toHaveLength(1);
+    expect(setDocCalls[0].data).toMatchObject({
+      subject: 'Vật lí',
+      grade: 12,
+      gradeType: 'dgk',
+    });
   });
 });

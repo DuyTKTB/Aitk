@@ -23,7 +23,7 @@ const toMs = (v) => {
   return 0;
 };
 
-export default function LinkClassPanel() {
+export default function LinkClassPanel({ onLinked }) {
   const { user } = useAuth();
   const [key, setKey] = useState('');
   const [subject, setSubject] = useState('');
@@ -58,6 +58,7 @@ export default function LinkClassPanel() {
       setMsg({ type: 'ok', text: `Đã liên kết lớp ${res.className || res.classId}. Từ giờ đề bạn giao cho lớp này sẽ được chủ nhiệm theo dõi.` });
       setKey('');
       await load();
+      onLinked?.();
     } catch (e) {
       setMsg({ type: 'err', text: e?.message || 'Liên kết thất bại. Hãy kiểm tra lại mã key hoặc hạn dùng.' });
     } finally {
@@ -77,6 +78,7 @@ export default function LinkClassPanel() {
         subject: row.subject || '',
       });
       await load();
+      onLinked?.();
       setMsg({ type: 'ok', text: `Đã gỡ liên kết lớp ${row.className || row.classId}.` });
     } catch (e) {
       setMsg({ type: 'err', text: e?.message || 'Không gỡ được liên kết.' });

@@ -8,7 +8,7 @@
    Props: exam, submissions (đã tải), onChanged(), toast {success,error}
    Dùng: <ExamManagePanel exam={exam} submissions={subs} onChanged={refresh} toast={toast} />
    ============================================================ */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal } from './DashShell.jsx';
 import MathText, { stripMath } from './MathText.jsx';
 import {
@@ -25,6 +25,12 @@ export default function ExamManagePanel({ exam, submissions = [], onChanged, toa
   const [modal, setModal] = useState(null); // 'edit' | 'regrade' | 'analysis'
   const [edit, setEdit] = useState({ title: exam.title || '', description: exam.description || '', duration: exam.duration || 15 });
   const [changes, setChanges] = useState({});
+
+  useEffect(() => {
+    setEdit({ title: exam.title || '', description: exam.description || '', duration: exam.duration || 15 });
+    setChanges({});
+    setModal(null);
+  }, [exam?.id]);
 
   const stats = useMemo(() => analyzeSubmissions(exam, submissions), [exam, submissions]);
   const closed = exam.active === false;
@@ -64,7 +70,16 @@ export default function ExamManagePanel({ exam, submissions = [], onChanged, toa
         </button>
         <button type="button" className="emp-btn" disabled={!!busy}
           onClick={() => run('dup', () => duplicateExam(exam.id), 'Đã nhân bản đề')}>Nhân bản</button>
-        <button type="button" className="emp-btn" onClick={() => setModal('edit')}>Sửa</button>
+        <button
+          type="button"
+          className="emp-btn"
+          onClick={() => {
+            setEdit({ title: exam.title || '', description: exam.description || '', duration: exam.duration || 15 });
+            setModal('edit');
+          }}
+        >
+          Sửa
+        </button>
         <button type="button" className="emp-btn" onClick={() => setModal('analysis')} disabled={!submissions.length}>Phân tích</button>
         <button type="button" className="emp-btn primary" onClick={() => setModal('regrade')}>
           Chấm lại{suspicious.length ? <i className="emp-dot" title={`${suspicious.length} câu đáng ngờ`} /> : null}

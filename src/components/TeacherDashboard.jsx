@@ -53,6 +53,7 @@ import {
   listenRetryRequestsByTeacher,
   getClassAllowances,
   findClassByKey,
+  defaultProctor,
 } from '../lib/classroom.js';
 import {
   createExamSession,
@@ -1724,6 +1725,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         proctor: exam.proctor,
         subject: exam.subject,
         grade: exam.grade,
+        gradeType: exam.gradeType || '',
         source: exam.source || 'duplicate',
       });
       setExams((prev) => [duplicated, ...prev]);
@@ -4437,8 +4439,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                       questions: assignPayload?.questions || [],
                       subject: assignPayload?.subject || 'Hóa học',
                       grade: assignPayload?.grade || '12',
-                      shuffle: true,
+                      gradeType: assignPayload?.gradeType || '',
+                      shuffle: assignPayload?.shuffle ?? true,
                       showAnswerAfter: assignPayload?.showAnswerAfter ?? true,
+                      allowRetry: assignPayload?.allowRetry ?? false,
+                      proctor: assignPayload?.proctor,
                       source: 'shuffled-assign',
                     });
                     const targetCls = handleExamPersisted(created, { navigateToExams: false });
@@ -5830,11 +5835,15 @@ export default function TeacherDashboard({ onExit } = {}) {
                   title: newExam.title || 'Đề soạn từ Word Office 365',
                   questions: newExam.questions || [],
                   duration: Number(newExam.duration || newExam.timeLimitMinutes) || 45,
-                  allowRetake: Boolean(newExam.allowRetake),
-                  shuffle: Boolean(newExam.shuffleVariants ?? true),
-                  proctor: newExam.antiCheat ? { blockTabSwitch: true } : undefined,
+                  allowRetry: Boolean(newExam.allowRetake ?? newExam.allowRetry),
+                  showAnswerAfter: newExam.showAnswerAfter ?? true,
+                  shuffle: Boolean(newExam.shuffleVariants ?? newExam.shuffle ?? true),
+                  proctor: newExam.antiCheat === false
+                    ? { ...defaultProctor(), fullscreenLock: false, strictMode: false, blockCopyPaste: false, tabSwitchLimit: 0 }
+                    : defaultProctor(),
                   subject: newExam.subject || primarySubject || 'Toán học',
                   grade: newExam.grade || '12',
+                  gradeType: newExam.gradeType || '',
                   source: 'word-editor-365',
                 });
                 const targetCls = handleExamPersisted(created, { navigateToExams: true });
@@ -5890,12 +5899,16 @@ export default function TeacherDashboard({ onExit } = {}) {
               classId: isDraft ? '' : targetClassId,
               isDraft,
               title: newExam?.title || 'Đề thi từ AI Trợ lý',
+              description: newExam?.description || '',
               duration: Number(newExam?.duration) || 45,
               questions: newExam?.questions || [],
               subject: newExam?.subject || primarySubject || 'Toán học',
               grade: newExam?.grade || '12',
-              shuffle: true,
-              showAnswerAfter: true,
+              gradeType: newExam?.gradeType || '',
+              shuffle: newExam?.shuffle ?? true,
+              showAnswerAfter: newExam?.showAnswerAfter ?? true,
+              allowRetry: newExam?.allowRetry ?? false,
+              proctor: newExam?.proctor,
               source: 'ai-assistant',
             });
             const targetCls = handleExamPersisted(created, { navigateToExams: true });

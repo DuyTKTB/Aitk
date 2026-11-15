@@ -1203,16 +1203,20 @@ export default function TeacherFloatingChat({
   // BÁC SĨ SỬA FILE WORD: TỰ ĐỘNG BỔ SUNG ĐỦ 3 PHẦN GDPT 2025 (28 CÂU)
   const handleAiCompleteExam3Parts = async (exam) => {
     if (!exam || !exam.questions?.length) return;
-    setIsTyping(true);
-    const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    onSay?.('AI Bác sĩ đang phân tích chuyên đề và sinh bổ sung Phần II & Phần III...', 'info');
-
     const p1Count = exam.questions.filter((q) => q.part === 1 || q.type === 'single_choice' || (!q.part && !q.type)).length;
     const p2Count = exam.questions.filter((q) => q.part === 2 || q.type === 'true_false').length;
     const p3Count = exam.questions.filter((q) => q.part === 3 || q.type === 'short_answer').length;
 
     const needP2 = Math.max(0, 4 - p2Count);
     const needP3 = Math.max(0, 6 - p3Count);
+    if (needP2 === 0 && needP3 === 0) {
+      onSay?.('Đề đã có đủ số câu Phần II & Phần III chuẩn cấu trúc 3 phần GDPT 2025!', 'success');
+      return;
+    }
+
+    setIsTyping(true);
+    const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    onSay?.('AI Bác sĩ đang phân tích chuyên đề và sinh bổ sung Phần II & Phần III...', 'info');
 
     const sampleStems = exam.questions.slice(0, 5).map((q, i) => `${i + 1}. ${q.q || ''}`).join('\n');
     const subject = exam.subject || inferredSubject;

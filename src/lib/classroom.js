@@ -1473,6 +1473,9 @@ export async function duplicateExam(examId, { classId = null, titleSuffix = ' (b
     opensAt: null,
     closesAt: null,
     proctor: src.proctor,
+    subject: src.subject || '',
+    grade: src.grade || 0,
+    gradeType: src.gradeType || '',
   });
 }
 
