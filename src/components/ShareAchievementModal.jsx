@@ -22,212 +22,123 @@ const SvgClose = ({ size = 18 }) => (
   </svg>
 );
 
-function drawRoundedRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function drawVectorBolt(ctx, cx, cy, scale = 1) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
-  ctx.beginPath();
-  ctx.moveTo(2, -10);
-  ctx.lineTo(-8, 2);
-  ctx.lineTo(-1, 2);
-  ctx.lineTo(-3, 10);
-  ctx.lineTo(8, -2);
-  ctx.lineTo(1, -2);
-  ctx.closePath();
-  ctx.fillStyle = '#38bdf8';
-  ctx.fill();
-  ctx.restore();
+function parsePercentileParts(text = 'Top 20% Thí Sinh Toàn Quốc') {
+  const raw = String(text || 'Top 20% Thí Sinh Toàn Quốc').trim();
+  const match = raw.match(/^(Top\s*)(\d+%?)\s*(.*)$/i);
+  if (match) {
+    return {
+      prefix: 'Top ',
+      percent: match[2].includes('%') ? match[2] : `${match[2]}%`,
+      sub: match[3]?.trim() || 'Thí Sinh Toàn Quốc',
+    };
+  }
+  return {
+    prefix: 'Top ',
+    percent: '20%',
+    sub: raw || 'Thí Sinh Toàn Quốc',
+  };
 }
 
 /**
- * ShareAchievementModal.jsx — Tạo & Tải Thẻ Thành Tích (Shareable Achievement Card PNG)
- * Thiết kế chuẩn ELEC Science AI: 100% Vector SVG + Linh vật Bé Elec trên thẻ PNG xuất ra.
+ * ShareAchievementModal.jsx — Thẻ Thành Tích ACHIEVEMENT COUPON chuẩn mẫu ELEC Science AI
+ * Sử dụng trực tiếp phôi vé /img/elec/achievement-coupon-template.png (1024x682) với linh vật Bé Elec.
  */
 export default function ShareAchievementModal({
   open,
   onClose,
-  studentName = 'Học sinh ELEC AI',
-  examTitle = 'Ca Thi Thử Thực Chiến THPT Quốc Gia 2026',
-  score = 9.0,
-  totalQuestions = 28,
-  correctCount = 25,
-  percentileText = 'Top 5% Thí Sinh Toàn Quốc',
-  subjectLabel = 'Khoa học Tự nhiên (Lý · Hóa · Sinh)',
+  score = 9.25,
+  percentileText = 'Top 20% Thí Sinh Toàn Quốc',
+  validUntil = '20 JUNE, 2026',
 }) {
   const canvasRef = useRef(null);
   const [dataUrl, setDataUrl] = useState('');
 
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const W = 1080;
-    const H = 680;
+    const W = 1024;
+    const H = 682;
     canvas.width = W;
     canvas.height = H;
 
-    const renderCard = (mascotImg = null) => {
-      // Background Gradient
-      const grad = ctx.createLinearGradient(0, 0, W, H);
-      grad.addColorStop(0, '#070d1e');
-      grad.addColorStop(0.55, '#0f2350');
-      grad.addColorStop(1, '#1e1b4b');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
+    const drawDynamicOverlay = (templateImg) => {
+      if (cancelled) return;
+      ctx.clearRect(0, 0, W, H);
 
-      // Decorative Glow Circles
-      const glow1 = ctx.createRadialGradient(880, 140, 20, 880, 140, 340);
-      glow1.addColorStop(0, 'rgba(59, 130, 246, 0.35)');
-      glow1.addColorStop(1, 'rgba(59, 130, 246, 0)');
-      ctx.fillStyle = glow1;
-      ctx.fillRect(0, 0, W, H);
-
-      const glow2 = ctx.createRadialGradient(200, 560, 20, 200, 560, 280);
-      glow2.addColorStop(0, 'rgba(139, 92, 246, 0.25)');
-      glow2.addColorStop(1, 'rgba(139, 92, 246, 0)');
-      ctx.fillStyle = glow2;
-      ctx.fillRect(0, 0, W, H);
-
-      // Card Frame
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
-      ctx.lineWidth = 2;
-      drawRoundedRect(ctx, 36, 36, W - 72, H - 72, 24);
-      ctx.stroke();
-
-      // Header Badge (Vector Bolt + Text)
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.22)';
-      drawRoundedRect(ctx, 68, 68, 415, 44, 22);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      drawVectorBolt(ctx, 94, 90, 1.05);
-
-      ctx.fillStyle = '#bae6fd';
-      ctx.font = '800 17px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('ELEC SCIENCE AI · CHỨNG NHẬN THÀNH TÍCH', 114, 96);
-
-      // Student Name
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '800 44px system-ui, -apple-system, sans-serif';
-      ctx.fillText(String(studentName || 'Học sinh ELEC AI').slice(0, 30), 68, 174);
-
-      // Exam Title & Subject
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = '600 23px system-ui, -apple-system, sans-serif';
-      ctx.fillText(String(examTitle || 'Đề Thi Thử Chuẩn Bộ GD&ĐT 2026').slice(0, 48), 68, 220);
-
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '700 19px system-ui, -apple-system, sans-serif';
-      ctx.fillText(`Phân môn: ${subjectLabel}`, 68, 258);
-
-      // Score Box on Right
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.75)';
-      ctx.lineWidth = 3;
-      drawRoundedRect(ctx, 710, 96, 300, 270, 22);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#93c5fd';
-      ctx.font = '800 18px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('ĐIỂM SỐ ĐẠT ĐƯỢC', 860, 142);
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = '800 78px system-ui, -apple-system, sans-serif';
-      ctx.fillText(Number(score || 0).toFixed(2), 860, 236);
-
-      ctx.fillStyle = '#34d399';
-      ctx.font = '700 20px system-ui, -apple-system, sans-serif';
-      ctx.fillText(percentileText, 860, 294);
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '600 15px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Thang điểm 10 chuẩn Bộ GD&ĐT', 860, 334);
-
-      ctx.textAlign = 'left';
-
-      // Metrics Row
-      const metrics = [
-        ['Độ chính xác', `${correctCount}/${totalQuestions} câu`],
-        ['Xếp hạng toàn quốc', percentileText],
-        ['Chuẩn cấu trúc', 'THPT 2026 (3 Phần)'],
-      ];
-
-      metrics.forEach(([label, val], idx) => {
-        const x = 68 + idx * 208;
-        const y = 310;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
-        ctx.lineWidth = 1.5;
-        drawRoundedRect(ctx, x, y, 194, 98, 16);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '600 15px system-ui, -apple-system, sans-serif';
-        ctx.fillText(label, x + 16, y + 34);
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = '800 20px system-ui, -apple-system, sans-serif';
-        ctx.fillText(String(val).slice(0, 18), x + 16, y + 72);
-      });
-
-      // Mascot Companion Strip on Card
-      ctx.fillStyle = 'rgba(37, 99, 235, 0.16)';
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
-      ctx.lineWidth = 1.5;
-      drawRoundedRect(ctx, 68, 432, 620, 74, 16);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#60a5fa';
-      ctx.font = '800 15px system-ui, -apple-system, sans-serif';
-      ctx.fillText('LỜI NHẮN TỪ LINH VẬT BÉ ELEC:', 88, 460);
-
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = '600 16px system-ui, -apple-system, sans-serif';
-      ctx.fillText(
-        Number(score || 0) >= 8.5
-          ? 'Phong độ đỉnh cao! Giữ vững nhịp độ này cho kỳ thi THPT Quốc gia nhé!'
-          : 'Mỗi đề thi là một bước tiến! Cùng Elec ôn kỹ Sổ tay lỗi sai để bứt phá 9+ nhé!',
-        88,
-        488
-      );
-
-      // Draw Mascot Image on Bottom Right of Card
-      if (mascotImg) {
-        ctx.save();
-        ctx.shadowColor = 'rgba(37, 99, 235, 0.55)';
-        ctx.shadowBlur = 24;
-        ctx.drawImage(mascotImg, 790, 385, 210, 210);
-        ctx.restore();
+      if (templateImg) {
+        ctx.drawImage(templateImg, 0, 0, W, H);
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
       }
 
-      // Footer Signature
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.22)';
-      ctx.fillRect(68, 532, 680, 1.5);
+      // 1. Vẽ "Top XX%" + "Thí Sinh Toàn Quốc" vào giữa huy hiệu vòng nguyệt quế xanh (xCenter = 524)
+      const { prefix, percent, sub } = parsePercentileParts(percentileText);
+      const pillCenterX = 524;
 
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '700 19px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Hệ sinh thái KHTN AI: https://www.elecai.id.vn', 68, 574);
+      ctx.save();
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '500 16px system-ui, -apple-system, sans-serif';
-      ctx.fillText(`Nhà sáng lập: Nguyễn Thế Duy (Duy TK) · Ngày cấp: ${new Date().toLocaleDateString('vi-VN')}`, 68, 606);
+      const fontPrefix = '900 47px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      const fontPercent = '900 52px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+      ctx.font = fontPrefix;
+      const wPrefix = ctx.measureText(prefix).width;
+      ctx.font = fontPercent;
+      const wPercent = ctx.measureText(percent).width;
+
+      const totalTopW = wPrefix + wPercent;
+      const startX = pillCenterX - totalTopW / 2;
+      const topBaselineY = 407;
+
+      // Vẽ chữ "Top " màu trắng
+      ctx.font = fontPrefix;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(prefix, startX, topBaselineY);
+
+      // Vẽ số "20%" màu vàng kim
+      ctx.font = fontPercent;
+      ctx.fillStyle = '#f6d02f';
+      ctx.fillText(percent, startX + wPrefix, topBaselineY);
+
+      // Vẽ dòng phụ "Thí Sinh Toàn Quốc" màu trắng
+      ctx.font = '800 21.5px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(sub, pillCenterX, 439);
+      ctx.restore();
+
+      // 2. Vẽ "VALID UNTIL" & Ngày hết hạn vào khung thuốc trắng phía dưới (xCenter = 522)
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#0d1e47';
+
+      ctx.font = '800 18px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText('VALID UNTIL', 522, 499);
+
+      ctx.font = '800 19.5px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(String(validUntil || '20 JUNE, 2026').toUpperCase(), 522, 521);
+      ctx.restore();
+
+      // 3. Vẽ điểm số xoay dọc 90 độ bên cuống vé phải (giữa mã vạch và chữ ACHIEVEMENT SCORE)
+      const formattedScore = Number.isFinite(Number(score))
+        ? Number(score).toFixed(2)
+        : '9.25';
+
+      ctx.save();
+      ctx.translate(888, 298);
+      ctx.rotate(Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#0c1e4a';
+      ctx.font = '900 88px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(formattedScore, 0, 0);
+      ctx.restore();
 
       try {
         setDataUrl(canvas.toDataURL('image/png'));
@@ -236,13 +147,16 @@ export default function ShareAchievementModal({
       }
     };
 
-    renderCard(null);
-
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => renderCard(img);
-    img.src = Number(score || 0) >= 8 ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-fighting.png';
-  }, [open, studentName, examTitle, score, totalQuestions, correctCount, percentileText, subjectLabel]);
+    img.onload = () => drawDynamicOverlay(img);
+    img.onerror = () => drawDynamicOverlay(null);
+    img.src = '/img/elec/achievement-coupon-template.png';
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, score, percentileText, validUntil]);
 
   if (!open) return null;
 
@@ -250,7 +164,7 @@ export default function ShareAchievementModal({
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `elec-ai-thanh-tich-${Date.now()}.png`;
+    a.download = `elec-science-ai-achievement-coupon-${Date.now()}.png`;
     a.click();
   };
 
@@ -260,7 +174,7 @@ export default function ShareAchievementModal({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(2, 6, 23, 0.8)',
+        background: 'rgba(2, 6, 23, 0.78)',
         backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
@@ -271,33 +185,31 @@ export default function ShareAchievementModal({
     >
       <div
         style={{
-          maxWidth: 700,
+          maxWidth: 740,
           width: '100%',
-          background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 100%)',
-          border: '1px solid rgba(59, 130, 246, 0.35)',
-          borderRadius: 20,
-          padding: 22,
-          color: '#f8fafc',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.65)',
+          background: '#ffffff',
+          border: '1px solid rgba(37, 99, 235, 0.22)',
+          borderRadius: 22,
+          padding: 20,
+          color: '#0f172a',
+          boxShadow: '0 24px 64px rgba(15, 23, 42, 0.45)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img
-              src="/img/elec/elec-celebrate.png"
-              alt="Bé Elec Vinh Danh"
-              style={{ width: 46, height: 46, objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.4))' }}
-            />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: '#2563eb', display: 'inline-flex' }}>
+              <SvgAward size={22} />
+            </span>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, color: '#f8fafc' }}>
-                <span style={{ color: '#fbbf24', display: 'inline-flex' }}><SvgAward size={20} /></span>
-                <span>Thẻ Thành Tích ELEC Science AI (PNG)</span>
+              <h3 style={{ margin: 0, fontSize: 17.5, fontWeight: 800, color: '#0f172a' }}>
+                Thẻ Thành Tích ELEC Science AI (Achievement Coupon)
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#94a3b8' }}>
-                Lưu thẻ vinh danh độ phân giải cao cùng linh vật Bé Elec để chia sẻ lên mạng xã hội
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b' }}>
+                Nhấn tải xuống để lưu thẻ vé thành tích PNG độ phân giải cao
               </p>
             </div>
           </div>
+
           <button
             type="button"
             onClick={onClose}
@@ -306,9 +218,9 @@ export default function ShareAchievementModal({
               width: 34,
               height: 34,
               borderRadius: 10,
-              background: 'rgba(148, 163, 184, 0.12)',
-              border: '1px solid rgba(148, 163, 184, 0.25)',
-              color: '#cbd5e1',
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              color: '#475569',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -325,22 +237,21 @@ export default function ShareAchievementModal({
             width: '100%',
             height: 'auto',
             borderRadius: 14,
-            border: '1px solid rgba(59, 130, 246, 0.4)',
+            border: '1px solid #e2e8f0',
             display: 'block',
-            boxShadow: '0 12px 32px rgba(2, 6, 23, 0.5)',
           }}
         />
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
           <button
             type="button"
             onClick={onClose}
             style={{
               padding: '9px 18px',
               borderRadius: 11,
-              border: '1px solid rgba(148, 163, 184, 0.3)',
-              background: 'transparent',
-              color: '#cbd5e1',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#334155',
               fontWeight: 600,
               fontSize: 13.5,
               cursor: 'pointer',
@@ -355,19 +266,19 @@ export default function ShareAchievementModal({
               padding: '9px 20px',
               borderRadius: 11,
               border: 'none',
-              background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+              color: '#ffffff',
               fontWeight: 700,
               fontSize: 13.5,
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
               cursor: 'pointer',
-              boxShadow: '0 8px 20px rgba(37, 99, 235, 0.35)',
+              boxShadow: '0 8px 20px rgba(37, 99, 235, 0.3)',
             }}
           >
             <SvgDownload size={16} />
-            <span>Tải Ảnh Thành Tích (PNG)</span>
+            <span>Tải Thẻ Thành Tích (PNG)</span>
           </button>
         </div>
       </div>
