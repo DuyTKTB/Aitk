@@ -31,11 +31,13 @@ import { notifyClassOwner } from './notices.js';
 import {
   DAY, toMs, linkDocId, evaluateKey, keyStatus, isKeyUsable, AUDIT_LABEL,
   examStatus, buildTeacherActivity, studentCountOf,
+  normalizeTeacherKey, classifyKeyInput,
 } from './classTeachersCore.js';
 
 export {
   DAY, toMs, linkDocId, evaluateKey, keyStatus, isKeyUsable, AUDIT_LABEL,
   examStatus, buildTeacherActivity, studentCountOf,
+  normalizeTeacherKey, classifyKeyInput,
 };
 
 const KEY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -180,12 +182,68 @@ export async function listClassKeys(classId) {
    ============================================================ */
 
 /**
+ * Đọc trước thông tin key liên kết (không ghi Firestore) để hiển thị preview
+ * lớp học, môn phân công, GVCN và cảnh báo sớm nếu key hết hạn/đã dùng.
+ */
+export async function previewTeacherKey(rawKey, user) {
+  const key = normalizeTeacherKey(rawKey);
+  if (!key) return { ok: false, key: '', code: 'empty', message: '' };
+  if (!user?.uid) {
+    return { ok: false, key, code: 'auth', message: 'Bạn cần đăng nhập để kiểm tra key.' };
+  }
+
+  const kSnap = await getDoc(doc(db, 'class_teacher_keys', key));
+  const k = kSnap.exists() ? kSnap.data() : null;
+  const verdict = evaluateKey(k, { uid: user.uid, now: Date.now() });
+  if (!verdict.ok) {
+    return {
+      ok: false,
+      key,
+      code: verdict.code,
+      message: verdict.message,
+    };
+  }
+
+  const [cSnap, existed] = await Promise.all([
+    getDoc(doc(db, 'classes', k.classId)),
+    getDoc(doc(db, 'class_teachers', linkDocId(k.classId, user.uid))),
+  ]);
+  if (!cSnap.exists()) {
+    return { ok: false, key, code: 'missing-class', message: 'Lớp của key này không còn tồn tại.' };
+  }
+
+  const clsData = cSnap.data() || {};
+  const className = k.className || clsData.name || '';
+  const teacherName = k.createdByName || clsData.teacherName || '';
+  const subject = String(k.subject || '').trim();
+  const alreadyLinked = existed.exists();
+  const expMs = toMs(k.expiresAt);
+  const maxUses = Number(k.maxUses) > 0 ? Number(k.maxUses) : 1;
+  const uses = Number(k.uses) || 0;
+
+  return {
+    ok: !alreadyLinked,
+    key,
+    code: alreadyLinked ? 'already-linked' : 'ok',
+    classId: k.classId,
+    className,
+    teacherName,
+    subject,
+    needsSubject: !subject,
+    expiresAtMs: expMs,
+    remainingUses: Math.max(0, maxUses - uses),
+    alreadyLinked,
+    message: alreadyLinked ? `Bạn đã liên kết với lớp ${className || k.classId} rồi.` : '',
+  };
+}
+
+/**
  * Giáo viên bộ môn nhập key → tạo liên kết.
  * subject của liên kết LUÔN lấy từ key (do chủ nhiệm gán) để tránh
  * việc giáo viên tự khai môn khác với phân công.
  */
 export async function linkTeacherWithKey(rawKey, user, subjectHint = '') {
-  const key = String(rawKey || '').trim().toUpperCase();
+  const key = normalizeTeacherKey(rawKey);
   if (!key) throw new Error('Nhập key liên kết trước đã.');
   if (!user?.uid) throw new Error('Bạn cần đăng nhập.');
 

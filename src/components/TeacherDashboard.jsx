@@ -52,7 +52,6 @@ import {
   listenRetryRequestsByClasses,
   listenRetryRequestsByTeacher,
   getClassAllowances,
-  findClassByKey,
   defaultProctor,
 } from '../lib/classroom.js';
 import {
@@ -932,13 +931,12 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const [selectedClass, setSelectedClass] = useState(null);
 
-  /* Giáo viên bộ môn: giao đề vào lớp của chủ nhiệm khác bằng mã lớp */
-  const [extKey, setExtKey] = useState('');
-  const [extBusy, setExtBusy] = useState(false);
-  const [extErr, setExtErr] = useState('');
+  /* Giáo viên bộ môn: lưu lớp đã chọn khi bấm "Giao đề" và đồng bộ trạng thái liên kết */
   const [extClass, setExtClass] = useState(null);
   /* true = đang tạo đề cho lớp đã liên kết (dùng đúng trang 3 tab như mục "AI Tạo đề") */
   const [extCreate, setExtCreate] = useState(false);
+  const [linkedReloadTick, setLinkedReloadTick] = useState(0);
+  const [gvbmHighlight, setGvbmHighlight] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
   const [showClassPicker, setShowClassPicker] = useState(false);
   const [viewingSessionId, setViewingSessionId] = useState(null);
@@ -1126,41 +1124,13 @@ export default function TeacherDashboard({ onExit } = {}) {
     }
   };
 
-  /* Tìm lớp theo mã để giao đề (dùng cho giáo viên bộ môn không phải chủ nhiệm) */
-  const findExternalClass = async () => {
-    const key = extKey.trim().toUpperCase();
-    if (!key) { setExtErr('Nhập mã lớp trước đã.'); return null; }
-    setExtBusy(true);
-    setExtErr('');
-    try {
-      const found = await findClassByKey(key);
-      if (!found) {
-        setExtErr('Không tìm thấy lớp nào với mã này. Nhờ chủ nhiệm gửi lại mã lớp.');
-        return null;
-      }
-      let isOwnedOrLinked = classes.some((c) => c.id === found.id)
-        || linkedClasses.some((c) => c.id === found.id)
-        || found.teacherId === user?.uid;
-      if (!isOwnedOrLinked && user?.uid) {
-        try {
-          const freshLinks = await listMyLinkedClasses(user.uid);
-          isOwnedOrLinked = freshLinks.some((l) => l.classId === found.id);
-        } catch { /* bỏ qua lỗi mạng phụ */ }
-      }
-      if (!isOwnedOrLinked) {
-        setExtClass(null);
-        setExtCreate(false);
-        setExtErr(`Đã tìm thấy lớp "${found.name}", nhưng bạn chưa liên kết GVBM với lớp này. Hãy nhập mã key liên kết ở khung "Liên kết dạy lớp mới" bên dưới trước khi giao đề.`);
-        return null;
-      }
-      setExtClass(found);
-      setExtKey('');
-      return found;
-    } catch (e) {
-      setExtErr(e?.message || 'Không tìm được lớp.');
-      return null;
-    } finally {
-      setExtBusy(false);
+  const focusGvbmKeyInput = () => {
+    setGvbmHighlight(true);
+    setTimeout(() => setGvbmHighlight(false), 1600);
+    const el = document.querySelector('input[data-gvbm-key-input="true"]');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
     }
   };
 
@@ -2656,99 +2626,48 @@ export default function TeacherDashboard({ onExit } = {}) {
     </div>
   );
 
-  /* Khối Giao diện Hợp nhất: Liên kết lớp & Giao đề lớp khác (dùng chung cho tab trong Lớp học và mục Giao đề lớp khác) */
+  /* Khối Giao diện Hợp nhất: Không gian giảng dạy Lớp bộ môn (GVBM) */
   const renderUnifiedLinkedClassesHub = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-        <div className="vt-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Danh sách lớp đã liên kết ({linkedClasses.length})</h3>
-              <p className="vt-muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
-                Bấm “Giao đề” để mở trình tạo đề AI/thủ công gắn thẳng vào lớp đó, hoặc “Giám sát” khi lớp đang thi.
-              </p>
-            </div>
-          </div>
-
-          <LinkedClassesPanel
-            user={user}
-            onSay={say}
-            onAssign={(classInfo) => {
-              setExtClass(classInfo);
-              setExtCreate(true);
-              goSection('create');
-            }}
-            onMonitor={(session) => {
-              setSessions((prev) => (
-                prev.some((s) => s.id === session.id) ? prev : [session, ...prev]
-              ));
-              setViewingSessionId(session.id);
-            }}
-          />
-        </div>
-
-        <div className="vt-card">
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Giao đề nhanh bằng Mã lớp (Không cần Key)</h3>
-          <p className="vt-muted" style={{ margin: '0.3rem 0 0.75rem', fontSize: '0.82rem' }}>
-            Nếu bạn chỉ cần giao 1 đề kiểm tra đột xuất vào lớp của đồng nghiệp, hãy nhập trực tiếp mã lớp của học sinh tại đây:
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <input
-              value={extKey}
-              onChange={(e) => { setExtKey(e.target.value.toUpperCase()); setExtErr(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') findExternalClass(); }}
-              placeholder="VD: 11A7-8KQ3ZM"
-              style={{
-                flex: '1 1 200px',
-                padding: '0.6rem 0.85rem',
-                fontSize: '0.92rem',
-                letterSpacing: '0.06em',
-                borderRadius: 12,
-                border: '1.5px solid var(--soft)',
-                background: 'var(--vt-tint)',
-                color: 'var(--ink)',
-                textTransform: 'uppercase',
-              }}
-            />
-            <button
-              type="button"
-              className="vt-btn sm primary"
-              onClick={async () => {
-                const found = await findExternalClass();
-                if (found) {
-                  setExtCreate(true);
-                  goSection('create');
-                }
-              }}
-              disabled={extBusy}
-            >
-              {extBusy ? 'Đang tìm…' : 'Tìm lớp & Giao đề'}
-            </button>
-          </div>
-          {extErr && <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--vt-red)', fontWeight: 600 }}>{extErr}</p>}
-          {extClass && (
-            <div style={{ marginTop: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: 12, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.84rem', fontWeight: 700 }}>
-                Đã tìm thấy lớp <b>{extClass.name}</b> {extClass.teacherName ? `(GVCN: ${extClass.teacherName})` : ''}
-              </span>
-              <button
-                type="button"
-                className="vt-btn sm primary"
-                onClick={() => {
-                  setExtCreate(true);
-                  goSection('create');
-                }}
-              >
-                Soạn đề cho lớp {extClass.name} →
-              </button>
-            </div>
-          )}
-        </div>
+    <div className="gvbm-hub-grid">
+      <div className="gvbm-hub-main">
+        <LinkedClassesPanel
+          user={user}
+          reloadToken={linkedReloadTick}
+          onSay={say}
+          onFocusKeyInput={focusGvbmKeyInput}
+          onLinkedChange={async () => {
+            await refresh();
+          }}
+          onAssign={(classInfo) => {
+            setExtClass(classInfo);
+            setExtCreate(true);
+            goSection('create');
+          }}
+          onMonitor={(session) => {
+            setSessions((prev) => (
+              prev.some((s) => s.id === session.id) ? prev : [session, ...prev]
+            ));
+            setViewingSessionId(session.id);
+          }}
+        />
       </div>
 
-      <div>
-        <LinkClassPanel onLinked={refresh} />
-      </div>
+      <aside className="gvbm-hub-side">
+        <LinkClassPanel
+          hideList
+          highlighted={gvbmHighlight}
+          knownClasses={[...classes, ...linkedClasses]}
+          onJumpToClass={(cls) => {
+            setExtClass(cls);
+            setExtCreate(true);
+            goSection('create');
+          }}
+          onLinked={async () => {
+            setLinkedReloadTick((t) => t + 1);
+            await refresh();
+          }}
+        />
+      </aside>
     </div>
   );
 
@@ -3612,24 +3531,40 @@ export default function TeacherDashboard({ onExit } = {}) {
           <>
             {/* PHÂN ĐỊNH VAI TRÒ CHỦ NHIỆM vs BỘ MÔN */}
             <div className="t-role-guide-banner">
-              <div className="t-role-guide-item">
+              <button
+                type="button"
+                className={`t-role-guide-item${classSectionTab === 'my' ? ' is-active' : ''}`}
+                onClick={() => setClassSectionTab('my')}
+                aria-pressed={classSectionTab === 'my'}
+              >
                 <div className="t-role-guide-ico gvcn">
                   <IcoSchool size={18} />
                 </div>
                 <div>
-                  <strong>Giáo viên Chủ nhiệm (GVCN)</strong>
+                  <strong>
+                    Giáo viên Chủ nhiệm (GVCN)
+                    {classSectionTab === 'my' && <span className="t-role-guide-badge">Đang mở</span>}
+                  </strong>
                   <p>Quản lý danh sách học sinh gốc, duyệt tham gia, tạo mã mời đồng nghiệp dạy bộ môn và xem phổ điểm toàn diện.</p>
                 </div>
-              </div>
-              <div className="t-role-guide-item">
+              </button>
+              <button
+                type="button"
+                className={`t-role-guide-item is-gvbm${classSectionTab === 'linked' ? ' is-active' : ''}`}
+                onClick={() => setClassSectionTab('linked')}
+                aria-pressed={classSectionTab === 'linked'}
+              >
                 <div className="t-role-guide-ico gvbm">
                   <IcoBook size={18} />
                 </div>
                 <div>
-                  <strong>Giáo viên Bộ môn (GVBM)</strong>
-                  <p>Nhận lớp qua mã liên kết của GVCN, giao đề kiểm tra riêng theo phân môn và theo dõi điểm bộ môn phụ trách.</p>
+                  <strong>
+                    Giáo viên Bộ môn (GVBM)
+                    {classSectionTab === 'linked' && <span className="t-role-guide-badge">Đang mở</span>}
+                  </strong>
+                  <p>Nhận lớp qua key liên kết của GVCN, giao đề kiểm tra riêng theo phân môn và theo dõi điểm bộ môn phụ trách.</p>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* TOOLBAR CHUYỂN ĐỔI VAI TRÒ CHỦ NHIỆM - BỘ MÔN */}
@@ -3664,12 +3599,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="vt-btn sm primary"
-                    onClick={() => {
-                      const el = document.querySelector('input[placeholder*="11A7"]');
-                      if (el) el.focus();
-                    }}
+                    onClick={focusGvbmKeyInput}
                   >
-                    <IcoKey size={14} /> Nhập mã nhận lớp
+                    <IcoKey size={14} /> Nhập key nhận lớp
                   </button>
                 )}
               </div>

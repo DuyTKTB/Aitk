@@ -1772,14 +1772,63 @@
 }
 
 .t-shell .t-role-guide-item {
+  width: 100%;
+  font-family: inherit;
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 13px 15px;
   border-radius: var(--t-radius-md);
   background: var(--t-surface-0);
-  border: 1px solid var(--t-border);
+  border: 1.5px solid var(--t-border);
   box-shadow: var(--t-shadow-xs);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.14s ease, background 0.16s ease;
+}
+
+.t-shell .t-role-guide-item:hover {
+  border-color: color-mix(in srgb, var(--t-accent) 42%, var(--t-border));
+  transform: translateY(-1px);
+  box-shadow: var(--t-shadow-sm);
+}
+
+.t-shell .t-role-guide-item.is-active {
+  border-color: var(--t-accent);
+  background:
+    radial-gradient(ellipse 65% 110% at 0% 0%, color-mix(in srgb, var(--t-accent) 10%, transparent), transparent 72%),
+    var(--t-surface-0);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--t-accent) 12%, transparent),
+    var(--t-shadow-sm);
+}
+
+.t-shell .t-role-guide-item.is-active.is-gvbm {
+  border-color: var(--t-accent-2, #7c3aed);
+  background:
+    radial-gradient(ellipse 65% 110% at 0% 0%, rgba(124, 58, 237, 0.1), transparent 72%),
+    var(--t-surface-0);
+  box-shadow:
+    0 0 0 3px rgba(124, 58, 237, 0.12),
+    var(--t-shadow-sm);
+}
+
+.t-shell .t-role-guide-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.t-shell .t-role-guide-item.is-gvbm .t-role-guide-badge {
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--t-accent-2, #7c3aed);
 }
 
 .t-shell .t-role-guide-ico {

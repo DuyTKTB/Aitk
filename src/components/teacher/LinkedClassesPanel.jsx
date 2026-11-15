@@ -1,21 +1,27 @@
 /* ============================================================
-   LinkedClassesPanel.jsx — lớp mà giáo viên bộ môn đã liên kết
+   LinkedClassesPanel.jsx — Không gian giảng dạy lớp bộ môn (GVBM)
    ------------------------------------------------------------
-   Chỉ hiện những lớp có liên kết thật trong `class_teachers`
-   (docId = {classId}_{uid}). Với mỗi lớp:
-     • đề do CHÍNH giáo viên này giao cho lớp (exams.teacherId == uid)
-     • giao đề mới (mở ExamCreate với classInfo của lớp đó)
-     • giám sát trực tiếp: dùng phòng thi đang mở, hoặc tạo phòng mới
-     • xem kết quả từng đề (điểm, %, thời điểm nộp)
-   Không có dữ liệu mẫu: mọi con số đọc từ Firestore.
+   Điểm hợp nhất duy nhất cho giáo viên bộ môn:
+     • Hiển thị 4 chỉ số tổng quan + lọc theo môn / tìm kiếm (lớp, GVCN, mã lớp)
+     • Trạng thái chưa liên kết → Launchpad 3 bước hướng dẫn rõ ràng
+     • Mỗi lớp gồm đủ thao tác: Giao đề, Đề đã giao, Xuất Excel TT22, Gỡ liên kết
+     • Mở rộng từng lớp để Giám sát LIVE, Sửa, Quản lý, Kết quả & Xoá đề (có Hoàn tác)
    ============================================================ */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listMyLinkedClasses, examStatus, toMs,
+  listMyLinkedClasses,
+  unlinkTeacher,
+  examStatus,
+  studentCountOf,
+  toMs,
 } from '../../lib/classTeachers.js';
 import {
-  getClassById, getExamsByClass, getSubmissionsByExam, deleteExam, createExam,
+  getClassById,
+  getExamsByClass,
+  getSubmissionsByExam,
+  deleteExam,
+  createExam,
 } from '../../lib/classroom.js';
 import { createExamSession, getSessionByExam } from '../../lib/examSession.js';
 import { Modal } from '../DashShell.jsx';
@@ -51,21 +57,55 @@ const pct = (sub) => {
   return Math.round((score / total) * 100);
 };
 
+const classBadgeOf = (name) => {
+  const s = String(name || '').trim();
+  if (!s) return 'BM';
+  if (/^\d{1,2}[A-Za-z0-9]{1,3}$/.test(s)) return s.toUpperCase();
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words.slice(0, 3).map((w) => (/^\d+$/.test(w) ? w : w[0].toUpperCase())).join('').slice(0, 4);
+  }
+  return s.slice(0, 3).toUpperCase();
+};
+
 const STATUS_TONE = { open: 'good', soon: 'mid', closed: 'na', off: 'bad', live: 'ex' };
 
-export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function LinkedClassesPanel({
+  user,
+  onAssign,
+  onMonitor,
+  onSay,
+  onFocusKeyInput,
+  onLinkedChange,
+  reloadToken = 0,
+  initialItems = null,
+}) {
+  const [items, setItems] = useState(() => (Array.isArray(initialItems) ? initialItems : []));
+  const [loading, setLoading] = useState(() => initialItems === null);
   const [err, setErr] = useState('');
+  const [search, setSearch] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('all');
   const [openClass, setOpenClass] = useState('');
   const [detail, setDetail] = useState({}); // classId → { loading, subs, sessions }
   const [resultsOf, setResultsOf] = useState(''); // examId đang xem kết quả
   const [confirmId, setConfirmId] = useState(''); // examId chờ xác nhận mở phòng
   const [busy, setBusy] = useState('');
   const [exportingClassId, setExportingClassId] = useState('');
-  const [editCtx, setEditCtx] = useState(null); // { exam, item } — mở Chỉnh sửa chi tiết
-  const [manageCtx, setManageCtx] = useState(null); // { exam, item } — gia hạn/đóng–mở/nhân bản/chấm lại
-  const [confirmRemoveCtx, setConfirmRemoveCtx] = useState(null); // { item, exam } — xác nhận xóa đề
+  const [editCtx, setEditCtx] = useState(null);
+  const [manageCtx, setManageCtx] = useState(null);
+  const [confirmRemoveCtx, setConfirmRemoveCtx] = useState(null);
+  const [confirmUnlinkItem, setConfirmUnlinkItem] = useState(null);
+  const [unlinkBusy, setUnlinkBusy] = useState(false);
+
+  const fetchClassDetail = async (item) => {
+    const subs = {};
+    const sessions = {};
+    await Promise.all((item.mine || []).map(async (ex) => {
+      try { subs[ex.id] = await getSubmissionsByExam(ex.id); } catch { subs[ex.id] = []; }
+      try { sessions[ex.id] = await getSessionByExam(ex.id); } catch { sessions[ex.id] = null; }
+    }));
+    return { loading: false, subs, sessions };
+  };
 
   const exportLinkedClassXlsx = async (item) => {
     setExportingClassId(item.classId);
@@ -79,7 +119,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
       const subsByExam = data?.subs || {};
       const members = Array.isArray(item.cls?.members) ? [...item.cls.members] : [];
       const seenIds = new Set(members.map((m) => m.id || m.uid));
-      item.mine.forEach((ex) => {
+      (item.mine || []).forEach((ex) => {
         (subsByExam[ex.id] || []).forEach((s) => {
           const sid = s.studentId || s.uid;
           if (sid && !seenIds.has(sid)) {
@@ -102,7 +142,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
             meta: [
               { label: 'Lớp giảng dạy', value: clsName },
               { label: 'GV Chủ nhiệm', value: item.cls?.teacherName || '—' },
-              { label: 'Số đề đã giao', value: `${item.mine.length} đề` },
+              { label: 'Số đề đã giao', value: `${(item.mine || []).length} đề` },
             ],
             columns: [
               { header: 'STT', key: 'stt', align: 'center', width: 7 },
@@ -117,7 +157,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
             ],
             rows: members.map((m, idx) => {
               const sid = m.id || m.uid;
-              const grades = computeStudentPeriodGrades({ id: sid, name: m.name }, item.mine, subsByExam);
+              const grades = computeStudentPeriodGrades({ id: sid, name: m.name }, item.mine || [], subsByExam);
               return {
                 stt: idx + 1,
                 name: m.name || 'Học sinh',
@@ -135,7 +175,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
             name: 'Đề đã giao',
             mascot: 'happy',
             title: `DANH SÁCH ĐỀ KIỂM TRA ĐÃ GIAO — ${clsName.toUpperCase()}`,
-            subtitle: `Tổng hợp ${item.mine.length} đề do giáo viên bộ môn phát hành`,
+            subtitle: `Tổng hợp ${(item.mine || []).length} đề do giáo viên bộ môn phát hành`,
             columns: [
               { header: 'STT', key: 'stt', align: 'center', width: 7 },
               { header: 'Tên đề kiểm tra', key: 'title', align: 'left', width: 34 },
@@ -144,7 +184,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
               { header: 'Số bài nộp', key: 'subCount', align: 'center', width: 13 },
               { header: 'Điểm TB (10)', key: 'avg10', align: 'center', numFmt: '0.0', isScore10: true, width: 14 },
             ],
-            rows: item.mine.map((ex, idx) => {
+            rows: (item.mine || []).map((ex, idx) => {
               const subs = subsByExam[ex.id] || [];
               const avg = subs.length
                 ? Math.round((subs.reduce((a, s) => a + ((Number(s.score) || 0) / Math.max(1, Number(s.totalPoints) || 10)) * 10, 0) / subs.length) * 10) / 10
@@ -249,7 +289,11 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
     }
   }, [user?.uid]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (initialItems === null || reloadToken > 0) {
+      load();
+    }
+  }, [initialItems, reloadToken, load]);
 
   const openClassDetail = async (item) => {
     if (openClass === item.classId) {
@@ -266,18 +310,6 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
     setDetail((d) => ({ ...d, [item.classId]: data }));
   };
 
-  /* Lượt nộp + phòng thi của các đề mình đã giao trong một lớp */
-  const fetchClassDetail = async (item) => {
-    const subs = {};
-    const sessions = {};
-    await Promise.all(item.mine.map(async (ex) => {
-      try { subs[ex.id] = await getSubmissionsByExam(ex.id); } catch { subs[ex.id] = []; }
-      try { sessions[ex.id] = await getSessionByExam(ex.id); } catch { sessions[ex.id] = null; }
-    }));
-    return { loading: false, subs, sessions };
-  };
-
-  /* Xoá đề khỏi lớp — mở hộp xác nhận + hỗ trợ Hoàn tác */
   const removeExam = (item, exam) => {
     setConfirmRemoveCtx({ item, exam });
   };
@@ -304,8 +336,8 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
             await createExam(rest);
             await load();
             onSay?.(`Đã khôi phục đề “${snapshot.title || 'Đề'}”`, 'success');
-          } catch (err) {
-            onSay?.(`Không khôi phục được đề: ${err?.message || err}`, 'error');
+          } catch (undoErr) {
+            onSay?.(`Không khôi phục được đề: ${undoErr?.message || undoErr}`, 'error');
           }
         },
       });
@@ -313,6 +345,29 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
       onSay?.(`Không xoá được: ${e?.message || e}`, 'error');
     } finally {
       setBusy('');
+    }
+  };
+
+  const executeUnlink = async () => {
+    const item = confirmUnlinkItem;
+    if (!item || !user?.uid) return;
+    setUnlinkBusy(true);
+    try {
+      await unlinkTeacher(item.classId, user.uid, {
+        by: user.uid,
+        byName: user.displayName || user.email || 'Giáo viên',
+        teacherName: user.displayName || user.email || 'Giáo viên',
+        subject: item.subject || '',
+      });
+      setConfirmUnlinkItem(null);
+      if (openClass === item.classId) setOpenClass('');
+      setItems((prev) => prev.filter((x) => x.classId !== item.classId));
+      onSay?.(`Đã gỡ liên kết lớp ${item.cls?.name || item.className || item.classId}.`, 'success');
+      await onLinkedChange?.();
+    } catch (e) {
+      onSay?.(`Không gỡ được liên kết: ${e?.message || e}`, 'error');
+    } finally {
+      setUnlinkBusy(false);
     }
   };
 
@@ -349,16 +404,53 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
     }
   };
 
+  const summary = useMemo(() => {
+    let totalStudents = 0;
+    let totalExams = 0;
+    let openExams = 0;
+    const subjects = new Set();
+    items.forEach((it) => {
+      totalStudents += studentCountOf(it.cls);
+      const mine = it.mine || [];
+      totalExams += mine.length;
+      mine.forEach((ex) => {
+        if (examStatus(ex).code === 'open') openExams += 1;
+      });
+      if (it.subject) subjects.add(it.subject);
+    });
+    return {
+      classCount: items.length,
+      totalStudents,
+      totalExams,
+      openExams,
+      subjects: [...subjects].sort((a, b) => a.localeCompare(b, 'vi')),
+    };
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((it) => {
+      if (subjectFilter !== 'all' && it.subject !== subjectFilter) return false;
+      if (!q) return true;
+      const hay = `${it.cls?.name || it.className || ''} ${it.cls?.key || ''} ${it.cls?.teacherName || ''} ${it.subject || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [items, search, subjectFilter]);
+
   /* ---------- trạng thái tải / lỗi ---------- */
   if (loading) {
-    return <p className="st-empty" style={{ padding: '1rem 0' }}>Đang tải danh sách lớp đã liên kết…</p>;
+    return (
+      <div className="gvbm-state-card">
+        <p className="st-empty">Đang tải danh sách lớp dạy bộ môn…</p>
+      </div>
+    );
   }
 
   if (err) {
     return (
-      <div>
+      <div className="gvbm-state-card">
         <p className="st-error">{err}</p>
-        <button type="button" className="st-btn" style={{ marginTop: '0.6rem' }} onClick={load}>
+        <button type="button" className="vt-btn sm primary" style={{ marginTop: '0.6rem' }} onClick={load}>
           Thử lại
         </button>
       </div>
@@ -367,242 +459,391 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
 
   if (!items.length) {
     return (
-      <p className="st-empty" style={{ padding: '0.4rem 0' }}>
-        Chưa liên kết lớp nào. Vào mục <b>Liên kết lớp</b> để nhập key chủ nhiệm gửi,
-        sau đó lớp sẽ xuất hiện tại đây để bạn giao đề và giám sát.
-      </p>
+      <section className="gvbm-onboarding" aria-label="Hướng dẫn nhận lớp dạy bộ môn">
+        <div className="gvbm-onboarding-head">
+          <span className="gvbm-pill-tag">Không gian Giáo viên Bộ môn</span>
+          <h3>Chưa có lớp dạy bộ môn nào được liên kết</h3>
+          <p>
+            Nhận lớp bằng key phân công từ Giáo viên Chủ nhiệm để soạn đề AI gắn thẳng vào lớp,
+            mở phòng thi giám sát và xuất bảng điểm chuẩn Thông tư 22.
+          </p>
+        </div>
+
+        <ol className="gvbm-steps">
+          <li>
+            <span className="gvbm-step-num" aria-hidden="true">1</span>
+            <div>
+              <b>Xin Key liên kết từ GV Chủ nhiệm</b>
+              <small>Chủ nhiệm mở <i>Chi tiết lớp → GV bộ môn</i>, chọn phân môn và tạo mã dạng <code>GV-XXXXXX</code>.</small>
+            </div>
+          </li>
+          <li>
+            <span className="gvbm-step-num" aria-hidden="true">2</span>
+            <div>
+              <b>Dán Key vào khung Nhận lớp bên phải</b>
+              <small>Hệ thống tự nhận diện tên lớp và môn phụ trách trước khi bạn xác nhận liên kết.</small>
+            </div>
+          </li>
+          <li>
+            <span className="gvbm-step-num" aria-hidden="true">3</span>
+            <div>
+              <b>Giao đề, Giám sát &amp; Xuất Excel một chạm</b>
+              <small>Đề bạn giao tự đồng bộ để GVCN xem tiến độ chung nhưng vẫn giữ quyền chỉnh sửa độc lập của bạn.</small>
+            </div>
+          </li>
+        </ol>
+
+        {onFocusKeyInput && (
+          <div className="gvbm-onboarding-foot">
+            <button type="button" className="vt-btn sm primary" onClick={onFocusKeyInput}>
+              Nhập key nhận lớp ngay →
+            </button>
+          </div>
+        )}
+      </section>
     );
   }
 
   return (
-    <div className="st" style={{ gap: '0.6rem' }}>
-      {items.map((item) => {
-        const d = detail[item.classId];
-        const isOpen = openClass === item.classId;
-        const studentCount = item.cls?.members?.length || 0;
-        return (
-          <div key={item.classId} className="st-card" style={{ padding: '0.75rem 0.85rem' }}>
-            <div className="st-card-head" style={{ marginBottom: '0.35rem' }}>
-              <div>
-                <h3 style={{ fontSize: '0.95rem' }}>{item.cls?.name || item.className || item.classId}</h3>
-                <span className="st-sub">
-                  {item.subject ? <b>{item.subject}</b> : 'chưa rõ môn'}
-                  {' · '}chủ nhiệm {item.cls?.teacherName || '—'}
-                  {' · '}{studentCount} học sinh
-                  {' · '}liên kết {fmtDate(toMs(item.linkedAt) || item.linkedAtMs)}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="st-btn primary"
-                  onClick={() => onAssign?.({
-                    id: item.classId,
-                    name: item.cls?.name || item.className || item.classId,
-                    teacherId: item.cls?.teacherId || '',
-                    teacherName: item.cls?.teacherName || '',
-                    subject: item.subject || '',
-                    members: item.cls?.members || [],
-                  })}
-                >
-                  Giao đề
-                </button>
-                <button
-                  type="button"
-                  className="st-btn"
-                  disabled={exportingClassId === item.classId}
-                  onClick={() => exportLinkedClassXlsx(item)}
-                  title="Xuất bảng điểm GVBM (.xlsx) có Mascot ELEC & hệ số Thông tư 22"
-                >
-                  {exportingClassId === item.classId ? 'Đang xuất…' : 'Xuất Excel (.xlsx)'}
-                </button>
-                <button type="button" className="st-btn" onClick={() => openClassDetail(item)}>
-                  {isOpen ? 'Thu gọn' : `Đề đã giao (${item.mine.length})`}
-                </button>
-              </div>
-            </div>
+    <div className="gvbm-workspace">
+      {/* 4 chỉ số tổng quan GVBM */}
+      <div className="gvbm-kpi-strip">
+        <div className="gvbm-kpi-tile" data-tone="acc">
+          <small>Lớp phụ trách</small>
+          <b>{summary.classCount}</b>
+          <span>{summary.subjects.length ? `${summary.subjects.length} phân môn` : 'Đã liên kết'}</span>
+        </div>
+        <div className="gvbm-kpi-tile" data-tone="violet">
+          <small>Tổng học sinh</small>
+          <b>{summary.totalStudents}</b>
+          <span>Trong các lớp nhận dạy</span>
+        </div>
+        <div className="gvbm-kpi-tile" data-tone="ok">
+          <small>Đề đã giao</small>
+          <b>{summary.totalExams}</b>
+          <span>{summary.openExams > 0 ? `${summary.openExams} đề đang mở` : 'Chưa có đề mở'}</span>
+        </div>
+        <div className="gvbm-kpi-tile" data-tone="amber">
+          <small>Phân môn</small>
+          <b>{summary.subjects.length || 1}</b>
+          <span>{summary.subjects.slice(0, 2).join(', ') || 'Bộ môn'}</span>
+        </div>
+      </div>
 
-            {item.classError && <p className="st-error">{item.classError}</p>}
-
-            {isOpen && (
-              d?.loading ? (
-                <p className="st-empty sm">Đang tải đề và lượt nộp…</p>
-              ) : item.mine.length === 0 ? (
-                <p className="st-empty sm">
-                  Bạn chưa giao đề nào cho lớp này. Bấm <b>Giao đề</b> để tạo đề — đề sẽ được ghi tên bạn
-                  và chủ nhiệm theo dõi được trong mục Phân tích AI.
-                </p>
-              ) : (
-                <div className="st-scroll">
-                   <table className="st-table mobile-cards">
-                     <thead>
-                       <tr>
-                         <th>Đề</th>
-                         <th className="num">Trạng thái</th>
-                         <th className="num">Bài nộp</th>
-                         <th className="num">Điểm TB</th>
-                         <th />
-                       </tr>
-                     </thead>
-                    <tbody>
-                      {item.mine.map((ex) => {
-                        const subs = d?.subs?.[ex.id] || [];
-                        const session = d?.sessions?.[ex.id];
-                        const isLive = !!session && session.status === 'live';
-                        const st = examStatus(ex);
-                        const statusKey = isLive ? 'live' : st.code;
-                        const statusLabel = isLive ? 'Đang thi' : st.label;
-                        const scored = subs.map((s) => {
-                          const p = pct(s);
-                          return p === null ? null : { p, score: Number(s.score), total: Number(s.totalPoints) };
-                        }).filter(Boolean);
-                        const avg = scored.length
-                          ? Math.round(scored.reduce((a, s) => a + s.p, 0) / scored.length)
-                          : null;
-
-                        return (
-                          <tr key={ex.id}>
-                             <td data-label="Đề">
-                               <b>{ex.title || 'Đề'}</b>
-                               <small className="st-mail">{ex.subject || item.subject || '—'}</small>
-                             </td>
-                             <td className="num" data-label="Trạng thái">
-                               <span className={`st-badge tone-${STATUS_TONE[statusKey] || 'na'}`}>
-                                 {statusLabel}
-                               </span>
-                             </td>
-                             <td className="num" data-label="Bài nộp">{subs.length}</td>
-                             <td className="num" data-label="Điểm TB">{avg === null ? '—' : `${avg}%`}</td>
-                             <td>
-                              <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                                {session && session.status === 'live' ? (
-                                  <button type="button" className="st-btn primary" onClick={() => onMonitor?.(session)}>
-                                    Giám sát
-                                  </button>
-                                ) : confirmId === ex.id ? (
-                                  <>
-                                    <span className="st-keymeta" style={{ alignSelf: 'center' }}>
-                                      Mở phòng thi trực tiếp?
-                                    </span>
-                                    <button
-                                      type="button"
-                                      className="st-btn primary"
-                                      disabled={busy === ex.id}
-                                      onClick={() => monitor(item, ex)}
-                                    >
-                                      {busy === ex.id ? 'Đang mở…' : 'Đồng ý'}
-                                    </button>
-                                    <button type="button" className="st-btn ghost" onClick={() => setConfirmId('')}>
-                                      Hủy
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button type="button" className="st-btn" onClick={() => setConfirmId(ex.id)}>
-                                    Bắt đầu giám sát
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  className="st-btn"
-                                  onClick={() => setEditCtx({ exam: ex, item })}
-                                  title="Sửa thông tin, câu hỏi, thời gian, cấu hình camera & chống gian lận"
-                                >
-                                  Sửa
-                                </button>
-                                <button
-                                  type="button"
-                                  className="st-btn"
-                                  onClick={() => setManageCtx({ exam: ex, item })}
-                                  title="Gia hạn, đóng/mở đề, nhân bản, phân tích, chấm lại"
-                                >
-                                  Quản lý
-                                </button>
-                                <button
-                                  type="button"
-                                  className="st-btn ghost"
-                                  onClick={() => exportLinkedExamXlsx(item, ex, subs)}
-                                  title="Xuất kết quả bài kiểm tra ra file Excel (.xlsx)"
-                                >
-                                  Excel
-                                </button>
-                                <button
-                                  type="button"
-                                  className="st-btn ghost"
-                                  onClick={() => setResultsOf(resultsOf === ex.id ? '' : ex.id)}
-                                >
-                                  {resultsOf === ex.id ? 'Ẩn kết quả' : 'Kết quả'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="st-btn ghost"
-                                  style={{ color: '#b91c1c' }}
-                                  title="Xoá đề khỏi lớp (không thể hoàn tác)"
-                                  onClick={() => removeExam(item, ex)}
-                                >
-                                  Xoá
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-
-                  {resultsOf && (() => {
-                    const subs = (d?.subs?.[resultsOf] || []).slice().sort((a, b) => {
-                      const pa = pct(a); const pb = pct(b);
-                      if (pa === null && pb === null) return 0;
-                      if (pa === null) return 1;
-                      if (pb === null) return -1;
-                      return pb - pa;
-                    });
-                    return (
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <div className="st-sub" style={{ marginBottom: '0.3rem' }}>
-                          Kết quả đề “{item.mine.find((e) => e.id === resultsOf)?.title || 'Đề'}”
-                          {' · '}{subs.length} bài nộp
-                        </div>
-                        {subs.length === 0 ? (
-                          <p className="st-empty sm">Chưa có học sinh nào nộp bài.</p>
-                        ) : (
-                          <table className="st-exams">
-                            <thead>
-                              <tr>
-                                <th>Học sinh</th>
-                                <th className="num">Điểm</th>
-                                <th className="num">%</th>
-                                <th className="num">Nộp lúc</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {subs.map((s) => (
-                                <tr key={s.id}>
-                                  <td>{s.studentName || s.studentEmail || s.studentId}</td>
-                                  <td className="num">{Number(s.score)}/{Number(s.totalPoints)}</td>
-                                  <td className="num">{pct(s) === null ? '—' : `${pct(s)}%`}</td>
-                                  <td className="num">{fmtDateTime(toMs(s.submittedAt))}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              )
-            )}
+      {/* Bộ lọc & tìm kiếm thông minh */}
+      <div className="gvbm-filterbar">
+        <input
+          type="search"
+          className="gvbm-search-input"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm theo tên lớp, môn học, GVCN hoặc mã lớp…"
+          aria-label="Tìm lớp dạy bộ môn"
+        />
+        {summary.subjects.length > 1 && (
+          <div className="gvbm-subject-pills" role="group" aria-label="Lọc theo phân môn">
+            <button
+              type="button"
+              className={`gvbm-chip${subjectFilter === 'all' ? ' is-on' : ''}`}
+              onClick={() => setSubjectFilter('all')}
+            >
+              Tất cả ({items.length})
+            </button>
+            {summary.subjects.map((sub) => (
+              <button
+                key={sub}
+                type="button"
+                className={`gvbm-chip${subjectFilter === sub ? ' is-on' : ''}`}
+                onClick={() => setSubjectFilter(sub)}
+              >
+                {sub}
+              </button>
+            ))}
           </div>
-        );
-      })}
+        )}
+      </div>
 
-      <p className="st-empty sm">
-        Đề giao từ đây có <b>classId</b> của lớp đã liên kết nên chủ nhiệm thấy ngay trong bảng giáo viên bộ môn
-        và phần Phân tích AI. Phòng giám sát chỉ dành cho đề của chính bạn.
-      </p>
+      {filteredItems.length === 0 ? (
+        <div className="gvbm-state-card">
+          <p className="st-empty">Không tìm thấy lớp nào khớp với bộ lọc hiện tại.</p>
+          <button
+            type="button"
+            className="vt-btn sm"
+            style={{ marginTop: '0.5rem' }}
+            onClick={() => { setSearch(''); setSubjectFilter('all'); }}
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+      ) : (
+        <div className="gvbm-card-list">
+          {filteredItems.map((item) => {
+            const d = detail[item.classId];
+            const isOpen = openClass === item.classId;
+            const clsName = item.cls?.name || item.className || item.classId;
+            const studentCount = studentCountOf(item.cls);
+            const mine = item.mine || [];
+            const badge = classBadgeOf(clsName);
+            const liveCount = Object.values(d?.sessions || {}).filter((s) => s?.status === 'live').length;
 
-      {/* Quản lý đề: gia hạn, đóng/mở, nhân bản, sửa nhanh, phân tích đáp án, chấm lại */}
+            return (
+              <article key={item.classId} className={`gvbm-class-card${isOpen ? ' is-expanded' : ''}`}>
+                <header className="gvbm-class-head">
+                  <div className="gvbm-class-identity">
+                    <span className={`gvbm-avatar${badge.length >= 3 ? ' is-long' : ''}`} aria-hidden="true">
+                      {badge}
+                    </span>
+                    <div className="gvbm-class-title">
+                      <div className="gvbm-title-row">
+                        <h4>{clsName}</h4>
+                        <span className="gvbm-subject-tag">{item.subject || 'Chưa rõ môn'}</span>
+                        {item.cls?.key && <code className="gvbm-class-code">{item.cls.key}</code>}
+                        {liveCount > 0 && <span className="gvbm-live-tag">LIVE</span>}
+                      </div>
+                      <p className="gvbm-meta-line">
+                        <span>GVCN: <b>{item.cls?.teacherName || '—'}</b></span>
+                        <span>·</span>
+                        <span><b>{studentCount}</b> học sinh</span>
+                        <span>·</span>
+                        <span><b>{mine.length}</b> đề đã giao</span>
+                        <span>·</span>
+                        <span>Nhận lớp {fmtDate(toMs(item.linkedAt) || item.linkedAtMs)}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="gvbm-card-actions">
+                    <button
+                      type="button"
+                      className="vt-btn sm primary"
+                      onClick={() => onAssign?.({
+                        id: item.classId,
+                        name: clsName,
+                        teacherId: item.cls?.teacherId || '',
+                        teacherName: item.cls?.teacherName || '',
+                        subject: item.subject || '',
+                        members: item.cls?.members || [],
+                      })}
+                    >
+                      + Giao đề
+                    </button>
+                    <button
+                      type="button"
+                      className={`vt-btn sm${isOpen ? ' active' : ''}`}
+                      onClick={() => openClassDetail(item)}
+                    >
+                      {isOpen ? 'Thu gọn' : `Đề đã giao (${mine.length})`}
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn sm"
+                      disabled={exportingClassId === item.classId}
+                      onClick={() => exportLinkedClassXlsx(item)}
+                      title="Xuất bảng điểm GVBM (.xlsx) có hệ số Thông tư 22"
+                    >
+                      {exportingClassId === item.classId ? 'Đang xuất…' : 'Xuất Excel'}
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn sm danger"
+                      onClick={() => setConfirmUnlinkItem(item)}
+                      title="Gỡ liên kết khỏi lớp này"
+                    >
+                      Gỡ liên kết
+                    </button>
+                  </div>
+                </header>
+
+                {item.classError && <p className="st-error" style={{ marginTop: '0.6rem' }}>{item.classError}</p>}
+
+                {isOpen && (
+                  <div className="gvbm-class-drawer">
+                    {d?.loading ? (
+                      <p className="st-empty sm">Đang tải danh sách đề và lượt nộp…</p>
+                    ) : mine.length === 0 ? (
+                      <div className="gvbm-drawer-empty">
+                        <p>Bạn chưa giao đề nào cho lớp <b>{clsName}</b>.</p>
+                        <button
+                          type="button"
+                          className="vt-btn sm primary"
+                          onClick={() => onAssign?.({
+                            id: item.classId,
+                            name: clsName,
+                            teacherId: item.cls?.teacherId || '',
+                            teacherName: item.cls?.teacherName || '',
+                            subject: item.subject || '',
+                            members: item.cls?.members || [],
+                          })}
+                        >
+                          Soạn &amp; Giao đề đầu tiên →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="st-scroll">
+                        <table className="st-table mobile-cards">
+                          <thead>
+                            <tr>
+                              <th>Đề kiểm tra</th>
+                              <th className="num">Trạng thái</th>
+                              <th className="num">Bài nộp</th>
+                              <th className="num">Điểm TB</th>
+                              <th />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mine.map((ex) => {
+                              const subs = d?.subs?.[ex.id] || [];
+                              const session = d?.sessions?.[ex.id];
+                              const isLive = Boolean(session && session.status === 'live');
+                              const st = examStatus(ex);
+                              const statusKey = isLive ? 'live' : st.code;
+                              const statusLabel = isLive ? 'Đang thi' : st.label;
+                              const scored = subs
+                                .map((s) => {
+                                  const p = pct(s);
+                                  return p === null ? null : { p };
+                                })
+                                .filter(Boolean);
+                              const avg = scored.length
+                                ? Math.round(scored.reduce((a, s) => a + s.p, 0) / scored.length)
+                                : null;
+
+                              return (
+                                <tr key={ex.id}>
+                                  <td data-label="Đề kiểm tra">
+                                    <b>{ex.title || 'Đề'}</b>
+                                    <small className="st-mail">{ex.subject || item.subject || '—'}</small>
+                                  </td>
+                                  <td className="num" data-label="Trạng thái">
+                                    <span className={`st-badge tone-${STATUS_TONE[statusKey] || 'na'}`}>
+                                      {statusLabel}
+                                    </span>
+                                  </td>
+                                  <td className="num" data-label="Bài nộp">{subs.length}</td>
+                                  <td className="num" data-label="Điểm TB">{avg === null ? '—' : `${avg}%`}</td>
+                                  <td>
+                                    <div className="gvbm-row-actions">
+                                      {isLive ? (
+                                        <button type="button" className="st-btn primary" onClick={() => onMonitor?.(session)}>
+                                          Giám sát LIVE
+                                        </button>
+                                      ) : confirmId === ex.id ? (
+                                        <>
+                                          <span className="st-keymeta">Mở phòng thi?</span>
+                                          <button
+                                            type="button"
+                                            className="st-btn primary"
+                                            disabled={busy === ex.id}
+                                            onClick={() => monitor(item, ex)}
+                                          >
+                                            {busy === ex.id ? 'Đang mở…' : 'Đồng ý'}
+                                          </button>
+                                          <button type="button" className="st-btn ghost" onClick={() => setConfirmId('')}>
+                                            Hủy
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button type="button" className="st-btn" onClick={() => setConfirmId(ex.id)}>
+                                          Giám sát
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        className="st-btn"
+                                        onClick={() => setEditCtx({ exam: ex, item })}
+                                        title="Sửa câu hỏi, thời gian, cấu hình giám sát"
+                                      >
+                                        Sửa
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="st-btn"
+                                        onClick={() => setManageCtx({ exam: ex, item })}
+                                        title="Gia hạn, đóng/mở đề, nhân bản, phân tích, chấm lại"
+                                      >
+                                        Quản lý
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="st-btn ghost"
+                                        onClick={() => exportLinkedExamXlsx(item, ex, subs)}
+                                        title="Xuất kết quả bài kiểm tra ra file Excel (.xlsx)"
+                                      >
+                                        Excel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="st-btn ghost"
+                                        onClick={() => setResultsOf(resultsOf === ex.id ? '' : ex.id)}
+                                      >
+                                        {resultsOf === ex.id ? 'Ẩn KQ' : 'Kết quả'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="st-btn ghost gvbm-del-btn"
+                                        title="Xoá đề khỏi lớp"
+                                        onClick={() => removeExam(item, ex)}
+                                      >
+                                        Xoá
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+
+                        {resultsOf && (() => {
+                          const subs = (d?.subs?.[resultsOf] || []).slice().sort((a, b) => {
+                            const pa = pct(a); const pb = pct(b);
+                            if (pa === null && pb === null) return 0;
+                            if (pa === null) return 1;
+                            if (pb === null) return -1;
+                            return pb - pa;
+                          });
+                          return (
+                            <div className="gvbm-results-box">
+                              <div className="st-sub" style={{ marginBottom: '0.35rem' }}>
+                                Kết quả đề “{mine.find((e) => e.id === resultsOf)?.title || 'Đề'}” · {subs.length} bài nộp
+                              </div>
+                              {subs.length === 0 ? (
+                                <p className="st-empty sm">Chưa có học sinh nào nộp bài.</p>
+                              ) : (
+                                <table className="st-exams">
+                                  <thead>
+                                    <tr>
+                                      <th>Học sinh</th>
+                                      <th className="num">Điểm</th>
+                                      <th className="num">%</th>
+                                      <th className="num">Nộp lúc</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {subs.map((s) => (
+                                      <tr key={s.id}>
+                                        <td>{s.studentName || s.studentEmail || s.studentId}</td>
+                                        <td className="num">{Number(s.score)}/{Number(s.totalPoints)}</td>
+                                        <td className="num">{pct(s) === null ? '—' : `${pct(s)}%`}</td>
+                                        <td className="num">{fmtDateTime(toMs(s.submittedAt))}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+
       {manageCtx && (
         <Modal
           title={`Quản lý đề — ${manageCtx.exam.title || 'Đề'}`}
@@ -610,7 +851,7 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
           onClose={() => setManageCtx(null)}
         >
           <p className="st-empty sm" style={{ marginTop: 0 }}>
-            Các thao tác dưới đây áp dụng cho đề <b>{manageCtx.exam.title || 'Đề'}</b> trong lớp{' '}
+            Thao tác áp dụng cho đề <b>{manageCtx.exam.title || 'Đề'}</b> trong lớp{' '}
             <b>{manageCtx.item.cls?.name || manageCtx.item.className || manageCtx.item.classId}</b>.
           </p>
           <ExamManagePanel
@@ -621,17 +862,15 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
               error: (m) => onSay?.(m, 'error'),
             }}
             onChanged={async () => {
-              const item = manageCtx.item;
+              const target = manageCtx.item;
               await load();
-              const data = await fetchClassDetail(item);
-              setDetail((d) => ({ ...d, [item.classId]: data }));
+              const data = await fetchClassDetail(target);
+              setDetail((d) => ({ ...d, [target.classId]: data }));
             }}
           />
         </Modal>
       )}
 
-      {/* Chỉnh sửa chi tiết đề đã giao: thông tin, câu hỏi, thời gian, camera & chống gian lận.
-          Dùng lại ExamEditModal của dashboard; lớp bị khoá vào đúng lớp đã liên kết. */}
       {editCtx && (
         <ExamEditModal
           exam={editCtx.exam}
@@ -641,15 +880,15 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
           }]}
           onClose={() => setEditCtx(null)}
           onSaved={async () => {
-            const item = editCtx.item;
+            const target = editCtx.item;
             setEditCtx(null);
             await load();
-            const data = await fetchClassDetail(item);
-            setDetail((d) => ({ ...d, [item.classId]: data }));
+            const data = await fetchClassDetail(target);
+            setDetail((d) => ({ ...d, [target.classId]: data }));
           }}
         />
       )}
-      {/* Hộp xác nhận xóa đề khỏi lớp liên kết */}
+
       {confirmRemoveCtx && (
         <Modal
           title="Xác nhận xoá đề khỏi lớp"
@@ -670,6 +909,34 @@ export default function LinkedClassesPanel({ user, onAssign, onMonitor, onSay })
               onClick={executeRemoveExam}
             >
               Xác nhận xoá
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {confirmUnlinkItem && (
+        <Modal
+          title={`Gỡ liên kết lớp ${confirmUnlinkItem.cls?.name || confirmUnlinkItem.className || confirmUnlinkItem.classId}?`}
+          size="sm"
+          onClose={() => { if (!unlinkBusy) setConfirmUnlinkItem(null); }}
+        >
+          <p className="st-empty" style={{ marginTop: 0, lineHeight: 1.55 }}>
+            Bạn sẽ ngừng nhận giao đề mới cho phân môn{' '}
+            <b>{confirmUnlinkItem.subject || 'đã liên kết'}</b> tại lớp này.
+            Nếu muốn giảng dạy lại, bạn sẽ cần key mới từ giáo viên chủ nhiệm.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+            <button type="button" className="st-btn" disabled={unlinkBusy} onClick={() => setConfirmUnlinkItem(null)}>
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="st-btn primary"
+              style={{ background: '#dc2626', borderColor: '#dc2626' }}
+              disabled={unlinkBusy}
+              onClick={executeUnlink}
+            >
+              {unlinkBusy ? 'Đang gỡ…' : 'Xác nhận gỡ'}
             </button>
           </div>
         </Modal>

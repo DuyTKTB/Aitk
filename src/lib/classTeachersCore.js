@@ -22,6 +22,43 @@ export const toMs = (v) => {
 
 export const linkDocId = (classId, teacherId) => `${classId}_${teacherId}`;
 
+/**
+ * Chuẩn hóa key GVBM nhập/dán từ clipboard (vd "GV - ab1234" -> "GV-AB1234").
+ */
+export function normalizeTeacherKey(raw) {
+  return String(raw || '').trim().replace(/\s+/g, '').toUpperCase();
+}
+
+/**
+ * Phân loại chuỗi giáo viên nhập vào ô Nhận lớp để hướng dẫn logic thay vì báo lỗi chung chung:
+ * - empty: chưa nhập gì
+ * - known-class: khớp mã lớp học sinh của một lớp đã nhận/sở hữu
+ * - gv-key: đúng định dạng key liên kết GVBM (GV-...)
+ * - student-code: giống mã lớp học sinh (vd 11A7-8KQ3ZM), không phải key GVBM
+ * - partial: định dạng khác / đang gõ dở
+ */
+export function classifyKeyInput(rawKey, knownClasses = []) {
+  const normalized = normalizeTeacherKey(rawKey);
+  if (!normalized) return { kind: 'empty', normalized: '' };
+
+  const matchedClass = (knownClasses || []).find(
+    (c) => c?.key && normalizeTeacherKey(c.key) === normalized,
+  );
+  if (matchedClass) {
+    return { kind: 'known-class', normalized, matchedClass };
+  }
+
+  if (/^GV-[A-Z0-9]{4,}$/.test(normalized)) {
+    return { kind: 'gv-key', normalized };
+  }
+
+  if (/^[A-Z0-9]{2,8}-[A-Z0-9]{4,8}$/.test(normalized)) {
+    return { kind: 'student-code', normalized };
+  }
+
+  return { kind: 'partial', normalized };
+}
+
 /* ---------- đánh giá key ---------- */
 
 /**

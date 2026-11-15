@@ -25,6 +25,10 @@ vi.mock('../src/lib/firebase.js', () => ({
   db: {},
 }));
 
+vi.mock('../src/hooks/useAuth.jsx', () => ({
+  useAuth: () => ({ user: { uid: 'gvbm_1', displayName: 'Cô Lan', email: 'lan@example.com' } }),
+}));
+
 vi.mock('file-saver', () => ({
   default: { saveAs: vi.fn((blob, name) => { savedDownloads.push({ blob, name }); }) },
   saveAs: vi.fn((blob, name) => { savedDownloads.push({ blob, name }); }),
@@ -87,6 +91,9 @@ import ExamPickerFromBank, { BankQuestionChoices } from '../src/components/teach
 import { Donut } from '../src/components/DashShell.jsx';
 import ClassDetailModal, { formatClassBadge, buildTrendPoints } from '../src/components/ClassDetailModal.jsx';
 import StudentModal from '../src/components/StudentModal.jsx';
+import LinkedClassesPanel from '../src/components/teacher/LinkedClassesPanel.jsx';
+import LinkClassPanel from '../src/components/teacher/LinkClassPanel.jsx';
+import { normalizeTeacherKey, classifyKeyInput } from '../src/lib/classTeachersCore.js';
 import {
   DEFAULT_COUNTS,
   DEFAULT_SCORING,
@@ -730,5 +737,77 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
     const vtCss = fs.readFileSync(path.resolve(process.cwd(), 'src/styles/dash-vitality.css'), 'utf8');
     expect(vtCss).toContain('.t-shell');
     expect(vtCss).toContain("--vt-tint");
+  });
+
+  it('normalizeTeacherKey & classifyKeyInput nhận diện đúng key GVBM, mã lớp đã liên kết và mã lớp học sinh', () => {
+    expect(normalizeTeacherKey('  gv - ab 12cd ')).toBe('GV-AB12CD');
+    expect(classifyKeyInput('GV-XYZ789', [])).toEqual({
+      kind: 'gv-key',
+      normalized: 'GV-XYZ789',
+    });
+    expect(classifyKeyInput('11A7-8KQ3ZM', [])).toEqual({
+      kind: 'student-code',
+      normalized: '11A7-8KQ3ZM',
+    });
+    const known = [{ id: 'cls_1', name: '11A7', key: '11A7-8KQ3ZM' }];
+    const hit = classifyKeyInput('11a7 - 8kq3zm', known);
+    expect(hit.kind).toBe('known-class');
+    expect(hit.matchedClass?.id).toBe('cls_1');
+  });
+
+  it('LinkedClassesPanel & LinkClassPanel hiển thị Studio Hub logic, không lặp danh sách và không hiện ô môn bị cắt chữ', () => {
+    globalThis.React = React;
+    const onboardingHtml = renderToStaticMarkup(
+      React.createElement(LinkedClassesPanel, {
+        user: { uid: 'gvbm_1', displayName: 'Cô Lan' },
+        initialItems: [],
+        onFocusKeyInput: () => {},
+      })
+    );
+    expect(onboardingHtml).toContain('gvbm-onboarding');
+    expect(onboardingHtml).toContain('gvbm-steps');
+    expect(onboardingHtml).toContain('Nhập key nhận lớp ngay');
+    expect(onboardingHtml).not.toContain('gvbm-kpi-strip');
+
+    const populatedHtml = renderToStaticMarkup(
+      React.createElement(LinkedClassesPanel, {
+        user: { uid: 'gvbm_1', displayName: 'Cô Lan' },
+        initialItems: [
+          {
+            id: 'cls_11a9_gvbm_1',
+            classId: 'cls_11a9',
+            className: '11A9',
+            subject: 'Sinh học',
+            linkedAtMs: Date.now(),
+            cls: { id: 'cls_11a9', name: '11A9', key: '11A9-8C72AL', teacherName: 'Thầy Minh', members: [{ id: 's1' }] },
+            mine: [{ id: 'ex_1', title: 'Kiểm tra 15p', active: true }],
+          },
+        ],
+      })
+    );
+    expect(populatedHtml).toContain('gvbm-kpi-strip');
+    expect(populatedHtml).toContain('gvbm-class-card');
+    expect(populatedHtml).toContain('11A9');
+    expect(populatedHtml).toContain('Sinh học');
+    expect(populatedHtml).toContain('+ Giao đề');
+    expect(populatedHtml).toContain('Đề đã giao (1)');
+    expect(populatedHtml).toContain('Xuất Excel');
+    expect(populatedHtml).toContain('Gỡ liên kết');
+
+    const linkPanelHtml = renderToStaticMarkup(
+      React.createElement(LinkClassPanel, {
+        hideList: true,
+        knownClasses: [],
+      })
+    );
+    expect(linkPanelHtml).toContain('data-gvbm-key-input="true"');
+    expect(linkPanelHtml).toContain('Nhận lớp bằng Key GVBM');
+    expect(linkPanelHtml).not.toContain('Chủ nhiệm đã gán môn');
+    expect(linkPanelHtml).not.toContain('Lớp đã liên kết');
+
+    const dashboardSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/TeacherDashboard.jsx'), 'utf8');
+    expect(dashboardSrc).not.toContain('Giao đề nhanh bằng Mã lớp (Không cần Key)');
+    expect(dashboardSrc).not.toContain('placeholder*="11A7"');
+    expect(dashboardSrc).not.toContain('vàxem');
   });
 });
