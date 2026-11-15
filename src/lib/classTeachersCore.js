@@ -294,7 +294,9 @@ export function buildTeacherActivity({
       examsAll: rows.reduce((a, r) => a + r.examCount, 0),
       examsLinked: linked.reduce((a, r) => a + r.examCount, 0),
       submissions: rows.reduce((a, r) => a + r.submissions, 0),
+      submissionsLinked: linked.reduce((a, r) => a + r.submissions, 0),
       emptyExams: rows.reduce((a, r) => a + r.emptyExams, 0),
+      emptyLinkedExams: linked.reduce((a, r) => a + r.emptyExams, 0),
     },
   };
 }

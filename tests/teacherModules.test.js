@@ -93,6 +93,7 @@ import ClassDetailModal, { formatClassBadge, buildTrendPoints } from '../src/com
 import StudentModal from '../src/components/StudentModal.jsx';
 import LinkedClassesPanel from '../src/components/teacher/LinkedClassesPanel.jsx';
 import LinkClassPanel from '../src/components/teacher/LinkClassPanel.jsx';
+import SubjectTeacherPanel from '../src/components/teacher/SubjectTeacherPanel.jsx';
 import { normalizeTeacherKey, classifyKeyInput } from '../src/lib/classTeachersCore.js';
 import {
   DEFAULT_COUNTS,
@@ -809,5 +810,56 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
     expect(dashboardSrc).not.toContain('Giao đề nhanh bằng Mã lớp (Không cần Key)');
     expect(dashboardSrc).not.toContain('placeholder*="11A7"');
     expect(dashboardSrc).not.toContain('vàxem');
+  });
+
+  it('SubjectTeacherPanel đồng bộ logic KPI Đề của GVBM, không lặp chữ "lớp Lớp", không vỡ dấu * và giữ filter trên 1 hàng', () => {
+    globalThis.React = React;
+    const html = renderToStaticMarkup(
+      React.createElement(SubjectTeacherPanel, {
+        classId: 'cls_11a5',
+        className: 'Lớp 11A5',
+        teacherId: 'gvcn_1',
+        classInfo: { teacherId: 'gvcn_1', teacherName: 'Thầy Duy', subject: 'Hóa học', members: [{ id: 's1' }] },
+        exams: [
+          { id: 'ex_owner_empty', teacherId: 'gvcn_1', classId: 'cls_11a5', title: 'Đề Hóa 1', subject: 'Hóa học', questions: [] },
+        ],
+        submissionsMap: {},
+        initialData: {
+          keys: [
+            { id: 'GV-PXVJ98', subject: 'Toán', email: 'gv@truong.edu.vn', uses: 1, maxUses: 5, active: true, expiresAtMs: Date.now() + 86400000 },
+          ],
+          teachers: [
+            { teacherId: 'gvbm_toan', teacherName: 'Cô Lan', subject: 'Toán', linkedAtMs: Date.now() - 3600000 },
+          ],
+          accounts: { gvbm_toan: { exists: true } },
+          audit: [],
+        },
+      })
+    );
+
+    // KPI #2 tách bạch với KPI #3 (GVCN có 1 đề chưa có bài, GVBM có 0 đề -> phải ghi "Chưa giao đề nào")
+    expect(html).toContain('Tổng đề của lớp');
+    expect(html).toContain('1 đề chưa có bài nộp');
+    expect(html).toContain('Đề của GVBM');
+    expect(html).toContain('Chưa giao đề nào');
+
+    // Không lặp "lớp Lớp", không mâu thuẫn "Mỗi key dùng 1 lần", không lỗi "môn môn" hay thuật ngữ "ở phía server"
+    expect(html).toContain('Key liên kết Lớp 11A5');
+    expect(html).not.toContain('lớp Lớp');
+    expect(html).not.toContain('Mỗi key dùng 1 lần');
+    expect(html).not.toContain('môn môn');
+    expect(html).not.toContain('ở phía server');
+
+    // Nhãn trường form bọc trong .st-field-label để dấu * không rớt dòng và lệch chiều cao
+    expect(html).toContain('class="st-field-label"');
+    expect(html).toContain('class="st-keymaker"');
+    expect(html).toContain('class="st-card-head is-toolbar"');
+
+    // CSS bảo vệ layout trước rule global width:100% trong core.css
+    const stCss = fs.readFileSync(path.resolve(process.cwd(), 'src/styles/subject-teachers.css'), 'utf8');
+    expect(stCss).toMatch(/\.st \.st-keymaker\s*\{[\s\S]*display:\s*grid/);
+    expect(stCss).toMatch(/\.st \.st-filters \.st-search\s*\{[\s\S]*width:\s*auto/);
+    expect(stCss).toMatch(/\.st \.st-filters select\s*\{[\s\S]*width:\s*auto/);
+    expect(stCss).toContain('.st-kpi[data-tone="ok"]::before');
   });
 });

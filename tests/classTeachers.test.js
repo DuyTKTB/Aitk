@@ -156,7 +156,9 @@ describe('buildTeacherActivity', () => {
     expect(activity.total.teachers).toBe(2);
     expect(activity.total.examsLinked).toBe(2);
     expect(activity.total.submissions).toBe(3);
+    expect(activity.total.submissionsLinked).toBe(3);
     expect(activity.total.emptyExams).toBe(1);
+    expect(activity.total.emptyLinkedExams).toBe(0);
   });
 
   it('tính tỷ lệ tham gia và điểm TB theo giáo viên', () => {

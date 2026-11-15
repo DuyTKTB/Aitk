@@ -98,13 +98,13 @@ const IcoUndo = (p) => (
 );
 
 export default function SubjectTeacherPanel({
-  classId, className, exams = [], submissionsMap = {}, teacherId, classInfo = {}, onChanged,
+  classId, className, exams = [], submissionsMap = {}, teacherId, classInfo = {}, onChanged, initialData = null,
 }) {
-  const [keys, setKeys] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [accounts, setAccounts] = useState({});
-  const [audit, setAudit] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [keys, setKeys] = useState(() => initialData?.keys || []);
+  const [teachers, setTeachers] = useState(() => initialData?.teachers || []);
+  const [accounts, setAccounts] = useState(() => initialData?.accounts || {});
+  const [audit, setAudit] = useState(() => initialData?.audit || []);
+  const [loading, setLoading] = useState(() => !initialData);
   const [err, setErr] = useState('');
 
   const [days, setDays] = useState(7);
@@ -152,7 +152,9 @@ export default function SubjectTeacherPanel({
     }
   }, [classId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!initialData) load();
+  }, [load, initialData]);
 
   const students = classInfo?.members?.length || 0;
 
@@ -317,7 +319,13 @@ export default function SubjectTeacherPanel({
   if (loading) return <div className="st-state">Đang tải giáo viên bộ môn…</div>;
 
   const t = activity.total;
+  const emptyLinked = t.emptyLinkedExams ?? 0;
+  const submissionsLinked = t.submissionsLinked ?? 0;
   const usableKeys = keys.filter((k) => keyStatus(k).code === 'active').length;
+  const trimmedClassName = String(className || '').trim();
+  const classLabel = trimmedClassName.toLowerCase().startsWith('lớp ')
+    ? trimmedClassName
+    : (trimmedClassName ? `lớp ${trimmedClassName}` : 'lớp học');
   const subjectList = [...new Set([
     ...SUBJECTS.map((s) => s.label),
     ...teachers.map((x) => x.subject).filter(Boolean),
@@ -396,25 +404,39 @@ export default function SubjectTeacherPanel({
       )}
 
       <div className="st-kpis">
-        <div className="st-kpi">
+        <div className="st-kpi" data-tone="violet">
           <small>Giáo viên bộ môn</small>
           <b>{t.teachers}</b>
-          <span>{t.teachersActive} đã giao đề</span>
+          <span>
+            {t.teachers === 0
+              ? 'Chưa có GV liên kết'
+              : `${t.teachersActive}/${t.teachers} đã giao đề`}
+          </span>
         </div>
-        <div className="st-kpi">
-          <small>Tổng đề đã giao</small>
+        <div className="st-kpi" data-tone="acc">
+          <small>Tổng đề của lớp</small>
           <b>{t.examsAll}</b>
-          <span>gồm cả đề của chủ nhiệm</span>
+          <span>
+            {t.emptyExams > 0
+              ? `${t.emptyExams} đề chưa có bài nộp`
+              : (t.examsAll > 0 ? 'Tất cả đã có bài nộp' : 'Gồm cả đề chủ nhiệm')}
+          </span>
         </div>
-        <div className="st-kpi">
+        <div className="st-kpi" data-tone="ok">
           <small>Đề của GVBM</small>
           <b>{t.examsLinked}</b>
-          <span>{t.emptyExams} đề chưa có bài nộp</span>
+          <span>
+            {t.examsLinked === 0
+              ? 'Chưa giao đề nào'
+              : `${submissionsLinked} lượt nộp${emptyLinked > 0 ? ` · ${emptyLinked} chưa có bài` : ''}`}
+          </span>
         </div>
-        <div className="st-kpi">
+        <div className="st-kpi" data-tone="amber">
           <small>Key còn hiệu lực</small>
           <b>{usableKeys}</b>
-          <span>{keys.length} key đã tạo</span>
+          <span>
+            {keys.length === 0 ? 'Chưa tạo key nào' : `${keys.length} key đã tạo`}
+          </span>
         </div>
       </div>
 
@@ -429,20 +451,22 @@ export default function SubjectTeacherPanel({
       {/* ---------- Tạo key ---------- */}
       <div className="st-card">
         <div className="st-card-head">
-          <h3>Key liên kết lớp {className}</h3>
-          <span className="st-sub">Mỗi key dùng 1 lần, gắn sẵn môn học, có hạn và thu hồi được</span>
+          <h3>Key liên kết {classLabel}</h3>
+          <span className="st-sub">Gắn sẵn phân môn, tuỳ chọn lượt dùng, tự hết hạn và thu hồi bất kỳ lúc nào</span>
         </div>
 
         <div className="st-keymaker">
-          <label>
-            Môn học <em className="st-req">*</em>
+          <label className="st-field st-field-subject">
+            <span className="st-field-label">
+              Môn học <em className="st-req">*</em>
+            </span>
             <select value={subject} onChange={(e) => setSubject(e.target.value)} required>
               <option value="">— Chọn môn —</option>
               {subjectList.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
-          <label>
-            Gửi tới email (tuỳ chọn)
+          <label className="st-field st-field-email">
+            <span className="st-field-label">Gửi tới email (tuỳ chọn)</span>
             <input
               type="email"
               value={email}
@@ -451,38 +475,56 @@ export default function SubjectTeacherPanel({
               maxLength={120}
             />
           </label>
-          <label>
-            Hạn dùng
+          <label className="st-field st-field-days">
+            <span className="st-field-label">Hạn dùng</span>
             <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
               <option value={1}>1 ngày</option>
               <option value={7}>7 ngày</option>
               <option value={30}>30 ngày</option>
             </select>
           </label>
-          <label>
-            Số lượt dùng
+          <label className="st-field st-field-uses">
+            <span className="st-field-label">Số lượt dùng</span>
             <select value={maxUses} onChange={(e) => setMaxUses(Number(e.target.value))}>
               <option value={1}>1 lượt</option>
               <option value={2}>2 lượt</option>
               <option value={5}>5 lượt</option>
             </select>
           </label>
-          <button type="button" className="st-btn primary" onClick={makeKey} disabled={creating || !subject}>
+          <button
+            type="button"
+            className={`st-btn primary st-make-btn${creating ? ' is-busy' : ''}`}
+            onClick={makeKey}
+            disabled={creating || !subject}
+          >
             {creating ? 'Đang tạo…' : 'Tạo key mới'}
           </button>
-          {newKey && (
+        </div>
+
+        {newKey && (
+          <div className="st-newkey-wrap">
+            <span className="st-newkey-note">Key vừa tạo (hãy gửi cho giáo viên bộ môn):</span>
             <div className="st-newkey">
               <code>{newKey}</code>
               <button type="button" className="st-btn" onClick={() => copy(newKey, 'new')}>
                 {copied === 'new' ? 'Đã copy' : 'Copy'}
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <p className="st-empty sm">
-          Gửi key này cho giáo viên bộ môn môn <b>{subject || '…'}</b>. Giáo viên nhập key bằng tài khoản riêng
-          của họ — hệ thống kiểm tra lại hạn dùng, số lượt và quyền của người tạo key ở phía server.
+        <p className="st-guide">
+          {subject
+            ? (
+              <>
+                Gửi key này cho giáo viên dạy môn <b>{subject}</b>. Đồng nghiệp dùng tài khoản giáo viên nhập key tại mục <b>Lớp dạy bộ môn</b> để nhận lớp.
+              </>
+            )
+            : (
+              <>
+                Chọn phân môn cần mời rồi bấm <b>Tạo key mới</b>. Đồng nghiệp nhập key tại mục <b>Lớp dạy bộ môn</b> để nhận quyền giao đề đúng phân môn.
+              </>
+            )}
         </p>
 
         {keys.length === 0 ? (
@@ -494,27 +536,29 @@ export default function SubjectTeacherPanel({
               const uses = Number(k.uses) || 0;
               const max = Number(k.maxUses) || 1;
               return (
-                <li key={k.id}>
-                  <code>{k.id}</code>
+                <li key={k.id} className="st-key-row">
+                  <code className="st-key-code">{k.id}</code>
                   <span className={`st-badge tone-${st.tone}`}>{st.label}</span>
                   <span className="st-keymeta">
                     {k.subject ? <b>{k.subject}</b> : <span className="st-muted">chưa gán môn</span>}
                     {k.email ? <small> · {k.email}</small> : null}
                     <small> · {uses}/{max} lượt · hết hạn {fmtDate(toMs(k.expiresAt))}</small>
                   </span>
-                  {st.code === 'active' && (
-                    <button
-                      type="button"
-                      className="st-btn ghost"
-                      onClick={() => requestRevoke(k)}
-                    >
-                      Thu hồi
+                  <div className="st-key-actions">
+                    {st.code === 'active' && (
+                      <button
+                        type="button"
+                        className="st-btn ghost danger-ghost"
+                        onClick={() => requestRevoke(k)}
+                      >
+                        Thu hồi
+                      </button>
+                    )}
+                    <button type="button" className="st-btn ghost" onClick={() => copy(k.id, k.id)}>
+                      {copied === k.id ? <IcoCheck size={14} /> : <IcoCopy size={14} />}
+                      <span>{copied === k.id ? 'Đã copy' : 'Copy'}</span>
                     </button>
-                  )}
-                  <button type="button" className="st-btn ghost" onClick={() => copy(k.id, k.id)}>
-                    {copied === k.id ? <IcoCheck size={14} /> : <IcoCopy size={14} />}
-                    <span style={{ marginLeft: 4 }}>{copied === k.id ? 'Đã copy' : 'Copy'}</span>
-                  </button>
+                  </div>
                 </li>
               );
             })}
@@ -524,8 +568,15 @@ export default function SubjectTeacherPanel({
 
       {/* ---------- Bảng giáo viên ---------- */}
       <div className="st-card">
-        <div className="st-card-head">
-          <h3>Hoạt động ra đề của giáo viên bộ môn</h3>
+        <div className="st-card-head is-toolbar">
+          <div className="st-card-title-row">
+            <h3>Hoạt động ra đề của giáo viên bộ môn</h3>
+            <span className="st-count-pill">
+              {activity.linked.length > 0
+                ? `${activity.linked.length} GVBM · ${rows.length} đang hiện`
+                : `${rows.length} tài khoản`}
+            </span>
+          </div>
           <div className="st-filters">
             <input
               type="search"
@@ -605,7 +656,7 @@ export default function SubjectTeacherPanel({
                       <td className="num">{r.linkedAt ? fmtDate(r.linkedAt) : '—'}</td>
                       <td className="num">
                         {!r.isOwner && (
-                          <button type="button" className="st-btn ghost" onClick={() => requestRemove(r)}>
+                          <button type="button" className="st-btn ghost danger-ghost" onClick={() => requestRemove(r)}>
                             Gỡ
                           </button>
                         )}
@@ -663,7 +714,7 @@ export default function SubjectTeacherPanel({
           </div>
         )}
 
-        <p className="st-empty sm">
+        <p className="st-empty sm st-footnote">
           Trạng thái tài khoản lấy từ hồ sơ người dùng. Số đề chỉ phản ánh hoạt động kiểm tra,
           không dùng để đánh giá năng lực giảng dạy.
         </p>
