@@ -234,7 +234,13 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
     cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true, ...(exam.proctor?.cameraChecks || {}) },
   }));
 
-  const [questions, setQuestions] = useState(() => (exam.questions || []).map((q) => ({ ...q, type: normType(q) })));
+  const [questions, setQuestions] = useState(() => (exam.questions || []).map((q) => ({
+    ...q,
+    type: normType(q),
+    ...(normType(q) === 'short_answer'
+      ? { _origAnswer: String(q.answer ?? (q.accepted?.[0] || '')).trim().replace(/\./g, ',') }
+      : {}),
+  })));
   const [openQ, setOpenQ] = useState(0);
   const [imgBusy, setImgBusy] = useState(-1);
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -363,6 +369,10 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
   const validate = () => {
     if (!title.trim()) return 'Tiêu đề không được để trống.';
     if (!Number.isInteger(Number(duration)) || Number(duration) < 1 || Number(duration) > 300) return 'Thời gian làm bài từ 1 đến 300 phút.';
+    if (opensAt && closesAt && new Date(opensAt) >= new Date(closesAt)) {
+      return 'Thời gian đóng đề phải sau thời gian mở đề.';
+    }
+    if (!questions.length) return 'Đề thi cần ít nhất 1 câu hỏi.';
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!String(q.q || '').trim()) return `Câu ${i + 1}: thiếu nội dung câu hỏi.`;
@@ -401,6 +411,7 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
           q: String(q.q || '').trim(),
           points: ptsOf(q),
         };
+        delete base._origAnswer;
         if (!base.image) { delete base.image; delete base.imageAlt; }
         if (!base.passage) delete base.passage;
         if (!base.instruction) delete base.instruction;
@@ -414,13 +425,14 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
           };
         }
         if (t === 'short_answer') {
-          const vi = String(q.answer ?? '').trim().replace('.', ',');
+          const vi = String(q.answer ?? '').trim().replace(/\./g, ',');
+          const extraAccepted = vi === (q._origAnswer ?? vi) ? (q.accepted || []) : [];
           return {
             ...base,
             options: [],
             correct: -1,
             answer: vi,
-            accepted: [...new Set([vi, vi.replace(',', '.'), ...(q.accepted || [])].map((x) => String(x ?? '').trim()))].filter(Boolean),
+            accepted: [...new Set([vi, vi.replace(/,/g, '.'), ...extraAccepted].map((x) => String(x ?? '').trim()))].filter(Boolean),
           };
         }
         const kept = (q.options || [])

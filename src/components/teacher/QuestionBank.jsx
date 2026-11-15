@@ -38,6 +38,40 @@ import {
 } from '../../data/topicsBySubject.js';
 import '../../styles/question-bank.css';
 
+export function AiQuestionChoicesPreview({ item, wrapClass, itemClass = '', correctClass = 'correct', inline = false }) {
+  const RowTag = inline ? 'span' : 'div';
+  if (!item) return null;
+  if (item.type === 'true_false' && Array.isArray(item.statements)) {
+    return (
+      <div className={wrapClass}>
+        {item.statements.slice(0, 4).map((st, i) => (
+          <RowTag key={i} className={[itemClass, st?.answer ? correctClass : ''].filter(Boolean).join(' ')}>
+            <b>{'abcd'[i]}.</b> <MathText>{st?.text || ''}</MathText> <span>({st?.answer ? 'Đúng' : 'Sai'})</span>
+          </RowTag>
+        ))}
+      </div>
+    );
+  }
+  if (item.type === 'short_answer' || (!Array.isArray(item.options) && item.answer !== undefined && item.answer !== '')) {
+    return (
+      <div className={wrapClass}>
+        <RowTag className={[itemClass, correctClass].filter(Boolean).join(' ')}>
+          <b>Đáp án:</b> <MathText>{String(item.answer ?? item.accepted?.[0] ?? '')}</MathText>
+        </RowTag>
+      </div>
+    );
+  }
+  return (
+    <div className={wrapClass}>
+      {(Array.isArray(item.options) ? item.options : []).map((o, i) => (
+        <RowTag key={i} className={[itemClass, i === item.correct ? correctClass : ''].filter(Boolean).join(' ')}>
+          <b>{String.fromCharCode(65 + i)}.</b> <MathText>{o}</MathText>
+        </RowTag>
+      ))}
+    </div>
+  );
+}
+
 /* ============ SVG ICONS (18px, stroke-width 1.8, no emoji) ============ */
 const Svg = ({ size = 18, sw = 1.8, children, className = '' }) => (
   <svg
@@ -3343,13 +3377,11 @@ Trả về DUY NHẤT JSON:
                         {aiResult.kind === 'similar' && aiResult.question && (
                           <div className="qb-ai-similar-preview">
                             <MathText as="p" className="qb-ai-sim-q">{aiResult.question.q}</MathText>
-                            <div className="qb-ai-sim-opts">
-                              {aiResult.question.options.map((o, i) => (
-                                <div key={i} className={i === aiResult.question.correct ? 'is-corr' : ''}>
-                                  <b>{String.fromCharCode(65 + i)}.</b> <MathText>{o}</MathText>
-                                </div>
-                              ))}
-                            </div>
+                            <AiQuestionChoicesPreview
+                              item={aiResult.question}
+                              wrapClass="qb-ai-sim-opts"
+                              correctClass="is-corr"
+                            />
                             <button
                               type="button"
                               className="vt-btn sm primary"
@@ -3742,13 +3774,13 @@ Trả về DUY NHẤT JSON:
                     <div key={item.id} className="qb-item">
                       <div className="qb-item-body">
                         <p className="qb-item-q"><b>Câu {idx + 1}:</b> <MathText>{item.q}</MathText></p>
-                        <div className="qb-item-opts">
-                          {item.options.map((o, i) => (
-                            <span key={i} className={'qb-item-opt' + (i === item.correct ? ' correct' : '')}>
-                              <b>{String.fromCharCode(65 + i)}.</b> <MathText>{o}</MathText>
-                            </span>
-                          ))}
-                        </div>
+                        <AiQuestionChoicesPreview
+                          item={item}
+                          wrapClass="qb-item-opts"
+                          itemClass="qb-item-opt"
+                          correctClass="correct"
+                          inline
+                        />
                       </div>
                     </div>
                   ))}

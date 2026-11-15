@@ -121,14 +121,19 @@ export async function createExamSession({
 
 export async function endExamSession(sessionId) {
   if (!sessionId) return;
-  await Promise.race([
-    updateDoc(doc(db, SESSIONS, sessionId), {
-      status: 'ended',
-      endedAt: serverTimestamp(),
-      endedAtMs: Date.now(),
-    }),
-    new Promise((resolve) => setTimeout(resolve, 2000)),
-  ]).catch((err) => console.warn('[endExamSession] updateDoc warning:', err?.message));
+  try {
+    await Promise.race([
+      updateDoc(doc(db, SESSIONS, sessionId), {
+        status: 'ended',
+        endedAt: serverTimestamp(),
+        endedAtMs: Date.now(),
+      }),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+  } catch (err) {
+    console.warn('[endExamSession] updateDoc warning:', err?.message);
+    throw err;
+  }
 }
 
 export async function extendExamSession(sessionId, extraMinutes = 5) {
@@ -153,6 +158,7 @@ export async function extendExamSession(sessionId, extraMinutes = 5) {
     ]);
   } catch (err) {
     console.warn('[extendExamSession] warning:', err?.message);
+    throw err;
   }
 }
 
@@ -683,6 +689,7 @@ export async function kickStudent({ sessionId, studentId, reason = '' }) {
     });
   } catch (e) {
     console.warn('[examSession] kickStudent failed:', e.message);
+    throw e;
   }
 }
 
@@ -698,6 +705,7 @@ export async function warnStudent({ sessionId, studentId, message }) {
     });
   } catch (e) {
     console.warn('[examSession] warnStudent failed:', e.message);
+    throw e;
   }
 }
 
@@ -724,6 +732,7 @@ export async function setStudentPaused({ sessionId, studentId, paused }) {
     });
   } catch (e) {
     console.warn('[examSession] setStudentPaused failed:', e.message);
+    throw e;
   }
 }
 
@@ -744,6 +753,7 @@ export async function setStudentForceSubmit({ sessionId, studentId, reason = 'te
     });
   } catch (e) {
     console.warn('[examSession] setStudentForceSubmit failed:', e.message);
+    throw e;
   }
 }
 

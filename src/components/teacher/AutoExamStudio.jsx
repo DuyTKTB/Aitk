@@ -1750,6 +1750,40 @@ export default function AutoExamStudio({
     }
   };
 
+  const handleAssignFromSimulator = async (assignPayload) => {
+    const targetClassId = assignPayload?.classId !== undefined ? assignPayload.classId : (selectedClassId || '');
+    const isDraft = Boolean(assignPayload?.isDraft || !targetClassId);
+    const resolvedQuestions = assignPayload?.questions?.length ? assignPayload.questions : questions;
+    const created = await createExam({
+      teacherId: user.uid,
+      teacherName: user.displayName || user.email || 'Giáo viên',
+      classId: isDraft ? '' : targetClassId,
+      isDraft,
+      title: assignPayload?.title || assignPayload?.examTitle || publishTitle || topic || `Đề kiểm tra ${selectedSubject}`,
+      description: assignPayload?.description || `Đề khảo thí môn ${selectedSubject} ${resolvedQuestions.length} câu phân hóa 4 mức độ GDPT 2018.`,
+      duration: Number(assignPayload?.duration) || selectedDuration,
+      questions: resolvedQuestions,
+      subject: assignPayload?.subject || selectedSubject,
+      grade: assignPayload?.grade || selectedGrade,
+      gradeType: assignPayload?.gradeType || '',
+      showAnswerAfter: assignPayload?.showAnswerAfter ?? publishShowAnswer,
+      allowRetry: assignPayload?.allowRetry ?? false,
+      shuffle: assignPayload?.shuffle ?? publishShuffle,
+      proctor: assignPayload?.proctor || {
+        ...defaultProctor(),
+        camera: publishCamera,
+        cameraChecks: { ...defaultProctor().cameraChecks, ...cameraChecks },
+      },
+      source: 'studio-simulator-assign',
+    });
+    const targetClass = classes.find((c) => c.id === (isDraft ? '' : targetClassId));
+    showToast(
+      targetClass ? `Đã giao đề “${created.title}” vào lớp ${targetClass.name}` : 'Đã lưu bản nháp vào Kho đề (chưa gắn lớp)',
+      'success'
+    );
+    return created;
+  };
+
   /* ============================================================
      RENDER: MÀN HÌNH CHAT-ONLY
      ============================================================ */
@@ -3126,6 +3160,8 @@ export default function AutoExamStudio({
               <ExamPreviewSimulator
                 embedded
                 defaultTab={workspaceTab}
+                classes={classes}
+                onAssignShuffled={handleAssignFromSimulator}
                 exam={{
                   title: publishTitle || topic || `Đề kiểm tra ${selectedSubject}`,
                   duration: selectedDuration,
@@ -3144,6 +3180,8 @@ export default function AutoExamStudio({
       {/* MODAL TOÀN MÀN HÌNH */}
       {showSimulator && (
         <ExamPreviewSimulator
+          classes={classes}
+          onAssignShuffled={handleAssignFromSimulator}
           exam={{
             title: publishTitle || topic || `Đề kiểm tra ${selectedSubject}`,
             duration: selectedDuration,

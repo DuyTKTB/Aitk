@@ -209,6 +209,7 @@ export default function TeacherSimulatorHub({
   // "4. SỐ LƯỢNG MÃ ĐỀ CẦN TẠO"
   const [codeCount, setCodeCount] = useState(4);
   const [exportingZip, setExportingZip] = useState(false);
+  const [zipNotice, setZipNotice] = useState(null);
 
   // Step 1 Filters, Search, Sort, View Mode
   const [searchQuery, setSearchQuery] = useState('');
@@ -279,8 +280,14 @@ export default function TeacherSimulatorHub({
 
   const handleDirectDownloadWordZip = async () => {
     const candidate = loadedExam || teacherExams[0] || PRESET_SAMPLE_EXAMS[0];
-    if (!candidate || !candidate.questions?.length) return;
+    if (!candidate || !candidate.questions?.length) {
+      setZipNotice({ tone: 'warn', text: 'Đề chưa có câu hỏi nào để tải về.' });
+      return;
+    }
+    const resolvedSubject = candidate.subject || headerInfo.subject;
+    const resolvedDuration = Number(headerInfo.duration) || Number(candidate.duration) || 45;
     try {
+      setZipNotice(null);
       setExportingZip(true);
       const versions = generateShuffledVersions(candidate.questions, codeCount, {
         seedText: '2025',
@@ -293,25 +300,29 @@ export default function TeacherSimulatorHub({
       if (versions.length === 1) {
         await exportToWord({
           examTitle: headerInfo.examName || candidate.title,
-          subject: headerInfo.subject,
-          duration: Number(headerInfo.duration) || 45,
+          subject: resolvedSubject,
+          duration: resolvedDuration,
           code: versions[0].code,
           questions: versions[0].questions,
           includeAnswers: true,
           headerInfo,
         });
+        setZipNotice({ tone: 'success', text: 'Đã tải 1 file Word (.docx) thành công.' });
       } else {
         await exportBundleZip({
           examTitle: headerInfo.examName || candidate.title,
-          subject: headerInfo.subject,
-          duration: Number(headerInfo.duration) || 45,
+          subject: resolvedSubject,
+          duration: resolvedDuration,
           versions,
           headerInfo,
+          originalQuestions: candidate.questions,
         });
+        setZipNotice({ tone: 'success', text: `Đã đóng gói & tải ${versions.length} mã đề (.zip) thành công.` });
       }
       sound.cheer();
     } catch (e) {
       console.error(e);
+      setZipNotice({ tone: 'error', text: 'Không tải được file đề: ' + (e?.message || e) });
     } finally {
       setExportingZip(false);
     }
@@ -1046,6 +1057,23 @@ export default function TeacherSimulatorHub({
                 <IcoSend size={14} /> GIAO PHÒNG THI
               </button>
             </div>
+            {zipNotice && (
+              <div
+                role="status"
+                style={{
+                  marginTop: 10,
+                  padding: '8px 12px',
+                  borderRadius: 9,
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  background: zipNotice.tone === 'error' ? '#fef2f2' : zipNotice.tone === 'warn' ? '#fffbeb' : '#f0fdf4',
+                  color: zipNotice.tone === 'error' ? '#b91c1c' : zipNotice.tone === 'warn' ? '#b45309' : '#15803d',
+                  border: `1px solid ${zipNotice.tone === 'error' ? '#fecaca' : zipNotice.tone === 'warn' ? '#fde68a' : '#bbf7d0'}`,
+                }}
+              >
+                {zipNotice.text}
+              </div>
+            )}
           </section>
         </div>
       </div>

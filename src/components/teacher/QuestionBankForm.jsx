@@ -162,7 +162,11 @@ export default function QuestionBankForm({
         setError('Câu Trả lời ngắn cần nhập đáp án.');
         return;
       }
-      const accepted = [...new Set([vi, vi.replace(/,/g, '.'), ...(initial?.accepted || []).map((x) => String(x ?? '').trim())])].filter(Boolean);
+      const prevVi = String(initial?.answer ?? (initial?.accepted?.[0] || '')).trim().replace(/\./g, ',');
+      const extraAccepted = vi === prevVi
+        ? (initial?.accepted || []).map((x) => String(x ?? '').trim())
+        : [];
+      const accepted = [...new Set([vi, vi.replace(/,/g, '.'), ...extraAccepted])].filter(Boolean);
       setError('');
       onSave?.({ ...base, options: [], correct: -1, answer: vi, accepted }, { another: another === true });
       return;

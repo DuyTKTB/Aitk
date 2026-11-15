@@ -15,7 +15,7 @@
      • Chọn ngẫu nhiên N câu trong kết quả lọc (ra đề nhanh).
      • excludeIds: câu đã có trong đề hiển thị "Đã có trong đề", không chọn lại được.
    ============================================================ */
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import MathText from '../MathText.jsx';
 import { getQuestions, norm } from '../../lib/questionBank.js';
 import { CHEM_TOPICS } from '../../data/chemTopics.js';
@@ -38,6 +38,45 @@ function sample(arr, n) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a.slice(0, n);
+}
+
+export function BankQuestionChoices({ q }) {
+  if (!q) return null;
+  if (q.type === 'true_false') {
+    return (
+      <div className="qb-item-opts">
+        {(Array.isArray(q.statements) ? q.statements : []).map((st, i) => (
+          <span key={i} className={'qb-item-opt' + (st?.answer === true ? ' correct' : '')}>
+            <b>{String.fromCharCode(97 + i)})</b>
+            <MathText>{st?.text || ''}</MathText>
+            <em style={{ marginLeft: 4, fontStyle: 'normal', opacity: 0.8 }}>
+              ({st?.answer === true ? 'Đ' : 'S'})
+            </em>
+          </span>
+        ))}
+      </div>
+    );
+  }
+  if (q.type === 'short_answer') {
+    return (
+      <div className="qb-item-opts">
+        <span className="qb-item-opt correct">
+          <b>Đáp án:</b>
+          <MathText>{q.answer ?? (Array.isArray(q.accepted) ? q.accepted[0] : '') ?? ''}</MathText>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="qb-item-opts">
+      {(Array.isArray(q.options) ? q.options : []).map((opt, i) => (
+        <span key={i} className={'qb-item-opt' + (i === q.correct ? ' correct' : '')}>
+          <b>{String.fromCharCode(65 + i)}.</b>
+          <MathText>{opt}</MathText>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function ExamPickerFromBank({
@@ -281,14 +320,7 @@ export default function ExamPickerFromBank({
                     </span>
                     <div className="qb-item-body">
                       <MathText as="p" className="qb-item-q">{q.q}</MathText>
-                      <div className="qb-item-opts">
-                        {q.options.map((opt, i) => (
-                          <span key={i} className={'qb-item-opt' + (i === q.correct ? ' correct' : '')}>
-                            <b>{String.fromCharCode(65 + i)}.</b>
-                            <MathText>{opt}</MathText>
-                          </span>
-                        ))}
-                      </div>
+                      <BankQuestionChoices q={q} />
                       <div className="qb-item-meta">
                         {used && <span className="qb-meta-pill acc">Đã có trong đề</span>}
                         {topic && <span className="qb-meta-pill acc">{topic.name}</span>}

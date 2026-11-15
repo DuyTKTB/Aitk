@@ -781,6 +781,58 @@ export async function exportToPDF({
 /* ============================================================
    3. EXPORT ZIP (nhiều file gộp)
    ============================================================ */
+function computeExportMatrixStats(questions = [], subject = 'Hóa học') {
+  const list = Array.isArray(questions) ? questions : [];
+  let p1 = 0;
+  let p2 = 0;
+  let p3 = 0;
+  let nb = 0;
+  let th = 0;
+  let vd = 0;
+  let vdc = 0;
+
+  for (const q of list) {
+    const type = q?.type || (
+      Array.isArray(q?.statements) && q.statements.length > 0
+        ? 'true_false'
+        : (!Array.isArray(q?.options) && q?.answer !== undefined && q?.answer !== '')
+          ? 'short_answer'
+          : 'single_choice'
+    );
+    if (type === 'true_false') p2 += 1;
+    else if (type === 'short_answer') p3 += 1;
+    else p1 += 1;
+
+    const lvl = String(q?.level || 'TH').trim().toUpperCase();
+    if (lvl === 'NB' || lvl.includes('NHẬN BIẾT')) nb += 1;
+    else if (lvl === 'VDC' || lvl.includes('VẬN DỤNG CAO')) vdc += 1;
+    else if (lvl === 'VD' || lvl.includes('VẬN DỤNG')) vd += 1;
+    else th += 1;
+  }
+
+  const total = list.length || 1;
+  const part3Unit = /to[aá]n/i.test(String(subject || '')) ? 0.5 : 0.25;
+  const explicitPointsSum = list.reduce((acc, q) => acc + (Number(q?.points) > 0 ? Number(q.points) : 0), 0);
+  const gdptScore = p1 * 0.25 + p2 * 1.0 + p3 * part3Unit;
+  const totalScore = gdptScore > 0 ? gdptScore : explicitPointsSum;
+
+  return {
+    p1,
+    p2,
+    p3,
+    part3Unit,
+    totalScore,
+    nb,
+    th,
+    vd,
+    vdc,
+    nbPct: Math.round((nb / total) * 100),
+    thPct: Math.round((th / total) * 100),
+    vdPct: Math.round((vd / total) * 100),
+    vdcPct: Math.round((vdc / total) * 100),
+  };
+}
+
 export async function exportBundleZip({
   examTitle = 'Đề kiểm tra',
   subject = 'Hóa học',
@@ -794,6 +846,9 @@ export async function exportBundleZip({
   originalQuestions = [],
   matrixStats = null,
 }) {
+  if (!Array.isArray(versions) || versions.length === 0) {
+    throw new Error('Chưa có mã đề để đóng gói ZIP.');
+  }
   const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
 
@@ -833,22 +888,31 @@ export async function exportBundleZip({
     zip.file(`Dap-An-Chi-Tiet-Ma${version.code}.docx`, solvedBlob);
   }
 
+  const sourceQuestions = (Array.isArray(originalQuestions) && originalQuestions.length > 0)
+    ? originalQuestions
+    : (Array.isArray(versions[0]?.questions) ? versions[0].questions : []);
+  const resolvedMatrix = {
+    ...computeExportMatrixStats(sourceQuestions, subject),
+    ...(matrixStats && typeof matrixStats === 'object' ? matrixStats : {}),
+  };
+  const part3Unit = resolvedMatrix.part3Unit ?? (/to[aá]n/i.test(String(subject || '')) ? 0.5 : 0.25);
+
   const matrixContent = `
 # KHUNG MA TRẬN ĐỀ THI ĐỊNH KỲ
 - Môn: ${subject} - Khối: ${grade}
-- Phần I (Trắc nghiệm 4 lựa chọn): ${matrixStats?.p1 ?? 18} câu (${((matrixStats?.p1 ?? 18) * 0.25).toFixed(2)} điểm)
-- Phần II (Đúng/Sai 4 ý): ${matrixStats?.p2 ?? 4} câu (${((matrixStats?.p2 ?? 4) * 1.0).toFixed(2)} điểm)
-- Phần III (Trả lời ngắn): ${matrixStats?.p3 ?? 6} câu (${((matrixStats?.p3 ?? 6) * 0.5).toFixed(2)} điểm)
-- Tổng điểm: ${(matrixStats?.totalScore ?? 10).toFixed(2)} điểm
+- Phần I (Trắc nghiệm 4 lựa chọn): ${resolvedMatrix.p1} câu (${(resolvedMatrix.p1 * 0.25).toFixed(2)} điểm)
+- Phần II (Đúng/Sai 4 ý): ${resolvedMatrix.p2} câu (${(resolvedMatrix.p2 * 1.0).toFixed(2)} điểm)
+- Phần III (Trả lời ngắn): ${resolvedMatrix.p3} câu (${(resolvedMatrix.p3 * part3Unit).toFixed(2)} điểm)
+- Tổng điểm: ${Number(resolvedMatrix.totalScore ?? 0).toFixed(2)} điểm
 
 ### Phân bố mức độ Bloom:
-- Nhận biết: ${matrixStats?.nb ?? 0} câu (${matrixStats?.nbPct ?? 0}%)
-- Thông hiểu: ${matrixStats?.th ?? 0} câu (${matrixStats?.thPct ?? 0}%)
-- Vận dụng: ${matrixStats?.vd ?? 0} câu (${matrixStats?.vdPct ?? 0}%)
-- Vận dụng cao: ${matrixStats?.vdc ?? 0} câu (${matrixStats?.vdcPct ?? 0}%)
+- Nhận biết: ${resolvedMatrix.nb} câu (${resolvedMatrix.nbPct}%)
+- Thông hiểu: ${resolvedMatrix.th} câu (${resolvedMatrix.thPct}%)
+- Vận dụng: ${resolvedMatrix.vd} câu (${resolvedMatrix.vdPct}%)
+- Vận dụng cao: ${resolvedMatrix.vdc} câu (${resolvedMatrix.vdcPct}%)
 
 # BẢN ĐẶC TẢ CHI TIẾT CÂU HỎI
-${(originalQuestions || []).map((q, idx) => `Câu ${idx + 1} [${(q.level || 'TH').toUpperCase()}]: ${q.q ? q.q.slice(0, 90) : ''}...`).join('\n')}
+${sourceQuestions.map((q, idx) => `Câu ${idx + 1} [${(q.level || 'TH').toUpperCase()}]: ${q.q ? q.q.slice(0, 90) : ''}...`).join('\n')}
   `.trim();
 
   try {

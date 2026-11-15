@@ -1540,7 +1540,9 @@ export default function TeacherProfileSection({
         duration: Number(snap?.duration) || 45,
         questions: clonedQuestions,
         subject: snap?.subject || receivedResource.subject || targetClass?.subject || profile.mainSubject || '',
-        grade: Number(snap?.grade) || Number(targetClass?.grade) || 0,
+        grade: parseInt(String(snap?.grade ?? '').match(/\d+/)?.[0] || '', 10)
+          || parseInt(String(targetClass?.grade ?? '').match(/\d+/)?.[0] || '', 10)
+          || 0,
         shuffle: snap?.shuffle ?? false,
         showAnswerAfter: snap?.showAnswerAfter ?? true,
         source: 'colleague-share',

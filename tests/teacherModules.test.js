@@ -1,17 +1,42 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { syncPaperResultsToSubmissions } from '../src/lib/paperStore.js';
-import { buildExamDocBlob } from '../src/lib/examExport.js';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import JSZip from 'jszip';
 
-const batchSetCalls = [];
-const batchCommitCalls = [];
-const updateDocCalls = [];
-const setDocCalls = [];
+const {
+  batchSetCalls,
+  batchCommitCalls,
+  updateDocCalls,
+  setDocCalls,
+  savedDownloads,
+  mockCallModel,
+} = vi.hoisted(() => ({
+  batchSetCalls: [],
+  batchCommitCalls: [],
+  updateDocCalls: [],
+  setDocCalls: [],
+  savedDownloads: [],
+  mockCallModel: vi.fn(),
+}));
 
 vi.mock('../src/lib/firebase.js', () => ({
   db: {},
 }));
+
+vi.mock('file-saver', () => ({
+  default: { saveAs: vi.fn((blob, name) => { savedDownloads.push({ blob, name }); }) },
+  saveAs: vi.fn((blob, name) => { savedDownloads.push({ blob, name }); }),
+}));
+
+vi.mock('../src/lib/examAiUtils.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    callModel: mockCallModel,
+  };
+});
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, name) => ({ __col: name })),
@@ -30,6 +55,8 @@ vi.mock('firebase/firestore', () => ({
   orderBy: vi.fn((...args) => args),
   limit: vi.fn((n) => n),
   serverTimestamp: vi.fn(() => 'SERVER_TS'),
+  Timestamp: { fromMillis: vi.fn((ms) => ({ __ts: ms, toMillis: () => ms })) },
+  runTransaction: vi.fn(async (_db, fn) => fn({ get: vi.fn(), set: vi.fn(), update: vi.fn() })),
   increment: vi.fn((n) => ({ __inc: n })),
   arrayUnion: vi.fn((...args) => args),
   arrayRemove: vi.fn((...args) => args),
@@ -45,6 +72,18 @@ vi.mock('firebase/firestore', () => ({
   }),
 }));
 
+import { syncPaperResultsToSubmissions } from '../src/lib/paperStore.js';
+import { buildExamDocBlob, exportBundleZip } from '../src/lib/examExport.js';
+import { generatePedagogicalInsights } from '../src/lib/insightAi.js';
+import {
+  endExamSession,
+  extendExamSession,
+  kickStudent,
+  warnStudent,
+  setStudentPaused,
+  setStudentForceSubmit,
+} from '../src/lib/examSession.js';
+import ExamPickerFromBank, { BankQuestionChoices } from '../src/components/teacher/ExamPickerFromBank.jsx';
 import {
   DEFAULT_COUNTS,
   DEFAULT_SCORING,
@@ -69,13 +108,15 @@ import {
   createExam,
   duplicateExam,
 } from '../src/lib/classroom.js';
-import { getDoc } from 'firebase/firestore';
+import { getDoc, updateDoc } from 'firebase/firestore';
 
 beforeEach(() => {
   batchSetCalls.length = 0;
   batchCommitCalls.length = 0;
   updateDocCalls.length = 0;
   setDocCalls.length = 0;
+  savedDownloads.length = 0;
+  mockCallModel.mockReset();
 });
 
 describe('paperGrade — GDPT 2025 OMR keys & grading', () => {
@@ -348,5 +389,207 @@ describe('OMR sync, empty Word template & Firestore rules regression checks', ()
       grade: 12,
       gradeType: 'dgk',
     });
+  });
+});
+
+describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession, ExamPickerFromBank)', () => {
+  it('insightAi dùng algorithmic fallback + báo aiError và không cache khi AI trả về JSON rỗng/thiếu field', async () => {
+    const sampleInsights = {
+      submissionCount: 18,
+      avgPct: 58,
+      passRate: 62,
+      weakestTopics: [{ topic: 'Este - Lipit', rate: 38 }],
+      hardest: [{ index: 0, rate: 25 }],
+      atRisk: [{ name: 'HS A' }],
+    };
+
+    mockCallModel.mockResolvedValueOnce('{"foo": "bar"}');
+    const partialRes = await generatePedagogicalInsights({
+      insightsData: sampleInsights,
+      className: '12A1',
+      subject: 'Hóa học',
+      forceRefresh: true,
+      useAi: true,
+    });
+
+    expect(partialRes.isAiGenerated).toBe(false);
+    expect(partialRes.aiError).toContain('chưa đầy đủ');
+    expect(partialRes.headline).toBeTruthy();
+
+    // Không bị cache shell lỗi: lần gọi tiếp với forceRefresh=false vẫn phải gọi lại AI
+    mockCallModel.mockResolvedValueOnce(JSON.stringify({
+      headline: 'Nhận xét chuẩn AI',
+      summary: 'Lớp nắm vững cơ bản.',
+      actions: [{ title: 'Ôn Este', steps: ['Chữa câu vận dụng'] }],
+    }));
+    const recoveredRes = await generatePedagogicalInsights({
+      insightsData: sampleInsights,
+      className: '12A1',
+      subject: 'Hóa học',
+      forceRefresh: false,
+      useAi: true,
+    });
+
+    expect(mockCallModel).toHaveBeenCalledTimes(2);
+    expect(recoveredRes.isAiGenerated).toBe(true);
+    expect(recoveredRes.headline).toBe('Nhận xét chuẩn AI');
+    expect(recoveredRes.aiError).toBeUndefined();
+  });
+
+  it('exportBundleZip báo lỗi khi versions rỗng và tính đúng ma trận & điểm Phần III theo môn học', async () => {
+    await expect(exportBundleZip({ examTitle: 'Đề rỗng', versions: [] }))
+      .rejects.toThrow('Chưa có mã đề để đóng gói ZIP.');
+
+    const buildPartQuestions = (p1, p2, p3) => [
+      ...Array.from({ length: p1 }, (_, i) => ({
+        type: 'single_choice',
+        level: i % 2 === 0 ? 'NB' : 'TH',
+        q: `P1-${i + 1}`,
+        options: ['A', 'B', 'C', 'D'],
+        correct: 0,
+      })),
+      ...Array.from({ length: p2 }, (_, i) => ({
+        type: 'true_false',
+        level: 'VD',
+        q: `P2-${i + 1}`,
+        statements: [
+          { text: 'a', answer: true },
+          { text: 'b', answer: false },
+          { text: 'c', answer: true },
+          { text: 'd', answer: false },
+        ],
+      })),
+      ...Array.from({ length: p3 }, (_, i) => ({
+        type: 'short_answer',
+        level: 'VDC',
+        q: `P3-${i + 1}`,
+        answer: '5',
+      })),
+    ];
+
+    const readMatrixText = async (zipBlob) => {
+      const outer = await JSZip.loadAsync(await zipBlob.arrayBuffer());
+      const entry = outer.file('Khung-Ma-Tran-Dac-Ta.docx');
+      expect(entry).toBeTruthy();
+      const raw = await entry.async('uint8array');
+      if (raw[0] === 0x50 && raw[1] === 0x4b) {
+        const inner = await JSZip.loadAsync(raw);
+        const xml = await inner.file('word/document.xml').async('string');
+        return xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+      }
+      return new TextDecoder().decode(raw);
+    };
+
+    // Case 1: Toán học 12/4/6 -> Phần III = 0.50 đ/câu = 3.00 điểm, Tổng = 10.00
+    const mathQs = buildPartQuestions(12, 4, 6);
+    await exportBundleZip({
+      examTitle: 'Đề Toán 12',
+      subject: 'Toán học',
+      versions: [{ code: '101', questions: mathQs }],
+      originalQuestions: mathQs,
+    });
+    expect(savedDownloads).toHaveLength(1);
+    const mathMatrixText = await readMatrixText(savedDownloads[0].blob);
+    expect(mathMatrixText).toContain('12 câu (3.00 điểm)');
+    expect(mathMatrixText).toContain('6 câu (3.00 điểm)');
+    expect(mathMatrixText).toContain('Tổng điểm: 10.00 điểm');
+
+    // Case 2: Hóa học 4/2/2 -> không còn hardcode 18/4/6, Phần III = 0.25 đ/câu = 0.50 điểm, Tổng = 3.50
+    const chemQs = buildPartQuestions(4, 2, 2);
+    await exportBundleZip({
+      examTitle: 'Đề Hóa tùy chỉnh',
+      subject: 'Hóa học',
+      versions: [{ code: '201', questions: chemQs }],
+      originalQuestions: chemQs,
+    });
+    expect(savedDownloads).toHaveLength(2);
+    const chemMatrixText = await readMatrixText(savedDownloads[1].blob);
+    expect(chemMatrixText).toContain('4 câu (1.00 điểm)');
+    expect(chemMatrixText).toContain('2 câu (2.00 điểm)');
+    expect(chemMatrixText).toContain('2 câu (0.50 điểm)');
+    expect(chemMatrixText).toContain('Tổng điểm: 3.50 điểm');
+  });
+
+  it('các hàm giám sát examSession ném lỗi khi Firestore updateDoc thất bại thay vì nuốt lỗi', async () => {
+    const permErr = new Error('permission-denied');
+
+    updateDoc.mockRejectedValueOnce(permErr);
+    await expect(endExamSession('sess_1')).rejects.toThrow('permission-denied');
+
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ duration: 45, closesAtMs: Date.now() + 60_000 }),
+    });
+    updateDoc.mockRejectedValueOnce(permErr);
+    await expect(extendExamSession('sess_1', 5)).rejects.toThrow('permission-denied');
+
+    updateDoc.mockRejectedValueOnce(permErr);
+    await expect(kickStudent({ sessionId: 'sess_1', studentId: 'hs_1', reason: 'test' }))
+      .rejects.toThrow('permission-denied');
+
+    updateDoc.mockRejectedValueOnce(permErr);
+    await expect(warnStudent({ sessionId: 'sess_1', studentId: 'hs_1', message: 'Chú ý' }))
+      .rejects.toThrow('permission-denied');
+
+    updateDoc.mockRejectedValueOnce(permErr);
+    await expect(setStudentPaused({ sessionId: 'sess_1', studentId: 'hs_1', paused: true }))
+      .rejects.toThrow('permission-denied');
+
+    updateDoc.mockRejectedValueOnce(permErr);
+    await expect(setStudentForceSubmit({ sessionId: 'sess_1', studentId: 'hs_1' }))
+      .rejects.toThrow('permission-denied');
+  });
+
+  it('ExamPickerFromBank render đúng câu Đúng/Sai và Trả lời ngắn không có mảng options', () => {
+    globalThis.React = React;
+    const tfHtml = renderToStaticMarkup(
+      React.createElement(BankQuestionChoices, {
+        q: {
+          type: 'true_false',
+          q: 'Nhận định về este',
+          statements: [
+            { text: 'Phản ứng thủy phân thuận nghịch', answer: true },
+            { text: 'Không tan trong nước', answer: false },
+          ],
+        },
+      })
+    );
+    expect(tfHtml).toContain('(Đ)');
+    expect(tfHtml).toContain('(S)');
+    expect(tfHtml).toContain('Phản ứng thủy phân thuận nghịch');
+
+    const saHtml = renderToStaticMarkup(
+      React.createElement(BankQuestionChoices, {
+        q: {
+          type: 'short_answer',
+          q: 'Tính khối lượng',
+          accepted: ['12,5'],
+        },
+      })
+    );
+    expect(saHtml).toContain('Đáp án:');
+    expect(saHtml).toContain('12,5');
+
+    const mcqHtml = renderToStaticMarkup(
+      React.createElement(BankQuestionChoices, {
+        q: {
+          type: 'single_choice',
+          q: 'CH4 thuộc loại gì?',
+          options: ['Ankan', 'Anken', 'Ankin', 'Aren'],
+          correct: 0,
+        },
+      })
+    );
+    expect(mcqHtml).toContain('Ankan');
+    expect(mcqHtml).toContain('qb-item-opt correct');
+
+    const pickerHtml = renderToStaticMarkup(
+      React.createElement(ExamPickerFromBank, {
+        teacherId: 'gv_1',
+        onPick: () => {},
+        onClose: () => {},
+      })
+    );
+    expect(pickerHtml).toContain('Chọn câu từ ngân hàng');
   });
 });

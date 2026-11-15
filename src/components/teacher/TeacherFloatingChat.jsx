@@ -4481,15 +4481,21 @@ HƯỚNG DẪN TRẢ LỜI:
                               type="button"
                               className="tfc-btn-action danger"
                               style={{ padding: '4px 8px', fontSize: '0.7rem' }}
-                              onClick={() => {
-                                if (al.sessionId) {
-                                  warnStudent({
+                              onClick={async () => {
+                                if (!al.sessionId) {
+                                  onSay?.('Chưa xác định được phòng thi của học sinh này.', 'error');
+                                  return;
+                                }
+                                try {
+                                  await warnStudent({
                                     sessionId: al.sessionId,
                                     studentId: al.studentId,
-                                    message: 'Cảnh báo Giám thị: Em hãy tập trung quay lại màn hình làm bài!'
+                                    message: 'Cảnh báo Giám thị: Em hãy tập trung quay lại màn hình làm bài!',
                                   });
+                                  onSay?.(`Đã gửi nhắc nhở trực tiếp tới ${al.name}!`, 'info');
+                                } catch (err) {
+                                  onSay?.('Không gửi được nhắc nhở: ' + (err?.message || err), 'error');
                                 }
-                                onSay?.(`Đã gửi nhắc nhở trực tiếp tới ${al.name}!`, 'info');
                               }}
                             >
                               Gửi nhắc nhở
@@ -4498,15 +4504,21 @@ HƯỚNG DẪN TRẢ LỜI:
                               type="button"
                               className="tfc-btn-action sec"
                               style={{ padding: '4px 8px', fontSize: '0.7rem' }}
-                              onClick={() => {
-                                if (al.sessionId) {
-                                  setStudentPaused({
+                              onClick={async () => {
+                                if (!al.sessionId) {
+                                  onSay?.('Chưa xác định được phòng thi của học sinh này.', 'error');
+                                  return;
+                                }
+                                try {
+                                  await setStudentPaused({
                                     sessionId: al.sessionId,
                                     studentId: al.studentId,
-                                    paused: true
+                                    paused: true,
                                   });
+                                  onSay?.(`Đã tạm dừng bài thi của ${al.name}!`, 'warn');
+                                } catch (err) {
+                                  onSay?.('Không tạm dừng được bài thi: ' + (err?.message || err), 'error');
                                 }
-                                onSay?.(`Đã tạm dừng bài thi của ${al.name}!`, 'warn');
                               }}
                             >
                               Tạm dừng thi

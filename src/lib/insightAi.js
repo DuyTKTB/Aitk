@@ -196,6 +196,13 @@ Xuất kết quả duy nhất ở định dạng JSON hợp lệ (không kèm ma
     });
 
     const parsed = parseJsonLoose(raw);
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      (!parsed.headline && !parsed.summary && !(Array.isArray(parsed.actions) && parsed.actions.length > 0))
+    ) {
+      throw new Error('AI trả về định dạng phân tích chưa đầy đủ.');
+    }
     const result = {
       ...parsed,
       isAiGenerated: true,

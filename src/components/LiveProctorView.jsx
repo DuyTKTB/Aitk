@@ -1509,10 +1509,14 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
                 type="button"
                 className="vt-btn danger"
                 onClick={async () => {
-                  await handleKick(kickTarget.id, 'Giáo viên yêu cầu');
-                  say(`Đã mời ${shortName(kickTarget.studentName)} ra`);
-                  setKickTarget(null);
-                  setSelectedId(null);
+                  try {
+                    await handleKick(kickTarget.id, 'Giáo viên yêu cầu');
+                    say(`Đã mời ${shortName(kickTarget.studentName)} ra`);
+                    setKickTarget(null);
+                    setSelectedId(null);
+                  } catch (err) {
+                    say('Không mời được học sinh ra: ' + (err?.message || err), 'error');
+                  }
                 }}
               >
                 <IcoUserKick size={14} /> Mời ra

@@ -1606,6 +1606,44 @@ export default function TeacherDashboard({ onExit } = {}) {
     }
   };
 
+  const persistAssignedShuffledExam = async (assignPayload) => {
+    try {
+      const targetClassId = assignPayload?.classId !== undefined
+        ? assignPayload.classId
+        : (classes[0]?.id || linkedClasses[0]?.id || '');
+      const isDraft = Boolean(assignPayload?.isDraft || !targetClassId);
+      const created = await createExam({
+        teacherId: user.uid,
+        teacherName: user.displayName || user.email,
+        classId: isDraft ? '' : targetClassId,
+        isDraft,
+        title: assignPayload?.title || assignPayload?.examTitle || 'Đề thi đã trộn mã',
+        description: assignPayload?.description || '',
+        duration: Number(assignPayload?.duration) || 45,
+        questions: assignPayload?.questions || [],
+        subject: assignPayload?.subject || 'Hóa học',
+        grade: assignPayload?.grade || '12',
+        gradeType: assignPayload?.gradeType || '',
+        shuffle: assignPayload?.shuffle ?? true,
+        showAnswerAfter: assignPayload?.showAnswerAfter ?? true,
+        allowRetry: assignPayload?.allowRetry ?? false,
+        proctor: assignPayload?.proctor,
+        source: 'shuffled-assign',
+      });
+      const targetCls = handleExamPersisted(created, { navigateToExams: false });
+      say(
+        targetCls
+          ? `Đã giao đề “${created.title}” cho lớp ${targetCls.name}!`
+          : `Đã lưu bản nháp “${created.title}” vào Kho đề!`,
+        'success'
+      );
+      return created;
+    } catch (err) {
+      say('Không giao được đề: ' + (err?.message || err), 'error');
+      throw err;
+    }
+  };
+
   const handleStartSession = useCallback(async (exam) => {
     setStartingId(exam.id);
     try {
@@ -1920,8 +1958,11 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   /* ============ DUYỆT THI LẠI (ĐƠN LẺ & HÀNG LOẠT — MỤC D4) ============ */
-  const handleApproveRetry = async (req) => {
-    const note = (retryNotes[req.id] || '').trim();
+  const pickRetryNote = (req, noteOverride) =>
+    (typeof noteOverride === 'string' && noteOverride.trim() ? noteOverride : retryNotes[req?.id] || '').trim();
+
+  const handleApproveRetry = async (req, noteOverride = '') => {
+    const note = pickRetryNote(req, noteOverride);
     setRetryActioning(req.id);
     const r = await approveRetry({
       permitId: req.id,
@@ -1945,8 +1986,8 @@ export default function TeacherDashboard({ onExit } = {}) {
     setRetryActioning(null);
   };
 
-  const handleDenyRetry = async (req) => {
-    const note = (retryNotes[req.id] || '').trim();
+  const handleDenyRetry = async (req, noteOverride = '') => {
+    const note = pickRetryNote(req, noteOverride);
     setRetryActioning(req.id);
     const r = await denyRetry({
       permitId: req.id,
@@ -4422,43 +4463,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     throw err;
                   }
                 }}
-                onAssignShuffled={async (assignPayload) => {
-                  try {
-                    const targetClassId = assignPayload?.classId !== undefined
-                      ? assignPayload.classId
-                      : (classes[0]?.id || linkedClasses[0]?.id || '');
-                    const isDraft = Boolean(assignPayload?.isDraft || !targetClassId);
-                    const created = await createExam({
-                      teacherId: user.uid,
-                      teacherName: user.displayName || user.email,
-                      classId: isDraft ? '' : targetClassId,
-                      isDraft,
-                      title: assignPayload?.title || assignPayload?.examTitle || 'Đề thi đã trộn mã',
-                      description: assignPayload?.description || '',
-                      duration: Number(assignPayload?.duration) || 45,
-                      questions: assignPayload?.questions || [],
-                      subject: assignPayload?.subject || 'Hóa học',
-                      grade: assignPayload?.grade || '12',
-                      gradeType: assignPayload?.gradeType || '',
-                      shuffle: assignPayload?.shuffle ?? true,
-                      showAnswerAfter: assignPayload?.showAnswerAfter ?? true,
-                      allowRetry: assignPayload?.allowRetry ?? false,
-                      proctor: assignPayload?.proctor,
-                      source: 'shuffled-assign',
-                    });
-                    const targetCls = handleExamPersisted(created, { navigateToExams: false });
-                    say(
-                      targetCls
-                        ? `Đã giao đề “${created.title}” cho lớp ${targetCls.name}!`
-                        : `Đã lưu bản nháp “${created.title}” vào Kho đề!`,
-                      'success'
-                    );
-                    return created;
-                  } catch (err) {
-                    say('Không giao được đề: ' + (err?.message || err), 'error');
-                    throw err;
-                  }
-                }}
+                onAssignShuffled={persistAssignedShuffledExam}
               />
             </Suspense>
           </ErrorBoundary>
@@ -5563,6 +5568,8 @@ export default function TeacherDashboard({ onExit } = {}) {
             <ExamPreviewSimulator
               exam={normalizeExamForPreview(previewExam)}
               questions={normalizeExamForPreview(previewExam)?.questions || []}
+              classes={allTeacherClasses}
+              onAssignShuffled={persistAssignedShuffledExam}
               onClose={() => setPreviewExam(null)}
             />
           </Suspense>

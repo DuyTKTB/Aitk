@@ -1040,15 +1040,22 @@ export default function ExamPreviewSimulator({
     };
 
     try {
-      if (typeof onAssignShuffled === 'function') {
+      const persistedToCloud = typeof onAssignShuffled === 'function';
+      if (persistedToCloud) {
         await onAssignShuffled(payload);
       }
+      const assignedRecord = { ...payload, localOnly: !persistedToCloud };
       const existing = readJsonStorage(ASSIGNED_STORAGE_KEY, []);
-      writeJsonStorage(ASSIGNED_STORAGE_KEY, [payload, ...existing].slice(0, 30));
+      writeJsonStorage(ASSIGNED_STORAGE_KEY, [assignedRecord, ...existing].slice(0, 30));
       saveToShuffleHistory(`Giao phòng thi ${payload.className} (PIN ${roomPin})`);
-      setAssignedSuccess(payload);
+      setAssignedSuccess(assignedRecord);
       sound.cheer();
-      showToast(`Đã giao ${shuffledExams.length} mã đề vào Phòng thi (${payload.className})!`, 'success');
+      showToast(
+        persistedToCloud
+          ? `Đã giao ${shuffledExams.length} mã đề vào Phòng thi (${payload.className})!`
+          : `Đã tạo ${shuffledExams.length} mã đề xem trước trên trình duyệt (chưa lưu lên máy chủ).`,
+        persistedToCloud ? 'success' : 'info'
+      );
     } catch (err) {
       showToast(err?.message || 'Không giao được đề vào phòng thi.', 'error');
     }
@@ -2790,7 +2797,9 @@ export default function ExamPreviewSimulator({
                     <IcoCheck size={16} />
                     <div>
                       <strong>
-                        Đã giao đề thành công cho {assignedSuccess.className} · Mã PIN phòng thi: {assignedSuccess.roomPin}
+                        {assignedSuccess.localOnly
+                          ? `Đã tạo xem trước cục bộ cho ${assignedSuccess.className} · Mã xem trước: ${assignedSuccess.roomPin} (chưa lưu máy chủ)`
+                          : `Đã giao đề thành công cho ${assignedSuccess.className} · Mã PIN phòng thi: ${assignedSuccess.roomPin}`}
                       </strong>
                       <small>
                         Đã gán tự động {assignedSuccess.codeCount} mã đề cho {assignedSuccess.studentAssignments.length} học sinh lúc{' '}
