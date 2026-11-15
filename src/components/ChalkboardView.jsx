@@ -26,6 +26,107 @@ function stripLatexForSpeech(raw) {
     .trim();
 }
 
+/* ── BỘ ICON VECTOR 100% SVG (KHÔNG EMOJI) ── */
+const SvgBook = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+const SvgBulb = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
+    <path d="M12 2a7 7 0 0 0-4 12.7c.7.6 1 1.4 1 2.3h6c0-.9.3-1.7 1-2.3A7 7 0 0 0 12 2z" />
+  </svg>
+);
+
+const SvgScale = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+    <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+    <path d="M7 21h10" />
+    <path d="M12 3v18" />
+    <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+  </svg>
+);
+
+const SvgBolt = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const SvgVolume = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+  </svg>
+);
+
+const SvgStop = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <rect x="5" y="5" width="14" height="14" rx="2.5" />
+  </svg>
+);
+
+const SvgPlay = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <polygon points="6 4 20 12 6 20 6 4" />
+  </svg>
+);
+
+const SvgPause = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);
+
+const SvgMic = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+  </svg>
+);
+
+const SvgReset = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+const SvgChevronLeft = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+const SvgChevronRight = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+const SvgCheck = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const SvgMove3d = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 3v16h16" />
+    <path d="m5 19 6-6" />
+    <path d="m2 6 3-3 3 3" />
+    <path d="m18 16 3 3-3 3" />
+  </svg>
+);
+
 /**
  * Component ChalkboardView — Bảng phấn tương tác & Kiểm định Cơ học WebAssembly
  */
@@ -385,14 +486,21 @@ export default function ChalkboardView({
     <div className="chalkboard-container">
       {/* Header */}
       <div className="chalkboard-header">
-        <div className="chalkboard-title-group">
-          <h1>
-            <span>Bảng Phấn Tương Tác & Kiểm Định Cơ Học</span>
-            <span className="chalkboard-badge">WASM 3D</span>
-          </h1>
-          <p className="chalkboard-subtitle">
-            Mô phỏng hình học không gian, giải tích & kiểm chứng số đo thực tế 100% không ảo giác
-          </p>
+        <div className="chalkboard-title-group" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img
+            src="/img/elec/elec-cool.png"
+            alt="Bé Elec Bảng Phấn 3D"
+            style={{ width: 56, height: 56, objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(59,130,246,0.35))' }}
+          />
+          <div>
+            <h1>
+              <span>Bảng Phấn Tương Tác &amp; Kiểm Định Cơ Học</span>
+              <span className="chalkboard-badge">WASM 3D</span>
+            </h1>
+            <p className="chalkboard-subtitle">
+              Mô phỏng hình học không gian, giải tích &amp; kiểm chứng số đo thực tế 100% không ảo giác cùng Bé Elec
+            </p>
+          </div>
         </div>
 
         <div className="chalkboard-actions">
@@ -400,7 +508,6 @@ export default function ChalkboardView({
             className={`btn-chalk ${sandboxMode ? 'btn-chalk-primary' : 'btn-chalk-secondary'}`}
             onClick={() => {
               if (!sandboxMode) {
-                // Nạp code các bước hiện tại vào editor
                 const currentCode = currentLesson.buoc
                   .flatMap((b) => b.lenh || [])
                   .join('\n');
@@ -408,8 +515,10 @@ export default function ChalkboardView({
               }
               setSandboxMode(!sandboxMode);
             }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
           >
-            {sandboxMode ? 'Trở về Bài giảng' : 'Tự do gõ lệnh (Sandbox)'}
+            <SvgBolt size={15} />
+            <span>{sandboxMode ? 'Trở về Bài giảng' : 'Tự do gõ lệnh (Sandbox)'}</span>
           </button>
         </div>
       </div>
@@ -452,10 +561,13 @@ export default function ChalkboardView({
             <canvas ref={canvasRef} className="chalkboard-canvas" />
 
             <div className="chalkboard-watermark">ELEC Chalkboard Engine · MV</div>
-            <div className="chalkboard-instructions">
-              {currentLesson.baChieu
-                ? '👆 Kéo để xoay 3D · 🔍 Cuộn chuột để phóng to/thu nhỏ'
-                : '🔍 Cuộn chuột để phóng to/thu nhỏ'}
+            <div className="chalkboard-instructions" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <SvgMove3d size={14} />
+              <span>
+                {currentLesson.baChieu
+                  ? 'Kéo để xoay 3D · Cuộn chuột để phóng to/thu nhỏ'
+                  : 'Cuộn chuột để phóng to/thu nhỏ'}
+              </span>
             </div>
           </div>
 
@@ -468,8 +580,10 @@ export default function ChalkboardView({
                   disabled={activeStep <= 0 || sandboxMode}
                   onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
                   title="Bước trước"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
                 >
-                  ◀ Bước trước
+                  <SvgChevronLeft size={15} />
+                  <span>Bước trước</span>
                 </button>
 
                 <span className="step-indicator">
@@ -481,8 +595,10 @@ export default function ChalkboardView({
                   disabled={activeStep >= currentLesson.buoc.length - 1 || sandboxMode}
                   onClick={() => setActiveStep((prev) => Math.min(currentLesson.buoc.length - 1, prev + 1))}
                   title="Bước tiếp"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
                 >
-                  Bước tiếp ▶
+                  <span>Bước tiếp</span>
+                  <SvgChevronRight size={15} />
                 </button>
               </div>
 
@@ -500,20 +616,34 @@ export default function ChalkboardView({
                     }
                   }}
                   title="Đọc lời giảng của bước hiện tại"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  {isSpeakingStep ? '⏹ Dừng đọc' : '🔊 Nghe giảng bước này'}
+                  {isSpeakingStep ? <SvgStop size={13} /> : <SvgVolume size={15} />}
+                  <span>{isSpeakingStep ? 'Dừng đọc' : 'Nghe giảng bước này'}</span>
                 </button>
                 <button
                   type="button"
                   className="tool-icon-btn"
                   onClick={() => setVoiceAutoLecture((v) => !v)}
-                  style={voiceAutoLecture ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : undefined}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    ...(voiceAutoLecture ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : {}),
+                  }}
                   title="Tự động giảng bằng giọng nói và chuyển bước tuần tự"
                 >
-                  {voiceAutoLecture ? '⏸ Đang giảng tự động' : '▶ Giảng tự động toàn bài'}
+                  {voiceAutoLecture ? <SvgPause size={13} /> : <SvgPlay size={13} />}
+                  <span>{voiceAutoLecture ? 'Đang giảng tự động' : 'Giảng tự động toàn bài'}</span>
                 </button>
-                <button className="tool-icon-btn" onClick={handleResetView} title="Góc nhìn ban đầu">
-                  ↺ Đặt lại góc
+                <button
+                  className="tool-icon-btn"
+                  onClick={handleResetView}
+                  title="Góc nhìn ban đầu"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  <SvgReset size={14} />
+                  <span>Đặt lại góc</span>
                 </button>
               </div>
             </div>
@@ -524,7 +654,10 @@ export default function ChalkboardView({
         <div className="chalkboard-solution-panel">
           {/* Card Đề bài */}
           <div className="solution-card">
-            <h3>📖 Đề bài & Mục tiêu</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#60a5fa', display: 'inline-flex' }}><SvgBook size={17} /></span>
+              <span>Đề bài &amp; Mục tiêu</span>
+            </h3>
             <div className="problem-description">
               <MathText text={currentLesson.deBai} />
             </div>
@@ -558,7 +691,10 @@ export default function ChalkboardView({
           {/* Sandbox Editor nếu bật */}
           {sandboxMode ? (
             <div className="solution-card">
-              <h3>⚡ Trình soạn kịch bản hình học MV</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#38bdf8', display: 'inline-flex' }}><SvgBolt size={17} /></span>
+                <span>Trình soạn kịch bản hình học MV</span>
+              </h3>
               <p className="chalkboard-subtitle" style={{ marginBottom: '0.5rem' }}>
                 Gõ các câu lệnh dựng hình (Point, Segment, Pyramid, Sphere, v.v.):
               </p>
@@ -575,7 +711,10 @@ export default function ChalkboardView({
           ) : (
             /* Card Bước giải hiện tại */
             <div className="solution-card">
-              <h3>💡 Diễn giải từng bước</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#fbbf24', display: 'inline-flex' }}><SvgBulb size={17} /></span>
+                <span>Diễn giải từng bước</span>
+              </h3>
               <div className="step-explanation-box">
                 <div className="step-title-badge">{currentStepData.tieuDe}</div>
                 <div className="step-text">
@@ -597,12 +736,15 @@ export default function ChalkboardView({
 
           {/* Card Vấn đáp Giọng nói với Gia sư AI trực tiếp trên Bảng phấn */}
           <div className="solution-card" style={{ borderColor: 'rgba(59,130,246,0.35)' }}>
-            <h3>
-              <span>🎙️ Vấn đáp Giọng nói cùng Gia sư AI</span>
+            <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#38bdf8', display: 'inline-flex' }}><SvgMic size={17} /></span>
+                <span>Vấn đáp Giọng nói cùng Gia sư AI</span>
+              </span>
               <span className="chalkboard-badge" style={{ fontSize: '0.65rem' }}>Voice Tutor</span>
             </h3>
             <p className="chalkboard-subtitle" style={{ fontSize: '0.8rem', marginBottom: '0.6rem' }}>
-              Chưa hiểu bước {activeStep + 1}? Bấm Micro để hỏi bằng giọng nói hoặc gõ câu hỏi, AI sẽ giải thích và đọc lại ngay:
+              Chưa hiểu bước {activeStep + 1}? Bấm Micro để hỏi bằng giọng nói hoặc gõ câu hỏi, Bé Elec sẽ giải thích và đọc lại ngay:
             </p>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               <input
@@ -624,11 +766,15 @@ export default function ChalkboardView({
                   color: isListeningMic ? '#fff' : '#60a5fa',
                   fontWeight: 700,
                   fontSize: 12.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
                   cursor: 'pointer',
                 }}
                 title="Hỏi bằng giọng nói tiếng Việt"
               >
-                {isListeningMic ? '🔴 Đang nghe...' : '🎙️ Nói'}
+                <SvgMic size={14} />
+                <span>{isListeningMic ? 'Đang nghe...' : 'Nói'}</span>
               </button>
               <button
                 type="button"
@@ -650,17 +796,27 @@ export default function ChalkboardView({
               </button>
             </div>
             {qaAnswer && (
-              <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(37,99,235,0.12)', borderLeft: '3px solid #3b82f6', fontSize: 13.5, lineHeight: 1.6 }}>
-                <div style={{ fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>Gia sư ELEC AI giải thích:</div>
-                <MathText text={qaAnswer} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(37,99,235,0.12)', borderLeft: '3px solid #3b82f6', fontSize: 13.5, lineHeight: 1.6 }}>
+                <img
+                  src="/img/elec/elec-happy.png"
+                  alt="Bé Elec Gia Sư"
+                  style={{ width: 38, height: 38, objectFit: 'contain', flexShrink: 0 }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>Gia sư Bé Elec giải thích:</div>
+                  <MathText text={qaAnswer} />
+                </div>
               </div>
             )}
           </div>
 
           {/* Bảng Kiểm định cơ học (Mechanical Verification) */}
           <div className="solution-card">
-            <h3>
-              <span>⚖️ Bộ máy Kiểm định Cơ học</span>
+            <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#34d399', display: 'inline-flex' }}><SvgScale size={17} /></span>
+                <span>Bộ máy Kiểm định Cơ học</span>
+              </span>
               <span className="chalkboard-badge" style={{ fontSize: '0.65rem' }}>ve.wasm</span>
             </h3>
             <p className="chalkboard-subtitle" style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>
@@ -690,7 +846,10 @@ export default function ChalkboardView({
                       <td>{item.kyVong}</td>
                       <td>
                         {item.hopLe ? (
-                          <span className="verify-badge-match">Khớp 100% ✓</span>
+                          <span className="verify-badge-match" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <SvgCheck size={13} />
+                            <span>Khớp 100%</span>
+                          </span>
                         ) : (
                           <span className="verify-badge-measuring">Đang kiểm tra...</span>
                         )}

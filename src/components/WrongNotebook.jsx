@@ -434,7 +434,7 @@ export default function WrongNotebook() {
     setQuizIdx(0);
     setQuizPicked(null);
     setQuizScore(0);
-    showToast('⚡ Bắt đầu Đề Vá Lỗ Hổng 5 Phút (5 câu hay sai nhất)!');
+    showToast('Bắt đầu Đề Vá Lỗ Hổng 5 Phút (5 câu hay sai nhất)!');
   };
 
   const quizCurrent = quizMode?.[quizIdx];
@@ -809,9 +809,13 @@ export default function WrongNotebook() {
           <div className="nb-quiz">
             {quizDone ? (
               <div className="nb-quiz-result">
-                <span className="nb-quiz-result-ico"><IcoSparkle size={48} /></span>
+                <img
+                  src={quizScore >= Math.ceil(quizMode.length * 0.8) ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-fighting.png'}
+                  alt="Bé Elec Chúc Mừng"
+                  style={{ width: 84, height: 84, objectFit: 'contain', margin: '0 auto 8px', display: 'block', filter: 'drop-shadow(0 8px 18px rgba(37, 99, 235, 0.3))' }}
+                />
                 <h2>Hoàn thành!</h2>
-                <p className="nb-quiz-score">Bạn trả lời đúng <b>{quizScore}</b> / <b>{quizMode.length}</b> câu</p>
+                <p className="nb-quiz-score">Bạn trả lời đúng <b>{quizScore}</b> / <b>{quizMode.length}</b> câu cùng Bé Elec</p>
                 <div className="nb-quiz-actions">
                   <button className="nb-btn nb-btn-ghost" onClick={closeQuiz}>Đóng</button>
                   <button className="nb-btn nb-btn-primary" onClick={startQuiz}><IcoShuffle size={15} />Làm lại</button>
@@ -821,11 +825,16 @@ export default function WrongNotebook() {
               <>
                 <header className="nb-quiz-head">
                   <div className="nb-quiz-progress">
-                    <span>
-                      Câu {quizIdx + 1} / {quizMode.length}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <img src="/img/elec/elec-fighting.png" alt="Bé Elec" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                      <span>Câu {quizIdx + 1} / {quizMode.length}</span>
                       {sprintSecLeft > 0 && (
-                        <strong style={{ marginLeft: 10, color: sprintSecLeft < 60 ? '#ef4444' : '#f59e0b' }}>
-                          ⏱ {Math.floor(sprintSecLeft / 60)}:{String(sprintSecLeft % 60).padStart(2, '0')}
+                        <strong style={{ marginLeft: 6, color: sprintSecLeft < 60 ? '#ef4444' : '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M12 7v5l3 2" />
+                          </svg>
+                          <span>{Math.floor(sprintSecLeft / 60)}:{String(sprintSecLeft % 60).padStart(2, '0')}</span>
                         </strong>
                       )}
                     </span>

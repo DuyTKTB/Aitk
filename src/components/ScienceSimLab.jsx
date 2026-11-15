@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import '../styles/science-sim-lab.css';
 
 /* ============================================================
-   ScienceSimLab.jsx — PHÒNG THÍ NGHIỆM MÔ PHỎNG VẬT LÍ & SINH HỌC TƯƠNG TÁC
+   ScienceSimLab.jsx — PHÒNG THÍ NGHIỆM KHTN TƯƠNG TÁC (100% SVG + MASCOT BÉ ELEC)
    ------------------------------------------------------------
    4 Phân hệ tương tác thời gian thực chuẩn GDPT 2018:
      1. Vật lí 12 — Mạch điện xoay chiều RLC & Giản đồ Vectơ Fresnel
@@ -9,6 +10,93 @@ import { useState, useEffect, useRef, useMemo } from 'react';
      3. Sinh học 12 — Phiên mã, Dịch mã & Mô phỏng Đột biến Điểm ADN
      4. Sinh học 12 — Khung Punnett Menđen & Thống kê Kiểu gen / Kiểu hình
    ============================================================ */
+
+/* ── Bộ Icon SVG Sắc Nét (Không dùng Emoji) ── */
+const SvgBolt = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const SvgWave = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 12c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 5 0" />
+    <path d="M2 17c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 5 0" opacity="0.55" />
+  </svg>
+);
+
+const SvgDna = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 15c6.667-6 13.333 0 20-6" />
+    <path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" />
+    <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" />
+    <path d="m17 6-2.5-2.5" />
+    <path d="m14 8-1-1" />
+    <path d="m7 18 2.5 2.5" />
+    <path d="m3.5 14.5.5.5" />
+    <path d="m20 9 .5.5" />
+    <path d="m6.5 12.5 1 1" />
+    <path d="m16.5 10.5 1 1" />
+    <path d="m10 16 1.5 1.5" />
+  </svg>
+);
+
+const SvgGrid = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+  </svg>
+);
+
+const SvgPlay = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+);
+
+const SvgPause = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);
+
+const SvgReset = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+const SvgSparkle = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z" />
+  </svg>
+);
+
+const SvgCheckCircle = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
+const SvgAlert = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const SvgArrowRight = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </svg>
+);
 
 const CODON_TABLE = {
   UUU: 'Phe', UUC: 'Phe', UUA: 'Leu', UUG: 'Leu',
@@ -120,7 +208,7 @@ export default function ScienceSimLab({ onNavigate }) {
     const ZC = 1 / (omega * C);
     const Z = Math.sqrt(R * R + (ZL - ZC) * (ZL - ZC));
     const I0 = U0 / Z;
-    const phi = Math.atan2(ZL - ZC, R); // rad (u so với i)
+    const phi = Math.atan2(ZL - ZC, R);
     const phiDeg = (phi * 180) / Math.PI;
     const cosPhi = Math.cos(phi);
     const Urms = U0 / Math.sqrt(2);
@@ -139,13 +227,13 @@ export default function ScienceSimLab({ onNavigate }) {
   /* ============ TAB 2: SPRING & YOUNG SLIT STATE ============ */
   const [springK, setSpringK] = useState(50);
   const [massM, setMassM] = useState(0.5);
-  const [ampA, setAmpA] = useState(8); // cm
+  const [ampA, setAmpA] = useState(8);
   const [simTime, setSimTime] = useState(0);
   const [simRunning, setSimRunning] = useState(true);
 
-  const [lambdaNm, setLambdaNm] = useState(632); // nm (Laser He-Ne đỏ)
-  const [slitA, setSlitA] = useState(1.0); // mm
-  const [screenD, setScreenD] = useState(2.0); // m
+  const [lambdaNm, setLambdaNm] = useState(632);
+  const [slitA, setSlitA] = useState(1.0);
+  const [screenD, setScreenD] = useState(2.0);
 
   useEffect(() => {
     if (activeTab !== 'wave' || !simRunning) return undefined;
@@ -174,7 +262,6 @@ export default function ScienceSimLab({ onNavigate }) {
   }, [springK, massM, ampA, simTime]);
 
   const youngStats = useMemo(() => {
-    // i (mm) = lambda (um) * D (m) / a (mm)
     const lambdaUm = lambdaNm / 1000;
     const i_mm = (lambdaUm * screenD) / slitA;
     const color = wavelengthToRgb(lambdaNm);
@@ -182,7 +269,7 @@ export default function ScienceSimLab({ onNavigate }) {
   }, [lambdaNm, slitA, screenD]);
 
   /* ============ TAB 3: DNA TRANSCRIPTION & MUTATION STATE ============ */
-  const WILD_DNA = 'TACGGACTTCTCAAAATC'; // 3' -> 5' (6 bộ ba: AUG CCU GAA GAG UUU UAG -> Met-Pro-Glu-Glu-Phe-STOP)
+  const WILD_DNA = 'TACGGACTTCTCAAAATC';
   const [dnaTemplate, setDnaTemplate] = useState(WILD_DNA);
   const [mutationLog, setMutationLog] = useState('Mạch gốc chuẩn (Chưa đột biến — Chuỗi HbA bình thường)');
 
@@ -204,8 +291,10 @@ export default function ScienceSimLab({ onNavigate }) {
     const wildTrans = translateMrna(wildMrna);
     const curTrans = translateMrna(mrna);
 
-    let mutationType = 'Bình thường (Kiểu dại - Wild Type)';
+    let mutationType = 'Bình thường (Kiểu dại — Wild Type)';
+    let isMutated = false;
     if (clean !== WILD_DNA) {
+      isMutated = true;
       if (clean.length !== WILD_DNA.length) {
         mutationType = `Đột biến dịch khung (${clean.length > WILD_DNA.length ? 'Thêm' : 'Mất'} ${Math.abs(clean.length - WILD_DNA.length)} cặp nuclêôtit) — Thay đổi toàn bộ các bộ ba từ vị trí đột biến!`;
       } else {
@@ -232,6 +321,7 @@ export default function ScienceSimLab({ onNavigate }) {
       aminoAcids: curTrans.aminoAcids,
       wildAminoAcids: wildTrans.aminoAcids,
       mutationType,
+      isMutated,
     };
   }, [dnaTemplate]);
 
@@ -240,15 +330,12 @@ export default function ScienceSimLab({ onNavigate }) {
       setDnaTemplate(WILD_DNA);
       setMutationLog('Khôi phục mạch gốc chuẩn 3’ TAC-GGA-CTT-CTC-AAA-ATC 5’');
     } else if (type === 'sickle') {
-      // Đổi CTC (mARN GAG = Glu) thành CAC (mARN GUG = Val) — Hồng cầu hình liềm
       setDnaTemplate('TACGGACTTCACAAAATC');
       setMutationLog('Đột biến hồng cầu hình liềm (HbS): Thay thế cặp T-A bằng A-T ở bộ ba thứ 4 (CTC → CAC), làm mARN đổi từ GAG (Glu) → GUG (Val).');
     } else if (type === 'nonsense') {
-      // Đổi AAA (mARN UUU = Phe) thành ATT (mARN UAA = STOP)
       setDnaTemplate('TACGGACTTCTCATTATC');
       setMutationLog('Đột biến vô nghĩa: Bộ ba thứ 5 đổi từ AAA → ATT, tạo mã kết thúc sớm UAA trên mARN.');
     } else if (type === 'frameshift') {
-      // Mất 1 nu G ở vị trí số 4
       setDnaTemplate('TACGACTTCTCAAAATC');
       setMutationLog('Đột biến dịch khung: Mất 1 cặp G-X ở vị trí nu số 4, làm dịch khung đọc toàn bộ các bộ ba phía sau.');
     }
@@ -271,7 +358,6 @@ export default function ScienceSimLab({ onNavigate }) {
       total++;
     });
 
-    // Thống kê kiểu hình trội/lặn hoàn toàn
     const phenoCounts = {};
     grid.flat().forEach((geno) => {
       if (geno.length === 2) {
@@ -289,7 +375,6 @@ export default function ScienceSimLab({ onNavigate }) {
     return { g1, g2, grid, counts, phenoCounts, total };
   }, [parent1, parent2]);
 
-  /* ============ RENDER WAVEFORMS FOR RLC ============ */
   const waveSvgPoints = useMemo(() => {
     const uPts = [];
     const iPts = [];
@@ -309,161 +394,209 @@ export default function ScienceSimLab({ onNavigate }) {
     return { uPts: uPts.join(' '), iPts: iPts.join(' ') };
   }, [U0, rlcStats]);
 
+  const heroMascotImg = useMemo(() => {
+    if (activeTab === 'rlc') return rlcStats.isResonance ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-cool.png';
+    if (activeTab === 'wave') return '/img/elec/elec-super-happy.png';
+    if (activeTab === 'dna') return bioStats.isMutated ? '/img/elec/elec-shocked.png' : '/img/elec/elec-happy.png';
+    return '/img/elec/elec-love.png';
+  }, [activeTab, rlcStats.isResonance, bioStats.isMutated]);
+
+  const heroMascotSpeech = useMemo(() => {
+    if (activeTab === 'rlc') {
+      return rlcStats.isResonance
+        ? 'Tuyệt vời! Mạch đang đạt Cộng hưởng điện Z_L = Z_C, u và i cùng pha nên công suất đạt cực đại P_max!'
+        : 'Hãy thử kéo thanh trượt L, C hoặc bấm nút Cộng hưởng để xem giản đồ vectơ Fresnel thay đổi nhé!';
+    }
+    if (activeTab === 'wave') {
+      return 'Khi tăng bước sóng λ từ tím (380nm) sang đỏ (760nm), bạn sẽ thấy khoảng vân giao thoa i = λD/a giãn rộng ra ngay!';
+    }
+    if (activeTab === 'dna') {
+      return bioStats.isMutated
+        ? `Cẩn thận! Đã xảy ra ${bioStats.mutationType.split('(')[0].trim()} trên mạch gốc ADN rồi kìa!`
+        : 'Bấm thử các nút tạo đột biến điểm để xem 1 cặp nu thay đổi sẽ biến đổi chuỗi Polypeptide thế nào nhé!';
+    }
+    return 'Chọn kiểu gen bố mẹ P₁ × P₂ bất kỳ để Elec lập bảng Punnett và tính tỉ lệ kiểu hình giúp bạn ngay!';
+  }, [activeTab, rlcStats.isResonance, bioStats.isMutated, bioStats.mutationType]);
+
   return (
-    <div style={{ maxWidth: 1120, margin: '0 auto', padding: '20px 16px 64px' }}>
-      <header style={{ marginBottom: 22, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <div>
-          <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 999, background: 'rgba(37,99,235,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-            PHÒNG THÍ NGHIỆM KHTN TƯƠNG TÁC · VẬT LÍ &amp; SINH HỌC
-          </span>
-          <h1 style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, margin: 0 }}>
+    <div className="simlab-wrap">
+      {/* HERO BANNER VỚI MASCOT BÉ ELEC */}
+      <header className="simlab-hero">
+        <div className="simlab-hero-content">
+          <div className="simlab-badge">
+            <SvgSparkle size={13} />
+            <span>PHÒNG THÍ NGHIỆM KHTN TƯƠNG TÁC · VẬT LÍ &amp; SINH HỌC</span>
+          </div>
+          <h1 className="simlab-title">
             Mô Phỏng Trực Quan Vật Lí &amp; Sinh Học (GDPT 2018)
           </h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-secondary, #64748b)', fontSize: 14 }}>
-            Thay đổi đại lượng trực tiếp để quan sát đồ thị dao động, giản đồ vectơ Fresnel, vân giao thoa Y-âng, đột biến điểm ADN và khung lai Punnett.
+          <p className="simlab-sub">
+            Thay đổi đại lượng trực tiếp để quan sát dao động ký điện xoay chiều RLC, giản đồ vectơ Fresnel, vân giao thoa Y-âng, đột biến điểm ADN và khung lai Punnett cùng Bé Elec.
           </p>
+          <div className="simlab-hero-actions">
+            {onNavigate && (
+              <button
+                type="button"
+                className="simlab-btn simlab-btn-primary"
+                onClick={() => onNavigate('ai')}
+              >
+                <SvgSparkle size={14} />
+                <span>Hỏi Gia Sư AI về Thí Nghiệm</span>
+                <SvgArrowRight size={14} />
+              </button>
+            )}
+          </div>
         </div>
-        {onNavigate && (
-          <button
-            type="button"
-            onClick={() => onNavigate('ai')}
-            style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(59,130,246,0.35)', background: 'rgba(37,99,235,0.1)', color: '#3b82f6', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}
-          >
-            Hỏi Gia Sư AI về Thí Nghiệm →
-          </button>
-        )}
+
+        <div className="simlab-hero-mascot">
+          <img src={heroMascotImg} alt="Bé Elec Nhà Khoa Học" />
+          <div className="simlab-mascot-bubble">
+            <b>Bé Elec Đồng Hành Thí Nghiệm</b>
+            <p>{heroMascotSpeech}</p>
+          </div>
+        </div>
       </header>
 
-      {/* TABS */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+      {/* TABS 100% SVG */}
+      <div className="simlab-tabs" role="tablist">
         {[
-          { id: 'rlc', label: '⚡ Vật lí 12: Mạch RLC & Giản đồ Fresnel' },
-          { id: 'wave', label: '🌊 Vật lí 11: Con lắc lò xo & Khe Y-âng' },
-          { id: 'dna', label: '🧬 Sinh học 12: Phiên mã, Dịch mã & Đột biến ADN' },
-          { id: 'punnett', label: '🌱 Sinh học 12: Sơ đồ lai Menđen (Punnett)' },
-        ].map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setActiveTab(t.id)}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 12,
-              border: activeTab === t.id ? '1.5px solid #2563eb' : '1px solid rgba(148,163,184,0.28)',
-              background: activeTab === t.id ? '#2563eb' : 'var(--card-bg, rgba(15,23,42,0.04))',
-              color: activeTab === t.id ? '#fff' : 'inherit',
-              fontWeight: 700,
-              fontSize: 13.5,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+          { id: 'rlc', label: 'Vật lí 12: Mạch RLC & Giản đồ Fresnel', Icon: SvgBolt },
+          { id: 'wave', label: 'Vật lí 11: Con lắc lò xo & Khe Y-âng', Icon: SvgWave },
+          { id: 'dna', label: 'Sinh học 12: Phiên mã & Đột biến ADN', Icon: SvgDna },
+          { id: 'punnett', label: 'Sinh học 12: Sơ đồ lai Menđen (Punnett)', Icon: SvgGrid },
+        ].map((t) => {
+          const IconComp = t.Icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={`simlab-tab ${isActive ? 'active' : ''}`}
+              onClick={() => setActiveTab(t.id)}
+            >
+              <span className="simlab-tab-ico">
+                <IconComp size={18} />
+              </span>
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ================= TAB 1: RLC CIRCUIT ================= */}
       {activeTab === 'rlc' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-          <section style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(148,163,184,0.25)', background: 'var(--card-bg, rgba(255,255,255,0.02))' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Thông số mạch RLC nối tiếp</h2>
+        <div className="simlab-grid-2">
+          <section className="simlab-card">
+            <div className="simlab-card-head">
+              <h2 className="simlab-card-title">
+                <SvgBolt size={18} />
+                <span>Thông số mạch RLC nối tiếp</span>
+              </h2>
               <button
                 type="button"
+                className="simlab-btn simlab-btn-amber"
                 onClick={setResonance}
-                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
               >
-                ⚡ Đưa về Cộng hưởng (f₀ = {rlcStats.f0.toFixed(1)} Hz)
+                <SvgBolt size={13} />
+                <span>Đưa về Cộng hưởng (f₀ = {rlcStats.f0.toFixed(1)} Hz)</span>
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: 12 }}>
-              <label style={{ fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+            <div className="simlab-slider-group">
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Điện trở thuần R</span>
                   <span>{R} Ω</span>
                 </div>
-                <input type="range" min="10" max="300" step="5" value={R} onChange={(e) => setR(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="10" max="300" step="5" value={R} onChange={(e) => setR(Number(e.target.value))} />
               </label>
 
-              <label style={{ fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Độ tự cảm L (Z_L = {rlcStats.ZL.toFixed(1)} Ω)</span>
                   <span>{L.toFixed(3)} H</span>
                 </div>
-                <input type="range" min="0.05" max="1.2" step="0.01" value={L} onChange={(e) => setL(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="0.05" max="1.2" step="0.01" value={L} onChange={(e) => setL(Number(e.target.value))} />
               </label>
 
-              <label style={{ fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Điện dung C (Z_C = {rlcStats.ZC.toFixed(1)} Ω)</span>
                   <span>{C_uF.toFixed(1)} μF</span>
                 </div>
-                <input type="range" min="5" max="150" step="0.5" value={C_uF} onChange={(e) => setCuF(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="5" max="150" step="0.5" value={C_uF} onChange={(e) => setCuF(Number(e.target.value))} />
               </label>
 
-              <label style={{ fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Tần số dòng điện f (ω = {rlcStats.omega.toFixed(0)} rad/s)</span>
                   <span>{freq} Hz</span>
                 </div>
-                <input type="range" min="20" max="120" step="1" value={freq} onChange={(e) => setFreq(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="20" max="120" step="1" value={freq} onChange={(e) => setFreq(Number(e.target.value))} />
               </label>
 
-              <label style={{ fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Điện áp cực đại U₀ (U = {rlcStats.Urms.toFixed(1)} V)</span>
                   <span>{U0} V</span>
                 </div>
-                <input type="range" min="50" max="310" step="5" value={U0} onChange={(e) => setU0(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="50" max="310" step="5" value={U0} onChange={(e) => setU0(Number(e.target.value))} />
               </label>
             </div>
 
-            {/* KẾT QUẢ ĐO */}
-            <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-              <div style={{ padding: 10, borderRadius: 10, background: 'rgba(37,99,235,0.08)' }}>
-                <div style={{ fontSize: 11, opacity: 0.75 }}>Tổng trở Z</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#2563eb' }}>{rlcStats.Z.toFixed(1)} Ω</div>
+            <div className="simlab-metrics">
+              <div className="simlab-metric-box">
+                <div className="simlab-metric-label">Tổng trở Z</div>
+                <div className="simlab-metric-val" style={{ color: '#3b82f6' }}>{rlcStats.Z.toFixed(1)} Ω</div>
               </div>
-              <div style={{ padding: 10, borderRadius: 10, background: 'rgba(16,185,129,0.08)' }}>
-                <div style={{ fontSize: 11, opacity: 0.75 }}>Cường độ cực đại I₀</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{rlcStats.I0.toFixed(2)} A</div>
+              <div className="simlab-metric-box">
+                <div className="simlab-metric-label">Cường độ cực đại I₀</div>
+                <div className="simlab-metric-val" style={{ color: '#10b981' }}>{rlcStats.I0.toFixed(2)} A</div>
               </div>
-              <div style={{ padding: 10, borderRadius: 10, background: 'rgba(245,158,11,0.08)' }}>
-                <div style={{ fontSize: 11, opacity: 0.75 }}>Độ lệch pha φ (u so với i)</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#d97706' }}>{rlcStats.phiDeg.toFixed(1)}° (cosφ = {rlcStats.cosPhi.toFixed(2)})</div>
+              <div className="simlab-metric-box">
+                <div className="simlab-metric-label">Độ lệch pha φ (u so với i)</div>
+                <div className="simlab-metric-val" style={{ color: '#f59e0b', fontSize: 16 }}>
+                  {rlcStats.phiDeg.toFixed(1)}° (cosφ = {rlcStats.cosPhi.toFixed(2)})
+                </div>
               </div>
-              <div style={{ padding: 10, borderRadius: 10, background: 'rgba(139,92,246,0.08)' }}>
-                <div style={{ fontSize: 11, opacity: 0.75 }}>Công suất tiêu thụ P</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#8b5cf6' }}>{rlcStats.P.toFixed(1)} W</div>
+              <div className="simlab-metric-box">
+                <div className="simlab-metric-label">Công suất tiêu thụ P</div>
+                <div className="simlab-metric-val" style={{ color: '#8b5cf6' }}>{rlcStats.P.toFixed(1)} W</div>
               </div>
             </div>
 
             {rlcStats.isResonance && (
-              <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(16,185,129,0.14)', color: '#059669', fontWeight: 700, fontSize: 13 }}>
-                ✅ ĐANG XẢY RA CỘNG HƯỞNG ĐIỆN (Z_L ≈ Z_C): Z_min = R = {R} Ω, cosφ ≈ 1, u và i cùng pha, công suất đạt cực đại!
+              <div className="simlab-companion-strip" style={{ background: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.35)' }}>
+                <img src="/img/elec/elec-celebrate.png" alt="Bé Elec Cộng Hưởng" />
+                <p style={{ color: '#10b981', fontWeight: 700 }}>
+                  <SvgCheckCircle size={15} /> Đang xảy ra Cộng hưởng điện (Z_L ≈ Z_C): Z_min = R = {R} Ω, cosφ ≈ 1, điện áp u và dòng điện i cùng pha!
+                </p>
               </div>
             )}
           </section>
 
-          <section style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(148,163,184,0.25)', background: 'var(--card-bg, rgba(255,255,255,0.02))' }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 12px' }}>Dao động ký u(t), i(t) &amp; Giản đồ Vectơ Fresnel</h2>
-            <svg viewBox="0 0 420 180" style={{ width: '100%', height: 170, background: '#0f172a', borderRadius: 12, marginBottom: 14 }}>
+          <section className="simlab-card">
+            <div className="simlab-card-head">
+              <h2 className="simlab-card-title">
+                <SvgWave size={18} />
+                <span>Dao động ký u(t), i(t) &amp; Giản đồ Vectơ Fresnel</span>
+              </h2>
+            </div>
+
+            <svg viewBox="0 0 420 180" style={{ width: '100%', height: 175, background: '#0f172a', borderRadius: 14, marginBottom: 14, border: '1px solid rgba(148,163,184,0.2)' }}>
               <line x1="0" y1="90" x2="420" y2="90" stroke="rgba(148,163,184,0.25)" strokeDasharray="4 4" />
-              <polyline fill="none" stroke="#3b82f6" strokeWidth="2.5" points={waveSvgPoints.uPts} />
-              <polyline fill="none" stroke="#10b981" strokeWidth="2.5" points={waveSvgPoints.iPts} />
+              <polyline fill="none" stroke="#3b82f6" strokeWidth="2.6" points={waveSvgPoints.uPts} />
+              <polyline fill="none" stroke="#10b981" strokeWidth="2.6" points={waveSvgPoints.iPts} />
               <text x="12" y="22" fill="#60a5fa" fontSize="12" fontWeight="700">— u(t) Điện áp</text>
               <text x="130" y="22" fill="#34d399" fontSize="12" fontWeight="700">— i(t) Dòng điện</text>
             </svg>
 
-            {/* GIẢN ĐỒ FRESNEL */}
-            <svg viewBox="0 0 420 190" style={{ width: '100%', height: 185, background: '#0f172a', borderRadius: 12 }}>
+            <svg viewBox="0 0 420 190" style={{ width: '100%', height: 185, background: '#0f172a', borderRadius: 14, border: '1px solid rgba(148,163,184,0.2)' }}>
               <g transform="translate(80, 95)">
-                {/* Trục I chuẩn nằm ngang */}
                 <line x1="0" y1="0" x2="260" y2="0" stroke="rgba(148,163,184,0.3)" strokeDasharray="3 3" />
                 <text x="265" y="4" fill="#34d399" fontSize="12" fontWeight="700">I →</text>
-                {/* U_R */}
                 {(() => {
                   const scale = 160 / Math.max(rlcStats.Z, 1);
                   const ur = R * scale;
@@ -478,7 +611,7 @@ export default function ScienceSimLab({ onNavigate }) {
                       <line x1="0" y1="0" x2="0" y2={uc} stroke="#ec4899" strokeWidth="2.5" />
                       <line x1={ur} y1="0" x2={ur} y2={clampedY} stroke="rgba(255,255,255,0.25)" strokeDasharray="3 3" />
                       <line x1="0" y1="0" x2={ur} y2={clampedY} stroke="#60a5fa" strokeWidth="3.2" />
-                      <circle cx={ur} cy={clampedY} r="4" fill="#60a5fa" />
+                      <circle cx={ur} cy={clampedY} r="4.5" fill="#60a5fa" />
                       <text x={ur / 2} y="16" fill="#38bdf8" fontSize="11" fontWeight="700">U_R</text>
                       <text x="6" y={-ul + 10} fill="#f59e0b" fontSize="11" fontWeight="700">U_L</text>
                       <text x="6" y={uc - 4} fill="#ec4899" fontSize="11" fontWeight="700">U_C</text>
@@ -494,68 +627,86 @@ export default function ScienceSimLab({ onNavigate }) {
 
       {/* ================= TAB 2: SPRING & YOUNG SLIT ================= */}
       {activeTab === 'wave' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-          <section style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(148,163,184,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>1. Con lắc lò xo nằm ngang</h2>
+        <div className="simlab-grid-2">
+          <section className="simlab-card">
+            <div className="simlab-card-head">
+              <h2 className="simlab-card-title">
+                <SvgWave size={18} />
+                <span>1. Con lắc lò xo nằm ngang</span>
+              </h2>
               <button
                 type="button"
+                className={`simlab-btn ${simRunning ? 'simlab-btn-danger' : 'simlab-btn-emerald'}`}
                 onClick={() => setSimRunning((v) => !v)}
-                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: simRunning ? '#ef4444' : '#10b981', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
               >
-                {simRunning ? '⏸ Tạm dừng' : '▶ Tiếp tục'}
+                {simRunning ? <SvgPause size={12} /> : <SvgPlay size={12} />}
+                <span>{simRunning ? 'Tạm dừng' : 'Tiếp tục'}</span>
               </button>
             </div>
 
-            <svg viewBox="0 0 400 110" style={{ width: '100%', height: 110, background: '#0f172a', borderRadius: 12, marginBottom: 12 }}>
+            <svg viewBox="0 0 400 110" style={{ width: '100%', height: 112, background: '#0f172a', borderRadius: 14, marginBottom: 14, border: '1px solid rgba(148,163,184,0.2)' }}>
               <rect x="10" y="20" width="10" height="70" fill="#64748b" />
               <line x1="20" y1="85" x2="390" y2="85" stroke="#475569" strokeWidth="2" />
               <line x1="210" y1="20" x2="210" y2="95" stroke="rgba(148,163,184,0.35)" strokeDasharray="3 3" />
-              <text x="206" y="105" fill="#94a3b8" fontSize="11">O (VTCB)</text>
+              <text x="190" y="104" fill="#94a3b8" fontSize="11">O (VTCB)</text>
               {(() => {
                 const massX = 210 + springStats.x_cm * 9;
                 return (
                   <>
                     <line x1="20" y1="55" x2={massX - 20} y2="55" stroke="#38bdf8" strokeWidth="4" strokeDasharray="6 4" />
                     <rect x={massX - 20} y="35" width="40" height="40" rx="8" fill="#3b82f6" />
-                    <text x={massX - 10} y="59" fill="#fff" fontSize="12" fontWeight="700">m</text>
+                    <text x={massX - 6} y="59" fill="#fff" fontSize="12" fontWeight="700">m</text>
                   </>
                 );
               })()}
             </svg>
 
-            <div style={{ display: 'grid', gap: 10, fontSize: 13 }}>
-              <label>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+            <div className="simlab-slider-group">
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Độ cứng lò xo k</span><span>{springK} N/m</span>
                 </div>
-                <input type="range" min="10" max="200" step="5" value={springK} onChange={(e) => setSpringK(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="10" max="200" step="5" value={springK} onChange={(e) => setSpringK(Number(e.target.value))} />
               </label>
-              <label>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Khối lượng vật m</span><span>{massM} kg</span>
                 </div>
-                <input type="range" min="0.1" max="2.0" step="0.1" value={massM} onChange={(e) => setMassM(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="0.1" max="2.0" step="0.1" value={massM} onChange={(e) => setMassM(Number(e.target.value))} />
               </label>
-              <label>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Biên độ A</span><span>{ampA} cm</span>
                 </div>
-                <input type="range" min="2" max="12" step="1" value={ampA} onChange={(e) => setAmpA(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="2" max="12" step="1" value={ampA} onChange={(e) => setAmpA(Number(e.target.value))} />
               </label>
             </div>
 
-            <div style={{ marginTop: 12, fontSize: 13, display: 'grid', gap: 6 }}>
-              <div>• Chu kỳ <strong>T = {springStats.T.toFixed(2)} s</strong> · Tần số góc <strong>ω = {springStats.omega.toFixed(2)} rad/s</strong></div>
-              <div>• Li độ tức thời <strong>x = {springStats.x_cm.toFixed(1)} cm</strong> · Cơ năng <strong>W = {springStats.W.toFixed(3)} J</strong></div>
-              <div>• Động năng W_đ: <strong>{springStats.Wd.toFixed(3)} J</strong> | Thế năng W_t: <strong>{springStats.Wt.toFixed(3)} J</strong></div>
+            <div className="simlab-metrics">
+              <div className="simlab-metric-box">
+                <div className="simlab-metric-label">Chu kỳ T &amp; Tần số góc ω</div>
+                <div className="simlab-metric-val" style={{ fontSize: 15.5, color: '#3b82f6' }}>
+                  T = {springStats.T.toFixed(2)}s · ω = {springStats.omega.toFixed(1)} rad/s
+                </div>
+              </div>
+              <div className="simlab-metric-box">
+                <div className="simlab-metric-label">Cơ năng bảo toàn W = ½kA²</div>
+                <div className="simlab-metric-val" style={{ fontSize: 15.5, color: '#10b981' }}>
+                  W = {springStats.W.toFixed(3)} J
+                </div>
+              </div>
             </div>
           </section>
 
-          <section style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(148,163,184,0.25)' }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 12px' }}>2. Giao thoa ánh sáng Khe Y-âng (i = λD/a)</h2>
-            {/* MÀN QUAN SÁT VÂN GIAO THOA */}
-            <div style={{ height: 96, borderRadius: 12, background: '#050811', position: 'relative', overflow: 'hidden', marginBottom: 14, border: '1px solid rgba(255,255,255,0.12)' }}>
+          <section className="simlab-card">
+            <div className="simlab-card-head">
+              <h2 className="simlab-card-title">
+                <SvgSparkle size={18} />
+                <span>2. Giao thoa ánh sáng Khe Y-âng (i = λD/a)</span>
+              </h2>
+            </div>
+
+            <div style={{ height: 104, borderRadius: 14, background: '#050811', position: 'relative', overflow: 'hidden', marginBottom: 14, border: '1px solid rgba(255,255,255,0.14)' }}>
               {Array.from({ length: 15 }, (_, idx) => idx - 7).map((k) => {
                 const offsetPx = k * youngStats.i_mm * 18;
                 return (
@@ -577,32 +728,33 @@ export default function ScienceSimLab({ onNavigate }) {
               })}
             </div>
 
-            <div style={{ display: 'grid', gap: 10, fontSize: 13 }}>
-              <label>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+            <div className="simlab-slider-group">
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Bước sóng ánh sáng đơn sắc λ</span>
-                  <span style={{ color: youngStats.color, fontWeight: 800 }}>{lambdaNm} nm ({ (lambdaNm / 1000).toFixed(3) } μm)</span>
+                  <span style={{ color: youngStats.color, fontWeight: 800 }}>{lambdaNm} nm ({(lambdaNm / 1000).toFixed(3)} μm)</span>
                 </div>
-                <input type="range" min="380" max="760" step="5" value={lambdaNm} onChange={(e) => setLambdaNm(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="380" max="760" step="5" value={lambdaNm} onChange={(e) => setLambdaNm(Number(e.target.value))} />
               </label>
-              <label>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Khoảng cách hai khe a</span><span>{slitA.toFixed(1)} mm</span>
                 </div>
-                <input type="range" min="0.5" max="3.0" step="0.1" value={slitA} onChange={(e) => setSlitA(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="0.5" max="3.0" step="0.1" value={slitA} onChange={(e) => setSlitA(Number(e.target.value))} />
               </label>
-              <label>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+              <label className="simlab-slider-row">
+                <div className="simlab-slider-top">
                   <span>Khoảng cách từ hai khe tới màn D</span><span>{screenD.toFixed(1)} m</span>
                 </div>
-                <input type="range" min="0.5" max="3.0" step="0.1" value={screenD} onChange={(e) => setScreenD(Number(e.target.value))} style={{ width: '100%' }} />
+                <input type="range" min="0.5" max="3.0" step="0.1" value={screenD} onChange={(e) => setScreenD(Number(e.target.value))} />
               </label>
             </div>
 
-            <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'rgba(37,99,235,0.08)', fontSize: 13.5 }}>
-              <div>• <strong>Khoảng vân giao thoa:</strong> i = λD / a = <strong>{youngStats.i_mm.toFixed(3)} mm</strong></div>
-              <div>• Vị trí vân sáng bậc 3: <strong>x_s3 = ±{(3 * youngStats.i_mm).toFixed(3)} mm</strong></div>
-              <div>• Vị trí vân tối thứ 3: <strong>x_t3 = ±{(2.5 * youngStats.i_mm).toFixed(3)} mm</strong></div>
+            <div className="simlab-companion-strip">
+              <img src="/img/elec/elec-think.png" alt="Bé Elec Quang Học" />
+              <p>
+                <strong>Khoảng vân: i = {youngStats.i_mm.toFixed(3)} mm</strong> · Vân sáng bậc 3 tại <strong>x = ±{(3 * youngStats.i_mm).toFixed(3)} mm</strong> · Vân tối thứ 3 tại <strong>x = ±{(2.5 * youngStats.i_mm).toFixed(3)} mm</strong>.
+              </p>
             </div>
           </section>
         </div>
@@ -610,27 +762,34 @@ export default function ScienceSimLab({ onNavigate }) {
 
       {/* ================= TAB 3: DNA TRANSCRIPTION & MUTATION ================= */}
       {activeTab === 'dna' && (
-        <div style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(148,163,184,0.25)' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Mô phỏng Phiên mã, Dịch mã &amp; Đột biến Điểm Gen (ADN → mARN → Polypeptide)</h2>
+        <div className="simlab-card">
+          <div className="simlab-card-head">
+            <h2 className="simlab-card-title">
+              <SvgDna size={18} />
+              <span>Mô phỏng Phiên mã, Dịch mã &amp; Đột biến Điểm Gen (ADN → mARN → Polypeptide)</span>
+            </h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button type="button" onClick={() => applyPresetMutation('reset')} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.4)', background: 'transparent', color: 'inherit', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                ↺ Mạch gốc chuẩn
+              <button type="button" className="simlab-btn" onClick={() => applyPresetMutation('reset')}>
+                <SvgReset size={13} />
+                <span>Mạch gốc chuẩn</span>
               </button>
-              <button type="button" onClick={() => applyPresetMutation('sickle')} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                🩸 Đột biến Hồng cầu hình liềm (HbS)
+              <button type="button" className="simlab-btn simlab-btn-danger" onClick={() => applyPresetMutation('sickle')}>
+                <SvgAlert size={13} />
+                <span>Đột biến Hồng cầu hình liềm (HbS)</span>
               </button>
-              <button type="button" onClick={() => applyPresetMutation('nonsense')} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                🛑 Đột biến Vô nghĩa (Kết thúc sớm)
+              <button type="button" className="simlab-btn simlab-btn-amber" onClick={() => applyPresetMutation('nonsense')}>
+                <SvgAlert size={13} />
+                <span>Đột biến Vô nghĩa (Kết thúc sớm)</span>
               </button>
-              <button type="button" onClick={() => applyPresetMutation('frameshift')} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#8b5cf6', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                ⚡ Đột biến Dịch khung (Mất 1 cặp nu)
+              <button type="button" className="simlab-btn simlab-btn-primary" onClick={() => applyPresetMutation('frameshift')}>
+                <SvgBolt size={13} />
+                <span>Đột biến Dịch khung (Mất 1 cặp nu)</span>
               </button>
             </div>
           </div>
 
           <label style={{ display: 'block', marginBottom: 14, fontSize: 13.5 }}>
-            <span style={{ fontWeight: 700, display: 'block', marginBottom: 6 }}>Nhập hoặc chỉnh sửa trực tiếp Mạch gốc ADN (chiều 3’ → 5’, chỉ gồm A, T, G, C/X):</span>
+            <span style={{ fontWeight: 700, display: 'block', marginBottom: 6 }}>Nhập hoặc chỉnh sửa trực tiếp Mạch gốc ADN (chiều 3’ → 5’, gồm A, T, G, C/X):</span>
             <input
               type="text"
               value={dnaTemplate}
@@ -638,16 +797,22 @@ export default function ScienceSimLab({ onNavigate }) {
                 setDnaTemplate(e.target.value);
                 setMutationLog('Bạn vừa tự chỉnh sửa trực tiếp trình tự nuclêôtit trên mạch gốc ADN.');
               }}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #3b82f6', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, letterSpacing: 2 }}
+              style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #3b82f6', background: 'rgba(15,23,42,0.04)', color: 'inherit', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, letterSpacing: 2 }}
             />
           </label>
 
-          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(245,158,11,0.1)', borderLeft: '4px solid #f59e0b', marginBottom: 16, fontSize: 13.5 }}>
-            <div><strong>Nhật ký thí nghiệm:</strong> {mutationLog}</div>
-            <div style={{ marginTop: 4 }}><strong>Chẩn đoán sinh học phân tử:</strong> <span style={{ color: '#d97706', fontWeight: 700 }}>{bioStats.mutationType}</span></div>
+          <div className="simlab-companion-strip" style={{ marginBottom: 16, background: bioStats.isMutated ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.1)', borderColor: bioStats.isMutated ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.35)' }}>
+            <img src={bioStats.isMutated ? '/img/elec/elec-shocked.png' : '/img/elec/elec-happy.png'} alt="Bé Elec Chẩn Đoán Gen" />
+            <div>
+              <div style={{ fontSize: 13 }}><strong>Nhật ký thí nghiệm:</strong> {mutationLog}</div>
+              <div style={{ fontSize: 13.5, marginTop: 3 }}>
+                <strong>Chẩn đoán sinh học phân tử:</strong>{' '}
+                <span style={{ color: bioStats.isMutated ? '#d97706' : '#059669', fontWeight: 800 }}>{bioStats.mutationType}</span>
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gap: 10, fontFamily: 'monospace', fontSize: 15, padding: 16, borderRadius: 12, background: '#0f172a', color: '#f8fafc', overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gap: 10, fontFamily: 'monospace', fontSize: 15, padding: 18, borderRadius: 14, background: '#0f172a', color: '#f8fafc', overflowX: 'auto' }}>
             <div><span style={{ color: '#94a3b8' }}>Mạch gốc ADN (3’→5’):     </span><strong style={{ color: '#38bdf8', letterSpacing: 2 }}>{bioStats.clean.match(/.{1,3}/g)?.join(' - ')}</strong></div>
             <div><span style={{ color: '#94a3b8' }}>Mạch bổ sung ADN (5’→3’): </span><strong style={{ color: '#a78bfa', letterSpacing: 2 }}>{bioStats.codingStrand.match(/.{1,3}/g)?.join(' - ')}</strong></div>
             <div><span style={{ color: '#94a3b8' }}>Phân tử mARN (5’→3’):     </span><strong style={{ color: '#34d399', letterSpacing: 2 }}>{bioStats.codons.join(' - ')}</strong></div>
@@ -657,15 +822,18 @@ export default function ScienceSimLab({ onNavigate }) {
             </div>
           </div>
 
-          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, fontSize: 13.5 }}>
-            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(37,99,235,0.08)' }}>
-              Tổng số nu của đoạn gen: <strong>N = {bioStats.totalNu} nu</strong>
+          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            <div className="simlab-metric-box">
+              <div className="simlab-metric-label">Tổng số nu của đoạn gen</div>
+              <div className="simlab-metric-val" style={{ color: '#3b82f6' }}>N = {bioStats.totalNu} nu</div>
             </div>
-            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(16,185,129,0.08)' }}>
-              Chiều dài đoạn gen: <strong>L = {bioStats.lengthAngstrom.toFixed(1)} Å</strong>
+            <div className="simlab-metric-box">
+              <div className="simlab-metric-label">Chiều dài đoạn gen (L = N/2 × 3.4 Å)</div>
+              <div className="simlab-metric-val" style={{ color: '#10b981' }}>L = {bioStats.lengthAngstrom.toFixed(1)} Å</div>
             </div>
-            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(139,92,246,0.08)' }}>
-              Số liên kết Hiđrô (2A + 3G): <strong>H = {bioStats.hBonds} liên kết</strong>
+            <div className="simlab-metric-box">
+              <div className="simlab-metric-label">Số liên kết Hiđrô (H = 2A + 3G)</div>
+              <div className="simlab-metric-val" style={{ color: '#8b5cf6' }}>H = {bioStats.hBonds} liên kết</div>
             </div>
           </div>
         </div>
@@ -673,21 +841,27 @@ export default function ScienceSimLab({ onNavigate }) {
 
       {/* ================= TAB 4: PUNNETT SQUARE ================= */}
       {activeTab === 'punnett' && (
-        <div style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(148,163,184,0.25)' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 12px' }}>Máy Tính Sơ Đồ Lai Menđen &amp; Khung Punnett (1 hoặc 2 cặp gen)</h2>
+        <div className="simlab-card">
+          <div className="simlab-card-head">
+            <h2 className="simlab-card-title">
+              <SvgGrid size={18} />
+              <span>Máy Tính Sơ Đồ Lai Menđen &amp; Khung Punnett (1 hoặc 2 cặp gen)</span>
+            </h2>
+          </div>
+
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 16 }}>
             <label style={{ fontSize: 13.5, fontWeight: 700 }}>
-              Cơ thể bố (P₁):{' '}
-              <select value={parent1} onChange={(e) => setParent1(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, fontWeight: 700 }}>
+              Kiểu gen Bố (P₁):{' '}
+              <select value={parent1} onChange={(e) => setParent1(e.target.value)} style={{ padding: '8px 12px', borderRadius: 10, fontWeight: 700, border: '1px solid rgba(59,130,246,0.4)' }}>
                 {['AA', 'Aa', 'aa', 'AABB', 'AaBB', 'AABb', 'AaBb', 'Aabb', 'aaBb', 'aabb'].map((g) => (
                   <option key={g} value={g}>{g}</option>
                 ))}
               </select>
             </label>
-            <span style={{ fontWeight: 800, fontSize: 18 }}>×</span>
+            <span style={{ fontWeight: 800, fontSize: 18, color: '#3b82f6' }}>×</span>
             <label style={{ fontSize: 13.5, fontWeight: 700 }}>
-              Cơ thể mẹ (P₂):{' '}
-              <select value={parent2} onChange={(e) => setParent2(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, fontWeight: 700 }}>
+              Kiểu gen Mẹ (P₂):{' '}
+              <select value={parent2} onChange={(e) => setParent2(e.target.value)} style={{ padding: '8px 12px', borderRadius: 10, fontWeight: 700, border: '1px solid rgba(59,130,246,0.4)' }}>
                 {['AA', 'Aa', 'aa', 'AABB', 'AaBB', 'AABb', 'AaBb', 'Aabb', 'aaBb', 'aabb'].map((g) => (
                   <option key={g} value={g}>{g}</option>
                 ))}
@@ -701,14 +875,14 @@ export default function ScienceSimLab({ onNavigate }) {
                 <tr style={{ background: 'rgba(37,99,235,0.12)' }}>
                   <th style={{ padding: 10, border: '1px solid rgba(148,163,184,0.3)' }}>Giao tử P₁ \ P₂</th>
                   {punnettData.g2.map((colG) => (
-                    <th key={colG} style={{ padding: 10, border: '1px solid rgba(148,163,184,0.3)', color: '#2563eb' }}>{colG}</th>
+                    <th key={colG} style={{ padding: 10, border: '1px solid rgba(148,163,184,0.3)', color: '#3b82f6' }}>{colG}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {punnettData.g1.map((rowG, rIdx) => (
                   <tr key={rowG}>
-                    <th style={{ padding: 10, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(37,99,235,0.08)', color: '#2563eb' }}>{rowG}</th>
+                    <th style={{ padding: 10, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(37,99,235,0.08)', color: '#3b82f6' }}>{rowG}</th>
                     {punnettData.grid[rIdx].map((cellGeno, cIdx) => (
                       <td key={`${rowG}-${cIdx}`} style={{ padding: 10, border: '1px solid rgba(148,163,184,0.3)', fontWeight: 700 }}>
                         {cellGeno}
@@ -720,22 +894,26 @@ export default function ScienceSimLab({ onNavigate }) {
             </table>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, fontSize: 13.5 }}>
-            <div style={{ padding: 14, borderRadius: 12, background: 'rgba(37,99,235,0.08)' }}>
-              <div style={{ fontWeight: 800, marginBottom: 6, color: '#2563eb' }}>Tỉ lệ Kiểu gen ở F₁ ({punnettData.total} tổ hợp):</div>
-              {Object.entries(punnettData.counts).map(([k, v]) => (
-                <span key={k} style={{ display: 'inline-block', marginRight: 10, marginBottom: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(37,99,235,0.12)', fontWeight: 700 }}>
-                  {v}/{punnettData.total} {k}
-                </span>
-              ))}
+          <div className="simlab-grid-2">
+            <div className="simlab-metric-box">
+              <div style={{ fontWeight: 800, marginBottom: 8, color: '#3b82f6' }}>Tỉ lệ Kiểu gen ở F₁ ({punnettData.total} tổ hợp):</div>
+              <div>
+                {Object.entries(punnettData.counts).map(([k, v]) => (
+                  <span key={k} style={{ display: 'inline-block', marginRight: 8, marginBottom: 6, padding: '4px 10px', borderRadius: 8, background: 'rgba(37,99,235,0.14)', fontWeight: 700, fontSize: 13 }}>
+                    {v}/{punnettData.total} {k}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div style={{ padding: 14, borderRadius: 12, background: 'rgba(16,185,129,0.08)' }}>
-              <div style={{ fontWeight: 800, marginBottom: 6, color: '#059669' }}>Tỉ lệ Kiểu hình ở F₁ (Trội hoàn toàn):</div>
-              {Object.entries(punnettData.phenoCounts).map(([k, v]) => (
-                <span key={k} style={{ display: 'inline-block', marginRight: 10, marginBottom: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(16,185,129,0.15)', fontWeight: 700 }}>
-                  {v}/{punnettData.total} {k} ({((v / punnettData.total) * 100).toFixed(1)}%)
-                </span>
-              ))}
+            <div className="simlab-metric-box" style={{ background: 'rgba(16,185,129,0.08)' }}>
+              <div style={{ fontWeight: 800, marginBottom: 8, color: '#10b981' }}>Tỉ lệ Kiểu hình ở F₁ (Trội hoàn toàn):</div>
+              <div>
+                {Object.entries(punnettData.phenoCounts).map(([k, v]) => (
+                  <span key={k} style={{ display: 'inline-block', marginRight: 8, marginBottom: 6, padding: '4px 10px', borderRadius: 8, background: 'rgba(16,185,129,0.16)', fontWeight: 700, fontSize: 13 }}>
+                    {v}/{punnettData.total} {k} ({((v / punnettData.total) * 100).toFixed(1)}%)
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>

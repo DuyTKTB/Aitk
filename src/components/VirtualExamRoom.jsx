@@ -1801,49 +1801,98 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   return (
     <div className="ns9-vex-page">
       <div className="ns9-vex-container">
-        {/* ── 0. BANNER CA THI THỬ THỰC CHIẾN TOÀN QUỐC HÀNG TUẦN & XUẤT THẺ THÀNH TÍCH ── */}
+        {/* ── 0. BANNER CA THI THỬ THỰC CHIẾN TOÀN QUỐC HÀNG TUẦN & XUẤT THẺ THÀNH TÍCH (100% SVG + MASCOT) ── */}
         <section
+          className="ns9-vex-struct-banner"
           style={{
             marginBottom: 16,
-            padding: '16px 20px',
-            borderRadius: 16,
-            background: 'linear-gradient(135deg, rgba(29,78,216,0.22), rgba(109,40,217,0.22))',
-            border: '1px solid rgba(59,130,246,0.35)',
             display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: 14,
+            justifyContent: 'space-between',
+            gap: 20,
+            position: 'relative',
+            overflow: 'hidden',
           }}
         >
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, background: 'rgba(245,158,11,0.18)', color: '#fbbf24', fontSize: 11.5, fontWeight: 800, marginBottom: 6 }}>
-              🔥 ĐẤU TRƯỜNG THỰC CHIẾN KHTN TOÀN QUỐC · 20:00 CHỦ NHẬT HÀNG TUẦN
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <div className="ns9-vex-struct-top">
+              <div className="ns9-vex-struct-title">
+                <SvgAward size={18} />
+                <strong>Đấu Trường Thực Chiến KHTN Toàn Quốc · 20:00 Chủ Nhật Hàng Tuần</strong>
+              </div>
+
+              <div className="ns9-vex-struct-pills">
+                <span><SvgClock size={13} /> 50 phút · 3 phần chuẩn 2026</span>
+                <span><SvgSparkle size={13} /> Xếp hạng Phổ điểm Toàn quốc</span>
+              </div>
             </div>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>
-              Ca Thi Thử Chuẩn Cấu Trúc Bộ GD&amp;ĐT 2026 &amp; Xếp Hạng Phổ Điểm Toàn Quốc
-            </h2>
-            <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.85 }}>
-              Thi thử 50 phút chuẩn 3 phần (Trắc nghiệm 4 lựa chọn · Đúng/Sai lũy tiến · Trả lời ngắn) và xuất Thẻ Thành Tích PNG.
+
+            <p className="ns9-vex-struct-desc" style={{ marginBottom: 12 }}>
+              Tham gia ca thi thử trực tuyến chuẩn cấu trúc Bộ GD&amp;ĐT 2026 (Trắc nghiệm 4 lựa chọn · Đúng/Sai lũy tiến · Trả lời ngắn) cùng <b>Bé Elec</b> và xuất <b>Thẻ Thành Tích PNG</b> vinh danh Top % toàn quốc.
             </p>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {freeExams.length > 0 && (
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {freeExams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenExam(freeExams[0])}
+                  style={{
+                    padding: '9px 16px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 16px rgba(37, 99, 235, 0.28)',
+                  }}
+                >
+                  <SvgPlay size={14} />
+                  <span>Thi Ngay Đề Tiêu Điểm</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => handleOpenExam(freeExams[0])}
-                style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                onClick={() => setShareCardOpen(true)}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(245, 158, 11, 0.45)',
+                  background: 'rgba(245, 158, 11, 0.14)',
+                  color: '#d97706',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  cursor: 'pointer',
+                }}
               >
-                ⚡ Thi Ngay Đề Tiêu Điểm
+                <SvgAward size={15} />
+                <span>Xuất Thẻ Thành Tích (PNG)</span>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShareCardOpen(true)}
-              style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(251,191,36,0.5)', background: 'rgba(251,191,36,0.14)', color: '#fbbf24', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-            >
-              🏆 Xuất Thẻ Thành Tích (PNG)
-            </button>
+            </div>
+          </div>
+
+          <div
+            className="ns9-vex-banner-mascot"
+            title="Bé Elec Vinh Danh Đấu Trường KHTN"
+            style={{ flexShrink: 0, width: 92, height: 92 }}
+          >
+            <img
+              src="/img/elec/elec-celebrate.png"
+              alt="Bé Elec Đấu Trường KHTN"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 8px 18px rgba(37, 99, 235, 0.32))',
+              }}
+            />
           </div>
         </section>
 
