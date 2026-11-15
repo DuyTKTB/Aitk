@@ -285,11 +285,20 @@ export default function ChalkboardView({
     setIsMeasuring(false);
   }, [loading, currentLesson, activeStep]);
 
-  // Cập nhật khi resize cửa sổ
+  // Cập nhật khi resize cửa sổ hoặc canvas thay đổi kích thước
   useEffect(() => {
     const handleResize = () => redrawCanvas();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const el = canvasRef.current || containerRef.current;
+    let observer = null;
+    if (el && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => redrawCanvas());
+      observer.observe(el);
+    }
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      observer?.disconnect();
+    };
   }, [redrawCanvas]);
 
   // Xử lý kéo thả chuột để xoay 3D (Pointer Events)
@@ -503,11 +512,11 @@ export default function ChalkboardView({
     <div className="chalkboard-container">
       {/* Header */}
       <div className="chalkboard-header">
-        <div className="chalkboard-title-group" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="chalkboard-title-group">
           <img
             src="/img/elec/elec-cool.png"
             alt="Bé Elec Bảng Phấn 3D"
-            style={{ width: 56, height: 56, objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(59,130,246,0.35))' }}
+            className="chalkboard-hero-mascot"
           />
           <div>
             <h1>
@@ -532,7 +541,6 @@ export default function ChalkboardView({
               }
               setSandboxMode(!sandboxMode);
             }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
           >
             <SvgBolt size={15} />
             <span>{sandboxMode ? 'Trở về Bài giảng' : 'Tự do gõ lệnh (Sandbox)'}</span>
@@ -569,7 +577,7 @@ export default function ChalkboardView({
         <div className="chalkboard-slate-wrapper" ref={containerRef}>
           <div
             className="chalkboard-slate-canvas-area"
-            style={{ height: `${height}px` }}
+            style={height !== 520 ? { '--cb-canvas-h': `${height}px` } : undefined}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -619,10 +627,10 @@ export default function ChalkboardView({
                 </button>
               </div>
 
-              <div className="chalkboard-view-actions" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <div className="chalkboard-view-actions">
                 <button
                   type="button"
-                  className="tool-icon-btn"
+                  className={`tool-icon-btn ${isSpeakingStep ? 'is-speaking' : ''}`}
                   onClick={() => {
                     if (isSpeakingStep || voiceAutoLecture) {
                       setVoiceAutoLecture(false);
@@ -632,22 +640,15 @@ export default function ChalkboardView({
                     }
                   }}
                   title="Đọc lời giảng bước hiện tại bằng giọng Tiếng Việt"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
                   {isSpeakingStep ? <SvgStop size={13} /> : <SvgVolume size={15} />}
                   <span>{isSpeakingStep ? 'Dừng đọc' : 'Nghe giảng bước này'}</span>
                 </button>
                 <button
                   type="button"
-                  className="tool-icon-btn"
+                  className={`tool-icon-btn ${voiceAutoLecture ? 'is-active' : ''}`}
                   onClick={() => setVoiceAutoLecture((v) => !v)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    ...(voiceAutoLecture ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : {}),
-                  }}
-                  title="Tự động giảng bằng giọng nói và chuyển bước tuần tự"
+                  title="Tự động giảng bằng giọng Tiếng Việt và chuyển bước tuần tự"
                 >
                   {voiceAutoLecture ? <SvgPause size={13} /> : <SvgPlay size={13} />}
                   <span>{voiceAutoLecture ? 'Đang giảng tự động' : 'Giảng tự động toàn bài'}</span>
@@ -656,7 +657,6 @@ export default function ChalkboardView({
                   className="tool-icon-btn"
                   onClick={handleResetView}
                   title="Góc nhìn ban đầu"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
                 >
                   <SvgReset size={14} />
                   <span>Đặt lại góc</span>
@@ -670,9 +670,11 @@ export default function ChalkboardView({
         <div className="chalkboard-solution-panel">
           {/* Card Đề bài */}
           <div className="solution-card">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#60a5fa', display: 'inline-flex' }}><SvgBook size={17} /></span>
-              <span>Đề bài &amp; Mục tiêu</span>
+            <h3>
+              <span className="solution-card-title">
+                <span style={{ color: '#059669', display: 'inline-flex' }}><SvgBook size={17} /></span>
+                <span>Đề bài &amp; Mục tiêu</span>
+              </span>
             </h3>
             <div className="problem-description">
               <MathText text={currentLesson.deBai} />
@@ -707,11 +709,13 @@ export default function ChalkboardView({
           {/* Sandbox Editor nếu bật */}
           {sandboxMode ? (
             <div className="solution-card">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#38bdf8', display: 'inline-flex' }}><SvgBolt size={17} /></span>
-                <span>Trình soạn kịch bản hình học MV</span>
+              <h3>
+                <span className="solution-card-title">
+                  <span style={{ color: '#0284c7', display: 'inline-flex' }}><SvgBolt size={17} /></span>
+                  <span>Trình soạn kịch bản hình học MV</span>
+                </span>
               </h3>
-              <p className="chalkboard-subtitle" style={{ marginBottom: '0.5rem' }}>
+              <p className="solution-card-hint">
                 Gõ các câu lệnh dựng hình (Point, Segment, Pyramid, Sphere, v.v.):
               </p>
               <div className="sandbox-editor-wrap">
@@ -727,9 +731,24 @@ export default function ChalkboardView({
           ) : (
             /* Card Bước giải hiện tại */
             <div className="solution-card">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#fbbf24', display: 'inline-flex' }}><SvgBulb size={17} /></span>
-                <span>Diễn giải từng bước</span>
+              <h3>
+                <span className="solution-card-title">
+                  <span style={{ color: '#f59e0b', display: 'inline-flex' }}><SvgBulb size={17} /></span>
+                  <span>Diễn giải từng bước</span>
+                </span>
+                <div className="step-pills-row" role="tablist" aria-label="Chọn bước giải">
+                  {currentLesson.buoc.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`step-pill-dot ${idx === activeStep ? 'active' : ''}`}
+                      onClick={() => setActiveStep(idx)}
+                      title={`Xem Bước ${idx + 1}`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
               </h3>
               <div className="step-explanation-box">
                 <div className="step-title-badge">{currentStepData.tieuDe}</div>
@@ -751,75 +770,53 @@ export default function ChalkboardView({
           )}
 
           {/* Card Vấn đáp Giọng nói với Gia sư AI trực tiếp trên Bảng phấn */}
-          <div className="solution-card" style={{ borderColor: 'rgba(59,130,246,0.35)' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#38bdf8', display: 'inline-flex' }}><SvgMic size={17} /></span>
+          <div className="solution-card voice-tutor-card">
+            <h3>
+              <span className="solution-card-title">
+                <span style={{ color: '#2563eb', display: 'inline-flex' }}><SvgMic size={17} /></span>
                 <span>Vấn đáp Giọng nói cùng Gia sư AI</span>
               </span>
-              <span className="chalkboard-badge" style={{ fontSize: '0.65rem' }}>Voice Tutor</span>
+              <span className="chalkboard-badge">Giọng Việt AI</span>
             </h3>
-            <p className="chalkboard-subtitle" style={{ fontSize: '0.8rem', marginBottom: '0.6rem' }}>
+            <p className="solution-card-hint">
               Chưa hiểu bước {activeStep + 1}? Bấm Micro để hỏi bằng giọng nói hoặc gõ câu hỏi, Bé Elec sẽ giải thích và đọc lại ngay:
             </p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div className="voice-tutor-row">
               <input
                 type="text"
+                className="voice-tutor-input"
                 value={qaQuestion}
                 onChange={(e) => setQaQuestion(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAskVoiceTutor(qaQuestion); }}
                 placeholder={`Hỏi về Bước ${activeStep + 1} (VD: Tại sao SO vuông góc với đáy?)...`}
-                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(15,23,42,0.5)', color: '#f8fafc', fontSize: 13 }}
               />
               <button
                 type="button"
+                className={`voice-tutor-mic-btn ${isListeningMic ? 'is-listening' : ''}`}
                 onClick={toggleMicQuestion}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: isListeningMic ? '#ef4444' : 'rgba(59,130,246,0.18)',
-                  color: isListeningMic ? '#fff' : '#60a5fa',
-                  fontWeight: 700,
-                  fontSize: 12.5,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  cursor: 'pointer',
-                }}
-                title="Hỏi bằng giọng nói tiếng Việt"
+                title="Hỏi bằng giọng nói Tiếng Việt"
               >
                 <SvgMic size={14} />
                 <span>{isListeningMic ? 'Đang nghe...' : 'Nói'}</span>
               </button>
               <button
                 type="button"
+                className="voice-tutor-ask-btn"
                 disabled={qaLoading || !qaQuestion.trim()}
                 onClick={() => handleAskVoiceTutor(qaQuestion)}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: '#2563eb',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 12.5,
-                  cursor: qaLoading ? 'wait' : 'pointer',
-                  opacity: qaLoading || !qaQuestion.trim() ? 0.6 : 1,
-                }}
               >
                 {qaLoading ? 'Đang giải...' : 'Hỏi AI'}
               </button>
             </div>
             {qaAnswer && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(37,99,235,0.12)', borderLeft: '3px solid #3b82f6', fontSize: 13.5, lineHeight: 1.6 }}>
+              <div className="voice-tutor-answer">
                 <img
                   src="/img/elec/elec-happy.png"
                   alt="Bé Elec Gia Sư"
                   style={{ width: 38, height: 38, objectFit: 'contain', flexShrink: 0 }}
                 />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>Gia sư Bé Elec giải thích:</div>
+                  <div className="voice-tutor-answer-head">Gia sư Bé Elec giải thích:</div>
                   <MathText text={qaAnswer} />
                 </div>
               </div>
@@ -828,14 +825,14 @@ export default function ChalkboardView({
 
           {/* Bảng Kiểm định cơ học (Mechanical Verification) */}
           <div className="solution-card">
-            <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#34d399', display: 'inline-flex' }}><SvgScale size={17} /></span>
+            <h3>
+              <span className="solution-card-title">
+                <span style={{ color: '#059669', display: 'inline-flex' }}><SvgScale size={17} /></span>
                 <span>Bộ máy Kiểm định Cơ học</span>
               </span>
-              <span className="chalkboard-badge" style={{ fontSize: '0.65rem' }}>ve.wasm</span>
+              <span className="chalkboard-badge">ve.wasm</span>
             </h3>
-            <p className="chalkboard-subtitle" style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+            <p className="solution-card-hint">
               Máy tự đo đạc trực tiếp trên mô hình 3D để đối chiếu với tính toán của AI:
             </p>
 
@@ -854,15 +851,15 @@ export default function ChalkboardView({
                     <tr key={idx}>
                       <td>
                         <strong>{item.ghiChu || item.bieuThuc}</strong>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        <div className="verify-expr-code">
                           <code>{item.bieuThuc}</code>
                         </div>
                       </td>
-                      <td style={{ color: '#38bdf8', fontWeight: 600 }}>{item.doDuoc}</td>
+                      <td className="verify-measured-val">{item.doDuoc}</td>
                       <td>{item.kyVong}</td>
                       <td>
                         {item.hopLe ? (
-                          <span className="verify-badge-match" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span className="verify-badge-match">
                             <SvgCheck size={13} />
                             <span>Khớp 100%</span>
                           </span>
