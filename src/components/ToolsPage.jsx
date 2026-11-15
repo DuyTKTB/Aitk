@@ -37,6 +37,7 @@ const STUDY_TOOLS = [
   { id: 'career', name: 'Hướng nghiệp AI', desc: 'Trắc nghiệm RIASEC & chọn ngành nghề', Icon: IconBook, tag: 'new' },
   { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Học và tạo quiz từ file tài liệu của bạn', Icon: IconNote, tag: 'new' },
   { id: 'chalkboard', name: 'Bảng phấn 3D', desc: 'Mô phỏng hình học & kiểm định cơ học', Icon: IconScale, tag: 'hot' },
+  { id: 'sim-lab', name: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN & Punnett', Icon: IconMicroscope, tag: 'new' },
   { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Nhập phương trình, ra hệ số', Icon: IconScale, tag: 'hot' },
   { id: 'pomodoro', name: 'Pomodoro', desc: 'Tập trung sâu, nghỉ đúng lúc', Icon: IconTimer },

@@ -890,11 +890,59 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
       finish(reject, new AbortError());
     };
 
+    /* ---- Nhánh gọi Proxy bảo mật phía Server (/api/ai-chat) ---- */
+    let triedServerProxy = false;
+    const tryServerProxyFallback = async () => {
+      if (triedServerProxy || finished || aborted || typeof fetch !== 'function') {
+        finish(reject, lastError || new Error('Tất cả AI đều đang bận hoặc hết quota. Bạn thử lại sau ít phút nhé.'));
+        return;
+      }
+      triedServerProxy = true;
+      try {
+        const res = await fetch('/api/ai-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
+            payload: {
+              systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+              contents: prepareGeminiContents(plan.recentHistory),
+              generationConfig: {
+                temperature: task.temperature ?? 0.3,
+                maxOutputTokens: task.maxTokens ?? 4096,
+              },
+            },
+          }),
+        });
+        if (!res.ok) throw new Error(`Server AI Proxy HTTP ${res.status}`);
+        const data = await res.json();
+        const parts = data?.candidates?.[0]?.content?.parts || [];
+        const text = parts.map((p) => p.text || '').join('').trim();
+        if (!text) throw new Error('Server AI Proxy không trả nội dung');
+        onChunk?.(text);
+        finish(resolve, {
+          text,
+          reasoning: '',
+          model: 'server/gemini-2.5-flash',
+          kind: task.kind,
+          hard: task.hard,
+          citations,
+          toolHits,
+          fromCache: false,
+          toString() { return this.text; },
+          valueOf() { return this.text; },
+        });
+      } catch (proxyErr) {
+        finish(reject, lastError || proxyErr || new Error('Tất cả AI đều thất bại. Thử lại sau.'));
+      }
+    };
+
     /* ---- Xử lý khi hết ảnh mà không có vision → OCR dự phòng ---- */
     const proceed = () => {
       attempts = buildAttempts();
       if (!attempts.length) {
-        finish(reject, lastError || new Error('Tất cả AI đều đang bận hoặc hết quota. Bạn thử lại sau ít phút nhé.'));
+        tryServerProxyFallback();
         return;
       }
       launchNext();
@@ -904,7 +952,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
       if (finished || aborted || winner !== null) return;
       if (!attempts.length) {
         if (activeCount === 0) {
-          finish(reject, lastError || new Error('Tất cả AI đều thất bại. Thử lại sau.'));
+          tryServerProxyFallback();
         }
         return;
       }

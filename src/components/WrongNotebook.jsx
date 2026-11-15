@@ -35,6 +35,22 @@ const DIFFICULTIES = [
 const DIFF_LABELS = { easy: 'Dễ', medium: 'TB', hard: 'Khó', extreme: 'Rất khó' };
 const DIFF_COLORS = { easy: '#b7dc9a', medium: '#ffc46b', hard: '#ff9b85', extreme: '#f2b6c6' };
 
+const TRAP_CAUSES = [
+  { id: 'all', label: 'Mọi nguyên nhân sai' },
+  { id: 'concept', label: 'Hổng bản chất lý thuyết', color: '#8b5cf6' },
+  { id: 'formula', label: 'Nhầm công thức / Đơn vị SI', color: '#0891b2' },
+  { id: 'calc', label: 'Bấm máy / Tính toán sai', color: '#d97706' },
+  { id: 'trap', label: 'Bẫy đọc đề (Đúng/Sai)', color: '#e11d48' },
+];
+
+function inferTrapCause(q = {}) {
+  const txt = `${q.content || ''} ${q.explanation || ''}`.toLowerCase();
+  if (/đúng hay sai|phát biểu|nhận định|không đúng|sai khi nói/i.test(txt)) return 'trap';
+  if (/mol|khối lượng|nồng độ|phần trăm|hiệu suất|tính giá trị|bao nhiêu gam/i.test(txt)) return 'calc';
+  if (/công thức|đơn vị|chu kỳ|tần số|bước sóng|điện trở|cảm kháng|dung kháng/i.test(txt)) return 'formula';
+  return 'concept';
+}
+
 export default function WrongNotebook() {
   const { user } = useAuth();
   const [wrongQs, setWrongQs] = useState([]);
@@ -77,6 +93,33 @@ export default function WrongNotebook() {
   const [quizIdx, setQuizIdx] = useState(0);
   const [quizPicked, setQuizPicked] = useState(null);
   const [quizScore, setQuizScore] = useState(0);
+  const [sprintSecLeft, setSprintSecLeft] = useState(0);
+  const [filterCause, setFilterCause] = useState('all');
+  const [customCauses, setCustomCauses] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('elec_wrong_causes_v1') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const setQuestionCause = (qid, causeId) => {
+    setCustomCauses((prev) => {
+      const next = { ...prev, [qid]: causeId };
+      try {
+        localStorage.setItem('elec_wrong_causes_v1', JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!quizMode || sprintSecLeft <= 0 || quizIdx >= quizMode.length) return undefined;
+    const t = setInterval(() => {
+      setSprintSecLeft((s) => (s > 1 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [quizMode, sprintSecLeft, quizIdx]);
 
   // Guide
   const [guideOpen, setGuideOpen] = useState(false);
@@ -226,6 +269,14 @@ export default function WrongNotebook() {
       arr = arr.filter((it) => (it.question?.topic_id || UNCLASSIFIED) === filterTopic);
     }
 
+    if (filterCause !== 'all') {
+      arr = arr.filter((it) => {
+        const qid = it.question?.id ?? it.questionId ?? it.id;
+        const cause = customCauses[qid] || inferTrapCause(it.question);
+        return cause === filterCause;
+      });
+    }
+
     arr = [...arr].sort((a, b) => {
       const qa = a.question;
       const qb = b.question;
@@ -245,7 +296,7 @@ export default function WrongNotebook() {
     });
 
     return arr;
-  }, [items, search, filterSubject, filterDiff, filterTopic, sortBy]);
+  }, [items, search, filterSubject, filterDiff, filterTopic, filterCause, customCauses, sortBy]);
 
   /* ============ STATS ============ */
   const stats = useMemo(() => {
@@ -362,10 +413,28 @@ export default function WrongNotebook() {
       return;
     }
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    setSprintSecLeft(0);
     setQuizMode(shuffled);
     setQuizIdx(0);
     setQuizPicked(null);
     setQuizScore(0);
+  };
+
+  const start5MinGapSprint = () => {
+    const pool = filtered.filter((x) => x.question?.answers?.length > 0);
+    if (pool.length < 1) {
+      showToast('Chưa có câu sai nào để tạo Đề Vá Lỗ Hổng 5 Phút', 'err');
+      return;
+    }
+    const urgent5 = [...pool]
+      .sort((a, b) => (b.wrong_count || 1) - (a.wrong_count || 1))
+      .slice(0, 5);
+    setSprintSecLeft(300);
+    setQuizMode(urgent5);
+    setQuizIdx(0);
+    setQuizPicked(null);
+    setQuizScore(0);
+    showToast('⚡ Bắt đầu Đề Vá Lỗ Hổng 5 Phút (5 câu hay sai nhất)!');
   };
 
   const quizCurrent = quizMode?.[quizIdx];
@@ -442,6 +511,9 @@ export default function WrongNotebook() {
           </button>
           <button type="button" className="nb-btn nb-btn-ghost" onClick={exportJSON} title="Tải backup JSON">
             <IcoDownload size={16} /><span>Backup</span>
+          </button>
+          <button type="button" className="nb-btn nb-btn-primary" onClick={start5MinGapSprint} disabled={filtered.length === 0} title="Tạo nhanh đề 5 câu từ các lỗi sai nhiều nhất trong 5 phút" style={{ background: 'linear-gradient(135deg, #e11d48, #f59e0b)', borderColor: 'transparent', color: '#fff' }}>
+            <IcoFire size={16} /><span>Đề Vá Lỗi 5 Phút</span>
           </button>
           <button type="button" className="nb-btn nb-btn-primary" onClick={startQuiz} disabled={filtered.length === 0}>
             <IcoPlay size={16} /><span>Luyện tập</span>
@@ -540,6 +612,23 @@ export default function WrongNotebook() {
         ))}
       </div>
 
+      {/* ============ ROOT-CAUSE TRAP FILTERS (CHẨN ĐOÁN BẪY & LỖ HỔNG) ============ */}
+      {tab === 'wrong' && (
+        <div className="nb-filters" style={{ marginTop: 6 }}>
+          {TRAP_CAUSES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={'nb-chip' + (filterCause === c.id ? ' on' : '')}
+              style={filterCause === c.id && c.color ? { background: c.color, color: '#fff', borderColor: c.color } : undefined}
+              onClick={() => setFilterCause(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ============ TOPIC FILTERS ============ */}
       {topicCounts.some(([id]) => id !== UNCLASSIFIED) && (
         <div className="nb-filters" aria-label="Lọc theo chuyên đề">
@@ -621,6 +710,33 @@ export default function WrongNotebook() {
                       {tab === 'wrong' && item.wrong_count > 0 && (<span className="nb-badge wrong"><IcoX size={12} />Sai {item.wrong_count} lần</span>)}
                       {tab === 'saved' && (<span className="nb-badge saved"><IcoStar size={12} filled />Đã lưu</span>)}
                       <span className="nb-badge diff" style={{ background: DIFF_COLORS[diff] }}>{DIFF_LABELS[diff] || diff}</span>
+                      {tab === 'wrong' && (() => {
+                        const qid = q.id ?? item.questionId ?? item.id;
+                        const causeId = customCauses[qid] || inferTrapCause(q);
+                        const causeMeta = TRAP_CAUSES.find((c) => c.id === causeId) || TRAP_CAUSES[1];
+                        return (
+                          <select
+                            value={causeId}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => setQuestionCause(qid, e.target.value)}
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              border: `1px solid ${causeMeta.color || '#64748b'}`,
+                              background: 'transparent',
+                              color: causeMeta.color || 'inherit',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                            title="Phân loại nguyên nhân sai để vá lỗ hổng gốc rễ"
+                          >
+                            {TRAP_CAUSES.filter((c) => c.id !== 'all').map((c) => (
+                              <option key={c.id} value={c.id}>{c.label}</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                       {q.exam?.subject?.name && (<span className="nb-badge subject">{q.exam.subject.name}</span>)}
                       {q.topic_id && (<span className="nb-badge subject">{topicName(q.topic_id)}</span>)}
                     </div>
@@ -705,7 +821,14 @@ export default function WrongNotebook() {
               <>
                 <header className="nb-quiz-head">
                   <div className="nb-quiz-progress">
-                    <span>Câu {quizIdx + 1} / {quizMode.length}</span>
+                    <span>
+                      Câu {quizIdx + 1} / {quizMode.length}
+                      {sprintSecLeft > 0 && (
+                        <strong style={{ marginLeft: 10, color: sprintSecLeft < 60 ? '#ef4444' : '#f59e0b' }}>
+                          ⏱ {Math.floor(sprintSecLeft / 60)}:{String(sprintSecLeft % 60).padStart(2, '0')}
+                        </strong>
+                      )}
+                    </span>
                     <div className="nb-quiz-bar"><i style={{ width: `${((quizIdx + 1) / quizMode.length) * 100}%` }} /></div>
                   </div>
                   <button type="button" className="nb-icon" onClick={closeQuiz} aria-label="Đóng"><IcoClose size={16} /></button>

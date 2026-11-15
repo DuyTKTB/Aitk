@@ -56,6 +56,7 @@ const BIG_VENDORS = [
      dù chưa dùng tới. Để nguyên, pdf chỉ tải khi mở công cụ cần nó. */
   [/node_modules[\\/](katex|mathjax)[\\/]/, 'vendor-math'],
   [/node_modules[\\/](framer-motion|gsap)[\\/]/, 'vendor-motion'],
+  [/node_modules[\\/](docx|jspdf|html2canvas|file-saver)[\\/]/, 'vendor-doc-export'],
 ];
 
 /* Middleware chạy API /api/email-otp trực tiếp trong vite dev (không đóng gói vào client build) */
@@ -116,6 +117,37 @@ function devEmailOtpApiPlugin() {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.end(JSON.stringify({ ok: false, message: err?.message || 'Lỗi server dev OTP' }));
+        }
+      });
+      server.middlewares.use('/api/ai-chat', async (req, res, next) => {
+        if (req.method !== 'POST' && req.method !== 'OPTIONS') return next();
+        try {
+          loadServerEnv();
+          const chunks = [];
+          for await (const chunk of req) chunks.push(chunk);
+          req.body = Buffer.concat(chunks).toString('utf8');
+
+          let statusCode = 200;
+          const wrappedRes = {
+            status(code) {
+              statusCode = code;
+              return wrappedRes;
+            },
+            json(payload) {
+              res.statusCode = statusCode;
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(payload));
+              return wrappedRes;
+            },
+          };
+
+          const apiFileUrl = `${pathToFileURL(path.resolve(process.cwd(), 'api/ai-chat.js')).href}?t=${Date.now()}`;
+          const mod = await import(/* @vite-ignore */ apiFileUrl);
+          return await mod.default(req, wrappedRes);
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ ok: false, error: err?.message || 'Lỗi server dev AI Chat' }));
         }
       });
     },

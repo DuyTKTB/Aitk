@@ -37,6 +37,7 @@ import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.js
 import DigitalOmrSheet from './exam/DigitalOmrSheet.jsx';
 import ExamTrapReport from './exam/ExamTrapReport.jsx';
 import ExamModeModal from './exam/ExamModeModal.jsx';
+import ShareAchievementModal from './ShareAchievementModal.jsx';
 import { isAnswered, countAnswered, packAnswers, scoreExam, scoreQuestion } from '../lib/examScoring.js';
 import { buildLayout } from '../lib/examLayout.js';
 import '../styles/classroom.css';
@@ -1760,6 +1761,12 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const vipExams = useMemo(() => filteredExams.filter((e) => e.tier === 'VIP'), [filteredExams]);
   const proExams = useMemo(() => filteredExams.filter((e) => e.tier === 'PRO'), [filteredExams]);
   const freeExams = useMemo(() => filteredExams.filter((e) => e.tier === 'FREE'), [filteredExams]);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
+
+  const latestBestAttempt = useMemo(() => {
+    if (!historyList || !historyList.length) return null;
+    return [...historyList].sort((a, b) => (b.score10 || 0) - (a.score10 || 0))[0];
+  }, [historyList]);
 
   if (activeExam) {
     return (
@@ -1794,6 +1801,70 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   return (
     <div className="ns9-vex-page">
       <div className="ns9-vex-container">
+        {/* ── 0. BANNER CA THI THỬ THỰC CHIẾN TOÀN QUỐC HÀNG TUẦN & XUẤT THẺ THÀNH TÍCH ── */}
+        <section
+          style={{
+            marginBottom: 16,
+            padding: '16px 20px',
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, rgba(29,78,216,0.22), rgba(109,40,217,0.22))',
+            border: '1px solid rgba(59,130,246,0.35)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 14,
+          }}
+        >
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, background: 'rgba(245,158,11,0.18)', color: '#fbbf24', fontSize: 11.5, fontWeight: 800, marginBottom: 6 }}>
+              🔥 ĐẤU TRƯỜNG THỰC CHIẾN KHTN TOÀN QUỐC · 20:00 CHỦ NHẬT HÀNG TUẦN
+            </div>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>
+              Ca Thi Thử Chuẩn Cấu Trúc Bộ GD&amp;ĐT 2026 &amp; Xếp Hạng Phổ Điểm Toàn Quốc
+            </h2>
+            <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.85 }}>
+              Thi thử 50 phút chuẩn 3 phần (Trắc nghiệm 4 lựa chọn · Đúng/Sai lũy tiến · Trả lời ngắn) và xuất Thẻ Thành Tích PNG.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {freeExams.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleOpenExam(freeExams[0])}
+                style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+              >
+                ⚡ Thi Ngay Đề Tiêu Điểm
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShareCardOpen(true)}
+              style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(251,191,36,0.5)', background: 'rgba(251,191,36,0.14)', color: '#fbbf24', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+            >
+              🏆 Xuất Thẻ Thành Tích (PNG)
+            </button>
+          </div>
+        </section>
+
+        <ShareAchievementModal
+          open={shareCardOpen}
+          onClose={() => setShareCardOpen(false)}
+          studentName={user?.displayName || user?.email?.split('@')[0] || 'Chiến binh KHTN ELEC AI'}
+          examTitle={latestBestAttempt?.examTitle || 'Đề Thi Thử Tốt Nghiệp THPT Quốc Gia 2026'}
+          score={latestBestAttempt?.score10 ?? 9.25}
+          totalQuestions={latestBestAttempt?.totalQuestions ?? 28}
+          correctCount={latestBestAttempt?.correctCount ?? 26}
+          percentileText={
+            (latestBestAttempt?.score10 ?? 9.25) >= 9
+              ? 'Top 3% Thí Sinh Toàn Quốc'
+              : (latestBestAttempt?.score10 ?? 9.25) >= 8
+              ? 'Top 10% Thí Sinh Toàn Quốc'
+              : 'Top 20% Thí Sinh Toàn Quốc'
+          }
+          subjectLabel="Khoa học Tự nhiên (Vật lí · Hóa học · Sinh học)"
+        />
+
         {/* ── 1. THANH TÌM KIẾM & SẮP XẾP ── */}
         <div className="ns9-vex-search-row">
           <div className="ns9-vex-search-box">

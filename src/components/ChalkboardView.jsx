@@ -5,8 +5,26 @@ import {
   renderChalkboard,
   SAMPLE_CHALKBOARD_LESSONS,
 } from '../lib/chalkboardEngine.js';
+import { askAI } from '../lib/ai.js';
+import * as tts from '../lib/tts.js';
 import MathText from './MathText.jsx';
 import '../styles/chalkboard.css';
+
+function stripLatexForSpeech(raw) {
+  return String(raw || '')
+    .replace(/\$\$([\s\S]*?)\$\$/g, '$1')
+    .replace(/\$([^$]*)\$/g, '$1')
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 phần $2')
+    .replace(/\\sqrt\{([^}]+)\}/g, 'căn bậc hai của $1')
+    .replace(/\\perp/g, 'vuông góc với')
+    .replace(/\\parallel/g, 'song song với')
+    .replace(/\\triangle/g, 'tam giác ')
+    .replace(/\\widehat\{([^}]+)\}/g, 'góc $1')
+    .replace(/\\[a-zA-Z]+/g, ' ')
+    .replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 /**
  * Component ChalkboardView — Bảng phấn tương tác & Kiểm định Cơ học WebAssembly
@@ -245,6 +263,124 @@ export default function ChalkboardView({
 
   const currentStepData = currentLesson.buoc[activeStep] || currentLesson.buoc[0];
 
+  /* ============ CHẾ ĐỘ VẤN ĐÁP GIỌNG NÓI & GIẢNG BÀI TỰ ĐỘNG (VOICE TUTOR) ============ */
+  const [voiceAutoLecture, setVoiceAutoLecture] = useState(false);
+  const [isSpeakingStep, setIsSpeakingStep] = useState(false);
+  const [isListeningMic, setIsListeningMic] = useState(false);
+  const [qaQuestion, setQaQuestion] = useState('');
+  const [qaAnswer, setQaAnswer] = useState('');
+  const [qaLoading, setQaLoading] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const speakCurrentStep = useCallback((stepIdx, autoAdvance = false) => {
+    const stepObj = currentLesson.buoc[stepIdx] || currentLesson.buoc[0];
+    if (!stepObj) return;
+    const speechText = `${stepObj.tieuDe}. ${stripLatexForSpeech(stepObj.giaiThich)}`;
+    setIsSpeakingStep(true);
+    try {
+      tts.stop?.();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(speechText);
+        utter.lang = 'vi-VN';
+        utter.rate = 1.02;
+        utter.onend = () => {
+          setIsSpeakingStep(false);
+          if (autoAdvance && stepIdx < currentLesson.buoc.length - 1) {
+            setActiveStep(stepIdx + 1);
+          } else if (autoAdvance) {
+            setVoiceAutoLecture(false);
+          }
+        };
+        utter.onerror = () => {
+          setIsSpeakingStep(false);
+          setVoiceAutoLecture(false);
+        };
+        window.speechSynthesis.speak(utter);
+      } else {
+        setIsSpeakingStep(false);
+      }
+    } catch {
+      setIsSpeakingStep(false);
+    }
+  }, [currentLesson]);
+
+  useEffect(() => {
+    if (voiceAutoLecture && !sandboxMode) {
+      speakCurrentStep(activeStep, true);
+    }
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [activeStep, voiceAutoLecture, sandboxMode, speakCurrentStep]);
+
+  const handleAskVoiceTutor = useCallback(async (questionText) => {
+    const q = String(questionText || qaQuestion || '').trim();
+    if (!q || qaLoading) return;
+    setQaLoading(true);
+    setQaAnswer('');
+    try {
+      const prompt = [
+        `Bối cảnh bài giảng Bảng phấn 3D: "${currentLesson.tieuDe}" (Lớp ${currentLesson.lop} - ${currentLesson.chuDe}).`,
+        `Đề bài: ${currentLesson.deBai}`,
+        `Bước đang chiếu trên bảng (Bước ${activeStep + 1}/${currentLesson.buoc.length}): ${currentStepData.tieuDe} — ${currentStepData.giaiThich}`,
+        `Câu hỏi vấn đáp của học sinh: "${q}"`,
+        `Hãy trả lời ngắn gọn (3-5 câu), trực quan, giải thích đúng trọng tâm bước đang vẽ trên bảng phấn để học sinh hiểu ngay.`,
+      ].join('\n');
+
+      const res = await askAI(
+        [{ role: 'user', parts: [{ text: prompt }] }],
+        (partial) => setQaAnswer(partial),
+        null,
+        { mode: 'auto', verify: false }
+      );
+      const finalAns = res?.text || String(res || '');
+      setQaAnswer(finalAns);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && finalAns) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(stripLatexForSpeech(finalAns));
+        utter.lang = 'vi-VN';
+        utter.rate = 1.04;
+        window.speechSynthesis.speak(utter);
+      }
+    } catch (err) {
+      setQaAnswer(err?.message || 'Gia sư AI đang bận, bạn hãy thử hỏi lại sau giây lát nhé.');
+    } finally {
+      setQaLoading(false);
+    }
+  }, [qaQuestion, qaLoading, currentLesson, activeStep, currentStepData]);
+
+  const toggleMicQuestion = () => {
+    const SpeechRec = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SpeechRec) {
+      alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói trực tiếp. Bạn có thể gõ câu hỏi vào ô bên dưới nhé!');
+      return;
+    }
+    if (isListeningMic && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListeningMic(false);
+      return;
+    }
+    const rec = new SpeechRec();
+    rec.lang = 'vi-VN';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onstart = () => setIsListeningMic(true);
+    rec.onend = () => setIsListeningMic(false);
+    rec.onerror = () => setIsListeningMic(false);
+    rec.onresult = (event) => {
+      const transcript = event?.results?.[0]?.[0]?.transcript || '';
+      if (transcript) {
+        setQaQuestion(transcript);
+        handleAskVoiceTutor(transcript);
+      }
+    };
+    recognitionRef.current = rec;
+    rec.start();
+  };
+
   return (
     <div className="chalkboard-container">
       {/* Header */}
@@ -350,7 +486,32 @@ export default function ChalkboardView({
                 </button>
               </div>
 
-              <div className="chalkboard-view-actions">
+              <div className="chalkboard-view-actions" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="tool-icon-btn"
+                  onClick={() => {
+                    if (isSpeakingStep || voiceAutoLecture) {
+                      setVoiceAutoLecture(false);
+                      setIsSpeakingStep(false);
+                      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+                    } else {
+                      speakCurrentStep(activeStep, false);
+                    }
+                  }}
+                  title="Đọc lời giảng của bước hiện tại"
+                >
+                  {isSpeakingStep ? '⏹ Dừng đọc' : '🔊 Nghe giảng bước này'}
+                </button>
+                <button
+                  type="button"
+                  className="tool-icon-btn"
+                  onClick={() => setVoiceAutoLecture((v) => !v)}
+                  style={voiceAutoLecture ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : undefined}
+                  title="Tự động giảng bằng giọng nói và chuyển bước tuần tự"
+                >
+                  {voiceAutoLecture ? '⏸ Đang giảng tự động' : '▶ Giảng tự động toàn bài'}
+                </button>
                 <button className="tool-icon-btn" onClick={handleResetView} title="Góc nhìn ban đầu">
                   ↺ Đặt lại góc
                 </button>
@@ -433,6 +594,68 @@ export default function ChalkboardView({
               )}
             </div>
           )}
+
+          {/* Card Vấn đáp Giọng nói với Gia sư AI trực tiếp trên Bảng phấn */}
+          <div className="solution-card" style={{ borderColor: 'rgba(59,130,246,0.35)' }}>
+            <h3>
+              <span>🎙️ Vấn đáp Giọng nói cùng Gia sư AI</span>
+              <span className="chalkboard-badge" style={{ fontSize: '0.65rem' }}>Voice Tutor</span>
+            </h3>
+            <p className="chalkboard-subtitle" style={{ fontSize: '0.8rem', marginBottom: '0.6rem' }}>
+              Chưa hiểu bước {activeStep + 1}? Bấm Micro để hỏi bằng giọng nói hoặc gõ câu hỏi, AI sẽ giải thích và đọc lại ngay:
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                type="text"
+                value={qaQuestion}
+                onChange={(e) => setQaQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAskVoiceTutor(qaQuestion); }}
+                placeholder={`Hỏi về Bước ${activeStep + 1} (VD: Tại sao SO vuông góc với đáy?)...`}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(15,23,42,0.5)', color: '#f8fafc', fontSize: 13 }}
+              />
+              <button
+                type="button"
+                onClick={toggleMicQuestion}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: isListeningMic ? '#ef4444' : 'rgba(59,130,246,0.18)',
+                  color: isListeningMic ? '#fff' : '#60a5fa',
+                  fontWeight: 700,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                }}
+                title="Hỏi bằng giọng nói tiếng Việt"
+              >
+                {isListeningMic ? '🔴 Đang nghe...' : '🎙️ Nói'}
+              </button>
+              <button
+                type="button"
+                disabled={qaLoading || !qaQuestion.trim()}
+                onClick={() => handleAskVoiceTutor(qaQuestion)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#2563eb',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 12.5,
+                  cursor: qaLoading ? 'wait' : 'pointer',
+                  opacity: qaLoading || !qaQuestion.trim() ? 0.6 : 1,
+                }}
+              >
+                {qaLoading ? 'Đang giải...' : 'Hỏi AI'}
+              </button>
+            </div>
+            {qaAnswer && (
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(37,99,235,0.12)', borderLeft: '3px solid #3b82f6', fontSize: 13.5, lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>Gia sư ELEC AI giải thích:</div>
+                <MathText text={qaAnswer} />
+              </div>
+            )}
+          </div>
 
           {/* Bảng Kiểm định cơ học (Mechanical Verification) */}
           <div className="solution-card">

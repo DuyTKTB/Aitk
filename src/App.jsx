@@ -35,6 +35,7 @@ const AdmissionLookup = lazy(() => import('./components/AdmissionLookup.jsx'));
 const CareerPath = lazy(() => import('./components/CareerPath.jsx'));
 const DocStudio = lazy(() => import('./components/DocStudio.jsx'));
 const ChalkboardView = lazy(() => import('./components/ChalkboardView.jsx'));
+const ScienceSimLab = lazy(() => import('./components/ScienceSimLab.jsx'));
 
 /* ============ GAMES ============ */
 const GameHub = lazy(() => import('./components/games/GameHub.jsx'));
@@ -178,6 +179,7 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Giải trí & Trực quan',
     tools: [
+      { id: 'sim-lab', label: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN & Punnett', Icon: IconMicroscope },
       { id: 'games', label: 'Trò chơi Khoa học', desc: 'Game tương tác KHTN & lab ảo', Icon: IconGamepad },
       { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác chuẩn IUPAC', Icon: IconHome },
     ],
@@ -232,6 +234,7 @@ const CLEAN_PATH_MAP = {
   'tro-choi-khoa-hoc': 'games',
   'bang-xep-hang': 'leaderboard',
   'quiz': 'quiz',
+  'mo-phong-khtn': 'sim-lab',
   'auth-action': 'auth-action',
 };
 
@@ -590,7 +593,7 @@ export default function App() {
   const PUBLIC_SEO_PAGES = [
     'ai', 'table', 'balance', 'formulas', 'roadmap', 'study', 'grade',
     'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
-    'chalkboard', 'quiz', 'games', 'leaderboard', 'pomodoro', 'schedule',
+    'chalkboard', 'sim-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'schedule',
   ];
 
   if (!isLoggedIn) {
@@ -757,6 +760,7 @@ export default function App() {
     if (page === 'career') return <CareerPath />;
     if (page === 'doc-studio') return <DocStudio />;
     if (page === 'chalkboard') return <ChalkboardView />;
+    if (page === 'sim-lab') return <ScienceSimLab onNavigate={navigate} />;
 
     if (page === 'truong' || page.startsWith('truong/')) {
       const schoolId = page.startsWith('truong/') ? page.replace('truong/', '') : 'NEU';

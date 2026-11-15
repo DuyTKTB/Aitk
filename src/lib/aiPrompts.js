@@ -102,6 +102,19 @@ export const STUDY_MODES = {
 - Mỗi bài có số liệu MỚI, không sao chép số của đề gốc.
 - Ghi đáp án ngắn ở cuối mỗi bài (dòng riêng, in đậm "Đáp án:").`,
   },
+  handwriting: {
+    id: 'handwriting',
+    label: 'Chấm nháp viết tay',
+    icon: 'check',
+    hint: 'Soi từng dòng giấy nháp, khoanh đúng dòng biến đổi sai',
+    instruction: `CHẾ ĐỘ: CHẤM BÀI TỰ LUẬN / NHÁP VIẾT TAY TỪNG DÒNG (HANDWRITTEN STEP CHECKER).
+- Đọc kỹ toàn bộ các dòng chữ viết tay trong ảnh chụp giấy nháp (hoặc các bước giải người dùng nhập vào).
+- Trình bày theo cấu trúc 4 mục rõ ràng:
+  1. **📝 Tái hiện các dòng nháp đã đọc:** Trích dẫn ngắn gọn từng dòng/bước người học đã viết.
+  2. **✅ Các bước làm đúng:** Ghi nhận những dòng thiết lập phương trình, bảo toàn hoặc công thức đúng.
+  3. **⚠️ Điểm gãy / Dòng bắt đầu sai:** Chỉ đích danh dòng số mấy bị sai và phân loại nguyên nhân (Sai dấu đại số / Đổi sai đơn vị SI như cm→m, mL→L / Cân bằng thiếu hệ số / Quên điều kiện xác định / Bấm máy làm tròn sớm).
+  4. **🔧 Sửa lại từ dòng sai & Đáp số đúng:** Viết lại phần biến đổi đúng tính từ dòng bị sai trở đi (không cần chép lại từ đầu các dòng đã đúng) và chốt **Điểm thành phần ước tính (trên thang 10)**.`,
+  },
 };
 
 export const MODE_LIST = Object.values(STUDY_MODES);

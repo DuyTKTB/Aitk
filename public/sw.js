@@ -3,7 +3,7 @@
    - Điều hướng: mạng trước, rớt thì dùng bản đã lưu, cuối cùng /offline.html
    - File tĩnh cùng origin: trả bản cache ngay, cập nhật nền (stale-while-revalidate)
    - /api/* và mọi request không phải GET: KHÔNG đụng (chat ELECAI, phản hồi, đăng nhập) */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `ELECAI-shell-${VERSION}`;
 const ASSETS = `ELECAI-assets-${VERSION}`;
 const PRECACHE = ['/', '/offline.html', '/manifest.json', '/favicon.ico', '/img/logo.png'];
@@ -12,6 +12,22 @@ const STATIC_INFO_PATHS = new Set([
   '/gioi-thieu', '/gioi-thieu.html',
   '/chinh-sach-bao-mat', '/chinh-sach-bao-mat.html',
   '/dieu-khoan-su-dung', '/dieu-khoan-su-dung.html',
+  '/tro-ly-ai-giai-hoa', '/tro-ly-ai-giai-hoa.html',
+  '/phong-thi-ao', '/phong-thi-ao.html',
+  '/bang-tuan-hoan', '/bang-tuan-hoan.html',
+  '/can-bang-phuong-trinh-hoa-hoc', '/can-bang-phuong-trinh-hoa-hoc.html',
+  '/lo-trinh-on-thi-thpt-quoc-gia', '/lo-trinh-on-thi-thpt-quoc-gia.html',
+  '/cong-thuc-hoa-hoc', '/cong-thuc-hoa-hoc.html',
+  '/tai-lieu-hoa-hoc', '/tai-lieu-hoa-hoc.html',
+  '/tinh-diem-xet-tuyen-dai-hoc', '/tinh-diem-xet-tuyen-dai-hoc.html',
+  '/tra-cuu-diem-chuan', '/tra-cuu-diem-chuan.html',
+  '/dinh-huong-nghe-nghiep', '/dinh-huong-nghe-nghiep.html',
+  '/tro-choi-khoa-hoc', '/tro-choi-khoa-hoc.html',
+  '/ai-doc-studio', '/ai-doc-studio.html',
+  '/bang-phan-tuong-tac', '/bang-phan-tuong-tac.html',
+  '/quiz', '/quiz.html',
+  '/bang-xep-hang', '/bang-xep-hang.html',
+  '/mo-phong-khtn', '/mo-phong-khtn.html',
 ]);
 
 self.addEventListener('install', (e) => {
@@ -58,7 +74,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  if (/\.(js|css|woff2?|png|jpe?g|svg|webp|ico)$/.test(url.pathname)) {
+  if (/\.(js|css|woff2?|png|jpe?g|svg|webp|avif|wasm|ico)$/.test(url.pathname)) {
     e.respondWith(
       caches.open(ASSETS).then(async (cache) => {
         const hit = await cache.match(req);

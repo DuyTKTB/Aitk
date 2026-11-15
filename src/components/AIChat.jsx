@@ -103,6 +103,7 @@ const QUICK_PROMPTS = [
   { icon: 'bulb', label: 'Giải thích khái niệm', prompt: 'Giải thích khái niệm trong bài này bằng ngôn ngữ dễ hiểu, có ví dụ.' },
   { icon: 'repeat', label: 'Tạo bài tương tự', prompt: 'Tạo 3 bài tập tương tự để mình luyện thêm (có đáp án).' },
   { icon: 'bug', label: 'Tìm lỗi sai', prompt: 'Chỉ ra lỗi sai thường gặp khi giải dạng bài này.' },
+  { icon: 'check', label: 'Chấm nháp viết tay', prompt: 'Hãy chấm từng dòng trong ảnh nháp/bài giải này của mình, chỉ rõ dòng nào bắt đầu biến đổi sai dấu, sai đơn vị hay sai công thức và sửa lại từ dòng đó.' },
   { icon: 'book', label: 'Tóm tắt lý thuyết', prompt: 'Tóm tắt lý thuyết liên quan cần nhớ để giải dạng bài này.' },
   { icon: 'wand', label: 'Vẽ bảng phấn 3D', prompt: 'Hãy giải bài này và minh họa bằng bảng phấn 3D sử dụng cú pháp ```chalkboard-mv kèm các câu lệnh dựng hình (Point, Segment, Pyramid, Sphere, Line, v.v.).' },
 ];
