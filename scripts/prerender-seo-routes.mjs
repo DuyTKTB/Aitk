@@ -23,7 +23,7 @@ const FOUNDER_PERSON_LD = {
   name: 'Nguyễn Thế Duy',
   alternateName: ['Nguyen The Duy', 'Duy TK', 'Tk Media', 'nguyentheduytk'],
   birthDate: '2009',
-  image: `${SITE_ORIGIN}/img/nguyen-the-duy.jpg`,
+  image: `${SITE_ORIGIN}/img/nguyen-the-duy.jpg?v=2`,
   jobTitle: 'Nhà sáng lập & Kỹ sư phát triển chính (Founder & Lead Developer) — ELEC Science AI',
   disambiguatingDescription:
     'Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2009 tại Thái Bình) là nhà sáng lập trẻ của ELEC Science AI và PhotobothNe, KHÔNG phải các cá nhân trùng tên làm việc tại PetroVietnam (PVN).',
