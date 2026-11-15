@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { syncPaperResultsToSubmissions } from '../src/lib/paperStore.js';
+import { buildExamDocBlob } from '../src/lib/examExport.js';
 
 const batchSetCalls = [];
 const batchCommitCalls = [];
@@ -230,5 +234,51 @@ describe('classroom — updateClass & createExam metadata/draft', () => {
     expect(draft.subject).toBe('Toán học');
     expect(draft.totalPoints).toBe(0.5);
     expect(setDocCalls).toHaveLength(1);
+  });
+});
+
+describe('OMR sync, empty Word template & Firestore rules regression checks', () => {
+  it('syncPaperResultsToSubmissions ghi đầy đủ isPaperOmr, paperId, classId để giáo viên cập nhật lại được', async () => {
+    const bad = await syncPaperResultsToSubmissions({ id: 'p1', classId: '' }, []);
+    expect(bad.ok).toBe(false);
+
+    const res = await syncPaperResultsToSubmissions(
+      { id: 'paper_1', classId: 'cls_12a1', title: 'Kiểm tra Hóa phiếu A4' },
+      [{ id: 'r1', sbd: '012', studentId: 'hs_12', studentName: 'Nguyễn Văn A', grade: { total: 8, max: 10, score10: 8 } }],
+    );
+
+    expect(res).toEqual({ ok: true, synced: 1 });
+    expect(batchCommitCalls).toHaveLength(1);
+    expect(batchSetCalls).toHaveLength(1);
+    expect(batchSetCalls[0].ref.id).toBe('omr_paper_1_hs_12');
+    expect(batchSetCalls[0].data).toMatchObject({
+      examId: 'paper_1',
+      paperId: 'paper_1',
+      classId: 'cls_12a1',
+      studentId: 'hs_12',
+      isPaperOmr: true,
+      graded: true,
+      score: 8,
+    });
+  });
+
+  it('buildExamDocBlob dựng được file Word mẫu hợp lệ kể cả khi chưa có câu hỏi (initialExam trống)', async () => {
+    const blob = await buildExamDocBlob({
+      examTitle: 'ĐỀ KIỂM TRA ĐỊNH KÌ',
+      subject: 'Hóa học',
+      questions: [],
+    });
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBeGreaterThan(500);
+  });
+
+  it('firestore.rules cho phép GVCN & GVBM liên kết cập nhật/xóa bài OMR kể cả khi không có doc /exams tương ứng', () => {
+    const rules = fs.readFileSync(path.resolve('firestore.rules'), 'utf8');
+    expect(rules).toContain('function subOmrManager()');
+    expect(rules).toContain('exists(/databases/$(database)/documents/exams/$(resource.data.examId))');
+    expect(rules).toContain('exists(/databases/$(database)/documents/paperExams/$(resource.data.paperId))');
+    expect(rules).toContain('(classOwner(request.resource.data.classId) || linkedToClass(request.resource.data.classId, request.auth.uid))');
+    expect(rules).toMatch(/allow update:[\s\S]*subOmrManager\(\)/);
+    expect(rules).toMatch(/allow delete:[\s\S]*subOmrManager\(\)/);
   });
 });

@@ -405,6 +405,72 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
       }
     }
 
+    // 4. Dự phòng qua /api/ai-chat (khi không có VITE_* key trên client hoặc toàn bộ key client đều bận/hết quota)
+    if (typeof fetch === 'function') {
+      const schemaInstruction = schema ? `\n\nBẮT BUỘC TRẢ VỀ JSON KHỚP CẤU TRÚC SAU:\n${JSON.stringify(schema)}` : '';
+      const hasInlineMedia = Array.isArray(parts) && parts.some((p) => p?.inlineData || p?.fileData);
+      const hasMeaningfulText = Array.isArray(parts) && parts.some((p) => String(p?.text || '').trim().length > 40);
+      const proxyCandidates = [
+        { provider: 'gemini', model: GEMINI_MODELS[0] || 'gemini-2.5-flash', isGemini: true },
+        ...(!hasInlineMedia || hasMeaningfulText
+          ? [
+              { provider: 'groq', model: GROQ_MODELS[0] || 'openai/gpt-oss-120b', isGemini: false },
+              { provider: 'agnes', model: AGNES_MODELS[0] || 'agnes-3.0-flash', isGemini: false },
+            ]
+          : []),
+      ];
+      for (const candidate of proxyCandidates) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        try {
+          const generationConfig = {
+            temperature,
+            responseMimeType: 'application/json',
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+          };
+          if (schema) generationConfig.responseSchema = schema;
+          const payload = candidate.isGemini
+            ? {
+                ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+                contents: [{ role: 'user', parts }],
+                generationConfig,
+              }
+            : {
+                model: candidate.model,
+                messages: [
+                  ...(system || schemaInstruction
+                    ? [{ role: 'system', content: `${system || ''}${schemaInstruction}`.trim() }]
+                    : []),
+                  { role: 'user', content: userContent },
+                ],
+                temperature,
+                response_format: { type: 'json_object' },
+              };
+          const res = await fetch('/api/ai-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+            body: JSON.stringify({
+              provider: candidate.provider,
+              model: candidate.model,
+              payload,
+            }),
+          });
+          if (!res.ok) {
+            errors.push(`Proxy ${candidate.provider} (${res.status})`);
+            continue;
+          }
+          const data = await res.json();
+          const text = candidate.isGemini
+            ? (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('')
+            : (data?.choices?.[0]?.message?.content || '');
+          if (text) return text;
+        } catch (err) {
+          if (err?.name === 'AbortError') throw err;
+          errors.push(`Proxy ${candidate.provider}: ${err.message}`);
+        }
+      }
+    }
+
     throw new Error(`Tất cả nguồn AI đều bận hoặc hết hạn ngạch:\n${errors.join('\n')}`);
   } catch (err) {
     await refundOnFailure(err);

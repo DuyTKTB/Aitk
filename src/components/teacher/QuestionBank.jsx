@@ -1574,29 +1574,67 @@ Trả về DUY NHẤT JSON:
     setAiBusy(true);
     setAiError('');
     try {
-      const localFindings = [];
-      const opts = activeQuestion.options || [];
-      const cIdx = activeQuestion.correct;
-      const cLetter = String.fromCharCode(65 + (cIdx || 0));
-
-      if (opts.length < 4) {
-        localFindings.push({ type: 'warn', text: `Câu hỏi hiện chỉ có ${opts.length} phương án (khuyến nghị đủ 4 phương án A, B, C, D).` });
-      }
-      if (typeof cIdx !== 'number' || cIdx < 0 || cIdx >= opts.length || !String(opts[cIdx] || '').trim()) {
-        localFindings.push({ type: 'error', text: 'Đáp án đúng đang trỏ tới vị trí rỗng hoặc không hợp lệ.' });
-      }
-      const normOpts = opts.map((o) => norm(o));
-      const dupOptIdx = normOpts.findIndex((o, i) => o && normOpts.indexOf(o) !== i);
-      if (dupOptIdx >= 0) {
-        localFindings.push({ type: 'error', text: `Phương án ${String.fromCharCode(65 + dupOptIdx)} bị trùng nội dung với một phương án khác.` });
-      }
-
       const subj = activeQuestion.subject || 'Hóa học';
+      const qType = getQuestionType(activeQuestion, customMeta);
+      const localFindings = [];
+      let answerDesc = '';
+      let contentLines = '';
+
+      if (qType === 'true_false') {
+        const stmts = Array.isArray(activeQuestion.statements) ? activeQuestion.statements : [];
+        if (stmts.length < 4) {
+          localFindings.push({ type: 'warn', text: `Câu Đúng/Sai hiện có ${stmts.length}/4 ý (khuyến nghị đủ 4 ý a, b, c, d theo chuẩn GDPT 2025).` });
+        }
+        const emptyIdx = stmts.findIndex((s) => !String(s?.text || '').trim());
+        if (emptyIdx >= 0) {
+          localFindings.push({ type: 'error', text: `Ý ${'abcd'[emptyIdx]}) đang để trống nội dung.` });
+        }
+        contentLines = stmts
+          .map((s, i) => `${'abcd'[i]}) ${s?.text || '(Trống)'} [Đáp án gán: ${s?.answer ? 'Đúng' : 'Sai'}]`)
+          .join('\n') || '(Chưa có ý phát biểu)';
+        answerDesc = stmts.map((s, i) => `${'abcd'[i]}) ${s?.answer ? 'Đúng' : 'Sai'}`).join(', ') || '(Chưa có)';
+      } else if (qType === 'short_answer') {
+        const accepted = Array.isArray(activeQuestion.accepted) && activeQuestion.accepted.length > 0
+          ? activeQuestion.accepted
+          : (activeQuestion.answer !== undefined && activeQuestion.answer !== null && String(activeQuestion.answer).trim() !== ''
+              ? [String(activeQuestion.answer).trim()]
+              : []);
+        if (accepted.length === 0) {
+          localFindings.push({ type: 'error', text: 'Câu Trả lời ngắn chưa có đáp án chuẩn để đối chiếu.' });
+        }
+        contentLines = `Loại: Trả lời ngắn (điền giá trị số/từ)\nĐáp án chấp nhận: ${accepted.join(' | ') || '(Chưa có)'}`;
+        answerDesc = accepted.join(' | ') || '(Chưa có)';
+      } else if (qType === 'essay') {
+        if (!String(activeQuestion.explain || activeQuestion.answer || '').trim()) {
+          localFindings.push({ type: 'warn', text: 'Câu Tự luận chưa có hướng dẫn chấm hoặc đáp án tham khảo.' });
+        }
+        contentLines = `Loại: Tự luận\nHướng dẫn chấm/Đáp án tham khảo: ${activeQuestion.explain || activeQuestion.answer || '(Chưa có)'}`;
+        answerDesc = activeQuestion.answer || activeQuestion.explain || '(Tự luận)';
+      } else {
+        const opts = activeQuestion.options || [];
+        const cIdx = activeQuestion.correct;
+        const cLetter = String.fromCharCode(65 + (cIdx || 0));
+
+        if (opts.length < 4) {
+          localFindings.push({ type: 'warn', text: `Câu hỏi hiện chỉ có ${opts.length} phương án (khuyến nghị đủ 4 phương án A, B, C, D).` });
+        }
+        if (typeof cIdx !== 'number' || cIdx < 0 || cIdx >= opts.length || !String(opts[cIdx] || '').trim()) {
+          localFindings.push({ type: 'error', text: 'Đáp án đúng đang trỏ tới vị trí rỗng hoặc không hợp lệ.' });
+        }
+        const normOpts = opts.map((o) => norm(o));
+        const dupOptIdx = normOpts.findIndex((o, i) => o && normOpts.indexOf(o) !== i);
+        if (dupOptIdx >= 0) {
+          localFindings.push({ type: 'error', text: `Phương án ${String.fromCharCode(65 + dupOptIdx)} bị trùng nội dung với một phương án khác.` });
+        }
+        contentLines = `Các phương án:\n${opts.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n')}`;
+        answerDesc = cLetter;
+      }
+
       const prompt = `Với vai trò Chủ tịch Hội đồng Thẩm định Đề thi môn ${subj}, hãy giải độc lập và kiểm định tính chính xác khoa học + kỹ thuật ra đề của câu hỏi sau:
+Loại câu hỏi: ${TYPE_LABEL[qType] || 'Trắc nghiệm'}
 Câu hỏi: ${activeQuestion.q}
-Các phương án:
-${opts.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n')}
-Đáp án đang gán là ĐÚNG: ${cLetter}
+${contentLines}
+Đáp án đang gán là ĐÚNG: ${answerDesc}
 Lời giải đi kèm: ${activeQuestion.explain || '(Chưa có)'}
 
 Trả về DUY NHẤT JSON:
@@ -1609,7 +1647,7 @@ Trả về DUY NHẤT JSON:
       const parsed = parseJsonLoose(raw);
       const aiFindings = Array.isArray(parsed?.findings) && parsed.findings.length > 0
         ? parsed.findings.filter((f) => f && f.text)
-        : [{ type: 'ok', text: `AI đã đối chiếu nội dung khoa học cho đáp án ${cLetter}.` }];
+        : [{ type: 'ok', text: `AI đã đối chiếu nội dung khoa học cho đáp án ${answerDesc}.` }];
 
       setAiResult({
         kind: 'audit',

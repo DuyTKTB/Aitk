@@ -1128,19 +1128,36 @@ export default function TeacherDashboard({ onExit } = {}) {
   /* Tìm lớp theo mã để giao đề (dùng cho giáo viên bộ môn không phải chủ nhiệm) */
   const findExternalClass = async () => {
     const key = extKey.trim().toUpperCase();
-    if (!key) { setExtErr('Nhập mã lớp trước đã.'); return; }
+    if (!key) { setExtErr('Nhập mã lớp trước đã.'); return null; }
     setExtBusy(true);
     setExtErr('');
     try {
       const found = await findClassByKey(key);
       if (!found) {
         setExtErr('Không tìm thấy lớp nào với mã này. Nhờ chủ nhiệm gửi lại mã lớp.');
-        return;
+        return null;
+      }
+      let isOwnedOrLinked = classes.some((c) => c.id === found.id)
+        || linkedClasses.some((c) => c.id === found.id)
+        || found.teacherId === user?.uid;
+      if (!isOwnedOrLinked && user?.uid) {
+        try {
+          const freshLinks = await listMyLinkedClasses(user.uid);
+          isOwnedOrLinked = freshLinks.some((l) => l.classId === found.id);
+        } catch { /* bỏ qua lỗi mạng phụ */ }
+      }
+      if (!isOwnedOrLinked) {
+        setExtClass(null);
+        setExtCreate(false);
+        setExtErr(`Đã tìm thấy lớp "${found.name}", nhưng bạn chưa liên kết GVBM với lớp này. Hãy nhập mã key liên kết ở khung "Liên kết dạy lớp mới" bên dưới trước khi giao đề.`);
+        return null;
       }
       setExtClass(found);
       setExtKey('');
+      return found;
     } catch (e) {
       setExtErr(e?.message || 'Không tìm được lớp.');
+      return null;
     } finally {
       setExtBusy(false);
     }
@@ -2654,9 +2671,10 @@ export default function TeacherDashboard({ onExit } = {}) {
               type="button"
               className="vt-btn sm primary"
               onClick={async () => {
-                await findExternalClass();
-                if (extKey.trim()) {
+                const found = await findExternalClass();
+                if (found) {
                   setExtCreate(true);
+                  goSection('create');
                 }
               }}
               disabled={extBusy}
@@ -2686,7 +2704,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       </div>
 
       <div>
-        <LinkClassPanel />
+        <LinkClassPanel onLinked={refresh} />
       </div>
     </div>
   );
@@ -3164,6 +3182,8 @@ export default function TeacherDashboard({ onExit } = {}) {
                             type="button"
                             className="vt-btn sm"
                             onClick={() => {
+                              setExtCreate(false);
+                              setExtClass(null);
                               setSelectedClass(c);
                               goSection('create');
                             }}
@@ -3218,6 +3238,8 @@ export default function TeacherDashboard({ onExit } = {}) {
                             type="button"
                             className="vt-btn sm"
                             onClick={() => {
+                              setExtCreate(false);
+                              setExtClass(null);
                               setSelectedClass(c);
                               goSection('create');
                             }}

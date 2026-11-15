@@ -781,7 +781,9 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
   if (!historyArr.length) return Promise.reject(new Error('Không có nội dung câu hỏi.'));
 
   const anyKey = RINGS.gemini.size + RINGS.groq.size + RINGS.agnes.size;
-  if (!anyKey) return Promise.reject(new Error('Chưa cấu hình API key nào trong .env'));
+  if (!anyKey && typeof fetch !== 'function') {
+    return Promise.reject(new Error('Chưa cấu hình API key nào trong .env'));
+  }
 
   /* ---- Kế hoạch: phân loại tác vụ + grounding + công cụ + bộ nhớ ---- */
   const plan = buildRequestPlan(historyArr, options);
@@ -898,46 +900,86 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
         return;
       }
       triedServerProxy = true;
-      try {
-        const res = await fetch('/api/ai-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(50000) : undefined,
-          body: JSON.stringify({
-            provider: 'gemini',
-            model: 'gemini-2.5-flash',
-            payload: {
-              systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-              contents: prepareGeminiContents(plan.recentHistory),
-              generationConfig: {
+      const proxyCandidates = [
+        { provider: 'gemini', model: GEMINI_TEXT_MODELS[0] || 'gemini-2.5-flash', isGemini: true },
+        { provider: 'groq', model: GROQ_STRONG_MODELS[0] || 'openai/gpt-oss-120b', isGemini: false },
+        { provider: 'agnes', model: AGNES_MODELS[0] || 'agnes-3.0-flash', isGemini: false },
+      ];
+      let sawProxyQuota = false;
+      for (const candidate of proxyCandidates) {
+        if (finished || aborted) return;
+        try {
+          const payload = candidate.isGemini
+            ? {
+                systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+                contents: prepareGeminiContents(plan.recentHistory),
+                generationConfig: {
+                  temperature: task.temperature ?? 0.3,
+                  maxOutputTokens: task.maxTokens ?? 4096,
+                },
+              }
+            : {
+                model: candidate.model,
+                messages: prepareOpenAIMessages(plan.recentHistory, systemPrompt),
                 temperature: task.temperature ?? 0.3,
-                maxOutputTokens: task.maxTokens ?? 4096,
-              },
-            },
-          }),
-        });
-        if (!res.ok) throw new Error(`Server AI Proxy HTTP ${res.status}`);
-        const data = await res.json();
-        const parts = data?.candidates?.[0]?.content?.parts || [];
-        const text = parts.filter((p) => p?.text && !p.thought).map((p) => p.text).join('').trim();
-        const reasoning = parts.filter((p) => p?.text && p.thought).map((p) => p.text).join('').trim();
-        if (!text) throw new Error('Server AI Proxy không trả nội dung');
-        onChunk?.(text);
-        finish(resolve, {
-          text,
-          reasoning,
-          model: 'server/gemini-2.5-flash',
-          kind: task.kind,
-          hard: task.hard,
-          citations,
-          toolHits,
-          fromCache: false,
-          toString() { return this.text; },
-          valueOf() { return this.text; },
-        });
-      } catch (proxyErr) {
-        finish(reject, lastError || proxyErr || new Error('Tất cả AI đều thất bại. Thử lại sau.'));
+                max_tokens: task.maxTokens ?? 4096,
+                stream: false,
+              };
+          const res = await fetch('/api/ai-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(50000) : undefined,
+            body: JSON.stringify({
+              provider: candidate.provider,
+              model: candidate.model,
+              payload,
+            }),
+          });
+          if (res.status === 429) {
+            sawProxyQuota = true;
+            continue;
+          }
+          if (!res.ok) continue;
+          const data = await res.json();
+          let text = '';
+          let reasoning = '';
+          if (candidate.isGemini) {
+            const parts = data?.candidates?.[0]?.content?.parts || [];
+            text = parts.filter((p) => p?.text && !p.thought).map((p) => p.text).join('').trim();
+            reasoning = parts.filter((p) => p?.text && p.thought).map((p) => p.text).join('').trim();
+          } else {
+            const msg = data?.choices?.[0]?.message || {};
+            text = String(msg.content || data?.choices?.[0]?.text || '').trim();
+            reasoning = String(msg.reasoning_content || msg.reasoning || '').trim();
+          }
+          if (!text) continue;
+          onChunk?.(text);
+          if (!hasImg) setCache(plan.recentHistory, systemPrompt, task.kind, text, `server/${candidate.provider}/${candidate.model}`);
+          finish(resolve, {
+            text,
+            reasoning,
+            model: `server/${candidate.provider}/${candidate.model}`,
+            kind: task.kind,
+            hard: task.hard,
+            citations,
+            toolHits,
+            fromCache: false,
+            toString() { return this.text; },
+            valueOf() { return this.text; },
+          });
+          return;
+        } catch {
+          // Thử nhà cung cấp proxy tiếp theo
+        }
       }
+      const fallbackErr = lastError || (
+        sawProxyQuota
+          ? Object.assign(new Error(MSG_RATE_LIMIT), { isQuota: true })
+          : new Error(anyKey
+            ? 'Tất cả AI đều đang bận hoặc hết quota. Bạn thử lại sau ít phút nhé.'
+            : 'Chưa cấu hình API key AI ở client hoặc server (/api/ai-chat).')
+      );
+      finish(reject, fallbackErr);
     };
 
     /* ---- Xử lý khi hết ảnh mà không có vision → OCR dự phòng ---- */
@@ -1386,8 +1428,8 @@ const GROQ_FAST_MODELS = modelsFor('groq', 'fast');
 const GROQ_STRONG_MODELS = modelsFor('groq', 'smart');
 const AGNES_MODELS = modelsFor('agnes', 'smart');
 
-export const AI_READY = Boolean(RINGS.gemini.size || RINGS.groq.size || RINGS.agnes.size);
-export const VISION_SUPPORTED = Boolean(RINGS.gemini.size);
+export const AI_READY = Boolean(RINGS.gemini.size || RINGS.groq.size || RINGS.agnes.size || typeof window !== 'undefined');
+export const VISION_SUPPORTED = Boolean(RINGS.gemini.size || typeof window !== 'undefined');
 export { GEMINI_VISION_MODELS, GEMINI_TEXT_MODELS, GROQ_FAST_MODELS, GROQ_STRONG_MODELS, AGNES_MODELS };
 export const MODELS = GROQ_STRONG_MODELS;
 export { discoveredGemini, warmUpGemini };

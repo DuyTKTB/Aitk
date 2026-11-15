@@ -394,14 +394,33 @@ service cloud.firestore {
     //     Chỉ số liệu phái sinh ở client (điểm) KHÔNG được chống sửa tuyệt đối;
     //     muốn chống gian lận tuyệt đối phải chấm ở server — xem tài liệu §11.
     function subExamAuthor() {
-      return get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.teacherId
-        == request.auth.uid;
+      return resource.data.examId is string
+        && exists(/databases/$(database)/documents/exams/$(resource.data.examId))
+        && get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.teacherId
+          == request.auth.uid;
     }
 
     function subClassOwner() {
-      return classOwner(
-        get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId
-      );
+      return resource.data.examId is string
+        && exists(/databases/$(database)/documents/exams/$(resource.data.examId))
+        && classOwner(
+          get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId
+        );
+    }
+
+    function subOmrManager() {
+      return resource.data.get('isPaperOmr', false) == true
+        && resource.data.get('paperId', '') is string
+        && resource.data.get('paperId', '').size() > 0
+        && exists(/databases/$(database)/documents/paperExams/$(resource.data.paperId))
+        && (
+          get(/databases/$(database)/documents/paperExams/$(resource.data.paperId)).data.get('teacherId', '') == request.auth.uid
+          || (
+            resource.data.get('classId', '') is string
+            && resource.data.get('classId', '').size() > 0
+            && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid))
+          )
+        );
     }
 
     match /submissions/{subId} {
@@ -416,20 +435,23 @@ service cloud.firestore {
         ||
         (request.resource.data.isPaperOmr == true
           && request.resource.data.classId is string
-          && classOwner(request.resource.data.classId)
+          && (classOwner(request.resource.data.classId) || linkedToClass(request.resource.data.classId, request.auth.uid))
           && request.resource.data.paperId is string
           && exists(/databases/$(database)/documents/paperExams/$(request.resource.data.paperId)))
       );
 
-      /* Nộp lại cùng một lượt (setDoc trùng id) là update → vẫn cho chính chủ bài */
+      /* Nộp lại cùng một lượt (setDoc trùng id) là update → vẫn cho chính chủ bài hoặc giáo viên đồng bộ OMR */
       allow update: if signedIn() && (
         (resource.data.studentId == request.auth.uid
           && request.resource.data.studentId == request.auth.uid)
+        || (subOmrManager()
+            && request.resource.data.get('isPaperOmr', false) == true
+            && request.resource.data.get('paperId', '') == resource.data.get('paperId', ''))
         || subExamAuthor()
         || subClassOwner()
       );
 
-      allow delete: if signedIn() && (subExamAuthor() || subClassOwner() || isAdmin());
+      allow delete: if signedIn() && (subOmrManager() || subExamAuthor() || subClassOwner() || isAdmin());
     }
 
     // ===============================================================

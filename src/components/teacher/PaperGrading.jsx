@@ -902,7 +902,7 @@ function PaperGrade({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play?.().catch(() => {});
       }
       setCameraLoading(false);
       sound.ding();
@@ -912,6 +912,16 @@ function PaperGrade({
       setCameraLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!cameraOpen || cameraLoading) return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (video && stream && video.srcObject !== stream) {
+      video.srcObject = stream;
+      video.play?.().catch(() => {});
+    }
+  }, [cameraOpen, cameraLoading]);
 
   /* FIX: stopCamera reset feedback + dọn stream */
   const stopCamera = useCallback(() => {

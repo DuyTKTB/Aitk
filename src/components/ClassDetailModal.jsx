@@ -949,7 +949,7 @@ export default function ClassDetailModal({
 
               {peopleSubTab === 'retry' && (
                 <>
-                  {pendingRetry.length === 0 && Object.keys(allowances).filter((k) => allowances[k]).length === 0 && historyRetry.length === 0 ? (
+                  {pendingRetry.length === 0 && historyRetry.length === 0 ? (
                     <div className="cd-empty">
                       <span><IconBell size={30} /></span>
                       <h3>Chưa có yêu cầu thi lại</h3>
@@ -1020,7 +1020,11 @@ export default function ClassDetailModal({
                           </ul>
                         </>
                       )}
+                    </>
+                  )}
 
+                  {members.length > 0 && (
+                    <>
                       <h3 style={{ margin: '.6rem 0 .5rem', font: '800 .92rem var(--sans)', color: 'var(--ink)' }}>
                         Cấp quyền thi lại tự do cho từng học sinh
                       </h3>

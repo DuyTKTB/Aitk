@@ -501,19 +501,19 @@ export default function WordDocxEditor({
     if (!open) return;
     if (initialExam?.fileBuffer) {
       setDocxBuffer(initialExam.fileBuffer);
-    } else if (initialExam?.questions?.length) {
+    } else if (initialExam?.questions?.length || !docxBuffer) {
       setIsConvertingDocx(true);
       buildExamDocBlob({
-        examTitle: initialExam.title || examName || 'ĐỀ KIỂM TRA ĐÁNH GIÁ ĐỊNH KÌ',
-        subject: initialExam.subject || subject || 'Hóa học',
+        examTitle: initialExam?.title || examName || 'ĐỀ KIỂM TRA ĐÁNH GIÁ ĐỊNH KÌ',
+        subject: initialExam?.subject || subject || 'Hóa học',
         duration: Number(duration) || 45,
         code: examCode || '101',
-        questions: initialExam.questions,
+        questions: initialExam?.questions?.length ? initialExam.questions : [],
         includeAnswers: true,
         headerInfo: {
           deptName,
           schoolName,
-          examName: initialExam.title || examName,
+          examName: initialExam?.title || examName,
           grade,
           schoolYear,
         },
