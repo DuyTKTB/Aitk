@@ -2082,7 +2082,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* 4 chỉ số trên 1 hàng */
+/* 4 chỉ số trên 1 hàng (2x2 trên Mobile giúp cực kỳ gọn gàng) */
 .ns9-metrics-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2091,11 +2091,13 @@
 @media (max-width: 860px) {
   .ns9-metrics-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 }
 @media (max-width: 480px) {
   .ns9-metrics-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 }
 
@@ -3158,8 +3160,25 @@
 }
 
 @media (max-width: 560px) {
+  .ns9-roadmap-card {
+    padding: 16px 14px !important;
+    border-radius: 22px !important;
+    gap: 14px !important;
+  }
+
   .ns9-metrics-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .ns9-metric-box {
+    padding: 12px 12px !important;
+    border-radius: 16px !important;
+    gap: 6px !important;
+  }
+
+  .ns9-mb-value strong {
+    font-size: 1.55rem !important;
   }
 
   .ns9-chapter-grid {
@@ -4414,36 +4433,16 @@
   transform: translateY(-1px);
 }
 
-/* Nút Tin nhắn Trợ lý đồng hành ELEC AI trên DesktopNav & MobileHeader (khớp 100% ảnh người dùng) */
+/* Nút Tin nhắn Cộng đồng ELEC AI trên DesktopNav: đồng bộ vòng tròn kính với Search & Theme */
 .nav-companion-msg-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50% !important;
-  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.35) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.38) !important;
-  cursor: pointer !important;
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease !important;
-  flex-shrink: 0 !important;
-}
-
-.nav-companion-msg-btn:hover {
-  transform: scale(1.08) !important;
-  box-shadow: 0 5px 16px rgba(37, 99, 235, 0.52) !important;
-  background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%) !important;
-}
-
-.nav-companion-msg-btn:active {
-  transform: scale(0.96) !important;
-}
-
-.nav-companion-msg-btn svg {
-  color: #ffffff !important;
-  stroke: #ffffff !important;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 /* Dropdown Hồ sơ cá nhân góc phải (Ảnh mẫu: Avatar tròn xanh tím + mũi tên xuống + Header 2 cột) */

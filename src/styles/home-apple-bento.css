@@ -1801,13 +1801,15 @@
 }
 .ns9-elem-mascot-sticker {
   position: absolute;
-  top: 18px;
-  right: 120px;
-  width: 58px;
-  height: 58px;
+  bottom: 14px;
+  right: 16px;
+  top: auto;
+  width: 54px;
+  height: 54px;
   pointer-events: none;
-  filter: drop-shadow(0 6px 14px rgba(244, 63, 94, 0.3));
+  filter: drop-shadow(0 6px 14px rgba(244, 63, 94, 0.26));
   animation: ns9FloatWave 3.8s ease-in-out infinite;
+  z-index: 1;
 }
 .ns9-elem-sticker-img {
   width: 100%;
@@ -2332,14 +2334,17 @@
   border-radius: 26px;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1.32fr 1fr;
+  grid-template-columns: minmax(0, 1.32fr) minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 20px;
   background: transparent;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 @media (max-width: 960px) {
   .ns9-unified-hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2356,6 +2361,11 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 14px;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 [data-theme='dark'] .ns9-uh-ai-col {
   background: rgba(22, 30, 68, 0.72);
@@ -2368,15 +2378,28 @@
   display: flex;
   align-items: center;
   gap: 15px;
+  min-width: 0;
+  width: 100%;
 }
 .ns9-uh-avatar {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  padding: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #ffffff;
   box-shadow: 0 4px 18px rgba(37, 99, 235, 0.32);
+}
+.ns9-uh-avatar > *,
+.ns9-uh-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
 }
 .ns9-uh-user-meta,
 .ns9-uh-meta {
@@ -2745,8 +2768,12 @@
 
 /* Khung composer AI tinh gọn */
 .ns9-uh-composer {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
 }
 .ns9-uh-input-wrap {
   position: relative;
@@ -2756,6 +2783,10 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   transition: all 0.2s ease;
   overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .ns9-uh-input-wrap:focus-within {
   border-color: #2563eb;
@@ -2804,6 +2835,14 @@
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+.ns9-uh-chips-bar::-webkit-scrollbar {
+  display: none;
 }
 .ns9-uh-chip-ocr {
   display: inline-flex;
@@ -3466,71 +3505,106 @@
 
   /* 1. Hero Unified Section trên Mobile */
   .ns9-unified-hero {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 14px !important;
     margin-bottom: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .ns9-uh-ai-col {
-    padding: 16px 14px !important;
+    padding: 15px 14px !important;
     border-radius: 22px !important;
     gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
   .ns9-uh-user-row {
     gap: 10px !important;
+    min-width: 0 !important;
+    width: 100% !important;
   }
 
   .ns9-uh-avatar {
-    width: 46px !important;
-    height: 46px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 
   .ns9-uh-hello-line {
-    gap: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
+    width: 100% !important;
   }
 
   .ns9-uh-greeting {
-    font-size: 1.25rem !important;
+    font-size: 1.12rem !important;
     line-height: 1.25 !important;
     letter-spacing: -0.02em !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .ns9-uh-ai-live {
-    font-size: 11px !important;
+    font-size: 10.5px !important;
     padding: 3px 8px !important;
-    gap: 5px !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
   }
 
   .ns9-uh-ai-pulse {
-    width: 7px !important;
-    height: 7px !important;
+    width: 6.5px !important;
+    height: 6.5px !important;
   }
 
   /* Pill Nguyện vọng trường & ngành */
   .ns9-uh-wish-pill {
-    padding: 5px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 5px 10px !important;
     gap: 6px !important;
-    font-size: 12.5px !important;
+    font-size: 12px !important;
+    width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   .ns9-uh-pill-tag {
-    font-size: 11px !important;
-    padding: 2px 7px !important;
+    font-size: 10.5px !important;
+    padding: 2px 6.5px !important;
+    flex-shrink: 0 !important;
   }
 
   .ns9-uh-pill-name {
-    font-size: 12.5px !important;
-    max-width: 155px !important;
+    font-size: 12px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
   }
 
   .ns9-uh-pill-major {
-    font-size: 12px !important;
-    max-width: 100px !important;
+    font-size: 11.5px !important;
+    flex: 0 1 95px !important;
+    min-width: 0 !important;
+    max-width: 95px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -3538,53 +3612,79 @@
 
   /* Khu vực giữa Hero: Lịch sử câu hỏi & Linh vật nhỏ gọn */
   .ns9-uh-mid-area {
-    grid-template-columns: 1fr auto !important;
-    padding: 12px 14px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 68px !important;
+    padding: 11px 12px !important;
     border-radius: 18px !important;
     gap: 10px !important;
     align-items: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .ns9-uh-recent-chats,
+  .ns9-uh-recent-list {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .ns9-uh-recent-head {
     margin-bottom: 2px !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
   }
 
   .ns9-uh-recent-title {
-    font-size: 0.8rem !important;
+    font-size: 0.74rem !important;
     letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .ns9-uh-open-companion-link {
-    font-size: 0.8rem !important;
-    padding: 2px 6px !important;
+    font-size: 0.76rem !important;
+    padding: 2px 5px !important;
+    flex-shrink: 0 !important;
   }
 
   .ns9-uh-recent-item {
-    padding: 6px 10px !important;
+    padding: 6px 8px !important;
     border-radius: 10px !important;
     gap: 6px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .ns9-uh-recent-tag {
-    font-size: 0.72rem !important;
-    padding: 2px 6px !important;
+    font-size: 0.68rem !important;
+    padding: 2px 5.5px !important;
   }
 
   .ns9-uh-recent-text {
-    font-size: 0.86rem !important;
+    font-size: 0.82rem !important;
   }
 
   .ns9-uh-recent-time {
-    font-size: 0.72rem !important;
+    font-size: 0.68rem !important;
   }
 
-  /* Linh vật Elec ở Hero: Thu gọn vừa vặn, ẩn bóng thoại chiếm chỗ */
+  /* Linh vật Elec ở Hero: Thu gọn vừa vặn 100% trong khung, không bao giờ bị cắt một nửa */
   .ns9-uh-mascot-deco {
-    width: 78px !important;
+    width: 68px !important;
+    max-width: 68px !important;
     padding: 0 !important;
+    border-top: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    flex-shrink: 0 !important;
   }
 
   .ns9-uh-mascot-speech {
@@ -3592,8 +3692,9 @@
   }
 
   .ns9-uh-mascot-sticker {
-    width: 70px !important;
-    height: 78px !important;
+    width: 64px !important;
+    height: 72px !important;
+    object-fit: contain !important;
     filter: drop-shadow(0 6px 14px rgba(37, 99, 235, 0.28)) !important;
   }
 

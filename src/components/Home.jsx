@@ -250,8 +250,8 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
       <article className="ns9-uh-ai-col">
         {/* Hàng 1: User Profile & Trạng thái Trợ lý */}
         <div className="ns9-uh-user-row">
-          <div className="ns9-uh-avatar" title={displayName} style={{ padding: 0, overflow: 'hidden', background: 'transparent' }}>
-            <UserAvatar user={user} photoURL={profile?.avatarUrl || profile?.avatar || user?.photoURL} size={58} title={displayName} />
+          <div className="ns9-uh-avatar" title={displayName}>
+            <UserAvatar user={user} photoURL={profile?.avatarUrl || profile?.avatar || user?.photoURL} size={56} title={displayName} />
           </div>
           <div className="ns9-uh-meta">
             <div className="ns9-uh-hello-line">

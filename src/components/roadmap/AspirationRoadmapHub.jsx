@@ -807,7 +807,8 @@ export default function AspirationRoadmapHub({
               onClick={handleRefreshAiComment}
               disabled={aiLoading}
             >
-              {aiLoading ? 'Đang phân tích...' : '✦ Làm mới bằng AI'}
+              <IcoSparkle />
+              <span>{aiLoading ? 'Đang phân tích...' : 'Làm mới bằng AI'}</span>
             </button>
           </div>
           <p className="ns9-ai-comm-headline">{tutorComment.headline}</p>

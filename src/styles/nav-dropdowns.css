@@ -1697,6 +1697,8 @@
 @media (max-width: 768px) {
   .mhead-bar {
     display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
     position: sticky !important;
     top: 0 !important;
     z-index: 10000 !important;
@@ -1704,41 +1706,14 @@
     gap: 8px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    background: var(--bg) !important;
+    background: color-mix(in srgb, var(--bg, #f8fafc) 88%, transparent) !important;
     backdrop-filter: blur(20px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border-bottom: 1px solid var(--soft, rgba(0, 0, 0, 0.08)) !important;
+    border-bottom: 1px solid var(--soft, rgba(148, 163, 184, 0.14)) !important;
   }
 
   .mhead-theme-btn {
     display: none !important;
-  }
-}
-
-.mhead-goal-slot {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 140px;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-}
-
-@media (max-width: 600px) {
-  .sg-trigger-exam span {
-    display: none !important;
-  }
-  .mhead-goal-slot {
-    max-width: 105px;
-  }
-  .sg-trigger-school {
-    padding: 2px 4px !important;
-    font-size: 0.72rem !important;
-    white-space: nowrap !important;
-  }
-  .sg-trigger-school b {
-    white-space: nowrap !important;
-    font-weight: 800 !important;
   }
 }
 
@@ -1747,21 +1722,24 @@
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .mhead-streak-pill {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 4px 7px;
+  gap: 3.5px;
+  height: 30px;
+  padding: 0 8px;
   border-radius: 999px;
   background: rgba(249, 115, 22, 0.12);
-  border: 1px solid rgba(249, 115, 22, 0.32);
+  border: 1px solid rgba(249, 115, 22, 0.28);
   color: #ea580c;
   font: 800 0.72rem var(--sg-font);
   text-decoration: none;
   flex-shrink: 0;
-  transition: transform .15s ease;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease;
 }
 
 .mhead-streak-pill:active {
@@ -1777,36 +1755,60 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 4px 7px;
+  height: 30px;
+  padding: 0 8.5px;
   border-radius: 999px;
-  background: rgba(47, 107, 255, 0.1);
-  border: 1px solid rgba(47, 107, 255, 0.28);
-  color: #2f6bff;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: #2563eb;
   font: 800 0.72rem var(--sg-font);
   text-decoration: none;
   flex-shrink: 0;
   white-space: nowrap;
+  cursor: pointer;
   transition: transform .15s ease;
+}
+
+[data-theme="dark"] .mhead-credit-pill {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #60a5fa;
 }
 
 .mhead-credit-pill:active {
   transform: scale(0.95);
 }
 
+/* Đồng bộ 100% kiểu dáng 3 nút tròn tiện ích trên Mobile (Chat, Tìm kiếm, Theme) */
+.mhead-icon-circle,
 .mhead-search-btn {
-  width: 34px !important;
-  height: 34px !important;
-  display: grid !important;
-  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   border-radius: 50% !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
-  background: rgba(148, 163, 184, 0.08) !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   color: var(--ink, #0f172a) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease !important;
 }
 
+.mhead-icon-circle:active,
+.mhead-search-btn:active {
+  transform: scale(0.92) !important;
+}
+
+[data-theme="dark"] .mhead-icon-circle,
 [data-theme="dark"] .mhead-search-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(30, 41, 59, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
   color: #f8fafc !important;
 }
 
@@ -2352,11 +2354,23 @@
   font-weight: 500 !important;
 }
 
-/* Lưới thẻ công cụ Bento Glass Card */
+/* Lưới thẻ công cụ Bento Glass Card (2 cột cho môn học & 3 cột cho Tiện ích KHTN) */
 .nav-tools-grid-2col {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 10px 14px !important;
+}
+
+.nav-tools-grid-3col {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px 12px !important;
+}
+
+@media (max-width: 860px) {
+  .nav-tools-grid-3col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 .nav-tool-card,

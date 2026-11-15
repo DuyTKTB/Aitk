@@ -254,89 +254,69 @@ export const SUBJECT_TOOL_GROUPS = [
     tintBg: 'rgba(37, 99, 235, 0.1)',
     tintText: '#2563eb',
     Icon: IconSparkles,
-    description: 'Bộ công cụ ôn luyện toàn diện: Phòng thi ảo 3 môn, Bảng phấn 3D, Sổ tay lỗi sai & Hướng nghiệp',
+    description: 'Bộ công cụ học tập thông minh: Bảng phấn 3D, AI Doc Studio, Sổ tay lỗi sai & Định hướng đại học',
+    gridCols: 3,
     tools: [
-      {
-        id: 'virtual-exams',
-        name: 'Phòng thi ảo KHTN',
-        desc: 'Đề thi THPTQG & ĐGNL 3 môn chuẩn Bộ GD&ĐT',
-        Icon: IconQuiz,
-        href: '#virtual-exams',
-      },
-      {
-        id: 'ai',
-        name: 'Trợ lý AI KHTN & Chấm nháp',
-        desc: 'Gia sư AI giải chi tiết Lý - Hóa - Sinh & chấm bài viết tay',
-        Icon: IconRobot,
-        href: '#ai',
-      },
       {
         id: 'chalkboard',
         name: 'Bảng phấn 3D & Voice Tutor',
-        desc: 'Mô phỏng hình không gian WASM & vấn đáp giọng nói cùng AI',
+        desc: 'Mô phỏng không gian & vấn đáp giọng nói',
         Icon: IconScale,
         href: '#chalkboard',
       },
       {
         id: 'doc-studio',
         name: 'AI Doc Studio',
-        desc: 'Tải PDF/Word để tóm tắt kiến thức & tạo đề trắc nghiệm tự động',
+        desc: 'Tóm tắt PDF/Word & tạo đề tự động',
         Icon: IconNotebook,
         href: '#doc-studio',
       },
       {
         id: 'notebook',
-        name: 'Sổ tay lỗi sai & Vá lỗi 5 Phút',
-        desc: 'Tự động lưu câu sai và tạo đề 5 câu vá lỗ hổng cấp tốc',
+        name: 'Sổ tay lỗi sai & Vá lỗi 5p',
+        desc: 'Lưu câu sai & tạo đề vá lỗ hổng cấp tốc',
         Icon: IconNotebook,
         href: '#notebook',
       },
       {
         id: 'admission',
-        name: 'Tra cứu điểm chuẩn & Nguyện vọng',
-        desc: 'Đo độ vừa sức khối A00, B00, A01, D07 vào các trường ĐH',
+        name: 'Điểm chuẩn & Nguyện vọng',
+        desc: 'Đo độ vừa sức khối A00, B00, A01, D07',
         Icon: IconTarget,
         href: '#admission',
       },
       {
         id: 'career',
         name: 'Hướng nghiệp AI (RIASEC)',
-        desc: 'Trắc nghiệm tính cách nghề nghiệp & gợi ý ngành học phù hợp',
+        desc: 'Trắc nghiệm tính cách & gợi ý ngành học',
         Icon: IcoBook,
         href: '#career',
       },
       {
         id: 'pomodoro',
         name: 'Clock Hub (Pomodoro)',
-        desc: 'Hẹn giờ tập trung sâu 25/5 & đồng hồ đếm ngược ngày thi',
+        desc: 'Hẹn giờ tập trung 25/5 & đếm ngược ngày thi',
         Icon: IconTimer,
         href: '#pomodoro',
       },
       {
         id: 'schedule',
         name: 'Thời khóa biểu KHTN',
-        desc: 'Lập kế hoạch phân bổ thời gian học 3 môn Lý - Hóa - Sinh',
+        desc: 'Lập kế hoạch phân bổ Lý - Hóa - Sinh',
         Icon: IconCalendar,
         href: '#schedule',
       },
       {
         id: 'stats',
-        name: 'Thống kê năng lực',
-        desc: 'Phân tích điểm số dự đoán & Elo chi tiết theo từng môn',
+        name: 'Thống kê năng lực & Elo',
+        desc: 'Phân tích điểm dự đoán theo từng môn',
         Icon: IconChart,
         href: '#stats',
       },
       {
-        id: 'quiz',
-        name: 'Quiz phản xạ ngắt quãng',
-        desc: 'Ôn tập lặp lại ngắt quãng (SRS) nhớ kiến thức lâu hơn',
-        Icon: IconTarget,
-        href: '#quiz',
-      },
-      {
         id: 'games',
         name: 'Trò chơi Khoa học',
-        desc: 'Kéo co, đua xe, vòng quay & đấu trí kiến thức KHTN',
+        desc: 'Đấu trí phản xạ kiến thức KHTN',
         Icon: IconGamepad,
         href: '#games',
       },
@@ -345,11 +325,10 @@ export const SUBJECT_TOOL_GROUPS = [
 ];
 
 const FOLDER_TABS = [
-  { id: 'all', label: 'Tất cả (KHTN)', Icon: IconFolder, color: '#2563eb', mascot: '/img/elec/elec-cool.png' },
-  { id: 'hoa', label: 'Hóa học', Icon: IconFlask, color: '#0284c7', mascot: '/img/elec/elec-think.png' },
-  { id: 'ly', label: 'Vật lí', Icon: IconPhysics, color: '#7c3aed', mascot: '/img/elec/elec-fighting.png' },
-  { id: 'sinh', label: 'Sinh học', Icon: IconDna, color: '#059669', mascot: '/img/elec/elec-happy.png' },
-  { id: 'suite', label: 'KHTN & Học tập', Icon: IconSparkles, color: '#2563eb', mascot: '/img/elec/elec-celebrate.png' },
+  { id: 'suite', label: 'Tiện ích Học tập', Icon: IconSparkles, color: '#2563eb', mascot: '/img/elec/elec-celebrate.png' },
+  { id: 'hoa', label: 'Môn Hóa học', Icon: IconFlask, color: '#0284c7', mascot: '/img/elec/elec-think.png' },
+  { id: 'ly', label: 'Môn Vật lí', Icon: IconPhysics, color: '#7c3aed', mascot: '/img/elec/elec-fighting.png' },
+  { id: 'sinh', label: 'Môn Sinh học', Icon: IconDna, color: '#059669', mascot: '/img/elec/elec-happy.png' },
 ];
 
 const ALL_TOOL_IDS = SUBJECT_TOOL_GROUPS.flatMap((g) => g.tools.map((t) => t.id));
@@ -370,7 +349,7 @@ export default function DesktopNav({
   onLogout,
 }) {
   const [localToolOpen, setLocalToolOpen] = useState(false);
-  const [toolFolder, setToolFolder] = useState('all');
+  const [toolFolder, setToolFolder] = useState('suite');
   const localRef = useRef(null);
   const toolOpen = toolOpenProp !== undefined ? toolOpenProp : localToolOpen;
   const setToolOpen = onToolOpen || setLocalToolOpen;
@@ -558,58 +537,42 @@ export default function DesktopNav({
                   })}
                 </div>
 
-                {/* Danh sách các tệp môn học */}
+                {/* Danh sách công cụ theo tab đang chọn (Gọn gàng, không cuộn dọc rườm rà) */}
                 <div className="nav-tools-folder-content">
-                  {SUBJECT_TOOL_GROUPS.filter((g) => toolFolder === 'all' || toolFolder === g.id).map((group) => {
-                    const GroupIcon = group.Icon;
-                    return (
-                      <div key={group.id} className="nav-tools-folder-section">
-                        <div className="nav-tools-folder-header">
-                          <div className="nav-tools-folder-title-left">
-                            <span
-                              className="nav-tools-folder-badge"
-                              style={{ background: group.tintBg, color: group.tintText }}
+                  {SUBJECT_TOOL_GROUPS.filter((g) => toolFolder === g.id).map((group) => (
+                    <div key={group.id} className="nav-tools-folder-section">
+                      <div className={group.gridCols === 3 ? 'nav-tools-grid-3col' : 'nav-tools-grid-2col'}>
+                        {group.tools.map((tool) => {
+                          const ToolIcon = tool.Icon;
+                          const isToolActive = page === tool.id;
+                          return (
+                            <a
+                              key={tool.name}
+                              href={tool.href}
+                              className={`nav-tool-item-bento ${isToolActive ? 'active' : ''}`}
+                              onClick={() => setToolOpen(false)}
                             >
-                              <GroupIcon size={13} style={{ marginRight: 4 }} />
-                              {group.badge}
-                            </span>
-                            <h4 className="nav-tools-folder-title">{group.title}</h4>
-                          </div>
-                          <span className="nav-tools-folder-desc">{group.description}</span>
-                        </div>
-                        <div className="nav-tools-grid-2col">
-                          {group.tools.map((tool) => {
-                            const ToolIcon = tool.Icon;
-                            const isToolActive = page === tool.id;
-                            return (
-                              <a
-                                key={tool.name}
-                                href={tool.href}
-                                className={`nav-tool-item-bento ${isToolActive ? 'active' : ''}`}
-                                onClick={() => setToolOpen(false)}
+                              <span
+                                className="nav-tool-bento-icon"
+                                style={{ background: group.tintBg, color: group.tintText }}
                               >
-                                <span
-                                  className="nav-tool-bento-icon"
-                                  style={{ background: group.tintBg, color: group.tintText }}
-                                >
-                                  <ToolIcon size={18} />
-                                </span>
-                                <span className="nav-tool-bento-info">
-                                  <span className="nav-tool-bento-title">{tool.name}</span>
-                                  <span className="nav-tool-bento-desc">{tool.desc}</span>
-                                </span>
-                                <span className="nav-tool-bento-arrow" aria-hidden="true">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="9 18 15 12 9 6" />
-                                  </svg>
-                                </span>
-                              </a>
-                            );
-                          })}
-                        </div>
+                                <ToolIcon size={18} />
+                              </span>
+                              <span className="nav-tool-bento-info">
+                                <span className="nav-tool-bento-title">{tool.name}</span>
+                                <span className="nav-tool-bento-desc">{tool.desc}</span>
+                              </span>
+                              <span className="nav-tool-bento-arrow" aria-hidden="true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                              </span>
+                            </a>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
 
                 {isAdmin && (
@@ -663,7 +626,7 @@ export default function DesktopNav({
                 stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
-              <span>{credits >= 10000000 ? `${(credits / 1000000).toFixed(1)}M` : credits.toLocaleString('vi-VN')}</span>
+              <span>{credits >= 1_000_000 ? `${(credits / 1_000_000).toFixed(1).replace(/\.0$/, '')}M` : credits >= 10_000 ? `${Math.round(credits / 1_000)}k` : credits.toLocaleString('vi-VN')}</span>
             </button>
           )}
 
