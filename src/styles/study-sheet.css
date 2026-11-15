@@ -307,18 +307,24 @@
     transition: transform 0.15s ease;
   }
 
-  .ss-hl-card.ss-hl-lb {
-    grid-column: 1 / -1;
-  }
-
   .ss-hl-icon.companion {
     background: rgba(14, 165, 233, 0.14);
     color: #0284c7;
   }
 
+  .ss-hl-icon.classroom {
+    background: rgba(168, 85, 247, 0.14);
+    color: #9333ea;
+  }
+
   [data-theme="dark"] .ss-hl-icon.companion {
     background: rgba(56, 189, 248, 0.2);
     color: #38bdf8;
+  }
+
+  [data-theme="dark"] .ss-hl-icon.classroom {
+    background: rgba(192, 132, 252, 0.2);
+    color: #c084fc;
   }
 
   [data-theme="dark"] .ss-hl-card {

@@ -106,6 +106,7 @@ import './admin-upgrade.css';
 import './styles/classroom.css';
 import './styles/teacher-pro.css';
 import './styles/roadmap-upgrade.css';
+import './styles/native-mobile-app.css';
 
 /* ============ ICONS ============ */
 import {
@@ -931,7 +932,7 @@ export default function App() {
         </div>
       </dialog>
 
-      {!isFullPage && <SiteFooter />}
+      {!isFullPage && !isMobileScreen && <SiteFooter />}
 
       {!isFullPage && isMobileScreen && (
         <BottomNav

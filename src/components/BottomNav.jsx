@@ -48,14 +48,14 @@ const IconGridMore = ({ size = 20, className = '' }) => (
   </svg>
 );
 
-const CLASS_PAGES = new Set(['classroom', 'my-classes']);
 const EXAM_PAGES = new Set(['virtual-exams', 'quiz', 'exam']);
 
-const idOf = (page, hasClassTab) => {
-  if (page === 'home' || !page) return 'home';
-  if (EXAM_PAGES.has(page) || page.startsWith('exam/')) return 'virtual-exams';
-  if (page === 'roadmap') return 'roadmap';
-  if (hasClassTab && CLASS_PAGES.has(page)) return 'class';
+const idOf = (page) => {
+  const clean = (page || 'home').split('?')[0];
+  if (clean === 'home' || !clean) return 'home';
+  if (EXAM_PAGES.has(clean) || clean.startsWith('exam/')) return 'virtual-exams';
+  if (clean === 'ai') return 'ai';
+  if (clean === 'roadmap') return 'roadmap';
   return 'more';
 };
 
@@ -66,14 +66,7 @@ const isTextField = (el) => Boolean(el) && (
   || el.isContentEditable
 );
 
-export default function BottomNav({ page, userRole = 'student', isPro = false, onOpenMore }) {
-  const isTeacher = Boolean(isPro || userRole === 'teacher');
-  const isStudent = userRole === 'student';
-  const showClassTab = isTeacher || isStudent;
-
-  const classHash = isTeacher ? '#classroom' : '#my-classes';
-  const classLabel = isTeacher ? 'Quản lý' : 'Lớp học';
-
+export default function BottomNav({ page, onOpenMore }) {
   const ITEMS = [
     { id: 'home', label: 'Trang chủ', href: '#home', icon: <IconHome size={20} className="anim-ico-svg anim-ico-home" /> },
     {
@@ -84,20 +77,21 @@ export default function BottomNav({ page, userRole = 'student', isPro = false, o
       badge: 'HOT',
     },
     {
+      id: 'ai',
+      label: 'ELEC AI',
+      href: '#ai',
+      icon: <IconRobot size={23} className="anim-ico-svg anim-ico-robot" />,
+      isCenterAi: true,
+    },
+    {
       id: 'roadmap',
       label: 'Lộ trình',
       href: '#roadmap',
       icon: <IconRoadmap size={20} />,
     },
     {
-      id: 'class',
-      label: showClassTab ? classLabel : 'Lớp học',
-      href: showClassTab ? classHash : '#my-classes',
-      icon: <IconClass size={20} />,
-    },
-    {
       id: 'more',
-      label: 'Thêm',
+      label: 'Tiện ích',
       href: '#more',
       icon: <IconGridMore size={20} />,
       isAction: true,
@@ -125,20 +119,20 @@ export default function BottomNav({ page, userRole = 'student', isPro = false, o
 
   const buzz = () => { try { navigator.vibrate?.(8); } catch {} };
 
-  const current = idOf(page, showClassTab);
+  const current = idOf(page);
   const idx = ITEMS.findIndex((i) => i.id === current);
-  const showInd = idx >= 0;
+  const showInd = idx >= 0 && idx !== 2;
 
   return (
     <nav className="bn" aria-label="Điều hướng di động" style={{ '--i': Math.max(idx, 0) }}>
       <span className={'bn-ind' + (showInd ? ' show' : '')} aria-hidden="true" />
-      {ITEMS.map(({ id, label, href, icon, badge, isAction }) => {
+      {ITEMS.map(({ id, label, href, icon, badge, isAction, isCenterAi }) => {
         const on = id === current;
         return (
           <a
             key={id}
             href={href}
-            className={'bn-item' + (on ? ' on' : '')}
+            className={'bn-item' + (isCenterAi ? ' bn-ai' : '') + (on ? ' on' : '')}
             aria-label={label}
             aria-current={on ? 'page' : undefined}
             onClick={(e) => {

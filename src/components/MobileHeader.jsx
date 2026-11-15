@@ -15,136 +15,221 @@ function formatCompactCredits(val) {
   return String(num);
 }
 
+const SUBPAGE_TITLES = {
+  'table': 'Bảng tuần hoàn IUPAC',
+  'sim-lab': 'Lab Mô phỏng Lý & Sinh',
+  'chalkboard': 'Bảng phấn 3D & Voice AI',
+  'notebook': 'Sổ tay lỗi sai & Đề 5 Phút',
+  'admission': 'Điểm chuẩn & Độ vừa sức',
+  'career': 'Hướng nghiệp AI (RIASEC)',
+  'doc-studio': 'AI Doc Studio',
+  'formulas': 'Sổ tay Công thức KHTN',
+  'balance': 'Cân bằng PTHH',
+  'analyze': 'Phân tích Hợp chất',
+  'pomodoro': 'Đồng hồ Pomodoro & Thi',
+  'schedule': 'Thời khóa biểu KHTN',
+  'stats': 'Thống kê Năng lực Elo',
+  'grade': 'Tính điểm Xét tuyển ĐH',
+  'notes': 'Ghi chú học tập',
+  'games': 'Trò chơi Khoa học',
+  'profile': 'Hồ sơ cá nhân',
+  'settings': 'Cài đặt ứng dụng',
+  'leaderboard': 'Bảng xếp hạng Toàn quốc',
+  'feedback': 'Góp ý & Báo lỗi',
+  'tools': 'Kho công cụ KHTN',
+  'exam': 'Đếm ngược Kỳ thi THPT',
+};
+
+const MAIN_TAB_PAGES = new Set([
+  '',
+  'home',
+  'virtual-exams',
+  'quiz',
+  'roadmap',
+  'classroom',
+  'my-classes',
+]);
+
+const SUBJECT_STRIP_PAGES = new Set([
+  '',
+  'home',
+  'virtual-exams',
+  'quiz',
+  'roadmap',
+  'formulas',
+  'notebook',
+]);
+
 /* ============================================================
    MOBILE HEADER — chỉ hiện trên mobile (< 768px)
-   Bố cục tinh gọn, chuẩn Apple HIG, không tràn ở 320px–430px:
-     [Logo ELEC AI]          [Chuỗi] [XP] [Chat] [Tìm] [Theme] [Avatar]
-     [Thanh chọn môn KHTN: KHTN | Vật lí | Hóa học | Sinh học]
+   Chuẩn Native iOS / Super-App:
+     - Màn hình chính (Main Tabs): [Logo]   [Chuỗi] [XP] [Chat] [Tìm] [Avatar]
+     - Màn hình con (Sub-screens): [< Quay lại]   [Tên màn hình]   [Tiện ích] [AI]
+     - Thanh chọn môn Segmented Control: chỉ hiện ở các màn hình học tập KHTN
    ============================================================ */
-export default function MobileHeader({ page, theme, userRole = 'student', isPro = false, credits, onSearch, onToggleTheme }) {
+export default function MobileHeader({ page, theme, userRole = 'student', isPro = false, credits, onSearch, onToggleTheme, onMenu }) {
   const { user, logout } = useAuth();
   const { count: streakCount, isToday: hasStreakToday } = useLiveStreak();
   const { playing: introPlaying } = useElecIntro();
   const isTeacher = Boolean(isPro || userRole === 'teacher');
 
+  const cleanPage = (page || 'home').split('?')[0];
+  const isMainTab = MAIN_TAB_PAGES.has(cleanPage);
+  const showSubjectStrip = SUBJECT_STRIP_PAGES.has(cleanPage);
+  const subpageTitle = SUBPAGE_TITLES[cleanPage]
+    || (cleanPage.startsWith('games/') ? 'Trò chơi Khoa học' : null)
+    || (cleanPage.startsWith('truong/') ? 'Chi tiết Trường Đại học' : null)
+    || 'Tiện ích ELEC AI';
+
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      window.history.back();
+    } else {
+      window.location.hash = '#home';
+    }
+  };
+
   return (
     <div className="mhead-sticky-container">
-      <header className="mhead-bar" style={{ display: 'flex' }}>
-        {/* ----- BÊN TRÁI: Logo ELEC AI ----- */}
-        <a href="#home" className="mhead-logo" aria-label="Trang chủ ELEC AI">
-          {!introPlaying && (
-            <motion.div
-              layoutId="elec-brand-logo"
-              transition={{ layout: LOGO_GLIDE_TRANSITION }}
-              className="nav-logo-motion-wrap"
+      {isMainTab ? (
+        <header className="mhead-bar" style={{ display: 'flex' }}>
+          {/* ----- BÊN TRÁI: Logo ELEC AI ----- */}
+          <a href="#home" className="mhead-logo" aria-label="Trang chủ ELEC AI">
+            {!introPlaying && (
+              <motion.div
+                layoutId="elec-brand-logo"
+                transition={{ layout: LOGO_GLIDE_TRANSITION }}
+                className="nav-logo-motion-wrap"
+              >
+                <img
+                  src="/img/logo.png"
+                  alt="ELEC AI"
+                />
+              </motion.div>
+            )}
+          </a>
+
+          {/* ----- BÊN PHẢI: Chuỗi + XP + Chat + Tìm kiếm + Avatar ----- */}
+          <div className="mhead-right">
+            {/* Chip chuỗi ngày lửa cam */}
+            <button
+              type="button"
+              className={`mhead-streak-pill ${hasStreakToday ? 'is-active' : 'is-idle'}`}
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
+                window.dispatchEvent(new CustomEvent('elec-open-streak-modal'));
+              }}
+              title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay)` : `Chuỗi ${streakCount} ngày (Chưa học hôm nay)`}
             >
-              <img
-                src="/img/logo.png"
-                alt="ELEC AI"
-              />
-            </motion.div>
-          )}
-        </a>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className={`mhead-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
+                <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
+              </svg>
+              <span>{streakCount}</span>
+            </button>
 
-        {/* ----- BÊN PHẢI: Chuỗi + XP + Chat + Tìm kiếm + Theme + Profile ----- */}
-        <div className="mhead-right">
-          {/* Chip chuỗi ngày lửa cam */}
-          <button
-            type="button"
-            className={`mhead-streak-pill ${hasStreakToday ? 'is-active' : 'is-idle'}`}
-            onClick={(e) => {
-              e.preventDefault();
-              window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
-              window.dispatchEvent(new CustomEvent('elec-open-streak-modal'));
-            }}
-            title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay) — Xem Bảo vệ chuỗi` : `Chuỗi ${streakCount} ngày (Chưa học) — Xem Bảo vệ chuỗi`}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className={`mhead-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
-              <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
-            </svg>
-            <span>{streakCount}</span>
-          </button>
+            {/* Chip XP / Credits */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
+              className="mhead-credit-pill"
+              title="Điểm AI / XP của bạn — Bấm nạp ELEC AI Credit"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              <span>{formatCompactCredits(credits)}</span>
+            </button>
 
-          {/* Chip XP / Credits */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
-            className="mhead-credit-pill"
-            title="Điểm AI / XP của bạn — Bấm nạp ELEC AI Credit"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-            <span>{formatCompactCredits(credits)}</span>
-          </button>
-
-          {/* Nút Chat cộng đồng học tập ELEC AI trên Mobile */}
-          <button
-            type="button"
-            className="mhead-btn mhead-icon-circle"
-            onClick={() => window.dispatchEvent(new CustomEvent('elec-open-community-chat'))}
-            aria-label="Chat cộng đồng học tập ELEC AI"
-            title="Chat cộng đồng học tập ELEC AI (Hỏi bài, giao lưu & học nhóm)"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              <circle cx="8" cy="10" r="1.1" fill="currentColor" />
-              <circle cx="12" cy="10" r="1.1" fill="currentColor" />
-              <circle cx="16" cy="10" r="1.1" fill="currentColor" />
-            </svg>
-          </button>
-
-          {/* Nút tìm kiếm nhanh mở Command Palette toàn màn hình */}
-          <button
-            type="button"
-            className="mhead-btn mhead-icon-circle mhead-search-btn"
-            onClick={onSearch}
-            aria-label="Tìm kiếm nhanh toàn hệ thống"
-            title="Tìm kiếm nhanh toàn hệ thống"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-search" aria-hidden="true">
-              <circle cx="11" cy="11" r="7.5" />
-              <line x1="20.5" y1="20.5" x2="16.2" y2="16.2" />
-            </svg>
-          </button>
-
-          {/* Nút Đổi giao diện Sáng / Tối nhanh trên Mobile */}
-          {typeof onToggleTheme === 'function' && (
+            {/* Nút Chat cộng đồng học tập ELEC AI trên Mobile */}
             <button
               type="button"
               className="mhead-btn mhead-icon-circle"
-              onClick={onToggleTheme}
-              aria-label={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
-              title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+              onClick={() => window.dispatchEvent(new CustomEvent('elec-open-community-chat'))}
+              aria-label="Chat cộng đồng học tập ELEC AI"
+              title="Chat cộng đồng học tập ELEC AI"
             >
-              {theme === 'dark' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              )}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                <circle cx="8" cy="10" r="1.1" fill="currentColor" />
+                <circle cx="12" cy="10" r="1.1" fill="currentColor" />
+                <circle cx="16" cy="10" r="1.1" fill="currentColor" />
+              </svg>
             </button>
-          )}
 
-          {/* Avatar Profile Dropdown */}
-          <UserProfileNavDropdown
-            user={user}
-            page={page}
-            isTeacher={isTeacher}
-            onLogout={logout}
-          />
+            {/* Nút tìm kiếm nhanh mở Command Palette toàn màn hình */}
+            <button
+              type="button"
+              className="mhead-btn mhead-icon-circle mhead-search-btn"
+              onClick={onSearch}
+              aria-label="Tìm kiếm nhanh toàn hệ thống"
+              title="Tìm kiếm nhanh toàn hệ thống"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-search" aria-hidden="true">
+                <circle cx="11" cy="11" r="7.5" />
+                <line x1="20.5" y1="20.5" x2="16.2" y2="16.2" />
+              </svg>
+            </button>
+
+            {/* Avatar Profile Dropdown */}
+            <UserProfileNavDropdown
+              user={user}
+              page={page}
+              isTeacher={isTeacher}
+              onLogout={logout}
+            />
+          </div>
+        </header>
+      ) : (
+        /* ----- CHẾ ĐỘ NATIVE SUB-SCREEN NAVIGATION BAR ----- */
+        <header className="mhead-bar mhead-subpage-bar" style={{ display: 'flex' }}>
+          <button
+            type="button"
+            className="mhead-back-btn"
+            onClick={handleBack}
+            aria-label="Quay lại"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Quay lại</span>
+          </button>
+
+          <h1 className="mhead-subpage-title">{subpageTitle}</h1>
+
+          <div className="mhead-subpage-actions">
+            <a href="#ai" className="mhead-subpage-ico-btn is-ai" aria-label="Hỏi Gia sư AI" title="Mở Gia sư AI">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z" />
+              </svg>
+            </a>
+            {typeof onMenu === 'function' && (
+              <button
+                type="button"
+                className="mhead-subpage-ico-btn"
+                onClick={onMenu}
+                aria-label="Mở menu tiện ích"
+                title="Chuyển nhanh công cụ khác"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.8" />
+                  <rect x="14" y="3.5" width="6.5" height="6.5" rx="1.8" />
+                  <rect x="14" y="14" width="6.5" height="6.5" rx="1.8" />
+                  <rect x="3.5" y="14" width="6.5" height="6.5" rx="1.8" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </header>
+      )}
+
+      {/* Dải chọn môn KHTN trên mobile (chỉ hiện ở các màn hình học tập KHTN) */}
+      {showSubjectStrip && (
+        <div className="mhead-subject-strip">
+          <SubjectSwitcher compact />
         </div>
-      </header>
-
-      {/* Dải chọn môn KHTN trên mobile */}
-      <div className="mhead-subject-strip">
-        <SubjectSwitcher compact />
-      </div>
+      )}
     </div>
   );
 }

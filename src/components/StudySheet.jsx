@@ -142,7 +142,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
             </div>
           </div>
 
-          {/* ----- 2. LỐI VÀO NỔI BẬT: TRỢ LÝ AI, SỔ TAY AI & BẢNG XẾP HẠNG ----- */}
+          {/* ----- 2. LỐI VÀO NỔI BẬT (2×2 BENTO): AI, SỔ TAY, LỚP HỌC, BẢNG XẾP HẠNG ----- */}
           <div className="ss-highlights-grid">
             <a href="#ai" className="ss-hl-card ss-hl-ai" onClick={onClose}>
               <div className="ss-hl-icon ai">
@@ -170,6 +170,16 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
                 <small>Pomodoro, Lofi &amp; mục tiêu tuần</small>
               </div>
             </button>
+
+            <a href={isVip ? '#classroom' : '#my-classes'} className="ss-hl-card ss-hl-class" onClick={onClose}>
+              <div className="ss-hl-icon classroom">
+                <IconNotebook size={20} />
+              </div>
+              <div className="ss-hl-info">
+                <b>Lớp học &amp; Phòng thi</b>
+                <small>Bài tập thầy cô giao &amp; Quản lý lớp</small>
+              </div>
+            </a>
 
             <a href="#leaderboard" className="ss-hl-card ss-hl-lb" onClick={onClose}>
               <div className="ss-hl-icon lb">

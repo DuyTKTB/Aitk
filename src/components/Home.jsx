@@ -519,6 +519,116 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
 }
 
 /* ============================================================
+   B2. BẢNG LAUNCHPAD 8 ICON CHUẨN NATIVE APP TRÊN ĐIỆN THOẠI
+   ============================================================ */
+function MobileAppLaunchpad({ dueTotal = 0 }) {
+  const apps = [
+    {
+      id: 'ocr',
+      label: 'Chụp giải đề',
+      tone: 'blue',
+      badge: 'AI',
+      onClick: () => goAI({ action: 'capture' }),
+      icon: <IcoCamera size={22} />,
+    },
+    {
+      id: 'exams',
+      label: 'Phòng thi',
+      href: '#virtual-exams',
+      tone: 'orange',
+      badge: 'HOT',
+      icon: <IcoExam size={22} />,
+    },
+    {
+      id: 'sprint',
+      label: 'Đề 5 Phút',
+      href: '#notebook',
+      tone: 'purple',
+      badge: dueTotal > 0 ? `${dueTotal}` : null,
+      icon: <IcoNotebook size={22} />,
+    },
+    {
+      id: 'sim-lab',
+      label: 'Lab 2D',
+      href: '#sim-lab',
+      tone: 'teal',
+      badge: 'MỚI',
+      icon: <IcoFlask size={22} />,
+    },
+    {
+      id: 'table',
+      label: 'Tuần hoàn',
+      href: '#table',
+      tone: 'emerald',
+      icon: <IcoTable size={22} />,
+    },
+    {
+      id: 'formulas',
+      label: 'Công thức',
+      href: '#formulas',
+      tone: 'indigo',
+      icon: <IcoPhysics size={22} />,
+    },
+    {
+      id: 'companion',
+      label: 'Sổ tay AI',
+      tone: 'sky',
+      onClick: () => window.dispatchEvent(new CustomEvent('elec-open-companion')),
+      icon: <IcoSpark size={22} />,
+    },
+    {
+      id: 'class',
+      label: 'Lớp học',
+      href: '#my-classes',
+      tone: 'rose',
+      icon: <IcoUsers size={22} />,
+    },
+  ];
+
+  return (
+    <section className="ns9-mobile-launchpad" aria-label="Tiện ích nhanh ứng dụng">
+      <div className="ns9-ml-head">
+        <span className="ns9-ml-title">Tiện ích nhanh</span>
+        <a href="#tools" className="ns9-ml-more">
+          <span>Tất cả 16+ công cụ</span>
+          <IcoArrow size={12} />
+        </a>
+      </div>
+      <div className="ns9-ml-grid">
+        {apps.map((app) => {
+          const content = (
+            <>
+              <span className={`ns9-ml-squircle tone-${app.tone}`}>
+                {app.icon}
+                {app.badge && <span className="ns9-ml-badge">{app.badge}</span>}
+              </span>
+              <span className="ns9-ml-label">{app.label}</span>
+            </>
+          );
+          if (app.onClick) {
+            return (
+              <button
+                key={app.id}
+                type="button"
+                className="ns9-ml-item"
+                onClick={app.onClick}
+              >
+                {content}
+              </button>
+            );
+          }
+          return (
+            <a key={app.id} href={app.href} className="ns9-ml-item">
+              {content}
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
    C. BA THẺ BENTO TRỌNG TÂM VỚI HÌNH LINH VẬT ELEC ĐỨNG ĐẸP MẮT
    ============================================================ */
 function HomeBentoThreeCards() {
@@ -1393,6 +1503,9 @@ export default function Home() {
           activeAsp={roadmapSnapshot.activeAsp}
           onOpenWishHero={handleOpenWishHero}
         />
+
+        {/* 2. BẢNG LAUNCHPAD 8 ICON CHUẨN NATIVE SUPER-APP TRÊN ĐIỆN THOẠI */}
+        <MobileAppLaunchpad dueTotal={roadmapSnapshot.dueTotal} />
 
         {/* 3. THẺ "LỘ TRÌNH CỦA EM": 4 CHỈ SỐ VÀNG + BIỂU ĐỒ NĂNG LỰC */}
         <AspirationRoadmapHub
