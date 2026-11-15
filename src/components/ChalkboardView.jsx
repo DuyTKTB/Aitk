@@ -10,22 +10,6 @@ import * as tts from '../lib/tts.js';
 import MathText from './MathText.jsx';
 import '../styles/chalkboard.css';
 
-function stripLatexForSpeech(raw) {
-  return String(raw || '')
-    .replace(/\$\$([\s\S]*?)\$\$/g, '$1')
-    .replace(/\$([^$]*)\$/g, '$1')
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 phần $2')
-    .replace(/\\sqrt\{([^}]+)\}/g, 'căn bậc hai của $1')
-    .replace(/\\perp/g, 'vuông góc với')
-    .replace(/\\parallel/g, 'song song với')
-    .replace(/\\triangle/g, 'tam giác ')
-    .replace(/\\widehat\{([^}]+)\}/g, 'góc $1')
-    .replace(/\\[a-zA-Z]+/g, ' ')
-    .replace(/[{}]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 /* ── BỘ ICON VECTOR 100% SVG (KHÔNG EMOJI) ── */
 const SvgBook = ({ size = 17 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -373,37 +357,34 @@ export default function ChalkboardView({
   const [qaLoading, setQaLoading] = useState(false);
   const recognitionRef = useRef(null);
   const aliveRef = useRef(true);
+  const lectureTokenRef = useRef(0);
 
-  const speakCurrentStep = useCallback((stepIdx, autoAdvance = false) => {
+  const stopChalkboardSpeech = useCallback(() => {
+    lectureTokenRef.current += 1;
+    tts.stop?.();
+    setIsSpeakingStep(false);
+  }, []);
+
+  const speakCurrentStep = useCallback(async (stepIdx, autoAdvance = false) => {
     const stepObj = currentLesson.buoc[stepIdx] || currentLesson.buoc[0];
     if (!stepObj) return;
-    const speechText = `${stepObj.tieuDe}. ${stripLatexForSpeech(stepObj.giaiThich)}`;
+    const speechText = `${stepObj.tieuDe}. ${stepObj.giaiThich || ''}`;
+    const token = ++lectureTokenRef.current;
     setIsSpeakingStep(true);
     try {
-      tts.stop?.();
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(speechText);
-        utter.lang = 'vi-VN';
-        utter.rate = 1.02;
-        utter.onend = () => {
-          setIsSpeakingStep(false);
-          if (autoAdvance && stepIdx < currentLesson.buoc.length - 1) {
-            setActiveStep(stepIdx + 1);
-          } else if (autoAdvance) {
-            setVoiceAutoLecture(false);
-          }
-        };
-        utter.onerror = () => {
-          setIsSpeakingStep(false);
-          setVoiceAutoLecture(false);
-        };
-        window.speechSynthesis.speak(utter);
-      } else {
-        setIsSpeakingStep(false);
+      const res = await tts.speak(speechText, { rate: 1.02 });
+      if (!aliveRef.current || token !== lectureTokenRef.current) return;
+      setIsSpeakingStep(false);
+      if (res?.canceled) return;
+      if (autoAdvance && stepIdx < currentLesson.buoc.length - 1) {
+        setActiveStep(stepIdx + 1);
+      } else if (autoAdvance) {
+        setVoiceAutoLecture(false);
       }
     } catch {
+      if (!aliveRef.current || token !== lectureTokenRef.current) return;
       setIsSpeakingStep(false);
+      if (autoAdvance) setVoiceAutoLecture(false);
     }
   }, [currentLesson]);
 
@@ -411,13 +392,12 @@ export default function ChalkboardView({
     aliveRef.current = true;
     return () => {
       aliveRef.current = false;
+      lectureTokenRef.current += 1;
       try {
         recognitionRef.current?.stop();
       } catch { /* ignore recognition cleanup error */ }
       recognitionRef.current = null;
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      tts.stop?.();
     };
   }, []);
 
@@ -426,9 +406,8 @@ export default function ChalkboardView({
       speakCurrentStep(activeStep, true);
     }
     return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      lectureTokenRef.current += 1;
+      tts.stop?.();
     };
   }, [activeStep, voiceAutoLecture, sandboxMode, speakCurrentStep]);
 
@@ -457,12 +436,16 @@ export default function ChalkboardView({
       if (!aliveRef.current) return;
       const finalAns = res?.text || String(res || '');
       setQaAnswer(finalAns);
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window && finalAns) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(stripLatexForSpeech(finalAns));
-        utter.lang = 'vi-VN';
-        utter.rate = 1.04;
-        window.speechSynthesis.speak(utter);
+      if (finalAns) {
+        const speakToken = ++lectureTokenRef.current;
+        setIsSpeakingStep(true);
+        tts.speak(finalAns, { rate: 1.04 })
+          .catch(() => {})
+          .finally(() => {
+            if (aliveRef.current && lectureTokenRef.current === speakToken) {
+              setIsSpeakingStep(false);
+            }
+          });
       }
     } catch (err) {
       if (aliveRef.current) {
@@ -643,13 +626,12 @@ export default function ChalkboardView({
                   onClick={() => {
                     if (isSpeakingStep || voiceAutoLecture) {
                       setVoiceAutoLecture(false);
-                      setIsSpeakingStep(false);
-                      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+                      stopChalkboardSpeech();
                     } else {
                       speakCurrentStep(activeStep, false);
                     }
                   }}
-                  title="Đọc lời giảng của bước hiện tại"
+                  title="Đọc lời giảng bước hiện tại bằng giọng Tiếng Việt"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
                   {isSpeakingStep ? <SvgStop size={13} /> : <SvgVolume size={15} />}

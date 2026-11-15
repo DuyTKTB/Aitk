@@ -22,6 +22,7 @@ import { parseExamFile } from '../../lib/examParser.js';
 import { buildClassInsights } from '../../lib/classInsights.js';
 import { exportToWord, exportLessonPlanDocx, exportMatrixDocx } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
+import * as tts from '../../lib/tts.js';
 import { runWithCredit } from '../../lib/creditService.js';
 import { warnStudent, setStudentPaused } from '../../lib/examSession.js';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
@@ -915,6 +916,7 @@ export default function TeacherFloatingChat({
   const [wordEditorOpen, setWordEditorOpen] = useState(false);
   const [wordEditorExam, setWordEditorExam] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [speakingMsgId, setSpeakingMsgId] = useState(null);
   const [confirmClearChat, setConfirmClearChat] = useState(false);
 
   const handleCopyMessage = (id, text) => {
@@ -1137,15 +1139,34 @@ export default function TeacherFloatingChat({
     }
   };
 
-  const speakText = (text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/[*#_`]/g, '').slice(0, 200);
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = 'vi-VN';
-    u.rate = 1.05;
-    window.speechSynthesis.speak(u);
+  const speakText = async (text, msgId) => {
+    if (!tts.isSupported()) return;
+    if (speakingMsgId === msgId) {
+      tts.stop();
+      setSpeakingMsgId(null);
+      return;
+    }
+    setSpeakingMsgId(msgId);
+    try {
+      await tts.speak(text, { rate: 1.03 });
+    } catch (err) {
+      onSay?.(err?.message || 'Không thể phát giọng đọc Tiếng Việt lúc này.', 'warn');
+    } finally {
+      setSpeakingMsgId((cur) => (cur === msgId ? null : cur));
+    }
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      tts.stop();
+      setSpeakingMsgId(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => () => {
+    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    tts.stop();
+  }, []);
 
   // TIỆN ÍCH XUẤT FILE WORD (.DOCX) CHUẨN 3 PHẦN
   const handleExportExamWord = async (exam) => {
@@ -3819,9 +3840,9 @@ HƯỚNG DẪN TRẢ LỜI:
                       </button>
                       <button
                         type="button"
-                        className="tfc-bubble-btn"
-                        onClick={() => speakText(m.text)}
-                        title="Đọc bằng giọng nói AI"
+                        className={`tfc-bubble-btn ${speakingMsgId === m.id ? 'active' : ''}`}
+                        onClick={() => speakText(m.text, m.id)}
+                        title={speakingMsgId === m.id ? 'Dừng đọc' : 'Đọc bằng giọng Tiếng Việt'}
                       >
                         <IcoVolume size={13} />
                       </button>
