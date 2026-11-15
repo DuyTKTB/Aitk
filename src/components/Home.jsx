@@ -526,7 +526,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
     {
       id: 'ocr',
       label: 'Chụp giải đề',
-      tone: 'blue',
       badge: 'AI',
       onClick: () => goAI({ action: 'capture' }),
       icon: <IcoCamera size={22} />,
@@ -535,7 +534,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'exams',
       label: 'Phòng thi',
       href: '#virtual-exams',
-      tone: 'orange',
       badge: 'HOT',
       icon: <IcoExam size={22} />,
     },
@@ -543,7 +541,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'sprint',
       label: 'Đề 5 Phút',
       href: '#notebook',
-      tone: 'purple',
       badge: dueTotal > 0 ? `${dueTotal}` : null,
       icon: <IcoNotebook size={22} />,
     },
@@ -551,7 +548,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'sim-lab',
       label: 'Lab 2D',
       href: '#sim-lab',
-      tone: 'teal',
       badge: 'MỚI',
       icon: <IcoFlask size={22} />,
     },
@@ -559,20 +555,17 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'table',
       label: 'Tuần hoàn',
       href: '#table',
-      tone: 'emerald',
       icon: <IcoTable size={22} />,
     },
     {
       id: 'formulas',
       label: 'Công thức',
       href: '#formulas',
-      tone: 'indigo',
       icon: <IcoPhysics size={22} />,
     },
     {
       id: 'companion',
       label: 'Sổ tay AI',
-      tone: 'sky',
       onClick: () => window.dispatchEvent(new CustomEvent('elec-open-companion')),
       icon: <IcoSpark size={22} />,
     },
@@ -580,7 +573,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'class',
       label: 'Lớp học',
       href: '#my-classes',
-      tone: 'rose',
       icon: <IcoUsers size={22} />,
     },
   ];
@@ -598,7 +590,7 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
         {apps.map((app) => {
           const content = (
             <>
-              <span className={`ns9-ml-squircle tone-${app.tone}`}>
+              <span className="ns9-ml-squircle">
                 {app.icon}
                 {app.badge && <span className="ns9-ml-badge">{app.badge}</span>}
               </span>

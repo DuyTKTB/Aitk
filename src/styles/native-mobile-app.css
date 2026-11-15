@@ -911,47 +911,17 @@
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    box-shadow: 0 6px 14px -4px rgba(15, 23, 42, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+    background: linear-gradient(145deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
+    box-shadow:
+      0 6px 14px -3px rgba(37, 99, 235, 0.34),
+      inset 0 1px 1px rgba(255, 255, 255, 0.36);
   }
 
-  .ns9-ml-squircle.tone-blue {
-    background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-    box-shadow: 0 6px 14px -3px rgba(37, 99, 235, 0.38);
-  }
-
-  .ns9-ml-squircle.tone-orange {
-    background: linear-gradient(145deg, #f97316, #ea580c);
-    box-shadow: 0 6px 14px -3px rgba(234, 88, 12, 0.38);
-  }
-
-  .ns9-ml-squircle.tone-purple {
-    background: linear-gradient(145deg, #a855f7, #7e22ce);
-    box-shadow: 0 6px 14px -3px rgba(147, 51, 234, 0.38);
-  }
-
-  .ns9-ml-squircle.tone-teal {
-    background: linear-gradient(145deg, #14b8a6, #0d9488);
-    box-shadow: 0 6px 14px -3px rgba(13, 148, 136, 0.38);
-  }
-
-  .ns9-ml-squircle.tone-emerald {
-    background: linear-gradient(145deg, #10b981, #059669);
-    box-shadow: 0 6px 14px -3px rgba(5, 150, 105, 0.36);
-  }
-
-  .ns9-ml-squircle.tone-indigo {
-    background: linear-gradient(145deg, #6366f1, #4338ca);
-    box-shadow: 0 6px 14px -3px rgba(79, 70, 229, 0.36);
-  }
-
-  .ns9-ml-squircle.tone-sky {
-    background: linear-gradient(145deg, #0ea5e9, #0284c7);
-    box-shadow: 0 6px 14px -3px rgba(2, 132, 199, 0.36);
-  }
-
-  .ns9-ml-squircle.tone-rose {
-    background: linear-gradient(145deg, #f43f5e, #e11d48);
-    box-shadow: 0 6px 14px -3px rgba(225, 29, 72, 0.36);
+  [data-theme="dark"] .ns9-ml-squircle {
+    background: linear-gradient(145deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
+    box-shadow:
+      0 6px 16px -3px rgba(37, 99, 235, 0.46),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
   }
 
   .ns9-ml-badge {
@@ -960,12 +930,13 @@
     right: -6px;
     padding: 1.5px 5px;
     border-radius: 999px;
-    background: #ef4444;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
     color: #ffffff;
     font-size: 8.5px;
     font-weight: 800;
     letter-spacing: 0.02em;
     border: 1.5px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
     line-height: 1.1;
   }
 
@@ -1050,24 +1021,55 @@
 
   /* ── 6. NÚT TRUNG TÂM ELEC AI NỔI 3D TRÊN THANH BOTTOM DOCK ── */
   .bn-ai .bn-ico {
-    width: 50px !important;
-    height: 50px !important;
-    margin-top: -22px !important;
+    width: 54px !important;
+    height: 54px !important;
+    margin-top: -24px !important;
+    padding: 0 !important;
     border-radius: 50% !important;
-    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
-    color: #ffffff !important;
-    border: 2px solid rgba(255, 255, 255, 0.92) !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+    background: radial-gradient(circle at 30% 25%, #ffffff 0%, #f0f7ff 74%, #dbeafe 100%) !important;
+    border: 2px solid #2563eb !important;
     box-shadow:
-      0 0 0 4px var(--bg, #f2f5fa),
-      0 8px 20px rgba(37, 99, 235, 0.42) !important;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+      0 0 0 3.5px var(--bg, #f2f5fa),
+      0 8px 20px rgba(37, 99, 235, 0.36) !important;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease !important;
+  }
+
+  .bn-ai .bn-ai-brand-logo {
+    width: 42px !important;
+    height: 42px !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    display: block !important;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 1px 3px rgba(37, 99, 235, 0.16));
+  }
+
+  .bn-ai.on .bn-ico {
+    border-color: #1d4ed8 !important;
+    box-shadow:
+      0 0 0 3px var(--bg, #f2f5fa),
+      0 0 0 5.5px rgba(37, 99, 235, 0.44),
+      0 10px 24px rgba(37, 99, 235, 0.44) !important;
   }
 
   [data-theme="dark"] .bn-ai .bn-ico {
-    border-color: rgba(147, 197, 253, 0.5) !important;
+    background: radial-gradient(circle at 30% 25%, #ffffff 0%, #eef5ff 74%, #dbeafe 100%) !important;
+    border-color: #3b82f6 !important;
     box-shadow:
-      0 0 0 4px #080d18,
-      0 8px 22px rgba(37, 99, 235, 0.55) !important;
+      0 0 0 3.5px #080d18,
+      0 8px 22px rgba(59, 130, 246, 0.48) !important;
+  }
+
+  [data-theme="dark"] .bn-ai.on .bn-ico {
+    border-color: #60a5fa !important;
+    box-shadow:
+      0 0 0 3px #080d18,
+      0 0 0 5.5px rgba(59, 130, 246, 0.52),
+      0 10px 26px rgba(59, 130, 246, 0.58) !important;
   }
 
   .bn-ai:active .bn-ico {

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { IconHome, IconRobot } from './Icons.jsx';
+import { IconHome } from './Icons.jsx';
 
 /* ============================================================
    BottomNav — mobile (≤ 768px)
@@ -80,7 +80,14 @@ export default function BottomNav({ page, onOpenMore }) {
       id: 'ai',
       label: 'ELEC AI',
       href: '#ai',
-      icon: <IconRobot size={23} className="anim-ico-svg anim-ico-robot" />,
+      icon: (
+        <img
+          src="/img/logo.png"
+          alt="ELEC AI"
+          className="bn-ai-brand-logo"
+          draggable="false"
+        />
+      ),
       isCenterAi: true,
     },
     {
