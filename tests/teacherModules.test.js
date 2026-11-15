@@ -86,6 +86,7 @@ import {
 import ExamPickerFromBank, { BankQuestionChoices } from '../src/components/teacher/ExamPickerFromBank.jsx';
 import { Donut } from '../src/components/DashShell.jsx';
 import ClassDetailModal, { formatClassBadge, buildTrendPoints } from '../src/components/ClassDetailModal.jsx';
+import StudentModal from '../src/components/StudentModal.jsx';
 import {
   DEFAULT_COUNTS,
   DEFAULT_SCORING,
@@ -618,7 +619,7 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
     expect(formatClassBadge('')).toBe('?');
   });
 
-  it('ClassDetailModal hiển thị trạng thái rỗng sạch khi chưa có bài nộp và chỉ vẽ đề đã có bài', () => {
+  it('ClassDetailModal hiển thị Launchpad khi chưa có bài nộp và Analytics Bento khi đã có điểm', () => {
     globalThis.React = React;
     const baseClass = {
       id: 'cls_11a9',
@@ -640,13 +641,18 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
     );
     expect(emptyHtml).toContain('cd-head-avatar is-long');
     expect(emptyHtml).toContain('>11A9<');
-    expect(emptyHtml).toContain('chưa có điểm');
+    expect(emptyHtml).toContain('cd-launchpad');
+    expect(emptyHtml).toContain('cd-checklist');
+    expect(emptyHtml).toContain('Đang chờ bài nộp');
     expect(emptyHtml).toContain('Chưa ghi nhận');
+    expect(emptyHtml).toContain('data-tone="ok"');
     expect(emptyHtml).toContain('Chưa có dữ liệu điểm');
     expect(emptyHtml).toContain('Chưa có câu hỏi');
     expect(emptyHtml).toContain('Sao chép mã');
+    expect(emptyHtml).toContain('Mở mục Đề thi');
     expect(emptyHtml).not.toContain('vt-donut-fg');
     expect(emptyHtml).not.toContain('vt-chart');
+    expect(emptyHtml).not.toContain('class="cd-btn ');
 
     const exams = [
       { id: 'e1', title: 'Đề 1', questions: [{ q: 'Q1' }] },
@@ -668,12 +674,61 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
         onClose: () => {},
       })
     );
+    expect(populatedHtml).not.toContain('cd-launchpad');
     expect(populatedHtml).toContain('vt-donut-fg');
     expect(populatedHtml).toContain('vt-chart');
     expect(populatedHtml).toContain('1 đề có bài');
     expect(populatedHtml).toContain('80%');
     expect(populatedHtml).toContain('Cần rà soát');
+    expect(populatedHtml).toContain('data-tone="warn"');
     expect(populatedHtml).toContain('<small>Đề 1</small>');
     expect(populatedHtml).not.toContain('<small>Đề 2 chưa nộp</small>');
+  });
+
+  it('StudentModal hiển thị icon khiên xanh khi không có vi phạm và cảnh báo đỏ khi có vi phạm', () => {
+    globalThis.React = React;
+    const cleanHtml = renderToStaticMarkup(
+      React.createElement(StudentModal, {
+        student: {
+          name: 'Nguyễn Văn An',
+          email: 'an@example.com',
+          avgScore: 90,
+          totalExams: 1,
+          submissions: [{ id: 'sub_1', score: 9, totalPoints: 10, violationCount: 0, timeSpent: 320 }],
+        },
+        onClose: () => {},
+      })
+    );
+    expect(cleanHtml).toContain('cd-stat-card-ico green');
+    expect(cleanHtml).not.toContain('cd-stat-card danger');
+    expect(cleanHtml).toContain('M12 3l7 3v5c0 4.6-2.9 8.4-7 10-4.1-1.6-7-5.4-7-10V6z');
+
+    const flaggedHtml = renderToStaticMarkup(
+      React.createElement(StudentModal, {
+        student: {
+          name: 'Trần Bình',
+          email: 'binh@example.com',
+          avgScore: 70,
+          totalExams: 1,
+          submissions: [{ id: 'sub_2', score: 7, totalPoints: 10, violationCount: 3, timeSpent: 400 }],
+        },
+        onClose: () => {},
+      })
+    );
+    expect(flaggedHtml).toContain('cd-stat-card danger');
+    expect(flaggedHtml).toContain('cd-stat-card-ico red');
+  });
+
+  it('CSS responsive của ClassDetailModal chỉ bung full-screen từ 640px trở xuống và dash-vitality hỗ trợ t-shell light', () => {
+    const cdCss = fs.readFileSync(path.resolve(process.cwd(), 'src/styles/class-detail.css'), 'utf8');
+    const max900Match = cdCss.match(/@media \(max-width: 900px\) \{([\s\S]*?)@media \(max-width: 760px\)/);
+    expect(max900Match?.[1]).toBeTruthy();
+    expect(max900Match[1]).not.toContain('100dvh');
+    expect(max900Match[1]).not.toContain('border-radius: 0');
+    expect(cdCss).toMatch(/@media \(max-width: 640px\) \{[\s\S]*100dvh[\s\S]*border-radius: 0/);
+
+    const vtCss = fs.readFileSync(path.resolve(process.cwd(), 'src/styles/dash-vitality.css'), 'utf8');
+    expect(vtCss).toContain('.t-shell');
+    expect(vtCss).toContain("--vt-tint");
   });
 });

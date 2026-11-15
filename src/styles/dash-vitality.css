@@ -22,6 +22,18 @@
   --vt-ease: cubic-bezier(.22, 1, .36, 1);
 }
 
+.t-shell,
+[data-theme='light'] {
+  --vt-tint: color-mix(in srgb, var(--acc, #2563eb) 7%, var(--panel, #ffffff));
+  --vt-tint2: color-mix(in srgb, var(--acc, #2563eb) 13%, var(--panel, #ffffff));
+}
+
+.t-shell[data-theme='dark'],
+[data-theme='dark'] {
+  --vt-tint: color-mix(in srgb, var(--acc, #60a5fa) 11%, var(--panel, #131720));
+  --vt-tint2: color-mix(in srgb, var(--acc, #60a5fa) 18%, var(--panel, #131720));
+}
+
 .vt {
   color: var(--ink);
   font-family: var(--sans);

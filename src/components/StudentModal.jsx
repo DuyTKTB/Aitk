@@ -56,6 +56,12 @@ const IconAlert = (p) => (
     <circle cx="12" cy="16.2" r=".6" fill="currentColor" />
   </Svg>
 );
+const IconShield = (p) => (
+  <Svg {...p}>
+    <path d="M12 3l7 3v5c0 4.6-2.9 8.4-7 10-4.1-1.6-7-5.4-7-10V6z" />
+    <path d="M9.5 12l1.8 1.8 3.4-3.6" />
+  </Svg>
+);
 const IconEye = (p) => (
   <Svg {...p}>
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
@@ -178,7 +184,9 @@ export default function StudentModal({ student, onClose }) {
               <small>Tổng thời gian</small>
             </div>
             <div className={'cd-stat-card' + (stats.totalViolations > 0 ? ' danger' : '')}>
-              <span className="cd-stat-card-ico red"><IconAlert size={18} /></span>
+              <span className={'cd-stat-card-ico ' + (stats.totalViolations > 0 ? 'red' : 'green')}>
+                {stats.totalViolations > 0 ? <IconAlert size={18} /> : <IconShield size={18} />}
+              </span>
               <b>{stats.totalViolations}</b>
               <small>Vi phạm</small>
             </div>

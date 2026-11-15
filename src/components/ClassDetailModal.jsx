@@ -425,6 +425,22 @@ export default function ClassDetailModal({
     () => studentsStats.filter((s) => s.doneCount === 0).length,
     [studentsStats],
   );
+  const emptyQuestionExamsCount = useMemo(
+    () => exams.filter((ex) => (ex.questions?.length || 0) === 0).length,
+    [exams],
+  );
+
+  const interactiveTileProps = (action) => ({
+    role: 'button',
+    tabIndex: 0,
+    onClick: action,
+    onKeyDown: (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        action();
+      }
+    },
+  });
 
   const TABS = [
     { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
@@ -507,21 +523,21 @@ export default function ClassDetailModal({
             {onShareKey && (
               <button
                 type="button"
-                className="vt-btn sm"
+                className="cd-action-btn"
                 onClick={() => onShareKey(classInfo)}
                 title="Mở mã QR tham gia lớp"
               >
-                <IconQr size={14} /> Mã QR
+                <IconQr size={14} /> <span>Mã QR</span>
               </button>
             )}
             {onExportCsv && (
               <button
                 type="button"
-                className="vt-btn sm"
+                className="cd-action-btn"
                 onClick={() => onExportCsv(classInfo, exams, submissionsMap)}
                 title="Xuất bảng điểm lớp ra Excel (.xlsx)"
               >
-                <IconDownload size={13} /> Xuất Excel (.xlsx)
+                <IconDownload size={14} /> <span>Xuất Excel</span>
               </button>
             )}
             <button type="button" className="cd-close" onClick={onClose} aria-label="Đóng">
@@ -548,7 +564,7 @@ export default function ClassDetailModal({
                   <em>{t.badge}</em>
                 )}
                 {t.alertBadge > 0 && (
-                  <em style={{ background: '#dc2626', color: '#fff' }}>
+                  <em className="danger">
                     {t.alertBadge}
                   </em>
                 )}
@@ -604,10 +620,8 @@ export default function ClassDetailModal({
               <div className="cd-stat-grid">
                 <div
                   className="cd-stat is-clickable"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => { setTab('members'); setPeopleSubTab('roster'); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab('members'); setPeopleSubTab('roster'); } }}
+                  data-tone="acc"
+                  {...interactiveTileProps(() => { setTab('members'); setPeopleSubTab('roster'); })}
                 >
                   <span className="cd-stat-ico"><IconUsers size={18} /></span>
                   <div>
@@ -620,10 +634,8 @@ export default function ClassDetailModal({
                 </div>
                 <div
                   className="cd-stat is-clickable"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setTab('exams')}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab('exams'); } }}
+                  data-tone="violet"
+                  {...interactiveTileProps(() => setTab('exams'))}
                 >
                   <span className="cd-stat-ico violet"><IconBook size={18} /></span>
                   <div>
@@ -632,16 +644,16 @@ export default function ClassDetailModal({
                     <span className="cd-stat-sub">
                       {classStats.totalExams === 0
                         ? 'Chưa giao đề'
-                        : `${classStats.examsWithSubsCount || 0} đề đã có bài`}
+                        : emptyQuestionExamsCount > 0
+                          ? `${emptyQuestionExamsCount} đề thiếu câu hỏi`
+                          : `${classStats.examsWithSubsCount || 0} đề đã có bài`}
                     </span>
                   </div>
                 </div>
                 <div
                   className="cd-stat is-clickable"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => { setTab('scores'); setScoreSubTab('matrix'); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab('scores'); setScoreSubTab('matrix'); } }}
+                  data-tone="ok"
+                  {...interactiveTileProps(() => { setTab('scores'); setScoreSubTab('matrix'); })}
                 >
                   <span className="cd-stat-ico ok"><IconCheck size={18} /></span>
                   <div>
@@ -654,7 +666,7 @@ export default function ClassDetailModal({
                     </span>
                   </div>
                 </div>
-                <div className="cd-stat">
+                <div className="cd-stat" data-tone={classStats.totalViolations > 0 ? 'warn' : 'ok'}>
                   <span className={`cd-stat-ico ${classStats.totalViolations > 0 ? 'warn' : 'ok'}`}>
                     {classStats.totalViolations > 0 ? <IconAlert size={18} /> : <IconShield size={18} />}
                   </span>
@@ -668,124 +680,208 @@ export default function ClassDetailModal({
                 </div>
               </div>
 
-              <div className="cd-overview-cols">
-                <div className="cd-card">
-                  <h3>
-                    <IconTrendUp size={15} /> Điểm TB lớp &amp; Mức độ hoàn thành
-                  </h3>
-                  <div className="cd-overview-chart">
-                    <Donut
-                      value={classStats.avgScore ?? 0}
-                      max={100}
-                      size={112}
-                      stroke={10}
-                      tone={
-                        classStats.avgScore == null ? 'acc'
-                          : classStats.avgScore >= 70 ? 'acc'
-                            : classStats.avgScore >= 50 ? 'warn'
-                              : 'danger'
-                      }
-                    >
-                      {classStats.avgScore == null ? (
-                        <>
-                          <strong>—</strong>
-                          <small>chưa có điểm</small>
-                        </>
-                      ) : (
-                        <>
-                          <strong>{classStats.avgScore}<sup>%</sup></strong>
-                          <small>trung bình</small>
-                        </>
-                      )}
-                    </Donut>
-                    <ul className="cd-overview-facts">
-                      <li>
-                        <div className="cd-fact-row">
-                          <span>Tỷ lệ bài đạt (≥ 50%)</span>
-                          <b>{classStats.passRate}%</b>
-                        </div>
-                        <span className="cd-fact-bar">
-                          <i className="ok" style={{ width: `${classStats.passRate}%` }} />
-                        </span>
-                      </li>
-                      <li>
-                        <div className="cd-fact-row">
-                          <span>HS đã làm ít nhất 1 đề</span>
-                          <b>{classStats.completedRate}%</b>
-                        </div>
-                        <span className="cd-fact-bar">
-                          <i style={{ width: `${classStats.completedRate}%` }} />
-                        </span>
-                      </li>
-                      <li>
-                        <div className="cd-fact-row">
-                          <span>Chưa làm bài nào</span>
-                          <b>{unattemptedCount} HS</b>
-                        </div>
-                        <span className="cd-fact-bar">
-                          <i
-                            className="amber"
-                            style={{ width: `${members.length ? Math.round((unattemptedCount / members.length) * 100) : 0}%` }}
-                          />
-                        </span>
-                      </li>
-                    </ul>
+              {classStats.totalSubs === 0 ? (
+                <section className="cd-launchpad" aria-label="Thiết lập lớp học">
+                  <div className="cd-launchpad-intro">
+                    <span className="cd-launchpad-badge">Chưa có dữ liệu điểm</span>
+                    <h3>Khởi động lớp học &amp; nhận bài nộp đầu tiên</h3>
+                    <p>
+                      Hoàn tất 2 bước chuẩn bị để mở khóa biểu đồ điểm trung bình, tỷ lệ đạt và xu hướng qua các đề.
+                    </p>
                   </div>
-                </div>
-
-                <div className="cd-card">
-                  <div className="cd-card-head-row">
-                    <h3>
-                      <IconTrendUp size={15} /> Xu hướng điểm qua các đề
-                    </h3>
-                    {trendPoints.length > 0 && (
-                      <span className="cd-card-pill">{trendPoints.length} đề có bài</span>
-                    )}
-                  </div>
-                  {trendPoints.length > 0 ? (
-                    <div className="cd-trend-box">
-                      <TrendChart points={trendPoints} mode="line" max={100} />
-                      <div className="cd-trend-labels">
-                        {trendPoints.map((pt, idx) => (
-                          <span key={idx} title={pt.label}>
-                            <b>{pt.value}%</b>
-                            <small>{pt.label.length > 12 ? `${pt.label.slice(0, 12)}…` : pt.label}</small>
-                          </span>
-                        ))}
+                  <div className="cd-checklist">
+                    <div className={`cd-check-step${members.length > 0 ? ' is-done' : ''}`}>
+                      <span className="cd-step-num" aria-hidden="true">
+                        {members.length > 0 ? <IconCheck size={14} /> : '1'}
+                      </span>
+                      <div className="cd-step-body">
+                        <b>Mời học sinh vào lớp</b>
+                        <small>
+                          {members.length > 0
+                            ? `Đã có ${members.length} học sinh tham gia lớp.`
+                            : 'Gửi mã lớp hoặc mã QR để học sinh tham gia nhanh chóng.'}
+                        </small>
+                      </div>
+                      <div className="cd-step-actions">
+                        {members.length > 0 ? (
+                          <span className="cd-step-done-pill">Hoàn tất</span>
+                        ) : (
+                          <>
+                            {classInfo?.key && (
+                              <button type="button" className="vt-btn sm primary" onClick={handleCopyClassKey}>
+                                {copiedKey ? <IconCheck size={13} /> : <IconCopy size={13} />}
+                                {copiedKey ? 'Đã chép mã!' : 'Sao chép mã'}
+                              </button>
+                            )}
+                            {onShareKey && (
+                              <button type="button" className="vt-btn sm" onClick={() => onShareKey(classInfo)}>
+                                <IconQr size={13} /> Mở mã QR
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <div className="cd-chart-empty">
-                      <span className="cd-chart-empty-ico">
-                        <IconTrendUp size={18} />
+
+                    <div
+                      className={`cd-check-step${
+                        exams.length > 0 && emptyQuestionExamsCount === 0
+                          ? ' is-done'
+                          : emptyQuestionExamsCount > 0
+                            ? ' is-warn'
+                            : ''
+                      }`}
+                    >
+                      <span className="cd-step-num" aria-hidden="true">
+                        {exams.length > 0 && emptyQuestionExamsCount === 0 ? (
+                          <IconCheck size={14} />
+                        ) : emptyQuestionExamsCount > 0 ? (
+                          <IconAlert size={14} />
+                        ) : (
+                          '2'
+                        )}
                       </span>
-                      <strong>Chưa có dữ liệu điểm</strong>
-                      <small>Biểu đồ xu hướng tự động hiển thị khi học sinh bắt đầu nộp bài.</small>
+                      <div className="cd-step-body">
+                        <b>Kiểm tra đề kiểm tra</b>
+                        <small>
+                          {exams.length === 0
+                            ? 'Lớp chưa có đề kiểm tra nào.'
+                            : emptyQuestionExamsCount > 0
+                              ? `${emptyQuestionExamsCount}/${exams.length} đề chưa có câu hỏi — cần bổ sung nội dung.`
+                              : `Đã gán ${exams.length} đề hợp lệ · Sẵn sàng chờ bài nộp.`}
+                        </small>
+                      </div>
+                      <div className="cd-step-actions">
+                        {exams.length > 0 && emptyQuestionExamsCount === 0 ? (
+                          <span className="cd-step-done-pill">Sẵn sàng</span>
+                        ) : (
+                          <button type="button" className="vt-btn sm" onClick={() => setTab('exams')}>
+                            Mở mục Đề thi →
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
+                </section>
+              ) : (
+                <div className="cd-overview-cols">
+                  <div className="cd-card">
+                    <h3>
+                      <IconTrendUp size={15} /> Điểm TB lớp &amp; Mức độ hoàn thành
+                    </h3>
+                    <div className="cd-overview-chart">
+                      <Donut
+                        value={classStats.avgScore ?? 0}
+                        max={100}
+                        size={112}
+                        stroke={10}
+                        tone={
+                          classStats.avgScore == null ? 'acc'
+                            : classStats.avgScore >= 70 ? 'acc'
+                              : classStats.avgScore >= 50 ? 'warn'
+                                : 'danger'
+                        }
+                      >
+                        {classStats.avgScore == null ? (
+                          <>
+                            <strong>—</strong>
+                            <small>chưa có điểm</small>
+                          </>
+                        ) : (
+                          <>
+                            <strong>{classStats.avgScore}<sup>%</sup></strong>
+                            <small>trung bình</small>
+                          </>
+                        )}
+                      </Donut>
+                      <ul className="cd-overview-facts">
+                        <li>
+                          <div className="cd-fact-row">
+                            <span>Tỷ lệ bài đạt (≥ 50%)</span>
+                            <b>{classStats.passRate}%</b>
+                          </div>
+                          <span className="cd-fact-bar">
+                            <i className="ok" style={{ width: `${classStats.passRate}%` }} />
+                          </span>
+                        </li>
+                        <li>
+                          <div className="cd-fact-row">
+                            <span>HS đã làm ít nhất 1 đề</span>
+                            <b>{classStats.completedRate}%</b>
+                          </div>
+                          <span className="cd-fact-bar">
+                            <i style={{ width: `${classStats.completedRate}%` }} />
+                          </span>
+                        </li>
+                        <li>
+                          <div className="cd-fact-row">
+                            <span>Chưa làm bài nào</span>
+                            <b>{unattemptedCount} HS</b>
+                          </div>
+                          <span className="cd-fact-bar">
+                            <i
+                              className="amber"
+                              style={{ width: `${members.length ? Math.round((unattemptedCount / members.length) * 100) : 0}%` }}
+                            />
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="cd-card">
+                    <div className="cd-card-head-row">
+                      <h3>
+                        <IconTrendUp size={15} /> Xu hướng điểm qua các đề
+                      </h3>
+                      {trendPoints.length > 0 && (
+                        <span className="cd-card-pill">{trendPoints.length} đề có bài</span>
+                      )}
+                    </div>
+                    {trendPoints.length > 0 ? (
+                      <div className="cd-trend-box">
+                        <TrendChart points={trendPoints} mode="line" max={100} />
+                        <div className="cd-trend-labels">
+                          {trendPoints.map((pt, idx) => (
+                            <span key={idx} title={pt.label}>
+                              <b>{pt.value}%</b>
+                              <small>{pt.label.length > 12 ? `${pt.label.slice(0, 12)}…` : pt.label}</small>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="cd-chart-empty">
+                        <span className="cd-chart-empty-ico">
+                          <IconTrendUp size={18} />
+                        </span>
+                        <strong>Chưa có dữ liệu xu hướng</strong>
+                        <small>Các đề chưa đủ dữ liệu điểm hợp lệ để vẽ đường xu hướng.</small>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Hàng dưới: Đề thi gần đây & Học sinh tiêu biểu / Cần chú ý */}
               <div className="cd-overview-cols">
                 <div className="cd-card">
                   <div className="cd-card-head-row">
                     <h3><IconBook size={15} /> Đề kiểm tra của lớp ({exams.length})</h3>
-                    {exams.length > 0 && (
+                    {exams.length > 0 ? (
                       <button type="button" className="cd-link-btn" onClick={() => setTab('exams')}>
                         Xem tất cả →
+                      </button>
+                    ) : (
+                      <button type="button" className="cd-link-btn" onClick={() => setTab('exams')}>
+                        Gán đề →
                       </button>
                     )}
                   </div>
                   {exams.length === 0 ? (
-                    <div className="cd-invite-empty">
-                      <strong>Lớp chưa có đề kiểm tra nào</strong>
-                      <small>Gán đề từ ngân hàng đề hoặc tạo đề mới trong tab Đề thi.</small>
-                      <div className="cd-invite-actions">
-                        <button type="button" className="vt-btn sm primary" onClick={() => setTab('exams')}>
-                          Mở mục Đề thi
-                        </button>
-                      </div>
+                    <div className="cd-mini-empty">
+                      <strong>Chưa có đề kiểm tra nào</strong>
+                      <small>Gán đề từ ngân hàng đề hoặc tạo đề mới trong mục Đề thi.</small>
                     </div>
                   ) : (
                     <ul className="cd-mini-list">
@@ -825,24 +921,9 @@ export default function ClassDetailModal({
                     </button>
                   </div>
                   {studentsStats.length === 0 ? (
-                    <div className="cd-invite-empty">
+                    <div className="cd-mini-empty">
                       <strong>Chưa có học sinh nào tham gia</strong>
-                      <small>Gửi mã lớp hoặc mã QR để học sinh vào lớp nhanh chóng.</small>
-                      {(classInfo?.key || onShareKey) && (
-                        <div className="cd-invite-actions">
-                          {classInfo?.key && (
-                            <button type="button" className="vt-btn sm primary" onClick={handleCopyClassKey}>
-                              {copiedKey ? <IconCheck size={13} /> : <IconCopy size={13} />}
-                              {copiedKey ? 'Đã chép mã!' : 'Sao chép mã'}
-                            </button>
-                          )}
-                          {onShareKey && (
-                            <button type="button" className="vt-btn sm" onClick={() => onShareKey(classInfo)}>
-                              <IconQr size={13} /> Mở mã QR
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      <small>Dùng mã lớp hoặc duyệt đơn chờ trong Quản lý HS.</small>
                     </div>
                   ) : (
                     <ul className="cd-mini-list">
@@ -942,7 +1023,7 @@ export default function ClassDetailModal({
                     {onExportRoster && (
                       <button
                         type="button"
-                        className="cd-btn sm"
+                        className="vt-btn sm"
                         onClick={() => onExportRoster(classInfo)}
                         title="Xuất danh sách học sinh lớp ra Excel (.xlsx)"
                       >
@@ -1132,23 +1213,15 @@ export default function ClassDetailModal({
                                       {' · '}{timeAgoShort(r.requestedAt)}
                                     </p>
                                   </div>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', flex: '1 1 220px' }}>
+                                  <div className="cd-retry-action-col">
                                     <input
                                       type="text"
+                                      className="cd-inline-input"
                                       placeholder="Ghi chú gửi học sinh (không bắt buộc)"
                                       value={retryNote[r.id] || ''}
                                       onChange={(e) => setRetryNote((prev) => ({ ...prev, [r.id]: e.target.value }))}
                                       maxLength={200}
                                       disabled={isActing}
-                                      style={{
-                                        padding: '.45rem .75rem',
-                                        borderRadius: 10,
-                                        border: '1.5px solid var(--soft)',
-                                        background: 'var(--vt-tint)',
-                                        color: 'var(--ink)',
-                                        font: '500 .8rem var(--sans)',
-                                        width: '100%',
-                                      }}
                                     />
                                     <div style={{ display: 'flex', gap: '.4rem' }}>
                                       <button
@@ -1234,7 +1307,11 @@ export default function ClassDetailModal({
                         <div className="cd-exam-main">
                           <h4>{ex.title}</h4>
                           <p>
-                            {ex.questions?.length || 0} câu · {ex.duration || '—'} phút · {ex.totalPoints || 0} điểm
+                            {(ex.questions?.length || 0) > 0
+                              ? `${ex.questions.length} câu`
+                              : <span className="cd-warn-tag">Chưa có câu hỏi</span>}
+                            {' · '}
+                            {ex.duration || '—'} phút · {ex.totalPoints || 0} điểm
                           </p>
                         </div>
                         <div className="cd-exam-stats">
@@ -1341,7 +1418,7 @@ export default function ClassDetailModal({
                                   style={{
                                     background: `color-mix(in srgb, ${
                                       pct >= 70 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#ef4444'
-                                    } ${Math.min(60, 15 + pct / 2)}%, var(--panel))`,
+                                    } ${Math.min(55, 14 + Math.round(pct * 0.4))}% , var(--t-surface-0, var(--panel, #fff)))`,
                                     cursor: 'pointer',
                                   }}
                                   onClick={() => setOpenStudent(s)}
@@ -1365,41 +1442,69 @@ export default function ClassDetailModal({
           )}
 
           {tab === 'settings' && (
-            <div className="cd-members">
-              <div className="cd-card" style={{ padding: '1rem 1.1rem' }}>
-                <h3>Tên lớp</h3>
-                <label className="cd-search" style={{ marginTop: '0.6rem' }}>
-                  <input
-                    type="text"
-                    value={renameVal}
-                    maxLength={48}
-                    onChange={(e) => setRenameVal(e.target.value)}
-                    aria-label="Tên lớp"
-                  />
+            <div className="cd-settings-grid">
+              <section className="cd-card">
+                <div className="cd-card-head-row">
+                  <h3><IconLock size={15} /> Thông tin &amp; Mã tham gia lớp</h3>
+                </div>
+                <label className="cd-field">
+                  <span>Tên lớp học</span>
+                  <div className="cd-field-inline">
+                    <input
+                      type="text"
+                      className="cd-text-input"
+                      value={renameVal}
+                      maxLength={48}
+                      placeholder="Nhập tên lớp..."
+                      onChange={(e) => setRenameVal(e.target.value)}
+                      aria-label="Tên lớp"
+                    />
+                    <button
+                      type="button"
+                      className="vt-btn sm primary"
+                      disabled={!renameVal.trim() || renameVal.trim() === classInfo?.name}
+                      onClick={() => onRename?.(classInfo, renameVal)}
+                    >
+                      Lưu tên
+                    </button>
+                  </div>
                 </label>
-                <div className="ap-class-tools" style={{ marginTop: '0.75rem' }}>
-                  <button
-                    type="button"
-                    className="vt-btn sm primary"
-                    disabled={!renameVal.trim() || renameVal.trim() === classInfo?.name}
-                    onClick={() => onRename?.(classInfo, renameVal)}
-                  >
-                    Lưu tên
-                  </button>
-                  <button type="button" className="vt-btn sm" onClick={() => onShareKey?.(classInfo)}>
-                    Mã QR
-                  </button>
-                  <button type="button" className="vt-btn sm" onClick={() => onRegenKey?.(classInfo)}>
-                    Đổi mã lớp
-                  </button>
+
+                <div className="cd-code-row">
+                  <div className="cd-code-info">
+                    <small>Mã tham gia lớp</small>
+                    <code>{classInfo?.key || '—'}</code>
+                  </div>
+                  <div className="cd-btn-row">
+                    {classInfo?.key && (
+                      <button type="button" className="vt-btn sm" onClick={handleCopyClassKey}>
+                        {copiedKey ? <IconCheck size={13} /> : <IconCopy size={13} />}
+                        {copiedKey ? 'Đã chép!' : 'Sao chép mã'}
+                      </button>
+                    )}
+                    <button type="button" className="vt-btn sm" onClick={() => onShareKey?.(classInfo)}>
+                      <IconQr size={13} /> Mã QR
+                    </button>
+                    <button type="button" className="vt-btn sm" onClick={() => onRegenKey?.(classInfo)}>
+                      Đổi mã lớp
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <section className="cd-card cd-danger-card">
+                <div className="cd-card-head-row">
+                  <h3><IconAlert size={15} /> Vùng thao tác nhạy cảm</h3>
+                </div>
+                <p className="cd-danger-note">
+                  Xóa lớp sẽ gỡ toàn bộ học sinh và hủy liên kết các đề kiểm tra khỏi lớp này. Hành động này không thể hoàn tác.
+                </p>
+                <div className="cd-btn-row">
                   <button type="button" className="vt-btn sm danger" onClick={() => onDeleteClass?.(classInfo)}>
                     <IconTrash size={13} /> Xóa lớp
                   </button>
                 </div>
-                <p className="cd-muted" style={{ marginTop: '0.85rem' }}>
-                  Mã hiện tại: <b>{classInfo?.key || '—'}</b>
-                </p>
-              </div>
+              </section>
             </div>
           )}
         </div>
