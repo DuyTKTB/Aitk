@@ -902,6 +902,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
         const res = await fetch('/api/ai-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(50000) : undefined,
           body: JSON.stringify({
             provider: 'gemini',
             model: 'gemini-2.5-flash',
@@ -918,12 +919,13 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
         if (!res.ok) throw new Error(`Server AI Proxy HTTP ${res.status}`);
         const data = await res.json();
         const parts = data?.candidates?.[0]?.content?.parts || [];
-        const text = parts.map((p) => p.text || '').join('').trim();
+        const text = parts.filter((p) => p?.text && !p.thought).map((p) => p.text).join('').trim();
+        const reasoning = parts.filter((p) => p?.text && p.thought).map((p) => p.text).join('').trim();
         if (!text) throw new Error('Server AI Proxy không trả nội dung');
         onChunk?.(text);
         finish(resolve, {
           text,
-          reasoning: '',
+          reasoning,
           model: 'server/gemini-2.5-flash',
           kind: task.kind,
           hard: task.hard,

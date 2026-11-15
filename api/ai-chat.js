@@ -5,12 +5,18 @@
  * tự động xoay vòng key (Key Rotation) khi gặp giới hạn 429 Too Many Requests.
  */
 
+const PROVIDER_CONFIG = {
+  gemini: { envRe: /^(?:VITE_)?GEMINI(?:_API)?_KEY/i },
+  groq: { envRe: /^(?:VITE_)?GROQ(?:_API)?_KEY/i },
+  agnes: { envRe: /^(?:VITE_)?AGNES(?:_API)?_KEY/i },
+};
+
 function collectServerKeys(provider) {
+  const cfg = PROVIDER_CONFIG[provider];
+  if (!cfg) return [];
   const keys = [];
-  const p = String(provider || '').toLowerCase();
   for (const [envName, rawVal] of Object.entries(process.env || {})) {
-    if (!rawVal || !envName.toLowerCase().includes(p)) continue;
-    if (!/key|token/i.test(envName)) continue;
+    if (!rawVal || !cfg.envRe.test(envName)) continue;
     String(rawVal)
       .split(/[\s,;|]+/)
       .map((s) => s.trim())
@@ -43,9 +49,19 @@ export default async function handler(req, res) {
     }
   }
 
-  const provider = String(body?.provider || 'gemini').toLowerCase();
-  const model = String(body?.model || 'gemini-2.5-flash');
-  const payload = body?.payload || {};
+  const provider = String(body?.provider || 'gemini').toLowerCase().trim();
+  if (!Object.prototype.hasOwnProperty.call(PROVIDER_CONFIG, provider)) {
+    res.status(400).json({ ok: false, error: 'Provider không được hỗ trợ' });
+    return;
+  }
+
+  const model = String(body?.model || 'gemini-2.5-flash').trim();
+  if (!/^[a-zA-Z0-9._:/-]+$/.test(model)) {
+    res.status(400).json({ ok: false, error: 'Tên model không hợp lệ' });
+    return;
+  }
+
+  const payload = body?.payload && typeof body.payload === 'object' ? body.payload : {};
 
   const keys = collectServerKeys(provider);
   if (keys.length === 0) {
@@ -79,6 +95,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(45000) : undefined,
       });
 
       lastStatus = upstream.status;

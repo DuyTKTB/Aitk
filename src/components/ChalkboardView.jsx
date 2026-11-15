@@ -372,6 +372,7 @@ export default function ChalkboardView({
   const [qaAnswer, setQaAnswer] = useState('');
   const [qaLoading, setQaLoading] = useState(false);
   const recognitionRef = useRef(null);
+  const aliveRef = useRef(true);
 
   const speakCurrentStep = useCallback((stepIdx, autoAdvance = false) => {
     const stepObj = currentLesson.buoc[stepIdx] || currentLesson.buoc[0];
@@ -407,6 +408,20 @@ export default function ChalkboardView({
   }, [currentLesson]);
 
   useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      try {
+        recognitionRef.current?.stop();
+      } catch { /* ignore recognition cleanup error */ }
+      recognitionRef.current = null;
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (voiceAutoLecture && !sandboxMode) {
       speakCurrentStep(activeStep, true);
     }
@@ -433,10 +448,13 @@ export default function ChalkboardView({
 
       const res = await askAI(
         [{ role: 'user', parts: [{ text: prompt }] }],
-        (partial) => setQaAnswer(partial),
+        (partial) => {
+          if (aliveRef.current) setQaAnswer(partial);
+        },
         null,
         { mode: 'auto', verify: false }
       );
+      if (!aliveRef.current) return;
       const finalAns = res?.text || String(res || '');
       setQaAnswer(finalAns);
       if (typeof window !== 'undefined' && 'speechSynthesis' in window && finalAns) {
@@ -447,9 +465,11 @@ export default function ChalkboardView({
         window.speechSynthesis.speak(utter);
       }
     } catch (err) {
-      setQaAnswer(err?.message || 'Gia sư AI đang bận, bạn hãy thử hỏi lại sau giây lát nhé.');
+      if (aliveRef.current) {
+        setQaAnswer(err?.message || 'Gia sư AI đang bận, bạn hãy thử hỏi lại sau giây lát nhé.');
+      }
     } finally {
-      setQaLoading(false);
+      if (aliveRef.current) setQaLoading(false);
     }
   }, [qaQuestion, qaLoading, currentLesson, activeStep, currentStepData]);
 
@@ -460,7 +480,9 @@ export default function ChalkboardView({
       return;
     }
     if (isListeningMic && recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch { /* ignore stop error */ }
       setIsListeningMic(false);
       return;
     }
@@ -468,10 +490,17 @@ export default function ChalkboardView({
     rec.lang = 'vi-VN';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
-    rec.onstart = () => setIsListeningMic(true);
-    rec.onend = () => setIsListeningMic(false);
-    rec.onerror = () => setIsListeningMic(false);
+    rec.onstart = () => {
+      if (aliveRef.current) setIsListeningMic(true);
+    };
+    rec.onend = () => {
+      if (aliveRef.current) setIsListeningMic(false);
+    };
+    rec.onerror = () => {
+      if (aliveRef.current) setIsListeningMic(false);
+    };
     rec.onresult = (event) => {
+      if (!aliveRef.current) return;
       const transcript = event?.results?.[0]?.[0]?.transcript || '';
       if (transcript) {
         setQaQuestion(transcript);
@@ -479,7 +508,12 @@ export default function ChalkboardView({
       }
     };
     recognitionRef.current = rec;
-    rec.start();
+    try {
+      rec.start();
+    } catch {
+      recognitionRef.current = null;
+      setIsListeningMic(false);
+    }
   };
 
   return (

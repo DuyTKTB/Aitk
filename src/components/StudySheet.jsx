@@ -163,7 +163,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
               }}
             >
               <div className="ss-hl-icon companion">
-                <img src="/img/elec/elec-study.png" alt="" width="24" height="24" style={{ objectFit: 'contain' }} />
+                <img src="/img/elec/elec-think.png" alt="" width="24" height="24" style={{ objectFit: 'contain' }} />
               </div>
               <div className="ss-hl-info">
                 <b>Sổ tay &amp; Kế hoạch AI</b>

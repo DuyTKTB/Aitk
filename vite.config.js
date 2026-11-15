@@ -62,6 +62,7 @@ const BIG_VENDORS = [
 /* Middleware chạy API /api/email-otp trực tiếp trong vite dev (không đóng gói vào client build) */
 function devEmailOtpApiPlugin() {
   const loadServerEnv = () => {
+    const merged = {};
     for (const file of ['.env', '.env.local']) {
       const p = path.resolve(process.cwd(), file);
       if (!fs.existsSync(p)) continue;
@@ -77,10 +78,13 @@ function devEmailOtpApiPlugin() {
             v = v.slice(1, -1);
           }
           if (!k.startsWith('VITE_') && v) {
-            process.env[k] = v;
+            merged[k] = merged[k] ? `${merged[k]},${v}` : v;
           }
         }
       } catch { /* ignore */ }
+    }
+    for (const [k, v] of Object.entries(merged)) {
+      process.env[k] = v;
     }
   };
 

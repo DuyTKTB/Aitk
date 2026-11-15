@@ -396,7 +396,7 @@ export default function ScienceSimLab({ onNavigate }) {
 
   const heroMascotImg = useMemo(() => {
     if (activeTab === 'rlc') return rlcStats.isResonance ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-cool.png';
-    if (activeTab === 'wave') return '/img/elec/elec-super-happy.png';
+    if (activeTab === 'wave') return '/img/elec/elec-heart-eyes.png';
     if (activeTab === 'dna') return bioStats.isMutated ? '/img/elec/elec-shocked.png' : '/img/elec/elec-happy.png';
     return '/img/elec/elec-love.png';
   }, [activeTab, rlcStats.isResonance, bioStats.isMutated]);

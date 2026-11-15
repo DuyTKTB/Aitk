@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
 import { markMastered, markWrong, unsaveQuestion, saveQuestion } from '../lib/examApi.js';
@@ -113,13 +113,26 @@ export default function WrongNotebook() {
     });
   };
 
+  const sprintActive = Boolean(quizMode && sprintSecLeft > 0 && quizIdx < quizMode.length);
+  const wasSprintActiveRef = useRef(false);
   useEffect(() => {
-    if (!quizMode || sprintSecLeft <= 0 || quizIdx >= quizMode.length) return undefined;
+    if (!sprintActive) return undefined;
+    wasSprintActiveRef.current = true;
     const t = setInterval(() => {
       setSprintSecLeft((s) => (s > 1 ? s - 1 : 0));
     }, 1000);
     return () => clearInterval(t);
-  }, [quizMode, sprintSecLeft, quizIdx]);
+  }, [sprintActive]);
+
+  useEffect(() => {
+    if (sprintSecLeft === 0 && wasSprintActiveRef.current) {
+      wasSprintActiveRef.current = false;
+      if (quizMode && quizIdx < quizMode.length) {
+        setQuizIdx(quizMode.length);
+        showToast('Hết 5 phút Đề Vá Lỗ Hổng!', 'err');
+      }
+    }
+  }, [sprintSecLeft, quizMode, quizIdx]);
 
   // Guide
   const [guideOpen, setGuideOpen] = useState(false);
@@ -457,6 +470,8 @@ export default function WrongNotebook() {
   };
 
   const closeQuiz = () => {
+    wasSprintActiveRef.current = false;
+    setSprintSecLeft(0);
     setQuizMode(null);
     setQuizIdx(0);
     setQuizPicked(null);
