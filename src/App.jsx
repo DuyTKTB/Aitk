@@ -590,7 +590,7 @@ export default function App() {
   const PUBLIC_SEO_PAGES = [
     'ai', 'table', 'balance', 'formulas', 'roadmap', 'study', 'grade',
     'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
-    'games', 'leaderboard', 'pomodoro', 'schedule',
+    'chalkboard', 'quiz', 'games', 'leaderboard', 'pomodoro', 'schedule',
   ];
 
   if (!isLoggedIn) {

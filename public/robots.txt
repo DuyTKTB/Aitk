@@ -1,10 +1,13 @@
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
 Disallow: /api/
 Disallow: /admin
 
 # ------------------------------------------------------------------
-# Cho phép các crawler của công cụ tìm kiếm & AI đọc nội dung công khai (GEO).
+# Công cụ tìm kiếm truyền thống & Answer Engines (AEO)
 # ------------------------------------------------------------------
 User-agent: Googlebot
 Allow: /
@@ -21,7 +24,21 @@ Allow: /
 Disallow: /api/
 Disallow: /admin
 
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+# ------------------------------------------------------------------
+# Các crawler của Công cụ Tìm kiếm AI & Mô hình Ngôn ngữ Lớn (GEO)
+# Cho phép thu thập dữ liệu công khai, cấu trúc Schema.org & llms.txt
+# ------------------------------------------------------------------
 User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: OAI-SearchBot
 Allow: /
 Disallow: /api/
 Disallow: /admin
@@ -36,13 +53,75 @@ Allow: /
 Disallow: /api/
 Disallow: /admin
 
+User-agent: Claude-Web
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
 User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Perplexity-User
 Allow: /
 Disallow: /api/
 Disallow: /admin
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: GoogleOther
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Meta-ExternalAgent
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: FacebookBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: DuckAssistBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: YouBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: Amazonbot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+User-agent: CCBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
 
 Host: https://www.elecai.id.vn/
 Sitemap: https://www.elecai.id.vn/sitemap.xml

@@ -18,9 +18,12 @@
     <meta name="author" content="Nguyễn Thế Duy (Duy TK / Tk Media) — Nhà sáng lập ELEC Science AI" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
     <meta name="googlebot" content="index,follow,max-image-preview:large,max-snippet:-1" />
+    <meta name="bingbot" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
     <link rel="canonical" href="https://www.elecai.id.vn/" />
     <link rel="alternate" hreflang="vi" href="https://www.elecai.id.vn/" />
     <link rel="alternate" hreflang="x-default" href="https://www.elecai.id.vn/" />
+    <link rel="alternate" type="text/plain" href="https://www.elecai.id.vn/llms.txt" title="ELEC Science AI — LLMs.txt Summary" />
+    <link rel="alternate" type="text/plain" href="https://www.elecai.id.vn/llms-full.txt" title="ELEC Science AI — LLMs Full Knowledge Base" />
     <meta name="language" content="Vietnamese" />
     <meta name="keywords" content="ELEC Science AI, ELEC AI, ELECAI, elecai.id.vn, Nguyễn Thế Duy, nhà sáng lập ELEC AI, founder ELEC AI, tác giả ELEC Science AI, Duy TK, Tk Media, nguyentheduytk, KHTN, Khoa học Tự nhiên, học KHTN, giải bài tập KHTN bằng AI, giải bài tập Vật lí, giải bài tập Hóa học, giải bài tập Sinh học, ôn thi THPT Quốc Gia môn Vật lí 2026, ôn thi THPT Quốc Gia môn Hóa 2026, ôn thi THPT Quốc Gia môn Sinh 2026, đề thi ĐGNL phần KHTN HSA TSA V-ACT, bảng tuần hoàn hóa học tương tác, cân bằng phương trình hóa học, di truyền Menđen, dao động điều hòa, GDPT 2018" />
     <meta name="google-site-verification" content="Mks0eFue6Yni4CRVC8FEBXKxQxJDStYWkh0gZenKULU" />
@@ -69,7 +72,7 @@
 
     <title>ELEC Science AI (ELECAI) — Học & Luyện Thi KHTN Lý Hóa Sinh</title>
 
-    <!-- Dữ liệu có cấu trúc Schema.org Chuẩn Google Search 2026 -->
+    <!-- Dữ liệu có cấu trúc Schema.org Chuẩn Google Search, AEO & GEO 2026 -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -82,7 +85,8 @@
             "alternateName": ["ELEC AI", "ELECAI", "Elec AI", "ELEC KHTN", "elecai.id.vn"],
             "inLanguage": "vi-VN",
             "publisher": { "@id": "https://www.elecai.id.vn/#org" },
-            "description": "Nền tảng học tập & khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) với trợ lý AI: giải bài từng bước, tạo đề, chấm bài tự động và phân tích kết quả học tập.",
+            "creator": { "@id": "https://www.elecai.id.vn/#founder" },
+            "description": "Nền tảng học tập & khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) chuẩn GDPT 2018 với trợ lý AI giải bài từng bước, phòng thi ảo THPT Quốc gia & ĐGNL, bảng tuần hoàn 118 nguyên tố IUPAC, cân bằng PTHH, tạo đề, giám sát thi MediaPipe và chấm bài OMR tự động.",
             "potentialAction": {
               "@type": "SearchAction",
               "target": {
@@ -97,16 +101,24 @@
             "@id": "https://www.elecai.id.vn/#webpage",
             "url": "https://www.elecai.id.vn/",
             "name": "ELEC Science AI (ELECAI) — Học & Luyện Thi KHTN Lý Hóa Sinh",
+            "description": "Nền tảng học & luyện thi KHTN (Vật lí, Hóa học, Sinh học) chuẩn 2026: Trợ lý AI giải từng bước, Phòng thi ảo THPTQG & ĐGNL, Bảng tuần hoàn & Công thức.",
             "isPartOf": { "@id": "https://www.elecai.id.vn/#website" },
             "about": { "@id": "https://www.elecai.id.vn/#app" },
+            "mainEntity": { "@id": "https://www.elecai.id.vn/#app" },
+            "author": { "@id": "https://www.elecai.id.vn/#founder" },
             "primaryImageOfPage": {
               "@type": "ImageObject",
               "url": "https://www.elecai.id.vn/img/og-image.png",
               "width": 1200,
               "height": 630
             },
+            "speakable": {
+              "@type": "SpeakableSpecification",
+              "cssSelector": ["#aeo-direct-answer", "#geo-fact-sheet", "#aeo-faq h3", "#aeo-faq p"]
+            },
             "inLanguage": "vi-VN",
-            "dateModified": "2026-11-12"
+            "datePublished": "2025-09-01",
+            "dateModified": "2026-11-15"
           },
           {
             "@type": "Person",
@@ -115,16 +127,18 @@
             "alternateName": ["Nguyen The Duy", "Duy TK", "Tk Media", "nguyentheduytk"],
             "url": "https://www.elecai.id.vn/nha-sang-lap",
             "mainEntityOfPage": "https://www.elecai.id.vn/nha-sang-lap",
-            "jobTitle": "Nhà sáng lập & Nhà phát triển chính (Founder & Lead Developer) của ELEC Science AI",
+            "jobTitle": "Nhà sáng lập & Kỹ sư phát triển chính (Founder & Lead Developer) của ELEC Science AI",
             "description": "Nguyễn Thế Duy (Tk Media / Duy TK, sinh sống tại Thái Bình) là nhà sáng lập (founder) và tác giả của nền tảng học tập & khảo thí Khoa học Tự nhiên ELEC Science AI (ELEC AI / ELECAI) tại elecai.id.vn, đồng thời là tác giả PhotobothNe, nhà phát triển web và nhà sáng tạo nội dung số. Facebook chính thức: https://www.facebook.com/nguyentheduytk",
+            "nationality": { "@type": "Country", "name": "Vietnam" },
             "knowsAbout": [
               "ELEC Science AI",
               "ELEC AI",
               "Trí tuệ nhân tạo trong giáo dục (EdTech)",
               "Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học)",
+              "Chương trình GDPT 2018",
               "Lập trình Web & Tự động hóa",
               "MediaPipe & Giám sát thi trực tuyến",
-              "Thuật toán ôn tập ngắt quãng SRS",
+              "Thuật toán ôn tập ngắt quãng SRS (SuperMemo SM-2)",
               "Video Editing & Motion Graphics"
             ],
             "worksFor": { "@id": "https://www.elecai.id.vn/#org" },
@@ -142,12 +156,20 @@
             ]
           },
           {
-            "@type": "Organization",
+            "@type": ["Organization", "EducationalOrganization"],
             "@id": "https://www.elecai.id.vn/#org",
             "name": "ELEC Science AI",
-            "alternateName": ["ELEC AI", "ELECAI"],
+            "alternateName": ["ELEC AI", "ELECAI", "Elec AI"],
             "url": "https://www.elecai.id.vn/",
             "founder": { "@id": "https://www.elecai.id.vn/#founder" },
+            "areaServed": { "@type": "Country", "name": "Vietnam" },
+            "knowsAbout": [
+              "Vật lí THPT GDPT 2018",
+              "Hóa học THPT GDPT 2018 chuẩn IUPAC",
+              "Sinh học THPT GDPT 2018",
+              "Ôn thi Tốt nghiệp THPT Quốc gia",
+              "Đánh giá năng lực HSA, TSA, V-ACT"
+            ],
             "sameAs": [
               "https://www.facebook.com/nguyentheduytk",
               "https://nguyenduytk.vercel.app/"
@@ -164,21 +186,30 @@
             "image": { "@id": "https://www.elecai.id.vn/#logo" }
           },
           {
-            "@type": "SoftwareApplication",
+            "@type": ["SoftwareApplication", "WebApplication"],
             "@id": "https://www.elecai.id.vn/#app",
             "name": "ELEC Science AI",
             "alternateName": ["ELEC AI", "ELECAI"],
             "applicationCategory": "EducationalApplication",
+            "applicationSubCategory": "AI Science Tutor & Online Exam Assessment Platform",
             "operatingSystem": "Web, Android, iOS, Windows, macOS",
+            "browserRequirements": "Requires HTML5 and JavaScript",
             "inLanguage": "vi-VN",
+            "isAccessibleForFree": true,
             "url": "https://www.elecai.id.vn/",
             "image": "https://www.elecai.id.vn/img/logo.png",
             "screenshot": "https://www.elecai.id.vn/img/og-image.png",
             "author": { "@id": "https://www.elecai.id.vn/#founder" },
             "creator": { "@id": "https://www.elecai.id.vn/#founder" },
             "publisher": { "@id": "https://www.elecai.id.vn/#org" },
-            "description": "Trợ lý AI Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) cho học sinh THCS, THPT và công cụ phòng thi ảo, quản lý lớp, giao đề, chấm bài tự động cho giáo viên.",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" },
+            "description": "Trợ lý AI Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) cho học sinh THCS, THPT và hệ thống phòng thi ảo, quản lý lớp, giao đề, giám sát MediaPipe, chấm bài OMR tự động cho giáo viên.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "VND",
+              "availability": "https://schema.org/InStock",
+              "description": "Miễn phí toàn bộ công cụ KHTN cốt lõi cho học sinh"
+            },
             "aggregateRating": {
               "@type": "AggregateRating",
               "ratingValue": "4.9",
@@ -190,40 +221,95 @@
             "audience": {
               "@type": "EducationalAudience",
               "educationalRole": ["student", "teacher"],
-              "audienceType": "Học sinh THCS, THPT Lớp 10, 11, 12 và thí sinh luyện thi Đại học, ĐGNL"
+              "audienceType": "Học sinh THCS, THPT Lớp 10, 11, 12, thí sinh luyện thi Đại học/ĐGNL và Giáo viên KHTN"
             },
             "featureList": [
-              "Giải bài tập KHTN (Vật lí, Hóa học, Sinh học) từng bước bằng AI",
-              "Sổ tay công thức và máy tính khoa học chuyên sâu cho 3 môn",
-              "Bảng tuần hoàn 118 nguyên tố tương tác chuẩn IUPAC",
-              "Cân bằng phương trình Hóa học bằng đại số tuyến tính",
-              "Phòng thi ảo bấm giờ chuẩn cấu trúc Bộ GD&ĐT 2026 - 2027 và ĐGNL (HSA, TSA, V-ACT)",
-              "Tạo đề và chấm bài tự động đa môn bằng AI",
-              "Chấm phiếu trắc nghiệm A4 qua camera (OMR)",
-              "Lộ trình ôn thi KHTN cá nhân hóa theo điểm Elo",
-              "Quản lý lớp học và phân tích năng lực học sinh theo từng bộ môn"
+              "Giải bài tập KHTN (Vật lí, Hóa học, Sinh học) từng bước từ văn bản hoặc ảnh chụp theo 6 chế độ sư phạm",
+              "Sổ tay công thức chuẩn KaTeX và hơn 50 máy tính khoa học chuyên sâu cho 3 môn",
+              "Bảng tuần hoàn 118 nguyên tố tương tác chuẩn danh pháp quốc tế IUPAC",
+              "Máy cân bằng phương trình Hóa học bằng thuật toán ma trận đại số tuyến tính",
+              "Phòng thi ảo bấm giờ thực chuẩn cấu trúc 3 phần Bộ GD&ĐT 2026 và ĐGNL (HSA, TSA, V-ACT)",
+              "Tạo đề từ PDF/Word/Ảnh, giao đề và giám sát phòng thi trực tuyến bằng MediaPipe Vision",
+              "Chấm phiếu trắc nghiệm giấy A4 qua camera (OMR)",
+              "Lộ trình ôn thi KHTN cá nhân hóa theo điểm Elo và thuật toán lặp lại ngắt quãng SRS (SuperMemo SM-2)",
+              "AI Doc Studio tóm tắt tài liệu PDF, sinh Flashcard & Quiz tự động",
+              "Phòng thí nghiệm Hóa học 3D tương tác và trò chơi giáo dục KHTN"
+            ]
+          },
+          {
+            "@type": "HowTo",
+            "@id": "https://www.elecai.id.vn/#howto-khtn",
+            "name": "Cách học và luyện thi Khoa học Tự nhiên (Lý - Hóa - Sinh) hiệu quả trên ELEC Science AI",
+            "description": "Quy trình 4 bước khép kín từ giải bài tập bằng AI đến luyện đề phòng thi ảo và ghi nhớ dài hạn bằng SRS trên ELEC Science AI.",
+            "totalTime": "PT15M",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "position": 1,
+                "name": "Hỏi bài tập hoặc tải ảnh đề thi",
+                "text": "Truy cập Trợ lý AI, chọn khối lớp (10, 11, 12) và chế độ học (Giải chi tiết hoặc Gợi ý từng bước), sau đó nhập câu hỏi hoặc tải lên ảnh chụp đề bài Vật lí, Hóa học, Sinh học.",
+                "url": "https://www.elecai.id.vn/tro-ly-ai-giai-hoa"
+              },
+              {
+                "@type": "HowToStep",
+                "position": 2,
+                "name": "Tra cứu công cụ khoa học chính xác",
+                "text": "Sử dụng Bảng tuần hoàn 118 nguyên tố IUPAC, Máy cân bằng phương trình hóa học hoặc Sổ tay công thức 3 môn để kiểm chứng số liệu và bản chất hiện tượng.",
+                "url": "https://www.elecai.id.vn/bang-tuan-hoan"
+              },
+              {
+                "@type": "HowToStep",
+                "position": 3,
+                "name": "Thực chiến tại Phòng thi ảo chuẩn 2026",
+                "text": "Làm đề thi thử bấm giờ 50 phút theo cấu trúc 3 phần mới của Bộ GD&ĐT (Trắc nghiệm 4 lựa chọn, Đúng/Sai lũy tiến, Trả lời ngắn) hoặc đề thi ĐGNL HSA, TSA, V-ACT.",
+                "url": "https://www.elecai.id.vn/phong-thi-ao"
+              },
+              {
+                "@type": "HowToStep",
+                "position": 4,
+                "name": "Ôn tập ngắt quãng SRS & nâng điểm Elo",
+                "text": "Các câu trả lời sai tự động lưu vào Sổ tay lỗi sai. Luyện tập lại theo lịch nhắc của thuật toán SuperMemo SM-2 để nâng điểm Elo chuyên đề và lấp đầy lỗ hổng kiến thức.",
+                "url": "https://www.elecai.id.vn/lo-trinh-on-thi-thpt-quoc-gia"
+              }
             ]
           },
           {
             "@type": "ItemList",
             "@id": "https://www.elecai.id.vn/#main-tools",
-            "name": "Các phân hệ chính của ELEC Science AI",
+            "name": "15 Phân hệ công cụ chính của ELEC Science AI",
+            "numberOfItems": 15,
             "itemListElement": [
               { "@type": "ListItem", "position": 1, "name": "Trợ lý AI giải bài KHTN từng bước", "url": "https://www.elecai.id.vn/tro-ly-ai-giai-hoa" },
               { "@type": "ListItem", "position": 2, "name": "Phòng thi ảo THPT Quốc Gia & ĐGNL", "url": "https://www.elecai.id.vn/phong-thi-ao" },
-              { "@type": "ListItem", "position": 3, "name": "Bảng tuần hoàn 118 nguyên tố hóa học", "url": "https://www.elecai.id.vn/bang-tuan-hoan" },
-              { "@type": "ListItem", "position": 4, "name": "Máy cân bằng phương trình hóa học", "url": "https://www.elecai.id.vn/can-bang-phuong-trinh-hoa-hoc" },
+              { "@type": "ListItem", "position": 3, "name": "Bảng tuần hoàn 118 nguyên tố hóa học IUPAC", "url": "https://www.elecai.id.vn/bang-tuan-hoan" },
+              { "@type": "ListItem", "position": 4, "name": "Máy cân bằng phương trình hóa học (PTHH)", "url": "https://www.elecai.id.vn/can-bang-phuong-trinh-hoa-hoc" },
               { "@type": "ListItem", "position": 5, "name": "Sổ tay công thức Lý - Hóa - Sinh", "url": "https://www.elecai.id.vn/cong-thuc-hoa-hoc" },
-              { "@type": "ListItem", "position": 6, "name": "Lộ trình ôn thi THPT Quốc Gia theo Elo", "url": "https://www.elecai.id.vn/lo-trinh-on-thi-thpt-quoc-gia" }
+              { "@type": "ListItem", "position": 6, "name": "Lộ trình ôn thi THPT Quốc Gia theo Elo", "url": "https://www.elecai.id.vn/lo-trinh-on-thi-thpt-quoc-gia" },
+              { "@type": "ListItem", "position": 7, "name": "Kho tài liệu & 50+ Công cụ KHTN", "url": "https://www.elecai.id.vn/tai-lieu-hoa-hoc" },
+              { "@type": "ListItem", "position": 8, "name": "Luyện tập Quiz KHTN & Ôn tập ngắt quãng SRS", "url": "https://www.elecai.id.vn/quiz" },
+              { "@type": "ListItem", "position": 9, "name": "AI Doc Studio — Tóm tắt PDF, Flashcard & Quiz", "url": "https://www.elecai.id.vn/ai-doc-studio" },
+              { "@type": "ListItem", "position": 10, "name": "Bảng phấn tương tác KHTN trực tuyến", "url": "https://www.elecai.id.vn/bang-phan-tuong-tac" },
+              { "@type": "ListItem", "position": 11, "name": "Trò chơi Khoa học & Phòng thí nghiệm Hóa 3D", "url": "https://www.elecai.id.vn/tro-choi-khoa-hoc" },
+              { "@type": "ListItem", "position": 12, "name": "Công cụ tính điểm xét tuyển Đại học (A00, A01, B00, D07)", "url": "https://www.elecai.id.vn/tinh-diem-xet-tuyen-dai-hoc" },
+              { "@type": "ListItem", "position": 13, "name": "Tra cứu điểm chuẩn Đại học & ĐGNL", "url": "https://www.elecai.id.vn/tra-cuu-diem-chuan" },
+              { "@type": "ListItem", "position": 14, "name": "Định hướng nghề nghiệp AI & Test RIASEC", "url": "https://www.elecai.id.vn/dinh-huong-nghe-nghiep" },
+              { "@type": "ListItem", "position": 15, "name": "Bảng xếp hạng chuỗi học & thành tích KHTN", "url": "https://www.elecai.id.vn/bang-xep-hang" }
             ]
           },
           {
-            "@type": "LearningResource",
+            "@type": ["Course", "LearningResource"],
             "@id": "https://www.elecai.id.vn/#learning-resource",
-            "name": "Kho Luyện Thi Khoa Học Tự Nhiên THPT Quốc Gia & ĐGNL Chuẩn 2026",
-            "educationalLevel": ["Lớp 10", "Lớp 11", "Lớp 12", "Ôn thi THPT Quốc Gia", "Đánh giá năng lực"],
-            "educationalUse": "exam preparation",
-            "learningResourceType": "Interactive Simulation, Quiz, Problem Solver",
+            "name": "Chương trình Học & Luyện Thi Khoa Học Tự Nhiên (Vật lí, Hóa học, Sinh học) Chuẩn GDPT 2018 & THPT 2026",
+            "description": "Hệ thống chuyên đề, công thức, bài tập giải từng bước và đề thi thử 3 môn Vật lí, Hóa học, Sinh học lớp 10, 11, 12 theo chương trình GDPT 2018.",
+            "provider": { "@id": "https://www.elecai.id.vn/#org" },
+            "educationalLevel": ["Lớp 10", "Lớp 11", "Lớp 12", "Ôn thi THPT Quốc Gia", "Đánh giá năng lực HSA, TSA, V-ACT"],
+            "educationalUse": ["exam preparation", "self study", "classroom assessment"],
+            "learningResourceType": ["Interactive Simulation", "Quiz", "AI Problem Solver", "Virtual Exam"],
+            "teaches": [
+              "Vật lí THPT (Động học, Động lực học, Dao động, Sóng, Điện trường, Dòng điện, Vật lí nhiệt, Khí lí tưởng, Từ trường, Vật lí hạt nhân)",
+              "Hóa học THPT chuẩn IUPAC (Cấu tạo nguyên tử, Bảng tuần hoàn, Liên kết hóa học, Oxi hóa - khử, Cân bằng hóa học, Hóa hữu cơ, Ester, Carbohydrate, Amine, Polymer, Pin điện - Điện phân, Kim loại)",
+              "Sinh học THPT (Tế bào học, Vi sinh vật, Sinh học cơ thể, Di truyền phân tử ADN/ARN, Quy luật di truyền Menđen, Di truyền quần thể, Tiến hóa, Sinh thái học)"
+            ],
             "inLanguage": "vi-VN",
             "isAccessibleForFree": true
           },
@@ -236,31 +322,7 @@
                 "name": "ELEC Science AI là gì?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "ELEC Science AI (ELECAI) là nền tảng trợ lý AI chuyên sâu về Khoa học Tự nhiên bao gồm 3 phân môn: Vật lí, Hóa học và Sinh học dành cho học sinh THCS và THPT (lớp 10, 11, 12) ôn thi tốt nghiệp THPT Quốc Gia & Đánh giá năng lực theo chương trình mới GDPT 2018, đồng thời cung cấp công cụ tạo đề, chấm bài và quản lý lớp học cho giáo viên bộ môn."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "ELEC Science AI hỗ trợ luyện thi THPT Quốc Gia và ĐGNL như thế nào?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "ELEC Science AI tích hợp phòng thi ảo bấm giờ thực với cấu trúc đề chuẩn 3 phần mới nhất của Bộ GD&ĐT cho cả 3 môn Vật lí, Hóa học, Sinh học và bài thi KHTN tổng hợp ĐGNL (HSA, TSA Bách Khoa, V-ACT), kèm lộ trình mục tiêu theo điểm Elo từng môn và sổ tay ghi nhớ câu sai tự động theo thuật toán SRS."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "ELEC Science AI giải bài tập KHTN bằng AI như thế nào?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Học sinh có thể nhập câu hỏi bằng văn bản hoặc chụp ảnh đề bài môn Vật lí, Hóa học, Sinh học. Trợ lý AI kết hợp cùng bộ công cụ máy tính khoa học chính xác (scientific tools) để phân tích hiện tượng, công thức và hướng dẫn giải chi tiết từng bước (Step-by-Step)."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Nền tảng có những công cụ Khoa học Tự nhiên nổi bật nào?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Nền tảng tích hợp đầy đủ: Bảng tuần hoàn 118 nguyên tố tương tác, Công cụ cân bằng PTHH, Máy tính dao động và mạch xoay chiều RLC Vật lí, Máy tính ADN và di truyền Menđen Sinh học, Thư viện công thức và phòng thí nghiệm ảo tương tác."
+                  "text": "ELEC Science AI (còn viết là ELEC AI hoặc ELECAI, tại https://www.elecai.id.vn/) là nền tảng học tập, trợ lý AI và khảo thí trực tuyến chuyên sâu về 3 môn Khoa học Tự nhiên: Vật lí, Hóa học và Sinh học theo chương trình GDPT 2018. Hệ thống cung cấp trợ lý AI giải bài từng bước từ ảnh chụp, bảng tuần hoàn 118 nguyên tố IUPAC, máy cân bằng phương trình hóa học, phòng thi ảo THPT Quốc gia & ĐGNL bấm giờ thực, lộ trình học theo điểm Elo, ôn tập ngắt quãng SRS và công cụ quản lý lớp, giám sát thi MediaPipe, chấm phiếu OMR cho giáo viên."
                 }
               },
               {
@@ -268,7 +330,55 @@
                 "name": "Ai là nhà sáng lập ELEC AI (ELEC Science AI)?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Nhà sáng lập (Founder) và người phát triển chính của ELEC Science AI (ELEC AI / ELECAI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, sinh sống tại Thái Bình). Anh là nhà phát triển web, tác giả của ELEC Science AI và PhotobothNe, từng đảm nhiệm vai trò Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh. Facebook chính thức của nhà sáng lập Nguyễn Thế Duy: https://www.facebook.com/nguyentheduytk — Trang tiểu sử: https://www.elecai.id.vn/nha-sang-lap — Portfolio: https://nguyenduytk.vercel.app/."
+                  "text": "Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI (ELEC AI / ELECAI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, sinh sống tại Thái Bình). Anh là nhà phát triển web, tác giả của ELEC Science AI và PhotobothNe, từng đảm nhiệm vai trò Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh. Facebook chính thức: https://www.facebook.com/nguyentheduytk — Trang tiểu sử: https://www.elecai.id.vn/nha-sang-lap — Portfolio: https://nguyenduytk.vercel.app/."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Cấu trúc đề thi trong Phòng thi ảo ELEC Science AI chuẩn 2026 gồm mấy phần và tính điểm như thế nào?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Phòng thi ảo ELEC Science AI mô phỏng chính xác cấu trúc đề thi Tốt nghiệp THPT từ năm 2025–2026 của Bộ GD&ĐT (thời gian 50 phút, tổng 10 điểm) cho từng môn Vật lí, Hóa học, Sinh học gồm 3 phần: Phần I có 18 câu trắc nghiệm 4 lựa chọn (0,25 điểm/câu, tổng 4,5 điểm); Phần II có 4 câu trắc nghiệm Đúng/Sai với 4 ý nhỏ mỗi câu tính điểm lũy tiến (đúng 1 ý được 0,1 điểm, 2 ý được 0,25 điểm, 3 ý được 0,5 điểm, cả 4 ý được 1,0 điểm, tổng 4,0 điểm); Phần III có 6 câu trả lời ngắn điền kết quả số (0,25 điểm/câu, tổng 1,5 điểm). Ngoài ra còn có đề thi ĐGNL HSA, TSA và V-ACT."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "ELEC Science AI giải bài tập Vật lí, Hóa học, Sinh học bằng AI như thế nào?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Học sinh có thể nhập đề bài bằng văn bản hoặc tải lên tối đa 10 ảnh chụp đề thi. Trợ lý AI kết hợp mô hình đa phương thức với bộ công cụ tính toán khoa học xác định (Scientific Calculators) để giải theo 6 chế độ sư phạm: Tự động, Giải chi tiết từng bước, Gợi ý từng bước (không lộ đáp án ngay), Kiểm tra bài làm, Ôn lý thuyết và Tạo bài tương tự, hiển thị công thức rõ ràng bằng KaTeX."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Máy cân bằng phương trình hóa học trên ELEC AI dùng thuật toán gì?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Công cụ cân bằng phương trình hóa học tại https://www.elecai.id.vn/can-bang-phuong-trinh-hoa-hoc sử dụng thuật toán khử Gauss trên ma trận đại số tuyến tính để tìm bộ hệ số nguyên dương tối giản chính xác tuyệt đối cho cả phản ứng vô cơ, hữu cơ và phản ứng oxi hóa – khử phức tạp, đồng thời xác định rõ chất khử, chất oxi hóa và bảng kiểm tra số nguyên tử hai vế."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Bảng tuần hoàn trên ELEC Science AI có theo danh pháp IUPAC mới của GDPT 2018 không?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Có. Bảng tuần hoàn tại https://www.elecai.id.vn/bang-tuan-hoan cập nhật đầy đủ 118 nguyên tố theo danh pháp quốc tế IUPAC chuẩn chương trình GDPT 2018 (ví dụ Sodium, Potassium, Iron, Copper, Aluminium, Sulfur...) kèm tên tiếng Việt đối chiếu, cấu hình electron, độ âm điện, số oxi hóa, bán kính nguyên tử và công cụ so sánh trực quan giữa các nguyên tố."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Thuật toán ôn tập ngắt quãng SRS và điểm Elo trên ELEC AI hoạt động ra sao?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Khi học sinh làm bài trên Quiz hoặc Phòng thi ảo, hệ thống cập nhật điểm năng lực Elo cho từng chuyên đề Lý – Hóa – Sinh. Mọi câu trả lời sai được tự động lưu vào Sổ tay lỗi sai và áp dụng thuật toán lặp lại ngắt quãng SuperMemo SM-2 để tính thời điểm nhắc ôn lại ngay trước khi học sinh quên."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Giáo viên dùng ELEC Science AI để giao đề, giám sát thi và chấm phiếu OMR như thế nào?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Giáo viên có thể tạo đề từ file PDF, Word, ảnh chụp hoặc ngân hàng câu hỏi, sau đó giao cho lớp qua mã phòng thi. Hệ thống hỗ trợ giám sát phòng thi trực tuyến bằng thị giác máy tính MediaPipe chạy cục bộ trên trình duyệt (phát hiện rời màn hình, vắng mặt, nhiều người) và công cụ quét chấm phiếu trắc nghiệm giấy A4 bằng camera (OMR) kèm thống kê phổ điểm chi tiết."
                 }
               },
               {
@@ -276,7 +386,15 @@
                 "name": "ELEC Science AI có miễn phí không?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Có. Học sinh có thể tạo tài khoản và sử dụng miễn phí toàn bộ các công cụ cốt lõi: Bảng tuần hoàn, Tra cứu công thức 3 môn, Máy tính khoa học, Quiz ôn tập và Sổ tay câu sai."
+                  "text": "Có. Học sinh được tạo tài khoản và sử dụng miễn phí toàn bộ công cụ cốt lõi: Bảng tuần hoàn 118 nguyên tố, Cân bằng PTHH, Sổ tay công thức 3 môn, Máy tính khoa học, Luyện Quiz SRS, Sổ tay câu sai, Tính điểm xét tuyển đại học, Tra cứu điểm chuẩn và Trò chơi khoa học."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Làm sao để AI và các công cụ tìm kiếm đọc toàn bộ dữ liệu ngữ cảnh của ELEC Science AI?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "ELEC Science AI cung cấp tài liệu chuẩn llmstxt.org tại https://www.elecai.id.vn/llms.txt (bản tóm tắt) và https://www.elecai.id.vn/llms-full.txt (bản đầy đủ chi tiết về kiến trúc, công cụ, chương trình GDPT 2018 và hỏi đáp) cùng Sitemap tại https://www.elecai.id.vn/sitemap.xml."
                 }
               }
             ]
@@ -445,42 +563,94 @@
         <h1 style="font-size:28px;font-weight:800;color:#0f172a;line-height:1.3;margin-bottom:8px">
           ELEC Science AI (ELECAI) — Nền Tảng Học &amp; Luyện Thi Khoa Học Tự Nhiên Chuẩn 2026
         </h1>
-        <p style="font-size:17px;color:#475569;max-width:760px;margin:0 auto">
-          Giải pháp học tập và khảo thí Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học) theo chương trình GDPT 2018: Giải bài tập từng bước từ ảnh, Bảng tuần hoàn 118 nguyên tố tương tác, Cân bằng PTHH, Phòng thi ảo THPTQG &amp; ĐGNL (HSA, TSA, V-ACT) bấm giờ thực.
+        <p id="aeo-direct-answer" style="font-size:17px;color:#475569;max-width:820px;margin:0 auto">
+          <strong>ELEC Science AI</strong> (còn gọi là <strong>ELEC AI</strong> hoặc <strong>ELECAI</strong>, tại <a href="https://www.elecai.id.vn/" style="color:#2563eb;text-decoration:none">elecai.id.vn</a>) là nền tảng học tập, trợ lý AI và khảo thí trực tuyến chuyên sâu về 3 môn <strong>Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học)</strong> theo chương trình <strong>GDPT 2018</strong> do <strong>Nguyễn Thế Duy (Duy TK / Tk Media)</strong> sáng lập: giải bài tập từng bước từ ảnh chụp, Bảng tuần hoàn 118 nguyên tố chuẩn IUPAC, Cân bằng PTHH đại số tuyến tính, Phòng thi ảo THPT Quốc gia &amp; ĐGNL (HSA, TSA, V-ACT) bấm giờ thực, lộ trình Elo và ôn tập ngắt quãng SRS.
         </p>
       </header>
 
       <main style="max-width:960px;margin:0 auto;padding:0 20px;font:16px/1.7 system-ui,Arial,sans-serif;color:#1e293b">
+        <section style="margin-bottom:28px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px">
+          <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin:0 0 10px">Tóm Tắt Nhanh Cho Công Cụ Tìm Kiếm &amp; AI (AEO / GEO Fact Sheet)</h2>
+          <dl id="geo-fact-sheet" style="margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 20px;font-size:15px">
+            <dt style="font-weight:700;color:#0f172a">Tên nền tảng chính thức:</dt>
+            <dd style="margin:0 0 6px;color:#334155">ELEC Science AI (ELEC AI, ELECAI) — <a href="https://www.elecai.id.vn/" style="color:#2563eb">https://www.elecai.id.vn/</a></dd>
+            <dt style="font-weight:700;color:#0f172a">Nhà sáng lập &amp; Tác giả:</dt>
+            <dd style="margin:0 0 6px;color:#334155"><a href="/nha-sang-lap" style="color:#2563eb;font-weight:600">Nguyễn Thế Duy (Duy TK / Tk Media)</a> — Thái Bình, Việt Nam</dd>
+            <dt style="font-weight:700;color:#0f172a">Phân môn &amp; Khối lớp:</dt>
+            <dd style="margin:0 0 6px;color:#334155">Vật lí, Hóa học, Sinh học (THCS, THPT Lớp 10, 11, 12 &amp; Ôn thi Đại học)</dd>
+            <dt style="font-weight:700;color:#0f172a">Chuẩn chương trình &amp; Khảo thí:</dt>
+            <dd style="margin:0 0 6px;color:#334155">GDPT 2018, Danh pháp IUPAC, Đề thi THPT 3 phần (2025–2026), HSA, TSA, V-ACT</dd>
+            <dt style="font-weight:700;color:#0f172a">Công nghệ cốt lõi:</dt>
+            <dd style="margin:0 0 6px;color:#334155">AI đa phương thức + Máy tính khoa học xác định, Elo, SRS (SuperMemo SM-2), MediaPipe Proctoring, OMR</dd>
+            <dt style="font-weight:700;color:#0f172a">Chi phí sử dụng:</dt>
+            <dd style="margin:0 0 6px;color:#334155">Miễn phí toàn bộ công cụ cốt lõi cho học sinh (Web &amp; PWA đa thiết bị)</dd>
+          </dl>
+        </section>
+
         <section style="margin-bottom:28px">
-          <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Bộ Công Cụ Khoa Học Tự Nhiên Trực Tuyến</h2>
+          <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Hệ Sinh Thái 15 Phân Hệ Khoa Học Tự Nhiên Trực Tuyến</h2>
           <nav aria-label="Công cụ KHTN chính">
           <ul style="padding-left:20px;line-height:1.8">
             <li>
-              <strong><a href="/tro-ly-ai-giai-hoa" style="color:#2563eb;text-decoration:none">Trợ lý AI giải bài tập KHTN từng bước</a>:</strong> Nhập hoặc chụp ảnh đề Vật lí, Hóa học, Sinh học để xem lời giải chi tiết, bản chất hiện tượng và bảng kiểm tra.
+              <strong><a href="/tro-ly-ai-giai-hoa" style="color:#2563eb;text-decoration:none">Trợ lý AI giải bài tập KHTN từng bước</a>:</strong> Nhập văn bản hoặc chụp tối đa 10 ảnh đề Vật lí, Hóa học, Sinh học để xem lời giải KaTeX theo 6 chế độ sư phạm (Tự động, Giải chi tiết, Gợi ý từng bước, Kiểm tra đáp án, Ôn lý thuyết, Tạo bài tương tự).
             </li>
             <li>
-              <strong><a href="/bang-tuan-hoan" style="color:#2563eb;text-decoration:none">Bảng tuần hoàn 118 nguyên tố hóa học</a>:</strong> Tra cứu số hiệu nguyên tử, nguyên tử khối, cấu hình electron, độ âm điện và tính chất tuần hoàn theo chuẩn IUPAC mới.
+              <strong><a href="/phong-thi-ao" style="color:#2563eb;text-decoration:none">Phòng thi ảo THPT Quốc Gia &amp; ĐGNL</a>:</strong> Luyện đề thi thử trực tuyến mô phỏng format 3 phần mới của Bộ GD&amp;ĐT (Vật lí, Hóa học, Sinh học — 50 phút) và ĐGNL (HSA, TSA, V-ACT), chấm điểm lũy tiến và phân tích bẫy đề thi.
             </li>
             <li>
-              <strong><a href="/can-bang-phuong-trinh-hoa-hoc" style="color:#2563eb;text-decoration:none">Máy cân bằng phương trình Hóa học (PTHH)</a>:</strong> Cân bằng tự động bằng phương pháp đại số tuyến tính, xác định rõ chất khử, chất oxi hóa và quá trình khử/oxi hóa.
+              <strong><a href="/bang-tuan-hoan" style="color:#2563eb;text-decoration:none">Bảng tuần hoàn 118 nguyên tố hóa học IUPAC</a>:</strong> Tra cứu số hiệu nguyên tử, nguyên tử khối, cấu hình electron, độ âm điện, số oxi hóa, mô phỏng lớp vỏ electron và so sánh nguyên tố theo chuẩn IUPAC mới.
             </li>
             <li>
-              <strong><a href="/cong-thuc-hoa-hoc" style="color:#2563eb;text-decoration:none">Sổ tay công thức KHTN (Vật lí — Hóa học — Sinh học)</a>:</strong> Tổng hợp công thức dao động, mạch RLC, số mol, nồng độ, pH, ADN, gen và di truyền Menđen.
+              <strong><a href="/can-bang-phuong-trinh-hoa-hoc" style="color:#2563eb;text-decoration:none">Máy cân bằng phương trình Hóa học (PTHH)</a>:</strong> Cân bằng tự động bằng phương pháp khử Gauss đại số tuyến tính, xác định rõ chất khử, chất oxi hóa và bảng kiểm tra nguyên tử hai vế.
             </li>
             <li>
-              <strong><a href="/phong-thi-ao" style="color:#2563eb;text-decoration:none">Phòng thi ảo THPT Quốc Gia &amp; ĐGNL</a>:</strong> Luyện đề thi thử trực tuyến mô phỏng format 3 phần mới của Bộ GD&amp;ĐT (Vật lí, Hóa học, Sinh học), bấm giờ thi thật và phân tích điểm dự đoán.
+              <strong><a href="/cong-thuc-hoa-hoc" style="color:#2563eb;text-decoration:none">Sổ tay công thức KHTN (Vật lí — Hóa học — Sinh học)</a>:</strong> Tổng hợp công thức dao động điều hòa, sóng cơ, mạch RLC, số mol, nồng độ, pH, cấu trúc ADN, phiên mã, dịch mã và quy luật di truyền Menđen kèm máy tính giải nhanh.
             </li>
             <li>
-              <strong><a href="/lo-trinh-on-thi-thpt-quoc-gia" style="color:#2563eb;text-decoration:none">Lộ trình kiến thức KHTN &amp; Ôn tập ngắt quãng (SRS)</a>:</strong> Theo dõi tiến độ từng chương theo điểm Elo, <a href="/quiz" style="color:#2563eb;text-decoration:none">luyện Quiz SRS</a> và <a href="/bang-xep-hang" style="color:#2563eb;text-decoration:none">bảng xếp hạng</a>.
+              <strong><a href="/lo-trinh-on-thi-thpt-quoc-gia" style="color:#2563eb;text-decoration:none">Lộ trình kiến thức KHTN &amp; Ôn tập ngắt quãng (SRS)</a>:</strong> Theo dõi tiến độ từng chương theo điểm Elo, <a href="/quiz" style="color:#2563eb;text-decoration:none">luyện Quiz SRS (SuperMemo SM-2)</a> và <a href="/bang-xep-hang" style="color:#2563eb;text-decoration:none">bảng xếp hạng chuỗi học (Streak)</a>.
             </li>
             <li>
-              <strong><a href="/tinh-diem-xet-tuyen-dai-hoc" style="color:#2563eb;text-decoration:none">Tính điểm xét tuyển Đại học (A00, A01, B00, D07)</a>:</strong> Quy đổi điểm thi, <a href="/tra-cuu-diem-chuan" style="color:#2563eb;text-decoration:none">tra cứu điểm chuẩn</a> và <a href="/dinh-huong-nghe-nghiep" style="color:#2563eb;text-decoration:none">định hướng nghề nghiệp RIASEC</a>.
+              <strong><a href="/tinh-diem-xet-tuyen-dai-hoc" style="color:#2563eb;text-decoration:none">Tính điểm xét tuyển Đại học (A00, A01, B00, D07)</a>:</strong> Tính điểm xét tốt nghiệp THPT, điểm ưu tiên giảm trừ từ mốc 22,5, <a href="/tra-cuu-diem-chuan" style="color:#2563eb;text-decoration:none">tra cứu điểm chuẩn đại học</a> và <a href="/dinh-huong-nghe-nghiep" style="color:#2563eb;text-decoration:none">định hướng nghề nghiệp RIASEC</a>.
             </li>
             <li>
-              <strong><a href="/tai-lieu-hoa-hoc" style="color:#2563eb;text-decoration:none">Kho tài liệu, Lab 3D &amp; Trò chơi Khoa học</a>:</strong> Phòng thí nghiệm Hóa học 3D, <a href="/ai-doc-studio" style="color:#2563eb;text-decoration:none">AI Doc Studio</a>, <a href="/bang-phan-tuong-tac" style="color:#2563eb;text-decoration:none">bảng phấn tương tác</a> và <a href="/tro-choi-khoa-hoc" style="color:#2563eb;text-decoration:none">trò chơi ôn tập</a>.
+              <strong><a href="/tai-lieu-hoa-hoc" style="color:#2563eb;text-decoration:none">Kho tài liệu, AI Doc Studio, Bảng phấn &amp; Lab 3D</a>:</strong> Khám phá 50+ công cụ tính toán, <a href="/ai-doc-studio" style="color:#2563eb;text-decoration:none">AI Doc Studio tóm tắt PDF &amp; tạo Flashcard</a>, <a href="/bang-phan-tuong-tac" style="color:#2563eb;text-decoration:none">bảng phấn tương tác</a> và <a href="/tro-choi-khoa-hoc" style="color:#2563eb;text-decoration:none">Phòng thí nghiệm Hóa học 3D &amp; trò chơi khoa học</a>.
             </li>
           </ul>
           </nav>
+        </section>
+
+        <section style="margin-bottom:28px">
+          <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Cấu Trúc Đề Thi Tốt Nghiệp THPT 2026 Môn Vật Lí, Hóa Học, Sinh Học Trên Phòng Thi Ảo</h2>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;text-align:left;font-size:15px">
+            <thead>
+              <tr style="border-bottom:2px solid #cbd5e1;background:#f8fafc">
+                <th style="padding:10px 12px">Phần thi</th>
+                <th style="padding:10px 12px">Dạng thức câu hỏi</th>
+                <th style="padding:10px 12px">Số lượng</th>
+                <th style="padding:10px 12px">Cách tính điểm chuẩn Bộ GD&amp;ĐT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0">
+                <td style="padding:10px 12px"><strong>Phần I</strong></td>
+                <td style="padding:10px 12px">Trắc nghiệm nhiều phương án lựa chọn (A, B, C, D)</td>
+                <td style="padding:10px 12px">18 câu</td>
+                <td style="padding:10px 12px">0,25 điểm/câu (Tối đa <strong>4,5 điểm</strong>)</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0">
+                <td style="padding:10px 12px"><strong>Phần II</strong></td>
+                <td style="padding:10px 12px">Trắc nghiệm Đúng / Sai (mỗi câu có 4 lệnh hỏi a, b, c, d)</td>
+                <td style="padding:10px 12px">4 câu (16 ý)</td>
+                <td style="padding:10px 12px">Điểm lũy tiến: Đúng 1 ý = 0,1đ; 2 ý = 0,25đ; 3 ý = 0,5đ; 4 ý = 1,0đ/câu (Tối đa <strong>4,0 điểm</strong>)</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 12px"><strong>Phần III</strong></td>
+                <td style="padding:10px 12px">Trắc nghiệm trả lời ngắn (điền kết quả số)</td>
+                <td style="padding:10px 12px">6 câu</td>
+                <td style="padding:10px 12px">0,25 điểm/câu (Tối đa <strong>1,5 điểm</strong>) — Tổng thời gian: <strong>50 phút</strong></td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
         <section style="margin-bottom:28px">
@@ -489,40 +659,52 @@
             <thead>
               <tr style="border-bottom:2px solid #cbd5e1;background:#f8fafc">
                 <th style="padding:10px 12px">Khối lớp</th>
-                <th style="padding:10px 12px">Chủ đề trọng tâm (Lý — Hóa — Sinh)</th>
+                <th style="padding:10px 12px">Chủ đề trọng tâm (Vật lí — Hóa học — Sinh học)</th>
                 <th style="padding:10px 12px">Mục tiêu đầu ra</th>
               </tr>
             </thead>
             <tbody>
               <tr style="border-bottom:1px solid #e2e8f0">
                 <td style="padding:10px 12px"><strong>Lớp 10</strong></td>
-                <td style="padding:10px 12px">Động học, Động lực học (Vật lí); Cấu tạo nguyên tử, Bảng tuần hoàn, Oxi hóa – Khử (Hóa học); Tế bào &amp; Vi sinh vật (Sinh học)</td>
-                <td style="padding:10px 12px">Nắm vững nền tảng lý thuyết và bài tập cơ bản</td>
+                <td style="padding:10px 12px">Động học, Động lực học, Năng lượng (Vật lí); Cấu tạo nguyên tử, Bảng tuần hoàn IUPAC, Liên kết hóa học, Oxi hóa – Khử, Enthalpy, Halogen (Hóa học); Tế bào học, Chu kì tế bào &amp; Vi sinh vật (Sinh học)</td>
+                <td style="padding:10px 12px">Nắm vững nền tảng lý thuyết, danh pháp IUPAC và bài tập cơ bản</td>
               </tr>
               <tr style="border-bottom:1px solid #e2e8f0">
                 <td style="padding:10px 12px"><strong>Lớp 11</strong></td>
-                <td style="padding:10px 12px">Dao động, Sóng, Điện trường (Vật lí); Cân bằng hóa học, pH, Nitrogen – Sulfur, Hydrocarbon (Hóa học); Trao đổi chất &amp; Cảm ứng (Sinh học)</td>
-                <td style="padding:10px 12px">Thành thạo dạng bài tính toán và thí nghiệm</td>
+                <td style="padding:10px 12px">Dao động điều hòa, Sóng, Điện trường, Dòng điện một chiều (Vật lí); Cân bằng hóa học, pH, Nitrogen – Sulfur, Đại cương hữu cơ, Hydrocarbon, Alcohol – Phenol – Carboxylic acid (Hóa học); Trao đổi chất, Chuyển hóa năng lượng &amp; Cảm ứng (Sinh học)</td>
+                <td style="padding:10px 12px">Thành thạo dạng bài tính toán chuyên đề và câu hỏi Đúng/Sai thực nghiệm</td>
               </tr>
               <tr>
                 <td style="padding:10px 12px"><strong>Lớp 12</strong></td>
-                <td style="padding:10px 12px">Vật lí nhiệt, Khí lí tưởng, Từ trường, Hạt nhân (Vật lí); Ester – Lipid, Carbohydrate, Pin điện – Điện phân, Kim loại (Hóa học); Di truyền phân tử &amp; Menđen, Tiến hóa, Sinh thái (Sinh học)</td>
-                <td style="padding:10px 12px">Chinh phục 8.5+ điểm thi THPT Quốc Gia &amp; ĐGNL 2026</td>
+                <td style="padding:10px 12px">Vật lí nhiệt, Khí lí tưởng, Từ trường, Hạt nhân (Vật lí); Ester – Lipid, Carbohydrate, Amine – Amino acid – Protein, Polymer, Pin điện – Điện phân, Đại cương Kim loại &amp; Phức chất (Hóa học); Di truyền phân tử, Quy luật Menđen, Di truyền quần thể, Tiến hóa &amp; Sinh thái (Sinh học)</td>
+                <td style="padding:10px 12px">Chinh phục 8.5+ điểm thi Tốt nghiệp THPT Quốc Gia &amp; ĐGNL (HSA, TSA, V-ACT)</td>
               </tr>
             </tbody>
           </table>
         </section>
 
         <section style="margin-bottom:28px">
+          <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Quy Trình 4 Bước Học &amp; Luyện Thi KHTN Trên ELEC Science AI</h2>
+          <ol style="padding-left:20px;line-height:1.8;color:#334155">
+            <li><strong>Bước 1 — Hỏi &amp; Phân tích đề bài:</strong> Gõ câu hỏi hoặc tải ảnh chụp đề bài Vật lí, Hóa học, Sinh học lên <a href="/tro-ly-ai-giai-hoa" style="color:#2563eb">Trợ lý AI</a>; chọn chế độ Giải chi tiết hoặc Gợi ý từng bước (Socratic) theo đúng khối lớp.</li>
+            <li><strong>Bước 2 — Kiểm chứng bằng công cụ khoa học:</strong> Tra cứu nhanh <a href="/bang-tuan-hoan" style="color:#2563eb">Bảng tuần hoàn 118 nguyên tố IUPAC</a>, <a href="/can-bang-phuong-trinh-hoa-hoc" style="color:#2563eb">Máy cân bằng PTHH</a> và <a href="/cong-thuc-hoa-hoc" style="color:#2563eb">Sổ tay công thức 3 môn</a> để hiểu tận gốc bản chất.</li>
+            <li><strong>Bước 3 — Luyện đề bấm giờ thực:</strong> Vào <a href="/phong-thi-ao" style="color:#2563eb">Phòng thi ảo</a> làm đề cấu trúc 3 phần Bộ GD&amp;ĐT hoặc ĐGNL, đối chiếu phổ điểm và phân tích các bẫy tư duy thường gặp.</li>
+            <li><strong>Bước 4 — Ghi nhớ dài hạn bằng SRS &amp; Elo:</strong> Ôn lại các câu sai tự động lưu trong Sổ tay lỗi sai theo lịch <a href="/quiz" style="color:#2563eb">Quiz SRS (SuperMemo SM-2)</a> và theo dõi sự tiến bộ qua <a href="/lo-trinh-on-thi-thpt-quoc-gia" style="color:#2563eb">Lộ trình Elo</a>.</li>
+          </ol>
+        </section>
+
+        <section style="margin-bottom:28px">
           <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Nhà Sáng Lập &amp; Tác Giả ELEC Science AI (ELEC AI)</h2>
           <p style="margin:0 0 10px;color:#334155">
-            <strong>Nguyễn Thế Duy</strong> (biệt danh <strong>Tk Media</strong> / <strong>Duy TK</strong>, tại Thái Bình) là <strong>Nhà sáng lập (Founder) và Người phát triển chính của nền tảng ELEC Science AI (ELEC AI / ELECAI)</strong>. Trước đó, anh là Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh, đồng thời là tác giả dự án PhotobothNe, lập trình viên web, nhà phát triển công cụ tự động hóa và nhà sáng tạo nội dung số (Video Editor, Motion Designer).
+            <strong>Nguyễn Thế Duy</strong> (biệt danh <strong>Tk Media</strong> / <strong>Duy TK</strong>, tại Thái Bình) là <strong>Nhà sáng lập (Founder) và Kỹ sư phát triển chính của nền tảng ELEC Science AI (ELEC AI / ELECAI)</strong>. Trước đó, anh là Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh, đồng thời là tác giả dự án PhotobothNe, lập trình viên web, nhà phát triển công cụ tự động hóa và nhà sáng tạo nội dung số (Video Editor, Motion Designer).
           </p>
           <p style="margin:0;color:#475569">
-            Kênh chính thức của nhà sáng lập Nguyễn Thế Duy:
-            <a href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer" style="color:#2563eb;font-weight:600">Facebook (https://www.facebook.com/nguyentheduytk)</a>
-            · <a href="/nha-sang-lap" style="color:#2563eb;font-weight:600">Tiểu sử chi tiết</a>
+            Kênh chính thức &amp; Tài liệu hệ thống:
+            <a href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer" style="color:#2563eb;font-weight:600">Facebook Nhà sáng lập</a>
+            · <a href="/nha-sang-lap" style="color:#2563eb;font-weight:600">Tiểu sử Nguyễn Thế Duy</a>
             · <a href="/gioi-thieu" style="color:#2563eb;font-weight:600">Giới thiệu ELEC AI</a>
+            · <a href="/llms.txt" style="color:#2563eb">LLMs.txt</a>
+            · <a href="/llms-full.txt" style="color:#2563eb">LLMs-Full.txt</a>
             · <a href="/chinh-sach-bao-mat" style="color:#2563eb">Chính sách bảo mật</a>
             · <a href="/dieu-khoan-su-dung" style="color:#2563eb">Điều khoản sử dụng</a>
             · <a href="https://nguyenduytk.vercel.app/" rel="me noopener noreferrer" style="color:#2563eb">Portfolio</a>
@@ -530,23 +712,43 @@
           </p>
         </section>
 
-        <section style="margin-bottom:28px">
-          <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Câu Hỏi Thường Gặp Về ELEC Science AI</h2>
+        <section id="aeo-faq" style="margin-bottom:28px">
+          <h2 style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:12px">Câu Hỏi Thường Gặp Về ELEC Science AI (FAQ Chuẩn AEO)</h2>
           <article style="margin-bottom:14px">
-            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">Ai là nhà sáng lập ELEC AI (ELEC Science AI)?</h3>
-            <p style="margin:0;color:#475569">Nhà sáng lập (Founder) và người tạo ra ELEC Science AI (ELEC AI) là <strong>Nguyễn Thế Duy</strong> (Tk Media / Duy TK). Liên hệ và theo dõi trang Facebook chính thức của nhà sáng lập tại <a href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer" style="color:#2563eb">https://www.facebook.com/nguyentheduytk</a> hoặc xem <a href="/nha-sang-lap" style="color:#2563eb">tiểu sử nhà sáng lập ELEC AI</a>.</p>
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">1. ELEC Science AI là gì?</h3>
+            <p style="margin:0;color:#475569">ELEC Science AI (ELEC AI / ELECAI) tại <a href="https://www.elecai.id.vn/" style="color:#2563eb">elecai.id.vn</a> là nền tảng học tập, trợ lý AI và phòng thi ảo Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) theo chương trình GDPT 2018 dành cho học sinh THCS, THPT và giáo viên bộ môn.</p>
           </article>
           <article style="margin-bottom:14px">
-            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">ELEC Science AI là gì?</h3>
-            <p style="margin:0;color:#475569">ELEC Science AI (ELECAI) tại elecai.id.vn là nền tảng học Khoa học Tự nhiên với trợ lý AI dành cho học sinh THPT 3 môn Vật lí, Hóa học, Sinh học, kèm công cụ giao đề, giám sát thi, chấm OMR và quản lý lớp cho giáo viên.</p>
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">2. Ai là nhà sáng lập ELEC AI (ELEC Science AI)?</h3>
+            <p style="margin:0;color:#475569">Nhà sáng lập (Founder) và người tạo ra ELEC Science AI là <strong>Nguyễn Thế Duy</strong> (Tk Media / Duy TK, tại Thái Bình). Kết nối qua Facebook chính thức tại <a href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer" style="color:#2563eb">https://www.facebook.com/nguyentheduytk</a> hoặc xem <a href="/nha-sang-lap" style="color:#2563eb">tiểu sử nhà sáng lập ELEC AI</a>.</p>
           </article>
           <article style="margin-bottom:14px">
-            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">ELEC Science AI có miễn phí không?</h3>
-            <p style="margin:0;color:#475569">Có. Học sinh có thể tạo tài khoản và sử dụng miễn phí toàn bộ công cụ cốt lõi: Bảng tuần hoàn, Cân bằng PTHH, Công thức 3 môn, Quiz ôn tập và Sổ tay lỗi sai.</p>
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">3. Cấu trúc đề thi trong Phòng thi ảo ELEC Science AI chuẩn 2026 gồm mấy phần?</h3>
+            <p style="margin:0;color:#475569">Đề thi thử Vật lí, Hóa học, Sinh học gồm 3 phần trong 50 phút (thang điểm 10): Phần I gồm 18 câu trắc nghiệm 4 lựa chọn (4,5 điểm); Phần II gồm 4 câu Đúng/Sai với 16 ý nhỏ tính điểm lũy tiến 0,1 – 0,25 – 0,5 – 1,0 điểm/câu (4,0 điểm); Phần III gồm 6 câu trả lời ngắn điền số (1,5 điểm).</p>
           </article>
           <article style="margin-bottom:14px">
-            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">ELEC Science AI giải bài tập KHTN như thế nào?</h3>
-            <p style="margin:0;color:#475569">Nhập hoặc chụp ảnh đề bài (Vật lí, Hóa học, Sinh học), trợ lý AI hướng dẫn giải từng bước để hiểu bản chất thay vì chỉ đưa đáp án.</p>
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">4. ELEC Science AI giải bài tập KHTN từ ảnh như thế nào?</h3>
+            <p style="margin:0;color:#475569">Học sinh nhập đề hoặc tải lên tối đa 10 ảnh bài tập (Vật lí, Hóa học, Sinh học). Trợ lý AI kết hợp máy tính khoa học tích hợp để hướng dẫn giải từng bước theo 6 chế độ sư phạm thay vì chỉ đưa đáp án cuối.</p>
+          </article>
+          <article style="margin-bottom:14px">
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">5. Máy cân bằng phương trình hóa học trên ELEC AI dùng phương pháp nào?</h3>
+            <p style="margin:0;color:#475569">Công cụ sử dụng thuật toán khử Gauss trên ma trận đại số tuyến tính để tìm hệ số nguyên tối giản chính xác tuyệt đối, đồng thời chỉ rõ chất khử, chất oxi hóa và bảng kiểm tra nguyên tử hai vế.</p>
+          </article>
+          <article style="margin-bottom:14px">
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">6. Bảng tuần hoàn trên ELEC Science AI có chuẩn danh pháp IUPAC không?</h3>
+            <p style="margin:0;color:#475569">Có. Toàn bộ 118 nguyên tố được cập nhật theo danh pháp quốc tế IUPAC chuẩn GDPT 2018 kèm tên tiếng Việt, cấu hình electron, độ âm điện, số oxi hóa và mô phỏng lớp vỏ electron.</p>
+          </article>
+          <article style="margin-bottom:14px">
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">7. Thuật toán ôn tập ngắt quãng SRS và điểm Elo giúp ích gì?</h3>
+            <p style="margin:0;color:#475569">Điểm Elo đo lường chính xác năng lực theo từng chuyên đề, còn thuật toán SRS (SuperMemo SM-2) tự động lưu câu trả lời sai và lên lịch nhắc ôn lại ngay trước thời điểm bạn sắp quên.</p>
+          </article>
+          <article style="margin-bottom:14px">
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">8. Giáo viên dùng ELEC Science AI để giao đề và giám sát thi như thế nào?</h3>
+            <p style="margin:0;color:#475569">Giáo viên tạo đề từ PDF/Word/Ảnh hoặc ngân hàng câu hỏi, giao qua mã lớp, bật giám sát phòng thi AI cục bộ bằng MediaPipe và quét chấm phiếu trắc nghiệm giấy A4 qua camera (OMR).</p>
+          </article>
+          <article style="margin-bottom:14px">
+            <h3 style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:4px">9. ELEC Science AI có miễn phí không?</h3>
+            <p style="margin:0;color:#475569">Có. Học sinh có thể tạo tài khoản và sử dụng miễn phí toàn bộ công cụ cốt lõi: Bảng tuần hoàn, Cân bằng PTHH, Công thức 3 môn, Quiz ôn tập SRS, Tính điểm xét tuyển và Sổ tay lỗi sai.</p>
           </article>
           <p style="margin-top:20px"><a href="/#/register" style="font-weight:700;color:#2563eb">Tạo tài khoản miễn phí ngay</a> hoặc <a href="/#/login" style="font-weight:700;color:#2563eb">Đăng nhập hệ thống</a>.</p>
         </section>

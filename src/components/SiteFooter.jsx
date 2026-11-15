@@ -11,8 +11,10 @@ export default function SiteFooter() {
       {/* Info */}
       <div className="sf-top">
         <div className="sf-brand">
-          <b>ELEC AI</b>
-          <small>Trợ lý AI Khoa học Tự nhiên cho học sinh 10–12. Học chủ động, hiểu tận gốc 3 môn Lý — Hóa — Sinh.</small>
+          <b>ELEC Science AI (ELEC AI)</b>
+          <small>
+            Nền tảng học tập, trợ lý AI giải bài từng bước và phòng thi ảo Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học) chuẩn GDPT 2018 tại elecai.id.vn · Sáng lập &amp; phát triển bởi Nguyễn Thế Duy (Duy TK / Tk Media).
+          </small>
         </div>
 
         <div className="sf-links">

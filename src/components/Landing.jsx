@@ -141,6 +141,7 @@ const TRACK = [
 ];
 
 const FAQS = [
+  { cat: 'Cơ bản', icon: 'bulb', q: 'ELEC Science AI (ELEC AI) là gì?', a: 'ELEC Science AI (còn gọi là ELEC AI hoặc ELECAI, tại https://www.elecai.id.vn/) là nền tảng học tập, trợ lý AI giải bài tập từng bước và phòng thi ảo Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) chuẩn chương trình GDPT 2018 & ĐGNL (HSA, TSA, V-ACT), kèm bộ công cụ giao đề, giám sát thi MediaPipe và chấm phiếu OMR cho giáo viên.' },
   { cat: 'Cơ bản', icon: 'bulb', q: 'Ai là nhà sáng lập ELEC AI (ELEC Science AI)?', a: 'Nhà sáng lập (Founder) và người phát triển chính của ELEC Science AI (ELEC AI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, tại Thái Bình). Bạn có thể xem tiểu sử tại /nha-sang-lap hoặc kết nối qua Facebook chính thức: https://www.facebook.com/nguyentheduytk.' },
   { cat: 'Cơ bản', icon: 'bulb', q: 'Mình có phải trả phí không?', a: 'Phần lớn công cụ dùng miễn phí: bảng tuần hoàn, cân bằng PTHH, quiz, sổ câu sai, trò chơi, thư viện tài liệu. Một số tính năng nâng cao như AI Tạo Đề và Hỏi AI trong từng nguyên tố thuộc gói VIP.' },
   { cat: 'AI', icon: 'bot', q: 'AI có giải được bài từ ảnh chụp không?', a: 'Có. Bạn chụp hoặc dán ảnh đề (tối đa 10 ảnh một lần), AI đọc nội dung và giải từng bước. Ảnh rõ nét, đủ sáng sẽ cho kết quả tốt nhất. Nếu ảnh mờ, AI sẽ hỏi lại bạn.' },
@@ -762,13 +763,16 @@ function Grades() {
    ============================================================ */
 function FaqItem({ item, index }) {
   const [ref, on] = useInView(0.1);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(index < 2);
 
   return (
     <article
       ref={ref}
       className={'lp-faq-item' + (on ? ' in' : '') + (open ? ' open' : '')}
       style={{ '--i': index }}
+      itemScope
+      itemProp="mainEntity"
+      itemType="https://schema.org/Question"
     >
       <button
         type="button"
@@ -779,15 +783,21 @@ function FaqItem({ item, index }) {
         <span className="lp-faq-icon" aria-hidden="true"><FaqIcon name={item.icon} /></span>
         <span className="lp-faq-text">
           <span className="lp-faq-cat">{item.cat}</span>
-          <span className="lp-faq-title">{item.q}</span>
+          <span className="lp-faq-title" itemProp="name">{item.q}</span>
         </span>
         <span className="lp-faq-toggle" aria-hidden="true">
           <IcoPlus size={16} />
         </span>
       </button>
-      <div className="lp-faq-a" role="region">
+      <div
+        className="lp-faq-a"
+        role="region"
+        itemScope
+        itemProp="acceptedAnswer"
+        itemType="https://schema.org/Answer"
+      >
         <div className="lp-faq-a-inner">
-          <p>{item.a}</p>
+          <p itemProp="text">{item.a}</p>
         </div>
       </div>
     </article>
@@ -801,7 +811,7 @@ function Faq() {
   const list = cats === 'Tất cả' ? FAQS : FAQS.filter((f) => f.cat === cats);
 
   return (
-    <section className="lp-wrap lp-sec lp-faq" id="lp-faq">
+    <section className="lp-wrap lp-sec lp-faq" id="lp-faq" itemScope itemType="https://schema.org/FAQPage">
       <div ref={headRef} className={'lp-faq-head' + (headOn ? ' in' : '')}>
         <span className="lp-faq-tag">Hỏi đáp</span>
         <h2 className="lp-faq-h2">

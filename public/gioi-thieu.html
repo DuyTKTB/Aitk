@@ -15,6 +15,10 @@
     />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
     <link rel="canonical" href="https://www.elecai.id.vn/gioi-thieu" />
+    <link rel="alternate" hreflang="vi" href="https://www.elecai.id.vn/gioi-thieu" />
+    <link rel="alternate" hreflang="x-default" href="https://www.elecai.id.vn/gioi-thieu" />
+    <link rel="alternate" type="text/plain" href="https://www.elecai.id.vn/llms.txt" title="ELEC Science AI — LLMs.txt Summary" />
+    <link rel="alternate" type="text/plain" href="https://www.elecai.id.vn/llms-full.txt" title="ELEC Science AI — LLMs Full Knowledge Base" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
 
@@ -28,6 +32,15 @@
     <meta property="og:url" content="https://www.elecai.id.vn/gioi-thieu" />
     <meta property="og:image" content="https://www.elecai.id.vn/img/og-image.png" />
     <meta property="og:locale" content="vi_VN" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://www.elecai.id.vn/gioi-thieu" />
+    <meta name="twitter:title" content="Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI)" />
+    <meta
+      name="twitter:description"
+      content="Hệ sinh thái học tập &amp; khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) chuẩn GDPT 2018 do Nguyễn Thế Duy sáng lập."
+    />
+    <meta name="twitter:image" content="https://www.elecai.id.vn/img/og-image.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -47,10 +60,35 @@
             "name": "Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI)",
             "description": "Tổng quan kiến trúc, sứ mệnh, toàn bộ phân hệ công cụ học tập & khảo thí KHTN và thông tin nhà sáng lập Nguyễn Thế Duy của ELEC Science AI.",
             "inLanguage": "vi-VN",
-            "dateModified": "2026-11-12",
+            "datePublished": "2025-09-01",
+            "dateModified": "2026-11-15",
             "isPartOf": { "@id": "https://www.elecai.id.vn/#website" },
             "about": { "@id": "https://www.elecai.id.vn/#app" },
-            "mainEntity": { "@id": "https://www.elecai.id.vn/#org" }
+            "mainEntity": { "@id": "https://www.elecai.id.vn/#org" },
+            "author": { "@id": "https://www.elecai.id.vn/#founder" },
+            "speakable": {
+              "@type": "SpeakableSpecification",
+              "cssSelector": ["#aeo-summary", "#geo-specs", "#about-faq h3", "#about-faq p"]
+            }
+          },
+          {
+            "@type": ["Organization", "EducationalOrganization"],
+            "@id": "https://www.elecai.id.vn/#org",
+            "name": "ELEC Science AI",
+            "alternateName": ["ELEC AI", "ELECAI", "Elec AI"],
+            "url": "https://www.elecai.id.vn/",
+            "founder": {
+              "@type": "Person",
+              "@id": "https://www.elecai.id.vn/#founder",
+              "name": "Nguyễn Thế Duy",
+              "alternateName": ["Nguyen The Duy", "Duy TK", "Tk Media", "nguyentheduytk"],
+              "url": "https://www.elecai.id.vn/nha-sang-lap",
+              "sameAs": [
+                "https://www.facebook.com/nguyentheduytk",
+                "https://nguyenduytk.vercel.app/",
+                "https://photobothne.io.vn/"
+              ]
+            }
           },
           {
             "@type": "BreadcrumbList",
@@ -58,6 +96,28 @@
             "itemListElement": [
               { "@type": "ListItem", "position": 1, "name": "Trang chủ ELEC AI", "item": "https://www.elecai.id.vn/" },
               { "@type": "ListItem", "position": 2, "name": "Giới thiệu ELEC Science AI", "item": "https://www.elecai.id.vn/gioi-thieu" }
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://www.elecai.id.vn/gioi-thieu#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "ELEC Science AI giải quyết bài toán gì trong giáo dục Khoa học Tự nhiên?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "ELEC Science AI hợp nhất toàn bộ quy trình Hỏi — Hiểu — Thực hành — Khảo thí — Ghi nhớ dài hạn cho 3 môn Vật lí, Hóa học, Sinh học theo chương trình GDPT 2018. Hệ thống kết hợp mô hình AI đa phương thức với máy tính khoa học xác định để giảm sai số tính toán, đồng thời tích hợp phòng thi ảo chuẩn 3 phần Bộ GD&ĐT 2026, lộ trình Elo và ôn tập ngắt quãng SRS (SuperMemo SM-2)."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Ai là người sáng lập và phát triển ELEC Science AI?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "ELEC Science AI được sáng lập và phát triển chính bởi Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, tại Thái Bình). Trang tiểu sử chính thức: https://www.elecai.id.vn/nha-sang-lap — Facebook: https://www.facebook.com/nguyentheduytk."
+                }
+              }
             ]
           }
         ]
@@ -141,12 +201,41 @@
       <header>
         <span class="badge">Tổng quan nền tảng EdTech KHTN</span>
         <h1>Giới Thiệu Chi Tiết Về ELEC Science AI (ELEC AI)</h1>
-        <p class="lead">
+        <p class="lead" id="aeo-summary">
           <strong>ELEC Science AI</strong> (thường gọi là <strong>ELEC AI</strong> hoặc <strong>ELECAI</strong>, địa chỉ chính thức <a class="inline" href="https://www.elecai.id.vn/">https://www.elecai.id.vn/</a>) là nền tảng học tập, trợ lý AI và khảo thí trực tuyến chuyên sâu về <strong>Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học)</strong> theo Chương trình Giáo dục Phổ thông 2018 tại Việt Nam, do <strong>Nguyễn Thế Duy (Duy TK / Tk Media)</strong> sáng lập và phát triển.
         </p>
       </header>
 
       <main>
+        <section class="card" id="geo-specs">
+          <h2>Bảng Thông Số Định Danh Nền Tảng (AEO / GEO Fact Sheet)</h2>
+          <dl style="margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 20px;font-size:15px">
+            <div>
+              <dt style="font-weight:700;color:#93c5fd">Tên chính thức &amp; Viết tắt</dt>
+              <dd style="margin:2px 0 0;color:#cbd5e1">ELEC Science AI (ELEC AI, ELECAI)</dd>
+            </div>
+            <div>
+              <dt style="font-weight:700;color:#93c5fd">Tên miền chính thức</dt>
+              <dd style="margin:2px 0 0;color:#cbd5e1"><a class="inline" href="https://www.elecai.id.vn/">https://www.elecai.id.vn/</a></dd>
+            </div>
+            <div>
+              <dt style="font-weight:700;color:#93c5fd">Nhà sáng lập (Founder)</dt>
+              <dd style="margin:2px 0 0;color:#cbd5e1"><a class="inline" href="/nha-sang-lap">Nguyễn Thế Duy (Duy TK / Tk Media)</a></dd>
+            </div>
+            <div>
+              <dt style="font-weight:700;color:#93c5fd">Phân môn trọng tâm</dt>
+              <dd style="margin:2px 0 0;color:#cbd5e1">Vật lí, Hóa học (IUPAC), Sinh học (Lớp 10, 11, 12)</dd>
+            </div>
+            <div>
+              <dt style="font-weight:700;color:#93c5fd">Chuẩn khảo thí hỗ trợ</dt>
+              <dd style="margin:2px 0 0;color:#cbd5e1">Tốt nghiệp THPT 3 phần (2025–2026), HSA, TSA, V-ACT</dd>
+            </div>
+            <div>
+              <dt style="font-weight:700;color:#93c5fd">Tài liệu ngữ cảnh cho AI</dt>
+              <dd style="margin:2px 0 0;color:#cbd5e1"><a class="inline" href="/llms.txt">llms.txt</a> · <a class="inline" href="/llms-full.txt">llms-full.txt</a></dd>
+            </div>
+          </dl>
+        </section>
         <section class="card">
           <h2>1. Sứ mệnh &amp; Bài toán mà ELEC Science AI giải quyết</h2>
           <p>
@@ -215,6 +304,18 @@
           <p>
             Xem tiểu sử đầy đủ tại <a class="inline" href="/nha-sang-lap">https://www.elecai.id.vn/nha-sang-lap</a> hoặc kết nối qua Facebook chính thức:
             <a class="inline" href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer">https://www.facebook.com/nguyentheduytk</a>.
+          </p>
+        </section>
+
+        <section class="card" id="about-faq">
+          <h2>6. Câu hỏi thường gặp (AEO Quick Answers)</h2>
+          <h3>ELEC Science AI giải quyết bài toán gì trong giáo dục Khoa học Tự nhiên?</h3>
+          <p>
+            ELEC Science AI hợp nhất toàn bộ quy trình Hỏi — Hiểu — Thực hành — Khảo thí — Ghi nhớ dài hạn cho 3 môn Vật lí, Hóa học, Sinh học theo chương trình GDPT 2018. Hệ thống kết hợp mô hình AI đa phương thức với máy tính khoa học xác định để giảm sai số tính toán, đồng thời tích hợp phòng thi ảo chuẩn 3 phần Bộ GD&amp;ĐT 2026, lộ trình Elo và ôn tập ngắt quãng SRS (SuperMemo SM-2).
+          </p>
+          <h3>Ai là người sáng lập và phát triển ELEC Science AI?</h3>
+          <p>
+            ELEC Science AI được sáng lập và phát triển chính bởi <strong>Nguyễn Thế Duy</strong> (biệt danh Tk Media / Duy TK, tại Thái Bình). Xem chi tiết tại <a class="inline" href="/nha-sang-lap">trang Nhà sáng lập</a>.
           </p>
         </section>
       </main>

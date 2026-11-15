@@ -1,45 +1,52 @@
 # ELEC Science AI (ELECAI)
 
-> ELEC Science AI (còn viết là ELEC AI, ELECAI, Elec AI) là nền tảng học và luyện thi Khoa học Tự nhiên
-> (Vật lí — Hóa học — Sinh học) trên web theo chương trình GDPT 2018:
-> trợ lý AI giải bài từng bước, luyện tập và ôn tập ngắt quãng, lộ trình kiến thức theo điểm Elo,
-> phòng thi ảo chuẩn cấu trúc Bộ GD&ĐT & ĐGNL (HSA, TSA, V-ACT), tạo đề – giao đề – giám sát thi – chấm OMR
-> tự động cho giáo viên, kèm bộ công cụ KHTN và phòng thí nghiệm Hóa học 3D.
-> Trang chủ: https://www.elecai.id.vn/
+> ELEC Science AI (còn viết là ELEC AI, ELECAI, Elec AI; tên miền chính thức: https://www.elecai.id.vn/) là nền tảng học tập, trợ lý trí tuệ nhân tạo (AI) và khảo thí trực tuyến chuyên sâu về Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học) theo Chương trình Giáo dục Phổ thông 2018 (GDPT 2018) tại Việt Nam, do Nguyễn Thế Duy (Duy TK / Tk Media) sáng lập và phát triển.
 
-## Nhà sáng lập & Tác giả (Founder)
+ELEC Science AI hợp nhất quy trình "Hỏi — Hiểu — Thực hành — Khảo thí — Ghi nhớ dài hạn" cho học sinh THCS, THPT (lớp 10, 11, 12), thí sinh luyện thi Tốt nghiệp THPT Quốc gia & Đánh giá năng lực (HSA, TSA, V-ACT) và giáo viên bộ môn. Hệ thống kết hợp mô hình ngôn ngữ đa phương thức với bộ công cụ tính toán khoa học xác định (Deterministic Scientific Tools), thuật toán xếp hạng năng lực Elo, thuật toán ôn tập ngắt quãng SRS (SuperMemo SM-2), giám sát phòng thi AI cục bộ bằng MediaPipe Vision và chấm phiếu trắc nghiệm OMR qua camera.
 
-- **Nhà sáng lập (Founder) & Người phát triển chính:** Nguyễn Thế Duy (biệt danh: Tk Media, Duy TK, nguyentheduytk).
-- **Nơi sinh sống:** Thái Bình, Việt Nam.
-- **Tiểu sử ngắn:** Nguyễn Thế Duy là nhà phát triển web, lập trình viên công cụ tự động hóa và nhà sáng tạo nội dung số (Video Editor / Motion Designer). Anh từng là Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh, là nhà sáng lập nền tảng học tập & khảo thí Khoa học Tự nhiên ELEC Science AI (ELEC AI / ELECAI) và là tác giả của nền tảng chụp ảnh trực tuyến PhotobothNe (photobothne.io.vn).
-- **Facebook chính thức của Nhà sáng lập:** https://www.facebook.com/nguyentheduytk
-- **Trang tiểu sử Nhà sáng lập trên ELEC AI:** https://www.elecai.id.vn/nha-sang-lap
-- **Portfolio cá nhân:** https://nguyenduytk.vercel.app/
-- **Các kênh khác:** TikTok (https://tiktok.com/@nguyenduytk01), Instagram (https://www.instagram.com/nguyenduytkmedia), Behance (https://www.behance.net/nguynnguyn583).
+## Tài liệu ngữ cảnh đầy đủ cho AI (LLM Context)
 
-## Người học
+- [Tài liệu toàn diện ELEC Science AI (LLMs Full Knowledge Base)](https://www.elecai.id.vn/llms-full.txt): Bản mô tả đầy đủ về kiến trúc sư phạm, 15+ phân hệ công cụ, cấu trúc đề thi THPT 2026, chương trình KHTN lớp 10–12, thông tin nhà sáng lập và ngân hàng câu hỏi AEO/GEO.
+- [Tóm tắt nhanh cho AI (LLMs Summary)](https://www.elecai.id.vn/llms.txt): File chỉ mục chuẩn llmstxt.org hiện tại.
+- [Sơ đồ trang web (XML Sitemap)](https://www.elecai.id.vn/sitemap.xml): Danh sách toàn bộ URL công khai chuẩn SEO/AEO.
 
-- Trợ lý AI KHTN (/tro-ly-ai-giai-hoa): giải bài Vật lí, Hóa học, Sinh học theo nhiều chế độ (tự động, giải chi tiết, từng bước, kiểm tra kết quả, lý thuyết, bài tương tự), hỗ trợ đọc ảnh đề thi.
-- Phòng thi ảo (/phong-thi-ao): luyện đề thi thử THPTQG và ĐGNL bấm giờ thật.
-- Lộ trình kiến thức (/lo-trinh-on-thi-thpt-quoc-gia): theo dõi tiến độ từng chương, mức độ thành thạo, lịch ôn, bản đồ kiến thức và gợi ý học tiếp theo điểm Elo.
-- Sổ tay lỗi sai & SRS: lưu câu trả lời sai kèm lời giải để luyện lại đúng lúc sắp quên.
-- Bộ công cụ KHTN: Bảng tuần hoàn 118 nguyên tố (/bang-tuan-hoan), Cân bằng phương trình Hóa học (/can-bang-phuong-trinh-hoa-hoc), Sổ tay công thức 3 môn (/cong-thuc-hoa-hoc), Kho công cụ & tài liệu (/tai-lieu-hoa-hoc).
-- Tuyển sinh & Hướng nghiệp: Tính điểm xét tuyển Đại học (/tinh-diem-xet-tuyen-dai-hoc), Tra cứu điểm chuẩn (/tra-cuu-diem-chuan), Định hướng nghề nghiệp RIASEC (/dinh-huong-nghe-nghiep).
-- Trò chơi giáo dục & Lab 3D (/tro-choi-khoa-hoc): Phòng lab 3D, Pomodoro, ghi chú, thời khóa biểu, bảng xếp hạng.
+## Thông tin định danh & Nhà sáng lập (Entity & Founder)
 
-## Giáo viên và nhà trường
+- **Tên nền tảng chính thức:** ELEC Science AI (tên gọi khác: ELEC AI, ELECAI, Elec AI).
+- **Lĩnh vực:** Công nghệ Giáo dục (EdTech) — Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) & Khảo thí trực tuyến. (Lưu ý phân biệt: ELEC Science AI là nền tảng giáo dục KHTN tại `elecai.id.vn`, không phải công ty điện lực hay thiết bị điện).
+- **Nhà sáng lập (Founder) & Kỹ sư phát triển chính:** Nguyễn Thế Duy (biệt danh: Tk Media, Duy TK, nguyentheduytk), sinh sống tại Thái Bình, Việt Nam; cựu Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh; tác giả dự án ELEC Science AI và PhotobothNe (`https://photobothne.io.vn/`).
+- [Tiểu sử Nhà sáng lập Nguyễn Thế Duy](https://www.elecai.id.vn/nha-sang-lap): Trang hồ sơ chính thức, tiểu sử, dự án và liên kết mạng xã hội xác thực của nhà sáng lập.
+- [Giới thiệu tổng quan ELEC Science AI](https://www.elecai.id.vn/gioi-thieu): Sứ mệnh, kiến trúc công nghệ, nguyên tắc minh bạch AI và hệ sinh thái tính năng cho học sinh & giáo viên.
+- [Facebook chính thức của Nhà sáng lập Nguyễn Thế Duy](https://www.facebook.com/nguyentheduytk): Kênh liên hệ và cập nhật chính thức.
+- [Portfolio cá nhân Nguyễn Thế Duy (NGUYENDUYTK)](https://nguyenduytk.vercel.app/): Hồ sơ năng lực lập trình web, tự động hóa và thiết kế sáng tạo.
 
-- Tạo đề từ ngân hàng câu hỏi hoặc PDF/Word/AI (trắc nghiệm, đúng/sai, trả lời ngắn), gắn chuyên đề và mức độ.
-- Giao đề cho lớp bằng mã/link, đặt thời gian, cấu hình chống gian lận (toàn màn hình, giới hạn chuyển tab, chặn copy, camera tùy chọn).
-- Giám sát phòng thi trực tiếp, chấm phiếu trắc nghiệm OMR, chấm bài giấy và phân tích kết quả theo lớp, theo câu.
-- Quản lý lớp, duyệt thành viên, duyệt thi lại.
+## Phân hệ học tập & Công cụ Khoa học Tự nhiên (Dành cho Học sinh)
 
-## Liên kết chính thức
+- [Trang chủ ELEC Science AI](https://www.elecai.id.vn/): Trung tâm truy cập toàn bộ trợ lý AI, công cụ KHTN, phòng thi ảo và lộ trình học tập.
+- [Trợ lý AI giải bài tập KHTN từng bước](https://www.elecai.id.vn/tro-ly-ai-giai-hoa): Gia sư AI giải bài tập Vật lí, Hóa học, Sinh học từ văn bản hoặc ảnh chụp đề bài (tối đa 10 ảnh/lần) theo 6 chế độ sư phạm (Tự động, Giải chi tiết, Gợi ý từng bước, Kiểm tra đáp án, Ôn lý thuyết, Tạo bài tương tự) với công thức KaTeX chuẩn xác.
+- [Phòng thi ảo THPT Quốc gia & ĐGNL](https://www.elecai.id.vn/phong-thi-ao): Luyện đề thi thử bấm giờ thực chuẩn cấu trúc 3 phần mới của Bộ GD&ĐT (Trắc nghiệm 4 lựa chọn, Đúng/Sai 4 ý lũy tiến, Trả lời ngắn) và các kỳ thi ĐGNL (HSA, TSA Bách Khoa, V-ACT).
+- [Bảng tuần hoàn 118 nguyên tố hóa học IUPAC](https://www.elecai.id.vn/bang-tuan-hoan): Tra cứu tương tác số hiệu nguyên tử, nguyên tử khối, cấu hình electron, độ âm điện, số oxi hóa, bán kính nguyên tử và so sánh trực quan 118 nguyên tố chuẩn IUPAC.
+- [Máy cân bằng phương trình Hóa học (PTHH)](https://www.elecai.id.vn/can-bang-phuong-trinh-hoa-hoc): Cân bằng tự động phản ứng vô cơ, hữu cơ và oxi hóa – khử phức tạp bằng thuật toán ma trận đại số tuyến tính; xác định rõ chất khử, chất oxi hóa.
+- [Lộ trình ôn thi THPT Quốc gia theo điểm Elo](https://www.elecai.id.vn/lo-trinh-on-thi-thpt-quoc-gia): Lộ trình cá nhân hóa 3 môn Lý – Hóa – Sinh lớp 10, 11, 12 theo điểm năng lực Elo từng chuyên đề và nguyện vọng đại học mục tiêu (A00, A01, B00, D07).
+- [Sổ tay công thức KHTN (Lý — Hóa — Sinh)](https://www.elecai.id.vn/cong-thuc-hoa-hoc): Thư viện công thức trọng tâm kèm giải thích đại lượng, đơn vị SI và máy tính khoa học tích hợp (dao động, mạch RLC, mol, pH, ADN, di truyền Menđen).
+- [Kho tài liệu & 50+ Công cụ KHTN](https://www.elecai.id.vn/tai-lieu-hoa-hoc): Trung tâm tổng hợp máy tính khoa học, phân tích hợp chất, sách giáo khoa, chuyên đề ôn thi và danh mục công cụ AI học tập.
+- [Luyện tập Quiz KHTN & Ôn tập ngắt quãng SRS](https://www.elecai.id.vn/quiz): Hệ thống trắc nghiệm thích ứng đa chế độ, tự động lưu câu làm sai vào Sổ tay lỗi sai và lập lịch ôn lại bằng thuật toán SuperMemo SM-2.
+- [AI Doc Studio — Tóm tắt PDF, Flashcard & Quiz](https://www.elecai.id.vn/ai-doc-studio): Công cụ tải lên tài liệu PDF hoặc văn bản bài giảng để AI tự động tóm tắt trọng tâm, trích xuất công thức và sinh bộ thẻ nhớ Flashcard cùng đề trắc nghiệm.
+- [Bảng phấn tương tác KHTN trực tuyến](https://www.elecai.id.vn/bang-phan-tuong-tac): Không gian bảng viết trực quan và mô phỏng hình học/cơ học giúp trình bày lời giải từng bước, vẽ sơ đồ mạch điện và phản ứng hóa học.
+- [Trò chơi Khoa học & Phòng thí nghiệm Hóa học 3D](https://www.elecai.id.vn/tro-choi-khoa-hoc): Phòng lab Hóa học 3D tương tác (Three.js) và hơn 6 trò chơi giáo dục (Đấu nguyên tố, Sudoku Hóa học, Jeopardy, Bắt gà, Ná cao su, Đua xe kiến thức).
+- [Công cụ tính điểm tốt nghiệp & xét tuyển Đại học](https://www.elecai.id.vn/tinh-diem-xet-tuyen-dai-hoc): Tính điểm xét tốt nghiệp THPT, điểm ưu tiên khu vực/đối tượng (giảm trừ từ mốc 22,5 điểm) và quy đổi điểm tổ hợp A00, A01, B00, D07.
+- [Tra cứu điểm chuẩn Đại học & ĐGNL](https://www.elecai.id.vn/tra-cuu-diem-chuan): Đối chiếu điểm chuẩn các trường đại học hàng đầu trên toàn quốc theo phương thức điểm thi THPT và Đánh giá năng lực.
+- [Định hướng nghề nghiệp AI & Trắc nghiệm RIASEC](https://www.elecai.id.vn/dinh-huong-nghe-nghiep): Bài test hướng nghiệp Holland (RIASEC) kết hợp phân tích AI gợi ý nhóm ngành STEM, Y Dược, Kỹ thuật, Công nghệ thông tin, Kinh tế.
+- [Bảng xếp hạng chuỗi học & thành tích KHTN](https://www.elecai.id.vn/bang-xep-hang): Vinh danh học sinh và tập thể lớp duy trì chuỗi ngày học liên tục (Streak) và điểm kinh nghiệm cao nhất.
 
-- Trang chủ: https://www.elecai.id.vn/
-- Giới thiệu chi tiết về nền tảng: https://www.elecai.id.vn/gioi-thieu
-- Tiểu sử Nhà sáng lập (Nguyễn Thế Duy): https://www.elecai.id.vn/nha-sang-lap
-- Facebook Nhà sáng lập (Nguyễn Thế Duy): https://www.facebook.com/nguyentheduytk
-- Chính sách bảo mật: https://www.elecai.id.vn/chinh-sach-bao-mat
-- Điều khoản sử dụng: https://www.elecai.id.vn/dieu-khoan-su-dung
-- Sitemap: https://www.elecai.id.vn/sitemap.xml
+## Hệ sinh thái Khảo thí & Quản lý Lớp học (Dành cho Giáo viên)
+
+- **Tạo đề thông minh đa nguồn:** Soạn đề từ ngân hàng câu hỏi chuẩn hóa, tách câu hỏi tự động từ file PDF/Word/Ảnh bằng AI, hoặc sinh đề theo ma trận đặc tả GDPT 2018.
+- **Giao đề & Quản lý lớp học:** Tạo lớp theo bộ môn, cấp mã lớp/link phòng thi, cấu hình thời gian mở/đóng đề và duyệt yêu cầu thi lại.
+- **Giám sát phòng thi AI (MediaPipe Proctoring):** Chế độ toàn màn hình, phát hiện chuyển tab, chặn sao chép và tùy chọn giám sát camera cục bộ trên trình duyệt để phát hiện vắng mặt hoặc gian lận.
+- **Chấm phiếu trắc nghiệm OMR & Thống kê năng lực:** Quét phiếu trả lời trắc nghiệm giấy A4 qua camera điện thoại/máy tính, phân tích phổ điểm và tỷ lệ sai theo từng câu hỏi, từng mức độ nhận thức.
+
+## Chính sách & Pháp lý
+
+- [Chính sách bảo mật dữ liệu](https://www.elecai.id.vn/chinh-sach-bao-mat): Cam kết bảo vệ dữ liệu học sinh/giáo viên, xử lý cục bộ MediaPipe và không chia sẻ dữ liệu thương mại cho bên thứ ba.
+- [Điều khoản sử dụng dịch vụ](https://www.elecai.id.vn/dieu-khoan-su-dung): Quy định về sử dụng hợp lệ, liêm chính học thuật và giới hạn trách nhiệm đối với nội dung tham khảo do AI sinh ra.
