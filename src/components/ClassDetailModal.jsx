@@ -134,6 +134,38 @@ const IconTrash = (p) => (
     <path d="M9 7V4h6v3" />
   </Svg>
 );
+const IconCopy = (p) => (
+  <Svg {...p}>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </Svg>
+);
+const IconQr = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    <path d="M14 14h3v3h-3zM17 20h4v-3M20 14v1" />
+  </Svg>
+);
+const IconShield = (p) => (
+  <Svg {...p}>
+    <path d="M12 3l7 3v5c0 4.6-2.9 8.4-7 10-4.1-1.6-7-5.4-7-10V6z" />
+    <path d="M9.5 12l1.8 1.8 3.4-3.6" />
+  </Svg>
+);
+
+export function formatClassBadge(name = '') {
+  const cleaned = String(name || '').replace(/^lớp\s+/i, '').trim();
+  if (!cleaned) return '?';
+  const compact = cleaned.replace(/\s+/g, '');
+  if (compact.length <= 4) return compact.toUpperCase();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words.slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  }
+  return compact.slice(0, 3).toUpperCase();
+}
 
 const tsMs = (v) => {
   if (!v) return 0;
@@ -173,6 +205,18 @@ const pctOf = (sub) => {
   return Number.isNaN(n) ? 0 : Math.round(n);
 };
 
+export function buildTrendPoints(exams = [], submissionsMap = {}) {
+  return (exams || [])
+    .filter((ex) => (submissionsMap[ex.id] || []).length > 0)
+    .slice(-7)
+    .map((ex) => {
+      const subs = submissionsMap[ex.id] || [];
+      const scores = subs.map(pctOf);
+      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      return { label: ex.title, value: avg };
+    });
+}
+
 const timeAgoShort = (t) => {
   const ms = Date.now() - tsMs(t);
   if (ms < 60e3) return 'vừa xong';
@@ -189,6 +233,7 @@ export default function ClassDetailModal({
   classInfo,
   exams = [],
   initialTab = 'overview',
+  initialSubmissionsMap = null,
   onClose,
   onExportCsv,
   onExportRoster,
@@ -223,8 +268,8 @@ export default function ClassDetailModal({
   const [copiedKey, setCopiedKey] = useState(false);
   const [search, setSearch] = useState('');
   const [memberFilter, setMemberFilter] = useState('all');
-  const [submissionsMap, setSubmissionsMap] = useState({});
-  const [loadingSubs, setLoadingSubs] = useState(true);
+  const [submissionsMap, setSubmissionsMap] = useState(() => initialSubmissionsMap || {});
+  const [loadingSubs, setLoadingSubs] = useState(!initialSubmissionsMap);
   const [openStudent, setOpenStudent] = useState(null);
 
   const [retryNote, setRetryNote] = useState({});
@@ -296,18 +341,20 @@ export default function ClassDetailModal({
       ? Math.round((activeStudentIds.size / totalStudents) * 100)
       : 0;
 
+    const examsWithSubsCount = exams.filter((ex) => (submissionsMap[ex.id] || []).length > 0).length;
     const totalViolations = allSubs.reduce((sum, s) => sum + (s.violationCount || 0), 0);
 
     return {
       totalExams,
       totalStudents,
       totalSubs,
+      examsWithSubsCount,
       avgScore,
       passRate,
       completedRate,
       totalViolations,
     };
-  }, [submissionsMap, exams.length, members.length]);
+  }, [submissionsMap, exams, members.length]);
 
   const studentsStats = useMemo(() => {
     return members.map((m) => {
@@ -368,16 +415,16 @@ export default function ClassDetailModal({
     });
   }, [studentsStats, memberFilter, search]);
 
-  const trendPoints = useMemo(() => {
-    return exams
-      .slice(-7)
-      .map((ex) => {
-        const subs = submissionsMap[ex.id] || [];
-        const scores = subs.map(pctOf);
-        const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-        return { label: ex.title, value: avg };
-      });
-  }, [exams, submissionsMap]);
+  const trendPoints = useMemo(
+    () => buildTrendPoints(exams, submissionsMap),
+    [exams, submissionsMap],
+  );
+
+  const classBadge = useMemo(() => formatClassBadge(classInfo?.name), [classInfo?.name]);
+  const unattemptedCount = useMemo(
+    () => studentsStats.filter((s) => s.doneCount === 0).length,
+    [studentsStats],
+  );
 
   const TABS = [
     { key: 'overview', label: 'Tổng quan', Icon: IconGrid },
@@ -429,8 +476,8 @@ export default function ClassDetailModal({
     >
       <div className="cd-modal vt-modal xl" role="dialog" aria-modal="true" aria-label={`Chi tiết lớp ${classInfo?.name}`}>
         <header className="cd-head">
-          <span className="cd-head-avatar">
-            {String(classInfo?.name || '?')[0].toUpperCase()}
+          <span className={`cd-head-avatar${classBadge.length >= 3 ? ' is-long' : ''}`}>
+            {classBadge}
           </span>
           <div className="cd-head-info">
             <div className="cd-head-title-row">
@@ -439,12 +486,15 @@ export default function ClassDetailModal({
               {classInfo?.key && (
                 <button
                   type="button"
-                  className="cd-key-pill"
+                  className={`cd-key-pill${copiedKey ? ' copied' : ''}`}
                   onClick={handleCopyClassKey}
                   title="Bấm để sao chép mã lớp"
                 >
                   <span>Mã: <b>{classInfo.key}</b></span>
-                  <small>{copiedKey ? 'Đã chép!' : 'Sao chép'}</small>
+                  <small>
+                    {copiedKey ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                    {copiedKey ? 'Đã chép!' : 'Sao chép'}
+                  </small>
                 </button>
               )}
             </div>
@@ -461,7 +511,7 @@ export default function ClassDetailModal({
                 onClick={() => onShareKey(classInfo)}
                 title="Mở mã QR tham gia lớp"
               >
-                Mã QR
+                <IconQr size={14} /> Mã QR
               </button>
             )}
             {onExportCsv && (
@@ -552,32 +602,68 @@ export default function ClassDetailModal({
               )}
 
               <div className="cd-stat-grid">
-                <div className="cd-stat" onClick={() => { setTab('members'); setPeopleSubTab('roster'); }} style={{ cursor: 'pointer' }}>
+                <div
+                  className="cd-stat is-clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { setTab('members'); setPeopleSubTab('roster'); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab('members'); setPeopleSubTab('roster'); } }}
+                >
                   <span className="cd-stat-ico"><IconUsers size={18} /></span>
                   <div>
                     <small>Học sinh</small>
                     <b>{classStats.totalStudents}</b>
+                    <span className="cd-stat-sub">
+                      {classStats.totalStudents === 0 ? 'Chưa có HS' : 'Đang tham gia'}
+                    </span>
                   </div>
                 </div>
-                <div className="cd-stat" onClick={() => setTab('exams')} style={{ cursor: 'pointer' }}>
-                  <span className="cd-stat-ico"><IconBook size={18} /></span>
+                <div
+                  className="cd-stat is-clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setTab('exams')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab('exams'); } }}
+                >
+                  <span className="cd-stat-ico violet"><IconBook size={18} /></span>
                   <div>
                     <small>Đề thi</small>
                     <b>{classStats.totalExams}</b>
+                    <span className="cd-stat-sub">
+                      {classStats.totalExams === 0
+                        ? 'Chưa giao đề'
+                        : `${classStats.examsWithSubsCount || 0} đề đã có bài`}
+                    </span>
                   </div>
                 </div>
-                <div className="cd-stat" onClick={() => { setTab('scores'); setScoreSubTab('matrix'); }} style={{ cursor: 'pointer' }}>
-                  <span className="cd-stat-ico"><IconCheck size={18} /></span>
+                <div
+                  className="cd-stat is-clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { setTab('scores'); setScoreSubTab('matrix'); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab('scores'); setScoreSubTab('matrix'); } }}
+                >
+                  <span className="cd-stat-ico ok"><IconCheck size={18} /></span>
                   <div>
                     <small>Lượt nộp</small>
                     <b>{classStats.totalSubs}</b>
+                    <span className="cd-stat-sub">
+                      {classStats.totalSubs === 0
+                        ? 'Đang chờ bài nộp'
+                        : `Đạt ${classStats.passRate}%`}
+                    </span>
                   </div>
                 </div>
                 <div className="cd-stat">
-                  <span className="cd-stat-ico warn"><IconAlert size={18} /></span>
+                  <span className={`cd-stat-ico ${classStats.totalViolations > 0 ? 'warn' : 'ok'}`}>
+                    {classStats.totalViolations > 0 ? <IconAlert size={18} /> : <IconShield size={18} />}
+                  </span>
                   <div>
                     <small>Vi phạm</small>
                     <b>{classStats.totalViolations}</b>
+                    <span className="cd-stat-sub">
+                      {classStats.totalViolations > 0 ? 'Cần rà soát' : 'Chưa ghi nhận'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -589,7 +675,7 @@ export default function ClassDetailModal({
                   </h3>
                   <div className="cd-overview-chart">
                     <Donut
-                      value={classStats.avgScore || 0}
+                      value={classStats.avgScore ?? 0}
                       max={100}
                       size={112}
                       stroke={10}
@@ -600,30 +686,62 @@ export default function ClassDetailModal({
                               : 'danger'
                       }
                     >
-                      <strong>{classStats.avgScore == null ? '—' : classStats.avgScore}<sup>%</sup></strong>
-                      <small>trung bình</small>
+                      {classStats.avgScore == null ? (
+                        <>
+                          <strong>—</strong>
+                          <small>chưa có điểm</small>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{classStats.avgScore}<sup>%</sup></strong>
+                          <small>trung bình</small>
+                        </>
+                      )}
                     </Donut>
                     <ul className="cd-overview-facts">
                       <li>
-                        <span>Tỷ lệ bài đạt (≥ 50%)</span>
-                        <b>{classStats.passRate}%</b>
+                        <div className="cd-fact-row">
+                          <span>Tỷ lệ bài đạt (≥ 50%)</span>
+                          <b>{classStats.passRate}%</b>
+                        </div>
+                        <span className="cd-fact-bar">
+                          <i className="ok" style={{ width: `${classStats.passRate}%` }} />
+                        </span>
                       </li>
                       <li>
-                        <span>HS đã làm ít nhất 1 đề</span>
-                        <b>{classStats.completedRate}%</b>
+                        <div className="cd-fact-row">
+                          <span>HS đã làm ít nhất 1 đề</span>
+                          <b>{classStats.completedRate}%</b>
+                        </div>
+                        <span className="cd-fact-bar">
+                          <i style={{ width: `${classStats.completedRate}%` }} />
+                        </span>
                       </li>
                       <li>
-                        <span>Chưa làm bài nào</span>
-                        <b>{studentsStats.filter((s) => s.doneCount === 0).length} HS</b>
+                        <div className="cd-fact-row">
+                          <span>Chưa làm bài nào</span>
+                          <b>{unattemptedCount} HS</b>
+                        </div>
+                        <span className="cd-fact-bar">
+                          <i
+                            className="amber"
+                            style={{ width: `${members.length ? Math.round((unattemptedCount / members.length) * 100) : 0}%` }}
+                          />
+                        </span>
                       </li>
                     </ul>
                   </div>
                 </div>
 
                 <div className="cd-card">
-                  <h3>
-                    <IconTrendUp size={15} /> Xu hướng điểm qua các đề
-                  </h3>
+                  <div className="cd-card-head-row">
+                    <h3>
+                      <IconTrendUp size={15} /> Xu hướng điểm qua các đề
+                    </h3>
+                    {trendPoints.length > 0 && (
+                      <span className="cd-card-pill">{trendPoints.length} đề có bài</span>
+                    )}
+                  </div>
                   {trendPoints.length > 0 ? (
                     <div className="cd-trend-box">
                       <TrendChart points={trendPoints} mode="line" max={100} />
@@ -637,12 +755,18 @@ export default function ClassDetailModal({
                       </div>
                     </div>
                   ) : (
-                    <p className="cd-muted">Chưa có bài nộp nào</p>
+                    <div className="cd-chart-empty">
+                      <span className="cd-chart-empty-ico">
+                        <IconTrendUp size={18} />
+                      </span>
+                      <strong>Chưa có dữ liệu điểm</strong>
+                      <small>Biểu đồ xu hướng tự động hiển thị khi học sinh bắt đầu nộp bài.</small>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Hàng dưới: Đề thi gần đây & Học sinh tiêu biểu / Cần chú ý (Lấp đầy không gian hợp lý) */}
+              {/* Hàng dưới: Đề thi gần đây & Học sinh tiêu biểu / Cần chú ý */}
               <div className="cd-overview-cols">
                 <div className="cd-card">
                   <div className="cd-card-head-row">
@@ -654,18 +778,31 @@ export default function ClassDetailModal({
                     )}
                   </div>
                   {exams.length === 0 ? (
-                    <p className="cd-muted">Lớp chưa có đề kiểm tra nào.</p>
+                    <div className="cd-invite-empty">
+                      <strong>Lớp chưa có đề kiểm tra nào</strong>
+                      <small>Gán đề từ ngân hàng đề hoặc tạo đề mới trong tab Đề thi.</small>
+                      <div className="cd-invite-actions">
+                        <button type="button" className="vt-btn sm primary" onClick={() => setTab('exams')}>
+                          Mở mục Đề thi
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <ul className="cd-mini-list">
                       {exams.slice(0, 4).map((ex) => {
                         const subs = submissionsMap[ex.id] || [];
+                        const qCount = ex.questions?.length || 0;
                         const scores = subs.filter((s) => s.totalPoints > 0).map((s) => (s.score / s.totalPoints) * 100);
                         const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
                         return (
                           <li key={ex.id} className="cd-mini-item" onClick={() => onOpenExam?.(ex.id)}>
                             <div className="cd-mini-main">
                               <b>{ex.title}</b>
-                              <small>{ex.questions?.length || 0} câu · {ex.duration || 45} phút</small>
+                              <small>
+                                {qCount > 0 ? `${qCount} câu` : <span className="cd-warn-tag">Chưa có câu hỏi</span>}
+                                {' · '}
+                                {ex.duration || 45} phút
+                              </small>
                             </div>
                             <div className="cd-mini-right">
                               <span className="cd-badge">{subs.length}/{members.length} nộp</span>
@@ -688,7 +825,25 @@ export default function ClassDetailModal({
                     </button>
                   </div>
                   {studentsStats.length === 0 ? (
-                    <p className="cd-muted">Chưa có học sinh trong lớp.</p>
+                    <div className="cd-invite-empty">
+                      <strong>Chưa có học sinh nào tham gia</strong>
+                      <small>Gửi mã lớp hoặc mã QR để học sinh vào lớp nhanh chóng.</small>
+                      {(classInfo?.key || onShareKey) && (
+                        <div className="cd-invite-actions">
+                          {classInfo?.key && (
+                            <button type="button" className="vt-btn sm primary" onClick={handleCopyClassKey}>
+                              {copiedKey ? <IconCheck size={13} /> : <IconCopy size={13} />}
+                              {copiedKey ? 'Đã chép mã!' : 'Sao chép mã'}
+                            </button>
+                          )}
+                          {onShareKey && (
+                            <button type="button" className="vt-btn sm" onClick={() => onShareKey(classInfo)}>
+                              <IconQr size={13} /> Mở mã QR
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <ul className="cd-mini-list">
                       {studentsStats.slice(0, 5).map((s) => (

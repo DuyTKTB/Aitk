@@ -84,6 +84,8 @@ import {
   setStudentForceSubmit,
 } from '../src/lib/examSession.js';
 import ExamPickerFromBank, { BankQuestionChoices } from '../src/components/teacher/ExamPickerFromBank.jsx';
+import { Donut } from '../src/components/DashShell.jsx';
+import ClassDetailModal, { formatClassBadge, buildTrendPoints } from '../src/components/ClassDetailModal.jsx';
 import {
   DEFAULT_COUNTS,
   DEFAULT_SCORING,
@@ -591,5 +593,87 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
       })
     );
     expect(pickerHtml).toContain('Chọn câu từ ngân hàng');
+  });
+
+  it('Donut không vẽ vòng tròn fg khi value = 0 (tránh chấm tròn ở đỉnh)', () => {
+    globalThis.React = React;
+    const zeroHtml = renderToStaticMarkup(
+      React.createElement(Donut, { value: 0, max: 100 })
+    );
+    expect(zeroHtml).toContain('vt-donut-bg');
+    expect(zeroHtml).not.toContain('vt-donut-fg');
+
+    const activeHtml = renderToStaticMarkup(
+      React.createElement(Donut, { value: 75, max: 100 })
+    );
+    expect(activeHtml).toContain('vt-donut-fg');
+    expect(activeHtml).toContain('stroke-dasharray');
+  });
+
+  it('formatClassBadge rút gọn tên lớp chuẩn xác (11A9, Lớp 12A1, nhiều từ)', () => {
+    expect(formatClassBadge('11A9')).toBe('11A9');
+    expect(formatClassBadge('Lớp 12A1')).toBe('12A1');
+    expect(formatClassBadge('Đội tuyển Hóa 11')).toBe('ĐT');
+    expect(formatClassBadge('ToánNângCao')).toBe('TOÁ');
+    expect(formatClassBadge('')).toBe('?');
+  });
+
+  it('ClassDetailModal hiển thị trạng thái rỗng sạch khi chưa có bài nộp và chỉ vẽ đề đã có bài', () => {
+    globalThis.React = React;
+    const baseClass = {
+      id: 'cls_11a9',
+      name: '11A9',
+      subject: 'Sinh học',
+      key: '11A9-8C72AL6H',
+      teacherName: 'Cô Lan',
+      members: [],
+    };
+
+    const emptyHtml = renderToStaticMarkup(
+      React.createElement(ClassDetailModal, {
+        classInfo: baseClass,
+        exams: [{ id: 'e1', title: 'Đề trống', questions: [] }],
+        initialSubmissionsMap: { e1: [] },
+        onClose: () => {},
+        onShareKey: () => {},
+      })
+    );
+    expect(emptyHtml).toContain('cd-head-avatar is-long');
+    expect(emptyHtml).toContain('>11A9<');
+    expect(emptyHtml).toContain('chưa có điểm');
+    expect(emptyHtml).toContain('Chưa ghi nhận');
+    expect(emptyHtml).toContain('Chưa có dữ liệu điểm');
+    expect(emptyHtml).toContain('Chưa có câu hỏi');
+    expect(emptyHtml).toContain('Sao chép mã');
+    expect(emptyHtml).not.toContain('vt-donut-fg');
+    expect(emptyHtml).not.toContain('vt-chart');
+
+    const exams = [
+      { id: 'e1', title: 'Đề 1', questions: [{ q: 'Q1' }] },
+      { id: 'e2', title: 'Đề 2 chưa nộp', questions: [{ q: 'Q2' }] },
+    ];
+    const submissionsMap = {
+      e1: [{ studentId: 's1', score: 8, totalPoints: 10, violationCount: 2 }],
+      e2: [],
+    };
+    expect(buildTrendPoints(exams, submissionsMap)).toEqual([
+      { label: 'Đề 1', value: 80 },
+    ]);
+
+    const populatedHtml = renderToStaticMarkup(
+      React.createElement(ClassDetailModal, {
+        classInfo: { ...baseClass, members: [{ id: 's1', name: 'Nguyễn An' }] },
+        exams,
+        initialSubmissionsMap: submissionsMap,
+        onClose: () => {},
+      })
+    );
+    expect(populatedHtml).toContain('vt-donut-fg');
+    expect(populatedHtml).toContain('vt-chart');
+    expect(populatedHtml).toContain('1 đề có bài');
+    expect(populatedHtml).toContain('80%');
+    expect(populatedHtml).toContain('Cần rà soát');
+    expect(populatedHtml).toContain('<small>Đề 1</small>');
+    expect(populatedHtml).not.toContain('<small>Đề 2 chưa nộp</small>');
   });
 });

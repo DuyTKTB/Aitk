@@ -105,17 +105,19 @@ export function Donut({ value = 0, max = 100, size = 120, stroke = 12, tone = 'a
     <div className="vt-donut" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
         <circle className="vt-donut-bg" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} fill="none" />
-        <circle
-          className={'vt-donut-fg ' + tone}
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${c * p} ${c}`}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
+        {p > 0 && (
+          <circle
+            className={'vt-donut-fg ' + tone}
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${c * p} ${c}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        )}
       </svg>
       <div className="vt-donut-in">{children}</div>
     </div>
