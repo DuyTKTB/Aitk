@@ -190,6 +190,7 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
 
   useEffect(() => {
     const onDocClick = (e) => {
+      if (e.target?.closest?.('.ns9-uprof-menu')) return;
       if (dropRef.current && !dropRef.current.contains(e.target)) {
         setOpen(false);
       }

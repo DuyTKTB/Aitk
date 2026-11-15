@@ -291,11 +291,11 @@
 }
 
 /* ============================================================
-   2. NAV MOBILE  (≤ 720px)
+   2. NAV MOBILE  (≤ 768px — khớp 100% với App.jsx isMobileScreen)
    ============================================================ */
 .bn { display: none; }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .dn { display: none !important; }
 
   .bn {
@@ -304,7 +304,7 @@
     position: fixed;
     left: 12px; right: 12px;
     bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    max-width: 480px;
+    max-width: 500px;
     margin-inline: auto;
     height: 64px;
     padding: 0 4px;
@@ -312,8 +312,8 @@
     background: var(--nav-bg-strong);
     border: 1px solid var(--nav-border);
     box-shadow: var(--nav-shadow);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
     z-index: 9999;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -348,8 +348,23 @@
   }
   .bn-item.on { color: var(--bn-on); }
   .bn-item:focus-visible { outline: 2px solid var(--acc); outline-offset: -4px; border-radius: 18px; }
-  .bn-ico { display: grid; place-items: center; height: 24px; }
+  .bn-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 24px; }
   .bn-ico svg { display: block; }
+  .bn-badge-dot {
+    position: absolute;
+    top: -4px;
+    right: -18px;
+    padding: 1px 4.5px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    color: #fff;
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+    pointer-events: none;
+  }
   .bn-label { font: 600 .66rem/1 var(--sans); letter-spacing: -.005em; }
 
   /* AI: nút tròn nổi lên giữa thanh */

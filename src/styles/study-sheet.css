@@ -1,5 +1,6 @@
 /* ============================================================
-   TOOLS HEADER + MENU BUTTON + BOTTOM SHEET
+   study-sheet.css — MENU KHÁM PHÁ & TIỆN ÍCH TRÊN ĐIỆN THOẠI (≤ 768px)
+   Thiết kế Apple Glassmorphism / Bento UI đồng bộ với Desktop Mega Menu
    ============================================================ */
 
 /* ============ 1. HEADER ROW — h1 + nút Menu ============ */
@@ -20,18 +21,16 @@
 .tools-page .tools-menu-btn {
   display: none;
   align-items: center;
-  gap: .45rem;
-  padding: .55rem 1rem;
-  border: 1.5px solid var(--ink);
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.35);
   border-radius: 999px;
-  background: var(--acc);
-  color: var(--acc-ink);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
   cursor: pointer;
-  font: 700 .78rem var(--mono);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  box-shadow: 3px 3px 0 var(--ink);
-  transition: transform .15s var(--ease), box-shadow .15s var(--ease);
+  font: 700 0.78rem var(--sans, system-ui, sans-serif);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
@@ -43,18 +42,17 @@
 }
 
 .tools-page .tools-menu-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--ink);
+  transform: scale(0.96);
 }
 
-/* ============ 3. BOTTOM SHEET — ẩn mặc định ============ */
+/* ============ 3. BOTTOM SHEET — ẩn mặc định trên Desktop > 768px ============ */
 .ss-backdrop,
 .ss-sheet {
   display: none;
 }
 
-/* ============ 4. MOBILE — hiện nút Menu + sheet ============ */
-@media (max-width: 720px) {
+/* ============ 4. MOBILE & TABLET NHỎ (≤ 768px) — khớp 100% với App.jsx isMobileScreen ============ */
+@media (max-width: 768px) {
   .tools-page .tools-menu-btn {
     display: inline-flex;
   }
@@ -64,15 +62,16 @@
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 99998;
-    background: rgba(0, 0, 0, .55);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    animation: ss-fade-in .2s ease;
+    z-index: 100004;
+    background: rgba(15, 23, 42, 0.65);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    animation: ss-fade-in 0.2s ease;
   }
 
   @keyframes ss-fade-in {
     from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   /* Bottom Sheet */
@@ -83,17 +82,22 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 99999;
-
-    max-height: 80dvh;
-
-    background: var(--bg);
-    border-top: 2px solid var(--ink);
-    border-radius: 24px 24px 0 0;
-
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, .25);
-    animation: ss-slide-up .3s var(--ease);
+    z-index: 100005;
+    max-height: 86dvh;
+    background: #ffffff;
+    color: #0f172a;
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -16px 48px rgba(2, 6, 23, 0.35);
+    animation: ss-slide-up 0.26s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
+  }
+
+  [data-theme="dark"] .ss-sheet {
+    background: #0f172a;
+    color: #f8fafc;
+    border-top-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.65);
   }
 
   @keyframes ss-slide-up {
@@ -103,11 +107,11 @@
 
   /* Thanh grabber */
   .ss-grabber {
-    width: 44px;
-    height: 5px;
-    margin: 10px auto 0;
+    width: 40px;
+    height: 4px;
+    margin: 10px auto 2px;
     border-radius: 999px;
-    background: var(--soft);
+    background: rgba(148, 163, 184, 0.45);
     flex-shrink: 0;
   }
 
@@ -116,17 +120,53 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px 14px;
-    border-bottom: 1.5px solid var(--ink);
+    gap: 12px;
+    padding: 10px 18px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
     flex-shrink: 0;
+  }
+
+  .ss-head-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .ss-head-mascot {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 10px rgba(37, 99, 235, 0.28));
+  }
+
+  .ss-head-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
   }
 
   .ss-head h2 {
     margin: 0;
-    font: 700 1.05rem var(--sans);
-    letter-spacing: -.02em;
-    text-transform: uppercase;
-    color: var(--ink);
+    font-size: 1.02rem;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    color: inherit;
+  }
+
+  .ss-head-subtitle {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  [data-theme="dark"] .ss-head-subtitle {
+    color: #94a3b8;
   }
 
   .ss-close {
@@ -135,50 +175,244 @@
     width: 34px;
     height: 34px;
     padding: 0;
-    border: 0;
+    border: 1px solid rgba(148, 163, 184, 0.22);
     border-radius: 50%;
-    background: var(--soft);
-    color: var(--ink);
+    background: rgba(148, 163, 184, 0.1);
+    color: inherit;
     cursor: pointer;
+    flex-shrink: 0;
   }
 
-  .ss-close:active {
-    background: var(--acc);
-    color: var(--acc-ink);
-  }
-
-  /* Danh sách 13 mục — 2 cột */
-  .ss-list {
+  /* Vùng cuộn nội dung */
+  .ss-content-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* 1. Thẻ hồ sơ người dùng nhanh */
+  .ss-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(37, 99, 235, 0.06);
+    border: 1px solid rgba(37, 99, 235, 0.18);
+  }
+
+  [data-theme="dark"] .ss-profile-card {
+    background: rgba(30, 41, 59, 0.72);
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+
+  .ss-profile-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ss-profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ss-profile-name-row b {
+    font-size: 0.92rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ss-vip-badge {
+    font-size: 0.66rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+
+  .ss-vip-badge.vip {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+  }
+
+  .ss-vip-badge.free {
+    background: rgba(37, 99, 235, 0.14);
+    color: #2563eb;
+  }
+
+  [data-theme="dark"] .ss-vip-badge.free {
+    background: rgba(59, 130, 246, 0.22);
+    color: #60a5fa;
+  }
+
+  .ss-profile-sub {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.76rem;
+  }
+
+  .ss-streak-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+    color: #ea580c;
+  }
+
+  .ss-dot {
+    color: #94a3b8;
+  }
+
+  .ss-profile-link {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  [data-theme="dark"] .ss-profile-link {
+    color: #60a5fa;
+  }
+
+  /* 2. Hai lối vào nổi bật */
+  .ss-highlights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .ss-hl-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(248, 250, 252, 0.9);
+    transition: transform 0.15s ease;
+  }
+
+  [data-theme="dark"] .ss-hl-card {
+    background: rgba(30, 41, 59, 0.65);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .ss-hl-card:active {
+    transform: scale(0.97);
+  }
+
+  .ss-hl-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .ss-hl-icon.ai {
+    background: rgba(37, 99, 235, 0.14);
+    color: #2563eb;
+  }
+
+  .ss-hl-icon.lb {
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+  }
+
+  [data-theme="dark"] .ss-hl-icon.ai {
+    background: rgba(59, 130, 246, 0.22);
+    color: #60a5fa;
+  }
+
+  [data-theme="dark"] .ss-hl-icon.lb {
+    background: rgba(245, 158, 11, 0.22);
+    color: #fbbf24;
+  }
+
+  .ss-hl-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ss-hl-info b {
+    font-size: 0.82rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ss-hl-info small {
+    font-size: 0.7rem;
+    color: #64748b;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  [data-theme="dark"] .ss-hl-info small {
+    color: #94a3b8;
+  }
+
+  /* 3. Nhãn phân khu & Lưới công cụ */
+  .ss-section-label {
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: -6px;
+  }
+
+  [data-theme="dark"] .ss-section-label {
+    color: #94a3b8;
+  }
+
+  .ss-list {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    -webkit-overflow-scrolling: touch;
   }
 
-  /* Mỗi mục */
   .ss-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 14px;
-
-    border: 1.5px solid var(--soft);
-    border-radius: 14px;
-    background: var(--bg);
-    color: var(--ink);
-
+    padding: 10px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 15px;
+    background: rgba(248, 250, 252, 0.85);
+    color: inherit;
     text-decoration: none;
-    transition: all .18s var(--ease);
-    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    min-width: 0;
+  }
+
+  [data-theme="dark"] .ss-item {
+    background: rgba(30, 41, 59, 0.55);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   .ss-item:active {
-    background: var(--soft);
-    transform: scale(.97);
-    border-color: var(--ink);
+    transform: scale(0.97);
+    border-color: #2563eb;
   }
 
   .ss-item-ico {
@@ -186,24 +420,84 @@
     place-items: center;
     width: 36px;
     height: 36px;
-    border-radius: 10px;
-    background: var(--soft);
-    color: var(--ink);
+    border-radius: 11px;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
     flex-shrink: 0;
   }
 
+  [data-theme="dark"] .ss-item-ico {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+  }
+
+  .ss-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
   .ss-item-name {
-    font: 600 .8rem var(--sans);
-    letter-spacing: -.01em;
+    font-size: 0.8rem;
+    font-weight: 700;
     line-height: 1.2;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .ss-item-desc {
+    font-size: 0.68rem;
+    color: #64748b;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  [data-theme="dark"] .ss-item-desc {
+    color: #94a3b8;
+  }
+
+  /* 4. Hàng thao tác hệ thống */
+  .ss-system-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ss-sys-btn {
+    flex: 1 1 calc(50% - 4px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 10px 12px;
+    border-radius: 13px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(248, 250, 252, 0.9);
+    color: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  [data-theme="dark"] .ss-sys-btn {
+    background: rgba(30, 41, 59, 0.65);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .ss-logout-btn {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.28);
+    background: rgba(239, 68, 68, 0.08);
   }
 }
 
-/* ============ 5. CỰC NHỎ — 1 cột ============ */
-@media (max-width: 380px) {
+/* ============ 5. MÀN HÌNH CỰC NHỎ (≤ 360px) ============ */
+@media (max-width: 360px) {
+  .ss-highlights-grid,
   .ss-list {
     grid-template-columns: 1fr;
   }

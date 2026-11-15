@@ -184,6 +184,13 @@ export const SUBJECT_TOOL_GROUPS = [
         href: '#formulas',
       },
       {
+        id: 'sim-lab',
+        name: 'Mô phỏng Mạch RLC & Sóng Y-âng',
+        desc: 'Kéo thanh trượt R-L-C-f, xem giản đồ Fresnel & vân giao thoa trực tiếp',
+        Icon: IconPhysics,
+        href: '#sim-lab',
+      },
+      {
         id: 'games/lab-3d',
         name: 'Phòng Lab ảo & Mô phỏng 3D',
         desc: 'Thí nghiệm con lắc lò xo, khúc xạ ánh sáng & mạch LC',
@@ -209,6 +216,13 @@ export const SUBJECT_TOOL_GROUPS = [
     Icon: IconDna,
     description: 'Di truyền Men-đen, Cấu trúc ADN & Cân bằng định luật Hardy - Weinberg',
     tools: [
+      {
+        id: 'sim-lab',
+        name: 'Mô phỏng Đột biến ADN & Punnett',
+        desc: 'Tương tác mạch kép ADN, phiên mã mRNA & bảng lai di truyền Men-đen',
+        Icon: IconDna,
+        href: '#sim-lab',
+      },
       {
         id: 'formulas',
         name: 'Sổ tay công thức Sinh học',
@@ -240,7 +254,7 @@ export const SUBJECT_TOOL_GROUPS = [
     tintBg: 'rgba(37, 99, 235, 0.1)',
     tintText: '#2563eb',
     Icon: IconSparkles,
-    description: 'Bộ công cụ ôn luyện toàn diện: Phòng thi ảo 3 môn, Sổ tay lỗi sai, Pomodoro & Lịch học',
+    description: 'Bộ công cụ ôn luyện toàn diện: Phòng thi ảo 3 môn, Bảng phấn 3D, Sổ tay lỗi sai & Hướng nghiệp',
     tools: [
       {
         id: 'virtual-exams',
@@ -251,17 +265,45 @@ export const SUBJECT_TOOL_GROUPS = [
       },
       {
         id: 'ai',
-        name: 'Trợ lý AI KHTN',
-        desc: 'Gia sư AI giải chi tiết bài tập Vật lí, Hóa học, Sinh học',
+        name: 'Trợ lý AI KHTN & Chấm nháp',
+        desc: 'Gia sư AI giải chi tiết Lý - Hóa - Sinh & chấm bài viết tay',
         Icon: IconRobot,
         href: '#ai',
       },
       {
+        id: 'chalkboard',
+        name: 'Bảng phấn 3D & Voice Tutor',
+        desc: 'Mô phỏng hình không gian WASM & vấn đáp giọng nói cùng AI',
+        Icon: IconScale,
+        href: '#chalkboard',
+      },
+      {
+        id: 'doc-studio',
+        name: 'AI Doc Studio',
+        desc: 'Tải PDF/Word để tóm tắt kiến thức & tạo đề trắc nghiệm tự động',
+        Icon: IconNotebook,
+        href: '#doc-studio',
+      },
+      {
         id: 'notebook',
-        name: 'Sổ tay lỗi sai 3 môn',
-        desc: 'Tự động lưu câu sai và phân tích nguyên nhân sai',
+        name: 'Sổ tay lỗi sai & Vá lỗi 5 Phút',
+        desc: 'Tự động lưu câu sai và tạo đề 5 câu vá lỗ hổng cấp tốc',
         Icon: IconNotebook,
         href: '#notebook',
+      },
+      {
+        id: 'admission',
+        name: 'Tra cứu điểm chuẩn & Nguyện vọng',
+        desc: 'Đo độ vừa sức khối A00, B00, A01, D07 vào các trường ĐH',
+        Icon: IconTarget,
+        href: '#admission',
+      },
+      {
+        id: 'career',
+        name: 'Hướng nghiệp AI (RIASEC)',
+        desc: 'Trắc nghiệm tính cách nghề nghiệp & gợi ý ngành học phù hợp',
+        Icon: IcoBook,
+        href: '#career',
       },
       {
         id: 'pomodoro',
@@ -404,7 +446,17 @@ export default function DesktopNav({
             <span className="nav-label">Phòng thi ảo</span>
           </a>
 
-          {/* 3. Lộ trình */}
+          {/* 3. Trợ lý AI KHTN (mở nhanh 1 chạm) */}
+          <a
+            href="#ai"
+            className={'nav-item' + (page === 'ai' ? ' active' : '')}
+            title="Trợ lý AI giải bài tập Lý - Hóa - Sinh & Chấm nháp viết tay"
+          >
+            <span className="nav-ico"><IconRobot size={15} className="anim-ico-svg anim-ico-robot" /></span>
+            <span className="nav-label">ELEC AI</span>
+          </a>
+
+          {/* 4. Lộ trình */}
           <a
             href="#roadmap"
             className={'nav-item' + (page === 'roadmap' ? ' active' : '')}

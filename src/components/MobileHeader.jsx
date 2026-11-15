@@ -109,6 +109,28 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
             </svg>
           </button>
 
+          {/* Nút Đổi giao diện Sáng / Tối nhanh trên Mobile */}
+          {typeof onToggleTheme === 'function' && (
+            <button
+              type="button"
+              className="mhead-btn"
+              onClick={onToggleTheme}
+              aria-label={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+              title={theme === 'dark' ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+            >
+              {theme === 'dark' ? (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                </svg>
+              ) : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
+          )}
+
           {/* Avatar Profile Dropdown */}
           <UserProfileNavDropdown
             user={user}
@@ -116,23 +138,6 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
             isTeacher={isTeacher}
             onLogout={logout}
           />
-
-          {/* Nút Menu mở ngăn học tập trên Mobile */}
-          {typeof onMenu === 'function' && (
-            <button
-              type="button"
-              className="mhead-btn"
-              onClick={onMenu}
-              aria-label="Mở menu học tập"
-              title="Mở menu học tập"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" aria-hidden="true">
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="18" x2="20" y2="18" />
-              </svg>
-            </button>
-          )}
         </div>
       </header>
 

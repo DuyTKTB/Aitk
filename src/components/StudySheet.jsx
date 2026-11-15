@@ -5,7 +5,7 @@ import { useLiveStreak } from '../hooks.js';
 import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,
-  IconGamepad, IconUser, IconCalc,
+  IconGamepad, IconCalc,
   IconAtom, IconChart, IconClose, IconLogout,
   IconRobot,
 } from './Icons.jsx';
@@ -33,24 +33,45 @@ const IconChatHeart = ({ size = 20 }) => (
   </svg>
 );
 
+const IconFlame = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
+  </svg>
+);
+
+const IconSun = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </svg>
+);
+
+const IconMoon = ({ size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
 const CORE_TOOLS = [
-  { id: 'table', name: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác', Icon: IconAtom },
-  { id: 'notebook', name: 'Sổ tay lỗi sai', desc: 'Luyện câu làm sai', Icon: IconNotebook },
+  { id: 'sim-lab', name: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN', Icon: IconMicroscope },
+  { id: 'chalkboard', name: 'Bảng phấn 3D', desc: 'Hình không gian & Voice Tutor', Icon: IconScale },
+  { id: 'table', name: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác IUPAC', Icon: IconAtom },
+  { id: 'notebook', name: 'Sổ tay lỗi sai', desc: 'Luyện câu sai & Đề 5 Phút', Icon: IconNotebook },
   { id: 'admission', name: 'Điểm chuẩn & Năng lực', desc: 'Đo độ vừa sức vào trường ĐH', Icon: IconTarget },
   { id: 'career', name: 'Hướng nghiệp AI', desc: 'Test RIASEC & định hướng ngành', Icon: IconNotebook },
-  { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Tạo quiz & học từ tài liệu cá nhân', Icon: IconNote },
-  { id: 'formulas', name: 'Công thức nhanh', desc: 'Mol, pH, vô cơ, hữu cơ', Icon: IconCalc },
-  { id: 'balance', name: 'Cân bằng PTHH', desc: 'Cân bằng phương trình', Icon: IconScale },
-  { id: 'analyze', name: 'Phân tích hợp chất', desc: 'Nhận diện chất', Icon: IconMicroscope },
-  { id: 'pomodoro', name: 'Clock Hub', desc: 'Pomodoro & hẹn giờ', Icon: IconTimer },
-  { id: 'schedule', name: 'Thời khóa biểu', desc: 'Lịch học thông minh', Icon: IconCalendar },
-  { id: 'grade', name: 'Tính điểm GPA', desc: 'Tính điểm học tập', Icon: IconTarget },
-  { id: 'notes', name: 'Ghi chú', desc: 'Ghi chép bài học', Icon: IconNote },
-  { id: 'quiz', name: 'Ôn tập Quiz', desc: 'Trắc nghiệm thông minh', Icon: IconQuiz },
-  { id: 'games', name: 'Trò chơi Hóa', desc: 'Hệ thống mini game phong phú', Icon: IconGamepad },
+  { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Tạo quiz & học từ tài liệu', Icon: IconNote },
+  { id: 'formulas', name: 'Công thức KHTN', desc: 'Sổ tay công thức Lý · Hóa · Sinh', Icon: IconCalc },
+  { id: 'balance', name: 'Cân bằng PTHH', desc: 'Cân bằng phương trình đại số', Icon: IconScale },
+  { id: 'analyze', name: 'Phân tích hợp chất', desc: 'Nhận diện chất & phản ứng', Icon: IconMicroscope },
+  { id: 'pomodoro', name: 'Clock Hub', desc: 'Pomodoro & đồng hồ thi', Icon: IconTimer },
+  { id: 'schedule', name: 'Thời khóa biểu', desc: 'Lịch học KHTN thông minh', Icon: IconCalendar },
+  { id: 'stats', name: 'Thống kê năng lực', desc: 'Điểm Elo & tiến độ 3 môn', Icon: IconChart },
+  { id: 'grade', name: 'Tính điểm xét tuyển', desc: 'Tính GPA & điểm khối A, B, D', Icon: IconTarget },
+  { id: 'notes', name: 'Ghi chú', desc: 'Note dán học tập', Icon: IconNote },
+  { id: 'games', name: 'Trò chơi Khoa học', desc: 'Mini game & Lab ảo 3D', Icon: IconGamepad },
 ];
 
-export default function StudySheet({ open, onClose }) {
+export default function StudySheet({ open, onClose, theme = 'dark', onToggleTheme }) {
   const { user, tier, logout } = useAuth();
   const { count: streakDays, isToday: hasStreakToday } = useLiveStreak();
 
@@ -68,8 +89,7 @@ export default function StudySheet({ open, onClose }) {
 
   if (!open) return null;
 
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Học sinh';
-  const initial = displayName.charAt(0).toUpperCase();
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Học sinh ELEC AI';
   const isVip = tier?.key === 'vip';
 
   return createPortal(
@@ -80,9 +100,16 @@ export default function StudySheet({ open, onClose }) {
         <div className="ss-grabber" aria-hidden="true" />
 
         <header className="ss-head">
-          <div className="ss-head-title-wrap">
-            <h2>Khám phá & Tiện ích</h2>
-            <span className="ss-head-subtitle">Toàn bộ tính năng học tập ELEC AI</span>
+          <div className="ss-head-brand">
+            <img
+              src="/img/elec/elec-cool.png"
+              alt="Bé Elec"
+              className="ss-head-mascot"
+            />
+            <div className="ss-head-title-wrap">
+              <h2>Khám phá &amp; Tiện ích KHTN</h2>
+              <span className="ss-head-subtitle">Hệ sinh thái Vật lí · Hóa học · Sinh học cùng Bé Elec</span>
+            </div>
           </div>
           <button type="button" className="ss-close" onClick={onClose} aria-label="Đóng menu">
             <IconClose size={18} />
@@ -104,11 +131,12 @@ export default function StudySheet({ open, onClose }) {
               </div>
               <div className="ss-profile-sub">
                 <span className={`ss-streak-tag ${hasStreakToday ? 'active' : 'idle'}`}>
-                  🔥 {streakDays} ngày
+                  <IconFlame size={13} />
+                  <span>{streakDays} ngày</span>
                 </span>
                 <span className="ss-dot">•</span>
                 <a href="#profile" className="ss-profile-link" onClick={onClose}>
-                  Xem hồ sơ đầy đủ →
+                  Xem hồ sơ đầy đủ
                 </a>
               </div>
             </div>
@@ -122,7 +150,7 @@ export default function StudySheet({ open, onClose }) {
               </div>
               <div className="ss-hl-info">
                 <b>Trợ lý ELEC AI</b>
-                <small>Giải Hóa từng bước & chấm bài tự động</small>
+                <small>Giải Lý · Hóa · Sinh &amp; Chấm nháp viết tay</small>
               </div>
             </a>
 
@@ -132,13 +160,13 @@ export default function StudySheet({ open, onClose }) {
               </div>
               <div className="ss-hl-info">
                 <b>Bảng xếp hạng</b>
-                <small>Vinh danh chuỗi lớp & học sinh bền bỉ</small>
+                <small>Vinh danh chuỗi lớp &amp; học sinh toàn quốc</small>
               </div>
             </a>
           </div>
 
           {/* ----- 3. LƯỚI CÔNG CỤ HỌC TẬP ----- */}
-          <div className="ss-section-label">Công cụ học tập & Tiện ích</div>
+          <div className="ss-section-label">Công cụ Khoa học Tự nhiên &amp; AI</div>
           <nav className="ss-list">
             {CORE_TOOLS.map(({ id, name, desc, Icon }) => (
               <a key={id} href={'#' + id} className="ss-item" onClick={onClose}>
@@ -152,15 +180,25 @@ export default function StudySheet({ open, onClose }) {
           </nav>
 
           {/* ----- 4. HÀNG THAO TÁC HỆ THỐNG ----- */}
-          <div className="ss-section-label">Hệ thống & Cài đặt</div>
+          <div className="ss-section-label">Giao diện &amp; Hệ thống</div>
           <div className="ss-system-row">
+            {typeof onToggleTheme === 'function' && (
+              <button
+                type="button"
+                className="ss-sys-btn"
+                onClick={onToggleTheme}
+              >
+                {theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
+                <span>{theme === 'dark' ? 'Giao diện Sáng' : 'Giao diện Tối'}</span>
+              </button>
+            )}
             <a href="#settings" className="ss-sys-btn" onClick={onClose}>
               <IconSettings size={17} />
               <span>Cài đặt</span>
             </a>
             <a href="#feedback" className="ss-sys-btn" onClick={onClose}>
               <IconChatHeart size={17} />
-              <span>Góp ý & Báo lỗi</span>
+              <span>Góp ý &amp; Báo lỗi</span>
             </a>
             {user && (
               <button

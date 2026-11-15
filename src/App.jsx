@@ -902,7 +902,12 @@ export default function App() {
         />
       )}
 
-      <StudySheet open={menu} onClose={() => setMenu(false)} />
+      <StudySheet
+        open={menu}
+        onClose={() => setMenu(false)}
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      />
 
       <main id="main" tabIndex={-1}>
         <ErrorBoundary resetKey={hashTick}>
