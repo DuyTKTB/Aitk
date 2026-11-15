@@ -47,6 +47,7 @@ import StudyMethodologyGuideModal from './StudyMethodologyGuideModal.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
 import { getUserRole } from '../../lib/userRole.js';
 import { formatMathAndChemSymbols } from '../../lib/chemFormulaFormatter.js';
+import { useCurrentSubject } from '../SubjectSwitcher.jsx';
 import '../../styles/roadmap-page.css';
 import '../../styles/roadmap-page-v2.css';
 import '../../styles/roadmap-upgrade.css';
@@ -212,9 +213,16 @@ const IcoCompass = () => (
 export default function RoadmapPage() {
   const { user } = useAuth();
   const uid = user?.uid || null;
+  const { subject: globalSubject, setSubject: setGlobalSubject } = useCurrentSubject();
 
   const [levelKey, setLevelKey] = useState(readLevel);
-  const [subjectFilter, setSubjectFilter] = useState('all'); // 'all' | 'hoa' | 'ly' | 'sinh'
+  const [subjectFilter, setSubjectFilter] = useState(globalSubject || 'all'); // 'all' | 'hoa' | 'ly' | 'sinh'
+
+  useEffect(() => {
+    if (globalSubject && globalSubject !== subjectFilter) {
+      setSubjectFilter(globalSubject);
+    }
+  }, [globalSubject, subjectFilter]);
   const [activeTab, setActiveTab] = useState('subjects'); // 'subjects' | 'timeline' | 'wrong' | 'study'
   const [dedicatedLessonId, setDedicatedLessonId] = useState(null);
   const [dedicatedSubject, setDedicatedSubject] = useState('ly');
@@ -784,7 +792,10 @@ export default function RoadmapPage() {
                 role="tab"
                 aria-selected={subjectFilter === s.id}
                 className={`ns9-subject-tab ${subjectFilter === s.id ? 'is-active' : ''}`}
-                onClick={() => setSubjectFilter(s.id)}
+                onClick={() => {
+                  setSubjectFilter(s.id);
+                  setGlobalSubject(s.id);
+                }}
               >
                 <span className="ns9-subtab-icon">{s.icon}</span>
                 <span className="ns9-subtab-label">{s.label}</span>

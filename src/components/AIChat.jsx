@@ -1625,8 +1625,8 @@ export default function AIChat({ onExit }) {
   const placeholder = images.length > 0
     ? `Đã chọn ${images.length} ảnh — thêm mô tả (không bắt buộc)…`
     : (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches
-      ? 'Hỏi gì về Hóa cũng được…'
-      : 'Hỏi về Hóa học, hoặc dán ảnh đề bài…');
+      ? 'Hỏi bài Lý, Hóa, Sinh hoặc chụp ảnh đề…'
+      : 'Hỏi bài Vật lí, Hóa học, Sinh học hoặc dán ảnh đề bài…');
 
   /* ============================================================
      RENDER SIDEBAR
@@ -2172,12 +2172,66 @@ export default function AIChat({ onExit }) {
               <AIMark size={132} look mode={markMode} animate={visible} />
               <h1 className="ds-empty-title">
                 {firstName
-                  ? (<><span className="ds-hello">Chào {firstName},</span>{' '}<span>hôm nay bạn muốn hỏi gì về Hóa?</span></>)
-                  : <span>Hôm nay bạn muốn hỏi gì về Hóa?</span>}
+                  ? (<><span className="ds-hello">Chào {firstName},</span>{' '}<span>hôm nay bạn muốn giải bài KHTN nào?</span></>)
+                  : <span>Hôm nay bạn muốn giải bài Lý · Hóa · Sinh nào?</span>}
               </h1>
               <p className="ds-empty-sub">
-                Gõ câu hỏi, dán ảnh đề bài hoặc chụp trang sách. Tối đa {MAX_IMAGES} ảnh cùng lúc.
+                Gõ câu hỏi, chụp đề bài OCR, chấm nháp viết tay hoặc dựng hình không gian 3D.
               </p>
+
+              {/* 4 Ô HÀNH ĐỘNG NHANH CHUẨN NATIVE APP (CHATGPT / PHOTOMATH STYLE) */}
+              <div className="ds-native-action-grid">
+                <button
+                  type="button"
+                  className="ds-na-card tone-blue"
+                  onClick={() => camRef.current?.click()}
+                >
+                  <span className="ds-na-ico"><IcoCamera size={18} /></span>
+                  <div className="ds-na-text">
+                    <b>Chụp ảnh giải đề</b>
+                    <small>Nhận diện OCR tức thì</small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="ds-na-card tone-amber"
+                  onClick={() => {
+                    setInput('Hãy chấm từng dòng trong ảnh nháp/bài giải viết tay này của mình, chỉ rõ dòng nào bắt đầu biến đổi sai dấu, sai đơn vị hay sai công thức và sửa lại từ dòng đó.');
+                    fileRef.current?.click();
+                  }}
+                >
+                  <span className="ds-na-ico"><IcoShieldCheck size={18} /></span>
+                  <div className="ds-na-text">
+                    <b>Chấm nháp viết tay</b>
+                    <small>Bắt lỗi sai dấu &amp; đơn vị</small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="ds-na-card tone-purple"
+                  onClick={() => send('Hãy giải một bài mẫu về giao thoa sóng cơ hoặc hình chóp và minh họa bằng bảng phấn 3D tương tác từng bước.')}
+                >
+                  <span className="ds-na-ico"><IcoWand size={18} /></span>
+                  <div className="ds-na-text">
+                    <b>Bảng phấn 3D</b>
+                    <small>Minh họa hình &amp; đồ thị</small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="ds-na-card tone-emerald"
+                  onClick={() => send('Tạo cho mình 5 câu trắc nghiệm tương tác tổng hợp Lý - Hóa - Sinh mức độ Vận dụng có giải thích bẫy chi tiết.')}
+                >
+                  <span className="ds-na-ico"><IcoPractice size={18} /></span>
+                  <div className="ds-na-text">
+                    <b>Đề phản xạ 5 câu</b>
+                    <small>Làm trực tiếp trên Canvas</small>
+                  </div>
+                </button>
+              </div>
 
               <TodayCard onAsk={send} />
 

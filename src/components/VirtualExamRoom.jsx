@@ -1762,6 +1762,25 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const proExams = useMemo(() => filteredExams.filter((e) => e.tier === 'PRO'), [filteredExams]);
   const freeExams = useMemo(() => filteredExams.filter((e) => e.tier === 'FREE'), [filteredExams]);
   const [shareCardOpen, setShareCardOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  const subjectTitleLabel = useMemo(() => {
+    if (selectedSubject === 'ly') return 'môn Vật lí';
+    if (selectedSubject === 'hoa') return 'môn Hóa học';
+    if (selectedSubject === 'sinh') return 'môn Sinh học';
+    return 'Khoa học Tự nhiên (Lý · Hóa · Sinh)';
+  }, [selectedSubject]);
+
+  const activeFilterCount = useMemo(() => {
+    let c = 0;
+    if (selectedExamType && selectedExamType !== 'THPTQG' && selectedExamType !== 'ALL') c += 1;
+    if (selectedTier !== 'ALL') c += 1;
+    if (selectedGrade !== 'all') c += 1;
+    if (selectedStatus !== 'all') c += 1;
+    if (selectedSource !== 'all') c += 1;
+    if (selectedYear !== 'all') c += 1;
+    return c;
+  }, [selectedExamType, selectedTier, selectedGrade, selectedStatus, selectedSource, selectedYear]);
 
   const latestBestAttempt = useMemo(() => {
     if (!historyList || !historyList.length) return null;
@@ -1835,7 +1854,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               {freeExams.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleOpenExam(freeExams[0])}
+                  onClick={() => handleStartExam(freeExams[0])}
                   style={{
                     padding: '9px 16px',
                     borderRadius: 10,
@@ -1944,8 +1963,40 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           </div>
         </div>
 
+        {/* ── 2. THANH LỌC NHANH TRÊN MOBILE + NÚT MỞ BỘ LỌC NÂNG CAO ── */}
+        <div className="ns9-vex-mobile-quickbar">
+          <div className="ns9-vex-mq-pills">
+            {TIER_FILTERS.map((t) => {
+              const active = selectedTier === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={'ns9-vex-mq-pill' + (active ? ' on' : '')}
+                  onClick={() => setSelectedTier(t.id)}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className={'ns9-vex-mq-toggle' + (mobileFiltersOpen || activeFilterCount > 0 ? ' active' : '')}
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            aria-expanded={mobileFiltersOpen}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="7" y1="12" x2="17" y2="12" />
+              <line x1="10" y1="18" x2="14" y2="18" />
+            </svg>
+            <span>Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
+          </button>
+        </div>
+
         {/* ── 3. BẢNG BỘ LỌC 2 CỘT CHUẨN ── */}
-        <section className="ns9-vex-filter-grid" aria-label="Bộ lọc đề thi">
+        <section className={'ns9-vex-filter-grid' + (mobileFiltersOpen ? ' is-mobile-open' : '')} aria-label="Bộ lọc đề thi">
           <div className="ns9-vex-filter-col">
             <div className="ns9-vex-filter-line">
               <span className="ns9-vex-flabel">KỲ THI</span>
@@ -2102,12 +2153,12 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         </section>
 
         {/* ── 4. BANNER CẤU TRÚC ĐỀ THI KHTN (100% SVG) ── */}
-        <section className="ns9-vex-struct-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, position: 'relative', overflow: 'hidden' }}>
+        <section className="ns9-vex-struct-banner ns9-vex-secondary-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, position: 'relative', overflow: 'hidden' }}>
           <div style={{ flex: 1 }}>
             <div className="ns9-vex-struct-top">
               <div className="ns9-vex-struct-title">
                 <SvgShieldCheck size={17} />
-                <strong>Cấu trúc đề thi Khoa học Tự nhiên ({selectedExamType === 'THPTQG' ? 'Thi Tốt nghiệp THPT' : `Kỳ thi ${selectedExamType}`})</strong>
+                <strong>Cấu trúc đề thi {subjectTitleLabel} ({selectedExamType === 'THPTQG' ? 'Thi Tốt nghiệp THPT' : `Kỳ thi ${selectedExamType}`})</strong>
               </div>
 
               <div className="ns9-vex-struct-pills">
@@ -2117,7 +2168,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               </div>
             </div>
             <p className="ns9-vex-struct-desc">
-              Hệ thống đề thi thử và đề thi chính thức môn Khoa học Tự nhiên tại <b>ELEC AI</b> được biên soạn bám sát cấu trúc mới nhất của Bộ GD&amp;ĐT theo định dạng <b>Chương trình GDPT mới</b>. Học sinh có thể làm bài thi trắc nghiệm trực tuyến có bấm giờ, nhận kết quả chấm điểm tức thì và được AI phân tích chi tiết từng dạng bài để tối ưu hóa điểm số.
+              Hệ thống đề thi thử và đề thi chính thức {subjectTitleLabel} tại <b>ELEC AI</b> được biên soạn bám sát cấu trúc mới nhất của Bộ GD&amp;ĐT theo định dạng <b>Chương trình GDPT mới</b>. Học sinh có thể làm bài thi trắc nghiệm trực tuyến có bấm giờ, nhận kết quả chấm điểm tức thì và được AI phân tích chi tiết từng dạng bài để tối ưu hóa điểm số.
             </p>
           </div>
           <div className="ns9-vex-banner-mascot" title="Elec Chinh Phục Phòng Thi" style={{ flexShrink: 0, width: 88, height: 88 }}>
@@ -2133,7 +2184,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         {vipExams.length > 0 && (
           <section className="ns9-vex-section">
             <div className="ns9-vex-sec-head">
-              <h3>Bộ đề VIP môn Hóa học (Trường Chuyên, Sở GD&ĐT & Độc quyền ELEC AI)</h3>
+              <h3>Bộ đề VIP {subjectTitleLabel} (Trường Chuyên, Sở GD&amp;ĐT &amp; Độc quyền ELEC AI)</h3>
               <span>{vipExams.length} đề thi</span>
             </div>
             <div className="ns9-vex-cards-grid">
@@ -2157,7 +2208,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         {proExams.length > 0 && (
           <section className="ns9-vex-section">
             <div className="ns9-vex-sec-head">
-              <h3>Bộ đề PRO môn Hóa học (Thi thử các Trường, Cụm trường & Trọng điểm)</h3>
+              <h3>Bộ đề PRO {subjectTitleLabel} (Thi thử các Trường, Cụm trường &amp; Trọng điểm)</h3>
               <span>{proExams.length} đề thi</span>
             </div>
             <div className="ns9-vex-cards-grid">
@@ -2181,7 +2232,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         {freeExams.length > 0 && (
           <section className="ns9-vex-section">
             <div className="ns9-vex-sec-head">
-              <h3>Ngân hàng đề luyện {selectedExamType} môn Hóa học Miễn phí (FREE)</h3>
+              <h3>Ngân hàng đề luyện {selectedExamType} {subjectTitleLabel} Miễn phí (FREE)</h3>
               <span>{freeExams.length} đề thi</span>
             </div>
             <div className="ns9-vex-cards-grid">

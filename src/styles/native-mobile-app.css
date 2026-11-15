@@ -9,9 +9,125 @@
      6. Thanh Dock đáy với nút trung tâm ELEC AI nổi 3D
    ============================================================ */
 
-/* Mặc định trên Desktop (> 768px): Ẩn bảng Launchpad dành riêng cho Mobile App */
-.ns9-mobile-launchpad {
+/* Mặc định trên Desktop (> 768px): Ẩn bảng Launchpad và Quickbar dành riêng cho Mobile App */
+.ns9-mobile-launchpad,
+.ns9-vex-mobile-quickbar {
   display: none;
+}
+
+/* Lưới 4 ô hành động nhanh trong màn hình Trợ lý AI (#ai) trên cả Máy tính & Điện thoại */
+.ds-native-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: min(560px, 100%);
+  margin: 4px auto 14px;
+}
+
+.ds-na-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+[data-theme="dark"] .ds-na-card {
+  background: rgba(30, 41, 59, 0.68);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ds-na-card:hover {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 8px 20px -6px rgba(37, 99, 235, 0.16);
+}
+
+.ds-na-card:active {
+  transform: scale(0.96);
+}
+
+.ds-na-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ds-na-card.tone-blue .ds-na-ico {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.ds-na-card.tone-amber .ds-na-ico {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.ds-na-card.tone-purple .ds-na-ico {
+  background: rgba(147, 51, 234, 0.13);
+  color: #9333ea;
+}
+
+.ds-na-card.tone-emerald .ds-na-ico {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+[data-theme="dark"] .ds-na-card.tone-blue .ds-na-ico {
+  background: rgba(59, 130, 246, 0.22);
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .ds-na-card.tone-amber .ds-na-ico {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .ds-na-card.tone-purple .ds-na-ico {
+  background: rgba(168, 85, 247, 0.22);
+  color: #c084fc;
+}
+
+[data-theme="dark"] .ds-na-card.tone-emerald .ds-na-ico {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.ds-na-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ds-na-text b {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-na-text small {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .ds-na-text small {
+  color: #94a3b8;
 }
 
 @media (max-width: 768px) {
@@ -470,5 +586,247 @@
 
   [data-theme="dark"] .bn-ai .bn-label {
     color: #60a5fa !important;
+  }
+
+  /* ── 7. PHÒNG THI ẢO (#virtual-exams) CHUẨN NATIVE APP TRÊN MOBILE ── */
+  .ns9-vex-page {
+    padding: 12px 10px 84px !important;
+  }
+
+  .ns9-vex-struct-banner {
+    padding: 14px 14px !important;
+    border-radius: 18px !important;
+    margin-bottom: 12px !important;
+    gap: 12px !important;
+  }
+
+  .ns9-vex-struct-banner > div:first-child {
+    min-width: 0 !important;
+  }
+
+  .ns9-vex-banner-mascot {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  /* Ẩn banner văn bản phụ thứ 2 trên Mobile để danh sách đề thi hiện ngay lập tức */
+  .ns9-vex-secondary-banner {
+    display: none !important;
+  }
+
+  /* Thanh lọc nhanh Hạng đề + Nút mở Bộ lọc nâng cao */
+  .ns9-vex-mobile-quickbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .ns9-vex-mq-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ns9-vex-mq-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ns9-vex-mq-pill {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    background: #ffffff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  [data-theme="dark"] .ns9-vex-mq-pill {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+  }
+
+  .ns9-vex-mq-pill.on {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+  }
+
+  .ns9-vex-mq-toggle {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    background: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  [data-theme="dark"] .ns9-vex-mq-toggle {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(96, 165, 250, 0.3);
+    color: #60a5fa;
+  }
+
+  .ns9-vex-mq-toggle.active {
+    background: #2563eb;
+    color: #ffffff;
+  }
+
+  /* Ẩn bảng 7 hàng bộ lọc mặc định trên Mobile, chỉ mở khi bấm nút "Bộ lọc" */
+  .ns9-vex-filter-grid:not(.is-mobile-open) {
+    display: none !important;
+  }
+
+  .ns9-vex-filter-grid.is-mobile-open {
+    margin-bottom: 14px !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  /* ── 8. TRANG LỘ TRÌNH (#roadmap) & SỔ TAY LỖI SAI (#notebook) TRÊN MOBILE ── */
+  /* Ẩn thanh chọn môn trùng lặp trong Roadmap vì đã có thanh chọn môn Sticky trên đỉnh App */
+  .ns9-subjects-section .ns9-subject-tabs {
+    display: none !important;
+  }
+
+  /* Biến các thanh tab chế độ xem, khối lớp, mức độ ưu tiên thành dải vuốt ngang 1 hàng */
+  .ns9-nav-strip .ns9-main-tabs,
+  .ns9-nav-strip .ns9-grade-picker,
+  .ns9-filter-bar .ns9-group-pills {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding-bottom: 2px !important;
+  }
+
+  .ns9-nav-strip .ns9-main-tabs::-webkit-scrollbar,
+  .ns9-nav-strip .ns9-grade-picker::-webkit-scrollbar,
+  .ns9-filter-bar .ns9-group-pills::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .ns9-nav-strip .ns9-tab-btn,
+  .ns9-nav-strip .ns9-grade-picker button,
+  .ns9-filter-bar .ns9-group-pills button {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* Sổ tay lỗi sai (#notebook): Thu gọn Header, 4 ô chỉ số 1 hàng & dải chip vuốt ngang */
+  .nb {
+    padding: 12px 12px 84px !important;
+  }
+
+  .nb-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .nb-head-l img {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .nb-head-r {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 7px !important;
+    scrollbar-width: none !important;
+  }
+
+  .nb-head-r::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .nb-head-r .nb-btn {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .nb-stats {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .nb-stat {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 10px 6px !important;
+    border-radius: 15px !important;
+    gap: 4px !important;
+  }
+
+  .nb-filters {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px !important;
+  }
+
+  .nb-filters::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .nb-filters .nb-chip {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* Bảng 4 ô hành động trong #ai trên điện thoại nhỏ */
+  .ds-native-action-grid {
+    gap: 8px;
+    margin: 2px auto 10px;
+  }
+
+  .ds-na-card {
+    padding: 10px 11px;
+    border-radius: 14px;
+    gap: 8px;
+  }
+
+  .ds-na-ico {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .ds-na-text b {
+    font-size: 12px;
+  }
+
+  .ds-na-text small {
+    font-size: 10.5px;
   }
 }
