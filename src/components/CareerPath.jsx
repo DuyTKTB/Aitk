@@ -7,8 +7,10 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { askAI } from '../lib/ai.js';
+import { askAI as openChatWithAI } from './HomePlus.jsx';
 import { runWithCredit } from '../lib/creditService.js';
 import { useLocalStorage } from '../hooks.js';
+import { IconTarget, IconRobot, IconArrowUpRight } from './Icons.jsx';
 
 const A = {
   page: { minHeight: '100dvh', background: 'var(--t-bg, #f4f6fb)', color: 'var(--t-ink, #0f172a)', fontFamily: 'var(--t-font-sans, -apple-system, sans-serif)', WebkitFontSmoothing: 'antialiased' },
@@ -121,11 +123,29 @@ export default function CareerPath() {
   return (
     <div style={A.page}>
       <div style={A.wrap}>
-        <div style={{ marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, font: '800 1.4rem var(--t-font-sans)', color: 'var(--t-ink)' }}>Định hướng nghề nghiệp</h1>
-          <p style={{ margin: '.15rem 0 0', color: 'var(--t-ink-muted, #64748b)', font: '500 .84rem var(--t-font-sans)' }}>
-            Hiểu bản thân trước khi chọn ngành — AI phân tích theo mô hình RIASEC (Holland)
-          </p>
+        <div className="ns9-tool-hero tone-purple">
+          <div className="ns9-th-left">
+            <span className="ns9-th-badge">
+              <IconTarget size={12} /> TRẮC NGHIỆM RIASEC · ĐỊNH HƯỚNG AI
+            </span>
+            <h1>Định hướng nghề nghiệp AI</h1>
+            <p>
+              Khám phá thế mạnh bản thân theo chuẩn quốc tế RIASEC (Holland) kết hợp sở trường môn học để chọn đúng ngành — đúng trường.
+            </p>
+            <div className="ns9-th-actions">
+              <a href="#admission" className="ns9-th-pillbtn">
+                Tra cứu điểm chuẩn <IconArrowUpRight size={13} />
+              </a>
+              <button
+                type="button"
+                className="ns9-th-pillbtn is-ghost"
+                onClick={() => openChatWithAI('Em muốn được tư vấn chọn ngành học phù hợp với tổ hợp A00 / B00 / A01 / D07 theo xu hướng việc làm 2026–2030.')}
+              >
+                <IconRobot size={14} /> Nhờ Gia sư AI tư vấn thêm
+              </button>
+            </div>
+          </div>
+          <img src="/img/elec/elec-think.png" alt="Bé Elec Hướng nghiệp" className="ns9-th-mascot" loading="eager" />
         </div>
 
         {step === 'intro' && (

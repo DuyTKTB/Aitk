@@ -681,13 +681,26 @@ export default function GradeCalculator() {
   /* ============================================================ */
   return (
     <section className="wrap narrow gc">
-      <header className="gc-head">
-        <h1>Tính <em>điểm</em></h1>
-        <div className="gc-tools">
-          <button type="button" className="btn sm icon" onClick={undo} disabled={!past.current.length} aria-label="Hoàn tác (Ctrl+Z)"><Ico n="undo" size={16} /></button>
-          <button type="button" className="btn sm icon" onClick={redo} disabled={!future.current.length} aria-label="Làm lại (Ctrl+Y)"><Ico n="redo" size={16} /></button>
+      <div className="ns9-tool-hero tone-blue ns9-gc-hero-banner">
+        <div className="ns9-th-left">
+          <span className="ns9-th-badge">TÍNH ĐIỂM HỌC KỲ &amp; XÉT TUYỂN ĐH</span>
+          <header className="gc-head" style={{ marginBottom: '.35rem' }}>
+            <h1>Tính <em>điểm</em> &amp; Kế hoạch GPA</h1>
+          </header>
+          <p>
+            Nhập điểm TX, GK, CK để tính ĐTB chính xác, mô phỏng điểm cần đạt và đồng bộ trực tiếp khối xét tuyển vào Nguyện vọng 1.
+          </p>
+          <div className="ns9-th-actions">
+            <button type="button" className="ns9-th-pillbtn" onClick={undo} disabled={!past.current.length} aria-label="Hoàn tác (Ctrl+Z)">
+              <Ico n="undo" size={14} /> Hoàn tác
+            </button>
+            <button type="button" className="ns9-th-pillbtn is-ghost" onClick={redo} disabled={!future.current.length} aria-label="Làm lại (Ctrl+Y)">
+              <Ico n="redo" size={14} /> Làm lại
+            </button>
+          </div>
         </div>
-      </header>
+        <img src="/img/elec/elec-celebrate.png" alt="Bé Elec Tính điểm" className="ns9-th-mascot" loading="eager" />
+      </div>
 
       {/* ===== Học kỳ ===== */}
       <div className="gc-tabs" role="tablist" aria-label="Học kỳ">

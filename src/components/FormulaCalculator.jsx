@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useEffect, useCallback, createContext, useContext } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { ELEMENTS, SGK_MASS } from '../data/elements.js';
-import { IconStar, IconClock } from './Icons.jsx';
+import { IconStar, IconClock, IconAtom, IconFlask, IconMicroscope, IconCalc, IconRobot } from './Icons.jsx';
+import { useCurrentSubject } from './SubjectSwitcher.jsx';
+import { askAI } from './HomePlus.jsx';
 import './FormulaCalculator.css';
 
 /* ========================================================================
@@ -37,7 +39,7 @@ const solve = (v, rules) => {
 };
 
 /* Máy tính biểu thức (không dùng eval) */
-const CONSTS = { R: 0.082, NA: 6.022e23, F: 96500, Kw: 1e-14, pi: Math.PI };
+const CONSTS = { R: 0.082, NA: 6.022e23, F: 96500, Kw: 1e-14, pi: Math.PI, g: 9.8, h: 6.625e-34, c: 3e8 };
 const FUNCS = { sqrt: Math.sqrt, log: Math.log10, lg: Math.log10, ln: Math.log, exp: Math.exp, abs: Math.abs };
 function evalExpr(src) {
   const s = src.replace(/\s/g, '').replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '.');
@@ -139,11 +141,24 @@ function CalcCard({ def, fav, onFav, tag }) {
         '→ ' + outs.map((o) => `${o.l} = ${show(o)} ${o.u || ''}`.trim()).join('; ')].join('\n')
     );
 
+  const askAboutFormula = () => {
+    const inputsText = filled.map((i) => `${typeof i.label === 'function' ? i.label(sel) : i.label} = ${raw[i.k]} ${i.unit}`.trim()).join(', ');
+    const outsText = outs.map((o) => `${o.l} = ${show(o)} ${o.u || ''}`.trim()).join('; ');
+    const subjHint = def.tab === 'ly' ? 'Vật lí' : def.tab === 'sinh' ? 'Sinh học' : 'Hóa học';
+    const prompt = outs.length
+      ? `Hãy giải thích chi tiết từng bước cách áp dụng công thức "${def.title}" (${def.f || ''}) với dữ kiện: ${inputsText}. Kết quả đang là: ${outsText}. Nêu kèm bẫy thường gặp khi làm bài thi ${subjHint}.`
+      : `Hãy giải thích bản chất công thức "${def.title}" (${def.f || ''}), nêu ý nghĩa từng đại lượng, điều kiện áp dụng và cho 1 ví dụ minh họa giải nhanh môn ${subjHint}.`;
+    askAI(prompt);
+  };
+
   return (
     <CardShell
       def={def} fav={fav} onFav={onFav} tag={tag}
       footer={
         <>
+          <button type="button" className="fc-mini is-ai" onClick={askAboutFormula}>
+            <IconRobot size={13} /> Hỏi AI
+          </button>
           <button type="button" className="fc-mini" onClick={copyAll} disabled={!outs.length}>Sao chép lời giải</button>
           <button type="button" className="fc-mini" onClick={() => { setRaw(initRaw()); setSel(initSel()); }}>Đặt lại</button>
         </>
@@ -1128,6 +1143,175 @@ const CARDS = [
   { id: 'vk', tab: 'nhiet', title: 'Định luật tốc độ phản ứng', f: 'v = k·[A]ᵃ·[B]ᵇ   ;   [A] tăng x lần → v tăng xᵃ lần', kw: 'toc do phan ung bac phan ung nong do hang so k',
     inputs: [I('k', 'k'), I('A', '[A]', 'mol/l'), I('a', 'Bậc a', '', { def: '1' }), I('B', '[B]', 'mol/l', { def: '1' }), I('b', 'Bậc b', '', { def: '0' }), I('x', 'Tăng [A] x lần', '×', { def: '1' })],
     calc: (v) => [{ l: 'v', v: v.k * v.A ** v.a * v.B ** v.b, u: 'mol/(l·s)', d: 5, main: true }, { l: 'v tăng', v: v.x ** v.a, u: 'lần', d: 4 }] },
+
+  /* ---------------- VẬT LÍ ---------------- */
+  {
+    id: 'ly_dhdh', tab: 'ly', title: 'Dao động điều hòa · Con lắc lò xo',
+    f: 'ω = √(k/m)  ;  T = 2π/ω  ;  v_max = ω·A  ;  W = ½·k·A²',
+    kw: 'vat li con lac lo xo dao dong dieu hoa tan so goc chu ki van toc gia toc co nang',
+    inputs: [I('k', 'Độ cứng k', 'N/m', { def: '100' }), I('m', 'Khối lượng m', 'kg', { def: '1' }), I('A', 'Biên độ A', 'cm', { def: '5' })],
+    calc: (v) => {
+      if (v.k <= 0 || v.m <= 0) return [{ l: 'Lưu ý', v: 'k và m phải > 0', bad: true }];
+      const w = Math.sqrt(v.k / v.m);
+      const T = (2 * Math.PI) / w;
+      const Am = v.A / 100;
+      return [
+        { l: 'Tần số góc ω', v: w, u: 'rad/s', main: true, d: 3 },
+        { l: 'Chu kì T / Tần số f', v: `${fmt(T, 3)} s · ${fmt(1 / T, 3)} Hz` },
+        { l: 'v_max', v: w * v.A, u: 'cm/s', d: 2 },
+        { l: 'Cơ năng W', v: 0.5 * v.k * Am * Am, u: 'J', d: 4 },
+      ];
+    },
+  },
+  {
+    id: 'ly_song', tab: 'ly', title: 'Sóng cơ & Bước sóng',
+    f: 'λ = v · T = v / f',
+    partial: true,
+    kw: 'vat li buoc song van toc truyen song tan so f chu ki',
+    hint: 'Để trống đúng 1 ô cần tìm (bước sóng λ, tốc độ v hoặc tần số f).',
+    inputs: [I('lam', 'Bước sóng λ', 'm'), I('v', 'Tốc độ v', 'm/s'), I('f', 'Tần số f', 'Hz')],
+    calc: (v) => solve(v, {
+      lam: ['Bước sóng λ', 'm', (x) => x.v / x.f, 4],
+      v: ['Tốc độ truyền sóng v', 'm/s', (x) => x.lam * x.f, 3],
+      f: ['Tần số f', 'Hz', (x) => x.v / x.lam, 3],
+    }),
+  },
+  {
+    id: 'ly_yang', tab: 'ly', title: 'Giao thoa ánh sáng (Khe Y-âng)',
+    f: 'i = λ·D / a   ;   x_sáng = k·i   ;   x_tối = (k − 0,5)·i',
+    kw: 'vat li giao thoa anh sang khe young khoang van van sang van toi',
+    hint: 'Nhập λ theo µm, D theo m, a theo mm để khoảng vân i ra đúng mm.',
+    inputs: [I('lam', 'Bước sóng λ', 'µm', { def: '0.6' }), I('D', 'Khoảng cách D', 'm', { def: '2' }), I('a', 'Khoảng cách 2 khe a', 'mm', { def: '1' }), I('k', 'Bậc vân k', '', { opt: 3, def: '3' })],
+    calc: (v) => {
+      if (v.a <= 0) return [{ l: 'Lưu ý', v: 'Khoảng cách a phải > 0', bad: true }];
+      const i = (v.lam * v.D) / v.a;
+      return [
+        { l: 'Khoảng vân i', v: i, u: 'mm', main: true, d: 3 },
+        { l: `Vị trí vân sáng bậc ${v.k}`, v: v.k * i, u: 'mm', d: 3 },
+        { l: `Vị trí vân tối thứ ${Math.max(1, Math.round(v.k))}`, v: (Math.max(1, Math.round(v.k)) - 0.5) * i, u: 'mm', d: 3 },
+      ];
+    },
+  },
+  {
+    id: 'ly_rlc', tab: 'ly', title: 'Mạch điện xoay chiều RLC nối tiếp',
+    f: 'Z = √(R² + (Z_L − Z_C)²)  ;  I = U/Z  ;  cosφ = R/Z  ;  P = I²R',
+    kw: 'vat li dien xoay chieu mach rlc tong tro cong huong he so cong suat',
+    inputs: [I('U', 'U hiệu dụng', 'V', { def: '220' }), I('R', 'Điện trở R', 'Ω', { def: '100' }), I('ZL', 'Cảm kháng Z_L', 'Ω', { def: '200' }), I('ZC', 'Dung kháng Z_C', 'Ω', { def: '100' })],
+    calc: (v) => {
+      const Z = Math.hypot(v.R, v.ZL - v.ZC);
+      if (Z <= 1e-9) return [{ l: 'Lưu ý', v: 'Tổng trở Z phải > 0', bad: true }];
+      const Ieff = v.U / Z;
+      const cosPhi = v.R / Z;
+      const res = Math.abs(v.ZL - v.ZC) < 1e-6;
+      return [
+        { l: 'Tổng trở Z', v: Z, u: 'Ω', main: true, d: 2 },
+        { l: 'Cường độ I', v: Ieff, u: 'A', d: 3 },
+        { l: 'Hệ số công suất cosφ', v: res ? '1 (Cộng hưởng!)' : fmt(cosPhi, 3) },
+        { l: 'Công suất tiêu thụ P', v: Ieff * Ieff * v.R, u: 'W', d: 2 },
+      ];
+    },
+  },
+  {
+    id: 'ly_om', tab: 'ly', title: 'Định luật Ôm toàn mạch & Hiệu suất nguồn',
+    f: 'I = ξ / (R_N + r)  ;  U_N = I·R_N  ;  H = R_N / (R_N + r)',
+    kw: 'vat li dinh luat om toan mach suat dien dong dien tro trong hieu suat nguon',
+    inputs: [I('E', 'Suất điện động ξ', 'V', { def: '12' }), I('r', 'Điện trở trong r', 'Ω', { def: '1' }), I('R', 'Điện trở ngoài R_N', 'Ω', { def: '5' })],
+    calc: (v) => {
+      if (v.R + v.r <= 0) return [{ l: 'Lưu ý', v: 'Tổng điện trở phải > 0', bad: true }];
+      const Icur = v.E / (v.R + v.r);
+      return [
+        { l: 'Cường độ dòng điện I', v: Icur, u: 'A', main: true, d: 3 },
+        { l: 'Hiệu điện thế mạch ngoài U_N', v: Icur * v.R, u: 'V', d: 3 },
+        { l: 'Hiệu suất nguồn H', v: (v.R / (v.R + v.r)) * 100, u: '%', d: 2 },
+      ];
+    },
+  },
+  {
+    id: 'ly_photon', tab: 'ly', title: 'Năng lượng photon & Ánh sáng lượng tử',
+    f: 'ε = h·c / λ   (h = 6,625×10⁻³⁴ J·s · c = 3×10⁸ m/s)',
+    kw: 'vat li luong tu anh sang photon nang luong buoc song quang dien',
+    inputs: [I('lam', 'Bước sóng λ', 'µm', { def: '0.5' })],
+    calc: (v) => {
+      if (v.lam <= 0) return [{ l: 'Lưu ý', v: 'Bước sóng λ phải > 0', bad: true }];
+      const eJ = (6.625e-34 * 3e8) / (v.lam * 1e-6);
+      return [
+        { l: 'Năng lượng ε (eV)', v: eJ / 1.6e-19, u: 'eV', main: true, d: 3 },
+        { l: 'Năng lượng ε (J)', v: eJ, u: 'J', d: 3 },
+        { l: 'Tần số f', v: 3e8 / (v.lam * 1e-6), u: 'Hz', d: 3 },
+      ];
+    },
+  },
+
+  /* ---------------- SINH HỌC ---------------- */
+  {
+    id: 'sinh_adn', tab: 'sinh', title: 'Cấu trúc phân tử ADN (Gen B-DNA)',
+    f: 'N = 2L/3,4 = 20·C  ;  A + G = 50% N  ;  H = 2A + 3G  ;  M = 300·N',
+    kw: 'sinh hoc adn gen chieu dai chu ki xoan lien ket hidro nucleotit',
+    selects: [S('k', 'Dữ kiện đầu vào', [['L', 'Chiều dài gen L (Å)'], ['N', 'Tổng số nuclêôtit N'], ['C', 'Số chu kì xoắn C']])],
+    inputs: [I('val', (o) => (o.k === 'L' ? 'Chiều dài L' : o.k === 'N' ? 'Tổng nu N' : 'Số chu kì C'), ''), I('pctA', 'Tỉ lệ %A (trên tổng N)', '%', { opt: 20, def: '20' })],
+    calc: (v, o) => {
+      if (v.val <= 0 || v.pctA < 0 || v.pctA > 50) return [{ l: 'Lưu ý', v: 'Kiểm tra giá trị > 0 và 0 ≤ %A ≤ 50%', bad: true }];
+      const N = o.k === 'L' ? (2 * v.val) / 3.4 : o.k === 'C' ? 20 * v.val : v.val;
+      const A = (N * v.pctA) / 100;
+      const G = N / 2 - A;
+      return [
+        { l: 'Tổng nuclêôtit N', v: N, u: 'nu', main: true, d: 1 },
+        { l: 'A = T  /  G = X', v: `${fmt(A, 1)} nu  /  ${fmt(G, 1)} nu` },
+        { l: 'Liên kết hiđrô H', v: 2 * A + 3 * G, u: 'liên kết', d: 1 },
+        { l: 'Chiều dài L · Khối lượng M', v: `${fmt((N * 3.4) / 2, 1)} Å · ${fmt(N * 300, 0)} đvC` },
+      ];
+    },
+  },
+  {
+    id: 'sinh_nhandoi', tab: 'sinh', title: 'Nhân đôi ADN & Nhu cầu môi trường',
+    f: 'ADN con = 2ᵏ  ;  A_mt = A·(2ᵏ − 1)  ;  G_mt = G·(2ᵏ − 1)',
+    kw: 'sinh hoc nhan doi adn moi truong cung cap mach moi hoan toan',
+    inputs: [I('N', 'Tổng số nu (N)', 'nu', { def: '3000' }), I('A', 'Số nu loại A', 'nu', { def: '600' }), I('k', 'Số lần nhân đôi k', 'lần', { def: '3' })],
+    calc: (v) => {
+      const G = v.N / 2 - v.A;
+      if (G < 0 || v.k < 0) return [{ l: 'Lưu ý', v: 'A không được vượt quá N/2', bad: true }];
+      const p2 = 2 ** v.k;
+      return [
+        { l: 'Số phân tử ADN con', v: p2, u: 'phân tử', main: true, d: 0 },
+        { l: 'ADN mới hoàn toàn', v: Math.max(0, p2 - 2), u: 'phân tử', d: 0 },
+        { l: 'Tổng nu môi trường cung cấp', v: v.N * (p2 - 1), u: 'nu', d: 0 },
+        { l: 'A_mt / G_mt', v: `${fmt(v.A * (p2 - 1), 0)} / ${fmt(G * (p2 - 1), 0)} nu` },
+      ];
+    },
+  },
+  {
+    id: 'sinh_nguyenphan', tab: 'sinh', title: 'Nguyên phân (Chu kì tế bào)',
+    f: 'TB con = a·2ᵏ  ;  NST_mt = a·2n·(2ᵏ − 1)  ;  Thoi vô sắc = a·(2ᵏ − 1)',
+    kw: 'sinh hoc nguyen phan te bao nhiem sac the 2n thoi vo sac',
+    inputs: [I('a', 'Số tế bào ban đầu a', 'TB', { def: '1' }), I('n2', 'Bộ NST lưỡng bội 2n', 'NST', { def: '8' }), I('k', 'Số lần nguyên phân k', 'lần', { def: '4' })],
+    calc: (v) => {
+      const p2 = 2 ** v.k;
+      return [
+        { l: 'Số tế bào con tạo thành', v: v.a * p2, u: 'tế bào', main: true, d: 0 },
+        { l: 'Số NST môi trường cung cấp', v: v.a * v.n2 * (p2 - 1), u: 'NST', d: 0 },
+        { l: 'Số thoi phân bào hình thành', v: v.a * (p2 - 1), u: 'thoi', d: 0 },
+      ];
+    },
+  },
+  {
+    id: 'sinh_hw', tab: 'sinh', title: 'Cân bằng di truyền Hardy–Weinberg',
+    f: 'p(A) = (AA + ½Aa)/N  ;  q(a) = 1 − p  ;  p² AA : 2pq Aa : q² aa',
+    kw: 'sinh hoc quan the can bang di truyen hardy weinberg tan so alen kieu gen',
+    hint: 'Nhập số lượng hoặc tỉ lệ (từ 0–1) của 3 kiểu gen AA, Aa, aa.',
+    inputs: [I('AA', 'Kiểu gen AA', '', { def: '0.36' }), I('Aa', 'Kiểu gen Aa', '', { def: '0.48' }), I('aa', 'Kiểu gen aa', '', { def: '0.16' })],
+    calc: (v) => {
+      const sum = v.AA + v.Aa + v.aa;
+      if (sum <= 0) return [{ l: 'Lưu ý', v: 'Tổng cá thể phải > 0', bad: true }];
+      const d = v.AA / sum, h = v.Aa / sum, r = v.aa / sum;
+      const p = d + h / 2, q = 1 - p;
+      const eqMax = Math.max(Math.abs(d - p * p), Math.abs(h - 2 * p * q), Math.abs(r - q * q));
+      return [
+        { l: 'Tần số alen p(A) / q(a)', v: `p = ${fmt(p, 3)}  ·  q = ${fmt(q, 3)}`, main: true },
+        { l: 'Trạng thái cân bằng?', v: eqMax < 0.005 ? 'Đạt cân bằng di truyền' : 'Chưa cân bằng' },
+        { l: 'Cấu trúc cân bằng (F_next)', v: `${fmt(p * p, 3)} AA : ${fmt(2 * p * q, 3)} Aa : ${fmt(q * q, 3)} aa` },
+      ];
+    },
+  },
 ];
 
 /* ========================================================================
@@ -1135,9 +1319,10 @@ const CARDS = [
    ==================================================================== */
 const QUICK = [
   ['R', '0,082', 'L·atm/mol·K', '0.082'], ['R', '8,314', 'J/mol·K', '8.314'], ['Vₘ', '22,4', 'L/mol (đktc)', '22.4'],
-  ['F', '96500', 'C/mol', '96500'], ['Nₐ', '6,022×10²³', '', '6.022e23'], ['Kw', '10⁻¹⁴', '25°C', '1e-14'],
-  ['c H₂O', '4,18', 'J/g·K', '4.18'], ['Vₘ', '24,79', 'L/mol (25°C, 1 bar)', '24.79'], ['1 atm', '760', 'mmHg', '760'],
-  ['D H₂O', '1', 'g/ml', '1'], ['e', '1,602×10⁻¹⁹', 'C', '1.602e-19'], ['ln2', '0,693', 'bán hủy', '0.693'],
+  ['Vₘ', '24,79', 'L/mol (25°C, 1 bar)', '24.79'], ['F', '96500', 'C/mol', '96500'], ['Nₐ', '6,022×10²³', '', '6.022e23'],
+  ['g', '9,8', 'm/s² (Gia tốc rơi tự do)', '9.8'], ['c', '3×10⁸', 'm/s (Ánh sáng)', '3e8'],
+  ['h', '6,625×10⁻³⁴', 'J·s (Planck)', '6.625e-34'], ['Kw', '10⁻¹⁴', '25°C', '1e-14'],
+  ['c H₂O', '4,18', 'J/g·K', '4.18'], ['e', '1,602×10⁻¹⁹', 'C', '1.602e-19'],
 ];
 
 const UNITS = {
@@ -1201,7 +1386,7 @@ function QuickCalc() {
             {err ? '?' : res === null ? '=' : `= ${text}`}
           </button>
         </div>
-        <p className="fc-hint" style={{ margin: '.5rem 0 0' }}>{err || 'Hỗ trợ + − × ÷ ^ ( ) sqrt lg ln exp và hằng số R, F, NA, Kw, pi.'}</p>
+        <p className="fc-hint" style={{ margin: '.5rem 0 0' }}>{err || 'Hỗ trợ + − × ÷ ^ ( ) sqrt lg ln exp và hằng số R, F, NA, Kw, g, h, c, pi.'}</p>
         {hist.length > 0 && (
           <div className="fc-hist">
             {hist.map((h) => <button type="button" key={h.q} className="fc-const" onClick={() => setQ(h.q)} title="Dùng lại biểu thức">{h.q} = <b>{h.text}</b></button>)}
@@ -1229,23 +1414,44 @@ function QuickCalc() {
 const TABS = [
   ['fav', 'Đã ghim', IconStar],
   ['recent', 'Gần đây', IconClock],
-  ['mol', 'Mol & Khí'],
+  ['mol', 'Mol & Khí', IconFlask],
   ['dd', 'Dung dịch & pH'],
   ['vc', 'Vô cơ'],
   ['hc', 'Hữu cơ'],
-  ['nhiet', 'Nhiệt · Cân bằng · Điện'],
+  ['nhiet', 'Nhiệt · Điện'],
+  ['ly', 'Vật lí', IconAtom],
+  ['sinh', 'Sinh học', IconMicroscope],
 ];
 const TAB_NAME = Object.fromEntries(TABS.map(([k, l]) => [k, l]));
 
+const FC_MASCOT = {
+  all: { img: '/img/elec/elec-cool.png', badge: 'KHTN · HÓA — LÝ — SINH' },
+  hoa: { img: '/img/elec/elec-think.png', badge: 'CHUYÊN ĐỀ HÓA HỌC' },
+  ly: { img: '/img/elec/elec-fighting.png', badge: 'CHUYÊN ĐỀ VẬT LÍ' },
+  sinh: { img: '/img/elec/elec-happy.png', badge: 'CHUYÊN ĐỀ SINH HỌC' },
+};
+
 export default function FormulaCalculator() {
+  const { subject } = useCurrentSubject();
   const [tabSaved, setTab] = useLocalStorage('cs-fc-tab', 'mol');
   const [fav, setFav] = useLocalStorage('cs-fc-fav', []);
   const [q, setQ] = useState('');
   const [toast, setToast] = useState('');
+  const [showCalcPanel, setShowCalcPanel] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 768 : true));
   const searchRef = useRef(null);
   const timer = useRef(0);
+  const prevSubjectRef = useRef(subject);
+
+  useEffect(() => {
+    if (prevSubjectRef.current === subject) return;
+    prevSubjectRef.current = subject;
+    if (subject === 'ly') { setQ(''); setTab('ly'); }
+    else if (subject === 'sinh') { setQ(''); setTab('sinh'); }
+    else if (subject === 'hoa' && (tabSaved === 'ly' || tabSaved === 'sinh')) { setQ(''); setTab('mol'); }
+  }, [subject, tabSaved, setTab]);
 
   const tab = TABS.some((t) => t[0] === tabSaved) ? tabSaved : 'mol';
+  const mascotInfo = FC_MASCOT[subject] || FC_MASCOT.all;
   const favList = Array.isArray(fav) ? fav : [];
   const [recent, setRecent] = useLocalStorage('cs-fc-recent', []);
   const recentList = (Array.isArray(recent) ? recent : []).filter((id) => CARDS.some((c) => c.id === id));
@@ -1298,10 +1504,35 @@ export default function FormulaCalculator() {
     <ToastCtx.Provider value={notify}>
       <TouchCtx.Provider value={touch}>
       <section className="wrap fc">
-        <h1>Công thức nhanh</h1>
-        <p className="fc-lead">
-          {CARDS.length} công thức Hóa 10 – 12: nhập số, kết quả hiện ngay. Ghim công thức hay dùng, xem lại các thẻ vừa dùng, đổi đơn vị và tìm kiếm không cần gõ dấu.
-        </p>
+        <div className="ns9-tool-hero tone-blue">
+          <div className="ns9-th-left">
+            <span className="ns9-th-badge">{mascotInfo.badge}</span>
+            <h1>Sổ tay Công thức &amp; Máy tính KHTN</h1>
+            <p>
+              {CARDS.length} công thức Hóa — Lí — Sinh tương tác: nhập số liệu là ra kết quả tức thì, đổi đơn vị SI và hỏi thẳng Gia sư AI.
+            </p>
+            <div className="ns9-th-actions">
+              <button
+                type="button"
+                className={'ns9-th-pillbtn' + (showCalcPanel ? ' on' : '')}
+                onClick={() => setShowCalcPanel((v) => !v)}
+                aria-expanded={showCalcPanel}
+              >
+                <IconCalc size={14} />
+                {showCalcPanel ? 'Thu gọn Máy tính & Đổi đơn vị' : 'Mở Máy tính nhanh & Đổi đơn vị SI'}
+              </button>
+              <button
+                type="button"
+                className="ns9-th-pillbtn is-ghost"
+                onClick={() => askAI('Hãy tóm tắt cho em bảng công thức giải nhanh quan trọng nhất KHTN thi THPTQG')}
+              >
+                <IconRobot size={14} />
+                Hỏi AI tổng ôn công thức
+              </button>
+            </div>
+          </div>
+          <img src={mascotInfo.img} alt="Bé Elec Sổ tay Công thức" className="ns9-th-mascot" loading="eager" />
+        </div>
 
         <div className="fc-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -1309,12 +1540,12 @@ export default function FormulaCalculator() {
           </svg>
           <input
             ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} type="search"
-            placeholder="Tìm công thức: hieu suat, ph, este, faraday, đồng phân…" aria-label="Tìm công thức"
+            placeholder="Tìm công thức: mol, pH, este, con lac, RLC, ADN, Hardy…" aria-label="Tìm công thức"
           />
           {!q && <kbd>/</kbd>}
         </div>
 
-        <QuickCalc />
+        {showCalcPanel && <QuickCalc />}
 
         <div className="fc-tabs" role="tablist">
           {TABS.map(([k, l, Icon]) => (

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { CUTOFF_DATA, CITIES } from '../data/uniCutoffs.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
+import { IconAlert, IconTarget, IconRobot, IconArrowUpRight } from './Icons.jsx';
+import { askAI } from './HomePlus.jsx';
 
 const A = {
   page: { minHeight: '100dvh', background: 'var(--t-bg, #f4f6fb)', color: 'var(--t-ink, #0f172a)', fontFamily: 'var(--t-font-sans, -apple-system, sans-serif)', WebkitFontSmoothing: 'antialiased' },
@@ -66,91 +68,93 @@ export default function AdmissionLookup() {
   };
 
   return (
-    <div style={A.page}>
+    <div style={A.page} className="ns9-adm-page">
       <div style={A.wrap}>
-        <div style={{ marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, font: '800 1.4rem var(--t-font-sans)', color: 'var(--t-ink)' }}>Tra cứu điểm chuẩn</h1>
-          <p style={{ margin: '.15rem 0 0', color: 'var(--t-ink-muted, #64748b)', font: '500 .84rem var(--t-font-sans)' }}>
-            Điểm chuẩn các trường trọng tâm — so sánh trực tiếp với năng lực của bạn
-          </p>
+        <div className="ns9-tool-hero tone-indigo">
+          <div className="ns9-th-left">
+            <span className="ns9-th-badge">
+              <IconTarget size={12} /> ĐIỂM CHUẨN ĐẠI HỌC · SO ĐỘ VỪA SỨC
+            </span>
+            <h1>Tra cứu điểm chuẩn</h1>
+            <p>
+              Đối chiếu trực tiếp điểm chuẩn các trường trọng tâm với năng lực thi thực tế của bạn qua {unis.length} trường và {rows.length} ngành lọc được.
+            </p>
+            <div className="ns9-th-actions">
+              <a href="#roadmap" className="ns9-th-pillbtn">
+                Mở Lộ trình Nguyện vọng <IconArrowUpRight size={13} />
+              </a>
+              <button
+                type="button"
+                className="ns9-th-pillbtn is-ghost"
+                onClick={() => askAI(`Điểm trung bình hiện tại của em là ${myAvg != null ? `${myAvg}/30` : 'chưa có dữ liệu'}. Hãy tư vấn chiến lược chọn trường, sắp xếp nguyện vọng và các môn cần kéo điểm để đỗ ngành mục tiêu.`)}
+              >
+                <IconRobot size={14} /> Hỏi AI chiến lược xét tuyển
+              </button>
+            </div>
+          </div>
+          <img src="/img/elec/elec-fighting.png" alt="Bé Elec Xét tuyển" className="ns9-th-mascot" loading="eager" />
         </div>
 
-        <div style={{
-          ...A.card, marginBottom: '.9rem', padding: '.8rem 1rem',
-          borderLeft: '3px solid #f59e0b', display: 'flex', gap: '.5rem', alignItems: 'flex-start',
-        }}>
-          <span style={{ color: '#f59e0b', fontWeight: 800 }}>!</span>
-          <small style={{ color: 'var(--t-ink-muted, #64748b)', font: '500 .76rem var(--t-font-sans)', lineHeight: 1.5 }}>
+        <div className="ns9-adm-notice">
+          <IconAlert size={16} />
+          <small>
             Số liệu <b>tham khảo 2024–2025</b>, làm tròn từ nguồn công khai — luôn đối chiếu công bố chính thức của trường trước khi đăng ký nguyện vọng.
           </small>
         </div>
 
         {/* Bộ lọc */}
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+        <div className="ns9-adm-filters">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Tìm trường, ngành, tổ hợp…"
-            style={{
-              flex: '1 1 220px', padding: '.55rem .9rem', borderRadius: 999,
-              border: '1px solid var(--t-border, rgba(100,120,180,.16))',
-              background: 'var(--t-surface-2, #fff)', color: 'var(--t-ink)',
-              font: '500 .85rem var(--t-font-sans)', outline: 'none',
-            }}
+            placeholder="Tìm trường, ngành, tổ hợp (vd: A00, Bách khoa, Y Hà Nội)…"
+            className="ns9-adm-search"
           />
-          <select value={city} onChange={(e) => setCity(e.target.value)} style={selStyle}>
-            {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} style={selStyle}>
-            <option value="s2025-desc">Điểm cao → thấp</option>
-            <option value="s2025-asc">Điểm thấp → cao</option>
-          </select>
+          <div className="ns9-adm-selects">
+            <select value={city} onChange={(e) => setCity(e.target.value)} style={selStyle} aria-label="Lọc theo khu vực">
+              {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={sort} onChange={(e) => setSort(e.target.value)} style={selStyle} aria-label="Sắp xếp điểm chuẩn">
+              <option value="s2025-desc">Điểm cao → thấp</option>
+              <option value="s2025-asc">Điểm thấp → cao</option>
+            </select>
+          </div>
         </div>
 
         {myAvg != null && (
-          <div style={{ ...A.card, marginBottom: '.9rem', padding: '.7rem 1rem', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
-            <span style={{ font: '800 .8rem var(--t-font-sans)', color: 'var(--t-accent, #5b6cff)' }}>Điểm TB của bạn: {myAvg}/30</span>
-            <small style={{ color: 'var(--t-ink-faint, #94a3b8)', font: '500 .72rem var(--t-font-sans)' }}>(quy đổi từ kết quả thi trên web — thang 30)</small>
+          <div className="ns9-adm-myscore">
+            <span className="ns9-adm-myscore-badge">Điểm TB năng lực: {myAvg}/30</span>
+            <small>Quy đổi tự động từ các lần thi hoàn thành của bạn trên ELEC AI</small>
           </div>
         )}
 
         {unis.length === 0 ? (
           <div style={{ ...A.card, padding: '2rem', textAlign: 'center', color: 'var(--t-ink-muted, #64748b)', font: '500 .88rem var(--t-font-sans)' }}>
-            Không tìm thấy kết quả phù hợp.
+            Không tìm thấy kết quả phù hợp. Thử từ khóa ngắn hơn nhé!
           </div>
         ) : (
           unis.map((u) => (
-            <div key={u} style={{ ...A.card, marginBottom: '.8rem', overflow: 'hidden' }}>
-              <div style={{ padding: '.7rem 1rem', borderBottom: '1px solid var(--t-border-subtle, rgba(100,120,180,.1))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <b style={{ font: '800 .92rem var(--t-font-sans)', color: 'var(--t-ink)' }}>{u}</b>
-                <small style={{ color: 'var(--t-ink-faint, #94a3b8)', font: '600 .72rem var(--t-font-sans)' }}>
-                  {rows.find((r) => r.uni === u)?.city}
-                </small>
+            <div key={u} className="ns9-adm-unicard" style={{ ...A.card, marginBottom: '.85rem', overflow: 'hidden' }}>
+              <div className="ns9-adm-unihead">
+                <b>{u}</b>
+                <span>{rows.find((r) => r.uni === u)?.city}</span>
               </div>
               {rows.filter((r) => r.uni === u).map((r, i) => {
                 const f = fit(r.s2025 ?? r.s2024);
                 return (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: '.7rem',
-                    padding: '.55rem 1rem', borderTop: i > 0 ? '1px solid var(--t-border-subtle, rgba(100,120,180,.08))' : 'none',
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <b style={{ font: '600 .82rem var(--t-font-sans)', color: 'var(--t-ink)', display: 'block' }}>{r.major}</b>
-                      <small style={{ color: 'var(--t-ink-faint, #94a3b8)', font: '500 .7rem var(--t-font-sans)' }}>Tổ hợp: {r.combo}</small>
+                  <div key={i} className="ns9-adm-row" style={{ borderTop: i > 0 ? '1px solid var(--t-border-subtle, rgba(100,120,180,.08))' : 'none' }}>
+                    <div className="ns9-adm-major">
+                      <b>{r.major}</b>
+                      <small>Tổ hợp: {r.combo}</small>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <b style={{ font: '800 .95rem var(--t-font-sans)', color: 'var(--t-accent, #5b6cff)', fontVariantNumeric: 'tabular-nums' }}>
-                        {r.s2025 ?? '—'}
-                      </b>
-                      <small style={{ display: 'block', color: 'var(--t-ink-faint, #94a3b8)', font: '500 .66rem var(--t-font-sans)' }}>
-                        2024: {r.s2024 ?? '—'}
-                      </small>
+                    <div className="ns9-adm-scores">
+                      <b>{r.s2025 ?? '—'}</b>
+                      <small>2024: {r.s2024 ?? '—'}</small>
                     </div>
                     {f && (
-                      <small style={{
-                        font: '600 .68rem var(--t-font-sans)', whiteSpace: 'nowrap',
-                        color: f.ok === true ? 'var(--t-status-ok, #16a34a)' : f.ok === 'near' ? '#f59e0b' : 'var(--t-status-err, #dc2626)',
-                      }}>{f.text}</small>
+                      <span className={'ns9-adm-fit ' + (f.ok === true ? 'is-ok' : f.ok === 'near' ? 'is-near' : 'is-far')}>
+                        {f.text}
+                      </span>
                     )}
                   </div>
                 );

@@ -1,5 +1,9 @@
 import { useState, useMemo } from 'react';
 import { analyze, COMPOUNDS } from '../data/chemRules.js';
+import { IconMicroscope, IconRobot, IconZap } from './Icons.jsx';
+import { askAI } from './HomePlus.jsx';
+
+const POPULAR_COMPOUNDS = ['H2SO4', 'NaOH', 'FeCl3', 'CuSO4', 'HNO3', 'NH3', 'CH3COOH', 'C2H5OH', 'CaCO3', 'CH3COOC2H5'];
 
 const SvgIcon = ({ d, size = 14, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 5 }}>
@@ -21,22 +25,46 @@ export default function CompoundAnalyzer() {
   }, [f]);
 
   return (
-    <section className="wrap narrow">
-      <h1>Phân tích hợp chất</h1>
-      <p className="lead" style={{ fontSize: '1rem' }}>
-        Nhập công thức để biết loại hợp chất, tính chất và phản ứng đặc trưng.
-      </p>
+    <section className="wrap narrow ns9-subtool-page">
+      <div className="ns9-tool-hero tone-purple">
+        <div className="ns9-th-left">
+          <span className="ns9-th-badge">
+            <IconMicroscope size={12} /> PHÂN TÍCH PHÂN TỬ &amp; PHẢN ỨNG
+          </span>
+          <h1>Phân tích hợp chất</h1>
+          <p>
+            Nhập công thức phân tử để nhận diện phân loại chất, gốc ion phân li, tính chất hóa học và phản ứng đặc trưng.
+          </p>
+        </div>
+        <img src="/img/elec/elec-cool.png" alt="Bé Elec Phân tích hợp chất" className="ns9-th-mascot" loading="eager" />
+      </div>
 
-      <div className="card">
+      <div className="ns9-quick-strip-wrap">
+        <span className="ns9-qs-label"><IconZap size={13} /> Chất tiêu biểu:</span>
+        <div className="ns9-chip-strip" role="list">
+          {POPULAR_COMPOUNDS.map((comp) => (
+            <button
+              key={comp}
+              className={'chip' + (f.trim() === comp ? ' on' : '')}
+              onClick={() => setF(comp)}
+              type="button"
+            >
+              {comp}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card ns9-bento-card">
         <label>
-          Công thức
+          Công thức hóa học
           <input
             value={f}
             onChange={(e) => setF(e.target.value)}
             placeholder="H2SO4, NaOH, CO2, CH4, ..."
             autoComplete="off"
             spellCheck="false"
-            style={{ fontSize: '1.4rem', fontWeight: 500 }}
+            style={{ fontSize: '1.35rem', fontWeight: 600 }}
           />
         </label>
 
@@ -90,19 +118,29 @@ export default function CompoundAnalyzer() {
                 </ul>
               </>
             )}
+
+            <div className="ns9-tool-actions">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => askAI(`Hãy trình bày chi tiết tính chất vật lí, tính chất hóa học, điều chế và các phản ứng bẫy thường gặp của chất ${f.trim()}${result.name ? ` (${result.name})` : ''} trong đề thi THPTQG.`)}
+              >
+                <IconRobot size={14} /> Hỏi AI tính chất &amp; bài tập về {f.trim()}
+              </button>
+            </div>
           </>
         )}
       </div>
 
-      <details className="card" style={{ marginTop: '1rem' }}>
-        <summary style={{ cursor: 'pointer' }}>
-          <b><IconBook size={15} /> Xem {Object.keys(COMPOUNDS).length} hợp chất có trong database</b>
+      <details className="card ns9-bento-card" style={{ marginTop: '1rem' }}>
+        <summary style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <b><IconBook size={15} /> Xem toàn bộ {Object.keys(COMPOUNDS).length} hợp chất có trong thư viện</b>
         </summary>
-        <div className="chips" style={{ marginTop: '.6rem' }}>
+        <div className="chips" style={{ marginTop: '.75rem' }}>
           {Object.keys(COMPOUNDS).map((k) => (
             <button
               key={k}
-              className="chip"
+              className={'chip' + (f.trim() === k ? ' on' : '')}
               onClick={() => setF(k)}
               type="button"
             >

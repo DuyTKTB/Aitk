@@ -145,7 +145,17 @@ export default function PeriodicTable({ preview = false }) {
   }, [cursor, study, preview]);
 
   return (
-    <div>
+    <div className={'pt-root' + (preview ? ' is-preview' : '')}>
+      {!preview && (
+        <div className="ns9-pt-banner">
+          <div className="ns9-pt-banner-l">
+            <span className="ns9-pt-pill">IUPAC 2026 · 118 NGUYÊN TỐ</span>
+            <h1>Bảng Tuần Hoàn Tương Tác</h1>
+          </div>
+          <img src="/img/elec/elec-happy.png" alt="Bé Elec Bảng tuần hoàn" className="ns9-pt-mascot" loading="eager" />
+        </div>
+      )}
+
       {!preview && (
         <div className="toolbar">
           <div className="searchbox">
