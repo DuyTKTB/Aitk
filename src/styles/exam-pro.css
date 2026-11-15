@@ -1014,3 +1014,121 @@
     animation: none !important;
   }
 }
+
+/* ============================================================
+   ANTI-CHEAT LOCKDOWN — Blur Privacy Curtain, No-Select, Watermark
+   ============================================================ */
+.ep-exam.no-select .ep-main,
+.ep-exam.no-select .ep-sidebar,
+.ep-exam.no-select .ep-header-title {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.ep-exam.no-select input,
+.ep-exam.no-select textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.ep-exam.is-blurred .ep-body {
+  filter: blur(18px);
+  opacity: .22;
+  pointer-events: none;
+  user-select: none;
+  transition: filter .12s ease, opacity .12s ease;
+}
+
+.ep-privacy-curtain {
+  position: fixed;
+  inset: 58px 0 0 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, .68);
+  backdrop-filter: blur(10px);
+}
+
+.ep-privacy-card {
+  max-width: 440px;
+  width: 100%;
+  padding: 1.5rem 1.35rem;
+  border-radius: 16px;
+  background: var(--bg, #fff);
+  color: var(--ink, #0f172a);
+  border: 2px solid #dc2626;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+  text-align: center;
+  display: grid;
+  gap: .75rem;
+  justify-items: center;
+}
+
+[data-theme='dark'] .ep-privacy-card {
+  background: #14171f;
+  color: #f8fafc;
+}
+
+.ep-privacy-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(220, 38, 38, .12);
+  color: #dc2626;
+}
+
+.ep-privacy-card h3 {
+  margin: 0;
+  font: 800 1.05rem/1.3 var(--sans);
+  color: #dc2626;
+}
+
+.ep-privacy-card p {
+  margin: 0;
+  font: 500 .88rem/1.45 var(--sans);
+  color: var(--ink, #334155);
+}
+
+[data-theme='dark'] .ep-privacy-card p {
+  color: #cbd5e1;
+}
+
+.ep-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  grid-auto-rows: 150px;
+  align-items: center;
+  justify-items: center;
+  opacity: .065;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+[data-theme='dark'] .ep-watermark {
+  opacity: .08;
+}
+
+.ep-watermark span {
+  transform: rotate(-24deg);
+  font: 700 .78rem/1.2 var(--sans);
+  letter-spacing: .04em;
+  color: var(--ink, #0f172a);
+  white-space: nowrap;
+}
+
+@media print {
+  .ep-exam,
+  .ej-confirm,
+  .ep-body {
+    display: none !important;
+  }
+}

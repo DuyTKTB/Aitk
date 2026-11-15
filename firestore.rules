@@ -33,8 +33,32 @@ service cloud.firestore {
        section (classes, keys, teachers, notices…) dùng chung. */
     function classOwner(classId) {
       return signedIn() &&
+        classId is string &&
+        classId.size() > 0 &&
         exists(/databases/$(database)/documents/classes/$(classId)) &&
         get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+
+    function isExamManager(examId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/exams/$(examId))
+        && (
+          get(/databases/$(database)/documents/exams/$(examId)).data.teacherId == request.auth.uid ||
+          (get(/databases/$(database)/documents/exams/$(examId)).data.classId is string
+           && get(/databases/$(database)/documents/exams/$(examId)).data.classId.size() > 0
+           && classOwner(get(/databases/$(database)/documents/exams/$(examId)).data.classId))
+        );
+    }
+
+    function isSessionTeacher(sessionId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/examSessions/$(sessionId))
+        && (
+          get(/databases/$(database)/documents/examSessions/$(sessionId)).data.teacherId == request.auth.uid ||
+          (get(/databases/$(database)/documents/examSessions/$(sessionId)).data.classId is string
+           && get(/databases/$(database)/documents/examSessions/$(sessionId)).data.classId.size() > 0
+           && classOwner(get(/databases/$(database)/documents/examSessions/$(sessionId)).data.classId))
+        );
     }
 
     // ===============================================================
@@ -324,9 +348,40 @@ service cloud.firestore {
               || classOwner(get(/databases/$(database)/documents/exams/$(examId)).data.classId));
       }
 
-      // Lần làm bài của học sinh
+      // Lần làm bài của học sinh: chặn HS xoá attempt, lùi startedAt hay giảm violationCount/events
       match /attempts/{attemptId} {
-        allow read, write, delete: if signedIn();
+        allow read: if signedIn() && (
+          attemptId == examId + '_' + request.auth.uid
+          || (resource != null && resource.data.studentId == request.auth.uid)
+          || isExamManager(examId)
+          || isAdmin()
+        );
+
+        allow create: if signedIn() && (
+          (attemptId == examId + '_' + request.auth.uid
+              && request.resource.data.studentId == request.auth.uid
+              && (!('violationCount' in request.resource.data) || request.resource.data.violationCount == 0))
+          || isExamManager(examId)
+          || isAdmin()
+        );
+
+        allow update: if signedIn() && (
+          (attemptId == examId + '_' + request.auth.uid
+              && request.resource.data.studentId == request.auth.uid
+              && (
+                // Sau khi đã nộp ở lượt trước, cho phép khởi tạo lượt thi lại khi có permit
+                resource.data.submittedAt != null
+                || (
+                  request.resource.data.startedAt == resource.data.startedAt
+                  && (!('violationCount' in resource.data) || request.resource.data.violationCount >= resource.data.violationCount)
+                  && (!('events' in resource.data) || request.resource.data.events.size() >= resource.data.events.size())
+                )
+              ))
+          || isExamManager(examId)
+          || isAdmin()
+        );
+
+        allow delete: if signedIn() && (isExamManager(examId) || isAdmin());
       }
     }
 
@@ -381,20 +436,64 @@ service cloud.firestore {
     // 5. EXAM SESSIONS — Phòng thi trực tiếp (Live Proctoring)
     // ===============================================================
     match /examSessions/{sessionId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn();
+
+      allow create: if signedIn() && (
+        isAdmin()
+        || request.resource.data.teacherId == request.auth.uid
+      );
+
+      allow update: if signedIn() && (
+        isAdmin()
+        || resource.data.teacherId == request.auth.uid
+        || (resource.data.classId is string && classOwner(resource.data.classId))
+        // Học sinh chỉ được phép cộng bộ đếm stats (joined / violationCount)
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats'])
+      );
+
+      allow delete: if signedIn() && (
+        isAdmin()
+        || resource.data.teacherId == request.auth.uid
+        || (resource.data.classId is string && classOwner(resource.data.classId))
+      );
 
       match /students/{studentId} {
-        allow read, write, delete: if signedIn();
+        allow read: if signedIn() && (
+          studentId == request.auth.uid
+          || isSessionTeacher(sessionId)
+          || isAdmin()
+        );
+
+        allow create: if signedIn() && (
+          isSessionTeacher(sessionId)
+          || isAdmin()
+          || (studentId == request.auth.uid
+              && request.resource.data.studentId == request.auth.uid
+              && (!('paused' in request.resource.data) || request.resource.data.paused == false)
+              && (!('forceSubmit' in request.resource.data) || request.resource.data.forceSubmit == false))
+        );
+
+        allow update: if signedIn() && (
+          isSessionTeacher(sessionId)
+          || isAdmin()
+          || (studentId == request.auth.uid
+              && request.resource.data.studentId == request.auth.uid
+              && resource.data.status != 'kicked'
+              && request.resource.data.status != 'kicked'
+              && (!(resource.data.paused == true) || request.resource.data.paused == true)
+              && (!(resource.data.forceSubmit == true) || request.resource.data.forceSubmit == true)
+              && (!('violations' in resource.data) || request.resource.data.violations.size() >= resource.data.violations.size()))
+        );
+
+        allow delete: if signedIn() && (isSessionTeacher(sessionId) || isAdmin());
       }
 
-      // ❗ FIX: ẢNH CAMERA nằm ở subcollection RIÊNG này
-      //    (examSession.js: uploadThumbnailV2 + uploadBurst → examSessions/{sid}/media/{uid}).
-      //    Firestore KHÔNG kế thừa rule của doc cha nên trước đây thiếu rule này:
-      //    học sinh đẩy khung camera BỊ TỪ CHỐI (lỗi bị nuốt trong catch) và
-      //    giáo viên đọc cũng bị chặn → ô camera trong Live Proctor đen thui.
-      //    Đã xác minh bằng REST probe: write vào media trả 401/42501.
       match /media/{studentId} {
-        allow read, write, delete: if signedIn();
+        allow read, write: if signedIn() && (
+          studentId == request.auth.uid
+          || isSessionTeacher(sessionId)
+          || isAdmin()
+        );
       }
     }
 

@@ -26,25 +26,31 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 const DEFAULT_LIMIT = 3;
-const DEFAULT_SOFT_TO_HARD = 8;
+const DEFAULT_SOFT_TO_HARD = 5;
 const TOUCH_SOFT_TO_HARD = 3;   // điện thoại/máy tính bảng
 const DEDUP_MS = 800;
-const BLUR_GRACE_MS = 800;
-const STARTUP_GRACE_MS = 3000;
-const FS_CHECK_INTERVAL_MS = 500;
-const FS_REPEAT_MS = 20000;
-const NO_FS_LIMIT_MS = 5000;
-const FS_SETTLE_MS = 1500;
+const BLUR_GRACE_STRICT_MS = 250;
+const BLUR_GRACE_NORMAL_MS = 600;
+const STARTUP_GRACE_MS = 1500;
+const FS_CHECK_INTERVAL_MS = 400;
+const FS_REPEAT_STRICT_MS = 8000;
+const FS_REPEAT_NORMAL_MS = 12000;
+const NO_FS_LIMIT_MS = 3500;
+const FS_SETTLE_MS = 1200;
 const INTENTIONAL_EXIT_MS = 2000;
-const LONG_BLUR_MS = 15000;
+const LONG_BLUR_MS = 12000;
 const DEVTOOLS_THRESHOLD = 160;
 const SOFT_THROTTLE_MS = 2000;
-const CAMERA_SETTLE_MS = 6000;
+const PASTE_SPIKE_CHARS = 45;
+const CAMERA_SETTLE_MS = 5000;
 const CAMERA_PENDING_MAX_MS = 20000;   // trần chờ học sinh bấm Cho phép/Chặn
-const CAMERA_FALLBACK_GRACE_MS = 15000; // trình duyệt không hỏi được quyền camera
-const MAX_EVENTS = 200;
+const CAMERA_FALLBACK_GRACE_MS = 12000; // trình duyệt không hỏi được quyền camera
+const MAX_EVENTS = 250;
 
-const CAMERA_TYPES = new Set(['no_face', 'multi_face', 'look_away', 'hand_raise', 'phone_like', 'phone_detected', 'camera_lost']);
+const CAMERA_TYPES = new Set([
+  'no_face', 'multi_face', 'look_away', 'hand_raise', 'phone_like', 'phone_detected',
+  'camera_lost', 'camera_covered', 'camera_frozen',
+]);
 const FOCUS_TYPES = new Set(['window_blur', 'tab_hidden', 'long_blur', 'exit_fullscreen']);
 
 /* Thiết bị KHÔNG có Fullscreen API (iPhone Safari): dùng các dấu hiệu này
@@ -69,19 +75,35 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   const noFsFallback = (config?.fullscreenLock ?? true) && !fsOk;
   const blockCopyPaste = config?.blockCopyPaste ?? true;
   const strictMode = config?.strictMode ?? false;
+  const lockdown = config?.lockdown ?? false;
   const blockDevTools = config?.blockDevTools ?? true;
   const blockPrintScreen = config?.blockPrintScreen ?? true;
   const blockLongBlur = config?.blockLongBlur ?? true;
-  /* Máy cảm ứng: 3 vi phạm nhẹ là tính 1 nặng (mặc định 8 quá dễ lọt) */
+  const blockMultiScreen = config?.blockMultiScreen ?? true;
+  /* Máy cảm ứng: 3 vi phạm nhẹ là tính 1 nặng */
   const softToHard = config?.softToHard ?? (isTouch() ? TOUCH_SOFT_TO_HARD : DEFAULT_SOFT_TO_HARD);
 
   const [violations, setViolations] = useState(0);
   const [warning, setWarning] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [windowFocused, setWindowFocused] = useState(() => (
+    typeof document !== 'undefined' ? (!document.hidden && (document.hasFocus?.() ?? true)) : true
+  ));
+  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const [multiScreen, setMultiScreen] = useState(false);
   const [events, setEvents] = useState([]);
 
   const cfgRef = useRef({});
-  cfgRef.current = { limit, strictMode, softToHard, camera: config?.camera ?? 'off', noFsFallback };
+  cfgRef.current = {
+    limit,
+    strictMode,
+    lockdown,
+    softToHard,
+    camera: config?.camera ?? 'off',
+    noFsFallback,
+    fsRepeatMs: (strictMode || lockdown) ? FS_REPEAT_STRICT_MS : FS_REPEAT_NORMAL_MS,
+    blurGraceMs: (strictMode || lockdown) ? BLUR_GRACE_STRICT_MS : BLUR_GRACE_NORMAL_MS,
+  };
 
   const activeRef = useRef(active);
   const onEventRef = useRef(onEvent);
@@ -336,7 +358,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         fsRecordedAtRef.current = 0;
       } else {
         const noFsDuration = Date.now() - lastFullscreenAtRef.current;
-        if (noFsDuration > NO_FS_LIMIT_MS && Date.now() - fsRecordedAtRef.current > FS_REPEAT_MS) {
+        if (noFsDuration > NO_FS_LIMIT_MS && Date.now() - fsRecordedAtRef.current > cfgRef.current.fsRepeatMs) {
           fsRecordedAtRef.current = Date.now();
           recordEvent('exit_fullscreen', 'hard', { source: 'interval', duration: Math.round(noFsDuration / 1000) });
         }
@@ -351,7 +373,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     const onKey = (e) => {
       if (e.key === 'Escape' || e.key === 'F11') {
         setTimeout(() => {
-          if (!checkIsFullscreen() && activeRef.current && Date.now() - fsRecordedAtRef.current > FS_REPEAT_MS) {
+          if (!checkIsFullscreen() && activeRef.current && Date.now() - fsRecordedAtRef.current > cfgRef.current.fsRepeatMs) {
             fsRecordedAtRef.current = Date.now();
             recordEvent('exit_fullscreen', 'hard', { source: 'key', key: e.key });
           }
@@ -362,9 +384,19 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     return () => document.removeEventListener('keydown', onKey, true);
   }, [active, fullscreenLock, recordEvent, checkIsFullscreen]);
 
-  /* ---- Rời tab / mất tiêu điểm (gộp thành MỘT lần vắng mặt) ---- */
+  /* ---- Rời tab / mất tiêu điểm + cập nhật ngay cờ làm mờ đề ---- */
   useEffect(() => {
-    if (!active) return undefined;
+    if (!active) {
+      setWindowFocused(true);
+      return undefined;
+    }
+
+    const syncFocusState = () => {
+      const camPrompting = cameraPendingRef.current && (Date.now() - cameraPendingSinceRef.current < CAMERA_PENDING_MAX_MS);
+      const focusedNow = !document.hidden && (document.hasFocus?.() ?? true);
+      setWindowFocused(focusedNow || camPrompting);
+    };
+    syncFocusState();
 
     const beginAbsence = () => { if (!blurStartRef.current) blurStartRef.current = Date.now(); };
     const endAbsence = () => {
@@ -373,14 +405,15 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       blurStartRef.current = 0;
       const duration = started ? Date.now() - started : 0;
       if (duration > LONG_BLUR_MS && activeRef.current && blockLongBlur) {
-        // Đã tính tab_hidden / window_blur cho lần vắng này → chỉ ghi nhật ký (nhẹ), không tính đôi
         recordEvent('long_blur', absenceRecordedRef.current ? 'soft' : 'hard', { duration: Math.round(duration / 1000) });
       }
       absenceRecordedRef.current = false;
+      syncFocusState();
     };
 
     const onVis = () => {
       if (document.hidden) {
+        setWindowFocused(false);
         beginAbsence();
         if (!activeRef.current) return;
         lastHiddenAtRef.current = Date.now();
@@ -391,6 +424,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       }
     };
     const onBlur = () => {
+      syncFocusState();
       beginAbsence();
       clearTimeout(blurTimerRef.current);
       blurTimerRef.current = setTimeout(() => {
@@ -399,13 +433,12 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         if (document.hidden || Date.now() - lastHiddenAtRef.current < 8000) return;
         absenceRecordedRef.current = true;
         recordEvent('window_blur', 'hard');
-      }, BLUR_GRACE_MS);
+      }, cfgRef.current.blurGraceMs);
     };
     const onFocus = () => endAbsence();
 
-    /* iOS/webview: có trường hợp visibilitychange không bắn khi rời app,
-       pagehide vẫn bắn → ghi thêm một tín hiệu nặng (DEDUP chặn trùng 800ms). */
     const onPageHide = () => {
+      setWindowFocused(false);
       if (!activeRef.current) return;
       recordEvent('page_hide', 'hard');
     };
@@ -423,34 +456,118 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
   }, [active, blockLongBlur, recordEvent]);
 
-  /* ---- DevTools detection (chỉ cảnh báo MỀM, bỏ qua thiết bị cảm ứng) ---- */
+  /* ---- DevTools detection (docked dimension delta + console getter cho chế độ nghiêm ngặt) ---- */
   useEffect(() => {
-    if (!active || !blockDevTools || isTouch()) return undefined;
+    if (!active || !blockDevTools || isTouch()) {
+      setDevtoolsOpen(false);
+      return undefined;
+    }
+    const checkConsoleProbe = () => {
+      try {
+        let tripped = false;
+        const probe = new Image();
+        Object.defineProperty(probe, 'id', {
+          get() {
+            tripped = true;
+            return 'ep';
+          },
+        });
+        // eslint-disable-next-line no-console
+        console.debug?.('%c', probe);
+        return tripped;
+      } catch {
+        return false;
+      }
+    };
     const id = setInterval(() => {
       if (!activeRef.current) return;
-      const isOpen =
+      const bySize =
         window.outerWidth - window.innerWidth > DEVTOOLS_THRESHOLD ||
         window.outerHeight - window.innerHeight > DEVTOOLS_THRESHOLD;
+      const byConsole = (cfgRef.current.strictMode || cfgRef.current.lockdown) && checkConsoleProbe();
+      const isOpen = bySize || byConsole;
       if (isOpen) {
         devtoolsStreakRef.current += 1;
         if (devtoolsStreakRef.current >= 2 && !devtoolsOpenRef.current) {
           devtoolsOpenRef.current = true;
-          recordEvent('devtools_open', 'soft');
+          setDevtoolsOpen(true);
+          const sev = (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft';
+          recordEvent('devtools_open', sev, { bySize, byConsole });
         }
       } else {
         devtoolsStreakRef.current = 0;
-        devtoolsOpenRef.current = false;
+        if (devtoolsOpenRef.current) {
+          devtoolsOpenRef.current = false;
+          setDevtoolsOpen(false);
+        }
       }
     }, 1500);
     return () => clearInterval(id);
   }, [active, blockDevTools, recordEvent]);
 
-  /* ---- Phím tắt / sao chép / in ---- */
+  /* ---- Phát hiện chia đôi màn hình (Desktop) & đa màn hình mở rộng ---- */
+  useEffect(() => {
+    if (!active) {
+      setMultiScreen(false);
+      return undefined;
+    }
+
+    let lastShrinkAt = 0;
+    let lastMultiAt = 0;
+
+    const checkScreen = () => {
+      if (!activeRef.current) return;
+      if (blockMultiScreen && window.screen?.isExtended === true) {
+        setMultiScreen(true);
+        const now = Date.now();
+        if (now - lastMultiAt > 15000) {
+          lastMultiAt = now;
+          recordEvent('multi_screen', (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft');
+        }
+      } else {
+        setMultiScreen(false);
+      }
+
+      if (!isTouch() && (fullscreenLock || cfgRef.current.lockdown || cfgRef.current.strictMode)) {
+        const sw = window.screen?.availWidth || window.innerWidth;
+        const sh = window.screen?.availHeight || window.innerHeight;
+        if (sw >= 900 && sh >= 600) {
+          const wRatio = window.innerWidth / sw;
+          const hRatio = window.innerHeight / sh;
+          if ((wRatio < 0.65 || hRatio < 0.65) && !checkIsFullscreen()) {
+            const now = Date.now();
+            if (now - activeSinceRef.current > 2500 && now - lastShrinkAt > 10000) {
+              lastShrinkAt = now;
+              recordEvent('window_shrunk', (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft', {
+                wRatio: Number(wRatio.toFixed(2)),
+                hRatio: Number(hRatio.toFixed(2)),
+              });
+            }
+          }
+        }
+      }
+    };
+
+    const t0 = setTimeout(checkScreen, 1200);
+    const id = setInterval(checkScreen, 2500);
+    window.addEventListener('resize', checkScreen);
+    return () => {
+      clearTimeout(t0);
+      clearInterval(id);
+      window.removeEventListener('resize', checkScreen);
+    };
+  }, [active, blockMultiScreen, fullscreenLock, recordEvent, checkIsFullscreen]);
+
+  /* ---- Phím tắt / sao chép / kéo-thả / dán bất thường / in ---- */
   useEffect(() => {
     if (!active) return undefined;
+    const isEditableTarget = (el) => {
+      if (!el || !el.tagName) return false;
+      const tag = el.tagName.toUpperCase();
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    };
     const clearClip = () => {
       try {
-        // Chỉ dọn clipboard nếu đã có quyền sẵn, tránh gây ra popup xin quyền trình duyệt
         if (navigator.permissions && navigator.permissions.query) {
           navigator.permissions.query({ name: 'clipboard-write' }).then((perm) => {
             if (perm.state === 'granted') {
@@ -462,7 +579,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
 
     const onKey = (e) => {
-      const key = String(e.key || '');            // autofill có thể gửi keydown không có key
+      const key = String(e.key || '');
       const code = String(e.code || '');
       const letter = code.startsWith('Key') ? code.slice(3).toLowerCase() : key.toLowerCase();
       const mod = e.ctrlKey || e.metaKey;
@@ -479,22 +596,30 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
           recordEvent('devtools_shortcut', 'soft');
         }
       }
+      if (blockCopyPaste) {
+        if ((mod && (letter === 'f' || letter === 'g')) || key === 'F3') {
+          e.preventDefault();
+          recordEvent('copy_attempt', 'soft', { key: 'find' });
+        } else if (mod && letter === 'a' && !isEditableTarget(e.target)) {
+          e.preventDefault();
+          recordEvent('copy_attempt', 'soft', { key: 'select_all' });
+        }
+      }
       if (blockPrintScreen) {
         if (key === 'PrintScreen') {
           e.preventDefault();
           clearClip();
           printAtRef.current = Date.now();
           recordEvent('screenshot_attempt', 'hard');
-        } else if (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(key)) {
+        } else if (e.metaKey && e.shiftKey && ['3', '4', '5', 's'].includes(letter || key.toLowerCase())) {
           printAtRef.current = Date.now();
-          recordEvent('screenshot_attempt', 'hard', { combo: 'cmd-shift' });
+          recordEvent('screenshot_attempt', 'hard', { combo: 'meta-shift' });
         }
       }
     };
     const onKeyUp = (e) => {
       if (!blockPrintScreen || e.key !== 'PrintScreen') return;
       clearClip();
-      // Windows thường chỉ phát keyup cho PrintScreen
       if (Date.now() - printAtRef.current > 1500) {
         printAtRef.current = Date.now();
         recordEvent('screenshot_attempt', 'hard');
@@ -503,7 +628,36 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     const onCtx = (e) => { e.preventDefault(); recordEvent('contextmenu', 'soft'); };
     const onCopy = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('copy', 'soft'); } };
     const onCut = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('cut', 'soft'); } };
-    const onPaste = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('paste', 'soft'); } };
+    const onPaste = (e) => {
+      if (!blockCopyPaste) return;
+      const text = e.clipboardData?.getData?.('text') || '';
+      e.preventDefault();
+      if (text.length >= PASTE_SPIKE_CHARS) {
+        recordEvent('paste_spike', (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft', {
+          chars: text.length,
+        });
+      } else {
+        recordEvent('paste', 'soft');
+      }
+    };
+    const onSelectStart = (e) => {
+      if (blockCopyPaste && !isEditableTarget(e.target)) e.preventDefault();
+    };
+    const onDragStart = (e) => {
+      if (blockCopyPaste) {
+        e.preventDefault();
+        recordEvent('copy_attempt', 'soft', { source: 'drag' });
+      }
+    };
+    const onInput = (e) => {
+      if (!blockCopyPaste) return;
+      const dataLen = typeof e.data === 'string' ? e.data.length : 0;
+      if (e.inputType === 'insertFromPaste' || dataLen >= PASTE_SPIKE_CHARS) {
+        recordEvent('paste_spike', (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft', {
+          chars: dataLen,
+        });
+      }
+    };
     const onPrint = () => { if (blockPrintScreen) recordEvent('print_attempt', 'hard'); };
 
     document.addEventListener('keydown', onKey, true);
@@ -512,6 +666,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     document.addEventListener('copy', onCopy);
     document.addEventListener('cut', onCut);
     document.addEventListener('paste', onPaste);
+    document.addEventListener('selectstart', onSelectStart);
+    document.addEventListener('dragstart', onDragStart);
+    document.addEventListener('input', onInput, true);
     window.addEventListener('beforeprint', onPrint);
     return () => {
       document.removeEventListener('keydown', onKey, true);
@@ -520,6 +677,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       document.removeEventListener('copy', onCopy);
       document.removeEventListener('cut', onCut);
       document.removeEventListener('paste', onPaste);
+      document.removeEventListener('selectstart', onSelectStart);
+      document.removeEventListener('dragstart', onDragStart);
+      document.removeEventListener('input', onInput, true);
       window.removeEventListener('beforeprint', onPrint);
     };
   }, [active, blockCopyPaste, blockDevTools, blockPrintScreen, recordEvent]);
@@ -542,6 +702,31 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     devtoolsOpenRef.current = false;
     devtoolsStreakRef.current = 0;
     fsRecordedAtRef.current = 0;
+    setDevtoolsOpen(false);
+    setMultiScreen(false);
+    setWindowFocused(true);
+  }, []);
+
+  /** Khôi phục số vi phạm đã ghi từ Firestore (chống F5 reset về 0) */
+  const hydrateState = useCallback((count = 0, priorEvents = []) => {
+    const safeCount = Math.max(violationsRef.current, Number(count) || 0);
+    violationsRef.current = safeCount;
+    setViolations(safeCount);
+    if (Array.isArray(priorEvents) && priorEvents.length > 0) {
+      setEvents((prev) => (prev.length >= priorEvents.length ? prev : priorEvents.slice(-MAX_EVENTS)));
+    }
+    const cfg = cfgRef.current;
+    if (cfg.limit > 0 && safeCount >= cfg.limit && activeRef.current && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
+      setWarning({
+        type: 'auto-submit',
+        text: `Bạn đã tích luỹ ${safeCount}/${cfg.limit} vi phạm. Bài sẽ tự động nộp.`,
+        eventType: 'soft_escalation',
+        count: safeCount,
+        limit: cfg.limit,
+      });
+      onAutoSubmitRef.current?.(safeCount);
+    }
   }, []);
 
   const pushEvent = useCallback((type, severity, meta) => {
@@ -554,6 +739,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     warning,
     events,
     isFullscreen,
+    windowFocused,
+    devtoolsOpen,
+    multiScreen,
     fullscreenSupported: fsOk,
     fsSupported: fsOk,
     fullscreenLock,
@@ -567,6 +755,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     stop,
     clearWarning,
     reset,
+    hydrateState,
     pushEvent,
     maxViolations: limit,
   };
@@ -578,7 +767,7 @@ function humanReason(type) {
     case 'tab_hidden': return 'Bạn đã chuyển sang tab khác';
     case 'window_blur': return 'Cửa sổ làm bài bị mất tiêu điểm';
     case 'long_blur': return 'Bạn đã rời khỏi màn hình thi quá lâu';
-    case 'devtools_open': return 'Bạn đã mở công cụ nhà phát triển';
+    case 'devtools_open': return 'Phát hiện mở công cụ nhà phát triển (DevTools)';
     case 'devtools_shortcut': return 'Không mở công cụ nhà phát triển';
     case 'screenshot_attempt': return 'Không chụp màn hình trong giờ thi';
     case 'print_attempt': return 'Không in bài trong giờ thi';
@@ -586,6 +775,7 @@ function humanReason(type) {
     case 'copy': return 'Không sao chép nội dung trong giờ thi';
     case 'cut': return 'Không cắt nội dung trong giờ thi';
     case 'paste': return 'Không dán nội dung trong giờ thi';
+    case 'paste_spike': return 'Phát hiện thao tác dán lượng văn bản bất thường';
     case 'no_face': return 'Không thấy khuôn mặt của bạn';
     case 'multi_face': return 'Phát hiện nhiều khuôn mặt trong khung hình';
     case 'look_away': return 'Bạn đang nhìn ra ngoài màn hình';
@@ -593,6 +783,11 @@ function humanReason(type) {
     case 'phone_like': return 'Phát hiện vật thể lạ trước mặt';
     case 'phone_detected': return 'Phát hiện điện thoại trong khung hình camera';
     case 'camera_lost': return 'Camera bị ngắt kết nối hoặc chưa được bật';
+    case 'camera_covered': return 'Ống kính camera đang bị che hoặc tối bất thường';
+    case 'camera_frozen': return 'Hình ảnh camera bị đứng hình hoặc dùng nguồn tĩnh giả lập';
+    case 'voice_detected': return 'Phát hiện tiếng nói / âm thanh trao đổi bất thường';
+    case 'multi_device': return 'Phát hiện đăng nhập hoặc mở đề thi trên nhiều tab/thiết bị';
+    case 'multi_screen': return 'Phát hiện đang kết nối nhiều màn hình mở rộng';
     case 'device_lifted': return 'Phát hiện bạn nhấc / lắc thiết bị';
     case 'window_shrunk': return 'Cửa sổ làm bài bị thu nhỏ hoặc chia đôi màn hình';
     case 'orientation_change': return 'Bạn đã xoay màn hình';
@@ -602,8 +797,9 @@ function humanReason(type) {
     case 'page_hide': return 'Bạn đã rời khỏi ứng dụng / khoá màn hình';
     case 'app_switch': return 'Bạn đã chuyển sang ứng dụng khác';
     case 'context_menu': return 'Không giữ-chạm để mở menu trong giờ thi';
-    case 'copy_attempt': return 'Không sao chép nội dung trong giờ thi';
+    case 'copy_attempt': return 'Không chọn, kéo hoặc sao chép nội dung trong giờ thi';
     case 'soft_escalation': return 'Bạn đã có quá nhiều hành vi bất thường liên tiếp';
+    case 'force_submit': return 'Giáo viên đã kích hoạt thu bài ngay';
     default: return 'Phát hiện hành vi bất thường';
   }
 }

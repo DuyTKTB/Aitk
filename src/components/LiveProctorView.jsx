@@ -27,6 +27,7 @@ import {
   kickStudent,
   warnStudent,
   setStudentPaused,
+  setStudentForceSubmit,
   isStudentOnline,
   timeRemaining,
   shortName,
@@ -224,9 +225,10 @@ function CamCard({ st, now, total, pinned, highlight, onOpen, onPin }) {
 /* ============================================================
    STUDENT MODAL
    ============================================================ */
-function StudentModal({ student, total, onClose, onKick, onWarn, onTogglePause, onPrev, onNext, index, count, requestKick, actioning }) {
+function StudentModal({ student, total, onClose, onKick, onWarn, onTogglePause, onPrev, onNext, index, count, requestKick, requestForceSubmit, actioning }) {
   const [text, setText] = useState('');
   const [sent, setSent] = useState(false);
+  const [previewImg, setPreviewImg] = useState(null);
   const online = isStudentOnline(student);
   const violations = student.violations || [];
   const progress = total > 0 ? Math.min(100, Math.round(((student.answered || 0) / total) * 100)) : null;
@@ -352,18 +354,29 @@ function StudentModal({ student, total, onClose, onKick, onWarn, onTogglePause, 
 
           <section className="vt-sm-viol">
             <h4><IcoAlert size={14} /> Lịch sử vi phạm</h4>
+            {previewImg && (
+              <div style={{ marginBottom: '.65rem', padding: '.5rem', borderRadius: 10, background: 'rgba(15,23,42,.06)', border: '1px solid rgba(15,23,42,.12)', textAlign: 'center' }}>
+                <img src={previewImg} alt="Bằng chứng vi phạm" style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, display: 'block', margin: '0 auto .4rem' }} />
+                <button type="button" className="vt-btn sm" onClick={() => setPreviewImg(null)}>Đóng ảnh</button>
+              </div>
+            )}
             {violations.length === 0 ? (
               <p className="vt-muted"><IcoShield size={14} /> Chưa có vi phạm nào.</p>
             ) : (
               <ul>
                 {[...violations].reverse().map((v, i) => {
                   const m = violationMeta(v.type);
+                  const imgSrc = v.snapshotUrl || v.meta?.inlineThumb || null;
                   return (
                     <li key={i} className={'sev-' + v.severity}>
                       <span className="t">{fmtClock(v.at)}</span>
                       <span className="i"><m.Icon size={13} /></span>
                       <span className="l">{m.label}</span>
-                      {v.snapshotUrl && <a href={v.snapshotUrl} target="_blank" rel="noopener noreferrer">Ảnh</a>}
+                      {imgSrc && (
+                        String(imgSrc).startsWith('data:')
+                          ? <button type="button" className="vt-pill sm" style={{ padding: '1px 7px', fontSize: '.7rem' }} onClick={() => setPreviewImg(imgSrc)}>Xem ảnh</button>
+                          : <button type="button" className="vt-pill sm" style={{ padding: '1px 7px', fontSize: '.7rem' }} onClick={() => setPreviewImg(imgSrc)}>Xem ảnh</button>
+                      )}
                     </li>
                   );
                 })}
@@ -446,9 +459,20 @@ function StudentModal({ student, total, onClose, onKick, onWarn, onTogglePause, 
             </div>
           </section>
 
-          <button type="button" className="vt-btn danger block" onClick={() => requestKick(student)}>
-            <IcoUserKick size={14} /> Mời ra khỏi phòng
-          </button>
+          <div style={{ display: 'grid', gap: '.45rem' }}>
+            <button
+              type="button"
+              className="vt-btn block"
+              onClick={() => requestForceSubmit(student)}
+              disabled={actioning || student.status === 'submitted' || student.status === 'kicked'}
+              style={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}
+            >
+              <IcoStop size={14} /> Thu bài ngay (cưỡng chế)
+            </button>
+            <button type="button" className="vt-btn danger block" onClick={() => requestKick(student)}>
+              <IcoUserKick size={14} /> Mời ra khỏi phòng
+            </button>
+          </div>
         </div>
       </div>
     </Modal>
@@ -491,6 +515,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
   const [logs, setLogs] = useState([]);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [kickTarget, setKickTarget] = useState(null);
+  const [forceTarget, setForceTarget] = useState(null);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastText, setBroadcastText] = useState('');
   const [projectorOpen, setProjectorOpen] = useState(false);
@@ -540,13 +565,21 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
       if (vs.length > seen) {
         for (let i = seen; i < vs.length; i++) {
           const viol = vs[i];
-          const severity = (viol.severity === 'hard' || vs.length >= 3)
+          const rawSeverity = viol.severity === 'hard' ? 'hard' : 'soft';
+          const aiSeverity = (rawSeverity === 'hard' || vs.length >= 3)
             ? 'high'
             : (viol.type === 'window_blur' || viol.type === 'tab_hidden')
               ? 'med'
               : 'low';
 
-          fresh.push({ ...viol, id: `${st.id}-${i}`, studentId: st.id, studentName: st.studentName, severity });
+          fresh.push({
+            ...viol,
+            id: `${st.id}-${i}`,
+            studentId: st.id,
+            studentName: st.studentName,
+            severity: rawSeverity,
+            aiSeverity,
+          });
 
           // AI Tự động gửi nhắc nhở khi phát hiện vi phạm MỚI theo thời gian thực
           if (loadedRef.current && aiAutoWarn && st.status === 'examining') {
@@ -555,9 +588,9 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
             if (nowMs - lastWarn > 15000) {
               lastWarnTimeMap.current[st.id] = nowMs;
               let msg = '';
-              if (severity === 'high') {
+              if (aiSeverity === 'high') {
                 msg = `[CẢNH BÁO GIÁM THỊ AI] Thí sinh ${st.studentName} đã vi phạm quy chế nghiêm trọng (lần thứ ${vs.length}). Giáo viên đang theo dõi trực tiếp bài làm của em!`;
-              } else if (severity === 'med') {
+              } else if (aiSeverity === 'med') {
                 msg = `[Giám thị AI] Thí sinh ${st.studentName} vừa chuyển tab làm bài (lần thứ ${vs.length}). Hệ thống đã lưu vết, vui lòng tập trung làm bài!`;
               } else {
                 msg = `[Giám thị AI] Thí sinh ${st.studentName} chú ý giữ khuôn mặt trong góc camera và không rời màn hình thi.`;
@@ -571,7 +604,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
                   id: `ai-${nowMs}-${st.id}`,
                   time: fmtClock(nowMs),
                   studentName: st.studentName,
-                  severity,
+                  severity: aiSeverity,
                   messageSent: msg,
                 },
                 ...prev.slice(0, 30),
@@ -584,7 +617,7 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     }
     if (fresh.length > 0) {
       setLogs((prev) => [...fresh, ...prev].sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 200));
-      if (loadedRef.current && fresh.some((f) => f.severity === 'hard' || f.severity === 'high')) beep();
+      if (loadedRef.current && fresh.some((f) => f.severity === 'hard' || f.aiSeverity === 'high')) beep();
     }
     if (students.length > 0) loadedRef.current = true;
   }, [students, aiAutoWarn, sessionId, beep]);
@@ -709,6 +742,19 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
       say(paused ? `Đã tạm dừng ${shortName(st?.studentName)}` : `Đã cho ${shortName(st?.studentName)} làm tiếp`);
     } catch (e) {
       say('Không đổi được trạng thái: ' + e.message);
+    } finally {
+      setActioning(false);
+    }
+  }, [sessionId, students, say]);
+
+  const handleForceSubmit = useCallback(async (studentId) => {
+    setActioning(true);
+    try {
+      await setStudentForceSubmit({ sessionId, studentId });
+      const st = students.find((x) => x.id === studentId);
+      say(`Đã gửi lệnh thu bài ngay cho ${shortName(st?.studentName)}`);
+    } catch (e) {
+      say('Không thu được bài: ' + e.message);
     } finally {
       setActioning(false);
     }
@@ -1416,8 +1462,38 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
           onWarn={handleWarn}
           onTogglePause={handleTogglePause}
           requestKick={setKickTarget}
+          requestForceSubmit={setForceTarget}
           actioning={actioning}
         />
+      )}
+
+      {/* XÁC NHẬN THU BÀI NGAY */}
+      {forceTarget && (
+        <Modal
+          title="Thu bài học sinh ngay?"
+          size="sm"
+          onClose={() => setForceTarget(null)}
+          foot={
+            <>
+              <button type="button" className="vt-btn" onClick={() => setForceTarget(null)}>Hủy</button>
+              <button
+                type="button"
+                className="vt-btn danger"
+                onClick={async () => {
+                  await handleForceSubmit(forceTarget.id);
+                  setForceTarget(null);
+                  setSelectedId(null);
+                }}
+              >
+                <IcoStop size={14} /> Thu bài ngay
+              </button>
+            </>
+          }
+        >
+          <p className="vt-confirm-text">
+            Hệ thống sẽ buộc <b>{forceTarget.studentName}</b> nộp bài làm hiện tại ngay lập tức và khóa tiếp tục sửa bài.
+          </p>
+        </Modal>
       )}
 
       {/* XÁC NHẬN MỜI RA */}

@@ -339,12 +339,15 @@ export async function joinExamSession({
   sessionId,
   studentId,
   studentName,
+  lockToken = null,
+  deviceLabel = null,
 }) {
   if (!sessionId || !studentId) {
     throw new Error('Thiếu sessionId hoặc studentId.');
   }
 
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+  const now = serverNow();
 
   let snap;
   try {
@@ -355,16 +358,35 @@ export async function joinExamSession({
   }
 
   if (snap.exists()) {
+    const prev = snap.data() || {};
+    const prevToken = prev.activeLockToken || null;
+    const isActiveElsewhere = Boolean(
+      lockToken &&
+      prevToken &&
+      prevToken !== lockToken &&
+      prev.status === 'examining' &&
+      now - (prev.lastSeenMs || 0) < 20000
+    );
+
+    const patch = {
+      lastSeen: serverTimestamp(),
+      lastSeenMs: now,
+    };
+    if (lockToken) patch.activeLockToken = lockToken;
+    if (deviceLabel) patch.deviceLabel = deviceLabel;
+
     try {
-      await updateDoc(ref, {
-        lastSeen: serverTimestamp(),
-        lastSeenMs: Date.now(),
-      });
+      await updateDoc(ref, patch);
     } catch (e) {
       console.error('[examSession] updateDoc failed:', e.code, e.message);
       throw new Error(`Không update được session (${e.code || 'unknown'}): ${e.message}`);
     }
-    return { id: studentId, restored: true };
+    return {
+      id: studentId,
+      restored: true,
+      tookOverActive: isActiveElsewhere,
+      previousDeviceLabel: prev.deviceLabel || null,
+    };
   }
 
   try {
@@ -372,12 +394,15 @@ export async function joinExamSession({
       studentId,
       studentName: studentName || 'Học sinh',
       joinedAt: serverTimestamp(),
-      joinedAtMs: Date.now(),
+      joinedAtMs: now,
       lastSeen: serverTimestamp(),
-      lastSeenMs: Date.now(),
+      lastSeenMs: now,
+      activeLockToken: lockToken || null,
+      deviceLabel: deviceLabel || null,
       status: 'joined',
       paused: false,
       pausedAtMs: null,
+      forceSubmit: false,
       currentQuestion: 0,
       answered: 0,
       thumbnail: null,
@@ -401,7 +426,7 @@ export async function joinExamSession({
     console.warn('[examSession] increment stats failed:', e.message);
   }
 
-  return { id: studentId, restored: false };
+  return { id: studentId, restored: false, tookOverActive: false };
 }
 
 export async function heartbeat({
@@ -411,12 +436,14 @@ export async function heartbeat({
   answered,
   status,
   studentName,
+  lockToken,
 }) {
   if (!sessionId || !studentId) return;
 
+  const now = serverNow();
   const patch = {
     lastSeen: serverTimestamp(),
-    lastSeenMs: serverNow(),
+    lastSeenMs: now,
   };
   if (typeof currentQuestion === 'number') patch.currentQuestion = currentQuestion;
   if (typeof answered === 'number') patch.answered = answered;
@@ -425,11 +452,15 @@ export async function heartbeat({
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
 
   try {
-    // Transaction: heartbeat không được ghi đè trạng thái 'kicked' / 'submitted' thành 'examining'
+    // Transaction: heartbeat không được ghi đè trạng thái 'kicked'/'submitted' hay chiếm quyền lockToken khác
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw Object.assign(new Error('not-found'), { code: 'not-found' });
-      const cur = snap.data()?.status;
+      const data = snap.data() || {};
+      if (lockToken && data.activeLockToken && data.activeLockToken !== lockToken) {
+        return; // Tab/thiết bị cũ không còn giữ quyền phiên
+      }
+      const cur = data.status;
       const p = { ...patch };
       if (cur === 'submitted' || cur === 'kicked') delete p.status;
       tx.update(ref, p);
@@ -442,10 +473,12 @@ export async function heartbeat({
           studentId,
           studentName: studentName || 'Học sinh',
           joinedAt: serverTimestamp(),
-          joinedAtMs: Date.now(),
+          joinedAtMs: now,
+          activeLockToken: lockToken || null,
           ...patch,
           paused: false,
           pausedAtMs: null,
+          forceSubmit: false,
           thumbnail: null,
           thumbnailAt: null,
           thumbnailAtMs: null,
@@ -524,12 +557,19 @@ export async function reportViolation({
 }) {
   if (!sessionId || !studentId || !type) return;
 
+  const now = serverNow();
+  const safeMeta = { ...(meta || {}) };
+  // Không giữ inlineThumb lớn bên trong meta nếu đã có snapshotUrl chuẩn từ Storage
+  if (snapshotUrl && !String(snapshotUrl).startsWith('data:') && safeMeta.inlineThumb) {
+    delete safeMeta.inlineThumb;
+  }
+
   const violation = {
     type,
     severity,
-    at: Date.now(),
-    snapshotUrl,
-    meta,
+    at: now,
+    snapshotUrl: snapshotUrl || safeMeta.inlineThumb || null,
+    meta: safeMeta,
   };
 
   const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
@@ -538,7 +578,7 @@ export async function reportViolation({
     await updateDoc(ref, {
       violations: arrayUnion(violation),
       lastSeen: serverTimestamp(),
-      lastSeenMs: Date.now(),
+      lastSeenMs: now,
     });
   } catch (e) {
     if (e.code === 'not-found') {
@@ -548,12 +588,13 @@ export async function reportViolation({
           studentId,
           studentName: studentName || 'Học sinh',
           joinedAt: serverTimestamp(),
-          joinedAtMs: Date.now(),
+          joinedAtMs: now,
           lastSeen: serverTimestamp(),
-          lastSeenMs: Date.now(),
+          lastSeenMs: now,
           status: 'examining',
           paused: false,
           pausedAtMs: null,
+          forceSubmit: false,
           currentQuestion: 0,
           answered: 0,
           thumbnail: null,
@@ -674,14 +715,35 @@ export async function setStudentPaused({ sessionId, studentId, paused }) {
   if (!sessionId || !studentId) return;
   try {
     const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+    const now = serverNow();
     await updateDoc(ref, {
       paused: !!paused,
-      pausedAtMs: Date.now(),
+      pausedAtMs: now,
       lastSeen: serverTimestamp(),
-      lastSeenMs: Date.now(),
+      lastSeenMs: now,
     });
   } catch (e) {
     console.warn('[examSession] setStudentPaused failed:', e.message);
+  }
+}
+
+/**
+ * Giáo viên thu bài ngay lập tức của một học sinh đang thi.
+ */
+export async function setStudentForceSubmit({ sessionId, studentId, reason = 'teacher_forced' }) {
+  if (!sessionId || !studentId) return;
+  try {
+    const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+    const now = serverNow();
+    await updateDoc(ref, {
+      forceSubmit: true,
+      forceSubmitReason: reason,
+      forceSubmitAtMs: now,
+      lastSeen: serverTimestamp(),
+      lastSeenMs: now,
+    });
+  } catch (e) {
+    console.warn('[examSession] setStudentForceSubmit failed:', e.message);
   }
 }
 

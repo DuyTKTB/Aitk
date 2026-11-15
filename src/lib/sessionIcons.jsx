@@ -379,21 +379,52 @@ export const IcoPlayCircle = ({ size = 18, strokeWidth = 1.8 }) => (
   </svg>
 );
 
+export const IcoMic = ({ size = 18, strokeWidth = 1.8 }) => (
+  <svg {...base(size, strokeWidth)}>
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+  </svg>
+);
+
 export const VIOLATION_META = {
-  tab_hidden:        { Icon: IcoEyeOff,    label: 'Chuyển tab',              severity: 'hard' },
-  window_blur:       { Icon: IcoEyeOff,    label: 'Mất tiêu điểm cửa sổ',    severity: 'hard' },
-  exit_fullscreen:   { Icon: IcoMinimize,  label: 'Thoát toàn màn hình',     severity: 'hard' },
-  no_face:           { Icon: IcoUserX,     label: 'Không thấy khuôn mặt',    severity: 'hard' },
-  multi_face:        { Icon: IcoUsers,     label: 'Nhiều khuôn mặt',         severity: 'hard' },
-  camera_lost:       { Icon: IcoCameraOff, label: 'Mất camera',              severity: 'hard' },
-  look_away:         { Icon: IcoEyeOff,    label: 'Nhìn ra ngoài',           severity: 'soft' },
-  hand_raise:        { Icon: IcoHand,      label: 'Cử chỉ tay bất thường',   severity: 'soft' },
-  phone_like:        { Icon: IcoPhone,     label: 'Vật thể lạ',              severity: 'soft' },
-  copy:              { Icon: IcoError,     label: 'Sao chép',                severity: 'soft' },
-  paste:             { Icon: IcoError,     label: 'Dán',                     severity: 'soft' },
-  cut:               { Icon: IcoError,     label: 'Cắt',                     severity: 'soft' },
-  contextmenu:       { Icon: IcoWarning,   label: 'Chuột phải',              severity: 'soft' },
-  devtools_shortcut: { Icon: IcoWarning,   label: 'Mở DevTools',             severity: 'soft' },
+  tab_hidden:        { Icon: IcoEyeOff,     label: 'Chuyển tab',                      severity: 'hard' },
+  window_blur:       { Icon: IcoEyeOff,     label: 'Mất tiêu điểm cửa sổ',            severity: 'hard' },
+  long_blur:         { Icon: IcoEyeOff,     label: 'Rời cửa sổ quá lâu',              severity: 'hard' },
+  exit_fullscreen:   { Icon: IcoMinimize,   label: 'Thoát toàn màn hình',             severity: 'hard' },
+  window_shrunk:     { Icon: IcoMinimize,   label: 'Chia đôi / thu nhỏ cửa sổ',       severity: 'hard' },
+  multi_screen:      { Icon: IcoMonitor,    label: 'Phát hiện đa màn hình',           severity: 'hard' },
+  multi_device:      { Icon: IcoShieldAlert,label: 'Mở nhiều tab / thiết bị',         severity: 'hard' },
+  no_face:           { Icon: IcoUserX,      label: 'Không thấy khuôn mặt',            severity: 'hard' },
+  multi_face:        { Icon: IcoUsers,      label: 'Nhiều khuôn mặt',                 severity: 'hard' },
+  camera_lost:       { Icon: IcoCameraOff,  label: 'Mất kết nối camera',              severity: 'hard' },
+  camera_covered:    { Icon: IcoCameraOff,  label: 'Che / bịt ống kính camera',       severity: 'hard' },
+  camera_frozen:     { Icon: IcoCameraOff,  label: 'Camera đứng hình / video giả',    severity: 'hard' },
+  look_away:         { Icon: IcoEyeOff,     label: 'Nhìn ra ngoài',                   severity: 'soft' },
+  hand_raise:        { Icon: IcoHand,       label: 'Cử chỉ tay bất thường',           severity: 'soft' },
+  phone_like:        { Icon: IcoPhone,      label: 'Vật thể giống điện thoại',        severity: 'soft' },
+  phone_detected:    { Icon: IcoPhone,      label: 'AI phát hiện điện thoại',         severity: 'hard' },
+  voice_detected:    { Icon: IcoMic,        label: 'Phát hiện tiếng nói / trao đổi',  severity: 'soft' },
+  devtools_open:     { Icon: IcoShieldAlert,label: 'Mở DevTools / Inspector',         severity: 'hard' },
+  devtools_shortcut: { Icon: IcoWarning,    label: 'Phím tắt DevTools',               severity: 'soft' },
+  screenshot_attempt:{ Icon: IcoMonitor,    label: 'Chụp ảnh màn hình',               severity: 'hard' },
+  print_attempt:     { Icon: IcoWarning,    label: 'Lệnh in / xuất PDF',              severity: 'hard' },
+  paste_spike:       { Icon: IcoError,      label: 'Dán lượng chữ lớn bất thường',    severity: 'hard' },
+  copy:              { Icon: IcoError,      label: 'Sao chép',                        severity: 'soft' },
+  paste:             { Icon: IcoError,      label: 'Dán nội dung',                    severity: 'soft' },
+  cut:               { Icon: IcoError,      label: 'Cắt nội dung',                    severity: 'soft' },
+  copy_attempt:      { Icon: IcoError,      label: 'Chọn / sao chép nội dung',        severity: 'soft' },
+  contextmenu:       { Icon: IcoWarning,    label: 'Chuột phải',                      severity: 'soft' },
+  context_menu:      { Icon: IcoWarning,    label: 'Menu ngữ cảnh',                   severity: 'soft' },
+  device_lifted:     { Icon: IcoPhone,      label: 'Nhấc / xoay điện thoại',          severity: 'soft' },
+  orientation_change:{ Icon: IcoPhone,      label: 'Xoay màn hình',                   severity: 'soft' },
+  pinch_zoom:        { Icon: IcoWarning,    label: 'Phóng to màn hình',               severity: 'soft' },
+  multi_touch:       { Icon: IcoHand,       label: 'Chạm đa điểm bất thường',        severity: 'soft' },
+  back_pressed:      { Icon: IcoWarning,    label: 'Bấm nút Quay lại',                severity: 'soft' },
+  page_hide:         { Icon: IcoEyeOff,     label: 'Ẩn trang / chuyển ứng dụng',      severity: 'hard' },
+  app_switch:        { Icon: IcoEyeOff,     label: 'Chuyển sang ứng dụng khác',       severity: 'hard' },
+  soft_escalation:   { Icon: IcoShieldAlert,label: 'Tích luỹ nhiều cảnh báo nhẹ',     severity: 'hard' },
+  force_submit:      { Icon: IcoShieldAlert,label: 'Giáo viên thu bài ngay',          severity: 'hard' },
 };
 
 export function violationMeta(type) {

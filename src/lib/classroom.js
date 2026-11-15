@@ -10,10 +10,11 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
   query, where, serverTimestamp, arrayUnion, arrayRemove, onSnapshot,
-  orderBy, limit, writeBatch,
+  orderBy, limit, writeBatch, runTransaction,
 } from 'firebase/firestore';
 import { scoreExam, scoreQuestion, isAnswered, qType } from './examScoring.js';
 import { stripUndefined } from './examSubmit.js';
+import { serverNow } from './serverClock.js';
 import { db } from './firebase.js';
 
 /* ============ HELPERS ============ */
@@ -531,12 +532,21 @@ export function defaultProctor() {
       phoneLike: true,
     },
     snapshotOnEvent: true,
-    maxSnapshots: 10,
+    maxSnapshots: 15,
     retentionDays: 30,
     blockDevTools: true,
     blockPrintScreen: true,
     blockLongBlur: true,
     allowPauseByTeacher: true,
+    blurOnFocusLost: true,
+    singleDeviceLock: true,
+    blockMultiScreen: true,
+    watermark: true,
+    audioMonitor: false,
+    requireAiModel: false,
+    softToHard: 5,
+    motionGuard: true,
+    lockdown: false,
   };
 }
 
@@ -598,7 +608,7 @@ export async function getExamByToken(token) {
     const d = snap.docs[0];
     const exam = { id: d.id, ...d.data() };
 
-    const now = Date.now();
+    const now = serverNow();
     let status = 'ok';
     const opensMs = tsMs(exam.opensAt);
     const closesMs = tsMs(exam.closesAt);
@@ -653,10 +663,11 @@ export async function deleteExam(examId) {
 /* ============================================================
    ATTEMPTS
    ============================================================ */
-export async function startAttempt({ examId, student, forceNew = false }) {
+export async function startAttempt({ examId, student, forceNew = false, lockToken = null }) {
   if (!examId || !student?.id) throw new Error('Thiếu thông tin attempt');
   const attemptId = `${examId}_${student.id}`;
   const ref = doc(db, 'exams', examId, 'attempts', attemptId);
+  const now = serverNow();
 
   try {
     const snap = await getDoc(ref);
@@ -665,21 +676,29 @@ export async function startAttempt({ examId, student, forceNew = false }) {
       const data = snap.data();
 
       if (!data.submittedAt) {
-        // Kiểm tra xem attempt dở dang này có quá hạn từ lâu không
+        // Kiểm tra xem attempt dở dang này có quá hạn từ lâu không theo đồng hồ máy chủ
         const exam = await getExamById(examId);
         const durationSec = (exam?.duration || 0) * 60;
-        const elapsedSec = (Date.now() - (data.startedAt || 0)) / 1000;
+        const elapsedSec = Math.max(0, (now - (data.startedAt || 0)) / 1000);
 
         // Nếu đề có giới hạn thời lượng và đã quá thời lượng + 10 phút gia hạn
         if (durationSec > 0 && elapsedSec > durationSec + 600) {
           if (exam?.allowRetry) {
             console.log('[startAttempt] Attempt dở dang đã quá hạn từ lâu và đề cho làm lại — tạo attempt mới');
           } else {
-            // Đã quá hạn và không cho làm lại — trả về submitted: true để học sinh không bị rơi vào loop 0 điểm
             return { id: attemptId, ...data, restored: true, submitted: true, expired: true };
           }
         } else {
-          return { id: attemptId, ...data, restored: true, submitted: false };
+          if (lockToken) {
+            updateDoc(ref, { activeLockToken: lockToken, lockUpdatedAt: now }).catch(() => {});
+          }
+          return {
+            id: attemptId,
+            ...data,
+            violationCount: data.violationCount || 0,
+            restored: true,
+            submitted: false,
+          };
         }
       } else {
         const exam = await getExamById(examId);
@@ -694,7 +713,9 @@ export async function startAttempt({ examId, student, forceNew = false }) {
     const data = {
       studentId: student.id,
       studentName: student.name || student.email || 'Học sinh',
-      startedAt: Date.now(),
+      startedAt: now,
+      activeLockToken: lockToken || null,
+      lockUpdatedAt: now,
       answers: {},
       submittedAt: null,
       timeSpent: 0,
@@ -739,15 +760,34 @@ export async function getAttempt({ examId, studentId }) {
   }
 }
 
-export async function appendAttemptEvents({ examId, studentId, events }) {
-  if (!examId || !studentId || !events?.length) return;
+/**
+ * Ghi thêm sự kiện giám sát và đồng bộ violationCount đơn điệu tăng (không cho F5 reset).
+ */
+export async function appendAttemptEvents({ examId, studentId, events, violationCount }) {
+  if (!examId || !studentId || (!events?.length && typeof violationCount !== 'number')) return;
   const attemptId = `${examId}_${studentId}`;
   const ref = doc(db, 'exams', examId, 'attempts', attemptId);
   try {
     await Promise.race([
-      updateDoc(ref, { events: arrayUnion(...events) }),
-      new Promise((resolve) => setTimeout(resolve, 1500)),
-    ]).catch(() => {});
+      runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const cur = snap.data() || {};
+        const prevCount = cur.violationCount || 0;
+        const nextCount = typeof violationCount === 'number'
+          ? Math.max(prevCount, violationCount)
+          : prevCount;
+        const patch = { violationCount: nextCount };
+        if (events?.length) patch.events = arrayUnion(...events);
+        tx.update(ref, patch);
+      }),
+      new Promise((resolve) => setTimeout(resolve, 1800)),
+    ]).catch(() => {
+      const patch = {};
+      if (events?.length) patch.events = arrayUnion(...events);
+      if (typeof violationCount === 'number') patch.violationCount = violationCount;
+      if (Object.keys(patch).length) return updateDoc(ref, patch).catch(() => {});
+    });
   } catch (e) {
     if (e.code !== 'not-found') {
       console.warn('[appendAttemptEvents] Lỗi:', e.code, e.message);
@@ -867,13 +907,15 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
 
   // ID cố định theo (đề, học sinh, lần làm) → bấm nộp 2 lần / 2 tab chỉ ghi ĐÚNG 1 bài
   let subId;
+  let att = null;
   try {
-    const att = await Promise.race([
+    att = await Promise.race([
       getAttempt({ examId, studentId: student.id }),
       new Promise((r) => setTimeout(() => r(null), 1500)),
     ]).catch(() => null);
 
-    subId = `${examId}_${student.id}_${att?.startedAt || Date.now()}`;
+    data.violationCount = Math.max(attemptMeta.violationCount || 0, att?.violationCount || 0);
+    subId = `${examId}_${student.id}_${att?.startedAt || serverNow()}`;
     const subDocRef = doc(db, 'submissions', subId);
 
     await setDoc(subDocRef, stripUndefined(data));
@@ -905,10 +947,10 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
     const attemptRef = doc(db, 'exams', examId, 'attempts', attemptId);
     await Promise.race([
       updateDoc(attemptRef, {
-        submittedAt: Date.now(),
+        submittedAt: serverNow(),
         timeSpent: timeSpent || 0,
         autoSubmitted: !!attemptMeta.autoSubmitted,
-        violationCount: attemptMeta.violationCount || 0,
+        violationCount: data.violationCount,
         cameraStatus: attemptMeta.cameraStatus || 'off',
         submissionId: subId,
       }),

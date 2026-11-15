@@ -34,7 +34,9 @@ import {
 import { useExamGuard } from '../hooks/useExamGuard.js';
 import useMobileGuard from '../hooks/useMobileGuard.js';
 import { useProctorCamera, useCameraPreflight } from '../hooks/useProctorCamera.js';
+import { useAudioGuard } from '../hooks/useAudioGuard.js';
 import useMotionGuard, { requestMotionPermission } from '../hooks/useMotionGuard.js';
+import { serverNow } from '../lib/serverClock.js';
 import ExamResult from './ExamResult.jsx';
 import ViolationOverlay from './ViolationOverlay.jsx';
 import MathText from './MathText.jsx';
@@ -366,8 +368,55 @@ function OutOfAttemptsScreen({ exam, prevSubmission, onExit, onRequestRetry, sen
   );
 }
 
-/* Sự kiện camera/thiết bị lạ cần CHỤP LẠI cảnh (burst 5 khung) gửi giáo viên, kể cả khi mức nhẹ */
-const EVIDENCE_TYPES = new Set(['phone_like', 'phone_detected', 'hand_raise', 'multi_face', 'no_face', 'look_away', 'device_lifted', 'camera_lost']);
+/* Sự kiện cần chụp nhanh burst / lưu bằng chứng gửi giáo viên */
+const EVIDENCE_TYPES = new Set([
+  'phone_like', 'phone_detected', 'hand_raise', 'multi_face', 'no_face',
+  'look_away', 'device_lifted', 'camera_lost', 'camera_covered', 'camera_frozen',
+  'voice_detected', 'multi_device', 'devtools_open',
+]);
+
+/* Mỗi tab trình duyệt giữ 1 lockToken riêng trong sessionStorage (giữ nguyên khi F5, khác tab/máy sẽ khác token) */
+function getOrCreateTabLockToken(examId) {
+  if (!examId) return null;
+  try {
+    const key = `elec_tab_lock_${examId}`;
+    let tok = sessionStorage.getItem(key);
+    if (!tok) {
+      tok = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      sessionStorage.setItem(key, tok);
+    }
+    return tok;
+  } catch {
+    return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
+function getDeviceLabel() {
+  if (typeof navigator === 'undefined') return 'unknown';
+  const mob = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '');
+  const w = typeof window !== 'undefined' ? window.innerWidth : 0;
+  return `${mob ? 'mobile' : 'desktop'}_${w}w`;
+}
+
+function WatermarkOverlay({ studentName, studentId }) {
+  const [stamp, setStamp] = useState(() => new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+  useEffect(() => {
+    const id = setInterval(() => {
+      setStamp(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
+  const text = `${studentName || 'Thí sinh'} · ${(studentId || '').slice(-6)} · ${stamp}`;
+  return (
+    <div className="ep-watermark" aria-hidden="true">
+      {Array.from({ length: 12 }, (_, i) => (
+        <span key={i}>{text}</span>
+      ))}
+    </div>
+  );
+}
 
 const makeThumbnail = (video, max = 160, quality = 0.55) => {
   if (!video || !video.videoWidth || video.readyState < 2) return null;
@@ -418,6 +467,7 @@ export default function ExamJoin({ token, onExit }) {
   const [teacherWarning, setTeacherWarning] = useState(null);
   const [kickReason, setKickReason] = useState('');
   const [paused, setPaused] = useState(false);
+  const [multiDeviceLocked, setMultiDeviceLocked] = useState(false);
   const [typing, setTyping] = useState(false); // đang gõ vào ô trả lời → bàn phím ảo đang mở
   const typingUntilRef = useRef(0);
   const [camReady, setCamReady] = useState(undefined); // camera đã chạy ổn → guard rút ngắn thời gian miễn trừ
@@ -447,6 +497,9 @@ export default function ExamJoin({ token, onExit }) {
   const joinReadyRef = useRef(false);
   const joinStartedRef = useRef(false);
   const lastClosesAtRef = useRef(0);
+  const pendingHydrateRef = useRef(null);
+  const multiDeviceReportedRef = useRef(false);
+  const tabLockToken = useMemo(() => getOrCreateTabLockToken(exam?.id), [exam?.id]);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { currentQRef.current = currentQ; }, [currentQ]);
@@ -772,17 +825,24 @@ export default function ExamJoin({ token, onExit }) {
       eventTimerRef.current = setTimeout(() => {
         const batch = eventQueueRef.current.splice(0);
         if (!batch.length) return;
-        appendAttemptEvents({ examId: exam.id, studentId: user.uid, events: batch }).catch(() => {});
-      }, 1000);
+        appendAttemptEvents({
+          examId: exam.id,
+          studentId: user.uid,
+          events: batch,
+          violationCount: guardRef.current?.violations ?? 0,
+        }).catch(() => {});
+      }, 650);
 
       if (sessionId && joinReadyRef.current) {
         const severity = evt.severity || 'hard';
+        const snapshotUrl = evt.meta?.snapshotUrl || evt.meta?.inlineThumb || null;
         reportViolation({
           sessionId,
           studentId: user.uid,
           studentName: user.displayName || user.email,
           type: evt.type,
           severity,
+          snapshotUrl,
           meta: evt.meta || {},
         }).catch((e) => {
           console.warn('[ExamJoin] reportViolation fail:', e.message);
@@ -796,6 +856,21 @@ export default function ExamJoin({ token, onExit }) {
   });
 
   guardRef.current = guard;
+
+  /* Khôi phục số vi phạm đã tích luỹ sau khi guard đã bật active (chống F5 reset về 0) */
+  useEffect(() => {
+    if (stage !== 'exam' || !pendingHydrateRef.current) return;
+    const h = pendingHydrateRef.current;
+    pendingHydrateRef.current = null;
+    guard.hydrateState?.(h.count, h.events);
+  }, [stage, guard]);
+
+  /* Giám sát âm thanh cục bộ (nếu GV bật audioMonitor hoặc chế độ Lockdown) */
+  const audioGuard = useAudioGuard({
+    active: stage === 'exam' && !practiceMode && !paused && !multiDeviceLocked,
+    enabled: !!proctorConfig?.audioMonitor,
+    onViolation: (type, severity, meta) => guardRef.current?.pushEvent?.(type, severity, meta),
+  });
 
   // Chống gian lận bổ sung trên điện thoại / máy tính bảng (xoay màn hình, split view, zoom, Back, giữ-chạm…)
   /* Bàn phím ảo (khi gõ câu Trả lời ngắn) làm thay đổi kích thước viewport → KHÔNG được tính là vi phạm */
@@ -837,7 +912,10 @@ export default function ExamJoin({ token, onExit }) {
 
   /* TEST CAMERA trước khi vào thi: chỉ cho bắt đầu khi nhận diện được khuôn mặt */
   const wantCamForPre = !!proctorConfig?.camera && proctorConfig.camera !== 'off';
-  const pre = useCameraPreflight({ active: stage === 'confirm' && wantCamForPre && cameraConsent && !!exam });
+  const pre = useCameraPreflight({
+    active: stage === 'confirm' && wantCamForPre && cameraConsent && !!exam,
+    requireAiModel: !!(proctorConfig?.requireAiModel || proctorConfig?.lockdown),
+  });
 
   useEffect(() => {
     setCamReady(cameraEnabled && proctor.status === 'ok' ? true : undefined);
@@ -913,6 +991,14 @@ export default function ExamJoin({ token, onExit }) {
       if (submittedRef.current) return;
       clearTimeout(saveTimerRef.current);
       saveAttemptAnswers({ examId: exam.id, studentId: user.uid, answers: answersRef.current }).catch(() => {});
+      clearTimeout(eventTimerRef.current);
+      const pendingBatch = eventQueueRef.current.splice(0);
+      appendAttemptEvents({
+        examId: exam.id,
+        studentId: user.uid,
+        events: pendingBatch,
+        violationCount: guardRef.current?.violations ?? 0,
+      }).catch(() => {});
     };
     const onVis = () => { if (document.visibilityState === 'hidden') flush(); };
     const onUnload = (e) => {
@@ -984,6 +1070,33 @@ export default function ExamJoin({ token, onExit }) {
     }, 1500);
   }, [exam, user?.uid]);
 
+  /* Chặn mở đồng thời 2 tab trên cùng trình duyệt (chỉ báo khi tabLockToken khác nhau; F5 giữ nguyên token nên không nhầm) */
+  useEffect(() => {
+    if (stage !== 'exam' || practiceMode || !exam?.id || !user?.uid || !tabLockToken) return undefined;
+    if (proctorConfig?.singleDeviceLock === false) return undefined;
+    if (typeof BroadcastChannel === 'undefined') return undefined;
+
+    const ch = new BroadcastChannel(`elec_exam_lock_${exam.id}_${user.uid}`);
+    ch.postMessage({ type: 'HELLO', tabId: tabLockToken, at: Date.now() });
+
+    ch.onmessage = (ev) => {
+      const msg = ev?.data;
+      if (!msg || !msg.tabId || msg.tabId === tabLockToken) return;
+      if (msg.type === 'HELLO') {
+        ch.postMessage({ type: 'CONFLICT', tabId: tabLockToken });
+        setMultiDeviceLocked(true);
+        if (!multiDeviceReportedRef.current) {
+          multiDeviceReportedRef.current = true;
+          guardRef.current?.pushEvent?.('multi_device', 'hard', { source: 'same_browser_tab' });
+        }
+      } else if (msg.type === 'CONFLICT') {
+        setMultiDeviceLocked(true);
+      }
+    };
+
+    return () => { try { ch.close(); } catch { /* */ } };
+  }, [stage, practiceMode, exam?.id, user?.uid, tabLockToken, proctorConfig?.singleDeviceLock]);
+
   useEffect(() => {
     if (stage !== 'exam' || !session?.id || !user?.uid) return undefined;
     if (joinStartedRef.current) return undefined;
@@ -996,8 +1109,19 @@ export default function ExamJoin({ token, onExit }) {
       sessionId: session.id,
       studentId: user.uid,
       studentName: user.displayName || user.email || 'Học sinh',
+      lockToken: tabLockToken,
+      deviceLabel: getDeviceLabel(),
     })
-      .then(() => setJoinReady(true))
+      .then((res) => {
+        setJoinReady(true);
+        if (res?.tookOverActive && proctorConfig?.singleDeviceLock !== false && !multiDeviceReportedRef.current) {
+          multiDeviceReportedRef.current = true;
+          guardRef.current?.pushEvent?.('multi_device', 'hard', {
+            source: 'device_takeover',
+            previousDeviceLabel: res.previousDeviceLabel,
+          });
+        }
+      })
       .catch((e) => {
         console.error('[ExamJoin] Join session FAIL:', e.code, e.message);
         joinStartedRef.current = false;
@@ -1010,7 +1134,7 @@ export default function ExamJoin({ token, onExit }) {
       });
 
     return undefined;
-  }, [stage, session?.id, user?.uid]);
+  }, [stage, session?.id, user?.uid, tabLockToken, proctorConfig?.singleDeviceLock]);
 
   useEffect(() => {
     if (stage !== 'exam' || !session?.id || !user?.uid) return undefined;
@@ -1025,6 +1149,28 @@ export default function ExamJoin({ token, onExit }) {
         guardRef.current?.exitFullscreen?.();
         setStage('kicked');
         return;
+      }
+
+      if (doc.forceSubmit && !submittedRef.current) {
+        finishExam({
+          auto: true,
+          reason: 'teacher_forced',
+          violationCount: guardRef.current?.violations ?? 0,
+        });
+        return;
+      }
+
+      if (
+        proctorConfig?.singleDeviceLock !== false &&
+        doc.activeLockToken &&
+        tabLockToken &&
+        doc.activeLockToken !== tabLockToken
+      ) {
+        setMultiDeviceLocked(true);
+        if (!multiDeviceReportedRef.current) {
+          multiDeviceReportedRef.current = true;
+          guardRef.current?.pushEvent?.('multi_device', 'hard', { source: 'other_device_takeover' });
+        }
       }
 
       setPaused(!!doc.paused);
@@ -1045,7 +1191,7 @@ export default function ExamJoin({ token, onExit }) {
     return () => {
       unsub?.();
     };
-  }, [stage, session?.id, user?.uid]);
+  }, [stage, session?.id, user?.uid, tabLockToken, proctorConfig?.singleDeviceLock, finishExam]);
 
   useEffect(() => {
     if (stage !== 'exam' || !session?.id) return undefined;
@@ -1053,8 +1199,9 @@ export default function ExamJoin({ token, onExit }) {
     return listenSession(session.id, (s) => {
       if (!s) return;
       if (s.status === 'ended') {
-        /* Phòng đã đóng TRƯỚC khi em vào (bản ghi cũ) → không nộp bài trắng thay em */
-        const endedBeforeJoin = first && !attemptRef.current?.restored && Date.now() - (startTimeRef.current || 0) < 15000;
+        /* Chỉ bỏ qua nếu phòng đã kết thúc TRƯỚC lúc thí sinh bắt đầu làm bài */
+        const endedAtMs = s.endedAt?.toMillis?.() ?? s.endedAtMs ?? 0;
+        const endedBeforeJoin = first && !attemptRef.current?.restored && endedAtMs > 0 && endedAtMs < (startTimeRef.current || serverNow());
         first = false;
         if (!submittedRef.current && !endedBeforeJoin) {
           finishExam({ auto: true, reason: 'teacher_ended', violationCount: guardRef.current?.violations ?? 0 });
@@ -1070,7 +1217,6 @@ export default function ExamJoin({ token, onExit }) {
         const rem = timeRemaining(s);
         if (s.status === 'live' && rem > 0) setTimeLeft((t) => Math.min(t, rem));
       } else if (currentEnd > (lastClosesAtRef.current || 0)) {
-        // Giáo viên gia hạn thêm thời gian trong phòng thi trực tiếp!
         const diffSec = Math.round((currentEnd - lastClosesAtRef.current) / 1000);
         lastClosesAtRef.current = currentEnd;
         const rem = timeRemaining(s);
@@ -1086,6 +1232,7 @@ export default function ExamJoin({ token, onExit }) {
     if (!joinReady) return undefined;
 
     const send = () => {
+      if (multiDeviceLocked) return;
       heartbeat({
         sessionId,
         studentId: user.uid,
@@ -1093,6 +1240,7 @@ export default function ExamJoin({ token, onExit }) {
         currentQuestion: currentQRef.current,
         answered: answeredRef.current,
         status: pausedRef.current ? 'paused' : 'examining',
+        lockToken: tabLockToken,
       }).catch(() => {});
     };
 
@@ -1103,11 +1251,11 @@ export default function ExamJoin({ token, onExit }) {
       clearInterval(heartbeatTimerRef.current);
       heartbeatTimerRef.current = null;
     };
-  }, [stage, sessionId, user?.uid, paused, joinReady]);
+  }, [stage, sessionId, user?.uid, paused, joinReady, tabLockToken, multiDeviceLocked]);
 
   useEffect(() => {
-    if (stage !== 'exam' || !sessionId || !user?.uid) return undefined;
-    if (!joinReady) return undefined;
+    if (stage !== 'exam' || sessionId == null || !user?.uid) return undefined;
+    if (!joinReady || multiDeviceLocked) return undefined;
     const timer = setTimeout(() => {
       heartbeat({
         sessionId,
@@ -1116,10 +1264,11 @@ export default function ExamJoin({ token, onExit }) {
         currentQuestion: currentQ,
         answered: countAnswered(exam?.questions, answers),
         status: paused ? 'paused' : 'examining',
+        lockToken: tabLockToken,
       }).catch(() => {});
     }, 8000);
     return () => clearTimeout(timer);
-  }, [currentQ, answers, stage, sessionId, user?.uid, paused, joinReady]);
+  }, [currentQ, answers, stage, sessionId, user?.uid, paused, joinReady, tabLockToken, multiDeviceLocked, exam?.questions]);
 
   useEffect(() => {
     if (stage !== 'exam' || paused) return;
@@ -1303,15 +1452,18 @@ export default function ExamJoin({ token, onExit }) {
       console.warn('[ExamJoin] Không vào fullscreen ngay, banner sẽ nhắc lại');
     }
 
-    startTimeRef.current = Date.now();
+    startTimeRef.current = serverNow();
     submittedRef.current = false;
     joinStartedRef.current = false;
+    multiDeviceReportedRef.current = false;
+    setMultiDeviceLocked(false);
 
     try {
       const att = await startAttempt({
         examId: exam.id,
         student: { id: user.uid, name: user.displayName || user.email },
         forceNew: !!(prevSubmission && retryPermit?.canRetry),
+        lockToken: tabLockToken,
       });
 
       if (att.submitted && !retryPermit?.canRetry) {
@@ -1321,19 +1473,27 @@ export default function ExamJoin({ token, onExit }) {
       }
 
       attemptRef.current = att;
-      setStage('exam');
       guard.reset();
+      if (!att.submitted && att.restored && (att.violationCount > 0 || att.events?.length)) {
+        pendingHydrateRef.current = {
+          count: att.violationCount || 0,
+          events: att.events || [],
+        };
+      } else {
+        pendingHydrateRef.current = null;
+      }
 
       if (!att.submitted && att.answers && typeof att.answers === 'object') setAnswers(att.answers);
       if (!att.submitted && att.startedAt) {
         startTimeRef.current = att.startedAt;
-        const elapsed = Math.floor((Date.now() - att.startedAt) / 1000);
+        const elapsed = Math.floor(Math.max(0, serverNow() - att.startedAt) / 1000);
         setTimeLeft(Math.max(0, exam.duration * 60 - elapsed));
       }
+      setStage('exam');
     } catch (e) {
       console.warn('Không tạo được attempt:', e);
-      setStage('exam');
       guard.reset();
+      setStage('exam');
     }
   };
 
@@ -1672,6 +1832,9 @@ export default function ExamJoin({ token, onExit }) {
             {guard.fullscreenLock && <li>Không thoát màn hình thi</li>}
             <li>Chuyển tab hoặc thoát toàn màn hình bị tính vi phạm</li>
             <li><b>Chế độ nghiêm ngặt:</b> vi phạm 1 lần đã cảnh báo đỏ</li>
+            {proctorConfig?.audioMonitor && (
+              <li><b>Giám sát âm thanh cục bộ:</b> phát hiện tiếng nói trao đổi kéo dài (không ghi hay tải âm thanh)</li>
+            )}
             <li>Vi phạm {proctorConfig?.tabSwitchLimit ?? 3} lần sẽ tự động nộp bài</li>
           </ul>
 
@@ -1719,7 +1882,7 @@ export default function ExamJoin({ token, onExit }) {
 
           {needCamera && !canStart && (
             <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.95rem', borderRadius: 10, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', color: '#b45309', fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1.4 }}>
-              <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+              <IcoWarning size={18} />
               <span>
                 {!cameraConsent
                   ? 'Vui lòng tích chọn “Tôi đồng ý bật camera” phía trên để mở nút Bắt đầu thi.'
@@ -1754,6 +1917,7 @@ export default function ExamJoin({ token, onExit }) {
       resume_expired: 'Lần làm bài trước chưa được nộp và đã quá thời gian — hệ thống nộp bài đã lưu.',
       violation: `Đạt ngưỡng vi phạm tối đa (${guardRef.current?.violations ?? '?'}/${guardRef.current?.maxViolations ?? '?'}).`,
       teacher_ended: 'Giáo viên đã kết thúc phòng thi.',
+      teacher_forced: 'Giáo viên đã thực hiện thu bài ngay lập tức.',
     };
     return (
       <>
@@ -1799,11 +1963,39 @@ export default function ExamJoin({ token, onExit }) {
       : timeLeft < 300 ? ' urgent'
         : '';
 
+  const showProctorChip = !practiceMode && !!proctorConfig;
   const showMonitor =
     proctorConfig?.camera &&
     proctorConfig.camera !== 'off' &&
     cameraConsent &&
     cameraEnabled;
+
+  let curtainTitle = '';
+  let curtainDesc = '';
+  let curtainAction = null;
+  if (stage === 'exam' && !practiceMode && !confirmOpen && !submitting) {
+    if (multiDeviceLocked) {
+      curtainTitle = 'Phát hiện mở đề trên tab / thiết bị khác';
+      curtainDesc = 'Phiên làm bài này đã bị khoá để chống gian lận đa thiết bị. Không thể tiếp tục làm bài trên cửa sổ này.';
+    } else if (guard.devtoolsOpen && (proctorConfig?.strictMode || proctorConfig?.lockdown)) {
+      curtainTitle = 'Công cụ kiểm tra (DevTools) đang mở';
+      curtainDesc = 'Đề thi tạm ẩn cho đến khi bạn đóng DevTools / Console.';
+    } else if (guard.multiScreen && proctorConfig?.blockMultiScreen !== false) {
+      curtainTitle = 'Phát hiện nhiều màn hình mở rộng';
+      curtainDesc = 'Vui lòng ngắt kết nối màn hình phụ hoặc chuyển về chế độ 1 màn hình duy nhất.';
+    } else if (camBlocked) {
+      curtainTitle = 'Camera giám sát bị ngắt';
+      curtainDesc = 'Đề thi yêu cầu camera hoạt động liên tục. Hãy bật lại camera để tiếp tục làm bài.';
+    } else if (showFsBanner && (proctorConfig?.strictMode || proctorConfig?.lockdown)) {
+      curtainTitle = 'Bắt buộc chế độ toàn màn hình';
+      curtainDesc = 'Bạn đã thoát khỏi toàn màn hình. Đề thi được làm mờ cho tới khi bạn quay lại toàn màn hình.';
+      curtainAction = { label: 'Vào toàn màn hình ngay', onClick: handleReenterFullscreen };
+    } else if ((proctorConfig?.blurOnFocusLost !== false) && !guard.windowFocused && !paused && !overlayOpen) {
+      curtainTitle = 'Cửa sổ làm bài mất tiêu điểm';
+      curtainDesc = 'Nội dung đề thi tạm ẩn khi bạn rời khỏi hoặc chuyển tiêu điểm cửa sổ.';
+      curtainAction = { label: 'Quay lại làm bài', onClick: () => { try { window.focus(); } catch { /* */ } } };
+    }
+  }
 
   const camStyle = camMinimized
     ? { position: 'fixed', left: 16, bottom: 96, zIndex: 60 }
@@ -1813,7 +2005,36 @@ export default function ExamJoin({ token, onExit }) {
 
   return (
     <>
-      <div className={'ep-exam' + (typing ? ' kbd' : '') + (mode === 'paper' ? ' is-paper' : '')}>
+      <div
+        className={
+          'ep-exam' +
+          (typing ? ' kbd' : '') +
+          (mode === 'paper' ? ' is-paper' : '') +
+          (proctorConfig?.blockCopyPaste !== false ? ' no-select' : '') +
+          (curtainTitle ? ' is-blurred' : '')
+        }
+      >
+        {proctorConfig?.watermark !== false && stage === 'exam' && (
+          <WatermarkOverlay studentName={user?.displayName || user?.email} studentId={user?.uid} />
+        )}
+        {curtainTitle && (
+          <div className="ep-privacy-curtain" role="alert" aria-live="assertive">
+            <div className="ep-privacy-card">
+              <div className="ep-privacy-icon"><IcoShield size={28} /></div>
+              <h3>{curtainTitle}</h3>
+              <p>{curtainDesc}</p>
+              {curtainAction && (
+                <button
+                  type="button"
+                  className="td-btn primary"
+                  onClick={curtainAction.onClick}
+                >
+                  {curtainAction.label}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {showFsBanner && (
           <div className="ep-warning danger" role="alert" style={{
             background: '#dc2626',
@@ -1869,7 +2090,7 @@ export default function ExamJoin({ token, onExit }) {
               <h2>{exam.title}</h2>
               <span className="ep-header-sub">
                 Câu {currentQ + 1} / {exam.questions.length}
-                {showMonitor && <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>}
+                {showProctorChip && <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>}
               </span>
             </div>
           </div>
@@ -1878,9 +2099,14 @@ export default function ExamJoin({ token, onExit }) {
             <div className="ep-progress-mini" aria-hidden="true">
               <div className="ep-progress-mini-bar" style={{ width: `${progress}%` }} />
             </div>
-            {showMonitor && (
+            {showProctorChip && (
               <span className="ep-monitor-chip">
-                <IcoCam size={13} /> Giám sát · Vi phạm {guard.violations}/{guard.maxViolations}
+                {showMonitor ? <IcoCam size={13} /> : <IcoShield size={13} />} Giám sát · Vi phạm {guard.violations}/{guard.maxViolations}
+              </span>
+            )}
+            {audioGuard.status === 'listening' && (
+              <span className="ep-monitor-chip" title="Đang giám sát âm thanh cục bộ">
+                Mic OK
               </span>
             )}
             {session && joinReady && (

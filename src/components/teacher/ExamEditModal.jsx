@@ -225,9 +225,11 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
   const [proctor, setProctor] = useState(() => ({
     fullscreenLock: true, tabSwitchLimit: 3, blockCopyPaste: true, strictMode: true,
     camera: 'off',
-    snapshotOnEvent: true, maxSnapshots: 10, retentionDays: 30,
+    snapshotOnEvent: true, maxSnapshots: 15, retentionDays: 30,
     blockDevTools: true, blockPrintScreen: true, blockLongBlur: true, allowPauseByTeacher: true,
-    motionGuard: true, softToHard: 8,
+    blurOnFocusLost: true, singleDeviceLock: true, blockMultiScreen: true, watermark: true,
+    audioMonitor: false, requireAiModel: false, lockdown: false,
+    motionGuard: true, softToHard: 5,
     ...(exam.proctor || {}),
     cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true, ...(exam.proctor?.cameraChecks || {}) },
   }));
@@ -273,6 +275,33 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
   const totalPoints = useMemo(() => round2(questions.reduce((s, q) => s + ptsOf(q), 0)), [questions]);
   const setP = (patch) => setProctor((p) => ({ ...p, ...patch }));
   const setPC = (patch) => setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, ...patch } }));
+  const toggleLockdown = () => setProctor((p) => {
+    const next = !p.lockdown;
+    return {
+      ...p,
+      lockdown: next,
+      strictMode: true,
+      fullscreenLock: true,
+      blockCopyPaste: true,
+      blockDevTools: true,
+      blockPrintScreen: true,
+      blockLongBlur: true,
+      blurOnFocusLost: true,
+      singleDeviceLock: true,
+      blockMultiScreen: true,
+      watermark: true,
+      motionGuard: true,
+      ...(next ? {
+        tabSwitchLimit: Math.min(p.tabSwitchLimit || 3, 2),
+        softToHard: 3,
+        camera: p.camera === 'off' ? 'required' : p.camera,
+        requireAiModel: true,
+        audioMonitor: true,
+        snapshotOnEvent: true,
+        cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
+      } : {}),
+    };
+  });
 
   const patchQ = (i, patch) => setQuestions((qs) => qs.map((q, k) => (k === i ? { ...q, ...patch } : q)));
   const addQ = (type = 'single_choice') => {
@@ -539,7 +568,21 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
 
         {/* ===== GIÁM SÁT ===== */}
         <section style={{ ...P.card, marginBottom: '.9rem' }}>
-          <h3 style={{ margin: '0 0 .7rem', font: '800 .85rem var(--t-font-sans)', color: 'var(--t-ink)' }}>Giám sát &amp; chống gian lận</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.5rem', marginBottom: '.7rem' }}>
+            <h3 style={{ margin: 0, font: '800 .85rem var(--t-font-sans)', color: 'var(--t-ink)' }}>Giám sát &amp; chống gian lận</h3>
+            <button
+              type="button"
+              onClick={toggleLockdown}
+              style={{
+                ...P.btn,
+                background: proctor.lockdown ? '#dc2626' : 'var(--t-soft, #eef2ff)',
+                color: proctor.lockdown ? '#fff' : 'var(--t-ink)',
+                border: '1px solid ' + (proctor.lockdown ? '#dc2626' : 'rgba(148,163,184,.35)'),
+              }}
+            >
+              {proctor.lockdown ? 'Siêu chặt (Đang bật)' : 'Bật chế độ Siêu chặt'}
+            </button>
+          </div>
 
           <label style={P.label}>Camera học sinh</label>
           <select style={{ ...P.input, marginBottom: '.8rem' }} value={proctor.camera} onChange={(e) => setP({ camera: e.target.value })}>
@@ -567,6 +610,12 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
             <Switch label="Chụp ảnh khi có vi phạm" checked={proctor.snapshotOnEvent} onChange={(v) => setP({ snapshotOnEvent: v })} />
             <Switch label="Cho phép tạm dừng bởi GV" checked={proctor.allowPauseByTeacher} onChange={(v) => setP({ allowPauseByTeacher: v })} />
             <Switch label="Chế độ nghiêm ngặt" checked={proctor.strictMode} onChange={(v) => setP({ strictMode: v })} hint="Vi phạm đầu tiên hiện cảnh báo đỏ nghiêm trọng" />
+            <Switch label="Làm mờ đề khi rời cửa sổ" checked={proctor.blurOnFocusLost !== false} onChange={(v) => setP({ blurOnFocusLost: v })} hint="Ẩn đề ngay khi mất focus / chụp ảnh" />
+            <Switch label="Khoá 1 tab / 1 thiết bị" checked={proctor.singleDeviceLock !== false} onChange={(v) => setP({ singleDeviceLock: v })} hint="Chặn đăng nhập song song nhiều thiết bị" />
+            <Switch label="Chặn đa màn hình" checked={proctor.blockMultiScreen !== false} onChange={(v) => setP({ blockMultiScreen: v })} hint="Phát hiện màn hình phụ mở rộng" />
+            <Switch label="Thủy vân định danh đề thi" checked={proctor.watermark !== false} onChange={(v) => setP({ watermark: v })} hint="Hiện tên/ID thí sinh chìm trên nền đề" />
+            <Switch label="Giám sát âm thanh (Micro)" checked={!!proctor.audioMonitor} onChange={(v) => setP({ audioMonitor: v })} hint="Cảnh báo tiếng nói kéo dài (cục bộ)" />
+            <Switch label="Bắt buộc tải xong AI mặt" checked={!!proctor.requireAiModel} onChange={(v) => setP({ requireAiModel: v })} hint="Không bỏ qua bước kiểm tra khuôn mặt khi vào thi" />
             <Switch label="Phát hiện nhấc / lắc điện thoại" checked={proctor.motionGuard !== false} onChange={(v) => setP({ motionGuard: v })} hint="Cảm biến chuyển động (chỉ thiết bị cảm ứng)" />
           </div>
 

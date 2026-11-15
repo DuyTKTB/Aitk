@@ -28,11 +28,18 @@ const COOLDOWN_MS = 15000;
 const CAMERA_GRACE_MS = 12000;
 const UPLOAD_TIMEOUT_MS = 6000;
 const UPLOAD_MAX_FAILS = 2;
-const MODEL_RETRY_MS = 10000;
-const NEVER_SEEN_MS = 20000;
+const UPLOAD_COOLDOWN_MS = 45000;
+const MODEL_RETRY_MS = 8000;
+const NEVER_SEEN_MS = 12000;
+const COVERED_MS = 4000;
+const FROZEN_TIME_MS = 5000;
+const STATIC_FEED_MS = 7000;
 
-/* Nên ghim đúng phiên bản đã cài (npm ls @mediapipe/tasks-vision), tránh @latest lệch bản */
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+/* Ưu tiên WASM cục bộ trong /models để tránh phụ thuộc CDN; fallback CDN khi thiếu */
+const WASM_SOURCES = [
+  '/models',
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm',
+];
 
 /* Firebase tự retry upload tới 10 phút → giảm còn 8 giây */
 if (storage) {
@@ -46,7 +53,21 @@ let sharedObjectDetector = null; // tuỳ chọn: nhận diện 'cell phone' th�
 let objectTried = false;
 let sharedModelLoadPromise = null;
 let lastModelFailAt = 0;
-let uploadFails = 0; // circuit breaker, giữ qua các lần mount
+let uploadFails = 0;
+let lastUploadFailAt = 0;
+
+async function resolveVisionFileset(FilesetResolver) {
+  let lastErr;
+  for (const src of WASM_SOURCES) {
+    try {
+      return await FilesetResolver.forVisionTasks(src);
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[proctor] Fileset WASM (${src}) lỗi:`, e?.message);
+    }
+  }
+  throw lastErr || new Error('Không tải được WASM MediaPipe.');
+}
 
 async function createWithFallback(Cls, fileset, modelAssetPath, extra) {
   for (const delegate of ['GPU', 'CPU']) {
@@ -72,7 +93,7 @@ function ensureModels() {
   console.log('[proctor] Bắt đầu load model MediaPipe...');
   sharedModelLoadPromise = (async () => {
     const { FaceLandmarker, HandLandmarker, ObjectDetector, FilesetResolver } = await import('@mediapipe/tasks-vision');
-    const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
+    const fileset = await resolveVisionFileset(FilesetResolver);
     if (!sharedFaceDetector) {
       sharedFaceDetector = await createWithFallback(
         FaceLandmarker, fileset, '/models/face_landmarker.task', { numFaces: 2 }
@@ -126,6 +147,8 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
   const everSawFaceRef = useRef(false);
   const streamStableRef = useRef(false);
   const stableTimerRef = useRef(null);
+  const muteTimerRef = useRef(null);
+  const probeRef = useRef({ canvas: null, ctx: null, prevLuma: null });
 
   const stateRef = useRef({
     noFaceSince: 0,
@@ -133,6 +156,9 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
     lookAwaySince: 0,
     handRaiseSince: 0,
     phoneLikeSince: 0,
+    coveredSince: 0,
+    frozenSince: 0,
+    stalledSince: 0,
     lastFireAt: {},
     snapshotCount: 0,
     uploading: false,
@@ -165,19 +191,19 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
     try { onEventRef.current?.({ type, severity, meta, at: Date.now() }); } catch { /* */ }
   }, []);
 
-  /* Upload ảnh vi phạm — không bao giờ treo quá UPLOAD_TIMEOUT_MS */
+  /* Upload ảnh vi phạm (kèm fallback inlineThumb gọn nếu Storage lỗi/chờ cooldown) */
   const captureSnapshot = useCallback(async (eventType) => {
     const st = stateRef.current;
     try {
       const cfg = configRef.current;
-      if (!cfg?.snapshotOnEvent) return null;
-      if (!storage || !examId || !studentId) return null;
-      if (uploadFails >= UPLOAD_MAX_FAILS) return null; // storage đang hỏng → bỏ qua
-      if (st.uploading) return null;                    // đang upload ảnh khác
-      if (st.snapshotCount >= (cfg.maxSnapshots || 10)) return null;
+      if (!cfg?.snapshotOnEvent) return { snapshotUrl: null, inlineThumb: null };
+      if (!examId || !studentId) return { snapshotUrl: null, inlineThumb: null };
+      if (st.snapshotCount >= (cfg.maxSnapshots || 15)) return { snapshotUrl: null, inlineThumb: null };
 
       const v = videoRef.current;
-      if (!v || !v.videoWidth || !v.videoHeight || v.readyState < 2) return null;
+      if (!v || !v.videoWidth || !v.videoHeight || v.readyState < 2) {
+        return { snapshotUrl: null, inlineThumb: null };
+      }
 
       const w = 320;
       const h = Math.round((v.videoHeight / v.videoWidth) * w) || 240;
@@ -185,11 +211,33 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
+      if (!ctx) return { snapshotUrl: null, inlineThumb: null };
       ctx.drawImage(v, 0, 0, w, h);
 
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.5));
-      if (!blob) return null;
+      // Tạo thumbnail dự phòng nhỏ (~3-5KB) để GV luôn xem được ảnh kể cả khi Storage bị CORS/offline
+      let inlineThumb = null;
+      try {
+        const tw = 160;
+        const th = Math.round((v.videoHeight / v.videoWidth) * tw) || 120;
+        const tc = document.createElement('canvas');
+        tc.width = tw;
+        tc.height = th;
+        tc.getContext('2d')?.drawImage(canvas, 0, 0, tw, th);
+        inlineThumb = tc.toDataURL('image/jpeg', 0.4);
+      } catch { /* */ }
+
+      const canUploadStorage = Boolean(
+        storage &&
+        !st.uploading &&
+        (uploadFails < UPLOAD_MAX_FAILS || Date.now() - lastUploadFailAt >= UPLOAD_COOLDOWN_MS)
+      );
+      if (!canUploadStorage) {
+        if (inlineThumb) st.snapshotCount += 1;
+        return { snapshotUrl: null, inlineThumb };
+      }
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.52));
+      if (!blob) return { snapshotUrl: null, inlineThumb };
 
       st.uploading = true;
       const ref = storageRef(storage, `proctor/${examId}/${studentId}/${Date.now()}_${eventType}.jpg`);
@@ -211,14 +259,14 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       const url = await getDownloadURL(ref);
       st.snapshotCount += 1;
       uploadFails = 0;
-      return url;
+      return { snapshotUrl: url, inlineThumb: null };
     } catch (e) {
       uploadFails += 1;
+      lastUploadFailAt = Date.now();
       console.warn(
-        `[proctor] snapshot lỗi (${uploadFails}/${UPLOAD_MAX_FAILS}):`, e?.code || e?.message,
-        uploadFails >= UPLOAD_MAX_FAILS ? '→ tắt upload ảnh, kiểm tra CORS/Rules của Storage' : ''
+        `[proctor] snapshot lỗi (${uploadFails}/${UPLOAD_MAX_FAILS}):`, e?.code || e?.message
       );
-      return null;
+      return { snapshotUrl: null, inlineThumb: null };
     } finally {
       st.uploading = false;
     }
@@ -230,8 +278,8 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       return;
     }
     if (!shouldFire(type)) return;
-    const snapshotUrl = await captureSnapshot(type);
-    emitEvent(type, severity, { ...meta, snapshotUrl });
+    const { snapshotUrl, inlineThumb } = await captureSnapshot(type);
+    emitEvent(type, severity, { ...meta, snapshotUrl, inlineThumb });
   }, [captureSnapshot, emitEvent]);
 
   const waitForVideo = (timeoutMs = 3000) =>
@@ -306,6 +354,18 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
           setStatus('lost');
           fireEvent('camera_lost', 'hard');
         });
+        track.addEventListener('mute', () => {
+          clearTimeout(muteTimerRef.current);
+          muteTimerRef.current = setTimeout(() => {
+            if (!mountedRef.current || myRun !== runIdRef.current) return;
+            if (track.muted || track.readyState === 'ended') {
+              fireEvent('camera_lost', 'hard', { reason: 'track_muted' });
+            }
+          }, 2500);
+        });
+        track.addEventListener('unmute', () => {
+          clearTimeout(muteTimerRef.current);
+        });
       }
 
       setStatus('ok');
@@ -330,6 +390,7 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
   const stop = useCallback(() => {
     runIdRef.current += 1; // vô hiệu mọi start() đang chờ
     clearTimeout(stableTimerRef.current);
+    clearTimeout(muteTimerRef.current);
     releaseStream(streamRef.current);
     streamRef.current = null;
     if (videoRef.current) {
@@ -338,6 +399,7 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
     lastVideoTimeRef.current = -1;
     everSawFaceRef.current = false;
     streamStableRef.current = false;
+    probeRef.current.prevLuma = null;
     if (mountedRef.current) {
       setStatus('idle');
       setFaces(0);
@@ -356,19 +418,67 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
     if (!active || status !== 'ok') return undefined;
 
     const detect = () => {
-      if (!sharedFaceDetector) { ensureModels(); return; }
-
       const v = videoRef.current;
       if (!v || v.readyState < 2 || !v.videoWidth) return;
-      if (v.currentTime === lastVideoTimeRef.current) return;
-      lastVideoTimeRef.current = v.currentTime;
 
-      const now = performance.now();
       const nowMs = Date.now();
-      const checks = configRef.current?.cameraChecks
-        || { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true };
       const st = stateRef.current;
       const grace = inGrace();
+      const cfg = configRef.current || {};
+
+      // Kiểm tra đứng hình / nguồn video ngừng cập nhật kể cả khi MediaPipe chưa sẵn sàng
+      if (v.currentTime === lastVideoTimeRef.current) {
+        if (!grace) {
+          if (!st.stalledSince) st.stalledSince = nowMs;
+          else if (nowMs - st.stalledSince >= FROZEN_TIME_MS) {
+            fireEvent('camera_frozen', 'hard', { reason: 'video_stalled' });
+            st.stalledSince = nowMs;
+          }
+        }
+        return;
+      }
+      st.stalledSince = 0;
+      lastVideoTimeRef.current = v.currentTime;
+
+      // Kiểm tra độ sáng, đồng nhất khung hình (che camera) & ảnh tĩnh giả lập
+      const liveness = analyzeFrameLiveness(v, probeRef.current);
+      if (liveness && !grace) {
+        const isCovered = (liveness.meanLuma < 14 && liveness.lumaStd < 8) || liveness.lumaStd < 2.2;
+        if (isCovered) {
+          if (!st.coveredSince) st.coveredSince = nowMs;
+          else if (nowMs - st.coveredSince >= COVERED_MS) {
+            fireEvent('camera_covered', 'hard', {
+              meanLuma: Math.round(liveness.meanLuma),
+              lumaStd: Number(liveness.lumaStd.toFixed(1)),
+            });
+            st.coveredSince = nowMs;
+          }
+        } else {
+          st.coveredSince = 0;
+        }
+
+        if (liveness.frameDiff !== null && liveness.frameDiff < 0.18 && !isCovered) {
+          if (!st.frozenSince) st.frozenSince = nowMs;
+          else if (nowMs - st.frozenSince >= STATIC_FEED_MS) {
+            fireEvent('camera_frozen', 'hard', {
+              reason: 'static_feed',
+              frameDiff: Number(liveness.frameDiff.toFixed(2)),
+            });
+            st.frozenSince = nowMs;
+          }
+        } else {
+          st.frozenSince = 0;
+        }
+      } else {
+        st.coveredSince = 0;
+        st.frozenSince = 0;
+      }
+
+      if (!sharedFaceDetector) { ensureModels(); return; }
+
+      const now = performance.now();
+      const checks = cfg.cameraChecks
+        || { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true };
 
       let faceCount = 0;
       let lookAway = false;
@@ -383,14 +493,14 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
         if (faceCount === 1 && checks.lookAway) lookAway = isLookingAway(res.faceLandmarks[0]);
       } catch { /* bỏ qua lỗi từng frame */ }
 
-      // no_face — chỉ báo khi đã từng thấy mặt
-      // Chưa từng thấy mặt sau NEVER_SEEN_MS (che/úp camera từ đầu) → báo mức NHẸ để GV xem xét
+      // no_face — nếu camera bắt buộc / lockdown / strictMode, chưa từng thấy mặt sau NEVER_SEEN_MS vẫn tính 'hard'
       const neverSeen = !everSawFaceRef.current && nowMs - startTimeRef.current > NEVER_SEEN_MS;
+      const neverSeenSeverity = (cfg.camera === 'required' || cfg.lockdown || cfg.strictMode) ? 'hard' : 'soft';
       if (checks.noFace && (everSawFaceRef.current || neverSeen) && !grace) {
         if (faceCount === 0) {
           if (!st.noFaceSince) st.noFaceSince = nowMs;
           else if (nowMs - st.noFaceSince >= NO_FACE_MS) {
-            fireEvent('no_face', neverSeen ? 'soft' : 'hard', { duration: NO_FACE_MS, neverSeen });
+            fireEvent('no_face', neverSeen ? neverSeenSeverity : 'hard', { duration: NO_FACE_MS, neverSeen });
             st.noFaceSince = nowMs;
           }
         } else st.noFaceSince = 0;
@@ -482,6 +592,46 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
   };
 }
 
+/* Phân tích độ sáng + chênh lệch frame trên canvas 24x18 để bắt che ống kính & camera giả tĩnh */
+function analyzeFrameLiveness(video, probe) {
+  try {
+    if (!probe.canvas) {
+      const c = document.createElement('canvas');
+      c.width = 24;
+      c.height = 18;
+      probe.canvas = c;
+      probe.ctx = c.getContext('2d', { willReadFrequently: true });
+    }
+    const ctx = probe.ctx;
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, 24, 18);
+    const { data } = ctx.getImageData(0, 0, 24, 18);
+    const n = 24 * 18;
+    const luma = new Float32Array(n);
+    let sum = 0;
+    for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+      const y = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      luma[p] = y;
+      sum += y;
+    }
+    const meanLuma = sum / n;
+    let varSum = 0;
+    let diffSum = 0;
+    const prev = probe.prevLuma;
+    for (let p = 0; p < n; p++) {
+      const d = luma[p] - meanLuma;
+      varSum += d * d;
+      if (prev) diffSum += Math.abs(luma[p] - prev[p]);
+    }
+    const lumaStd = Math.sqrt(varSum / n);
+    const frameDiff = prev ? diffSum / n : null;
+    probe.prevLuma = luma;
+    return { meanLuma, lumaStd, frameDiff };
+  } catch {
+    return null;
+  }
+}
+
 /* ============ HÌNH HỌC ============ */
 function boxOf(lm) {
   let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
@@ -532,7 +682,7 @@ function isHandNearFace(hand, box) {
    • Không tải được model nhận diện → degraded: vẫn cho vào (không chặn oan) nhưng báo rõ
    • release() phải gọi trước khi vào phòng thi để nhả camera cho useProctorCamera
    ============================================================ */
-export function useCameraPreflight({ active }) {
+export function useCameraPreflight({ active, requireAiModel = false }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const okCountRef = useRef(0);
@@ -596,7 +746,9 @@ export function useCameraPreflight({ active }) {
   }, [active]);
 
   const degraded = status === 'ok' && modelOk === false;
-  useEffect(() => { if (degraded) setReady(true); }, [degraded]);
+  useEffect(() => {
+    if (degraded && !requireAiModel) setReady(true);
+  }, [degraded, requireAiModel]);
 
   useEffect(() => {
     if (!active || status !== 'ok') return undefined;
@@ -621,8 +773,9 @@ export function useCameraPreflight({ active }) {
   else if (status === 'unavailable') message = 'Không tìm thấy camera trên thiết bị này.';
   else if (status === 'error') message = 'Không mở được camera. Hãy đóng ứng dụng khác đang dùng camera rồi bấm "Thử lại".';
   else if (status === 'ok') {
-    if (degraded) message = 'Không tải được bộ nhận diện khuôn mặt — tạm cho phép vào thi.';
-    else if (ready) message = '✅ Đã nhận diện được khuôn mặt — bạn có thể bắt đầu thi.';
+    if (degraded && requireAiModel) message = 'Chưa tải được AI nhận diện khuôn mặt — không thể bỏ qua ở chế độ giám sát chặt. Hãy tắt chặn nội dung hoặc bấm "Thử lại".';
+    else if (degraded) message = 'Không tải được bộ nhận diện khuôn mặt — tạm cho phép vào thi.';
+    else if (ready) message = 'Đã nhận diện được khuôn mặt — bạn có thể bắt đầu thi.';
     else if (modelOk === null) message = 'Đang tải bộ nhận diện khuôn mặt…';
     else if (faces > 1) message = 'Có nhiều hơn 1 khuôn mặt trong khung hình. Chỉ mình bạn được ngồi trước camera.';
     else if (faces === 1) message = 'Đã thấy khuôn mặt — giữ yên một chút…';

@@ -299,16 +299,30 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     fullscreenLock: true,
     tabSwitchLimit: 3,
     blockCopyPaste: true,
+    strictMode: true,
+    blockDevTools: true,
+    blockPrintScreen: true,
+    blockLongBlur: true,
+    blurOnFocusLost: true,
+    singleDeviceLock: true,
+    blockMultiScreen: true,
+    watermark: true,
+    audioMonitor: false,
+    requireAiModel: false,
+    softToHard: 5,
+    motionGuard: true,
+    lockdown: false,
+    allowPauseByTeacher: true,
     camera: 'off',
     cameraChecks: {
       noFace: true,
       multiFace: true,
-      lookAway: false,
+      lookAway: true,
       handRaise: true,
       phoneLike: true,
     },
     snapshotOnEvent: true,
-    maxSnapshots: 10,
+    maxSnapshots: 15,
     retentionDays: 30,
   });
 
@@ -515,6 +529,30 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
 
   const setProctorField = (k, v) => setProctor((p) => ({ ...p, [k]: v }));
   const setCameraCheck = (k, v) => setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, [k]: v } }));
+  const applyLockdownPreset = (on) => setProctor((p) => ({
+    ...p,
+    lockdown: on,
+    strictMode: true,
+    fullscreenLock: true,
+    blockCopyPaste: true,
+    blockDevTools: true,
+    blockPrintScreen: true,
+    blockLongBlur: true,
+    blurOnFocusLost: true,
+    singleDeviceLock: true,
+    blockMultiScreen: true,
+    watermark: true,
+    motionGuard: true,
+    ...(on ? {
+      tabSwitchLimit: Math.min(p.tabSwitchLimit || 3, 2),
+      softToHard: 3,
+      camera: p.camera === 'off' ? 'required' : p.camera,
+      requireAiModel: true,
+      audioMonitor: true,
+      snapshotOnEvent: true,
+      cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
+    } : {}),
+  }));
 
   /* ============ VALIDATE & SUBMIT ============ */
   const validate = () => {
@@ -745,6 +783,22 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
         </header>
 
         <div className="cep-form">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.6rem', padding: '.65rem .85rem', borderRadius: 12, background: proctor.lockdown ? 'rgba(220, 38, 38, .08)' : 'var(--bg-soft, #f8fafc)', border: '1px solid ' + (proctor.lockdown ? '#ef4444' : 'rgba(148, 163, 184, .3)') }}>
+            <div style={{ fontSize: '.84rem', lineHeight: 1.4 }}>
+              <b>Chế độ Siêu chặt (Lockdown)</b>
+              <div style={{ fontSize: '.76rem', opacity: .8 }}>
+                Tự bật camera + AI bắt buộc, mic chống trao đổi, làm mờ khi rời tab, khoá 1 thiết bị &amp; giới hạn tối đa 2 lần vi phạm.
+              </div>
+            </div>
+            <button
+              type="button"
+              className={'cep-chip' + (proctor.lockdown ? ' on' : '')}
+              onClick={() => applyLockdownPreset(!proctor.lockdown)}
+            >
+              {proctor.lockdown ? 'Đang bật Siêu chặt' : 'Bật Siêu chặt'}
+            </button>
+          </div>
+
           <div className="cep-chips">
             <label className={'cep-check' + (proctor.fullscreenLock ? ' on' : '')}>
               <input
@@ -762,18 +816,80 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
               />
               Chặn sao chép / dán
             </label>
+            <label className={'cep-check' + (proctor.blurOnFocusLost !== false ? ' on' : '')}>
+              <input
+                type="checkbox"
+                checked={proctor.blurOnFocusLost !== false}
+                onChange={(e) => setProctorField('blurOnFocusLost', e.target.checked)}
+              />
+              Làm mờ đề khi rời cửa sổ
+            </label>
+            <label className={'cep-check' + (proctor.singleDeviceLock !== false ? ' on' : '')}>
+              <input
+                type="checkbox"
+                checked={proctor.singleDeviceLock !== false}
+                onChange={(e) => setProctorField('singleDeviceLock', e.target.checked)}
+              />
+              Khoá 1 tab / 1 thiết bị
+            </label>
+            <label className={'cep-check' + (proctor.blockMultiScreen !== false ? ' on' : '')}>
+              <input
+                type="checkbox"
+                checked={proctor.blockMultiScreen !== false}
+                onChange={(e) => setProctorField('blockMultiScreen', e.target.checked)}
+              />
+              Chặn đa màn hình
+            </label>
+            <label className={'cep-check' + (proctor.watermark !== false ? ' on' : '')}>
+              <input
+                type="checkbox"
+                checked={proctor.watermark !== false}
+                onChange={(e) => setProctorField('watermark', e.target.checked)}
+              />
+              Thủy vân định danh đề thi
+            </label>
+            <label className={'cep-check' + (proctor.audioMonitor ? ' on' : '')}>
+              <input
+                type="checkbox"
+                checked={!!proctor.audioMonitor}
+                onChange={(e) => setProctorField('audioMonitor', e.target.checked)}
+              />
+              Giám sát âm thanh (Micro)
+            </label>
+            {proctor.camera !== 'off' && (
+              <label className={'cep-check' + (proctor.requireAiModel ? ' on' : '')}>
+                <input
+                  type="checkbox"
+                  checked={!!proctor.requireAiModel}
+                  onChange={(e) => setProctorField('requireAiModel', e.target.checked)}
+                />
+                Bắt buộc tải xong AI khuôn mặt
+              </label>
+            )}
           </div>
 
-          <label className="cep-field" style={{ maxWidth: 280 }}>
-            <span>Ngưỡng tự động nộp (số lần chuyển tab/rời màn hình)</span>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={proctor.tabSwitchLimit}
-              onChange={(e) => setProctorField('tabSwitchLimit', Math.max(1, Math.min(10, Number(e.target.value) || 3)))}
-            />
-          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.8rem' }}>
+            <label className="cep-field" style={{ flex: '1 1 220px', maxWidth: 280 }}>
+              <span>Ngưỡng tự động nộp (số lần vi phạm nặng)</span>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={proctor.tabSwitchLimit}
+                onChange={(e) => setProctorField('tabSwitchLimit', Math.max(1, Math.min(10, Number(e.target.value) || 3)))}
+              />
+            </label>
+            <label className="cep-field" style={{ flex: '1 1 220px', maxWidth: 280 }}>
+              <span>Vi phạm nhẹ -&gt; 1 nặng (0 = tắt)</span>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={proctor.softToHard ?? 5}
+                onChange={(e) => setProctorField('softToHard', Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+              />
+            </label>
+          </div>
 
           <div className="cep-field">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem' }}>
