@@ -35,10 +35,10 @@ const COVERED_MS = 4000;
 const FROZEN_TIME_MS = 5000;
 const STATIC_FEED_MS = 7000;
 
-/* Ưu tiên WASM cục bộ trong /models để tránh phụ thuộc CDN; fallback CDN khi thiếu */
+/* Ưu tiên WASM cục bộ trong /models để tránh phụ thuộc CDN; fallback CDN đúng phiên bản @1.1.0 khi thiếu */
 const WASM_SOURCES = [
   '/models',
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm',
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm',
 ];
 
 /* Firebase tự retry upload tới 10 phút → giảm còn 8 giây */
@@ -96,7 +96,8 @@ function ensureModels() {
     const fileset = await resolveVisionFileset(FilesetResolver);
     if (!sharedFaceDetector) {
       sharedFaceDetector = await createWithFallback(
-        FaceLandmarker, fileset, '/models/face_landmarker.task', { numFaces: 2 }
+        FaceLandmarker, fileset, '/models/face_landmarker.task',
+        { numFaces: 2, outputFaceBlendshapes: true }
       );
       console.log('[proctor] FaceLandmarker OK');
     }
@@ -149,6 +150,7 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
   const stableTimerRef = useRef(null);
   const muteTimerRef = useRef(null);
   const probeRef = useRef({ canvas: null, ctx: null, prevLuma: null });
+  const calibRef = useRef({ samples: [], baseYaw: 0, basePitch: 0.28, ready: false });
 
   const stateRef = useRef({
     noFaceSince: 0,
@@ -194,6 +196,7 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
   /* Upload ảnh vi phạm (kèm fallback inlineThumb gọn nếu Storage lỗi/chờ cooldown) */
   const captureSnapshot = useCallback(async (eventType) => {
     const st = stateRef.current;
+    let inlineThumb = null;
     try {
       const cfg = configRef.current;
       if (!cfg?.snapshotOnEvent) return { snapshotUrl: null, inlineThumb: null };
@@ -215,7 +218,6 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       ctx.drawImage(v, 0, 0, w, h);
 
       // Tạo thumbnail dự phòng nhỏ (~3-5KB) để GV luôn xem được ảnh kể cả khi Storage bị CORS/offline
-      let inlineThumb = null;
       try {
         const tw = 160;
         const th = Math.round((v.videoHeight / v.videoWidth) * tw) || 120;
@@ -237,7 +239,10 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       }
 
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.52));
-      if (!blob) return { snapshotUrl: null, inlineThumb };
+      if (!blob) {
+        if (inlineThumb) st.snapshotCount += 1;
+        return { snapshotUrl: null, inlineThumb };
+      }
 
       st.uploading = true;
       const ref = storageRef(storage, `proctor/${examId}/${studentId}/${Date.now()}_${eventType}.jpg`);
@@ -266,7 +271,8 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       console.warn(
         `[proctor] snapshot lỗi (${uploadFails}/${UPLOAD_MAX_FAILS}):`, e?.code || e?.message
       );
-      return { snapshotUrl: null, inlineThumb: null };
+      if (inlineThumb) st.snapshotCount += 1;
+      return { snapshotUrl: null, inlineThumb };
     } finally {
       st.uploading = false;
     }
@@ -307,6 +313,7 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
     startTimeRef.current = Date.now();
     everSawFaceRef.current = false;
     streamStableRef.current = false;
+    calibRef.current = { samples: [], baseYaw: 0, basePitch: 0.28, ready: false };
     clearTimeout(stableTimerRef.current);
 
     setStatus('starting');
@@ -400,6 +407,7 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
     everSawFaceRef.current = false;
     streamStableRef.current = false;
     probeRef.current.prevLuma = null;
+    calibRef.current = { samples: [], baseYaw: 0, basePitch: 0.28, ready: false };
     if (mountedRef.current) {
       setStatus('idle');
       setFaces(0);
@@ -421,6 +429,11 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       const v = videoRef.current;
       if (!v || v.readyState < 2 || !v.videoWidth) return;
 
+      // Tự khôi phục phát video nếu iOS/Safari tạm dừng <video> sau khi quay lại tab trong khi stream vẫn sống
+      if (v.paused && streamRef.current?.getVideoTracks().some((t) => t.readyState === 'live')) {
+        try { v.play()?.catch?.(() => {}); } catch { /* */ }
+      }
+
       const nowMs = Date.now();
       const st = stateRef.current;
       const grace = inGrace();
@@ -440,16 +453,45 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       st.stalledSince = 0;
       lastVideoTimeRef.current = v.currentTime;
 
-      // Kiểm tra độ sáng, đồng nhất khung hình (che camera) & ảnh tĩnh giả lập
+      const checks = cfg.cameraChecks
+        || { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true };
+      const now = performance.now();
+
+      let faceCount = 0;
+      let lookAway = false;
+      let faceRawBox = null;
+
+      if (sharedFaceDetector) {
+        try {
+          const res = sharedFaceDetector.detectForVideo(v, now);
+          faceCount = res?.faceLandmarks?.length || 0;
+          if (mountedRef.current) setFaces(faceCount);
+          if (faceCount > 0) everSawFaceRef.current = true;
+          if (faceCount >= 1) faceRawBox = rawBoxOf(res.faceLandmarks[0]);
+          if (faceCount === 1) {
+            updatePoseCalibration(calibRef.current, res.faceLandmarks[0]);
+            if (checks.lookAway) {
+              lookAway = analyzeGazeAndHead(
+                res.faceLandmarks[0],
+                res?.faceBlendshapes?.[0]?.categories,
+                calibRef.current
+              );
+            }
+          }
+        } catch { /* bỏ qua lỗi từng frame */ }
+      }
+
+      // Kiểm tra độ sáng, chi tiết cạnh (che camera) & ảnh tĩnh giả lập
       const liveness = analyzeFrameLiveness(v, probeRef.current);
       if (liveness && !grace) {
-        const isCovered = (liveness.meanLuma < 14 && liveness.lumaStd < 8) || liveness.lumaStd < 2.2;
+        const isCovered = isFrameCovered(liveness, sharedFaceDetector ? faceCount : 0);
         if (isCovered) {
           if (!st.coveredSince) st.coveredSince = nowMs;
           else if (nowMs - st.coveredSince >= COVERED_MS) {
             fireEvent('camera_covered', 'hard', {
               meanLuma: Math.round(liveness.meanLuma),
               lumaStd: Number(liveness.lumaStd.toFixed(1)),
+              meanEdge: Number(liveness.meanEdge.toFixed(1)),
             });
             st.coveredSince = nowMs;
           }
@@ -475,23 +517,6 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
       }
 
       if (!sharedFaceDetector) { ensureModels(); return; }
-
-      const now = performance.now();
-      const checks = cfg.cameraChecks
-        || { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true };
-
-      let faceCount = 0;
-      let lookAway = false;
-      let faceBox = null;
-
-      try {
-        const res = sharedFaceDetector.detectForVideo(v, now);
-        faceCount = res?.faceLandmarks?.length || 0;
-        if (mountedRef.current) setFaces(faceCount);
-        if (faceCount > 0) everSawFaceRef.current = true;
-        if (faceCount >= 1) faceBox = boxOf(res.faceLandmarks[0]);
-        if (faceCount === 1 && checks.lookAway) lookAway = isLookingAway(res.faceLandmarks[0]);
-      } catch { /* bỏ qua lỗi từng frame */ }
 
       // no_face — nếu camera bắt buộc / lockdown / strictMode, chưa từng thấy mặt sau NEVER_SEEN_MS vẫn tính 'hard'
       const neverSeen = !everSawFaceRef.current && nowMs - startTimeRef.current > NEVER_SEEN_MS;
@@ -541,34 +566,32 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
         } catch { /* */ }
       }
 
-      // Tay gần mặt (dựa trên khung mặt thật)
-      let handNearFace = false;
-      if (sharedHandDetector && faceBox && (checks.handRaise || checks.phoneLike) && !grace) {
+      // Phân biệt tư thế cầm điện thoại vs đưa tay che/gần mặt để tránh đếm trùng đôi
+      let handStatus = { handRaise: false, phoneLike: false, inTight: false };
+      if (sharedHandDetector && faceRawBox && (checks.handRaise || checks.phoneLike) && !grace) {
         try {
           const hands = sharedHandDetector.detectForVideo(v, now)?.landmarks || [];
-          handNearFace = hands.some((h) => isHandNearFace(h, faceBox));
+          handStatus = classifyHandNearFace(hands, faceRawBox);
         } catch { /* */ }
       }
 
-      if (checks.handRaise && !grace) {
-        if (handNearFace) {
-          if (!st.handRaiseSince) st.handRaiseSince = nowMs;
-          else if (nowMs - st.handRaiseSince >= HAND_RAISE_MS) {
-            fireEvent('hand_raise', 'soft');
-            st.handRaiseSince = nowMs;
-          }
-        } else st.handRaiseSince = 0;
-      } else st.handRaiseSince = 0;
-
-      if (checks.phoneLike && !grace) {
-        if (handNearFace) {
-          if (!st.phoneLikeSince) st.phoneLikeSince = nowMs;
-          else if (nowMs - st.phoneLikeSince >= PHONE_LIKE_MS) {
-            fireEvent('phone_like', 'soft');
-            st.phoneLikeSince = nowMs;
-          }
-        } else st.phoneLikeSince = 0;
+      const phoneHit = checks.phoneLike && handStatus.phoneLike;
+      if (phoneHit && !grace) {
+        if (!st.phoneLikeSince) st.phoneLikeSince = nowMs;
+        else if (nowMs - st.phoneLikeSince >= PHONE_LIKE_MS) {
+          fireEvent('phone_like', 'soft');
+          st.phoneLikeSince = nowMs;
+        }
       } else st.phoneLikeSince = 0;
+
+      const handHit = checks.handRaise && (handStatus.handRaise || (!checks.phoneLike && handStatus.inTight));
+      if (handHit && !phoneHit && !grace) {
+        if (!st.handRaiseSince) st.handRaiseSince = nowMs;
+        else if (nowMs - st.handRaiseSince >= HAND_RAISE_MS) {
+          fireEvent('hand_raise', 'soft');
+          st.handRaiseSince = nowMs;
+        }
+      } else st.handRaiseSince = 0;
     };
 
     const id = setInterval(() => { try { detect(); } catch { /* */ } }, DETECT_INTERVAL_MS);
@@ -592,21 +615,23 @@ export function useProctorCamera({ active, examId, studentId, config, onEvent })
   };
 }
 
-/* Phân tích độ sáng + chênh lệch frame trên canvas 24x18 để bắt che ống kính & camera giả tĩnh */
+/* Phân tích độ sáng + mật độ cạnh + chênh lệch frame trên canvas 24x18 */
 function analyzeFrameLiveness(video, probe) {
   try {
+    const w = 24;
+    const h = 18;
     if (!probe.canvas) {
       const c = document.createElement('canvas');
-      c.width = 24;
-      c.height = 18;
+      c.width = w;
+      c.height = h;
       probe.canvas = c;
       probe.ctx = c.getContext('2d', { willReadFrequently: true });
     }
     const ctx = probe.ctx;
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, 24, 18);
-    const { data } = ctx.getImageData(0, 0, 24, 18);
-    const n = 24 * 18;
+    ctx.drawImage(video, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const n = w * h;
     const luma = new Float32Array(n);
     let sum = 0;
     for (let i = 0, p = 0; i < data.length; i += 4, p++) {
@@ -617,23 +642,38 @@ function analyzeFrameLiveness(video, probe) {
     const meanLuma = sum / n;
     let varSum = 0;
     let diffSum = 0;
+    let edgeSum = 0;
+    let edgeCount = 0;
     const prev = probe.prevLuma;
     for (let p = 0; p < n; p++) {
       const d = luma[p] - meanLuma;
       varSum += d * d;
       if (prev) diffSum += Math.abs(luma[p] - prev[p]);
+      const col = p % w;
+      const row = (p - col) / w;
+      if (col < w - 1) { edgeSum += Math.abs(luma[p] - luma[p + 1]); edgeCount++; }
+      if (row < h - 1) { edgeSum += Math.abs(luma[p] - luma[p + w]); edgeCount++; }
     }
     const lumaStd = Math.sqrt(varSum / n);
+    const meanEdge = edgeCount ? edgeSum / edgeCount : 0;
     const frameDiff = prev ? diffSum / n : null;
     probe.prevLuma = luma;
-    return { meanLuma, lumaStd, frameDiff };
+    return { meanLuma, lumaStd, meanEdge, frameDiff };
   } catch {
     return null;
   }
 }
 
-/* ============ HÌNH HỌC ============ */
-function boxOf(lm) {
+/** Kết hợp mật độ cạnh & kết quả nhận diện mặt để tránh báo nhầm ở phòng tối */
+export function isFrameCovered(liveness, faceCount = 0) {
+  if (!liveness || faceCount > 0) return false;
+  const edge = liveness.meanEdge ?? 99;
+  if (liveness.meanLuma < 12 && liveness.lumaStd < 8 && edge < 3.0) return true;
+  return liveness.lumaStd < 2.2 || (liveness.lumaStd < 7.0 && edge < 1.6);
+}
+
+/* ============ HÌNH HỌC & ÁNH MẮT ============ */
+export function rawBoxOf(lm) {
   let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
   for (const p of lm) {
     if (p.x < x0) x0 = p.x;
@@ -641,32 +681,84 @@ function boxOf(lm) {
     if (p.y < y0) y0 = p.y;
     if (p.y > y1) y1 = p.y;
   }
-  const w = x1 - x0;
-  const h = y1 - y0;
-  // nới 50% mỗi phía, toạ độ chuẩn hoá 0..1
-  return { x0: x0 - w * 0.5, x1: x1 + w * 0.5, y0: y0 - h * 0.5, y1: y1 + h * 0.5 };
+  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
 }
 
-function isLookingAway(lm) {
-  if (!lm || lm.length < 468) return false;
+export function padBox(box, ratio = 0.5) {
+  return {
+    x0: box.x0 - box.w * ratio,
+    x1: box.x1 + box.w * ratio,
+    y0: box.y0 - box.h * ratio,
+    y1: box.y1 + box.h * ratio,
+  };
+}
+
+export function computeHeadMetrics(lm) {
+  if (!lm || lm.length < 468) return null;
   const nose = lm[1];
   const leftCheek = lm[234];
   const rightCheek = lm[454];
   const chin = lm[152];
   const leftEye = lm[159];
-  if (!nose || !leftCheek || !rightCheek || !chin || !leftEye) return false;
+  if (!nose || !leftCheek || !rightCheek || !chin || !leftEye) return null;
 
   const dx = (rightCheek.x - leftCheek.x) || 1e-6;
-  const yawOff = Math.abs((nose.x - leftCheek.x) / dx - 0.5);
-
+  const yaw = (nose.x - leftCheek.x) / dx - 0.5;
   const faceH = Math.abs(chin.y - leftEye.y) || 1e-6;
-  const pitchOff = Math.abs((chin.y - nose.y) / faceH - 0.28);
-
-  return yawOff > 0.18 || pitchOff > 0.18;
+  const pitch = (chin.y - nose.y) / faceH;
+  return { yaw, pitch };
 }
 
-function isHandNearFace(hand, box) {
-  if (!hand || !hand.length) return false;
+const clampNum = (v, min, max) => Math.max(min, Math.min(max, v));
+
+export function updatePoseCalibration(calib, lm) {
+  if (!calib || calib.ready) return;
+  const m = computeHeadMetrics(lm);
+  if (!m) return;
+  // Chỉ lấy mẫu chuẩn khi tư thế ban đầu tương đối thẳng camera
+  if (Math.abs(m.yaw) > 0.22 || m.pitch < 0.14 || m.pitch > 0.44) return;
+  calib.samples.push(m);
+  if (calib.samples.length >= 5) {
+    const n = calib.samples.length;
+    const avgYaw = calib.samples.reduce((s, x) => s + x.yaw, 0) / n;
+    const avgPitch = calib.samples.reduce((s, x) => s + x.pitch, 0) / n;
+    calib.baseYaw = clampNum(avgYaw, -0.12, 0.12);
+    calib.basePitch = clampNum(avgPitch, 0.18, 0.38);
+    calib.ready = true;
+  }
+}
+
+export function analyzeGazeAndHead(lm, blendshapeCategories = null, calib = null) {
+  const m = computeHeadMetrics(lm);
+  if (!m) return false;
+  const baseYaw = calib?.ready ? calib.baseYaw : 0;
+  const basePitch = calib?.ready ? calib.basePitch : 0.28;
+  const yawOff = Math.abs(m.yaw - baseYaw);
+  const pitchOff = Math.abs(m.pitch - basePitch);
+  if (yawOff > 0.18 || pitchOff > 0.17) return true;
+
+  if (Array.isArray(blendshapeCategories) && blendshapeCategories.length > 0) {
+    let downL = 0, downR = 0, outL = 0, inL = 0, outR = 0, inR = 0;
+    for (const c of blendshapeCategories) {
+      switch (c.categoryName) {
+        case 'eyeLookDownLeft': downL = c.score || 0; break;
+        case 'eyeLookDownRight': downR = c.score || 0; break;
+        case 'eyeLookOutLeft': outL = c.score || 0; break;
+        case 'eyeLookInLeft': inL = c.score || 0; break;
+        case 'eyeLookOutRight': outR = c.score || 0; break;
+        case 'eyeLookInRight': inR = c.score || 0; break;
+        default: break;
+      }
+    }
+    if ((downL + downR) / 2 > 0.58) return true;
+    if ((outL + inR) / 2 > 0.62 || (outR + inL) / 2 > 0.62) return true;
+  }
+  return false;
+}
+
+const dist2D = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.y || 0) - (b?.y || 0));
+
+function countPointsInBox(hand, box) {
   let hit = 0;
   for (const p of hand) {
     if (p.x >= box.x0 && p.x <= box.x1 && p.y >= box.y0 && p.y <= box.y1) {
@@ -675,6 +767,41 @@ function isHandNearFace(hand, box) {
     }
   }
   return false;
+}
+
+export function classifyHandNearFace(hands, faceRawBox) {
+  if (!Array.isArray(hands) || !hands.length || !faceRawBox) {
+    return { handRaise: false, phoneLike: false, inTight: false };
+  }
+  const tightBox = padBox(faceRawBox, 0.2);
+  const looseBox = padBox(faceRawBox, 0.55);
+  let handRaise = false;
+  let phoneLike = false;
+  let inTightAny = false;
+
+  for (const h of hands) {
+    if (!h || !h.length) continue;
+    const inTight = countPointsInBox(h, tightBox);
+    const inLoose = inTight || countPointsInBox(h, looseBox);
+    if (inTight) inTightAny = true;
+    if (!inLoose) continue;
+
+    if (h.length < 21) {
+      if (inTight) handRaise = true;
+      continue;
+    }
+
+    const palmSize = dist2D(h[9], h[0]) || 1e-6;
+    const avgTipDist = (dist2D(h[8], h[0]) + dist2D(h[12], h[0]) + dist2D(h[16], h[0])) / 3;
+    const curlRatio = avgTipDist / palmSize;
+    const palmWidthRatio = dist2D(h[4], h[17]) / palmSize;
+    const isCurledOrEdge = curlRatio < 1.48 || palmWidthRatio < 0.65;
+
+    if (isCurledOrEdge) phoneLike = true;
+    else if (inTight) handRaise = true;
+  }
+
+  return { handRaise, phoneLike, inTight: inTightAny };
 }
 /* ============================================================
    useCameraPreflight — TEST CAMERA trước khi vào thi

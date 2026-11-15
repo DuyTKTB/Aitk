@@ -38,7 +38,7 @@ import { useAudioGuard } from '../hooks/useAudioGuard.js';
 import useMotionGuard, { requestMotionPermission } from '../hooks/useMotionGuard.js';
 import { serverNow } from '../lib/serverClock.js';
 import ExamResult from './ExamResult.jsx';
-import ViolationOverlay from './ViolationOverlay.jsx';
+import ViolationOverlay, { unlockAlertAudio } from './ViolationOverlay.jsx';
 import MathText from './MathText.jsx';
 import RetryRequestModal from './RetryRequestModal.jsx';
 
@@ -889,9 +889,9 @@ export default function ExamJoin({ token, onExit }) {
   useMobileGuard({
     active: stage === 'exam' && !paused,
     pushEvent: mobilePush,
-    /* Bật dự phòng: webview (Zalo/Facebook/iOS) có thể nuốt visibilitychange,
-       lớp mobile vẫn bắt app_switch và vẫn ghi vi phạm. */
-    trackHidden: true,
+    /* Tắt trackHidden ở lớp mobile vì useExamGuard đã bắt visibilitychange (tab_hidden);
+       giữ pagehide/freeze/orientation/split-view/pinch-zoom để tránh đếm trùng 2 lỗi cho 1 lần rời app. */
+    trackHidden: false,
   });
 
   const cameraEnabled =
@@ -936,7 +936,7 @@ export default function ExamJoin({ token, onExit }) {
 
   useEffect(() => {
     if (stage !== 'exam') return undefined;
-    if (paused) return undefined;
+    if (paused || multiDeviceLocked) return undefined;
     /* Tính theo đồng hồ thật: khoá màn hình / chuyển tab trên điện thoại làm setInterval bị đóng băng,
        nếu chỉ trừ 1 giây mỗi nhịp thì học sinh được "lời" thời gian. */
     /* Chống chỉnh đồng hồ máy: lấy MAX(đồng hồ đơn điệu, đồng hồ hệ thống).
@@ -961,7 +961,7 @@ export default function ExamJoin({ token, onExit }) {
       window.removeEventListener('focus', tick);
       window.removeEventListener('pageshow', tick);
     };
-  }, [stage, paused]);
+  }, [stage, paused, multiDeviceLocked]);
 
   /* Giữ màn hình sáng: màn hình tự tắt = tab bị ẩn = bị tính vi phạm oan */
   useEffect(() => {
@@ -1446,7 +1446,22 @@ export default function ExamJoin({ token, onExit }) {
     }
     if (needCamForStart && !(cameraConsent && pre.ready)) return; // chưa qua test camera (chỉ chặn khi camera bắt buộc)
     pre.release(); // nhả camera test để phòng thi dùng lại
+    unlockAlertAudio(); // mở khoá Web Audio API ngay trong thao tác bấm nút (iOS/Safari)
     requestMotionPermission(); // iOS: phải gọi trong lúc bấm nút (không await để không mất quyền vào fullscreen)
+    // Xin quyền micro trước khi vào fullscreen nếu bật audioMonitor để Chrome không thoát fullscreen giữa giờ thi
+    if (proctorConfig?.audioMonitor && !practiceMode && navigator.mediaDevices?.getUserMedia) {
+      try {
+        let micState = 'prompt';
+        if (navigator.permissions?.query) {
+          const st = await navigator.permissions.query({ name: 'microphone' });
+          micState = st.state;
+        }
+        if (micState === 'prompt') {
+          const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+          ms.getTracks().forEach((t) => t.stop());
+        }
+      } catch { /* bỏ qua nếu bị từ chối hoặc thiếu micro */ }
+    }
     const fsOk = guard.fullscreenLock ? await guard.enterFullscreen() : true;
     if (!fsOk) {
       console.warn('[ExamJoin] Không vào fullscreen ngay, banner sẽ nhắc lại');
@@ -2429,10 +2444,13 @@ export default function ExamJoin({ token, onExit }) {
       <ViolationOverlay
         warning={guard.warning}
         strict
-        onDismiss={() => {
-          guard.clearWarning();
-          if (guard.fullscreenLock && !guard.isFullscreen) {
-            guard.enterFullscreen();
+        onDismiss={async () => {
+          try {
+            if (guard.fullscreenLock && !guard.isFullscreen) {
+              await guard.enterFullscreen();
+            }
+          } finally {
+            guard.clearWarning();
           }
         }}
       />

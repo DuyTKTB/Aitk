@@ -62,14 +62,25 @@ const IconStop = (p) => (
    BEEP SOUND — Web Audio API
    ============================================================ */
 let audioCtx = null;
-function playBeep(intensity = 'normal') {
+
+/* Mở khoá Web Audio API ngay trong thao tác bấm nút bắt đầu thi (tránh iOS/Safari chặn beep). */
+export function unlockAlertAudio() {
   try {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       audioCtx = new Ctx();
     }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume()?.catch?.(() => {});
+    }
+  } catch { /* bỏ qua */ }
+}
+
+function playBeep(intensity = 'normal') {
+  try {
+    unlockAlertAudio();
+    if (!audioCtx) return;
 
     const freq = intensity === 'hard' ? 660 : 880;
     const duration = intensity === 'hard' ? 0.35 : 0.18;

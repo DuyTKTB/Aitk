@@ -39,13 +39,31 @@ const NO_FS_LIMIT_MS = 3500;
 const FS_SETTLE_MS = 1200;
 const INTENTIONAL_EXIT_MS = 2000;
 const LONG_BLUR_MS = 12000;
-const DEVTOOLS_THRESHOLD = 160;
+const DEVTOOLS_W_THRESHOLD = 180;
+const DEVTOOLS_H_THRESHOLD = 210;
 const SOFT_THROTTLE_MS = 2000;
 const PASTE_SPIKE_CHARS = 45;
 const CAMERA_SETTLE_MS = 5000;
 const CAMERA_PENDING_MAX_MS = 20000;   // trần chờ học sinh bấm Cho phép/Chặn
 const CAMERA_FALLBACK_GRACE_MS = 12000; // trình duyệt không hỏi được quyền camera
 const MAX_EVENTS = 250;
+
+/**
+ * Phát hiện DevTools đang dock dựa trên chênh lệch kích thước cửa sổ,
+ * tự loại trừ trường hợp học sinh Zoom trình duyệt đồng bộ theo cả 2 trục.
+ */
+export function isDevtoolsViewportSuspect({ outerWidth, innerWidth, outerHeight, innerHeight }) {
+  if (!innerWidth || !innerHeight || !outerWidth || !outerHeight) return false;
+  const dw = outerWidth - innerWidth;
+  const dh = outerHeight - innerHeight;
+  if (dw <= DEVTOOLS_W_THRESHOLD && dh <= DEVTOOLS_H_THRESHOLD) return false;
+
+  const wRatio = outerWidth / innerWidth;
+  const hRatio = outerHeight / innerHeight;
+  // Khi Zoom trình duyệt (>108%), cả 2 chiều co giãn tương ứng nhau; DevTools dock chỉ bóp mạnh 1 chiều
+  if (wRatio > 1.08 && hRatio > 1.08 && Math.abs(wRatio - hRatio) < 0.16) return false;
+  return dw > DEVTOOLS_W_THRESHOLD || dh > DEVTOOLS_H_THRESHOLD;
+}
 
 const CAMERA_TYPES = new Set([
   'no_face', 'multi_face', 'look_away', 'hand_raise', 'phone_like', 'phone_detected',
@@ -126,6 +144,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   const devtoolsOpenRef = useRef(false);
   const devtoolsStreakRef = useRef(0);
   const cameraPendingRef = useRef(false);
+  const permPendingMapRef = useRef({ camera: false, microphone: false });
   const cameraPendingSinceRef = useRef(0);
   const cameraSettleUntilRef = useRef(0);
   const cameraFallbackRef = useRef(false);
@@ -141,38 +160,65 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
   useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
   useEffect(() => { onAutoSubmitRef.current = onAutoSubmit; }, [onAutoSubmit]);
 
-  /* ---- Theo dõi quyền camera: 'prompt' = đang hỏi → hoãn phát hiện (CÓ TRẦN thời gian) ---- */
+  /* ---- Theo dõi quyền camera & microphone: 'prompt' = đang hỏi → hoãn phát hiện (CÓ TRẦN thời gian) ---- */
   useEffect(() => {
-    const wantCamera = (config?.camera ?? 'off') !== 'off';
-    if (!active || !wantCamera) { cameraPendingRef.current = false; return undefined; }
+    const needed = [];
+    if ((config?.camera ?? 'off') !== 'off') needed.push('camera');
+    if (config?.audioMonitor) needed.push('microphone');
+    if (!active || !needed.length) {
+      permPendingMapRef.current = { camera: false, microphone: false };
+      cameraPendingRef.current = false;
+      return undefined;
+    }
+
     let alive = true;
-    let status = null;
-    const apply = () => {
-      if (!alive || !status) return;
-      if (status.state === 'prompt') {
-        if (!cameraPendingRef.current) cameraPendingSinceRef.current = Date.now();
-        cameraPendingRef.current = true;
-      } else {
-        if (cameraPendingRef.current) {
-          cameraSettleUntilRef.current = Date.now() + CAMERA_SETTLE_MS;
-          lastFullscreenAtRef.current = Date.now() + CAMERA_SETTLE_MS;
-        }
-        cameraPendingRef.current = false;
+    const cleanups = [];
+
+    const syncPending = (wasPending) => {
+      const nowPending = needed.some((name) => permPendingMapRef.current[name]);
+      if (nowPending && !wasPending) cameraPendingSinceRef.current = Date.now();
+      if (!nowPending && wasPending) {
+        cameraSettleUntilRef.current = Date.now() + CAMERA_SETTLE_MS;
+        lastFullscreenAtRef.current = Date.now() + CAMERA_SETTLE_MS;
       }
+      cameraPendingRef.current = nowPending;
     };
+
     const fallback = () => {
       cameraFallbackRef.current = true;
       cameraSettleUntilRef.current = Date.now() + CAMERA_FALLBACK_GRACE_MS;
     };
-    if (navigator.permissions?.query) {
-      navigator.permissions.query({ name: 'camera' })
-        .then((st) => { status = st; st.onchange = apply; apply(); })
+
+    needed.forEach((permName) => {
+      if (!navigator.permissions?.query) {
+        fallback();
+        return;
+      }
+      let status = null;
+      const apply = () => {
+        if (!alive || !status) return;
+        const wasPending = cameraPendingRef.current;
+        permPendingMapRef.current[permName] = status.state === 'prompt';
+        syncPending(wasPending);
+      };
+      navigator.permissions.query({ name: permName })
+        .then((st) => {
+          if (!alive) return;
+          status = st;
+          st.onchange = apply;
+          apply();
+        })
         .catch(fallback);
-    } else {
-      fallback();
-    }
-    return () => { alive = false; if (status) status.onchange = null; };
-  }, [active, config?.camera]);
+      cleanups.push(() => { if (status) status.onchange = null; });
+    });
+
+    return () => {
+      alive = false;
+      cleanups.forEach((fn) => fn());
+      permPendingMapRef.current = { camera: false, microphone: false };
+      cameraPendingRef.current = false;
+    };
+  }, [active, config?.camera, config?.audioMonitor]);
 
   /* Camera đã chạy ổn → rút ngắn thời gian miễn trừ của chế độ dự phòng */
   useEffect(() => {
@@ -456,43 +502,25 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
   }, [active, blockLongBlur, recordEvent]);
 
-  /* ---- DevTools detection (docked dimension delta + console getter cho chế độ nghiêm ngặt) ---- */
+  /* ---- DevTools detection (kiểm tra chênh lệch dock, loại trừ zoom trình duyệt) ---- */
   useEffect(() => {
     if (!active || !blockDevTools || isTouch()) {
       setDevtoolsOpen(false);
       return undefined;
     }
-    const checkConsoleProbe = () => {
-      try {
-        let tripped = false;
-        const probe = new Image();
-        Object.defineProperty(probe, 'id', {
-          get() {
-            tripped = true;
-            return 'ep';
-          },
-        });
-        // eslint-disable-next-line no-console
-        console.debug?.('%c', probe);
-        return tripped;
-      } catch {
-        return false;
-      }
-    };
     const id = setInterval(() => {
       if (!activeRef.current) return;
-      const bySize =
-        window.outerWidth - window.innerWidth > DEVTOOLS_THRESHOLD ||
-        window.outerHeight - window.innerHeight > DEVTOOLS_THRESHOLD;
-      const byConsole = (cfgRef.current.strictMode || cfgRef.current.lockdown) && checkConsoleProbe();
-      const isOpen = bySize || byConsole;
+      const isOpen = isDevtoolsViewportSuspect(window);
       if (isOpen) {
         devtoolsStreakRef.current += 1;
         if (devtoolsStreakRef.current >= 2 && !devtoolsOpenRef.current) {
           devtoolsOpenRef.current = true;
           setDevtoolsOpen(true);
           const sev = (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft';
-          recordEvent('devtools_open', sev, { bySize, byConsole });
+          recordEvent('devtools_open', sev, {
+            dw: Math.max(0, (window.outerWidth || 0) - (window.innerWidth || 0)),
+            dh: Math.max(0, (window.outerHeight || 0) - (window.innerHeight || 0)),
+          });
         }
       } else {
         devtoolsStreakRef.current = 0;
