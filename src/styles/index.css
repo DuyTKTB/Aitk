@@ -11501,11 +11501,12 @@ kbd { border-radius: 6px; font-family: var(--sans); }
    ============================================================ */
 @media (max-width: 720px) {
   .mhead-bar {
-    min-height: 60px !important;
+    min-height: 50px !important;
+    padding: 6px 12px !important;
   }
 
   .mhead-logo {
-    height: 48px !important;
+    height: 36px !important;
     width: auto !important;
     max-width: none !important;
     display: flex !important;
@@ -11518,9 +11519,9 @@ kbd { border-radius: 6px; font-family: var(--sans); }
   .mhead-logo svg,
   .mhead-logo picture,
   .mhead-logo > * {
-    height: 48px !important;
+    height: 36px !important;
     width: auto !important;
-    max-height: 48px !important;
+    max-height: 36px !important;
     max-width: none !important;
     object-fit: contain !important;
     display: block !important;

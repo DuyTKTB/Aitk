@@ -3172,13 +3172,34 @@
   }
 
   .ns9-metric-box {
-    padding: 12px 12px !important;
+    padding: 12px 11px !important;
     border-radius: 16px !important;
     gap: 6px !important;
+    min-width: 0 !important;
   }
 
-  .ns9-mb-value strong {
-    font-size: 1.55rem !important;
+  .ns9-mb-value strong,
+  .ns9-metric-value strong {
+    font-size: 1.28rem !important;
+  }
+
+  .ns9-mb-starter-btn {
+    padding: 6px 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .ns9-mb-starter-val {
+    font-size: 11.5px !important;
+  }
+
+  .ns9-status-tag {
+    font-size: 10.5px !important;
+    padding: 3px 8px !important;
+  }
+
+  .ns9-countdown-pill-btn {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
   }
 
   .ns9-chapter-grid {

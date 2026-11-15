@@ -417,6 +417,13 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
                 <span className="ns9-uh-cb-score">Mục tiêu {activeAsp.targetScore}đ</span>
               )}
             </div>
+            <div className="ns9-uh-cover-foot">
+              <span className="ns9-uh-cf-pill">
+                <IcoSpark size={13} />
+                <span>Chiến lược AI đỗ {schoolCode} · Xem ngay</span>
+                <IcoArrow size={12} />
+              </span>
+            </div>
             <div className="ns9-uh-cover-mascot">
               <img
                 src="/img/elec/elec-hello.png"

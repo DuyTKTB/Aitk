@@ -23,34 +23,12 @@
 }
 
 @media (max-width: 768px) {
+  /* Ẩn nút Mascot nổi góc dưới phải trên Mobile để không che khuất thẻ trường, nút bấm hay đề thi (Truy cập qua nút "Sổ tay AI >" trên Trang chủ hoặc menu "Thêm") */
   .ns9-mascot-fab-wrap {
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-    right: 12px;
-    gap: 8px;
-  }
-  /* Ẩn bóng thoại ghi chú nổi trên Mobile để không che khuất nội dung, nút bấm hay đề thi */
-  .ns9-fab-note-bubble {
     display: none !important;
   }
-  .ns9-fab-mascot-button {
-    width: 52px;
-    height: 52px;
-  }
-  .ns9-fab-mascot-image {
-    max-width: 48px;
-    max-height: 48px;
-  }
-  .ns9-fab-mascot-aura {
-    inset: 2px;
-    filter: blur(8px);
-  }
-  .ns9-fab-badge {
-    top: 0;
-    right: 0;
-    min-width: 18px;
-    height: 18px;
-    font-size: 10px;
-    padding: 0 4px;
+  .ns9-fab-note-bubble {
+    display: none !important;
   }
 }
 
@@ -2431,10 +2409,11 @@
 
 @media (max-width: 640px) {
   .ns9-panoramic-overlay-backdrop {
-    padding: 10px;
+    padding: 8px;
   }
   .ns9-panoramic-modal {
-    height: 94vh;
+    height: 92dvh;
+    border-radius: 22px;
   }
 }
 

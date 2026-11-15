@@ -2917,16 +2917,18 @@
 .ns9-uh-cover-vignette {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.42) 0%, rgba(15, 23, 42, 0.08) 45%, rgba(15, 23, 42, 0.62) 100%);
   pointer-events: none;
 }
 .ns9-uh-cover-badge {
   position: absolute;
   top: 14px;
   left: 16px;
+  right: 16px;
   z-index: 2;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 .ns9-uh-cb-school {
@@ -2938,16 +2940,59 @@
   font-weight: 850;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ns9-uh-cb-score {
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.9);
+  background: rgba(37, 99, 235, 0.92);
   color: #fff;
   font-size: 12.5px;
   font-weight: 800;
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.ns9-uh-cover-foot {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  z-index: 2;
+  pointer-events: none;
+}
+.ns9-uh-cf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 12.2px;
+  font-weight: 750;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+.ns9-uh-cover-mascot {
+  position: absolute;
+  right: 14px;
+  bottom: 6px;
+  z-index: 2;
+  pointer-events: none;
+}
+.ns9-uh-cover-mascot .ns9-uh-mascot-img {
+  width: 88px;
+  height: 98px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.38));
+  animation: mascotGentleBreathe 4s ease-in-out infinite;
 }
 
 /* ── Khi chưa chọn trường: Showcase Cổng Mơ Ước Đẳng Cấp ── */
@@ -3726,10 +3771,91 @@
     white-space: nowrap !important;
   }
 
-  /* Thẻ Đại học cột phải Hero */
-  .ns9-uh-campus-card {
-    min-height: 140px !important;
+  /* Thẻ Đại học cột phải Hero trên Mobile: Banner Panorama 148px gọn đẹp, không chiếm nửa màn hình */
+  .ns9-uh-visual-col {
+    min-height: 148px !important;
     border-radius: 20px !important;
+    width: 100% !important;
+  }
+
+  .ns9-uh-cover-card {
+    height: 148px !important;
+    min-height: 148px !important;
+    max-height: 148px !important;
+    border-radius: 20px !important;
+  }
+
+  .ns9-uh-cover-badge {
+    top: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+    gap: 6px !important;
+  }
+
+  .ns9-uh-cb-school {
+    font-size: 11.5px !important;
+    padding: 4px 10px !important;
+    max-width: calc(100% - 110px) !important;
+  }
+
+  .ns9-uh-cb-score {
+    font-size: 11px !important;
+    padding: 4px 9px !important;
+  }
+
+  .ns9-uh-cover-foot {
+    left: 10px !important;
+    bottom: 10px !important;
+  }
+
+  .ns9-uh-cf-pill {
+    font-size: 11px !important;
+    padding: 4.5px 10px !important;
+    gap: 5px !important;
+  }
+
+  .ns9-uh-cover-mascot {
+    right: 8px !important;
+    bottom: 4px !important;
+  }
+
+  .ns9-uh-cover-mascot .ns9-uh-mascot-img {
+    width: 64px !important;
+    height: 72px !important;
+  }
+
+  /* Khi chưa chọn trường trên Mobile: bố cục gọn gàng, không bị ép chữ */
+  .ns9-uh-unselected-card {
+    padding: 16px 14px !important;
+    border-radius: 22px !important;
+    gap: 10px !important;
+  }
+
+  .ns9-uh-unsel-title {
+    font-size: 1.12rem !important;
+  }
+
+  .ns9-uh-unsel-desc {
+    font-size: 12.2px !important;
+    line-height: 1.4 !important;
+  }
+
+  .ns9-uh-choose-btn {
+    padding: 8px 14px !important;
+    font-size: 12.2px !important;
+  }
+
+  .ns9-uh-unsel-subtip,
+  .ns9-uh-unsel-speech {
+    display: none !important;
+  }
+
+  .ns9-uh-unsel-mascot-box {
+    width: 72px !important;
+  }
+
+  .ns9-uh-unsel-mascot-box .ns9-uh-mascot-img {
+    height: 82px !important;
   }
 
   /* 2. Ba thẻ Bento chuyển tiếp mượt mà */
@@ -3815,12 +3941,26 @@
   }
 
   .ns9-discovery-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 14px !important;
   }
 
+  .ns9-disc-card {
+    padding: 15px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .ns9-element-specs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .ns9-element-specs .full-width {
+    grid-column: 1 / -1 !important;
+  }
+
   .ns9-quiz-card {
-    padding: 14px !important;
+    padding: 15px 14px !important;
     border-radius: 18px !important;
   }
 
@@ -3829,6 +3969,17 @@
     font-size: 13.2px !important;
     border-radius: 12px !important;
     gap: 8px !important;
+  }
+
+  .ns9-quiz-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .ns9-quiz-next-btn {
+    width: 100% !important;
+    justify-content: center !important;
   }
 
   /* 5. Thanh vào nhanh lớp học / thi ảo */

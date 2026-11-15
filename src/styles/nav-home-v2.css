@@ -302,18 +302,18 @@
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     position: fixed;
-    left: 12px; right: 12px;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: 10px; right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     max-width: 500px;
     margin-inline: auto;
-    height: 64px;
-    padding: 0 4px;
-    border-radius: 24px;
+    height: 60px;
+    padding: 0 6px;
+    border-radius: 22px;
     background: var(--nav-bg-strong);
     border: 1px solid var(--nav-border);
     box-shadow: var(--nav-shadow);
-    -webkit-backdrop-filter: blur(18px) saturate(170%);
-    backdrop-filter: blur(18px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
     z-index: 9999;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -323,10 +323,10 @@
   /* Chỉ báo trượt: 5 cột bằng nhau nên chỉ cần dịch theo --i */
   .bn-ind {
     position: absolute;
-    top: 8px; bottom: 8px; left: 4px;
-    width: calc((100% - 8px) / 5);
-    border-radius: 18px;
-    background: color-mix(in srgb, var(--acc) 16%, transparent);
+    top: 6px; bottom: 6px; left: 6px;
+    width: calc((100% - 12px) / 5);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--acc) 14%, transparent);
     transform: translateX(calc(var(--i, 0) * 100%));
     opacity: 0;
     transition: transform .34s var(--e), opacity .2s;

@@ -313,10 +313,12 @@ export default function PetWidget() {
       handleToggleFocusRunning();
     };
     window.addEventListener('elec-open-companion-modal', onOpenGlobal);
+    window.addEventListener('elec-open-companion', onOpenGlobal);
     window.addEventListener('elec-open-mini-timer', onOpenMini);
     window.addEventListener('elec-toggle-focus', onToggleFocus);
     return () => {
       window.removeEventListener('elec-open-companion-modal', onOpenGlobal);
+      window.removeEventListener('elec-open-companion', onOpenGlobal);
       window.removeEventListener('elec-open-mini-timer', onOpenMini);
       window.removeEventListener('elec-toggle-focus', onToggleFocus);
     };

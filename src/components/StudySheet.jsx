@@ -142,25 +142,42 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
             </div>
           </div>
 
-          {/* ----- 2. HAI LỐI VÀO NỔI BẬT: TRỢ LÝ AI & BẢNG XẾP HẠNG ----- */}
+          {/* ----- 2. LỐI VÀO NỔI BẬT: TRỢ LÝ AI, SỔ TAY AI & BẢNG XẾP HẠNG ----- */}
           <div className="ss-highlights-grid">
             <a href="#ai" className="ss-hl-card ss-hl-ai" onClick={onClose}>
               <div className="ss-hl-icon ai">
-                <IconRobot size={22} />
+                <IconRobot size={20} />
               </div>
               <div className="ss-hl-info">
                 <b>Trợ lý ELEC AI</b>
-                <small>Giải Lý · Hóa · Sinh &amp; Chấm nháp viết tay</small>
+                <small>Giải Lý · Hóa · Sinh &amp; Chấm nháp</small>
               </div>
             </a>
 
+            <button
+              type="button"
+              className="ss-hl-card ss-hl-companion"
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent('elec-open-companion'));
+              }}
+            >
+              <div className="ss-hl-icon companion">
+                <img src="/img/elec/elec-study.png" alt="" width="24" height="24" style={{ objectFit: 'contain' }} />
+              </div>
+              <div className="ss-hl-info">
+                <b>Sổ tay &amp; Kế hoạch AI</b>
+                <small>Pomodoro, Lofi &amp; mục tiêu tuần</small>
+              </div>
+            </button>
+
             <a href="#leaderboard" className="ss-hl-card ss-hl-lb" onClick={onClose}>
               <div className="ss-hl-icon lb">
-                <IconChart size={22} />
+                <IconChart size={20} />
               </div>
               <div className="ss-hl-info">
                 <b>Bảng xếp hạng</b>
-                <small>Vinh danh chuỗi lớp &amp; học sinh toàn quốc</small>
+                <small>Đua chuỗi lớp &amp; toàn quốc</small>
               </div>
             </a>
           </div>
