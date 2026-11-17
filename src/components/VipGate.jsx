@@ -1,60 +1,36 @@
 import { useEffect, useState } from 'react';
 import { UPGRADE_URL } from '../services/api.js';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import { supabase } from '../lib/supabase.js';
 
 export default function VipGate({ text = 'Nâng cấp VIP để dùng trợ lý AI Khoa học Tự nhiên (Lý - Hóa - Sinh).' }) {
-  const { user } = useAuth();
-  const [state, setState] = useState({ loading: true, show: false });
+  const { user, tier } = useAuth();
+  const pro = useTeacherPro();
+  const [adminRole, setAdminRole] = useState(false);
 
   useEffect(() => {
-    // Check localStorage trước (sync, nhanh) — hỗ trợ cả key mới cs-vip-status và key cũ cs-vip
-    let isVipLocal = false;
-    try {
-      const rawStatus = localStorage.getItem('cs-vip-status');
-      if (rawStatus) {
-        const parsed = JSON.parse(rawStatus);
-        const expMs = parsed?.expiry ? new Date(parsed.expiry).getTime() : null;
-        const notExpired = !expMs || Number.isNaN(expMs) || expMs > Date.now();
-        if (notExpired && (parsed?.isPro || parsed?.isVip || parsed?.vip)) {
-          isVipLocal = true;
-        }
-      }
-      if (!isVipLocal && localStorage.getItem('cs-vip') === 'true') {
-        isVipLocal = true;
-      }
-    } catch { /* */ }
-
-    if (isVipLocal) {
-      setState({ loading: false, show: false });
-      return;
-    }
-
-    if (!user) {
-      setState({ loading: false, show: true });
-      return;
-    }
-
-    const uid = user.uid || user.id;
+    const uid = user?.uid || user?.id;
     if (!uid) {
-      setState({ loading: false, show: true });
+      setAdminRole(false);
       return;
     }
-
+    let cancel = false;
     supabase
       .from('profiles')
       .select('role')
       .eq('id', String(uid))
       .maybeSingle()
       .then(({ data }) => {
-        const isAdmin = data?.role === 'admin';
-        setState({ loading: false, show: !isAdmin });
+        if (!cancel) setAdminRole(data?.role === 'admin');
       })
-      .catch(() => setState({ loading: false, show: true }));
+      .catch(() => {});
+    return () => { cancel = true; };
   }, [user]);
 
-  if (state.loading) return null;  // chống nháy
-  if (!state.show) return null;    // không cần VIP
+  const ent = resolveEntitlements({ user, pro, tier });
+  if (adminRole || ent.hasVipAccess) return null;
 
   return (
     <div className="vip-gate">

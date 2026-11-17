@@ -10,6 +10,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import MathText from './MathText.jsx';
 import { callModel, parseJsonLoose } from '../lib/examAiUtils.js';
+import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 
 const IcoSpark = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -39,9 +42,14 @@ const IcoBook = ({ size = 16 }) => (
 );
 
 export default function ExamAiDiagnostic({ exam, result }) {
+  const { user, tier } = useAuth();
+  const pro = useTeacherPro();
+  const ent = useMemo(() => resolveEntitlements({ user, pro, tier }), [user, pro, tier]);
+  const isVip = ent.hasVipAccess;
   const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [vipLockedNotice, setVipLockedNotice] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
 
   /* Thống kê chuyên đề & mức độ bằng code (luôn tức thì & chính xác 100%) */
@@ -110,6 +118,11 @@ export default function ExamAiDiagnostic({ exam, result }) {
 
   /* Gọi AI chẩn đoán chuyên sâu */
   const handleAnalyzeWithAI = async () => {
+    if (!isVip) {
+      setVipLockedNotice(true);
+      return;
+    }
+    setVipLockedNotice(false);
     setLoading(true);
     setError(null);
     setHasRequested(true);
@@ -224,15 +237,53 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
               padding: '0.45rem 0.9rem', borderRadius: '10px',
-              background: '#2f6bff', color: '#fff', border: 'none',
+              background: isVip ? '#2f6bff' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff', border: 'none',
               fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(47, 107, 255, 0.25)',
             }}
           >
-            <IcoSpark size={13} /> {aiReport ? 'Phân tích lại (1 credit)' : 'Chẩn đoán với AI (1 credit)'}
+            <IcoSpark size={13} /> {!isVip ? 'Chẩn đoán với AI (VIP)' : aiReport ? 'Phân tích lại (1 credit)' : 'Chẩn đoán với AI (1 credit)'}
           </button>
         )}
       </div>
+
+      {vipLockedNotice && !isVip && (
+        <div
+          role="region"
+          aria-label="Tính năng Chẩn đoán AI VIP"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.9rem 1rem',
+            borderRadius: '14px',
+            background: 'rgba(245, 158, 11, 0.1)',
+            border: '1.5px solid rgba(245, 158, 11, 0.38)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ flex: '1 1 240px', fontSize: '0.82rem', color: '#1e293b', lineHeight: 1.45 }}>
+            <b>Phân tích lỗ hổng bằng AI &amp; Đơn thuốc ôn bù thuộc gói VIP.</b> Bảng tỷ lệ theo chuyên đề bên dưới vẫn xem miễn phí sau mỗi đề.
+          </div>
+          <a
+            href="#profile?tab=vip"
+            style={{
+              padding: '0.45rem 0.95rem',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              textDecoration: 'none',
+              flexShrink: 0,
+            }}
+          >
+            Nâng cấp VIP →
+          </a>
+        </div>
+      )}
 
       {/* 1. THANH CHẨN ĐOÁN THEO CHUYÊN ĐỀ */}
       {topicStats.length > 0 && (
@@ -363,12 +414,11 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
               <button
                 type="button"
                 onClick={() => {
-                  const isTeacherRole = typeof localStorage !== 'undefined' && (() => {
-                    try {
-                      const v = JSON.parse(localStorage.getItem('cs-vip-status') || '{}');
-                      return Boolean(v?.isPro && v?.plan === 'PRO');
-                    } catch { return false; }
-                  })();
+                  if (!isVip) {
+                    setVipLockedNotice(true);
+                    return;
+                  }
+                  const isTeacherRole = ent.isTeacherVip;
                   const payload = {
                     title: `Đề ôn bù hổng: ${weakestTopic.name}`,
                     topic: weakestTopic.name,

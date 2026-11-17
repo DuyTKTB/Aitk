@@ -2832,6 +2832,17 @@
   color: #ffffff;
 }
 
+.t-shell[data-theme='dark'] .t-pill-badge-live {
+  background: #059669;
+  color: #ffffff;
+}
+
+.t-shell[data-theme='dark'] .t-pill-badge-warn,
+.t-shell[data-theme='dark'] .t-rail-btn-badge {
+  background: #dc2626;
+  color: #ffffff;
+}
+
 /* ============================================================
    OVERVIEW V3 ASYMMETRIC BENTO MATRIX (REF 1 + REF 2 + REF 3)
    ============================================================ */

@@ -1452,16 +1452,24 @@
    ============================================================ */
 
 .ns9-page {
+  width: 100%;
   max-width: 1180px;
+  min-width: 0;
   margin: 0 auto;
   padding: 18px clamp(14px, 3vw, 28px) 64px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
+  box-sizing: border-box;
 }
 
 .ns9-hub {
+  width: 100%;
+  min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  box-sizing: border-box;
 }
 
 /* ── 1. Hero Banner: Cá nhân học viên & Khuôn viên Đại học (Chuẩn Dashboard ELEC AI) ── */
@@ -2682,8 +2690,10 @@
 
 /* Lưới thẻ chương ELEC AI — Phiên bản Hiện Đại & Rộng Rãi */
 .ns9-chapter-grid {
+  width: 100%;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   gap: 16px;
 }
 
@@ -4331,15 +4341,26 @@
 
 @media (max-width: 720px) {
   .rm-sheet-backdrop.ns9-modal-backdrop {
-    padding: 8px !important;
+    z-index: 100020 !important;
+    padding: 8px 8px calc(10px + env(safe-area-inset-bottom)) !important;
     align-items: flex-end !important;
   }
 
   .rm-sheet.ns9-centered-sheet {
     width: 100% !important;
-    max-height: 92vh !important;
-    padding: 18px 16px !important;
-    border-radius: 22px 22px 14px 14px !important;
+    max-height: 92dvh !important;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom)) !important;
+    border-radius: 22px 22px 16px 16px !important;
+  }
+
+  .ns9-sheet-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+  }
+
+  .ns9-sheet-tabs::-webkit-scrollbar {
+    display: none !important;
   }
 
   .ns9-sheet-metrics {
@@ -4877,9 +4898,11 @@
   border: 1.5px solid var(--rm-line);
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   font-size: 13px;
   color: var(--mut);
+  white-space: nowrap;
 }
 
 .ns9-vex-sort-wrap select {

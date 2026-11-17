@@ -6,14 +6,14 @@
 .osv-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 99990;
+  z-index: 100020;
   background: rgba(5, 10, 28, 0.72);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 16px 16px max(20px, env(safe-area-inset-bottom));
   animation: osvFadeIn 0.2s ease-out;
 }
 
@@ -340,13 +340,31 @@
 }
 
 @media (max-width: 600px) {
+  .osv-backdrop {
+    padding: 10px 10px max(16px, env(safe-area-inset-bottom));
+    align-items: flex-end;
+  }
   .osv-modal {
-    padding: 18px 16px;
-    border-radius: 18px;
+    max-height: calc(100dvh - 24px);
+    padding: 16px 14px;
+    border-radius: 20px;
+    gap: 12px;
   }
   .osv-grid-2,
   .osv-inputs-row,
   .osv-summary-list {
     grid-template-columns: 1fr;
+  }
+  .osv-foot {
+    position: sticky;
+    bottom: -16px;
+    background: var(--osv-bg);
+    padding: 10px 0 4px;
+    margin-top: auto;
+    z-index: 2;
+  }
+  .osv-btn {
+    padding: 10px 14px;
+    font-size: 0.84rem;
   }
 }

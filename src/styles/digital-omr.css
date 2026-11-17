@@ -309,3 +309,43 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Dark Mode Support ── */
+[data-theme='dark'] .omr-panel {
+  background: rgba(24, 29, 40, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+[data-theme='dark'] .omr-header {
+  background: linear-gradient(180deg, #1e2534 0%, #171d29 100%);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
+}
+[data-theme='dark'] .omr-header-title { color: #f8fafc; }
+[data-theme='dark'] .omr-stat-chip.done { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+[data-theme='dark'] .omr-stat-chip.remain { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
+[data-theme='dark'] .omr-stat-chip.flag { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+[data-theme='dark'] .omr-row { background: #1e2432; }
+[data-theme='dark'] .omr-row:hover { background: #262e40; }
+[data-theme='dark'] .omr-row.active { background: rgba(59, 130, 246, 0.18); border-color: rgba(96, 165, 250, 0.45); }
+[data-theme='dark'] .omr-q-num { color: #e2e8f0; }
+[data-theme='dark'] .omr-flag-btn { color: #64748b; }
+[data-theme='dark'] .omr-bubble { background: #131722; border-color: #64748b; color: #cbd5e1; }
+[data-theme='dark'] .omr-bubble:hover { border-color: #93c5fd; color: #fff; }
+[data-theme='dark'] .omr-bubble.filled { background: #3b82f6; border-color: #60a5fa; color: #ffffff; }
+[data-theme='dark'] .trap-report-container { background: #181d28; border-color: rgba(148, 163, 184, 0.2); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+[data-theme='dark'] .trap-report-header { border-bottom-color: rgba(148, 163, 184, 0.14); }
+[data-theme='dark'] .trap-report-title h4 { color: #f8fafc; }
+[data-theme='dark'] .trap-report-title p { color: #94a3b8; }
+[data-theme='dark'] .trap-sum-box { background: #1f2533; border-color: rgba(148, 163, 184, 0.18); }
+[data-theme='dark'] .trap-sum-box.trap { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.32); }
+[data-theme='dark'] .trap-sum-box.calc { background: rgba(59, 130, 246, 0.12); border-color: rgba(96, 165, 250, 0.32); }
+[data-theme='dark'] .trap-sum-box.knowledge { background: rgba(239, 68, 68, 0.12); border-color: rgba(248, 113, 113, 0.32); }
+[data-theme='dark'] .trap-sum-num { color: #f8fafc; }
+[data-theme='dark'] .trap-sum-label { color: #94a3b8; }
+[data-theme='dark'] .trap-item-card { background: #1f2533; border-color: rgba(148, 163, 184, 0.18); }
+[data-theme='dark'] .trap-item-q-badge { color: #f1f5f9; }
+[data-theme='dark'] .trap-tag-pill.tone-warn { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+[data-theme='dark'] .trap-tag-pill.tone-info { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+[data-theme='dark'] .trap-tag-pill.tone-err { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+[data-theme='dark'] .trap-item-reason { color: #cbd5e1; }
+[data-theme='dark'] .trap-item-advice { color: #34d399; }

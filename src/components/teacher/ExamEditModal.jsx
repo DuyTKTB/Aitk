@@ -3,6 +3,9 @@
    ============================================================ */
 import { useMemo, useRef, useState } from 'react';
 import { updateTeacherExam } from '../../lib/classroom.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import { resolveEntitlements, TEACHER_VIP_PRICE_TEXT } from '../../lib/entitlements.js';
 import { IconClose, IconImage, IconScale, IconBook, IconSave } from '../Icons.jsx';
 
 /* ---- 3 dạng câu chuẩn THPT 2025 ---- */
@@ -205,7 +208,12 @@ const Switch = ({ label, checked, onChange, hint }) => (
 );
 
 /* onUploadImage (tuỳ chọn): async (file) => url — nếu có (VD: Firebase Storage) sẽ dùng thay cho lưu ảnh nhúng. */
-export default function ExamEditModal({ exam, classes = [], onClose, onSaved, onUploadImage }) {
+export default function ExamEditModal({ exam, classes = [], isTeacherVip = undefined, onRequestUpgrade = null, onClose, onSaved, onUploadImage }) {
+  const { user } = useAuth();
+  const pro = useTeacherPro();
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
   const [title, setTitle] = useState(exam.title || '');
   const [description, setDescription] = useState(exam.description || '');
   const [duration, setDuration] = useState(exam.duration || 15);
@@ -279,35 +287,53 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
   };
 
   const totalPoints = useMemo(() => round2(questions.reduce((s, q) => s + ptsOf(q), 0)), [questions]);
-  const setP = (patch) => setProctor((p) => ({ ...p, ...patch }));
-  const setPC = (patch) => setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, ...patch } }));
-  const toggleLockdown = () => setProctor((p) => {
-    const next = !p.lockdown;
-    return {
-      ...p,
-      lockdown: next,
-      strictMode: true,
-      fullscreenLock: true,
-      blockCopyPaste: true,
-      blockDevTools: true,
-      blockPrintScreen: true,
-      blockLongBlur: true,
-      blurOnFocusLost: true,
-      singleDeviceLock: true,
-      blockMultiScreen: true,
-      watermark: true,
-      motionGuard: true,
-      ...(next ? {
-        tabSwitchLimit: Math.min(p.tabSwitchLimit || 3, 2),
-        softToHard: 3,
-        camera: p.camera === 'off' ? 'required' : p.camera,
-        requireAiModel: true,
-        audioMonitor: true,
-        snapshotOnEvent: true,
-        cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
-      } : {}),
-    };
-  });
+  const promptVipProctor = () => {
+    const msg = `Giám sát Camera AI & Chế độ Siêu chặt thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+    if (typeof onRequestUpgrade === 'function') onRequestUpgrade(msg);
+    else if (typeof window !== 'undefined') window.location.hash = 'profile?tab=vip';
+  };
+  const VIP_PROCTOR_KEYS = ['camera', 'audioMonitor', 'requireAiModel', 'singleDeviceLock', 'blockMultiScreen', 'blockDevTools', 'blockPrintScreen', 'snapshotOnEvent', 'strictMode', 'lockdown'];
+  const setP = (patch) => {
+    if (!vipUnlocked && Object.entries(patch).some(([k, v]) => VIP_PROCTOR_KEYS.includes(k) && v && v !== 'off')) {
+      promptVipProctor();
+      return;
+    }
+    setProctor((p) => ({ ...p, ...patch }));
+  };
+  const setPC = (patch) => {
+    if (!vipUnlocked) { promptVipProctor(); return; }
+    setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, ...patch } }));
+  };
+  const toggleLockdown = () => {
+    if (!vipUnlocked) { promptVipProctor(); return; }
+    setProctor((p) => {
+      const next = !p.lockdown;
+      return {
+        ...p,
+        lockdown: next,
+        strictMode: true,
+        fullscreenLock: true,
+        blockCopyPaste: true,
+        blockDevTools: true,
+        blockPrintScreen: true,
+        blockLongBlur: true,
+        blurOnFocusLost: true,
+        singleDeviceLock: true,
+        blockMultiScreen: true,
+        watermark: true,
+        motionGuard: true,
+        ...(next ? {
+          tabSwitchLimit: Math.min(p.tabSwitchLimit || 3, 2),
+          softToHard: 3,
+          camera: p.camera === 'off' ? 'required' : p.camera,
+          requireAiModel: true,
+          audioMonitor: true,
+          snapshotOnEvent: true,
+          cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
+        } : {}),
+      };
+    });
+  };
 
   const patchQ = (i, patch) => setQuestions((qs) => qs.map((q, k) => (k === i ? { ...q, ...patch } : q)));
   const addQ = (type = 'single_choice') => {
@@ -581,7 +607,10 @@ export default function ExamEditModal({ exam, classes = [], onClose, onSaved, on
         {/* ===== GIÁM SÁT ===== */}
         <section style={{ ...P.card, marginBottom: '.9rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.5rem', marginBottom: '.7rem' }}>
-            <h3 style={{ margin: 0, font: '800 .85rem var(--t-font-sans)', color: 'var(--t-ink)' }}>Giám sát &amp; chống gian lận</h3>
+            <h3 style={{ margin: 0, font: '800 .85rem var(--t-font-sans)', color: 'var(--t-ink)' }}>
+              Giám sát &amp; chống gian lận
+              {!vipUnlocked && <span style={{ marginLeft: 8, fontSize: '.7rem', fontWeight: 700, color: 'var(--t-warn, #d97706)', background: 'rgba(245,158,11,0.16)', padding: '2px 8px', borderRadius: 999 }}>Camera AI / Siêu chặt: VIP</span>}
+            </h3>
             <button
               type="button"
               onClick={toggleLockdown}

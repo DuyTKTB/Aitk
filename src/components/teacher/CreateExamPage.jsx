@@ -12,9 +12,23 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import ExamCreateForm from './ExamCreateForm.jsx';
 import AutoExamStudio from './AutoExamStudio.jsx';
 import ExamImporter from './ExamImporter.jsx';
+import TeacherVipLock from './TeacherVipLock.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import {
+  resolveEntitlements,
+  FREE_TEACHER_LIMITS,
+  TEACHER_VIP_PRICE_TEXT,
+  TEACHER_TRIAL_QUOTA_EVENT,
+  getWordImportTrialUsed,
+  getWordImportTrialRemaining,
+  incrementWordImportTrialUsed,
+  getManualEntryTrialUsed,
+  getManualEntryTrialRemaining,
+  incrementManualEntryTrialUsed,
+} from '../../lib/entitlements.js';
 import { useToast } from '../admin/AdminUI.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import './create-exam-page.css';
@@ -69,14 +83,37 @@ export default function CreateExamPage({
   initialPreset = null,
   grades = [],
   subjects = [],
+  existingExamCount = 0,
+  isTeacherVip = undefined,
+  onRequestUpgrade = null,
   onDone,
   onCancel,
 }) {
   const { user } = useAuth();
+  const pro = useTeacherPro();
   const toast = useToast();
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+  const [trialTick, setTrialTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setTrialTick((n) => n + 1);
+    window.addEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+    return () => window.removeEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+  }, []);
+  const wordTrialLeft = getWordImportTrialRemaining(user?.uid, vipUnlocked);
+  const wordTrialUsed = getWordImportTrialUsed(user?.uid);
+  const manualTrialLeft = getManualEntryTrialRemaining(user?.uid, vipUnlocked);
+  const manualTrialUsed = getManualEntryTrialUsed(user?.uid);
+  void trialTick;
+
+  const examQuotaReached = !vipUnlocked && (existingExamCount >= FREE_TEACHER_LIMITS.maxExams || manualTrialLeft <= 0);
+  const wordQuotaReached = !vipUnlocked && wordTrialLeft <= 0;
+
   const [tab, setTab] = useState(() => {
     const t = initialPreset?.initialTab;
-    return (t === 'ai' || t === 'manual' || t === 'file') ? t : 'ai';
+    if (t === 'ai' || t === 'manual' || t === 'file') return t;
+    return vipUnlocked ? 'ai' : 'manual';
   });
   const [initialData, setInitialData] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -199,6 +236,13 @@ export default function CreateExamPage({
 
   /* Lưu đề */
   const handleSave = async (data) => {
+    const isFileSource = data?.source === 'file-import';
+    if (!vipUnlocked && !isFileSource && getManualEntryTrialRemaining(user?.uid, false) <= 0) {
+      const msg = `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt tạo/nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để sử dụng không giới hạn.`;
+      toast.error(msg);
+      onRequestUpgrade?.(msg);
+      throw new Error(msg);
+    }
     const aiMeta = aiMetaRef.current || {};
     const targetClassId = data.isDraft
       ? ''
@@ -228,6 +272,9 @@ export default function CreateExamPage({
         source: data.source || '',
         kind: data.kind || '',
       });
+      if (!vipUnlocked && !isFileSource) {
+        incrementManualEntryTrialUsed(user?.uid, 1);
+      }
       toast.success(isDraft
         ? `Đã lưu bản nháp cá nhân "${data.title}" (${data.questions.length} câu)`
         : `Đã tạo đề "${data.title}" với ${data.questions.length} câu cho ${targetClassObj?.name || 'lớp'}`);
@@ -258,7 +305,7 @@ export default function CreateExamPage({
           className={'cep-tab' + (tab === 'ai' ? ' on' : '')}
           onClick={() => setTab('ai')}
         >
-          <IcoSparkle size={15} /> Tạo bằng AI (AutoExam Studio)
+          <IcoSparkle size={15} /> Tạo bằng AI (AutoExam Studio) {!vipUnlocked && <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 800, background: 'rgba(245,158,11,0.18)', color: '#b45309' }}>VIP</span>}
         </button>
         <button
           type="button"
@@ -267,7 +314,7 @@ export default function CreateExamPage({
           className={'cep-tab' + (tab === 'manual' ? ' on' : '')}
           onClick={() => setTab('manual')}
         >
-          <IcoDoc size={15} /> Soạn thủ công
+          <IcoDoc size={15} /> Soạn thủ công {!vipUnlocked ? `(Còn ${manualTrialLeft}/${FREE_TEACHER_LIMITS.maxManualEntries})` : ''}
         </button>
         <button
           type="button"
@@ -276,12 +323,16 @@ export default function CreateExamPage({
           className={'cep-tab' + (tab === 'file' ? ' on' : '')}
           onClick={() => setTab('file')}
         >
-          <IcoUpload size={15} /> Nhập từ file
+          <IcoUpload size={15} /> Nhập file Word {!vipUnlocked ? (
+            <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 800, background: wordTrialLeft > 0 ? 'rgba(16,185,129,0.18)' : 'rgba(245,158,11,0.18)', color: wordTrialLeft > 0 ? '#10b981' : '#f59e0b' }}>
+              {wordTrialLeft > 0 ? `Thử ${wordTrialLeft}/${FREE_TEACHER_LIMITS.maxWordImports}` : 'VIP'}
+            </span>
+          ) : ''}
         </button>
       </div>
 
       {/* ===== BẢN NHÁP CHƯA LƯU ===== */}
-      {pendingDraft && tab === 'manual' && (
+      {pendingDraft && tab === 'manual' && !examQuotaReached && (
         <div className="cep-draft-banner" role="status">
           <div>
             <b>Có bản nháp chưa lưu</b>
@@ -296,17 +347,25 @@ export default function CreateExamPage({
         </div>
       )}
 
-      {/* ===== NỘI DUNG — cả 3 tab luôn mounted ===== */}
+      {/* ===== NỘI DUNG — cả 3 tab luôn mounted khi VIP, khóa rõ ràng khi Free ===== */}
       <div hidden={tab !== 'ai'}>
-        <AutoExamStudio
-          classes={classes.length ? classes : classInfo ? [classInfo] : []}
-          initialClass={classInfo}
-          classInsights={classInsights}
-          initialPreset={initialPreset}
-          onGenerated={handleAIGenerated}
-          onDone={onDone}
-          onCancel={onCancel}
-        />
+        {vipUnlocked ? (
+          <AutoExamStudio
+            classes={classes.length ? classes : classInfo ? [classInfo] : []}
+            initialClass={classInfo}
+            classInsights={classInsights}
+            initialPreset={initialPreset}
+            onGenerated={handleAIGenerated}
+            onDone={onDone}
+            onCancel={onCancel}
+          />
+        ) : (
+          <TeacherVipLock
+            title="AI Tạo Đề (AutoExam Studio) dành riêng cho Giáo viên VIP"
+            description="Tự động lập ma trận chuẩn GDPT 2018, đọc lỗ hổng kiến thức của lớp và sinh trọn bộ câu hỏi kèm đáp án + lời giải trong vài giây."
+            onUpgrade={onRequestUpgrade}
+          />
+        )}
       </div>
 
       {/* Hộp xác nhận nội bộ khi ghi đè form Soạn thủ công */}
@@ -346,48 +405,70 @@ export default function CreateExamPage({
       )}
 
       <div hidden={tab !== 'manual'}>
-        {/* FIX #3: KHÔNG dùng key để tránh remount. Dùng ref để expose API. */}
-        <ExamCreateForm
-          ref={formRef}
-          initial={initialData}
-          onDirty={(d) => { dirtyRef.current = d; }}
-          onSnapshot={handleSnapshot}
-          classInfo={classInfo}
-          classes={classes.length ? classes : classInfo ? [classInfo] : []}
-          onSave={handleSave}
-          onCancel={onCancel}
-          saving={saving}
-        />
+        {examQuotaReached ? (
+          <TeacherVipLock
+            title={`Đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries} lượt tạo/nhập thủ công của gói Giáo viên Free`}
+            quotaText={`Đã dùng ${manualTrialUsed}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt thủ công · ${existingExamCount}/${FREE_TEACHER_LIMITS.maxExams} đề`}
+            description={`Tài khoản Giáo viên miễn phí hỗ trợ dùng thử tối đa ${FREE_TEACHER_LIMITS.maxManualEntries} lần nhập thủ công. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để tạo và giao không giới hạn đề kiểm tra.`}
+            onUpgrade={onRequestUpgrade}
+          />
+        ) : (
+          /* FIX #3: KHÔNG dùng key để tránh remount. Dùng ref để expose API. */
+          <ExamCreateForm
+            ref={formRef}
+            initial={initialData}
+            onDirty={(d) => { dirtyRef.current = d; }}
+            onSnapshot={handleSnapshot}
+            classInfo={classInfo}
+            classes={classes.length ? classes : classInfo ? [classInfo] : []}
+            isTeacherVip={vipUnlocked}
+            onRequestUpgrade={onRequestUpgrade}
+            onSave={handleSave}
+            onCancel={onCancel}
+            saving={saving}
+          />
+        )}
       </div>
 
       <div hidden={tab !== 'file'}>
-        <ExamImporter
-          variant="page"
-          classInfo={classInfo}
-          classes={classes.length ? classes : classInfo ? [classInfo] : []}
-          allowBank={false}
-          allowSoftExam
-          onCreateSoftExam={async ({ title, duration, classId, subject, grade, gradeType, antiCheat, shuffleVariants, questions, sourceFile }) => {
-            const targetCid = classId !== undefined ? classId : (classInfo?.id || '');
-            await handleSave({
-              title,
-              description: sourceFile ? `Nhập từ file ${sourceFile}` : 'Đề mềm nhập từ file',
-              duration,
-              subject: subject || classInfo?.subject || '',
-              grade: grade || classInfo?.grade || '',
-              gradeType: gradeType || '',
-              questions: questions.map((q) => ({ ...q, subject, grade })),
-              showAnswerAfter: true,
-              allowRetry: false,
-              shuffle: Boolean(shuffleVariants),
-              proctor: antiCheat === false ? { camera: 'off', fullscreenLock: false, tabSwitchLimit: 0, blockCopyPaste: false, strictMode: false } : undefined,
-              source: 'file-import',
-              kind: 'soft',
-              classId: targetCid,
-              isDraft: !targetCid,
-            });
-          }}
-        />
+        {vipUnlocked || !wordQuotaReached ? (
+          <ExamImporter
+            variant="page"
+            classInfo={classInfo}
+            classes={classes.length ? classes : classInfo ? [classInfo] : []}
+            allowBank={false}
+            allowSoftExam
+            isTeacherVip={vipUnlocked}
+            onRequestUpgrade={onRequestUpgrade}
+            onCreateSoftExam={async ({ title, duration, classId, subject, grade, gradeType, antiCheat, shuffleVariants, questions, sourceFile }) => {
+              const targetCid = classId !== undefined ? classId : (classInfo?.id || '');
+              await handleSave({
+                title,
+                description: sourceFile ? `Nhập từ file ${sourceFile}` : 'Đề mềm nhập từ file',
+                duration,
+                subject: subject || classInfo?.subject || '',
+                grade: grade || classInfo?.grade || '',
+                gradeType: gradeType || '',
+                questions: questions.map((q) => ({ ...q, subject, grade })),
+                showAnswerAfter: true,
+                allowRetry: false,
+                shuffle: Boolean(shuffleVariants),
+                proctor: antiCheat === false ? { camera: 'off', fullscreenLock: false, tabSwitchLimit: 0, blockCopyPaste: false, strictMode: false } : undefined,
+                source: 'file-import',
+                kind: 'soft',
+                classId: targetCid,
+                isDraft: !targetCid,
+              });
+            }}
+          />
+        ) : (
+          <TeacherVipLock
+            title={`Đã hết ${FREE_TEACHER_LIMITS.maxWordImports}/${FREE_TEACHER_LIMITS.maxWordImports} lượt dùng thử nhập file Word miễn phí`}
+            quotaText={`Đã dùng ${wordTrialUsed}/${FREE_TEACHER_LIMITS.maxWordImports} lượt nhập Word`}
+            description={`Tài khoản Giáo viên miễn phí được dùng thử ${FREE_TEACHER_LIMITS.maxWordImports} lần nhập trực tiếp file Word (.docx). Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập Word, tách đề PDF/Ảnh và Quét AI không giới hạn.`}
+            onUpgrade={onRequestUpgrade}
+          />
+        )}
       </div>
     </div>
   );

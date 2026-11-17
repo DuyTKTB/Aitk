@@ -9,8 +9,11 @@ import {
   confirmPasswordReset,
   verifyPasswordResetCode,
 } from 'firebase/auth';
-import { auth, translateAuthError } from '../lib/firebase.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, translateAuthError } from '../lib/firebase.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 import { validatePassword, MIN_PASSWORD } from '../lib/authValidation.js';
+import { getUserRole, setUserRole, clearPostAuthRedirect, setPostAuthRedirect } from '../lib/userRole.js';
 import '../styles/verify-email-gate.css';
 
 function readActionParams() {
@@ -26,6 +29,7 @@ function readActionParams() {
 }
 
 export default function AuthActionPage() {
+  const { refreshUser } = useAuth();
   const [{ mode, oobCode }] = useState(readActionParams);
   const [stage, setStage] = useState('loading'); // loading | reset_form | done | error
   const [email, setEmail] = useState('');
@@ -35,6 +39,7 @@ export default function AuthActionPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [doneMsg, setDoneMsg] = useState('');
+  const [verifiedTarget, setVerifiedTarget] = useState('login'); // 'classroom' | 'home' | 'login'
 
   useEffect(() => {
     let alive = true;
@@ -55,8 +60,42 @@ export default function AuthActionPage() {
         } else if (mode === 'verifyEmail') {
           await applyActionCode(auth, oobCode);
           if (!alive) return;
-          setDoneMsg('Email của bạn đã được xác thực thành công! Bạn có thể quay lại ứng dụng để học ngay.');
+          let nextTarget = 'login';
+          if (auth.currentUser) {
+            await refreshUser?.(true).catch(() => {});
+            let resolvedRole = getUserRole(auth.currentUser);
+            if (resolvedRole !== 'teacher') {
+              try {
+                const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                if (snap.exists() && snap.data()?.role === 'teacher') {
+                  resolvedRole = 'teacher';
+                  setUserRole(auth.currentUser.uid, 'teacher');
+                  window.dispatchEvent(new CustomEvent('user-profile-change'));
+                }
+              } catch { /* ignore */ }
+            }
+            nextTarget = resolvedRole === 'teacher' ? 'classroom' : 'home';
+          }
+          if (!alive) return;
+          if (nextTarget === 'classroom') {
+            setPostAuthRedirect('classroom');
+          }
+          setVerifiedTarget(nextTarget);
+          setDoneMsg(
+            nextTarget === 'classroom'
+              ? 'Email giáo viên đã được xác thực thành công! Đang chuyển thẳng sang bảng Quản trị Giáo viên…'
+              : nextTarget === 'home'
+                ? 'Email của bạn đã được xác thực thành công! Bạn có thể quay lại ứng dụng để học ngay.'
+                : 'Email của bạn đã được xác thực thành công! Hãy đăng nhập để bắt đầu sử dụng ELEC AI.'
+          );
           setStage('done');
+          if (nextTarget === 'classroom') {
+            setTimeout(() => {
+              if (alive && window.location.hash !== '#classroom') {
+                window.location.hash = 'classroom';
+              }
+            }, 650);
+          }
         } else {
           if (alive) {
             setErr('Thao tác xác thực không được hỗ trợ.');
@@ -78,7 +117,7 @@ export default function AuthActionPage() {
     }
     init();
     return () => { alive = false; };
-  }, [mode, oobCode]);
+  }, [mode, oobCode, refreshUser]);
 
   const handleConfirmReset = async (e) => {
     e.preventDefault();
@@ -190,9 +229,16 @@ export default function AuthActionPage() {
             <button
               type="button"
               className="veg-primary-btn"
-              onClick={() => { window.location.hash = 'login'; }}
+              onClick={() => {
+                if (verifiedTarget !== 'login') clearPostAuthRedirect();
+                window.location.hash = verifiedTarget;
+              }}
             >
-              Về trang đăng nhập ELEC AI
+              {verifiedTarget === 'classroom'
+                ? 'Vào trang Quản trị Giáo viên'
+                : verifiedTarget === 'home'
+                  ? 'Vào ứng dụng ELEC AI'
+                  : 'Về trang đăng nhập ELEC AI'}
             </button>
           </>
         )}

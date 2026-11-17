@@ -10,9 +10,9 @@ import { IconAlert, IconTarget, IconRobot, IconArrowUpRight } from './Icons.jsx'
 import { askAI } from './HomePlus.jsx';
 
 const A = {
-  page: { minHeight: '100dvh', background: 'var(--t-bg, #f4f6fb)', color: 'var(--t-ink, #0f172a)', fontFamily: 'var(--t-font-sans, -apple-system, sans-serif)', WebkitFontSmoothing: 'antialiased' },
+  page: { minHeight: '100dvh', background: 'var(--bg, #f4f6fb)', color: 'var(--ink, #0f172a)', fontFamily: 'var(--sans, -apple-system, sans-serif)', WebkitFontSmoothing: 'antialiased' },
   wrap: { maxWidth: 960, margin: '0 auto', padding: '1.2rem 1rem 3rem' },
-  card: { background: 'var(--t-surface-2, #fff)', border: '1px solid var(--t-border, rgba(100,120,180,.16))', borderRadius: 20, boxShadow: 'var(--t-shadow-sm)' },
+  card: { background: 'var(--surface, #fff)', border: '1px solid var(--line, rgba(100,120,180,.16))', borderRadius: 20, boxShadow: 'var(--sh-1)' },
 };
 
 export default function AdmissionLookup() {
@@ -129,7 +129,7 @@ export default function AdmissionLookup() {
         )}
 
         {unis.length === 0 ? (
-          <div style={{ ...A.card, padding: '2rem', textAlign: 'center', color: 'var(--t-ink-muted, #64748b)', font: '500 .88rem var(--t-font-sans)' }}>
+          <div style={{ ...A.card, padding: '2rem', textAlign: 'center', color: 'var(--mut, #64748b)', font: '500 .88rem var(--sans)' }}>
             Không tìm thấy kết quả phù hợp. Thử từ khóa ngắn hơn nhé!
           </div>
         ) : (
@@ -142,7 +142,7 @@ export default function AdmissionLookup() {
               {rows.filter((r) => r.uni === u).map((r, i) => {
                 const f = fit(r.s2025 ?? r.s2024);
                 return (
-                  <div key={i} className="ns9-adm-row" style={{ borderTop: i > 0 ? '1px solid var(--t-border-subtle, rgba(100,120,180,.08))' : 'none' }}>
+                  <div key={i} className="ns9-adm-row" style={{ borderTop: i > 0 ? '1px solid var(--line-soft, rgba(100,120,180,.08))' : 'none' }}>
                     <div className="ns9-adm-major">
                       <b>{r.major}</b>
                       <small>Tổ hợp: {r.combo}</small>
@@ -169,7 +169,7 @@ export default function AdmissionLookup() {
 
 const selStyle = {
   padding: '.55rem .8rem', borderRadius: 999,
-  border: '1px solid var(--t-border, rgba(100,120,180,.16))',
-  background: 'var(--t-surface-2, #fff)', color: 'var(--t-ink)',
-  font: '600 .8rem var(--t-font-sans)', outline: 'none', cursor: 'pointer',
+  border: '1px solid var(--line, rgba(100,120,180,.16))',
+  background: 'var(--surface, #fff)', color: 'var(--ink)',
+  font: '600 .8rem var(--sans)', outline: 'none', cursor: 'pointer',
 };

@@ -6,6 +6,7 @@ import {
   sanitizeOtpInput,
   verifyEmailOtpCode,
 } from '../lib/emailOtp.js';
+import { getUserRole, peekPostAuthRedirect, setPostAuthRedirect } from '../lib/userRole.js';
 import '../styles/verify-email-gate.css';
 
 export default function VerifyEmailGate() {
@@ -19,10 +20,30 @@ export default function VerifyEmailGate() {
 
   const inputRefs = useRef([]);
   const autoSentRef = useRef(false);
+  const lastFocusCheckRef = useRef(0);
 
   const email = user?.email || '';
   const uid = user?.uid || '';
   const isGmail = email.toLowerCase().endsWith('@gmail.com');
+  const isTeacherRedirect = getUserRole(user) === 'teacher' || peekPostAuthRedirect() === 'classroom';
+
+  useEffect(() => {
+    if (!uid) return undefined;
+    const syncVerifiedState = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const now = Date.now();
+      if (now - lastFocusCheckRef.current < 2500) return;
+      lastFocusCheckRef.current = now;
+      if (isTeacherRedirect) setPostAuthRedirect('classroom');
+      refreshUser(true).catch(() => {});
+    };
+    window.addEventListener('focus', syncVerifiedState);
+    document.addEventListener('visibilitychange', syncVerifiedState);
+    return () => {
+      window.removeEventListener('focus', syncVerifiedState);
+      document.removeEventListener('visibilitychange', syncVerifiedState);
+    };
+  }, [uid, isTeacherRedirect, refreshUser]);
 
   useEffect(() => {
     if (cooldown <= 0) return undefined;
@@ -165,6 +186,7 @@ export default function VerifyEmailGate() {
     setStatus(null);
     try {
       await verifyEmailOtpCode(code);
+      if (isTeacherRedirect) setPostAuthRedirect('classroom');
       await refreshUser(true);
     } catch (err) {
       setStatus({ type: 'err', text: err?.message || 'Mã xác thực không đúng.' });
@@ -177,6 +199,7 @@ export default function VerifyEmailGate() {
     setBusy(true);
     setStatus(null);
     try {
+      if (isTeacherRedirect) setPostAuthRedirect('classroom');
       const updated = await refreshUser(true);
       if (!updated?.emailVerified) {
         setStatus({
@@ -255,7 +278,9 @@ export default function VerifyEmailGate() {
               disabled={busy || code.length < OTP_LENGTH}
               className="veg-primary-btn"
             >
-              {busy ? 'Đang kiểm tra mã…' : 'Xác nhận mã & Vào ứng dụng'}
+              {busy
+                ? 'Đang kiểm tra mã…'
+                : (isTeacherRedirect ? 'Xác nhận mã & Vào quản trị giáo viên' : 'Xác nhận mã & Vào ứng dụng')}
             </button>
           </form>
         ) : (
@@ -276,7 +301,9 @@ export default function VerifyEmailGate() {
               onClick={handleCheckLink}
               className="veg-primary-btn"
             >
-              {busy ? 'Đang kiểm tra…' : 'Tôi đã bấm link xác thực → Vào ứng dụng'}
+              {busy
+                ? 'Đang kiểm tra…'
+                : (isTeacherRedirect ? 'Tôi đã bấm link xác thực → Vào quản trị giáo viên' : 'Tôi đã bấm link xác thực → Vào ứng dụng')}
             </button>
           </div>
         )}

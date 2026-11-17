@@ -1840,9 +1840,9 @@ export default function AutoExamStudio({
                       borderRadius: '16px',
                       fontSize: '0.82rem',
                       fontWeight: 700,
-                      border: selectedSubject === s ? '1.5px solid #2563eb' : '1px solid rgba(0,0,0,0.12)',
-                      background: selectedSubject === s ? '#eff6ff' : 'var(--panel, #ffffff)',
-                      color: selectedSubject === s ? '#2563eb' : 'var(--ink, #334155)',
+                      border: selectedSubject === s ? '1.5px solid var(--t-accent, #2563eb)' : '1px solid var(--t-border, rgba(148,163,184,0.22))',
+                      background: selectedSubject === s ? 'var(--t-accent-soft, rgba(37, 99, 235, 0.14))' : 'var(--t-surface-1, var(--panel, #ffffff))',
+                      color: selectedSubject === s ? 'var(--t-accent, #2563eb)' : 'var(--t-ink, var(--ink, #334155))',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       boxShadow: selectedSubject === s ? '0 1px 4px rgba(37,99,235,0.22)' : 'none',
@@ -1868,9 +1868,9 @@ export default function AutoExamStudio({
                       borderRadius: '16px',
                       fontSize: '0.82rem',
                       fontWeight: 700,
-                      border: selectedGrade === g ? '1.5px solid #2563eb' : '1px solid rgba(0,0,0,0.12)',
-                      background: selectedGrade === g ? '#eff6ff' : 'var(--panel, #ffffff)',
-                      color: selectedGrade === g ? '#2563eb' : 'var(--ink, #334155)',
+                      border: selectedGrade === g ? '1.5px solid var(--t-accent, #2563eb)' : '1px solid var(--t-border, rgba(148,163,184,0.22))',
+                      background: selectedGrade === g ? 'var(--t-accent-soft, rgba(37, 99, 235, 0.14))' : 'var(--t-surface-1, var(--panel, #ffffff))',
+                      color: selectedGrade === g ? 'var(--t-accent, #2563eb)' : 'var(--t-ink, var(--ink, #334155))',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       boxShadow: selectedGrade === g ? '0 1px 4px rgba(37,99,235,0.22)' : 'none',
@@ -3448,11 +3448,11 @@ export default function AutoExamStudio({
               {/* TẢI TỆP MA TRẬN */}
               <div
                 style={{
-                  border: '2px dashed #93c5fd',
+                  border: '2px dashed var(--t-accent, #3b82f6)',
                   borderRadius: '14px',
                   padding: '1.2rem',
                   textAlign: 'center',
-                  background: 'rgba(239, 246, 255, 0.6)',
+                  background: 'var(--t-accent-soft, rgba(239, 246, 255, 0.6))',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
@@ -3477,13 +3477,13 @@ export default function AutoExamStudio({
                   style={{ display: 'none' }}
                   onChange={handleCustomMatrixFileSelect}
                 />
-                <div style={{ color: '#2f6bff', marginBottom: '0.4rem' }}>
+                <div style={{ color: 'var(--t-accent, #2f6bff)', marginBottom: '0.4rem' }}>
                   <IcoFile size={28} />
                 </div>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--t-ink, #1e293b)' }}>
                   Bấm để chọn hoặc kéo thả file ma trận vào đây
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--t-ink-2, #64748b)', marginTop: '3px' }}>
                   Hỗ trợ: Ảnh chụp bảng ma trận, file Word (.docx), Excel (.xlsx), PDF
                 </div>
               </div>

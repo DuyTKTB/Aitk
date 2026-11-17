@@ -209,11 +209,12 @@
   font-size: 0.86rem;
   color: #6e6e73;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 4px 6px;
+  line-height: 1.38;
+  white-space: normal;
+  word-break: break-word;
 }
 
 [data-theme="dark"] .pf-m-school {
@@ -563,11 +564,34 @@
 
 /* Thẻ 1: Gói đang sử dụng */
 .ns9-sub-current {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 18px !important;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+@media (max-width: 768px) {
+  .ns9-sub-current {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+  .ns9-sub-plan-hero {
+    align-items: flex-start !important;
+    min-width: 0;
+  }
+  .ns9-sub-plan-meta {
+    min-width: 0;
+    flex: 1;
+  }
+  .ns9-sub-plan-name-row {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .ns9-sub-active-pill {
+    white-space: nowrap !important;
+  }
 }
 
 .ns9-sub-plan-hero {

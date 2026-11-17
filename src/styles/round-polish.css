@@ -445,6 +445,20 @@ img, video { border-radius: inherit; }
 /* loader trang */
 .page-loader-spinner { border-radius: 50%; box-shadow: 0 0 24px color-mix(in srgb, var(--acc) 40%, transparent); }
 
+.gc-hero-main b.is-empty { opacity: .32; }
+[data-theme='dark'] .gc-tabs button.on,
+[data-theme='dark'] .gc-seg button.on,
+[data-theme='dark'] .qz-seg button.on {
+  background: var(--acc);
+  color: var(--acc-ink);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--acc) 35%, transparent);
+}
+[data-theme='dark'] .qz-pill {
+  background: rgba(30, 41, 59, 0.92);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
 /* ---------- 9. KEYFRAMES ---------- */
 @keyframes rx-fade { from { opacity: 0; } }
 @keyframes rx-pop { from { opacity: 0; transform: translateY(18px) scale(.94); } }

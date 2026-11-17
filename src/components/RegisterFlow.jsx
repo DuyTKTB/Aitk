@@ -19,7 +19,25 @@ import {
   emptyLockState, MIN_PASSWORD, joinNameParts,
 } from '../lib/authValidation.js';
 import { VIETNAM_PROVINCES, GRADES_LIST } from '../lib/userProfileService.js';
+import {
+  getUserRole,
+  setPostAuthRedirect,
+  clearPostAuthRedirect,
+} from '../lib/userRole.js';
 import '../styles/register-flow.css';
+
+function readInitialRole() {
+  try {
+    if (typeof window === 'undefined') return 'student';
+    const hash = window.location.hash || '';
+    const qIdx = hash.indexOf('?');
+    const hashRole = qIdx >= 0 ? new URLSearchParams(hash.slice(qIdx + 1)).get('role') : '';
+    const searchRole = new URLSearchParams(window.location.search || '').get('role');
+    return (hashRole || searchRole) === 'teacher' ? 'teacher' : 'student';
+  } catch {
+    return 'student';
+  }
+}
 
 const LOCK_KEY = 'elec-register-lock';
 const TOTAL_STEPS = 3;
@@ -106,7 +124,7 @@ export default function RegisterFlow({ onDone, onBack }) {
   const [form, setForm] = useState({
     lastName: '',
     firstName: '',
-    role: 'student',
+    role: readInitialRole,
     grade: 'Lớp 12',
     school: '',
     province: '',
@@ -195,6 +213,11 @@ export default function RegisterFlow({ onDone, onBack }) {
 
     setBusy(true);
     setErr('');
+    if (res.normalized.role === 'teacher') {
+      setPostAuthRedirect('classroom');
+    } else {
+      clearPostAuthRedirect();
+    }
     try {
       await register(res.normalized.email, form.password, res.normalized.name, {
         role: res.normalized.role,
@@ -207,10 +230,14 @@ export default function RegisterFlow({ onDone, onBack }) {
         termsAcceptedAt: Date.now(),
       });
 
+      if (res.normalized.role === 'teacher') {
+        setPostAuthRedirect('classroom');
+      }
       saveLock(emptyLockState());
       setLock(emptyLockState());
       onDone?.();
     } catch (e) {
+      clearPostAuthRedirect();
       const st = nextFailure(lock, Date.now());
       saveLock(st);
       setLock(st);
@@ -223,10 +250,32 @@ export default function RegisterFlow({ onDone, onBack }) {
   const handleGoogleQuick = async () => {
     setErr('');
     setBusy(true);
+    if (form.role === 'teacher') {
+      setPostAuthRedirect('classroom');
+    } else {
+      clearPostAuthRedirect();
+    }
     try {
-      const signedInUser = await loginWithGoogle({ role: form.role, school: form.school.trim(), termsAcceptedAt: Date.now() });
-      if (signedInUser) onDone?.();
+      const signedInUser = await loginWithGoogle({
+        role: form.role,
+        forceRole: form.role === 'teacher' ? 'teacher' : undefined,
+        school: form.school.trim(),
+        termsAcceptedAt: Date.now(),
+        redirectTarget: form.role === 'teacher' ? 'classroom' : '',
+      });
+      if (signedInUser) {
+        if (form.role === 'teacher' || getUserRole(signedInUser) === 'teacher') {
+          setPostAuthRedirect('classroom');
+          if (typeof window !== 'undefined' && window.location.hash !== '#classroom') {
+            window.location.hash = 'classroom';
+          }
+        } else {
+          clearPostAuthRedirect();
+        }
+        onDone?.();
+      }
     } catch (e2) {
+      clearPostAuthRedirect();
       const code = String(e2?.code || '');
       setErr(code ? translateAuthError(code) : 'Không đăng ký được bằng Google.');
     } finally {
@@ -258,6 +307,23 @@ export default function RegisterFlow({ onDone, onBack }) {
 
       {step === 1 && (
         <>
+          <div className="rf-role">
+            {[
+              { key: 'student', label: 'Học sinh', hint: 'Tham gia lớp, làm bài' },
+              { key: 'teacher', label: 'Giáo viên', hint: 'Tạo lớp, quản trị & giao đề' },
+            ].map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                className={'rf-role-btn' + (form.role === r.key ? ' on' : '')}
+                onClick={() => set({ role: r.key })}
+              >
+                <b>{r.label}</b>
+                <small>{r.hint}</small>
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             className="lg-google"
@@ -270,11 +336,11 @@ export default function RegisterFlow({ onDone, onBack }) {
               <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
               <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.2 5.2C41.9 35 44 30 44 24c0-1.2-.1-2.4-.4-3.5z" />
             </svg>
-            <span>Đăng ký nhanh với Google</span>
+            <span>{form.role === 'teacher' ? 'Đăng ký Giáo viên nhanh với Google' : 'Đăng ký nhanh với Google'}</span>
           </button>
           <div className="lg-divider"><span>hoặc nhập thông tin &amp; email riêng</span></div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr', gap: 8 }}>
+          <div className="rf-name-grid">
             <div>
               <label className="rf-field">
                 <span className="rf-ic"><Ico.user /></span>
@@ -303,23 +369,6 @@ export default function RegisterFlow({ onDone, onBack }) {
               </label>
               {fieldErr.firstName && <p className="rf-err">{fieldErr.firstName}</p>}
             </div>
-          </div>
-
-          <div className="rf-role">
-            {[
-              { key: 'student', label: 'Học sinh', hint: 'Tham gia lớp, làm bài' },
-              { key: 'teacher', label: 'Giáo viên', hint: 'Tạo lớp, giao đề' },
-            ].map((r) => (
-              <button
-                key={r.key}
-                type="button"
-                className={'rf-role-btn' + (form.role === r.key ? ' on' : '')}
-                onClick={() => set({ role: r.key })}
-              >
-                <b>{r.label}</b>
-                <small>{r.hint}</small>
-              </button>
-            ))}
           </div>
 
           {form.role === 'student' && (
@@ -541,7 +590,9 @@ export default function RegisterFlow({ onDone, onBack }) {
           </div>
 
           <p className="rf-hint">
-            Sau khi tạo, hệ thống sẽ yêu cầu xác thực qua hộp thư trước khi mở khóa Credit miễn phí và lớp học (chặn Gmail ảo).
+            {form.role === 'teacher'
+              ? 'Sau khi xác thực email, hệ thống sẽ tự chuyển thẳng sang không gian Quản trị Giáo viên.'
+              : 'Sau khi tạo, hệ thống sẽ yêu cầu xác thực qua hộp thư trước khi mở khóa Credit miễn phí và lớp học (chặn Gmail ảo).'}
           </p>
         </>
       )}

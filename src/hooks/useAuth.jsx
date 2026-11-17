@@ -18,10 +18,16 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, uploadAvatar as fbUploadAvatar } from '../lib/firebase.js';
 import { supabase } from '../lib/supabase.js';
-import { getTier } from '../lib/tier.js';
+import { getTier, clearTierCache } from '../lib/tier.js';
+import { invalidateVipCache } from '../lib/vipService.js';
 import { saveUserProfile, syncUserProfileFromCloud } from '../lib/userProfileService.js';
 import { canonicalizeEmail } from '../lib/authValidation.js';
 import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
+import {
+  setUserRole,
+  setPostAuthRedirect,
+  clearPostAuthRedirect,
+} from '../lib/userRole.js';
 
 const AuthContext = createContext(null);
 const GOOGLE_REDIRECT_OPTS_KEY = 'elec-google-redirect-opts';
@@ -41,6 +47,7 @@ function createGoogleProvider() {
  */
 async function syncGoogleUserDocument(firebaseUser, opts = {}) {
   const requestedRole = opts?.role === 'teacher' ? 'teacher' : 'student';
+  const forceTeacherRole = opts?.forceRole === 'teacher';
   const cleanSchool = opts?.school ? String(opts.school).trim().slice(0, 80) : '';
   const termsAcceptedAt = Number(opts?.termsAcceptedAt) || 0;
   const nowIso = new Date().toISOString();
@@ -48,6 +55,12 @@ async function syncGoogleUserDocument(firebaseUser, opts = {}) {
   try {
     const userRef = doc(db, 'users', firebaseUser.uid);
     const snap = await getDoc(userRef);
+    const existingData = snap.exists() ? (snap.data() || {}) : null;
+    const existingRole = existingData?.role;
+    const shouldWriteTeacherProfile = !snap.exists()
+      ? requestedRole === 'teacher'
+      : (forceTeacherRole && existingRole !== 'admin' && existingRole !== 'teacher');
+
     if (!snap.exists()) {
       await setDoc(userRef, {
         role: requestedRole,
@@ -65,8 +78,21 @@ async function syncGoogleUserDocument(firebaseUser, opts = {}) {
         fullName: firebaseUser.displayName || '',
         ...(cleanSchool ? { highSchool: cleanSchool } : {}),
         ...(requestedRole === 'teacher'
-          ? { grade: 'Sinh viên / Giáo viên', survey: { role: 'teacher' } }
+          ? { grade: 'Sinh viên / Giáo viên', survey: { role: 'teacher', goal: 'giang_day' } }
           : { survey: { role: 'student' } }),
+      });
+    } else if (shouldWriteTeacherProfile) {
+      await setDoc(userRef, {
+        role: 'teacher',
+        lastLoginAt: nowIso,
+        ...(cleanSchool ? { school: cleanSchool } : {}),
+        ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
+      }, { merge: true });
+      saveUserProfile(firebaseUser.uid, {
+        fullName: firebaseUser.displayName || '',
+        ...(cleanSchool ? { highSchool: cleanSchool } : {}),
+        grade: 'Sinh viên / Giáo viên',
+        survey: { role: 'teacher', goal: 'giang_day' },
       });
     } else {
       // Cập nhật thông tin xác thực mới nhất từ Google nhưng không ghi đè hồ sơ đã chỉnh tay hay role
@@ -75,11 +101,41 @@ async function syncGoogleUserDocument(firebaseUser, opts = {}) {
         ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
       }, { merge: true }).catch(() => {});
     }
-    const role = snap.exists() ? (snap.data()?.role || 'student') : requestedRole;
+
+    const role = !snap.exists()
+      ? requestedRole
+      : shouldWriteTeacherProfile
+        ? 'teacher'
+        : (existingRole || 'student');
+
+    if (role === 'teacher' && firebaseUser.email) {
+      supabase
+        .from('profiles')
+        .upsert({
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          ...(firebaseUser.displayName ? { display_name: firebaseUser.displayName } : {}),
+          ...(firebaseUser.photoURL ? { avatar_url: firebaseUser.photoURL } : {}),
+          role: 'teacher',
+        }, { onConflict: 'id' })
+        .then(() => {}, () => {});
+    }
+
     const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
     meta[firebaseUser.uid] = { role, email: firebaseUser.email };
     localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-  } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('user-profile-change'));
+    return { role, isNewUser: !snap.exists() };
+  } catch {
+    const fallbackRole = forceTeacherRole ? 'teacher' : requestedRole;
+    try {
+      const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+      meta[firebaseUser.uid] = { role: fallbackRole, email: firebaseUser.email };
+      localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+      window.dispatchEvent(new CustomEvent('user-profile-change'));
+    } catch { /* ignore */ }
+    return { role: fallbackRole, isNewUser: false };
+  }
 }
 
 /* ============================================================
@@ -112,8 +168,27 @@ export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authRedirectError, setAuthRedirectError] = useState('');
   const mountedRef = useRef(true);
+  const pendingSyncRef = useRef(null);
 
   const clearAuthRedirectError = useCallback(() => setAuthRedirectError(''), []);
+
+  const runWithAuthSyncLock = useCallback(async (fn) => {
+    let resolveSync;
+    const prevSync = pendingSyncRef.current;
+    const syncPromise = new Promise((resolve) => {
+      resolveSync = resolve;
+    });
+    pendingSyncRef.current = syncPromise;
+    try {
+      if (prevSync) await prevSync;
+      return await fn();
+    } finally {
+      if (pendingSyncRef.current === syncPromise) {
+        pendingSyncRef.current = null;
+      }
+      resolveSync();
+    }
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -131,11 +206,17 @@ export function AuthProvider({ children }) {
           sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY);
         } catch { /* ignore */ }
         if (cred?.user) {
-          await syncGoogleUserDocument(cred.user, savedOpts);
+          const syncRes = await syncGoogleUserDocument(cred.user, savedOpts);
+          if (savedOpts?.redirectTarget === 'classroom' && syncRes?.role === 'teacher') {
+            setPostAuthRedirect('classroom');
+          } else if (savedOpts?.redirectTarget) {
+            clearPostAuthRedirect();
+          }
         }
       })
       .catch((err) => {
         try { sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY); } catch { /* ignore */ }
+        clearPostAuthRedirect();
         const code = String(err?.code || '');
         if (code && mountedRef.current) setAuthRedirectError(code);
         console.error('[useAuth] Google redirect error:', code, err?.message);
@@ -143,9 +224,23 @@ export function AuthProvider({ children }) {
 
     const unsub = onAuthStateChanged(auth, async (u) => {
       await redirectPromise;
+      if (pendingSyncRef.current) {
+        await pendingSyncRef.current;
+      }
       if (!mountedRef.current) return;
 
       if (u) {
+        // Dọn dẹp cache VIP/PRO nếu thuộc tài khoản khác để acc Free không bao giờ kế thừa quyền VIP
+        try {
+          const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
+          if (rawVip && (!rawVip.uid || rawVip.uid !== u.uid)) {
+            localStorage.removeItem('cs-vip-status');
+            localStorage.removeItem('cs-vip');
+            localStorage.removeItem('cs-user-tier');
+            invalidateVipCache();
+          }
+          clearTierCache(u.uid);
+        } catch {}
         // Điền email & tên hiển thị vào Supabase profiles (RLS: tự ghi dòng của mình) — fire-and-forget
         if (u.email) {
           const profPayload = {
@@ -182,18 +277,28 @@ export function AuthProvider({ children }) {
           }
         }
       } else {
-        const devMock = typeof window !== 'undefined' ? localStorage.getItem('cs-dev-mock-user') : null;
+        const devMock = import.meta.env.DEV && typeof window !== 'undefined'
+          ? localStorage.getItem('cs-dev-mock-user')
+          : null;
         if (devMock) {
           try {
             const parsed = JSON.parse(devMock);
             setUser(parsed);
             setIsLoggedIn(true);
             setProfileReady(true);
-            setTier({ key: 'vip', name: 'VIP', desc: 'Đặc quyền VIP' });
+            const mockTierKey = parsed?.tier === 'vip' ? 'vip' : parsed?.tier === 'pro' ? 'pro' : 'free';
+            setTier({ key: mockTierKey, name: mockTierKey.toUpperCase(), desc: mockTierKey === 'free' ? 'Miễn phí' : 'Mock VIP' });
             if (mountedRef.current) setReady(true);
             return;
           } catch {}
         }
+        try {
+          localStorage.removeItem('cs-vip-status');
+          localStorage.removeItem('cs-vip');
+          localStorage.removeItem('cs-user-tier');
+          clearTierCache();
+          invalidateVipCache();
+        } catch {}
         setUser(null);
         setIsLoggedIn(false);
         setProfileReady(false);
@@ -235,127 +340,172 @@ export function AuthProvider({ children }) {
       phone = '',
       termsAcceptedAt = 0,
     } = opts;
+    const normalizedRole = role === 'teacher' ? 'teacher' : 'student';
     const cleanSchool = school ? String(school).trim().slice(0, 80) : '';
     const cleanProvince = province ? String(province).trim() : '';
     const cleanWard = ward ? String(ward).trim().slice(0, 60) : '';
     const cleanAddress = addressDetail ? String(addressDetail).trim().slice(0, 120) : '';
-    const cleanGrade = grade ? String(grade).trim() : (role === 'teacher' ? 'Sinh viên / Giáo viên' : '');
+    const cleanGrade = grade ? String(grade).trim() : (normalizedRole === 'teacher' ? 'Sinh viên / Giáo viên' : '');
 
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    return runWithAuthSyncLock(async () => {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-    if (displayName) {
-      await updateProfile(cred.user, { displayName });
-    }
+      try {
+        setUserRole(cred.user.uid, normalizedRole);
+        const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+        meta[cred.user.uid] = { role: normalizedRole, email };
+        localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+      } catch { /* ignore */ }
 
-    const nowIso = new Date().toISOString();
-    try {
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        role,
-        email,
-        canonicalEmail: canonicalizeEmail(email),
-        displayName: displayName || '',
-        authProvider: 'password',
-        createdAt: nowIso,
-        lastLoginAt: nowIso,
-        ...(cleanSchool ? { school: cleanSchool } : {}),
-        ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
-      }, { merge: true });
-    } catch (e) {
-      console.warn('Không lưu user metadata:', e);
-    }
+      if (displayName) {
+        await updateProfile(cred.user, { displayName });
+      }
 
-    // Khởi tạo đầy đủ hồ sơ thật từ form đăng ký (Họ, Tên, Trường, Xã/Phường, Tỉnh...)
-    saveUserProfile(cred.user.uid, {
-      ...(lastName ? { lastName } : {}),
-      ...(firstName ? { firstName } : {}),
-      fullName: displayName || '',
-      ...(birthDate ? { birthDate } : {}),
-      ...(phone ? { phone } : {}),
-      ...(cleanProvince ? { province: cleanProvince } : {}),
-      ...(cleanWard ? { ward: cleanWard } : {}),
-      ...(cleanAddress ? { addressDetail: cleanAddress } : {}),
-      ...(cleanGrade ? { grade: cleanGrade } : {}),
-      ...(cleanSchool ? { highSchool: cleanSchool } : {}),
-      survey: { role: role === 'teacher' ? 'teacher' : 'student' },
+      const nowIso = new Date().toISOString();
+      try {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          role: normalizedRole,
+          email,
+          canonicalEmail: canonicalizeEmail(email),
+          displayName: displayName || '',
+          authProvider: 'password',
+          createdAt: nowIso,
+          lastLoginAt: nowIso,
+          ...(cleanSchool ? { school: cleanSchool } : {}),
+          ...(termsAcceptedAt ? { termsAcceptedAt, termsVersion: 'v1' } : {}),
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Không lưu user metadata:', e);
+      }
+
+      // Khởi tạo đầy đủ hồ sơ thật từ form đăng ký (Họ, Tên, Trường, Xã/Phường, Tỉnh...)
+      saveUserProfile(cred.user.uid, {
+        ...(lastName ? { lastName } : {}),
+        ...(firstName ? { firstName } : {}),
+        fullName: displayName || '',
+        ...(birthDate ? { birthDate } : {}),
+        ...(phone ? { phone } : {}),
+        ...(cleanProvince ? { province: cleanProvince } : {}),
+        ...(cleanWard ? { ward: cleanWard } : {}),
+        ...(cleanAddress ? { addressDetail: cleanAddress } : {}),
+        ...(cleanGrade ? { grade: cleanGrade } : {}),
+        ...(cleanSchool ? { highSchool: cleanSchool } : {}),
+        survey: normalizedRole === 'teacher'
+          ? { role: 'teacher', goal: 'giang_day' }
+          : { role: 'student' },
+      });
+
+      if (normalizedRole === 'teacher' && email) {
+        supabase
+          .from('profiles')
+          .upsert({
+            id: cred.user.uid,
+            email,
+            ...(displayName ? { display_name: displayName } : {}),
+            role: 'teacher',
+          }, { onConflict: 'id' })
+          .then(() => {}, () => {});
+      }
+
+      window.dispatchEvent(new CustomEvent('user-profile-change'));
+
+      try {
+        await cred.user.reload();
+        const enriched = await enrichUser(auth.currentUser);
+        if (mountedRef.current && enriched) setUser({ ...enriched });
+      } catch { /* ignore */ }
+
+      return cred.user;
     });
-
-    try {
-      const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-      meta[cred.user.uid] = { role, email };
-      localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-    } catch { /* ignore */ }
-
-    try {
-      await cred.user.reload();
-      const enriched = await enrichUser(auth.currentUser);
-      if (mountedRef.current && enriched) setUser({ ...enriched });
-    } catch { /* ignore */ }
-
-    return cred.user;
-  }, []);
+  }, [runWithAuthSyncLock]);
 
   /* ============ LOGIN ============ */
   const login = useCallback(async (email, password) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    return runWithAuthSyncLock(async () => {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
 
-    try {
-      const userRef = doc(db, 'users', cred.user.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const role = snap.data()?.role || 'student';
-        const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-        meta[cred.user.uid] = { role, email: cred.user.email || email };
-        localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-        setDoc(userRef, { lastLoginAt: new Date().toISOString() }, { merge: true }).catch(() => {});
-      }
-    } catch { /* ignore */ }
+      try {
+        const userRef = doc(db, 'users', cred.user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const role = snap.data()?.role || 'student';
+          const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+          meta[cred.user.uid] = { role, email: cred.user.email || email };
+          localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+          window.dispatchEvent(new CustomEvent('user-profile-change'));
+          setDoc(userRef, { lastLoginAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+        }
+      } catch { /* ignore */ }
 
-    await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
-    if (mountedRef.current) setProfileReady(true);
+      await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
+      if (mountedRef.current) setProfileReady(true);
 
-    // Force refresh token để lấy claim mới (quan trọng sau khi setAdminClaim)
-    const enriched = await enrichUser(cred.user, true);
-    if (mountedRef.current && enriched) setUser({ ...enriched });
+      // Force refresh token để lấy claim mới (quan trọng sau khi setAdminClaim)
+      const enriched = await enrichUser(cred.user, true);
+      if (mountedRef.current && enriched) setUser({ ...enriched });
 
-    return cred.user;
-  }, []);
+      return cred.user;
+    });
+  }, [runWithAuthSyncLock]);
 
   /* ============ LOGIN GOOGLE ============ */
   const loginWithGoogle = useCallback(async (opts = {}) => {
     setAuthRedirectError('');
     const provider = createGoogleProvider();
-    let cred;
-    try {
-      cred = await signInWithPopup(auth, provider);
-    } catch (err) {
-      const code = String(err?.code || '');
-      if (POPUP_FALLBACK_CODES.has(code)) {
-        try {
-          sessionStorage.setItem(GOOGLE_REDIRECT_OPTS_KEY, JSON.stringify({
-            role: opts?.role === 'teacher' ? 'teacher' : 'student',
-            school: opts?.school ? String(opts.school).trim().slice(0, 80) : '',
-            termsAcceptedAt: Number(opts?.termsAcceptedAt) || 0,
-          }));
-        } catch { /* ignore */ }
-        await signInWithRedirect(auth, provider);
-        return null;
+    return runWithAuthSyncLock(async () => {
+      let cred;
+      try {
+        cred = await signInWithPopup(auth, provider);
+      } catch (err) {
+        const code = String(err?.code || '');
+        if (POPUP_FALLBACK_CODES.has(code)) {
+          try {
+            sessionStorage.setItem(GOOGLE_REDIRECT_OPTS_KEY, JSON.stringify({
+              role: opts?.role === 'teacher' ? 'teacher' : 'student',
+              forceRole: opts?.forceRole === 'teacher' ? 'teacher' : undefined,
+              school: opts?.school ? String(opts.school).trim().slice(0, 80) : '',
+              termsAcceptedAt: Number(opts?.termsAcceptedAt) || 0,
+              redirectTarget: opts?.redirectTarget ? String(opts.redirectTarget) : '',
+            }));
+          } catch { /* ignore */ }
+          await signInWithRedirect(auth, provider);
+          return null;
+        }
+        console.error('[useAuth] Google login error:', code, err?.message);
+        throw err;
       }
-      console.error('[useAuth] Google login error:', code, err?.message);
-      throw err;
-    }
 
-    await syncGoogleUserDocument(cred.user, opts);
-    await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
-    if (mountedRef.current) setProfileReady(true);
+      const syncRes = await syncGoogleUserDocument(cred.user, opts);
+      if (opts?.redirectTarget === 'classroom') {
+        if (syncRes?.role === 'teacher') {
+          setPostAuthRedirect('classroom');
+        } else {
+          clearPostAuthRedirect();
+        }
+      }
 
-    const enriched = await enrichUser(cred.user, true);
-    if (mountedRef.current && enriched) setUser({ ...enriched });
+      await syncUserProfileFromCloud(cred.user.uid, cred.user).catch(() => {});
+      if (mountedRef.current) setProfileReady(true);
 
-    return cred.user;
-  }, []);
+      const enriched = await enrichUser(cred.user, true);
+      if (mountedRef.current && enriched) setUser({ ...enriched });
+
+      return cred.user;
+    });
+  }, [runWithAuthSyncLock]);
 
   /* ============ LOGOUT ============ */
   const logout = useCallback(async () => {
+    clearPostAuthRedirect();
+    try {
+      localStorage.removeItem('cs-vip-status');
+      localStorage.removeItem('cs-vip');
+      localStorage.removeItem('cs-user-tier');
+      clearTierCache();
+      invalidateVipCache();
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    } catch {}
     await signOut(auth);
   }, []);
 

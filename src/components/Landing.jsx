@@ -11,6 +11,7 @@ import './landing-more.css';
 import { Audience, Bento, ExamFlow, Beyond, Trust, StartSteps } from './LandingSections.jsx';
 import { IconDefs, FaqIcon, AtomOrbit, Molecule, Crystal, Helix, Flask } from './Art3D.jsx';
 import { addUserReport } from '../data/virtualExamsBank.js';
+import { peekPostAuthRedirect } from '../lib/userRole.js';
 
 const LoginPage = lazy(() => import('./LoginPage.jsx'));
 
@@ -722,7 +723,7 @@ function ClassSection() {
       </ul>
       <div className="lp-cta-btns" style={{ marginTop: '1.6rem' }}>
         <MagBtn as="a" className="lp-btn pri" href="#register">Tạo tài khoản học sinh <IcoArrow size={16} /></MagBtn>
-        <MagBtn as="a" className="lp-btn" href="#login">Tôi là giáo viên</MagBtn>
+        <MagBtn as="a" className="lp-btn" href="#register?role=teacher">Tôi là giáo viên <IcoArrow size={16} /></MagBtn>
       </div>
     </section>
   );
@@ -1178,7 +1179,10 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
       <dialog
         ref={dlg}
         className="lp-dialog lp-dialog-auth"
-        onClose={() => { if (/^#(login|register)/.test(location.hash) || authOpen) location.hash = 'home'; }}
+        onClose={() => {
+          if (peekPostAuthRedirect() === 'classroom' || /^#classroom/.test(location.hash)) return;
+          if (/^#(login|register)/.test(location.hash) || authOpen) location.hash = 'home';
+        }}
         onClick={(e) => e.target === dlg.current && dlg.current.close()}
       >
         <button type="button" className="lp-x" aria-label="Đóng" onClick={() => dlg.current.close()}><IcoClose /></button>

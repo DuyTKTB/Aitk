@@ -29,6 +29,8 @@ import StudySheet from './StudySheet.jsx';
 import CompareModal from './CompareModal.jsx';
 import UpgradePrompt from './UpgradePrompt.jsx';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 
 const STUDY_TOOLS = [
   { id: 'table', name: 'Bảng tuần hoàn', desc: 'Bảng tuần hoàn tương tác', Icon: IconAtom, tag: 'hot' },
@@ -457,8 +459,9 @@ export default function ToolsPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const searchRef = useRef(null);
 
-  const { tier } = useAuth();
-  const isVip = tier?.key === 'vip';
+  const { user, tier } = useAuth();
+  const pro = useTeacherPro();
+  const isVip = resolveEntitlements({ user, pro, tier }).hasVipAccess;
 
   useEffect(() => {
     document.body.classList.add('page-tools');
@@ -990,8 +993,8 @@ export default function ToolsPage() {
             onClose={() => setShowUpgrade(false)}
             onUpgrade={() => {
               setShowUpgrade(false);
-              try { localStorage.setItem('cs-profile-tab', 'upgrade'); } catch { /* */ }
-              window.location.hash = 'profile';
+              try { localStorage.setItem('cs-profile-tab', 'vip'); } catch { /* */ }
+              window.location.hash = 'profile?tab=vip';
             }}
           />
 

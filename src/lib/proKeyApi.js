@@ -276,6 +276,9 @@ export async function adminRevokeProUser(userId) {
     const { doc, setDoc } = await import('firebase/firestore');
     const { db } = await import('./firebase.js');
     await setDoc(doc(db, 'users', userId), {
+      role: 'teacher',
+      pro: false,
+      proUntil: null,
       tier: 'free',
       plan: 'free',
       vip: false,
@@ -285,6 +288,29 @@ export async function adminRevokeProUser(userId) {
   } catch (fsErr) {
     console.warn('[proKeyApi] Firestore revoke PRO sync err:', fsErr);
   }
+  try {
+    const subKey = `cs-user-subscription:${userId}`;
+    const cur = JSON.parse(localStorage.getItem(subKey) || '{}');
+    const next = {
+      ...cur,
+      planName: 'FREE',
+      planDesc: 'Tài khoản Miễn phí',
+      hearts: 5,
+      maxHearts: 5,
+      expiry: null,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(subKey, JSON.stringify(next));
+    const { auth } = await import('./firebase.js');
+    if (auth?.currentUser?.uid === userId) {
+      localStorage.removeItem('cs-vip-status');
+      localStorage.removeItem('cs-vip');
+      localStorage.removeItem('cs-user-tier');
+      window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: next }));
+      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+    }
+  } catch {}
 }
 
 export const adminRevokeProDirect = adminRevokeProUser;
@@ -357,7 +383,7 @@ export async function adminGrantVipDirect({ userId, durationDays = 365, note = '
     localStorage.setItem(subKey, JSON.stringify(next));
     const { auth } = await import('./firebase.js');
     if (auth?.currentUser?.uid === uid) {
-      localStorage.setItem('cs-vip-status', JSON.stringify({ isPro: true, plan: 'VIP', expiry: newExpiry, daysLeft: days }));
+      localStorage.setItem('cs-vip-status', JSON.stringify({ uid, isPro: true, tier: 'vip', plan: 'VIP', expiry: newExpiry, daysLeft: days, source: 'supabase' }));
       window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: next }));
       window.dispatchEvent(new CustomEvent('cs-vip-update'));
       window.dispatchEvent(new CustomEvent('cs-tier-update'));
@@ -592,6 +618,7 @@ export async function activateProKey(userId, keyCode) {
       localStorage.setItem('cs-user-meta', JSON.stringify(meta));
     }
     localStorage.setItem('cs-vip-status', JSON.stringify({
+      uid: userId,
       isPro: true,
       isVip: true,
       tier: isVip ? 'vip' : 'pro',
@@ -654,6 +681,7 @@ export async function activateProKey(userId, keyCode) {
    ============================================================ */
 export async function getProStatus(userId, userEmail = null) {
   if (!userId) return { isPro: false };
+  let serverChecked = false;
   try {
     let { data, error } = await supabase
       .from('pro_users')
@@ -661,6 +689,7 @@ export async function getProStatus(userId, userEmail = null) {
       .eq('user_id', userId)
       .maybeSingle();
     if (error) throw error;
+    serverChecked = true;
 
     // Tự động sửa dữ liệu nếu trước đó Admin lỡ nhập email vào cột user_id
     if (!data && userEmail) {
@@ -686,139 +715,160 @@ export async function getProStatus(userId, userEmail = null) {
       }
     }
 
-    if (data) {
+    if (data && toMs(data.expiry) > Date.now()) {
       const expiryMs = toMs(data.expiry);
       const isPro = expiryMs > Date.now();
-      const left = isPro ? Math.ceil((expiryMs - Date.now()) / 86400000) : 0;
+      const left = Math.ceil((expiryMs - Date.now()) / 86400000);
       const isStudentVip =
         ((data.note || '').includes('[STUDENT_VIP') && !String(data.note || '').includes('Giáo viên')) ||
         (String(data.key_code || '').startsWith('VIP-') && (data.note || '').includes('[STUDENT_VIP'));
       const isTeacherPro = !isStudentVip;
 
-      if (isPro) {
-        // Đồng bộ ngay xuống localStorage trên thiết bị của Giáo viên / Học sinh
-        try {
-          let roleChanged = false;
-          if (isTeacherPro) {
-            const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-            if (meta[userId]?.role !== 'teacher') {
-              meta[userId] = { ...(meta[userId] || {}), role: 'teacher' };
-              localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-              roleChanged = true;
-            }
-          }
-          localStorage.setItem('cs-vip-status', JSON.stringify({
-            isPro: true,
-            isVip: true,
-            tier: isStudentVip ? 'vip' : 'pro',
-            plan: isStudentVip ? 'VIP' : 'PRO',
-            planName: isStudentVip ? 'Gói VIP Học Sinh' : 'Gói PRO Giáo Viên',
-            key: data.key_code,
-            expiry: data.expiry,
-            expiresAt: data.expiry,
-            daysLeft: left,
-            active: true,
-            source: 'supabase',
-          }));
-          const subKey = `cs-user-subscription:${userId}`;
-          const curSub = JSON.parse(localStorage.getItem(subKey) || '{}');
-          const targetPlan = isStudentVip ? 'VIP' : 'PRO';
-          if (curSub.planName !== targetPlan || curSub.expiry !== data.expiry) {
-            localStorage.setItem(subKey, JSON.stringify({
-              ...curSub,
-              planName: targetPlan,
-              planDesc: isStudentVip
-                ? 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi'
-                : 'Quản lý không giới hạn lớp học & Đề thi AI',
-              durationLabel: `${left} ngày`,
-              examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',
-              hearts: 99,
-              maxHearts: 99,
-              expiry: data.expiry,
-              updatedAt: new Date().toISOString(),
-            }));
-          }
-          if (roleChanged) {
-            window.dispatchEvent(new CustomEvent('user-profile-change'));
-          }
-        } catch { /* ignore */ }
-
-        return {
-          isPro: true,
-          isTeacherPro,
-          isStudentVip,
-          plan: isStudentVip ? 'VIP' : 'PRO',
-          pro: { key: data.key_code, expiry: data.expiry, note: data.note },
-          expiry: data.expiry,
-          daysLeft: left,
-          expired: false,
-          durationDays: data.duration_days,
-          activatedAt: data.activated_at,
-          source: 'supabase',
-        };
-      }
-    } else {
-      // Nếu trên Supabase không còn bản ghi pro_users (bị thu hồi), xoá cache supabase cũ nếu có
+      // Đồng bộ ngay xuống localStorage theo đúng UID
       try {
-        const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
-        if (rawVip && rawVip.source === 'supabase') {
-          localStorage.removeItem('cs-vip-status');
+        let roleChanged = false;
+        if (isTeacherPro) {
+          const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+          if (meta[userId]?.role !== 'teacher') {
+            meta[userId] = { ...(meta[userId] || {}), role: 'teacher' };
+            localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+            roleChanged = true;
+          }
+        }
+        localStorage.setItem('cs-vip-status', JSON.stringify({
+          uid: userId,
+          isPro: true,
+          isVip: true,
+          tier: isStudentVip ? 'vip' : 'pro',
+          plan: isStudentVip ? 'VIP' : 'PRO',
+          planName: isStudentVip ? 'Gói VIP Học Sinh' : 'Gói PRO Giáo Viên',
+          key: data.key_code,
+          expiry: data.expiry,
+          expiresAt: data.expiry,
+          daysLeft: left,
+          active: true,
+          source: 'supabase',
+        }));
+        const subKey = `cs-user-subscription:${userId}`;
+        const curSub = JSON.parse(localStorage.getItem(subKey) || '{}');
+        const targetPlan = isStudentVip ? 'VIP' : 'PRO';
+        if (curSub.planName !== targetPlan || curSub.expiry !== data.expiry) {
+          localStorage.setItem(subKey, JSON.stringify({
+            ...curSub,
+            uid: userId,
+            planName: targetPlan,
+            planDesc: isStudentVip
+              ? 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi'
+              : 'Quản lý không giới hạn lớp học & Đề thi AI',
+            durationLabel: `${left} ngày`,
+            examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',
+            hearts: 99,
+            maxHearts: 99,
+            expiry: data.expiry,
+            updatedAt: new Date().toISOString(),
+          }));
+        }
+        if (roleChanged) {
+          window.dispatchEvent(new CustomEvent('user-profile-change'));
         }
       } catch { /* ignore */ }
+
+      return {
+        isPro: true,
+        isTeacherPro,
+        isStudentVip,
+        plan: isStudentVip ? 'VIP' : 'PRO',
+        pro: { key: data.key_code, expiry: data.expiry, note: data.note },
+        expiry: data.expiry,
+        daysLeft: left,
+        expired: false,
+        durationDays: data.duration_days,
+        activatedAt: data.activated_at,
+        source: 'supabase',
+        serverChecked: true,
+      };
     }
+
+    // Supabase không có bản ghi hợp lệ (hoặc đã hết hạn/bị thu hồi):
+    // Xóa triệt để cache sai UID / hết hạn / thuộc Supabase để acc Free không bao giờ kế thừa VIP
+    try {
+      const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
+      if (rawVip) {
+        const expMs = rawVip.expiry ? toMs(rawVip.expiry) : 0;
+        if (!rawVip.uid || rawVip.uid !== userId || rawVip.source === 'supabase' || !expMs || expMs <= Date.now()) {
+          localStorage.removeItem('cs-vip-status');
+        }
+      }
+      const subKey = `cs-user-subscription:${userId}`;
+      const rawSub = JSON.parse(localStorage.getItem(subKey) || 'null');
+      if (rawSub && (rawSub.planName === 'PRO' || rawSub.planName === 'VIP')) {
+        const expMs = rawSub.expiry ? toMs(rawSub.expiry) : 0;
+        if (!expMs || expMs <= Date.now()) {
+          localStorage.removeItem(subKey);
+          localStorage.removeItem(`elec_sub_quota_v1_${userId}`);
+        }
+      }
+    } catch { /* ignore */ }
   } catch (e) {
-    console.warn('[proKeyApi] Supabase getProStatus error, kiểm tra nguồn dự phòng:', e.message);
+    console.warn('[proKeyApi] Supabase getProStatus error, kiểm tra nguồn dự phòng khớp UID:', e.message);
   }
 
-  // 2. Nguồn dự phòng: Gói kích hoạt mã phòng thi ảo (cs-user-subscription)
+  // 2. Nguồn dự phòng: Gói kích hoạt mã phòng thi ảo (phải có expiry hợp lệ > Date.now())
   try {
-    const rawSub = JSON.parse(localStorage.getItem(`cs-user-subscription:${userId}`) || 'null');
+    const subKey = `cs-user-subscription:${userId}`;
+    const rawSub = JSON.parse(localStorage.getItem(subKey) || 'null');
     if (rawSub && (rawSub.planName === 'PRO' || rawSub.planName === 'VIP')) {
-      const expMs = rawSub.expiry ? toMs(rawSub.expiry) : Infinity;
+      const expMs = rawSub.expiry ? toMs(rawSub.expiry) : 0;
       if (expMs > Date.now()) {
-        const left = Number.isFinite(expMs) ? Math.ceil((expMs - Date.now()) / 864e5) : 365;
+        const left = Math.ceil((expMs - Date.now()) / 864e5);
         return {
           isPro: true,
           isTeacherPro: rawSub.planName === 'PRO',
           isStudentVip: rawSub.planName === 'VIP',
           plan: rawSub.planName,
-          pro: { key: 'ELEC-PRO', expiry: rawSub.expiry || new Date(Date.now() + 365 * 864e5).toISOString() },
-          expiry: rawSub.expiry || new Date(Date.now() + 365 * 864e5).toISOString(),
+          pro: { key: 'ELEC-PRO', expiry: rawSub.expiry },
+          expiry: rawSub.expiry,
           daysLeft: left,
           expired: false,
           durationDays: 365,
           activatedAt: rawSub.updatedAt || new Date().toISOString(),
           source: 'subscription',
+          serverChecked,
         };
       }
+      localStorage.removeItem(subKey);
+      localStorage.removeItem(`elec_sub_quota_v1_${userId}`);
     }
   } catch { /* ignore */ }
 
-  // 3. Nguồn dự phòng: cs-vip-status (chỉ chấp nhận nếu còn hạn thực sự)
+  // 3. Nguồn dự phòng: cs-vip-status — CHỈ chấp nhận nếu đúng UID & còn hạn thực sự
   try {
     const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
     if (rawVip && (rawVip.isPro || rawVip.vip)) {
-      const expMs = rawVip.expiry ? toMs(rawVip.expiry) : null;
-      if (expMs && expMs <= Date.now()) {
-        localStorage.removeItem('cs-vip-status');
+      const expMs = rawVip.expiry ? toMs(rawVip.expiry) : 0;
+      if (!rawVip.uid || rawVip.uid !== userId || !expMs || expMs <= Date.now()) {
+        if (!rawVip.uid || rawVip.uid === userId || !expMs || expMs <= Date.now()) {
+          localStorage.removeItem('cs-vip-status');
+        }
       } else {
-        const left = expMs ? Math.ceil((expMs - Date.now()) / 864e5) : (rawVip.daysLeft || 30);
+        const left = Math.ceil((expMs - Date.now()) / 864e5);
         return {
           isPro: true,
           isTeacherPro: rawVip.plan === 'PRO' || rawVip.tier === 'pro',
           isStudentVip: rawVip.plan === 'VIP' || rawVip.tier === 'vip',
           plan: rawVip.plan || 'VIP',
-          pro: { key: rawVip.key || 'VIP-LOCAL', expiry: rawVip.expiry || new Date(Date.now() + 365 * 864e5).toISOString() },
-          expiry: rawVip.expiry || new Date(Date.now() + 365 * 864e5).toISOString(),
+          pro: { key: rawVip.key || 'VIP-LOCAL', expiry: rawVip.expiry },
+          expiry: rawVip.expiry,
           daysLeft: left,
           expired: false,
           durationDays: 365,
           activatedAt: new Date().toISOString(),
           source: 'vip_status',
+          serverChecked,
         };
       }
     }
   } catch { /* ignore */ }
 
-  return { isPro: false };
+  return { isPro: false, serverChecked };
 }

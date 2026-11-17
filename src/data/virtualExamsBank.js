@@ -1474,7 +1474,25 @@ export function saveVirtualExamResult(uid, result) {
 export function getSubscriptionAndQuota(uid) {
   try {
     const raw = JSON.parse(safeGet(SUB_KEY(uid)) || safeGet(`cs-user-subscription:${uid}`) || 'null');
-    if (raw && typeof raw === 'object') return raw;
+    if (raw && typeof raw === 'object') {
+      const upper = String(raw.planName || '').toUpperCase();
+      if (upper === 'VIP' || upper === 'PRO') {
+        const expMs = raw.expiry ? Date.parse(raw.expiry) : 0;
+        if (raw.expiry && (!Number.isFinite(expMs) || expMs <= Date.now())) {
+          return {
+            ...raw,
+            planName: 'Free',
+            planDesc: 'Nội dung miễn phí',
+            durationLabel: 'Đã hết hạn',
+            examAccessLabel: 'Đề cơ bản của mọi kỳ thi',
+            hearts: Math.min(5, Number(raw.hearts ?? 5)),
+            maxHearts: 5,
+            expiry: null,
+          };
+        }
+      }
+      return raw;
+    }
   } catch { /* ignore */ }
   return {
     planName: 'Free',
@@ -1591,6 +1609,7 @@ export async function redeemActivationCode(uid, rawCode) {
           durationLabel: 'Kích hoạt thành công',
           examAccessLabel: plan === 'VIP' ? '100% đề VIP, PRO, FREE' : 'Toàn bộ đề PRO & FREE',
           maxHearts: plan === 'VIP' ? 99 : 15,
+          expiry: actRes.expiry || actRes.pro?.expiry || new Date(Date.now() + 30 * 864e5).toISOString(),
           txTitle: `Kích hoạt thành công mã ${code} (${plan})`,
         };
       }
@@ -1607,15 +1626,6 @@ export async function redeemActivationCode(uid, rawCode) {
         txTitle: 'Nhập mã quà tặng ELEC15 (+15 điểm AI)',
         bonusAmount: 15,
       };
-    } else if (code === 'ELECVIP') {
-      matchedPlan = {
-        planName: 'VIP',
-        planDesc: 'Đặc quyền VIP Phòng thi ảo + Gia sư AI',
-        durationLabel: 'VIP Vĩnh viễn (Mã trải nghiệm)',
-        examAccessLabel: '100% đề VIP, PRO, FREE',
-        maxHearts: 99,
-        txTitle: 'Kích hoạt thành công mã VIP trải nghiệm (ELECVIP)',
-      };
     } else {
       return {
         ok: false,
@@ -1631,12 +1641,14 @@ export async function redeemActivationCode(uid, rawCode) {
 
   const next = {
     ...cur,
+    uid,
     planName: matchedPlan?.planName ? matchedPlan.planName : cur.planName,
     planDesc: matchedPlan?.planDesc ? matchedPlan.planDesc : cur.planDesc,
     durationLabel: matchedPlan?.durationLabel ? matchedPlan.durationLabel : cur.durationLabel,
     examAccessLabel: matchedPlan?.examAccessLabel ? matchedPlan.examAccessLabel : cur.examAccessLabel,
     hearts: matchedPlan?.maxHearts ? matchedPlan.maxHearts : cur.hearts,
     maxHearts: matchedPlan?.maxHearts ? matchedPlan.maxHearts : cur.maxHearts,
+    expiry: matchedPlan?.expiry ? matchedPlan.expiry : cur.expiry,
     aiCreditsMax: nextCreditsMax,
     bonusPoints: nextBonusPoints,
     usedCodes: [code, ...usedCodes],
@@ -1656,11 +1668,16 @@ export async function redeemActivationCode(uid, rawCode) {
   try {
     safeSet(SUB_KEY(uid), JSON.stringify(next));
     if (matchedPlan?.planName) {
+      const exp = matchedPlan.expiry || new Date(Date.now() + 30 * 864e5).toISOString();
       safeSet('cs-vip-status', JSON.stringify({
+        uid,
         isPro: true,
+        isVip: matchedPlan.planName === 'VIP',
+        tier: matchedPlan.planName === 'VIP' ? 'vip' : 'pro',
         plan: matchedPlan.planName,
-        expiry: new Date(Date.now() + 365 * 864e5).toISOString(),
-        daysLeft: 365,
+        expiry: exp,
+        daysLeft: Math.max(1, Math.ceil((new Date(exp).getTime() - Date.now()) / 864e5)),
+        source: 'activation',
       }));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('cs-vip-update'));

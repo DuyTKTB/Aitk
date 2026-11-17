@@ -35,17 +35,17 @@ export default class ErrorBoundary extends React.Component {
             justifyContent: 'center',
             padding: '3rem 1.5rem',
             minHeight: 320,
-            background: 'var(--t-surface-1, #fff)',
+            background: 'var(--t-surface-1, var(--surface, #fff))',
             borderRadius: 20,
             gap: '1rem',
             textAlign: 'center',
           }}
         >
-          <div style={{ color: 'var(--t-status-err, #ef4444)' }} aria-hidden="true"><IconAlert size={44} /></div>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--t-ink, #111)' }}>
+          <div style={{ color: 'var(--t-bad, var(--err, #ef4444))' }} aria-hidden="true"><IconAlert size={44} /></div>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--t-ink, var(--ink, #111))' }}>
             Có lỗi xảy ra trong thành phần này
           </h2>
-          <p style={{ margin: 0, color: 'var(--t-ink-muted, #666)', maxWidth: 480, fontSize: '0.9rem', lineHeight: 1.5 }}>
+          <p style={{ margin: 0, color: 'var(--t-ink-2, var(--mut, #666))', maxWidth: 480, fontSize: '0.9rem', lineHeight: 1.5 }}>
             {this.state.error?.message || 'Lỗi không xác định. Vui lòng thử lại hoặc tải lại trang.'}
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -55,7 +55,7 @@ export default class ErrorBoundary extends React.Component {
               style={{
                 padding: '0.6rem 1.2rem',
                 borderRadius: 999,
-                background: 'var(--t-accent, #2f6bff)',
+                background: 'var(--t-accent-btn, var(--acc, #2f6bff))',
                 color: '#fff',
                 border: 'none',
                 fontWeight: 700,
@@ -72,8 +72,8 @@ export default class ErrorBoundary extends React.Component {
                 padding: '0.6rem 1.2rem',
                 borderRadius: 999,
                 background: 'transparent',
-                color: 'var(--t-ink, #111)',
-                border: '1.5px solid var(--t-border, #ddd)',
+                color: 'var(--t-ink, var(--ink, #111))',
+                border: '1.5px solid var(--t-border, var(--line, #ddd))',
                 fontWeight: 700,
                 fontSize: '0.85rem',
                 cursor: 'pointer',

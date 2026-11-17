@@ -66,11 +66,10 @@ describe('Profile Mobile Architecture & Helpers', () => {
     expect(rDuplicate.ok).toBe(false);
     expect(rDuplicate.message).toContain('đã được kích hoạt');
 
-    // 4. Mã ELECVIP nâng cấp gói thành VIP
+    // 4. Mã bypass client-side ELECVIP đã bị khóa (chỉ nâng cấp qua thanh toán hoặc key server)
     const rVip = await redeemActivationCode(testUid, 'ELECVIP');
-    expect(rVip.ok).toBe(true);
-    expect(rVip.data.planName).toBe('VIP');
-    expect(rVip.data.hearts).toBe(99);
+    expect(rVip.ok).toBe(false);
+    expect(getSubscriptionAndQuota(testUid).planName).toBe('Free');
   });
 
   it('computes 30-day mini streak calendar accurately', () => {

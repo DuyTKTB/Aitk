@@ -3218,15 +3218,15 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
               </div>
 
               <div className="wde-matrix-body" style={{ padding: '20px' }}>
-                <p style={{ fontSize: '13px', color: '#334155', marginBottom: '14px', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '13px', color: 'var(--t-ink-2, #334155)', marginBottom: '14px', lineHeight: '1.5' }}>
                   Liên kết trực tiếp với mô-đun Camera Scanner của ELEC AI. Sau khi kích hoạt, Thầy/Cô chỉ cần đưa camera điện thoại hoặc webcam lên phiếu làm bài A4 của học sinh để quét điểm tức thì.
                 </p>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
+                <div style={{ background: 'var(--t-surface-2, #f8fafc)', border: '1px solid var(--t-border, #e2e8f0)', borderRadius: '6px', padding: '12px', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--t-ink, #1e293b)', marginBottom: '8px' }}>
                     Quy chuẩn thang điểm chấm OMR GDPT 2025:
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#475569', lineHeight: '1.6' }}>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'var(--t-ink-2, #475569)', lineHeight: '1.6' }}>
                     <li>Phần I: <strong>{matrixStats.p1} câu</strong> (0.25 điểm / câu)</li>
                     <li>Phần II: <strong>{matrixStats.p2} câu</strong> (Đúng 1 ý: 0.1đ; 2 ý: 0.25đ; 3 ý: 0.5đ; 4 ý: 1.0đ)</li>
                     <li>Phần III: <strong>{matrixStats.p3} câu</strong> ({(matrixStats.part3Unit ?? 0.25).toFixed(2)} điểm / câu trả lời ngắn)</li>
@@ -3235,7 +3235,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                 </div>
 
                 {omrSavedInfo && (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 14px', marginBottom: '14px', fontSize: '12.5px', color: '#166534' }}>
+                  <div style={{ background: 'var(--t-ok-soft, rgba(16, 185, 129, 0.14))', border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: '6px', padding: '10px 14px', marginBottom: '14px', fontSize: '12.5px', color: 'var(--t-ok, #166534)' }}>
                     Đã kích hoạt thành công mã kỳ thi: <strong>{omrSavedInfo.id}</strong>. Thầy/Cô có thể vào mục Chấm Điểm OMR trên thanh menu để quét bài ngay.
                   </div>
                 )}
@@ -3323,7 +3323,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                       <td>{(matrixStats.p3 * (/toán/i.test(String(subject || '')) ? 0.5 : 0.25)).toFixed(2)} đ</td>
                       <td>{matrixStats.total > 0 ? Math.round((matrixStats.p3 / matrixStats.total) * 100) : 0}%</td>
                     </tr>
-                    <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
+                    <tr style={{ background: 'var(--t-surface-2, #f8fafc)', fontWeight: 700 }}>
                       <td style={{ textAlign: 'left' }}>TỔNG CỘNG</td>
                       <td>{matrixStats.total} câu</td>
                       <td>-</td>

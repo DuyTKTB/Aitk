@@ -10,7 +10,9 @@ import { askAI } from '../lib/ai.js';
 import { runWithCredit } from '../lib/creditService.js';
 import { useLocalStorage } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { getTier } from '../lib/tier.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import { db } from '../lib/firebase.js';
 import { doc as fsDoc, setDoc as fsSetDoc, getDoc as fsGetDoc } from 'firebase/firestore';
 
@@ -429,22 +431,24 @@ function AskDoc({ doc }) {
    ============================================================ */
 export default function DocStudio() {
   const { user, tier: ctxTier } = useAuth();
+  const pro = useTeacherPro();
   const uid = user?.uid || user?.id;
   const [localTier, setLocalTier] = useState('loading');
   const [docs, setDocs] = useLocalStorage('cs-doc-study', []);
   /* CLOUD SYNC — Firestore users/{uid}/docStudioDocs/library */
-  const isCtxVip = ctxTier === 'vip' || ctxTier?.key === 'vip';
   const [cloud, setCloud] = useState('idle');
   const cloudLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!uid) { setLocalTier('anon'); return; }
     let off = false;
-    getTier(uid).then((t) => { if (!off) setLocalTier(t?.key === 'vip' ? 'vip' : 'free'); }).catch(() => { if (!off) setLocalTier('free'); });
+    getTier(uid).then((t) => { if (!off) setLocalTier(t?.key === 'vip' || t?.key === 'pro' ? t.key : 'free'); }).catch(() => { if (!off) setLocalTier('free'); });
     return () => { off = true; };
   }, [uid]);
 
-  const isVip = isCtxVip || localTier === 'vip';
+  const effectiveTier = ctxTier?.key ? ctxTier : (localTier === 'vip' || localTier === 'pro' ? { key: localTier } : null);
+  const ent = useMemo(() => resolveEntitlements({ user, pro, tier: effectiveTier }), [user, pro, effectiveTier]);
+  const isVip = ent.hasVipAccess;
 
   useEffect(() => {
     if (!uid || !isVip) return undefined;

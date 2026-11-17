@@ -19,6 +19,15 @@ import { readExamPdfFile } from '../../lib/pdfExamReader.js';
 import { ocrImages } from '../../lib/aiOcr.js';
 import { runWithCredit } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import {
+  resolveEntitlements,
+  FREE_TEACHER_LIMITS,
+  TEACHER_VIP_PRICE_TEXT,
+  TEACHER_TRIAL_QUOTA_EVENT,
+  getWordImportTrialRemaining,
+  incrementWordImportTrialUsed,
+} from '../../lib/entitlements.js';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import { fileToCompressedDataUrl } from '../../lib/imageUtils.js';
 import {
@@ -1289,8 +1298,22 @@ export default function ExamImporter({
   defaultTitle = '',
   defaultDuration = '45',
   initialEnglishMode = false,
+  isTeacherVip = undefined,
+  onRequestUpgrade = null,
 }) {
   const { user } = useAuth();
+  const pro = useTeacherPro(user?.uid);
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+  const [trialTick, setTrialTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setTrialTick((n) => n + 1);
+    window.addEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+    return () => window.removeEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+  }, []);
+  const wordTrialLeft = getWordImportTrialRemaining(user?.uid, vipUnlocked);
+  void trialTick;
   const fileRef = useRef(null);
   const lastFileRef = useRef(null);
   const extractedTextRef = useRef('');
@@ -1384,6 +1407,17 @@ export default function ExamImporter({
       if (/\.doc$/i.test(f.name)) {
         throw new Error('File .doc đời cũ chưa hỗ trợ trực tiếp. Vui lòng mở bằng Word → Save As .docx rồi nạp lại.');
       }
+      const isPdfOrImage = /\.pdf$/i.test(f.name) || /^image\//i.test(f.type) || /\.(jpe?g|png|webp|bmp)$/i.test(f.name);
+      if (isPdfOrImage && !vipUnlocked) {
+        const vipMsg = `Tách đề từ file PDF / Ảnh OCR thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng). Tài khoản Free được dùng thử ${FREE_TEACHER_LIMITS.maxWordImports} lần nhập trực tiếp file Word (.docx).`;
+        onRequestUpgrade?.(vipMsg);
+        throw new Error(vipMsg);
+      }
+      if (/\.docx$/i.test(f.name) && !vipUnlocked && getWordImportTrialRemaining(user?.uid, false) <= 0) {
+        const limitMsg = `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/${FREE_TEACHER_LIMITS.maxWordImports} lượt dùng thử nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập không giới hạn.`;
+        onRequestUpgrade?.(limitMsg);
+        throw new Error(limitMsg);
+      }
       let newQuestions = [];
       let fCount = 0;
 
@@ -1394,6 +1428,11 @@ export default function ExamImporter({
         newQuestions = res.questions.map((q, idx) => toUiQuestion(q, idx));
         const textFormulas = newQuestions.reduce((s, q) => s + countFormulasInText(`${q.q} ${(q.options || []).join(' ')}`), 0);
         fCount = Math.max(docxFormulas, textFormulas);
+        if (!vipUnlocked && newQuestions.length > 0) {
+          incrementWordImportTrialUsed(user?.uid, 1);
+          const leftAfter = getWordImportTrialRemaining(user?.uid, false);
+          setMsg(`Đã tách ${newQuestions.length} câu từ file Word (còn ${leftAfter}/${FREE_TEACHER_LIMITS.maxWordImports} lượt dùng thử Free).`);
+        }
       } else if (/\.pdf$/i.test(f.name)) {
         setMsg('Đang tái cấu trúc dòng, công thức, gạch chân & bảng đáp án từ PDF...');
         const pdfRes = await readExamPdfFile(f, { maxPages: 60, ocrFallback: true });
@@ -1469,6 +1508,12 @@ export default function ExamImporter({
 
   /* Quét sâu lại toàn bộ đề / PDF scan bằng AI Vision */
   const handleAiDeepScan = async () => {
+    if (!vipUnlocked) {
+      const m = `Quét sâu AI / Vision thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      setMsg(m);
+      onRequestUpgrade?.(m);
+      return;
+    }
     const f = lastFileRef.current;
     const textCtx = String(extractedTextRef.current || raw || '').trim();
     if (!f && !textCtx) {
@@ -1726,6 +1771,12 @@ export default function ExamImporter({
 
   /* Bác sĩ AI bổ sung đủ 3 phần */
   const handleAiComplete3Parts = async () => {
+    if (!vipUnlocked) {
+      const m = `AI bổ sung đề chuẩn 3 phần thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      setMsg(m);
+      onRequestUpgrade?.(m);
+      return;
+    }
     if (!items.length) {
       setMsg('Vui lòng nạp câu hỏi trước khi nhờ AI bổ sung.');
       return;
@@ -2042,6 +2093,12 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
   };
 
   const handleExportRepairedWord = async () => {
+    if (!vipUnlocked) {
+      const m = `Xuất file Word (.docx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      setMsg(m);
+      onRequestUpgrade?.(m);
+      return;
+    }
     if (!items.length) {
       setMsg('Chưa có câu hỏi nào để xuất file Word.');
       return;
@@ -2071,6 +2128,12 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
   };
 
   const handleSendToMixerClick = () => {
+    if (!vipUnlocked) {
+      const m = `Trộn nhiều mã đề & mô phỏng đề A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      setMsg(m);
+      onRequestUpgrade?.(m);
+      return;
+    }
     const listToMix = buildNormalizedQuestions(items);
     if (!listToMix.length) {
       setMsg('Vui lòng nạp đề trước khi đưa vào trộn đề.');
@@ -2148,6 +2211,11 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
             <h2 className="wimp-brand-title">
               <span>{englishMode ? 'Nhập Đề Tiếng Anh (Word / PDF)' : 'Studio Nhập Đề Word · GDPT 2025'}</span>
               <span className="wimp-brand-pill">3 Phần • OMML • Ảnh • Sửa chi tiết</span>
+              {!vipUnlocked && (
+                <span className="wimp-brand-pill" style={{ background: wordTrialLeft > 0 ? 'rgba(16,185,129,0.16)' : 'rgba(239,68,68,0.16)', color: wordTrialLeft > 0 ? '#10b981' : '#ef4444' }}>
+                  Free: Còn {wordTrialLeft}/{FREE_TEACHER_LIMITS.maxWordImports} lần nhập Word
+                </span>
+              )}
             </h2>
             <div className="wimp-brand-sub">
               Tự phân tách Phần I (Trắc nghiệm), Phần II (Đúng/Sai a-d), Phần III (Trả lời ngắn) và giữ nguyên công thức, hình vẽ
@@ -2163,8 +2231,20 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
           >
             <IcoGlobe size={14} /> {englishMode ? 'Đang bật: Tiếng Anh' : 'Đề Tiếng Anh'}
           </button>
-          <button type="button" className="wimp-btn wimp-btn-sm" onClick={() => setOpenWordEditor(true)}>
-            <IcoEdit size={13} /> Soạn A4 giống Word
+          <button
+            type="button"
+            className="wimp-btn wimp-btn-sm"
+            onClick={() => {
+              if (!vipUnlocked) {
+                const m = `Trình soạn thảo Word A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+                setMsg(m);
+                onRequestUpgrade?.(m);
+                return;
+              }
+              setOpenWordEditor(true);
+            }}
+          >
+            <IcoEdit size={13} /> Soạn A4 giống Word {!vipUnlocked ? '(VIP)' : ''}
           </button>
           <button type="button" className="wimp-btn wimp-btn-sm" onClick={() => setShowGuide(true)}>
             <IcoInfo size={13} /> Hướng dẫn định dạng
@@ -2997,7 +3077,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
       )}
 
       {/* MODAL TRỘN ĐỀ */}
-      {openMixerModal && (
+      {openMixerModal && vipUnlocked && (
         <ExamPreviewSimulator
           exam={{
             title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề kiểm tra',
@@ -3035,7 +3115,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
       )}
 
       {/* MODAL SOẠN THẢO WORD A4 */}
-      {openWordEditor && (
+      {openWordEditor && vipUnlocked && (
         <WordDocxEditor
           open={openWordEditor}
           onClose={() => setOpenWordEditor(false)}

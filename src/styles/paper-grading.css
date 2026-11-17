@@ -690,3 +690,24 @@
   .pg-ed-img { position: static; max-height: 45vh; }
   .pg-field.wide { grid-column: auto; }
 }
+
+/* Dark Mode Overrides */
+[data-theme='dark'] .pg-note code,
+[data-theme='dark'] .pg-field span code,
+.t-theme-dark .pg-note code,
+.t-theme-dark .pg-field span code {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+[data-theme='dark'] .pg-warn,
+.t-theme-dark .pg-warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+[data-theme='dark'] .pg-error,
+[data-theme='dark'] .pg-warn-line,
+.t-theme-dark .pg-error,
+.t-theme-dark .pg-warn-line {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}

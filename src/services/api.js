@@ -4,7 +4,7 @@ import { auth, db } from '../lib/firebase.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { askAI as callModel, compressImage } from '../lib/ai.js';
 
-export const UPGRADE_URL = '/vip';
+export const UPGRADE_URL = '#profile?tab=vip';
 
 const ELEMENT_SYSTEM =
   'Bạn là "ELEC AI Assistant", trợ lý Khoa học Tự nhiên THPT Việt Nam (3 môn Vật lí, Hóa học, Sinh học lớp 10-12) của ELEC AI. ' +
@@ -62,8 +62,9 @@ export function checkVipFromDoc(data) {
   return false;
 }
 
-/* Đọc VIP từ localStorage — Khóa chặt bảo mật, chặn can thiệp console */
-function readLocalVip() {
+/* Đọc VIP từ localStorage — Khóa chặt theo đúng UID & hạn dùng, chống rò rỉ giữa các tài khoản */
+function readLocalVip(expectedUid = null) {
+  if (!expectedUid) return { vip: false, plan: 'free' };
   try {
     const raw = localStorage.getItem('cs-vip-status');
     if (!raw) return { vip: false, plan: 'free' };
@@ -75,13 +76,17 @@ function readLocalVip() {
       return { vip: false, plan: 'free' };
     }
 
-    if (data && typeof data === 'object' && (data.isPro || data.vip)) {
-      if (data.expiry) {
-        const expMs = new Date(data.expiry).getTime();
-        if (Number.isNaN(expMs) || expMs <= Date.now()) {
-          localStorage.removeItem('cs-vip-status');
-          return { vip: false, plan: 'free' };
-        }
+    // Chặn tuyệt đối trường hợp cache cũ của tài khoản khác (thiếu uid hoặc sai uid)
+    if (!data || typeof data !== 'object' || !data.uid || data.uid !== expectedUid) {
+      localStorage.removeItem('cs-vip-status');
+      return { vip: false, plan: 'free' };
+    }
+
+    if (data.isPro || data.vip) {
+      const expMs = data.expiry ? new Date(data.expiry).getTime() : 0;
+      if (!expMs || Number.isNaN(expMs) || expMs <= Date.now()) {
+        localStorage.removeItem('cs-vip-status');
+        return { vip: false, plan: 'free' };
       }
       return {
         vip: true,
@@ -99,13 +104,13 @@ function readLocalVip() {
 }
 
 /* ============================================================
-   fetchPlan — Firestore ưu tiên, fallback localStorage
+   fetchPlan — Firestore ưu tiên, không bao giờ dùng cache ngoại lai cho tài khoản Free
    ============================================================ */
 export async function fetchPlan() {
   const user = auth?.currentUser;
 
-  if (!user) {
-    return readLocalVip();
+  if (!user?.uid) {
+    return { vip: false, plan: 'free' };
   }
 
   try {
@@ -127,9 +132,13 @@ export async function fetchPlan() {
         };
       }
 
-      // Firestore nói KHÔNG VIP → fallback localStorage (admin/dev)
-      const local = readLocalVip();
-      if (local.vip) return local;
+      // Firestore đã xác nhận tài khoản KHÔNG VIP → không bao giờ fallback sang localStorage
+      try {
+        const raw = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
+        if (raw && (!raw.uid || raw.uid !== user.uid || raw.source === 'firestore')) {
+          localStorage.removeItem('cs-vip-status');
+        }
+      } catch {}
 
       return {
         vip: false,
@@ -139,13 +148,13 @@ export async function fetchPlan() {
       };
     }
 
-    // Chưa có doc → fallback
-    const local = readLocalVip();
+    // Chưa có doc trên Firestore → chỉ kiểm tra cache khớp đúng UID & còn hạn
+    const local = readLocalVip(user.uid);
     if (local.vip) return local;
     return { vip: false, plan: 'free', source: 'no-doc' };
   } catch (e) {
-    console.warn('[fetchPlan] Firestore lỗi, fallback localStorage:', e);
-    return readLocalVip();
+    console.warn('[fetchPlan] Firestore lỗi, kiểm tra cache khớp UID:', e);
+    return readLocalVip(user.uid);
   }
 }
 

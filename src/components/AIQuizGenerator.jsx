@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import { askAI, fetchPlan } from '../services/api.js';
 import { compressImage } from '../lib/ai.js';
 import { spendCredit, refundCredit } from '../lib/creditService.js';
@@ -142,7 +144,8 @@ answer là chỉ số 0-3 của đáp án đúng.`;
    Component chính
    ============================================================ */
 export default function AIQuizGenerator({ onClose }) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
+  const pro = useTeacherPro();
   const [vipState, setVipState] = useState({ loading: true, vip: false });
 
   const [step, setStep] = useState(STEP.UPLOAD);
@@ -164,8 +167,19 @@ export default function AIQuizGenerator({ onClose }) {
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    fetchPlan().then((plan) => setVipState({ loading: false, vip: plan.vip }));
-  }, []);
+    let alive = true;
+    fetchPlan()
+      .then((plan) => {
+        if (!alive) return;
+        const entVip = resolveEntitlements({ user, pro, tier }).hasVipAccess;
+        setVipState({ loading: false, vip: Boolean(plan?.vip || entVip) });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setVipState({ loading: false, vip: resolveEntitlements({ user, pro, tier }).hasVipAccess });
+      });
+    return () => { alive = false; };
+  }, [user, pro, tier]);
 
   const addFiles = async (fileList) => {
     const arr = Array.from(fileList || []);

@@ -87,6 +87,20 @@ const ExamImporter = lazy(() => import('./teacher/ExamImporter.jsx'));
 const WordDocxEditor = lazy(() => import('./teacher/WordDocxEditor.jsx'));
 import TeacherFloatingChat from './teacher/TeacherFloatingChat.jsx';
 import { ElecFlaskBrandSvg, ElecMascot } from './teacher/ElecBrandMark.jsx';
+import TeacherVipLock from './teacher/TeacherVipLock.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import SubscriptionTiers from './SubscriptionTiers.jsx';
+import PaymentPanel from './PaymentPanel.jsx';
+import {
+  resolveEntitlements,
+  FREE_TEACHER_LIMITS,
+  TEACHER_VIP_PRICE_TEXT,
+  TEACHER_TRIAL_QUOTA_EVENT,
+  getWordImportTrialRemaining,
+  getManualEntryTrialRemaining,
+  buildIdentCode,
+} from '../lib/entitlements.js';
+import { getProStatus } from '../lib/proKeyApi.js';
 
 /* ============ SVG ICONS (NO EMOJI) ============ */
 const Svg = ({ size = 18, sw = 2, children }) => (
@@ -853,6 +867,29 @@ function FloeWorkflowCard({
    ============================================================ */
 export default function TeacherDashboard({ onExit } = {}) {
   const { user } = useAuth();
+  const pro = useTeacherPro();
+  const ent = useMemo(
+    () => resolveEntitlements({ user, pro, userRole: 'teacher' }),
+    [user, pro]
+  );
+  const isTeacherVip = ent.isTeacherVip;
+  const [trialQuotaTick, setTrialQuotaTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setTrialQuotaTick((n) => n + 1);
+    window.addEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+    return () => window.removeEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+  }, []);
+  void trialQuotaTick;
+  const [vipModalOpen, setVipModalOpen] = useState(false);
+  const [vipModalReason, setVipModalReason] = useState('');
+  const [vipPaymentPkg, setVipPaymentPkg] = useState(null);
+  const teacherIdentCode = useMemo(() => buildIdentCode(user?.email || 'guest'), [user?.email]);
+
+  const openTeacherUpgrade = useCallback((reason = '') => {
+    setVipModalReason(typeof reason === 'string' ? reason : '');
+    setVipPaymentPkg(null);
+    setVipModalOpen(true);
+  }, []);
 
 
 
@@ -1007,6 +1044,42 @@ export default function TeacherDashboard({ onExit } = {}) {
     }, hasUndo ? 6000 : 3000);
   }, []);
 
+  const guardTeacherVip = useCallback((reason = '') => {
+    if (isTeacherVip) return true;
+    const msg = reason || `Tính năng này dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+    say(msg, 'error');
+    openTeacherUpgrade(msg);
+    return false;
+  }, [isTeacherVip, openTeacherUpgrade, say]);
+
+  const openCreateClassGuarded = useCallback(() => {
+    if (!isTeacherVip && classes.length >= FREE_TEACHER_LIMITS.maxClasses) {
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để tạo không giới hạn lớp học.`);
+      return;
+    }
+    setShowCreateClass(true);
+  }, [isTeacherVip, classes.length, guardTeacherVip]);
+
+  const toggleAiChatGuarded = useCallback(() => {
+    if (!isTeacherVip) {
+      guardTeacherVip(`Trợ lý AI Copilot Giáo viên thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
+    setAiChatOpen((v) => !v);
+  }, [isTeacherVip, guardTeacherVip]);
+
+  useEffect(() => {
+    if (pro.loading || !user?.uid || !classes.length) return;
+    const targetCap = isTeacherVip ? null : FREE_TEACHER_LIMITS.maxStudentsPerClass;
+    classes.forEach((cls) => {
+      if (!cls?.id || cls.teacherId !== user.uid) return;
+      const curCap = cls.maxStudents ?? null;
+      if (curCap !== targetCap) {
+        updateClass(cls.id, { maxStudents: targetCap }).catch(() => {});
+      }
+    });
+  }, [pro.loading, user?.uid, isTeacherVip, classes]);
+
   /* Phím tắt toàn cục Khu vực Giáo viên: Ctrl+K mở Bảng lệnh nhanh, "/" tìm kiếm, "N" tạo mới, "Esc" đóng cửa sổ */
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -1050,7 +1123,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         }
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
-        if (section === 'classes') setShowCreateClass(true);
+        if (section === 'classes') openCreateClassGuarded();
         else openNewExamRef.current?.();
       }
     };
@@ -1060,7 +1133,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     cmdOpen, confirmState, scheduleExamModal, showCreateClass, showClassPicker,
     shareClass, bellOpen, detailExamModal, selectedExam,
     editingExam, previewExam, selectedClass, section,
-    aiChatOpen, copyExamTarget,
+    aiChatOpen, copyExamTarget, openCreateClassGuarded,
   ]);
 
   const showAdminLink = checkAdmin(user);
@@ -1498,6 +1571,10 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const handleCreateClass = async () => {
     if (!newClassName.trim()) return;
+    if (!isTeacherVip && classes.length >= FREE_TEACHER_LIMITS.maxClasses) {
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để tạo không giới hạn.`);
+      return;
+    }
     try {
       const createdCls = await createClass({
         name: newClassName.trim(),
@@ -1506,6 +1583,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
         requireApproval: true,
+        maxStudents: isTeacherVip ? null : FREE_TEACHER_LIMITS.maxStudentsPerClass,
       });
       if (createdCls?.id) {
         setClasses((prev) => [createdCls, ...prev]);
@@ -1522,6 +1600,10 @@ export default function TeacherDashboard({ onExit } = {}) {
   /* Giao / Nhân bản đề có sẵn sang một lớp khác (bao gồm cả lớp liên kết) */
   const handleCopyExamToClass = async () => {
     if (!copyExamTarget || !copyTargetClassId) return;
+    if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhân bản & giao không giới hạn.`);
+      return;
+    }
     const targetCls = [...classes, ...linkedClasses].find((c) => c.id === copyTargetClassId);
     setCopyExamBusy(true);
     try {
@@ -1577,6 +1659,10 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const persistAssignedShuffledExam = async (assignPayload) => {
+    if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để giao & trộn đề không giới hạn.`);
+      throw new Error(`Đã đạt giới hạn ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra của gói Giáo viên Free.`);
+    }
     try {
       const targetClassId = assignPayload?.classId !== undefined
         ? assignPayload.classId
@@ -1615,6 +1701,9 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const handleStartSession = useCallback(async (exam) => {
+    if (!guardTeacherVip(`Mở phòng thi Giám sát trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) {
+      return;
+    }
     setStartingId(exam.id);
     try {
       const targetClassId = exam.classId || classes[0]?.id || linkedClasses[0]?.id || '';
@@ -1717,6 +1806,10 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   /* Nhân bản đề thi (Mục D4) */
   const handleDuplicateExam = useCallback(async (exam) => {
+    if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhân bản không giới hạn.`);
+      return;
+    }
     try {
       const copyTitle = `${exam.title || 'Đề kiểm tra'} (Bản sao)`;
       const duplicated = await createExam({
@@ -1805,6 +1898,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   /* Xuất danh sách học sinh của 1 lớp ra Excel (.xlsx) */
   const exportClassRosterCsv = useCallback(async (cls) => {
+    if (!guardTeacherVip(`Xuất danh sách học sinh Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
     const members = cls?.members || [];
     const pending = cls?.pendingMembers || [];
     if (!members.length && !pending.length) {
@@ -1862,7 +1956,14 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const handleApprove = async (cls, sid) => {
-    const r = await approveMember(cls.id, sid);
+    const r = await approveMember(cls.id, sid, {
+      isVip: isTeacherVip,
+      maxStudents: isTeacherVip ? 0 : FREE_TEACHER_LIMITS.maxStudentsPerClass,
+    });
+    if (r.limitReached) {
+      guardTeacherVip(r.error);
+      return;
+    }
     say(r.ok ? 'Đã duyệt vào lớp' : r.error, r.ok ? 'success' : 'error');
     if (r.ok) { await reloadClass(cls.id); await refresh(); }
   };
@@ -1874,7 +1975,20 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const handleApproveAll = async (cls) => {
-    const r = await approveAllMembers(cls.id);
+    const r = await approveAllMembers(cls.id, {
+      isVip: isTeacherVip,
+      maxStudents: isTeacherVip ? 0 : FREE_TEACHER_LIMITS.maxStudentsPerClass,
+    });
+    if (r.limitReached) {
+      guardTeacherVip(r.error);
+      return;
+    }
+    if (r.ok && r.skippedByLimit > 0) {
+      say(`Đã duyệt ${r.count} học sinh (còn ${r.skippedByLimit} em vượt quá giới hạn ${r.limit} HS/lớp gói Free). Nâng cấp VIP để duyệt hết!`, 'warning');
+      await reloadClass(cls.id);
+      await refresh();
+      return;
+    }
     say(r.ok ? `Đã duyệt ${r.count || 0} yêu cầu` : r.error, r.ok ? 'success' : 'error');
     if (r.ok) { await reloadClass(cls.id); await refresh(); }
   };
@@ -2164,6 +2278,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   }, [exams]);
 
   const exportAllCsv = async () => {
+    if (!guardTeacherVip(`Xuất bảng điểm tổng hợp Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
     if (subsInRange.length === 0) { say('Chưa có bài nộp để xuất', 'error'); return; }
     const examById = Object.fromEntries(exams.map((e) => [e.id, e]));
     await exportStyledWorkbook({
@@ -2207,6 +2322,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const exportClassCsv = useCallback(async (cls, clsExams, subsMap) => {
+    if (!guardTeacherVip(`Xuất bảng điểm lớp Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
     if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất', 'error'); return; }
     const members = cls.members || [];
     const safe = (cls.name || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
@@ -2261,7 +2377,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   }, [say]);
 
   /* ---------- EARLY RETURN ---------- */
-  if (viewingSessionId) {
+  if (viewingSessionId && isTeacherVip) {
     const vs = sessions.find((s) => s.id === viewingSessionId);
     const vExam = exams.find((e) => e.id === vs?.examId);
     return (
@@ -2685,10 +2801,14 @@ export default function TeacherDashboard({ onExit } = {}) {
         setCmdQuery('');
         setCmdIndex(0);
       }}
-      onOpenAiCopilot={() => setAiChatOpen((v) => !v)}
+      onOpenAiCopilot={toggleAiChatGuarded}
       user={user}
-      roleLabel={linkedClasses.length > 0 ? `${classes.length} CN · ${linkedClasses.length} BM` : `${classes.length} lớp CN`}
-      quickAction={{ label: 'Tạo đề AI', onClick: openNewExam }}
+      roleLabel={isTeacherVip
+        ? (linkedClasses.length > 0 ? `VIP · ${classes.length} CN · ${linkedClasses.length} BM` : `VIP · ${classes.length} lớp`)
+        : `Free · ${classes.length}/${FREE_TEACHER_LIMITS.maxClasses} lớp · Word ${getWordImportTrialRemaining(user?.uid, false)}/10 · Thủ công ${getManualEntryTrialRemaining(user?.uid, false)}/30`}
+      quickAction={isTeacherVip
+        ? { label: 'Tạo đề AI', onClick: openNewExam }
+        : { label: `Nâng cấp VIP (${TEACHER_VIP_PRICE_TEXT})`, onClick: () => openTeacherUpgrade() }}
       onOpenProfile={() => goSection('profile')}
       exitLabel="Về ELEC AI"
       onExit={() => {
@@ -2698,7 +2818,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     >
       <Topbar
         {...(topProps[section] || {})}
-        onOpenAiCopilot={() => setAiChatOpen((v) => !v)}
+        onOpenAiCopilot={toggleAiChatGuarded}
         search={section !== 'create' && section !== 'simulator' && section !== 'bank' && section !== 'profile' && section !== 'analytics' && section !== 'link' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
           on: liveSessions.length > 0 || totalPendingRetry > 0 || totalPendingMembers > 0 || unreadNotices > 0,
@@ -2846,9 +2966,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="t-split-more-btn"
-                    onClick={() => setAiChatOpen(true)}
+                    onClick={toggleAiChatGuarded}
                   >
-                    <ElecFlaskBrandSvg size={13} variant="gradient" /> Hỏi Agent
+                    <ElecFlaskBrandSvg size={13} variant="gradient" /> Hỏi Agent {!isTeacherVip ? '(VIP)' : ''}
                   </button>
                 </div>
 
@@ -2976,7 +3096,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <span className="t-action-dock-ico"><IcoPlus size={15} /></span>
                     <span className="t-action-dock-copy">
                       <strong>Tạo đề mới (N)</strong>
-                      <small>Soạn đề thủ công</small>
+                      <small>{isTeacherVip ? 'Soạn đề thủ công' : `Thử ${getManualEntryTrialRemaining(user?.uid, false)}/30 lần thủ công`}</small>
                     </span>
                   </button>
 
@@ -2988,7 +3108,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <span className="t-action-dock-ico"><IcoFileDoc size={15} /></span>
                     <span className="t-action-dock-copy">
                       <strong>Nhập từ Word</strong>
-                      <small>File .docx có sẵn</small>
+                      <small>{isTeacherVip ? 'File .docx có sẵn' : `Thử ${getWordImportTrialRemaining(user?.uid, false)}/10 lần (.docx)`}</small>
                     </span>
                   </button>
 
@@ -3031,7 +3151,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="t-action-dock-tile tone-violet"
-                    onClick={() => { goSection('classes'); setShowCreateClass(true); }}
+                    onClick={() => { goSection('classes'); openCreateClassGuarded(); }}
                   >
                     <span className="t-action-dock-ico"><IcoSchool size={15} /></span>
                     <span className="t-action-dock-copy">
@@ -3080,7 +3200,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   type="button"
                   className="vt-btn sm primary"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                  onClick={() => { goSection('classes'); setShowCreateClass(true); }}
+                  onClick={() => { goSection('classes'); openCreateClassGuarded(); }}
                 >
                   <IcoPlus size={14} />
                   <span>Tạo lớp mới</span>
@@ -3091,7 +3211,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             {classes.length === 0 && linkedClasses.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2.5rem', background: 'var(--t-surface-1)', borderRadius: 20, border: '1px solid var(--t-border)' }}>
                 <p style={{ margin: '0 0 1rem', color: 'var(--t-ink-muted)' }}>Chưa có lớp học nào. Bắt đầu tạo lớp học đầu tiên ngay:</p>
-                <button type="button" className="vt-btn primary" onClick={() => { goSection('classes'); setShowCreateClass(true); }}>
+                <button type="button" className="vt-btn primary" onClick={() => { goSection('classes'); openCreateClassGuarded(); }}>
                   <IcoPlus size={15} /> Tạo lớp chủ nhiệm
                 </button>
               </div>
@@ -3482,16 +3602,25 @@ export default function TeacherDashboard({ onExit } = {}) {
               </span>
             </summary>
             <div style={{ marginTop: '0.85rem' }}>
-              <ErrorBoundary>
-                <Suspense fallback={<InsightSkeleton />}>
-                  <InsightPanel
-                    insightsData={classInsights}
-                    className={classes[0]?.name || 'Toàn bộ lớp học'}
-                    subject={primarySubject}
-                    onOpenAiStudio={(preset) => openNewExam(preset)}
-                  />
-                </Suspense>
-              </ErrorBoundary>
+              {isTeacherVip ? (
+                <ErrorBoundary>
+                  <Suspense fallback={<InsightSkeleton />}>
+                    <InsightPanel
+                      insightsData={classInsights}
+                      className={classes[0]?.name || 'Toàn bộ lớp học'}
+                      subject={primarySubject}
+                      onOpenAiStudio={(preset) => openNewExam(preset)}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
+              ) : (
+                <TeacherVipLock
+                  compact
+                  title="Phân tích AI tổng quan & Gợi ý chuyên đề"
+                  description="Nâng cấp Giáo viên VIP để mở khóa trợ lý AI chẩn đoán điểm yếu lớp học và xuất báo cáo chuyên sâu."
+                  onUpgrade={openTeacherUpgrade}
+                />
+              )}
             </div>
           </details>
         </div>
@@ -3499,14 +3628,22 @@ export default function TeacherDashboard({ onExit } = {}) {
 
 
       {section === 'analytics' && (
-        <ClassAnalytics
-          classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
-          exams={exams}
-          submissionsMap={submissionsMap}
-          loading={loading}
-          onRetry={refresh}
-          onCreateRemedialExam={(preset) => openNewExam(preset)}
-        />
+        isTeacherVip ? (
+          <ClassAnalytics
+            classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
+            exams={exams}
+            submissionsMap={submissionsMap}
+            loading={loading}
+            onRetry={refresh}
+            onCreateRemedialExam={(preset) => openNewExam(preset)}
+          />
+        ) : (
+          <TeacherVipLock
+            title="Phân tích chuyên sâu & Báo cáo AI thuộc gói Giáo viên VIP"
+            description="Xem biểu đồ phổ điểm toàn khóa, phát hiện chuyên đề yếu theo từng lớp, cảnh báo học sinh có nguy cơ tụt điểm và tự động đề xuất đề ôn tập bù."
+            onUpgrade={openTeacherUpgrade}
+          />
+        )
       )}
 
       {section === 'classes' && (() => {
@@ -3586,16 +3723,16 @@ export default function TeacherDashboard({ onExit } = {}) {
                   className={`t-classes-tab ${classSectionTab === 'linked' ? 'active' : ''}`}
                   onClick={() => setClassSectionTab('linked')}
                 >
-                  <IcoBook size={14} /> Lớp dạy bộ môn ({linkedClasses.length})
+                  <IcoBook size={14} /> Lớp dạy bộ môn ({linkedClasses.length}) {!isTeacherVip ? '· VIP' : ''}
                 </button>
               </div>
 
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 {classSectionTab === 'my' ? (
-                  <button type="button" className="vt-btn sm primary" onClick={() => setShowCreateClass(true)}>
-                    <IcoPlus size={14} /> Tạo lớp mới (N)
+                  <button type="button" className="vt-btn sm primary" onClick={openCreateClassGuarded}>
+                    <IcoPlus size={14} /> Tạo lớp mới {!isTeacherVip ? `(${classes.length}/${FREE_TEACHER_LIMITS.maxClasses})` : '(N)'}
                   </button>
-                ) : (
+                ) : isTeacherVip ? (
                   <button
                     type="button"
                     className="vt-btn sm primary"
@@ -3603,12 +3740,20 @@ export default function TeacherDashboard({ onExit } = {}) {
                   >
                     <IcoKey size={14} /> Nhập key nhận lớp
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
 
             {classSectionTab === 'linked' ? (
-              renderUnifiedLinkedClassesHub()
+              isTeacherVip ? (
+                renderUnifiedLinkedClassesHub()
+              ) : (
+                <TeacherVipLock
+                  title="Lớp dạy Bộ môn (GVBM) & Liên kết đa lớp thuộc Giáo viên VIP"
+                  description="Nhận key lớp từ Giáo viên chủ nhiệm để dạy bộ môn trên nhiều lớp khác nhau, giao đề riêng theo môn và tổng hợp bảng điểm bộ môn."
+                  onUpgrade={openTeacherUpgrade}
+                />
+              )
             ) : (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -3662,7 +3807,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                           fontSize: '0.76rem',
                           fontWeight: 700,
                           background: classViewMode === 'grid' ? 'var(--acc)' : 'transparent',
-                          color: classViewMode === 'grid' ? '#fff' : 'var(--ink)',
+                          color: classViewMode === 'grid' ? 'var(--acc-text, #fff)' : 'var(--ink)',
                         }}
                       >
                         Lưới
@@ -3679,7 +3824,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                           fontSize: '0.76rem',
                           fontWeight: 700,
                           background: classViewMode === 'list' ? 'var(--acc)' : 'transparent',
-                          color: classViewMode === 'list' ? '#fff' : 'var(--ink)',
+                          color: classViewMode === 'list' ? 'var(--acc-text, #fff)' : 'var(--ink)',
                         }}
                       >
                         Danh sách
@@ -3700,7 +3845,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                       textAlign: 'center',
                       minHeight: 180,
                     }}
-                    onClick={() => setShowCreateClass(true)}
+                    onClick={openCreateClassGuarded}
                   >
                     <div className="t-kpi-icon-box" style={{ width: 42, height: 42 }}>
                       <IcoPlus size={20} />
@@ -3872,7 +4017,10 @@ export default function TeacherDashboard({ onExit } = {}) {
               cls={cls}
               submissions={subs}
               onStart={handleStartSession}
-              onViewLive={(sid) => setViewingSessionId(sid)}
+              onViewLive={(sid) => {
+                if (!guardTeacherVip(`Giám sát phòng thi trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                setViewingSessionId(sid);
+              }}
               onDetail={(e) => setDetailExamModal(e)}
               starting={startingId === ex.id}
             />
@@ -3952,7 +4100,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <button
                   type="button"
                   onClick={() => setExamGroupMode('class')}
-                  style={{ padding: '.35rem .8rem', borderRadius: 999, border: 'none', cursor: 'pointer', font: '700 .76rem var(--t-font-sans)', background: examGroupMode === 'class' ? 'var(--acc)' : 'transparent', color: examGroupMode === 'class' ? '#fff' : 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}
+                  style={{ padding: '.35rem .8rem', borderRadius: 999, border: 'none', cursor: 'pointer', font: '700 .76rem var(--t-font-sans)', background: examGroupMode === 'class' ? 'var(--acc)' : 'transparent', color: examGroupMode === 'class' ? 'var(--acc-text, #fff)' : 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" /></svg>
                   Nhóm theo lớp
@@ -3960,7 +4108,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <button
                   type="button"
                   onClick={() => setExamGroupMode('flat')}
-                  style={{ padding: '.35rem .8rem', borderRadius: 999, border: 'none', cursor: 'pointer', font: '700 .76rem var(--t-font-sans)', background: examGroupMode === 'flat' ? 'var(--acc)' : 'transparent', color: examGroupMode === 'flat' ? '#fff' : 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}
+                  style={{ padding: '.35rem .8rem', borderRadius: 999, border: 'none', cursor: 'pointer', font: '700 .76rem var(--t-font-sans)', background: examGroupMode === 'flat' ? 'var(--acc)' : 'transparent', color: examGroupMode === 'flat' ? 'var(--acc-text, #fff)' : 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
                   Danh sách
@@ -3981,7 +4129,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     borderRadius: 999,
                     border: '1.5px solid ' + (!subjectFilter ? 'var(--acc)' : 'var(--soft)'),
                     background: !subjectFilter ? 'var(--acc)' : 'var(--panel)',
-                    color: !subjectFilter ? '#fff' : 'var(--ink)',
+                    color: !subjectFilter ? 'var(--acc-text, #fff)' : 'var(--ink)',
                     cursor: 'pointer',
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -4003,7 +4151,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                         borderRadius: 999,
                         border: '1.5px solid ' + (active ? 'var(--acc)' : 'var(--soft)'),
                         background: active ? 'var(--acc)' : 'var(--panel)',
-                        color: active ? '#fff' : 'var(--ink)',
+                        color: active ? 'var(--acc-text, #fff)' : 'var(--ink)',
                         cursor: 'pointer',
                         fontSize: '0.78rem',
                         fontWeight: 600,
@@ -4093,6 +4241,18 @@ export default function TeacherDashboard({ onExit } = {}) {
           PHÒNG THI — THEO DÕI TRỰC TIẾP SỐ HỌC SINH ĐANG LÀM
          ============================================================ */}
       {section === 'sessions' && (() => {
+        if (!isTeacherVip) {
+          return (
+            <>
+              {renderAssessmentHubNav()}
+              <TeacherVipLock
+                title="Phòng thi Giám sát Trực tiếp (LIVE Proctor AI) thuộc Giáo viên VIP"
+                description="Mở phiên thi trực tiếp theo thời gian thực, giám sát camera & mic học sinh, phát hiện rời tab, khóa 1 thiết bị và gửi cảnh báo tức thời."
+                onUpgrade={openTeacherUpgrade}
+              />
+            </>
+          );
+        }
         const list = sessions
           .filter((s) => (subTab === 'all' || s.status === subTab) && (!q || s.title?.toLowerCase().includes(q)))
           .sort((a, b) => {
@@ -4221,7 +4381,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                       fontSize: '0.75rem',
                       fontWeight: 700,
                       background: sessionViewMode === 'grid' ? 'var(--acc)' : 'transparent',
-                      color: sessionViewMode === 'grid' ? '#fff' : 'var(--ink)',
+                      color: sessionViewMode === 'grid' ? 'var(--acc-text, #fff)' : 'var(--ink)',
                     }}
                   >
                     Lưới
@@ -4237,7 +4397,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                       fontSize: '0.75rem',
                       fontWeight: 700,
                       background: sessionViewMode === 'list' ? 'var(--acc)' : 'transparent',
-                      color: sessionViewMode === 'list' ? '#fff' : 'var(--ink)',
+                      color: sessionViewMode === 'list' ? 'var(--acc-text, #fff)' : 'var(--ink)',
                     }}
                   >
                     Danh sách
@@ -4355,50 +4515,58 @@ export default function TeacherDashboard({ onExit } = {}) {
       {section === 'simulator' && (
         <>
           {renderExamHubNav()}
-          <ErrorBoundary>
-            <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải bộ mô phỏng...</p></div>}>
-              <TeacherSimulatorHub
-                teacherExams={exams}
-                classes={allTeacherClasses}
-                initialImportedExam={simulatorInitialExam}
-                onImportPreset={async (presetData) => {
-                  try {
-                    const targetClassId = presetData?.classId !== undefined
-                      ? presetData.classId
-                      : (classes[0]?.id || linkedClasses[0]?.id || '');
-                    const isDraft = Boolean(presetData?.isDraft || !targetClassId);
-                    const created = await createExam({
-                      teacherId: user.uid,
-                      teacherName: user.displayName || user.email,
-                      classId: isDraft ? '' : targetClassId,
-                      isDraft,
-                      title: presetData?.title || 'Đề kiểm tra từ Word',
-                      description: presetData?.description || 'Nhập từ bộ Trộn Đề Thi',
-                      duration: Number(presetData?.duration) || 45,
-                      questions: presetData?.questions || [],
-                      subject: presetData?.subject || 'Hóa học',
-                      grade: presetData?.grade || '12',
-                      shuffle: true,
-                      showAnswerAfter: true,
-                      source: presetData?.sourceFile ? 'word-importer' : 'word-mixer',
-                    });
-                    const targetCls = handleExamPersisted(created, { navigateToExams: false });
-                    say(
-                      targetCls
-                        ? `Đã lưu đề “${created.title}” vào lớp ${targetCls.name}!`
-                        : `Đã lưu bản nháp “${created.title}” vào Kho đề thi!`,
-                      'success'
-                    );
-                    return created;
-                  } catch (err) {
-                    say('Không lưu được đề: ' + (err?.message || err), 'error');
-                    throw err;
-                  }
-                }}
-                onAssignShuffled={persistAssignedShuffledExam}
-              />
-            </Suspense>
-          </ErrorBoundary>
+          {isTeacherVip ? (
+            <ErrorBoundary>
+              <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải bộ mô phỏng...</p></div>}>
+                <TeacherSimulatorHub
+                  teacherExams={exams}
+                  classes={allTeacherClasses}
+                  initialImportedExam={simulatorInitialExam}
+                  onImportPreset={async (presetData) => {
+                    try {
+                      const targetClassId = presetData?.classId !== undefined
+                        ? presetData.classId
+                        : (classes[0]?.id || linkedClasses[0]?.id || '');
+                      const isDraft = Boolean(presetData?.isDraft || !targetClassId);
+                      const created = await createExam({
+                        teacherId: user.uid,
+                        teacherName: user.displayName || user.email,
+                        classId: isDraft ? '' : targetClassId,
+                        isDraft,
+                        title: presetData?.title || 'Đề kiểm tra từ Word',
+                        description: presetData?.description || 'Nhập từ bộ Trộn Đề Thi',
+                        duration: Number(presetData?.duration) || 45,
+                        questions: presetData?.questions || [],
+                        subject: presetData?.subject || 'Hóa học',
+                        grade: presetData?.grade || '12',
+                        shuffle: true,
+                        showAnswerAfter: true,
+                        source: presetData?.sourceFile ? 'word-importer' : 'word-mixer',
+                      });
+                      const targetCls = handleExamPersisted(created, { navigateToExams: false });
+                      say(
+                        targetCls
+                          ? `Đã lưu đề “${created.title}” vào lớp ${targetCls.name}!`
+                          : `Đã lưu bản nháp “${created.title}” vào Kho đề thi!`,
+                        'success'
+                      );
+                      return created;
+                    } catch (err) {
+                      say('Không lưu được đề: ' + (err?.message || err), 'error');
+                      throw err;
+                    }
+                  }}
+                  onAssignShuffled={persistAssignedShuffledExam}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          ) : (
+            <TeacherVipLock
+              title="Trình Trộn Đề & Mô phỏng A4 thuộc gói Giáo viên VIP"
+              description="Trộn nhiều mã đề chuẩn hóa, xem bản in song song A4, xuất file Word/PDF nhiều mã và giao trực tiếp cho từng lớp."
+              onUpgrade={openTeacherUpgrade}
+            />
+          )}
         </>
       )}
 
@@ -4412,6 +4580,8 @@ export default function TeacherDashboard({ onExit } = {}) {
             <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải ngân hàng...</p></div>}>
               <QuestionBank
                 classes={allTeacherClasses}
+                isTeacherVip={isTeacherVip}
+                onRequestUpgrade={openTeacherUpgrade}
                 onSoftExamCreated={(exam) => {
                   if (exam?.id) {
                     setExams((prev) => [exam, ...prev.filter((x) => x.id !== exam.id)]);
@@ -4433,7 +4603,12 @@ export default function TeacherDashboard({ onExit } = {}) {
           {renderAssessmentHubNav()}
           <ErrorBoundary>
             <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải chấm phiếu A4...</p></div>}>
-              <PaperGrading classes={allTeacherClasses} exams={exams} />
+              <PaperGrading
+                classes={allTeacherClasses}
+                exams={exams}
+                isTeacherVip={isTeacherVip}
+                onRequestUpgrade={openTeacherUpgrade}
+              />
             </Suspense>
           </ErrorBoundary>
         </>
@@ -4811,6 +4986,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                 /* Giáo viên bộ môn / chủ nhiệm: hỗ trợ cả lớp chủ nhiệm và lớp đã liên kết */
                 classInfo={extCreate && extClass ? extClass : (selectedClass || classes[0] || linkedClasses[0])}
                 classes={extCreate && extClass ? [extClass] : (linkedClasses.length ? [...classes, ...linkedClasses] : classes)}
+                existingExamCount={exams.length}
+                isTeacherVip={isTeacherVip}
+                onRequestUpgrade={openTeacherUpgrade}
                 classInsights={classInsights}
                 initialPreset={aiPreset}
                 grades={[]}
@@ -4875,7 +5053,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="vt-btn primary"
-                    onClick={() => { setDetailExamModal(null); setViewingSessionId(liveSession.id); }}
+                    onClick={() => {
+                      if (!guardTeacherVip(`Giám sát phòng LIVE thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      setDetailExamModal(null);
+                      setViewingSessionId(liveSession.id);
+                    }}
                   >
                     <IcoVideo size={14} /> Giám sát phòng LIVE ({liveDoingCount})
                   </button>
@@ -4969,22 +5151,27 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="vt-edm-tool-btn"
-                    onClick={() => { setDetailExamModal(null); setPreviewExam(ex); }}
+                    onClick={() => {
+                      if (!guardTeacherVip(`Mô phỏng thi, Trộn nhiều mã đề & Xuất in A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      setDetailExamModal(null);
+                      setPreviewExam(ex);
+                    }}
                     title="Mô phỏng thi, in đề A4 và đảo mã đề"
                   >
-                    <IcoEye size={15} /> Xem trước &amp; In A4
+                    <IcoEye size={15} /> Xem trước &amp; In A4 {!isTeacherVip ? '(VIP)' : ''}
                   </button>
                   <button
                     type="button"
                     className="vt-edm-tool-btn"
                     onClick={() => {
+                      if (!guardTeacherVip(`Trình soạn thảo Word Office 365 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
                       setDetailExamModal(null);
                       setWordEditorExam(ex);
                       setWordEditorOpen(true);
                     }}
                     title="Mở trong trình soạn thảo Word Office 365 (Casual Docs)"
                   >
-                    <IcoFileDoc size={15} /> Mở trong Word Office 365
+                    <IcoFileDoc size={15} /> Mở trong Word Office 365 {!isTeacherVip ? '(VIP)' : ''}
                   </button>
                   {(!ex.teacherId || ex.teacherId === user?.uid) && (
                     <>
@@ -5042,7 +5229,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                   <button
                     type="button"
                     className="vt-edm-tool-btn"
-                    onClick={() => (subs.length ? exportExamCsv(ex, subs) : say('Chưa có bài nộp để xuất Excel', 'error'))}
+                    onClick={() => {
+                      if (!guardTeacherVip(`Xuất bảng điểm Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      if (subs.length) exportExamCsv(ex, subs);
+                      else say('Chưa có bài nộp để xuất Excel', 'error');
+                    }}
                     title="Xuất bảng điểm ra file Excel (.xlsx)"
                   >
                     <IcoDownload size={15} /> Xuất Excel (.xlsx)
@@ -5406,6 +5597,8 @@ export default function TeacherDashboard({ onExit } = {}) {
           classInfo={selectedClass}
           initialTab={detailTab}
           exams={exams.filter((e) => e.classId === selectedClass.id)}
+          isTeacherVip={isTeacherVip}
+          onRequestUpgrade={openTeacherUpgrade}
           onClose={() => { setSelectedClass(null); setDetailTab('overview'); }}
           onExportCsv={exportClassCsv}
           onExportRoster={exportClassRosterCsv}
@@ -5437,7 +5630,10 @@ export default function TeacherDashboard({ onExit } = {}) {
           <ExamStats
             exam={selectedExam}
             subs={submissionsMap[selectedExam.id] || []}
-            onExport={(freshSubs) => exportExamCsv(selectedExam, freshSubs || submissionsMap[selectedExam.id] || [])}
+            onExport={(freshSubs) => {
+              if (!guardTeacherVip(`Xuất Excel kết quả đề thi thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+              exportExamCsv(selectedExam, freshSubs || submissionsMap[selectedExam.id] || []);
+            }}
           />
         </Modal>
       )}
@@ -5493,8 +5689,8 @@ export default function TeacherDashboard({ onExit } = {}) {
         }}
       />
 
-      {/* ============ MODAL XEM TRƯỚC — FIX #1 ============ */}
-      {previewExam && (
+      {/* ============ MODAL XEM TRƯỚC — FIX #1 (CHỈ GIÁO VIÊN VIP) ============ */}
+      {previewExam && isTeacherVip && (
         <ErrorBoundary>
           <Suspense fallback={null}>
             <ExamPreviewSimulator
@@ -5513,6 +5709,8 @@ export default function TeacherDashboard({ onExit } = {}) {
         <ExamEditModal
           exam={editingExam}
           classes={[...classes, ...(linkedClasses || []).filter((lc) => !classes.some((mc) => mc.id === lc.id))]}
+          isTeacherVip={isTeacherVip}
+          onRequestUpgrade={openTeacherUpgrade}
           onClose={() => setEditingExam(null)}
           onSaved={(updated) => {
             setExams((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
@@ -5533,7 +5731,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
         const quickActions = [
           { id: 'act-create-exam', group: 'Lệnh nhanh', title: 'Tạo đề mới cùng AI Studio', sub: 'Phím tắt N · Lập ma trận & sinh câu hỏi tự động', run: () => openNewExam() },
-          { id: 'act-create-class', group: 'Lệnh nhanh', title: 'Tạo lớp học mới', sub: 'Tạo mã lớp để học sinh tham gia', run: () => { goSection('classes'); setClassSectionTab('my'); setShowCreateClass(true); } },
+          { id: 'act-create-class', group: 'Lệnh nhanh', title: 'Tạo lớp học mới', sub: 'Tạo mã lớp để học sinh tham gia', run: () => { goSection('classes'); setClassSectionTab('my'); openCreateClassGuarded(); } },
           { id: 'act-shuffle', group: 'Lệnh nhanh', title: 'Mở Mô phỏng & Đảo mã đề (4 bước)', sub: 'Đảo 2–8 mã đề, xem song song & in A4', run: () => goSection('simulator') },
           { id: 'act-bank', group: 'Lệnh nhanh', title: 'Mở Ngân hàng câu hỏi 3 vùng', sub: 'Tìm kiếm toàn văn, phát hiện câu trùng & AI giải chi tiết', run: () => goSection('bank') },
           { id: 'act-paper', group: 'Lệnh nhanh', title: 'Chấm phiếu trắc nghiệm A4 bằng Camera/Ảnh', sub: 'Quét phiếu OMR & kiểm tra ô nghi ngờ', run: () => goSection('paper') },
@@ -5572,7 +5770,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           sub: `${(ex.questions || []).length} câu · ${ex.duration || 45} phút · Lớp ${classById[ex.classId]?.name || '—'}`,
           run: () => {
             goSection('exams');
-            setPreviewExam(ex);
+            setDetailExamModal(ex);
           },
         }));
 
@@ -5696,12 +5894,14 @@ export default function TeacherDashboard({ onExit } = {}) {
       {/* ============================================================
           MODAL NHẬP ĐỀ THI TỪ FILE WORD / PDF (EXAM IMPORTER V4.0)
           ============================================================ */}
-      {importerModalOpen && (
+      {importerModalOpen && (isTeacherVip || getWordImportTrialRemaining(user?.uid, false) > 0) && (
         <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải trình nhập đề...</p></div>}>
           <ExamImporter
             open={importerModalOpen}
             isModal={true}
             allowSoftExam={true}
+            isTeacherVip={isTeacherVip}
+            onRequestUpgrade={openTeacherUpgrade}
             classInfo={selectedClass || classes[0] || linkedClasses[0] || null}
             classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
             defaultSubject={primarySubject || classes[0]?.subject || 'Toán học'}
@@ -5752,7 +5952,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       {/* ============================================================
           TRÌNH SOẠN THẢO WORD OFFICE 365 (CASUAL DOCS V1.4.2)
           ============================================================ */}
-      {wordEditorOpen && (
+      {wordEditorOpen && isTeacherVip && (
         <Suspense fallback={null}>
           <WordDocxEditor
             open={wordEditorOpen}
@@ -5862,8 +6062,18 @@ export default function TeacherDashboard({ onExit } = {}) {
             throw e;
           }
         }}
-        onOpenImporter={() => setImporterModalOpen(true)}
+        onOpenImporter={() => {
+          if (!isTeacherVip && getWordImportTrialRemaining(user?.uid, false) <= 0) {
+            guardTeacherVip(`Bạn đã dùng hết 10/10 lượt dùng thử nhập file Word. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập không giới hạn.`);
+            return;
+          }
+          setImporterModalOpen(true);
+        }}
         onCreateClass={async ({ name, subject, grade }) => {
+          if (!isTeacherVip && classes.length >= FREE_TEACHER_LIMITS.maxClasses) {
+            guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học.`);
+            return null;
+          }
           try {
             const createdCls = await createClass({
               name: (name || 'Lớp mới').trim(),
@@ -5872,6 +6082,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               teacherId: user.uid,
               teacherName: user.displayName || user.email,
               requireApproval: true,
+              maxStudents: isTeacherVip ? null : FREE_TEACHER_LIMITS.maxStudentsPerClass,
             });
             if (createdCls?.id) {
               setClasses((prev) => [createdCls, ...prev]);
@@ -5886,9 +6097,84 @@ export default function TeacherDashboard({ onExit } = {}) {
         }}
         onNavigate={(sec) => goSection(sec)}
         onSay={say}
-        isOpen={aiChatOpen}
-        onToggleOpen={setAiChatOpen}
+        isOpen={isTeacherVip && aiChatOpen}
+        onToggleOpen={(next) => {
+          if (next && !guardTeacherVip(`Trợ lý AI Copilot Giáo viên thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+          setAiChatOpen(Boolean(next));
+        }}
       />
+
+      {vipModalOpen && (
+        <Modal
+          title={vipPaymentPkg ? 'Thanh toán Giáo viên VIP' : 'Nâng cấp Giáo viên VIP (399.000đ/tháng)'}
+          size="lg"
+          onClose={() => { setVipModalOpen(false); setVipPaymentPkg(null); }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {vipModalReason && (
+              <div
+                role="status"
+                style={{
+                  padding: '0.7rem 0.95rem',
+                  borderRadius: 12,
+                  background: 'rgba(245, 158, 11, 0.14)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  color: 'var(--t-warn, #d97706)',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                }}
+              >
+                {vipModalReason}
+              </div>
+            )}
+            {!vipPaymentPkg ? (
+              <SubscriptionTiers
+                lockedRole="teacher"
+                isModal={false}
+                onUpgrade={(pkg) => setVipPaymentPkg({ ...pkg, lockedRole: 'teacher' })}
+              />
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  style={{ marginBottom: '0.75rem' }}
+                  onClick={() => setVipPaymentPkg(null)}
+                >
+                  ← Chọn lại thời hạn gói
+                </button>
+                <PaymentPanel
+                  identCode={teacherIdentCode}
+                  userId={user?.uid}
+                  lockedRole="teacher"
+                  customPackage={vipPaymentPkg}
+                  onClose={() => setVipPaymentPkg(null)}
+                  onCheckStatus={async () => {
+                    try {
+                      const status = await getProStatus(user?.uid, user?.email);
+                      if (status?.isPro && status?.isTeacherPro !== false) {
+                        await pro.refresh?.();
+                        setVipModalOpen(false);
+                        setVipPaymentPkg(null);
+                        say('Kích hoạt Giáo viên VIP thành công!', 'success');
+                        return { isPro: true, isVip: true, ok: true };
+                      }
+                    } catch { /* ignore */ }
+                    return { isPro: false };
+                  }}
+                  onPaymentSuccess={async () => {
+                    await pro.refresh?.();
+                    setVipModalOpen(false);
+                    setVipPaymentPkg(null);
+                    say('Kích hoạt Giáo viên VIP thành công!', 'success');
+                    return { isPro: true, isVip: true, ok: true };
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </DashFrame>
   );
 }

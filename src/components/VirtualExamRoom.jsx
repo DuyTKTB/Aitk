@@ -5,6 +5,7 @@ import { db } from '../lib/firebase.js';
 import { getProStatus } from '../lib/proKeyApi.js';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { isAdmin } from '../lib/isAdmin.js';
+import { resolveEntitlements, SUBSCRIPTION_CATALOG } from '../lib/entitlements.js';
 import { useCurrentSubject } from './SubjectSwitcher.jsx';
 import {
   VIRTUAL_EXAMS,
@@ -1518,12 +1519,16 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
       if (!isActive) return { ok: false };
 
       const isTeacherPlan = Boolean((proStatus?.isPro && proStatus?.isTeacherPro !== false) || data?.role === 'teacher' || data?.plan === 'PRO');
+      const expiryIso = proStatus?.expiry
+        || (vipExpMs > Date.now() ? new Date(vipExpMs).toISOString() : new Date(Date.now() + 30 * 864e5).toISOString());
       const updated = {
         ...subQuota,
+        uid,
         planName: isTeacherPlan ? 'PRO' : 'VIP',
         durationLabel: 'Đã kích hoạt',
         hearts: 99,
         maxHearts: 99,
+        expiry: expiryIso,
       };
       try {
         localStorage.setItem(`elec_sub_quota_v1_${uid || 'guest'}`, JSON.stringify(updated));
@@ -1540,17 +1545,14 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
     }
   }, [uid, user?.email, subQuota, pro]);
 
-  const isAdminUser = Boolean(isAdmin(user));
-  const isTeacher = Boolean((pro.isPro && pro.isTeacherPro !== false) || user?.role === 'teacher');
-  const isVipUser = Boolean(subQuota?.planName === 'VIP' || pro?.isStudentVip || pro?.plan === 'VIP' || user?.tier === 'vip');
-
-  const userPlan = useMemo(() => {
-    if (isAdminUser) return 'ADMIN';
-    if (isTeacher) return 'PRO';
-    if (isVipUser) return 'VIP';
-    if (subQuota?.planName === 'PRO') return 'PRO';
-    return 'FREE';
-  }, [isAdminUser, isTeacher, isVipUser, subQuota]);
+  const ent = useMemo(
+    () => resolveEntitlements({ user, pro, subQuota }),
+    [user, pro, subQuota]
+  );
+  const isAdminUser = ent.isAdmin;
+  const isTeacher = ent.isTeacherVip;
+  const isVipUser = ent.hasVipAccess;
+  const userPlan = ent.virtualExamPlan;
 
   /* ── Filters & Search ── */
   const { subject: globalSubject, setSubject: setGlobalSubject } = useCurrentSubject();
@@ -1630,9 +1632,17 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   };
 
   const handleOpenPayment = (tier) => {
-    const custom = tier === 'VIP'
-      ? { key: 'hs-12m', role: 'student', label: 'ELEC AI VIP — 12 tháng', amount: 499000 }
-      : { key: 'hs-1m', role: 'student', label: 'ELEC AI Học Sinh — 1 tháng', amount: 79000 };
+    const role = ent.isTeacherAccount ? 'teacher' : 'student';
+    const pkgObj = role === 'teacher'
+      ? SUBSCRIPTION_CATALOG['gv-1m']
+      : (tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
+    const custom = {
+      key: pkgObj.id,
+      role,
+      lockedRole: role,
+      label: pkgObj.label,
+      amount: pkgObj.amount,
+    };
     setPaymentPkg(custom);
     setUpgradeModalExam(null);
     setShowPayment(true);
@@ -1647,9 +1657,18 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
         if (res.isDiscount) {
           setVoucherMsg({ ok: true, text: res.message || 'Mã ưu đãi hợp lệ! Đang mở bảng thanh toán...' });
           setTimeout(() => {
-            const custom = upgradeModalExam?.tier === 'VIP'
-              ? { key: 'hs-12m', role: 'student', label: 'ELEC AI VIP — 12 tháng', amount: 499000, initialDiscountCode: voucherCode.trim() }
-              : { key: 'hs-1m', role: 'student', label: 'ELEC AI Học Sinh — 1 tháng', amount: 79000, initialDiscountCode: voucherCode.trim() };
+            const role = ent.isTeacherAccount ? 'teacher' : 'student';
+            const pkgObj = role === 'teacher'
+              ? SUBSCRIPTION_CATALOG['gv-1m']
+              : (upgradeModalExam?.tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
+            const custom = {
+              key: pkgObj.id,
+              role,
+              lockedRole: role,
+              label: pkgObj.label,
+              amount: pkgObj.amount,
+              initialDiscountCode: voucherCode.trim(),
+            };
             setPaymentPkg(custom);
             setUpgradeModalExam(null);
             setShowPayment(true);
@@ -2284,14 +2303,20 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
       {upgradeModalExam && (
         <SubscriptionTiers
           isModal={true}
+          lockedRole={ent.isTeacherAccount ? 'teacher' : 'student'}
           exam={upgradeModalExam}
           onClose={() => setUpgradeModalExam(null)}
           onUpgrade={(pack) => {
+            const role = ent.isTeacherAccount ? 'teacher' : (pack.role || 'student');
+            const fallbackPkg = role === 'teacher'
+              ? SUBSCRIPTION_CATALOG['gv-1m']
+              : (upgradeModalExam.tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
             const custom = {
-              key: pack.tierId || (upgradeModalExam.tier === 'VIP' ? 'hs-12m' : 'hs-1m'),
-              role: pack.role || 'student',
-              label: pack.label || `ELEC AI ${pack.tierName}`,
-              amount: pack.amount || (upgradeModalExam.tier === 'VIP' ? 499000 : 79000),
+              key: pack.key || fallbackPkg.id,
+              role,
+              lockedRole: role,
+              label: pack.label || fallbackPkg.label,
+              amount: pack.amount || fallbackPkg.amount,
             };
             setPaymentPkg(custom);
             setUpgradeModalExam(null);
@@ -2301,11 +2326,16 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
             const res = await redeemActivationCode(uid, code);
             if (res.ok) {
               if (res.isDiscount) {
+                const role = ent.isTeacherAccount ? 'teacher' : 'student';
+                const fallbackPkg = role === 'teacher'
+                  ? SUBSCRIPTION_CATALOG['gv-1m']
+                  : (upgradeModalExam.tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
                 const custom = {
-                  key: upgradeModalExam.tier === 'VIP' ? 'hs-12m' : 'hs-1m',
-                  role: 'student',
-                  label: 'ELEC AI VIP — 12 tháng',
-                  amount: 499000,
+                  key: fallbackPkg.id,
+                  role,
+                  lockedRole: role,
+                  label: fallbackPkg.label,
+                  amount: fallbackPkg.amount,
                   initialDiscountCode: code,
                 };
                 setPaymentPkg(custom);
@@ -2454,7 +2484,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
       {/* ── 7. MODAL THANH TOÁN VIETQR TRỰC TIẾP ── */}
       {showPayment && (
         <div className="ns9-cr-backdrop" onClick={() => setShowPayment(false)} role="dialog" aria-modal="true">
-          <div className="ns9-cr-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, padding: '24px 28px' }}>
+          <div className="ns9-cr-modal" onClick={(e) => e.stopPropagation()} style={{ width: 'min(640px, 100%)', maxWidth: 640, padding: 'clamp(14px, 3vw, 24px) clamp(14px, 3.5vw, 28px)', boxSizing: 'border-box' }}>
             <button
               type="button"
               className="ns9-cr-close-btn"
@@ -2466,16 +2496,19 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
             <PaymentPanel
               identCode={examIdentCode}
               userId={uid}
+              lockedRole={ent.isTeacherAccount ? 'teacher' : 'student'}
               customPackage={paymentPkg}
               onCheckStatus={handleCheckExamPayment}
               onPaymentSuccess={async (pkg) => {
                 if (!pkg?.isFree) return handleCheckExamPayment();
                 const updated = {
                   ...subQuota,
+                  uid,
                   planName: pkg?.role === 'teacher' ? 'PRO' : 'VIP',
                   durationLabel: 'Ưu đãi Voucher 100%',
                   hearts: 99,
                   maxHearts: 99,
+                  expiry: new Date(Date.now() + 30 * 864e5).toISOString(),
                 };
                 try {
                   localStorage.setItem(`elec_sub_quota_v1_${uid || 'guest'}`, JSON.stringify(updated));

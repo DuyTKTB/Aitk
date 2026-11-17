@@ -3512,7 +3512,8 @@
 .mol-c { --sz: 170px; right: 8vw; bottom: 7vh; --rx: calc(10deg + var(--p, 0) * -50deg); }
 
 /* ---------- VIDEO: khung nghiêng dựng lên + tinh thể NaCl ---------- */
-.lp-vstage { position: relative; perspective: 1600px; }
+.lp-video { overflow-x: clip; }
+.lp-vstage { position: relative; perspective: 1600px; overflow-x: clip; }
 .lp-vframe { transform: rotateX(calc((1 - var(--p, 0)) * 20deg)); transform-origin: 50% 100%; will-change: transform; }
 .cry { width: var(--sz, 190px); height: var(--sz, 190px); --rx: calc(-24deg + var(--p, 0) * 30deg); --ry: calc(var(--p, 0) * 400deg - 30deg); z-index: 2; }
 .cry-l { --sz: 190px; left: 0; top: -9%; }

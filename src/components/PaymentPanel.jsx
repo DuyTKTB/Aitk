@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import '../styles/payment-apple.css';
 import { verifyDiscountCode, recordDiscountUsage } from '../lib/discountService.js';
+import {
+  SUBSCRIPTION_CATALOG,
+  TEACHER_VIP_PRICE_TEXT,
+  formatVnd,
+} from '../lib/entitlements.js';
 
 /* ============================================================
    SVG ICONS THUẦN — ZERO EMOJIS, ZERO ICON FONTS
@@ -67,22 +72,20 @@ const BANK_INFO = {
 };
 
 /* Bảng giá chuẩn 100% theo yêu cầu của người dùng */
-const ALL_PACKAGES = {
-  // 1. HỌC SINH — ELEC AI Học Sinh
-  'hs-12m': { id: 'hs-12m', role: 'student', label: 'ELEC AI Học Sinh — 12 tháng', months: 12, amount: 499000, badge: 'Tiết kiệm 47%' },
-  'hs-6m':  { id: 'hs-6m',  role: 'student', label: 'ELEC AI Học Sinh — 6 tháng', months: 6, amount: 349000, badge: 'Tiết kiệm 26%' },
-  'hs-3m':  { id: 'hs-3m',  role: 'student', label: 'ELEC AI Học Sinh — 3 tháng', months: 3, amount: 199000, badge: 'Tiết kiệm 16%' },
-  'hs-1m':  { id: 'hs-1m',  role: 'student', label: 'ELEC AI Học Sinh — 1 tháng', months: 1, amount: 79000, badge: null },
+const ALL_PACKAGES = SUBSCRIPTION_CATALOG;
 
-  // 2. GIÁO VIÊN — ELEC AI Giáo Viên PRO
-  'gv-12m': { id: 'gv-12m', role: 'teacher', label: 'ELEC AI Giáo Viên PRO — 12 tháng', months: 12, amount: 990000, badge: 'Tiết kiệm 45%' },
-  'gv-6m':  { id: 'gv-6m',  role: 'teacher', label: 'ELEC AI Giáo Viên PRO — 6 tháng', months: 6, amount: 590000, badge: 'Tiết kiệm 34%' },
-  'gv-1m':  { id: 'gv-1m',  role: 'teacher', label: 'ELEC AI Giáo Viên PRO — 1 tháng', months: 1, amount: 149000, badge: null },
-};
-
-export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCheckStatus, onClose, customPackage }) {
-  const [panelRole, setPanelRole] = useState(() => customPackage?.role || 'student');
-  const [selected, setSelected] = useState(() => customPackage?.key || (panelRole === 'student' ? 'hs-12m' : 'gv-12m'));
+export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCheckStatus, onClose, customPackage, lockedRole = null }) {
+  const enforcedRole = lockedRole === 'teacher' || lockedRole === 'student'
+    ? lockedRole
+    : (customPackage?.lockedRole === 'teacher' || customPackage?.lockedRole === 'student' ? customPackage.lockedRole : null);
+  const initialRole = enforcedRole || customPackage?.role || 'student';
+  const [panelRole, setPanelRole] = useState(initialRole);
+  const [selected, setSelected] = useState(() => {
+    const candidateKey = customPackage?.key || customPackage?.id;
+    const candidate = candidateKey ? ALL_PACKAGES[candidateKey] : null;
+    if (candidate && candidate.role === initialRole) return candidate.id;
+    return initialRole === 'teacher' ? 'gv-1m' : 'hs-1m';
+  });
   const [step, setStep] = useState(() => (customPackage ? 'qr' : 'select'));
   const [checking, setChecking] = useState(false);
   const [countdown, setCountdown] = useState(300);
@@ -95,7 +98,7 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
   const [discountMsg, setDiscountMsg] = useState(null);
   const [activatingFree, setActivatingFree] = useState(false);
 
-  const rawPkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-12m'];
+  const rawPkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-1m'];
   const finalAmount = appliedDiscount ? appliedDiscount.finalPrice : rawPkg.amount;
   const isFree = Boolean(appliedDiscount?.isFree);
   const discountUserId = userId || identCode;
@@ -298,37 +301,49 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
       {step === 'select' && (
         <>
           <div className="apl-pay-head-select">
-            <h3 className="apl-pay-title">Nâng cấp tài khoản ELEC AI</h3>
+            <h3 className="apl-pay-title">
+              {panelRole === 'teacher' ? 'Nâng cấp Giáo viên VIP' : 'Nâng cấp Học sinh VIP'}
+            </h3>
             <p className="apl-pay-sub">
-              “Giảm mạnh và cắt đúng chỗ tốn tiền (buổi ôn live riêng → buổi tổng ôn nhóm) là cách hạ giá mà không lỗ:”
+              {panelRole === 'teacher'
+                ? `Mở khóa toàn bộ Lớp học, AI soạn đề, OMR & Giám sát thi (${TEACHER_VIP_PRICE_TEXT}/tháng).`
+                : 'Mở khóa toàn bộ Đề thi PRO/VIP, Gia sư AI & Phân tích chuyên sâu.'}
             </p>
           </div>
 
-          {/* Toggle Học Sinh / Giáo Viên */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.05)', padding: 3, borderRadius: 980, gap: 4, width: 'fit-content' }}>
-            <button
-              type="button"
-              className={`ns9-seg-btn ${panelRole === 'student' ? 'is-active' : ''}`}
-              style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-              onClick={() => {
-                setPanelRole('student');
-                setSelected('hs-12m');
-              }}
-            >
-              1. Học Sinh
-            </button>
-            <button
-              type="button"
-              className={`ns9-seg-btn ${panelRole === 'teacher' ? 'is-active' : ''}`}
-              style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-              onClick={() => {
-                setPanelRole('teacher');
-                setSelected('gv-12m');
-              }}
-            >
-              2. Giáo Viên PRO
-            </button>
-          </div>
+          {/* Toggle Học Sinh / Giáo Viên (ẩn/khóa khi tài khoản đã xác định vai trò) */}
+          {!enforcedRole ? (
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.05)', padding: 3, borderRadius: 980, gap: 4, width: 'fit-content' }}>
+              <button
+                type="button"
+                className={`ns9-seg-btn ${panelRole === 'student' ? 'is-active' : ''}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+                onClick={() => {
+                  setPanelRole('student');
+                  setSelected('hs-1m');
+                }}
+              >
+                1. Học Sinh VIP
+              </button>
+              <button
+                type="button"
+                className={`ns9-seg-btn ${panelRole === 'teacher' ? 'is-active' : ''}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+                onClick={() => {
+                  setPanelRole('teacher');
+                  setSelected('gv-1m');
+                }}
+              >
+                2. Giáo Viên VIP ({TEACHER_VIP_PRICE_TEXT}/tháng)
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 980, background: panelRole === 'teacher' ? 'rgba(245,158,11,0.14)' : 'rgba(59,130,246,0.12)', color: panelRole === 'teacher' ? '#b45309' : '#1d4ed8', fontSize: '0.8rem', fontWeight: 700, width: 'fit-content' }}>
+              {panelRole === 'teacher'
+                ? `Gói dành riêng cho Giáo viên · Chuẩn ${TEACHER_VIP_PRICE_TEXT}/tháng`
+                : 'Gói dành riêng cho Học sinh'}
+            </div>
+          )}
 
           <div className="apl-pay-options" style={{ gridTemplateColumns: panelRole === 'student' ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)' }}>
             {filteredPackages.map(([key, p]) => (
@@ -340,7 +355,7 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
               >
                 {p.badge && <span className="apl-pay-badge">{p.badge}</span>}
                 <span className="apl-pay-opt-name">{p.label.split('—')[1]?.trim() || p.label}</span>
-                <span className="apl-pay-opt-price">{p.amount.toLocaleString('vi-VN')}đ</span>
+                <span className="apl-pay-opt-price">{formatVnd(p.amount)}</span>
               </button>
             ))}
           </div>
@@ -348,17 +363,17 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
           <ul className="apl-pay-features">
             {panelRole === 'student' ? (
               <>
-                <li><SvgCheck size={14} /> Toàn bộ đề thi miễn phí & độc quyền kỳ thi THPTQG, HSA, TSA</li>
-                <li><SvgCheck size={14} /> Buổi tổng ôn nhóm trực tiếp cùng giáo viên ELEC AI qua Meet</li>
-                <li><SvgCheck size={14} /> Trợ lý AI giải thích từng bước & chỉ rõ lỗi sai chi tiết</li>
-                <li><SvgCheck size={14} /> Tặng kèm 300 – 3.000 điểm Credit hỏi bài và giải đề AI chuyên sâu</li>
+                <li><SvgCheck size={14} /> Toàn bộ đề thi FREE, PRO, VIP (THPTQG, ĐGNL, TSA) &amp; 99 tim/ngày</li>
+                <li><SvgCheck size={14} /> AI Chẩn đoán lỗ hổng sau thi &amp; Studio Soạn Tài Liệu thông minh</li>
+                <li><SvgCheck size={14} /> Gia sư Giọng nói AI trong Bài giảng 3D &amp; Hướng nghiệp AI</li>
+                <li><SvgCheck size={14} /> Tặng kèm Credit AI hỏi bài &amp; phân tích nguyên tố không giới hạn</li>
               </>
             ) : (
               <>
-                <li><SvgCheck size={14} /> Quản lý không giới hạn lớp học và học sinh tham gia</li>
-                <li><SvgCheck size={14} /> Soạn đề AI theo ma trận chuẩn Bộ GD&ĐT & nạp từ PDF/Ảnh</li>
-                <li><SvgCheck size={14} /> Chấm thi tự động & quét phiếu OMR tức thời khi học sinh nộp</li>
-                <li><SvgCheck size={14} /> Báo cáo phổ điểm, cảnh báo học sinh yếu, xuất Excel/CSV</li>
+                <li><SvgCheck size={14} /> Không giới hạn số lớp học, sĩ số HS, đề thi &amp; Ngân hàng câu hỏi AI</li>
+                <li><SvgCheck size={14} /> AI Tạo Đề theo ma trận chuẩn Bộ GD&amp;ĐT &amp; tách đề từ Word/PDF/Ảnh</li>
+                <li><SvgCheck size={14} /> Chấm phiếu OMR A4 không giới hạn số tờ &amp; đồng bộ Excel tức thời</li>
+                <li><SvgCheck size={14} /> Giám sát thi LIVE, Camera/Audio AI, Chế độ Siêu chặt &amp; Trợ lý AI Copilot</li>
               </>
             )}
           </ul>

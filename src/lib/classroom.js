@@ -82,7 +82,8 @@ function friendlyFirestoreError(e, context = '') {
 /* ============================================================
    CLASSES
    ============================================================ */
-export async function createClass({ name, teacherId, teacherName, subject, requireApproval = true }) {
+export async function createClass({ name, teacherId, teacherName, subject, requireApproval = true, maxStudents = null }) {
+  const cap = Number(maxStudents || 0);
   const data = {
     name: name || 'Lớp mới',
     subject: subject || 'Hóa học',
@@ -94,6 +95,7 @@ export async function createClass({ name, teacherId, teacherName, subject, requi
     pendingMembers: [],
     pendingIds: [],
     requireApproval: requireApproval !== false,
+    ...(cap > 0 ? { maxStudents: cap } : {}),
     createdAt: serverTimestamp(),
   };
   try {
@@ -204,6 +206,15 @@ export async function joinClassByKey(classKey, student) {
       return { ok: true, class: cls, pending: true, already: true };
     }
 
+    const maxStudents = Number(cls.maxStudents || 0);
+    if (maxStudents > 0 && memberIds.length >= maxStudents) {
+      return {
+        ok: false,
+        limitReached: true,
+        error: `Lớp "${cls.name}" đã đạt giới hạn tối đa ${maxStudents} học sinh (Gói Giáo viên Free). Giáo viên cần nâng cấp VIP để mở rộng sĩ số.`,
+      };
+    }
+
     const person = {
       id: student.id,
       name: student.name,
@@ -246,12 +257,21 @@ export async function joinClassByKey(classKey, student) {
   }
 }
 
-export async function approveMember(classId, studentId) {
+export async function approveMember(classId, studentId, opts = {}) {
   try {
     const cls = await getClassById(classId);
     if (!cls) return { ok: false, error: 'Lớp không tồn tại' };
     const p = (cls.pendingMembers || []).find((m) => m.id === studentId);
     if (!p) return { ok: false, error: 'Yêu cầu không còn tồn tại.' };
+
+    const effectiveMax = opts?.isVip ? 0 : Number(opts?.maxStudents ?? cls.maxStudents ?? 0);
+    if (effectiveMax > 0 && (cls.memberIds || []).length >= effectiveMax) {
+      return {
+        ok: false,
+        limitReached: true,
+        error: `Lớp đã đạt tối đa ${effectiveMax} học sinh theo gói Miễn phí. Nâng cấp Giáo viên VIP (399.000đ/tháng) để không giới hạn sĩ số!`,
+      };
+    }
 
     const member = {
       id: p.id,
@@ -292,25 +312,41 @@ export async function rejectMember(classId, studentId) {
   }
 }
 
-export async function approveAllMembers(classId) {
+export async function approveAllMembers(classId, opts = {}) {
   try {
     const cls = await getClassById(classId);
     if (!cls) return { ok: false, error: 'Lớp không tồn tại' };
     const pending = cls.pendingMembers || [];
     if (pending.length === 0) return { ok: true, count: 0 };
 
+    const effectiveMax = opts?.isVip ? 0 : Number(opts?.maxStudents ?? cls.maxStudents ?? 0);
+    let toApprove = pending;
+    let skippedByLimit = 0;
+    if (effectiveMax > 0) {
+      const slots = Math.max(0, effectiveMax - (cls.memberIds || []).length);
+      if (slots === 0) {
+        return {
+          ok: false,
+          limitReached: true,
+          error: `Lớp đã đạt tối đa ${effectiveMax} học sinh theo gói Miễn phí. Nâng cấp Giáo viên VIP (399.000đ/tháng) để không giới hạn sĩ số!`,
+        };
+      }
+      toApprove = pending.slice(0, slots);
+      skippedByLimit = pending.length - toApprove.length;
+    }
+
     const joinedAt = new Date().toISOString();
-    const members = pending.map((p) => ({
+    const members = toApprove.map((p) => ({
       id: p.id, name: p.name, email: p.email, role: 'member', joinedAt,
     }));
     // Gộp thành MỘT lần ghi (trước đây: mỗi học sinh 1 lần đọc + 1 lần ghi)
     await updateDoc(doc(db, 'classes', classId), {
       members: arrayUnion(...members),
-      memberIds: arrayUnion(...pending.map((p) => p.id)),
-      pendingMembers: arrayRemove(...pending),
-      pendingIds: arrayRemove(...pending.map((p) => p.id)),
+      memberIds: arrayUnion(...toApprove.map((p) => p.id)),
+      pendingMembers: arrayRemove(...toApprove),
+      pendingIds: arrayRemove(...toApprove.map((p) => p.id)),
     });
-    return { ok: true, count: pending.length };
+    return { ok: true, count: toApprove.length, skippedByLimit, limit: effectiveMax };
   } catch (e) {
     console.error('[approveAllMembers] Lỗi:', e.message);
     return { ok: false, error: friendlyFirestoreError(e, 'duyệt tất cả') };

@@ -344,3 +344,101 @@
   font-weight: 800;
   color: #2563eb;
 }
+
+@media (max-width: 680px) {
+  .port-opt-overlay {
+    z-index: 100020 !important;
+    padding: 8px 8px calc(10px + env(safe-area-inset-bottom)) !important;
+    align-items: flex-end !important;
+  }
+  .port-opt-modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 22px 22px 16px 16px !important;
+  }
+  .port-opt-header,
+  .port-opt-body {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .port-opt-tabs-bar {
+    padding: 8px 12px 0 !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .port-health-overview-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    text-align: center;
+  }
+  .port-compare-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .port-compare-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+[data-theme='dark'] .port-opt-modal {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .port-opt-header {
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .port-opt-header-text h2,
+[data-theme='dark'] .port-health-score-info h3,
+[data-theme='dark'] .port-tier-headline {
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .port-opt-header-text p,
+[data-theme='dark'] .port-health-score-info p,
+[data-theme='dark'] .port-tier-desc {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .port-opt-tabs-bar {
+  background: rgba(30, 41, 59, 0.85);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .port-opt-tab {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .port-opt-tab.active {
+  color: #60a5fa;
+  border-bottom-color: #3b82f6;
+}
+
+[data-theme='dark'] .port-health-overview-card,
+[data-theme='dark'] .port-tier-card,
+[data-theme='dark'] .port-compare-select,
+[data-theme='dark'] .port-opt-close-btn {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .port-compare-table th {
+  background: rgba(30, 41, 59, 0.9);
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .port-compare-table th,
+[data-theme='dark'] .port-compare-table td {
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .port-compare-table td.highlight {
+  color: #60a5fa;
+}

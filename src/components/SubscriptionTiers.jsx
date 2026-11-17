@@ -3,19 +3,21 @@ import { createPortal } from 'react-dom';
 import '../styles/subscription-tiers.css';
 
 /* ============================================================
-   SVG ICONS THUẦN — 100% SVG, ZERO EMOJIS, ZERO ICON FONTS
+   SVG ICONS THUẦN — 100% SVG, ZERO EMOJIS
    ============================================================ */
-function SvgCheck({ size = 16 }) {
+function SvgCheck({ size = 14 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ns9-feat-check">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
+    <span className="ns9-feat-check-badge" aria-hidden="true">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </span>
   );
 }
 
 function SvgCrown({ size = 14 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
     </svg>
   );
@@ -37,192 +39,175 @@ function SvgSparkle({ size = 14 }) {
   );
 }
 
-function SvgRadioCheck() {
+function SvgGradCap({ size = 16 }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ns9-opt-radio-ico">
-      <circle cx="12" cy="12" r="10" stroke="#2563eb" fill="none" strokeWidth="2.2" />
-      <circle cx="12" cy="12" r="5" fill="#2563eb" stroke="none" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+      <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
     </svg>
   );
 }
 
-function SvgRadioEmpty() {
+function SvgBriefcase({ size = 16 }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ns9-opt-radio-ico">
-      <circle cx="12" cy="12" r="9.5" stroke="rgba(148, 163, 184, 0.7)" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
   );
 }
 
 /* ============================================================
-   DỮ LIỆU BẢNG GIÁ 3 CỘT BENTO CHUẨN 9STUDY
-   (HỌC BÁ - TINH ANH - VỀ ĐÍCH KHTN/TSA)
+   DỮ LIỆU BẢNG GIÁ CHÍNH THỨC ELEC AI 2026
    ============================================================ */
 export const PRICING_PACKAGES = {
   student: [
     {
       id: 'hoc-ba',
       name: 'Học Bá',
-      badge: null,
-      mascot: '/img/elec/elec-happy.png',
-      mascotAlt: 'Elec Học Bá',
-      desc: 'Full quyền lợi của 01 kỳ thi bất kỳ tự chọn (THPTQG/HSA/TSA/V-ACT)',
-      defaultTierId: '1y',
+      eyebrow: 'Khởi động linh hoạt',
+      badge: 'Chuẩn 199k/tháng',
+      badgeType: 'sparkle',
+      badgeColor: 'blue',
+      desc: 'Full đặc quyền Học sinh VIP trong 1 hoặc 3 tháng linh hoạt',
+      defaultTierId: '1m',
       tiers: [
-        { id: '3m', months: 3, label: '3 tháng', fee: '399.000đ', rate: '≈133.000đ/tháng', amount: 399000, save: null },
-        { id: '6m', months: 6, label: '6 tháng', fee: '499.000đ', origFee: '798.000đ', rate: '≈83.167đ/tháng', amount: 499000, save: 'Tiết kiệm 37%' },
-        { id: '1y', months: 12, label: '1 năm', fee: '699.000đ', origFee: '1.596.000đ', rate: '≈58.250đ/tháng', amount: 699000, save: 'Tiết kiệm 56%', isBest: true },
+        { id: '1m', pkgKey: 'hs-1m', months: 1, label: '1 tháng', fee: '199.000đ', origFee: '249.000đ', rate: '199.000đ/tháng', amount: 199000, save: null, isBest: true },
+        { id: '3m', pkgKey: 'hs-3m', months: 3, label: '3 tháng', fee: '399.000đ', origFee: '597.000đ', rate: '≈133.000đ/tháng', amount: 399000, save: 'Tiết kiệm 33%' },
       ],
       features: [
-        'Toàn bộ đề thi miễn phí và độc quyền VIP/PRO của 01 kỳ thi bất kỳ tự chọn (THPTQG/TSA/HSA/V-ACT/...)',
-        '10 buổi tổng ôn trực tiếp cùng đội ngũ giáo viên ELEC AI (qua Meet)',
-        'Lý thuyết và luyện tập đầy đủ của các kỳ thi đã chọn',
-        'Sổ lỗi sai không giới hạn, phân loại theo môn, chủ đề, dạng bài',
-        'AI hạn mức cao & Báo cáo Radar năng lực chi tiết',
-        'ELEC tutor thông minh bám sát mục tiêu nguyện vọng 1',
-        'Thách đấu đấu trường không giới hạn',
-        '50.000 ELEC AI Credits thưởng vào ví',
+        'Mở khóa 100% đề thi thử PRO & VIP (THPTQG, ĐGNL, TSA, V-ACT)',
+        '99 tim luyện tập/ngày & bảng thống kê Phòng thi ảo không giới hạn',
+        'AI Chẩn đoán lỗ hổng kiến thức & Đơn thuốc ôn tập sau mỗi đề thi',
+        'Studio Soạn Đề & Tài liệu thông minh từ PDF / Word / Ảnh',
+        'Gia sư Giọng nói AI trong Bài giảng 3D & Tư vấn Hướng nghiệp AI',
       ],
-      ctaText: 'Nâng cấp gói Học Bá',
+      ctaText: 'Đăng ký Học Bá',
       tone: 'blue',
     },
     {
       id: 'tinh-anh',
       name: 'Tinh Anh',
-      badge: 'Bán chạy',
+      eyebrow: 'Phổ biến nhất',
+      badge: 'Tiết kiệm đến 58%',
       badgeType: 'crown',
       badgeColor: 'pink',
-      mascot: '/img/elec/elec-wink.png',
-      mascotAlt: 'Elec Tinh Anh',
-      desc: 'Full quyền lợi của 02 kỳ thi bất kỳ tự chọn (Ví dụ: THPTQG và HSA, TSA & V-ACT,...)',
-      defaultTierId: '1y',
+      desc: 'Full toàn bộ quyền lợi Học sinh VIP trọn học kỳ hoặc cả năm học',
+      defaultTierId: '6m',
       isPopular: true,
       tiers: [
-        { id: '3m', months: 3, label: '3 tháng', fee: '599.000đ', rate: '≈199.667đ/tháng', amount: 599000, save: null },
-        { id: '6m', months: 6, label: '6 tháng', fee: '699.000đ', origFee: '1.198.000đ', rate: '≈116.500đ/tháng', amount: 699000, save: 'Tiết kiệm 42%' },
-        { id: '1y', months: 12, label: '1 năm', fee: '899.000đ', origFee: '2.396.000đ', rate: '≈74.917đ/tháng', amount: 899000, save: 'Tiết kiệm 62%', isBest: true },
+        { id: '6m', pkgKey: 'hs-6m', months: 6, label: '6 tháng', fee: '699.000đ', origFee: '1.194.000đ', rate: '≈116.500đ/tháng', amount: 699000, save: 'Tiết kiệm 41%', isBest: true },
+        { id: '1y', pkgKey: 'hs-12m', months: 12, label: '12 tháng', fee: '999.000đ', origFee: '2.388.000đ', rate: '≈83.250đ/tháng', amount: 999000, save: 'Tiết kiệm 58%' },
       ],
       features: [
-        'Toàn bộ đề thi miễn phí và độc quyền VIP/PRO của 02 kỳ thi bất kỳ (Ví dụ: THPTQG và HSA, TSA và V-ACT,...)',
-        '10 buổi tổng ôn trực tiếp cùng đội ngũ giáo viên ELEC AI (qua Meet)',
-        'Lý thuyết và luyện tập đầy đủ của các kỳ thi đã chọn',
-        'Sổ lỗi sai không giới hạn, phân loại theo môn, chủ đề, dạng bài',
-        'AI hạn mức cao & Định hướng ngành nghề chi tiết',
-        'ELEC tutor thông minh bám sát mục tiêu nguyện vọng 1',
-        'Thách đấu đấu trường không giới hạn',
-        '150.000 ELEC AI Credits thưởng vào ví',
+        'Mở khóa 100% kho đề PRO & VIP mọi kỳ thi suốt 6–12 tháng',
+        'Tặng kèm 320 – 700 Credit AI dùng cho Gia sư & AI Tạo Đề',
+        'Lộ trình KHTN, Chiến lược Nguyện vọng & Sổ lỗi sai đồng bộ liên tục',
+        'AI Chẩn đoán sau thi, Gia sư giọng nói 3D & Hướng nghiệp AI toàn diện',
+        'So sánh không giới hạn công cụ & Trợ lý AI Bảng tuần hoàn',
       ],
-      ctaText: 'Nâng cấp gói Tinh Anh',
+      ctaText: 'Nâng cấp Tinh Anh',
       tone: 'gradient-blue',
     },
     {
       id: 've-dich-tsa',
-      name: 'Về Đích TSA',
+      name: 'Về Đích Ôn Thi',
+      eyebrow: 'Nước rút THPTQG & TSA',
       badge: 'Hot',
       badgeType: 'flame',
       badgeColor: 'orange',
-      mascot: '/img/elec/elec-super-saiyan.png',
-      mascotAlt: 'Elec Về Đích',
-      desc: '60 ngày nước rút trước kỳ thi',
-      tag: 'Dành cho kỳ thi TSA & THPTQG',
-      defaultTierId: 'until-exam',
+      desc: 'Tăng tốc nước rút & ôn tổng lực chuẩn THPTQG, HSA, TSA',
+      tag: 'Phù hợp ôn cấp tốc 3–12 tháng',
+      defaultTierId: '3m',
       tiers: [
-        { id: 'until-exam', months: 3, label: 'Đến hết ngày thi', fee: '299.000đ', origFee: '459.000đ', rate: 'Dùng tới hết 16/07/2027', amount: 299000, save: 'Tiết kiệm 35%', isBest: true },
-        { id: 'full-pack', months: 12, label: 'Trọn gói thi 2026–2027', fee: '499.000đ', origFee: '899.000đ', rate: 'Bao trọn các đợt thi', amount: 499000, save: 'Tiết kiệm 45%' },
+        { id: '3m', pkgKey: 'hs-3m', months: 3, label: '3 tháng', fee: '399.000đ', origFee: '597.000đ', rate: '≈133.000đ/tháng', amount: 399000, save: 'Tiết kiệm 33%', isBest: true },
+        { id: '1y', pkgKey: 'hs-12m', months: 12, label: '12 tháng', fee: '999.000đ', origFee: '2.388.000đ', rate: '≈83.250đ/tháng', amount: 999000, save: 'Tiết kiệm 58%' },
       ],
       features: [
-        'Mở kỳ thi trong 60–90 ngày nước rút',
-        'Bộ đề tổng hợp riêng cho giai đoạn nước rút',
-        '10 buổi tổng ôn trực tiếp cùng đội ngũ giáo viên ELEC AI (qua Meet)',
-        'Luyện theo chương, dạng bài và điểm yếu',
-        'Sổ lỗi sai đầy đủ, thách đấu không giới hạn',
-        'Trợ lý ELEC AI phân tích ma trận bẫy đề thi 24/7',
-        '80.000 ELEC AI Credits thưởng vào ví',
+        'Mở toàn bộ đề tổng ôn giai đoạn nước rút THPTQG, HSA, TSA',
+        '99 tim luyện đề/ngày, làm lại không giới hạn để rà bẫy kiến thức',
+        'AI Chẩn đoán câu sai từng chuyên đề Nhận biết -> Vận dụng cao',
+        'Studio AI tách câu hỏi & tóm tắt tài liệu PDF/Ảnh trong vài giây',
+        'Tặng kèm 150 – 700 Credit AI hỗ trợ giải bài 24/7',
       ],
-      ctaText: 'Nâng cấp gói Về Đích',
+      ctaText: 'Chọn gói Về Đích',
       tone: 'orange',
     },
   ],
 
   teacher: [
     {
-      id: 'gv-khoi-dau',
-      name: 'Giáo Viên Khởi Đầu',
-      badge: null,
-      mascot: '/img/elec/elec-hello.png',
-      mascotAlt: 'Elec Chào Thầy Cô',
-      desc: 'Trải nghiệm biên soạn đề thi AI, quản lý 02 lớp học và chấm điểm OMR tự động',
-      defaultTierId: '1m',
-      tiers: [
-        { id: '1m', months: 1, label: '1 tháng', fee: '149.000đ', rate: '149.000đ/tháng', amount: 149000, save: null, isBest: true },
-      ],
-      features: [
-        'Quản lý tối đa 02 lớp học trực tuyến với 80 học sinh',
-        'Soạn đề thi AI cơ bản theo ma trận chuẩn Bộ GD&ĐT',
-        'Chấm thi trắc nghiệm OMR tự động với camera & phiếu thi',
-        'Thống kê điểm số và phân loại học sinh cơ bản',
-      ],
-      ctaText: 'Chọn gói Khởi Đầu',
-      tone: 'blue',
-    },
-    {
-      id: 'gv-chuyen-nghiep',
-      name: 'Giáo Viên Chuyên Nghiệp',
-      badge: 'Bán chạy',
+      id: 'gv-1m',
+      pkgKey: 'gv-1m',
+      name: 'Giáo Viên VIP · 1 Tháng',
+      eyebrow: 'Phổ biến nhất',
+      badge: 'Chuẩn 399k/tháng',
       badgeType: 'crown',
       badgeColor: 'pink',
-      mascot: '/img/elec/elec-think.png',
-      mascotAlt: 'Elec Giáo Viên Chuyên Nghiệp',
-      desc: 'Quản lý không giới hạn lớp học, ngân hàng câu hỏi riêng và giám sát phòng thi',
-      defaultTierId: '6m',
+      desc: 'Mở khóa toàn bộ hệ sinh thái giảng dạy AI, OMR & Giám sát thi',
+      defaultTierId: '1m',
       isPopular: true,
       tiers: [
-        { id: '6m', months: 6, label: '6 tháng', fee: '590.000đ', origFee: '894.000đ', rate: '≈98.000đ/tháng', amount: 590000, save: 'Tiết kiệm 34%', isBest: true },
+        { id: '1m', months: 1, label: '1 tháng', fee: '399.000đ', origFee: '499.000đ', rate: '399.000đ/tháng', amount: 399000, save: null, isBest: true },
       ],
       features: [
-        'Quản lý KHÔNG GIỚI HẠN số lớp và học sinh',
-        'Soạn đề AI 3 phương thức: Soạn tay, AI sinh đề ma trận, nhập Word/PDF',
-        'Hệ thống tự động chấm điểm bài thi & phiếu OMR ngay lập tức',
-        'Giám sát phòng thi trực tuyến: chống gian lận, camera proctoring',
-        'Xuất báo cáo thống kê ma trận điểm file Excel & CSV',
+        'Không giới hạn số lớp học & sĩ số học sinh (Free: 1 lớp / 40 HS)',
+        'Không giới hạn nhập Word (.docx) & soạn thủ công (Free: 10 Word · 30 thủ công)',
+        'Mở khóa AI Tạo Đề theo ma trận & tách đề từ file PDF / Ảnh OCR',
+        'Ngân hàng câu hỏi không giới hạn + 4 công cụ AI giải, gắn tag, kiểm định',
+        'Quét chấm phiếu OMR A4 không giới hạn & Giám sát thi LIVE Camera AI',
       ],
-      ctaText: 'Chọn gói Chuyên Nghiệp',
+      ctaText: 'Đăng ký VIP 1 Tháng',
       tone: 'gradient-blue',
     },
     {
-      id: 'gv-toan-nang',
-      name: 'Giáo Viên PRO Toàn Năng',
-      badge: 'Tiết kiệm 45%',
-      badgeType: 'flame',
-      badgeColor: 'orange',
-      mascot: '/img/elec/elec-cool.png',
-      mascotAlt: 'Elec Giáo Viên Toàn Năng',
-      desc: 'Trọn bộ công cụ sư phạm AI cao cấp nhất cho Giáo viên bộ môn & Luyện thi 12 tháng',
-      defaultTierId: '1y',
+      id: 'gv-6m',
+      pkgKey: 'gv-6m',
+      name: 'Giáo Viên VIP · 6 Tháng',
+      eyebrow: 'Trọn 1 học kỳ',
+      badge: 'Tiết kiệm 17%',
+      badgeType: 'sparkle',
+      badgeColor: 'blue',
+      desc: 'Đồng hành trọn vẹn 1 học kỳ, tối ưu chi phí hơn gia hạn từng tháng',
+      defaultTierId: '6m',
       tiers: [
-        { id: '1y', months: 12, label: '1 năm (12 tháng)', fee: '990.000đ', origFee: '1.788.000đ', rate: '≈82.500đ/tháng', amount: 990000, save: 'Tiết kiệm 45%', isBest: true },
+        { id: '6m', months: 6, label: '6 tháng', fee: '1.990.000đ', origFee: '2.394.000đ', rate: '≈331.000đ/tháng', amount: 1990000, save: 'Tiết kiệm 17%', isBest: true },
       ],
       features: [
-        'Toàn bộ đặc quyền của gói Chuyên Nghiệp trong 12 tháng',
-        'Ưu tiên kết nối máy chủ AI siêu tốc, không giới hạn số đề tạo',
-        'Ngân hàng đề thi KHTN chuẩn GDPT 2025–2027 cập nhật liên tục',
-        'Hỗ trợ kỹ thuật 1:1 qua Zalo & Google Meet đào tạo ứng dụng AI',
-        'Đồng bộ quản lý giữa Giáo viên bộ môn & Giáo viên chủ nhiệm',
+        'Toàn bộ đặc quyền Giáo Viên VIP trong 180 ngày liên tục',
+        'Tặng kèm 350 Credit AI cho AI Copilot, sinh đề & phân tích lớp',
+        'Kết nối GVBM đa lớp & chia sẻ tài nguyên Tổ bộ môn',
+        'Giám sát phòng thi trực tuyến chế độ Siêu chặt & Camera/Audio AI',
+        'Báo cáo phổ điểm, cảnh báo học sinh yếu & xuất bảng điểm Excel',
       ],
-      ctaText: 'Nâng cấp gói Toàn Năng',
+      ctaText: 'Chọn gói 6 Tháng',
+      tone: 'blue',
+    },
+    {
+      id: 'gv-12m',
+      pkgKey: 'gv-12m',
+      name: 'Giáo Viên VIP · 12 Tháng',
+      eyebrow: 'Tối ưu cả năm',
+      badge: 'Tiết kiệm 25%',
+      badgeType: 'flame',
+      badgeColor: 'orange',
+      desc: 'Trọn gói 1 năm học cho Giáo viên bộ môn, chủ nhiệm & trung tâm luyện thi',
+      defaultTierId: '1y',
+      tiers: [
+        { id: '1y', months: 12, label: '12 tháng', fee: '3.590.000đ', origFee: '4.788.000đ', rate: '≈299.000đ/tháng', amount: 3590000, save: 'Tiết kiệm 25%', isBest: true },
+      ],
+      features: [
+        'Toàn bộ đặc quyền Giáo Viên VIP suốt 365 ngày',
+        'Tặng kèm 800 Credit AI ưu tiên xử lý tác vụ biên soạn nặng',
+        'Chấm OMR hàng loạt, xuất Excel & đồng bộ điểm thẳng vào lớp',
+        'Mở khóa Phòng thí nghiệm & Mô phỏng trình chiếu trực tiếp',
+        'Hỗ trợ ưu tiên 1:1 & sao lưu toàn bộ ngân hàng đề riêng',
+      ],
+      ctaText: 'Nâng cấp 12 Tháng',
       tone: 'orange',
     },
   ],
 };
-
-/* Câu nói linh vật khi click tương tác ở góc phải */
-const ELEC_CHEERS = [
-  'Chạm vô Elec nè ^^',
-  'Cố lên bạn ơi, Bách Khoa đang đợi!',
-  'Luyện thi cùng Elec mỗi ngày điểm tăng vù vù!',
-  'Hôm nay bạn đã ôn tập bao nhiêu câu rồi?',
-  'Quyết tâm đỗ Nguyện vọng 1 nhé!',
-];
 
 export default function SubscriptionTiers({
   onUpgrade,
@@ -230,17 +215,22 @@ export default function SubscriptionTiers({
   isModal = Boolean(onClose),
   exam = null,
   onRedeemVoucher = null,
+  lockedRole = null,
 }) {
-  const [roleTab, setRoleTab] = useState('student'); // 'student' | 'teacher'
+  const effectiveLockedRole = lockedRole === 'teacher' || lockedRole === 'student' ? lockedRole : null;
+  const [roleTab, setRoleTab] = useState(effectiveLockedRole || 'student');
+  useEffect(() => {
+    if (effectiveLockedRole) setRoleTab(effectiveLockedRole);
+  }, [effectiveLockedRole]);
+
   const [selectedTiers, setSelectedTiers] = useState({
-    'hoc-ba': '1y',
-    'tinh-anh': '1y',
-    've-dich-tsa': 'until-exam',
-    'gv-khoi-dau': '1m',
-    'gv-chuyen-nghiep': '6m',
-    'gv-toan-nang': '1y',
+    'hoc-ba': '1m',
+    'tinh-anh': '6m',
+    've-dich-tsa': '3m',
+    'gv-1m': '1m',
+    'gv-6m': '6m',
+    'gv-12m': '1y',
   });
-  const [cheerIdx, setCheerIdx] = useState(0);
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherMsg, setVoucherMsg] = useState(null);
   const [voucherLoading, setVoucherLoading] = useState(false);
@@ -265,11 +255,19 @@ export default function SubscriptionTiers({
     const chosenTierId = selectedTiers[card.id] || card.defaultTierId;
     const tier = card.tiers.find((t) => t.id === chosenTierId) || card.tiers[0];
     const isStudent = roleTab === 'student';
+    const resolvedKey = tier.pkgKey || card.pkgKey || (
+      isStudent
+        ? (tier.months >= 12 ? 'hs-12m' : tier.months >= 6 ? 'hs-6m' : tier.months >= 3 ? 'hs-3m' : 'hs-1m')
+        : (tier.months >= 12 ? 'gv-12m' : tier.months >= 6 ? 'gv-6m' : 'gv-1m')
+    );
 
     onUpgrade?.({
+      key: resolvedKey,
+      id: resolvedKey,
       tierId: isStudent ? `student-${card.id}` : `teacher-${card.id}`,
       tierName: `ELEC AI ${card.name}`,
       role: roleTab,
+      lockedRole: effectiveLockedRole || undefined,
       months: tier.months,
       amount: tier.amount,
       label: `ELEC AI ${card.name} — ${tier.label}`,
@@ -293,19 +291,7 @@ export default function SubscriptionTiers({
 
   const cardContent = (
     <div className={`ns9-9study-pricing-wrap ${isModal ? 'is-in-modal' : ''}`}>
-      {/* ── 1. CONTAINER MODAL CHUẨN 9STUDY ── */}
       <div className="ns9-9s-modal-card" onClick={(e) => e.stopPropagation()}>
-        {/* Linh vật vẫy chào ở góc trên bên trái (chuẩn ảnh 9study) */}
-        <div className="ns9-9s-mascot-top-left" title="Chào mừng bạn đến với ELEC AI!">
-          <img
-            src="/img/elec/elec-hello.png"
-            alt="Elec Waving"
-            className="ns9-9s-mascot-img-tl"
-            loading="lazy"
-          />
-        </div>
-
-        {/* Nút đóng nếu được gọi dưới dạng modal */}
         {onClose && (
           <button
             type="button"
@@ -313,157 +299,181 @@ export default function SubscriptionTiers({
             onClick={onClose}
             aria-label="Đóng bảng giá"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         )}
 
-        {/* Header tiêu đề chuẩn ảnh 9study */}
-        <div className="ns9-9s-header">
-          <h2 className="ns9-9s-main-title">Tiến độ hiện tại của bạn đang chững...</h2>
-          <p className="ns9-9s-sub-title">Nâng cấp gói để tạo đà bứt phá.</p>
+        <header className="ns9-9s-header">
+          <div className="ns9-9s-eyebrow-pill">
+            <SvgSparkle size={13} />
+            <span>ELEC AI · Bảng giá nâng cấp 2026</span>
+          </div>
+          <h2 className="ns9-9s-main-title">
+            {roleTab === 'teacher'
+              ? 'Nâng tầm giảng dạy với Giáo Viên VIP'
+              : 'Mở khóa toàn bộ hệ sinh thái ôn thi ELEC AI'}
+          </h2>
+          <p className="ns9-9s-sub-title">
+            {roleTab === 'teacher'
+              ? 'AI tạo đề, tách PDF/Ảnh OCR, trộn mã đề A4 & giám sát thi chỉ từ 399.000đ/tháng.'
+              : 'Học sinh VIP chỉ từ 199.000đ/tháng — luyện mọi bộ đề PRO & chẩn đoán AI 24/7.'}
+          </p>
 
-          {/* Target Exam Info nếu được mở khi bấm vào đề thi VIP/PRO */}
           {exam && (
             <div className="ns9-9s-target-exam-bar">
               <span className="ns9-9s-target-badge">
                 <SvgSparkle size={13} />
-                Mở khóa đề thi {exam.tier || 'VIP'}
+                Mở khóa đề {exam.tier || 'VIP'}
               </span>
               <div className="ns9-9s-target-details">
                 <strong className="ns9-9s-target-title">{exam.title}</strong>
                 <span className="ns9-9s-target-meta">
-                  Kỳ thi {exam.examType || 'KHTN'} · {exam.questionCount || 28} câu · {exam.durationMinutes || 50} phút · {exam.author || 'ELEC AI'}
+                  {exam.examType || 'KHTN'} · {exam.questionCount || 28} câu · {exam.durationMinutes || 50} phút
                 </span>
               </div>
             </div>
           )}
 
-          {/* Role Segmented Tabs (Học sinh vs Giáo viên) có kèm linh vật sinh động */}
-          <div className="ns9-9s-role-tabs">
-            <button
-              type="button"
-              className={`ns9-9s-role-tab ${roleTab === 'student' ? 'is-active' : ''}`}
-              onClick={() => setRoleTab('student')}
-            >
-              <img src="/img/elec/elec-cool.png" alt="Elec Student" className="ns9-9s-tab-mascot" />
-              <span>Gói Học Sinh (Học Bá, Tinh Anh, Về Đích)</span>
-            </button>
+          {!effectiveLockedRole ? (
+            <div className="ns9-9s-role-tabs" role="tablist" aria-label="Chọn đối tượng gói cước">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={roleTab === 'student'}
+                className={`ns9-9s-role-tab ${roleTab === 'student' ? 'is-active' : ''}`}
+                onClick={() => setRoleTab('student')}
+              >
+                <SvgGradCap size={16} />
+                <span>Học sinh VIP (Từ 199k/tháng)</span>
+              </button>
 
-            <button
-              type="button"
-              className={`ns9-9s-role-tab ${roleTab === 'teacher' ? 'is-active' : ''}`}
-              onClick={() => setRoleTab('teacher')}
-            >
-              <img src="/img/elec/elec-think.png" alt="Elec Teacher" className="ns9-9s-tab-mascot" />
-              <span>Gói Giáo Viên PRO (Biên soạn đề & Quản lý lớp)</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={roleTab === 'teacher'}
+                className={`ns9-9s-role-tab ${roleTab === 'teacher' ? 'is-active' : ''}`}
+                onClick={() => setRoleTab('teacher')}
+              >
+                <SvgBriefcase size={16} />
+                <span>Giáo viên VIP (Từ 399k/tháng)</span>
+              </button>
+            </div>
+          ) : (
+            <div className="ns9-9s-role-locked-pill">
+              {effectiveLockedRole === 'teacher' ? <SvgBriefcase size={15} /> : <SvgGradCap size={15} />}
+              <span>
+                {effectiveLockedRole === 'teacher'
+                  ? 'Gói cước Giáo Viên VIP · Chuẩn 399.000đ/tháng'
+                  : 'Gói cước Học Sinh VIP · Chỉ từ 199.000đ/tháng'}
+              </span>
+            </div>
+          )}
+        </header>
+
+        {/* Tóm tắt quyền lợi gói Free hiện có */}
+        <div className="ns9-9s-free-strip">
+          <span className="ns9-9s-free-tag">Gói Free (0đ)</span>
+          <span className="ns9-9s-free-copy">
+            {roleTab === 'teacher'
+              ? 'Bao gồm 1 lớp / 40 HS · Dùng thử 10 lần nhập file Word (.docx) · 30 lần nhập thủ công · 5 lượt chấm OMR'
+              : 'Miễn phí Lộ trình KHTN, Chiến lược Nguyện vọng AI, Sổ tay lỗi sai SRS, Lớp học của tôi & 5 tim/ngày'}
+          </span>
         </div>
 
-        {/* ── 2. GRID 3 CỘT GÓI CƯỚC BENTO HIỆN ĐẠI (CHUẨN ẢNH 9STUDY) ── */}
+        {/* ── GRID 3 THẺ GÓI CƯỚC HIỆN ĐẠI ── */}
         <div className="ns9-9s-cards-grid">
           {currentPackages.map((card) => {
             const activeTierId = selectedTiers[card.id] || card.defaultTierId;
             const chosenTier = card.tiers.find((t) => t.id === activeTierId) || card.tiers[0];
 
             return (
-              <div
+              <article
                 key={card.id}
                 className={`ns9-9s-col-card tone-${card.tone} ${card.isPopular ? 'is-popular-card' : ''}`}
               >
-                {/* Ribbon badge đỉnh card (👑 Bán chạy / 🔥 Hot) */}
-                {card.badge && (
-                  <div className={`ns9-9s-top-ribbon badge-${card.badgeColor || 'pink'}`}>
-                    {card.badgeType === 'crown' ? <SvgCrown size={13} /> : <SvgFlame size={13} />}
-                    <span>{card.badge}</span>
-                  </div>
-                )}
-
-                {/* Linh vật nhô ra ở góc trên bên phải card (chuẩn ảnh 9study) */}
-                {card.mascot && (
-                  <div className="ns9-9s-card-peaking-mascot" title={card.mascotAlt || 'Elec Mascot'}>
-                    <img src={card.mascot} alt={card.mascotAlt || 'Elec'} className="ns9-9s-peaking-img" />
-                  </div>
-                )}
-
-                {/* Tiêu đề & Mô tả ngắn của gói */}
-                <div className="ns9-9s-card-head">
-                  <h3 className="ns9-9s-card-title">{card.name}</h3>
-                  <p className="ns9-9s-card-desc">{card.desc}</p>
-                  {card.tag && (
-                    <span className="ns9-9s-card-tag">{card.tag}</span>
+                <div className="ns9-9s-card-top-row">
+                  <span className="ns9-9s-card-eyebrow">{card.eyebrow}</span>
+                  {card.badge && (
+                    <span className={`ns9-9s-pill-badge badge-${card.badgeColor || 'blue'}`}>
+                      {card.badgeType === 'crown' ? <SvgCrown size={12} /> : card.badgeType === 'flame' ? <SvgFlame size={12} /> : <SvgSparkle size={12} />}
+                      <span>{card.badge}</span>
+                    </span>
                   )}
                 </div>
 
-                {/* Danh sách các mốc thời gian lựa chọn (Radio Box) */}
-                <div className="ns9-9s-options-list">
-                  {card.tiers.map((tier) => {
-                    const isSelected = activeTierId === tier.id;
-
-                    return (
-                      <div
-                        key={tier.id}
-                        className={`ns9-9s-option-row ${isSelected ? 'is-selected' : ''}`}
-                        onClick={() => handleSelectOption(card.id, tier.id)}
-                        role="radio"
-                        aria-checked={isSelected}
-                        tabIndex={0}
-                      >
-                        <div className="ns9-9s-opt-left">
-                          <span className="ns9-9s-radio-wrap">
-                            {isSelected ? <SvgRadioCheck /> : <SvgRadioEmpty />}
-                          </span>
-                          <div className="ns9-9s-opt-meta">
-                            <strong className="ns9-9s-opt-dur">{tier.label}</strong>
-                            <span className="ns9-9s-opt-rate">{tier.rate}</span>
-                          </div>
-                        </div>
-
-                        <div className="ns9-9s-opt-right">
-                          <span className="ns9-9s-opt-price">{tier.fee}</span>
-                          {tier.origFee && (
-                            <span className="ns9-9s-opt-orig-price">{tier.origFee}</span>
-                          )}
-                          {tier.save && (
-                            <span className="ns9-9s-opt-save-badge">{tier.save}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="ns9-9s-card-head">
+                  <h3 className="ns9-9s-card-title">{card.name}</h3>
+                  <p className="ns9-9s-card-desc">{card.desc}</p>
                 </div>
 
-                {/* Danh sách quyền lợi bao gồm trong gói (Checklist) */}
+                {/* Giá nổi bật của mốc đang chọn */}
+                <div className="ns9-9s-price-hero">
+                  <div className="ns9-9s-price-main">
+                    <strong>{chosenTier.fee}</strong>
+                    <span className="ns9-9s-price-unit">/ {chosenTier.label}</span>
+                  </div>
+                  <div className="ns9-9s-price-meta">
+                    <span className="ns9-9s-price-rate">{chosenTier.rate}</span>
+                    {chosenTier.origFee && (
+                      <span className="ns9-9s-opt-orig-price">{chosenTier.origFee}</span>
+                    )}
+                    {chosenTier.save && (
+                      <span className="ns9-9s-opt-save-badge">{chosenTier.save}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bộ chọn thời hạn dạng Segment Pills khi gói có nhiều mốc */}
+                {card.tiers.length > 1 && (
+                  <div className="ns9-9s-duration-switch" role="radiogroup" aria-label={`Chọn thời hạn ${card.name}`}>
+                    {card.tiers.map((tier) => {
+                      const isSelected = activeTierId === tier.id;
+                      return (
+                        <button
+                          key={tier.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          className={`ns9-9s-dur-btn ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => handleSelectOption(card.id, tier.id)}
+                        >
+                          <span>{tier.label}</span>
+                          {tier.save && <small>{tier.save.replace('Tiết kiệm ', '-')}</small>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="ns9-9s-features-box">
                   <ul className="ns9-9s-feat-list">
                     {card.features.map((feat, fIdx) => (
                       <li key={fIdx} className="ns9-9s-feat-item">
-                        <SvgCheck size={15} />
+                        <SvgCheck size={12} />
                         <span>{feat}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* Nút nâng cấp / thanh toán ngay dưới mỗi cột */}
                 <div className="ns9-9s-card-footer">
                   <button
                     type="button"
                     className={`ns9-9s-card-cta-btn ${card.isPopular ? 'btn-popular' : ''}`}
                     onClick={() => handleCheckout(card)}
                   >
-                    <span>{card.ctaText} — {chosenTier.fee}</span>
+                    <span>{card.ctaText} · {chosenTier.fee}</span>
                   </button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
 
-        {/* ── 2.5 VOUCHER / MÃ KÍCH HOẠT NHANH (NẾU CÓ) ── */}
+        {/* Voucher / Mã kích hoạt */}
         {onRedeemVoucher && (
           <div className="ns9-9s-voucher-bar">
             {!showVoucherInput ? (
@@ -513,35 +523,9 @@ export default function SubscriptionTiers({
           </div>
         )}
 
-        {/* ── 3. LINH VẬT TRANG TRÍ 2 BÊN GÓC DƯỚI (NHƯ ẢNH 9STUDY) ── */}
-        <div className="ns9-9s-bottom-mascot-row">
-          {/* Góc dưới bên trái: Elec cầm cúp vàng vinh quang */}
-          <div className="ns9-9s-mascot-trophy-wrap" title="Cúp vinh quang thủ khoa KHTN">
-            <img
-              src="/img/elec/elec-celebrate.png"
-              alt="Elec Trophy"
-              className="ns9-9s-mascot-trophy-img"
-              loading="lazy"
-            />
-          </div>
-
-          {/* Góc dưới bên phải: Elec đội mũ tốt nghiệp có bong bóng thoại tương tác */}
-          <div
-            className="ns9-9s-mascot-tutor-wrap"
-            onClick={() => setCheerIdx((prev) => (prev + 1) % ELEC_CHEERS.length)}
-            title="Bấm vào Elec để đổi lời chúc học tập!"
-          >
-            <div className="ns9-9s-tutor-speech">
-              <span>{ELEC_CHEERS[cheerIdx]}</span>
-            </div>
-            <img
-              src="/img/elec/elec-cool.png"
-              alt="Elec Graduation"
-              className="ns9-9s-mascot-tutor-img"
-              loading="lazy"
-            />
-          </div>
-        </div>
+        <footer className="ns9-9s-trust-foot">
+          <span>Kích hoạt tự động 30 giây qua VietQR · Bảo mật theo tài khoản · Hỗ trợ 24/7</span>
+        </footer>
       </div>
     </div>
   );

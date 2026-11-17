@@ -713,7 +713,11 @@ export default function GradeCalculator() {
       <div className="gc-hero" style={{ '--c': heroRank ? heroRank.color : 'var(--soft)' }}>
         <div className="gc-hero-main">
           <small>{isYear ? 'Điểm trung bình cả năm' : `Điểm trung bình ${TERMS.find((t) => t[0] === term)[1].toLowerCase()}`}</small>
-          <b>{fmt(heroGpa, state)}</b>
+          {heroGpa === null ? (
+            <b style={{ fontSize: 'clamp(1.85rem, 5vw, 2.6rem)', letterSpacing: '-0.02em', color: 'var(--mut)', opacity: 0.78, lineHeight: 1.15 }}>Chưa có điểm</b>
+          ) : (
+            <b>{fmt(heroGpa, state)}</b>
+          )}
           {heroRank && <span className="gc-rank-chip">{heroRank.label}</span>}
         </div>
         <div className="gc-hero-side">

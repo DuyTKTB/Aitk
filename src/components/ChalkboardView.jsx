@@ -7,6 +7,9 @@ import {
 } from '../lib/chalkboardEngine.js';
 import { askAI } from '../lib/ai.js';
 import * as tts from '../lib/tts.js';
+import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import MathText from './MathText.jsx';
 import '../styles/chalkboard.css';
 
@@ -122,6 +125,9 @@ export default function ChalkboardView({
   height = 520,
   onStepChange = null,
 }) {
+  const { user, tier } = useAuth();
+  const pro = useTeacherPro();
+  const isVip = resolveEntitlements({ user, pro, tier }).hasVipAccess;
   const [selectedLessonId, setSelectedLessonId] = useState(initialLessonId);
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -421,6 +427,10 @@ export default function ChalkboardView({
   }, [activeStep, voiceAutoLecture, sandboxMode, speakCurrentStep]);
 
   const handleAskVoiceTutor = useCallback(async (questionText) => {
+    if (!isVip) {
+      setQaAnswer('Tính năng Vấn đáp Giọng nói cùng Gia sư AI dành riêng cho tài khoản VIP. Vui lòng nâng cấp để sử dụng.');
+      return;
+    }
     const q = String(questionText || qaQuestion || '').trim();
     if (!q || qaLoading) return;
     setQaLoading(true);
@@ -463,9 +473,13 @@ export default function ChalkboardView({
     } finally {
       if (aliveRef.current) setQaLoading(false);
     }
-  }, [qaQuestion, qaLoading, currentLesson, activeStep, currentStepData]);
+  }, [isVip, qaQuestion, qaLoading, currentLesson, activeStep, currentStepData]);
 
   const toggleMicQuestion = () => {
+    if (!isVip) {
+      setQaAnswer('Tính năng Vấn đáp Giọng nói cùng Gia sư AI dành riêng cho tài khoản VIP. Vui lòng nâng cấp để sử dụng.');
+      return;
+    }
     const SpeechRec = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
     if (!SpeechRec) {
       alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói trực tiếp. Bạn có thể gõ câu hỏi vào ô bên dưới nhé!');
@@ -776,49 +790,62 @@ export default function ChalkboardView({
                 <span style={{ color: '#2563eb', display: 'inline-flex' }}><SvgMic size={17} /></span>
                 <span>Vấn đáp Giọng nói cùng Gia sư AI</span>
               </span>
-              <span className="chalkboard-badge">Giọng Việt AI</span>
+              <span className="chalkboard-badge">{isVip ? 'Giọng Việt AI' : 'VIP'}</span>
             </h3>
-            <p className="solution-card-hint">
-              Chưa hiểu bước {activeStep + 1}? Bấm Micro để hỏi bằng giọng nói hoặc gõ câu hỏi, Bé Elec sẽ giải thích và đọc lại ngay:
-            </p>
-            <div className="voice-tutor-row">
-              <input
-                type="text"
-                className="voice-tutor-input"
-                value={qaQuestion}
-                onChange={(e) => setQaQuestion(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAskVoiceTutor(qaQuestion); }}
-                placeholder={`Hỏi về Bước ${activeStep + 1} (VD: Tại sao SO vuông góc với đáy?)...`}
-              />
-              <button
-                type="button"
-                className={`voice-tutor-mic-btn ${isListeningMic ? 'is-listening' : ''}`}
-                onClick={toggleMicQuestion}
-                title="Hỏi bằng giọng nói Tiếng Việt"
-              >
-                <SvgMic size={14} />
-                <span>{isListeningMic ? 'Đang nghe...' : 'Nói'}</span>
-              </button>
-              <button
-                type="button"
-                className="voice-tutor-ask-btn"
-                disabled={qaLoading || !qaQuestion.trim()}
-                onClick={() => handleAskVoiceTutor(qaQuestion)}
-              >
-                {qaLoading ? 'Đang giải...' : 'Hỏi AI'}
-              </button>
-            </div>
-            {qaAnswer && (
-              <div className="voice-tutor-answer">
-                <img
-                  src="/img/elec/elec-happy.png"
-                  alt="Bé Elec Gia Sư"
-                  style={{ width: 38, height: 38, objectFit: 'contain', flexShrink: 0 }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div className="voice-tutor-answer-head">Gia sư Bé Elec giải thích:</div>
-                  <MathText text={qaAnswer} />
+            {isVip ? (
+              <>
+                <p className="solution-card-hint">
+                  Chưa hiểu bước {activeStep + 1}? Bấm Micro để hỏi bằng giọng nói hoặc gõ câu hỏi, Bé Elec sẽ giải thích và đọc lại ngay:
+                </p>
+                <div className="voice-tutor-row">
+                  <input
+                    type="text"
+                    className="voice-tutor-input"
+                    value={qaQuestion}
+                    onChange={(e) => setQaQuestion(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAskVoiceTutor(qaQuestion); }}
+                    placeholder={`Hỏi về Bước ${activeStep + 1} (VD: Tại sao SO vuông góc với đáy?)...`}
+                  />
+                  <button
+                    type="button"
+                    className={`voice-tutor-mic-btn ${isListeningMic ? 'is-listening' : ''}`}
+                    onClick={toggleMicQuestion}
+                    title="Hỏi bằng giọng nói Tiếng Việt"
+                  >
+                    <SvgMic size={14} />
+                    <span>{isListeningMic ? 'Đang nghe...' : 'Nói'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="voice-tutor-ask-btn"
+                    disabled={qaLoading || !qaQuestion.trim()}
+                    onClick={() => handleAskVoiceTutor(qaQuestion)}
+                  >
+                    {qaLoading ? 'Đang giải...' : 'Hỏi AI'}
+                  </button>
                 </div>
+                {qaAnswer && (
+                  <div className="voice-tutor-answer">
+                    <img
+                      src="/img/elec/elec-happy.png"
+                      alt="Bé Elec Gia Sư"
+                      style={{ width: 38, height: 38, objectFit: 'contain', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div className="voice-tutor-answer-head">Gia sư Bé Elec giải thích:</div>
+                      <MathText text={qaAnswer} />
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <p className="solution-card-hint" style={{ margin: 0, flex: '1 1 220px' }}>
+                  Mô hình 3D &amp; lời giải từng bước miễn phí trọn đời. Nâng cấp tài khoản <b>VIP</b> để hỏi bài trực tiếp bằng giọng nói cùng Gia sư Bé Elec.
+                </p>
+                <a className="voice-tutor-ask-btn" href="#profile?tab=vip" style={{ textDecoration: 'none' }}>
+                  Nâng cấp VIP
+                </a>
               </div>
             )}
           </div>

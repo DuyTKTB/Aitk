@@ -197,7 +197,7 @@
     flex: 1 !important;
     height: auto !important;
     min-height: 0 !important;
-    padding-bottom: 64px !important;
+    padding-bottom: 0 !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
@@ -208,8 +208,32 @@
     height: auto !important;
     min-height: 0 !important;
     overflow-y: auto !important;
-    padding: 12px !important;
-    padding-bottom: calc(64px + 12px) !important;
+    padding: 12px 12px calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .t-shell .t-hub-subnav-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .t-shell .t-hub-subnav-pills {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .t-shell .t-hub-subnav-pills::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .t-shell .t-hub-subnav-pill {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
   }
 
   /* ============================================================

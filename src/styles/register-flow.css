@@ -118,6 +118,39 @@
 .rf-role-btn small { font-size: 0.72rem; color: var(--rf-mut); }
 .rf-role-btn.on { border-color: var(--rf-acc); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
 
+.rf-name-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+  gap: 8px;
+}
+
+.rf-name-grid > div,
+.rf-field {
+  min-width: 0;
+}
+
+.rf-field input,
+.rf-field input:focus,
+.rf-field input:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+@media (max-width: 520px) {
+  .rf-name-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .rf-checks {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- độ mạnh ---------- */
 .rf-strength { display: flex; align-items: center; gap: 0.5rem; }
 

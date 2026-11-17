@@ -53,6 +53,21 @@
   .apl-pay-options {
     grid-template-columns: 1fr;
   }
+  .apl-pay-title {
+    font-size: 1.15rem;
+  }
+  .apl-pay-discount-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .apl-pay-discount-btn {
+    width: 100%;
+  }
+  .apl-pay-row {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    word-break: break-word;
+  }
 }
 
 .apl-pay-opt-card {

@@ -3927,7 +3927,7 @@ HƯỚNG DẪN TRẢ LỜI:
                     <div className="tfc-sim-box">
                       <div className="tfc-sim-head">
                         <div>
-                          <div className="tfc-sim-score-big">{m.simResult.predAvg} <small style={{ fontSize: '0.8rem', color: '#64748b' }}>/ 10</small></div>
+                          <div className="tfc-sim-score-big">{m.simResult.predAvg} <small style={{ fontSize: '0.8rem', color: 'var(--t-ink-2, #64748b)' }}>/ 10</small></div>
                           <div className="tfc-sim-score-label">Điểm trung bình dự báo (100 học sinh ảo)</div>
                         </div>
                         <span className="tfc-diag-chip ok">{m.simResult.discrimIndex}</span>
@@ -3935,7 +3935,7 @@ HƯỚNG DẪN TRẢ LỜI:
 
                       {/* Biểu đồ phổ điểm hình chuông */}
                       <div>
-                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--t-ink-2, #475569)', marginBottom: '4px' }}>
                           Phổ điểm dự kiến:
                         </div>
                         <div className="tfc-bell-chart">
@@ -4314,7 +4314,7 @@ HƯỚNG DẪN TRẢ LỜI:
                     <div className="tfc-diag-box">
                       <div className="tfc-diag-row">
                         <span>Đề: <b>{m.examData.title}</b></span>
-                        <span style={{ color: '#15803d' }}>Chuẩn GDPT 2025</span>
+                        <span style={{ color: 'var(--t-ok, #15803d)' }}>Chuẩn GDPT 2025</span>
                       </div>
 
                       <div className="tfc-diag-chips">
@@ -4384,8 +4384,8 @@ HƯỚNG DẪN TRẢ LỜI:
                           style={{
                             padding: '0.55rem 0.75rem',
                             borderRadius: '12px',
-                            background: '#fff1f2',
-                            border: '1px solid #fecdd3',
+                            background: 'var(--t-bad-soft, rgba(239, 68, 68, 0.14))',
+                            border: '1px solid rgba(239, 68, 68, 0.35)',
                             fontSize: '0.78rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -4393,8 +4393,8 @@ HƯỚNG DẪN TRẢ LỜI:
                           }}
                         >
                           <div>
-                            <div style={{ fontWeight: 700, color: '#9f1239' }}>{st.studentName}</div>
-                            <div style={{ color: '#be123c', fontSize: '0.72rem' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--t-ink, #0f172a)' }}>{st.studentName}</div>
+                            <div style={{ color: 'var(--t-bad, #be123c)', fontSize: '0.72rem' }}>
                               Điểm đạt: {st.pct}% {st.subCount ? `(${st.subCount} bài nộp)` : ''}
                             </div>
                           </div>
@@ -4428,8 +4428,8 @@ HƯỚNG DẪN TRẢ LỜI:
                           style={{
                             padding: '0.55rem 0.75rem',
                             borderRadius: '12px',
-                            background: '#f0fdf4',
-                            border: '1px solid #bbf7d0',
+                            background: 'var(--t-ok-soft, rgba(16, 185, 129, 0.14))',
+                            border: '1px solid rgba(16, 185, 129, 0.35)',
                             fontSize: '0.78rem',
                             display: 'flex',
                             alignItems: 'center',
@@ -4437,10 +4437,10 @@ HƯỚNG DẪN TRẢ LỜI:
                           }}
                         >
                           <div>
-                            <div style={{ fontWeight: 700, color: '#166534' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--t-ink, #0f172a)' }}>
                               #{idx + 1} {st.studentName}
                             </div>
-                            <div style={{ color: '#15803d', fontSize: '0.72rem' }}>
+                            <div style={{ color: 'var(--t-ok, #15803d)', fontSize: '0.72rem' }}>
                               Điểm đạt: {st.pct}% {st.subCount ? `(${st.subCount} bài làm)` : ''}
                             </div>
                           </div>
@@ -4461,18 +4461,18 @@ HƯỚNG DẪN TRẢ LỜI:
                           style={{
                             padding: '0.6rem 0.75rem',
                             borderRadius: '12px',
-                            background: al.severity === 'Nghiêm trọng' ? '#fff1f2' : '#fefce8',
-                            border: `1px solid ${al.severity === 'Nghiêm trọng' ? '#fecdd3' : '#fef08a'}`,
+                            background: al.severity === 'Nghiêm trọng' ? 'var(--t-bad-soft, rgba(239, 68, 68, 0.14))' : 'var(--t-warn-soft, rgba(245, 158, 11, 0.14))',
+                            border: `1px solid ${al.severity === 'Nghiêm trọng' ? 'rgba(239, 68, 68, 0.38)' : 'rgba(245, 158, 11, 0.38)'}`,
                             fontSize: '0.78rem',
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                            <span style={{ color: '#0f172a' }}>{al.name}</span>
-                            <span style={{ color: al.severity === 'Nghiêm trọng' ? '#e11d48' : '#ca8a04', fontWeight: 800 }}>
+                            <span style={{ color: 'var(--t-ink, #0f172a)' }}>{al.name}</span>
+                            <span style={{ color: al.severity === 'Nghiêm trọng' ? 'var(--t-bad, #e11d48)' : 'var(--t-warn, #ca8a04)', fontWeight: 800 }}>
                               {al.severity} ({al.count} lần)
                             </span>
                           </div>
-                          <div style={{ color: '#475569', fontSize: '0.72rem', marginTop: '2px' }}>
+                          <div style={{ color: 'var(--t-ink-2, #475569)', fontSize: '0.72rem', marginTop: '2px' }}>
                             Hành vi: {al.lastViolation}
                           </div>
 
@@ -4624,8 +4624,7 @@ HƯỚNG DẪN TRẢ LỜI:
               <button
                 key={'tc_' + qIdx}
                 type="button"
-                className="tfc-chip"
-                style={{ background: '#f0fdf4', color: '#166534', borderColor: '#bbf7d0' }}
+                className="tfc-chip tone-emerald"
                 onClick={() => {
                   if (qc.action === 'start_wizard') handleStartExamWizard();
                   else if (qc.action === 'word_editor') {
@@ -4651,8 +4650,7 @@ HƯỚNG DẪN TRẢ LỜI:
             </button>
             <button
               type="button"
-              className="tfc-chip"
-              style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}
+              className="tfc-chip tone-emerald"
               onClick={() => {
                 setInput('Thẩm định & phán xét câu hỏi GDPT 2025: ');
                 inputRef.current?.focus();
@@ -4669,8 +4667,7 @@ HƯỚNG DẪN TRẢ LỜI:
             </button>
             <button
               type="button"
-              className="tfc-chip"
-              style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+              className="tfc-chip tone-blue"
               onClick={() => {
                 setWordEditorExam((prev) => prev || (exams && exams[0]) || null);
                 setWordEditorOpen(true);

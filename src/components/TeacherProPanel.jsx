@@ -129,23 +129,23 @@ export default function TeacherProPanel() {
         </div>
 
         <p className="tpp-note">
-          Sau khi hết hạn, tài khoản sẽ tự động chuyển về <b>Free</b> và mất các chức năng giáo viên.
+          Sau khi hết hạn, tài khoản sẽ tự động chuyển về gói <b>Giáo viên Free</b> (tối đa 1 lớp, 40 học sinh, 3 đề thủ công).
         </p>
       </div>
     );
   }
 
-  /* ============ CHƯA LÀ PRO ============ */
+  /* ============ CHƯA LÀ VIP ============ */
   return (
     <div className="tpp">
       <div className="tpp-hero">
         <div className="tpp-hero-ico"><IcoCrown size={44} /></div>
         <div>
-          <span className="tpp-label">GIÁO VIÊN PRO</span>
-          <h2 className="tpp-title">Soạn đề, chấm bài, thống kê — để hệ thống lo</h2>
+          <span className="tpp-label">GIÁO VIÊN VIP · 399.000Đ / THÁNG</span>
+          <h2 className="tpp-title">Soạn đề, chấm bài, giám sát thi — để hệ thống lo</h2>
           <p className="tpp-sub">
-            Kích hoạt một lần: tạo lớp bằng key, giao đề 3 cách (soạn tay · AI sinh đề · nạp từ
-            ảnh/PDF), chấm điểm ngay khi học sinh nộp và xếp loại Giỏi–Khá–TB–Yếu theo từng môn.
+            Mở khóa toàn bộ đặc quyền Giáo viên VIP: tạo không giới hạn lớp học &amp; sĩ số,
+            AI sinh đề theo ma trận, quét phiếu OMR không giới hạn, giám sát phòng thi LIVE và xuất Excel.
           </p>
         </div>
       </div>

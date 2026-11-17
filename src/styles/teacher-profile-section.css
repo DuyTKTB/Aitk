@@ -370,6 +370,15 @@
   background: var(--tps-primary);
   color: #ffffff;
 }
+[data-theme='dark'] .tps-root .tps-btn-primary,
+.t-shell[data-theme='dark'] .tps-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+[data-theme='dark'] .tps-root .tps-btn-primary:hover,
+.t-shell[data-theme='dark'] .tps-btn-primary:hover {
+  background: #1d4ed8;
+}
 
 .tps-btn-outline {
   background: var(--tps-card);

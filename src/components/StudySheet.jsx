@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useLiveStreak } from '../hooks.js';
+import { getUserRole } from '../lib/userRole.js';
 import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,
@@ -91,6 +92,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Học sinh ELEC AI';
   const isVip = tier?.key === 'vip';
+  const isTeacherOrVip = isVip || getUserRole(user) === 'teacher';
 
   return createPortal(
     <>
@@ -171,7 +173,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
               </div>
             </button>
 
-            <a href={isVip ? '#classroom' : '#my-classes'} className="ss-hl-card ss-hl-class" onClick={onClose}>
+            <a href={isTeacherOrVip ? '#classroom' : '#my-classes'} className="ss-hl-card ss-hl-class" onClick={onClose}>
               <div className="ss-hl-icon classroom">
                 <IconNotebook size={20} />
               </div>

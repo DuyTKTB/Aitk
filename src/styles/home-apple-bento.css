@@ -2498,6 +2498,10 @@
 .ns9-uh-pill-tag.empty {
   background: var(--mut);
 }
+[data-theme='dark'] .ns9-uh-pill-tag.empty {
+  background: #4338ca;
+  color: #ffffff;
+}
 .ns9-uh-pill-name {
   font-weight: 800;
   font-size: 14.5px;
@@ -2634,6 +2638,22 @@
 .ns9-uh-recent-tag.tag-khtn {
   background: rgba(37, 99, 235, 0.14);
   color: #2563eb;
+}
+[data-theme='dark'] .ns9-uh-recent-tag.tag-hoa {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+}
+[data-theme='dark'] .ns9-uh-recent-tag.tag-ly {
+  background: rgba(129, 140, 248, 0.18);
+  color: #a5b4fc;
+}
+[data-theme='dark'] .ns9-uh-recent-tag.tag-sinh {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+}
+[data-theme='dark'] .ns9-uh-recent-tag.tag-khtn {
+  background: rgba(96, 165, 250, 0.16);
+  color: #93c5fd;
 }
 
 .ns9-uh-recent-text {

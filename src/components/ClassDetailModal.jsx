@@ -12,6 +12,10 @@ import { Avatar, Donut, TrendChart } from './DashShell.jsx';
 import StudentModal from './StudentModal.jsx';
 import SubjectTeacherPanel from './teacher/SubjectTeacherPanel.jsx';
 import LearningAnalytics from './teacher/LearningAnalytics.jsx';
+import TeacherVipLock from './teacher/TeacherVipLock.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import '../styles/class-detail.css';
 
 const Svg = ({ size = 18, sw = 1.8, children, title }) => (
@@ -234,6 +238,8 @@ export default function ClassDetailModal({
   exams = [],
   initialTab = 'overview',
   initialSubmissionsMap = null,
+  isTeacherVip = undefined,
+  onRequestUpgrade = null,
   onClose,
   onExportCsv,
   onExportRoster,
@@ -253,6 +259,11 @@ export default function ClassDetailModal({
   onDeleteClass,
   onShareKey,
 }) {
+  const { user } = useAuth();
+  const pro = useTeacherPro();
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
   const mapInitialTab = (t) => {
     if (t === 'pending' || t === 'retry') return 'members';
     if (t === 'analytics') return 'scores';
@@ -575,14 +586,22 @@ export default function ClassDetailModal({
 
         <div className="cd-body">
           {tab === 'teachers' && (
-            <SubjectTeacherPanel
-              classInfo={classInfo}
-              classId={classInfo?.id}
-              className={classInfo?.name}
-              exams={exams}
-              submissionsMap={submissionsMap}
-              teacherId={classInfo?.teacherId}
-            />
+            vipUnlocked ? (
+              <SubjectTeacherPanel
+                classInfo={classInfo}
+                classId={classInfo?.id}
+                className={classInfo?.name}
+                exams={exams}
+                submissionsMap={submissionsMap}
+                teacherId={classInfo?.teacherId}
+              />
+            ) : (
+              <TeacherVipLock
+                title="Quản lý Giáo viên Bộ môn (GVBM) thuộc gói Giáo viên VIP"
+                description="Mời và phân quyền Giáo viên bộ môn cùng giảng dạy, chia sẻ đề thi và theo dõi kết quả theo từng môn trong lớp."
+                onUpgrade={onRequestUpgrade}
+              />
+            )
           )}
 
           {tab === 'overview' && (
@@ -1370,12 +1389,20 @@ export default function ClassDetailModal({
               </div>
 
               {scoreSubTab === 'ai' ? (
-                <LearningAnalytics
-                  classInfo={classInfo}
-                  exams={exams}
-                  submissionsMap={submissionsMap}
-                  loadingSubmissions={loadingSubs}
-                />
+                vipUnlocked ? (
+                  <LearningAnalytics
+                    classInfo={classInfo}
+                    exams={exams}
+                    submissionsMap={submissionsMap}
+                    loadingSubmissions={loadingSubs}
+                  />
+                ) : (
+                  <TeacherVipLock
+                    title="Phân tích Học lực & Điểm yếu AI thuộc gói Giáo viên VIP"
+                    description="AI tổng hợp điểm yếu theo chuyên đề của cả lớp, cảnh báo học sinh tụt phong độ và gợi ý tạo đề ôn bù cá nhân hóa."
+                    onUpgrade={onRequestUpgrade}
+                  />
+                )
               ) : exams.length === 0 || members.length === 0 ? (
                 <div className="cd-empty">
                   <span><IconTable size={30} /></span>

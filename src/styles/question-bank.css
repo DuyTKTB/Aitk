@@ -2060,3 +2060,20 @@
     align-items: stretch;
   }
 }
+
+/* Dark Mode Button/Chip High Contrast Fixes */
+[data-theme='dark'] .qb-chip.on,
+.t-shell[data-theme='dark'] .qb-chip.on,
+[data-theme='dark'] .qb-tab.on,
+.t-shell[data-theme='dark'] .qb-tab.on,
+[data-theme='dark'] .qb-btn.primary,
+.t-shell[data-theme='dark'] .qb-btn.primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+[data-theme='dark'] .qb-chip.on .qb-chip-count,
+.t-shell[data-theme='dark'] .qb-chip.on .qb-chip-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}

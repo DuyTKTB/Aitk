@@ -582,8 +582,33 @@
 
 /* ── Responsive ── */
 @media (max-width: 680px) {
-  .ai-strat-subjects-grid {
-    grid-template-columns: 1fr;
+  .ai-strat-overlay {
+    z-index: 100020 !important;
+    padding: 8px 8px calc(12px + env(safe-area-inset-bottom)) !important;
+    align-items: flex-end !important;
+  }
+  .ai-strat-modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 22px 22px 16px 16px !important;
+  }
+  .ai-strat-header,
+  .ai-strat-body,
+  .ai-strat-footer {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .ai-strat-nav-tabs {
+    padding: 8px 12px 0 !important;
+  }
+  .ai-strat-subjects-grid,
+  .ai-strat-compare-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .ai-strat-select {
+    min-width: 0 !important;
+    width: 100%;
   }
   .ai-strat-footer {
     flex-direction: column;
@@ -598,6 +623,64 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ── Dark Theme Support ── */
+[data-theme='dark'] .ai-strat-modal {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .ai-strat-header,
+[data-theme='dark'] .ai-strat-footer {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .ai-strat-header-text h2,
+[data-theme='dark'] .ai-strat-card-title,
+[data-theme='dark'] .ai-strat-prob-value {
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .ai-strat-header-text p,
+[data-theme='dark'] .ai-strat-sub-note,
+[data-theme='dark'] .ai-strat-tier-empty {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .ai-strat-nav-tabs {
+  background: rgba(30, 41, 59, 0.85);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme='dark'] .ai-strat-tab-btn {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .ai-strat-tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #3b82f6;
+}
+
+[data-theme='dark'] .ai-strat-comp-card,
+[data-theme='dark'] .ai-strat-tier-item,
+[data-theme='dark'] .ai-strat-select,
+[data-theme='dark'] .ai-strat-vs-badge,
+[data-theme='dark'] .ai-strat-goal-card,
+[data-theme='dark'] .ai-strat-subj-card,
+[data-theme='dark'] .ai-strat-phase-card {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+[data-theme='dark'] .ai-strat-close-btn,
+[data-theme='dark'] .ai-strat-btn-secondary {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
 }
 
 /* ============================================================

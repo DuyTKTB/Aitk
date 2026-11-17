@@ -331,33 +331,37 @@ function formatDateVN(val) {
   }
 }
 
-/* Đọc trạng thái gói VIP / PRO từ teacherPro, user hoặc localStorage */
+/* Đọc trạng thái gói VIP / PRO từ teacherPro, user hoặc localStorage khớp UID */
 function resolvePackageStatus(user, teacherPro) {
-  if (teacherPro?.isPro) {
+  if (teacherPro?.isPro && teacherPro?.isTeacherPro !== false) {
     const daysText = teacherPro.daysLeft != null ? ` (${teacherPro.daysLeft} ngày)` : '';
     return {
       isPro: true,
-      label: `Gói PRO Giáo Viên${daysText}`,
+      label: `Giáo viên VIP${daysText}`,
       expiresAt: teacherPro.expiry || null,
       keyCode: teacherPro.pro?.key || null,
     };
   }
-  try {
-    const rawVip = localStorage.getItem('cs-vip-status');
-    if (rawVip) {
-      const parsed = JSON.parse(rawVip);
-      if (parsed && (parsed.isPro || parsed.isVip || parsed.tier === 'pro' || parsed.tier === 'vip' || parsed.active)) {
-        return {
-          isPro: true,
-          label: parsed.planName || 'Gói PRO Giáo Viên',
-          expiresAt: parsed.expiresAt || parsed.expiry || parsed.expiryDate || null,
-        };
+  if (user?.uid) {
+    try {
+      const rawVip = localStorage.getItem('cs-vip-status');
+      if (rawVip) {
+        const parsed = JSON.parse(rawVip);
+        const expMs = toMs(parsed?.expiresAt || parsed?.expiry || parsed?.expiryDate);
+        const isProPlan = parsed?.tier === 'pro' || parsed?.plan === 'PRO';
+        if (parsed && parsed.uid === user.uid && isProPlan && expMs > Date.now() && (parsed.isPro || parsed.active)) {
+          return {
+            isPro: true,
+            label: parsed.planName || 'Gói PRO Giáo Viên',
+            expiresAt: parsed.expiresAt || parsed.expiry || parsed.expiryDate || null,
+          };
+        }
       }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
   }
-  if (user?.isAdmin || user?.claims?.pro || user?.claims?.vip || user?.tier === 'pro') {
+  if (user?.isAdmin || user?.claims?.pro || user?.tier === 'pro') {
     return {
       isPro: true,
       label: user?.isAdmin ? 'Gói PRO (Quản trị viên)' : 'Gói PRO Giáo Viên',

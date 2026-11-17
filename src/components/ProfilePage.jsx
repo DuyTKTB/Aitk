@@ -16,6 +16,7 @@ import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { setUserTier } from '../lib/tier.js';
 import { adminGrantProDirect, getProStatus } from '../lib/proKeyApi.js';
 import { setUserRole } from '../lib/userRole.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import { getStreakData, liveStreak, dayKey } from '../hooks.js';
 import { getClassesByStudent } from '../lib/classroom.js';
 import { listenFriends } from '../lib/social.js';
@@ -640,11 +641,14 @@ export default function ProfilePage({ credits: propCredits }) {
   const applyLocalUpgradeState = useCallback(async ({ role, months, days, expiryDate, pkgLabel, amountText, bonusCredits = 0 }) => {
     try {
       localStorage.setItem('cs-vip-status', JSON.stringify({
+        uid,
         isPro: true,
         isVip: role !== 'teacher',
+        tier: role === 'teacher' ? 'pro' : 'vip',
         plan: role === 'teacher' ? 'PRO' : 'VIP',
         expiry: expiryDate,
         daysLeft: days,
+        source: 'payment',
       }));
     } catch {}
     try {
@@ -739,7 +743,7 @@ export default function ProfilePage({ credits: propCredits }) {
       }
     } else {
       try {
-        await setUserTier(uid, 'vip');
+        await setUserTier(uid, role === 'teacher' ? 'pro' : 'vip');
       } catch (err) {
         console.warn('setUserTier error:', err);
       }
@@ -847,31 +851,34 @@ export default function ProfilePage({ credits: propCredits }) {
     return (sum / examHistory.length).toFixed(1);
   }, [examHistory]);
 
-  const isTeacher = Boolean(pro?.isPro && pro?.isTeacherPro !== false);
-  const effectivePlanName = isTeacher ? 'GIÁO VIÊN PRO' : isVip ? 'VIP' : subQuota.planName || 'Free';
+  const ent = useMemo(
+    () => resolveEntitlements({ user, pro, tier, subQuota }),
+    [user, pro, tier, subQuota]
+  );
+  const isTeacherAccount = ent.isTeacherAccount;
+  const isTeacher = ent.isTeacherVip;
+  const effectivePlanName = ent.planLabel;
   const planDesc = isTeacher
-    ? 'Toàn quyền quản lý lớp học, biên soạn đề AI & chấm thi tự động'
-    : effectivePlanName === 'VIP'
-    ? 'Đặc quyền Bộ đề VIP + Tặng kèm Credit AI & Ưu đãi'
-    : effectivePlanName === 'PRO'
-    ? 'Mở khóa toàn bộ Bộ đề PRO & Giải thích AI chi tiết'
-    : (subQuota.planDesc || 'Nội dung miễn phí');
-  const durationLabel = isTeacher
-    ? `${pro.daysLeft != null ? `${pro.daysLeft} ngày` : 'Đang hoạt động'} (đến ${pro.expiry ? new Date(pro.expiry).toLocaleDateString('vi-VN') : '2027'})`
-    : effectivePlanName === 'VIP'
-    ? 'Trọn mùa thi 2027'
-    : effectivePlanName === 'PRO'
-    ? '12 tháng (2026–2027)'
+    ? 'Toàn quyền quản lý lớp học, biên soạn đề AI, chấm OMR không giới hạn & Giám sát thi'
+    : ent.isStudentVip
+    ? 'Đặc quyền Bộ đề VIP + Gia sư AI + Chẩn đoán chuyên sâu & Credit ưu đãi'
+    : isTeacherAccount
+    ? 'Gói miễn phí: tối đa 1 lớp, 40 HS/lớp, 3 đề thủ công, 5 phiếu OMR dùng thử'
+    : (subQuota.planDesc || 'Nội dung miễn phí · Lộ trình & Sổ tay lỗi sai miễn phí');
+  const durationLabel = (isTeacher || ent.isStudentVip) && pro?.expiry
+    ? `${pro.daysLeft != null ? `${pro.daysLeft} ngày` : 'Đang hoạt động'} (đến ${new Date(pro.expiry).toLocaleDateString('vi-VN')})`
+    : ent.isStudentVip
+    ? 'Đang hoạt động'
     : (subQuota.durationLabel || 'Trọn đời');
   const examAccessLabel = isTeacher
-    ? 'Không giới hạn tạo & giao đề thi cho toàn bộ học sinh'
-    : effectivePlanName === 'VIP'
+    ? 'Không giới hạn lớp học, đề thi AI, OMR & Toàn bộ Phòng thi ảo VIP'
+    : ent.isStudentVip
     ? 'Mở khóa 100% đề VIP, PRO, FREE mọi kỳ thi'
-    : effectivePlanName === 'PRO'
-    ? 'Toàn bộ đề FREE + PRO của 6 kỳ thi'
-    : (subQuota.examAccessLabel || 'Đề cơ bản của mọi kỳ thi');
-  const heartsCount = isTeacher || effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.hearts || 5);
-  const maxHeartsCount = isTeacher || effectivePlanName === 'VIP' ? 99 : effectivePlanName === 'PRO' ? 10 : (subQuota.maxHearts || 5);
+    : isTeacherAccount
+    ? 'Giới hạn cơ bản Free · Phòng thi ảo FREE (5 tim/ngày)'
+    : (subQuota.examAccessLabel || 'Đề FREE (5 tim/ngày) · Nâng cấp để mở PRO & VIP');
+  const heartsCount = ent.hasVipAccess ? 99 : (subQuota.hearts || 5);
+  const maxHeartsCount = ent.maxHearts || 5;
 
   const MAIN_TABS = [
     { id: 'overview', label: 'Tổng quan', icon: PfSvg.crown, mascot: '/img/elec/elec-hello.png' },
@@ -925,15 +932,15 @@ export default function ProfilePage({ credits: propCredits }) {
 
           <div className="pf-m-user-info">
             <div className="pf-m-name-row">
-              <span className="pf-m-name">{display || 'Học sinh ELEC AI'}</span>
-              {(isVip || pro.isPro) && <VerifiedBadge isVip size={18} />}
-              <span className={`pf-m-badge-pill ${isVip || pro.isPro ? 'vip' : 'free'}`}>
-                {isTeacher ? 'GIÁO VIÊN PRO' : effectivePlanName}
+              <span className="pf-m-name">{display || (isTeacherAccount ? 'Giáo viên ELEC AI' : 'Học sinh ELEC AI')}</span>
+              {ent.hasVipAccess && <VerifiedBadge isVip size={18} />}
+              <span className={`pf-m-badge-pill ${ent.hasVipAccess ? 'vip' : 'free'}`}>
+                {effectivePlanName}
               </span>
             </div>
 
             <div className="pf-m-school">
-              <span>{isTeacher ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}</span>
+              <span>{isTeacherAccount ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}</span>
               <span>•</span>
               <span>Tham gia {daysJoined} ngày</span>
             </div>
@@ -954,7 +961,7 @@ export default function ProfilePage({ credits: propCredits }) {
         </div>
 
         <div className="pf-m-header-actions">
-          {isTeacher && (
+          {isTeacherAccount && (
             <a
               href="#classroom"
               className="pf-m-btn primary"
@@ -966,7 +973,7 @@ export default function ProfilePage({ credits: propCredits }) {
           )}
           <button
             type="button"
-            className={'pf-m-btn' + (isTeacher ? '' : ' primary')}
+            className={'pf-m-btn' + (isTeacherAccount ? '' : ' primary')}
             onClick={() => selectTab('settings')}
           >
             {PfSvg.edit}
@@ -1125,7 +1132,7 @@ export default function ProfilePage({ credits: propCredits }) {
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {isTeacher && (
+                {isTeacherAccount && (
                   <a
                     href="#classroom"
                     className="ns9-sub-upgrade-btn"
@@ -1137,10 +1144,10 @@ export default function ProfilePage({ credits: propCredits }) {
                 <button
                   type="button"
                   className="ns9-sub-upgrade-btn"
-                  style={isTeacher ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
+                  style={isTeacherAccount ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
                   onClick={() => selectTab('vip')}
                 >
-                  {isTeacher ? 'Gia hạn / Nâng cấp gói' : 'Nâng cấp gói'} <span>→</span>
+                  {isTeacher ? 'Gia hạn / Nâng cấp Giáo viên VIP' : isTeacherAccount ? 'Nâng cấp Giáo viên VIP (399k/tháng)' : 'Nâng cấp gói'} <span>→</span>
                 </button>
               </div>
             </div>
@@ -1237,7 +1244,7 @@ export default function ProfilePage({ credits: propCredits }) {
           <article className="ns9-sub-card ns9-sub-code">
             <h2 className="ns9-sub-card-title">Mã kích hoạt</h2>
             <p className="ns9-sub-code-sub">
-              Mỗi lượt nhập mã tặng ngay <b>+{POINTS_PER_CODE_ENTRY} điểm</b> (Thử <b>ELEC15</b>, <b>ELECPRO</b>, <b>ELECVIP</b>)
+              Nhập mã quà tặng hoặc key kích hoạt từ Admin (Ví dụ mã thưởng Credit: <b>ELEC15</b>)
             </p>
 
             <form className="ns9-sub-code-form" onSubmit={handleRedeemCode}>
@@ -1245,7 +1252,7 @@ export default function ProfilePage({ credits: propCredits }) {
                 type="text"
                 value={activationInput}
                 onChange={(e) => setActivationInput(e.target.value)}
-                placeholder="Nhập mã kích hoạt (+15 điểm)"
+                placeholder="Nhập mã quà tặng hoặc key kích hoạt"
                 aria-label="Nhập mã kích hoạt"
               />
               <button type="submit">Kiểm tra</button>
@@ -1260,15 +1267,16 @@ export default function ProfilePage({ credits: propCredits }) {
          ============================================================ */}
       {tab === 'vip' && (
         <div style={{ maxWidth: 1200, width: '100%', minWidth: 0, boxSizing: 'border-box', margin: '0 auto', padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {isTeacher && (
+          {isTeacherAccount && (
             <div className="pf-m-card">
               <TeacherProPanel />
             </div>
           )}
           <SubscriptionTiers
+            lockedRole={isTeacherAccount ? 'teacher' : 'student'}
             onUpgrade={(pkg) => {
               window.dispatchEvent(new CustomEvent('elec-close-credit-topup'));
-              setCustomPkg(pkg);
+              setCustomPkg({ ...pkg, lockedRole: isTeacherAccount ? 'teacher' : 'student' });
               setShowPayment(true);
             }}
           />
@@ -1604,6 +1612,7 @@ export default function ProfilePage({ credits: propCredits }) {
             <PaymentPanel
               identCode={identCode}
               userId={uid}
+              lockedRole={isTeacherAccount ? 'teacher' : 'student'}
               onPaymentSuccess={handlePaymentSuccess}
               onCheckStatus={handleCheckPaymentStatus}
               onClose={() => setShowPayment(false)}

@@ -474,17 +474,17 @@ export default function TeacherSimulatorHub({
           {/* 1. NHẬP ĐỀ GỐC */}
           <section
             style={{
-              border: '1px solid var(--line, #e2e8f0)',
+              border: '1px solid var(--t-border, var(--line, #e2e8f0))',
               borderRadius: 12,
               padding: '14px 16px',
-              background: 'var(--bg-soft, #f8fafc)',
+              background: 'var(--t-surface-2, var(--surface-2, #f8fafc))',
             }}
           >
             <div
               style={{
                 fontSize: '0.8rem',
                 fontWeight: 900,
-                color: '#3730a3',
+                color: 'var(--t-accent, #3730a3)',
                 marginBottom: 10,
                 letterSpacing: '0.02em',
               }}
@@ -685,17 +685,17 @@ export default function TeacherSimulatorHub({
           {/* 2. THÔNG TIN TRANG ĐẦU CỦA ĐỀ THI */}
           <section
             style={{
-              border: '1px solid var(--line, #e2e8f0)',
+              border: '1px solid var(--t-border, var(--line, #e2e8f0))',
               borderRadius: 12,
               padding: '14px 16px',
-              background: 'var(--bg-soft, #f8fafc)',
+              background: 'var(--t-surface-2, var(--surface-2, #f8fafc))',
             }}
           >
             <div
               style={{
                 fontSize: '0.8rem',
                 fontWeight: 900,
-                color: '#3730a3',
+                color: 'var(--t-accent, #3730a3)',
                 marginBottom: 10,
                 letterSpacing: '0.02em',
               }}
@@ -851,17 +851,17 @@ export default function TeacherSimulatorHub({
           {/* 3. CẤU HÌNH TRỘN */}
           <section
             style={{
-              border: '1px solid var(--line, #e2e8f0)',
+              border: '1px solid var(--t-border, var(--line, #e2e8f0))',
               borderRadius: 12,
               padding: '14px 16px',
-              background: 'var(--bg-soft, #f8fafc)',
+              background: 'var(--t-surface-2, var(--surface-2, #f8fafc))',
             }}
           >
             <div
               style={{
                 fontSize: '0.8rem',
                 fontWeight: 900,
-                color: '#3730a3',
+                color: 'var(--t-accent, #3730a3)',
                 marginBottom: 10,
                 letterSpacing: '0.02em',
               }}
@@ -955,10 +955,10 @@ export default function TeacherSimulatorHub({
           {/* 4. SỐ LƯỢNG MÃ ĐỀ CẦN TẠO */}
           <section
             style={{
-              border: '1px solid var(--line, #e2e8f0)',
+              border: '1px solid var(--t-border, var(--line, #e2e8f0))',
               borderRadius: 12,
               padding: '14px 16px',
-              background: 'var(--bg-soft, #f8fafc)',
+              background: 'var(--t-surface-2, var(--surface-2, #f8fafc))',
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
@@ -967,7 +967,7 @@ export default function TeacherSimulatorHub({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#3730a3' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--t-accent, #3730a3)' }}>
                 4. SỐ LƯỢNG MÃ ĐỀ CẦN TẠO:
               </span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

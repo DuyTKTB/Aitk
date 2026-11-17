@@ -10,6 +10,16 @@
    ============================================================ */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import {
+  resolveEntitlements,
+  FREE_TEACHER_LIMITS,
+  TEACHER_VIP_PRICE_TEXT,
+  getOmrTrialUsed,
+  incrementOmrTrialUsed,
+  getOmrTrialRemaining,
+} from '../../lib/entitlements.js';
+import TeacherVipLock from './TeacherVipLock.jsx';
 import { readSheet, fileToImageData } from '../../lib/omr.js';
 import {
   measureImageQuality, duplicateSbdIds, duplicateSbdMessage,
@@ -62,8 +72,12 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 /* ============================================================
    MAIN COMPONENT: PaperGrading
    ============================================================ */
-export default function PaperGrading({ classes = [], exams = [] }) {
+export default function PaperGrading({ classes = [], exams = [], isTeacherVip = undefined, onRequestUpgrade = null }) {
   const { user } = useAuth();
+  const pro = useTeacherPro();
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // list | setup | grade | analytics
@@ -74,6 +88,23 @@ export default function PaperGrading({ classes = [], exams = [] }) {
   const [paperClassFilter, setPaperClassFilter] = useState('all');
   const [confirmDeletePaper, setConfirmDeletePaper] = useState(null);
   const toastTimer = useRef(null);
+
+  const papersGradedFloor = useMemo(
+    () => papers.reduce((sum, p) => sum + Number(p.stats?.count || p.results?.length || 0), 0),
+    [papers]
+  );
+  const [omrUsed, setOmrUsed] = useState(() => getOmrTrialUsed(user?.uid, 0));
+  useEffect(() => {
+    setOmrUsed(getOmrTrialUsed(user?.uid, papersGradedFloor));
+  }, [user?.uid, papersGradedFloor]);
+  const omrRemaining = vipUnlocked
+    ? Infinity
+    : getOmrTrialRemaining(user?.uid, false, papersGradedFloor);
+  const handleOmrUsed = useCallback((delta = 1) => {
+    const next = incrementOmrTrialUsed(user?.uid, delta, papersGradedFloor);
+    setOmrUsed(next);
+    return next;
+  }, [user?.uid, papersGradedFloor]);
 
   const say = useCallback((text, tone = 'success', opts = {}) => {
     setToast({ text, tone, onUndo: opts.onUndo || null, undoLabel: opts.undoLabel || 'Hoàn tác' });
@@ -389,20 +420,46 @@ export default function PaperGrading({ classes = [], exams = [] }) {
           classInfo={classOf(current.classId)}
           onBack={() => { setView('list'); refresh(); }}
           onEditSetup={() => setView('setup')}
-          onOpenAnalytics={() => setView('analytics')}
+          onOpenAnalytics={() => {
+            if (!vipUnlocked) {
+              say(`Phổ điểm & Chẩn đoán AI thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`, 'error');
+              setView('analytics');
+              return;
+            }
+            setView('analytics');
+          }}
           onPrintSheet={handlePrintSheet}
           onPaperChange={(patch) => setCurrent((c) => ({ ...c, ...patch }))}
           say={say}
+          vipUnlocked={vipUnlocked}
+          omrUsed={omrUsed}
+          omrRemaining={omrRemaining}
+          maxOmrTrial={FREE_TEACHER_LIMITS.maxOmrTrialSheets}
+          onOmrUsed={handleOmrUsed}
+          onRequestUpgrade={onRequestUpgrade}
         />
       )}
 
       {/* 4. VIEW PHỔ ĐIỂM & ELEC AI CHẨN ĐOÁN (ANALYTICS) */}
       {view === 'analytics' && current && (
-        <PaperAnalyticsView
-          exam={current}
-          onBack={() => setView('grade')}
-          say={say}
-        />
+        vipUnlocked ? (
+          <PaperAnalyticsView
+            exam={current}
+            onBack={() => setView('grade')}
+            say={say}
+          />
+        ) : (
+          <div style={{ padding: '0.5rem 0' }}>
+            <button type="button" className="vt-btn sm" onClick={() => setView('grade')} style={{ marginBottom: '0.75rem' }}>
+              ← Quay lại phiên chấm
+            </button>
+            <TeacherVipLock
+              title="Phổ điểm & AI Chẩn đoán bài chấm phiếu OMR"
+              description="Phân tích phân bố điểm tự động, liệt kê các câu sai nhiều nhất và gợi ý AI ôn tập cho từng nhóm học sinh."
+              onUpgrade={onRequestUpgrade}
+            />
+          </div>
+        )
       )}
     </div>
   );
@@ -748,6 +805,8 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
    ============================================================ */
 function PaperGrade({
   paper, classInfo, onBack, onEditSetup, onOpenAnalytics, onPrintSheet, say,
+  vipUnlocked = true, omrUsed = 0, omrRemaining = Infinity, maxOmrTrial = FREE_TEACHER_LIMITS.maxOmrTrialSheets,
+  onOmrUsed = null, onRequestUpgrade = null,
 }) {
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -846,14 +905,32 @@ function PaperGrade({
     };
   }, []);
 
+  const triggerOmrVipUpgrade = useCallback((customMsg) => {
+    const msg = customMsg || `Bạn đã dùng hết ${maxOmrTrial} phiếu chấm OMR thử nghiệm miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để chấm không giới hạn!`;
+    say(msg, 'error');
+    onRequestUpgrade?.(msg);
+  }, [maxOmrTrial, onRequestUpgrade, say]);
+
   // Xử lý nạp nhiều file ảnh
   const processFiles = async (files) => {
-    const list = [...files].filter((f) => f.type.startsWith('image/'));
+    let list = [...files].filter((f) => f.type.startsWith('image/'));
     if (!list.length) { say('Chỉ nhận file ảnh (JPG, PNG…).', 'error'); return; }
     if (!codeList.length) { say('Bài chấm chưa có đáp án.', 'error'); return; }
+    if (!vipUnlocked) {
+      if (omrRemaining <= 0) {
+        if (fileRef.current) fileRef.current.value = '';
+        triggerOmrVipUpgrade();
+        return;
+      }
+      if (list.length > omrRemaining) {
+        list = list.slice(0, omrRemaining);
+        say(`Gói Free chỉ còn ${omrRemaining}/${maxOmrTrial} phiếu OMR miễn phí — chỉ quét ${omrRemaining} ảnh đầu.`, 'warning');
+      }
+    }
     setBusy(true);
     setProgress({ done: 0, total: list.length });
     sound.ding();
+    let successReads = 0;
 
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
@@ -869,6 +946,7 @@ function PaperGrade({
         if (!r.ok) {
           item = { id, fileName: f.name, url, status: 'error', error: r.error, sbd: '', code: '', read: null, issues: [], needsReview: true };
         } else {
+          successReads += 1;
           let code = r.code;
           if (!keys[code] && codeList.length === 1) code = codeList[0];
           const codeKnown = !!keys[code];
@@ -891,6 +969,9 @@ function PaperGrade({
       setProgress({ done: i + 1, total: list.length });
       await tick();
     }
+    if (!vipUnlocked && successReads > 0) {
+      onOmrUsed?.(successReads);
+    }
     setBusy(false);
     if (fileRef.current) fileRef.current.value = '';
     sound.cheer();
@@ -899,6 +980,10 @@ function PaperGrade({
 
   /* ============ CAMERA LIVE SCANNER ============ */
   const startCamera = async () => {
+    if (!vipUnlocked && omrRemaining <= 0) {
+      triggerOmrVipUpgrade();
+      return;
+    }
     setCameraOpen(true);
     setCameraLoading(true);
     setCameraFeedback(null);
@@ -941,6 +1026,11 @@ function PaperGrade({
   }, []);
 
   const captureAndScan = async () => {
+    if (!vipUnlocked && omrRemaining <= 0) {
+      stopCamera();
+      triggerOmrVipUpgrade();
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
 
@@ -984,6 +1074,13 @@ function PaperGrade({
 
       /* Giữ cả phiếu trùng SBD, chỉ đánh dấu — xem chú thích ở luồng chấm ảnh hàng loạt */
       setItems((cur) => [...cur, item]);
+      if (!vipUnlocked) {
+        const leftAfter = Math.max(0, omrRemaining - 1);
+        onOmrUsed?.(1);
+        if (leftAfter === 0) {
+          setTimeout(() => { stopCamera(); }, 950);
+        }
+      }
 
       const key = codeKnown ? keys[code] : null;
       const grade = key ? gradeSheet(read, key, counts, scoring) : null;
@@ -1112,6 +1209,10 @@ function PaperGrade({
   };
 
   const handleExport = async () => {
+    if (!vipUnlocked) {
+      triggerOmrVipUpgrade(`Xuất bảng điểm chấm phiếu OMR ra Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
     if (!okRows.length) return;
     try {
       const sortedOk = okRows.slice().sort((a, b) => String(a.sbd).localeCompare(String(b.sbd)));
@@ -1184,15 +1285,56 @@ function PaperGrade({
       </header>
 
       {/* KHU VỰC THAO TÁC QUÉT & TẢI ẢNH */}
+      {!vipUnlocked && omrRemaining <= 0 ? (
+        <div style={{ margin: '0.75rem 0' }}>
+          <TeacherVipLock
+            compact
+            title={`Đã dùng hết ${omrUsed}/${maxOmrTrial} phiếu chấm OMR miễn phí`}
+            quotaText="Hết lượt dùng thử Free"
+            description="Nâng cấp Giáo viên VIP để quét Camera & tải ảnh chấm OMR không giới hạn, kèm xuất Excel và Phổ điểm AI."
+            onUpgrade={onRequestUpgrade}
+          />
+        </div>
+      ) : null}
+
       <div className="pg-drop">
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => processFiles(e.target.files)} />
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <button type="button" className="vt-btn primary" onClick={startCamera}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="vt-btn primary"
+            onClick={startCamera}
+            disabled={!vipUnlocked && omrRemaining <= 0}
+          >
             <IcoCamera size={15} /> Mở Camera Chấm Trực Tiếp
           </button>
-          <button type="button" className="vt-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
+          <button
+            type="button"
+            className="vt-btn"
+            onClick={() => {
+              if (!vipUnlocked && omrRemaining <= 0) { triggerOmrVipUpgrade(); return; }
+              fileRef.current?.click();
+            }}
+            disabled={busy || (!vipUnlocked && omrRemaining <= 0)}
+          >
             <IcoScan size={15} /> {busy ? `Đang đọc ${progress.done}/${progress.total}…` : 'Tải / Chụp Ảnh Phiếu'}
           </button>
+          {!vipUnlocked && (
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: 999,
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                background: omrRemaining > 0 ? 'rgba(59,130,246,0.12)' : 'rgba(239,68,68,0.12)',
+                color: omrRemaining > 0 ? '#1d4ed8' : '#dc2626',
+              }}
+            >
+              {omrRemaining > 0
+                ? `Dùng thử Free: còn ${omrRemaining}/${maxOmrTrial} phiếu`
+                : `Đã dùng hết ${omrUsed}/${maxOmrTrial} phiếu Free`}
+            </span>
+          )}
         </div>
         <span className="pg-note">
           Hỗ trợ chụp trực tiếp bằng Camera hoặc chọn nhiều file ảnh. Hệ thống tự động căn chỉnh và xử lý 100% trên thiết bị.

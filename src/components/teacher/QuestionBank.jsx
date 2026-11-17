@@ -16,6 +16,17 @@
    ============================================================ */
 import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import {
+  resolveEntitlements,
+  FREE_TEACHER_LIMITS,
+  TEACHER_VIP_PRICE_TEXT,
+  TEACHER_TRIAL_QUOTA_EVENT,
+  getWordImportTrialRemaining,
+  getManualEntryTrialRemaining,
+  incrementManualEntryTrialUsed,
+} from '../../lib/entitlements.js';
+import TeacherVipLock from './TeacherVipLock.jsx';
 import MathText from '../MathText.jsx';
 import QuestionBankForm from './QuestionBankForm.jsx';
 import ExamImporter from './ExamImporter.jsx';
@@ -452,10 +463,25 @@ function parseQuickImportText(rawText, defaultSubject = 'Hóa học', defaultGra
    ============================================================ */
 export default function QuestionBank({
   classes = [],
+  isTeacherVip = undefined,
+  onRequestUpgrade = null,
   onSoftExamCreated,
   onOpenAiStudio,
 } = {}) {
   const { user } = useAuth();
+  const pro = useTeacherPro();
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+  const [trialTick, setTrialTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setTrialTick((n) => n + 1);
+    window.addEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+    return () => window.removeEventListener(TEACHER_TRIAL_QUOTA_EVENT, onChange);
+  }, []);
+  const wordTrialLeft = getWordImportTrialRemaining(user?.uid, vipUnlocked);
+  const manualTrialLeft = getManualEntryTrialRemaining(user?.uid, vipUnlocked);
+  void trialTick;
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -643,6 +669,10 @@ export default function QuestionBank({
         searchInputRef.current?.focus();
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
+        if (bankLimitReached) {
+          promptVipBank(`Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`);
+          return;
+        }
         setEditing(null);
         setShowForm(true);
       }
@@ -936,7 +966,22 @@ export default function QuestionBank({
   /* ============================================================
      THÊM / SỬA / XÓA KÈM HỘP XÁC NHẬN & HOÀN TÁC (UNDO 6S)
      ============================================================ */
+  const bankLimitReached = !vipUnlocked && list.length >= FREE_TEACHER_LIMITS.maxBankQuestions;
+  const promptVipBank = useCallback((msg = `Tính năng AI & Nhập/Xuất hàng loạt thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`) => {
+    say(msg);
+    onRequestUpgrade?.(msg);
+  }, [onRequestUpgrade]);
+
   const executeSaveQuestion = async (data, opts = {}) => {
+    if (!editing && !vipUnlocked && (list.length >= FREE_TEACHER_LIMITS.maxBankQuestions || getManualEntryTrialRemaining(user?.uid, false) <= 0)) {
+      const remManual = getManualEntryTrialRemaining(user?.uid, false);
+      promptVipBank(
+        remManual <= 0
+          ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để thêm không giới hạn.`
+          : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`
+      );
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
@@ -944,6 +989,7 @@ export default function QuestionBank({
         say('Đã cập nhật câu hỏi');
       } else {
         const created = await addQuestion({ ...data, teacherId: user.uid });
+        if (!vipUnlocked) incrementManualEntryTrialUsed(user?.uid, 1);
         if (created?.id) setActiveId(created.id);
         say('Đã thêm câu hỏi vào ngân hàng');
       }
@@ -1396,6 +1442,11 @@ export default function QuestionBank({
   const stripOptPrefix = (s) => String(s || '').trim().replace(/^[A-Da-d][.):\s]+/, '').trim();
 
   const callBankAI = async ({ prompt, system, cost = 1, reason = 'AI Ngân hàng câu hỏi' }) => {
+    if (!vipUnlocked) {
+      const msg = `Công cụ AI trong Ngân hàng câu hỏi dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      onRequestUpgrade?.(msg);
+      throw new Error(msg);
+    }
     const res = await runWithCredit(
       { userId: user?.uid, cost, reason },
       () => askAI(prompt, null, null, {
@@ -1813,6 +1864,10 @@ Trả về DUY NHẤT JSON:
      NHẬP / XUẤT ĐA ĐỊNH DẠNG (CSV, WORD, PDF, EXAM IMPORTER)
      ============================================================ */
   const handleExportCsv = async () => {
+    if (!vipUnlocked) {
+      promptVipBank(`Xuất Ngân hàng câu hỏi ra Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
     if (!filtered.length) return;
     try {
       const rows = filtered.map((q, idx) => {
@@ -1881,6 +1936,10 @@ Trả về DUY NHẤT JSON:
   };
 
   const handleExportWord = async () => {
+    if (!vipUnlocked) {
+      promptVipBank(`Xuất đề Word (.docx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
     if (filtered.length === 0) return;
     setShowExportMenu(false);
     say('Đang tạo file Word (.docx)...');
@@ -1900,6 +1959,10 @@ Trả về DUY NHẤT JSON:
   };
 
   const handleExportPdf = async () => {
+    if (!vipUnlocked) {
+      promptVipBank(`Xuất bản in PDF thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
     if (filtered.length === 0) return;
     setShowExportMenu(false);
     setPdfExporting(true);
@@ -1921,6 +1984,20 @@ Trả về DUY NHẤT JSON:
   };
 
   const handleImportToBank = async (qs) => {
+    if (!vipUnlocked) {
+      const remainingCap = Math.max(0, FREE_TEACHER_LIMITS.maxBankQuestions - list.length);
+      if (remainingCap <= 0) {
+        promptVipBank(`Ngân hàng miễn phí đã đạt giới hạn ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`);
+        return;
+      }
+      const trimmed = (qs || []).slice(0, remainingCap);
+      const res = await addQuestionsBatch({ teacherId: user.uid, questions: trimmed });
+      const truncatedMsg = qs.length > remainingCap ? ` (Free tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu)` : '';
+      say(`Đã lưu ${res.count} câu từ Word vào ngân hàng${truncatedMsg}`);
+      setShowImporter(false);
+      await refresh();
+      return;
+    }
     const res = await addQuestionsBatch({ teacherId: user.uid, questions: qs });
     say(`Đã lưu ${res.count} câu vào ngân hàng` + (res.skipped ? ` (bỏ trùng ${res.skipped})` : ''));
     setShowImporter(false);
@@ -1972,6 +2049,10 @@ Trả về DUY NHẤT JSON:
   };
 
   const handleSaveQuickImportRows = async () => {
+    if (!vipUnlocked) {
+      promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
     const validSelected = quickImportRows.filter((r) => r.selected && r.status !== 'error');
     if (validSelected.length === 0) {
       say('Không có dòng hợp lệ nào được chọn để lưu');
@@ -1997,6 +2078,10 @@ Trả về DUY NHẤT JSON:
 
   /* Mở trình tạo câu hỏi AI khi bấm "Sinh đề bằng AI" */
   const handleTriggerAiStudio = () => {
+    if (!vipUnlocked) {
+      promptVipBank(`AI sinh câu hỏi theo ma trận thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      return;
+    }
     if (typeof onOpenAiStudio === 'function') {
       onOpenAiStudio();
     } else {
@@ -2078,19 +2163,25 @@ Trả về DUY NHẤT JSON:
           <button
             type="button"
             className="vt-btn sm"
-            onClick={() => setShowQuickImport(true)}
+            onClick={() => (vipUnlocked ? setShowQuickImport(true) : promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`))}
             title="Nhập nhanh từ bảng Excel, CSV hoặc văn bản có kiểm tra lỗi từng dòng"
           >
-            <IcoUpload size={15} /> Nhập CSV / Excel
+            <IcoUpload size={15} /> Nhập CSV / Excel {!vipUnlocked ? '(VIP)' : ''}
           </button>
 
           <button
             type="button"
             className="vt-btn sm"
-            onClick={() => setShowImporter(true)}
-            title="Tách câu hỏi từ file PDF, Word, Ảnh"
+            onClick={() => {
+              if (!vipUnlocked && wordTrialLeft <= 0) {
+                promptVipBank(`Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/10 lượt nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập không giới hạn.`);
+                return;
+              }
+              setShowImporter(true);
+            }}
+            title="Nhập đề từ file Word (.docx)"
           >
-            <IcoUpload size={15} /> Nhập đề từ file
+            <IcoUpload size={15} /> Nhập Word {!vipUnlocked ? `(${wordTrialLeft}/10)` : ''}
           </button>
 
           <button
@@ -2098,7 +2189,7 @@ Trả về DUY NHẤT JSON:
             className="vt-btn sm"
             onClick={handleTriggerAiStudio}
           >
-            <IcoSparkles size={15} /> Sinh bằng AI
+            <IcoSparkles size={15} /> Sinh bằng AI {!vipUnlocked ? '(VIP)' : ''}
           </button>
 
           <button
@@ -2114,12 +2205,35 @@ Trả về DUY NHẤT JSON:
           <button
             type="button"
             className="vt-btn sm primary"
-            onClick={() => { setEditing(null); setShowForm(true); }}
+            onClick={() => {
+              if (bankLimitReached || (!vipUnlocked && manualTrialLeft <= 0)) {
+                promptVipBank(
+                  manualTrialLeft <= 0
+                    ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/30 lượt nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để thêm không giới hạn.`
+                    : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`
+                );
+                return;
+              }
+              setEditing(null);
+              setShowForm(true);
+            }}
           >
-            <IcoPlus size={15} /> Thêm câu hỏi
+            <IcoPlus size={15} /> Thêm câu hỏi {!vipUnlocked ? `(${manualTrialLeft}/30)` : ''}
           </button>
         </div>
       </header>
+
+      {!vipUnlocked && (
+        <div style={{ margin: '0.65rem 0' }}>
+          <TeacherVipLock
+            compact
+            title={`Ngân hàng Miễn phí (${list.length}/${FREE_TEACHER_LIMITS.maxBankQuestions} câu lưu)`}
+            quotaText={`Word: ${wordTrialLeft}/10 · Thủ công: ${manualTrialLeft}/30`}
+            description="Gói Free được dùng thử 10 lần nhập file Word (.docx) & 30 lần nhập thủ công. Nâng cấp Giáo viên VIP để mở khóa AI, CSV/Excel & lưu không giới hạn."
+            onUpgrade={onRequestUpgrade}
+          />
+        </div>
+      )}
 
       {/* ============ KHUNG THỐNG KÊ NGÂN HÀNG (TOGGLE) ============ */}
       {showStatsPanel && (
@@ -2748,23 +2862,40 @@ Trả về DUY NHẤT JSON:
                     <button
                       type="button"
                       className="vt-btn primary"
-                      onClick={() => { setEditing(null); setShowForm(true); }}
+                      onClick={() => {
+                        if (bankLimitReached || (!vipUnlocked && manualTrialLeft <= 0)) {
+                          promptVipBank(
+                            manualTrialLeft <= 0
+                              ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/30 lượt nhập thủ công miễn phí.`
+                              : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`
+                          );
+                          return;
+                        }
+                        setEditing(null);
+                        setShowForm(true);
+                      }}
                     >
-                      <IcoPlus size={15} /> Thêm câu hỏi đầu tiên
+                      <IcoPlus size={15} /> Thêm câu hỏi đầu tiên {!vipUnlocked ? `(${manualTrialLeft}/30)` : ''}
                     </button>
                     <button
                       type="button"
                       className="vt-btn"
-                      onClick={() => setShowImporter(true)}
+                      onClick={() => {
+                        if (!vipUnlocked && wordTrialLeft <= 0) {
+                          promptVipBank(`Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/10 lượt nhập file Word miễn phí.`);
+                          return;
+                        }
+                        setShowImporter(true);
+                      }}
                     >
-                      <IcoUpload size={15} /> Nhập đề từ file
+                      <IcoUpload size={15} /> Nhập file Word {!vipUnlocked ? `(${wordTrialLeft}/10)` : ''}
                     </button>
                     <button
                       type="button"
                       className="vt-btn"
                       onClick={handleTriggerAiStudio}
                     >
-                      <IcoRocket size={15} /> Sinh đề bằng AI
+                      <IcoRocket size={15} /> Sinh đề bằng AI {!vipUnlocked ? '(VIP)' : ''}
                     </button>
                   </>
                 ) : (
@@ -3298,6 +3429,16 @@ Trả về DUY NHẤT JSON:
                 {/* TAB 3: TRỢ LÝ AI (4 TÁC VỤ) */}
                 {rightTab === 'ai' && (
                   <div className="qb-ai-pane">
+                    {!vipUnlocked && (
+                      <div style={{ marginBottom: 12 }}>
+                        <TeacherVipLock
+                          compact
+                          title="4 Công cụ AI Ngân hàng câu hỏi thuộc Giáo viên VIP"
+                          description="Nâng cấp Giáo viên VIP để sinh câu tương tự, viết lời giải từng bước, phân loại Bloom/chuyên đề và thẩm định đáp án bằng AI."
+                          onUpgrade={onRequestUpgrade}
+                        />
+                      </div>
+                    )}
                     <p className="qb-ai-intro">
                       Trợ lý AI phân tích câu hỏi đang chọn để hỗ trợ biên tập, kiểm định đáp án và mở rộng ngân hàng đề:
                     </p>
@@ -3311,7 +3452,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoSparkles size={18} />
                         <div>
-                          <b>Sinh câu tương tự (1 credit)</b>
+                          <b>Sinh câu tương tự {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
                           <small>Tạo biến thể mới cùng chuyên đề &amp; đảo phương án</small>
                         </div>
                       </button>
@@ -3324,7 +3465,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoFileText size={18} />
                         <div>
-                          <b>Viết lời giải chi tiết (1 credit)</b>
+                          <b>Viết lời giải chi tiết {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
                           <small>Tự động phân tích từng bước cho đáp án đúng</small>
                         </div>
                       </button>
@@ -3337,7 +3478,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoTag size={18} />
                         <div>
-                          <b>Gợi ý độ khó &amp; chuyên đề (1 credit)</b>
+                          <b>Gợi ý độ khó &amp; chuyên đề {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
                           <small>Nhận diện mức độ nhận thức &amp; chủ đề kiến thức</small>
                         </div>
                       </button>
@@ -3350,7 +3491,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoCheck size={18} />
                         <div>
-                          <b>Kiểm tra đáp án sai (1 credit)</b>
+                          <b>Kiểm tra đáp án sai {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
                           <small>Rà soát phương án trùng, thiếu hoặc sai khoa học</small>
                         </div>
                       </button>
@@ -3829,6 +3970,8 @@ Trả về DUY NHẤT JSON:
           classes={classes}
           defaultSubject={filterSubject}
           defaultGrade={filterGrade}
+          isTeacherVip={vipUnlocked}
+          onRequestUpgrade={onRequestUpgrade}
         />
       )}
 

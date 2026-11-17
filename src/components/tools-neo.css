@@ -25,12 +25,13 @@
 .tn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
 .tn-card{position:relative;display:flex;flex-direction:column;gap:.7rem;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--glass);overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
 .tn-card:hover{transform:translateY(-3px);border-color:var(--acc);box-shadow:0 14px 34px -12px color-mix(in srgb,var(--acc) 45%,transparent)}
-.tn-ico-wrap{width:100%;height:140px;overflow:hidden;background:var(--soft);display:grid;place-items:center}
-.tn-cover{width:100%;height:100%;object-fit:cover;object-position:center}
-.tn-cover-skeleton{width:100%;height:100%;background:linear-gradient(90deg,var(--soft),var(--glass),var(--soft));background-size:200% 100%;animation:shimmer 1.5s infinite}
+.tn-ico-wrap{position:relative;width:100%;height:140px;overflow:hidden;background:var(--soft);display:grid;place-items:center}
+.tn-cover{position:relative;z-index:2;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity .25s ease}
+.tn-cover.loaded{opacity:1}
+.tn-cover-skeleton{position:absolute;inset:0;z-index:1;width:100%;height:100%;background:linear-gradient(90deg,var(--soft),var(--glass),var(--soft));background-size:200% 100%;animation:shimmer 1.5s infinite;pointer-events:none}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .tn-card-content{padding:1.1rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
-.tn-ico{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 50%,#7c3aed));color:#fff;font-weight:700;font-size:.85rem;box-shadow:0 0 18px color-mix(in srgb,var(--acc) 45%,transparent)}
+.tn-ico{position:relative;z-index:2;display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 50%,#7c3aed));color:#fff;font-weight:700;font-size:.85rem;box-shadow:0 0 18px color-mix(in srgb,var(--acc) 45%,transparent)}
 .tn-card h3{margin:0;font-size:.92rem;line-height:1.35;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;padding:0}
 .tn-badge{padding:.12rem .45rem;border-radius:4px;font-size:.55rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#fff}
 .tn-badge.hot{background:linear-gradient(135deg,#ff4d1a,#ff8a1a)}
@@ -779,4 +780,36 @@ body.page-tools .petw {
   font-size: 0.82rem;
   margin: 0;
   line-height: 1.5;
+}
+.tn-more {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0 0.5rem;
+}
+.tn-more button,
+.tn-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  color: var(--ink);
+  font: 700 0.78rem 'Be Vietnam Pro', 'Inter', sans-serif;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.tn-more button:hover,
+.tn-more-btn:hover {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 14%, var(--glass));
+  transform: translateY(-1px);
+}
+[data-theme='dark'] .tn-more button,
+[data-theme='dark'] .tn-more-btn {
+  background: rgba(30, 41, 59, 0.85);
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.28);
 }

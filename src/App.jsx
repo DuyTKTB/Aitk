@@ -90,7 +90,12 @@ const AuthActionPage = lazy(() => import('./components/AuthActionPage.jsx'));
 import { useAuth } from './hooks/useAuth.jsx';
 import { useTeacherPro } from './hooks/useTeacherPro.js';
 import { useSeoHead, ROUTE_SEO } from './hooks/useSeoHead.js';
-import { getUserRole } from './lib/userRole.js';
+import {
+  getUserRole,
+  peekPostAuthRedirect,
+  consumePostAuthRedirect,
+  clearPostAuthRedirect,
+} from './lib/userRole.js';
 import { getUserProfile } from './lib/userProfileService.js';
 import { getCredits, onCreditsChange } from './lib/creditService.js';
 import { setExamAiUserId } from './lib/examAiUtils.js';
@@ -329,6 +334,19 @@ export default function App() {
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
 
+  const effectiveRole =
+    pro?.isPro && pro?.isTeacherPro !== false
+      ? 'teacher'
+      : (userRole === 'teacher' || getUserRole(user) === 'teacher' ? 'teacher' : userRole);
+  const isTeacherAccount = Boolean(effectiveRole === 'teacher' || isAdmin(user));
+  const needsEmailVerification = Boolean(
+    isLoggedIn &&
+    user &&
+    !user.emailVerified &&
+    user.providerData?.some((p) => p.providerId === 'password') &&
+    !isAdmin(user)
+  );
+
   useEffect(() => {
     const onResize = () => setIsMobileScreen(window.innerWidth <= 768);
     window.addEventListener('resize', onResize);
@@ -360,12 +378,14 @@ export default function App() {
       user.providerData?.some((p) => p.providerId === 'password') &&
       !isAdmin(user);
     if (needsVerify) return;
-    if (page.startsWith('exam/') || page === 'admin') return;
+    if (page.startsWith('exam/') || page === 'admin' || page === 'classroom' || page === 'auth-action') return;
+    if (peekPostAuthRedirect() === 'classroom') return;
     const prof = getUserProfile(user.uid, user);
+    if (isTeacherAccount || prof?.survey?.role === 'teacher') return;
     if (!prof?.survey?.completed && !prof?.survey?.skippedAt) {
       setSurveyOpen(true);
     }
-  }, [isLoggedIn, user?.uid, user?.emailVerified, profileReady, page, user]);
+  }, [isLoggedIn, user?.uid, user?.emailVerified, profileReady, page, user, isTeacherAccount]);
 
   /* ============ LOAD CREDITS ============ */
   useEffect(() => {
@@ -427,8 +447,10 @@ export default function App() {
         const snap = await getDoc(doc(db, 'users', user.uid));
         if (!alive) return;
         if (snap.exists()) {
-          const role = snap.data()?.role || 'student';
-          saveLocalRole(role);
+          const remoteRole = snap.data()?.role;
+          if (remoteRole === 'teacher' || (remoteRole === 'student' && getUserRole(user) !== 'teacher')) {
+            saveLocalRole(remoteRole);
+          }
         }
       } catch (e) {
         console.warn('Không load được role:', e);
@@ -471,25 +493,65 @@ export default function App() {
     }
   }, [page, user]);
 
-  /* ============ LOGIN/LOGOUT RESET ============ */
+  /* ============ LOGIN/LOGOUT RESET & POST-AUTH TEACHER REDIRECT ============ */
   const prevLoginRef = useRef(isLoggedIn);
+  const prevNeedsVerifyRef = useRef(needsEmailVerification);
   useEffect(() => {
-    if (!prevLoginRef.current && isLoggedIn) {
-      /* Giữ nguyên deep link hợp lệ khi vừa đăng nhập xong (vd #roadmap?chapter=...).
-         Trước đây mọi hash đều bị đẩy về #home nên link chia sẻ bị mất trang. */
-      const route = window.location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
-      const isRealRoute = route !== '' && route !== 'login' && route !== 'register' && readPage() !== '404';
-      const keep = window.location.hash.startsWith('#exam/') || isRealRoute;
-      if (!keep && window.location.hash !== '#home') history.replaceState(null, '', '#home');
-      setHashTick((t) => t + 1);
-      window.scrollTo(0, 0);
-    }
+    const justLoggedIn = !prevLoginRef.current && isLoggedIn;
+    const justVerifiedEmail = prevNeedsVerifyRef.current && !needsEmailVerification && isLoggedIn;
+
     if (prevLoginRef.current && !isLoggedIn) {
+      clearPostAuthRedirect();
       if (window.location.hash !== '#home') history.replaceState(null, '', '#home');
       setHashTick((t) => t + 1);
     }
+
+    if (isLoggedIn && user?.uid && page !== 'auth-action' && !needsEmailVerification) {
+      const pendingTarget = peekPostAuthRedirect();
+      const effectiveTeacher = Boolean(
+        isTeacherAccount ||
+        getUserRole(user) === 'teacher' ||
+        (pro?.isPro && pro?.isTeacherPro !== false)
+      );
+      const currentRoute = window.location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
+      const onEntryOrHome = !currentRoute || currentRoute === 'home' || currentRoute === 'login' || currentRoute === 'register';
+
+      if (pendingTarget === 'classroom') {
+        if (effectiveTeacher) {
+          consumePostAuthRedirect();
+          setSurveyOpen(false);
+          if (window.location.hash !== '#classroom') {
+            history.replaceState(null, '', '#classroom');
+            setHashTick((t) => t + 1);
+          }
+          window.scrollTo(0, 0);
+        } else if (profileReady) {
+          consumePostAuthRedirect();
+          if (onEntryOrHome) {
+            history.replaceState(null, '', '#home');
+            setHashTick((t) => t + 1);
+          }
+        }
+      } else if ((justLoggedIn || justVerifiedEmail) && effectiveTeacher && onEntryOrHome) {
+        setSurveyOpen(false);
+        if (window.location.hash !== '#classroom') {
+          history.replaceState(null, '', '#classroom');
+          setHashTick((t) => t + 1);
+        }
+        window.scrollTo(0, 0);
+      } else if (justLoggedIn) {
+        if (pendingTarget) consumePostAuthRedirect();
+        const isRealRoute = currentRoute !== '' && currentRoute !== 'login' && currentRoute !== 'register' && readPage() !== '404';
+        const keep = window.location.hash.startsWith('#exam/') || isRealRoute;
+        if (!keep && window.location.hash !== '#home') history.replaceState(null, '', '#home');
+        setHashTick((t) => t + 1);
+        window.scrollTo(0, 0);
+      }
+    }
+
     prevLoginRef.current = isLoggedIn;
-  }, [isLoggedIn]);
+    prevNeedsVerifyRef.current = needsEmailVerification;
+  }, [isLoggedIn, needsEmailVerification, user, page, isTeacherAccount, profileReady, pro?.isPro, pro?.isTeacherPro]);
 
   /* ============ LOGOUT DIALOG ============ */
   useEffect(() => {
@@ -613,14 +675,15 @@ export default function App() {
           <div className="guest-banner" style={{
             background: 'linear-gradient(90deg, #1d4ed8, #6d28d9)',
             color: '#fff',
-            padding: '10px 16px',
+            padding: '8px 12px',
             textAlign: 'center',
-            fontSize: '13px',
+            fontSize: '12.5px',
             fontWeight: 600,
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '12px',
+            gap: '8px 10px',
             position: 'sticky',
             top: 0,
             zIndex: 1000,
@@ -632,30 +695,34 @@ export default function App() {
               </svg>
               <span>Bạn đang xem bản trải nghiệm mở của <strong>ELEC AI</strong>.</span>
             </span>
-            <a
-              href="/#/register"
-              style={{
-                background: '#fff',
-                color: '#1d4ed8',
-                padding: '4px 12px',
-                borderRadius: '999px',
-                textDecoration: 'none',
-                fontWeight: 700,
-                fontSize: '12px'
-              }}
-            >
-              Đăng ký miễn phí
-            </a>
-            <a
-              href="/#/login"
-              style={{
-                color: 'rgba(255,255,255,0.9)',
-                textDecoration: 'underline',
-                fontSize: '12px'
-              }}
-            >
-              Đăng nhập
-            </a>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <a
+                href="/#/register"
+                style={{
+                  background: '#fff',
+                  color: '#1d4ed8',
+                  padding: '4px 12px',
+                  borderRadius: '999px',
+                  textDecoration: 'none',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Đăng ký miễn phí
+              </a>
+              <a
+                href="/#/login"
+                style={{
+                  color: 'rgba(255,255,255,0.92)',
+                  textDecoration: 'underline',
+                  fontSize: '12px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Đăng nhập
+              </a>
+            </span>
           </div>
           <Suspense fallback={<PageLoader />}>
             <main id="main" tabIndex="-1" style={{ flex: 1 }}>
@@ -681,12 +748,6 @@ export default function App() {
   }
 
   /* ============ EMAIL VERIFICATION GATE (chống Gmail ảo) ============ */
-  const needsEmailVerification = Boolean(
-    user &&
-    !user.emailVerified &&
-    user.providerData?.some((p) => p.providerId === 'password') &&
-    !isAdmin(user)
-  );
   if (needsEmailVerification) {
     return (
       <Suspense fallback={<PageLoader />}>
@@ -712,7 +773,7 @@ export default function App() {
 
     /* ============ CLASSROOM ROUTES ============ */
     if (page === 'classroom') {
-      if ((pro.isPro && pro.isTeacherPro !== false) || userRole === 'teacher' || isAdmin(user)) {
+      if (isTeacherAccount) {
         return <TeacherDashboard />;
       }
       return <StudentClass />;
@@ -833,7 +894,7 @@ export default function App() {
   const isAiPage = page === 'ai';
   /* Khu giáo viên (Lớp học + AutoExam Studio...) cũng chạy toàn màn hình, không có nav chính.
      Học sinh vào #classroom vẫn thấy giao diện thường. */
-  const isTeacherPage = page === 'classroom' && ((pro.isPro && pro.isTeacherPro !== false) || userRole === 'teacher' || isAdmin(user));
+  const isTeacherPage = page === 'classroom' && isTeacherAccount;
   /* Khi vào làm bài trong Phòng thi ảo (#quiz / #virtual-exams): ẩn toàn bộ Nav, Mascot, ChatWidget, Footer giống hệt ExamJoin */
   const isVirtualExamRoom = (page === 'quiz' || page === 'virtual-exams') && (virtualExamActive || (typeof document !== 'undefined' && document.body?.dataset?.virtualExamActive === '1'));
   const isFullPage = isAiPage || isTeacherPage || isVirtualExamRoom;
@@ -876,7 +937,7 @@ export default function App() {
           page={page}
           theme={theme}
           isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
-          userRole={pro.isPro && pro.isTeacherPro !== false ? 'teacher' : userRole}
+          userRole={effectiveRole}
           credits={credits}
           onSearch={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -891,7 +952,7 @@ export default function App() {
           scrolled={scrolled}
           isAdmin={isAdmin(user)}
           isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
-          userRole={pro.isPro && pro.isTeacherPro !== false ? 'teacher' : userRole}
+          userRole={effectiveRole}
           credits={credits}
           toolOpen={toolOpen}
           onToolOpen={setToolOpen}
@@ -937,7 +998,7 @@ export default function App() {
       {!isFullPage && isMobileScreen && (
         <BottomNav
           page={page}
-          userRole={pro.isPro && pro.isTeacherPro !== false ? 'teacher' : userRole}
+          userRole={effectiveRole}
           isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
           onOpenMore={() => setMenu(true)}
         />

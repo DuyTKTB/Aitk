@@ -34,6 +34,7 @@ function LazyCover({ src, alt, fallbackIcon }) {
 
   return (
     <span className="tn-ico-wrap" ref={ref}>
+      {(!loaded || error || !src) && fallbackIcon}
       {visible && src && !error && (
         <img
           src={src}
@@ -46,7 +47,6 @@ function LazyCover({ src, alt, fallbackIcon }) {
           onError={() => setError(true)}
         />
       )}
-      {(error || !src) && fallbackIcon}
       {!loaded && !error && src && <span className="tn-cover-skeleton" />}
     </span>
   );
@@ -719,7 +719,7 @@ export default function DocsLibrary({ query = '', grade: gProp, onGrade }) {
             const fav = favs.includes(d.id);
             const bookCount = d.books?.length || 0;
             const fallback = (
-              <span className="tn-ico" style={{ background: subjectColor(d.subject) }}>
+              <span className="tn-ico" style={{ background: subjectColor(d.subject), color: '#111827' }}>
                 <SubjectIcon subject={d.subject} grade={d.grade} size={28} />
               </span>
             );
@@ -840,7 +840,7 @@ export default function DocsLibrary({ query = '', grade: gProp, onGrade }) {
       {/* ── NÚT TẢI THÊM ── */}
       {hasMore && (
         <div className="tn-more">
-          <button type="button" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
+          <button type="button" className="tn-more-btn" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
             Xem thêm {Math.min(PAGE_SIZE, list.length - limit)} mục ({limit}/{list.length})
           </button>
         </div>

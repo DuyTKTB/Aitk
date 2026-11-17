@@ -15,6 +15,8 @@
    ============================================================ */
 import { useState, useEffect, useRef, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../../lib/entitlements.js';
 import ExamPickerFromBank from './ExamPickerFromBank.jsx';
 
 /* ============ SVG ICONS ============ */
@@ -263,11 +265,17 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   onSnapshot,
   classInfo,
   classes = [],
+  isTeacherVip = undefined,
+  onRequestUpgrade = null,
   onSave,
   onCancel,
   saving = false,
 }, ref) {
   const { user } = useAuth();
+  const pro = useTeacherPro();
+  const vipUnlocked = typeof isTeacherVip === 'boolean'
+    ? isTeacherVip
+    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
   const [title, setTitle] = useState(initial?.title || '');
   const [description, setDescription] = useState(initial?.description || '');
   const [duration, setDuration] = useState(initial?.duration || 45);
@@ -540,32 +548,52 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     })));
   };
 
-  const setProctorField = (k, v) => setProctor((p) => ({ ...p, [k]: v }));
-  const setCameraCheck = (k, v) => setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, [k]: v } }));
-  const applyLockdownPreset = (on) => setProctor((p) => ({
-    ...p,
-    lockdown: on,
-    strictMode: true,
-    fullscreenLock: true,
-    blockCopyPaste: true,
-    blockDevTools: true,
-    blockPrintScreen: true,
-    blockLongBlur: true,
-    blurOnFocusLost: true,
-    singleDeviceLock: true,
-    blockMultiScreen: true,
-    watermark: true,
-    motionGuard: true,
-    ...(on ? {
-      tabSwitchLimit: Math.min(p.tabSwitchLimit || 3, 2),
-      softToHard: 3,
-      camera: p.camera === 'off' ? 'required' : p.camera,
-      requireAiModel: true,
-      audioMonitor: true,
-      snapshotOnEvent: true,
-      cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
-    } : {}),
-  }));
+  const promptVipProctor = () => {
+    if (typeof onRequestUpgrade === 'function') onRequestUpgrade('Giám sát Camera AI & Chế độ Siêu chặt thuộc gói Giáo viên VIP (399.000đ/tháng).');
+    else if (typeof window !== 'undefined') window.location.hash = 'profile?tab=vip';
+  };
+  const VIP_PROCTOR_KEYS = new Set(['camera', 'audioMonitor', 'requireAiModel', 'singleDeviceLock', 'blockMultiScreen', 'lockdown']);
+  const setProctorField = (k, v) => {
+    if (!vipUnlocked && VIP_PROCTOR_KEYS.has(k) && v && v !== 'off') {
+      promptVipProctor();
+      return;
+    }
+    setProctor((p) => ({ ...p, [k]: v }));
+  };
+  const setCameraCheck = (k, v) => {
+    if (!vipUnlocked) { promptVipProctor(); return; }
+    setProctor((p) => ({ ...p, cameraChecks: { ...p.cameraChecks, [k]: v } }));
+  };
+  const applyLockdownPreset = (on) => {
+    if (!vipUnlocked) {
+      promptVipProctor();
+      return;
+    }
+    setProctor((p) => ({
+      ...p,
+      lockdown: on,
+      strictMode: true,
+      fullscreenLock: true,
+      blockCopyPaste: true,
+      blockDevTools: true,
+      blockPrintScreen: true,
+      blockLongBlur: true,
+      blurOnFocusLost: true,
+      singleDeviceLock: true,
+      blockMultiScreen: true,
+      watermark: true,
+      motionGuard: true,
+      ...(on ? {
+        tabSwitchLimit: Math.min(p.tabSwitchLimit || 3, 2),
+        softToHard: 3,
+        camera: p.camera === 'off' ? 'required' : p.camera,
+        requireAiModel: true,
+        audioMonitor: true,
+        snapshotOnEvent: true,
+        cameraChecks: { noFace: true, multiFace: true, lookAway: true, handRaise: true, phoneLike: true },
+      } : {}),
+    }));
+  };
 
   /* ============ VALIDATE & SUBMIT ============ */
   const validate = () => {
@@ -791,12 +819,13 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       <div className="cep-card">
         <header className="cep-card-head">
           <h3 className="cep-card-title">
-            <IcoShield size={16} /> Giám sát & Chống gian lận khi thi
+            <IcoShield size={16} /> Giám sát &amp; Chống gian lận khi thi
+            {!vipUnlocked && <span style={{ marginLeft: 8, fontSize: '.72rem', fontWeight: 700, color: 'var(--t-warn, #d97706)', background: 'rgba(245,158,11,0.16)', padding: '2px 8px', borderRadius: 999 }}>Camera AI / Siêu chặt: VIP</span>}
           </h3>
         </header>
 
         <div className="cep-form">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.6rem', padding: '.65rem .85rem', borderRadius: 12, background: proctor.lockdown ? 'rgba(220, 38, 38, .08)' : 'var(--bg-soft, #f8fafc)', border: '1px solid ' + (proctor.lockdown ? '#ef4444' : 'rgba(148, 163, 184, .3)') }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.6rem', padding: '.65rem .85rem', borderRadius: 12, background: proctor.lockdown ? 'rgba(220, 38, 38, .12)' : 'var(--t-surface-2, var(--soft, rgba(148, 163, 184, 0.1)))', border: '1px solid ' + (proctor.lockdown ? '#ef4444' : 'var(--t-border, rgba(148, 163, 184, .3))') }}>
             <div style={{ fontSize: '.84rem', lineHeight: 1.4 }}>
               <b>Chế độ Siêu chặt (Lockdown)</b>
               <div style={{ fontSize: '.76rem', opacity: .8 }}>
