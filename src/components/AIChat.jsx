@@ -115,7 +115,7 @@ const TODAY_FACTS = [
   { type: 'Vật lí · Sóng & Ánh sáng', content: 'c ≈ 300.000 km/s', hint: 'Vận tốc ánh sáng trong chân không — giới hạn tốc độ tối đa của vũ trụ.' },
   { type: 'Hóa học · Dung dịch', content: 'pH = -log[H⁺]', hint: 'Với [H⁺] = 10⁻³ M thì pH = 3 (môi trường axit).' },
   { type: 'Sinh học · Mã di truyền', content: '64 bộ ba mã di truyền', hint: '61 bộ ba mã hóa cho 20 loại axit amin; 3 bộ ba kết thúc (UAA, UAG, UGA).' },
-  { type: 'Vật lí · Điện xoay chiều', content: 'Z = √(R² + (Z_L - Z_C)²)', hint: 'Tổng trở mạch RLC nối tiếp đạt cực tiểu Z = R khi xảy ra cộng hưởng điện.' },
+  { type: 'Vật lí · Điện xoay chiều', content: 'Z = √[R² + (Zʟ − Zᴄ)²]', hint: 'Tổng trở mạch RLC nối tiếp đạt cực tiểu Z = R khi xảy ra cộng hưởng điện.' },
   { type: 'Hóa học · Kim loại', content: 'Ag > Cu > Au > Al > Fe', hint: 'Thứ tự dẫn điện và dẫn nhiệt giảm dần của các kim loại thông dụng.' },
   { type: 'Sinh học · Quần thể', content: 'p²AA + 2pqAa + q²aa = 1', hint: 'Định luật Hardy - Weinberg về trạng thái cân bằng di truyền của quần thể.' },
 ];
@@ -1884,14 +1884,14 @@ export default function AIChat({ onExit }) {
               <div className="ds-user-menu-head">
                 <UserAvatar user={user} initial={userInitial} color={tier.color} />
                 <div className="ds-user-menu-info">
-                  <b>{userName}{tier.key === 'vip' && <VerifiedBadge isVip size={13} />}</b>
+                  <b>{userName}{(tier.key === 'vip' || tier.key === 'pro') && <VerifiedBadge isVip size={13} />}</b>
                   <small>{user?.email}</small>
                 </div>
               </div>
 
               <div className="ds-user-menu-tier">
                 <span className="ds-tier-badge" style={{ background: tier.color }}>
-                  {tier.key === 'vip' ? <IcoCrown size={12} /> : <IcoSparkle size={12} />}
+                  {(tier.key === 'vip' || tier.key === 'pro') ? <IcoCrown size={12} /> : <IcoSparkle size={12} />}
                   <span>{tier.name}</span>
                 </span>
                 {credits != null && (
@@ -1921,9 +1921,9 @@ export default function AIChat({ onExit }) {
           >
             <UserAvatar user={user} initial={userInitial} color={tier?.color} />
             <div className="ds-user-info">
-              <b>{userName}{tier.key === 'vip' && <VerifiedBadge isVip size={12} />}</b>
+              <b>{userName}{(tier.key === 'vip' || tier.key === 'pro') && <VerifiedBadge isVip size={12} />}</b>
               <span className="ds-user-tier-name">
-                {tier.key === 'vip' ? <IcoCrown size={10} /> : <IcoSparkle size={10} />}
+                {(tier.key === 'vip' || tier.key === 'pro') ? <IcoCrown size={10} /> : <IcoSparkle size={10} />}
                 {tier.name}{credits != null ? ` · ${credits.toLocaleString('vi-VN')} credit` : ''}
               </span>
             </div>
@@ -1931,7 +1931,7 @@ export default function AIChat({ onExit }) {
           </button>
         </div>
 
-        {tier?.key !== 'vip' && (
+        {tier?.key !== 'vip' && tier?.key !== 'pro' && (
           <button type="button" className="cg-pill" onClick={goUpgrade}>
             <CgGift size={18} /><span>Nâng cấp VIP</span>
           </button>
@@ -1985,9 +1985,9 @@ export default function AIChat({ onExit }) {
             </button>
 
             <div className="ds-quota">
-              {tier.key === 'vip' && (
+              {(tier.key === 'vip' || tier.key === 'pro') && (
                 <span className="ds-quota-item vip" title="Gói ELECAI VIP — Mở khóa toàn bộ đề thi & tính năng VIP">
-                  <IcoCrown size={13} /><span>VIP</span>
+                  <IcoCrown size={13} /><span>{tier.key === 'pro' ? 'GV VIP' : 'VIP'}</span>
                 </span>
               )}
               {uid ? (

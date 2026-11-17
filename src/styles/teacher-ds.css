@@ -1356,10 +1356,16 @@
   }
 
   .t-hub-subnav-pill.active {
-    background: var(--t-surface-0);
-    color: var(--t-ink);
-    border: 1px solid var(--t-border);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    background: rgba(59, 130, 246, 0.14);
+    color: #1d4ed8;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+
+  [data-theme='dark'] .t-hub-subnav-pill.active {
+    background: rgba(59, 130, 246, 0.24) !important;
+    color: #93c5fd !important;
+    border: 1px solid rgba(96, 165, 250, 0.48) !important;
   }
 
   .t-pill-badge-live {

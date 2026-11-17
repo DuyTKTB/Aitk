@@ -100,7 +100,9 @@ import {
   getManualEntryTrialRemaining,
   buildIdentCode,
 } from '../lib/entitlements.js';
-import { getProStatus } from '../lib/proKeyApi.js';
+import { adminGrantProDirect, getProStatus } from '../lib/proKeyApi.js';
+import { setUserTier } from '../lib/tier.js';
+import { setUserRole } from '../lib/userRole.js';
 
 /* ============ SVG ICONS (NO EMOJI) ============ */
 const Svg = ({ size = 18, sw = 2, children }) => (
@@ -1215,9 +1217,9 @@ export default function TeacherDashboard({ onExit } = {}) {
     setLoadError('');
     try {
       const [cls, ex, sess] = await Promise.all([
-        getClassesByTeacher(user.uid),
-        getExamsByTeacher(user.uid),
-        getSessionsByTeacher(user.uid),
+        getClassesByTeacher(user.uid).catch(() => []),
+        getExamsByTeacher(user.uid).catch(() => []),
+        getSessionsByTeacher(user.uid).catch(() => []),
       ]);
 
       /* Lấy thêm các đề do GV bộ môn (GVBM) giao vào các lớp chủ nhiệm của tôi */
@@ -2807,8 +2809,8 @@ export default function TeacherDashboard({ onExit } = {}) {
         ? (linkedClasses.length > 0 ? `VIP · ${classes.length} CN · ${linkedClasses.length} BM` : `VIP · ${classes.length} lớp`)
         : `Free · ${classes.length}/${FREE_TEACHER_LIMITS.maxClasses} lớp · Word ${getWordImportTrialRemaining(user?.uid, false)}/10 · Thủ công ${getManualEntryTrialRemaining(user?.uid, false)}/30`}
       quickAction={isTeacherVip
-        ? { label: 'Tạo đề AI', onClick: openNewExam }
-        : { label: `Nâng cấp VIP (${TEACHER_VIP_PRICE_TEXT})`, onClick: () => openTeacherUpgrade() }}
+        ? { label: 'Tạo đề AI', mobileLabel: 'Tạo đề', onClick: openNewExam }
+        : { label: `Nâng cấp VIP (${TEACHER_VIP_PRICE_TEXT})`, mobileLabel: 'VIP 399k', isUpgrade: true, onClick: () => openTeacherUpgrade() }}
       onOpenProfile={() => goSection('profile')}
       exitLabel="Về ELEC AI"
       onExit={() => {
@@ -2846,7 +2848,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <AcademicCrestSvg size={14} /> Không gian Sư phạm GDPT 2025
                   </div>
                   <h1 className="t-hero-title">
-                    Chào mừng trở lại, Thầy/Cô {user?.displayName || user?.email?.split('@')[0] || 'Giáo viên'}
+                    {(() => {
+                      const rawName = (user?.displayName || user?.email?.split('@')[0] || 'Giáo viên').trim();
+                      const hasPrefix = /^(thầy|cô|gv|giáo viên)\b/i.test(rawName);
+                      return `Chào mừng trở lại, ${hasPrefix ? '' : 'Thầy/Cô '}${rawName}`;
+                    })()}
                   </h1>
                   <div className="t-hero-role-chips">
                     <span className="t-role-pill gvcn">
@@ -3850,7 +3856,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <div className="t-kpi-icon-box" style={{ width: 42, height: 42 }}>
                       <IcoPlus size={20} />
                     </div>
-                    <b style={{ color: 'var(--t-ink)', fontSize: '0.95rem' }}>Tạo lớp mới (Phím N)</b>
+                    <b style={{ color: 'var(--t-ink)', fontSize: '0.95rem' }}>
+                      Tạo lớp mới <span className="t-kbd-hint">(Phím N)</span>
+                    </b>
                     <small style={{ color: 'var(--t-ink-3)' }}>Cấp mã lớp cho học sinh tự tham gia</small>
                   </button>
 
@@ -4053,14 +4061,23 @@ export default function TeacherDashboard({ onExit } = {}) {
         })();
 
         if (exams.length === 0) {
+          const wordLeft = getWordImportTrialRemaining(user?.uid, isTeacherVip);
+          const manualLeft = getManualEntryTrialRemaining(user?.uid, isTeacherVip);
           return (
             <>
               {renderExamHubNav()}
               <div className="vt-empty">
                 <span><IcoBook size={30} /></span>
                 <h3>Chưa có đề nào trong kho</h3>
-                <p>Tạo đề bằng AI hoặc nhập từ Word để giao bài cho học sinh.</p>
-                <button type="button" className="vt-btn primary" onClick={openNewExam}>+ Tạo đề đầu tiên cùng AI</button>
+                <p>
+                  Tạo đề bằng AI hoặc nhập đề từ file Word{!isTeacherVip ? ` (Còn ${wordLeft}/10 lượt Word · ${manualLeft}/30 lượt nhập thủ công · tối đa ${FREE_TEACHER_LIMITS.maxExams} đề Free)` : ' để giao bài cho học sinh.'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', justifyContent: 'center', marginTop: '0.35rem' }}>
+                  <button type="button" className="vt-btn primary" onClick={openNewExam}>+ Tạo đề đầu tiên cùng AI</button>
+                  <button type="button" className="vt-btn" onClick={() => goSection('create')}>
+                    Nhập file Word / Tạo bản nháp
+                  </button>
+                </div>
               </div>
             </>
           );
@@ -6162,7 +6179,57 @@ export default function TeacherDashboard({ onExit } = {}) {
                     } catch { /* ignore */ }
                     return { isPro: false };
                   }}
-                  onPaymentSuccess={async () => {
+                  onPaymentSuccess={async (completedPkg) => {
+                    const targetUid = user?.uid;
+                    if (completedPkg?.isFree && targetUid) {
+                      const months = Number(completedPkg?.months) || 1;
+                      const days = months * 30;
+                      const expiryDate = new Date(Date.now() + days * 86400000).toISOString();
+                      const expiryMs = new Date(expiryDate).getTime();
+                      const pkgLabel = completedPkg?.label || 'ELEC AI Giáo Viên VIP';
+                      try { setUserRole(targetUid, 'teacher'); } catch {}
+                      try {
+                        await setUserTier(targetUid, 'pro');
+                      } catch {}
+                      try {
+                        await adminGrantProDirect({
+                          userId: targetUid,
+                          durationDays: days,
+                          note: `${pkgLabel} (${completedPkg.discountCode || 'FREE'})`,
+                        });
+                      } catch (err) {
+                        console.warn('adminGrantProDirect error:', err);
+                      }
+                      try {
+                        localStorage.setItem('cs-vip-status', JSON.stringify({
+                          uid: targetUid,
+                          vip: true,
+                          pro: true,
+                          isPro: true,
+                          isTeacherPro: true,
+                          tier: 'pro',
+                          plan: 'PRO',
+                          expiry: expiryMs,
+                          daysLeft: days,
+                          source: 'payment',
+                        }));
+                        const prevRaw = localStorage.getItem(`cs-user-subscription:${targetUid}`);
+                        const prevSub = prevRaw ? JSON.parse(prevRaw) : {};
+                        localStorage.setItem(`cs-user-subscription:${targetUid}`, JSON.stringify({
+                          ...prevSub,
+                          uid: targetUid,
+                          planName: 'PRO',
+                          planDesc: 'Quản lý không giới hạn lớp học & Đề thi AI',
+                          durationLabel: `${months} tháng`,
+                          examAccessLabel: 'Toàn bộ đề FREE, PRO, VIP',
+                          hearts: 99,
+                          maxHearts: 99,
+                          expiry: expiryDate,
+                        }));
+                      } catch { /* ignore */ }
+                      window.dispatchEvent(new CustomEvent('cs-vip-update'));
+                      window.dispatchEvent(new CustomEvent('cs-tier-update'));
+                    }
                     await pro.refresh?.();
                     setVipModalOpen(false);
                     setVipPaymentPkg(null);

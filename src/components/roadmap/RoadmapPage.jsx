@@ -646,40 +646,7 @@ export default function RoadmapPage() {
 
   return (
     <div className="rm ns9-page">
-      {/* ── KHỐI 1: BANNER NGUYỆN VỌNG & THẺ "LỘ TRÌNH CỦA EM" (NHƯ ẢNH 9 & 10) ── */}
-      <AspirationRoadmapHub
-        uid={uid}
-        overview={view.overview}
-        chapters={view.chapters}
-        dueTotal={dueTotal}
-        cardsDue={cards.due}
-        events={events}
-        now={now}
-        onOpenChapter={openChapter}
-        onPracticeChapter={(id) => practiceChapter(id, 'fresh')}
-        onReviewChapter={(id) => practiceChapter(id, 'review')}
-        onReviewCards={reviewCards}
-        onAiStrategy={aiStrategy}
-        onOpenDiagnostic={() => setDiagOpen(true)}
-        onTabSelect={(tab) => {
-          if (tab === 'study') {
-            setDedicatedLessonId('ly-chuyen-dong-nem');
-            setDedicatedSubject('ly');
-            setDedicatedPractice(false);
-          }
-          setActiveTab(tab);
-        }}
-      />
-
-      {data.error && (
-        <div className="rm-banner err" role="alert">
-          <b>Không tải được dữ liệu học tập</b>
-          <span>{data.error}</span>
-          <button type="button" className="rm-btn sm" onClick={refresh}>Thử lại</button>
-        </div>
-      )}
-
-      {/* ── KHỐI 2: THANH CHUYỂN ĐỔI 3 CHẾ ĐỘ XEM & CHỌN KHỐI LỚP ── */}
+      {/* ── KHỐI 1: THANH CHUYỂN ĐỔI 4 CHẾ ĐỘ XEM LỘ TRÌNH (LUÔN HIỆN NGAY ĐẦU TRÊN MOBILE & DESKTOP) ── */}
       <div className="ns9-nav-strip">
         <div className="ns9-main-tabs" role="tablist" aria-label="Chế độ xem lộ trình">
           <button
@@ -736,42 +703,81 @@ export default function RoadmapPage() {
           </button>
         </div>
 
-        <div className="ns9-grade-picker" role="tablist" aria-label="Chọn khối lớp Khoa học Tự nhiên">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={levelKey === 'all'}
-            className={levelKey === 'all' ? 'on' : ''}
-            onClick={() => pickLevel('all')}
-          >
-            <IcoSparkles size={14} />
-            <span>Trọn bộ THPT (Tất cả)</span>
-          </button>
-          {LEVEL_KEYS.map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={k === levelKey}
-              className={k === levelKey ? 'on' : ''}
-              onClick={() => pickLevel(k)}
-            >
-              {k}
-            </button>
-          ))}
-        </div>
+        {activeTab === 'subjects' && (
+          <>
+            <div className="ns9-grade-picker" role="tablist" aria-label="Chọn khối lớp Khoa học Tự nhiên">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={levelKey === 'all'}
+                className={levelKey === 'all' ? 'on' : ''}
+                onClick={() => pickLevel('all')}
+              >
+                <IcoSparkles size={14} />
+                <span>Trọn bộ THPT (Tất cả)</span>
+              </button>
+              {LEVEL_KEYS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={k === levelKey}
+                  className={k === levelKey ? 'on' : ''}
+                  onClick={() => pickLevel(k)}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
 
-        <button
-          type="button"
-          className="ns9-asp-guide-trigger"
-          onClick={() => setGuideOpen(true)}
-          style={{ marginLeft: 8 }}
-          title="Xem cẩm nang hướng dẫn ôn thi đúng cách"
-        >
-          <IcoCompass />
-          <span>Hướng dẫn ôn đúng cách</span>
-        </button>
+            <button
+              type="button"
+              className="ns9-asp-guide-trigger"
+              onClick={() => setGuideOpen(true)}
+              style={{ marginLeft: 8 }}
+              title="Xem cẩm nang hướng dẫn ôn thi đúng cách"
+            >
+              <IcoCompass />
+              <span>Hướng dẫn ôn đúng cách</span>
+            </button>
+          </>
+        )}
       </div>
+
+      {/* ── KHỐI 2: BANNER NGUYỆN VỌNG & THẺ "LỘ TRÌNH CỦA EM" (TRONG TAB CHUYÊN ĐỀ) ── */}
+      {activeTab === 'subjects' && (
+        <AspirationRoadmapHub
+          uid={uid}
+          overview={view.overview}
+          chapters={view.chapters}
+          dueTotal={dueTotal}
+          cardsDue={cards.due}
+          events={events}
+          now={now}
+          onOpenChapter={openChapter}
+          onPracticeChapter={(id) => practiceChapter(id, 'fresh')}
+          onReviewChapter={(id) => practiceChapter(id, 'review')}
+          onReviewCards={reviewCards}
+          onAiStrategy={aiStrategy}
+          onOpenDiagnostic={() => setDiagOpen(true)}
+          onTabSelect={(tab) => {
+            if (tab === 'study') {
+              setDedicatedLessonId('ly-chuyen-dong-nem');
+              setDedicatedSubject('ly');
+              setDedicatedPractice(false);
+            }
+            setActiveTab(tab);
+          }}
+        />
+      )}
+
+      {data.error && (
+        <div className="rm-banner err" role="alert">
+          <b>Không tải được dữ liệu học tập</b>
+          <span>{data.error}</span>
+          <button type="button" className="rm-btn sm" onClick={refresh}>Thử lại</button>
+        </div>
+      )}
 
       {/* ============================================================
          TAB 1: LỘ TRÌNH THEO CHUYÊN ĐỀ (CHUẨN ELEC AI)

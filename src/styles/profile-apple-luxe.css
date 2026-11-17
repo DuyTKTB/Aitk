@@ -332,7 +332,22 @@
 
 @media (max-width: 640px) {
   .pf-m-quick-stats {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+  }
+  .pf-m-stat-tile {
+    grid-column: span 2 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  }
+  .pf-m-stat-tile:nth-child(3) {
+    border-right: none !important;
+  }
+  .pf-m-stat-tile:nth-child(4),
+  .pf-m-stat-tile:nth-child(5) {
+    grid-column: span 3 !important;
+    border-bottom: none !important;
+  }
+  [data-theme="dark"] .pf-m-stat-tile {
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
   }
 }
 

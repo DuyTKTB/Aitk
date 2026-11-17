@@ -5189,7 +5189,10 @@ body { background-image: radial-gradient(1200px 500px at 85% -10%, color-mix(in 
 /* Thanh tiến trình cuộn + skip link */
 .scroll-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 10001; background: var(--acc); transform: scaleX(0); transform-origin: 0 50%; pointer-events: none; }
 .skip-link { position: fixed; top: -60px; left: 12px; z-index: 10002; padding: .6rem 1rem; border-radius: 999px; background: var(--ink); color: var(--bg); font: 600 .8rem var(--sans); transition: top .2s; }
-.skip-link:focus { top: 12px; }
+.skip-link:focus-visible { top: 12px; }
+@media (max-width: 768px), (hover: none), (pointer: coarse) {
+  .skip-link { display: none !important; }
+}
 
 /* Nút: bo tròn, hiệu ứng nhấn mềm */
 .btn { border-radius: 999px; }

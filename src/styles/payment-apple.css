@@ -49,8 +49,18 @@
   gap: 10px;
 }
 
+.apl-pay-options.is-student {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.apl-pay-options.is-teacher {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 @media (max-width: 540px) {
-  .apl-pay-options {
+  .apl-pay-options,
+  .apl-pay-options.is-student,
+  .apl-pay-options.is-teacher {
     grid-template-columns: 1fr;
   }
   .apl-pay-title {

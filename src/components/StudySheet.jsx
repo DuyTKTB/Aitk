@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { useLiveStreak } from '../hooks.js';
-import { getUserRole } from '../lib/userRole.js';
+import { resolveEntitlements } from '../lib/entitlements.js';
 import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,
@@ -74,6 +75,7 @@ const CORE_TOOLS = [
 
 export default function StudySheet({ open, onClose, theme = 'dark', onToggleTheme }) {
   const { user, tier, logout } = useAuth();
+  const pro = useTeacherPro();
   const { count: streakDays, isToday: hasStreakToday } = useLiveStreak();
 
   useEffect(() => {
@@ -91,8 +93,10 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
   if (!open) return null;
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Học sinh ELEC AI';
-  const isVip = tier?.key === 'vip';
-  const isTeacherOrVip = isVip || getUserRole(user) === 'teacher';
+  const ent = resolveEntitlements({ user, pro, tier });
+  const isVip = ent.hasVipAccess;
+  const isTeacherOrVip = ent.hasVipAccess;
+  const planBadgeText = ent.planLabel;
 
   return createPortal(
     <>
@@ -128,7 +132,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
               <div className="ss-profile-name-row">
                 <b>{displayName}</b>
                 <span className={`ss-vip-badge ${isVip ? 'vip' : 'free'}`}>
-                  {isVip ? 'VIP' : 'Free'}
+                  {planBadgeText}
                 </span>
               </div>
               <div className="ss-profile-sub">

@@ -69,6 +69,25 @@ export async function getTier(uid) {
   } catch { /* ignore */ }
 
   try {
+    const rawSub = localStorage.getItem(`cs-user-subscription:${uid}`);
+    if (rawSub) {
+      const parsed = JSON.parse(rawSub);
+      const expMs = parsed?.expiry ? new Date(parsed.expiry).getTime() : 0;
+      const validUid = !parsed?.uid || parsed.uid === uid;
+      if (validUid && expMs > Date.now()) {
+        if (parsed.planName === 'PRO') {
+          cache.set(uid, { tier: TIERS.pro, t: Date.now() });
+          return TIERS.pro;
+        }
+        if (parsed.planName === 'VIP') {
+          cache.set(uid, { tier: TIERS.vip, t: Date.now() });
+          return TIERS.vip;
+        }
+      }
+    }
+  } catch { /* ignore */ }
+
+  try {
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) {
       cache.set(uid, { tier: TIERS.free, t: Date.now() });
@@ -139,10 +158,11 @@ export async function syncUserInfo(user) {
 export async function setUserTier(uid, tierKey) {
   if (!uid) return { ok: false };
   try {
-    await updateDoc(doc(db, 'users', uid), {
+    await setDoc(doc(db, 'users', uid), {
+      uid,
       tier: tierKey,
       upgradedAt: new Date().toISOString(),
-    });
+    }, { merge: true });
     clearTierCache(uid);
     return { ok: true };
   } catch (e) {

@@ -353,7 +353,7 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
               id="unified-ai-input"
               rows={2}
               value={val}
-              placeholder="Hỏi Gia sư ELEC AI: Dán đề bài Lý, Hóa, Sinh, phương pháp giải, bẫy trắc nghiệm..."
+              placeholder="Hỏi Gia sư ELEC AI: Dán đề Lý, Hóa, Sinh hoặc phương pháp giải..."
               onChange={(e) => setVal(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) submit(e);

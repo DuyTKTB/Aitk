@@ -345,7 +345,7 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
             </div>
           )}
 
-          <div className="apl-pay-options" style={{ gridTemplateColumns: panelRole === 'student' ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)' }}>
+          <div className={`apl-pay-options ${panelRole === 'student' ? 'is-student' : 'is-teacher'}`}>
             {filteredPackages.map(([key, p]) => (
               <button
                 key={key}

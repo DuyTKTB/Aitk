@@ -162,7 +162,7 @@ export default function PeriodicTable({ preview = false }) {
             <Icon name="search" size={18} />
             <input
               id="search" type="search" value={q} autoComplete="off"
-              placeholder="Tìm kiếm nguyên tố... (Ctrl + K)"
+              placeholder="Tìm nguyên tố (tên, ký hiệu, Z)..."
               aria-label="Tìm kiếm nguyên tố"
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
@@ -242,7 +242,7 @@ export default function PeriodicTable({ preview = false }) {
         <p className="hint">
           {study && `Chế độ học: đã ôn ${revealed.size}/${ELEMENTS.length} nguyên tố (lật: ${studyStats.ok} lượt). `}
           {filtering && !study ? `${matches.size} nguyên tố phù hợp. ` : ''}
-          {!study && 'Bấm số nhóm/chu kỳ để làm nổi bật. Shift+Click chọn 2 nguyên tố để so sánh. Dùng phím ←→↑↓ di chuyển.'}
+          {!study && <span className="pt-desktop-hint">Bấm số nhóm/chu kỳ để làm nổi bật. Shift+Click chọn 2 nguyên tố để so sánh. Dùng phím ←→↑↓ di chuyển.</span>}
         </p>
       )}
 

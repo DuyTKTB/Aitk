@@ -2022,14 +2022,20 @@
   color: #cbd5e1;
 }
 
+@media (max-width: 768px) {
+  .t-shell .tfc-launcher-wrap {
+    display: none !important;
+  }
+}
+
 @media (max-width: 520px) {
   .tfc-window {
     right: 10px;
     left: 10px;
-    bottom: 138px;
+    bottom: 84px;
     width: auto;
     max-width: none;
-    height: 68vh;
+    height: 70vh;
   }
 }
 

@@ -67,7 +67,7 @@ function friendlyFirestoreError(e, context = '') {
   const msg = e.message || '';
 
   if (code === 'permission-denied' || /insufficient permissions/i.test(msg)) {
-    return `Firestore Rules chặn${context ? ` (${context})` : ''}. Vào Firebase Console → Firestore → Rules để cấp quyền.`;
+    return `Không thể đồng bộ dữ liệu đám mây${context ? ` (${context})` : ''}. Hệ thống đang sử dụng dữ liệu lưu trên thiết bị.`;
   }
   if (code === 'resource-exhausted' || /quota exceeded/i.test(msg)) {
     return 'Hệ thống đang tạm đạt giới hạn truy vấn của Firebase (Spark quota). Dữ liệu đã được lưu tạm an toàn.';
@@ -77,6 +77,40 @@ function friendlyFirestoreError(e, context = '') {
   if (code === 'already-exists') return 'Dữ liệu đã tồn tại.';
   if (code === 'failed-precondition') return 'Truy vấn không hợp lệ (thiếu index?).';
   return msg || 'Lỗi không xác định';
+}
+
+function localTeacherKey(prefix, teacherId) {
+  return `cs-local-${prefix}:${teacherId || 'guest'}`;
+}
+
+function readLocalTeacherList(prefix, teacherId) {
+  try {
+    if (typeof localStorage === 'undefined' || !teacherId) return [];
+    const raw = localStorage.getItem(localTeacherKey(prefix, teacherId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalTeacherList(prefix, teacherId, list) {
+  try {
+    if (typeof localStorage === 'undefined' || !teacherId) return;
+    localStorage.setItem(localTeacherKey(prefix, teacherId), JSON.stringify((list || []).slice(0, 80)));
+  } catch { /* ignore quota */ }
+}
+
+function upsertLocalTeacherItem(prefix, teacherId, item) {
+  if (!teacherId || !item?.id) return;
+  const cur = readLocalTeacherList(prefix, teacherId).filter((x) => x?.id !== item.id);
+  writeLocalTeacherList(prefix, teacherId, [item, ...cur]);
+}
+
+function isFallbackRecoverableError(e) {
+  const code = String(e?.code || '').toLowerCase();
+  const msg = String(e?.message || '').toLowerCase();
+  return code === 'permission-denied' || code === 'unavailable' || /insufficient permissions|offline|network/i.test(msg);
 }
 
 /* ============================================================
@@ -101,11 +135,17 @@ export async function createClass({ name, teacherId, teacherName, subject, requi
   try {
     const newDocRef = doc(collection(db, 'classes'));
     const classData = { id: newDocRef.id, ...data };
+    upsertLocalTeacherItem('classes', teacherId, { ...classData, createdAt: Date.now() });
     setDoc(newDocRef, stripUndefined(data)).catch((err) => {
       console.warn('[createClass] setDoc background warning:', err?.message);
     });
     return classData;
   } catch (e) {
+    if (isFallbackRecoverableError(e) && teacherId) {
+      const localCls = { id: `local-cls-${Date.now().toString(36)}`, ...data, createdAt: Date.now() };
+      upsertLocalTeacherItem('classes', teacherId, localCls);
+      return localCls;
+    }
     console.error('[createClass] Lỗi:', e.code, e.message);
     throw new Error(friendlyFirestoreError(e, 'tạo lớp'));
   }
@@ -116,8 +156,18 @@ export async function getClassesByTeacher(teacherId) {
   try {
     const q = query(collection(db, 'classes'), where('teacherId', '==', teacherId));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const cloudList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const localList = readLocalTeacherList('classes', teacherId);
+    const map = new Map(cloudList.map((c) => [c.id, c]));
+    localList.forEach((c) => { if (c?.id && !map.has(c.id)) map.set(c.id, c); });
+    const merged = Array.from(map.values());
+    writeLocalTeacherList('classes', teacherId, merged);
+    return merged;
   } catch (e) {
+    if (isFallbackRecoverableError(e)) {
+      console.warn('[getClassesByTeacher] Fallback local:', e.code || e.message);
+      return readLocalTeacherList('classes', teacherId);
+    }
     console.error('[getClassesByTeacher] Lỗi:', e.code, e.message);
     throw new Error(friendlyFirestoreError(e, 'tải lớp của giáo viên'));
   }
@@ -546,6 +596,7 @@ export async function createExam({
     const newDocRef = doc(collection(db, 'exams'));
     const examData = { id: newDocRef.id, ...data };
     await setDoc(newDocRef, cleanData);
+    upsertLocalTeacherItem('exams', teacherId, { ...examData, createdAt: Date.now() });
     return examData;
   } catch (e) {
     console.error('[createExam] Lỗi:', e?.code, e?.message);
@@ -606,8 +657,18 @@ export async function getExamsByTeacher(teacherId) {
   try {
     const q = query(collection(db, 'exams'), where('teacherId', '==', teacherId));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const cloudList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const localList = readLocalTeacherList('exams', teacherId);
+    const map = new Map(cloudList.map((e) => [e.id, e]));
+    localList.forEach((e) => { if (e?.id && !map.has(e.id)) map.set(e.id, e); });
+    const merged = Array.from(map.values());
+    writeLocalTeacherList('exams', teacherId, merged);
+    return merged;
   } catch (e) {
+    if (isFallbackRecoverableError(e)) {
+      console.warn('[getExamsByTeacher] Fallback local:', e.code || e.message);
+      return readLocalTeacherList('exams', teacherId);
+    }
     console.error('[getExamsByTeacher] Lỗi:', e.code, e.message);
     throw new Error(friendlyFirestoreError(e, 'tải đề của giáo viên'));
   }
