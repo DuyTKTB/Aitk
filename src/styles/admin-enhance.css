@@ -5,6 +5,82 @@
    ============================================================ */
 
 /* ============================================================
+   0. BỘ BIẾN HỆ THỐNG ADMIN (--ad-*) — LIGHT & DARK MODE
+   ============================================================ */
+:root,
+.ad-scope,
+.adl {
+  --ad-panel: var(--t-surface-2, var(--panel, #ffffff));
+  --ad-panel-soft: var(--t-surface-3, var(--vt-tint, #f4f6fb));
+  --ad-line: var(--t-border, rgba(15, 23, 42, 0.1));
+  --ad-line-strong: var(--t-border-strong, rgba(15, 23, 42, 0.18));
+  --ad-ink: var(--t-ink, var(--ink, #0f172a));
+  --ad-ink-soft: var(--t-ink-3, var(--mut, #64748b));
+  --ad-ink-muted: var(--t-ink-2, var(--mut, #475569));
+  --ad-brand: var(--t-accent, var(--acc, #2563eb));
+  --ad-brand-soft: color-mix(in srgb, var(--ad-brand) 12%, transparent);
+  --ad-brand-ring: color-mix(in srgb, var(--ad-brand) 36%, transparent);
+  --ad-ok: #16a34a;
+  --ad-ok-soft: rgba(22, 163, 74, 0.12);
+  --ad-warn: #d97706;
+  --ad-warn-soft: rgba(245, 158, 11, 0.14);
+  --ad-err: #ef4444;
+  --ad-err-soft: rgba(239, 68, 68, 0.13);
+  --ad-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --ad-shadow-sm: 0 4px 12px -4px rgba(15, 23, 42, 0.08);
+  --ad-shadow-md: 0 20px 50px -12px rgba(15, 23, 42, 0.24);
+}
+
+[data-theme='dark'],
+[data-theme='dark'] .ad-scope,
+.t-shell[data-theme='dark'].ad-scope {
+  --ad-panel: #161b26;
+  --ad-panel-soft: #1e2536;
+  --ad-line: rgba(148, 163, 184, 0.18);
+  --ad-line-strong: rgba(148, 163, 184, 0.28);
+  --ad-ink: #f1f5f9;
+  --ad-ink-soft: #94a3b8;
+  --ad-ink-muted: #cbd5e1;
+  --ad-brand: var(--t-accent, #60a5fa);
+  --ad-brand-soft: rgba(96, 165, 250, 0.16);
+  --ad-brand-ring: rgba(96, 165, 250, 0.42);
+  --ad-ok: #4ade80;
+  --ad-ok-soft: rgba(34, 197, 94, 0.16);
+  --ad-warn: #fbbf24;
+  --ad-warn-soft: rgba(245, 158, 11, 0.18);
+  --ad-err: #f87171;
+  --ad-err-soft: rgba(239, 68, 68, 0.18);
+  --ad-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ad-shadow-sm: 0 6px 16px -4px rgba(0, 0, 0, 0.45);
+  --ad-shadow-md: 0 24px 64px -12px rgba(0, 0, 0, 0.65);
+}
+
+/* Topbar Admin: hiển thị cả tiêu đề + tabs + right actions gọn gàng */
+.ad-scope .t-top-left.has-both {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ad-scope .t-top-left.has-both .vt-tabs {
+  width: 100%;
+  padding-left: 0;
+  gap: 1.1rem;
+}
+
+.ad-scope .t-top-left.has-both .vt-tab {
+  padding: 0.35rem 0 0.45rem;
+  font-size: 0.88rem;
+}
+
+.t-top-custom-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
    1. TRANSITION + FOCUS RING TOÀN CỤC
    ============================================================ */
 .ad-scope button,
@@ -363,12 +439,12 @@
 }
 
 /* ============================================================
-   10. DETAIL SUMMARY (ActivityPage)
+   10. DETAIL SUMMARY (ActivityPage & UserDetailModal)
    ============================================================ */
 .ad-scope .vt-detail-summary {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 1rem;
   padding: 1rem 1.2rem;
   margin-bottom: 1.2rem;
   background: linear-gradient(135deg,
@@ -585,13 +661,13 @@
 }
 
 /* ============================================================
-   14. ROW ACTIONS — hiện khi hover
+   14. ROW ACTIONS — luôn rõ nét, sáng hơn khi hover
    ============================================================ */
 .ad-scope .vt-row-actions {
   display: flex;
   gap: 4px;
   justify-content: flex-end;
-  opacity: .6;
+  opacity: .88;
   transition: opacity .18s ease;
 }
 
@@ -821,7 +897,8 @@
   border-bottom: 1px solid var(--ad-line);
   flex-wrap: wrap;
 }
-.ad-context-left {
+.ad-context-left,
+.ad-context-tabs {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -847,13 +924,15 @@
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.14s ease;
 }
 .ad-context-tab:hover {
   background: var(--ad-panel-soft);
   color: var(--ad-ink);
 }
-.ad-context-tab.is-active {
+.ad-context-tab.is-active,
+.ad-context-tab.on {
   background: var(--ad-brand-soft);
   border-color: var(--ad-brand-ring);
   color: var(--ad-brand);
@@ -901,31 +980,39 @@
 }
 
 .ad-cmd-modal {
-  width: min(540px, 94vw);
+  width: min(560px, 94vw);
   background: var(--ad-panel);
+  color: var(--ad-ink);
   border: 1px solid var(--ad-line-strong);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--ad-shadow-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
-.ad-cmd-head {
+.ad-cmd-head,
+.ad-cmd-search {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--ad-line);
   color: var(--ad-ink-muted);
+  background: var(--ad-panel);
 }
-.ad-cmd-input {
+.ad-cmd-input,
+.ad-cmd-search input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   color: var(--ad-ink);
   font-size: 14px;
   font-weight: 600;
+}
+.ad-cmd-search input::placeholder {
+  color: var(--ad-ink-soft);
 }
 .ad-cmd-esc {
   padding: 3px 8px;
@@ -938,20 +1025,20 @@
   cursor: pointer;
 }
 .ad-cmd-list {
-  max-height: 320px;
+  max-height: 360px;
   overflow-y: auto;
   padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 .ad-cmd-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 9px;
+  justify-content: flex-start;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 11px;
   border: none;
   background: transparent;
   color: var(--ad-ink);
@@ -959,14 +1046,66 @@
   font-weight: 600;
   text-align: left;
   cursor: pointer;
+  width: 100%;
 }
-.ad-cmd-item:hover {
+.ad-cmd-item:hover,
+.ad-cmd-item.first {
   background: var(--ad-brand-soft);
   color: var(--ad-brand);
 }
+.ad-cmd-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--ad-panel-soft);
+  color: var(--ad-brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ad-cmd-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ad-cmd-body b {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: inherit;
+}
+.ad-cmd-body small,
 .ad-cmd-item-sub {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--ad-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ad-cmd-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-top: 1px solid var(--ad-line);
+  background: var(--ad-panel-soft);
+  color: var(--ad-ink-soft);
+  font-size: 11.5px;
+}
+.ad-cmd-foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ad-cmd-foot kbd {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--ad-panel);
+  border: 1px solid var(--ad-line);
+  font-size: 10.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .ad-cmd-empty {
   padding: 20px;
@@ -988,15 +1127,43 @@
 }
 .ad-mini-kpi {
   display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 12px 14px;
-  border-radius: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 13px 15px;
+  border-radius: 14px;
   background: var(--ad-panel);
   border: 1px solid var(--ad-line);
   box-shadow: var(--ad-shadow-xs);
   text-align: left;
+  min-width: 0;
   transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.ad-mini-kpi > span:not(.ad-mini-kpi-ico) {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ad-ink-soft);
+}
+.ad-mini-kpi > b {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ad-ink);
+  font-variant-numeric: tabular-nums;
+}
+.ad-mini-kpi > small {
+  font-size: 11.5px;
+  color: var(--ad-ink-muted);
+  line-height: 1.35;
+}
+.ad-mini-kpi--actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
+  gap: 8px;
 }
 button.ad-mini-kpi {
   cursor: pointer;
@@ -1485,21 +1652,105 @@ button.ad-mini-kpi:hover {
   border-color: rgba(34, 197, 94, 0.4);
 }
 
+[data-theme='dark'] .ad-scope .vt-select-pill,
+[data-theme='dark'] .ad-scope .vt-filter-group select {
+  background-color: var(--ad-panel-soft);
+  border-color: var(--ad-line-strong);
+  color: var(--ad-ink);
+}
+
+[data-theme='dark'] .ad-scope .vt-card-title,
+[data-theme='dark'] .ad-scope .t-top-title {
+  color: var(--ad-ink) !important;
+}
+
 @media (max-width: 1100px) {
   .ad-kpi-strip,
   .ad-kpi-strip--4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .ad-kpi-strip > :nth-child(5):last-child {
+    grid-column: 1 / -1;
+  }
   .ad-dash-row2 {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 900px) {
+  .ad-scope .vt-row-actions {
+    opacity: 1;
+  }
+  .ad-scope .t-topbar-slim {
+    height: auto !important;
+    min-height: 54px !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 14px !important;
+  }
+  .ad-scope .t-top-left {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .ad-scope .t-top-heading,
+  .ad-scope .t-top-title,
+  .ad-scope .t-top-sub {
+    max-width: 100%;
+  }
+  .ad-scope .t-top-right {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ad-scope .t-top-custom-right {
+    margin-right: auto;
+    gap: 6px;
+  }
+}
+
 @media (max-width: 640px) {
   .ad-kpi-strip,
   .ad-kpi-strip--4 {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .ad-mini-kpi {
+    padding: 11px 12px;
+    gap: 3px;
+  }
+  .ad-mini-kpi > b,
+  .ad-mini-kpi-val {
+    font-size: 18px;
+  }
+  .ad-mini-kpi--actions {
+    grid-column: 1 / -1;
+    padding: 10px 12px;
   }
   .ad-context-bar {
-    padding: 6px 14px;
+    padding: 6px 12px;
+    gap: 8px;
+  }
+  .ad-context-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+  .ad-context-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .ad-context-right {
+    display: none;
+  }
+  .ad-week-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ad-scope .t-search-pill {
+    flex: 1 1 180px;
+    max-width: 100%;
   }
 }

@@ -29,6 +29,16 @@ export const daysLeft = (expiry) => {
   return ms <= 0 ? 0 : Math.ceil(ms / 86400000);
 };
 
+export function isStudentVipRecord(row) {
+  if (!row) return false;
+  const note = String(row.note || '');
+  const code = String(row.key_code || row.code || '');
+  return (
+    (note.includes('[STUDENT_VIP') && !note.includes('Giáo viên'))
+    || code.startsWith('VIP-')
+  );
+}
+
 /* ============================================================
    ADMIN: TẠO KEY (Hỗ trợ Teacher PRO, Student VIP, Credit AI)
    ============================================================ */
@@ -248,7 +258,7 @@ export async function adminExtendProUser(userId, extraDays = 30) {
   const days = Math.max(1, Math.min(3650, Number(extraDays) || 30));
   const { data: cur, error: e0 } = await supabase
     .from('pro_users')
-    .select('expiry, duration_days')
+    .select('expiry, duration_days, key_code, note')
     .eq('user_id', userId)
     .single();
   if (e0) throw e0;
@@ -266,6 +276,25 @@ export async function adminExtendProUser(userId, extraDays = 30) {
     .select()
     .single();
   if (error) throw error;
+
+  // Đồng bộ gia hạn sang Firestore để web chính & thiết bị khác cập nhật ngay
+  try {
+    const { doc, setDoc } = await import('firebase/firestore');
+    const { db } = await import('./firebase.js');
+    const isStudentVip = isStudentVipRecord(data || cur);
+    await setDoc(doc(db, 'users', userId), {
+      tier: isStudentVip ? 'vip' : 'pro',
+      plan: isStudentVip ? 'VIP' : 'PRO',
+      ...(isStudentVip
+        ? { vip: true, vipUntil: newExpiry }
+        : { pro: true, proUntil: newExpiry, vipUntil: newExpiry }),
+      updatedAt: new Date().toISOString(),
+      source: 'admin_extend',
+    }, { merge: true });
+  } catch (fsErr) {
+    console.warn('[proKeyApi] Firestore extend PRO sync err:', fsErr);
+  }
+
   return data;
 }
 
@@ -276,13 +305,13 @@ export async function adminRevokeProUser(userId) {
     const { doc, setDoc } = await import('firebase/firestore');
     const { db } = await import('./firebase.js');
     await setDoc(doc(db, 'users', userId), {
-      role: 'teacher',
       pro: false,
       proUntil: null,
       tier: 'free',
       plan: 'free',
       vip: false,
       vipUntil: null,
+      source: 'admin_revoked',
       updatedAt: new Date().toISOString(),
     }, { merge: true });
   } catch (fsErr) {
@@ -316,12 +345,26 @@ export async function adminRevokeProUser(userId) {
 export const adminRevokeProDirect = adminRevokeProUser;
 
 /* ============================================================
-   ADMIN: CẤP & HỦY QUYỀN VIP TRỰC TIẾP
+   ADMIN: CẤP & HỦY QUYỀN VIP TRỰC TIẾP (HỌC SINH VIP 199K)
    ============================================================ */
-export async function adminGrantVipDirect({ userId, durationDays = 365, note = 'Cấp VIP trực tiếp bởi Admin' } = {}) {
-  const uid = String(userId || '').trim();
+export async function adminGrantVipDirect({ userId, durationDays = 30, note = 'Cấp VIP trực tiếp bởi Admin' } = {}) {
+  let uid = String(userId || '').trim();
   if (!uid) throw new Error('Thiếu ID người dùng.');
-  const days = Math.max(1, Math.min(3650, Number(durationDays) || 365));
+  const days = Math.max(1, Math.min(3650, Number(durationDays) || 30));
+
+  if (uid.includes('@')) {
+    const { data: profByEmail, error: emailErr } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .ilike('email', uid)
+      .limit(1)
+      .maybeSingle();
+    if (emailErr) throw emailErr;
+    if (!profByEmail?.id) {
+      throw new Error(`Không tìm thấy tài khoản với email "${uid}".`);
+    }
+    uid = profByEmail.id;
+  }
 
   const { data: existing } = await supabase
     .from('pro_users')
@@ -344,7 +387,7 @@ export async function adminGrantVipDirect({ userId, durationDays = 365, note = '
       expiry: newExpiry,
       duration_days: newDuration,
       activated_at: existing?.activated_at || new Date().toISOString(),
-      note: `[STUDENT_VIP:${days}] ${note?.trim() || 'Cấp VIP bởi Admin'}`.trim(),
+      note: `[STUDENT_VIP:${days}] ${note?.trim() || 'Cấp VIP Học sinh bởi Admin'}`.trim(),
     }, { onConflict: 'user_id' })
     .select()
     .single();
@@ -359,6 +402,8 @@ export async function adminGrantVipDirect({ userId, durationDays = 365, note = '
       tier: 'vip',
       plan: 'VIP',
       vip: true,
+      pro: false,
+      proUntil: null,
       vipUntil: newExpiry,
       upgradedAt: new Date().toISOString(),
       source: 'admin_direct_vip',
@@ -871,4 +916,149 @@ export async function getProStatus(userId, userEmail = null) {
   } catch { /* ignore */ }
 
   return { isPro: false, serverChecked };
+}
+
+/* ============================================================
+   ADMIN: ĐỒNG BỘ 2 CHIỀU SUPABASE <-> FIRESTORE & RESET DÙNG THỬ
+   ============================================================ */
+export async function adminSyncUserRole(userId, role, userInfo = {}) {
+  const uid = String(userId || '').trim();
+  if (!uid) throw new Error('Thiếu ID người dùng.');
+  const cleanRole = String(role || 'user').trim();
+
+  // 1. Cập nhật / Upsert trên Supabase profiles
+  const payload = { id: uid, role: cleanRole };
+  if (userInfo.display_name) payload.display_name = userInfo.display_name;
+  if (userInfo.email) payload.email = userInfo.email;
+  const { error: sbErr } = await supabase
+    .from('profiles')
+    .upsert(payload, { onConflict: 'id' });
+  if (sbErr) throw sbErr;
+
+  // 2. Đồng bộ vai trò sang Firestore /users/{uid} (web chính đọc trực tiếp tại đây)
+  try {
+    const { doc, setDoc } = await import('firebase/firestore');
+    const { db } = await import('./firebase.js');
+    const fsRole = cleanRole === 'user' ? 'student' : cleanRole;
+    await setDoc(doc(db, 'users', uid), {
+      role: fsRole,
+      ...(userInfo.display_name ? { displayName: userInfo.display_name } : {}),
+      ...(userInfo.email ? { email: userInfo.email } : {}),
+      updatedAt: new Date().toISOString(),
+      source: 'admin_role_sync',
+    }, { merge: true });
+  } catch (fsErr) {
+    console.warn('[proKeyApi] Firestore role sync err:', fsErr);
+  }
+
+  // 3. Đồng bộ local meta
+  try {
+    const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
+    meta[uid] = { ...(meta[uid] || {}), role: cleanRole === 'user' ? 'student' : cleanRole };
+    localStorage.setItem('cs-user-meta', JSON.stringify(meta));
+    window.dispatchEvent(new CustomEvent('user-profile-change'));
+  } catch { /* ignore */ }
+
+  return { ok: true, id: uid, role: cleanRole };
+}
+
+export async function adminFetchMergedUsers({ limit = 500 } = {}) {
+  const byId = new Map();
+
+  // 1. Tải danh sách từ Supabase profiles
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, email, avatar_url, role, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (!error && Array.isArray(data)) {
+      data.forEach((p) => {
+        if (p?.id) byId.set(p.id, { ...p, _source: 'supabase' });
+      });
+    }
+  } catch (sbErr) {
+    console.warn('[proKeyApi] Supabase profiles fetch err:', sbErr);
+  }
+
+  // 2. Hợp nhất thêm từ Firestore /users (nhiều user Google/Firebase chưa từng đồng bộ sang Supabase profiles)
+  try {
+    const { collection, getDocs, limit: fsLimit, query } = await import('firebase/firestore');
+    const { db } = await import('./firebase.js');
+    const snap = await getDocs(query(collection(db, 'users'), fsLimit(limit)));
+    snap.forEach((docSnap) => {
+      const uid = docSnap.id;
+      const d = docSnap.data() || {};
+      const existing = byId.get(uid) || { id: uid };
+      const fsRole = d.role === 'student' ? 'user' : (d.role || existing.role || 'user');
+      const createdVal = existing.created_at
+        || (typeof d.createdAt?.toDate === 'function' ? d.createdAt.toDate().toISOString() : d.createdAt)
+        || d.updatedAt
+        || null;
+
+      byId.set(uid, {
+        ...existing,
+        id: uid,
+        display_name: existing.display_name || d.displayName || d.name || (d.email ? d.email.split('@')[0] : null),
+        email: existing.email || d.email || null,
+        avatar_url: existing.avatar_url || d.photoURL || d.avatarUrl || null,
+        role: existing.role || fsRole,
+        created_at: createdVal,
+        _fromFirestore: true,
+        _fsPlan: d.plan || d.tier || null,
+        _trialResetAt: d.trialQuotaResetAt || null,
+      });
+    });
+  } catch (fsErr) {
+    // Firestore Security Rules có thể chặn liệt kê collection users nếu phiên chưa quyền
+    console.warn('[proKeyApi] Firestore users merge skipped:', fsErr?.message || fsErr);
+  }
+
+  return [...byId.values()].sort((a, b) => toMs(b.created_at) - toMs(a.created_at));
+}
+
+export async function adminResetTeacherTrialQuota(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) throw new Error('Thiếu ID người dùng.');
+
+  // 1. Xóa sạch bộ đếm dùng thử (Word 10, Thủ công 30, OMR 5) trong RAM & localStorage
+  try {
+    const {
+      resetOmrTrialCounterForTest,
+      resetWordImportTrialCounterForTest,
+      resetManualEntryTrialCounterForTest,
+    } = await import('./entitlements.js');
+    resetOmrTrialCounterForTest(uid);
+    resetWordImportTrialCounterForTest(uid);
+    resetManualEntryTrialCounterForTest(uid);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(`cs_teacher_trial_quota_v1:${uid}`);
+      localStorage.removeItem('cs_teacher_trial_quota_v1');
+    }
+  } catch (localErr) {
+    console.warn('[proKeyApi] Reset local trial counters err:', localErr);
+  }
+
+  // 2. Lưu dấu reset vào Firestore /users/{uid} để đồng bộ đa thiết bị
+  const resetAt = new Date().toISOString();
+  try {
+    const { doc, setDoc } = await import('firebase/firestore');
+    const { db } = await import('./firebase.js');
+    await setDoc(doc(db, 'users', uid), {
+      wordImportsUsed: 0,
+      manualExamsUsed: 0,
+      omrSheetsUsed: 0,
+      trialQuotaResetAt: resetAt,
+      updatedAt: resetAt,
+    }, { merge: true });
+  } catch (fsErr) {
+    console.warn('[proKeyApi] Firestore reset trial quota err:', fsErr);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cs-teacher-trial-quota-change', { detail: { uid, resetAt } }));
+    window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: { uid, resetAt } }));
+  }
+
+  return { ok: true, uid, resetAt };
 }

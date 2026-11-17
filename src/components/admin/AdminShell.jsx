@@ -5,6 +5,7 @@
    Modal/ConfirmDialog/Toast → lấy từ AdminUI.jsx (nguồn duy nhất).
    ============================================================ */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { DashFrame, Topbar, Donut, TrendChart, Avatar, tsMs, fmtMMSS, fmtClock, downloadCsv } from '../DashShell.jsx';
 import {
   IconDashboard, IconExam, IconQuestion, IconUsers, IconActivity, IconSettings,
@@ -20,11 +21,11 @@ export const ADMIN_MENU = [
   { key: 'exams',      label: 'Đề thi',        Icon: IconExam,      group: 2, desc: 'Quản lý, xuất JSON/CSV, ẩn/hiện và nhân bản đề' },
   { key: 'create',     label: 'Tạo đề',        Icon: IconSparkle,   group: 2, desc: 'Tạo đề bằng AI, Import JSON hoặc tạo thủ công' },
   { key: 'questions',  label: 'Câu hỏi',       Icon: IconQuestion,  group: 2, desc: 'Ngân hàng câu hỏi toàn hệ thống, sửa nhanh & lọc lỗi' },
-  { key: 'keys',       label: 'Key giáo viên', Icon: IconKey,       group: 3, badge: 'key', desc: 'Phát hành, thu hồi và xuất mã Key PRO' },
-  { key: 'pro-users',  label: 'Giáo viên PRO', Icon: IconCrown,     group: 3, badge: 'pro', desc: 'Theo dõi hạn dùng, gia hạn & cấp PRO trực tiếp' },
-  { key: 'users',      label: 'Người dùng',    Icon: IconUsers,     group: 3, desc: 'Phân quyền Học sinh / Giáo viên / Admin & cấp PRO' },
+  { key: 'keys',       label: 'Key & Voucher', Icon: IconKey,       group: 3, badge: 'key', desc: 'Phát hành Key GV PRO (399k), HS VIP (199k), Voucher & Credit' },
+  { key: 'pro-users',  label: 'VIP & PRO',     Icon: IconCrown,     group: 3, badge: 'pro', desc: 'Quản lý Giáo viên PRO (399k) & Học sinh VIP (199k)' },
+  { key: 'users',      label: 'Người dùng',    Icon: IconUsers,     group: 3, desc: 'Phân quyền, đồng bộ Firestore & Reset dùng thử GV' },
   { key: 'activity',   label: 'Hoạt động',     Icon: IconActivity,  group: 4, desc: 'Nhật ký làm bài của học sinh, phổ điểm & chi tiết câu' },
-  { key: 'settings',   label: 'Cài đặt',       Icon: IconSettings,  group: 4, desc: 'Bật/tắt tính năng, chế độ bảo trì, sao lưu & khôi phục' },
+  { key: 'settings',   label: 'Cài đặt',       Icon: IconSettings,  group: 4, desc: 'Bảng giá VIP/PRO, hạn mức dùng thử, sao lưu & khôi phục' },
   { key: 'guide',      label: 'Hướng dẫn',     Icon: IconBook,      group: 4, desc: 'Quy trình chuẩn, mẫu JSON & xử lý sự cố' },
 ];
 
@@ -35,8 +36,8 @@ const GROUP_TABS = {
     { key: 'questions', label: 'Ngân hàng Câu hỏi', Icon: IconQuestion },
   ],
   3: [
-    { key: 'keys',      label: 'Key Giáo viên',     Icon: IconKey },
-    { key: 'pro-users', label: 'Giáo viên PRO',     Icon: IconCrown },
+    { key: 'keys',      label: 'Key & Voucher',     Icon: IconKey },
+    { key: 'pro-users', label: 'Thuê bao VIP/PRO',  Icon: IconCrown },
     { key: 'users',     label: 'Tất cả Người dùng', Icon: IconUsers },
   ],
   4: [
@@ -55,6 +56,7 @@ export function setGlobalAdminBadges(next) {
    ADMIN SHELL
    ============================================================ */
 export default function AdminShell({ active, onChange, badges = {}, sideNote, children }) {
+  const { user } = useAuth();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
   const cmdInputRef = useRef(null);
@@ -157,6 +159,10 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
       exitLabel="Về trang chủ"
       sideNote={sideNote}
       extraNav={extraNav}
+      user={user}
+      roleLabel="Quản trị viên"
+      onOpenCommandPalette={() => { setCmdOpen(true); setCmdQuery(''); }}
+      onOpenProfile={() => navigateTo('users')}
     >
       {/* Thanh chuyển nhanh theo cụm chức năng + nút Ctrl+K */}
       <div className="ad-context-bar">

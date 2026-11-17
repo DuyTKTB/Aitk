@@ -268,7 +268,7 @@ export function ConfirmDialog({ open, title, body, okLabel = 'Xác nhận', dang
 
 export function Topbar({
   title, subtitle, tabs, active, onTab, search, onSearch,
-  placeholder = 'Tìm kiếm...', bell, theme, onToggleTheme,
+  placeholder = 'Tìm kiếm...', bell, right = null, theme, onToggleTheme,
   onOpenCommandPalette, onOpenAiCopilot,
   user = null, roleLabel = '', quickAction = null,
   onGoOverview = null, isOverview = false, onOpenProfile = null,
@@ -277,12 +277,19 @@ export function Topbar({
   const now = new Date();
   const dowLabels = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
   const todayChip = `${dowLabels[now.getDay()]}, ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const displayName = user?.displayName || user?.email?.split('@')?.[0] || 'Giáo viên';
+  const isAdminRole = String(roleLabel || '').toLowerCase().includes('quản trị');
+  const displayName = user?.displayName || user?.email?.split('@')?.[0] || (isAdminRole ? 'Quản trị viên' : 'Giáo viên');
 
   return (
     <header className="t-topbar-slim">
-      <div className="t-top-left">
-        {tabs && tabs.length > 0 ? (
+      <div className={`t-top-left${title && tabs && tabs.length > 0 ? ' has-both' : ''}`}>
+        {(title || subtitle) && (
+          <div className="t-top-heading">
+            {title && <h1 className="t-top-title">{title}</h1>}
+            {subtitle && <p className="t-top-sub">{subtitle}</p>}
+          </div>
+        )}
+        {tabs && tabs.length > 0 && (
           <div className="vt-tabs" role="tablist">
             {tabs.map((t) => (
               <button
@@ -298,15 +305,11 @@ export function Topbar({
               </button>
             ))}
           </div>
-        ) : (
-          <div className="t-top-heading">
-            <h1 className="t-top-title">{title}</h1>
-            {subtitle && <p className="t-top-sub">{subtitle}</p>}
-          </div>
         )}
       </div>
 
       <div className="t-top-right">
+        {right && <div className="t-top-custom-right">{right}</div>}
         {(onGoOverview || quickAction) && (
           <div className="t-top-seg-pill" role="group" aria-label="Thao tác nhanh">
             {onGoOverview && (
@@ -441,7 +444,7 @@ export function Topbar({
             type="button"
             className="t-top-profile-chip"
             onClick={onOpenProfile}
-            title={`${displayName}${roleLabel ? ` · ${roleLabel}` : ''} — Bấm để mở Hồ sơ giáo viên`}
+            title={`${displayName}${roleLabel ? ` · ${roleLabel}` : ''} — Bấm để mở hồ sơ`}
           >
             <Avatar name={displayName} size={28} />
             <span className="t-top-profile-meta">

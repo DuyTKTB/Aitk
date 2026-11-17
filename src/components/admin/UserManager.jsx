@@ -9,6 +9,10 @@ import {
   adminRevokeProDirect,
   adminGrantVipDirect,
   adminRevokeVipDirect,
+  adminSyncUserRole,
+  adminFetchMergedUsers,
+  adminResetTeacherTrialQuota,
+  isStudentVipRecord,
   isProActive,
   daysLeft,
 } from '../../lib/proKeyApi.js';
@@ -93,10 +97,21 @@ export default function UserManager() {
     setLoading(true);
     setError(null);
     try {
-      const [rows] = await Promise.all([fetchPage(0), loadProMap(), loadCreditsMap()]);
+      const [mergedRows] = await Promise.all([
+        adminFetchMergedUsers({ limit: 500 }),
+        loadProMap(),
+        loadCreditsMap(),
+      ]);
       if (my !== reqId.current) return;
-      setUsers(rows);
-      setHasMore(rows.length === PAGE);
+      if (mergedRows.length > 0) {
+        setUsers(mergedRows);
+        setHasMore(false);
+      } else {
+        const rows = await fetchPage(0);
+        if (my !== reqId.current) return;
+        setUsers(rows);
+        setHasMore(rows.length === PAGE);
+      }
     } catch (e) {
       if (my !== reqId.current) return;
       setError(friendlyError(e));
@@ -131,11 +146,11 @@ export default function UserManager() {
     return users.filter((u) => {
       if (roleFilter === 'vip') {
         const pro = proMap[u.id];
-        const isVip = Boolean((pro?.note || '').includes('[STUDENT_VIP') || String(pro?.key_code || '').startsWith('VIP-') || u.role === 'vip');
+        const isVip = Boolean(isStudentVipRecord(pro) || u.role === 'vip');
         if (!isVip || !pro || !isProActive(pro.expiry)) return false;
       } else if (roleFilter === 'pro') {
         const pro = proMap[u.id];
-        const isVip = Boolean((pro?.note || '').includes('[STUDENT_VIP') || String(pro?.key_code || '').startsWith('VIP-') || u.role === 'vip');
+        const isVip = Boolean(isStudentVipRecord(pro) || u.role === 'vip');
         if (!pro || !isProActive(pro.expiry) || isVip) return false;
       } else if (roleFilter === 'zeroCredits') {
         if ((creditsMap[u.id] ?? 0) !== 0) return false;
@@ -160,16 +175,18 @@ export default function UserManager() {
     const roleName = ROLES.find((r) => r.id === role)?.name || role;
     setConfirm({
       title: 'Đổi vai trò tài khoản',
-      body: `Đổi "${u.display_name || 'Chưa đặt tên'}" thành ${roleName}?${role === 'admin' ? ' Tài khoản này sẽ có toàn quyền quản trị hệ thống.' : ''}`,
+      body: `Đổi "${u.display_name || 'Chưa đặt tên'}" thành ${roleName}? Thay đổi được đồng bộ đồng thời sang Supabase và Firestore.${role === 'admin' ? ' Tài khoản này sẽ có toàn quyền quản trị hệ thống.' : ''}`,
       okLabel: 'Đổi vai trò',
       danger: role === 'admin',
       onOk: async () => {
         setSavingId(u.id);
         try {
-          const { error: e } = await supabase.from('profiles').update({ role }).eq('id', u.id);
-          if (e) throw e;
+          await adminSyncUserRole(u.id, role, {
+            display_name: u.display_name,
+            email: u.email,
+          });
           setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, role } : x)));
-          say('Đã cập nhật vai trò');
+          say(`Đã cập nhật & đồng bộ vai trò (${roleName})`);
         } catch (e) {
           say('Không đổi được: ' + friendlyError(e));
         } finally {
@@ -213,14 +230,26 @@ export default function UserManager() {
     });
   };
 
-  const handleGrantVip = async (u, days = 365) => {
+  const handleGrantVip = async (u, days = 30) => {
     setSavingId(u.id);
     try {
-      await adminGrantVipDirect({ userId: u.id, durationDays: days, note: 'Nâng lên VIP từ Quản lý Người dùng' });
+      await adminGrantVipDirect({ userId: u.id, durationDays: days, note: 'Cấp Học sinh VIP (199k) từ Quản lý Người dùng' });
       await loadProMap();
-      say(`Đã nâng cấp ${u.display_name || u.id} lên VIP (+${days} ngày)`);
+      say(`Đã cấp Học sinh VIP +${days} ngày cho ${u.display_name || u.id}`);
     } catch (e) {
-      say('Không nâng được VIP: ' + friendlyError(e));
+      say('Không cấp được VIP: ' + friendlyError(e));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleResetTrialQuota = async (u) => {
+    setSavingId(u.id);
+    try {
+      await adminResetTeacherTrialQuota(u.id);
+      say(`Đã reset lượt dùng thử (10 Word / 30 Thủ công / 5 OMR) cho ${u.display_name || u.id}`);
+    } catch (e) {
+      say('Không reset được dùng thử: ' + friendlyError(e));
     } finally {
       setSavingId(null);
     }
@@ -261,7 +290,7 @@ export default function UserManager() {
     filtered.forEach((u) => {
       const pro = proMap[u.id];
       const activePro = pro && isProActive(pro.expiry);
-      const isVip = Boolean((pro?.note || '').includes('[STUDENT_VIP') || String(pro?.key_code || '').startsWith('VIP-') || u.role === 'vip');
+      const isVip = Boolean(isStudentVipRecord(pro) || u.role === 'vip');
       const planStr = activePro && isVip
         ? `VIP còn ${daysLeft(pro.expiry)} ngày`
         : activePro
@@ -284,7 +313,7 @@ export default function UserManager() {
   const activeProCount = useMemo(
     () => users.filter((u) => {
       const p = proMap[u.id];
-      const isVip = (p?.note || '').includes('[STUDENT_VIP') || String(p?.key_code || '').startsWith('VIP-') || u.role === 'vip';
+      const isVip = isStudentVipRecord(p) || u.role === 'vip';
       return p && isProActive(p.expiry) && !isVip;
     }).length,
     [users, proMap],
@@ -293,7 +322,7 @@ export default function UserManager() {
   const activeVipCount = useMemo(
     () => users.filter((u) => {
       const p = proMap[u.id];
-      const isVip = (p?.note || '').includes('[STUDENT_VIP') || String(p?.key_code || '').startsWith('VIP-') || u.role === 'vip';
+      const isVip = isStudentVipRecord(p) || u.role === 'vip';
       return p && isProActive(p.expiry) && isVip;
     }).length,
     [users, proMap],
@@ -411,11 +440,7 @@ export default function UserManager() {
                   const pro = proMap[u.id];
                   const activePro = pro && isProActive(pro.expiry);
                   const left = activePro ? daysLeft(pro.expiry) : 0;
-                  const isVip = Boolean(
-                    (pro?.note || '').includes('[STUDENT_VIP') ||
-                    String(pro?.key_code || '').startsWith('VIP-') ||
-                    u.role === 'vip'
-                  );
+                  const isVip = Boolean(isStudentVipRecord(pro) || u.role === 'vip');
 
                   return (
                     <tr key={u.id}>
@@ -528,7 +553,7 @@ export default function UserManager() {
                               className="vt-btn sm danger"
                               disabled={savingId === u.id}
                               onClick={() => handleRevokePro(u)}
-                              title="Ấn Không PRO: Gỡ bỏ gói PRO và đưa về tài khoản Thường"
+                              title="Gỡ bỏ gói Giáo viên PRO và đưa về tài khoản Thường"
                             >
                               Bỏ PRO
                             </button>
@@ -538,20 +563,20 @@ export default function UserManager() {
                               className="vt-btn sm"
                               disabled={savingId === u.id}
                               onClick={() => handleQuickGrantPro(u, 30)}
-                              title="Ấn PRO: Cấp hoặc gia hạn 30 ngày PRO"
+                              title="Cấp hoặc gia hạn 30 ngày Giáo viên PRO (399k/tháng)"
                             >
-                              <IconCrown size={12} /> {activePro ? '+30d' : 'Ấn PRO'}
+                              <IconCrown size={12} /> {activePro && !isVip ? '+30d' : 'GV PRO'}
                             </button>
                           )}
 
-                          {/* Nút Lên VIP / Bỏ VIP */}
+                          {/* Nút Cấp VIP / Bỏ VIP */}
                           {activePro && isVip ? (
                             <button
                               type="button"
                               className="vt-btn sm danger"
                               disabled={savingId === u.id}
                               onClick={() => handleRevokeVip(u)}
-                              title="Hạ quyền VIP và đưa về tài khoản Thường"
+                              title="Hạ quyền Học sinh VIP và đưa về tài khoản Thường"
                             >
                               Bỏ VIP
                             </button>
@@ -561,10 +586,10 @@ export default function UserManager() {
                               className="vt-btn sm"
                               style={{ color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.4)' }}
                               disabled={savingId === u.id}
-                              onClick={() => handleGrantVip(u, 365)}
-                              title="Nâng cấp lên VIP (Trọn gói 1 năm)"
+                              onClick={() => handleGrantVip(u, 30)}
+                              title="Cấp 30 ngày Học sinh VIP (199k/tháng)"
                             >
-                              <IconSparkle size={12} /> Lên VIP
+                              <IconSparkle size={12} /> HS VIP
                             </button>
                           )}
 
@@ -614,6 +639,7 @@ export default function UserManager() {
             handleRevokeVip(inspectUser);
             setInspectUser(null);
           }}
+          onResetTrial={() => handleResetTrialQuota(inspectUser)}
           onAdjustCredits={() => {
             setCreditModalUser(inspectUser);
           }}
@@ -653,7 +679,7 @@ export default function UserManager() {
   );
 }
 
-function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantVip, onRevokeVip, onAdjustCredits }) {
+function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantVip, onRevokeVip, onResetTrial, onAdjustCredits }) {
   const [attempts, setAttempts] = useState([]);
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -679,11 +705,7 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
   }, [user.id]);
 
   const activePro = pro && isProActive(pro.expiry);
-  const isVip = Boolean(
-    (pro?.note || '').includes('[STUDENT_VIP') ||
-    String(pro?.key_code || '').startsWith('VIP-') ||
-    user.role === 'vip'
-  );
+  const isVip = Boolean(isStudentVipRecord(pro) || user.role === 'vip');
   const avgScore = attempts.length
     ? (attempts.reduce((s, a) => s + (Number(a.score) || 0), 0) / attempts.length).toFixed(1)
     : '—';
@@ -696,24 +718,34 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
       onClose={onClose}
       foot={
         <>
+          <button
+            type="button"
+            className="vt-btn"
+            style={{ color: '#059669', borderColor: 'rgba(16, 185, 129, 0.35)' }}
+            onClick={onResetTrial}
+            title="Reset hạn mức dùng thử Giáo viên Free (10 Word / 30 Thủ công / 5 OMR)"
+          >
+            <IconRefresh size={13} /> Reset dùng thử GV
+          </button>
+
           <button type="button" className="vt-btn" style={{ color: '#0284c7', borderColor: 'rgba(2, 132, 199, 0.35)' }} onClick={onAdjustCredits}>
             <IconSparkle size={13} /> ⚡ Điểm AI
           </button>
 
           {/* Quản lý PRO */}
           {activePro && !isVip ? (
-            <button type="button" className="vt-btn danger" onClick={onRevokePro} title="Ấn không PRO: Gỡ bỏ gói PRO">
+            <button type="button" className="vt-btn danger" onClick={onRevokePro} title="Gỡ bỏ gói Giáo viên PRO">
               🚫 Hủy PRO (Về Thường)
             </button>
           ) : (
-            <button type="button" className="vt-btn" onClick={() => onGrantPro(30)} title="Ấn PRO: Cấp 30 ngày PRO">
-              <IconCrown size={13} /> Cấp PRO 30d
+            <button type="button" className="vt-btn" onClick={() => onGrantPro(30)} title="Cấp 30 ngày Giáo viên PRO (399k)">
+              <IconCrown size={13} /> Cấp GV PRO 30d
             </button>
           )}
 
           {/* Quản lý VIP */}
           {activePro && isVip ? (
-            <button type="button" className="vt-btn danger" onClick={onRevokeVip} title="Hạ khỏi gói VIP">
+            <button type="button" className="vt-btn danger" onClick={onRevokeVip} title="Hạ khỏi gói Học sinh VIP">
               🚫 Hủy VIP (Về Thường)
             </button>
           ) : (
@@ -721,10 +753,10 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
               type="button"
               className="vt-btn"
               style={{ color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.4)' }}
-              onClick={() => onGrantVip(365)}
-              title="Nâng cấp tài khoản lên VIP 1 năm"
+              onClick={() => onGrantVip(30)}
+              title="Cấp 30 ngày Học sinh VIP (199k)"
             >
-              <IconSparkle size={13} /> Nâng lên VIP (1 năm)
+              <IconSparkle size={13} /> Cấp HS VIP 30d
             </button>
           )}
 
@@ -732,7 +764,7 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
         </>
       }
     >
-      <div className="vt-detail-summary" style={{ marginBottom: '1rem', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+      <div className="vt-detail-summary" style={{ marginBottom: '1rem' }}>
         <div className="vt-detail-stat">
           <small>Vai trò</small>
           <b>{ROLES.find((r) => r.id === (user.role || 'user'))?.name || user.role}</b>
@@ -741,9 +773,9 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
           <small>Gói bản quyền</small>
           <b style={{ color: activePro ? (isVip ? '#7c3aed' : '#16a34a') : undefined }}>
             {activePro && isVip
-              ? `VIP (${daysLeft(pro.expiry)} ngày)`
+              ? `HS VIP 199k (${daysLeft(pro.expiry)} ngày)`
               : activePro
-                ? `PRO (${daysLeft(pro.expiry)} ngày)`
+                ? `GV PRO 399k (${daysLeft(pro.expiry)} ngày)`
                 : 'Gói Thường'}
           </b>
         </div>

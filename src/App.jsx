@@ -488,10 +488,11 @@ export default function App() {
 
   /* ============ ADMIN GUARD ============ */
   useEffect(() => {
+    if (!ready) return;
     if (page === 'admin' && !isAdmin(user)) {
       window.location.hash = 'home';
     }
-  }, [page, user]);
+  }, [ready, page, user]);
 
   /* ============ LOGIN/LOGOUT RESET & POST-AUTH TEACHER REDIRECT ============ */
   const prevLoginRef = useRef(isLoggedIn);

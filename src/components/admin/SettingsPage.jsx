@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { useSettings } from '../../contexts/SettingsContext.jsx';
+import { useAuth } from '../../hooks/useAuth.jsx';
+import { adminResetTeacherTrialQuota } from '../../lib/proKeyApi.js';
+import {
+  FREE_TEACHER_LIMITS,
+  STUDENT_VIP_MONTHLY_PRICE,
+  TEACHER_VIP_MONTHLY_PRICE,
+  formatVnd,
+} from '../../lib/entitlements.js';
 import AdminShell, { Topbar } from './AdminShell.jsx';
 import { ConfirmDialog } from './AdminUI.jsx';
 import {
   IconSettings, IconTrash, IconSave, IconRefresh, IconDownload, IconUpload,
-  IconDatabase, IconShield, IconWarning, IconInfo, IconCheck,
+  IconDatabase, IconShield, IconWarning, IconInfo, IconCheck, IconCrown, IconKey,
 } from './AdminIcons.jsx';
 import { chunk, downloadFile, fetchAllRows, friendlyError } from './adminUtils.js';
 
@@ -25,6 +33,7 @@ const TOGGLES = [
 ];
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const { settings, updateSettings, resetSettings } = useSettings();
 
   const initial = useMemo(() => ({
@@ -326,7 +335,7 @@ export default function SettingsPage() {
 
           {form.announcementEnabled && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                 <label className="vt-field">
                   <span>Huy hiệu</span>
                   <select
@@ -462,12 +471,64 @@ export default function SettingsPage() {
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={(e) => handleRestore(e.target.files?.[0])} />
         </div>
 
-        {progress && (
+          {progress && (
           <p className="vt-muted" style={{ marginTop: '.8rem', fontSize: '.82rem' }}>
             <span className="page-loader-spinner" style={{ display: 'inline-block', width: 12, height: 12, marginRight: 6, verticalAlign: '-2px' }} />
             {progress}
           </p>
         )}
+      </div>
+
+      {/* ===== BẢNG GIÁ VIP/PRO & HẠN MỨC DÙNG THỬ ===== */}
+      <div className="vt-card">
+        <header className="vt-card-head">
+          <h3 className="vt-card-title">
+            <IconCrown size={16} className="vt-title-ico" />
+            Bảng giá VIP/PRO & Hạn mức Dùng thử Giáo viên Free
+          </h3>
+          <span className="vt-chip ready">Đang áp dụng</span>
+        </header>
+        <div className="ad-kpi-strip" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', marginBottom: '1rem' }}>
+          <div className="vt-card ad-mini-kpi">
+            <span>🎓 Học sinh VIP / tháng</span>
+            <b style={{ color: '#7c3aed' }}>{formatVnd(STUDENT_VIP_MONTHLY_PRICE)}</b>
+            <small>399k/3th · 699k/6th · 999k/năm</small>
+          </div>
+          <div className="vt-card ad-mini-kpi">
+            <span>👨‍🏫 Giáo viên PRO / tháng</span>
+            <b style={{ color: '#d97706' }}>{formatVnd(TEACHER_VIP_MONTHLY_PRICE)}</b>
+            <small>1.990k/6th · 3.590k/năm</small>
+          </div>
+          <div className="vt-card ad-mini-kpi">
+            <span>📄 Nhập đề Word Free</span>
+            <b>{FREE_TEACHER_LIMITS.maxWordImports} lần</b>
+            <small>Dùng thử cho tài khoản GV Free</small>
+          </div>
+          <div className="vt-card ad-mini-kpi">
+            <span>✏️ Tạo đề thủ công Free</span>
+            <b>{FREE_TEACHER_LIMITS.maxManualEntries} lần</b>
+            <small>Chấm OMR Free: {FREE_TEACHER_LIMITS.maxOmrTrialSheets} phiếu · {FREE_TEACHER_LIMITS.maxClasses} lớp</small>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="vt-btn sm"
+            onClick={async () => {
+              await adminResetTeacherTrialQuota(user?.uid || 'guest');
+              say('Đã reset lượt dùng thử (10 Word / 30 Thủ công / 5 OMR) trên phiên hiện tại.');
+            }}
+          >
+            <IconRefresh size={13} /> Reset lượt dùng thử thiết bị này
+          </button>
+          <button
+            type="button"
+            className="vt-btn sm primary"
+            onClick={() => { window.location.hash = 'admin/keys'; }}
+          >
+            <IconKey size={13} /> Mở Quản lý Key & Voucher
+          </button>
+        </div>
       </div>
 
       <div className="vt-card" style={{ borderLeft: '4px solid var(--vt-red)' }}>

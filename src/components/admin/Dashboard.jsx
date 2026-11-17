@@ -7,7 +7,7 @@ import {
 } from './AdminIcons.jsx';
 import ApiUsagePanel from './ApiUsagePanel.jsx';
 import AdminShell, { Topbar, Donut, setGlobalAdminBadges } from './AdminShell.jsx';
-import { isProActive, daysLeft, adminExtendProUser } from '../../lib/proKeyApi.js';
+import { isProActive, daysLeft, adminExtendProUser, isStudentVipRecord, adminFetchMergedUsers } from '../../lib/proKeyApi.js';
 import { friendlyError, formatDate } from './adminUtils.js';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -44,10 +44,11 @@ export default function Dashboard({ onNavigate }) {
 
   const loadKeyStats = useCallback(async () => {
     try {
-      const [keysRes, proRes, creditsRes] = await Promise.all([
+      const [keysRes, proRes, creditsRes, mergedUsers] = await Promise.all([
         supabase.from('pro_keys').select('id, code, used_by, revoked, created_at, used_at, duration_days'),
-        supabase.from('pro_users').select('user_id, key_code, expiry, activated_at, duration_days'),
+        supabase.from('pro_users').select('user_id, key_code, expiry, activated_at, duration_days, note'),
         supabase.from('user_credits').select('balance'),
+        adminFetchMergedUsers({ limit: 500 }).catch(() => []),
       ]);
 
       const keys = keysRes.data || [];
@@ -61,27 +62,36 @@ export default function Dashboard({ onNavigate }) {
       const revoked = keys.filter((k) => k.revoked).length;
 
       const proActive = proUsers.filter((u) => isProActive(u.expiry));
+      const teacherProActive = proActive.filter((u) => !isStudentVipRecord(u)).length;
+      const studentVipActive = proActive.filter((u) => isStudentVipRecord(u)).length;
       const proExpired = proUsers.filter((u) => !isProActive(u.expiry));
       const soon = proActive
         .filter((u) => daysLeft(u.expiry) <= 7)
         .sort((a, b) => new Date(a.expiry) - new Date(b.expiry))
         .slice(0, 5);
 
-      const activeIds = proActive.slice(0, 30).map((u) => u.user_id).filter(Boolean);
       let profilesMap = {};
-      if (activeIds.length) {
-        const { data: profilesData } = await supabase
-          .from('profiles').select('id, display_name, email, avatar_url').in('id', activeIds);
-        if (profilesData) profilesMap = Object.fromEntries(profilesData.map((p) => [p.id, p]));
+      if (mergedUsers?.length) {
+        profilesMap = Object.fromEntries(mergedUsers.map((p) => [p.id, p]));
+      } else {
+        const activeIds = proActive.slice(0, 30).map((u) => u.user_id).filter(Boolean);
+        if (activeIds.length) {
+          const { data: profilesData } = await supabase
+            .from('profiles').select('id, display_name, email, avatar_url').in('id', activeIds);
+          if (profilesData) profilesMap = Object.fromEntries(profilesData.map((p) => [p.id, p]));
+        }
       }
 
       const nextStats = {
         total: keys.length, unused, active, revoked,
         proActive: proActive.length,
+        teacherProActive,
+        studentVipActive,
         proExpired: proExpired.length,
         totalCredits, userWithCredits,
         soon: soon.map((u) => ({
           ...u,
+          isStudentVip: isStudentVipRecord(u),
           name: profilesMap[u.user_id]?.display_name || 'Chưa đặt tên',
           email: profilesMap[u.user_id]?.email || '—',
           left: daysLeft(u.expiry),
@@ -281,9 +291,9 @@ export default function Dashboard({ onNavigate }) {
         />
         <StatCard
           Icon={IconCrown}
-          label="Giáo viên PRO"
+          label="Thuê bao VIP / PRO"
           value={keyStats?.proActive ?? 0}
-          sub={keyStats?.soon?.length ? `${keyStats.soon.length} sắp hết hạn` : `${keyStats?.unused ?? 0} key chưa dùng`}
+          sub={`${keyStats?.teacherProActive ?? 0} GV (399k) · ${keyStats?.studentVipActive ?? 0} HS (199k)`}
           onClick={() => onNavigate('pro-users')}
           danger={keyStats?.soon?.length > 0}
         />

@@ -12,6 +12,7 @@ import {
   adminDeleteKeysBatch,
   adminRevokeKey,
   adminRevokeKeysBatch,
+  adminFetchMergedUsers,
 } from '../../lib/proKeyApi.js';
 import { adminCreateDiscountKey, DISCOUNT_PERCENT_PRESETS, DISCOUNT_AMOUNT_PRESETS } from '../../lib/discountService.js';
 import AdminShell, { Topbar, Avatar, downloadCsv, setGlobalAdminBadges } from './AdminShell.jsx';
@@ -61,8 +62,8 @@ export function getKeyMeta(k) {
       maxUses,
       usedCount,
       label: `${label}${usageStr}`,
-      badgeColor: '#ec4899',
-      badgeBg: 'rgba(236, 72, 153, 0.12)',
+      badgeColor: '#f472b6',
+      badgeBg: 'rgba(236, 72, 153, 0.16)',
     };
   }
 
@@ -72,23 +73,23 @@ export function getKeyMeta(k) {
     return {
       type: 'credit',
       label: `⚡ Nạp +${amount.toLocaleString('vi-VN')} Credit`,
-      badgeColor: '#0284c7',
-      badgeBg: 'rgba(2, 132, 199, 0.12)',
+      badgeColor: '#38bdf8',
+      badgeBg: 'rgba(2, 132, 199, 0.16)',
     };
   }
   if (note.includes('[STUDENT_VIP') || code.startsWith('VIP-')) {
     return {
       type: 'student',
-      label: `⭐ VIP Học sinh · ${k?.duration_days}d`,
-      badgeColor: '#7c3aed',
-      badgeBg: 'rgba(124, 58, 237, 0.12)',
+      label: `⭐ HS VIP (199k) · ${k?.duration_days}d`,
+      badgeColor: '#a78bfa',
+      badgeBg: 'rgba(124, 58, 237, 0.16)',
     };
   }
   return {
     type: 'teacher',
-    label: `🎓 Giáo viên PRO · ${k?.duration_days}d`,
-    badgeColor: '#d97706',
-    badgeBg: 'rgba(217, 119, 6, 0.12)',
+    label: `🎓 GV PRO (399k) · ${k?.duration_days}d`,
+    badgeColor: '#f59e0b',
+    badgeBg: 'rgba(217, 119, 6, 0.16)',
   };
 }
 
@@ -148,19 +149,25 @@ export default function KeyManager() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await adminGetKeys({ status: 'all', limit: 1000 });
+      const [list, mergedUsers] = await Promise.all([
+        adminGetKeys({ status: 'all', limit: 1000 }),
+        adminFetchMergedUsers({ limit: 500 }).catch(() => []),
+      ]);
       setAllKeys(list);
       setSelected(new Set());
 
-      // Tra cứu tên & email của người đã kích hoạt key
-      const uids = [...new Set(list.map((k) => k.used_by).filter(Boolean))];
-      if (uids.length) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, display_name, email, avatar_url')
-          .in('id', uids.slice(0, 200));
-        if (data) {
-          setProfiles(Object.fromEntries(data.map((p) => [p.id, p])));
+      if (mergedUsers?.length) {
+        setProfiles(Object.fromEntries(mergedUsers.map((p) => [p.id, p])));
+      } else {
+        const uids = [...new Set(list.map((k) => k.used_by).filter(Boolean))];
+        if (uids.length) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('id, display_name, email, avatar_url')
+            .in('id', uids.slice(0, 200));
+          if (data) {
+            setProfiles(Object.fromEntries(data.map((p) => [p.id, p])));
+          }
         }
       }
     } catch (e) {
@@ -427,8 +434,8 @@ export default function KeyManager() {
             {[
               { id: 'all',      label: `Tất cả (${stats.total})` },
               { id: 'discount', label: `🏷️ Mã giảm giá / Voucher (${categoryCounts.discount})` },
-              { id: 'teacher',  label: `🎓 Giáo viên PRO (${categoryCounts.teacher})` },
-              { id: 'student',  label: `⭐ VIP Học sinh (${categoryCounts.student})` },
+              { id: 'teacher',  label: `🎓 GV PRO 399k (${categoryCounts.teacher})` },
+              { id: 'student',  label: `⭐ HS VIP 199k (${categoryCounts.student})` },
               { id: 'credit',   label: `⚡ Thẻ Credit AI (${categoryCounts.credit})` },
             ].map((c) => (
               <button
@@ -817,8 +824,8 @@ function CreateKeyModal({ initialCategory = 'discount', onClose, onDone }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
             {[
               { id: 'discount', label: '🏷️ Mã giảm giá / Voucher', color: '#ec4899' },
-              { id: 'teacher',  label: '🎓 Giáo viên PRO', color: '#d97706' },
-              { id: 'student',  label: '⭐ VIP Học sinh', color: '#7c3aed' },
+              { id: 'teacher',  label: '🎓 GV PRO (399k/th)', color: '#d97706' },
+              { id: 'student',  label: '⭐ HS VIP (199k/th)', color: '#7c3aed' },
               { id: 'credit',   label: '⚡ Nạp Credit AI', color: '#0284c7' },
             ].map((item) => (
               <button
@@ -1041,7 +1048,9 @@ function CreateKeyModal({ initialCategory = 'discount', onClose, onDone }) {
             ? `Mã giảm giá có thể dùng tại màn hình Thanh toán hoặc Phòng thi ảo để giảm tiền / kích hoạt.`
             : cat === 'credit'
               ? `Thẻ sinh ra dạng CREDIT-XXXX-XXXX, cộng +${credits} điểm AI khi kích hoạt.`
-              : `Key sinh ra dạng ${cat === 'student' ? 'VIP-XXXX-XXXX' : 'PRO-XXXX-XXXX'}, có hiệu lực ${finalDays} ngày.`}
+              : cat === 'student'
+                ? `Key sinh ra dạng VIP-XXXX-XXXX (gói chuẩn 199.000đ/tháng), có hiệu lực ${finalDays} ngày.`
+                : `Key sinh ra dạng PRO-XXXX-XXXX (gói chuẩn 399.000đ/tháng), có hiệu lực ${finalDays} ngày.`}
         </p>
       </div>
     </Modal>
@@ -1140,8 +1149,8 @@ function CreateBatchModal({ initialCategory = 'teacher', onClose, onDone }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
             {[
               { id: 'discount', label: '🏷️ Mã giảm giá', color: '#ec4899' },
-              { id: 'teacher',  label: '🎓 Giáo viên PRO', color: '#d97706' },
-              { id: 'student',  label: '⭐ VIP Học sinh', color: '#7c3aed' },
+              { id: 'teacher',  label: '🎓 GV PRO (399k)', color: '#d97706' },
+              { id: 'student',  label: '⭐ HS VIP (199k)', color: '#7c3aed' },
               { id: 'credit',   label: '⚡ Nạp Credit AI', color: '#0284c7' },
             ].map((item) => (
               <button

@@ -1,14 +1,15 @@
 /* ============================================================
-   ProUserManager.jsx — Danh sách giáo viên PRO (Compact + Cấp PRO trực tiếp + Gia hạn hàng loạt)
+   ProUserManager.jsx — Quản lý Thuê bao VIP & PRO (GV PRO 399k / HS VIP 199k)
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '../../lib/supabase.js';
 import {
   adminGetProUsers,
   adminExtendProUser,
   adminRevokeProUser,
   adminGrantProDirect,
   adminGrantVipDirect,
+  adminFetchMergedUsers,
+  isStudentVipRecord,
   isProActive,
   daysLeft,
 } from '../../lib/proKeyApi.js';
@@ -16,7 +17,7 @@ import AdminShell, { Topbar, Avatar, downloadCsv, setGlobalAdminBadges } from '.
 import { Modal, ConfirmDialog } from './AdminUI.jsx';
 import {
   IconCrown, IconTrash, IconRefresh, IconExtend, IconHourglass, IconUserCheck,
-  IconPlus, IconDownload, IconClose,
+  IconPlus, IconDownload, IconClose, IconSparkle,
 } from './AdminIcons.jsx';
 
 const EXTEND_OPTIONS = [7, 30, 90, 180, 365];
@@ -37,6 +38,7 @@ const fmtDate = (v) => {
 
 export default function ProUserManager() {
   const [tab, setTab] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all'); // all | teacher | student
   const [search, setSearch] = useState('');
   const [rows, setRows] = useState([]);
   const [profiles, setProfiles] = useState({});
@@ -53,33 +55,25 @@ export default function ProUserManager() {
   const say = useCallback((t) => {
     clearTimeout(toastTimer.current);
     setToast(t);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    toastTimer.current = setTimeout(() => setToast(null), 2800);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await adminGetProUsers();
+      const [list, mergedUsers] = await Promise.all([
+        adminGetProUsers(),
+        adminFetchMergedUsers({ limit: 500 }).catch(() => []),
+      ]);
       setRows(list);
       setSelected(new Set());
 
-      const ids = [...new Set(list.map((r) => r.user_id).filter(Boolean))];
-      if (ids.length) {
-        const chunks = [];
-        for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
-        const allProfiles = {};
-        for (const part of chunks) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('id, display_name, avatar_url, email, role')
-            .in('id', part);
-          if (!error && data) {
-            data.forEach((p) => { allProfiles[p.id] = p; });
-          }
-        }
-        setProfiles(allProfiles);
-      }
+      const allProfiles = {};
+      (mergedUsers || []).forEach((p) => {
+        if (p?.id) allProfiles[p.id] = p;
+      });
+      setProfiles(allProfiles);
     } catch (e) {
       say('Lỗi tải danh sách: ' + e.message);
     } finally {
@@ -92,10 +86,13 @@ export default function ProUserManager() {
   const enriched = useMemo(() => {
     return rows.map((r) => {
       const p = profiles[r.user_id] || {};
+      const isStudentVip = isStudentVipRecord(r);
       return {
         ...r,
-        name: p.display_name || 'Chưa đặt tên',
-        email: p.email || '—',
+        isStudentVip,
+        planLabel: isStudentVip ? 'Học sinh VIP (199k)' : 'Giáo viên PRO (399k)',
+        name: p.display_name || (p.email ? p.email.split('@')[0] : null) || 'Chưa đặt tên',
+        email: p.email || r.user_id?.slice(0, 14) || '—',
         avatar: p.avatar_url || null,
         active: isProActive(r.expiry),
         left: daysLeft(r.expiry),
@@ -106,6 +103,9 @@ export default function ProUserManager() {
 
   const filtered = useMemo(() => {
     let list = enriched;
+    if (planFilter === 'teacher') list = list.filter((r) => !r.isStudentVip);
+    else if (planFilter === 'student') list = list.filter((r) => r.isStudentVip);
+
     if (tab === 'active') list = list.filter((r) => r.active);
     else if (tab === 'expired') list = list.filter((r) => !r.active);
     else if (tab === 'soon') list = list.filter((r) => r.soon);
@@ -124,14 +124,23 @@ export default function ProUserManager() {
       if (a.active !== b.active) return a.active ? -1 : 1;
       return new Date(a.expiry) - new Date(b.expiry);
     });
-  }, [enriched, tab, search]);
+  }, [enriched, planFilter, tab, search]);
 
   const stats = useMemo(() => {
     const total = enriched.length;
-    const active = enriched.filter((r) => r.active).length;
+    const activeRows = enriched.filter((r) => r.active);
+    const activeTeacher = activeRows.filter((r) => !r.isStudentVip).length;
+    const activeStudent = activeRows.filter((r) => r.isStudentVip).length;
     const soon = enriched.filter((r) => r.soon).length;
     const expired = enriched.filter((r) => !r.active).length;
-    return { total, active, soon, expired };
+    return {
+      total,
+      active: activeRows.length,
+      activeTeacher,
+      activeStudent,
+      soon,
+      expired,
+    };
   }, [enriched]);
 
   useEffect(() => {
@@ -154,7 +163,7 @@ export default function ProUserManager() {
     const { row, days } = extendTarget;
     try {
       await adminExtendProUser(row.user_id, days);
-      say(`Đã gia hạn +${days} ngày cho ${row.name}`);
+      say(`Đã gia hạn +${days} ngày (${row.planLabel}) cho ${row.name}`);
       setExtendTarget(null);
       await load();
     } catch (e) {
@@ -171,7 +180,7 @@ export default function ProUserManager() {
         // eslint-disable-next-line no-await-in-loop
         await adminExtendProUser(uid, days);
       }
-      say(`Đã gia hạn +${days} ngày cho ${ids.length} giáo viên`);
+      say(`Đã gia hạn +${days} ngày cho ${ids.length} tài khoản`);
       await load();
     } catch (e) {
       say('Lỗi gia hạn hàng loạt: ' + e.message);
@@ -182,14 +191,14 @@ export default function ProUserManager() {
 
   const handleRevoke = (row) => {
     setConfirm({
-      title: 'Thu hồi PRO?',
-      body: `Thu hồi quyền PRO của "${row.name}" (${row.email}). Họ sẽ mất quyền giáo viên PRO ngay lập tức. Key vẫn giữ nguyên trong danh sách.`,
+      title: `Thu hồi ${row.isStudentVip ? 'VIP' : 'PRO'}?`,
+      body: `Thu hồi gói ${row.planLabel} của "${row.name}" (${row.email}). Tài khoản sẽ về gói Miễn phí ngay lập tức.`,
       okLabel: 'Thu hồi',
       danger: true,
       onOk: async () => {
         try {
           await adminRevokeProUser(row.user_id);
-          say('Đã thu hồi PRO');
+          say(`Đã thu hồi ${row.isStudentVip ? 'VIP' : 'PRO'} của ${row.name}`);
           await load();
         } catch (e) {
           say('Lỗi: ' + e.message);
@@ -198,15 +207,24 @@ export default function ProUserManager() {
     });
   };
 
-  const handleUpgradeToVip = (row) => {
+  const handleSwitchPackage = (row) => {
+    const toTeacher = row.isStudentVip;
     setConfirm({
-      title: 'Nâng lên VIP?',
-      body: `Nâng cấp "${row.name}" (${row.email}) thành tài khoản VIP (365 ngày)?`,
-      okLabel: 'Nâng VIP',
+      title: toTeacher ? 'Chuyển sang Giáo viên PRO (399k)?' : 'Chuyển sang Học sinh VIP (199k)?',
+      body: toTeacher
+        ? `Chuyển "${row.name}" từ Học sinh VIP sang Giáo viên PRO (+30 ngày, mở toàn bộ tính năng giảng dạy & vai trò Giáo viên)?`
+        : `Chuyển "${row.name}" từ Giáo viên PRO sang Học sinh VIP (+30 ngày)? Lưu ý: tài khoản sẽ KHÔNG còn quyền Giáo viên PRO.`,
+      okLabel: toTeacher ? 'Chuyển sang GV PRO' : 'Chuyển sang HS VIP',
+      danger: !toTeacher,
       onOk: async () => {
         try {
-          await adminGrantVipDirect({ userId: row.user_id, durationDays: 365, note: 'Nâng từ Giáo viên PRO lên VIP' });
-          say(`Đã nâng cấp ${row.name} lên VIP`);
+          if (toTeacher) {
+            await adminGrantProDirect({ userId: row.user_id, durationDays: 30, note: 'Chuyển sang Giáo viên PRO từ Admin' });
+            say(`Đã chuyển ${row.name} sang Giáo viên PRO`);
+          } else {
+            await adminGrantVipDirect({ userId: row.user_id, durationDays: 30, note: 'Chuyển sang Học sinh VIP từ Admin' });
+            say(`Đã chuyển ${row.name} sang Học sinh VIP`);
+          }
           await load();
         } catch (e) {
           say('Lỗi: ' + e.message);
@@ -220,19 +238,20 @@ export default function ProUserManager() {
       say('Chưa có dữ liệu');
       return;
     }
-    const rowsCsv = [['Tên', 'Email', 'UID', 'Key', 'Ngày hết hạn', 'Số ngày còn lại', 'Trạng thái']];
+    const rowsCsv = [['Tên', 'Email', 'UID', 'Gói dịch vụ', 'Key', 'Ngày hết hạn', 'Số ngày còn lại', 'Trạng thái']];
     filtered.forEach((r) => {
       rowsCsv.push([
         r.name,
         r.email,
         r.user_id,
+        r.planLabel,
         r.key_code || '',
         fmtDate(r.expiry),
         r.left,
         r.active ? 'Còn hạn' : 'Hết hạn',
       ]);
     });
-    downloadCsv(`giao-vien-pro-${new Date().toISOString().slice(0, 10)}.csv`, rowsCsv);
+    downloadCsv(`thue-bao-vip-pro-${new Date().toISOString().slice(0, 10)}.csv`, rowsCsv);
     say('Đã xuất ' + filtered.length + ' dòng');
   };
 
@@ -254,8 +273,8 @@ export default function ProUserManager() {
       badges={badges}
     >
       <Topbar
-        title="Giáo viên PRO"
-        subtitle={`${stats.active} giáo viên đang hoạt động · ${stats.soon} sắp hết hạn`}
+        title="Thuê bao VIP & Giáo viên PRO"
+        subtitle={`${stats.activeTeacher} GV PRO (399k) · ${stats.activeStudent} HS VIP (199k) · ${stats.soon} sắp hết hạn`}
         tabs={tabs}
         active={tab}
         onTab={setTab}
@@ -267,27 +286,47 @@ export default function ProUserManager() {
       {/* ===== COMPACT KPI STRIP ===== */}
       <div className="ad-kpi-strip ad-kpi-strip--4">
         <div className="vt-card ad-mini-kpi">
-          <span>Đang hoạt động</span>
-          <b style={{ color: '#16a34a' }}>{stats.active}</b>
-          <small>Trên tổng số {stats.total} tài khoản PRO</small>
+          <span>👨‍🏫 Giáo viên PRO (399k)</span>
+          <b style={{ color: '#16a34a' }}>{stats.activeTeacher}</b>
+          <small>Đang hoạt động toàn quyền dạy học</small>
         </div>
         <div className="vt-card ad-mini-kpi">
-          <span>Sắp hết hạn (≤7 ngày)</span>
-          <b style={{ color: stats.soon > 0 ? 'var(--vt-amber)' : undefined }}>{stats.soon}</b>
-          <small>{stats.soon > 0 ? 'Cần nhắc gia hạn sớm' : 'Tất cả còn hạn dài'}</small>
+          <span>🎓 Học sinh VIP (199k)</span>
+          <b style={{ color: '#7c3aed' }}>{stats.activeStudent}</b>
+          <small>Mở khóa kho đề & AI Gia sư</small>
         </div>
         <div className="vt-card ad-mini-kpi">
-          <span>Đã hết hạn</span>
-          <b>{stats.expired}</b>
-          <small>Có thể gia hạn lại bất kỳ lúc nào</small>
+          <span>Sắp hết / Đã hết hạn</span>
+          <b style={{ color: stats.soon > 0 ? 'var(--vt-amber)' : undefined }}>{stats.soon} / {stats.expired}</b>
+          <small>{stats.soon > 0 ? `${stats.soon} tài khoản hết trong ≤7 ngày` : 'Không có thuê bao sắp hết'}</small>
         </div>
         <div className="vt-card ad-mini-kpi ad-mini-kpi--actions">
           <button type="button" className="vt-btn sm primary" onClick={() => setShowGrantModal(true)}>
-            <IconPlus size={13} /> Cấp PRO trực tiếp
+            <IconPlus size={13} /> Cấp gói trực tiếp
           </button>
           <button type="button" className="vt-btn sm" onClick={handleExport}>
             <IconDownload size={13} /> Xuất CSV
           </button>
+        </div>
+      </div>
+
+      {/* ===== PLAN TYPE FILTER ===== */}
+      <div className="vt-card soft" style={{ padding: '0.65rem 1rem' }}>
+        <div className="vt-pills" style={{ margin: 0 }}>
+          {[
+            { id: 'all',     label: `Tất cả gói (${rows.length})` },
+            { id: 'teacher', label: `👨‍🏫 Giáo viên PRO · 399k (${enriched.filter((r) => !r.isStudentVip).length})` },
+            { id: 'student', label: `🎓 Học sinh VIP · 199k (${enriched.filter((r) => r.isStudentVip).length})` },
+          ].map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={'vt-pill sm' + (planFilter === f.id ? ' on' : '')}
+              onClick={() => setPlanFilter(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -296,7 +335,7 @@ export default function ProUserManager() {
         <header className="vt-card-head">
           <h3 className="vt-card-title">
             <IconCrown size={16} className="vt-title-ico" />
-            Danh sách giáo viên PRO ({filtered.length})
+            Danh sách thuê bao ({filtered.length})
           </h3>
           <button type="button" className="vt-btn sm" onClick={load} disabled={loading}>
             <IconRefresh size={13} /> {loading ? 'Đang tải…' : 'Làm mới'}
@@ -321,8 +360,8 @@ export default function ProUserManager() {
         {filtered.length === 0 ? (
           <div className="vt-empty">
             <span><IconUserCheck size={30} /></span>
-            <h3>{loading ? 'Đang tải…' : 'Chưa có giáo viên PRO nào'}</h3>
-            <p>{loading ? '' : 'Bấm "Cấp PRO trực tiếp" hoặc gửi mã Key PRO để giáo viên kích hoạt.'}</p>
+            <h3>{loading ? 'Đang tải…' : 'Chưa có thuê bao nào trong mục này'}</h3>
+            <p>{loading ? '' : 'Bấm "Cấp gói trực tiếp" hoặc phát hành mã Key PRO / HS VIP.'}</p>
           </div>
         ) : (
           <div className="vt-table-wrap">
@@ -339,11 +378,12 @@ export default function ProUserManager() {
                       }}
                     />
                   </th>
-                  <th>Giáo viên</th>
+                  <th>Tài khoản</th>
+                  <th>Gói dịch vụ</th>
                   <th>Key đang dùng</th>
                   <th>Ngày hết hạn</th>
                   <th>Còn lại</th>
-                  <th style={{ width: 180 }} />
+                  <th style={{ width: 220 }} />
                 </tr>
               </thead>
               <tbody>
@@ -364,6 +404,19 @@ export default function ProUserManager() {
                           <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>{r.email}</small>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <span
+                        className="vt-chip"
+                        style={{
+                          background: r.isStudentVip ? 'rgba(124, 58, 237, 0.14)' : 'rgba(217, 119, 6, 0.14)',
+                          color: r.isStudentVip ? '#a78bfa' : '#f59e0b',
+                          border: `1px solid ${r.isStudentVip ? 'rgba(124, 58, 237, 0.35)' : 'rgba(217, 119, 6, 0.35)'}`,
+                        }}
+                      >
+                        {r.isStudentVip ? <IconSparkle size={11} /> : <IconCrown size={11} />}
+                        {r.isStudentVip ? 'HS VIP · 199k' : 'GV PRO · 399k'}
+                      </span>
                     </td>
                     <td>
                       <code className="vt-key-code">{r.key_code || '—'}</code>
@@ -387,24 +440,27 @@ export default function ProUserManager() {
                           type="button"
                           className="vt-btn sm"
                           onClick={() => handleExtend(r, 30)}
-                          title="Gia hạn thêm ngày"
+                          title="Gia hạn thêm ngày (giữ nguyên loại gói)"
                         >
                           <IconExtend size={13} /> Gia hạn
                         </button>
                         <button
                           type="button"
                           className="vt-btn sm"
-                          style={{ color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.4)' }}
-                          onClick={() => handleUpgradeToVip(r)}
-                          title="Nâng cấp tài khoản thành VIP (365 ngày)"
+                          style={{
+                            color: r.isStudentVip ? '#d97706' : '#7c3aed',
+                            borderColor: r.isStudentVip ? 'rgba(217, 119, 6, 0.4)' : 'rgba(124, 58, 237, 0.4)',
+                          }}
+                          onClick={() => handleSwitchPackage(r)}
+                          title={r.isStudentVip ? 'Chuyển sang Giáo viên PRO (399k)' : 'Chuyển sang Học sinh VIP (199k)'}
                         >
-                          Lên VIP
+                          {r.isStudentVip ? '→ GV PRO' : '→ HS VIP'}
                         </button>
                         <button
                           type="button"
                           className="vt-icon-btn danger"
                           onClick={() => handleRevoke(r)}
-                          title="Thu hồi PRO (Đưa về Thường)"
+                          title={`Thu hồi ${r.isStudentVip ? 'VIP' : 'PRO'} (Đưa về Thường)`}
                         >
                           <IconTrash size={14} />
                         </button>
@@ -494,9 +550,10 @@ export default function ProUserManager() {
 }
 
 /* ============================================================
-   MODAL CẤP PRO TRỰC TIẾP CHO NGƯỜI DÙNG
+   MODAL CẤP GÓI TRỰC TIẾP (Giáo viên PRO 399k / Học sinh VIP 199k)
    ============================================================ */
 function GrantProDirectModal({ onClose, onDone }) {
+  const [planKind, setPlanKind] = useState('teacher'); // teacher | student
   const [query, setQuery] = useState('');
   const [candidates, setCandidates] = useState([]);
   const [pickedUser, setPickedUser] = useState(null);
@@ -507,14 +564,11 @@ function GrantProDirectModal({ onClose, onDone }) {
 
   useEffect(() => {
     let alive = true;
-    supabase
-      .from('profiles')
-      .select('id, display_name, email, role')
-      .order('created_at', { ascending: false })
-      .limit(500)
-      .then(({ data }) => {
-        if (alive && data) setCandidates(data);
-      });
+    adminFetchMergedUsers({ limit: 500 })
+      .then((data) => {
+        if (alive && Array.isArray(data)) setCandidates(data);
+      })
+      .catch(() => {});
     return () => { alive = false; };
   }, []);
 
@@ -551,11 +605,16 @@ function GrantProDirectModal({ onClose, onDone }) {
     }
     setSaving(true);
     try {
-      await adminGrantProDirect({ userId: uid, durationDays: days, note });
       const label = autoPicked?.display_name || autoPicked?.email || uid;
-      onDone(`Đã cấp PRO +${days} ngày cho ${label}`);
+      if (planKind === 'student') {
+        await adminGrantVipDirect({ userId: uid, durationDays: days, note: note || 'Cấp Học sinh VIP (199k) từ Admin' });
+        onDone(`Đã cấp Học sinh VIP +${days} ngày cho ${label}`);
+      } else {
+        await adminGrantProDirect({ userId: uid, durationDays: days, note: note || 'Cấp Giáo viên PRO (399k) từ Admin' });
+        onDone(`Đã cấp Giáo viên PRO +${days} ngày cho ${label}`);
+      }
     } catch (e) {
-      setErr(e.message || 'Không cấp được PRO.');
+      setErr(e.message || 'Không cấp được gói.');
     } finally {
       setSaving(false);
     }
@@ -563,25 +622,53 @@ function GrantProDirectModal({ onClose, onDone }) {
 
   return (
     <Modal
-      title="Cấp quyền Giáo viên PRO trực tiếp"
+      title="Cấp gói VIP / PRO trực tiếp"
       size="sm"
       onClose={onClose}
       foot={
         <>
           <button type="button" className="vt-btn" onClick={onClose}>Hủy</button>
-          <button type="button" className="vt-btn primary" onClick={submit} disabled={saving}>
-            <IconCrown size={14} /> {saving ? 'Đang cấp…' : `Cấp PRO +${days} ngày`}
+          <button
+            type="button"
+            className="vt-btn primary"
+            onClick={submit}
+            disabled={saving}
+            style={planKind === 'student' ? { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 0 } : undefined}
+          >
+            {planKind === 'student' ? <IconSparkle size={14} /> : <IconCrown size={14} />}
+            {saving ? 'Đang cấp…' : `Cấp ${planKind === 'student' ? 'HS VIP' : 'GV PRO'} +${days} ngày`}
           </button>
         </>
       }
     >
+      <div className="vt-field">
+        <span>Chọn loại gói cần cấp</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button
+            type="button"
+            className={'vt-btn sm' + (planKind === 'teacher' ? ' primary' : '')}
+            onClick={() => setPlanKind('teacher')}
+          >
+            👨‍🏫 Giáo viên PRO (399k)
+          </button>
+          <button
+            type="button"
+            className={'vt-btn sm' + (planKind === 'student' ? ' primary' : '')}
+            style={planKind === 'student' ? { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 0 } : undefined}
+            onClick={() => setPlanKind('student')}
+          >
+            🎓 Học sinh VIP (199k)
+          </button>
+        </div>
+      </div>
+
       <label className="vt-field">
         <span>Tìm người dùng (theo tên, email hoặc dán UID)</span>
         <input
           type="text"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setPickedUser(null); }}
-          placeholder="Nhập tên giáo viên, email hoặc UID…"
+          placeholder="Nhập tên, email hoặc UID…"
         />
       </label>
 
@@ -619,7 +706,7 @@ function GrantProDirectModal({ onClose, onDone }) {
       )}
 
       <label className="vt-field">
-        <span>Thời hạn cấp PRO</span>
+        <span>Thời hạn gói</span>
         <div className="vt-pills" style={{ marginTop: '.35rem' }}>
           {EXTEND_OPTIONS.map((d) => (
             <button
@@ -640,7 +727,7 @@ function GrantProDirectModal({ onClose, onDone }) {
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="VD: Cấp trực tiếp cho GV tổ Hóa"
+          placeholder={planKind === 'student' ? 'VD: Thanh toán 199k tháng 11' : 'VD: Cấp Giáo viên PRO 399k'}
         />
       </label>
 
