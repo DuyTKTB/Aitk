@@ -1,0 +1,126 @@
+{
+  "botEnabled": true,
+  "targetGroupUrl": "https://zalo.me/g/xbmme5srjzwbuvasu25u",
+  "allowedGroupIds": [],
+  "onlyTargetGroup": false,
+  "webhookUrl": "https://nguyenduytktk-g19y.vercel.app/api/zalo-bot",
+  "replyModes": {
+    "commands": true,
+    "mentionOrCall": true,
+    "keywordSmart": true,
+    "aiFallbackOnQuestion": true,
+    "welcomeNewMember": true
+  },
+  "cooldownSeconds": 10,
+  "botAliases": [
+    "bot",
+    "trợ lý",
+    "tro ly",
+    "elec ai",
+    "elec"
+  ],
+  "welcomeTemplate": "Chào mừng Thầy/Cô {name} đã tham gia Nhóm Giáo Viên ELEC AI! 👋\n\nEm là Trợ lý Hỗ trợ ELEC AI. Thầy/Cô có thể gõ !menu để xem nhanh hướng dẫn hoặc hỏi trực tiếp trong nhóm về:\n• Trộn đề Word 3 phần GDPT 2018 & Xuất ZIP A4: https://www.youtube.com/watch?v=ng6c7RdvLqw\n• AI Tạo đề THPT 2025 & Giao đề phụ đạo HS dưới 5.0: https://www.youtube.com/watch?v=nzSoVddOf9s\n• Chấm phiếu OMR A4 & Bảng giá Gói Giáo Viên VIP (!gia)\n\nChúc Thầy/Cô trải nghiệm hiệu quả cùng ELEC AI!",
+  "faqRules": [
+    {
+      "id": "cho-duyet-vip",
+      "title": "Xác nhận chuyển khoản / Chờ duyệt VIP",
+      "enabled": true,
+      "notifyAdmin": true,
+      "keywords": [
+        "đã chuyển khoản",
+        "vừa chuyển khoản",
+        "mới chuyển khoản",
+        "đã ck",
+        "vừa ck",
+        "chưa lên vip",
+        "chưa lên pro",
+        "kích hoạt giúp",
+        "duyệt giúp",
+        "chưa được nâng cấp",
+        "lỗi thanh toán"
+      ],
+      "reply": "Em đã ghi nhận thông tin và chuyển ngay thông báo tới Admin để kiểm tra kích hoạt cho Thầy/Cô ạ!\nĐể Admin duyệt nhanh nhất, Thầy/Cô vui lòng nhắn kèm trong nhóm:\n1️⃣ Ảnh biên lai chuyển khoản (nếu chưa gửi)\n2️⃣ Email đăng nhập hoặc Mã định danh tài khoản (ví dụ: ELECAI-XXXXXX)\nAdmin sẽ kiểm tra và nâng cấp trong vài phút ạ."
+    },
+    {
+      "id": "tron-de-word",
+      "title": "Trộn đề Word 3 phần & Xuất ZIP A4",
+      "enabled": true,
+      "notifyAdmin": false,
+      "keywords": [
+        "trộn đề",
+        "file word",
+        "docx",
+        "xuất zip",
+        "in a4",
+        "đảo đề",
+        "đảo mã đề"
+      ],
+      "reply": "📄 HƯỚNG DẪN TRỘN ĐỀ WORD CHUẨN 3 PHẦN GDPT 2018:\n1. Vào bảng điều khiển Giáo viên -> Chọn mục Trộn đề / Nhập file Word (.docx).\n2. Tải lên đề gốc theo cấu trúc 3 phần (Trắc nghiệm nhiều lựa chọn, Đúng/Sai, Trả lời ngắn).\n3. Chọn số lượng mã đề cần đảo -> Bấm Xuất trọn bộ ZIP in ấn A4 kèm bảng đáp án.\n▶ Xem video hướng dẫn chi tiết (1 phút): https://www.youtube.com/watch?v=ng6c7RdvLqw"
+    },
+    {
+      "id": "ai-tao-de",
+      "title": "AI Tạo đề THPT 2025 & Giao bài phụ đạo",
+      "enabled": true,
+      "notifyAdmin": false,
+      "keywords": [
+        "tạo đề",
+        "ai tạo đề",
+        "soạn đề",
+        "ma trận",
+        "phụ đạo",
+        "dưới 5.0",
+        "autoexam"
+      ],
+      "reply": "✨ HƯỚNG DẪN AI TẠO ĐỀ 3 PHẦN & GIAO PHỤ ĐẠO:\n1. Mở AutoExam AI Studio -> Chọn môn/khối và ma trận chuẩn THPT 2025 (3 phần).\n2. AI tự động sinh đề thi kèm lời giải chi tiết, có thể chỉnh sửa hoặc tách đề từ PDF/Ảnh.\n3. Giao bài về lớp hoặc tự động lọc nhóm học sinh dưới 5.0 để giao đề ôn phụ đạo.\n▶ Xem video hướng dẫn (1p30): https://www.youtube.com/watch?v=nzSoVddOf9s"
+    },
+    {
+      "id": "cham-omr",
+      "title": "Chấm phiếu trắc nghiệm OMR A4",
+      "enabled": true,
+      "notifyAdmin": false,
+      "keywords": [
+        "chấm phiếu",
+        "omr",
+        "chấm điểm",
+        "phiếu trả lời",
+        "chấm a4",
+        "quét phiếu"
+      ],
+      "reply": "📷 HƯỚNG DẪN CHẤM PHIẾU OMR A4 TRÊN ELEC AI:\n1. Tải mẫu phiếu tô đáp án A4 chuẩn 3 phần ngay trong mục Chấm OMR.\n2. Dùng camera điện thoại/máy tính hoặc tải ảnh chụp bài làm của học sinh lên hệ thống.\n3. Hệ thống tự động nhận diện mã đề, chấm điểm tức thì và xuất bảng điểm Excel.\n💡 Bản Free dùng thử 5 tờ OMR; Gói Giáo Viên VIP không giới hạn số lượt chấm."
+    },
+    {
+      "id": "bang-gia-vip",
+      "title": "Bảng giá Gói Giáo Viên VIP & Học Sinh VIP",
+      "enabled": true,
+      "notifyAdmin": false,
+      "keywords": [
+        "bảng giá",
+        "giá gói",
+        "mua gói",
+        "gói vip",
+        "gói giáo viên",
+        "gói pro",
+        "bao nhiêu tiền",
+        "nâng cấp",
+        "gia hạn"
+      ],
+      "reply": "👑 BẢNG GIÁ CHÍNH THỨC ELEC AI:\n• Gói Giáo Viên VIP (PRO):\n  - 1 tháng: 399.000đ (Tặng 100 Credit AI)\n  - 6 tháng: 1.990.000đ (Tiết kiệm 17%, tặng 350 Credit AI)\n  - 12 tháng: 3.590.000đ (Tiết kiệm 25%, tặng 800 Credit AI)\n  ✅ Quyền lợi GV VIP: Không giới hạn lớp/sĩ số, không giới hạn trộn đề Word & tạo đề thủ công, mở khóa AI Tạo Đề theo ma trận, tách đề PDF/Ảnh OCR, chấm OMR A4 không giới hạn, giám sát thi LIVE Proctor.\n• Gói Học Sinh VIP:\n  - 1 tháng: 199.000đ | 3 tháng: 399.000đ | 6 tháng: 699.000đ | 12 tháng: 999.000đ.\nGõ !stk để xem thông tin chuyển khoản nhanh ạ."
+    },
+    {
+      "id": "thanh-toan-ck",
+      "title": "Hướng dẫn chuyển khoản & kích hoạt VIP",
+      "enabled": true,
+      "notifyAdmin": false,
+      "keywords": [
+        "chuyển khoản",
+        "thanh toán",
+        "số tài khoản",
+        "stk",
+        "mbbank",
+        "vietqr",
+        "tài khoản ngân hàng"
+      ],
+      "reply": "💳 THÔNG TIN THANH TOÁN & KÍCH HOẠT TỰ ĐỘNG:\n• Ngân hàng: MBBANK (Ngân hàng Quân Đội)\n• Số tài khoản: 999988882010\n• Chủ tài khoản: NGUYEN THE DUY\n• Nội dung CK: ELECAI PRO <Mã tài khoản> (Giáo viên) hoặc ELECAI VIP <Mã tài khoản> (Học sinh).\n👉 Thầy/Cô vào mục \"Nâng cấp VIP\" trên web ELEC AI để quét mã VietQR — hệ thống tự động kích hoạt sau 15–30 giây. Hoặc gửi ảnh biên lai + Email vào nhóm để Admin hỗ trợ duyệt ngay ạ."
+    }
+  ]
+}

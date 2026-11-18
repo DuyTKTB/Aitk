@@ -103,6 +103,12 @@ import {
 import { adminGrantProDirect, getProStatus } from '../lib/proKeyApi.js';
 import { setUserTier } from '../lib/tier.js';
 import { setUserRole } from '../lib/userRole.js';
+import {
+  OFFICIAL_TUTORIAL_VIDEOS,
+  OFFICIAL_YOUTUBE_CHANNEL_URL,
+  OFFICIAL_TEACHER_ZALO_GROUP_URL,
+} from '../lib/youtubeService.js';
+import { YouTubeVideoModal } from './YouTubeVideoSection.jsx';
 
 /* ============ SVG ICONS (NO EMOJI) ============ */
 const Svg = ({ size = 18, sw = 2, children }) => (
@@ -119,6 +125,19 @@ const Svg = ({ size = 18, sw = 2, children }) => (
   >
     {children}
   </svg>
+);
+
+const IcoPlayCircle = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="10 8 16 12 10 16 10 8" />
+  </Svg>
+);
+
+const IcoMessageCircle = (p) => (
+  <Svg {...p}>
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+  </Svg>
 );
 
 const IcoScan = (p) => (
@@ -885,6 +904,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const [vipModalOpen, setVipModalOpen] = useState(false);
   const [vipModalReason, setVipModalReason] = useState('');
   const [vipPaymentPkg, setVipPaymentPkg] = useState(null);
+  const [activeTutorialVideo, setActiveTutorialVideo] = useState(null);
   const teacherIdentCode = useMemo(() => buildIdentCode(user?.email || 'guest'), [user?.email]);
 
   const openTeacherUpgrade = useCallback((reason = '') => {
@@ -2701,6 +2721,15 @@ export default function TeacherDashboard({ onExit } = {}) {
         >
           Mô phỏng &amp; Đảo đề
         </button>
+        <button
+          type="button"
+          className="t-hub-subnav-pill t-hub-help-pill"
+          onClick={() => setActiveTutorialVideo(section === 'create' ? OFFICIAL_TUTORIAL_VIDEOS[1] : OFFICIAL_TUTORIAL_VIDEOS[0])}
+          title="Xem video hướng dẫn thực tế (1 phút)"
+        >
+          <IcoPlayCircle size={14} />
+          <span>{section === 'create' ? 'Video AI Tạo đề (1p)' : 'Video Trộn đề Word (1p)'}</span>
+        </button>
       </div>
     </div>
   );
@@ -2812,6 +2841,28 @@ export default function TeacherDashboard({ onExit } = {}) {
         ? { label: 'Tạo đề AI', mobileLabel: 'Tạo đề', onClick: openNewExam }
         : { label: `Nâng cấp VIP (${TEACHER_VIP_PRICE_TEXT})`, mobileLabel: 'VIP 399k', isUpgrade: true, onClick: () => openTeacherUpgrade() }}
       onOpenProfile={() => goSection('profile')}
+      extraNav={(
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <button
+            type="button"
+            className="t-rail-btn"
+            onClick={() => setActiveTutorialVideo(OFFICIAL_TUTORIAL_VIDEOS[1] || OFFICIAL_TUTORIAL_VIDEOS[0])}
+            title="Xem Video Hướng dẫn (1 phút) từ kênh @ELECAI-idvn"
+          >
+            <span className="t-rail-btn-icon"><IcoPlayCircle size={18} /></span>
+            <span className="t-rail-btn-label">Video hướng dẫn</span>
+          </button>
+          <button
+            type="button"
+            className="t-rail-btn"
+            onClick={() => window.open(OFFICIAL_TEACHER_ZALO_GROUP_URL, '_blank', 'noopener,noreferrer')}
+            title="Tham gia Nhóm Zalo Hỗ trợ Giáo viên ELEC AI"
+          >
+            <span className="t-rail-btn-icon"><IcoMessageCircle size={18} /></span>
+            <span className="t-rail-btn-label">Nhóm Zalo GV</span>
+          </button>
+        </div>
+      )}
       exitLabel="Về ELEC AI"
       onExit={() => {
         if (onExit) onExit();
@@ -3181,6 +3232,104 @@ export default function TeacherDashboard({ onExit } = {}) {
               </div>
             </div>
           </div>
+
+          {/* KHỐI VIDEO HƯỚNG DẪN 1 PHÚT (@ELECAI-idvn) & CỘNG ĐỒNG GIÁO VIÊN VỚI LINH VẬT ELEC AI */}
+          <section className="t-tutorial-hub" aria-label="Video hướng dẫn và cộng đồng giáo viên">
+            <div className="t-tutorial-head">
+              <div className="t-tutorial-brand-side">
+                <div className="t-tutorial-mascot-stage" aria-hidden="true">
+                  <div className="t-tutorial-mascot-trio">
+                    <ElecMascot mood="cool" size={50} className="t-mascot-side is-left" alt="" />
+                    <ElecMascot mood="happy" size={64} className="t-mascot-center" alt="" />
+                    <ElecMascot mood="love" size={50} className="t-mascot-side is-right" alt="" />
+                  </div>
+                  <span className="t-tutorial-mascot-pill">Biệt đội ELEC AI · Hỗ trợ 24/7</span>
+                </div>
+
+                <div className="t-tutorial-head-copy">
+                  <div className="t-tutorial-eyebrow">
+                    <ElecFlaskBrandSvg size={15} variant="gradient" />
+                    <span>HỌC NHANH 60 GIÂY · KÊNH @ELECAI-IDVN</span>
+                    <span className="t-tutorial-live-pill">
+                      <span className="t-tutorial-live-dot" aria-hidden="true" />
+                      <span>2 Video Thực Chiến</span>
+                    </span>
+                  </div>
+                  <h3>Trung tâm Video Hướng dẫn (1 Phút) &amp; Cộng đồng Giáo viên</h3>
+                  <p>
+                    Xem trực tiếp thao tác Trộn đề Word chuẩn 3 phần xuất ZIP A4 &amp; AI Tạo đề phụ đạo học sinh dưới 5.0,
+                    hoặc vào nhóm Zalo để được đội ngũ hỗ trợ 1-1.
+                  </p>
+                </div>
+              </div>
+
+              <div className="t-tutorial-links">
+                <a
+                  href={OFFICIAL_TEACHER_ZALO_GROUP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="t-tutorial-ext zalo"
+                >
+                  <ElecMascot mood="love" size={26} className="t-tutorial-ext-mascot" alt="" />
+                  <IcoMessageCircle size={15} />
+                  <span>Nhóm Zalo Hỗ trợ Giáo viên</span>
+                </a>
+                <a
+                  href={OFFICIAL_YOUTUBE_CHANNEL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="t-tutorial-ext yt"
+                >
+                  <ElecMascot mood="happy" size={26} className="t-tutorial-ext-mascot" alt="" />
+                  <IcoPlayCircle size={15} />
+                  <span>Kênh YouTube @ELECAI-idvn</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="t-tutorial-grid">
+              {OFFICIAL_TUTORIAL_VIDEOS.map((vid, idx) => (
+                <button
+                  key={vid.videoId}
+                  type="button"
+                  className="t-tutorial-card"
+                  onClick={() => setActiveTutorialVideo(vid)}
+                >
+                  <div className="t-tutorial-thumb">
+                    <img src={vid.thumbnail} alt={vid.shortTitle} loading="lazy" />
+                    <span className="t-tutorial-hd-pill">Full HD</span>
+                    <span className="t-tutorial-play" aria-hidden="true">
+                      <IcoPlayCircle size={22} />
+                    </span>
+                    <span className="t-tutorial-dur">{vid.duration}</span>
+                  </div>
+                  <div className="t-tutorial-copy">
+                    <div className="t-tutorial-meta-row">
+                      <span className="t-tutorial-tag">{vid.tag}</span>
+                      <span className="t-tutorial-step-pill">
+                        {idx === 0 ? 'Word → Đảo 4 mã → ZIP A4' : 'Ma trận AI → 3 phần → Phụ đạo'}
+                      </span>
+                    </div>
+                    <strong>{vid.shortTitle}</strong>
+                    <small>{vid.desc}</small>
+                    <div className="t-tutorial-card-foot">
+                      <span className="t-tutorial-watch-cta">
+                        <IcoPlayCircle size={14} />
+                        <span>Bấm xem hướng dẫn ngay</span>
+                      </span>
+                      <div className="t-tutorial-card-mascot" aria-hidden="true">
+                        <ElecMascot
+                          mood={idx === 0 ? 'cool' : 'heart-eyes'}
+                          size={44}
+                          alt="Linh vật hướng dẫn ELEC"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
 
           {/* KHỐI FOLDERS: LỚP HỌC PHỤ TRÁCH (THIẾT KẾ DẠNG FOLDER CARD NHƯ FLOE) */}
           <div className="t-folders-section">
@@ -6241,6 +6390,13 @@ export default function TeacherDashboard({ onExit } = {}) {
             )}
           </div>
         </Modal>
+      )}
+
+      {activeTutorialVideo && (
+        <YouTubeVideoModal
+          video={activeTutorialVideo}
+          onClose={() => setActiveTutorialVideo(null)}
+        />
       )}
     </DashFrame>
   );

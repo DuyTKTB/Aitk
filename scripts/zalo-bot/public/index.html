@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ELEC AI — Quản lý Bot Zalo Độc Lập (Zalo Bot Platform)</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --bg-card: #111a2e;
+      --bg-soft: #17233c;
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #6366f1;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --shadow: 0 12px 32px rgba(2, 6, 23, 0.45);
+    }
+
+    body.light {
+      --bg: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-soft: #f8fafc;
+      --border: rgba(15, 23, 42, 0.12);
+      --text: #0f172a;
+      --muted: #475569;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand p {
+      margin: 4px 0 0;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .topbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .dot.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+    .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+    }
+    .stat-card .label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .stat-card .val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1.08fr 1.12fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 1180px) {
+      .grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 780px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .col { display: flex; flex-direction: column; gap: 16px; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.02rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .muted { color: var(--muted); font-size: 0.85rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+    .btn:hover { opacity: 0.92; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      border-color: transparent;
+      color: #fff;
+    }
+    .btn-green {
+      background: #16a34a;
+      border-color: transparent;
+      color: #fff;
+    }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
+    }
+    .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 8px; }
+
+    input[type="text"], input[type="password"], input[type="number"], textarea, select {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.88rem;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 76px; }
+
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .guide-box {
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      font-size: 0.82rem;
+      margin-bottom: 12px;
+    }
+    .guide-box ol {
+      margin: 6px 0 0;
+      padding-left: 18px;
+    }
+    .guide-box li { margin-bottom: 4px; }
+    .guide-box a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    .guide-box a:hover { text-decoration: underline; }
+
+    .info-banner {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.81rem;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .webhook-box {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+    }
+
+    .bot-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      margin-bottom: 12px;
+    }
+    .bot-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #0284c7;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .switch-row .title { font-size: 0.88rem; font-weight: 600; }
+    .switch-row .sub { font-size: 0.77rem; color: var(--muted); }
+    .switch-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .group-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+      font-size: 0.84rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .chip {
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      font-size: 0.76rem;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .chip:hover { border-color: var(--accent); }
+
+    .sim-output {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      font-size: 0.86rem;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .alert-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--bg-soft);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      margin-bottom: 8px;
+      font-size: 0.84rem;
+    }
+    .alert-item.resolved {
+      opacity: 0.6;
+      border-color: var(--border);
+    }
+
+    .log-list {
+      max-height: 330px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-item {
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--bg-soft);
+      border-left: 3px solid var(--accent);
+      font-size: 0.8rem;
+    }
+    .log-item.bot { border-left-color: var(--green); }
+    .log-item.warn { border-left-color: var(--amber); }
+    .log-item.error { border-left-color: var(--red); }
+    .log-meta {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .faq-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      box-shadow: var(--shadow);
+      font-size: 0.86rem;
+      font-weight: 600;
+      display: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h1>🤖 ELEC AI — Bot Zalo Độc Lập (Zalo Bot Platform · Bot Token)</h1>
+        <p>Bot chạy riêng biệt qua Bot Token chính thức — không dùng tài khoản Zalo cá nhân, không cần tài khoản OA Doanh nghiệp</p>
+      </div>
+      <div class="topbar-actions">
+        <span class="pill" id="connPill"><span class="dot" id="connDot"></span><span id="connText">Đang tải...</span></span>
+        <span class="pill" id="aiKeyPill">🧠 AI Keys: ...</span>
+        <button class="btn btn-sm" id="themeBtn" type="button">☀️ Đổi giao diện</button>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Tin nhắn nhận</div><div class="val" id="statReceived">0</div></div>
+      <div class="stat-card"><div class="label">Bot đã trả lời</div><div class="val" id="statReplied">0</div></div>
+      <div class="stat-card"><div class="label">Câu trả lời AI</div><div class="val" id="statAi">0</div></div>
+      <div class="stat-card"><div class="label">Nhóm / Chat thấy</div><div class="val" id="statChats">0</div></div>
+      <div class="stat-card"><div class="label">Chờ Admin duyệt</div><div class="val" id="statAlerts" style="color: var(--amber);">0</div></div>
+    </div>
+
+    <div class="grid-3">
+      <!-- CỘT TRÁI: KẾT NỐI BOT TOKEN & NHÓM ZALO -->
+      <div class="col">
+        <div class="card">
+          <h2>1. Kết nối Bot Zalo Độc Lập (Bot Token)</h2>
+
+          <div class="guide-box">
+            <strong>3 bước tạo Bot riêng miễn phí (không dùng nick cá nhân):</strong>
+            <ol>
+              <li>Mở Zalo tìm Mini App <strong>"Zalo Bot Creator"</strong> hoặc truy cập <a href="https://bot.zaloplatforms.com" target="_blank" rel="noopener noreferrer">bot.zaloplatforms.com ↗</a> rồi tạo Bot mới (ví dụ: <em>Trợ lý ELEC AI</em>).</li>
+              <li>Copy <strong>Bot Token</strong> (dạng <code>123456789:abc-xyz</code>) dán vào ô bên dưới và bấm <strong>Kết Nối Bot Ngay</strong>.</li>
+              <li>Thêm con Bot đó vào nhóm <a href="https://zalo.me/g/xbmme5srjzwbuvasu25u" target="_blank" rel="noopener noreferrer">Nhóm Zalo Giáo viên ↗</a> như thêm thành viên.</li>
+            </ol>
+          </div>
+
+          <div id="botInfoBox" class="bot-card" style="display:none;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="bot-badge">BOT ĐỘC LẬP</span>
+                <strong id="botDisplayName">-</strong>
+              </div>
+              <div class="muted" id="botMeta">-</div>
+            </div>
+            <span class="pill" id="modeBadge" style="font-size:0.75rem;">Polling</span>
+          </div>
+
+          <p class="muted" id="statusMsg">Đang kiểm tra trạng thái...</p>
+
+          <div class="field">
+            <label>Zalo Bot Token (<span id="maskedTokenLabel">chưa lưu</span>)</label>
+            <div style="display:flex;gap:6px;">
+              <input type="password" id="botTokenInput" placeholder="Dán Bot Token dạng 123456789:abc-xyz..." />
+              <button class="btn btn-sm" id="btnToggleToken" type="button">👁️</button>
+            </div>
+          </div>
+
+          <div class="row-actions">
+            <button class="btn btn-primary" id="btnConnectToken" type="button">🔌 Kết Nối Bot Ngay (Long-Polling)</button>
+            <a class="btn btn-green" href="https://bot.zaloplatforms.com/groups/invite/bot.JtQdRlhM" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">➕ Mời Bot vào Nhóm ↗</a>
+            <button class="btn btn-danger" id="btnLogout" type="button" style="display:none;">Ngắt kết nối</button>
+          </div>
+
+          <div class="webhook-box">
+            <div style="font-weight:700;font-size:0.86rem;margin-bottom:8px;">☁️ Chế độ chạy 24/7 trên Cloud Vercel (Webhook)</div>
+            <div class="field">
+              <label>Webhook URL (<code>/api/zalo-bot</code>)</label>
+              <input type="text" id="webhookUrlInput" placeholder="https://www.elecai.id.vn/api/zalo-bot" />
+            </div>
+            <div class="field">
+              <label>Secret Token (tùy chọn, khớp ZALO_WEBHOOK_SECRET)</label>
+              <input type="text" id="webhookSecretInput" placeholder="Để trống nếu chưa cài secret" />
+            </div>
+            <div class="row-actions">
+              <button class="btn btn-green btn-sm" id="btnSetWebhook" type="button">☁️ Bật Webhook 24/7 (Vercel)</button>
+              <button class="btn btn-sm" id="btnSwitchPolling" type="button">💻 Quay về chạy trên máy (Long-Polling)</button>
+            </div>
+            <div class="muted" style="margin-top:6px;font-size:0.76rem;">
+              Lưu ý: Trên Zalo Bot Platform, chỉ dùng <strong>1 trong 2</strong> chế độ cùng lúc (Long-Polling tại máy <em>hoặc</em> Webhook 24/7 trên Vercel).
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>2. Nhóm Zalo & Chat ID</h2>
+          <div class="info-banner">
+            💡 <strong>Cơ chế Bot độc lập trong nhóm:</strong> Theo quy định bảo mật của Zalo Bot Platform, trong nhóm chat Bot sẽ nhận tin nhắn và biết <code>chat_id</code> của nhóm ngay khi có thành viên <strong>@tag tên Bot</strong> hoặc <strong>Trả lời (Reply)</strong> tin nhắn của Bot.
+          </div>
+
+          <div class="field">
+            <label>Link nhóm Zalo mục tiêu (hiển thị & lưu cấu hình)</label>
+            <input type="text" id="targetGroupUrl" placeholder="https://zalo.me/g/..." />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="title">Chỉ trả lời trong nhóm đã chọn</div>
+              <div class="sub">Chỉ áp dụng khi bạn đã bật ít nhất 1 Chat ID bên dưới</div>
+            </div>
+            <input type="checkbox" id="onlyTargetGroup" />
+          </div>
+
+          <div class="field" style="margin-top:10px;">
+            <label>Các Nhóm / Cuộc trò chuyện đã tương tác với Bot</label>
+            <div id="detectedGroupsList" class="muted">Chưa có tin nhắn nào gửi tới Bot. Hãy thêm Bot vào nhóm và nhắn <code>@Tên_Bot !menu</code> để Bot tự ghi nhận Chat ID nhóm.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT GIỮA: CẤU HÌNH CHẾ ĐỘ, TEST SIMULATOR & GỬI TIN NHÓM -->
+      <div class="col">
+        <div class="card">
+          <h2>
+            <span>3. Chế độ Hoạt động của Bot</span>
+            <button class="btn btn-primary btn-sm" id="btnSaveSettings" type="button">💾 Lưu Cấu Hình</button>
+          </h2>
+
+          <div class="switch-row" style="border-color: rgba(56, 189, 248, 0.45);">
+            <div>
+              <div class="title">BẬT BOT TỰ ĐỘNG HỖ TRỢ</div>
+              <div class="sub">Công tắc tổng — tắt nếu bạn muốn tạm dừng trả lời tự động</div>
+            </div>
+            <input type="checkbox" id="botEnabled" />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="title">Lệnh nhanh (!menu, !gia, !video, !tronde, !omr, /ai)</div>
+              <div class="sub">Hỗ trợ cả khi gõ lệnh sau @Tên_Bot (ví dụ: @Trợ lý ELEC AI !gia)</div>
+            </div>
+            <input type="checkbox" id="modeCommands" />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="title">Khi được @tag hoặc trả lời (Reply) Bot</div>
+              <div class="sub">Chào kèm hướng dẫn nhanh hoặc trả lời câu hỏi đi kèm</div>
+            </div>
+            <input type="checkbox" id="modeMention" />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="title">Tự động bắt từ khóa hỗ trợ (FAQ thông minh)</div>
+              <div class="sub">Nhận diện câu hỏi trộn đề, tạo đề, bảng giá, chuyển khoản...</div>
+            </div>
+            <input type="checkbox" id="modeKeyword" />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="title">AI trả lời câu hỏi mở về ELEC AI</div>
+              <div class="sub">Dùng Gemini / Groq trong .env khi khách hỏi ngoài mẫu FAQ</div>
+            </div>
+            <input type="checkbox" id="modeAi" />
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin-top:10px;">
+            <div class="field">
+              <label>Cooldown mỗi người (giây)</label>
+              <input type="number" id="cooldownSeconds" min="0" max="300" />
+            </div>
+            <div class="field">
+              <label>Tên gọi tắt Bot (cách nhau dấu phẩy)</label>
+              <input type="text" id="botAliases" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>4. Test Thử Phản Hồi Bot (Simulator)</h2>
+          <p class="muted" style="margin-top:0;">Thử ngay cách Bot phản hồi khi khách @tag Bot hoặc nhắn tin trực tiếp:</p>
+          <div class="chips" id="quickChips">
+            <button class="chip" type="button" data-q="@Trợ lý ELEC AI !menu">@Tag !menu</button>
+            <button class="chip" type="button" data-q="@Trợ lý ELEC AI cách trộn đề file word">@Tag Trộn đề Word</button>
+            <button class="chip" type="button" data-q="@Trợ lý ELEC AI giá gói giáo viên VIP bao nhiêu?">@Tag Giá GV VIP</button>
+            <button class="chip" type="button" data-q="@Trợ lý ELEC AI mình đã chuyển khoản 399k duyệt giúp mình">@Tag Đã chuyển khoản</button>
+            <button class="chip" type="button" data-q="@Trợ lý ELEC AI /ai cách giao đề phụ đạo cho học sinh dưới 5.0">@Tag /ai Phụ đạo</button>
+            <button class="chip" type="button" data-q="Chào buổi sáng mọi người">Tin tán gẫu</button>
+          </div>
+          <div class="row-actions">
+            <input type="text" id="simInput" placeholder="Nhập câu hỏi giả lập..." style="flex:1;" />
+            <button class="btn btn-primary" id="btnSimulate" type="button">Gửi Test</button>
+          </div>
+          <div class="sim-output" id="simOutput">Kết quả test sẽ hiển thị tại đây...</div>
+        </div>
+
+        <div class="card">
+          <h2>5. Gửi Thông Báo Thủ Công Vào Nhóm</h2>
+          <div class="field">
+            <label>Chat ID nhóm nhận tin</label>
+            <input type="text" id="sendGroupId" placeholder="Tự động điền khi có Chat ID nhóm" />
+          </div>
+          <div class="field">
+            <label>Nội dung tin nhắn</label>
+            <textarea id="sendGroupMsg" placeholder="Nhập thông báo để con Bot gửi vào nhóm Zalo..."></textarea>
+          </div>
+          <button class="btn btn-green" id="btnSendGroup" type="button">🚀 Gửi Tin Bằng Bot Ngay</button>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: NHẮC ADMIN DUYỆT VIP & LOG REALTIME -->
+      <div class="col">
+        <div class="card">
+          <h2>
+            <span>6. Cần Admin Duyệt VIP</span>
+            <span class="pill" id="alertBadge">0 mới</span>
+          </h2>
+          <p class="muted" style="margin-top:0;">Khi khách báo đã chuyển khoản / chờ kích hoạt, yêu cầu sẽ nổi tại đây:</p>
+          <div id="adminAlertsList" class="muted">Chưa có yêu cầu nào đang chờ duyệt.</div>
+        </div>
+
+        <div class="card">
+          <h2>7. Nhật ký Hoạt động Realtime</h2>
+          <div class="log-list" id="logsList">
+            <div class="muted">Chưa có nhật ký...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHẦN DƯỚI: QUẢN LÝ LỜI CHÀO & KỊCH BẢN FAQ -->
+    <div class="card" style="margin-top:16px;">
+      <h2>
+        <span>8. Tùy chỉnh Bộ Từ khóa FAQ & Tin nhắn Mẫu</span>
+        <div class="row-actions">
+          <button class="btn btn-sm" id="btnAddFaq" type="button">+ Thêm kịch bản FAQ</button>
+          <button class="btn btn-primary btn-sm" id="btnSaveFaq" type="button">💾 Lưu Kịch Bản FAQ</button>
+        </div>
+      </h2>
+
+      <div class="field">
+        <label>Tin nhắn giới thiệu mẫu (dùng khi ghim nhóm / gửi chào)</label>
+        <textarea id="welcomeTemplate" rows="4"></textarea>
+      </div>
+
+      <div class="faq-grid" id="faqGrid"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Đã lưu!</div>
+
+  <script>
+    let currentConfig = null;
+    let configLoadedOnce = false;
+    let lastStatusData = null;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.style.display = 'block';
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function apiPost(url, payload = {}) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || 'Yêu cầu thất bại');
+      }
+      return data;
+    }
+
+    function applyConfigToForm(cfg) {
+      currentConfig = JSON.parse(JSON.stringify(cfg));
+      document.getElementById('targetGroupUrl').value = cfg.targetGroupUrl || '';
+      document.getElementById('webhookUrlInput').value = cfg.webhookUrl || 'https://www.elecai.id.vn/api/zalo-bot';
+      document.getElementById('onlyTargetGroup').checked = Boolean(cfg.onlyTargetGroup);
+      document.getElementById('botEnabled').checked = Boolean(cfg.botEnabled);
+      document.getElementById('modeCommands').checked = cfg.replyModes?.commands !== false;
+      document.getElementById('modeMention').checked = cfg.replyModes?.mentionOrCall !== false;
+      document.getElementById('modeKeyword').checked = cfg.replyModes?.keywordSmart !== false;
+      document.getElementById('modeAi').checked = cfg.replyModes?.aiFallbackOnQuestion !== false;
+      document.getElementById('cooldownSeconds').value = cfg.cooldownSeconds ?? 10;
+      document.getElementById('botAliases').value = (cfg.botAliases || []).join(', ');
+      document.getElementById('welcomeTemplate').value = cfg.welcomeTemplate || '';
+
+      if (!document.getElementById('sendGroupId').value && cfg.allowedGroupIds?.length) {
+        document.getElementById('sendGroupId').value = cfg.allowedGroupIds[0];
+      }
+
+      renderFaqGrid(cfg.faqRules || []);
+    }
+
+    function renderFaqGrid(rules) {
+      const grid = document.getElementById('faqGrid');
+      grid.innerHTML = '';
+      rules.forEach((rule, idx) => {
+        const card = document.createElement('div');
+        card.className = 'faq-card';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <input type="text" class="faq-title" data-idx="${idx}" value="${esc(rule.title)}" style="font-weight:700;" />
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.78rem;white-space:nowrap;">
+              <input type="checkbox" class="faq-enabled" data-idx="${idx}" ${rule.enabled !== false ? 'checked' : ''} /> Bật
+            </label>
+          </div>
+          <div class="field">
+            <label>Từ khóa kích hoạt (cách nhau bằng dấu phẩy)</label>
+            <input type="text" class="faq-keywords" data-idx="${idx}" value="${esc((rule.keywords || []).join(', '))}" />
+          </div>
+          <div class="field">
+            <label>Nội dung Bot trả lời</label>
+            <textarea class="faq-reply" data-idx="${idx}" rows="4">${esc(rule.reply || '')}</textarea>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;">
+              <input type="checkbox" class="faq-notify" data-idx="${idx}" ${rule.notifyAdmin ? 'checked' : ''} /> Báo Admin duyệt VIP
+            </label>
+            <button type="button" class="btn btn-danger btn-sm faq-del" data-idx="${idx}">Xóa</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      grid.querySelectorAll('.faq-del').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.idx);
+          const list = collectFaqFromDom();
+          list.splice(i, 1);
+          renderFaqGrid(list);
+        });
+      });
+    }
+
+    function collectFaqFromDom() {
+      const cards = document.querySelectorAll('#faqGrid .faq-card');
+      const rules = [];
+      cards.forEach((card, idx) => {
+        const prev = currentConfig?.faqRules?.[idx];
+        rules.push({
+          id: prev?.id || `custom-${Date.now()}-${idx}`,
+          title: card.querySelector('.faq-title').value.trim() || `Kịch bản ${idx + 1}`,
+          enabled: card.querySelector('.faq-enabled').checked,
+          notifyAdmin: card.querySelector('.faq-notify').checked,
+          keywords: card.querySelector('.faq-keywords').value
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+          reply: card.querySelector('.faq-reply').value.trim(),
+        });
+      });
+      return rules;
+    }
+
+    function collectConfigFromForm() {
+      return {
+        ...(currentConfig || {}),
+        targetGroupUrl: document.getElementById('targetGroupUrl').value.trim(),
+        webhookUrl: document.getElementById('webhookUrlInput').value.trim(),
+        onlyTargetGroup: document.getElementById('onlyTargetGroup').checked,
+        botEnabled: document.getElementById('botEnabled').checked,
+        replyModes: {
+          commands: document.getElementById('modeCommands').checked,
+          mentionOrCall: document.getElementById('modeMention').checked,
+          keywordSmart: document.getElementById('modeKeyword').checked,
+          aiFallbackOnQuestion: document.getElementById('modeAi').checked,
+          welcomeNewMember: true,
+        },
+        cooldownSeconds: Number(document.getElementById('cooldownSeconds').value || 0),
+        botAliases: document.getElementById('botAliases').value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        welcomeTemplate: document.getElementById('welcomeTemplate').value,
+        faqRules: collectFaqFromDom(),
+      };
+    }
+
+    function renderLiveStatus(data) {
+      lastStatusData = data;
+      if (!configLoadedOnce && data.config) {
+        applyConfigToForm(data.config);
+        configLoadedOnce = true;
+      } else if (data.config && currentConfig) {
+        currentConfig.allowedGroupIds = data.config.allowedGroupIds;
+      }
+
+      const dot = document.getElementById('connDot');
+      const connText = document.getElementById('connText');
+      const statusMap = {
+        connected_polling: ['green', 'Bot đang chạy (Polling)'],
+        connected_webhook: ['green', 'Bot chạy 24/7 (Webhook)'],
+        connecting: ['amber', 'Đang xác thực Token...'],
+        error: ['red', 'Lỗi kết nối Bot'],
+        disconnected: ['red', 'Chưa kết nối Token'],
+      };
+      const [dotColor, label] = statusMap[data.connectionStatus] || ['amber', data.connectionStatus];
+      dot.className = `dot ${dotColor}`;
+      connText.textContent = label;
+
+      const k = data.aiKeys || {};
+      document.getElementById('aiKeyPill').textContent = `🧠 AI Keys: Gemini(${k.gemini || 0}) · Groq(${k.groq || 0}) · Agnes(${k.agnes || 0})`;
+
+      const chats = data.detectedChats || data.detectedGroups || [];
+      const unresolved = (data.adminAlerts || []).filter((a) => !a.resolved).length;
+      document.getElementById('statReceived').textContent = data.stats?.receivedCount ?? 0;
+      document.getElementById('statReplied').textContent = data.stats?.repliedCount ?? 0;
+      document.getElementById('statAi').textContent = data.stats?.aiRepliedCount ?? 0;
+      document.getElementById('statChats').textContent = chats.length;
+      document.getElementById('statAlerts').textContent = unresolved;
+      document.getElementById('alertBadge').textContent = `${unresolved} mới`;
+
+      document.getElementById('statusMsg').textContent = data.statusMessage || '';
+      document.getElementById('maskedTokenLabel').textContent = data.hasBotToken
+        ? `đang lưu: ${data.maskedToken}`
+        : 'chưa lưu';
+
+      const botBox = document.getElementById('botInfoBox');
+      const btnLogout = document.getElementById('btnLogout');
+      if (data.botInfo && (data.connectionStatus === 'connected_polling' || data.connectionStatus === 'connected_webhook')) {
+        botBox.style.display = 'flex';
+        btnLogout.style.display = 'inline-flex';
+        document.getElementById('botDisplayName').textContent = data.botInfo.display_name || data.botInfo.account_name || 'Zalo Bot';
+        document.getElementById('botMeta').textContent = `@${data.botInfo.account_name || '-'} · Bot ID: ${data.botInfo.id}`;
+        document.getElementById('modeBadge').textContent =
+          data.mode === 'webhook' ? '☁️ Webhook 24/7' : '💻 Long-Polling';
+      } else {
+        botBox.style.display = 'none';
+        btnLogout.style.display = data.hasBotToken ? 'inline-flex' : 'none';
+      }
+
+      const dgEl = document.getElementById('detectedGroupsList');
+      const allowed = data.config?.allowedGroupIds || [];
+      if (chats.length === 0) {
+        dgEl.innerHTML = '<div class="muted">Chưa có tin nhắn nào gửi tới Bot. Hãy thêm Bot vào nhóm và nhắn <code>@Tên_Bot !menu</code> để Bot tự ghi nhận Chat ID nhóm.</div>';
+      } else {
+        dgEl.innerHTML = chats.map((g) => {
+          const cid = g.chatId || g.groupId;
+          const isAllowed = allowed.includes(cid);
+          return `
+            <div class="group-item">
+              <div>
+                <div style="font-weight:700;">${g.isGroup ? '👥' : '💬'} ${esc(g.title || g.name)}</div>
+                <div class="muted" style="font-size:0.75rem;">Chat ID: <code>${esc(cid)}</code> · ${g.isGroup ? 'Nhóm' : '1-1'} ${g.lastSender ? `· Gần nhất: ${esc(g.lastSender)}` : ''}</div>
+              </div>
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm" onclick="useChatId('${esc(cid)}')">Gửi tin</button>
+                <button type="button" class="btn btn-sm ${isAllowed ? 'btn-green' : ''}" onclick="toggleAllowedGroup('${esc(cid)}')">
+                  ${isAllowed ? 'Đang chọn ✅' : 'Chọn nhóm'}
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const alertsEl = document.getElementById('adminAlertsList');
+      const alerts = data.adminAlerts || [];
+      if (alerts.length === 0) {
+        alertsEl.innerHTML = '<div class="muted">Chưa có yêu cầu nào đang chờ duyệt.</div>';
+      } else {
+        alertsEl.innerHTML = alerts.map((a) => `
+          <div class="alert-item ${a.resolved ? 'resolved' : ''}">
+            <div style="display:flex;justify-content:space-between;gap:6px;font-weight:700;">
+              <span>🔔 ${esc(a.senderName)}</span>
+              <span class="muted" style="font-size:0.74rem;">${new Date(a.time).toLocaleTimeString('vi-VN')}</span>
+            </div>
+            <div style="margin:4px 0;">"${esc(a.message)}"</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span class="muted" style="font-size:0.74rem;">${esc(a.groupName)}</span>
+              ${a.resolved
+                ? '<span style="color:var(--green);font-weight:700;font-size:0.76rem;">Đã xử lý ✓</span>'
+                : `<button type="button" class="btn btn-primary btn-sm" onclick="resolveAlert('${esc(a.id)}')">Đánh dấu đã duyệt</button>`}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const logsEl = document.getElementById('logsList');
+      const logs = data.logs || [];
+      if (logs.length === 0) {
+        logsEl.innerHTML = '<div class="muted">Chưa có nhật ký...</div>';
+      } else {
+        logsEl.innerHTML = logs.slice(0, 50).map((l) => `
+          <div class="log-item ${esc(l.level)}">
+            <div class="log-meta">
+              <span>${esc(l.title)}</span>
+              <span class="muted" style="font-weight:400;">${new Date(l.time).toLocaleTimeString('vi-VN')}</span>
+            </div>
+            ${l.detail ? `<div class="muted" style="word-break:break-word;">${esc(l.detail)}</div>` : ''}
+          </div>
+        `).join('');
+      }
+    }
+
+    window.useChatId = function (chatId) {
+      document.getElementById('sendGroupId').value = chatId;
+      showToast('Đã chọn Chat ID: ' + chatId);
+    };
+
+    window.toggleAllowedGroup = async function (chatId) {
+      try {
+        const list = [...(lastStatusData?.config?.allowedGroupIds || [])];
+        const idx = list.indexOf(chatId);
+        if (idx >= 0) list.splice(idx, 1);
+        else list.push(chatId);
+        const res = await apiPost('/api/config', { ...collectConfigFromForm(), allowedGroupIds: list });
+        currentConfig = res.config;
+        showToast(idx >= 0 ? 'Đã bỏ chọn nhóm này' : 'Đã thêm vào danh sách nhóm cho phép!');
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi: ' + err.message);
+      }
+    };
+
+    window.resolveAlert = async function (id) {
+      try {
+        await apiPost('/api/alerts/resolve', { id });
+        showToast('Đã đánh dấu xử lý xong!');
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi: ' + err.message);
+      }
+    };
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.ok) renderLiveStatus(data);
+      } catch {
+        /* ignore transient poll error */
+      }
+    }
+
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      document.body.classList.toggle('light');
+    });
+
+    document.getElementById('btnToggleToken').addEventListener('click', () => {
+      const inp = document.getElementById('botTokenInput');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+
+    document.getElementById('btnConnectToken').addEventListener('click', async () => {
+      const botToken = document.getElementById('botTokenInput').value.trim();
+      try {
+        const res = await apiPost('/api/connect-token', {
+          botToken,
+          webhookUrl: document.getElementById('webhookUrlInput').value.trim(),
+          secretToken: document.getElementById('webhookSecretInput').value.trim(),
+        });
+        showToast(`Đã kết nối Bot: ${res.botInfo?.display_name || res.botInfo?.id}`);
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi kết nối Token: ' + err.message);
+      }
+    });
+
+    document.getElementById('btnSetWebhook').addEventListener('click', async () => {
+      try {
+        const botToken = document.getElementById('botTokenInput').value.trim();
+        const webhookUrl = document.getElementById('webhookUrlInput').value.trim();
+        const secretToken = document.getElementById('webhookSecretInput').value.trim();
+        const res = await apiPost('/api/set-webhook', { botToken, webhookUrl, secretToken });
+        showToast(`Đã bật Webhook 24/7 cho Bot ${res.botInfo?.display_name || ''}!`);
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi bật Webhook: ' + err.message);
+      }
+    });
+
+    document.getElementById('btnSwitchPolling').addEventListener('click', async () => {
+      try {
+        await apiPost('/api/switch-polling');
+        showToast('Đã chuyển sang chế độ Long-Polling trên máy!');
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi chuyển Polling: ' + err.message);
+      }
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      if (!confirm('Ngắt kết nối và xóa Bot Token đã lưu?')) return;
+      try {
+        await apiPost('/api/logout');
+        document.getElementById('botTokenInput').value = '';
+        showToast('Đã ngắt kết nối!');
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi: ' + err.message);
+      }
+    });
+
+    async function saveAllConfig() {
+      try {
+        const payload = collectConfigFromForm();
+        const res = await apiPost('/api/config', payload);
+        applyConfigToForm(res.config);
+        showToast('Đã lưu cấu hình Bot thành công!');
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi lưu cấu hình: ' + err.message);
+      }
+    }
+
+    document.getElementById('btnSaveSettings').addEventListener('click', saveAllConfig);
+    document.getElementById('btnSaveFaq').addEventListener('click', saveAllConfig);
+
+    document.getElementById('btnAddFaq').addEventListener('click', () => {
+      const list = collectFaqFromDom();
+      list.push({
+        id: `custom-${Date.now()}`,
+        title: 'Kịch bản hỗ trợ mới',
+        enabled: true,
+        notifyAdmin: false,
+        keywords: ['từ khóa 1', 'từ khóa 2'],
+        reply: 'Dạ em là Trợ lý ELEC AI, xin hỗ trợ Thầy/Cô...',
+      });
+      renderFaqGrid(list);
+    });
+
+    async function runSimulator() {
+      const input = document.getElementById('simInput');
+      const out = document.getElementById('simOutput');
+      const text = input.value.trim();
+      if (!text) return;
+      out.textContent = 'Đang xử lý...';
+      try {
+        const res = await apiPost('/api/simulate', { text, senderName: 'Thầy/Cô Demo' });
+        const d = res.decision;
+        if (!d.shouldReply) {
+          out.textContent = `⏸️ Bot BỎ QUA tin nhắn này (Lý do: ${d.reason}) — tránh làm phiền khi nhóm đang trò chuyện thông thường.`;
+        } else {
+          out.textContent =
+            `✅ Bot SẼ TRẢ LỜI [${d.mode.toUpperCase()} · ${d.reason}${d.provider ? ` · ${d.provider}/${d.model}` : ''}]` +
+            `${d.notifyAdmin ? ' 🔔 (+ Đã tạo cảnh báo Admin duyệt VIP!)' : ''}\n\n` +
+            d.reply;
+        }
+        await fetchStatus();
+      } catch (err) {
+        out.textContent = 'Lỗi test: ' + err.message;
+      }
+    }
+
+    document.getElementById('btnSimulate').addEventListener('click', runSimulator);
+    document.getElementById('simInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runSimulator();
+    });
+    document.querySelectorAll('#quickChips .chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.getElementById('simInput').value = chip.dataset.q || '';
+        runSimulator();
+      });
+    });
+
+    document.getElementById('btnSendGroup').addEventListener('click', async () => {
+      try {
+        const chatId = document.getElementById('sendGroupId').value.trim();
+        const message = document.getElementById('sendGroupMsg').value.trim();
+        await apiPost('/api/send-group', { chatId, message });
+        document.getElementById('sendGroupMsg').value = '';
+        showToast('Đã gửi tin nhắn qua Bot vào nhóm!');
+        await fetchStatus();
+      } catch (err) {
+        showToast('Lỗi gửi tin: ' + err.message);
+      }
+    });
+
+    fetchStatus();
+    setInterval(fetchStatus, 2000);
+  </script>
+</body>
+</html>

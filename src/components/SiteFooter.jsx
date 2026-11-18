@@ -1,4 +1,5 @@
 import { IconFlask } from './Icons.jsx';
+import { OFFICIAL_YOUTUBE_CHANNEL_URL, OFFICIAL_TEACHER_ZALO_GROUP_URL } from '../lib/youtubeService.js';
 import './site-footer.css';
 
 /* ============================================================
@@ -33,9 +34,10 @@ export default function SiteFooter() {
             <a href="/lo-trinh-on-thi-thpt-quoc-gia">Lộ trình ôn thi</a>
           </div>
           <div>
-            <b>Giới thiệu &amp; Chính sách</b>
+            <b>Giới thiệu &amp; Cộng đồng</b>
             <a href="/gioi-thieu">Giới thiệu ELEC AI</a>
-            <a href="/nha-sang-lap">Nhà sáng lập Nguyễn Thế Duy</a>
+            <a href={OFFICIAL_YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer">Kênh YouTube Hướng dẫn</a>
+            <a href={OFFICIAL_TEACHER_ZALO_GROUP_URL} target="_blank" rel="noopener noreferrer">Nhóm Zalo Hỗ trợ Giáo viên</a>
             <a href="/chinh-sach-bao-mat">Chính sách bảo mật</a>
             <a href="/dieu-khoan-su-dung">Điều khoản sử dụng</a>
           </div>
@@ -48,6 +50,24 @@ export default function SiteFooter() {
           © 2026 ELEC AI · Nhà sáng lập:{' '}
           <a href="/nha-sang-lap" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
             Nguyễn Thế Duy (Duy TK)
+          </a>{' '}
+          ·{' '}
+          <a
+            href={OFFICIAL_YOUTUBE_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'underline' }}
+          >
+            YouTube
+          </a>{' '}
+          ·{' '}
+          <a
+            href={OFFICIAL_TEACHER_ZALO_GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'underline' }}
+          >
+            Zalo Giáo viên
           </a>{' '}
           ·{' '}
           <a

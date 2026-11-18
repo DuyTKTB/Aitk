@@ -12,3 +12,6 @@ serviceAccountKey.json
 node-compile-cache/
 __pycache__/
 *.pyc
+scripts/zalo-bot/data/credentials.json
+scripts/zalo-bot/data/qr.png
+editvideo/

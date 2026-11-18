@@ -11,6 +11,7 @@ const ELEC_MOOD_FILES = {
   fighting: '/img/elec/elec-fighting.png',
   suspicious: '/img/elec/elec-suspicious.png',
   love: '/img/elec/elec-love.png',
+  'heart-eyes': '/img/elec/elec-heart-eyes.png',
   'super-saiyan': '/img/elec/elec-super-saiyan.png',
 };
 

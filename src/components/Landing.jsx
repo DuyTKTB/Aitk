@@ -12,6 +12,11 @@ import { Audience, Bento, ExamFlow, Beyond, Trust, StartSteps } from './LandingS
 import { IconDefs, FaqIcon, AtomOrbit, Molecule, Crystal, Helix, Flask } from './Art3D.jsx';
 import { addUserReport } from '../data/virtualExamsBank.js';
 import { peekPostAuthRedirect } from '../lib/userRole.js';
+import {
+  OFFICIAL_TUTORIAL_VIDEOS,
+  OFFICIAL_YOUTUBE_CHANNEL_URL,
+  OFFICIAL_TEACHER_ZALO_GROUP_URL,
+} from '../lib/youtubeService.js';
 
 const LoginPage = lazy(() => import('./LoginPage.jsx'));
 
@@ -162,7 +167,11 @@ const FAQS = [
 
 const FEEDBACK = [['bug', 'Báo lỗi'], ['idea', 'Góp ý'], ['star', 'Khen ngợi']];
 
-const VIDEO = { src: '/video/ai-intro.mp4', poster: '', youtubeId: '' };
+const VIDEO = {
+  src: '/video/ai-intro.mp4',
+  poster: 'https://img.youtube.com/vi/nzSoVddOf9s/hqdefault.jpg',
+  youtubeId: 'nzSoVddOf9s',
+};
 const VIDEO_POINTS = [
   ['Hỏi bằng chữ hoặc ảnh', 'Gõ câu hỏi hoặc chụp đề bài.'],
   ['Lời giải từng bước', 'Mỗi bước kèm lý do, hỏi tiếp ngay trong cùng cuộc trò chuyện.'],
@@ -474,6 +483,7 @@ function VideoSection() {
   const [failed, setFailed] = useState(false);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(true);
+  const [activeVideoId, setActiveVideoId] = useState(VIDEO.youtubeId || OFFICIAL_TUTORIAL_VIDEOS[1]?.videoId || 'nzSoVddOf9s');
   const vref = useRef(null);
 
   const togglePlay = () => {
@@ -488,21 +498,115 @@ function VideoSection() {
     setMuted(v.muted);
   };
 
+  const featuredVideos = [
+    OFFICIAL_TUTORIAL_VIDEOS[1], // nzSoVddOf9s: AI Tạo đề 3 phần THPT 2025 & Phụ đạo HS < 5.0
+    OFFICIAL_TUTORIAL_VIDEOS[0], // ng6c7RdvLqw: Cách Trộn Đề Word 3 Phần & Xuất ZIP A4 1 Phút
+  ].filter(Boolean);
+  const currentVideo = featuredVideos.find((v) => v.videoId === activeVideoId) || featuredVideos[0];
+
   return (
     <section className="lp-video" id="lp-video">
       <div className="lp-wrap lp-video-head">
-        <Split text="Xem AI giải một bài Hóa từ đầu đến cuối" />
-        <p>Video ngắn cho thấy cách hỏi, cách AI lập luận và cách ôn lại sau đó.</p>
+        <Split text="Xem video hướng dẫn thao tác thực tế trong 1 phút" />
+        <p>Từ AI tạo đề chuẩn GDPT 2025, trộn đề Word 3 phần xuất in A4 đến giao đề phụ đạo cho học sinh.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 14 }}>
+          {featuredVideos.map((vid, idx) => {
+            const active = currentVideo?.videoId === vid.videoId;
+            const mascotImg = idx === 0 ? '/img/elec/elec-happy.png' : '/img/elec/elec-cool.png';
+            return (
+              <button
+                key={vid.videoId}
+                type="button"
+                onClick={() => setActiveVideoId(vid.videoId)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '6px 14px 6px 8px',
+                  borderRadius: 999,
+                  border: active ? '1px solid rgba(59, 130, 246, 0.7)' : '1px solid var(--line, rgba(148,163,184,0.28))',
+                  background: active ? 'linear-gradient(135deg, #2563eb, #4f46e5)' : 'rgba(148, 163, 184, 0.1)',
+                  color: active ? '#fff' : 'inherit',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: active ? '0 8px 20px rgba(37, 99, 235, 0.28)' : 'none',
+                }}
+              >
+                <img
+                  src={mascotImg}
+                  alt=""
+                  draggable={false}
+                  style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 999, background: 'rgba(255,255,255,0.16)' }}
+                />
+                <span>{idx === 0 ? '▶ Video 1: AI Tạo Đề 3 Phần & Phụ Đạo' : '▶ Video 2: Trộn Đề Word & Xuất ZIP A4'}</span>
+              </button>
+            );
+          })}
+          <a
+            href={OFFICIAL_YOUTUBE_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '6px 14px 6px 8px',
+              borderRadius: 999,
+              border: '1px solid rgba(239, 68, 68, 0.45)',
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            <img
+              src="/img/elec/elec-happy.png"
+              alt=""
+              draggable={false}
+              style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 999, background: 'rgba(255,255,255,0.14)' }}
+            />
+            <span>Kênh @ELECAI-idvn ↗</span>
+          </a>
+          <a
+            href={OFFICIAL_TEACHER_ZALO_GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '6px 14px 6px 8px',
+              borderRadius: 999,
+              border: '1px solid rgba(2, 132, 199, 0.45)',
+              background: 'rgba(2, 132, 199, 0.1)',
+              color: '#0284c7',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            <img
+              src="/img/elec/elec-love.png"
+              alt=""
+              draggable={false}
+              style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 999, background: 'rgba(255,255,255,0.14)' }}
+            />
+            <span>Nhóm Zalo Giáo viên ↗</span>
+          </a>
+        </div>
       </div>
 
       <div className="lp-vstage" data-scrub="enter">
         <Crystal className="cry-l" />
         <Crystal className="cry-r" />
         <div className="lp-vframe">
-          {VIDEO.youtubeId ? (
+          {currentVideo?.videoId ? (
             <iframe
-              title="Video giới thiệu trợ lý AI"
-              src={`https://www.youtube-nocookie.com/embed/${VIDEO.youtubeId}?autoplay=1&mute=1&rel=0&loop=1`}
+              key={currentVideo.videoId}
+              title={currentVideo.title}
+              src={`https://www.youtube-nocookie.com/embed/${currentVideo.videoId}?rel=0`}
               allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
             />
@@ -523,7 +627,7 @@ function VideoSection() {
             />
           )}
 
-          {!failed && !VIDEO.youtubeId && (
+          {!failed && !currentVideo?.videoId && (
             <div className="lp-vctl">
               <button type="button" onClick={togglePlay} aria-label={playing ? 'Tạm dừng' : 'Phát'}>
                 {playing ? <IcoPause /> : <IcoPlay size={18} />}

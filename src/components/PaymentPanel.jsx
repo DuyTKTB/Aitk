@@ -6,6 +6,7 @@ import {
   TEACHER_VIP_PRICE_TEXT,
   formatVnd,
 } from '../lib/entitlements.js';
+import { OFFICIAL_YOUTUBE_CHANNEL_URL, OFFICIAL_TEACHER_ZALO_GROUP_URL } from '../lib/youtubeService.js';
 
 /* ============================================================
    SVG ICONS THUẦN — ZERO EMOJIS, ZERO ICON FONTS
@@ -597,6 +598,44 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
           </button>
         </div>
       )}
+
+      <div
+        style={{
+          marginTop: 14,
+          padding: '10px 12px',
+          borderRadius: 12,
+          border: '1px solid rgba(148, 163, 184, 0.22)',
+          background: 'rgba(148, 163, 184, 0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8,
+          fontSize: '0.78rem',
+        }}
+      >
+        <span style={{ color: 'var(--mut)' }}>
+          Cần hỗ trợ kích hoạt gói Giáo viên hoặc xem hướng dẫn?
+        </span>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontWeight: 700 }}>
+          <a
+            href={OFFICIAL_TEACHER_ZALO_GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#0284c7', textDecoration: 'none' }}
+          >
+            💬 Nhóm Zalo Giáo viên ↗
+          </a>
+          <a
+            href={OFFICIAL_YOUTUBE_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#ef4444', textDecoration: 'none' }}
+          >
+            📺 Kênh YouTube ↗
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

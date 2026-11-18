@@ -4,6 +4,11 @@
 import { useState } from 'react';
 import AdminShell, { Topbar } from './AdminShell.jsx';
 import {
+  OFFICIAL_TUTORIAL_VIDEOS,
+  OFFICIAL_YOUTUBE_CHANNEL_URL,
+  OFFICIAL_TEACHER_ZALO_GROUP_URL,
+} from '../../lib/youtubeService.js';
+import {
   IconSparkle, IconUpload, IconEdit, IconExam, IconQuestion, IconUsers, IconActivity,
   IconSettings, IconCopy, IconCheck, IconChevronDown, IconKeyboard,
   IconWarning, IconBulb, IconShield, IconKey, IconCrown,
@@ -237,6 +242,60 @@ export default function GuidePage({ onNavigate }) {
         <button type="button" className="vt-btn" onClick={() => setOpen(new Set())}>
           Thu gọn
         </button>
+      </div>
+
+      <div className="vt-card">
+        <header className="vt-card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.9rem' }}>
+          <h3 className="vt-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <img src="/img/elec/elec-happy.png" alt="ELEC Mascot" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+            <IconSparkle size={16} className="vt-title-ico" />
+            <span>Kênh Video Hướng dẫn Chính thức &amp; Nhóm Hỗ trợ Giáo viên</span>
+          </h3>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+            <a href={OFFICIAL_YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="vt-btn sm" style={{ textDecoration: 'none', color: '#ef4444' }}>
+              Kênh YouTube @ELECAI-idvn ↗
+            </a>
+            <a href={OFFICIAL_TEACHER_ZALO_GROUP_URL} target="_blank" rel="noopener noreferrer" className="vt-btn sm primary" style={{ textDecoration: 'none' }}>
+              Nhóm Zalo Hỗ trợ Giáo viên ↗
+            </a>
+          </div>
+        </header>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
+          {OFFICIAL_TUTORIAL_VIDEOS.map((vid, idx) => (
+            <a
+              key={vid.videoId}
+              href={vid.youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                padding: '0.75rem',
+                borderRadius: 14,
+                border: '1px solid var(--ad-line, var(--soft))',
+                background: 'var(--ad-panel-soft, var(--vt-tint))',
+                textDecoration: 'none',
+                color: 'inherit',
+                alignItems: 'center',
+              }}
+            >
+              <img
+                src={vid.thumbnail}
+                alt={vid.shortTitle}
+                style={{ width: 112, height: 64, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <b style={{ display: 'block', fontSize: '0.84rem', lineHeight: 1.35, color: 'var(--ink)' }}>{vid.shortTitle}</b>
+                <small style={{ color: 'var(--mut)', fontSize: '0.74rem' }}>YouTube ELEC AI · Xem ngay ↗</small>
+              </div>
+              <img
+                src={idx === 0 ? '/img/elec/elec-cool.png' : '/img/elec/elec-happy.png'}
+                alt=""
+                style={{ width: 34, height: 34, objectFit: 'contain', flexShrink: 0 }}
+              />
+            </a>
+          ))}
+        </div>
       </div>
 
       {SECTIONS.map((s) => {

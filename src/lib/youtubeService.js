@@ -8,7 +8,46 @@
  *  3. Cơ chế cứu hộ (Fallback) tự động chuyển sang trang xem chính thức nếu kênh khóa quyền nhúng
  */
 
+export const OFFICIAL_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@ELECAI-idvn';
+export const OFFICIAL_TEACHER_ZALO_GROUP_URL = 'https://zalo.me/g/xbmme5srjzwbuvasu25u';
+
+export const OFFICIAL_TUTORIAL_VIDEOS = [
+  {
+    id: 'elec-tron-de-word-3-phan',
+    keywords: ['trộn đề', 'tron de', 'word', 'docx', '3 phần', 'gdpt 2018', 'zip', 'in a4', 'hướng dẫn', 'elec ai'],
+    title: 'Cách Trộn Đề Thi Từ File Word Chuẩn 3 Phần GDPT 2018 & Xuất ZIP In A4 Trong 1 Phút | ELEC AI',
+    shortTitle: 'Trộn Đề Word 3 Phần & Xuất ZIP In A4 (1 Phút)',
+    channel: 'ELEC AI (@ELECAI-idvn)',
+    duration: '1:00',
+    videoId: 'ng6c7RdvLqw',
+    youtubeUrl: 'https://www.youtube.com/watch?v=ng6c7RdvLqw',
+    thumbnail: 'https://img.youtube.com/vi/ng6c7RdvLqw/hqdefault.jpg',
+    subject: 'khtn',
+    grade: 12,
+    topic: 'Hướng dẫn Trộn đề & Xuất A4',
+    desc: 'Hướng dẫn nhập file Word chuẩn 3 phần GDPT 2018, đảo mã đề tự động và xuất trọn bộ ZIP in ấn A4 chỉ trong 1 phút.',
+    tag: 'Word & Đảo đề',
+  },
+  {
+    id: 'elec-ai-tao-de-3-phan',
+    keywords: ['tạo đề', 'ai tạo đề', 'thpt 2025', '3 phần', 'phụ đạo', 'dưới 5.0', 'giao đề', 'hướng dẫn', 'elec ai'],
+    title: 'AI Tạo Đề Thi 3 Phần Chuẩn THPT 2025 & Giao Đề Ôn Phụ Đạo Cho Học Sinh Dưới 5.0 | ELEC AI',
+    shortTitle: 'AI Tạo Đề 3 Phần THPT 2025 & Giao Đề Phụ Đạo',
+    channel: 'ELEC AI (@ELECAI-idvn)',
+    duration: '1:30',
+    videoId: 'nzSoVddOf9s',
+    youtubeUrl: 'https://www.youtube.com/watch?v=nzSoVddOf9s',
+    thumbnail: 'https://img.youtube.com/vi/nzSoVddOf9s/hqdefault.jpg',
+    subject: 'khtn',
+    grade: 12,
+    topic: 'Hướng dẫn AI Soạn đề & Phụ đạo',
+    desc: 'Cách dùng AutoExam AI Studio tạo đề thi 3 phần chuẩn Thông tư mới và tự động giao bài phụ đạo cho nhóm học sinh dưới 5.0.',
+    tag: 'AI Tạo đề & Phụ đạo',
+  },
+];
+
 export const CURATED_YOUTUBE_LESSONS = [
+  ...OFFICIAL_TUTORIAL_VIDEOS,
   // ================= 1. HÌNH HỌC KHÔNG GIAN (LỚP 11 & 12) =================
   {
     id: 'thiet-dien-hinh-chop',
