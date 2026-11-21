@@ -6,15 +6,19 @@
      • Hiển thị công thức KaTeX sắc nét, báo cáo chẩn đoán đa chiều theo chuyên đề
    ============================================================================ */
 
-.dsp-modal {
+.dsp-modal,
+.dsp-modal.tone-hoa,
+.dsp-modal.tone-ly,
+.dsp-modal.tone-sinh {
   --dsp-accent: #2f6bff;
-  --dsp-accent-soft: rgba(47, 107, 255, 0.1);
-  --dsp-accent-border: rgba(47, 107, 255, 0.26);
+  --dsp-accent-dark: #1d4ed8;
+  --dsp-accent-soft: rgba(47, 107, 255, 0.11);
+  --dsp-accent-border: rgba(47, 107, 255, 0.28);
   --dsp-surface: #ffffff;
-  --dsp-surface-alt: #f5f8ff;
-  --dsp-border: rgba(15, 35, 105, 0.1);
+  --dsp-surface-alt: #f4f7ff;
+  --dsp-border: rgba(15, 35, 105, 0.11);
   --dsp-ink: #0a1230;
-  --dsp-muted: #5b6992;
+  --dsp-muted: #52628d;
   display: flex;
   flex-direction: column;
   max-height: min(88vh, 840px);
@@ -25,46 +29,42 @@
   font-family: var(--sans, system-ui, -apple-system, sans-serif);
 }
 
-.dsp-modal.tone-ly {
-  --dsp-accent: #0284c7;
-  --dsp-accent-soft: rgba(2, 132, 199, 0.1);
-  --dsp-accent-border: rgba(2, 132, 199, 0.28);
-}
-
-.dsp-modal.tone-sinh {
-  --dsp-accent: #059669;
-  --dsp-accent-soft: rgba(5, 150, 105, 0.11);
-  --dsp-accent-border: rgba(5, 150, 105, 0.28);
-}
-
 [data-theme='dark'] .dsp-modal {
   --dsp-surface: #0b1536;
-  --dsp-surface-alt: rgba(20, 36, 88, 0.62);
-  --dsp-border: rgba(125, 179, 255, 0.16);
+  --dsp-surface-alt: rgba(20, 36, 88, 0.65);
+  --dsp-border: rgba(125, 179, 255, 0.18);
   --dsp-ink: #f1f5ff;
   --dsp-muted: #9bb1e6;
 }
 
-/* 1. HEADER STUDIO */
+/* 1. HEADER STUDIO — MÀU XANH COBALT CHỦ ĐẠO CỦA ELEC AI */
 .dsp-head {
   position: relative;
   padding: 16px 22px 14px;
   background:
-    radial-gradient(360px 120px at 10% 0%, var(--dsp-accent-soft), transparent 72%),
-    linear-gradient(180deg, var(--dsp-surface-alt) 0%, var(--dsp-surface) 100%);
-  border-bottom: 1px solid var(--dsp-border);
+    radial-gradient(420px 140px at 8% 0%, rgba(47, 107, 255, 0.14), transparent 72%),
+    radial-gradient(340px 120px at 92% 100%, rgba(56, 189, 248, 0.1), transparent 72%),
+    linear-gradient(180deg, #eef4ff 0%, var(--dsp-surface) 100%);
+  border-bottom: 1px solid rgba(47, 107, 255, 0.16);
   display: flex;
   flex-direction: column;
   gap: 11px;
   flex-shrink: 0;
 }
 
+[data-theme='dark'] .dsp-head {
+  background:
+    radial-gradient(420px 140px at 8% 0%, rgba(47, 107, 255, 0.24), transparent 72%),
+    linear-gradient(180deg, #102052 0%, var(--dsp-surface) 100%);
+  border-bottom-color: rgba(125, 179, 255, 0.2);
+}
+
 .dsp-head::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
-  height: 3.5px;
-  background: linear-gradient(90deg, var(--dsp-accent), #38bdf8, #7c3aed);
+  height: 4px;
+  background: linear-gradient(90deg, #1d4ed8 0%, #2f6bff 55%, #38bdf8 100%);
 }
 
 .dsp-head-top {
@@ -205,13 +205,13 @@
 .dsp-seg-btn:hover { color: var(--dsp-ink); }
 
 .dsp-seg-btn.is-on {
-  background: var(--dsp-surface);
-  color: var(--dsp-accent);
-  box-shadow: 0 2px 6px -2px rgba(15, 35, 105, 0.22);
+  background: linear-gradient(135deg, #2f6bff 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px -4px rgba(47, 107, 255, 0.55);
 }
 
 [data-theme='dark'] .dsp-seg-btn.is-on {
-  background: #1b3175;
+  background: linear-gradient(135deg, #2f6bff 0%, #1d4ed8 100%);
   color: #ffffff;
 }
 
