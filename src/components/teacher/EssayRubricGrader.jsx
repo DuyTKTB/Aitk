@@ -178,10 +178,15 @@ export default function EssayRubricGrader({ onBack, say }) {
       const finalRatio =
         manualOverrides[c.id] !== undefined ? manualOverrides[c.id] : autoRatio;
       const earned = Number((c.maxPoints * finalRatio).toFixed(2));
+      const missingKeywords = (c.keywords || []).filter(
+        (kw) => !lower.includes(kw.toLowerCase())
+      );
 
       return {
         ...c,
         trapHit,
+        kwMatches,
+        missingKeywords,
         finalRatio,
         earned,
       };
@@ -213,6 +218,21 @@ export default function EssayRubricGrader({ onBack, say }) {
       navigator.clipboard.writeText(tt22Comment);
       say?.('Đã sao chép nhận xét Thông tư 22 vào bộ nhớ tạm!', 'success');
     }
+  };
+
+  const downloadGradedDoc = () => {
+    const stepLines = gradedSteps
+      .map((s) => `- ${s.step}: +${s.earned}/${s.maxPoints}đ (${s.desc})`)
+      .join('\n');
+    const content = `PHIẾU CHẤM BÀI TỰ LUẬN THEO RUBRIC (CHUẨN THÔNG TƯ 22)\nHọc sinh: ${studentName}\nMôn: ${activePreset.subject} · Chủ đề: ${activePreset.title}\nTổng điểm: ${totalScore} / 10,0 điểm\n======================================================\n\n1. ĐỀ BÀI:\n${activePreset.problem}\n\n2. BÀI LÀM CỦA HỌC SINH:\n${studentWork}\n\n3. CHI TIẾT ĐIỂM THÀNH PHẦN RUBRIC:\n${stepLines}\n\n4. NHẬN XÉT SƯ PHẠM & SỔ ĐIỂM THÔNG TƯ 22:\n${tt22Comment}`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Phieu_Cham_${studentName}</title><style>body{font-family:'Times New Roman',serif;font-size:13pt;line-height:1.55;white-space:pre-wrap;padding:24px;}</style></head><body>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body></html>`;
+    const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ELEC_PhieuCham_Rubric_${activePreset.subject.replace(/\s+/g, '_')}.doc`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
   };
 
   return (
@@ -419,6 +439,39 @@ export default function EssayRubricGrader({ onBack, say }) {
                 </div>
                 <small style={{ color: 'var(--mut, #64748b)', fontSize: '0.8rem' }}>{s.desc}</small>
 
+                {/* Hiển thị chi tiết từ khóa / biểu thức đã khớp hoặc còn thiếu */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, fontSize: '0.73rem' }}>
+                  {s.kwMatches?.map((kw) => (
+                    <span
+                      key={kw}
+                      style={{
+                        padding: '1.5px 7px',
+                        borderRadius: 6,
+                        background: 'rgba(16, 185, 129, 0.14)',
+                        color: '#065f46',
+                        fontWeight: 800,
+                      }}
+                    >
+                      ✓ Đã khớp: {kw}
+                    </span>
+                  ))}
+                  {s.finalRatio < 1 &&
+                    s.missingKeywords?.slice(0, 2).map((mk) => (
+                      <span
+                        key={mk}
+                        style={{
+                          padding: '1.5px 7px',
+                          borderRadius: 6,
+                          background: 'rgba(245, 158, 11, 0.15)',
+                          color: '#b45309',
+                          fontWeight: 800,
+                        }}
+                      >
+                        ⚠ Cần kiểm tra: {mk}
+                      </span>
+                    ))}
+                </div>
+
                 <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                   {[
                     { ratio: 1, label: 'Đạt 100%' },
@@ -469,13 +522,18 @@ export default function EssayRubricGrader({ onBack, say }) {
               gap: 8,
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               <strong style={{ fontSize: '0.84rem', color: '#1d4ed8' }}>
                 Nhận xét Sư phạm &amp; Sổ điểm Thông tư 22
               </strong>
-              <button type="button" className="vt-btn sm primary" onClick={copyComment}>
-                Sao chép nhận xét
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="vt-btn sm" onClick={copyComment}>
+                  Sao chép nhận xét
+                </button>
+                <button type="button" className="vt-btn sm primary" onClick={downloadGradedDoc}>
+                  Xuất Phiếu Chấm (.doc)
+                </button>
+              </div>
             </div>
             <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: 1.55 }}>{tt22Comment}</p>
           </div>
