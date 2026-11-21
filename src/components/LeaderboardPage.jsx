@@ -14,7 +14,18 @@ import { collection, getDocs, limit, query } from 'firebase/firestore';
 import ProfileCard from './social/ProfileCard.jsx';
 import VerifiedBadge from './VerifiedBadge.jsx';
 import StudentAvatar from './StudentAvatar.jsx';
+import SpeedDuelModal from './SpeedDuelModal.jsx';
+import SquadStudyRoomModal from './SquadStudyRoomModal.jsx';
+import RewardShopModal from './RewardShopModal.jsx';
+import { CUTOFF_DATA } from '../data/uniCutoffs.js';
+import { getUserAspirationsState } from '../lib/aspirationService.js';
+import {
+  loadTargetUniversity,
+  getStudentElo,
+  getStudentCombatPower,
+} from '../lib/studentAnalytics.js';
 import '../styles/leaderboard-page.css';
+import '../styles/student-v9-upgrades.css';
 
 /* ── SVG ICONS ── */
 const Svg = ({ d, size = 18, sw = 1.9, fill = 'none' }) => (
@@ -52,11 +63,58 @@ export default function LeaderboardPage() {
   const { user } = useAuth();
   const { count: myStreak } = useLiveStreak();
 
-  const [tab, setTab] = useState('classes'); // 'classes' | 'students' | 'streaks'
+  const [tab, setTab] = useState('classes'); // 'classes' | 'students' | 'streaks' | 'squads'
   const [classesList, setClassesList] = useState([]);
   const [studentsList, setStudentsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profileTarget, setProfileTarget] = useState(null);
+  const [duelOpen, setDuelOpen] = useState(false);
+  const [duelTick, setDuelTick] = useState(0);
+  const [squadRoomOpen, setSquadRoomOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const uid = user?.uid || 'guest';
+
+  const mySquadMetrics = useMemo(() => {
+    const eloState = getStudentElo(uid);
+    const powerState = getStudentCombatPower(uid);
+    const pinned = loadTargetUniversity(uid);
+    if (pinned && (pinned.code || pinned.uni)) {
+      return {
+        code: String(pinned.code || 'NV1').toUpperCase(),
+        uni: pinned.uni || 'Trường mục tiêu NV1',
+        major: pinned.major || 'Nguyện vọng 1',
+        cutoff: pinned.s2025 || pinned.s2024 || null,
+        isPinned: true,
+        elo: eloState?.elo || 1200,
+        power: powerState?.power || 1000,
+        tier: powerState?.tier || { label: 'Khởi hành' },
+      };
+    }
+    const aspState = getUserAspirationsState(uid);
+    const activeAsp = aspState?.aspirations?.find((a) => a.id === aspState.activeAspirationId) || aspState?.aspirations?.[0];
+    if (activeAsp?.school) {
+      return {
+        code: String(activeAsp.school.code || 'NV1').toUpperCase(),
+        uni: activeAsp.school.name || 'Trường mục tiêu NV1',
+        major: activeAsp.major?.name || 'Nguyện vọng 1',
+        cutoff: activeAsp.cutoffScore || null,
+        isPinned: true,
+        elo: eloState?.elo || 1200,
+        power: powerState?.power || 1000,
+        tier: powerState?.tier || { label: 'Khởi hành' },
+      };
+    }
+    return {
+      code: 'BKA',
+      uni: 'ĐH Bách Khoa Hà Nội',
+      major: 'Chưa ghim NV1 (đang xem mẫu)',
+      cutoff: 27.4,
+      isPinned: false,
+      elo: eloState?.elo || 1200,
+      power: powerState?.power || 1000,
+      tier: powerState?.tier || { label: 'Khởi hành' },
+    };
+  }, [uid, duelTick]);
 
   useEffect(() => {
     let alive = true;
@@ -123,14 +181,98 @@ export default function LeaderboardPage() {
     return list;
   }, [rankedStudents]);
 
+  // Wave 3: Dream-University Squads (Quân đoàn NV1)
+  const rankedSquads = useMemo(() => {
+    const map = new Map();
+    for (const row of CUTOFF_DATA) {
+      const code = String(row.code || '').toUpperCase();
+      if (!code || map.has(code)) continue;
+      map.set(code, {
+        code,
+        uni: row.uni,
+        group: row.group,
+        city: row.city,
+        topMajor: row.major,
+        cutoff: row.s2025 || row.s2024 || null,
+        members: 0,
+        totalXp: 0,
+        totalPower: 0,
+        totalStreak: 0,
+      });
+    }
+    const codes = Array.from(map.keys());
+    if (codes.length === 0) return [];
+
+    // Aggregate real users deterministically by their profile target or hash bucket
+    rankedStudents.forEach((stu, idx) => {
+      if (user?.uid && stu.uid === user.uid) return; // counted accurately below
+      const rawUser = studentsList[idx] || {};
+      const explicitCode = String(rawUser.targetUniCode || rawUser.public?.targetUniCode || '').toUpperCase();
+      let bucketCode = map.has(explicitCode) ? explicitCode : null;
+      if (!bucketCode) {
+        let h = 0;
+        const seed = String(stu.uid || stu.name || idx);
+        for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+        bucketCode = codes[h % codes.length];
+      }
+      const sq = map.get(bucketCode);
+      if (sq) {
+        sq.members += 1;
+        sq.totalXp += stu.xp || 0;
+        sq.totalStreak += stu.streak || 0;
+        sq.totalPower += 900 + Math.round((stu.xp || 0) * 0.45) + (stu.streak || 0) * 28;
+      }
+    });
+
+    // Ensure the student's active NV1 squad exists and includes their real ELO + Lực chiến + Streak
+    if (!map.has(mySquadMetrics.code)) {
+      map.set(mySquadMetrics.code, {
+        code: mySquadMetrics.code,
+        uni: mySquadMetrics.uni,
+        group: 'Mục tiêu cá nhân',
+        city: 'Toàn quốc',
+        topMajor: mySquadMetrics.major,
+        cutoff: mySquadMetrics.cutoff,
+        members: 0,
+        totalXp: 0,
+        totalPower: 0,
+        totalStreak: 0,
+      });
+    }
+    const mine = map.get(mySquadMetrics.code);
+    if (mine) {
+      mine.members += 1;
+      mine.totalPower += mySquadMetrics.power;
+      mine.totalStreak += myStreak || 0;
+      mine.isMine = true;
+    }
+
+    const list = Array.from(map.values()).map((sq) => {
+      const avgPower = sq.members > 0 ? Math.round(sq.totalPower / sq.members) : 1000;
+      const campaignGoal = Math.max(5000, Math.ceil((sq.totalPower + 1200) / 5000) * 5000);
+      const campaignPct = Math.min(100, Math.round((sq.totalPower / campaignGoal) * 100));
+      return { ...sq, avgPower, campaignGoal, campaignPct };
+    });
+
+    list.sort((a, b) => b.totalPower - a.totalPower || b.members - a.members);
+    return list;
+  }, [rankedStudents, studentsList, user?.uid, mySquadMetrics, myStreak]);
+
+  const mySquadStanding = useMemo(() => {
+    const idx = rankedSquads.findIndex((s) => s.code === mySquadMetrics.code);
+    return idx >= 0 ? { rank: idx + 1, squad: rankedSquads[idx] } : null;
+  }, [rankedSquads, mySquadMetrics.code]);
+
   const activeList = tab === 'classes' ? rankedClasses : tab === 'students' ? rankedStudents : rankedPersonalStreaks;
   const top1 = activeList[0];
   const top2 = activeList[1];
   const top3 = activeList[2];
-  const restList = activeList.slice(3);
 
   // User standing (tab-aware)
   const myStandingIndex = useMemo(() => {
+    if (tab === 'squads') {
+      return rankedSquads.findIndex((s) => s.code === mySquadMetrics.code);
+    }
     if (!user?.uid) return -1;
     if (tab === 'classes') {
       return rankedClasses.findIndex(
@@ -141,7 +283,7 @@ export default function LeaderboardPage() {
       return rankedStudents.findIndex((s) => s.uid === user.uid);
     }
     return rankedPersonalStreaks.findIndex((s) => s.uid === user.uid);
-  }, [tab, rankedClasses, rankedStudents, rankedPersonalStreaks, user?.uid]);
+  }, [tab, rankedClasses, rankedStudents, rankedPersonalStreaks, rankedSquads, mySquadMetrics.code, user?.uid]);
 
   return (
     <div className="lb-page">
@@ -189,11 +331,138 @@ export default function LeaderboardPage() {
               <img src="/img/elec/elec-celebrate.png" alt="" className="lb-tab-mascot" />
               <span>Kỷ Lục Chuỗi Cá Nhân</span>
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'squads'}
+              className={`lb-tab-btn ${tab === 'squads' ? 'active' : ''}`}
+              onClick={() => setTab('squads')}
+            >
+              <img src="/img/elec/elec-hello.png" alt="" className="lb-tab-mascot" />
+              <span>Quân đoàn NV1</span>
+            </button>
           </div>
         </header>
 
+        {/* Wave 3: Tab Quân đoàn NV1 (Dream-University Squads) */}
+        {tab === 'squads' && (
+          <section className="s9-lb-squad-wrap" aria-label="Quân đoàn Nguyện vọng 1">
+            <div className="s9-lb-squad-hero">
+              <div className="s9-lb-squad-hero-main">
+                <div className="s9-lb-squad-code">{mySquadMetrics.code}</div>
+                <div className="s9-lb-squad-info">
+                  <span className="s9-lb-squad-eyebrow">
+                    {mySquadMetrics.isPinned ? 'QUÂN ĐOÀN NV1 CỦA BẠN' : 'QUÂN ĐOÀN MẪU · HÃY GHIM NV1 CỦA BẠN'}
+                  </span>
+                  <h2>{mySquadMetrics.uni}</h2>
+                  <p>
+                    Ngành mục tiêu: <b>{mySquadMetrics.major}</b>
+                    {mySquadMetrics.cutoff ? ` · Điểm chuẩn tham khảo ${mySquadMetrics.cutoff}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="s9-lb-squad-stats">
+                <div className="s9-lb-squad-stat">
+                  <span>Hạng Quân đoàn</span>
+                  <b>{mySquadStanding ? `#${mySquadStanding.rank}` : '--'}</b>
+                </div>
+                <div className="s9-lb-squad-stat">
+                  <span>ELO đóng góp</span>
+                  <b>{mySquadMetrics.elo.toLocaleString('vi-VN')}</b>
+                </div>
+                <div className="s9-lb-squad-stat">
+                  <span>Lực chiến cá nhân</span>
+                  <b>{mySquadMetrics.power.toLocaleString('vi-VN')}</b>
+                </div>
+                <div className="s9-lb-squad-stat">
+                  <span>Chuỗi ngày</span>
+                  <b>{myStreak} ngày</b>
+                </div>
+              </div>
+
+              {mySquadStanding?.squad && (
+                <div className="s9-lb-squad-campaign">
+                  <div className="s9-lb-squad-campaign-top">
+                    <span>
+                      Chiến dịch chung Quân đoàn ({mySquadStanding.squad.members} sĩ tử)
+                    </span>
+                    <b>
+                      {mySquadStanding.squad.totalPower.toLocaleString('vi-VN')} /{' '}
+                      {mySquadStanding.squad.campaignGoal.toLocaleString('vi-VN')} Lực chiến
+                    </b>
+                  </div>
+                  <div className="s9-lb-squad-bar">
+                    <i style={{ width: `${mySquadStanding.squad.campaignPct}%` }} />
+                  </div>
+                </div>
+              )}
+
+              <div className="s9-lb-squad-actions">
+                <button
+                  type="button"
+                  className="s9-lb-squad-btn primary"
+                  style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => setSquadRoomOpen(true)}
+                >
+                  Phòng tự học (Chat &amp; Poll)
+                </button>
+                <button
+                  type="button"
+                  className="s9-lb-squad-btn ghost"
+                  style={{ cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => setDuelOpen(true)}
+                >
+                  Đấu 1v1 kiếm Lực chiến
+                </button>
+                <button
+                  type="button"
+                  className="s9-lb-squad-btn ghost"
+                  style={{ cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => setShopOpen(true)}
+                >
+                  Cửa hàng Học Bá
+                </button>
+                <a href="#admission" className="s9-lb-squad-btn ghost">
+                  {mySquadMetrics.isPinned ? 'Đổi NV1' : 'Ghim NV1'}
+                </a>
+              </div>
+            </div>
+
+            <div className="s9-lb-squad-list">
+              {rankedSquads.map((sq, idx) => {
+                const rank = idx + 1;
+                return (
+                  <article
+                    key={sq.code}
+                    className={`s9-lb-squad-row ${sq.isMine ? 'is-mine' : ''}`}
+                  >
+                    <div className={`s9-lb-squad-rank r-${rank <= 3 ? rank : 'other'}`}>
+                      #{rank}
+                    </div>
+                    <div className="s9-lb-squad-badge">{sq.code}</div>
+                    <div className="s9-lb-squad-meta">
+                      <div className="s9-lb-squad-title-row">
+                        <h3>{sq.uni}</h3>
+                        {sq.isMine && <span className="s9-lb-squad-mine-tag">Quân đoàn của bạn</span>}
+                      </div>
+                      <p>
+                        {sq.group} · {sq.city} · {sq.members} sĩ tử
+                      </p>
+                    </div>
+                    <div className="s9-lb-squad-score">
+                      <b>{sq.totalPower.toLocaleString('vi-VN')}</b>
+                      <span>Tổng Lực chiến</span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Podium Top 3 */}
-        {activeList.length >= 3 && (
+        {tab !== 'squads' && activeList.length >= 3 && (
           <section className="lb-podium" aria-label="Bục vinh danh Top 3">
             {/* Rank 2 - Bạc */}
             {top2 && (
@@ -276,6 +545,7 @@ export default function LeaderboardPage() {
         )}
 
         {/* Full Table */}
+        {tab !== 'squads' && (
         <div className="lb-table-card">
           <table className="lb-table">
             <thead>
@@ -356,24 +626,35 @@ export default function LeaderboardPage() {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Sticky User Standing bar */}
         {user && (
           <aside className="lb-sticky-bar" aria-label="Thứ hạng của bạn">
             <div className="lb-sticky-info">
               <span className="lb-sticky-rank">
-                {myStandingIndex >= 0 ? `Hạng #${myStandingIndex + 1}` : 'Chưa xếp hạng'}
+                {myStandingIndex >= 0
+                  ? (tab === 'squads' ? `Quân đoàn ${mySquadMetrics.code} #${myStandingIndex + 1}` : `Hạng #${myStandingIndex + 1}`)
+                  : 'Chưa xếp hạng'}
               </span>
               <span className="lb-sticky-text">
-                Ngọn lửa của bạn: <b>🔥 {myStreak} ngày liên tiếp</b>
+                {tab === 'squads' ? (
+                  <>
+                    Lực chiến của bạn: <b>{mySquadMetrics.power.toLocaleString('vi-VN')}</b> · ELO <b>{mySquadMetrics.elo}</b>
+                  </>
+                ) : (
+                  <>
+                    Ngọn lửa của bạn: <b>{myStreak} ngày liên tiếp</b>
+                  </>
+                )}
               </span>
             </div>
             <a
-              href="#roadmap"
+              href={tab === 'squads' ? '#virtual-exams' : '#roadmap'}
               className="ns9-nav-streak-pill is-active"
               style={{ padding: '0 12px', fontSize: '.8rem' }}
             >
-              Học tiếp để tăng hạng →
+              {tab === 'squads' ? 'Cày Lực chiến ngay →' : 'Học tiếp để tăng hạng →'}
             </a>
           </aside>
         )}
@@ -396,6 +677,33 @@ export default function LeaderboardPage() {
           }}
         />
       )}
+      {/* Modal Đấu 1v1 kiếm Lực chiến cho Quân đoàn */}
+      <SpeedDuelModal
+        open={duelOpen}
+        uid={uid}
+        onClose={() => {
+          setDuelOpen(false);
+          setDuelTick((t) => t + 1);
+        }}
+      />
+
+      {/* Modal Phòng tự học Quân đoàn (Chat + Poll tuần + Mục tiêu 300h) */}
+      <SquadStudyRoomModal
+        open={squadRoomOpen}
+        onClose={() => setSquadRoomOpen(false)}
+        squadCode={mySquadMetrics.code}
+        squadUni={mySquadMetrics.uni}
+        memberCount={mySquadStanding?.squad?.members || 12}
+        userName={user?.displayName || 'Bạn'}
+      />
+
+      {/* Modal Cửa hàng Học Bá (Khung Avatar, Danh hiệu, Băng giữ chuỗi) */}
+      <RewardShopModal
+        open={shopOpen}
+        onClose={() => setShopOpen(false)}
+        uid={uid}
+        displayName={user?.displayName || 'Học sinh ELEC AI'}
+      />
     </div>
   );
 }

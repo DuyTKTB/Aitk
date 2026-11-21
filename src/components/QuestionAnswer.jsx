@@ -9,11 +9,43 @@ import MathText from './MathText.jsx';
 import { qType } from '../lib/examScoring.js';
 
 /** Hình minh hoạ của câu hỏi (q.image: data URL hoặc đường dẫn) */
-export const QuestionImage = memo(function QuestionImage({ q }) {
+export const QuestionImage = memo(function QuestionImage({ q, onZoom }) {
   if (!q?.image) return null;
+  const clickable = typeof onZoom === 'function';
   return (
-    <figure className="ep-q-fig">
-      <img src={q.image} alt={q.imageAlt || 'Hình minh hoạ'} loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} />
+    <figure className={'ep-q-fig' + (clickable ? ' is-zoomable' : '')}>
+      <div
+        className="ep-q-fig-frame"
+        role={clickable ? 'button' : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={clickable ? 'Phóng to hình minh hoạ' : undefined}
+        onClick={clickable ? () => onZoom(q.image, q.imageAlt || 'Hình minh hoạ') : undefined}
+        onKeyDown={clickable ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onZoom(q.image, q.imageAlt || 'Hình minh hoạ');
+          }
+        } : undefined}
+      >
+        <img
+          src={q.image}
+          alt={q.imageAlt || 'Hình minh hoạ'}
+          loading="lazy"
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
+        />
+        {clickable && (
+          <span className="ep-q-fig-zoom-hint" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+            Phóng to
+          </span>
+        )}
+      </div>
     </figure>
   );
 });

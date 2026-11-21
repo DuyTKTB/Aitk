@@ -17,9 +17,11 @@ import { REACTIONS } from '../data/reactions.js';
 import { CHEM_TOPICS } from '../data/chemTopics.js';
 import { TOPICS_BY_SUBJECT } from '../data/topicsBySubject.js';
 import { APP_FEATURES } from './appGuideKnowledge.js';
+import { BIOLOGY_CORPUS } from '../data/biologyCorpus.js';
 
 const CAT_LABEL = new Map(CATS);
 const KIND_WEIGHT = {
+  biology: 1.38,
   feature: 1.3,
   formula: 1.25,
   compound: 1.15,
@@ -197,6 +199,19 @@ function buildDocs() {
     }));
   }
 
+  /* ---------- 5b. Kho Tài liệu Sinh học Chuyên sâu ELEC AI (Sinh 10 · 11 · 12 & Đề Tốt nghiệp 2026) ---------- */
+  for (const b of BIOLOGY_CORPUS) {
+    docs.push(makeDoc({
+      id: `biology:${b.id}`,
+      kind: 'biology',
+      title: b.title,
+      text: b.text,
+      grade: Array.isArray(b.grade) ? b.grade : null,
+      ref: b.ref || `Tài liệu Sinh học ELEC AI · ${b.title}`,
+      keys: [b.title, b.chapter || '', ...(b.keywords || []), 'Sinh học', 'sinh hoc'],
+    }));
+  }
+
   /* ---------- 6. Hướng dẫn & Tính năng Website ELEC AI ---------- */
   for (const f of APP_FEATURES) {
     docs.push(makeDoc({
@@ -257,34 +272,59 @@ function getIndex() {
 const K1 = 1.3;
 const B = 0.72;
 
+const APP_QUERY_RE = /\b(elec|elecai|app|web|ứng dụng|tính năng|chức năng|hướng dẫn sử dụng|ở đâu|cách dùng|nạp|credit|vip|tác giả|nhà sáng lập|founder|phòng thi ảo|pomodoro|sổ lỗi sai|bảng tuần hoàn|quân đoàn)\b/i;
+const BIO_DOMAIN_RE = /\b(sinh học|adn|dna|arn|rna|mrna|trna|rrna|marn|tarn|ribôxôm|riboxom|ribosome|phiên mã|dịch mã|nhân đôi|tái bản|tế bào|nhiễm sắc thể|nst|alen|allele|gen|gene|kiểu gen|kiểu gene|kiểu hình|men-đen|menđen|mendel|morgan|hoán vị|liên kết gen|liên kết gene|di truyền|đột biến|quần thể|quần xã|sinh thái|nuclêôtit|nucleotide|protein|polypeptide|axit amin|amino acid|operon|lac|lacz|lacy|laca|laci|promoter|operator|chromatid|crômatit|nucleosome|histone|nguyên phân|giảm phân|lệch bội|đa bội|thể ba|thể một|phả hệ|hội chứng down|turner|klinefelter|hardy-weinberg|tự thụ phấn|ngẫu phối|tiến hóa|hóa thạch|chọn lọc tự nhiên|hiệu suất sinh thái|bậc dinh dưỡng|chuỗi thức ăn|lưới thức ăn|ổ sinh thái|diễn thế|quang hợp|hô hấp tế bào|chu trình krebs|calvin|thylakoid|mạch gỗ|mạch rây|xylem|phloem|khí khổng|tiêu hóa|tuần hoàn|nút xoang nhĩ|huyết áp|miễn dịch|kháng thể|vaccine|nội môi|insulin|glucagon|nephron|synapse|xináp|cung phản xạ|tập tính|hormone|auxin|gibberellin|cytokinin|ethylene|abscisic|thụ tinh kép|nội nhũ|enzyme|atp|vi sinh vật|virus|capsid|phage)\b/i;
+const PHYS_DOMAIN_RE = /\b(dao động|con lắc|sóng cơ|bước sóng|giao thoa|mạch rlc|tổng trở|cộng hưởng|thấu kính|khúc xạ|phóng xạ|hạt nhân|chu kỳ bán rã|quang điện|lực ma sát|động năng|thế năng|cơ năng|vận tốc|gia tốc|fresnel)\b/i;
+const CHEM_DOMAIN_RE = /\b(mol|nồng độ|ph|dung dịch|phản ứng|oxi hóa|axit|acid|bazơ|este|muối|kim loại|electron|điện phân|hữu cơ|hidro|cacbon|kết tủa|khí|đktc|đkc|cân bằng phương trình)\b/i;
+
+function docDomain(d) {
+  const id = String(d.id || '');
+  const ref = String(d.ref || '');
+  if (d.kind === 'biology' || id.includes(':sinh') || id.startsWith('formula:sinh-') || /Sinh học/i.test(ref)) return 'bio';
+  if (id.includes(':ly:') || id.startsWith('formula:ly-') || /Vật lí/i.test(ref)) return 'phys';
+  if (d.kind === 'compound' || d.kind === 'element' || d.kind === 'reaction' || id.startsWith('topic:') || d.kind === 'formula') return 'chem';
+  return 'other';
+}
+
 /**
- * retrieve('tính số mol Fe', { k: 4, grade: 11 })
+ * retrieve('tính số mol Fe', { k: 3, grade: 11 })
  * → [{ id, kind, title, text, ref, score }]
  */
 export function retrieve(query, opts = {}) {
-  const { k = 4, grade = null, minScore = 1.2 } = opts;
+  const { k = 3, grade = null, minScore = 2.4 } = opts;
   const q = String(query || '').trim();
   if (q.length < 3) return [];
 
+  const allowAppFeatures = APP_QUERY_RE.test(q);
+  const hasBio = BIO_DOMAIN_RE.test(q);
+  const hasPhys = PHYS_DOMAIN_RE.test(q);
+  const hasChem = CHEM_DOMAIN_RE.test(q);
   const { docs, posting, idf, avgLen, elementNameIndex } = getIndex();
   const qTokens = [...new Set(tokenize(q))];
   if (!qTokens.length) return [];
 
   const scores = new Map();
-  const bump = (i, v) => scores.set(i, (scores.get(i) || 0) + v);
+  const hitCounts = new Map();
+  const exactBoosted = new Set();
+  const bump = (i, v, isExact = false) => {
+    scores.set(i, (scores.get(i) || 0) + v);
+    if (isExact) exactBoosted.add(i);
+    else hitCounts.set(i, (hitCounts.get(i) || 0) + 1);
+  };
 
   for (const t of qTokens) {
     // Người dùng gọi tên nguyên tố → ưu tiên trang nguyên tố đó
     const elIdx = elementNameIndex.get(t);
-    if (elIdx != null) bump(elIdx, 3.5);
+    if (elIdx != null) bump(elIdx, 3.5, true);
 
     const list = posting.get(t);
     if (!list) continue;
     const w = idf.get(t) || 0;
     for (const [i, tf] of list) {
+      if (docs[i].kind === 'feature' && !allowAppFeatures) continue;
       const dl = docs[i].len || 1;
       const sat = (tf * (K1 + 1)) / (tf + K1 * (1 - B + B * (dl / avgLen)));
-      bump(i, w * sat);
+      bump(i, w * sat, false);
     }
   }
 
@@ -292,18 +332,33 @@ export function retrieve(query, opts = {}) {
   const qCanon = canonFormula(q);
   const qFormulas = q.match(/[A-Z][a-z]?\d*(?:\([A-Za-z0-9]+\)\d*)?/g) || [];
   for (const [i, d] of docs.entries()) {
+    if (d.kind === 'feature' && !allowAppFeatures) continue;
     if (!d.formulas.length) continue;
     for (const f of d.formulas) {
       if (!f) continue;
-      if (qCanon.includes(f) && f.length >= 2) bump(i, 3.2);
-      else if (qFormulas.some((qf) => canonFormula(qf) === f)) bump(i, 2.2);
+      if (qCanon.includes(f) && f.length >= 2) bump(i, 3.4, true);
+      else if (qFormulas.some((qf) => canonFormula(qf) === f)) bump(i, 2.4, true);
     }
   }
 
-  /* Điểm nền theo loại + ưu tiên đúng khối lớp */
+  /* Điểm nền theo loại + yêu cầu độ khớp thực chất (>= 2 token hoặc khớp công thức/nguyên tố trực tiếp) */
   for (const [i, s] of scores) {
     const d = docs[i];
+    if (d.kind === 'feature' && !allowAppFeatures) {
+      scores.delete(i);
+      continue;
+    }
+    if (!exactBoosted.has(i) && (hitCounts.get(i) || 0) < 2 && qTokens.length >= 2 && s < 4.2) {
+      scores.delete(i);
+      continue;
+    }
     let v = s * (KIND_WEIGHT[d.kind] || 1);
+    const dom = docDomain(d);
+    if (hasBio && !hasPhys && dom === 'phys') v *= 0.25;
+    if (hasBio && !hasChem && dom === 'chem' && !exactBoosted.has(i)) v *= 0.35;
+    if (hasPhys && !hasBio && dom === 'bio') v *= 0.25;
+    if (hasBio && dom === 'bio') v *= 1.25;
+    if (hasPhys && dom === 'phys') v *= 1.2;
     if (grade && Array.isArray(d.grade) && d.grade.includes(Number(grade))) v *= 1.15;
     scores.set(i, v);
   }
@@ -326,13 +381,14 @@ export function retrieve(query, opts = {}) {
 const clip = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
 
 /** Khối ngữ cảnh nhét vào system prompt. */
-export function formatContext(hits, { maxChars = 2400 } = {}) {
+export function formatContext(hits, { maxChars = 3400 } = {}) {
   if (!hits || !hits.length) return '';
   const lines = [];
   let used = 0;
   for (let i = 0; i < hits.length; i++) {
     const h = hits[i];
-    const line = `[${i + 1}] (${h.ref}) ${clip(h.text, 420)}`;
+    const limit = h.kind === 'biology' ? 950 : 420;
+    const line = `[${i + 1}] (${h.ref}) ${clip(h.text, limit)}`;
     if (used + line.length > maxChars) break;
     used += line.length;
     lines.push(line);

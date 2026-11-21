@@ -31,7 +31,7 @@ const P = {
   /* người chơi */
   user:    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>,
   users:   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>,
-  robot:   <><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V4M9 20v-2M15 20v-2"/><circle cx="9.5" cy="13" r="1" fill="currentColor"/><circle cx="14.5" cy="13" r="1" fill="currentColor"/></>,
+  robot:   <><path d="M9.8 3.5h4.4M10.6 3.5v4.3l-3.3 6.5c-.5 1 .1 2.1 1.2 2.1h7c1.1 0 1.7-1.1 1.2-2.1l-3.3-6.5V3.5"/><ellipse cx="12" cy="9.8" rx="9" ry="3.2" transform="rotate(-28 12 9.8)"/><ellipse cx="12" cy="9.8" rx="9" ry="3.2" transform="rotate(28 12 9.8)"/><circle cx="5.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/><circle cx="19" cy="11.4" r="1" fill="currentColor" stroke="none"/><path d="M11.6 19.8C9.2 18.3 6.2 17.5 3 17.4M12.4 19.8c2.4-1.5 5.4-2.3 8.6-2.4"/></>,
   chart:   <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>,
   /* phòng thí nghiệm */
   flask:   <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/>,

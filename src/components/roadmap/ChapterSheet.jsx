@@ -177,7 +177,10 @@ export default function ChapterSheet({
             {/* ── LỘ TRÌNH ÔN TẬP LOGIC 4 BƯỚC ── */}
             <div className="ns9-ch-pipeline" style={{ margin: '0 0 16px' }} aria-label="Lộ trình ôn tập logic 4 bước">
               <div className="ns9-pipe-header">
-                <span className="ns9-pipe-label">⚡ Lộ trình ôn tập logic 4 bước chuẩn sư phạm (GDPT 2018)</span>
+                <span className="ns9-pipe-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <IconZap size={13} />
+                  <span>Lộ trình ôn tập logic 4 bước chuẩn sư phạm (GDPT 2018)</span>
+                </span>
               </div>
               <div className="ns9-pipe-steps">
                 <button
@@ -226,8 +229,9 @@ export default function ChapterSheet({
             {subLessons.length > 0 && (
               <div className="ns9-ch-lessons-box" style={{ margin: '0 0 16px' }}>
                 <div className="ns9-ch-lessons-header">
-                  <span className="ns9-ch-lessons-title">
-                    📚 Danh sách bài học chi tiết của chương ({subLessons.length} bài)
+                  <span className="ns9-ch-lessons-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <IconBook size={14} />
+                    <span>Danh sách bài học chi tiết của chương ({subLessons.length} bài)</span>
                   </span>
                   <span className="ns9-ch-lessons-hint">Bấm để học chuyên sâu &rarr;</span>
                 </div>
@@ -510,7 +514,10 @@ export default function ChapterSheet({
                     >
                       <div className="ns9-info-img-wrapper">
                         <img src={info.url} alt={info.title} loading="lazy" />
-                        <span className="ns9-info-zoom-hint">🔍 Xem phóng to / Tải về</span>
+                        <span className="ns9-info-zoom-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5M11 8v6M8 11h6" /></svg>
+                          <span>Xem phóng to / Tải về</span>
+                        </span>
                       </div>
                       <div className="ns9-info-content">
                         <h4 className="ns9-info-title">{info.title}</h4>
@@ -754,7 +761,8 @@ export default function ChapterSheet({
                 className="ns9-lightbox-btn"
                 title="Tải ảnh về máy"
               >
-                📥 Tải về
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 5 }}><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+                Tải về
               </a>
               <button
                 type="button"
@@ -762,7 +770,7 @@ export default function ChapterSheet({
                 onClick={() => setSelectedModalImage(null)}
                 aria-label="Đóng cửa sổ"
               >
-                ✕ Đóng
+                <IconClose size={14} /> Đóng
               </button>
             </div>
           </div>

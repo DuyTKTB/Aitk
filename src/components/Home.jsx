@@ -13,13 +13,24 @@ import AspirationRoadmapHub from './roadmap/AspirationRoadmapHub.jsx';
 import AspirationAiStrategyModal from './aspiration/AspirationAiStrategyModal.jsx';
 import ElecTutorOnboardingModal from './aspiration/ElecTutorOnboardingModal.jsx';
 import DiagnosticTestModal from './roadmap/DiagnosticTestModal.jsx';
+import SpeedDuelModal from './SpeedDuelModal.jsx';
 import { useCurrentSubject } from './SubjectSwitcher.jsx';
 import { getUniversityCover } from '../data/universityCovers.js';
 import { getUserProfile, USER_PROFILE_CHANGE_EVENT } from '../lib/userProfileService.js';
+import { getVirtualExamHistory } from '../data/virtualExamsBank.js';
+import { getWrongQuestions, WRONG_UPDATE_EVENT } from '../lib/wrongQuestionService.js';
+import {
+  getStudentElo,
+  computeEloUpdate,
+  loadTargetUniversity,
+  computeRealPredictedScore30,
+  buildDailyStudyMissions,
+} from '../lib/studentAnalytics.js';
 import UserAvatar from './UserAvatar.jsx';
 import '../styles/home-apple-bento.css';
 import '../styles/home-aurora.css';
 import '../styles/roadmap-upgrade.css';
+import '../styles/student-v9-upgrades.css';
 
 /* ============================================================
    Home.jsx — TRANG CHỦ HỌC SINH THPT CHUẨN KHOA HỌC & HIỆN ĐẠI
@@ -1413,10 +1424,16 @@ export default function Home() {
   const [heroStratModalOpen, setHeroStratModalOpen] = useState(false);
   const [heroOnboardModalOpen, setHeroOnboardModalOpen] = useState(false);
   const [homeDiagOpen, setHomeDiagOpen] = useState(false);
+  const [duelOpen, setDuelOpen] = useState(false);
 
   useEffect(() => subscribeRoadmap(() => setTick((n) => n + 1)), []);
   useEffect(() => subscribeCards(() => setTick((n) => n + 1)), []);
   useEffect(() => subscribeAspirationChanges(() => setTick((n) => n + 1)), []);
+  useEffect(() => {
+    const onWrong = () => setTick((n) => n + 1);
+    window.addEventListener(WRONG_UPDATE_EVENT, onWrong);
+    return () => window.removeEventListener(WRONG_UPDATE_EVENT, onWrong);
+  }, []);
   useEffect(() => {
     const onOpenAsp = () => setHeroOnboardModalOpen(true);
     window.addEventListener('elec-open-aspirations-modal', onOpenAsp);
@@ -1441,15 +1458,42 @@ export default function Home() {
     const due = uid ? dueSummary(uid, events) : { total: 0, byTopic: {} };
     const cards = uid ? cardStats(uid, Date.now()) : { due: 0 };
     const aspState = getUserAspirationsState(uid);
+    const virtualHistory = getVirtualExamHistory(uid) || [];
+    const wrongCount = (getWrongQuestions(uid) || []).filter((w) => !w.mastered).length;
+    const eloState = getStudentElo(uid);
+    const eloRank = computeEloUpdate({ currentElo: eloState.elo, pct: 60 }).rank;
+    const pinnedUni = loadTargetUniversity(uid);
+    const activeAsp = aspState.activeAspiration || aspState.aspirations[0] || null;
+    const targetExamType = activeAsp?.examId || (pinnedUni?.methods?.includes('TSA') ? 'TSA' : pinnedUni?.methods?.includes('HSA') ? 'HSA' : pinnedUni?.methods?.includes('V-ACT') ? 'V-ACT' : 'THPTQG');
+    const dailyMissions = buildDailyStudyMissions({
+      wrongCount,
+      virtualHistory,
+      dueTotal: due.total,
+      cardsDue: cards.due,
+      targetExamType,
+    });
+    const realPredictedScore = computeRealPredictedScore30({
+      virtualHistory,
+      overviewAvgPct: view?.overview?.avgAccuracy ?? null,
+    });
     return {
       events,
       view,
       dueTotal: due.total,
       cardsDue: cards.due,
-      activeAsp: aspState.activeAspiration || aspState.aspirations[0] || null,
+      activeAsp,
       aspirations: aspState.aspirations || [],
+      pinnedUni,
+      wrongCount,
+      elo: eloState.elo,
+      eloRank,
+      dailyMissions,
+      realPredictedScore,
+      targetExamType,
     };
   }, [uid, level, tick]);
+
+  const countdown = useMemo(() => getExamCountdown(), []);
 
   const handleOpenChapterFromHome = (chapterId) => {
     if (!chapterId) {
@@ -1499,6 +1543,68 @@ export default function Home() {
         {/* 2. BẢNG LAUNCHPAD 8 ICON CHUẨN NATIVE SUPER-APP TRÊN ĐIỆN THOẠI */}
         <MobileAppLaunchpad dueTotal={roadmapSnapshot.dueTotal} />
 
+        {/* 2B. NHIỆM VỤ HÔM NAY · 3 BƯỚC TĂNG ĐIỂM + ELO + ĐẾM NGƯỢC KỲ THI */}
+        <section className="s9-home-mission" aria-label="Nhiệm vụ học tập hôm nay">
+          <div className="s9-hm-head">
+            <div className="s9-hm-title-wrap">
+              <span className="s9-hm-eyebrow">NHIỆM VỤ HÔM NAY · {roadmapSnapshot.dailyMissions.completedCount}/{roadmapSnapshot.dailyMissions.totalCount} HOÀN THÀNH</span>
+              <div className="s9-hm-badges">
+                <span className="s9-hm-pill is-elo" title="Điểm năng lực ELO tích lũy từ các bài thi">
+                  ELO <b>{roadmapSnapshot.elo.toLocaleString('vi-VN')}</b> · {roadmapSnapshot.eloRank.label}
+                </span>
+                <span className="s9-hm-pill is-countdown">
+                  Còn <b>{countdown.days}</b> ngày tới THPTQG {countdown.targetYear}
+                </span>
+                {(roadmapSnapshot.pinnedUni || roadmapSnapshot.activeAsp) && (
+                  <a href="#admission" className="s9-hm-pill is-target">
+                    NV1: <b>{roadmapSnapshot.pinnedUni?.uni || roadmapSnapshot.activeAsp?.school?.name || 'Mục tiêu ĐH'}</b>
+                  </a>
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="s9-hm-duel-btn"
+                onClick={() => setDuelOpen(true)}
+              >
+                Đấu 1v1 Boss AI (90s)
+              </button>
+              <button
+                type="button"
+                className="s9-hm-ai-plan-btn"
+                onClick={() =>
+                  askAI(
+                    `Hãy lập kế hoạch học tập tối nay trong 30 phút cho mình:\n- Còn ${countdown.days} ngày tới kỳ thi THPTQG ${countdown.targetYear}\n- Điểm ELO hiện tại: ${roadmapSnapshot.elo} (${roadmapSnapshot.eloRank.label})\n- Số câu sai cần vá: ${roadmapSnapshot.wrongCount} câu\n- Mục tiêu NV1: ${roadmapSnapshot.pinnedUni ? `${roadmapSnapshot.pinnedUni.major} - ${roadmapSnapshot.pinnedUni.uni} (${roadmapSnapshot.pinnedUni.s2025 ?? ''}đ)` : (roadmapSnapshot.activeAsp?.school?.name || 'THPTQG mục tiêu')}\nChia rõ thành 3 chặng 10 phút thật cụ thể, dễ làm ngay.`,
+                    gradeKey
+                  )
+                }
+              >
+                <IcoSpark size={14} /> AI lập lịch 30p tối nay
+              </button>
+            </div>
+          </div>
+
+          <div className="s9-hm-grid">
+            {roadmapSnapshot.dailyMissions.tasks.map((task, idx) => (
+              <a
+                key={task.id}
+                href={task.href}
+                className={`s9-hm-card tone-${task.tone} ${task.done ? 'is-done' : ''}`}
+              >
+                <span className="s9-hm-step">
+                  {task.done ? <IcoCheck size={14} /> : idx + 1}
+                </span>
+                <div className="s9-hm-card-body">
+                  <strong>{task.title}</strong>
+                  <span>{task.subtitle}</span>
+                </div>
+                <span className="s9-hm-cta">{task.cta} →</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
         {/* 3. THẺ "LỘ TRÌNH CỦA EM": 4 CHỈ SỐ VÀNG + BIỂU ĐỒ NĂNG LỰC */}
         <AspirationRoadmapHub
           uid={uid}
@@ -1538,7 +1644,7 @@ export default function Home() {
         aspirations={roadmapSnapshot.aspirations}
         overview={roadmapSnapshot.view.overview}
         events={roadmapSnapshot.events}
-        predictedScore={24.5}
+        predictedScore={roadmapSnapshot.realPredictedScore ?? 24.5}
         targetScore={roadmapSnapshot.activeAsp?.targetScore || 24.5}
         examScale={30}
         onAskAiTutor={(prompt) => askAI(prompt, gradeKey)}
@@ -1565,6 +1671,16 @@ export default function Home() {
         chapters={roadmapSnapshot.view?.chapters || []}
         onClose={() => setHomeDiagOpen(false)}
         onCompleted={() => {
+          setTick((n) => n + 1);
+        }}
+      />
+
+      {/* Modal Đấu trường tốc độ 1v1 vs Boss AI */}
+      <SpeedDuelModal
+        open={duelOpen}
+        uid={uid || 'guest'}
+        onClose={() => {
+          setDuelOpen(false);
           setTick((n) => n + 1);
         }}
       />

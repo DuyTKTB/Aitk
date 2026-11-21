@@ -436,6 +436,119 @@ export function hardyWeinberg({ p, q, aaFreq }) {
   };
 }
 
+/**
+ * Di truyền quần thể tự thụ phấn qua n thế hệ từ P: d AA + h Aa + r aa = 1
+ */
+export function populationSelfing({ d = 0, h = 0, r = 0, generations = 1 }) {
+  const numD = Number(d) || 0;
+  const numH = Number(h) || 0;
+  const numR = Number(r) || 0;
+  const n = Math.max(1, Math.floor(Number(generations) || 1));
+  const sum = numD + numH + numR;
+  if (sum <= 0) return null;
+  const normD = numD / sum;
+  const normH = numH / sum;
+  const normR = numR / sum;
+
+  const factor = 1 / (2 ** n);
+  const Aa_n = normH * factor;
+  const delta = (normH - Aa_n) / 2;
+  const AA_n = normD + delta;
+  const aa_n = normR + delta;
+  const p = normD + normH / 2;
+  const q = normR + normH / 2;
+
+  return {
+    generations: n,
+    AA: r4(AA_n),
+    Aa: r4(Aa_n),
+    aa: r4(aa_n),
+    alleleP: r4(p),
+    alleleQ: r4(q),
+  };
+}
+
+/**
+ * Hoán vị gene (Morgan) & Định lý Bàng cho cơ thể dị hợp 2 cặp gene (AB/ab hoặc Ab/aB)
+ */
+export function geneLinkageCrossing({ f }) {
+  let numF = Number(f);
+  if (!Number.isFinite(numF) || numF <= 0) return null;
+  if (numF > 1) numF /= 100; // Đổi % sang số thập phân (vd 20% -> 0.2)
+  if (numF > 0.5) return null;
+
+  const linkedGamete = (1 - numF) / 2;
+  const crossGamete = numF / 2;
+  const ababCis = linkedGamete * linkedGamete;
+  const A_B_Cis = 0.5 + ababCis;
+  const A_bb_Cis = 0.25 - ababCis;
+
+  const ababTrans = crossGamete * crossGamete;
+  const A_B_Trans = 0.5 + ababTrans;
+  const A_bb_Trans = 0.25 - ababTrans;
+
+  return {
+    frequencyF: r4(numF),
+    frequencyPercent: r4(numF * 100),
+    distanceCM: r4(numF * 100),
+    linkedGamete: r4(linkedGamete),
+    crossGamete: r4(crossGamete),
+    cisSelfCross: {
+      abab: r4(ababCis),
+      A_B_: r4(A_B_Cis),
+      A_bb: r4(A_bb_Cis),
+    },
+    transSelfCross: {
+      abab: r4(ababTrans),
+      A_B_: r4(A_B_Trans),
+      A_bb: r4(A_bb_Trans),
+    },
+  };
+}
+
+/**
+ * Nguyên phân k lần từ a tế bào có bộ NST 2n
+ */
+export function cellDivisionMitosis({ cells = 1, twoN = 8, k = 1 }) {
+  const a = Math.max(1, Math.floor(Number(cells) || 1));
+  const diploid = Math.max(2, Math.floor(Number(twoN) || 8));
+  const rounds = Math.max(1, Math.floor(Number(k) || 1));
+  if (rounds > 25) return null;
+
+  const daughterCells = a * (2 ** rounds);
+  const totalChromosomes = daughterCells * diploid;
+  const envChromosomes = a * diploid * ((2 ** rounds) - 1);
+
+  return {
+    initialCells: a,
+    diploid2n: diploid,
+    roundsK: rounds,
+    daughterCells,
+    totalChromosomes,
+    envChromosomes,
+  };
+}
+
+/**
+ * Sinh trưởng quần thể vi sinh vật: N_t = N_0 * 2^(t / g)
+ */
+export function microbialGrowth({ N0 = 1, timeMin, genTimeMin }) {
+  const n0 = Number(N0) || 1;
+  const t = Number(timeMin);
+  const g = Number(genTimeMin);
+  if (!Number.isFinite(t) || !Number.isFinite(g) || t <= 0 || g <= 0) return null;
+  const divisions = t / g;
+  if (divisions > 40) return null;
+  const Nt = n0 * (2 ** divisions);
+  return {
+    N0: n0,
+    timeMin: r4(t),
+    genTimeMin: r4(g),
+    divisions: r4(divisions),
+    Nt: Math.round(Nt),
+  };
+}
+
 /* ============================================================
    4. BỘ TỰ ĐỘNG CHẠY CÔNG CỤ KHOA HỌC ĐA MÔN (DISPATCHER)
    ============================================================ */
@@ -589,33 +702,117 @@ export function runScientificTools(text) {
     }
   }
 
-  // --- F. SINH HỌC: DI TRUYỀN PHÂN TỬ ADN ---
-  const dnaNMatch = s.match(/(?:chiều dài|dài)\s*(?:là|=)?\s*(\d+(?:[.,]\d+)?)\s*(?:angstrom|a°|å)/i);
-  const dnaNuMatch = s.match(/(?:tổng số|có)\s*(\d+)\s*(?:nucleotit|nu)\b/i);
-  const dnaHMatch = s.match(/(\d+)\s*liên kết hiđrô/i);
+  // --- F. SINH HỌC: DI TRUYỀN PHÂN TỬ ADN / DNA ---
+  const dnaNMatch = s.match(/(?:chiều dài|dài)\s*(?:là|=)?\s*(\d+(?:[.,]\d+)?)\s*(?:angstrom|a°|å|nm|nanomet)/i);
+  const dnaNuMatch = s.match(/(?:tổng số|có|gồm)\s*(\d+)\s*(?:nucleotit|nuclêôtit|nucleotide|nu)\b/i);
+  const dnaHMatch = s.match(/(\d+)\s*liên kết\s*(?:hiđrô|hidro|hydrogen)/i);
+  const dnaAMatch = s.match(/(?:loại\s+a|adenine|ađênin|\ba)\s*(?:=|là|bằng)\s*(\d+)\s*(?:nu|nucleotide|nuclêôtit)?/i);
+  const dnaGMatch = s.match(/(?:loại\s+g|guanine|\bg)\s*(?:=|là|bằng)\s*(\d+)\s*(?:nu|nucleotide|nuclêôtit)?/i);
+  const repMatch = s.match(/(?:nhân đôi|tái bản)\s*(?:liên tiếp\s*)?(\d+)\s*(?:lần|đợt)/i);
 
-  if (s.includes('gen') || s.includes('adn') || s.includes('nucleotit')) {
+  if (s.includes('gen') || s.includes('adn') || s.includes('dna') || s.includes('nucleotit') || s.includes('nucleotide')) {
     let N = dnaNuMatch ? Number(dnaNuMatch[1]) : 0;
     let L = dnaNMatch ? Number(dnaNMatch[1].replace(',', '.')) : 0;
+    if (L > 0 && /\bnm|nanomet/i.test(dnaNMatch[0])) L *= 10; // Đổi nm -> Å
     let H = dnaHMatch ? Number(dnaHMatch[1]) : 0;
+    let A = dnaAMatch ? Number(dnaAMatch[1]) : 0;
+    let G = dnaGMatch ? Number(dnaGMatch[1]) : 0;
 
     if (N > 0 || L > 0 || H > 0) {
-      const res = dnaMolecular({ N, L, H });
+      const res = dnaMolecular({ N, L, H, A, G });
       if (res && res.totalNucleotides > 0) {
+        const kRep = repMatch ? Number(repMatch[1]) : 0;
+        const nMt = kRep > 0 && kRep <= 20 ? res.totalNucleotides * ((2 ** kRep) - 1) : 0;
+        const lines = [
+          `Tổng số nucleotide N = ${res.totalNucleotides} nu (Chiều dài L = ${fmt(res.lengthAngstrom)} Å = ${fmt(res.lengthAngstrom / 10)} nm)`,
+          res.hydrogenBonds ? `Số liên kết hydrogen H = 2A + 3G = ${res.hydrogenBonds}` : '',
+          (res.nucleotides.A > 0 && res.nucleotides.G > 0)
+            ? `Số lượng từng loại: A = T = ${res.nucleotides.A} nu (${fmt(res.ratios.percentA)}%) | G = C = ${res.nucleotides.G} nu (${fmt(res.ratios.percentG)}%)`
+            : '',
+          `Khối lượng phân tử M = ${res.molecularWeight} đvC | Số chu kì xoắn C = ${fmt(res.coils)} | Liên kết phosphodiester nối giữa các nu = ${res.totalNucleotides - 2} (tổng LK hóa trị = ${2 * res.totalNucleotides - 2})`,
+          kRep > 0 ? `Tái bản ${kRep} lần: Tạo ${2 ** kRep} DNA con; Số nu môi trường cung cấp N_mt = N·(2^${kRep} − 1) = ${nMt} nu` : '',
+        ].filter(Boolean);
         hits.push({
           subject: 'Sinh học',
           tool: 'dna_molecular',
-          title: `Di truyền phân tử ADN / Gen`,
-          lines: [
-            `Tổng số nuclêôtit N = ${res.totalNucleotides} nu`,
-            `Chiều dài gen L = ${fmt(res.lengthAngstrom)} Å`,
-            res.hydrogenBonds ? `Số liên kết hiđrô H = ${res.hydrogenBonds}` : '',
-            `Khối lượng phân tử M = ${res.molecularWeight} đvC`,
-            `Số chu kỳ xoắn C = ${fmt(res.coils)} chu kỳ`,
-          ].filter(Boolean),
-          value: res.totalNucleotides,
+          title: 'Di truyền phân tử DNA / Gene',
+          lines,
+          value: kRep > 0 ? nMt : res.totalNucleotides,
         });
       }
+    }
+  }
+
+  // --- F2. SINH HỌC: HOÁN VỊ GENE (MORGAN) ---
+  const hvgMatch = s.match(/(?:tần số hoán vị|hoán vị\s*(?:gen|gene)?\s*(?:với tần số)?|f\s*=)\s*(\d+(?:[.,]\d+)?)\s*%/i);
+  if (hvgMatch && (s.includes('hoán vị') || s.includes('giao tử') || s.includes('ab/ab'))) {
+    const fVal = Number(hvgMatch[1].replace(',', '.'));
+    const res = geneLinkageCrossing({ f: fVal });
+    if (res) {
+      hits.push({
+        subject: 'Sinh học',
+        tool: 'gene_linkage',
+        title: `Hoán vị Gene (f = ${fmt(res.frequencyPercent)}% = ${fmt(res.distanceCM)} cM)`,
+        lines: [
+          `Tỉ lệ giao tử liên kết = (1 − f)/2 = ${fmt(res.linkedGamete * 100)}% mỗi loại | Giao tử hoán vị = f/2 = ${fmt(res.crossGamete * 100)}% mỗi loại`,
+          `Nếu P dị hợp đều (AB/ab × AB/ab, HVG 2 bên): ab/ab = ${fmt(res.cisSelfCross.abab * 100)}%, A−B− = ${fmt(res.cisSelfCross.A_B_ * 100)}%, A−bb = aaB− = ${fmt(res.cisSelfCross.A_bb * 100)}%`,
+          `Nếu P dị hợp chéo (Ab/aB × Ab/aB, HVG 2 bên): ab/ab = ${fmt(res.transSelfCross.abab * 100)}%, A−B− = ${fmt(res.transSelfCross.A_B_ * 100)}%, A−bb = aaB− = ${fmt(res.transSelfCross.A_bb * 100)}%`,
+        ],
+        value: res.linkedGamete * 100,
+      });
+    }
+  }
+
+  // --- F3. SINH HỌC: QUẦN THỂ TỰ THỤ PHẤN QUA n THẾ HỆ ---
+  const selfingGenMatch = s.match(/tự thụ phấn[^\d]{0,30}(\d+)\s*thế hệ|qua\s*(\d+)\s*thế hệ\s*tự thụ phấn|\bf_?(\d+)\b/i);
+  if (s.includes('tự thụ phấn') && selfingGenMatch) {
+    const genN = Number(selfingGenMatch[1] || selfingGenMatch[2] || selfingGenMatch[3] || 1);
+    const dM = text.match(/(\d+(?:[.,]\d+)?)\s*(?:%\s*)?AA\b/);
+    const hM = text.match(/(\d+(?:[.,]\d+)?)\s*(?:%\s*)?Aa\b/);
+    const rM = text.match(/(\d+(?:[.,]\d+)?)\s*(?:%\s*)?aa\b/);
+    if (hM && genN >= 1 && genN <= 15) {
+      const d = dM ? Number(dM[1].replace(',', '.')) : 0;
+      const h = Number(hM[1].replace(',', '.'));
+      const r = rM ? Number(rM[1].replace(',', '.')) : 0;
+      const res = populationSelfing({ d, h, r, generations: genN });
+      if (res) {
+        hits.push({
+          subject: 'Sinh học',
+          tool: 'population_selfing',
+          title: `Quần thể tự thụ phấn qua ${res.generations} thế hệ (F${res.generations})`,
+          lines: [
+            `Tỉ lệ dị hợp ở F${res.generations}: Aa = h / 2^${res.generations} = ${fmt(res.Aa)} (${fmt(res.Aa * 100)}%)`,
+            `Tỉ lệ đồng hợp trội ở F${res.generations}: AA = ${fmt(res.AA)} (${fmt(res.AA * 100)}%)`,
+            `Tỉ lệ đồng hợp lặn ở F${res.generations}: aa = ${fmt(res.aa)} (${fmt(res.aa * 100)}%)`,
+            `Tần số allele không đổi: p(A) = ${fmt(res.alleleP)}, q(a) = ${fmt(res.alleleQ)}`,
+          ],
+          value: res.Aa,
+        });
+      }
+    }
+  }
+
+  // --- F4. SINH HỌC: NGUYÊN PHÂN k LẦN ---
+  const twoNMatch = s.match(/2n\s*=\s*(\d+)/i);
+  const mitosisKMatch = s.match(/nguyên phân\s*(?:liên tiếp\s*)?(\d+)\s*(?:lần|đợt)/i);
+  if (twoNMatch && mitosisKMatch) {
+    const cellsM = s.match(/(\d+)\s*tế bào/i);
+    const a = cellsM ? Number(cellsM[1]) : 1;
+    const twoN = Number(twoNMatch[1]);
+    const k = Number(mitosisKMatch[1]);
+    const res = cellDivisionMitosis({ cells: a, twoN, k });
+    if (res) {
+      hits.push({
+        subject: 'Sinh học',
+        tool: 'cell_division_mitosis',
+        title: `Nguyên phân ${res.roundsK} lần (${res.initialCells} tế bào, 2n = ${res.diploid2n})`,
+        lines: [
+          `Tổng số tế bào con tạo thành: a · 2^k = ${res.initialCells} × 2^${res.roundsK} = ${res.daughterCells} tế bào`,
+          `Số NST đơn môi trường cung cấp: a · 2n · (2^k − 1) = ${res.envChromosomes} NST`,
+          `Tổng số NST trong các tế bào con: ${res.totalChromosomes} NST`,
+        ],
+        value: res.envChromosomes,
+      });
     }
   }
 

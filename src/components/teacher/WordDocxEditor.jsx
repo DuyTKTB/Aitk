@@ -10,7 +10,7 @@ import { parseExamDocxFile } from '../../lib/examDocxParser.js';
 import { fileToCompressedDataUrl } from '../../lib/imageUtils.js';
 import { detectExamSubjectAndGrade, SUPPORTED_SUBJECTS } from '../../lib/subjectClassifier.js';
 import { askAI } from '../../lib/ai.js';
-import { runWithCredit } from '../../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
 import { createPaperExam } from '../../lib/paperStore.js';
@@ -219,15 +219,21 @@ const IcoUsers = (p) => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </Svg>
 );
-const IcoBot = (p) => (
-  <Svg {...p}>
-    <rect x="3" y="11" width="18" height="10" rx="2" />
-    <circle cx="12" cy="5" r="2" />
-    <path d="M12 7v4" />
-    <line x1="8" y1="16" x2="8" y2="16" />
-    <line x1="16" y1="16" x2="16" y2="16" />
-  </Svg>
-);
+const IcoBot = ({ size = 16, style, className = '' } = {}) => {
+  const s = Math.max(15, Number(size) + 2);
+  return (
+    <img
+      src="/img/elec-emblem.png"
+      alt=""
+      width={s}
+      height={s}
+      draggable={false}
+      aria-hidden="true"
+      className={className}
+      style={{ width: s, height: s, objectFit: 'contain', display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...style }}
+    />
+  );
+};
 const IcoCopy = (p) => (
   <Svg {...p}>
     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -575,7 +581,7 @@ Mẫu 3 câu đầu tiên:
 ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
       const aiReply = await runWithCredit(
-        { userId: user?.uid, cost: 1, reason: 'Word AI Copilot' },
+        { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'word_copilot', reason: 'Word AI Copilot' },
         () => askAI(
           `Ngữ cảnh đề thi đang soạn:\n${examContext}\n\nYêu cầu của giáo viên: ${qText}\n\nHãy trả lời chuẩn sư phạm theo chương trình GDPT 2025, văn phong chuyên nghiệp, không sử dụng emoji.`,
           null,
@@ -1146,7 +1152,7 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
       const sliceCount = Math.min(questions.length, 10);
       const sample = questions.slice(0, sliceCount).map((q, i) => `${i + 1}. ${q.q}`).join('\n');
       const res = await runWithCredit(
-        { userId: user?.uid, cost: 1, reason: 'AI rà soát chính tả đề' },
+        { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'word_copilot', reason: 'AI rà soát chính tả đề' },
         () => askAI(
           `Hãy kiểm tra và hiệu đính lỗi chính tả, dấu câu, danh pháp SGK GDPT 2018 mới cho đề thi môn ${subject}:
 ${sample}

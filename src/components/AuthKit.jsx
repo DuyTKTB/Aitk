@@ -165,9 +165,12 @@ const P = {
   ),
   robot: (
     <>
-      <rect x="4" y="7" width="16" height="12" rx="3" />
-      <path d="M12 7V3M8 12h.01M16 12h.01M9 16h6" />
-      <circle cx="12" cy="3" r="1.5" />
+      <path d="M9.8 3.5h4.4M10.6 3.5v4.3l-3.3 6.5c-.5 1 .1 2.1 1.2 2.1h7c1.1 0 1.7-1.1 1.2-2.1l-3.3-6.5V3.5" />
+      <ellipse cx="12" cy="9.8" rx="9" ry="3.2" transform="rotate(-28 12 9.8)" />
+      <ellipse cx="12" cy="9.8" rx="9" ry="3.2" transform="rotate(28 12 9.8)" />
+      <circle cx="5.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="11.4" r="1" fill="currentColor" stroke="none" />
+      <path d="M11.6 19.8C9.2 18.3 6.2 17.5 3 17.4M12.4 19.8c2.4-1.5 5.4-2.3 8.6-2.4" />
     </>
   ),
 

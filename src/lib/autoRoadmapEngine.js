@@ -20,6 +20,13 @@ import {
 import { getSavedAiStrategy } from './aspirationAiEngine.js';
 import { builtinRawById } from '../data/roadmapExercises.js';
 import { chapterName } from '../data/roadmap.js';
+import {
+  SUBJECT_META,
+  getChapterMeta,
+  getSubjectsForBlock,
+  computeWeightedExamScore,
+  detectAdaptiveDetour,
+} from '../data/curriculumDag.js';
 
 const WEEKLY_SETTINGS_KEY = 'elec_ai_roadmap_schedule_v1:';
 const DAY_MS = 86400000;
@@ -64,6 +71,14 @@ export const CHAPTER_EXAM_WEIGHTS = {
   'c10-rate': { questionsInExam: '1 câu', weightLabel: 'Tốc độ phản ứng', priorityWeight: 7 },
   'c10-halogen': { questionsInExam: '1–2 câu', weightLabel: 'Nhóm Halogen', priorityWeight: 7 },
   // Vật lí — 14 chuyên đề KHTN
+  'ly-c1-donghoc': { questionsInExam: '1–2 câu', weightLabel: 'Động học & Đồ thị v-t', priorityWeight: 7 },
+  'ly-c2-dongluchoc': { questionsInExam: '2 câu', weightLabel: 'Định luật Newton & Lực', priorityWeight: 8 },
+  'ly-c1-daodong': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm Dao động cơ', priorityWeight: 10 },
+  'ly-c2-song': { questionsInExam: '3–4 câu', weightLabel: 'Trọng tâm Sóng & Giao thoa', priorityWeight: 9 },
+  'ly-c3-dientruong': { questionsInExam: '3–4 câu', weightLabel: 'Điện trường & Dòng điện', priorityWeight: 9 },
+  'ly-c1-nhiet': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm Vật lí Nhiệt & Khí lí tưởng', priorityWeight: 10 },
+  'ly-c4-tutruong': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm Từ trường & Cảm ứng điện từ', priorityWeight: 10 },
+  'ly-c5-hatnhan': { questionsInExam: '3–4 câu', weightLabel: 'Vật lí Hạt nhân & Phóng xạ', priorityWeight: 9 },
   'dao-dong-co': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm đề thi Vật lí', priorityWeight: 10 },
   'song-co': { questionsInExam: '3–4 câu', weightLabel: 'Trọng tâm sóng & giao thoa', priorityWeight: 9 },
   'dong-dien-xc': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm RLC & cộng hưởng', priorityWeight: 10 },
@@ -76,7 +91,16 @@ export const CHAPTER_EXAM_WEIGHTS = {
   'cac-dinh-luat-bao-toan': { questionsInExam: '2 câu', weightLabel: 'Bảo toàn cơ năng & động lượng', priorityWeight: 8 },
   'nhiet-hoc': { questionsInExam: '2 câu', weightLabel: 'Nhiệt học & khí lí tưởng', priorityWeight: 8 },
   'dien-tich-dien-truong': { questionsInExam: '1–2 câu', weightLabel: 'Điện trường & hiệu điện thế', priorityWeight: 7 },
-  // Sinh học — 11 chuyên đề KHTN
+  // Sinh học — 11 chuyên đề KHTN (Chuẩn Đề THPT 2026 MĐ 0435)
+  'sinh-c1-phantu': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm DNA, Phiên mã, Dịch mã & Operon Lac', priorityWeight: 10 },
+  'sinh-c1-tebao': { questionsInExam: '2–3 câu', weightLabel: 'Cấu trúc Tế bào, Quang hợp & Hô hấp', priorityWeight: 8 },
+  'sinh-c2-ditruyen': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm Quy luật Mendel & Tương tác gene', priorityWeight: 10 },
+  'sinh-c3-lienket': { questionsInExam: '3–4 câu', weightLabel: 'Phân loại Hoán vị gene Morgan & Di truyền giới tính', priorityWeight: 10 },
+  'sinh-c4-quanthe': { questionsInExam: '2–3 câu', weightLabel: 'Quần thể Tự thụ & Cân bằng Hardy-Weinberg', priorityWeight: 9 },
+  'sinh-c5-tienhoa': { questionsInExam: '3–4 câu', weightLabel: 'Tiến hóa hiện đại & Sinh thái học quần xã', priorityWeight: 9 },
+  'sinh-c6-ditruyen-nguoi': { questionsInExam: '2–3 câu', weightLabel: 'Phân loại Phả hệ người & Y học tư vấn (Phần III)', priorityWeight: 10 },
+  'sinh-c7-sinh11-cothe': { questionsInExam: '3–4 câu', weightLabel: 'Sinh lý Thực vật C3/C4/CAM & Tuần hoàn - Nội môi', priorityWeight: 9 },
+  'sinh-c8-sinh10-tebao-virus': { questionsInExam: '2–3 câu', weightLabel: 'Nguyên phân - Giảm phân & Vi sinh vật - Virus', priorityWeight: 8 },
   'di-truyen-hoc': { questionsInExam: '4–5 câu', weightLabel: 'Trọng tâm quy luật Menđen', priorityWeight: 10 },
   'sinh-hoc-phan-tu': { questionsInExam: '4 câu', weightLabel: 'ADN, nhân đôi & phiên mã', priorityWeight: 10 },
   'bien-di-di-truyen': { questionsInExam: '3–4 câu', weightLabel: 'Đột biến gen & NST', priorityWeight: 9 },
@@ -135,6 +159,7 @@ export function saveScheduleConfig(uid, partial = {}) {
  */
 export function buildAutoRoadmapData({
   uid,
+  subjectKey = 'hoa',
   overview = {},
   chapters = [],
   events = [],
@@ -149,6 +174,11 @@ export function buildAutoRoadmapData({
   const activeAsp = aspState.activeAspiration || aspState.aspirations[0] || null;
   const schedule = readScheduleConfig(uid);
 
+  const activeSubjectKey = SUBJECT_META[subjectKey] ? subjectKey : 'hoa';
+  const subjectMeta = SUBJECT_META[activeSubjectKey];
+  const subjectLabel = subjectMeta.name;
+  const trackSubjects = getSubjectsForBlock(activeAsp?.block);
+
   const progress = computeStudentProgress(uid, {
     overview,
     events,
@@ -157,19 +187,24 @@ export function buildAutoRoadmapData({
 
   const examScale = progress.scale || activeExam.scale || 30;
 
-  // Điểm môn Hóa trên thang 10 để học sinh dễ hình dung sát thực tế nhất
+  // Điểm mục tiêu trên thang 10 theo môn đang học
   const targetChem10 = Number.isFinite(activeAsp?.targetChemScore)
     ? activeAsp.targetChemScore
     : (examScale === 30 ? Math.min(10, Math.round(((progress.targetScore || 24) / 3) * 4) / 4) : 8.5);
+
+  // Dự đoán điểm THPT 2025–2026 theo trọng số thực tế + phân tách Phần I / II / III
+  const weightedExam = computeWeightedExamScore(chapters, activeSubjectKey);
 
   const rawMastery = overview?.avgMastery ?? overview?.accuracy ?? (overview?.hasEvidence ? 55 : null);
   const validMastery = rawMastery !== null && rawMastery !== undefined && Number.isFinite(Number(rawMastery))
     ? Number(rawMastery)
     : null;
-  const hasEvidence = Boolean(overview?.hasEvidence && validMastery !== null);
-  const predictedChem10 = hasEvidence
-    ? Math.min(10, Math.max(2, Math.round((validMastery / 10) * 4) / 4))
-    : 5.5; // Điểm nền khởi điểm tham chiếu khi mới bắt đầu
+  const hasEvidence = Boolean(weightedExam.hasEvidence || (overview?.hasEvidence && validMastery !== null));
+  const predictedChem10 = weightedExam.hasEvidence
+    ? weightedExam.total10
+    : (hasEvidence
+      ? Math.min(10, Math.max(2, Math.round((validMastery / 10) * 4) / 4))
+      : 5.5);
 
   const chemGap10 = Number.isFinite(targetChem10) && Number.isFinite(predictedChem10)
     ? Math.round((targetChem10 - predictedChem10) * 100) / 100
@@ -180,24 +215,22 @@ export function buildAutoRoadmapData({
   const daysUntilExam = Math.max(14, Math.ceil((examTime - now) / DAY_MS));
   const weeksUntilExam = Math.max(2, Math.ceil(daysUntilExam / 7));
 
-  // Công thức tiến độ: So sánh điểm dự đoán với đường lý tưởng tại thời điểm hiện tại
-  // Nếu chênh lệch >= 1.0 điểm Hóa (hoặc >= 1.0 điểm thang kỳ thi) -> "Cần tăng tốc"
   let paceStatus = 'Đúng tiến độ';
   let paceTone = 'info';
-  let paceAdvice = 'Bạn đang bám sát lộ trình mục tiêu. Hãy duy trì đều đặn nhiệm vụ mỗi ngày.';
+  let paceAdvice = `Bạn đang bám sát lộ trình mục tiêu môn ${subjectLabel}. Hãy duy trì đều đặn nhiệm vụ mỗi ngày.`;
 
   if (!hasEvidence) {
     paceStatus = 'Chưa đo điểm';
     paceTone = 'muted';
-    paceAdvice = 'Làm thử 10 câu đầu tiên để hệ thống đo chính xác điểm dự đoán và Elo của bạn.';
+    paceAdvice = `Làm thử bài đánh giá nhanh hoặc 10 câu đầu tiên môn ${subjectLabel} để hệ thống đo chính xác điểm 3 phần thi (I · II · III).`;
   } else if (chemGap10 >= 1.0) {
     paceStatus = 'Cần tăng tốc';
     paceTone = 'warn';
-    paceAdvice = `Đang thấp hơn mục tiêu ${chemGap10} điểm Hóa. Hệ thống đã tự động ưu tiên các chuyên đề trọng tâm bên dưới để bạn bứt phá nhanh nhất.`;
+    paceAdvice = `Đang thấp hơn mục tiêu ${chemGap10} điểm ${subjectLabel}. Hệ thống ưu tiên các chuyên đề trọng số cao nhất của đề 2025–2026.`;
   } else if (chemGap10 <= 0) {
     paceStatus = 'Vượt tiến độ';
     paceTone = 'ok';
-    paceAdvice = `Tuyệt vời! Điểm dự đoán đã chạm mốc mục tiêu (${targetChem10}đ). Hãy luyện thêm câu Vận dụng và giữ chuỗi ôn tập.`;
+    paceAdvice = `Tuyệt vời! Điểm dự đoán ${subjectLabel} đã chạm mốc mục tiêu (${targetChem10}đ). Hãy khóa điểm Phần III & giữ lịch ôn chống quên.`;
   }
 
   // Lấy chiến lược AI đã lưu (nếu học sinh đã kích hoạt theo nguyện vọng)
@@ -207,14 +240,25 @@ export function buildAutoRoadmapData({
   );
 
   // Phân loại và chấm điểm ưu tiên cho từng chương Hóa học / KHTN
+  const chapterViewById = Object.fromEntries(
+    (chapters || []).map((c) => [c.chapter.id, c]),
+  );
+
   const enrichedChapters = (chapters || []).map((c, idx) => {
     const chId = c.chapter.id;
+    const dagMeta = getChapterMeta(chId);
     const isAiBoosted = aiBoostTopicIds.has(chId);
-    const weightInfo = CHAPTER_EXAM_WEIGHTS[chId] || {
-      questionsInExam: '1–2 câu',
-      weightLabel: 'Chuyên đề nền tảng',
-      priorityWeight: 7,
-    };
+    const weightInfo = dagMeta
+      ? {
+          questionsInExam: dagMeta.questionsInExam,
+          weightLabel: dagMeta.weightLabel,
+          priorityWeight: Math.min(10, Math.max(5, Math.round((dagMeta.examWeight || 8) / 1.4))),
+        }
+      : (CHAPTER_EXAM_WEIGHTS[chId] || {
+          questionsInExam: '1–2 câu',
+          weightLabel: 'Chuyên đề nền tảng',
+          priorityWeight: 7,
+        });
     const answers = c.summary?.answers || 0;
     const correct = c.summary?.correct || 0;
     const accuracyPct = answers > 0 ? Math.round((correct / answers) * 100) : 0;
@@ -222,6 +266,7 @@ export function buildAutoRoadmapData({
     const targetQuestions = 20; // Mỗi chương cần tối thiểu ~20 câu để vững 3 mức độ NB-TH-VD
     const completionPct = Math.min(100, Math.round((answers / targetQuestions) * 100));
     const wrongDue = dueByTopic[chId] || 0;
+    const adaptiveDetour = detectAdaptiveDetour(chId, chapterViewById);
 
     // Trạng thái dễ hiểu cho học sinh
     let studentStatus = 'Chưa học';
@@ -232,7 +277,11 @@ export function buildAutoRoadmapData({
       studentStatus = isAiBoosted ? 'Chiến lược AI ưu tiên' : 'Chưa bắt đầu';
       studentTone = isAiBoosted ? 'info' : 'muted';
       groupKey = 'priority';
-    } else if (masteryPct >= 78 && answers >= 8) {
+    } else if (c.review?.isDue) {
+      studentStatus = c.review.overdueDays > 0 ? `Quá hạn ôn ${c.review.overdueDays} ngày` : 'Đến hạn ôn chống quên';
+      studentTone = 'warn';
+      groupKey = 'priority';
+    } else if (masteryPct >= 78 && answers >= 6) {
       studentStatus = 'Đã nắm vững';
       studentTone = 'ok';
       groupKey = 'mastered';
@@ -246,16 +295,19 @@ export function buildAutoRoadmapData({
       groupKey = 'learning';
     }
 
-    // Điểm ưu tiên để xếp lịch tự động (chương trọng số cao + AI đề xuất + đang yếu/nhiều câu sai lên đầu)
+    // Điểm ưu tiên để xếp lịch tự động (chương trọng số cao + quá hạn ôn + AI đề xuất + đang yếu lên đầu)
     const urgencyScore =
       weightInfo.priorityWeight * 10
       + (100 - masteryPct) * 0.65
       + wrongDue * 12
+      + (c.review?.isDue ? 28 + Math.min(20, c.review.overdueDays || 0) : 0)
       + (answers === 0 ? 18 : 0)
       + (isAiBoosted ? 35 : 0);
 
     return {
       ...c,
+      dagMeta,
+      adaptiveDetour,
       orderIndex: idx + 1,
       questionsInExam: weightInfo.questionsInExam,
       weightLabel: weightInfo.weightLabel,
@@ -425,6 +477,12 @@ export function buildAutoRoadmapData({
     aspState,
     activeExam,
     activeAsp,
+    subjectKey: activeSubjectKey,
+    subjectLabel,
+    subjectMeta,
+    trackSubjects,
+    weightedExam,
+    primaryDetour: primaryChapter?.adaptiveDetour || null,
     schedule,
     daysUntilExam,
     weeksUntilExam,
@@ -432,6 +490,9 @@ export function buildAutoRoadmapData({
     predictedChem10: Number.isFinite(predictedChem10) ? predictedChem10 : 5.5,
     targetChem10: Number.isFinite(targetChem10) ? targetChem10 : 8.5,
     chemGap10: Number.isFinite(chemGap10) ? chemGap10 : 0,
+    predictedSubject10: Number.isFinite(predictedChem10) ? predictedChem10 : 5.5,
+    targetSubject10: Number.isFinite(targetChem10) ? targetChem10 : 8.5,
+    subjectGap10: Number.isFinite(chemGap10) ? chemGap10 : 0,
     predictedExamScore: (Number.isFinite(progress.predictedScore) ? progress.predictedScore : null) ?? (hasEvidence && Number.isFinite(predictedChem10) ? Number((Math.round((predictedChem10 / 10) * examScale * 4) / 4).toFixed(2)) : null),
     targetExamScore: (Number.isFinite(progress.targetScore) ? progress.targetScore : null) || (Number.isFinite(activeAsp?.targetScore) ? activeAsp.targetScore : null) || activeExam.defaultTarget || Math.round(examScale * 0.8),
     examScale: examScale || 30,

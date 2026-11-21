@@ -1,13 +1,67 @@
 /* ============================================================
-   creditService.js — Quản lý credits (điểm) cho AI
-   - spendCredit: trừ điểm (text=1, ảnh=1/ảnh)
-   - refundCredit: hoàn điểm khi AI lỗi
-   - claimWelcomeBonus: nhận 5 điểm 1 LẦN DUY NHẤT
+   creditService.js — HỆ THỐNG KINH TẾ CREDIT CHUẨN 1 VNĐ = 1 CREDIT
+   ------------------------------------------------------------
+   • Đồng bộ tuyệt đối 1 VNĐ = 1 ELEC Credit giữa đầu vào (nạp gói)
+     và đầu ra (bảng giá trừ theo độ nặng từng tác vụ AI).
+   • Minh bạch giá trước khi bấm, tự động hoàn 100% khi AI lỗi.
+   • Quà đăng ký mới (email đã xác thực): 1.000 Credit miễn phí.
    ============================================================ */
 import { supabase } from './supabase.js';
 import { auth } from './firebase.js';
 
 const CACHE_KEY = 'elec_user_credits_cache';
+
+/* Bảng định mức chuẩn hóa 1 VNĐ = 1 Credit */
+export const CREDIT_TARIFF = {
+  SIGNUP_BONUS: 1000,      // Quà đăng ký mới (email verified) — đủ ~10 lượt chat nhanh
+  WELCOME_BONUS: 500,      // Quà chào mừng nhận 1 lần duy nhất
+  REFERRAL_BONUS: 500,     // Quà nhập mã giới thiệu / kích hoạt
+  STREAK_FREEZE: 500,      // Mua khiên đóng băng chuỗi ngày học
+
+  CHAT_FAST: 100,          // Chat nhanh với ELEC AI (~100đ)
+  CHAT_IMAGE_ADDON: 200,   // Phụ phí Vision OCR mỗi ảnh đính kèm (+200đ/ảnh)
+  CHAT_DOC_ADDON: 100,     // Phụ phí đọc tài liệu đính kèm (+100đ/tài liệu)
+  CHAT_DEEP: 500,          // Chế độ Suy luận sâu (DeepThink / Gia sư chuyên sâu)
+
+  TUTOR_CONTEXT: 300,      // Gia sư ngữ cảnh / Hỏi nhanh nguyên tố / Word Copilot
+  ERROR_ANALYSIS: 1000,    // Phân tích lỗi sai / Lộ trình AI / Quét chuẩn PDF-Word
+  CAREER_REPORT: 2000,     // Báo cáo định hướng ngành nghề & tuyển sinh AI
+
+  EXAM_GEN_SMALL: 1000,    // Tạo đề AI ≤ 10 câu
+  EXAM_GEN_MEDIUM: 1500,   // Tạo đề AI 11–20 câu
+  EXAM_GEN_LARGE: 2500,    // Tạo đề AI 21–40 câu
+  EXAM_GEN_XLARGE: 3000,   // Tạo đề AI > 40 câu / Đề tổng hợp 45–90 phút
+};
+
+export const CREDIT_TARIFF_LIST = [
+  { id: 'chat_fast',      label: 'Chat nhanh với ELEC AI',       cost: CREDIT_TARIFF.CHAT_FAST,       unit: 'lượt',       tag: 'Nhanh' },
+  { id: 'chat_img',       label: 'Đính kèm ảnh / OCR bài tập',   cost: CREDIT_TARIFF.CHAT_IMAGE_ADDON, unit: '+ảnh',      tag: 'Vision', prefix: '+' },
+  { id: 'tutor',          label: 'Gia sư ngữ cảnh & Word Copilot', cost: CREDIT_TARIFF.TUTOR_CONTEXT, unit: 'lượt',       tag: 'Học tập' },
+  { id: 'chat_deep',      label: 'Suy luận sâu (DeepThink)',     cost: CREDIT_TARIFF.CHAT_DEEP,       unit: 'lượt',       tag: 'Chuyên sâu' },
+  { id: 'error_analysis', label: 'Phân tích lỗi sai / Quét PDF', cost: CREDIT_TARIFF.ERROR_ANALYSIS,  unit: 'lượt',       tag: 'Phân tích' },
+  { id: 'exam_gen',       label: 'Tạo đề thi chuẩn GDPT 2018',   cost: CREDIT_TARIFF.EXAM_GEN_SMALL,  unit: '1.000–3.000', tag: 'Giáo viên' },
+  { id: 'career_report',  label: 'Báo cáo định hướng ngành nghề', cost: CREDIT_TARIFF.CAREER_REPORT,  unit: 'báo cáo',    tag: 'Chuyên sâu' },
+];
+
+export function formatCredits(n) {
+  const num = Math.max(0, Math.round(Number(n) || 0));
+  return num.toLocaleString('vi-VN');
+}
+
+export function calcChatCreditCost({ imageCount = 0, deepThink = false, docCount = 0 } = {}) {
+  const imgs = Math.max(0, Math.round(Number(imageCount) || 0));
+  const docs = Math.max(0, Math.round(Number(docCount) || 0));
+  const base = deepThink ? CREDIT_TARIFF.CHAT_DEEP : CREDIT_TARIFF.CHAT_FAST;
+  return base + imgs * CREDIT_TARIFF.CHAT_IMAGE_ADDON + docs * CREDIT_TARIFF.CHAT_DOC_ADDON;
+}
+
+export function calcExamGenCreditCost(questionCount = 10) {
+  const n = Math.max(1, Number(questionCount) || 10);
+  if (n <= 10) return CREDIT_TARIFF.EXAM_GEN_SMALL;
+  if (n <= 20) return CREDIT_TARIFF.EXAM_GEN_MEDIUM;
+  if (n <= 40) return CREDIT_TARIFF.EXAM_GEN_LARGE;
+  return CREDIT_TARIFF.EXAM_GEN_XLARGE;
+}
 
 function getCachedCredits(userId) {
   if (!userId || typeof window === 'undefined') return null;
@@ -89,14 +143,15 @@ export async function getCredits(userId) {
       return { balance: 0, total_earned: 0, total_spent: 0, unverifiedBlocked: true };
     }
     try {
+      const bonus = CREDIT_TARIFF.SIGNUP_BONUS;
       const { data: newBal, error: rpcErr } = await supabase.rpc('add_credits', {
         p_user_id: userId,
-        p_amount: 50,
+        p_amount: bonus,
         p_type: 'signup_bonus',
-        p_description: 'Quà đăng ký lần đầu 🎁',
+        p_description: `Quà đăng ký tài khoản mới (+${formatCredits(bonus)} Credit)`,
       });
       if (rpcErr) throw rpcErr;
-      const res = { balance: newBal ?? 50, total_earned: 50, total_spent: 0 };
+      const res = { balance: newBal ?? bonus, total_earned: bonus, total_spent: 0 };
       setCachedCredits(userId, res);
       return res;
     } catch (e) {
@@ -111,49 +166,75 @@ export async function getCredits(userId) {
 }
 
 /* ============================================================
-   TRỪ credits khi dùng AI
+   CHUẨN HÓA p_type THEO CHECK CONSTRAINT TRONG POSTGRES
    ------------------------------------------------------------
-   imageCount: số ảnh gửi kèm (0 = chỉ text)
-   Giá: 1 điểm text + 1 điểm mỗi ảnh (hoặc creditCost cụ thể)
+   Bảng credit_transactions chỉ chấp nhận:
+   'signup_bonus', 'daily_free', 'purchase', 'referral',
+   'ai_text', 'ai_image', 'refund', 'admin_grant', 'admin_deduct'.
+   Mọi lượt trừ AI phải map chặt về 'ai_image' hoặc 'ai_text',
+   còn tên tác vụ chi tiết (DeepThink, Tạo đề, OCR, ...) ghi ở p_description.
    ============================================================ */
-export async function spendCredit(userId, imageCount = 0, creditCost = null) {
+export const DB_ALLOWED_SPEND_TYPES = Object.freeze(['ai_text', 'ai_image']);
+
+export function resolveDbCreditType({ imageCount = 0, actionType = null } = {}) {
+  const imgCount = Math.max(0, Number(imageCount) || 0);
+  if (imgCount > 0 || actionType === 'ai_image') return 'ai_image';
+  return 'ai_text';
+}
+
+/* ============================================================
+   TRỪ credits khi dùng AI (chuẩn 1 VNĐ = 1 Credit)
+   ------------------------------------------------------------
+   • Nếu creditCost = null → tự tính bằng calcChatCreditCost
+     (Chat nhanh: 100 · Suy luận sâu: 500 · +200/ảnh · +100/tài liệu)
+   • Nếu creditCost truyền cụ thể → trừ đúng giá công khai theo tác vụ
+   ============================================================ */
+export async function spendCredit(userId, imageCount = 0, creditCost = null, opts = {}) {
+  const imgCount = Math.max(0, Number(imageCount) || 0);
+  const deepThink = Boolean(opts?.deepThink);
+  const docCount = Math.max(0, Number(opts?.docCount) || 0);
+  const reason = opts?.reason || '';
+  const cost = creditCost !== null
+    ? Math.max(1, Math.round(Number(creditCost)))
+    : calcChatCreditCost({ imageCount: imgCount, deepThink, docCount });
+
   if (!userId) {
     try {
       window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
-        detail: { needed: 1, balance: 0, needLogin: true },
+        detail: { needed: cost, balance: 0, needLogin: true },
       }));
     } catch { /* */ }
-    return { ok: false, balance: 0, needed: 1, needLogin: true };
+    return { ok: false, balance: 0, needed: cost, needLogin: true };
   }
-
-  const imgCount = Math.max(0, Number(imageCount) || 0);
-  // Nếu creditCost được chỉ định rõ (vd: tạo đề, ma trận) → dùng luôn
-  // Nếu không → tính theo công thức: 1 + số ảnh
-  const cost = creditCost !== null ? Math.max(1, Number(creditCost)) : 1 + imgCount;
 
   const credits = await getCredits(userId);
+  const currentBalance = Math.max(0, Number(credits?.balance) || 0);
 
-  if (credits.balance < cost) {
+  if (currentBalance < cost) {
     try {
       window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
-        detail: { needed: cost, balance: credits.balance, needLogin: false },
+        detail: { needed: cost, balance: currentBalance, needLogin: false, reason },
       }));
     } catch { /* */ }
-    return { ok: false, balance: credits.balance, needed: cost };
+    return { ok: false, balance: currentBalance, needed: cost };
   }
 
-  const typeLabel = creditCost !== null
-    ? (imgCount > 0 ? 'ai_image' : 'ai_text')
-    : (imgCount > 0 ? 'ai_image' : 'ai_text');
+  const typeLabel = resolveDbCreditType({ imageCount: imgCount, actionType: opts?.actionType });
+
+  const desc = reason
+    ? `${reason} (-${formatCredits(cost)})`
+    : imgCount > 0
+      ? `${deepThink ? 'ELEC AI DeepThink' : 'Chat ELEC AI'} kèm ${imgCount} ảnh (-${formatCredits(cost)})`
+      : deepThink
+        ? `ELEC AI Suy luận sâu (-${formatCredits(cost)})`
+        : `Chat ELEC AI (-${formatCredits(cost)})`;
 
   try {
     const { data: newBalance, error } = await supabase.rpc('add_credits', {
       p_user_id: userId,
       p_amount: -cost,
       p_type: typeLabel,
-      p_description: imgCount > 0
-        ? `Hỏi AI kèm ${imgCount} ảnh (-${cost})`
-        : `Hỏi AI (-${cost})`,
+      p_description: desc,
     });
 
     if (error) throw error;
@@ -170,13 +251,25 @@ export async function spendCredit(userId, imageCount = 0, creditCost = null) {
 
     return { ok: true, balance: newBalance, cost };
   } catch (e) {
-    console.warn('[credits] spendCredit error:', e?.message || e);
-    try {
-      window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
-        detail: { needed: cost, balance: credits.balance },
-      }));
-    } catch { /* */ }
-    return { ok: false, balance: credits.balance, needed: cost };
+    const errMsg = e?.message || String(e || 'Lỗi kết nối hệ thống Credit');
+    console.warn('[credits] spendCredit error:', errMsg);
+    // Tuyệt đối KHÔNG mở popup "Bạn đã hết credit" nếu số dư thực tế vẫn đủ!
+    const isInsufficientErr = /insufficient|không đủ|negative|balance/i.test(errMsg) && currentBalance < cost;
+    if (isInsufficientErr) {
+      try {
+        window.dispatchEvent(new CustomEvent('elec-out-of-credits', {
+          detail: { needed: cost, balance: currentBalance, reason },
+        }));
+      } catch { /* */ }
+      return { ok: false, balance: currentBalance, needed: cost };
+    }
+    return {
+      ok: false,
+      balance: currentBalance,
+      needed: cost,
+      isSystemError: true,
+      error: errMsg,
+    };
   }
 }
 
@@ -218,15 +311,24 @@ export async function refundCredit(userId, amount, reason = 'Hoàn điểm do AI
    HELPER: Chạy tác vụ AI có trừ Credit & tự động hoàn điểm khi lỗi
    ============================================================ */
 export async function runWithCredit(
-  { userId = null, imageCount = 0, cost = null, reason = 'Dùng AI' } = {},
+  { userId = null, imageCount = 0, cost = null, deepThink = false, docCount = 0, actionType = null, reason = 'Dùng AI' } = {},
   taskFn
 ) {
   let charged = 0;
   if (userId) {
-    const cr = await spendCredit(userId, imageCount, cost);
+    const cr = await spendCredit(userId, imageCount, cost, { deepThink, docCount, actionType, reason });
     if (!cr.ok) {
+      if (cr.isSystemError) {
+        const sysErr = new Error(
+          `Lỗi kết nối hệ thống Credit tạm thời (${cr.error || 'vui lòng thử lại'}). Số dư của bạn không bị trừ.`
+        );
+        sysErr.code = 'CREDIT_SYSTEM_ERROR';
+        sysErr.balance = cr.balance;
+        sysErr.needed = cr.needed;
+        throw sysErr;
+      }
       const err = new Error(
-        `Hết điểm Credit! Còn ${cr.balance} điểm, cần ${cr.needed} điểm. Vui lòng nạp thêm Credit để tiếp tục sử dụng AI.`
+        `Không đủ ELEC Credit! Số dư hiện tại ${formatCredits(cr.balance)}, cần ${formatCredits(cr.needed)} Credit. Vui lòng nạp thêm để tiếp tục.`
       );
       err.code = 'OUT_OF_CREDITS';
       err.balance = cr.balance;
@@ -240,7 +342,7 @@ export async function runWithCredit(
     return await taskFn();
   } catch (err) {
     if (charged > 0 && userId) {
-      await refundCredit(userId, charged, `Hoàn điểm (${reason}): ${err?.message || 'AI lỗi'}`).catch(() => {});
+      await refundCredit(userId, charged, `Hoàn Credit (${reason}): ${err?.message || 'AI lỗi'}`).catch(() => {});
     }
     throw err;
   }
@@ -415,11 +517,12 @@ export async function claimWelcomeBonus(userId) {
   }
 
   try {
+    const bonus = CREDIT_TARIFF.WELCOME_BONUS;
     const { data: newBal, error } = await supabase.rpc('add_credits', {
       p_user_id: userId,
-      p_amount: 15,
+      p_amount: bonus,
       p_type: 'daily_free',
-      p_description: 'Điểm quà tặng (+15 điểm)',
+      p_description: `Quà chào mừng ELEC AI (+${formatCredits(bonus)} Credit)`,
     });
     if (error) throw error;
 
@@ -446,8 +549,8 @@ export async function claimWelcomeBonus(userId) {
 /* ============================================================
    Cộng 15 điểm cho mỗi lượt nhập Mã kích hoạt / Mã giới thiệu
    ============================================================ */
-export async function grantActivationCredits(userId, amount = 15, code = '') {
-  const pts = Number(amount) || 15;
+export async function grantActivationCredits(userId, amount = CREDIT_TARIFF.REFERRAL_BONUS, code = '') {
+  const pts = Number(amount) || CREDIT_TARIFF.REFERRAL_BONUS;
   if (!userId) {
     try {
       window.dispatchEvent(new CustomEvent('cs-credit-update', {

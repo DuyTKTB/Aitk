@@ -10,7 +10,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildDiagnosticQuestions, LEVEL_META } from '../../data/roadmapExercises.js';
 import { chapterName } from '../../data/roadmap.js';
-import { saveSession } from '../../lib/roadmapStore.js';
+import { getChapterMeta, SUBJECT_META } from '../../data/curriculumDag.js';
+import { findLessonsByChapter } from '../../data/dedicatedLessonsData.js';
+import { saveSession, saveStageCheckpoint } from '../../lib/roadmapStore.js';
 import { IconClose, IconPin, IconBulb } from '../Icons.jsx';
 import {
   DialogRoot,
@@ -19,11 +21,66 @@ import {
   DialogPopup,
 } from '../ui/AnimateDialog.jsx';
 
+function buildMultiSubjectQuestions(topicIds = [], desiredCount = 12) {
+  const fromChemBank = buildDiagnosticQuestions(topicIds, desiredCount);
+  const picked = [];
+  const seenIds = new Set();
+
+  // Trích câu hỏi thực từ DEDICATED_LESSONS cho các chuyên đề Lý / Sinh (hoặc bổ sung nếu thiếu)
+  (topicIds || []).forEach((tid) => {
+    const meta = getChapterMeta(tid);
+    const dedId = meta?.dedicatedChapterId || tid;
+    const lessons = findLessonsByChapter(dedId);
+    lessons.forEach((les) => {
+      const pool = [...(les.sampleQuestions || []), ...(les.practiceQuestions || [])];
+      pool.forEach((q, idx) => {
+        if (!q || !Array.isArray(q.options) || q.options.length < 2) return;
+        const qText = q.prompt || q.q || q.question;
+        if (!qText) return;
+        const qid = `dl-${tid}-${q.id || idx}`;
+        if (seenIds.has(qid)) return;
+        seenIds.add(qid);
+        const correctIdx = Number.isInteger(q.correct) ? q.correct : 0;
+        const rawLv = String(q.level || '').toLowerCase();
+        const level = rawLv.includes('vận dụng') || rawLv === 'vd'
+          ? 'vd'
+          : (rawLv.includes('thông hiểu') || rawLv === 'th' ? 'th' : 'nb');
+        picked.push({
+          id: qid,
+          topicId: tid,
+          level,
+          q: qText,
+          options: q.options,
+          correct: Math.min(q.options.length - 1, Math.max(0, correctIdx)),
+          explain: q.solution || q.explain || '',
+          tip: q.fastTip || q.trapAlert || '',
+          tag: q.targetExam || '',
+        });
+      });
+    });
+  });
+
+  // Ưu tiên câu thuộc đúng các topicIds được yêu cầu
+  const topicSet = new Set(topicIds);
+  const matchingChem = fromChemBank.filter((q) => topicSet.has(q.topicId));
+  const combined = [...matchingChem, ...picked];
+  if (combined.length >= desiredCount) return combined.slice(0, desiredCount);
+  // Nếu vẫn chưa đủ số câu, bổ sung từ ngân hàng chuẩn
+  fromChemBank.forEach((q) => {
+    if (combined.length < desiredCount && !combined.some((x) => x.id === q.id)) {
+      combined.push(q);
+    }
+  });
+  return combined.slice(0, desiredCount);
+}
+
 export default function DiagnosticTestModal({
   open,
   uid,
   levelKey = 'Lớp 12',
+  subjectKey = 'hoa',
   chapters = [],
+  checkpointStage = null,
   onClose,
   onCompleted,
 }) {
@@ -33,15 +90,19 @@ export default function DiagnosticTestModal({
   const [finished, setFinished] = useState(false);
   const startedAtRef = useRef(Date.now());
 
-  const topicIds = useMemo(
-    () => (chapters || []).map((c) => c.chapter?.id || c.id).filter(Boolean),
-    [chapters],
-  );
+  const isCheckpoint = Boolean(checkpointStage);
+  const targetCount = isCheckpoint ? 8 : 12;
+  const subMeta = SUBJECT_META[checkpointStage?.subjectKey || subjectKey] || SUBJECT_META.hoa;
+
+  const topicIds = useMemo(() => {
+    if (checkpointStage?.chapterIds?.length) return checkpointStage.chapterIds;
+    return (chapters || []).map((c) => c.chapter?.id || c.id).filter(Boolean);
+  }, [chapters, checkpointStage]);
 
   const questions = useMemo(() => {
     if (!open) return [];
-    return buildDiagnosticQuestions(topicIds, 12);
-  }, [open, topicIds]);
+    return buildMultiSubjectQuestions(topicIds, targetCount);
+  }, [open, topicIds, targetCount]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,7 +111,7 @@ export default function DiagnosticTestModal({
     setAnswers([]);
     setFinished(false);
     startedAtRef.current = Date.now();
-  }, [open]);
+  }, [open, checkpointStage?.id]);
 
   const currentQ = questions[stepIdx] || null;
 
@@ -71,7 +132,7 @@ export default function DiagnosticTestModal({
       return;
     }
 
-    // Hoàn tất 12 câu -> gom theo từng chương và lưu vào roadmapStore
+    // Hoàn tất bài kiểm tra -> gom theo từng chương và lưu vào roadmapStore
     const byTopic = new Map();
     nextAnswers.forEach((item) => {
       const tId = item.q.topicId;
@@ -81,6 +142,19 @@ export default function DiagnosticTestModal({
 
     const elapsedSec = Math.max(30, Math.round((Date.now() - startedAtRef.current) / 1000));
     const secPerTopic = Math.max(10, Math.round(elapsedSec / Math.max(1, byTopic.size)));
+    const totalCorrect = nextAnswers.filter((a) => a.ok).length;
+    const scorePct = Math.round((totalCorrect / Math.max(1, nextAnswers.length)) * 100);
+
+    if (isCheckpoint && checkpointStage) {
+      const passed = scorePct >= 85;
+      saveStageCheckpoint(uid, {
+        stageId: checkpointStage.id,
+        subjectKey: checkpointStage.subjectKey || subjectKey,
+        scorePct,
+        passed,
+        chapterIds: checkpointStage.chapterIds || topicIds,
+      });
+    }
 
     if (uid) {
       byTopic.forEach((list, tId) => {
@@ -90,7 +164,7 @@ export default function DiagnosticTestModal({
           total: list.length,
           correct: correctCount,
           durationMs: secPerTopic * 1000,
-          source: 'practice',
+          source: isCheckpoint ? 'checkpoint' : 'practice',
           answers: list.map((x) => ({ qid: x.q.id, ok: x.ok })),
         });
       });
@@ -126,8 +200,10 @@ export default function DiagnosticTestModal({
 
   if (!open) return null;
 
-  const totalQ = questions.length || 12;
+  const totalQ = questions.length || targetCount;
   const correctTotal = answers.filter((a) => a.ok).length;
+  const scorePct = Math.round((correctTotal / Math.max(1, totalQ)) * 100);
+  const checkpointPassed = isCheckpoint && scorePct >= 85;
   const estimatedScore10 = Math.round((correctTotal / Math.max(1, totalQ)) * 10 * 4) / 4;
   const progressPct = Math.round(((stepIdx + (picked !== null ? 1 : 0)) / Math.max(1, totalQ)) * 100);
 
@@ -139,7 +215,7 @@ export default function DiagnosticTestModal({
           from="top"
           size="lg"
           className="ns9-diag-animate-popup"
-          aria-label={`Bài đánh giá năng lực đầu vào môn Hóa ${levelKey}`}
+          aria-label={isCheckpoint ? `Checkpoint ${checkpointStage.title}` : `Bài đánh giá năng lực môn ${subMeta.name}`}
         >
           <div className="rm-sheet ns9-centered-sheet ns9-diag-modal" style={{ maxWidth: '100%', margin: 0, boxShadow: 'none' }}>
             <div className="rm-sheet-grip" aria-hidden="true" />
@@ -147,12 +223,20 @@ export default function DiagnosticTestModal({
             <header className="rm-sheet-head ns9-sheet-head">
           <div className="ns9-sheet-title-wrap">
             <div className="ns9-sheet-eyebrow">
-              <span className="ns9-ch-pill">ĐÁNH GIÁ NĂNG LỰC ĐẦU VÀO · {levelKey.toUpperCase()}</span>
+              <span className="ns9-ch-pill">
+                {isCheckpoint
+                  ? `CHECKPOINT NHẢY CÓC ${checkpointStage.code || ''} · ${subMeta.name.toUpperCase()} (ĐẠT ≥ 85%)`
+                  : `ĐÁNH GIÁ NĂNG LỰC · ${subMeta.name.toUpperCase()} · ${String(levelKey).toUpperCase()}`}
+              </span>
             </div>
             <h2>
               {finished
-                ? `Kết quả: ${correctTotal}/${totalQ} câu đúng (${estimatedScore10}/10 điểm)`
-                : `Câu ${stepIdx + 1}/${totalQ} · ${chapterName(currentQ?.topicId) || 'Chuyên đề Hóa học'}`}
+                ? (isCheckpoint
+                  ? (checkpointPassed
+                    ? `Vượt Checkpoint thành công (${scorePct}% · Mở khóa chặng!)`
+                    : `Đạt ${scorePct}% (${correctTotal}/${totalQ} câu) — Cần ≥ 85% để nhảy cóc`)
+                  : `Kết quả: ${correctTotal}/${totalQ} câu đúng (${estimatedScore10}/10 điểm)`)
+                : `Câu ${stepIdx + 1}/${totalQ} · ${chapterName(currentQ?.topicId) || subMeta.name}`}
             </h2>
           </div>
           <button type="button" className="rm-x ns9-sheet-close" onClick={onClose} aria-label="Đóng">
@@ -258,15 +342,23 @@ export default function DiagnosticTestModal({
           <div className="rm-sheet-body ns9-diag-body">
             <div className="ns9-diag-summary-box">
               <div>
-                <span>Điểm Hóa khởi điểm của bạn</span>
-                <strong>{estimatedScore10} / 10 điểm</strong>
+                <span>
+                  {isCheckpoint
+                    ? (checkpointPassed ? `Chứng nhận vượt ${checkpointStage.code}` : `Điểm Checkpoint ${checkpointStage.code}`)
+                    : `Điểm ${subMeta.name} khởi điểm của bạn`}
+                </span>
+                <strong>{isCheckpoint ? `${scorePct}% (${correctTotal}/${totalQ})` : `${estimatedScore10} / 10 điểm`}</strong>
               </div>
               <p>
-                Hệ thống đã cập nhật Điểm dự đoán, Hệ số Elo và tự động đẩy các chuyên đề bạn vừa trả lời sai lên đầu danh sách ưu tiên!
+                {isCheckpoint
+                  ? (checkpointPassed
+                    ? `Xuất sắc! Hệ thống đã đánh dấu hoàn thành toàn bộ chặng "${checkpointStage.title}" để bạn tiến thẳng lên chặng tiếp theo.`
+                    : `Hệ thống đã lưu kết quả và đánh dấu đúng các chuyên đề còn hổng trong "${checkpointStage.title}" để bạn ôn nhanh rồi thử lại.`)
+                  : `Hệ thống đã cập nhật điểm dự đoán 3 phần đề thi ${subMeta.name} (I · II · III) và đẩy các chuyên đề còn yếu lên đầu danh sách ưu tiên!`}
               </p>
             </div>
 
-            <h4>Chi tiết 12 câu vừa làm</h4>
+            <h4>Chi tiết {totalQ} câu vừa làm</h4>
             <ul className="rm-done-list">
               {answers.map((item, i) => (
                 <li key={item.q.id} className={item.ok ? 'ok' : 'bad'}>

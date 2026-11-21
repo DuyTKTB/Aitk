@@ -55,13 +55,20 @@ export async function fetchExamById(examId) {
   return data;
 }
 
-export async function fetchExamQuestions(examId) {
+export async function fetchExamQuestions(examId, { stripAnswers = false } = {}) {
+  const answerCols = stripAnswers
+    ? 'id, label, content, sort_order'
+    : 'id, label, content, is_correct, sort_order';
+  const questionCols = stripAnswers
+    ? 'id, exam_id, question_number, content, question_type, image_url, latex, difficulty, topic_id'
+    : '*';
+
   const { data: questions, error } = await supabase
     .from('questions')
     .select(`
-      *,
+      ${questionCols},
       topic:topics(id, name),
-      answers:answers(id, label, content, is_correct, sort_order)
+      answers:answers(${answerCols})
     `)
     .eq('exam_id', examId)
     .order('question_number', { ascending: true });

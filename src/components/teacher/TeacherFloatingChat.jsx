@@ -17,202 +17,43 @@
         - Đọc lời giải, lời phê sư phạm truyền cảm.
    ============================================================ */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { parseExamFile } from '../../lib/examParser.js';
 import { buildClassInsights } from '../../lib/classInsights.js';
-import { exportToWord, exportLessonPlanDocx, exportMatrixDocx } from '../../lib/examExport.js';
+import { exportToWord, exportAiNoteDocx } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
 import * as tts from '../../lib/tts.js';
-import { runWithCredit } from '../../lib/creditService.js';
-import { warnStudent, setStudentPaused } from '../../lib/examSession.js';
+import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import { getCurrentTabInfo, buildTabDetailedAnalysis } from '../../lib/tabContextAnalyzer.js';
 const WordDocxEditor = React.lazy(() => import('./WordDocxEditor.jsx'));
-import { MarkdownLike } from '../ChatMarkdown.jsx';
-import { ElecFlaskBrandSvg, ElecMascot } from './ElecBrandMark.jsx';
+import { ElecMascot } from './ElecBrandMark.jsx';
+import {
+  IcoSparkles,
+  IcoMinus,
+  IcoMaximize,
+  IcoMinimize,
+  IcoTrash,
+  IcoFileDoc,
+} from './chat/tfcIcons.jsx';
+import {
+  createWelcomeMessage,
+  buildConversationHistory,
+  loadPersistedMessages,
+  savePersistedMessages,
+  clearPersistedMessages,
+  getAiModeDirective,
+  getMatrixPromptSpec,
+  extractExamIntentFromQuery,
+  inferQuestionBloomLevel,
+  buildRichCopilotContext,
+  buildClassHealthCardData,
+  buildParentReportCardData,
+  readImageFileAsAttachment,
+} from './chat/tfcHelpers.js';
+import TeacherChatMessageList from './chat/TeacherChatMessageList.jsx';
+import TeacherChatComposer from './chat/TeacherChatComposer.jsx';
 import '../../styles/teacher-floating-chat.css';
-
-/* ============ SVG ICONS (STROKE 1.8PX, ZERO EMOJI) ============ */
-const Svg = ({ size = 18, sw = 1.8, children, className = '' }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={sw}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    aria-hidden="true"
-  >
-    {children}
-  </svg>
-);
-
-const IcoSparkles = (p) => (
-  <ElecFlaskBrandSvg size={p?.size || 16} variant="current" className={p?.className} />
-);
-
-const IcoSend = (p) => (
-  <Svg {...p}>
-    <line x1="22" y1="2" x2="11" y2="13" />
-    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-  </Svg>
-);
-
-const IcoCopy = (p) => (
-  <Svg size={14} {...p}>
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </Svg>
-);
-
-const IcoPlus = (p) => (
-  <Svg {...p}>
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </Svg>
-);
-
-const IcoMinus = (p) => (
-  <Svg {...p}>
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </Svg>
-);
-
-const IcoMaximize = (p) => (
-  <Svg {...p}>
-    <polyline points="15 3 21 3 21 9" />
-    <polyline points="9 21 3 21 3 15" />
-    <line x1="21" y1="3" x2="14" y2="10" />
-    <line x1="3" y1="21" x2="10" y2="14" />
-  </Svg>
-);
-
-const IcoMinimize = (p) => (
-  <Svg {...p}>
-    <polyline points="4 14 10 14 10 20" />
-    <polyline points="20 10 14 10 14 4" />
-    <line x1="14" y1="10" x2="21" y2="3" />
-    <line x1="3" y1="21" x2="10" y2="14" />
-  </Svg>
-);
-
-const IcoTrash = (p) => (
-  <Svg {...p}>
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-  </Svg>
-);
-
-const IcoFileDoc = (p) => (
-  <Svg {...p}>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-  </Svg>
-);
-
-const IcoShuffle = (p) => (
-  <Svg {...p}>
-    <polyline points="16 3 21 3 21 8" />
-    <line x1="4" y1="20" x2="21" y2="3" />
-    <polyline points="21 16 21 21 16 21" />
-    <line x1="15" y1="15" x2="21" y2="21" />
-    <line x1="4" y1="4" x2="9" y2="9" />
-  </Svg>
-);
-
-const IcoDownload = (p) => (
-  <Svg {...p}>
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="7 10 12 15 17 10" />
-    <line x1="12" y1="15" x2="12" y2="3" />
-  </Svg>
-);
-
-const IcoSave = (p) => (
-  <Svg {...p}>
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-    <polyline points="17 21 17 13 7 13 7 21" />
-    <polyline points="7 3 7 8 15 8" />
-  </Svg>
-);
-
-const IcoExternal = (p) => (
-  <Svg {...p}>
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <line x1="10" y1="14" x2="21" y2="3" />
-  </Svg>
-);
-
-const IcoArrowRight = (p) => (
-  <Svg {...p}>
-    <line x1="5" y1="12" x2="19" y2="12" />
-    <polyline points="12 5 19 12 12 19" />
-  </Svg>
-);
-
-const IcoMic = (p) => (
-  <Svg {...p}>
-    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-    <line x1="12" y1="19" x2="12" y2="23" />
-    <line x1="8" y1="23" x2="16" y2="23" />
-  </Svg>
-);
-
-const IcoVolume = (p) => (
-  <Svg {...p}>
-    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-  </Svg>
-);
-
-const IcoTarget = (p) => (
-  <Svg {...p}>
-    <circle cx="12" cy="12" r="10" />
-    <circle cx="12" cy="12" r="6" />
-    <circle cx="12" cy="12" r="2" />
-  </Svg>
-);
-
-const IcoBrain = (p) => (
-  <Svg {...p}>
-    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-5.04z" />
-    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-5.04z" />
-  </Svg>
-);
-
-const IcoCheck = (p) => (
-  <Svg {...p}>
-    <polyline points="20 6 9 17 4 12" />
-  </Svg>
-);
-
-const IcoBolt = (p) => (
-  <Svg {...p}>
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </Svg>
-);
-
-const IcoAlert = (p) => (
-  <Svg {...p}>
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="12" />
-    <line x1="12" y1="16" x2="12.01" y2="16" />
-  </Svg>
-);
-
-const IcoShieldCheck = (p) => (
-  <Svg {...p}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    <polyline points="9 12 11 14 15 10" />
-  </Svg>
-);
 
 /* Tiện ích sửa JSON và phân tích chuyên đề GDPT 2025 */
 function cleanJsonString(raw) {
@@ -391,62 +232,74 @@ function detectAuditOrAcademicQuery(query) {
 
 /* ============================================================
    MÔ PHỎNG 100 HỌC SINH ẢO (VIRTUAL STUDENT EXAM SIMULATION)
-   Thuật toán Item Response Theory (IRT) & Monte Carlo mô phỏng thực tế
+   Thuật toán Item Response Theory (IRT 3PL) + Heuristic Bloom + Seeded Monte Carlo
    ============================================================ */
-function runVirtualStudentSimulation(exam) {
-  const questions = exam.questions || [];
-  const qCount = questions.length || 1;
+function createSeededRng(seedStr = 'elec') {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    h ^= seedStr.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += 0x6d2b79f5;
+    let t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-  // 1. Phân loại câu hỏi theo 4 mức độ nhận thức & tính thời gian
+export function runVirtualStudentSimulation(exam) {
+  const questions = exam?.questions || [];
+  const qCount = questions.length || 1;
+  const rng = createSeededRng(`${exam?.title || 'exam'}_${qCount}_${exam?.duration || 45}`);
+
+  // 1. Phân loại câu hỏi theo 4 mức độ nhận thức (tự suy luận nếu file Word chưa gắn level)
   let nbCount = 0;
   let thCount = 0;
   let vdCount = 0;
   let vdcCount = 0;
   let totalEstSeconds = 0;
+  const resolvedLevels = [];
 
   questions.forEach((q) => {
-    const rawLvl = String(q.level || '').toUpperCase();
-    const isVdc = rawLvl === 'VDC' || rawLvl.includes('CAO');
-    const isVd = !isVdc && (rawLvl === 'VD' || rawLvl.includes('DUNG'));
-    const isTh = rawLvl === 'TH' || rawLvl.includes('HIEU');
+    const lvl = inferQuestionBloomLevel(q);
+    resolvedLevels.push(lvl);
+    const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
+    const partExtra = part === 2 ? 45 : part === 3 ? 30 : 0;
 
-    if (isVdc) {
+    if (lvl === 'VDC') {
       vdcCount++;
-      totalEstSeconds += 220;
-    } else if (isVd) {
+      totalEstSeconds += 190 + partExtra;
+    } else if (lvl === 'VD') {
       vdCount++;
-      totalEstSeconds += 150;
-    } else if (isTh) {
+      totalEstSeconds += 130 + partExtra;
+    } else if (lvl === 'TH') {
       thCount++;
-      totalEstSeconds += 80;
+      totalEstSeconds += 75 + partExtra;
     } else {
       nbCount++;
-      totalEstSeconds += 45;
+      totalEstSeconds += 45 + partExtra;
     }
   });
 
   const estMinutes = Math.max(5, Math.round(totalEstSeconds / 60));
-  const durationLimit = exam.duration || 45;
+  const durationLimit = exam?.duration || 45;
 
-  // 2. Mô phỏng Monte Carlo 100 học sinh ảo với phổ năng lực Gauss (Box-Muller)
-  // Điểm chuẩn Bộ GD: Phần I: 0.25đ/câu, Phần II: 1.0đ/câu, Phần III: 0.25đ/câu
+  // 2. Mô phỏng Monte Carlo 100 học sinh ảo nhất quán với phổ năng lực Gauss (Box-Muller)
   const studentScores = [];
 
   for (let i = 0; i < 100; i++) {
-    const u1 = Math.max(0.0001, Math.random());
-    const u2 = Math.random();
+    const u1 = Math.max(0.0001, rng());
+    const u2 = rng();
     const ability = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
 
     let studentScore = 0;
     let totalMaxScore = 0;
 
-    questions.forEach((q) => {
+    questions.forEach((q, qIdx) => {
       const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
-      const rawLvl = String(q.level || '').toUpperCase();
-      const b = (rawLvl === 'VDC' || rawLvl.includes('CAO')) ? 1.7
-        : (rawLvl === 'VD' || rawLvl.includes('DUNG')) ? 0.7
-        : (rawLvl === 'TH' || rawLvl.includes('HIEU')) ? -0.2
-        : -1.2;
+      const lvl = resolvedLevels[qIdx] || 'TH';
+      const b = lvl === 'VDC' ? 1.65 : lvl === 'VD' ? 0.65 : lvl === 'TH' ? -0.2 : -1.15;
 
       const guessRate = part === 1 ? 0.25 : 0.05;
       const prob = guessRate + (1 - guessRate) / (1 + Math.exp(-1.7 * (ability - b)));
@@ -455,7 +308,7 @@ function runVirtualStudentSimulation(exam) {
         totalMaxScore += 1.0;
         let correctStatements = 0;
         for (let s = 0; s < 4; s++) {
-          if (Math.random() < prob) correctStatements++;
+          if (rng() < prob) correctStatements++;
         }
         if (correctStatements === 4) studentScore += 1.0;
         else if (correctStatements === 3) studentScore += 0.5;
@@ -463,10 +316,10 @@ function runVirtualStudentSimulation(exam) {
         else if (correctStatements === 1) studentScore += 0.1;
       } else if (part === 3) {
         totalMaxScore += 0.25;
-        if (Math.random() < prob) studentScore += 0.25;
+        if (rng() < prob) studentScore += 0.25;
       } else {
         totalMaxScore += 0.25;
-        if (Math.random() < prob) studentScore += 0.25;
+        if (rng() < prob) studentScore += 0.25;
       }
     });
 
@@ -503,19 +356,19 @@ function runVirtualStudentSimulation(exam) {
   let discrimLabel = `${dIndex} (Khá tốt)`;
   if (dIndex >= 0.40) discrimLabel = `${dIndex} (Phân hóa Rất tốt)`;
   else if (dIndex >= 0.28) discrimLabel = `${dIndex} (Phân hóa Tốt)`;
-  else if (dIndex < 0.20) discrimLabel = `${dIndex} (Phân hóa Thấp, ít câu phân loại)`;
+  else if (dIndex < 0.20) discrimLabel = `${dIndex} (Phân hóa Thấp)`;
 
   const timeHealth = estMinutes <= durationLimit
-    ? { ok: true, msg: `Thời gian ước tính: ${estMinutes}/${durationLimit} phút (Vừa vặn, tối ưu)` }
-    : { ok: false, msg: `Cảnh báo: Thời gian làm bài ước tính ${estMinutes}/${durationLimit} phút (Nguy cơ thiếu giờ)` };
+    ? { ok: true, msg: `Ước tính ${estMinutes}/${durationLimit}p — Vừa vặn, hợp lý` }
+    : { ok: false, msg: `Ước tính ${estMinutes}/${durationLimit}p — Nguy cơ thiếu giờ` };
 
   let advice = '';
   if (vdcCount === 0 && vdCount === 0) {
-    advice = 'Đề hiện toàn câu Nhận biết - Thông hiểu. Rất tốt để ôn tập lấy gốc, nhưng chưa đủ phân loại học sinh khá giỏi.';
+    advice = 'Đề hiện chủ yếu ở mức Nhận biết - Thông hiểu. Rất phù hợp ôn tập lấy gốc, nhưng nên thêm 2–3 câu Vận dụng để phân hóa.';
   } else if (vdcCount > 6 || predAvg < 5.0) {
-    advice = 'Đề có độ khó cao, nhiều câu Vận dụng cao. Phù hợp thi thử chọn học sinh giỏi hoặc luyện thi khối A/B 9+.';
+    advice = 'Đề có độ khó cao, nhiều câu Vận dụng cao. Phù hợp thi thử chọn học sinh giỏi hoặc luyện thi 9+.';
   } else {
-    advice = `Đề có cấu trúc cân đối: ${nbCount} câu NB, ${thCount} câu TH, ${vdCount} câu VD, ${vdcCount} câu VDC. Đạt chuẩn cấu trúc phân tầng GDPT 2025.`;
+    advice = `Phân tầng hợp lý: ${nbCount} NB · ${thCount} TH · ${vdCount} VD · ${vdcCount} VDC. Đạt chuẩn cấu trúc phân hóa GDPT 2025.`;
   }
 
   return {
@@ -526,6 +379,7 @@ function runVirtualStudentSimulation(exam) {
     timeHealth,
     discrimIndex: discrimLabel,
     advice,
+    bloomBreakdown: { nb: nbCount, th: thCount, vd: vdCount, vdc: vdcCount },
   };
 }
 
@@ -911,6 +765,7 @@ export default function TeacherFloatingChat({
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [typingStatus, setTypingStatus] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [wordEditorOpen, setWordEditorOpen] = useState(false);
@@ -918,28 +773,66 @@ export default function TeacherFloatingChat({
   const [copiedId, setCopiedId] = useState(null);
   const [speakingMsgId, setSpeakingMsgId] = useState(null);
   const [confirmClearChat, setConfirmClearChat] = useState(false);
+  const [aiMode, setAiMode] = useState('balanced');
+  const [pendingImage, setPendingImage] = useState(null);
 
-  const handleCopyMessage = (id, text) => {
+  const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const inputRef = useRef(null);
+  const bodyEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const activeRequestRef = useRef(null);
+  const messagesRef = useRef([]);
+
+  const handleCopyMessage = useCallback((id, text) => {
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
     }
-  };
+  }, []);
 
-  const callCopilotAI = (prompt, opts = {}, cost = 1, reason = 'AI Trợ lý Lớp học') =>
+  const handleStopGeneration = useCallback(() => {
+    try {
+      activeRequestRef.current?.abort?.();
+    } catch { /* ignore */ }
+    activeRequestRef.current = null;
+    setIsTyping(false);
+    setTypingStatus('');
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.streaming
+          ? {
+              ...m,
+              streaming: false,
+              text: m.text?.trim() ? m.text : 'Đã dừng tạo phản hồi theo yêu cầu của Thầy/Cô.',
+            }
+          : m
+      )
+    );
+  }, []);
+
+  const callCopilotAI = (promptOrHistory, opts = {}, cost = CREDIT_TARIFF.TUTOR_CONTEXT, reason = 'AI Trợ lý Lớp học', onChunk = null) =>
     runWithCredit(
       { userId: user?.uid, cost, reason },
-      () => askAI(prompt, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT, ...opts })
+      () => {
+        const modeDirective = getAiModeDirective(aiMode);
+        const mergedSystemPrompt = modeDirective
+          ? `${TEACHER_COPILOT_SYSTEM_PROMPT}\n\n${modeDirective}`
+          : TEACHER_COPILOT_SYSTEM_PROMPT;
+        const req = askAI(promptOrHistory, onChunk, null, {
+          systemPrompt: mergedSystemPrompt,
+          ...opts,
+        });
+        activeRequestRef.current = req;
+        return req.finally(() => {
+          if (activeRequestRef.current === req) activeRequestRef.current = null;
+        });
+      }
     );
 
   const aiErrMsg = (err, fallback) =>
     err?.code === 'OUT_OF_CREDITS' ? err.message : (fallback || err?.message || 'Kết nối AI tạm thời gián đoạn.');
-
-  const fileInputRef = useRef(null);
-  const inputRef = useRef(null);
-  const bodyEndRef = useRef(null);
-  const recognitionRef = useRef(null);
 
   const handleCreateClassDirectly = async (className) => {
     if (!className) return;
@@ -949,9 +842,11 @@ export default function TeacherFloatingChat({
 
     if (onCreateClass) {
       try {
+        setTypingStatus(`Đang khởi tạo lớp ${className}...`);
         setIsTyping(true);
         const res = await onCreateClass({ name: className, grade, subject });
         setIsTyping(false);
+        setTypingStatus('');
         setMessages((prev) => [
           ...prev,
           {
@@ -967,6 +862,7 @@ export default function TeacherFloatingChat({
         ]);
       } catch (err) {
         setIsTyping(false);
+        setTypingStatus('');
         onSay?.('Lỗi tạo lớp: ' + (err.message || err), 'error');
       }
     } else {
@@ -999,21 +895,39 @@ export default function TeacherFloatingChat({
     return count;
   }, [activeLiveRooms]);
 
-  // Lời chào mở đầu
-  const [messages, setMessages] = useState(() => [
-    {
-      id: 'welcome_ultra',
-      sender: 'bot',
-      text: `Xin chào ${user?.displayName || 'Thầy/Cô'}! Em là ELEC AI Senior Academic Copilot — Cố vấn Chuyên môn & Trợ lý Sư phạm Cấp cao GDPT 2025. Em sẵn sàng Thẩm định & Phán xét câu hỏi chuyên sâu, Bác sĩ sửa file Word chuẩn 3 phần, Mô phỏng 100 học sinh ảo giải đề và Soạn đề tự động.`,
-      realSummary: {
-        classesCount: classes.length,
-        examsCount: exams.length,
-        submissionsCount: realInsights.submissionCount,
-        liveRoomsCount: activeLiveRooms.length,
-      },
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  // Khôi phục lịch sử hội thoại theo tài khoản (hoặc khởi tạo lời chào gọn gàng)
+  const [messages, setMessages] = useState(() =>
+    loadPersistedMessages(user?.uid, user?.displayName)
+  );
+
+  // Giữ ref luôn mới nhất để build lịch sử đa lượt không bị stale closure
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // Đồng bộ lời chào khi tên giáo viên vừa tải xong và lưu lịch sử vào localStorage
+  useEffect(() => {
+    if (!user?.displayName) return;
+    setMessages((prev) => {
+      if (!prev.length || prev[0].id !== 'welcome_ultra') return prev;
+      const fresh = createWelcomeMessage(user.displayName);
+      if (prev[0].text === fresh.text) return prev;
+      const next = [...prev];
+      next[0] = { ...prev[0], ...fresh, time: prev[0].time };
+      return next;
+    });
+  }, [user?.displayName]);
+
+  useEffect(() => {
+    savePersistedMessages(user?.uid, messages);
+  }, [user?.uid, messages]);
+
+  const handleClearChat = useCallback(() => {
+    handleStopGeneration();
+    clearPersistedMessages(user?.uid);
+    setMessages([createWelcomeMessage(user?.displayName)]);
+    setConfirmClearChat(false);
+  }, [handleStopGeneration, user?.uid, user?.displayName]);
 
   // Bộ cảm biến ngữ cảnh Tab thời gian thực
   const currentTabInfo = useMemo(() => {
@@ -1165,6 +1079,7 @@ export default function TeacherFloatingChat({
 
   useEffect(() => () => {
     try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    try { activeRequestRef.current?.abort?.(); } catch { /* ignore */ }
     tts.stop();
   }, []);
 
@@ -1214,6 +1129,7 @@ export default function TeacherFloatingChat({
       return;
     }
 
+    setTypingStatus('Bác sĩ AI đang bổ sung Phần II & Phần III...');
     setIsTyping(true);
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     onSay?.('AI Bác sĩ đang phân tích chuyên đề và sinh bổ sung Phần II & Phần III...', 'info');
@@ -1551,7 +1467,135 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
       onSay?.(`Đã hoàn thiện đề thi đủ 3 phần (${mergedQuestions.length} câu)!`, 'success');
     } catch (err) {
       setIsTyping(false);
+      setTypingStatus('');
       onSay?.(`Lỗi khi AI bổ sung đề: ${err.message}`, 'error');
+    }
+  };
+
+  // BÁC SĨ AI: TỰ ĐỘNG GIẢI & ĐIỀN ĐÁP ÁN + LỜI GIẢI CHO CÁC CÂU THIẾU ĐÁP ÁN
+  const handleAiFillMissingAnswers = async (exam) => {
+    if (!exam || !exam.questions?.length) return;
+    const missingEntries = [];
+    exam.questions.forEach((q, idx) => {
+      const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
+      const isMissing =
+        part === 2
+          ? !(q.statements || []).some((s) => s.answer === true || s.answer === false)
+          : part === 3
+            ? !String(q.answer || '').trim()
+            : q.correct === undefined || q.correct === null || q.correct < 0;
+      if (isMissing) missingEntries.push({ idx, part, q });
+    });
+
+    if (!missingEntries.length) {
+      onSay?.('Tất cả câu hỏi trong đề đều đã có đáp án đầy đủ!', 'success');
+      return;
+    }
+
+    const batch = missingEntries.slice(0, 18);
+    setTypingStatus(`AI đang giải & điền đáp án cho ${batch.length} câu...`);
+    setIsTyping(true);
+    const subject = exam.subject || inferredSubject || 'Bộ môn';
+    const grade = exam.grade || '12';
+    const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+    const serialized = batch
+      .map(({ idx, part, q }) => {
+        if (part === 2) {
+          const stms = (q.statements || []).map((s, i) => `  ${String.fromCharCode(97 + i)}) ${s.text || ''}`).join('\n');
+          return `[index=${idx}, part=2] ${q.q || ''}\n${stms}`;
+        }
+        if (part === 3) {
+          return `[index=${idx}, part=3] ${q.q || ''}`;
+        }
+        const opts = (q.options || []).map((o, i) => `  ${i}: ${o}`).join('\n');
+        return `[index=${idx}, part=1] ${q.q || ''}\n${opts}`;
+      })
+      .join('\n\n');
+
+    const solvePrompt = `Bạn là giáo viên giỏi môn ${subject} lớp ${grade} chuẩn GDPT 2025.
+Hãy giải chính xác các câu hỏi đang thiếu đáp án dưới đây và trả về DUY NHẤT JSON hợp lệ:
+${serialized}
+
+MẪU JSON:
+{
+  "answers": [
+    { "index": 0, "part": 1, "correct": 0, "level": "TH", "explain": "Giải thích ngắn gọn chuẩn xác..." },
+    { "index": 1, "part": 2, "statements": [true, false, true, false], "level": "VD", "explain": "..." },
+    { "index": 2, "part": 3, "answer": "12,5", "level": "VD", "explain": "..." }
+  ]
+}`;
+
+    try {
+      const res = await callCopilotAI(solvePrompt, { noGuide: true, noCache: true }, 2, 'AI giải & điền đáp án thiếu');
+      const rawText = typeof res === 'string' ? res : (res?.text || '');
+      const parsed = parseExamJsonSafe(rawText);
+      const ansList = Array.isArray(parsed?.answers) ? parsed.answers : [];
+      if (!ansList.length) {
+        throw new Error('AI chưa trích xuất được bảng đáp án JSON hợp lệ. Thầy/Cô vui lòng thử lại.');
+      }
+
+      const byIndex = new Map(ansList.map((a) => [Number(a.index), a]));
+      let filledCount = 0;
+      const updatedQuestions = exam.questions.map((q, idx) => {
+        const hit = byIndex.get(idx);
+        if (!hit) return q;
+        const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
+        filledCount++;
+        if (part === 2 && Array.isArray(hit.statements)) {
+          return {
+            ...q,
+            statements: (q.statements || []).map((s, si) => ({
+              ...s,
+              answer: Boolean(hit.statements[si]),
+            })),
+            level: q.level || hit.level || inferQuestionBloomLevel(q),
+            explain: q.explain || hit.explain || '',
+          };
+        }
+        if (part === 3 && hit.answer !== undefined) {
+          return {
+            ...q,
+            answer: String(hit.answer).replace('.', ','),
+            level: q.level || hit.level || inferQuestionBloomLevel(q),
+            explain: q.explain || hit.explain || '',
+          };
+        }
+        const corr = Number(hit.correct);
+        return {
+          ...q,
+          correct: Number.isInteger(corr) && corr >= 0 && corr <= 3 ? corr : 0,
+          level: q.level || hit.level || inferQuestionBloomLevel(q),
+          explain: q.explain || hit.explain || '',
+        };
+      });
+
+      const updatedExam = { ...exam, questions: updatedQuestions };
+      setWordEditorExam(updatedExam);
+
+      const p1 = updatedQuestions.filter((q) => q.part === 1 || q.type === 'single_choice' || (!q.part && !q.type)).length;
+      const p2 = updatedQuestions.filter((q) => q.part === 2 || q.type === 'true_false').length;
+      const p3 = updatedQuestions.filter((q) => q.part === 3 || q.type === 'short_answer').length;
+      const remainingMissing = Math.max(0, missingEntries.length - filledCount);
+
+      setIsTyping(false);
+      setTypingStatus('');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot_solved_' + Date.now(),
+          sender: 'bot',
+          text: `Đã tự động giải và điền đáp án + lời giải chi tiết cho **${filledCount} câu** trong đề **"${exam.title}"**${remainingMissing > 0 ? ` (còn ${remainingMissing} câu nữa, bấm tiếp nếu cần)` : ' — Đề hiện đã đủ 100% đáp án!'}:`,
+          examData: updatedExam,
+          diag: { total: updatedQuestions.length, part1: p1, part2: p2, part3: p3, successRate: 100 },
+          time: timeStr,
+        },
+      ]);
+      onSay?.(`Đã điền đáp án cho ${filledCount} câu hỏi!`, 'success');
+    } catch (err) {
+      setIsTyping(false);
+      setTypingStatus('');
+      onSay?.(aiErrMsg(err, 'Không thể tự động giải đáp án lúc này.'), 'error');
     }
   };
 
@@ -1605,6 +1649,7 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
   // THỰC THI SINH ĐỀ CHUẨN 3 PHẦN TỪ WIZARD
   const handleExecuteGenerateExam = async (wzData) => {
     if (!wzData) return;
+    setTypingStatus(`Đang biên soạn đề ${wzData.format === 'gdpt2025' ? '28 câu (50p)' : '10 câu (15p)'}...`);
     setIsTyping(true);
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const isFullGdpt = wzData.format === 'gdpt2025';
@@ -1612,8 +1657,12 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
     const grade = wzData.grade || '12';
     const targetTopic = wzData.topic || getTopicsForSubjectAndGrade(subject, grade)[0] || 'Kiến thức trọng tâm';
     const duration = isFullGdpt ? 50 : 15;
+    const matrixSpec = getMatrixPromptSpec(wzData.matrix);
+    const classWeakHint = realInsights.weakestTopics?.length
+      ? `\nGợi ý dữ liệu thực tế từ lớp học (nên lồng ghép củng cố nếu cùng chuyên đề): ${realInsights.weakestTopics.slice(0, 2).map((t) => `${t.topic} (${t.rate}% đúng)`).join(', ')}.`
+      : '';
 
-    onSay?.(`AI đang biên soạn đề ${duration} phút chuyên đề ${targetTopic} chuẩn 3 phần...`, 'info');
+    onSay?.(`AI đang biên soạn đề ${duration} phút chuyên đề ${targetTopic} (${matrixSpec.label})...`, 'info');
 
     try {
       let finalQuestions = [];
@@ -1625,6 +1674,8 @@ Hãy biên soạn 1 đề kiểm tra 15 phút chuyên đề "${targetTopic}" g�
 - Phần I (6 câu trắc nghiệm 4 lựa chọn A, B, C, D, 1 đáp án đúng, có giải thích).
 - Phần II (2 câu trắc nghiệm Đúng/Sai, mỗi câu có đề dẫn và 4 nhận định a, b, c, d với đáp án boolean true/false và giải thích).
 - Phần III (2 câu trắc nghiệm Trả lời ngắn, bài toán tính toán với đáp án số cụ thể, và giải thích chi tiết).
+
+${matrixSpec.instruction}${classWeakHint}
 
 TRẢ VỀ DUY NHẤT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
 {
@@ -1687,6 +1738,7 @@ TRẢ VỀ DUY NHẤT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
       } else {
         // Đề chuẩn GDPT 2025: 18 Phần I + 4 Phần II + 6 Phần III = 28 câu
         const promptP1 = `Bạn là chuyên gia ra đề ${subject} lớp ${grade} GDPT 2025. Hãy soạn 18 câu trắc nghiệm 4 lựa chọn (Phần I) chuyên đề "${targetTopic}".
+${matrixSpec.instruction}${classWeakHint}
 Trả về duy nhất JSON:
 {
   "part1": [
@@ -1698,6 +1750,7 @@ Trả về duy nhất JSON:
 - 4 câu Phần II (Đúng/Sai, mỗi câu có 4 ý a, b, c, d với boolean true/false và giải thích)
 - 6 câu Phần III (Trả lời ngắn tính toán với đáp án số cụ thể và giải thích)
 Chuyên đề "${targetTopic}".
+${matrixSpec.instruction}
 Trả về duy nhất JSON:
 {
   "part2": [
@@ -1709,7 +1762,7 @@ Trả về duy nhất JSON:
 }`;
 
         const [resP1, resP2P3] = await runWithCredit(
-          { userId: user?.uid, cost: 3, reason: 'Tạo đề kiểm tra 45-90 phút AI' },
+          { userId: user?.uid, cost: CREDIT_TARIFF.EXAM_GEN_LARGE, actionType: 'exam_gen', reason: 'Tạo đề kiểm tra 45-90 phút AI' },
           async () => {
             let p1Err = null;
             let p2Err = null;
@@ -1772,36 +1825,24 @@ Trả về duy nhất JSON:
         finalQuestions = [...p1, ...p2, ...p3];
       }
 
-      // Fallback an toàn nếu LLM bị ngắt quãng
+      // Không bao giờ chèn câu hỏi Hóa học giả khi sinh đề môn khác bị ngắt quãng
       if (!finalQuestions.length) {
-        finalQuestions = [
-          { id: 'q1', q: 'Este metyl fomat có công thức phân tử là?', options: ['A. C2H4O2', 'B. C3H6O2', 'C. C4H8O2', 'D. CH2O2'], correct: 0, level: 'NB', part: 1, type: 'single_choice', points: 0.25 },
-          { id: 'q2', q: 'Thủy phân etyl axetat trong dung dịch NaOH thu được ancol nào sau đây?', options: ['A. C2H5OH', 'B. CH3OH', 'C. C3H7OH', 'D. C2H4(OH)2'], correct: 0, level: 'NB', part: 1, type: 'single_choice', points: 0.25 },
-          { id: 'q3', q: 'Chất béo tristearin có công thức là?', options: ['A. (C17H35COO)3C3H5', 'B. (C17H33COO)3C3H5', 'C. (C15H31COO)3C3H5', 'D. (C17H31COO)3C3H5'], correct: 0, level: 'NB', part: 1, type: 'single_choice', points: 0.25 },
+        setIsTyping(false);
+        setTypingStatus('');
+        setMessages((prev) => [
+          ...prev,
           {
-            id: 'q_tf_1',
-            q: 'Cho este X có công thức phân tử C4H8O2 tác dụng với dung dịch NaOH thu được natri axetat và chất hữu cơ Y. Các phát biểu sau đúng hay sai?',
-            statements: [
-              { text: 'a) Tên gọi của X là etyl axetat.', answer: true },
-              { text: 'b) Chất Y có nhiệt độ sôi cao hơn ancol metylic.', answer: true },
-              { text: 'c) Phản ứng giữa X và NaOH là phản ứng thuận nghịch.', answer: false },
-              { text: 'd) Đốt cháy hoàn toàn 1 mol X cần vừa đủ 5 mol O2.', answer: true },
+            id: 'bot_gen_retry_' + Date.now(),
+            sender: 'bot',
+            text: `AI chưa kịp hoàn tất định dạng JSON cho đề **${subject} ${grade} — ${targetTopic}**. Thầy/Cô bấm thử lại ngay bên dưới (không bị mất cấu hình đã chọn):`,
+            navSuggestions: [
+              { label: `Thử soạn lại đề ${targetTopic}`, action: 'start_wizard' },
+              { label: 'Mở tab AI Tạo đề đầy đủ', sec: 'create' },
             ],
-            level: 'VD',
-            part: 2,
-            type: 'true_false',
-            points: 1.0,
+            time: timeStr,
           },
-          {
-            id: 'q_sa_1',
-            q: 'Đốt cháy hoàn toàn 0,1 mol este đơn chức X thu được 0,4 mol CO2 và 0,4 mol H2O. Số liên kết pi (π) trong phân tử X là bao nhiêu?',
-            answer: '1',
-            level: 'VD',
-            part: 3,
-            type: 'short_answer',
-            points: 0.25,
-          },
-        ];
+        ]);
+        return;
       }
 
       const p1Len = finalQuestions.filter((q) => q.part === 1 || q.type === 'single_choice' || (!q.part && !q.type)).length;
@@ -1859,6 +1900,7 @@ Trả về duy nhất JSON:
       },
     ]);
 
+    setTypingStatus(`Đang bóc tách & chẩn đoán ${file.name}...`);
     setIsTyping(true);
 
     try {
@@ -1897,22 +1939,23 @@ Trả về duy nhất JSON:
       };
       setWordEditorExam(realParsedExam);
 
-      const isCompliant = part2 >= 2 && part3 >= 2;
+      const isCompliant = (part2 >= 4 && part3 >= 6) || (questions.length <= 12 && part2 >= 2 && part3 >= 2);
       const missingAnswers = questions.filter((q) => {
         if (q.type === 'true_false') return !(q.statements || []).some((s) => s.answer === true || s.answer === false);
         if (q.type === 'short_answer') return !String(q.answer || '').trim();
-        return q.correct === undefined || q.correct < 0;
+        return q.correct === undefined || q.correct === null || q.correct < 0;
       }).length;
 
       setIsTyping(false);
+      setTypingStatus('');
       setMessages((prev) => [
         ...prev,
         {
           id: 'bot_file_res_' + Date.now(),
           sender: 'bot',
           text: isCompliant
-            ? `Bác sĩ AI chẩn đoán: Đã bóc tách thành công đề thi môn ${resolvedSubject} - Lớp ${resolvedGrade} từ file "${file.name}" đạt chuẩn cấu trúc 3 phần GDPT 2025 (${questions.length} câu: ${part1} câu Phần I, ${part2} câu Phần II, ${part3} câu Phần III${imgCount > 0 ? `, bảo toàn 100% gồm ${imgCount} câu có hình ảnh/đồ thị` : ''}).`
-            : `Bác sĩ AI chẩn đoán: File "${file.name}" được nhận diện là môn ${resolvedSubject} - Lớp ${resolvedGrade}. Hiện có ${part1} câu Phần I${imgCount > 0 ? ` (đã giữ đủ ${imgCount} câu có hình ảnh/đồ thị)` : ''} nhưng ĐANG THIẾU ${Math.max(0, 4 - part2)} câu Phần II (Đúng/Sai) và ${Math.max(0, 6 - part3)} câu Phần III (Trả lời ngắn) để đạt chuẩn 28 câu GDPT 2025:`,
+            ? `Bác sĩ AI chẩn đoán: Đã bóc tách thành công đề thi môn ${resolvedSubject} - Lớp ${resolvedGrade} từ file "${file.name}" đạt chuẩn cấu trúc 3 phần GDPT 2025 (${questions.length} câu: ${part1} câu Phần I, ${part2} câu Phần II, ${part3} câu Phần III${imgCount > 0 ? `, bảo toàn ${imgCount} câu có hình ảnh/đồ thị` : ''}${missingAnswers > 0 ? `; phát hiện ${missingAnswers} câu chưa có đáp án` : ''}).`
+            : `Bác sĩ AI chẩn đoán: File "${file.name}" là môn ${resolvedSubject} - Lớp ${resolvedGrade} (${questions.length} câu${imgCount > 0 ? `, ${imgCount} câu có hình/đồ thị` : ''}). Hiện còn thiếu ${Math.max(0, 4 - part2)} câu Phần II và ${Math.max(0, 6 - part3)} câu Phần III để đủ 28 câu chuẩn GDPT 2025${missingAnswers > 0 ? ` (và ${missingAnswers} câu chưa có đáp án)` : ''}:`,
           doctorData: {
             fileName: file.name,
             total: questions.length,
@@ -1939,13 +1982,17 @@ Trả về duy nhất JSON:
       onSay?.(`Đã bóc tách thành công ${questions.length} câu hỏi!`, 'success');
     } catch (err) {
       setIsTyping(false);
+      setTypingStatus('');
       setMessages((prev) => [
         ...prev,
         {
           id: 'bot_file_err_' + Date.now(),
           sender: 'bot',
           text: `Không đọc được nội dung: ${err.message}. Thầy/Cô bấm nút dưới để mở Trình Nhập Đề Nâng Cao (hỗ trợ MathType, OMML, ảnh):`,
-          actionType: 'open_importer',
+          navSuggestions: [
+            { label: 'Mở Trình Nhập Đề Nâng Cao', action: 'importer' },
+            { label: 'Chọn file khác', action: 'pick_file' },
+          ],
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -1954,9 +2001,11 @@ Trả về duy nhất JSON:
 
   // XỬ LÝ 2: Kích hoạt Thẩm định 100 học sinh ảo
   const handleRunSimulation = (exam) => {
+    setTypingStatus('Đang mô phỏng 100 thí sinh ảo giải đề...');
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
+      setTypingStatus('');
       const sim = runVirtualStudentSimulation(exam);
       setMessages((prev) => [
         ...prev,
@@ -1974,6 +2023,7 @@ Trả về duy nhất JSON:
 
   // XỬ LÝ 3: Kích hoạt Chẩn đoán Bệnh lý Tư duy & Kê đơn
   const handleRunCognitiveRx = async (studentName, topicName) => {
+    setTypingStatus(`Đang chẩn đoán & kê đơn phục hồi cho ${studentName || 'học sinh'}...`);
     setIsTyping(true);
     const targetStudent = studentName || 'Học sinh';
     const detectedSubj = detectExamSubjectAndGrade({
@@ -2059,20 +2109,190 @@ Trả về duy nhất đối tượng JSON hợp lệ:
     }
   };
 
-  // XỬ LÝ 4: Gửi tin nhắn & Xử lý TRÍ TUỆ NHÂN TẠO ĐA NGỮ CẢNH
-  const handleSend = async (userPrompt, overridePrompt) => {
-    const query = (overridePrompt || userPrompt || input).trim();
+  // XỬ LÝ 4: Gửi tin nhắn & Xử lý TRÍ TUỆ NHÂN TẠO ĐA NGỮ CẢNH (+ VISION ẢNH ĐỀ BÀI)
+  const handleSend = async (userPrompt, overridePrompt, sendOpts = {}) => {
+    const attachedImg = sendOpts.skipImage ? null : pendingImage;
+    const rawQuery = (overridePrompt || userPrompt || input).trim();
+    const query = rawQuery || (attachedImg ? 'Hãy đọc ảnh đề bài này, giải chi tiết từng bước, chỉ ra bẫy thường gặp và nêu rõ đáp án cuối cùng.' : '');
     if (!query) return;
 
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    setMessages((prev) => [
-      ...prev,
-      { id: 'usr_' + Date.now(), sender: 'user', text: query, time: timeStr },
-    ]);
+    if (!sendOpts.skipUserBubble) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'usr_' + Date.now(),
+          sender: 'user',
+          text: query,
+          imagePreview: attachedImg
+            ? { name: attachedImg.name, sizeLabel: attachedImg.sizeLabel, dataUrl: attachedImg.dataUrl }
+            : undefined,
+          time: timeStr,
+        },
+      ]);
+    }
     setInput('');
+    if (attachedImg) setPendingImage(null);
+    setTypingStatus(attachedImg ? 'AI Vision đang đọc & phân tích ảnh đề bài...' : 'ELEC đang phân tích yêu cầu...');
     setIsTyping(true);
 
+    // Nếu có ảnh đề bài đính kèm -> đi thẳng luồng Multimodal Vision + Streaming
+    if (attachedImg) {
+      const streamMsgId = 'bot_vision_' + Date.now();
+      const replyTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      let hasStreamedBubble = false;
+      try {
+        const visionPrompt = `Bạn là ELEC AI Senior Academic Copilot — chuyên gia sư phạm môn ${inferredSubject} chuẩn GDPT 2025.
+Giáo viên vừa gửi kèm 1 hình ảnh đề bài/câu hỏi và yêu cầu:
+"${query}"
+
+HÃY THỰC HIỆN CHÍNH XÁC:
+1. Đọc kỹ toàn bộ chữ, công thức, đồ thị, hình vẽ trong ảnh (nếu có chi tiết mờ hãy ghi chú rõ).
+2. Trả lời đúng yêu cầu giáo viên với lời giải chuẩn xác từng bước, trình bày rõ ràng, dễ hiểu, KHÔNG dùng emoji.
+3. Kết thúc bằng mục **Bẫy học sinh dễ sai** (1–2 ý ngắn gọn) để giáo viên lưu ý trên lớp.`;
+        const visionHistory = buildConversationHistory(messagesRef.current, visionPrompt, 6, attachedImg);
+        const res = await callCopilotAI(
+          visionHistory,
+          { noGuide: true, noCache: true },
+          1,
+          'Phân tích ảnh đề bài (AI Vision)',
+          (partialText) => {
+            if (!partialText) return;
+            if (!hasStreamedBubble) {
+              hasStreamedBubble = true;
+              setMessages((prev) => [
+                ...prev,
+                { id: streamMsgId, sender: 'bot', text: partialText, streaming: true, time: replyTimeStr },
+              ]);
+            } else {
+              setMessages((prev) => prev.map((m) => (m.id === streamMsgId ? { ...m, text: partialText } : m)));
+            }
+          }
+        );
+        const aiReply = typeof res === 'string' ? res : (res?.text || '');
+        setIsTyping(false);
+        setTypingStatus('');
+        if (hasStreamedBubble) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === streamMsgId ? { ...m, text: aiReply || m.text, streaming: false } : m))
+          );
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { id: streamMsgId, sender: 'bot', text: aiReply || 'Đã đọc ảnh đề bài nhưng chưa trích xuất được nội dung rõ ràng.', time: replyTimeStr },
+          ]);
+        }
+      } catch (e) {
+        setIsTyping(false);
+        setTypingStatus('');
+        if (e?.isAbort || e?.name === 'AbortError') {
+          if (hasStreamedBubble) {
+            setMessages((prev) => prev.map((m) => (m.id === streamMsgId ? { ...m, streaming: false } : m)));
+          }
+          return;
+        }
+        setMessages((prev) => {
+          const cleaned = hasStreamedBubble ? prev.filter((m) => m.id !== streamMsgId) : prev;
+          return [
+            ...cleaned,
+            {
+              id: 'bot_vision_err_' + Date.now(),
+              sender: 'bot',
+              text: aiErrMsg(e, 'Không thể đọc ảnh lúc này. Thầy/Cô thử chụp rõ nét hơn hoặc dán nội dung câu hỏi dạng chữ nhé!'),
+              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            },
+          ];
+        });
+      }
+      return;
+    }
+
     const norm = query.toLowerCase();
+
+    // 0.0000A. CHẨN ĐOÁN SỨC KHỎE LỚP & TOP CÂU HỎI SAI NHIỀU NHẤT
+    const isClassHealthQuery =
+      norm.includes('sức khỏe lớp') ||
+      norm.includes('câu nào học sinh sai nhiều') ||
+      norm.includes('câu sai nhiều nhất') ||
+      norm.includes('chuyên đề yếu nhất') ||
+      norm.includes('tiết sau nên ôn gì') ||
+      norm.includes('lỗ hổng kiến thức');
+
+    if (isClassHealthQuery && !sendOpts.forceAi) {
+      setIsTyping(false);
+      setTypingStatus('');
+      const healthData = buildClassHealthCardData(realInsights, {
+        classCount: classes.length,
+        examCount: exams.length,
+        subject: inferredSubject,
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot_health_' + Date.now(),
+          sender: 'bot',
+          text:
+            healthData.submissionCount > 0
+              ? `Báo cáo chẩn đoán sức khỏe lớp học từ **${healthData.submissionCount} bài nộp thực tế** (${classes.length} lớp · ${exams.length} đề):`
+              : `Hệ thống chưa ghi nhận bài nộp nào để phân tích chuyên sâu. Thầy/Cô có thể giao 1 đề ngắn 10 câu để lấy dữ liệu chẩn đoán:`,
+          healthData: healthData.submissionCount > 0 ? healthData : undefined,
+          navSuggestions:
+            healthData.submissionCount === 0
+              ? [
+                  { label: 'Soạn đề ngắn 15 phút ngay', action: 'start_wizard' },
+                  { label: 'Mở Kho Đề Thi', sec: 'exams' },
+                ]
+              : undefined,
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+      return;
+    }
+
+    // 0.0000B. SOẠN TIN NHẮN ZALO / SỔ LIÊN LẠC PHỤ HUYNH
+    const isParentMsgQuery =
+      (norm.includes('phụ huynh') || norm.includes('zalo') || norm.includes('sổ liên lạc')) &&
+      (norm.includes('nhận xét') || norm.includes('tin nhắn') || norm.includes('gửi') || norm.includes('viết') || norm.includes('soạn')) &&
+      !norm.includes('viết lại');
+
+    if (isParentMsgQuery && !sendOpts.forceAi) {
+      setIsTyping(false);
+      setTypingStatus('');
+      // Thử tìm học sinh khớp tên trong danh sách bài nộp thật
+      let matchedStudent = null;
+      const allSubsFlat = Object.values(submissionsMap || {}).flat();
+      for (const s of allSubsFlat) {
+        const sName = String(s?.studentName || '').trim();
+        if (sName.length >= 2 && norm.includes(sName.toLowerCase())) {
+          const sameSt = allSubsFlat.filter((x) => (x?.studentName || '').toLowerCase() === sName.toLowerCase());
+          const avg = Math.round(sameSt.reduce((acc, x) => acc + pctOf(x), 0) / sameSt.length);
+          matchedStudent = { studentName: sName, pct: avg, subCount: sameSt.length };
+          break;
+        }
+      }
+      if (!matchedStudent && realInsights.atRisk?.length) {
+        matchedStudent = realInsights.atRisk[0];
+      }
+      const reportData = buildParentReportCardData({
+        studentName: matchedStudent?.studentName || 'học sinh',
+        pct: typeof matchedStudent?.pct === 'number' ? matchedStudent.pct : null,
+        subCount: matchedStudent?.subCount || 0,
+        weakTopic: realInsights.weakestTopics?.[0]?.topic || '',
+        subject: inferredSubject,
+        teacherName: user?.displayName || 'Giáo viên bộ môn',
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot_parent_' + Date.now(),
+          sender: 'bot',
+          text: `Em đã soạn sẵn 3 mẫu tin nhắn gửi phụ huynh em **${reportData.studentName}** theo số liệu thực tế. Thầy/Cô có thể chuyển giọng điệu và sao chép dán thẳng vào Zalo:`,
+          parentReport: reportData,
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+      return;
+    }
 
     // 0.0001. TỰ ĐỘNG PHÂN TÍCH CHỨC NĂNG CỦA TAB HIỆN TẠI (TAB SENSOR & ANALYSIS)
     const isTabAnalysisQuery = (
@@ -2712,11 +2932,24 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
       }
     }
 
-    // 0. BÁC SĨ SỬA FILE WORD & CHUẨN HÓA ĐỀ 3 PHẦN
+    // 0. BÁC SĨ SỬA FILE WORD (chỉ mở khi giáo viên thực sự yêu cầu sửa/mở trình Word, không cướp lệnh soạn đề hay hỏi lý thuyết)
+    const isCreatingOrExplaining =
+      norm.includes('soạn đề') ||
+      norm.includes('tạo đề') ||
+      norm.includes('ra đề') ||
+      norm.includes('giải thích') ||
+      norm.includes('là gì') ||
+      norm.includes('cấu trúc');
+
     if (
-      norm.includes('sửa file word') || norm.includes('sửa đề') || norm.includes('chuẩn hóa word') ||
-      norm.includes('bác sĩ sửa') || norm.includes('chuẩn 3 phần') || norm.includes('form đề') ||
-      norm.includes('giống như word') || norm.includes('giống word') || norm.includes('như word')
+      !isCreatingOrExplaining &&
+      (norm.includes('sửa file word') ||
+        norm.includes('chuẩn hóa word') ||
+        norm.includes('bác sĩ sửa') ||
+        norm.includes('trình sửa word') ||
+        norm.includes('giống như word') ||
+        norm.includes('giống word') ||
+        norm.includes('sửa trực quan'))
     ) {
       setIsTyping(false);
       setWordEditorExam((prev) => prev || (exams && exams[0]) || null);
@@ -2742,32 +2975,24 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
 
 
 
-    // 0.1. SOẠN ĐỀ / TẠO ĐỀ CHUẨN 3 PHẦN GDPT 2025 (INTERACTIVE WIZARD)
+    // 0.1. SOẠN ĐỀ / TẠO ĐỀ CHUẨN 3 PHẦN GDPT 2025 (INTERACTIVE WIZARD — ĐA MÔN, TỰ BÓC TÁCH CHỦ ĐỀ & MA TRẬN)
     if (
       !isGuidanceQuery &&
       (norm.includes('soạn đề') || norm.includes('tạo đề') || norm.includes('ra đề') || norm.includes('làm đề')) &&
       !norm.includes('giao ngay') && !norm.includes('giao cho lớp')
     ) {
       setIsTyping(false);
-      let detectedGrade = '12';
-      if (norm.includes('11')) detectedGrade = '11';
-      else if (norm.includes('10')) detectedGrade = '10';
-
-      let detectedFormat = (norm.includes('15p') || norm.includes('15 phút')) ? '15min' : 'gdpt2025';
-
-      let detectedTopic = 'Este - Lipit';
-      if (norm.includes('cacbohidrat') || norm.includes('glucozo')) detectedTopic = 'Cacbohidrat';
-      else if (norm.includes('amin') || norm.includes('amino')) detectedTopic = 'Amin - Amino Axit';
-      else if (norm.includes('polime')) detectedTopic = 'Polime';
-      else if (norm.includes('pin') || norm.includes('điện phân')) detectedTopic = 'Pin điện & Điện phân';
-      else if (norm.includes('cân bằng')) detectedTopic = 'Cân bằng hóa học';
-      else if (norm.includes('nitơ') || norm.includes('photpho')) detectedTopic = 'Nitơ - Photpho';
-
-      handleStartExamWizard({
-        grade: detectedGrade,
-        format: detectedFormat,
-        topic: detectedTopic,
+      setTypingStatus('');
+      const detected = detectExamSubjectAndGrade({ text: query, fileName: '' });
+      const parsedIntent = extractExamIntentFromQuery(query, {
+        detectedSubject: detected.subject || '',
+        detectedGrade: detected.grade || '',
+        fallbackSubject: inferredSubject,
+        fallbackGrade: String(classes[0]?.grade || linkedClasses?.[0]?.grade || '12'),
+        getTopics: getTopicsForSubjectAndGrade,
       });
+
+      handleStartExamWizard(parsedIntent);
       return;
     }
 
@@ -3407,12 +3632,25 @@ Hãy trả lời chính xác, bám sát các số liệu thực tế trên của
     const targetStudent = findTargetStudent(query, { classes, submissionsMap });
     if (targetStudent) {
       setIsTyping(false);
+      setTypingStatus('');
+      const isStrongStudent = targetStudent.avgPct >= 75;
       const reply = `Hồ sơ học tập của học sinh **${targetStudent.name}** (Lớp ${targetStudent.className}):
 - Số bài thi đã hoàn thành: **${targetStudent.subCount} bài**.
-- Điểm trung bình đạt: **${targetStudent.avgPct}%** (Điểm thấp nhất: ${targetStudent.minPct}%, cao nhất: ${targetStudent.maxPct}%).
-- Đánh giá năng lực: ${targetStudent.avgPct < 50 ? `Em đang bị hổng kiến thức nền tảng và cần được can thiệp sớm bằng bài tập nhận biết - thông hiểu để lấy lại tự tin.` : `Em nắm kiến thức ở mức khá/tốt, nên bồi dưỡng thêm các câu vận dụng cao.`}
+- Điểm trung bình đạt: **${targetStudent.avgPct}%** (Thấp nhất: ${targetStudent.minPct}%, Cao nhất: ${targetStudent.maxPct}%).
+- Đánh giá năng lực: ${
+        targetStudent.avgPct < 50
+          ? 'Em đang hổng kiến thức nền tảng và cần được can thiệp sớm bằng bài tập nhận biết - thông hiểu để lấy lại tự tin.'
+          : isStrongStudent
+            ? 'Em học vững và có phong độ tốt, nên khen ngợi khích lệ và giao thêm câu Vận dụng cao.'
+            : 'Em nắm kiến thức ở mức trung bình - khá, nên củng cố thêm các dạng bài Thông hiểu & Vận dụng.'
+      }`;
 
-Thầy/Cô có thể bấm vào nút **"Kê đơn phục hồi"** bên dưới để AI tự động bóc tách bẫy tư duy và sinh bộ 3 câu hỏi đặc trị cho em:`;
+      const studentEntry = {
+        studentName: targetStudent.name,
+        pct: targetStudent.avgPct,
+        subCount: targetStudent.subCount,
+        studentId: targetStudent.studentId,
+      };
 
       setMessages((prev) => [
         ...prev,
@@ -3420,12 +3658,7 @@ Thầy/Cô có thể bấm vào nút **"Kê đơn phục hồi"** bên dưới �
           id: 'bot_student_' + Date.now(),
           sender: 'bot',
           text: reply,
-          realAtRisk: [{
-            studentName: targetStudent.name,
-            pct: targetStudent.avgPct,
-            subCount: targetStudent.subCount,
-            studentId: targetStudent.studentId,
-          }],
+          ...(isStrongStudent ? { topStudents: [studentEntry] } : { realAtRisk: [studentEntry] }),
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -3557,15 +3790,27 @@ Thầy/Cô có thể bấm vào nút **"Kê đơn phục hồi"** bên dưới �
 
 
 
-    // 7. TRẢ LỜI SƯ PHẠM VỚI NGỮ CẢNH THỰC TẾ (GEMINI AI COPILOT)
+    // 7. TRẢ LỜI SƯ PHẠM ĐA LƯỢT + STREAMING VỚI NGỮ CẢNH THỰC TẾ (GEMINI AI COPILOT)
+    const streamMsgId = 'bot_text_' + Date.now();
+    const replyTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    let hasStreamedBubble = false;
+
     try {
+      setTypingStatus('Đang tổng hợp phân tích chuyên môn...');
+      const richContextBlock = buildRichCopilotContext({
+        user,
+        inferredSubject,
+        currentTabInfo,
+        classes,
+        exams,
+        realInsights,
+        activeLiveRooms,
+        selectedClass,
+        selectedExam,
+      });
       const realContextPrompt = `Bạn là ELEC AI Senior Academic Copilot — Cố vấn Chuyên môn & Trợ lý Sư phạm Cấp cao của Quý Thầy/Cô.
-Ngữ cảnh công tác của Thầy/Cô trên hệ thống ELEC AI:
-- Giáo viên: ${user?.displayName || user?.email || 'Thầy/Cô'}
-- Đang quản lý: ${classes.length} lớp (${classes.map((c) => c.name).join(', ') || 'Chưa tạo'})
-- Kho đề thi: ${exams.length} đề
-- Dữ liệu làm bài: ${realInsights.submissionCount} bài nộp thực tế (Điểm trung bình toàn trường: ${realInsights.avgPct}%, Tỷ lệ đạt: ${realInsights.passRate}%)
-- Phòng thi LIVE đang giám sát: ${activeLiveRooms.length} phòng
+Ngữ cảnh công tác THỜI GIAN THỰC của Thầy/Cô trên hệ thống ELEC AI:
+${richContextBlock}
 
 SƠ ĐỒ CÁC TAB CHỨC NĂNG THẬT TRÊN THANH ĐIỀU HƯỚNG BÊN TRÁI HỆ THỐNG:
 1. "Số liệu lớp" (key: 'analytics'): Xem điểm số học sinh, phổ điểm, tỷ lệ đạt/khá/giỏi, phân tích điểm và xuất bảng điểm Excel (.xlsx).
@@ -3580,7 +3825,7 @@ SƠ ĐỒ CÁC TAB CHỨC NĂNG THẬT TRÊN THANH ĐIỀU HƯỚNG BÊN TRÁI H
 10. "Xin thi lại" (key: 'retry'): Duyệt học sinh xin thi lại do sự cố.
 11. Bác sĩ sửa file Word (Trình soạn thảo Word A4 Office 365): Sửa đề, cân bằng Bloom, xem Khung Ma Trận và xuất .docx.
 
-Câu hỏi/Yêu cầu của Thầy/Cô:
+Câu hỏi/Yêu cầu hiện tại của Thầy/Cô (hãy bám sát mạch hội thoại trước đó nếu là câu hỏi tiếp nối):
 "${query}"
 
 HƯỚNG DẪN TRẢ LỜI:
@@ -3593,40 +3838,262 @@ HƯỚNG DẪN TRẢ LỜI:
    - Ngắn gọn, súc tích, mạch lạc, KHÔNG dùng emoji.
    - Dùng khối trích dẫn > cho các lưu ý hoặc mẹo hữu ích.`;
 
-      const res = await callCopilotAI(realContextPrompt, {}, 1, 'Hỏi đáp sư phạm AI Copilot');
+      const multiTurnHistory = buildConversationHistory(messagesRef.current, realContextPrompt, 8);
+      const res = await callCopilotAI(
+        multiTurnHistory,
+        sendOpts.noCache ? { noCache: true } : {},
+        1,
+        'Hỏi đáp sư phạm AI Copilot',
+        (partialText) => {
+          if (!partialText) return;
+          if (!hasStreamedBubble) {
+            hasStreamedBubble = true;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: streamMsgId,
+                sender: 'bot',
+                text: partialText,
+                streaming: true,
+                time: replyTimeStr,
+              },
+            ]);
+          } else {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === streamMsgId ? { ...m, text: partialText } : m))
+            );
+          }
+        }
+      );
+
       const aiReply = typeof res === 'string' ? res : (res?.text || '');
       setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'bot_text_' + Date.now(),
-          sender: 'bot',
-          text: aiReply || 'Em có thể giúp gì thêm cho Thầy/Cô ạ?',
-          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      setTypingStatus('');
+      if (hasStreamedBubble) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamMsgId
+              ? { ...m, text: aiReply || m.text || 'Em có thể giúp gì thêm cho Thầy/Cô ạ?', streaming: false }
+              : m
+          )
+        );
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: streamMsgId,
+            sender: 'bot',
+            text: aiReply || 'Em có thể giúp gì thêm cho Thầy/Cô ạ?',
+            time: replyTimeStr,
+          },
+        ]);
+      }
     } catch (e) {
       setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'bot_err_' + Date.now(),
-          sender: 'bot',
-          text: aiErrMsg(e, 'Thầy/Cô có thể bấm mic nói tự nhiên hoặc gõ yêu cầu để em xử lý nhé!'),
-          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      setTypingStatus('');
+      if (e?.isAbort || e?.name === 'AbortError') {
+        if (hasStreamedBubble) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === streamMsgId ? { ...m, streaming: false } : m))
+          );
+        }
+        return;
+      }
+      setMessages((prev) => {
+        const cleaned = hasStreamedBubble ? prev.filter((m) => m.id !== streamMsgId) : prev;
+        return [
+          ...cleaned,
+          {
+            id: 'bot_err_' + Date.now(),
+            sender: 'bot',
+            text: aiErrMsg(e, 'Thầy/Cô có thể bấm mic nói tự nhiên hoặc gõ yêu cầu để em xử lý nhé!'),
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ];
+      });
     }
   };
 
-  // Kéo thả file
+  // Bộ điều phối hành động nâng cao: Ảnh đề bài Vision, Sức khỏe lớp, Tin nhắn PH, Xuất Word, Tạo lại
+  const handleImageSelected = useCallback(
+    async (file) => {
+      if (!file) return;
+      try {
+        const attachment = await readImageFileAsAttachment(file);
+        setPendingImage(attachment);
+        onSay?.(`Đã gắn ảnh "${attachment.name}" — chọn tác vụ nhanh hoặc bấm Gửi ngay!`, 'info');
+        setTimeout(() => inputRef.current?.focus(), 0);
+      } catch (err) {
+        onSay?.(err?.message || 'Không đọc được tệp hình ảnh.', 'error');
+      }
+    },
+    [onSay]
+  );
+
+  const handleShowClassHealth = useCallback(() => {
+    const healthData = buildClassHealthCardData(realInsights, {
+      classCount: classes.length,
+      examCount: exams.length,
+      subject: inferredSubject,
+    });
+    const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: 'bot_health_' + Date.now(),
+        sender: 'bot',
+        text:
+          healthData.submissionCount > 0
+            ? `Chẩn đoán sức khỏe lớp học từ **${healthData.submissionCount} bài nộp thực tế** (${classes.length} lớp · ${exams.length} đề):`
+            : `Chưa có bài nộp nào để chẩn đoán sức khỏe lớp. Thầy/Cô có thể giao nhanh một đề 15 phút để thu thập dữ liệu:`,
+        healthData: healthData.submissionCount > 0 ? healthData : undefined,
+        navSuggestions:
+          healthData.submissionCount === 0
+            ? [
+                { label: 'Soạn đề 15 phút ngay', action: 'start_wizard' },
+                { label: 'Mở Kho Đề Thi', sec: 'exams' },
+              ]
+            : undefined,
+        time: timeStr,
+      },
+    ]);
+  }, [realInsights, classes.length, exams.length, inferredSubject]);
+
+  const handleOpenParentReport = useCallback(
+    (opts = {}) => {
+      const fallbackStudent = realInsights.atRisk?.[0];
+      const reportData = buildParentReportCardData({
+        studentName: opts.studentName || fallbackStudent?.studentName || 'học sinh',
+        pct: typeof opts.pct === 'number' ? opts.pct : fallbackStudent?.pct ?? null,
+        subCount: opts.subCount ?? fallbackStudent?.subCount ?? 0,
+        weakTopic: opts.weakTopic || realInsights.weakestTopics?.[0]?.topic || '',
+        subject: inferredSubject,
+        teacherName: user?.displayName || 'Giáo viên bộ môn',
+      });
+      const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot_parent_' + Date.now(),
+          sender: 'bot',
+          text: `Đã soạn 3 mẫu tin nhắn gửi phụ huynh em **${reportData.studentName}**. Thầy/Cô chọn giọng điệu phù hợp và bấm sao chép để dán vào Zalo:`,
+          parentReport: reportData,
+          time: timeStr,
+        },
+      ]);
+    },
+    [realInsights, inferredSubject, user?.displayName]
+  );
+
+  const handleExportNoteWord = useCallback(
+    async (content) => {
+      if (!content) return;
+      try {
+        const fn = await exportAiNoteDocx({
+          title: `Tài liệu sư phạm ELEC AI (${inferredSubject})`,
+          content,
+          teacherName: user?.displayName || user?.email || 'Thầy/Cô',
+          schoolName: user?.schoolName || 'TRƯỜNG THPT',
+          subject: inferredSubject,
+        });
+        onSay?.(`Đã xuất file Word: ${fn}`, 'success');
+      } catch (err) {
+        onSay?.(`Lỗi xuất file Word: ${err?.message || err}`, 'error');
+      }
+    },
+    [inferredSubject, user?.displayName, user?.email, user?.schoolName, onSay]
+  );
+
+  const handleRegenerateLast = useCallback(() => {
+    if (isTyping) return;
+    const list = messagesRef.current || [];
+    let lastUserIdx = -1;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i]?.sender === 'user' && list[i]?.text) {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx === -1) return;
+    const lastUserText = list[lastUserIdx].text;
+    setMessages((prev) => prev.slice(0, lastUserIdx + 1));
+    setTimeout(() => {
+      handleSend(lastUserText, null, { skipUserBubble: true, skipImage: true, noCache: true, forceAi: true });
+    }, 0);
+  }, [isTyping]);
+
+  const handleStartWizardWithTopic = useCallback(
+    (topic) => {
+      handleStartExamWizard({ subject: inferredSubject, topic });
+    },
+    [inferredSubject]
+  );
+
+  const handleOpenWordEditor = useCallback(
+    (exam) => {
+      setWordEditorExam(exam || (exams && exams[0]) || null);
+      setWordEditorOpen(true);
+    },
+    [exams]
+  );
+
+  const handleQuickAction = useCallback(
+    (action) => {
+      if (action === 'start_wizard') {
+        handleStartExamWizard();
+      } else if (action === 'pick_file') {
+        fileInputRef.current?.click();
+      } else if (action === 'pick_image') {
+        imageInputRef.current?.click();
+      } else if (action === 'class_health') {
+        handleShowClassHealth();
+      } else if (action === 'parent_report') {
+        handleOpenParentReport();
+      } else if (action === 'word_editor') {
+        handleOpenWordEditor();
+      } else if (action === 'prefill_audit') {
+        setInput('Thẩm định & phán xét câu hỏi GDPT 2025: ');
+        setTimeout(() => inputRef.current?.focus(), 0);
+      } else if (action === 'run_sim_latest') {
+        const targetExam = selectedExam || (exams && exams[0]);
+        if (targetExam && targetExam.questions?.length) {
+          handleRunSimulation(targetExam);
+        } else {
+          handleSend('Chạy mô phỏng 100 học sinh ảo giải đề thi');
+        }
+      } else if (action === 'analyze_tab') {
+        handleAnalyzeCurrentTab();
+      } else if (action === 'clear_chat') {
+        handleClearChat();
+      }
+    },
+    [selectedExam, exams, handleOpenWordEditor, handleClearChat, handleShowClassHealth, handleOpenParentReport]
+  );
+
+  const handleRunSlashCommand = useCallback(
+    (item) => {
+      if (!item) return;
+      if (item.action) {
+        handleQuickAction(item.action);
+      } else if (item.query) {
+        handleSend(item.query);
+      }
+    },
+    [handleQuickAction]
+  );
+
+  // Kéo thả file Word/PDF hoặc Ảnh đề bài (.png/.jpg/.webp)
   const onDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => { setIsDragging(false); };
   const onDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleProcessRealFile(e.dataTransfer.files[0]);
+    const dropped = e.dataTransfer.files?.[0];
+    if (!dropped) return;
+    if (dropped.type?.startsWith('image/')) {
+      handleImageSelected(dropped);
+    } else {
+      handleProcessRealFile(dropped);
     }
   };
 
@@ -3676,36 +4143,37 @@ HƯỚNG DẪN TRẢ LỜI:
           {isDragging && (
             <div className="tfc-drag-overlay">
               <IcoFileDoc size={48} />
-              <span>Thả file Word (.docx) hoặc PDF vào đây để nạp tự động</span>
+              <span>Thả file Word (.docx), PDF hoặc Ảnh đề bài (.png/.jpg) vào đây</span>
             </div>
           )}
 
-          {/* Header */}
+          {/* Header gọn gàng 1 dòng, không lặp số liệu */}
           <div className="tfc-header">
             <div className="tfc-header-left">
               <div className="tfc-header-avatar">
                 <ElecMascot
                   mood={isTyping ? 'think' : realViolationsCount > 0 ? 'suspicious' : 'hello'}
-                  size={36}
+                  size={34}
                   alt="ELEC AI"
                 />
               </div>
               <div className="tfc-header-meta">
                 <div className="tfc-header-title-row">
-                  <ElecFlaskBrandSvg size={15} variant="gradient" />
                   <span className="tfc-header-title">ELEC AI Agent</span>
-                  <span className="tfc-header-pill">
-                    {classes.length} lớp · {exams.length} đề{liveSessions.length > 0 ? ` · ${liveSessions.length} LIVE` : ''}
-                  </span>
+                  {activeLiveRooms.length > 0 && (
+                    <span className="tfc-header-pill is-live">
+                      {activeLiveRooms.length} LIVE
+                    </span>
+                  )}
                 </div>
                 <div className="tfc-header-status">
                   <div className={`tfc-status-dot ${realViolationsCount > 0 ? 'alert' : ''}`} />
-                  <span>
+                  <span className="tfc-header-status-text">
                     {isTyping
-                      ? 'ELEC đang phân tích & tổng hợp...'
+                      ? (typingStatus || 'ELEC đang phân tích...')
                       : realViolationsCount > 0
-                        ? `Đang theo dõi ${realViolationsCount} tín hiệu giám sát LIVE`
-                        : 'Sẵn sàng soạn đề GDPT 2025 & cố vấn lớp học'}
+                        ? `Đang theo dõi ${realViolationsCount} cảnh báo LIVE`
+                        : `Trợ lý GDPT 2025 · ${inferredSubject}`}
                   </span>
                 </div>
               </div>
@@ -3724,7 +4192,7 @@ HƯỚNG DẪN TRẢ LỜI:
                 type="button"
                 className="tfc-icon-btn"
                 onClick={() => setConfirmClearChat((v) => !v)}
-                title="Xóa lịch sử trò chuyện"
+                title="Làm mới cuộc trò chuyện"
               >
                 <IcoTrash size={15} />
               </button>
@@ -3732,7 +4200,7 @@ HƯỚNG DẪN TRẢ LỜI:
                 type="button"
                 className="tfc-icon-btn"
                 onClick={() => setIsOpen(false)}
-                title="Đóng con chat (Esc)"
+                title="Đóng trợ lý (Esc)"
               >
                 <IcoMinus size={16} />
               </button>
@@ -3740,52 +4208,20 @@ HƯỚNG DẪN TRẢ LỜI:
           </div>
 
           {confirmClearChat && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
-              padding: '8px 14px',
-              background: 'var(--t-warn-soft, rgba(217, 119, 6, 0.12))',
-              borderBottom: '1px solid rgba(217, 119, 6, 0.35)',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              color: 'var(--t-warn, #92400e)',
-            }}>
+            <div className="tfc-confirm-bar">
               <span>Làm mới lại cuộc trò chuyện này?</span>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="tfc-confirm-actions">
                 <button
                   type="button"
+                  className="tfc-confirm-cancel"
                   onClick={() => setConfirmClearChat(false)}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: 6,
-                    border: '1px solid var(--t-warn, #d97706)',
-                    background: 'var(--t-surface-0, #fff)',
-                    color: 'var(--t-warn, #92400e)',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
                 >
                   Hủy
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setMessages([messages[0]]);
-                    setConfirmClearChat(false);
-                  }}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: '#dc2626',
-                    color: '#fff',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
+                  className="tfc-confirm-ok"
+                  onClick={handleClearChat}
                 >
                   Xóa mới
                 </button>
@@ -3793,15 +4229,13 @@ HƯỚNG DẪN TRẢ LỜI:
             </div>
           )}
 
-          {/* ============================================================
-              CẢM BIẾN NGỮ CẢNH TAB THỜI GIAN THỰC (LIVE TAB RADAR SENSOR)
-              ============================================================ */}
+          {/* Cảm biến ngữ cảnh Tab thời gian thực (Nguồn số liệu đồng nhất duy nhất) */}
           <div className="tfc-context-radar">
             <div className="tfc-radar-left">
               <span className="tfc-radar-pulse" />
               <div className="tfc-radar-meta">
                 <span className="tfc-radar-title">Đang ở: <b>{currentTabInfo.shortName}</b></span>
-                <span className="tfc-radar-badge">{currentTabInfo.contextBadge}</span>
+                <span className="tfc-radar-badge" title={currentTabInfo.contextBadge}>{currentTabInfo.contextBadge}</span>
               </div>
             </div>
             <button
@@ -3814,948 +4248,87 @@ HƯỚNG DẪN TRẢ LỜI:
             </button>
           </div>
 
-          {/* Body tin nhắn */}
-          <div className="tfc-body">
-            {messages.map((m) => (
-              <div key={m.id} className={`tfc-msg ${m.sender}`}>
-                <div className="tfc-msg-avatar">
-                  {m.sender === 'bot' ? (
-                    <ElecMascot mood="happy" size={26} alt="ELEC AI" />
-                  ) : (
-                    'GV'
-                  )}
-                </div>
+          {/* Danh sách tin nhắn đã tách & memo hóa */}
+          <TeacherChatMessageList
+            messages={messages}
+            isTyping={isTyping}
+            typingStatus={typingStatus}
+            copiedId={copiedId}
+            speakingMsgId={speakingMsgId}
+            inferredSubject={inferredSubject}
+            user={user}
+            classes={classes}
+            linkedClasses={linkedClasses}
+            exams={exams}
+            bodyEndRef={bodyEndRef}
+            onCopyMessage={handleCopyMessage}
+            onSpeakText={speakText}
+            onStopGeneration={handleStopGeneration}
+            onRegenerateLast={handleRegenerateLast}
+            onExportNoteWord={handleExportNoteWord}
+            onQuickAction={handleQuickAction}
+            onOpenParentReport={handleOpenParentReport}
+            onStartWizardWithTopic={handleStartWizardWithTopic}
+            onSend={handleSend}
+            onNavigate={onNavigate}
+            onOpenSimulator={onOpenSimulator}
+            onCreateExam={onCreateExam}
+            onOpenImporter={onOpenImporter}
+            onSay={onSay}
+            onRunSimulation={handleRunSimulation}
+            onRunCognitiveRx={handleRunCognitiveRx}
+            onUpdateWizard={handleUpdateWizard}
+            onExecuteGenerateExam={handleExecuteGenerateExam}
+            onAiCompleteExam3Parts={handleAiCompleteExam3Parts}
+            onAiFillMissingAnswers={handleAiFillMissingAnswers}
+            onExportExamWord={handleExportExamWord}
+            onOpenWordEditor={handleOpenWordEditor}
+            onCreateClassDirectly={handleCreateClassDirectly}
+            getTopicsForSubjectAndGrade={getTopicsForSubjectAndGrade}
+          />
 
-                <div className="tfc-bubble">
-                  {/* Nút sao chép và đọc bằng giọng nói */}
-                  {m.sender === 'bot' && (
-                    <div className="tfc-bubble-actions">
-                      <button
-                        type="button"
-                        className="tfc-bubble-btn"
-                        onClick={() => handleCopyMessage(m.id, m.text)}
-                        title="Sao chép nội dung"
-                      >
-                        {copiedId === m.id ? (
-                          <span className="tfc-copied-chip"><IcoCheck size={11} /> Đã chép</span>
-                        ) : (
-                          <IcoCopy size={13} />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className={`tfc-bubble-btn ${speakingMsgId === m.id ? 'active' : ''}`}
-                        onClick={() => speakText(m.text, m.id)}
-                        title={speakingMsgId === m.id ? 'Dừng đọc' : 'Đọc bằng giọng Tiếng Việt'}
-                      >
-                        <IcoVolume size={13} />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="tfc-markdown-content">
-                    {m.sender === 'bot' ? (
-                      <MarkdownLike text={m.text} />
-                    ) : (
-                      <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{m.text}</p>
-                    )}
-                  </div>
-
-                  {/* Tóm tắt mở đầu */}
-                  {m.realSummary && (
-                    <div className="tfc-diag-chips" style={{ marginTop: '0.6rem' }}>
-                      <span className="tfc-diag-chip ok">{m.realSummary.classesCount} lớp học</span>
-                      <span className="tfc-diag-chip">{m.realSummary.examsCount} đề thi</span>
-                      <span className="tfc-diag-chip">{m.realSummary.submissionsCount} bài nộp</span>
-                    </div>
-                  )}
-
-                  {/* Preview file đính kèm */}
-                  {m.fileMeta && (
-                    <div className="tfc-file-preview-card">
-                      <div className="tfc-file-icon-badge">
-                        <IcoFileDoc size={18} />
-                      </div>
-                      <div className="tfc-file-info">
-                        <div className="tfc-file-name">{m.fileMeta.name}</div>
-                        <div className="tfc-file-sub">{m.fileMeta.size} · Đã phân tích qua examParser</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 1. ONE-COMMAND AGENT WORKFLOW CARD */}
-                  {m.agentWorkflow && (
-                    <div className="tfc-agent-card">
-                      <div className="tfc-agent-head">
-                        <span className="tfc-agent-title">
-                          <IcoBrain size={15} /> AI Agent Workflow
-                        </span>
-                        <span className="tfc-agent-badge">Tự Động 100%</span>
-                      </div>
-                      <div className="tfc-agent-steps">
-                        {m.agentWorkflow.steps.map((stText, sIdx) => (
-                          <div key={sIdx} className="tfc-agent-step done">
-                            <div className="tfc-agent-step-icon">
-                              <IcoCheck size={11} sw={2.2} />
-                            </div>
-                            <span>{stText}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="tfc-action-btn-row">
-                        <button
-                          type="button"
-                          className="tfc-btn-action"
-                          onClick={() => onNavigate?.('classes')}
-                        >
-                          <IcoArrowRight size={13} /> Xem đề trong lớp {m.agentWorkflow.targetClassName}
-                        </button>
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => handleRunSimulation(m.examData)}
-                        >
-                          <IcoTarget size={13} /> Thẩm định 100 học sinh ảo
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 2. VIRTUAL STUDENT EXAM SIMULATOR CARD */}
-                  {m.simResult && (
-                    <div className="tfc-sim-box">
-                      <div className="tfc-sim-head">
-                        <div>
-                          <div className="tfc-sim-score-big">{m.simResult.predAvg} <small style={{ fontSize: '0.8rem', color: 'var(--t-ink-2, #64748b)' }}>/ 10</small></div>
-                          <div className="tfc-sim-score-label">Điểm trung bình dự báo (100 học sinh ảo)</div>
-                        </div>
-                        <span className="tfc-diag-chip ok">{m.simResult.discrimIndex}</span>
-                      </div>
-
-                      {/* Biểu đồ phổ điểm hình chuông */}
-                      <div>
-                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--t-ink-2, #475569)', marginBottom: '4px' }}>
-                          Phổ điểm dự kiến:
-                        </div>
-                        <div className="tfc-bell-chart">
-                          {m.simResult.bins.map((b, bi) => (
-                            <div key={bi} className="tfc-bell-col">
-                              <span className="tfc-bell-n">{b.count}</span>
-                              <div className="tfc-bell-bar" style={{ height: `${Math.max(8, b.count * 1.3)}px` }} />
-                              <span className="tfc-bell-lbl">{b.label}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="tfc-sim-metrics">
-                        <div className="tfc-sim-metric-pill">
-                          <span className="tfc-sim-metric-val">{m.simResult.estMinutes} phút</span>
-                          <span className="tfc-sim-metric-lbl">{m.simResult.timeHealth.msg}</span>
-                        </div>
-                        <div className="tfc-sim-metric-pill">
-                          <span className="tfc-sim-metric-val">Khuyến nghị sư phạm</span>
-                          <span className="tfc-sim-metric-lbl">{m.simResult.advice}</span>
-                        </div>
-                      </div>
-
-                      <div className="tfc-action-btn-row">
-                        <button
-                          type="button"
-                          className="tfc-btn-action"
-                          onClick={() => onOpenSimulator?.(m.examData)}
-                        >
-                          <IcoShuffle size={13} /> Mở Trộn Đề Thi ngay
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 3. COGNITIVE ROOT-CAUSE DIAGNOSIS & PRESCRIPTION CARD */}
-                  {m.rxData && (
-                    <div className="tfc-rx-box">
-                      <div className="tfc-rx-head">
-                        <span>Đơn thuốc học tập cho {m.rxData.student}</span>
-                        <span>{m.rxData.topic}</span>
-                      </div>
-
-                      <div className="tfc-rx-layers">
-                        {m.rxData.layers.map((l, li) => (
-                          <div key={li} className="tfc-rx-layer-item">
-                            <span className="tfc-rx-layer-tag">{l.tag}</span>
-                            <span>{l.desc}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div style={{ marginTop: '4px', padding: '6px 8px', background: 'var(--t-surface-0, #ffffff)', borderRadius: 10, border: '1px solid rgba(217, 119, 6, 0.35)' }}>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--t-warn, #92400e)', marginBottom: '4px' }}>
-                          3 Bài tập đặc trị phục hồi:
-                        </div>
-                        {m.rxData.remedialQuestions.map((rq, ri) => (
-                          <div key={ri} style={{ fontSize: '0.74rem', color: 'var(--t-ink, #1e293b)', marginBottom: '4px' }}>
-                            <b>{rq.q}</b>
-                            <div style={{ color: 'var(--t-ok, #15803d)', fontSize: '0.7rem' }}>Đáp án: {rq.ans}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="tfc-action-btn-row">
-                        <button
-                          type="button"
-                          className="tfc-btn-action"
-                          onClick={async () => {
-                            try {
-                              const qList = (m.rxData.remedialQuestions || []).map((rq, idx) => ({
-                                id: `rx_q_${Date.now()}_${idx + 1}`,
-                                q: rq.q,
-                                options: (Array.isArray(rq.options) && rq.options.length === 4)
-                                  ? rq.options
-                                  : [
-                                      'A. ' + (rq.ans || 'Phương án đúng'),
-                                      'B. Phương án gây nhiễu 1',
-                                      'C. Phương án gây nhiễu 2',
-                                      'D. Phương án gây nhiễu 3',
-                                    ],
-                                correct: typeof rq.correct === 'number' ? rq.correct : 0,
-                                explain: rq.explain || `Kiến thức trọng tâm: ${rq.ans}`,
-                                level: idx === 0 ? 'NB' : idx === 1 ? 'TH' : 'VD',
-                                part: 1,
-                                type: 'single_choice',
-                                points: 1.0,
-                              }));
-                              const targetClassId = classes[0]?.id || linkedClasses?.[0]?.id || '';
-                              const rxExam = {
-                                id: 'rx_exam_' + Date.now(),
-                                title: `Đơn thuốc học tập: ${m.rxData.topic} (${m.rxData.student})`,
-                                subject: m.rxData.subject || inferredSubject || 'Hóa học',
-                                grade: String(classes[0]?.grade || linkedClasses?.[0]?.grade || '12'),
-                                classId: targetClassId,
-                                duration: 15,
-                                totalQuestions: qList.length,
-                                questions: qList,
-                              };
-                              await onCreateExam?.(rxExam);
-                              onSay?.(`Đã tạo và giao gói bài tập phục hồi cho ${m.rxData.student}!`, 'success');
-                            } catch (err) {
-                              onSay?.(`Lỗi khi tạo đề phục hồi: ${err?.message || err}`, 'error');
-                            }
-                          }}
-                        >
-                          Giao 3 câu phục hồi này cho em
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 4. INTERACTIVE EXAM CREATION WIZARD CARD */}
-                  {m.wizardData && (
-                    <div className="tfc-wizard-card">
-                      <div className="tfc-wizard-head">
-                        <span className="tfc-wizard-title">
-                          <IcoSparkles size={14} /> Chuyên Gia Soạn Đề GDPT 2025
-                        </span>
-                        <span className="tfc-wizard-badge">Tương tác trực tiếp</span>
-                      </div>
-
-                      {/* Bước 1: Môn học & Khối lớp */}
-                      <div className="tfc-wizard-sec">
-                        <span className="tfc-wizard-label">1. Môn học &amp; Khối lớp:</span>
-                        <div className="tfc-pill-row" style={{ marginBottom: 6 }}>
-                          {Array.from(new Set([inferredSubject, 'Hóa học', 'Toán học', 'Vật lí', 'Sinh học', 'Tiếng Anh'].filter(Boolean))).map((sub) => (
-                            <button
-                              key={sub}
-                              type="button"
-                              className={`tfc-pill-btn ${(m.wizardData.subject || inferredSubject || 'Hóa học') === sub ? 'active' : ''}`}
-                              onClick={() => handleUpdateWizard(m.wizardData.id, { subject: sub })}
-                            >
-                              {sub}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="tfc-pill-row">
-                          {['12', '11', '10'].map((gr) => (
-                            <button
-                              key={gr}
-                              type="button"
-                              className={`tfc-pill-btn ${(m.wizardData.grade || '12') === gr ? 'active' : ''}`}
-                              onClick={() => handleUpdateWizard(m.wizardData.id, { grade: gr })}
-                            >
-                              Khối {gr}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Bước 2: Hình thức đề & Thời lượng */}
-                      <div className="tfc-wizard-sec">
-                        <span className="tfc-wizard-label">2. Hình thức &amp; Thời lượng thi:</span>
-                        <div className="tfc-pill-row">
-                          <button
-                            type="button"
-                            className={`tfc-pill-btn ${m.wizardData.format === 'gdpt2025' ? 'active' : ''}`}
-                            onClick={() => handleUpdateWizard(m.wizardData.id, { format: 'gdpt2025' })}
-                          >
-                            Chuẩn GDPT 2025 (28 câu, 50p: 18 TN + 4 Đ/S + 6 TLN)
-                          </button>
-                          <button
-                            type="button"
-                            className={`tfc-pill-btn ${m.wizardData.format === '15min' ? 'active' : ''}`}
-                            onClick={() => handleUpdateWizard(m.wizardData.id, { format: '15min' })}
-                          >
-                            Kiểm tra 15 phút (10 câu: 6 TN + 2 Đ/S + 2 TLN)
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bước 3: Chuyên đề kiến thức */}
-                      <div className="tfc-wizard-sec">
-                        <span className="tfc-wizard-label">3. Chuyên đề kiến thức trọng tâm ({m.wizardData.subject || inferredSubject || 'Hóa học'} {m.wizardData.grade || '12'}):</span>
-                        <div className="tfc-pill-row">
-                          {getTopicsForSubjectAndGrade(m.wizardData.subject, m.wizardData.grade).map((tp) => (
-                            <button
-                              key={tp}
-                              type="button"
-                              className={`tfc-pill-btn ${m.wizardData.topic === tp ? 'active' : ''}`}
-                              onClick={() => handleUpdateWizard(m.wizardData.id, { topic: tp })}
-                            >
-                              {tp}
-                            </button>
-                          ))}
-                        </div>
-                        <input
-                          type="text"
-                          className="tfc-pill-input"
-                          style={{ marginTop: 4 }}
-                          placeholder="Hoặc gõ chuyên đề tùy chọn..."
-                          value={m.wizardData.topic || ''}
-                          onChange={(e) => handleUpdateWizard(m.wizardData.id, { topic: e.target.value })}
-                        />
-                      </div>
-
-                      {/* Bước 4: Ma trận nhận thức */}
-                      <div className="tfc-wizard-sec">
-                        <span className="tfc-wizard-label">4. Ma trận nhận thức:</span>
-                        <div className="tfc-pill-row">
-                          <button
-                            type="button"
-                            className={`tfc-pill-btn ${m.wizardData.matrix === 'standard' ? 'active' : ''}`}
-                            onClick={() => handleUpdateWizard(m.wizardData.id, { matrix: 'standard' })}
-                          >
-                            Chuẩn Bộ GD (40% NB - 30% TH - 20% VD - 10% VDC)
-                          </button>
-                          <button
-                            type="button"
-                            className={`tfc-pill-btn ${m.wizardData.matrix === 'remedial' ? 'active' : ''}`}
-                            onClick={() => handleUpdateWizard(m.wizardData.id, { matrix: 'remedial' })}
-                          >
-                            Củng cố học sinh yếu (60% NB - 40% TH)
-                          </button>
-                          <button
-                            type="button"
-                            className={`tfc-pill-btn ${m.wizardData.matrix === 'advanced' ? 'active' : ''}`}
-                            onClick={() => handleUpdateWizard(m.wizardData.id, { matrix: 'advanced' })}
-                          >
-                            Phân hóa 9+ (30% TH - 40% VD - 30% VDC)
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Nút Khởi động sinh đề */}
-                      <button
-                        type="button"
-                        className="tfc-wizard-launch-btn"
-                        onClick={() => handleExecuteGenerateExam(m.wizardData)}
-                      >
-                        <IcoBolt size={14} /> Bắt đầu biên soạn đề chuẩn 3 phần ngay
-                      </button>
-                    </div>
-                  )}
-
-                  {/* 5. BÁC SĨ CHẨN ĐOÁN & SỬA FILE WORD CARD */}
-                  {m.doctorData && (
-                    <div className="tfc-doctor-card">
-                      <div className="tfc-doctor-head">
-                        <span className="tfc-doctor-title">
-                          <IcoFileDoc size={15} /> Bác Sĩ Chẩn Đoán &amp; Sửa File Word
-                        </span>
-                        <span className="tfc-wizard-badge" style={{ background: 'var(--t-warn-soft, rgba(217, 119, 6, 0.14))', color: 'var(--t-warn, #b45309)', borderColor: 'rgba(217, 119, 6, 0.35)' }}>
-                          {m.doctorData.isCompliant ? 'Đạt chuẩn 3 phần' : 'Cần chuẩn hóa'}
-                        </span>
-                      </div>
-
-                      <div className="tfc-doctor-grid">
-                        <div className="tfc-doctor-box">
-                          <span className="tfc-doctor-box-n">{m.doctorData.part1}</span>
-                          <span className="tfc-doctor-box-lbl">Phần I (Nhiều lựa chọn)</span>
-                        </div>
-                        <div className={`tfc-doctor-box ${m.doctorData.part2 === 0 ? 'warn' : ''}`}>
-                          <span className="tfc-doctor-box-n">{m.doctorData.part2} / 4</span>
-                          <span className="tfc-doctor-box-lbl">Phần II (Đúng/Sai)</span>
-                        </div>
-                        <div className={`tfc-doctor-box ${m.doctorData.part3 === 0 ? 'warn' : ''}`}>
-                          <span className="tfc-doctor-box-n">{m.doctorData.part3} / 6</span>
-                          <span className="tfc-doctor-box-lbl">Phần III (Trả lời ngắn)</span>
-                        </div>
-                      </div>
-
-                      {!m.doctorData.isCompliant && (
-                        <div className="tfc-doctor-warn-banner">
-                          <b>Cảnh báo Bộ GD&ĐT:</b> File hiện chưa đủ 4 câu Phần II và 6 câu Phần III. Bấm nút bên dưới để AI tự động bổ sung đủ 28 câu cùng chuyên đề và xuất Word chuẩn.
-                        </div>
-                      )}
-
-                      <div className="tfc-action-btn-row">
-                        {!m.doctorData.isCompliant && (
-                          <button
-                            type="button"
-                            className="tfc-btn-action doctor"
-                            onClick={() => handleAiCompleteExam3Parts(m.examData)}
-                          >
-                            <IcoBolt size={13} /> AI Tự động hoàn thiện đủ 3 phần (28 câu)
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          style={{ background: '#185abd', color: '#ffffff', borderColor: '#185abd' }}
-                          onClick={() => {
-                            setWordEditorExam(m.examData);
-                            setWordEditorOpen(true);
-                          }}
-                          title="Chỉnh sửa trực quan trên trang giấy A4 giống Microsoft Word"
-                        >
-                          <IcoFileDoc size={13} /> Sửa trực quan như Word (A4)
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action download"
-                          onClick={() => handleExportExamWord(m.examData)}
-                        >
-                          <IcoDownload size={13} /> Tải File Word (.docx) Đã Sửa
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => onOpenSimulator?.(m.examData)}
-                        >
-                          <IcoShuffle size={13} /> Đưa vào Trộn Đề
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 6. AUDIT & PEDAGOGICAL PHÁN XÉT CARD */}
-                  {m.auditData && (
-                    <div className="tfc-audit-card">
-                      <div className="tfc-audit-head">
-                        <span className="tfc-audit-title">
-                          <IcoShieldCheck size={16} /> Giám Định Sư Phạm GDPT 2025
-                        </span>
-                        <div className="tfc-audit-badges">
-                          <span
-                            className={`tfc-audit-badge ${
-                              m.auditData.verdict.includes('ĐẠT')
-                                ? 'ok'
-                                : m.auditData.verdict.includes('HIỆU')
-                                ? 'warn'
-                                : 'danger'
-                            }`}
-                          >
-                            {m.auditData.verdict}
-                          </span>
-                          <span className="tfc-audit-badge level">{m.auditData.level}</span>
-                        </div>
-                      </div>
-
-                      <div className="tfc-audit-body">
-                        {m.auditData.analysis}
-                      </div>
-
-                      <div className="tfc-action-btn-row">
-                        <button
-                          type="button"
-                          className="tfc-btn-action"
-                          onClick={() => {
-                            handleSend(`Hãy soạn 3 câu hỏi trắc nghiệm tương tự cùng mức độ nhận thức ${m.auditData.level} và dạng bài với câu: ${m.auditData.rawQuery}`);
-                          }}
-                        >
-                          <IcoSparkles size={13} /> Tạo 3 câu biến thể tương tự
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => {
-                            navigator.clipboard?.writeText(m.auditData.analysis);
-                            onSay?.('Đã sao chép báo cáo giám định sư phạm vào bộ nhớ tạm!', 'success');
-                          }}
-                        >
-                          <IcoCheck size={13} /> Sao chép báo cáo
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => onNavigate?.('bank')}
-                        >
-                          <IcoExternal size={13} /> Mở Ngân hàng câu hỏi
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Thẻ đề thi */}
-                  {m.examData && !m.simResult && !m.agentWorkflow && !m.doctorData && !m.auditData && (
-                    <div className="tfc-diag-box">
-                      <div className="tfc-diag-row">
-                        <span>Đề: <b>{m.examData.title}</b></span>
-                        <span style={{ color: 'var(--t-ok, #15803d)' }}>Chuẩn GDPT 2025</span>
-                      </div>
-
-                      <div className="tfc-diag-chips">
-                        <span className="tfc-diag-chip ok">
-                          Tổng số: {m.examData.questions?.length || 0} câu
-                        </span>
-                        {m.diag && (
-                          <>
-                            <span className="tfc-diag-chip">Phần I: {m.diag.part1} câu</span>
-                            <span className="tfc-diag-chip">Phần II: {m.diag.part2} câu</span>
-                            <span className="tfc-diag-chip">Phần III: {m.diag.part3} câu</span>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="tfc-action-btn-row">
-                        <button
-                          type="button"
-                          className="tfc-btn-action download"
-                          onClick={() => handleExportExamWord(m.examData)}
-                          title="Tải file Word (.docx) chuẩn 3 phần"
-                        >
-                          <IcoDownload size={13} /> Tải File Word (.docx) Chuẩn 3 Phần
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action"
-                          onClick={() => handleRunSimulation(m.examData)}
-                        >
-                          <IcoTarget size={13} /> Thẩm định 100 học sinh ảo
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => onOpenSimulator?.(m.examData)}
-                        >
-                          <IcoShuffle size={13} /> Đưa vào Trộn Đề
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => onCreateExam?.(m.examData)}
-                        >
-                          <IcoSave size={13} /> Lưu vào Kho Đề
-                        </button>
-
-                        <button
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => onOpenImporter?.()}
-                        >
-                          <IcoExternal size={13} /> Mở Trình Nhập Đề Nâng Cao
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Danh sách học sinh yếu với nút kê đơn */}
-                  {m.realAtRisk && (
-                    <div style={{ marginTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {m.realAtRisk.map((st, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            padding: '0.55rem 0.75rem',
-                            borderRadius: '12px',
-                            background: 'var(--t-bad-soft, rgba(239, 68, 68, 0.14))',
-                            border: '1px solid rgba(239, 68, 68, 0.35)',
-                            fontSize: '0.78rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 700, color: 'var(--t-ink, #0f172a)' }}>{st.studentName}</div>
-                            <div style={{ color: 'var(--t-bad, #be123c)', fontSize: '0.72rem' }}>
-                              Điểm đạt: {st.pct}% {st.subCount ? `(${st.subCount} bài nộp)` : ''}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            className="tfc-btn-action"
-                            style={{ padding: '3px 8px', fontSize: '0.68rem' }}
-                            onClick={() => handleRunCognitiveRx(
-                              st.studentName,
-                              m.realWeakest?.[0]?.topic
-                                || getTopicsForSubjectAndGrade(
-                                  inferredSubject || 'Hóa học',
-                                  String(classes[0]?.grade || linkedClasses?.[0]?.grade || '12')
-                                )[0]
-                                || 'Kiến thức trọng tâm'
-                            )}
-                          >
-                            <IcoBrain size={11} /> Kê đơn phục hồi
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Danh sách học sinh xuất sắc/thủ khoa */}
-                  {m.topStudents && (
-                    <div style={{ marginTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {m.topStudents.map((st, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            padding: '0.55rem 0.75rem',
-                            borderRadius: '12px',
-                            background: 'var(--t-ok-soft, rgba(16, 185, 129, 0.14))',
-                            border: '1px solid rgba(16, 185, 129, 0.35)',
-                            fontSize: '0.78rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 700, color: 'var(--t-ink, #0f172a)' }}>
-                              #{idx + 1} {st.studentName}
-                            </div>
-                            <div style={{ color: 'var(--t-ok, #15803d)', fontSize: '0.72rem' }}>
-                              Điểm đạt: {st.pct}% {st.subCount ? `(${st.subCount} bài làm)` : ''}
-                            </div>
-                          </div>
-                          <span className="tfc-diag-chip ok" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
-                            {st.pct >= 90 ? 'Xuất sắc' : 'Giỏi'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Cảnh báo vi phạm LIVE */}
-                  {m.realAlerts && (
-                    <div style={{ marginTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {m.realAlerts.map((al, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            padding: '0.6rem 0.75rem',
-                            borderRadius: '12px',
-                            background: al.severity === 'Nghiêm trọng' ? 'var(--t-bad-soft, rgba(239, 68, 68, 0.14))' : 'var(--t-warn-soft, rgba(245, 158, 11, 0.14))',
-                            border: `1px solid ${al.severity === 'Nghiêm trọng' ? 'rgba(239, 68, 68, 0.38)' : 'rgba(245, 158, 11, 0.38)'}`,
-                            fontSize: '0.78rem',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                            <span style={{ color: 'var(--t-ink, #0f172a)' }}>{al.name}</span>
-                            <span style={{ color: al.severity === 'Nghiêm trọng' ? 'var(--t-bad, #e11d48)' : 'var(--t-warn, #ca8a04)', fontWeight: 800 }}>
-                              {al.severity} ({al.count} lần)
-                            </span>
-                          </div>
-                          <div style={{ color: 'var(--t-ink-2, #475569)', fontSize: '0.72rem', marginTop: '2px' }}>
-                            Hành vi: {al.lastViolation}
-                          </div>
-
-                          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-                            <button
-                              type="button"
-                              className="tfc-btn-action danger"
-                              style={{ padding: '4px 8px', fontSize: '0.7rem' }}
-                              onClick={async () => {
-                                if (!al.sessionId) {
-                                  onSay?.('Chưa xác định được phòng thi của học sinh này.', 'error');
-                                  return;
-                                }
-                                try {
-                                  await warnStudent({
-                                    sessionId: al.sessionId,
-                                    studentId: al.studentId,
-                                    message: 'Cảnh báo Giám thị: Em hãy tập trung quay lại màn hình làm bài!',
-                                  });
-                                  onSay?.(`Đã gửi nhắc nhở trực tiếp tới ${al.name}!`, 'info');
-                                } catch (err) {
-                                  onSay?.('Không gửi được nhắc nhở: ' + (err?.message || err), 'error');
-                                }
-                              }}
-                            >
-                              Gửi nhắc nhở
-                            </button>
-                            <button
-                              type="button"
-                              className="tfc-btn-action sec"
-                              style={{ padding: '4px 8px', fontSize: '0.7rem' }}
-                              onClick={async () => {
-                                if (!al.sessionId) {
-                                  onSay?.('Chưa xác định được phòng thi của học sinh này.', 'error');
-                                  return;
-                                }
-                                try {
-                                  await setStudentPaused({
-                                    sessionId: al.sessionId,
-                                    studentId: al.studentId,
-                                    paused: true,
-                                  });
-                                  onSay?.(`Đã tạm dừng bài thi của ${al.name}!`, 'warn');
-                                } catch (err) {
-                                  onSay?.('Không tạm dừng được bài thi: ' + (err?.message || err), 'error');
-                                }
-                              }}
-                            >
-                              Tạm dừng thi
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Nút điều hướng */}
-                  {m.navSuggestions && (
-                    <div className="tfc-action-btn-row">
-                      {m.navSuggestions.map((btn, bIdx) => (
-                        <button
-                          key={bIdx}
-                          type="button"
-                          className="tfc-btn-action sec"
-                          onClick={() => {
-                            if (btn.query) {
-                              handleSend(btn.query);
-                              return;
-                            }
-                            if (btn.sec) onNavigate?.(btn.sec);
-                            if (btn.action === 'importer') onOpenImporter?.();
-                            if (btn.action === 'simulator') onOpenSimulator?.();
-                            if (btn.action === 'rx') handleRunCognitiveRx(btn.studentName, btn.topic);
-                            if (btn.action === 'pick_file') fileInputRef.current?.click();
-                            if (btn.action === 'start_wizard') handleStartExamWizard();
-                            if (btn.action === 'word_editor') {
-                              setWordEditorExam((prev) => prev || (exams && exams[0]) || null);
-                              setWordEditorOpen(true);
-                            }
-                            if (btn.action === 'export_lesson_plan') {
-                              exportLessonPlanDocx({
-                                title: btn.title || 'Ke-Hoach-Bai-Day-5512',
-                                content: btn.content || '',
-                                teacherName: user?.displayName || user?.email || 'Thầy/Cô',
-                                schoolName: user?.schoolName || 'TRƯỜNG THPT',
-                                subject: btn.subject || '',
-                                grade: btn.grade || '',
-                              });
-                            }
-                            if (btn.action === 'export_matrix') {
-                              exportMatrixDocx({
-                                title: btn.title || 'Khung-Ma-Tran-Dac-Ta-2025',
-                                content: btn.content || '',
-                                subject: btn.subject || '',
-                                grade: btn.grade || '',
-                                schoolName: user?.schoolName || 'TRƯỜNG THPT',
-                              });
-                            }
-                            if (btn.action === 'create_class') {
-                              handleCreateClassDirectly(btn.className);
-                            }
-                            if (btn.action === 'query_class') {
-                              handleSend(`tổng quan lớp ${btn.className}`);
-                            }
-                          }}
-                        >
-                          <IcoArrowRight size={13} /> {btn.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <span className="tfc-time">{m.time}</span>
-                </div>
+          {/* Thanh gợi ý nhanh gọn theo ngữ cảnh Tab (không lặp nút Phân tích tab) */}
+          {(currentTabInfo.quickChips || []).length > 0 && (
+            <div className="tfc-quick-chips-wrap">
+              <div className="tfc-quick-chips">
+                {(currentTabInfo.quickChips || []).map((qc, qIdx) => (
+                  <button
+                    key={'tc_' + qIdx}
+                    type="button"
+                    className={`tfc-chip ${qIdx === 0 ? 'tone-emerald' : ''}`}
+                    onClick={() => {
+                      if (qc.action) handleQuickAction(qc.action);
+                      else if (qc.query) handleSend(qc.query);
+                    }}
+                  >
+                    {qc.label}
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+          )}
 
-            {isTyping && (
-              <div className="tfc-msg bot">
-                <div className="tfc-msg-avatar">
-                  <IcoSparkles size={14} />
-                </div>
-                <div className="tfc-bubble">
-                  <div className="tfc-typing-dots">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={bodyEndRef} />
-          </div>
-
-          {/* Thanh gợi ý nhanh theo Tab Ngữ Cảnh */}
-          <div className="tfc-quick-chips">
-            {/* Nút hành động trực tiếp theo Tab hiện tại */}
-            <button
-              type="button"
-              className="tfc-chip primary"
-              style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #312e81 100%)', color: '#ffffff', borderColor: '#4338ca' }}
-              onClick={handleAnalyzeCurrentTab}
-            >
-              <IcoSparkles size={12} /> Phân tích tab {currentTabInfo.shortName}
-            </button>
-
-            {(currentTabInfo.quickChips || []).map((qc, qIdx) => (
-              <button
-                key={'tc_' + qIdx}
-                type="button"
-                className="tfc-chip tone-emerald"
-                onClick={() => {
-                  if (qc.action === 'start_wizard') handleStartExamWizard();
-                  else if (qc.action === 'word_editor') {
-                    setWordEditorExam((prev) => prev || (exams && exams[0]) || null);
-                    setWordEditorOpen(true);
-                  } else if (qc.action === 'pick_file') {
-                    fileInputRef.current?.click();
-                  } else if (qc.query) {
-                    handleSend(qc.query);
-                  }
-                }}
-              >
-                {qc.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="tfc-chip primary"
-              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #4338ca 100%)', color: '#ffffff', borderColor: '#3b82f6' }}
-              onClick={() => handleStartExamWizard()}
-            >
-              <IcoSparkles size={12} /> Soạn đề chuẩn 3 phần GDPT 2025
-            </button>
-            <button
-              type="button"
-              className="tfc-chip tone-emerald"
-              onClick={() => {
-                setInput('Thẩm định & phán xét câu hỏi GDPT 2025: ');
-                inputRef.current?.focus();
-              }}
-            >
-              <IcoShieldCheck size={12} /> Thẩm định &amp; Phán xét câu hỏi
-            </button>
-            <button
-              type="button"
-              className="tfc-chip"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <IcoFileDoc size={12} /> Bác sĩ sửa file Word (.docx)
-            </button>
-            <button
-              type="button"
-              className="tfc-chip tone-blue"
-              onClick={() => {
-                setWordEditorExam((prev) => prev || (exams && exams[0]) || null);
-                setWordEditorOpen(true);
-              }}
-            >
-              <IcoFileDoc size={12} /> Sửa đề giống Word (A4)
-            </button>
-            <button
-              type="button"
-              className="tfc-chip"
-              onClick={() => handleSend('Soạn 1 đề kiểm tra 15 phút phần Este rồi giao ngay cho lớp')}
-            >
-              <IcoBrain size={12} /> Ra lệnh tự động giao đề
-            </button>
-            <button
-              type="button"
-              className="tfc-chip"
-              onClick={() => handleSend('Lớp nào đang có học sinh điểm dưới 5.0?')}
-            >
-              Kê đơn cho học sinh yếu
-            </button>
-            <button
-              type="button"
-              className="tfc-chip"
-              onClick={() => handleSend('Phòng thi trực tiếp hiện có ai vi phạm không?')}
-            >
-              Kiểm tra thi LIVE
-            </button>
-          </div>
-
-          {/* Footer Input */}
-          <div className="tfc-footer">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="tfc-input-container"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".docx,.pdf,.txt"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleProcessRealFile(e.target.files[0]);
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="tfc-attach-btn"
-                onClick={() => fileInputRef.current?.click()}
-                title="Đính kèm file Word (.docx) hoặc PDF đề thi"
-              >
-                <IcoPlus size={16} />
-              </button>
-
-              <input
-                ref={inputRef}
-                type="text"
-                className="tfc-input"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ra lệnh tự động (VD: Soạn đề Este giao cho lớp)..."
-              />
-
-              {/* Nút Mic giọng nói */}
-              <button
-                type="button"
-                className={`tfc-mic-btn ${isRecording ? 'recording' : ''}`}
-                onClick={toggleMic}
-                title={isRecording ? 'Đang nghe... bấm để dừng' : 'Nói vào micro'}
-              >
-                <IcoMic size={15} />
-              </button>
-
-              <button
-                type="submit"
-                className="tfc-send-btn"
-                disabled={!input.trim() || isTyping}
-                title="Gửi lệnh"
-              >
-                <IcoSend size={15} />
-              </button>
-            </form>
-          </div>
+          {/* Khung nhập liệu tự giãn + Ảnh đề bài (Vision/Ctrl+V) + 4 Chế độ AI + Slash Commands */}
+          <TeacherChatComposer
+            input={input}
+            setInput={setInput}
+            inputRef={inputRef}
+            fileInputRef={fileInputRef}
+            imageInputRef={imageInputRef}
+            aiMode={aiMode}
+            onChangeAiMode={setAiMode}
+            pendingImage={pendingImage}
+            onImageSelected={handleImageSelected}
+            onClearPendingImage={() => setPendingImage(null)}
+            isTyping={isTyping}
+            isRecording={isRecording}
+            inferredSubject={inferredSubject}
+            onSubmit={(promptOverride) => handleSend(promptOverride)}
+            onStopGeneration={handleStopGeneration}
+            onToggleMic={toggleMic}
+            onFileSelected={handleProcessRealFile}
+            onRunSlashCommand={handleRunSlashCommand}
+          />
         </div>
       )}
       {/* ============================================================

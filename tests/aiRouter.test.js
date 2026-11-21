@@ -171,7 +171,7 @@ describe('buildProviderChain', () => {
       task: { kind: 'problem', hard: true },
       rings: rings('key_gemini123456', 'key_groq12345678', 'key_agnes12345678'),
     });
-    expect(chain[0].id).toBe('agnes');
+    expect(chain[0].id).toBe('gemini');
     expect(chain.map((c) => c.id)).toContain('gemini');
   });
 

@@ -12,6 +12,7 @@ import { builtinQuestions, BUILTIN_TOPICS } from './roadmapExercises.js';
 import {
   PHYSICS_EXAM_QUESTIONS_1,
   BIOLOGY_EXAM_QUESTIONS_1,
+  BIOLOGY_EXAM_2026_OFFICIAL,
   KHTN_INTEGRATED_QUESTIONS_1,
 } from './scienceExamQuestions.js';
 
@@ -91,6 +92,25 @@ export const VIRTUAL_EXAMS = [
     gradeScope: 'all',
     variants: ['201', '202'],
     questions: BIOLOGY_EXAM_QUESTIONS_1,
+  },
+  {
+    id: 'official-sinh-thpt-2026-0435',
+    subject: 'sinh',
+    year: 2026,
+    tier: 'FREE',
+    isHot: true,
+    examType: 'THPTQG',
+    sourceType: 'official',
+    badgeLabel: 'ĐỀ CHÍNH THỨC 2026',
+    title: 'Đề thi chính thức Tốt nghiệp THPT 2026 môn Sinh học - Mã đề 0435 & Chuyên KHTN (Bộ Tài liệu ELEC AI)',
+    attemptsCount: 4620,
+    questionCount: 28,
+    durationMinutes: 50,
+    author: 'Bộ GD&ĐT · Hệ thống Học liệu Sinh học ELEC AI',
+    institution: 'Bộ Giáo dục & Đào tạo — THPT Chuyên KHTN',
+    gradeScope: 'all',
+    variants: ['0435', '0261'],
+    questions: BIOLOGY_EXAM_2026_OFFICIAL,
   },
   {
     id: 'vip-sinh-hsa-2027-01',

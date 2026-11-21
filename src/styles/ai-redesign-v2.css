@@ -1,0 +1,3445 @@
+/* ============================================================
+   ai-redesign-v2.css — Giao diện ELEC AI chuẩn Google Gemini
+   - Sidebar thu gọn kiểu Gemini Mini-Rail (68px ↔ 272px) cực mượt
+   - Nền Charcoal #131314 (Dark) / Trắng tinh #ffffff (Light) sạch tĩnh lặng
+   - Header siêu tối giản không đường kẻ thô, Popover z-index chuẩn
+   - Empty State căn giữa theo chuẩn Gemini: Chào gradient + Composer 2 tầng
+     ở chính giữa + 4 pill gợi ý gọn ngay dưới khung nhập
+   - Tuyệt đối 0 viền kép, hỗ trợ Slash Command "/", Responsive mượt
+   ============================================================ */
+
+/* ── 1. GEMINI CANVAS PALETTE (LIGHT & DARK — TĨNH LẶNG CHUẨN GOOGLE GEMINI) ── */
+body.on-ai-page .ds-page {
+  background: #ffffff !important;
+  color: #1f1f1f;
+}
+
+body.on-ai-page .ds-page::before,
+body.on-ai-page .ds-page .ds-bg,
+body.on-ai-page .ds-page .ds-live-bg {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page,
+[data-theme='dark'] .ds-page {
+  background: #131314 !important;
+  color: #e3e3e3;
+}
+
+/* ── 2. GEMINI SLIM-RAIL SIDEBAR (68PX THU GỌN ↔ 268PX MỞ RỘNG) ── */
+@media (min-width: 901px) {
+  body.on-ai-page .ds-page {
+    display: flex !important;
+  }
+
+  body.on-ai-page .ds-page .ds-sidebar {
+    width: 268px !important;
+    min-width: 268px !important;
+    max-width: 268px !important;
+    flex: 0 0 268px !important;
+    background: #f0f4f9 !important;
+    border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
+    padding: 12px 12px 14px !important;
+    transition: width 0.24s cubic-bezier(0.2, 0, 0, 1), min-width 0.24s cubic-bezier(0.2, 0, 0, 1), max-width 0.24s cubic-bezier(0.2, 0, 0, 1), flex-basis 0.24s cubic-bezier(0.2, 0, 0, 1), padding 0.24s ease !important;
+    overflow: hidden !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page .ds-sidebar {
+    background: #1e1f20 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  /* Trạng thái thu gọn thành thanh Mini-Rail ĐÚNG 68px cực đẹp chuẩn Gemini */
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    flex: 0 0 68px !important;
+    padding: 12px 8px 14px !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-content {
+    margin-left: 0 !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: calc(100% - 68px) !important;
+    max-width: none !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .gm-sb-head {
+    justify-content: center !important;
+    padding: 2px 0 8px !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .gm-sb-lbl,
+  body.on-ai-page .ds-page.is-sidebar-collapsed .gm-sb-title,
+  body.on-ai-page .ds-page.is-sidebar-collapsed .cg-spacer,
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-user-info,
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-user-btn > svg:last-child {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .gm-sb-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .gm-new-pill,
+  body.on-ai-page .ds-page.is-sidebar-collapsed .gm-nav-pill {
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    justify-content: center !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-user-wrap {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    padding: 8px 0 0 !important;
+    background: transparent !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-user-btn {
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    justify-content: center !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-user-menu {
+    left: 62px !important;
+    bottom: 8px !important;
+    width: 248px !important;
+  }
+}
+
+.gm-sb-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 2px 4px 10px !important;
+}
+
+.gm-sb-title {
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #1f1f1f;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .gm-sb-title { color: #e3e3e3; }
+
+.gm-rail-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #444746;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.gm-rail-btn:hover {
+  background: rgba(15, 23, 42, 0.08);
+  color: #1f1f1f;
+}
+
+[data-theme='dark'] .gm-rail-btn { color: #c4c7c5; }
+[data-theme='dark'] .gm-rail-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+}
+
+.gm-sb-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.gm-new-pill {
+  height: 42px !important;
+  border-radius: 999px !important;
+  padding: 0 15px !important;
+  background: #dde3ea !important;
+  color: #1f1f1f !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  border: none !important;
+  transition: background 0.15s ease !important;
+}
+
+.gm-new-pill:hover {
+  background: #d3dbe5 !important;
+}
+
+[data-theme='dark'] .gm-new-pill {
+  background: #282a2c !important;
+  color: #e3e3e3 !important;
+}
+
+[data-theme='dark'] .gm-new-pill:hover {
+  background: #333537 !important;
+}
+
+.gm-nav-pill {
+  height: 40px !important;
+  border-radius: 999px !important;
+  padding: 0 14px !important;
+  font-size: 0.83rem !important;
+  font-weight: 600 !important;
+  color: #444746 !important;
+  background: transparent !important;
+}
+
+.gm-nav-pill:hover {
+  background: rgba(15, 23, 42, 0.06) !important;
+  color: #1f1f1f !important;
+}
+
+[data-theme='dark'] .gm-nav-pill { color: #c4c7c5 !important; }
+[data-theme='dark'] .gm-nav-pill:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #ffffff !important;
+}
+
+.ds-user-tier-name {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-user-menu-tier {
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+}
+
+.ds-user-menu-tier .ds-tier-badge {
+  white-space: nowrap !important;
+}
+
+/* ── 3. GEMINI ULTRA-CLEAN HEADER (KHÔNG ĐƯỜNG KẺ THÔ, Z-INDEX CHUẨN) ── */
+.ds-header.gm-header {
+  position: relative !important;
+  z-index: 250 !important;
+  overflow: visible !important;
+  padding: 10px 20px !important;
+  min-height: 58px !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
+}
+
+.ds-header-inner {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  width: 100% !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+}
+
+.ai2-head-left,
+.ai2-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai2-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai2-brand-name {
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: #1f1f1f;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .ai2-brand-name { color: #e3e3e3; }
+
+.ai2-mode-wrap { position: relative; }
+
+.ai2-mode-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f0f4f9;
+  color: #444746;
+  font-family: inherit;
+  font-size: 0.79rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ai2-mode-trigger:hover,
+.ai2-mode-trigger.open {
+  background: #e3eaf3;
+  color: #1f1f1f;
+}
+
+[data-theme='dark'] .ai2-mode-trigger {
+  background: #1e1f20;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #c4c7c5;
+}
+
+[data-theme='dark'] .ai2-mode-trigger:hover,
+[data-theme='dark'] .ai2-mode-trigger.open {
+  background: #282a2c;
+  color: #ffffff;
+}
+
+.ai2-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #1a73e8;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .ai2-status-dot { background: #8ab4f8; }
+.ai2-status-dot.busy {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.28);
+}
+
+.ai2-popover {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 0;
+  z-index: 300 !important;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai2-popover.align-right {
+  left: auto;
+  right: 0;
+  width: 256px;
+}
+
+.ai2-pop-head {
+  padding: 6px 11px 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.ai2-pop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #1f1f1f;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.ai2-pop-item:hover { background: #f0f4f9; }
+.ai2-pop-item.active { background: #e8f0fe; color: #1967d2; }
+.ai2-pop-item.danger { color: #d93025; }
+
+.ai2-pop-item-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ai2-pop-item-txt b { font-size: 0.82rem; font-weight: 700; }
+.ai2-pop-item-txt small { font-size: 0.71rem; color: #5f6368; line-height: 1.3; }
+.ai2-pop-sep { height: 1px; background: rgba(15, 23, 42, 0.08); margin: 4px 8px; }
+.ai2-pop-foot { padding: 6px 12px 4px; font-size: 0.72rem; color: #5f6368; margin: 0; }
+
+.ai2-vip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: #f0f4f9;
+  border: 1px solid rgba(245, 158, 11, 0.32) !important;
+  color: #b45309 !important;
+  font-size: 0.73rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ai2-credit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(26, 115, 232, 0.2) !important;
+  background: #e8f0fe !important;
+  color: #1967d2 !important;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ai2-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #444746;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.ai2-icon-btn:hover {
+  background: rgba(15, 23, 42, 0.07);
+  color: #1f1f1f;
+}
+
+.ai2-icon-btn.on {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+/* ── 4. GEMINI CENTERED EMPTY STAGE (HERO + COMPOSER NẰM GIỮA MÀN HÌNH!) ── */
+.ds-stage-split {
+  position: relative;
+  z-index: 1;
+}
+
+.ds-stage-chat.is-gm-empty {
+  justify-content: center !important;
+  align-items: center !important;
+  padding-bottom: 6vh !important;
+}
+
+.ds-stage-chat.is-gm-empty .ds-main-empty {
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+  padding: 0 20px 24px !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.ds-stage-chat.is-gm-empty .ds-input-wrap {
+  width: 100% !important;
+  padding-top: 0 !important;
+  background: transparent !important;
+  border-top: none !important;
+}
+
+.gm-hero {
+  max-width: 760px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  gap: 6px !important;
+  padding: 0 6px !important;
+}
+
+.gm-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.08rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #1a73e8 0%, #8b5cf6 52%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-theme='dark'] .gm-hero-eyebrow {
+  background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 52%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.gm-hero-title {
+  margin: 0 !important;
+  font-size: clamp(1.9rem, 3.2vw, 2.55rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.18 !important;
+  color: #1f1f1f !important;
+}
+
+[data-theme='dark'] .gm-hero-title {
+  color: #e3e3e3 !important;
+}
+
+.gm-hero-sub {
+  margin: 4px 0 0 !important;
+  font-size: 0.88rem !important;
+  color: #5f6368 !important;
+}
+
+[data-theme='dark'] .gm-hero-sub {
+  color: #9aa0a6 !important;
+}
+
+/* ── 5. GEMINI 2-ROW COMPOSER BOX (BO 28PX, RỘNG CHUẨN 760PX, 0 VIỀN KÉP) ── */
+body.on-ai-page .ds-page .ds-input-inner,
+.ds-input-inner {
+  max-width: 760px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+}
+
+body.on-ai-page .ds-page .ds-header.gm-header {
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+body.on-ai-page .ds-page .ds-header-inner {
+  max-width: 100% !important;
+  padding: 0 6px !important;
+}
+
+.ds-input-bar.gm-composer {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 14px 16px 10px !important;
+  border-radius: 28px !important;
+  background: #f0f4f9 !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+.ds-input-bar.gm-composer:focus-within {
+  background: #ffffff !important;
+  border-color: rgba(26, 115, 232, 0.36) !important;
+  box-shadow: 0 8px 30px rgba(26, 115, 232, 0.11) !important;
+}
+
+[data-theme='dark'] .ds-input-bar.gm-composer {
+  background: #1e1f20 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.34) !important;
+}
+
+[data-theme='dark'] .ds-input-bar.gm-composer:focus-within {
+  background: #232527 !important;
+  border-color: rgba(138, 180, 248, 0.42) !important;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.48) !important;
+}
+
+.gm-composer-top {
+  width: 100%;
+}
+
+.ds-input-bar.gm-composer textarea.gm-textarea,
+.ds-input-bar.gm-composer textarea.gm-textarea:focus,
+.ds-input-bar.gm-composer textarea.gm-textarea:focus-visible {
+  width: 100% !important;
+  min-height: 36px !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 2px 6px !important;
+  font-size: 0.96rem !important;
+  line-height: 1.5 !important;
+  color: #1f1f1f !important;
+}
+
+[data-theme='dark'] .ds-input-bar.gm-composer textarea.gm-textarea {
+  color: #e3e3e3 !important;
+}
+
+[data-theme='dark'] .ds-input-bar.gm-composer textarea.gm-textarea::placeholder {
+  color: #9aa0a6 !important;
+}
+
+.gm-composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gm-composer-left,
+.gm-composer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gm-tool-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #444746;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.gm-tool-circle:hover {
+  background: rgba(15, 23, 42, 0.08);
+  color: #1f1f1f;
+}
+
+.gm-tool-circle.on {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+.gm-tool-circle.rec {
+  background: rgba(234, 67, 53, 0.16);
+  color: #ea4335;
+}
+
+.gm-tool-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #444746;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.gm-tool-pill:hover {
+  background: rgba(15, 23, 42, 0.07);
+  color: #1f1f1f;
+}
+
+.gm-send-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+}
+
+/* ── 6. 4 PILL GỢI Ý GỌN KIỂU GEMINI NGAY DƯỚI COMPOSER ── */
+.gm-empty-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.gm-pill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f0f4f9;
+  color: #1f1f1f;
+  font-family: inherit;
+  font-size: 0.81rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.14s ease, border-color 0.15s ease;
+}
+
+.gm-pill-chip:hover {
+  background: #e3eaf3;
+  transform: translateY(-1px);
+}
+
+.gm-pill-chip.is-highlight {
+  background: #e8f0fe;
+  border-color: rgba(26, 115, 232, 0.24);
+  color: #1967d2;
+}
+
+.gm-pill-refresh {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: transparent;
+  color: #5f6368;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s ease, transform 0.25s ease;
+}
+
+.gm-pill-refresh:hover {
+  background: #f0f4f9;
+  transform: rotate(90deg);
+}
+
+/* ── 7. SLASH COMMAND "/" POPUP ── */
+.ai2-slash-menu {
+  margin-bottom: 10px;
+  padding: 6px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.ai2-slash-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #1f1f1f;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.ai2-slash-item:hover { background: #f0f4f9; }
+
+.ai2-slash-cmd {
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: #e8f0fe;
+  color: #1967d2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ai2-slash-item span { font-size: 0.78rem; color: #5f6368; font-weight: 600; }
+
+/* ── 8. DARK MODE GEMINI POLISH ── */
+[data-theme='dark'] .ai2-popover,
+[data-theme='dark'] .ai2-slash-menu {
+  background: #1e1f20;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.56);
+}
+
+[data-theme='dark'] .ai2-pop-item,
+[data-theme='dark'] .ai2-slash-item { color: #e3e3e3; }
+[data-theme='dark'] .ai2-pop-item:hover,
+[data-theme='dark'] .ai2-slash-item:hover { background: #282a2c; }
+[data-theme='dark'] .ai2-pop-item.active { background: rgba(138, 180, 248, 0.16); color: #8ab4f8; }
+[data-theme='dark'] .ai2-pop-item-txt small,
+[data-theme='dark'] .ai2-pop-head,
+[data-theme='dark'] .ai2-pop-foot,
+[data-theme='dark'] .ai2-slash-item span { color: #9aa0a6; }
+[data-theme='dark'] .ai2-pop-sep { background: rgba(255, 255, 255, 0.08); }
+
+[data-theme='dark'] .ai2-vip-pill {
+  background: #1e1f20;
+  border-color: rgba(251, 191, 36, 0.34) !important;
+  color: #fde68a !important;
+}
+
+[data-theme='dark'] .ai2-credit-pill {
+  background: rgba(138, 180, 248, 0.14) !important;
+  border-color: rgba(138, 180, 248, 0.28) !important;
+  color: #8ab4f8 !important;
+}
+
+[data-theme='dark'] .ai2-icon-btn,
+[data-theme='dark'] .gm-tool-circle,
+[data-theme='dark'] .gm-tool-pill { color: #c4c7c5; }
+
+[data-theme='dark'] .ai2-icon-btn:hover,
+[data-theme='dark'] .gm-tool-circle:hover,
+[data-theme='dark'] .gm-tool-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+[data-theme='dark'] .ai2-icon-btn.on,
+[data-theme='dark'] .gm-tool-circle.on {
+  background: rgba(138, 180, 248, 0.18);
+  color: #8ab4f8;
+}
+
+[data-theme='dark'] .gm-pill-chip {
+  background: #1e1f20;
+  border-color: rgba(255, 255, 255, 0.09);
+  color: #e3e3e3;
+}
+
+[data-theme='dark'] .gm-pill-chip:hover {
+  background: #282a2c;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+[data-theme='dark'] .gm-pill-chip.is-highlight {
+  background: rgba(138, 180, 248, 0.14);
+  border-color: rgba(138, 180, 248, 0.3);
+  color: #a8c7fa;
+}
+
+[data-theme='dark'] .gm-pill-refresh {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #9aa0a6;
+}
+
+[data-theme='dark'] .gm-pill-refresh:hover { background: #282a2c; color: #ffffff; }
+[data-theme='dark'] .ai2-slash-cmd { background: rgba(138, 180, 248, 0.16); color: #8ab4f8; }
+
+/* ── 9. RESPONSIVE (TABLET 820PX & MOBILE) ── */
+@media (max-width: 900px) {
+  .ai2-brand-name,
+  .ai2-vip-pill { display: none; }
+  .ai2-slash-menu { grid-template-columns: 1fr; }
+  .gm-hero { align-items: center !important; text-align: center !important; }
+}
+
+@media (max-width: 600px) {
+  .ds-header.gm-header { padding: 8px 12px !important; }
+  .gm-hide-sm { display: none !important; }
+  .gm-tool-pill { padding: 0 9px; font-size: 0.75rem; }
+  .gm-hero-title { font-size: 1.6rem !important; }
+}
+
+/* ============================================================
+   4-TITAN FUSION: CHATGPT × GEMINI × CLAUDE × DEEPSEEK
+   - DeepSeek R1: DeepThink glowing pill + Thinking Timeline + Live Timer
+   - Gemini: Living Aurora focus halo + 3-Bar Gradient Shimmer + Follow-up Chips
+   - Claude: Word Export + Conversation Minimap Rail + Stagger Entrance
+   - ChatGPT: Temporary Chat (dashed incognito) + Live Voice Waveform + Rail Tooltips
+   ============================================================ */
+
+/* 1. Staggered Entrance Animations (Gemini / Claude smooth arrival) */
+@keyframes gmRiseIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gm-hero {
+  animation: gmRiseIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ds-stage-chat.is-gm-empty .ds-input-bar.gm-composer {
+  animation: gmRiseIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+
+.gm-empty-pills {
+  animation: gmRiseIn 0.52s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+/* 2. Gemini Living Aurora Halo (chỉ phát sáng dịu khi Focus / DeepThink / Streaming) */
+.ds-input-bar.gm-composer {
+  position: relative;
+}
+
+.ds-input-bar.gm-composer.is-deepthink {
+  border-color: rgba(79, 70, 229, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14), 0 10px 32px rgba(79, 70, 229, 0.16) !important;
+}
+
+.ds-input-bar.gm-composer.is-temp {
+  border-style: dashed !important;
+  border-color: rgba(148, 163, 184, 0.55) !important;
+}
+
+.ds-input-bar.gm-composer.is-streaming {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14), 0 12px 34px rgba(59, 130, 246, 0.18) !important;
+}
+
+/* 3. DeepSeek R1 DeepThink Pill */
+.gm-deepthink-pill {
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.gm-deepthink-pill.active {
+  background: linear-gradient(135deg, #2563eb 0%, #6366f1 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.36);
+}
+
+/* 4. DeepSeek / Claude Thinking Timeline Box + Gradient Shimmer */
+.gm-think-box {
+  border-left: 2px solid rgba(99, 102, 241, 0.55) !important;
+  border-radius: 12px !important;
+  padding-left: 10px !important;
+}
+
+@keyframes gmTextShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.gm-shimmer-txt {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #64748b 0%, #3b82f6 42%, #a855f7 58%, #64748b 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gmTextShimmer 2.1s linear infinite;
+}
+
+/* 5. Gemini 3-Bar Shimmer Thinking Skeleton */
+.gm-skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 0;
+  width: min(460px, 100%);
+}
+
+.gm-shimmer-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gm-shimmer-bars i {
+  display: block;
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.16) 0%, rgba(96, 165, 250, 0.36) 45%, rgba(167, 139, 250, 0.32) 55%, rgba(148, 163, 184, 0.16) 100%);
+  background-size: 240% 100%;
+  animation: gmTextShimmer 1.65s ease-in-out infinite;
+}
+
+/* 6. Gemini + Claude Smart Follow-up Chips */
+.gm-followups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  animation: gmRiseIn 0.3s ease both;
+}
+
+.gm-followup-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f0f4f9;
+  color: #1f1f1f;
+  font-family: inherit;
+  font-size: 0.77rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.gm-followup-chip:hover {
+  background: #e8f0fe;
+  border-color: rgba(26, 115, 232, 0.35);
+  color: #1967d2;
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .gm-followup-chip {
+  background: #1e1f20;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e3e3e3;
+}
+
+[data-theme='dark'] .gm-followup-chip:hover {
+  background: rgba(138, 180, 248, 0.16);
+  border-color: rgba(138, 180, 248, 0.38);
+  color: #a8c7fa;
+}
+
+/* 7. ChatGPT Temporary Chat Banner & Toggle */
+.gm-temp-btn.is-temp {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #f59e0b !important;
+}
+
+.gm-temp-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px dashed rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+[data-theme='dark'] .gm-temp-banner {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.gm-temp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #f59e0b;
+}
+
+/* 8. Claude / ChatGPT Conversation Minimap Rail (mép phải) */
+.gm-minimap {
+  position: fixed;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.gm-minimap-tick {
+  position: relative;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(148, 163, 184, 0.45);
+  cursor: pointer;
+  padding: 0;
+  transition: width 0.15s ease, background 0.15s ease;
+}
+
+.gm-minimap-tick:hover {
+  width: 24px;
+  background: #3b82f6;
+}
+
+.gm-minimap-tick:hover::after {
+  content: attr(data-preview);
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 650;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+@media (max-width: 1024px) {
+  .gm-minimap { display: none; }
+}
+
+/* 9. ChatGPT Live 5-Bar Voice Waveform */
+.gm-voice-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px auto 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.gm-wave-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+}
+
+@keyframes gmWaveBounce {
+  0%, 100% { height: 4px; }
+  50% { height: 15px; }
+}
+
+.gm-wave-bars i {
+  display: block;
+  width: 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  animation: gmWaveBounce 0.85s ease-in-out infinite;
+}
+
+.gm-wave-bars i:nth-child(2) { animation-delay: 0.14s; }
+.gm-wave-bars i:nth-child(3) { animation-delay: 0.28s; }
+.gm-wave-bars i:nth-child(4) { animation-delay: 0.42s; }
+.gm-wave-bars i:nth-child(5) { animation-delay: 0.56s; }
+
+/* 10. Crisp Tooltips on 68px Mini-Rail Buttons */
+@media (min-width: 901px) {
+  body.on-ai-page .ds-page.is-sidebar-collapsed .ds-sidebar {
+    overflow: visible !important;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed [data-tip] {
+    position: relative;
+  }
+
+  body.on-ai-page .ds-page.is-sidebar-collapsed [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    padding: 6px 11px;
+    border-radius: 10px;
+    background: #1f2937;
+    color: #f8fafc;
+    font-size: 0.74rem;
+    font-weight: 650;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+    z-index: 400;
+    pointer-events: none;
+  }
+}
+
+/* ============================================================
+   ELEC AI STUDIO — ARCHITECTURAL FLAGSHIP SYSTEM (V3)
+   Triết lý: Tinh khiết, chính xác, đậm bản sắc ELEC AI, 0 "AI slop"
+   - Triệt tiêu 100% vệt tím/đường kẻ neon từ CSS cũ (aichat.css)
+   - Bảng màu trung tính chuẩn Gallery White / Obsidian Carbon + Electric Cobalt độc quyền
+   - 0 trùng lặp chrome giữa Sidebar và Topbar
+   - Hero Editorial tối giản, Composer khối nổi vật lý chuẩn Claude × Perplexity
+   - Thẻ gợi ý 2×2 biểu tượng khoa học đơn sắc, không rớt chữ cô độc
+   ============================================================ */
+
+/* 0. TRIỆT TIÊU HOÀN TOÀN VỆT SÁNG TÍM & ĐƯỜNG KẺ NEON CŨ TỪ aichat.css */
+body.on-ai-page .ds-page .ds-header::before,
+body.on-ai-page .ds-page .ds-header::after,
+body.on-ai-page .ds-page .ds-input-bar::before,
+body.on-ai-page .ds-page .ds-input-bar::after,
+[data-theme='dark'] body.on-ai-page .ds-page .ds-input-bar::before,
+[data-theme='dark'] body.on-ai-page .ds-page .ds-input-bar::after,
+[data-theme='light'] body.on-ai-page .ds-page .ds-input-bar::before,
+[data-theme='light'] body.on-ai-page .ds-page .ds-input-bar::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+/* 1. SOFT CLOUD-GLASS BACKDROP & FLOATING ROUNDED SHEETS (LIGHT & DARK) */
+body.on-ai-page .ds-page.elec-studio {
+  --elec-accent: #2563eb;
+  --elec-accent-2: #38bdf8;
+  --elec-accent-soft: rgba(37, 99, 235, 0.1);
+  --elec-ambient: rgba(59, 130, 246, 0.14);
+  --elec-border: rgba(37, 99, 235, 0.09);
+  --elec-border-strong: rgba(37, 99, 235, 0.18);
+  --elec-ink: #0f172a;
+  --elec-muted: #64748b;
+  --elec-surface: rgba(255, 255, 255, 0.92);
+  --elec-surface-subtle: rgba(255, 255, 255, 0.78);
+  background:
+    radial-gradient(620px 380px at 14% 12%, rgba(147, 197, 253, 0.34), transparent 72%),
+    radial-gradient(660px 420px at 86% 88%, rgba(186, 230, 253, 0.38), transparent 74%),
+    radial-gradient(520px 320px at 78% 14%, rgba(196, 181, 253, 0.2), transparent 70%),
+    linear-gradient(145deg, #edf3ff 0%, #f5f8ff 50%, #ebf4ff 100%) !important;
+  color: var(--elec-ink) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio.lens-ly {
+  --elec-accent: #4f46e5;
+  --elec-accent-2: #6366f1;
+  --elec-accent-soft: rgba(79, 70, 229, 0.11);
+  --elec-ambient: rgba(99, 102, 241, 0.16);
+}
+
+body.on-ai-page .ds-page.elec-studio.lens-hoa {
+  --elec-accent: #0284c7;
+  --elec-accent-2: #06b6d4;
+  --elec-accent-soft: rgba(2, 132, 199, 0.11);
+  --elec-ambient: rgba(6, 182, 212, 0.16);
+}
+
+body.on-ai-page .ds-page.elec-studio.lens-sinh {
+  --elec-accent: #059669;
+  --elec-accent-2: #10b981;
+  --elec-accent-soft: rgba(5, 150, 105, 0.11);
+  --elec-ambient: rgba(16, 185, 129, 0.15);
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio {
+  --elec-accent: #60a5fa;
+  --elec-accent-2: #38bdf8;
+  --elec-accent-soft: rgba(96, 165, 250, 0.14);
+  --elec-ambient: rgba(56, 189, 248, 0.14);
+  --elec-border: rgba(148, 163, 184, 0.12);
+  --elec-border-strong: rgba(148, 163, 184, 0.22);
+  --elec-ink: #f1f5f9;
+  --elec-muted: #94a3b8;
+  --elec-surface: rgba(18, 23, 36, 0.84);
+  --elec-surface-subtle: rgba(15, 20, 31, 0.8);
+  background:
+    radial-gradient(620px 380px at 14% 12%, rgba(37, 99, 235, 0.2), transparent 72%),
+    radial-gradient(640px 420px at 86% 88%, rgba(14, 165, 233, 0.16), transparent 74%),
+    radial-gradient(500px 320px at 78% 12%, rgba(99, 102, 241, 0.14), transparent 70%),
+    #090d16 !important;
+  color: var(--elec-ink) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-ly {
+  --elec-accent: #818cf8;
+  --elec-accent-soft: rgba(129, 140, 248, 0.15);
+  --elec-ambient: rgba(99, 102, 241, 0.18);
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-hoa {
+  --elec-accent: #38bdf8;
+  --elec-accent-soft: rgba(56, 189, 248, 0.15);
+  --elec-ambient: rgba(14, 165, 233, 0.18);
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-sinh {
+  --elec-accent: #34d399;
+  --elec-accent-soft: rgba(52, 211, 153, 0.15);
+  --elec-ambient: rgba(16, 185, 129, 0.16);
+}
+
+/* 2. FLOATING ROUNDED SIDEBAR & MAIN SHEET (BO TRÒN MỀM MẠI KIỂU KÍNH MÂY) */
+@media (min-width: 901px) {
+  body.on-ai-page .ds-page.elec-studio {
+    padding: 12px !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar {
+    width: 258px !important;
+    min-width: 258px !important;
+    max-width: 258px !important;
+    flex: 0 0 258px !important;
+    height: calc(100dvh - 24px) !important;
+    border-radius: 26px !important;
+    background: var(--elec-surface-subtle) !important;
+    border: 1px solid rgba(255, 255, 255, 0.92) !important;
+    box-shadow: 0 12px 36px -12px rgba(37, 99, 235, 0.1), 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+    padding: 14px 12px 12px !important;
+    backdrop-filter: blur(24px) saturate(150%) !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-sidebar {
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-content {
+    height: calc(100dvh - 24px) !important;
+    border-radius: 28px !important;
+    background: var(--elec-surface) !important;
+    border: 1px solid rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 16px 46px -14px rgba(37, 99, 235, 0.11), 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+    backdrop-filter: blur(26px) saturate(160%) !important;
+    overflow: hidden !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-content {
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 20px 56px -16px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio.is-sidebar-collapsed .ds-sidebar {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    flex: 0 0 68px !important;
+    padding: 14px 8px 12px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio.is-sidebar-collapsed .ds-content {
+    width: calc(100% - 80px) !important;
+  }
+
+  /* Ẩn logo ELEC AI trên Header khi Sidebar đang mở rộng để không bao giờ lặp 2 logo cạnh nhau */
+  body.on-ai-page .ds-page.elec-studio .ai2-brand-group.is-hide-when-expanded {
+    display: none !important;
+  }
+}
+
+.elec-sb-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.elec-brand-mark {
+  flex-shrink: 0;
+  display: block;
+}
+
+.gm-sb-title,
+.ai2-brand-name {
+  font-size: 0.95rem !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.025em !important;
+  color: var(--elec-ink) !important;
+}
+
+.elec-sb-brand em,
+.elec-ai-tag {
+  font-style: normal;
+  color: var(--elec-accent);
+  font-weight: 800;
+}
+
+/* Nút Đoạn chat mới: Bo tròn hoàn toàn (999px) mềm mại chuẩn kính mây */
+body.on-ai-page .ds-page.elec-studio .gm-new-pill {
+  height: 42px !important;
+  border-radius: 999px !important;
+  padding: 0 14px !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(56, 189, 248, 0.12) 100%) !important;
+  color: #1d4ed8 !important;
+  border: 1px solid rgba(59, 130, 246, 0.22) !important;
+  box-shadow: 0 4px 14px -4px rgba(37, 99, 235, 0.14) !important;
+  font-size: 0.83rem !important;
+  font-weight: 650 !important;
+  gap: 9px !important;
+  transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-new-pill:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(56, 189, 248, 0.18) 100%) !important;
+  border-color: rgba(37, 99, 235, 0.36) !important;
+  box-shadow: 0 6px 18px -4px rgba(37, 99, 235, 0.2) !important;
+  transform: translateY(-1px) !important;
+  filter: none !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-new-pill {
+  background: rgba(56, 189, 248, 0.12) !important;
+  color: #93c5fd !important;
+  border: 1px solid rgba(96, 165, 250, 0.24) !important;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-new-pill:hover {
+  background: rgba(56, 189, 248, 0.19) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+  color: #ffffff !important;
+}
+
+body.on-ai-page .ds-page.elec-studio.is-sidebar-collapsed .gm-new-pill {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 999px !important;
+  padding: 0 !important;
+}
+
+.elec-sb-kbd {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--elec-accent);
+  opacity: 0.78;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+[data-theme='dark'] .elec-sb-kbd {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(96, 165, 250, 0.22);
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-nav-pill {
+  height: 38px !important;
+  border-radius: 999px !important;
+  padding: 0 13px !important;
+  font-size: 0.83rem !important;
+  font-weight: 550 !important;
+  color: var(--elec-muted) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-nav-pill:hover {
+  background: rgba(37, 99, 235, 0.06) !important;
+  color: var(--elec-ink) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-nav-pill:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-sidebar-empty {
+  font-size: 0.78rem !important;
+  color: var(--elec-muted) !important;
+  opacity: 0.75;
+  padding: 16px 10px !important;
+  text-align: left !important;
+}
+
+/* Footer User Card liền mạch, bo tròn 18px êm ái */
+body.on-ai-page .ds-page.elec-studio .ds-user-wrap {
+  padding: 10px 0 0 !important;
+  margin-top: auto !important;
+  background: transparent !important;
+  border-top: 1px solid var(--elec-border) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-user-btn {
+  width: 100% !important;
+  padding: 7px 9px !important;
+  border-radius: 18px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--elec-ink) !important;
+  transition: background 0.14s ease !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-user-btn:hover,
+body.on-ai-page .ds-page.elec-studio .ds-user-btn.open {
+  background: rgba(37, 99, 235, 0.06) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-user-btn:hover,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-user-btn.open {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-user-info b {
+  font-size: 0.83rem !important;
+  font-weight: 650 !important;
+  color: var(--elec-ink) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-user-tier-name {
+  font-size: 0.71rem !important;
+  font-weight: 500 !important;
+  color: var(--elec-muted) !important;
+}
+
+.elec-user-chev {
+  color: var(--elec-muted);
+  opacity: 0.7;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* 3. TOP HEADER BO TRÒN THANH LỊCH (CHỈ 4 NÚT ĐỒNG BỘ, 0 TRÙNG LẶP) */
+body.on-ai-page .ds-page.elec-studio .ds-header.gm-header {
+  padding: 14px 22px 8px !important;
+  min-height: 58px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger {
+  height: 34px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  background: rgba(37, 99, 235, 0.055) !important;
+  border: 1px solid rgba(37, 99, 235, 0.1) !important;
+  color: var(--elec-ink) !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger:hover,
+body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger.open {
+  background: rgba(37, 99, 235, 0.11) !important;
+  border-color: rgba(37, 99, 235, 0.22) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger:hover,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger.open {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ai2-status-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--elec-accent) !important;
+}
+
+/* Pill VIP · Credit hợp nhất 1 viên thuốc mềm mại */
+.elec-plan-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--elec-border);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--elec-ink);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.elec-plan-pill:hover {
+  background: #ffffff;
+  border-color: var(--elec-border-strong);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+[data-theme='dark'] .elec-plan-pill {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .elec-plan-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.elec-plan-tier {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--elec-accent);
+  padding-right: 7px;
+  border-right: 1px solid var(--elec-border);
+}
+
+.elec-plan-credits {
+  font-variant-numeric: tabular-nums;
+  color: var(--elec-muted);
+  font-weight: 650;
+}
+
+body.on-ai-page .ds-page.elec-studio .ai2-icon-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--elec-muted) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ai2-icon-btn:hover {
+  background: rgba(37, 99, 235, 0.07) !important;
+  color: var(--elec-ink) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ai2-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+/* 4. HERO VỚI ẢNH ĐỘNG AIMARK BÌNH THÍ NGHIỆM + QUỸ ĐẠO ELECTRON ĐỘC QUYỀN ELEC */
+.ds-stage-chat.is-gm-empty {
+  padding-bottom: 3vh !important;
+}
+
+.ds-stage-chat.is-gm-empty .ds-main-empty {
+  padding: 0 24px 16px !important;
+  scrollbar-gutter: auto !important;
+}
+
+.elec-hero {
+  align-items: center !important;
+  text-align: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  max-width: 760px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.elec-emblem-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.elec-hero-anim-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-bottom: -4px;
+  filter: drop-shadow(0 10px 24px rgba(37, 99, 235, 0.16));
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.elec-hero-anim-wrap:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+[data-theme='dark'] .elec-hero-anim-wrap {
+  filter: drop-shadow(0 12px 30px rgba(56, 189, 248, 0.26));
+}
+
+.elec-hero-aimark {
+  display: block;
+}
+
+.elec-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.065);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--elec-accent);
+}
+
+[data-theme='dark'] .elec-hero-kicker {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.elec-hero-title {
+  margin: 4px 0 0 !important;
+  font-size: clamp(1.65rem, 2.7vw, 2.18rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.032em !important;
+  line-height: 1.2 !important;
+  color: var(--elec-ink) !important;
+  max-width: 780px;
+}
+
+.elec-hero-title span {
+  white-space: nowrap;
+  color: var(--elec-accent) !important;
+  font-weight: 800;
+}
+
+/* 5. COMPOSER BO TRÒN MỀM MẠI (28PX) + NÚT PILL & TRÒN 999PX */
+body.on-ai-page .ds-page.elec-studio .ds-input-inner {
+  max-width: 730px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer {
+  padding: 15px 15px 11px 18px !important;
+  border-radius: 28px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(37, 99, 235, 0.13) !important;
+  box-shadow: 0 10px 34px -10px rgba(37, 99, 235, 0.12), 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer:focus-within {
+  border-color: rgba(37, 99, 235, 0.38) !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1), 0 16px 40px -10px rgba(37, 99, 235, 0.16) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer {
+  background: rgba(23, 29, 44, 0.92) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  box-shadow: 0 20px 48px -14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer:focus-within {
+  border-color: rgba(56, 189, 248, 0.48) !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12), 0 22px 54px -14px rgba(0, 0, 0, 0.78) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer.is-deepthink {
+  border-color: rgba(79, 70, 229, 0.38) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer.is-deepthink {
+  border-color: rgba(129, 140, 248, 0.45) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio textarea.gm-textarea {
+  font-size: 0.94rem !important;
+  color: var(--elec-ink) !important;
+  padding: 2px 4px 4px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio textarea.gm-textarea::placeholder {
+  color: var(--elec-muted) !important;
+  opacity: 0.78;
+}
+
+/* Toolbar bên trong Composer: Toàn bộ nút bo tròn 999px êm ái */
+body.on-ai-page .ds-page.elec-studio .gm-tool-circle {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 999px !important;
+  color: var(--elec-muted) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-tool-circle:hover {
+  background: rgba(37, 99, 235, 0.07) !important;
+  color: var(--elec-ink) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-tool-circle:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-tool-pill {
+  height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  font-size: 0.77rem !important;
+  font-weight: 600 !important;
+  color: var(--elec-muted) !important;
+  gap: 5px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-tool-pill:hover {
+  background: rgba(37, 99, 235, 0.07) !important;
+  color: var(--elec-ink) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-tool-pill:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+/* DeepThink viên thuốc bo tròn dịu sang */
+body.on-ai-page .ds-page.elec-studio .gm-deepthink-pill {
+  border: 1px solid var(--elec-border) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-deepthink-pill {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-deepthink-pill.active {
+  background: rgba(99, 102, 241, 0.12) !important;
+  border-color: rgba(99, 102, 241, 0.36) !important;
+  color: #4f46e5 !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-deepthink-pill.active {
+  background: rgba(129, 140, 248, 0.16) !important;
+  border-color: rgba(129, 140, 248, 0.42) !important;
+  color: #a5b4fc !important;
+  box-shadow: none !important;
+}
+
+.elec-slash-mark {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Nút Gửi tròn hoàn toàn 38px mang sắc xanh dương mềm mại đặc trưng ELEC */
+body.on-ai-page .ds-page.elec-studio .gm-send-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: rgba(59, 130, 246, 0.14) !important;
+  color: #60a5fa !important;
+  box-shadow: none !important;
+  transition: all 0.16s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-send-btn {
+  background: rgba(56, 189, 248, 0.14) !important;
+  color: rgba(125, 211, 252, 0.55) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-send-btn:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.42) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35) !important;
+}
+
+/* 6. BỘ LỌC MÔN HỌC VIÊN THUỐC MỀM + 4 THẺ GỢI Ý BO TRÒN 22PX */
+.elec-discover {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: gmRiseIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.elec-lens-tabs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.055);
+  border: 1px solid rgba(37, 99, 235, 0.09);
+}
+
+[data-theme='dark'] .elec-lens-tabs {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.elec-lens-tab {
+  position: relative;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--elec-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.elec-lens-tab:hover {
+  color: var(--elec-ink);
+}
+
+.elec-lens-tab.active {
+  color: var(--elec-accent);
+  font-weight: 700;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.12);
+}
+
+[data-theme='dark'] .elec-lens-tab.active {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.elec-lens-tab.active::after {
+  display: none;
+}
+
+.elec-prompt-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.elec-prompt-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  border-radius: 22px;
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 16px -6px rgba(37, 99, 235, 0.07);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.elec-prompt-card:hover {
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 10px 26px -8px rgba(37, 99, 235, 0.16);
+  transform: translateY(-2px);
+}
+
+[data-theme='dark'] .elec-prompt-card {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: none;
+}
+
+[data-theme='dark'] .elec-prompt-card:hover {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(56, 189, 248, 0.34);
+  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.55);
+}
+
+.elec-prompt-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(37, 99, 235, 0.075);
+  color: var(--elec-accent);
+  transition: all 0.16s ease;
+}
+
+[data-theme='dark'] .elec-prompt-ico {
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.elec-prompt-card:hover .elec-prompt-ico {
+  background: var(--elec-accent);
+  color: #ffffff;
+  transform: scale(1.06);
+}
+
+.elec-prompt-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.elec-prompt-title {
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--elec-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.elec-prompt-sub {
+  font-size: 0.72rem;
+  font-weight: 450;
+  line-height: 1.3;
+  color: var(--elec-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.elec-prompt-arrow {
+  font-size: 0.8rem;
+  color: var(--elec-muted);
+  opacity: 0.45;
+  transform: translate(0, 0);
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.elec-prompt-card:hover .elec-prompt-arrow {
+  opacity: 1;
+  transform: translate(2px, -2px);
+  color: var(--elec-accent);
+}
+
+.elec-disclaimer {
+  margin-top: 12px !important;
+  font-size: 0.71rem !important;
+  color: var(--elec-muted) !important;
+  opacity: 0.75;
+}
+
+.elec-disclaimer b {
+  color: var(--elec-accent);
+  font-weight: 700;
+}
+
+/* 7. ACTIVE CHAT BUBBLES, SPLIT-SCREEN STUDIO & COMPOSER ACTIVE PILLS */
+body.on-ai-page .ds-page.elec-studio .gm-tool-pill.active-studio {
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: var(--elec-accent) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-tool-pill.active-studio {
+  background: rgba(56, 189, 248, 0.16) !important;
+  color: #7dd3fc !important;
+}
+
+/* Bong bóng câu hỏi người dùng: Bo tròn mềm mại, thoáng sáng */
+body.on-ai-page .ds-page.elec-studio .ds-msg-user-text {
+  border-radius: 22px 22px 6px 22px !important;
+  padding: 12px 18px !important;
+  background: linear-gradient(135deg, #eff6ff 0%, #e6f0ff 100%) !important;
+  border: 1px solid rgba(37, 99, 235, 0.14) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 14px -6px rgba(37, 99, 235, 0.12) !important;
+  font-size: 0.93rem !important;
+  line-height: 1.56 !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-user-text {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.24) 0%, rgba(56, 189, 248, 0.16) 100%) !important;
+  border-color: rgba(96, 165, 250, 0.26) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Khối suy luận DeepThink bo tròn kính mờ thanh lịch */
+body.on-ai-page .ds-page.elec-studio .gm-think-box {
+  border-radius: 18px !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-left: 3px solid #6366f1 !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+  padding: 10px 14px !important;
+  margin-bottom: 12px !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-think-box {
+  background: rgba(99, 102, 241, 0.09) !important;
+  border-color: rgba(129, 140, 248, 0.24) !important;
+}
+
+/* Bố cục Split-Screen khi mở Bảng vẽ 3D / Quiz Canvas (tỷ lệ vàng 46% / 54%) */
+@media (min-width: 1024px) {
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas {
+    display: grid !important;
+    grid-template-columns: minmax(380px, 0.88fr) minmax(460px, 1.12fr) !important;
+    gap: 0 !important;
+    height: calc(100% - 58px) !important;
+    overflow: hidden !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .ds-stage-chat {
+    min-width: 0 !important;
+    border-right: 1px solid var(--elec-border) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .ds-stage-canvas-panel {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    border-left: none !important;
+    background: transparent !important;
+  }
+
+  /* Khi đang mở Canvas ở màn hình trống, thu gọn cột trái nhẹ để cân đối hoàn hảo */
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .elec-hero-title {
+    font-size: 1.44rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .elec-prompt-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Giữ 100% nút (kể cả Mic & Gửi) gọn gàng trên 1 hàng trong Composer khi Split-Screen mở */
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .gm-composer-bar {
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .gm-composer-left {
+    gap: 3px !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .gm-tool-pill {
+    padding: 0 8px !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* Thu gọn chữ ở nút phụ (Chụp đề, Chấm nháp) thành icon gọn khi split-screen đang mở */
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .gm-tool-pill:not(.gm-deepthink-pill):not(.active-studio) span {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas .gm-tool-pill:not(.gm-deepthink-pill):not(.active-studio) {
+    width: 32px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 900px) {
+  body.on-ai-page .ds-page.elec-studio {
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-content {
+    height: 100dvh !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    overflow: hidden !important;
+  }
+
+  /* Header Mobile: Cố định tương đối sạch sẽ, KHÔNG bao giờ đè lên chữ hay Canvas */
+  body.on-ai-page .ds-page.elec-studio .ds-header.gm-header {
+    position: relative !important;
+    inset: auto !important;
+    z-index: 60 !important;
+    height: auto !important;
+    min-height: 54px !important;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 6px !important;
+    background: transparent !important;
+    pointer-events: auto !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-header-inner {
+    height: 42px !important;
+    padding: 0 !important;
+    gap: 6px !important;
+    justify-content: space-between !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-head-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-head-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-menu-btn {
+    width: 36px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    border: 1px solid rgba(37, 99, 235, 0.12) !important;
+    color: var(--elec-ink) !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-menu-btn {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f1f5f9 !important;
+  }
+
+  /* Ngăn kéo Sidebar Mobile: Full chiều cao 100dvh, bo phải 26px, 0 khoảng hở đáy */
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100dvh !important;
+    width: min(84vw, 300px) !important;
+    min-width: 0 !important;
+    max-width: 300px !important;
+    border-radius: 0 26px 26px 0 !important;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+    background: rgba(248, 251, 255, 0.96) !important;
+    backdrop-filter: blur(26px) !important;
+    border-right: 1px solid rgba(37, 99, 235, 0.12) !important;
+    box-shadow: 18px 0 48px rgba(15, 23, 42, 0.22) !important;
+    z-index: 320 !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-sidebar {
+    background: rgba(13, 18, 30, 0.97) !important;
+    border-right-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 18px 0 54px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-sb-toggle {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar.open .gm-new-pill {
+    width: 100% !important;
+    height: 44px !important;
+    padding: 0 16px !important;
+    justify-content: flex-start !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar.open .elec-sb-kbd {
+    display: none !important;
+  }
+
+  /* Bảng 3D & Quiz Canvas trên Mobile: nâng luôn stacking context của .ds-stage-split lên trên Header */
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas {
+    position: relative !important;
+    z-index: 420 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-canvas-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 430 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-stage-canvas-panel {
+    background: #0d111a !important;
+  }
+}
+
+@media (max-width: 680px) {
+  /* Header siêu gọn trên điện thoại (360–430px): 0 đè chữ, 0 tràn nút */
+  body.on-ai-page .ds-page.elec-studio .ai2-brand-group {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.76rem !important;
+    max-width: 138px;
+    overflow: hidden;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger span:nth-of-type(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-plan-pill {
+    height: 30px !important;
+    padding: 0 9px !important;
+    gap: 0 !important;
+    font-size: 0.72rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-plan-tier {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Màn hình chờ Empty State Mobile: Cuộn êm ái, căn giữa chuẩn 100% */
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split {
+    height: calc(100dvh - 54px - env(safe-area-inset-top, 0px)) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-chat.is-gm-empty {
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    overflow-y: auto !important;
+    padding: 4px 0 calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-chat.is-gm-empty .ds-main-empty {
+    padding: 2px 14px 12px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero {
+    align-items: center !important;
+    text-align: center !important;
+    gap: 6px !important;
+    padding: 0 4px !important;
+  }
+
+  .elec-hero-aimark {
+    width: 88px !important;
+    height: auto !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero-title {
+    font-size: 1.36rem !important;
+    line-height: 1.24 !important;
+    text-align: center !important;
+    width: 100% !important;
+    text-wrap: balance;
+  }
+
+  /* Composer Mobile: Tất cả nút + Mic + Nút Gửi ↑ gọn 100% trên 1 hàng, 0 cắt nút! */
+  body.on-ai-page .ds-page.elec-studio .ds-input-wrap {
+    padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer {
+    padding: 12px 10px 9px 12px !important;
+    border-radius: 24px !important;
+    gap: 6px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio textarea.gm-textarea {
+    font-size: 0.9rem !important;
+    min-height: 30px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-bar {
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-left {
+    gap: 4px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-right {
+    gap: 4px !important;
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-tool-circle {
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-deepthink-pill {
+    height: 30px !important;
+    padding: 0 9px !important;
+    font-size: 0.72rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Nút Chụp đề, Chấm nháp, Bảng 3D thu thành nút icon tròn 32px gọn gàng trên điện thoại */
+  body.on-ai-page .ds-page.elec-studio .gm-tool-pill:not(.gm-deepthink-pill) {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-tool-pill:not(.gm-deepthink-pill) span {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-slash-btn {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-send-btn {
+    width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Thanh 4 môn & 4 thẻ gợi ý gọn gàng, êm mắt trên iPhone */
+  .elec-discover {
+    margin-top: 12px;
+    gap: 10px;
+  }
+
+  .elec-lens-tabs {
+    width: 100%;
+    max-width: 360px;
+    justify-content: space-between;
+    padding: 3px;
+  }
+
+  .elec-lens-tab {
+    flex: 1;
+    padding: 0 6px;
+    height: 29px;
+    font-size: 0.74rem;
+    text-align: center;
+  }
+
+  .elec-prompt-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .elec-prompt-card {
+    padding: 10px 13px;
+    border-radius: 18px;
+    gap: 10px;
+  }
+
+  .elec-prompt-ico {
+    width: 32px;
+    height: 32px;
+  }
+
+  .elec-prompt-title {
+    font-size: 0.8rem;
+  }
+
+  .elec-disclaimer {
+    font-size: 0.68rem !important;
+    line-height: 1.4;
+    padding: 0 6px;
+  }
+}
+
+/* ============================================================
+   5 GLOBAL FLAGSHIP AI UPGRADES (FULL SUITE)
+   #1 Highlight-to-Ask  #2 Photomath Multi-Method  #4 Socratic Study Card  #5 PDF/DOCX Docs
+   ============================================================ */
+
+/* #1. Floating Highlight-to-Ask Toolbar (Claude Artifacts × ChatGPT Canvas) */
+.elec-sel-bar {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(18px);
+  animation: gmRiseIn 0.16s ease both;
+}
+
+.elec-sel-bar button {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.elec-sel-bar button:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: #7dd3fc;
+}
+
+/* #2. Photomath Multi-Method 1-Click Switcher */
+.elec-post-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.elec-method-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.elec-method-lbl {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--elec-muted, #64748b);
+  margin-right: 2px;
+}
+
+.elec-method-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.065);
+  color: #1d4ed8;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.elec-method-pill:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .elec-method-pill {
+  background: rgba(56, 189, 248, 0.11);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #7dd3fc;
+}
+
+[data-theme='dark'] .elec-method-pill:hover {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #082f49;
+}
+
+/* #4. Socratic Study Mode Interactive Checkpoint Card */
+.elec-socratic-card {
+  margin-top: 14px;
+  padding: 15px 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: linear-gradient(145deg, #f4f8ff 0%, #ffffff 100%);
+  box-shadow: 0 8px 24px -10px rgba(37, 99, 235, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.elec-socratic-card.is-right {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: linear-gradient(145deg, #ecfdf5 0%, #ffffff 100%);
+}
+
+[data-theme='dark'] .elec-socratic-card {
+  background: linear-gradient(145deg, rgba(22, 31, 52, 0.92) 0%, rgba(15, 20, 32, 0.95) 100%);
+  border-color: rgba(56, 189, 248, 0.26);
+}
+
+[data-theme='dark'] .elec-socratic-card.is-right {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: linear-gradient(145deg, rgba(16, 48, 40, 0.72) 0%, rgba(15, 22, 32, 0.94) 100%);
+}
+
+.elec-soc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.elec-soc-badge {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #2563eb;
+}
+
+[data-theme='dark'] .elec-soc-badge { color: #38bdf8; }
+
+.elec-soc-ok {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #059669;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+}
+
+[data-theme='dark'] .elec-soc-ok { color: #34d399; }
+
+.elec-soc-q {
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.48;
+  color: var(--elec-ink, #0f172a);
+}
+
+.elec-soc-opts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.elec-soc-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.elec-soc-opt:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.elec-soc-opt.is-right {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.elec-soc-opt.is-wrong {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+[data-theme='dark'] .elec-soc-opt {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .elec-soc-opt:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+[data-theme='dark'] .elec-soc-opt.is-right {
+  border-color: #34d399;
+  color: #6ee7b7;
+}
+
+[data-theme='dark'] .elec-soc-opt.is-wrong {
+  border-color: #fbbf24;
+  color: #fde68a;
+}
+
+.elec-soc-letter {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .elec-soc-letter {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+
+.elec-soc-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.elec-soc-input-row input {
+  flex: 1;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.83rem;
+  outline: none;
+}
+
+.elec-soc-input-row input:focus { border-color: #2563eb; }
+
+[data-theme='dark'] .elec-soc-input-row input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+}
+
+.elec-soc-check-btn,
+.elec-soc-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.elec-soc-hint {
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #92400e;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+[data-theme='dark'] .elec-soc-hint {
+  background: rgba(245, 158, 11, 0.13);
+  color: #fde68a;
+}
+
+.elec-soc-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.elec-soc-link {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .elec-soc-link { color: #7dd3fc; }
+
+/* #5. PDF / DOCX / TXT Document Attachment Tray & Message Badges */
+.elec-doc-tray {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-theme='dark'] .elec-doc-tray {
+  background: rgba(20, 27, 44, 0.9);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.elec-doc-pills,
+.elec-msg-docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.elec-msg-docs {
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.elec-doc-pill,
+.elec-msg-doc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+[data-theme='dark'] .elec-doc-pill,
+[data-theme='dark'] .elec-msg-doc-pill {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.24);
+  color: #f1f5f9;
+}
+
+.elec-doc-ext {
+  font-size: 0.63rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.elec-doc-name {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.elec-doc-pill small,
+.elec-msg-doc-pill small {
+  color: var(--elec-muted, #64748b);
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.elec-doc-x {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.1);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.elec-doc-clear {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-family: inherit;
+  font-size: 0.73rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.elec-doc-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.elec-doc-quick button {
+  height: 27px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: #ffffff;
+  color: #1d4ed8;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.elec-doc-quick button:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .elec-doc-quick button {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(56, 189, 248, 0.24);
+  color: #7dd3fc;
+}
+
+[data-theme='dark'] .elec-doc-quick button:hover {
+  background: #38bdf8;
+  color: #082f49;
+}
+
+@media (max-width: 600px) {
+  .elec-soc-opts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   ACTIVE CHAT EDITORIAL POLISH & ZERO-BUG TABLES (CHUẨN CHATGPT × CLAUDE)
+   - Diệt triệt để lỗi bảng gãy giữa từ ("Khun/g", "Enzy/me", "Nguy/ên")
+   - Thay khung tiêu đề tím cồng kềnh bằng header Editorial tinh gọn
+   - Cố định nút cuộn xuống đáy (.ds-jump) không bao giờ đè lên chữ
+   - Sửa chiều cao textarea Composer để placeholder không bao giờ bị cắt nửa dòng
+   ============================================================ */
+
+/* 1. Bố cục luồng chat thoáng đãng, chữ sắc nét dễ đọc */
+body.on-ai-page .ds-page.elec-studio .ds-main:not(.ds-main-empty) {
+  padding: 20px 24px 28px !important;
+  scrollbar-gutter: auto !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-chat {
+  width: 100% !important;
+  max-width: 760px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 6px 0 28px !important;
+  gap: 22px !important;
+  box-sizing: border-box !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-wrap {
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-inner {
+  width: 100% !important;
+  max-width: 760px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+  body.on-ai-page .ds-page.elec-studio .ds-main:not(.ds-main-empty) {
+    padding: 12px 12px 20px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-wrap {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model {
+  gap: 12px !important;
+  align-items: flex-start !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 2px 0 !important;
+  font-size: 0.94rem !important;
+  line-height: 1.72 !important;
+  color: var(--elec-ink, #0f172a) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content p {
+  margin: 0 0 11px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content h3,
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content h4 {
+  margin: 18px 0 8px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--elec-ink, #0f172a) !important;
+}
+
+/* 2. Bảng Markdown chuẩn: Cuộn ngang mượt, KHÔNG BAO GIỜ bẻ chữ giữa từ! */
+body.on-ai-page .ds-page.elec-studio .ds-table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  margin: 14px 0 !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(37, 99, 235, 0.13) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 4px 16px -8px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-table-wrap {
+  background: rgba(18, 24, 38, 0.85) !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.45) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-table {
+  width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: collapse !important;
+  font-size: 0.84rem !important;
+  line-height: 1.52 !important;
+  margin: 0 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-table thead th {
+  background: rgba(37, 99, 235, 0.06) !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.12) !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-table thead th {
+  background: rgba(56, 189, 248, 0.09) !important;
+  color: #f8fafc !important;
+  border-bottom-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-table tbody td {
+  padding: 10px 12px !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+  vertical-align: top !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  hyphens: none !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-table tbody td {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  color: #e2e8f0 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-table tbody td:first-child {
+  font-weight: 650 !important;
+  width: 1% !important;
+  white-space: nowrap !important;
+  color: #1e293b !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-table tbody td:first-child {
+  color: #f1f5f9 !important;
+}
+
+/* Luôn hiện thanh nút thao tác (Sao chép / Đọc / Tải Word / Tạo lại) rõ nét cả Dark & Light */
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions {
+  opacity: 1 !important;
+  visibility: visible !important;
+  margin-top: 10px !important;
+}
+
+/* 3. Thay các khối tiêu đề tím cũ cồng kềnh bằng Section / Step Header thanh lịch chuẩn Claude */
+body.on-ai-page .ds-page.elec-studio .ds-section-header-card,
+body.on-ai-page .ds-page.elec-studio .ds-step-header-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 18px 0 10px !important;
+  padding: 8px 12px !important;
+  border-radius: 14px !important;
+  background: rgba(37, 99, 235, 0.055) !important;
+  border: 1px solid rgba(37, 99, 235, 0.12) !important;
+  box-shadow: none !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-section-header-card,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-step-header-card {
+  background: rgba(56, 189, 248, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.18) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-section-badge-roman,
+body.on-ai-page .ds-page.elec-studio .ds-step-badge-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 26px !important;
+  height: 26px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+  flex-shrink: 0 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-section-header-title,
+body.on-ai-page .ds-page.elec-studio .ds-step-header-title {
+  font-size: 0.94rem !important;
+  font-weight: 700 !important;
+  color: var(--elec-ink, #0f172a) !important;
+  line-height: 1.35 !important;
+}
+
+/* 4. Thẻ Đáp số, Mẹo nhớ & Công thức bo tròn tinh tế */
+body.on-ai-page .ds-page.elec-studio .ds-final-answer-card {
+  margin: 14px 0 !important;
+  padding: 13px 16px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+  box-shadow: none !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-pro-tip-box {
+  margin: 12px 0 !important;
+  padding: 12px 15px !important;
+  border-radius: 18px !important;
+  background: rgba(37, 99, 235, 0.055) !important;
+  border: 1px solid rgba(37, 99, 235, 0.14) !important;
+  box-shadow: none !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-pro-tip-box {
+  background: rgba(56, 189, 248, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.18) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-eq-card,
+body.on-ai-page .ds-page.elec-studio .ds-math-block {
+  margin: 10px 0 !important;
+  padding: 11px 16px !important;
+  border-radius: 16px !important;
+  background: rgba(37, 99, 235, 0.04) !important;
+  border: 1px solid rgba(37, 99, 235, 0.1) !important;
+  overflow-x: auto !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-eq-card,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-math-block {
+  background: rgba(255, 255, 255, 0.035) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 5. Trích dẫn [Trang X] kiểu Perplexity */
+.elec-cite-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  margin: 0 2px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .elec-cite-tag {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #7dd3fc;
+}
+
+/* 6. Sửa triệt để nút cuộn xuống đáy (.ds-jump) & Textarea không cắt placeholder
+   (Ghi đè main { z-index: 100 } của index.css để .ds-main KHÔNG đè lên nút .ds-jump!) */
+body.on-ai-page .ds-page.elec-studio .ds-main {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-wrap {
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 40 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-inner {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-jump {
+  position: absolute !important;
+  top: -46px !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin-left: 0 !important;
+  transform: translateX(-50%) !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+  color: #1e293b !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14) !important;
+  z-index: 60 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, color 0.16s ease !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-jump:hover {
+  transform: translateX(-50%) translateY(-2px) !important;
+  color: #2563eb !important;
+  border-color: rgba(37, 99, 235, 0.36) !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-jump {
+  background: #1b2234 !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer textarea.gm-textarea {
+  min-height: 28px !important;
+  max-height: 168px !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer textarea.gm-textarea::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* ============================================================================
+   ELEC AI STUDIO V5 — LUXURY MINIMALIST ACTIVE CHAT & SIDEBAR POLISH
+   (Chuẩn thẩm mỹ Claude × ChatGPT × Apple Glass: sạch sẽ, tinh tế, 0 rác nút)
+   ============================================================================ */
+
+/* 1. Nút "Đoạn chat mới" nổi bật gọn gàng làm điểm neo Sidebar + "Xóa tất cả" tối giản */
+body.on-ai-page .ds-page.elec-studio .cg-nav-item.primary.gm-new-pill {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 20px -6px rgba(37, 99, 235, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  font-weight: 650 !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .cg-nav-item.primary.gm-new-pill:hover {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.04) !important;
+  box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .cg-nav-item.primary.gm-new-pill svg {
+  color: #ffffff !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .cg-nav-item.primary.gm-new-pill .elec-sb-kbd {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  box-shadow: none !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-delete-all {
+  border: none !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 0.78rem !important;
+  font-weight: 550 !important;
+  padding: 7px 10px !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-delete-all:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+}
+
+/* 2. Bong bóng tin nhắn người dùng: xanh sapphire sữa tinh tế chuẩn Apple iMessage / Claude */
+body.on-ai-page .ds-page.elec-studio .ds-msg-user-text {
+  background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(59, 130, 246, 0.16) !important;
+  border-radius: 20px 20px 6px 20px !important;
+  padding: 10px 17px !important;
+  font-size: 0.96rem !important;
+  line-height: 1.58 !important;
+  box-shadow: 0 3px 12px -4px rgba(37, 99, 235, 0.12) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-user-text {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22) 0%, rgba(14, 165, 233, 0.16) 100%) !important;
+  color: #f1f5f9 !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 3. Khối suy luận AI: thu gọn mặc định thành 1 viên thuốc thanh lịch, bấm để mở */
+body.on-ai-page .ds-page.elec-studio .ds-reasoning-box.gm-think-box.is-collapsed {
+  display: inline-flex !important;
+  width: auto !important;
+  max-width: 100% !important;
+  margin-bottom: 10px !important;
+  border-radius: 999px !important;
+  background: rgba(248, 250, 252, 0.88) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-reasoning-box.gm-think-box.is-collapsed .ds-reasoning-toggle {
+  padding: 5px 12px !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: #475569 !important;
+  gap: 6px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-reasoning-box.gm-think-box.is-open {
+  border-radius: 18px !important;
+  background: rgba(248, 250, 252, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  box-shadow: none !important;
+  margin-bottom: 12px !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-reasoning-box.gm-think-box.is-collapsed,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-reasoning-box.gm-think-box.is-open {
+  background: rgba(30, 41, 59, 0.58) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-reasoning-box.gm-think-box.is-collapsed .ds-reasoning-toggle {
+  color: #cbd5e1 !important;
+}
+
+/* 4. Thanh thao tác tin nhắn: tối giản hoàn toàn chuẩn Claude / ChatGPT (KHÔNG còn nút xanh chói!) */
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  margin-top: 8px !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-btn,
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-icon-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  height: 30px !important;
+  padding: 0 9px !important;
+  border-radius: 9px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #64748b !important;
+  font-size: 0.78rem !important;
+  font-weight: 560 !important;
+  box-shadow: none !important;
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-icon-btn {
+  width: 30px !important;
+  padding: 0 !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-btn:hover,
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-icon-btn:hover {
+  background: rgba(15, 23, 42, 0.055) !important;
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-btn.on,
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-icon-btn.on {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: #2563eb !important;
+  border-color: rgba(37, 99, 235, 0.2) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-btn,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-icon-btn {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-btn:hover,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-actions .ds-action-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+/* 5. Nâng tầm độ nổi khối kính Apple cho khung nhập liệu & nút Gửi */
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer {
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  box-shadow: 0 14px 36px -12px rgba(37, 99, 235, 0.16), 0 2px 10px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer:focus-within {
+  border-color: rgba(59, 130, 246, 0.48) !important;
+  box-shadow: 0 16px 40px -10px rgba(37, 99, 235, 0.22), 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer {
+  background: rgba(22, 28, 44, 0.92) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.55) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer:focus-within {
+  border-color: rgba(96, 165, 250, 0.52) !important;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.65), 0 0 0 3px rgba(59, 130, 246, 0.16) !important;
+}
+
+/* 6. Văn bản AI trả lời thoáng, sắc nét, chiều rộng đọc lý tưởng */
+body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content {
+  font-size: 0.965rem !important;
+  line-height: 1.72 !important;
+  color: #1e293b !important;
+  letter-spacing: -0.004em !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content {
+  color: #e2e8f0 !important;
+}

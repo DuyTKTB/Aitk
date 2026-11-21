@@ -343,14 +343,20 @@ service cloud.firestore {
       allow delete: if signedIn()
         && (resource.data.teacherId == request.auth.uid || isAdmin());
 
-      // Đáp án riêng tư của đề — hiện không có client nào dùng
+      // Đáp án bí mật của đề (Mức 2) — TUYỆT ĐỐI CHẶN HỌC SINH ĐỌC
       match /private/{docId} {
-        allow read, write: if signedIn()
-          && (get(/databases/$(database)/documents/exams/$(examId)).data.teacherId == request.auth.uid
-              || classOwner(get(/databases/$(database)/documents/exams/$(examId)).data.classId));
+        allow read, write: if signedIn() && (
+          isAdmin()
+          || get(/databases/$(database)/documents/exams/$(examId)).data.teacherId == request.auth.uid
+          || (get(/databases/$(database)/documents/exams/$(examId)).data.classId is string
+              && get(/databases/$(database)/documents/exams/$(examId)).data.classId.size() > 0
+              && (classOwner(get(/databases/$(database)/documents/exams/$(examId)).data.classId)
+                  || linkedToClass(get(/databases/$(database)/documents/exams/$(examId)).data.classId, request.auth.uid)))
+        );
       }
 
       // Lần làm bài của học sinh: chặn HS xoá attempt, lùi startedAt hay giảm violationCount/events
+      // và chỉ cho mở lượt mới khi đề bật allowRetry hoặc có quyền thi lại hợp lệ từ giáo viên.
       match /attempts/{attemptId} {
         allow read: if signedIn() && (
           attemptId == examId + '_' + request.auth.uid
@@ -371,8 +377,21 @@ service cloud.firestore {
           (attemptId == examId + '_' + request.auth.uid
               && request.resource.data.studentId == request.auth.uid
               && (
-                // Sau khi đã nộp ở lượt trước, cho phép khởi tạo lượt thi lại khi có permit
-                resource.data.submittedAt != null
+                // Sau khi đã nộp lượt trước: chỉ cho tạo lượt thi lại khi đề bật allowRetry
+                // hoặc HS có studentRetryAllowance hợp lệ của lớp hoặc permit đã được GV duyệt
+                (resource.data.submittedAt != null && (
+                  get(/databases/$(database)/documents/exams/$(examId)).data.get('allowRetry', false) == true
+                  || (get(/databases/$(database)/documents/exams/$(examId)).data.classId is string
+                      && get(/databases/$(database)/documents/exams/$(examId)).data.classId.size() > 0
+                      && exists(/databases/$(database)/documents/studentRetryAllowance/$(get(/databases/$(database)/documents/exams/$(examId)).data.classId + '_' + request.auth.uid))
+                      && get(/databases/$(database)/documents/studentRetryAllowance/$(get(/databases/$(database)/documents/exams/$(examId)).data.classId + '_' + request.auth.uid)).data.allowed == true)
+                  || (request.resource.data.get('retryPermitId', '') is string
+                      && request.resource.data.get('retryPermitId', '').size() > 0
+                      && exists(/databases/$(database)/documents/examRetryPermits/$(request.resource.data.retryPermitId))
+                      && get(/databases/$(database)/documents/examRetryPermits/$(request.resource.data.retryPermitId)).data.status == 'approved'
+                      && get(/databases/$(database)/documents/examRetryPermits/$(request.resource.data.retryPermitId)).data.studentId == request.auth.uid
+                      && get(/databases/$(database)/documents/examRetryPermits/$(request.resource.data.retryPermitId)).data.examId == examId)
+                ))
                 || (
                   request.resource.data.startedAt == resource.data.startedAt
                   && (!('violationCount' in resource.data) || request.resource.data.violationCount >= resource.data.violationCount)
@@ -388,13 +407,12 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 4. SUBMISSIONS — Bài nộp & Kết quả thi
+    // 4. SUBMISSIONS — Bài nộp & Kết quả thi (CHỐNG GIAN LẬN MỨC 2)
     // ===============================================================
-    //     • Học sinh: đọc/ghi bài của CHÍNH MÌNH.
-    //     • Giáo viên: đọc/ghi/ xoá bài của đề mình tạo (chấm lại, xoá đề).
-    //     • Chủ lớp: đọc/ghi/xoá mọi bài trong lớp mình (bảng điểm, phân tích).
-    //     Chỉ số liệu phái sinh ở client (điểm) KHÔNG được chống sửa tuyệt đối;
-    //     muốn chống gian lận tuyệt đối phải chấm ở server — xem tài liệu §11.
+    //     • Học sinh: CHỈ đọc bài của CHÍNH MÌNH (chặn đọc bài bạn cùng lớp).
+    //     • Đề Mức 2 (`secureAnswerKey == true`): CHỈ Server (/api/submit-exam)
+    //       được tạo bài nộp; học sinh KHÔNG BAO GIỜ được tự update/sửa điểm.
+    //     • Giáo viên / Chủ lớp / GVBM: đọc, chấm lại, đồng bộ OMR, xoá đề.
     function subExamAuthor() {
       return resource.data.examId is string
         && exists(/databases/$(database)/documents/exams/$(resource.data.examId))
@@ -407,6 +425,17 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/exams/$(resource.data.examId))
         && classOwner(
           get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId
+        );
+    }
+
+    function subClassLinkedTeacher() {
+      return resource.data.examId is string
+        && exists(/databases/$(database)/documents/exams/$(resource.data.examId))
+        && get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId is string
+        && get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId.size() > 0
+        && linkedToClass(
+          get(/databases/$(database)/documents/exams/$(resource.data.examId)).data.classId,
+          request.auth.uid
         );
     }
 
@@ -426,31 +455,42 @@ service cloud.firestore {
     }
 
     match /submissions/{subId} {
-      /* Đọc: mở cho người dùng đã đăng nhập (để giáo viên xem danh sách bài nộp,
-         thống kê đề/lớp, và học sinh xem bài làm của mình). */
-      allow read: if signedIn();
+      // CHẶN HỌC SINH ĐỌC BÀI NỘP / ĐÁP ÁN CỦA HỌC SINH KHÁC
+      allow read: if signedIn() && (
+        resource == null
+        || resource.data.studentId == request.auth.uid
+        || subExamAuthor()
+        || subClassOwner()
+        || subClassLinkedTeacher()
+        || subOmrManager()
+        || isAdmin()
+      );
 
       allow create: if signedIn() && (
+        // Đề Mức 2 (`secureAnswerKey == true`) BẮT BUỘC đi qua Server (/api/submit-exam Admin SDK).
+        // Chỉ cho client tạo trực tiếp với đề cũ chưa bật secureAnswerKey (tương thích ngược).
         (request.resource.data.studentId == request.auth.uid
           && request.resource.data.examId is string
-          && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)))
+          && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId))
+          && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.get('secureAnswerKey', false) != true)
         ||
         (request.resource.data.isPaperOmr == true
           && request.resource.data.classId is string
           && (classOwner(request.resource.data.classId) || linkedToClass(request.resource.data.classId, request.auth.uid))
           && request.resource.data.paperId is string
           && exists(/databases/$(database)/documents/paperExams/$(request.resource.data.paperId)))
+        || isAdmin()
       );
 
-      /* Nộp lại cùng một lượt (setDoc trùng id) là update → vẫn cho chính chủ bài hoặc giáo viên đồng bộ OMR */
+      // CHẶN TUYỆT ĐỐI HỌC SINH TỰ SỬA ĐIỂM / SỬA BÀI SAU KHI ĐÃ NỘP
       allow update: if signedIn() && (
-        (resource.data.studentId == request.auth.uid
-          && request.resource.data.studentId == request.auth.uid)
-        || (subOmrManager()
+        (subOmrManager()
             && request.resource.data.get('isPaperOmr', false) == true
             && request.resource.data.get('paperId', '') == resource.data.get('paperId', ''))
         || subExamAuthor()
         || subClassOwner()
+        || subClassLinkedTeacher()
+        || isAdmin()
       );
 
       allow delete: if signedIn() && (subOmrManager() || subExamAuthor() || subClassOwner() || isAdmin());
@@ -471,8 +511,11 @@ service cloud.firestore {
         isAdmin()
         || resource.data.teacherId == request.auth.uid
         || (resource.data.classId is string && classOwner(resource.data.classId))
-        // Học sinh chỉ được phép cộng bộ đếm stats (joined / violationCount)
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats'])
+        // Học sinh CHỈ được tăng bộ đếm stats (không được giảm/reset violationCount toàn phòng)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats'])
+            && request.resource.data.stats.get('joined', 0) >= resource.data.stats.get('joined', 0)
+            && request.resource.data.stats.get('submitted', 0) >= resource.data.stats.get('submitted', 0)
+            && request.resource.data.stats.get('violationCount', 0) >= resource.data.stats.get('violationCount', 0))
       );
 
       allow delete: if signedIn() && (
@@ -522,17 +565,68 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 6. EXAM RETRY PERMITS — Đơn xin thi lại
+    // 6. EXAM RETRY PERMITS — Đơn xin thi lại (CHẶN HS TỰ DUYỆT)
     // ===============================================================
     match /examRetryPermits/{permitId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn() && (
+        resource == null
+        || resource.data.studentId == request.auth.uid
+        || (resource.data.examId is string && isExamManager(resource.data.examId))
+        || (resource.data.classId is string && resource.data.classId.size() > 0 && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
+        || isAdmin()
+      );
+
+      // Học sinh CHỈ được tạo đơn ở trạng thái 'pending' (cấm tự tạo 'approved')
+      allow create: if signedIn() && (
+        (request.resource.data.studentId == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.examId is string
+          && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId)))
+        || (request.resource.data.examId is string && isExamManager(request.resource.data.examId))
+        || isAdmin()
+      );
+
+      // Giáo viên duyệt/từ chối; học sinh CHỈ được chuyển đơn ĐÃ DUYỆT của mình sang 'used'
+      allow update: if signedIn() && (
+        (resource.data.examId is string && isExamManager(resource.data.examId))
+        || (resource.data.classId is string && resource.data.classId.size() > 0 && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
+        || isAdmin()
+        || (resource.data.studentId == request.auth.uid
+            && resource.data.status == 'approved'
+            && request.resource.data.status == 'used'
+            && request.resource.data.studentId == resource.data.studentId
+            && request.resource.data.examId == resource.data.examId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'usedAt', 'usedAtMs']))
+      );
+
+      allow delete: if signedIn() && (
+        (resource.data.examId is string && isExamManager(resource.data.examId))
+        || isAdmin()
+      );
     }
 
     // ===============================================================
-    // 7. STUDENT RETRY ALLOWANCE — Cấp quyền thi lại theo lớp
+    // 7. STUDENT RETRY ALLOWANCE — Cấp quyền thi lại theo lớp (CHỈ GV)
     // ===============================================================
     match /studentRetryAllowance/{allowanceId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn() && (
+        resource == null
+        || resource.data.studentId == request.auth.uid
+        || (resource.data.classId is string && resource.data.classId.size() > 0 && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
+        || isAdmin()
+      );
+
+      allow create, update: if signedIn() && (
+        isAdmin()
+        || (request.resource.data.classId is string
+            && request.resource.data.classId.size() > 0
+            && (classOwner(request.resource.data.classId) || linkedToClass(request.resource.data.classId, request.auth.uid)))
+      );
+
+      allow delete: if signedIn() && (
+        isAdmin()
+        || (resource.data.classId is string && resource.data.classId.size() > 0 && classOwner(resource.data.classId))
+      );
     }
 
     // ===============================================================
@@ -569,13 +663,31 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 10. PAPER EXAMS — Chấm phiếu trắc nghiệm A4 (OMR)
+    // 10. PAPER EXAMS — Chấm phiếu trắc nghiệm A4 (OMR) — CHỈ GIÁO VIÊN / ADMIN
     // ===============================================================
     match /paperExams/{examId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, update, delete: if signedIn() && (
+        isAdmin()
+        || resource.data.get('teacherId', '') == request.auth.uid
+        || (resource.data.get('classId', '') is string
+            && resource.data.get('classId', '').size() > 0
+            && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
+      );
+
+      allow create: if signedIn() && (
+        isAdmin()
+        || request.resource.data.get('teacherId', '') == request.auth.uid
+      );
 
       match /results/{resId} {
-        allow read, write, delete: if signedIn();
+        allow read, write, delete: if signedIn() && (
+          isAdmin()
+          || get(/databases/$(database)/documents/paperExams/$(examId)).data.get('teacherId', '') == request.auth.uid
+          || (get(/databases/$(database)/documents/paperExams/$(examId)).data.get('classId', '') is string
+              && get(/databases/$(database)/documents/paperExams/$(examId)).data.get('classId', '').size() > 0
+              && (classOwner(get(/databases/$(database)/documents/paperExams/$(examId)).data.classId)
+                  || linkedToClass(get(/databases/$(database)/documents/paperExams/$(examId)).data.classId, request.auth.uid)))
+        );
       }
     }
 
@@ -656,11 +768,11 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 18. SITE CONFIG — Cấu hình toàn cục (bảo trì, thông báo)
+    // 18. SITE CONFIG — Cấu hình toàn cục (chỉ Admin được ghi)
     // ===============================================================
     match /siteConfig/{docId} {
       allow read: if true;
-      allow write: if signedIn();
+      allow write: if isAdmin();
     }
 
   }

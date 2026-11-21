@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo, lazy, Suspense } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { db } from '../lib/firebase.js';
@@ -35,18 +35,32 @@ import ViolationOverlay from './ViolationOverlay.jsx';
 import MathText from './MathText.jsx';
 import ExamPaperView, { PassageBox } from './ExamPaperView.jsx';
 import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.jsx';
+import HighlightableMathText from './exam/HighlightableMathText.jsx';
 import DigitalOmrSheet from './exam/DigitalOmrSheet.jsx';
 import ExamTrapReport from './exam/ExamTrapReport.jsx';
 import ExamModeModal from './exam/ExamModeModal.jsx';
+import ExamPreviewModal from './exam/ExamPreviewModal.jsx';
 import ShareAchievementModal from './ShareAchievementModal.jsx';
-import { isAnswered, countAnswered, packAnswers, scoreExam, scoreQuestion } from '../lib/examScoring.js';
+const Casio580Widget = lazy(() => import('./Casio580Widget.jsx'));
+import { isAnswered, countAnswered, packAnswers, scoreExam, scoreQuestion, qType } from '../lib/examScoring.js';
 import { buildLayout } from '../lib/examLayout.js';
+import { ElecFlaskBrandSvg } from './teacher/ElecBrandMark.jsx';
+import {
+  evaluateSafeMathExpr,
+  loadTargetUniversity,
+  saveExamDraft,
+  loadExamDraft,
+  clearExamDraft,
+  listExamDrafts,
+} from '../lib/studentAnalytics.js';
 import '../styles/classroom.css';
 import '../styles/exam-types.css';
 import '../styles/exam-pro.css';
 import '../styles/exam-join-v6.css';
 import '../styles/exam-paper.css';
 import '../styles/exam-mode-upgrade.css';
+import '../styles/student-v9-upgrades.css';
+import '../styles/exam-studio.css';
 
 /* ============================================================
    VirtualExamRoom.jsx — PHÒNG THI ẢO ELEC AI (100% SVG, KHÔNG EMOJI)
@@ -403,7 +417,10 @@ function ChemCardBanner({ exam, canAccess = true }) {
 }
 
 /* Thẻ Đề Thi chuẩn ELEC AI (100% SVG) */
-function VirtualExamCard({ exam, isFav, isDone, lastScore, canAccess = true, onStart, onToggleFav, onRequireUpgrade }) {
+function VirtualExamCard({
+  exam, isFav, isDone, lastScore, draftInfo = null, inTargetBlock = false,
+  canAccess = true, onStart, onPreview, onToggleFav, onRequireUpgrade,
+}) {
   const isVip = exam.tier === 'VIP';
 
   const handleAction = () => {
@@ -425,6 +442,16 @@ function VirtualExamCard({ exam, isFav, isDone, lastScore, canAccess = true, onS
             {isVip && <SvgSparkle size={11} />}
             <span>{exam.badgeLabel}</span>
           </span>
+          {inTargetBlock && (
+            <span className="s9-vex-block-pill" title="Môn học thuộc tổ hợp xét tuyển NV1 của bạn">
+              Trong khối
+            </span>
+          )}
+          {draftInfo && (
+            <span className="s9-vex-draft-pill" title="Bản nháp bài thi đang làm dở được tự động lưu">
+              Đang dở ({draftInfo.answeredCount}/{exam.questionCount})
+            </span>
+          )}
           {isDone && (
             <span className="ns9-vex-done-pill" title="Bạn đã hoàn thành đề này">
               <SvgCheck size={11} /> Đã làm {lastScore != null ? `(${lastScore}đ)` : ''}
@@ -466,15 +493,25 @@ function VirtualExamCard({ exam, isFav, isDone, lastScore, canAccess = true, onS
         </div>
 
         <div className="ns9-vex-foot">
-          <button
-            type="button"
-            className={'ns9-vex-more-btn' + (isFav ? ' is-fav' : '')}
-            onClick={() => onToggleFav(exam.id)}
-            aria-label={isFav ? 'Bỏ lưu đề yêu thích' : 'Lưu vào đề yêu thích'}
-            title={isFav ? 'Đã lưu trong Đề yêu thích (Bấm để bỏ lưu)' : 'Lưu vào Đề yêu thích'}
-          >
-            {isFav ? <SvgBookmark size={15} filled /> : <SvgDotsVertical size={15} />}
-          </button>
+          <div className="s9-vex-foot-left">
+            <button
+              type="button"
+              className={'ns9-vex-more-btn' + (isFav ? ' is-fav' : '')}
+              onClick={() => onToggleFav(exam.id)}
+              aria-label={isFav ? 'Bỏ lưu đề yêu thích' : 'Lưu vào đề yêu thích'}
+              title={isFav ? 'Đã lưu trong Đề yêu thích (Bấm để bỏ lưu)' : 'Lưu vào Đề yêu thích'}
+            >
+              {isFav ? <SvgBookmark size={15} filled /> : <SvgDotsVertical size={15} />}
+            </button>
+            <button
+              type="button"
+              className="s9-vex-preview-btn"
+              onClick={() => onPreview?.(exam)}
+              title="Xem trước 5 câu hỏi & lời giải mẫu trước khi thi"
+            >
+              Xem trước
+            </button>
+          </div>
 
           {!canAccess ? (
             <button
@@ -492,7 +529,7 @@ function VirtualExamCard({ exam, isFav, isDone, lastScore, canAccess = true, onS
               className={`ns9-vex-start-btn is-${exam.tier.toLowerCase()}`}
               onClick={handleAction}
             >
-              {isDone ? 'Làm lại đề' : 'Làm bài ngay'}
+              {draftInfo ? 'Làm tiếp bài' : isDone ? 'Làm lại đề' : 'Làm bài ngay'}
             </button>
           )}
         </div>
@@ -547,60 +584,253 @@ const IcoPanel = ({ size = 18 }) => (
     <line x1="15" y1="4" x2="15" y2="20" />
   </svg>
 );
+const IcoChevronLeft = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const IcoChevronRight = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+const IcoSun = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </svg>
+);
+const IcoMoon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+const IcoBook = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+const IcoStrike = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <path d="M16 6.5C15.4 5 13.9 4 12 4c-2.2 0-4 1.3-4 3.2 0 1.4.8 2.3 2.4 2.8" />
+    <path d="M8.4 17.2C9.2 19 10.6 20 12.4 20c2.4 0 4.1-1.4 4.1-3.4 0-.7-.2-1.3-.6-1.8" />
+  </svg>
+);
+const IcoKeyboard = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <line x1="6" y1="10" x2="6.01" y2="10" />
+    <line x1="10" y1="10" x2="10.01" y2="10" />
+    <line x1="14" y1="10" x2="14.01" y2="10" />
+    <line x1="18" y1="10" x2="18.01" y2="10" />
+    <line x1="7" y1="15" x2="17" y2="15" />
+  </svg>
+);
+const IcoCalc = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="4" y="2" width="16" height="20" rx="2" />
+    <line x1="8" y1="6" x2="16" y2="6" />
+    <line x1="8" y1="11" x2="8.01" y2="11" />
+    <line x1="12" y1="11" x2="12.01" y2="11" />
+    <line x1="16" y1="11" x2="16.01" y2="11" />
+    <line x1="8" y1="15" x2="8.01" y2="15" />
+    <line x1="12" y1="15" x2="12.01" y2="15" />
+    <line x1="16" y1="15" x2="16.01" y2="15" />
+    <line x1="8" y1="19" x2="12" y2="19" />
+    <line x1="16" y1="19" x2="16.01" y2="19" />
+  </svg>
+);
+const IcoListChecks = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10 6h11M10 12h11M10 18h11" />
+    <path d="M3 6l1.5 1.5L7 5" />
+    <path d="M3 12l1.5 1.5L7 11" />
+    <path d="M3 18l1.5 1.5L7 17" />
+  </svg>
+);
+const IcoGridOmr = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="7" cy="7" r="2.2" />
+    <circle cx="17" cy="7" r="2.2" />
+    <circle cx="7" cy="17" r="2.2" />
+    <circle cx="17" cy="17" r="2.2" />
+  </svg>
+);
+const IcoHighlighter = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 11l-6 6v3h9l3-3" />
+    <path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
+  </svg>
+);
 
-const QuestionCard = memo(function QuestionCard({ q, qi, num, picked, flagged, paused, onPick, onFlag }) {
-  const longOpts = (q.options || []).some((o) => String(o ?? '').length > 48);
+const VEX_Q_TYPE_LABEL = {
+  single_choice: 'Trắc nghiệm 4 lựa chọn',
+  true_false: 'Đúng / Sai (4 ý)',
+  short_answer: 'Trả lời ngắn',
+};
+
+const QuestionCard = memo(function QuestionCard({
+  q, qi, num, total, picked, flagged, paused, onPick, onFlag,
+  eliminated = {}, onToggleEliminate,
+  highlightActive, highlightedMap, onToggleHighlightMode, onToggleHighlightWord, onClearHighlights,
+  onZoom,
+}) {
+  const type = qType(q);
+  const longOpts = (q.options || []).some((o) => String(o ?? '').length > 34);
+  const hasAnswer = isAnswered(q, picked);
+  const pickedLetter = type === 'single_choice' && typeof picked === 'number'
+    ? String.fromCharCode(65 + picked)
+    : null;
+  const hasLit = highlightedMap && Object.values(highlightedMap).some(Boolean);
+
   return (
     <div className="ep-q-card">
       <div className="ep-q-head">
-        <span className="ep-q-num">Câu {num}</span>
-        <button
-          className={'ep-flag-btn' + (flagged ? ' on' : '')}
-          onClick={() => onFlag(qi)}
-          type="button"
-          aria-pressed={flagged}
-          disabled={paused}
-        >
-          <IcoFlag size={13} filled={flagged} />
-          {flagged ? 'Bỏ đánh dấu' : 'Đánh dấu'}
-        </button>
+        <div className="ep-q-meta-left">
+          <span className="ep-q-num">Câu {String(num).padStart(2, '0')} / {total}</span>
+          <span className="ep-q-chip">{VEX_Q_TYPE_LABEL[type] || 'Trắc nghiệm'}</span>
+          {hasAnswer && (
+            <span className="ep-q-chip answered">
+              <SvgCheck size={12} /> {pickedLetter ? `Đã chọn ${pickedLetter}` : 'Đã trả lời'}
+            </span>
+          )}
+        </div>
+        <div className="ep-q-actions">
+          <button
+            className={'ep-hl-btn' + (highlightActive ? ' on' : '')}
+            onClick={onToggleHighlightMode}
+            type="button"
+            aria-pressed={highlightActive}
+            disabled={paused}
+            title="Bật/tắt bút dạ quang tô từ khóa đề bài (phím H)"
+          >
+            <IcoHighlighter size={13} />
+            {highlightActive ? 'Đang tô' : 'Tô từ khóa'}
+          </button>
+          <button
+            className={'ep-flag-btn' + (flagged ? ' on' : '')}
+            onClick={() => onFlag(qi)}
+            type="button"
+            aria-pressed={flagged}
+            disabled={paused}
+            title="Đánh dấu câu cần xem lại (phím F)"
+          >
+            <IcoFlag size={13} filled={flagged} />
+            {flagged ? 'Đang đánh dấu' : 'Đánh dấu'}
+          </button>
+        </div>
       </div>
+
+      {highlightActive && (
+        <div className="ep-hl-banner" role="status">
+          <span className="ep-hl-banner-left">
+            <IcoHighlighter size={14} />
+            Nhấn vào từng từ trong câu hỏi để tô vàng từ khóa quan trọng (VD: không đúng, ở đkc).
+          </span>
+          <span className="ep-hl-banner-btns">
+            {hasLit && (
+              <button
+                type="button"
+                className="ep-hl-mini-btn"
+                onClick={() => onClearHighlights?.(qi)}
+              >
+                Xóa màu
+              </button>
+            )}
+            <button
+              type="button"
+              className="ep-hl-mini-btn done"
+              onClick={onToggleHighlightMode}
+            >
+              Xong
+            </button>
+          </span>
+        </div>
+      )}
 
       {(q.passage || q.instruction) && <PassageBox instruction={q.instruction} passage={q.passage} />}
 
-      <MathText as="p" className="ep-q-text">{q.q}</MathText>
-      <QuestionImage q={q} />
+      <HighlightableMathText
+        text={q.q}
+        className="ep-q-text"
+        active={highlightActive}
+        highlightedMap={highlightedMap}
+        onToggleWord={(wIdx) => onToggleHighlightWord?.(qi, wIdx)}
+      />
+      <QuestionImage q={q} onZoom={onZoom} />
 
       {!isChoiceType(q) && <QuestionAnswer q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />}
       {isChoiceType(q) && (
         <div className={'ep-opts' + (longOpts ? ' one' : '')}>
-          {q.options.map((opt, i) => (
-            <button
-              key={i}
-              type="button"
-              className={'ep-opt' + (picked === i ? ' picked' : '')}
-              onClick={() => onPick(qi, i)}
-              aria-pressed={picked === i}
-              disabled={paused}
-            >
-              <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
-              <span className="ep-opt-text"><MathText>{opt}</MathText></span>
-              {picked === i && <span className="ep-opt-check"><SvgCheck size={16} /></span>}
-            </button>
-          ))}
+          {q.options.map((opt, i) => {
+            const isPicked = picked === i;
+            const isElim = !!eliminated[i] && !isPicked;
+            return (
+              <div key={i} className={'ep-opt-row' + (isElim ? ' eliminated' : '')}>
+                <button
+                  type="button"
+                  className={'ep-opt' + (isPicked ? ' picked' : '')}
+                  onClick={() => onPick(qi, i)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isPicked) onToggleEliminate?.(qi, i);
+                  }}
+                  aria-pressed={isPicked}
+                  disabled={paused}
+                >
+                  <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
+                  <span className="ep-opt-text"><MathText>{opt}</MathText></span>
+                  {isPicked && <span className="ep-opt-check"><SvgCheck size={13} /></span>}
+                </button>
+                {onToggleEliminate && !isPicked && (
+                  <button
+                    type="button"
+                    className="ep-opt-strike"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleEliminate(qi, i);
+                    }}
+                    title={isElim ? 'Bỏ gạch loại trừ' : 'Gạch bỏ đáp án loại trừ (hoặc chuột phải)'}
+                    aria-label={isElim ? `Bỏ gạch đáp án ${String.fromCharCode(65 + i)}` : `Gạch loại trừ đáp án ${String.fromCharCode(65 + i)}`}
+                    disabled={paused}
+                  >
+                    <IcoStrike size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 });
 
-const QuestionGrid = memo(function QuestionGrid({ total, order, questions, answers, flags, currentQ, paused, onJump }) {
+const QuestionGrid = memo(function QuestionGrid({
+  total, order, questions, answers, flags, currentQ, paused, filter = 'all', onJump,
+}) {
+  const items = [];
+  for (let i = 0; i < total; i++) {
+    const oi = order[i] ?? i;
+    const done = isAnswered(questions?.[oi], answers[oi]);
+    const isFlagged = !!flags[oi];
+    if (filter === 'todo' && done) continue;
+    if (filter === 'flagged' && !isFlagged) continue;
+    items.push({ i, done, isFlagged });
+  }
+
   return (
     <div className="ep-sidebar-grid">
-      {Array.from({ length: total }, (_, i) => {
-        const oi = order[i] ?? i;
-        const done = isAnswered(questions?.[oi], answers[oi]);
-        const isFlagged = !!flags[oi];
+      {items.length === 0 ? (
+        <div className="ep-sidebar-empty">
+          {filter === 'flagged'
+            ? 'Chưa có câu nào được đánh dấu.'
+            : 'Tuyệt vời! Bạn đã làm hết tất cả câu hỏi.'}
+        </div>
+      ) : items.map(({ i, done, isFlagged }) => {
         const cls =
           'ep-sidebar-cell' +
           (done ? ' done' : '') +
@@ -640,7 +870,7 @@ function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) 
   return (
     <dialog
       ref={dlgRef}
-      className="ep-dialog"
+      className="ep-dialog ep-studio-dialog"
       onClose={onCancel}
       onClick={(e) => {
         const rect = dlgRef.current?.getBoundingClientRect();
@@ -653,18 +883,31 @@ function ConfirmSubmit({ open, total, answered, flagged, onCancel, onConfirm }) 
         <>
           <div className="ep-dialog-head">
             <IcoSend size={22} />
-            <h3>Nộp bài?</h3>
+            <h3>Xác nhận nộp bài?</h3>
           </div>
-          <p className="ep-dialog-body">
-            Bạn đã trả lời <b>{answered}</b>/{total} câu.
-            {flagged > 0 && <> Có <b>{flagged}</b> câu đang đánh dấu.</>}
-            {unanswered > 0 && <> Còn <b>{unanswered}</b> câu chưa làm.</>}
+          <div className="ep-studio-dialog-grid">
+            <div className="ep-studio-dialog-stat ok">
+              <b>{answered}/{total}</b>
+              <span>Đã trả lời</span>
+            </div>
+            <div className={'ep-studio-dialog-stat' + (unanswered > 0 ? ' warn' : '')}>
+              <b>{unanswered}</b>
+              <span>Chưa làm</span>
+            </div>
+            <div className={'ep-studio-dialog-stat' + (flagged > 0 ? ' warn' : '')}>
+              <b>{flagged}</b>
+              <span>Đánh dấu</span>
+            </div>
+          </div>
+          <p className="ep-dialog-note">
+            {unanswered > 0
+              ? `Bạn vẫn còn ${unanswered} câu chưa trả lời. Sau khi nộp sẽ chấm điểm ngay.`
+              : 'Bạn đã hoàn thành toàn bộ câu hỏi. Sẵn sàng xem kết quả và phân tích lỗi sai!'}
           </p>
-          <p className="ep-dialog-note">Sau khi nộp, bạn không thể sửa lại đáp án.</p>
           <div className="ep-dialog-actions">
-            <button className="td-btn" onClick={onCancel} type="button">Hủy</button>
+            <button className="td-btn" onClick={onCancel} type="button">Kiểm tra lại</button>
             <button className="td-btn primary" onClick={onConfirm} type="button">
-              <SvgCheck size={14} /> Nộp bài
+              <SvgCheck size={14} /> Xác nhận nộp bài
             </button>
           </div>
         </>
@@ -716,17 +959,111 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
     },
   }), [rawExam, questions, isPractice]);
 
-  const [stage, setStage] = useState(isPractice ? 'exam' : 'confirm');
+  const savedDraft = useMemo(() => loadExamDraft(uid, rawExam.id), [uid, rawExam.id]);
+  const [stage, setStage] = useState(isPractice || savedDraft ? 'exam' : 'confirm');
   const [mode, setMode] = useState(rawExam.viewMode === 'paper' ? 'paper' : 'single'); // 'single' | 'paper'
-  const [answers, setAnswers] = useState({});
-  const [flags, setFlags] = useState({});
-  const [currentQ, setCurrentQ] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(exam.duration * 60);
+  const [answers, setAnswers] = useState(() => (savedDraft?.answers && typeof savedDraft.answers === 'object' ? savedDraft.answers : {}));
+  const [flags, setFlags] = useState(() => (savedDraft?.flags && typeof savedDraft.flags === 'object' ? savedDraft.flags : {}));
+  const [eliminated, setEliminated] = useState({});
+  const [scratchOpen, setScratchOpen] = useState(false);
+  const [scratchTab, setScratchTab] = useState('casio'); // 'casio' | 'scratch'
+  const [calcExpr, setCalcExpr] = useState('');
+  const [calcResult, setCalcResult] = useState(null);
+  const [calcHistory, setCalcHistory] = useState([]);
+  const [scratchNote, setScratchNote] = useState('');
+  const [currentQ, setCurrentQ] = useState(() => (Number.isInteger(savedDraft?.currentQ) ? savedDraft.currentQ : 0));
+
+  const toggleEliminate = useCallback((qIdx, optIdx) => {
+    setEliminated((prev) => ({
+      ...prev,
+      [qIdx]: { ...(prev[qIdx] || {}), [optIdx]: !prev[qIdx]?.[optIdx] },
+    }));
+  }, []);
+
+  const runQuickCalc = (exprOverride) => {
+    const targetExpr = String(exprOverride ?? calcExpr).trim();
+    if (!targetExpr) return;
+    const res = evaluateSafeMathExpr(targetExpr);
+    setCalcResult(res);
+    if (res.ok) {
+      setCalcHistory((prev) => [{ expr: targetExpr, out: res.formatted }, ...prev].slice(0, 6));
+    }
+  };
+  const [timeLeft, setTimeLeft] = useState(() =>
+    Number.isFinite(savedDraft?.timeLeft) && savedDraft.timeLeft > 15 ? savedDraft.timeLeft : exam.duration * 60
+  );
   const [result, setResult] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [typing, setTyping] = useState(false);
   const [practiceRevealed, setPracticeRevealed] = useState({});
+
+  // ELEC Exam Studio Pro UI controls
+  const [examSurface, setExamSurface] = useState(() => {
+    try {
+      const saved = localStorage.getItem('elec_exam_surface');
+      if (saved === 'default' || saved === 'warm' || saved === 'dark') return saved;
+      return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default';
+    } catch {
+      return 'default';
+    }
+  });
+  const [fontScale, setFontScale] = useState(() => {
+    try {
+      const saved = localStorage.getItem('elec_exam_font');
+      return saved === 'sm' || saved === 'md' || saved === 'lg' ? saved : 'md';
+    } catch {
+      return 'md';
+    }
+  });
+  const [navFilter, setNavFilter] = useState('all');
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [highlights, setHighlights] = useState({});
+  const [zoomImg, setZoomImg] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const toggleHighlightMode = useCallback(() => {
+    setHighlightMode((v) => !v);
+  }, []);
+
+  const toggleHighlightWord = useCallback((qIdx, wordIdx) => {
+    setHighlights((prev) => {
+      const cur = prev[qIdx] || {};
+      return { ...prev, [qIdx]: { ...cur, [wordIdx]: !cur[wordIdx] } };
+    });
+  }, []);
+
+  const clearHighlights = useCallback((qIdx) => {
+    setHighlights((prev) => {
+      if (!prev[qIdx]) return prev;
+      const next = { ...prev };
+      delete next[qIdx];
+      return next;
+    });
+  }, []);
+
+  const cycleSurface = useCallback(() => {
+    setExamSurface((cur) => {
+      const next = cur === 'default' ? 'warm' : cur === 'warm' ? 'dark' : 'default';
+      try { localStorage.setItem('elec_exam_surface', next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const stepFont = useCallback((dir) => {
+    setFontScale((cur) => {
+      const arr = ['sm', 'md', 'lg'];
+      const idx = arr.indexOf(cur);
+      const next = arr[Math.max(0, Math.min(arr.length - 1, idx + dir))];
+      try { localStorage.setItem('elec_exam_font', next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const handleZoomImage = useCallback((src, alt) => {
+    if (!src) return;
+    setZoomImg({ src, alt: alt || 'Hình minh hoạ' });
+  }, []);
 
   const startTimeRef = useRef(null);
   const submittedRef = useRef(false);
@@ -738,12 +1075,27 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
 
+  // Wave 5: Tự động lưu bản nháp đề thi đang làm dở để hỗ trợ nút "Làm tiếp bài"
+  useEffect(() => {
+    if (stage !== 'exam' || submittedRef.current) return;
+    const answeredCount = countAnswered(exam.questions, answers);
+    if (answeredCount <= 0) return;
+    saveExamDraft(uid, rawExam.id, {
+      answers,
+      flags,
+      currentQ,
+      timeLeft,
+      answeredCount,
+    });
+  }, [stage, answers, flags, currentQ, timeLeft, uid, rawExam.id, exam.questions]);
+
   const layout = useMemo(() => buildLayout(exam, uid), [exam, uid]);
   const order = layout.order;
 
   const finishExam = useCallback((opts = {}) => {
     if (submittedRef.current) return;
     submittedRef.current = true;
+    clearExamDraft(uid, rawExam.id);
     guardRef.current?.stop?.();
     guardRef.current?.exitFullscreen?.();
 
@@ -972,6 +1324,9 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
   };
 
   const pickAnswer = useCallback((qIdx, optIdx) => {
+    if (typeof optIdx === 'number') {
+      setEliminated((prev) => (prev[qIdx]?.[optIdx] ? { ...prev, [qIdx]: { ...prev[qIdx], [optIdx]: false } } : prev));
+    }
     setAnswers((a) => (a[qIdx] === optIdx ? a : { ...a, [qIdx]: optIdx }));
   }, []);
 
@@ -1013,33 +1368,117 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
     mainRef.current?.scrollTo?.({ top: 0 });
   }, [currentQ, mode]);
 
-  /* ── MÀN 1: XÁC NHẬN TRƯỚC KHI VÀO THI (GIỐNG HỆT EXAMJOIN, KHÔNG CÓ CAMERA) ── */
+  // Phím tắt phòng thi (Desktop): A–D / 1–4 chọn đáp án, ← → chuyển câu, F đánh dấu, Esc đóng phóng to
+  useEffect(() => {
+    if (stage !== 'exam' || confirmOpen) return undefined;
+    const onKeyDown = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+
+      if (e.key === 'Escape') {
+        if (zoomImg) { e.preventDefault(); setZoomImg(null); return; }
+        if (helpOpen) { e.preventDefault(); setHelpOpen(false); return; }
+        if (scratchOpen) { e.preventDefault(); setScratchOpen(false); return; }
+        return;
+      }
+      if (zoomImg || helpOpen || (scratchOpen && scratchTab === 'casio')) return;
+
+      const curQi = order[currentQ] ?? currentQ;
+      const curQ = exam?.questions?.[curQi];
+      if (!curQ) return;
+
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFlag(curQi);
+        return;
+      }
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        setHighlightMode((v) => !v);
+        return;
+      }
+      if (mode === 'paper') return;
+
+      if (e.key === 'ArrowLeft') {
+        if (currentQ > 0) { e.preventDefault(); setCurrentQ((i) => Math.max(0, i - 1)); }
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        if (currentQ < totalQ - 1) { e.preventDefault(); setCurrentQ((i) => Math.min(totalQ - 1, i + 1)); }
+        return;
+      }
+      if (isChoiceType(curQ)) {
+        const keyMap = { a: 0, b: 1, c: 2, d: 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+        const idx = keyMap[String(e.key || '').toLowerCase()];
+        if (idx != null && idx < (curQ.options?.length || 0)) {
+          e.preventDefault();
+          pickAnswer(curQi, idx);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [stage, confirmOpen, zoomImg, helpOpen, scratchOpen, scratchTab, mode, currentQ, totalQ, order, exam?.questions, pickAnswer, toggleFlag]);
+
+  /* ── MÀN 1: XÁC NHẬN TRƯỚC KHI VÀO THI (ELEC EXAM STUDIO BRIEFING) ── */
   if (stage === 'confirm') {
     return (
-      <div className="ej-confirm">
+      <div className="ej-confirm ej-studio-confirm">
         <div className="ej-confirm-card">
-          <div className="ej-warn-ico"><IcoShield size={56} /></div>
-          <h1>Bạn sắp vào chế độ thi</h1>
-          <p className="ej-confirm-sub">{exam.title}</p>
+          <div className="ej-studio-head">
+            <div>
+              <span className="ej-studio-brand-row">
+                <ElecFlaskBrandSvg size={20} />
+                ELEC AI · Phòng thi ảo chuẩn khảo thí
+              </span>
+              <h1>{exam.title}</h1>
+              <p className="ej-confirm-sub">
+                Chế độ thi nghiêm ngặt không camera — khóa toàn màn hình, chống chuyển tab và chấm điểm chuẩn THPT.
+              </p>
+            </div>
+          </div>
 
-          <p className="ej-session-note">
-            <IcoShield size={14} /> Phòng thi ảo nghiêm ngặt cao · Không sử dụng Camera · Giám sát chống gian lận toàn màn hình
-          </p>
+          <div className="ej-studio-metrics">
+            <div className="ej-studio-metric">
+              <span className="ej-studio-metric-ico"><SvgClock size={18} /></span>
+              <div>
+                <small>Thời gian làm bài</small>
+                <b>{exam.duration} phút</b>
+              </div>
+            </div>
+            <div className="ej-studio-metric">
+              <span className="ej-studio-metric-ico"><IcoListChecks size={18} /></span>
+              <div>
+                <small>Số lượng câu hỏi</small>
+                <b>{exam.questions.length} câu</b>
+              </div>
+            </div>
+            <div className="ej-studio-metric">
+              <span className="ej-studio-metric-ico"><SvgAward size={18} /></span>
+              <div>
+                <small>Thang điểm tối đa</small>
+                <b>{exam.totalPoints} điểm</b>
+              </div>
+            </div>
+          </div>
 
-          <ul className="ej-rules">
-            <li><b>Thời gian:</b> {exam.duration} phút</li>
-            <li><b>Số câu:</b> {exam.questions.length}</li>
-            <li><b>Tổng điểm:</b> {exam.totalPoints}</li>
-            <li>Không thoát màn hình thi (Khóa toàn màn hình Fullscreen)</li>
-            <li>Chuyển tab, rời cửa sổ hoặc thoát toàn màn hình bị tính vi phạm</li>
-            <li><b>Chế độ nghiêm ngặt cao (Không bật Camera):</b> vi phạm 1 lần đã cảnh báo đỏ, chặn sao chép / dán / chuột phải / DevTools</li>
-            <li>Vi phạm {guard.maxViolations} lần sẽ tự động nộp bài</li>
-          </ul>
+          <div className="ej-studio-rules-box">
+            <h3 className="ej-studio-rules-title">
+              <IcoShield size={16} /> Quy định phòng thi nghiêm ngặt
+            </h3>
+            <ul className="ej-studio-rules-list">
+              <li><SvgCheck size={14} /> Giữ chế độ toàn màn hình Fullscreen trong suốt thời gian làm bài.</li>
+              <li><SvgCheck size={14} /> Không chuyển tab, rời cửa sổ hoặc mở DevTools / sao chép nội dung.</li>
+              <li><SvgCheck size={14} /> <span><b>Không bật Camera:</b> chỉ giám sát thao tác màn hình; vi phạm từ lần đầu đã có cảnh báo đỏ.</span></li>
+              <li><SvgCheck size={14} /> <span>Vi phạm đủ <b>{guard.maxViolations} lần</b> hệ thống tự động thu bài và chấm điểm.</span></li>
+            </ul>
+          </div>
 
           <div className="ej-confirm-actions">
-            <button className="td-btn" onClick={handleExitRoom} type="button">Hủy</button>
+            <button className="td-btn" onClick={handleExitRoom} type="button">Quay lại</button>
             <button className="td-btn primary big" onClick={startExam} type="button">
-              <IcoFullscreen /> Bắt đầu thi
+              <IcoFullscreen size={17} /> Bắt đầu làm bài
             </button>
           </div>
         </div>
@@ -1078,23 +1517,85 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
     );
   }
 
-  /* ── MÀN 2: PHÒNG THI CHÍNH (.ep-exam GIỐNG HỆT EXAMJOIN) ── */
+  /* ── MÀN 2: PHÒNG THI CHÍNH (ELEC EXAM STUDIO PRO) ── */
   const qi = order[currentQ] ?? currentQ;
   const q = exam.questions[qi];
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
   const answered = countAnswered(exam.questions, answers);
   const flaggedCount = Object.values(flags).filter(Boolean).length;
+  const unansweredCount = Math.max(0, exam.questions.length - answered);
   const progress = exam.questions.length > 0 ? (answered / exam.questions.length) * 100 : 0;
+  const completionPct = Math.round(progress);
 
   const timerClass =
     timeLeft < 60 ? ' critical'
       : timeLeft < 300 ? ' urgent'
         : '';
 
+  const violRatio = guard.maxViolations > 0 ? guard.violations / guard.maxViolations : 0;
+  const proctorPillClass =
+    guard.violations >= Math.max(1, guard.maxViolations - 1) && guard.violations > 0
+      ? ' danger'
+      : violRatio > 0
+        ? ' warn'
+        : '';
+
+  const surfaceMeta =
+    examSurface === 'warm'
+      ? { label: 'Chế độ giấy ấm (bảo vệ mắt)', icon: <IcoBook size={15} /> }
+      : examSurface === 'dark'
+        ? { label: 'Chế độ nền tối tập trung', icon: <IcoMoon size={15} /> }
+        : { label: 'Chế độ nền sáng ELEC', icon: <IcoSun size={15} /> };
+
+  let curtainTitle = '';
+  let curtainDesc = '';
+  let curtainAction = null;
+  if (stage === 'exam' && !isPractice && !confirmOpen) {
+    if (guard.devtoolsOpen) {
+      curtainTitle = 'Công cụ kiểm tra (DevTools) đang mở';
+      curtainDesc = 'Nội dung đề thi tạm ẩn cho đến khi bạn đóng DevTools / Console.';
+    } else if (guard.multiScreen) {
+      curtainTitle = 'Phát hiện nhiều màn hình mở rộng';
+      curtainDesc = 'Vui lòng ngắt kết nối màn hình phụ hoặc chuyển về chế độ 1 màn hình duy nhất.';
+    } else if (showFsBanner) {
+      curtainTitle = 'Bắt buộc chế độ toàn màn hình';
+      curtainDesc = 'Bạn đã thoát khỏi toàn màn hình. Đề thi được làm mờ cho tới khi bạn quay lại toàn màn hình.';
+      curtainAction = { label: 'Vào toàn màn hình ngay', onClick: () => guard.enterFullscreen() };
+    }
+  }
+
   return (
     <>
-      <div className={'ep-exam' + (typing ? ' kbd' : '') + (mode === 'paper' ? ' is-paper' : '')}>
+      <div
+        className={
+          'ep-exam ep-studio' +
+          (typing ? ' kbd' : '') +
+          (mode === 'paper' ? ' is-paper' : '') +
+          (!isPractice ? ' no-select' : '') +
+          (curtainTitle ? ' is-blurred' : '')
+        }
+        data-surface={examSurface}
+        data-font={fontScale}
+      >
+        {curtainTitle && (
+          <div className="ep-privacy-curtain" role="alert" aria-live="assertive">
+            <div className="ep-privacy-card">
+              <div className="ep-privacy-icon"><IcoShield size={28} /></div>
+              <h3>{curtainTitle}</h3>
+              <p>{curtainDesc}</p>
+              {curtainAction && (
+                <button
+                  type="button"
+                  className="td-btn primary"
+                  onClick={curtainAction.onClick}
+                >
+                  {curtainAction.label}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {showFsBanner && (
           <div className="ep-warning danger" role="alert" style={{
             background: '#dc2626',
@@ -1103,15 +1604,15 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
             position: 'sticky',
             top: 0,
             zIndex: 100,
-            padding: '.8rem 1.2rem',
+            padding: '.72rem 1.1rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '.8rem',
+            gap: '.75rem',
             fontWeight: 700,
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.35)',
+            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.38)',
           }}>
-            <IcoWarning size={22} />
-            <span style={{ flex: 1, fontSize: '.95rem' }}>
+            <IcoWarning size={20} />
+            <span style={{ flex: 1, fontSize: '.9rem' }}>
               Bạn đang KHÔNG ở chế độ toàn màn hình. Đây là vi phạm!
             </span>
             <button
@@ -1121,14 +1622,14 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                 background: '#fff',
                 color: '#dc2626',
                 border: 0,
-                padding: '.5rem 1rem',
+                padding: '.46rem .95rem',
                 borderRadius: '999px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '.4rem',
-                fontSize: '.85rem',
+                fontSize: '.82rem',
               }}
             >
               <IcoFullscreen size={14} /> Vào lại ngay
@@ -1142,197 +1643,258 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
               className="ep-header-btn"
               onClick={() => setSidebarOpen((v) => !v)}
               type="button"
-              aria-label="Danh sách câu"
+              aria-label="Danh sách câu hỏi"
             >
               <IcoPanel size={18} />
             </button>
+            <div className="ep-brand-badge">
+              <ElecFlaskBrandSvg size={30} />
+            </div>
+            <span className="ep-brand-divider" aria-hidden="true" />
             <div className="ep-header-title">
-              <h2>{exam.title}</h2>
+              <h2 title={exam.title}>{exam.title}</h2>
               <span className="ep-header-sub">
-                Câu {currentQ + 1} / {exam.questions.length}
-                <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>
+                Câu {currentQ + 1}/{exam.questions.length} · Đã làm {answered}/{exam.questions.length}
+                {isPractice ? (
+                  <span className="ep-practice-tag">Luyện tập</span>
+                ) : (
+                  <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>
+                )}
               </span>
             </div>
           </div>
 
-          <div className="ep-header-center">
-            <div className="ep-progress-mini" aria-hidden="true">
-              <div className="ep-progress-mini-bar" style={{ width: `${progress}%` }} />
-            </div>
-            {isPractice ? (
-              <span className="ep-monitor-chip" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-                <IcoSparkle size={13} /> Chế độ Luyện tập tự do
-              </span>
-            ) : (
-              <span className="ep-monitor-chip">
-                <IcoShield size={13} /> Giám sát nghiêm ngặt · Vi phạm {guard.violations}/{guard.maxViolations}
-              </span>
-            )}
-            <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(15, 23, 42, 0.4)', borderRadius: 10, padding: 3, gap: 2 }}>
-              <button
-                type="button"
-                className={'ep-monitor-chip' + (mode === 'single' ? ' is-on' : '')}
-                onClick={() => setMode('single')}
-                style={{ cursor: 'pointer', background: mode === 'single' ? '#3b82f6' : 'transparent', color: mode === 'single' ? '#fff' : undefined }}
-                title="Xem từng câu"
-              >
-                Từng câu
-              </button>
-              <button
-                type="button"
-                className={'ep-monitor-chip' + (mode === 'paper' ? ' is-on' : '')}
-                onClick={() => setMode('paper')}
-                style={{ cursor: 'pointer', background: mode === 'paper' ? '#3b82f6' : 'transparent', color: mode === 'paper' ? '#fff' : undefined }}
-                title="Xem dạng đề giấy cuộn"
-              >
-                <SvgDoc size={12} /> Đề giấy
-              </button>
-              <button
-                type="button"
-                className={'ep-monitor-chip' + (mode === 'omr' ? ' is-on' : '')}
-                onClick={() => setMode('omr')}
-                style={{ cursor: 'pointer', background: mode === 'omr' ? '#2563eb' : 'transparent', color: mode === 'omr' ? '#fff' : undefined, fontWeight: mode === 'omr' ? 700 : undefined }}
-                title="Chế độ Phiếu tô OMR 1:1 chuẩn Bộ GD&ĐT"
-              >
-                Phiếu OMR 1:1
-              </button>
-            </div>
-          </div>
+          {/* Giữ trống tuyệt đối vùng giữa topbar để không bao giờ đụng nút (X) thoát Fullscreen của Chrome/Edge */}
+          <div className="ep-header-safe-center" aria-hidden="true" />
 
           <div className="ep-header-right">
+            <div className="ep-tools-group" role="group" aria-label="Tùy chỉnh giao diện đọc đề">
+              <button
+                type="button"
+                className="ep-tool-btn"
+                onClick={cycleSurface}
+                title={`Đổi giao diện đọc (${surfaceMeta.label})`}
+                aria-label={surfaceMeta.label}
+              >
+                {surfaceMeta.icon}
+              </button>
+              <button
+                type="button"
+                className={'ep-tool-btn' + (fontScale === 'sm' ? ' active' : '')}
+                onClick={() => stepFont(-1)}
+                disabled={fontScale === 'sm'}
+                title="Thu nhỏ cỡ chữ"
+                aria-label="Thu nhỏ cỡ chữ"
+              >
+                A-
+              </button>
+              <button
+                type="button"
+                className={'ep-tool-btn' + (fontScale === 'lg' ? ' active' : '')}
+                onClick={() => stepFont(1)}
+                disabled={fontScale === 'lg'}
+                title="Phóng to cỡ chữ"
+                aria-label="Phóng to cỡ chữ"
+              >
+                A+
+              </button>
+              <button
+                type="button"
+                className={'ep-tool-btn ep-tool-help' + (helpOpen ? ' active' : '')}
+                onClick={() => setHelpOpen((v) => !v)}
+                title="Phím tắt phòng thi"
+                aria-label="Phím tắt phòng thi"
+              >
+                <IcoKeyboard size={15} />
+              </button>
+            </div>
+
+            {!isPractice && (
+              <div className={'ep-proctor-pill' + proctorPillClass}>
+                <IcoShield size={14} />
+                <span>Vi phạm {guard.violations}/{guard.maxViolations}</span>
+              </div>
+            )}
+
+            {answered > 0 && (() => {
+              const elapsedSec = Math.max(1, exam.duration * 60 - timeLeft);
+              const secPerQ = Math.round(elapsedSec / answered);
+              const targetSpq = Math.max(20, Math.round((exam.duration * 60) / Math.max(1, exam.questions.length)));
+              const paceTone = secPerQ <= targetSpq * 0.85 ? 'fast' : secPerQ <= targetSpq * 1.15 ? 'ok' : 'slow';
+              const paceLabel = paceTone === 'fast' ? 'Nhanh' : paceTone === 'ok' ? 'Đúng nhịp' : 'Hơi chậm';
+              return (
+                <span
+                  className={`ep-pace-pill is-${paceTone}`}
+                  title={`Tốc độ hiện tại ${secPerQ}s/câu (mục tiêu ${targetSpq}s/câu)`}
+                >
+                  {secPerQ}s/câu · {paceLabel}
+                </span>
+              );
+            })()}
+
+            <button
+              type="button"
+              className={`ep-casio-btn ${scratchOpen ? 'active' : ''}`}
+              onClick={() => setScratchOpen((v) => !v)}
+              title="Mở Bảng nháp & Máy tính khoa học nhanh"
+            >
+              <IcoCalc size={14} />
+              <span>Nháp &amp; Casio</span>
+            </button>
+
             <div className={'ep-timer' + timerClass} role="timer" aria-live="polite">
-              <SvgClock size={16} />
+              <SvgClock size={15} />
               <b>{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}</b>
             </div>
+
             <button className="ep-submit-btn" onClick={() => setConfirmOpen(true)} type="button">
               <IcoSend size={14} /> Nộp bài
             </button>
+
             <button
-              className="ep-header-btn"
+              className="ep-exit-icon-btn"
               onClick={handleExitRoom}
               type="button"
               title="Thoát phòng thi"
               aria-label="Thoát phòng thi"
             >
-              <SvgClose size={16} />
+              <SvgClose size={15} />
             </button>
+          </div>
+
+          <div className="ep-header-progress" aria-hidden="true">
+            <div className="ep-header-progress-fill" style={{ width: `${progress}%` }} />
           </div>
         </header>
 
         {guard.warning && guard.warning.type === 'warn-soft' && (
           <div className="ep-warning soft" role="alert">
             <IcoWarning size={18} />
-            <span>{guard.warning.text}</span>
+            <span style={{ flex: 1, fontSize: '.84rem', lineHeight: 1.4 }}>{guard.warning.text}</span>
             <button className="ep-warning-close" onClick={guard.clearWarning} type="button">
               Đóng
             </button>
           </div>
         )}
 
-        <div className="ep-mprog" aria-hidden="true">
-          <i style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="ep-body">
-          <main
-            className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
-            ref={mainRef}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-          >
-            {mode === 'paper' ? (
-              <ExamPaperView
-                layout={layout}
-                questions={exam.questions}
-                answers={answers}
-                flags={flags}
-                paused={false}
-                onPick={pickAnswer}
-                onFlag={toggleFlag}
-                onVisible={setCurrentQ}
-                onSubmit={() => setConfirmOpen(true)}
-                rootRef={mainRef}
-              />
-            ) : (
-              <>
-                <QuestionCard
-                  q={q}
-                  qi={qi}
-                  num={currentQ + 1}
-                  picked={answers[qi]}
-                  flagged={!!flags[qi]}
+        <div className="ep-body no-cam">
+          <div className="ep-main-col">
+            <main
+              className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
+              ref={mainRef}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+            >
+              {mode === 'paper' ? (
+                <ExamPaperView
+                  layout={layout}
+                  questions={exam.questions}
+                  answers={answers}
+                  flags={flags}
                   paused={false}
                   onPick={pickAnswer}
                   onFlag={toggleFlag}
+                  onVisible={setCurrentQ}
+                  onSubmit={() => setConfirmOpen(true)}
+                  onZoom={handleZoomImage}
+                  rootRef={mainRef}
                 />
+              ) : (
+                <>
+                  <QuestionCard
+                    q={q}
+                    qi={qi}
+                    num={currentQ + 1}
+                    total={exam.questions.length}
+                    picked={answers[qi]}
+                    flagged={!!flags[qi]}
+                    paused={false}
+                    onPick={pickAnswer}
+                    onFlag={toggleFlag}
+                    eliminated={eliminated[qi]}
+                    onToggleEliminate={toggleEliminate}
+                    highlightActive={highlightMode}
+                    highlightedMap={highlights[qi]}
+                    onToggleHighlightMode={toggleHighlightMode}
+                    onToggleHighlightWord={toggleHighlightWord}
+                    onClearHighlights={clearHighlights}
+                    onZoom={handleZoomImage}
+                  />
 
-                {/* Chế độ Luyện tập: Nút kiểm tra đáp án & lời giải 4 tầng tức thì */}
-                {isPractice && (
-                  <div className="ns9-practice-check-box" style={{ margin: '14px 0' }}>
-                    {!practiceRevealed[qi] ? (
-                      <button
-                        type="button"
-                        className="ns9-practice-check-btn"
-                        onClick={() => setPracticeRevealed((prev) => ({ ...prev, [qi]: true }))}
-                        disabled={!isAnswered(q, answers[qi])}
-                        title={!isAnswered(q, answers[qi]) ? 'Vui lòng trả lời câu hỏi trước khi kiểm tra' : 'Xem đáp án và lời giải'}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        <span>Kiểm tra đáp án & Xem lời giải chi tiết</span>
-                      </button>
-                    ) : (() => {
-                      const qScore = scoreQuestion(q, answers[qi]);
-                      const formatVal = (val) => {
-                        if (val === undefined || val === null || val === '') return 'trống';
-                        if (q.type === 'true_false' && Array.isArray(val)) {
-                          const labels = ['a', 'b', 'c', 'd'];
-                          return val
-                            .map((item, idx) => (typeof item === 'boolean' ? `${labels[idx] || idx + 1}) ${item ? 'Đ' : 'S'}` : null))
-                            .filter(Boolean)
-                            .join(', ') || 'trống';
-                        }
-                        if (typeof val === 'number' && q.type !== 'true_false' && q.type !== 'short_answer') {
-                          return val >= 0 ? String.fromCharCode(65 + val) : 'trống';
-                        }
-                        if (Array.isArray(val)) return val.join(' / ');
-                        return String(val);
-                      };
-                      const pickedLabel = formatVal(qScore.picked);
-                      const correctLabel = formatVal(qScore.correct);
-                      return (
-                      <div className="ns9-practice-sol-card">
-                        <div className={`ns9-practice-sol-header ${qScore.isCorrect ? 'is-correct' : 'is-wrong'}`}>
-                          {qScore.isCorrect ? (
-                            <>
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              <b>Chính xác! Đáp án đúng là {correctLabel}</b>
-                            </>
-                          ) : (
-                            <>
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                              <b>{qScore.earned > 0 ? `Đúng một phần (${qScore.earned}/${qScore.max} điểm)!` : 'Chưa chính xác!'} Bạn chọn {pickedLabel} — Đáp án đúng là {correctLabel}</b>
-                            </>
-                          )}
-                        </div>
-                        {q.explanation && (
-                          <div className="ns9-practice-sol-body">
-                            <span className="ns9-practice-sol-lbl">HƯỚNG DẪN GIẢI CHI TIẾT:</span>
-                            <MathText text={q.explanation} />
+                  {/* Chế độ Luyện tập: Nút kiểm tra đáp án & lời giải 4 tầng tức thì */}
+                  {isPractice && (
+                    <div className="ns9-practice-check-box">
+                      {!practiceRevealed[qi] ? (
+                        <button
+                          type="button"
+                          className="ns9-practice-check-btn"
+                          onClick={() => setPracticeRevealed((prev) => ({ ...prev, [qi]: true }))}
+                          disabled={!isAnswered(q, answers[qi])}
+                          title={!isAnswered(q, answers[qi]) ? 'Vui lòng trả lời câu hỏi trước khi kiểm tra' : 'Xem đáp án và lời giải'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          <span>Kiểm tra đáp án &amp; Xem lời giải chi tiết</span>
+                        </button>
+                      ) : (() => {
+                        const qScore = scoreQuestion(q, answers[qi]);
+                        const formatVal = (val) => {
+                          if (val === undefined || val === null || val === '') return 'trống';
+                          if (q.type === 'true_false' && Array.isArray(val)) {
+                            const labels = ['a', 'b', 'c', 'd'];
+                            return val
+                              .map((item, idx) => (typeof item === 'boolean' ? `${labels[idx] || idx + 1}) ${item ? 'Đ' : 'S'}` : null))
+                              .filter(Boolean)
+                              .join(', ') || 'trống';
+                          }
+                          if (typeof val === 'number' && q.type !== 'true_false' && q.type !== 'short_answer') {
+                            return val >= 0 ? String.fromCharCode(65 + val) : 'trống';
+                          }
+                          if (Array.isArray(val)) return val.join(' / ');
+                          return String(val);
+                        };
+                        const pickedLabel = formatVal(qScore.picked);
+                        const correctLabel = formatVal(qScore.correct);
+                        return (
+                          <div className="ns9-practice-sol-card">
+                            <div className={`ns9-practice-sol-header ${qScore.isCorrect ? 'is-correct' : 'is-wrong'}`}>
+                              {qScore.isCorrect ? (
+                                <>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <b>Chính xác! Đáp án đúng là {correctLabel}</b>
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                  <b>{qScore.earned > 0 ? `Đúng một phần (${qScore.earned}/${qScore.max} điểm)!` : 'Chưa chính xác!'} Bạn chọn {pickedLabel} — Đáp án đúng là {correctLabel}</b>
+                                </>
+                              )}
+                            </div>
+                            {q.explanation && (
+                              <div className="ns9-practice-sol-body">
+                                <span className="ns9-practice-sol-lbl">HƯỚNG DẪN GIẢI CHI TIẾT:</span>
+                                <MathText text={q.explanation} />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      );
-                    })()}
-                  </div>
-                )}
+                        );
+                      })()}
+                    </div>
+                  )}
 
+                  <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
+                </>
+              )}
+            </main>
+
+            {mode !== 'paper' && (
+              <div className="ep-nav-dock">
                 <div className="ep-nav">
                   <button
                     className="ep-nav-btn"
@@ -1340,8 +1902,13 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                     onClick={() => setCurrentQ((i) => i - 1)}
                     type="button"
                   >
-                    Câu trước
+                    <IcoChevronLeft size={16} /> Câu trước
                   </button>
+
+                  <div className="ep-nav-center">
+                    <span>Đã làm <b>{answered}/{exam.questions.length}</b></span>
+                    {unansweredCount > 0 && <span>· Còn <b>{unansweredCount}</b> câu</span>}
+                  </div>
 
                   <button
                     className="ep-nav-list"
@@ -1358,7 +1925,7 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                       onClick={() => setCurrentQ((i) => i + 1)}
                       type="button"
                     >
-                      Câu tiếp
+                      Câu tiếp <IcoChevronRight size={16} />
                     </button>
                   ) : (
                     <button
@@ -1366,73 +1933,352 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
                       onClick={() => setConfirmOpen(true)}
                       type="button"
                     >
-                      <IcoSend size={14} /> Nộp bài
+                      <IcoSend size={14} /> Hoàn thành &amp; Nộp bài
                     </button>
                   )}
                 </div>
-                <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
-              </>
+              </div>
             )}
-          </main>
 
-          {mode === 'paper' && (
-            <div className="ep-pbar">
-              <button type="button" className="ep-pbar-list" onClick={() => setSidebarOpen(true)}>
-                <IcoPanel size={16} /> {answered}/{exam.questions.length} câu
-              </button>
-              <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)}>
-                <IcoSend size={14} /> Nộp bài
-              </button>
-            </div>
-          )}
-
-          {mode === 'omr' && (
-            <div style={{ width: 310, flexShrink: 0, padding: '12px 16px 16px 0', height: 'calc(100vh - 120px)', position: 'sticky', top: 60, zIndex: 10 }}>
-              <DigitalOmrSheet
-                questions={exam.questions}
-                answers={answers}
-                flags={flags}
-                currentQ={currentQ}
-                onSelectAnswer={(idx, optIdx) => pickAnswer(idx, optIdx)}
-                onToggleFlag={(idx) => toggleFlag(idx)}
-                onJumpToQuestion={(idx) => setCurrentQ(idx)}
-              />
-            </div>
-          )}
+            {mode === 'paper' && (
+              <div className="ep-pbar">
+                <button type="button" className="ep-pbar-list" onClick={() => setSidebarOpen(true)}>
+                  <IcoPanel size={16} /> {answered}/{exam.questions.length} câu
+                </button>
+                <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)}>
+                  <IcoSend size={14} /> Nộp bài
+                </button>
+              </div>
+            )}
+          </div>
 
           <aside className={'ep-sidebar' + (sidebarOpen ? ' open' : '')}>
+            {/* Thanh chuyển 3 chế độ thi tích hợp gọn đầu sidebar — tuyệt đối không đụng nút X Fullscreen */}
+            <div className="ep-mode-bar">
+              <div className="ep-mode-seg" role="tablist" aria-label="Chế độ hiển thị đề thi">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'single'}
+                  className={'ep-mode-seg-btn' + (mode === 'single' ? ' on' : '')}
+                  onClick={() => setMode('single')}
+                  title="Xem tập trung từng câu"
+                >
+                  Từng câu
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'paper'}
+                  className={'ep-mode-seg-btn' + (mode === 'paper' ? ' on' : '')}
+                  onClick={() => setMode('paper')}
+                  title="Xem dạng đề giấy cuộn liên tục"
+                >
+                  <SvgDoc size={12} /> Đề giấy
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'omr'}
+                  className={'ep-mode-seg-btn' + (mode === 'omr' ? ' on' : '')}
+                  onClick={() => setMode('omr')}
+                  title="Phiếu tô OMR 1:1 chuẩn Bộ GD&ĐT"
+                >
+                  <IcoGridOmr size={12} /> OMR 1:1
+                </button>
+              </div>
+            </div>
+
             <div className="ep-sidebar-head">
-              <b>Danh sách câu</b>
+              <div className="ep-sidebar-head-left">
+                <b>{mode === 'omr' ? 'Phiếu tô OMR 1:1' : 'Danh sách câu hỏi'}</b>
+                <span className="ep-sidebar-pct">{completionPct}%</span>
+              </div>
               <button
                 className="ep-sidebar-close"
                 onClick={() => setSidebarOpen(false)}
                 type="button"
-                aria-label="Đóng"
+                aria-label="Đóng danh sách câu"
               >
                 <SvgClose size={16} />
               </button>
             </div>
 
             <div className="ep-sidebar-stats">
-              <span><i className="dot done" /> Đã làm <b>{answered}</b></span>
-              <span><i className="dot flagged" /> Đánh dấu <b>{flaggedCount}</b></span>
-              <span><i className="dot todo" /> Chưa làm <b>{exam.questions.length - answered}</b></span>
+              <div className="ep-stat-tile done">
+                <b>{answered}</b>
+                <span><i /> Đã làm</span>
+              </div>
+              <div className="ep-stat-tile flagged">
+                <b>{flaggedCount}</b>
+                <span><i /> Đánh dấu</span>
+              </div>
+              <div className="ep-stat-tile todo">
+                <b>{unansweredCount}</b>
+                <span><i /> Chưa làm</span>
+              </div>
             </div>
 
-            <QuestionGrid
-              total={exam.questions.length}
-              order={order}
-              questions={exam.questions}
-              answers={answers}
-              flags={flags}
-              currentQ={currentQ}
-              paused={false}
-              onJump={jumpTo}
-            />
+            {mode === 'omr' ? (
+              <div className="ep-sidebar-omr">
+                <DigitalOmrSheet
+                  questions={exam.questions}
+                  answers={answers}
+                  flags={flags}
+                  currentQ={currentQ}
+                  onSelectAnswer={(idx, optIdx) => pickAnswer(idx, optIdx)}
+                  onToggleFlag={(idx) => toggleFlag(idx)}
+                  onJumpToQuestion={(idx) => jumpTo(idx)}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="ep-sidebar-filters" role="tablist" aria-label="Lọc danh sách câu hỏi">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={navFilter === 'all'}
+                    className={'ep-filter-btn' + (navFilter === 'all' ? ' on' : '')}
+                    onClick={() => setNavFilter('all')}
+                  >
+                    Tất cả ({exam.questions.length})
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={navFilter === 'todo'}
+                    className={'ep-filter-btn' + (navFilter === 'todo' ? ' on' : '')}
+                    onClick={() => setNavFilter('todo')}
+                  >
+                    Chưa làm ({unansweredCount})
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={navFilter === 'flagged'}
+                    className={'ep-filter-btn' + (navFilter === 'flagged' ? ' on' : '')}
+                    onClick={() => setNavFilter('flagged')}
+                  >
+                    Đánh dấu ({flaggedCount})
+                  </button>
+                </div>
+
+                <QuestionGrid
+                  total={exam.questions.length}
+                  order={order}
+                  questions={exam.questions}
+                  answers={answers}
+                  flags={flags}
+                  currentQ={currentQ}
+                  paused={false}
+                  filter={navFilter}
+                  onJump={jumpTo}
+                />
+              </>
+            )}
+
+            <div className="ep-sidebar-foot">
+              <div className="ep-mobile-tools">
+                <span className="ep-mobile-tools-label">Hiển thị</span>
+                <div className="ep-tools-group" role="group" aria-label="Tùy chỉnh giao diện đọc đề">
+                  <button
+                    type="button"
+                    className="ep-tool-btn"
+                    onClick={cycleSurface}
+                    title={surfaceMeta.label}
+                    aria-label={surfaceMeta.label}
+                  >
+                    {surfaceMeta.icon}
+                  </button>
+                  <button
+                    type="button"
+                    className={'ep-tool-btn' + (fontScale === 'sm' ? ' active' : '')}
+                    onClick={() => stepFont(-1)}
+                    disabled={fontScale === 'sm'}
+                    aria-label="Thu nhỏ cỡ chữ"
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    className={'ep-tool-btn' + (fontScale === 'lg' ? ' active' : '')}
+                    onClick={() => stepFont(1)}
+                    disabled={fontScale === 'lg'}
+                    aria-label="Phóng to cỡ chữ"
+                  >
+                    A+
+                  </button>
+                </div>
+              </div>
+              <div className="ep-kbd-hints">
+                <span><kbd>A-D</kbd> Chọn</span>
+                <span><kbd>←</kbd><kbd>→</kbd> Chuyển</span>
+                <span><kbd>F</kbd> Đánh dấu</span>
+              </div>
+            </div>
           </aside>
 
           {sidebarOpen && <div className="ep-sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
         </div>
+
+        {/* Lightbox phóng to hình minh hoạ ngay trong phòng thi */}
+        {zoomImg && (
+          <div
+            className="ep-lightbox"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Phóng to hình minh hoạ"
+            onClick={() => setZoomImg(null)}
+          >
+            <div className="ep-lightbox-bar" onClick={(e) => e.stopPropagation()}>
+              <span>{zoomImg.alt || 'Hình minh hoạ câu hỏi'}</span>
+              <button type="button" className="ep-lightbox-close" onClick={() => setZoomImg(null)}>
+                <SvgClose size={15} /> Đóng (Esc)
+              </button>
+            </div>
+            <img
+              src={zoomImg.src}
+              alt={zoomImg.alt}
+              className="ep-lightbox-img"
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
+        {/* Bảng tra cứu phím tắt nhanh */}
+        {helpOpen && (
+          <div className="ep-help-pop" role="dialog" aria-label="Phím tắt phòng thi">
+            <div className="ep-help-pop-head">
+              <span>Phím tắt &amp; Mẹo làm bài</span>
+              <button
+                type="button"
+                className="ep-tool-btn"
+                onClick={() => setHelpOpen(false)}
+                aria-label="Đóng"
+              >
+                <SvgClose size={14} />
+              </button>
+            </div>
+            <ul>
+              <li><span>Chọn đáp án A–D</span><span><kbd>A</kbd>–<kbd>D</kbd></span></li>
+              <li><span>Chuyển câu trước / sau</span><span><kbd>←</kbd> <kbd>→</kbd></span></li>
+              <li><span>Đánh dấu xem lại</span><span><kbd>F</kbd></span></li>
+              <li><span>Bật/tắt bút dạ quang</span><span><kbd>H</kbd></span></li>
+              <li><span>Gạch loại trừ đáp án sai</span><span>Chuột phải / Nút S</span></li>
+              <li><span>Phóng to hình đề thi</span><span>Nhấn vào hình</span></li>
+            </ul>
+          </div>
+        )}
+
+        {/* Wave 4 + Casio fx-580VN X: Floating Máy Tính Khoa Học 50 Phím & Bảng Nháp */}
+        {scratchOpen && (
+          <aside
+            className={'s9-ep-scratch' + (scratchTab === 'casio' ? ' is-casio-open' : '')}
+            aria-label="Máy tính Casio fx-580VN X và bảng nháp"
+          >
+            <div className="s9-ep-scratch-head">
+              <div className="ep-scratch-tabs" role="tablist" aria-label="Chuyển đổi Casio và Nháp">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={scratchTab === 'casio'}
+                  className={'ep-scratch-tab' + (scratchTab === 'casio' ? ' on' : '')}
+                  onClick={() => setScratchTab('casio')}
+                >
+                  <IcoCalc size={13} /> Casio fx-580VN X
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={scratchTab === 'scratch'}
+                  className={'ep-scratch-tab' + (scratchTab === 'scratch' ? ' on' : '')}
+                  onClick={() => setScratchTab('scratch')}
+                >
+                  Nháp nhanh
+                </button>
+              </div>
+              <button type="button" onClick={() => setScratchOpen(false)} aria-label="Đóng máy tính và bảng nháp">
+                <SvgClose size={14} />
+              </button>
+            </div>
+
+            {scratchTab === 'casio' ? (
+              <Suspense
+                fallback={
+                  <div style={{ padding: '1.5rem', textAlign: 'center', fontSize: '.82rem', color: 'var(--es-mut)' }}>
+                    Đang khởi động Casio fx-580VN X...
+                  </div>
+                }
+              >
+                <Casio580Widget compact captureKeyboard showModeBar />
+              </Suspense>
+            ) : (
+              <>
+                <form
+                  className="s9-ep-calc-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    runQuickCalc();
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={calcExpr}
+                    onChange={(e) => setCalcExpr(e.target.value)}
+                    placeholder="VD: sqrt(2*9.8*5) hoặc 24.79*0.15"
+                    aria-label="Nhập biểu thức tính toán"
+                  />
+                  <button type="submit">=</button>
+                </form>
+                <div className="s9-ep-calc-consts">
+                  {[
+                    { lbl: '24.79 (đkc)', val: '24.79' },
+                    { lbl: 'g = 9.8', val: '9.8' },
+                    { lbl: 'π', val: 'pi' },
+                    { lbl: 'sqrt()', val: 'sqrt(' },
+                  ].map((c) => (
+                    <button
+                      key={c.lbl}
+                      type="button"
+                      onClick={() => setCalcExpr((prev) => `${prev}${c.val}`)}
+                    >
+                      {c.lbl}
+                    </button>
+                  ))}
+                </div>
+                {calcResult && (
+                  <div className={`s9-ep-calc-out ${calcResult.ok ? 'ok' : 'err'}`}>
+                    {calcResult.ok ? <>Kết quả: <b>{calcResult.formatted}</b></> : calcResult.error}
+                  </div>
+                )}
+                {calcHistory.length > 0 && (
+                  <div className="s9-ep-calc-hist">
+                    {calcHistory.map((h, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setCalcExpr(h.out)}
+                        title="Bấm để dùng lại kết quả này"
+                      >
+                        <span>{h.expr}</span>
+                        <b>= {h.out}</b>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea
+                  className="s9-ep-scratch-pad"
+                  rows={5}
+                  value={scratchNote}
+                  onChange={(e) => setScratchNote(e.target.value)}
+                  placeholder="Ghi nháp công thức, số mol, dữ kiện bài toán..."
+                />
+              </>
+            )}
+          </aside>
+        )}
 
         <ConfirmSubmit
           open={confirmOpen}
@@ -1567,6 +2413,11 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('priority');
   const [selectedExamType, setSelectedExamType] = useState(() => {
+    try {
+      const qStr = window.location.hash.split('?')[1] || '';
+      const fromUrl = new URLSearchParams(qStr).get('type');
+      if (fromUrl && EXAM_TYPES.includes(fromUrl)) return fromUrl;
+    } catch { /* ignore */ }
     const asp = getAspirationProfile(uid);
     return asp?.selectedExamId || 'THPTQG';
   });
@@ -1582,6 +2433,18 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const [activeExam, setActiveExam] = useState(null);
   const [variantPickerExam, setVariantPickerExam] = useState(null);
   const [modeModalExam, setModeModalExam] = useState(null);
+  const [previewExam, setPreviewExam] = useState(null);
+
+  const examDrafts = useMemo(() => listExamDrafts(uid), [uid, activeExam, historyList]);
+  const targetComboSubjects = useMemo(() => {
+    const pinned = loadTargetUniversity(uid);
+    const combo = String(pinned?.combo || 'A00/B00').toUpperCase();
+    const set = new Set(['all']);
+    if (/A00|A01|A02/.test(combo)) set.add('ly');
+    if (/A00|B00|D07|C02/.test(combo)) set.add('hoa');
+    if (/B00|B08|D08/.test(combo)) set.add('sinh');
+    return set;
+  }, [uid]);
 
   const handleStartExam = (exam, chosenVariant = null) => {
     const allowed = canAccessVirtualExam(userPlan, exam.tier);
@@ -2214,8 +3077,11 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   isFav={favIds.includes(exam.id)}
                   isDone={doneMap.has(exam.id)}
                   lastScore={doneMap.get(exam.id)}
+                  draftInfo={examDrafts[exam.id] || null}
+                  inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
                   canAccess={canAccessVirtualExam(userPlan, exam.tier)}
                   onStart={handleStartExam}
+                  onPreview={setPreviewExam}
                   onRequireUpgrade={setUpgradeModalExam}
                   onToggleFav={handleToggleFav}
                 />
@@ -2238,8 +3104,11 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   isFav={favIds.includes(exam.id)}
                   isDone={doneMap.has(exam.id)}
                   lastScore={doneMap.get(exam.id)}
+                  draftInfo={examDrafts[exam.id] || null}
+                  inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
                   canAccess={canAccessVirtualExam(userPlan, exam.tier)}
                   onStart={handleStartExam}
+                  onPreview={setPreviewExam}
                   onRequireUpgrade={setUpgradeModalExam}
                   onToggleFav={handleToggleFav}
                 />
@@ -2262,8 +3131,11 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   isFav={favIds.includes(exam.id)}
                   isDone={doneMap.has(exam.id)}
                   lastScore={doneMap.get(exam.id)}
+                  draftInfo={examDrafts[exam.id] || null}
+                  inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
                   canAccess={canAccessVirtualExam(userPlan, exam.tier)}
                   onStart={handleStartExam}
+                  onPreview={setPreviewExam}
                   onRequireUpgrade={setUpgradeModalExam}
                   onToggleFav={handleToggleFav}
                 />
@@ -2534,6 +3406,19 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           exam={modeModalExam}
           onStart={handleConfirmStartExamMode}
           onClose={() => setModeModalExam(null)}
+        />
+      )}
+
+      {/* ── 9. MODAL XEM TRƯỚC ĐỀ & ĐÁP ÁN MẪU (KIỂU 9STUDY) ── */}
+      {previewExam && (
+        <ExamPreviewModal
+          exam={previewExam}
+          isFav={favIds.includes(previewExam.id)}
+          canAccess={canAccessVirtualExam(userPlan, previewExam.tier)}
+          onClose={() => setPreviewExam(null)}
+          onStart={handleStartExam}
+          onRequireUpgrade={setUpgradeModalExam}
+          onToggleFav={handleToggleFav}
         />
       )}
     </div>

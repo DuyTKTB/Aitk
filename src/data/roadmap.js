@@ -15,6 +15,7 @@
    ============================================================ */
 
 import { CHEM_TOPICS } from './chemTopics.js';
+import { getChapterMeta } from './curriculumDag.js';
 
 const DESC = {
   'c10-atom': 'Thành phần nguyên tử, đồng vị, orbital và cấu hình electron.',
@@ -72,13 +73,16 @@ const LEVELS = [
 
 const buildChapters = (grade) => {
   const list = CHEM_TOPICS.filter((t) => t.grade === grade);
-  return list.map((t, i) => ({
-    id: t.id,
-    name: NAME[t.id] || t.name,
-    desc: DESC[t.id] || '',
-    prereq: i > 0 ? [list[i - 1].id] : (CROSS[t.id] || []),
-    bank: true,
-  }));
+  return list.map((t, i) => {
+    const dagMeta = getChapterMeta(t.id);
+    return {
+      id: t.id,
+      name: dagMeta?.name || NAME[t.id] || t.name,
+      desc: dagMeta?.desc || DESC[t.id] || '',
+      prereq: dagMeta?.prereq ?? (i > 0 ? [list[i - 1].id] : (CROSS[t.id] || [])),
+      bank: true,
+    };
+  });
 };
 
 export const ROADMAP_LEVELS = LEVELS.map((l) => ({ ...l, chapters: buildChapters(l.grade) }))
@@ -117,8 +121,10 @@ export function findChapter(id) {
   return null;
 }
 
-/* Tên chương theo id (dùng cho nhãn hoạt động gần đây) */
+/* Tên chương theo id (dùng cho nhãn hoạt động gần đây — hỗ trợ trọn bộ 49 chuyên đề KHTN) */
 export function chapterName(id) {
+  const dagHit = getChapterMeta(id);
+  if (dagHit?.name) return dagHit.name;
   const hit = findChapter(id);
   return hit ? hit.chapter.name : null;
 }

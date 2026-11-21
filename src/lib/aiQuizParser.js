@@ -1,11 +1,69 @@
 /* ============================================================
-   aiQuizParser.js — Tự động bóc tách & phát hiện bộ câu hỏi trắc nghiệm
+   aiQuizParser.js — Tự động bóc tách & chuẩn hóa đề thi tương tác AI
    ------------------------------------------------------------
-   Hỗ trợ 2 chế độ:
-     1. Khối chuẩn: ```quiz ... ``` hoặc ```json { "questions": [...] } ```
-     2. Tự động nhận diện cấu trúc đề trắc nghiệm trong markdown:
-        "Câu 1:" / "1." + A/B/C/D + "Đáp án:" + "Lời giải / Gợi ý"
+   Hỗ trợ trọn bộ 3 phần cấu trúc đề thi THPT Quốc gia 2025–2026:
+     • type: 'mcq'   (Phần I  — Trắc nghiệm 4 phương án A–D)
+     • type: 'tf'    (Phần II — Đúng / Sai 4 ý a, b, c, d)
+     • type: 'short' (Phần III — Trả lời ngắn nhập số, hỗ trợ ',' và '.')
    ============================================================ */
+
+/**
+ * Chuẩn hóa số từ chuỗi tiếng Việt ("4,48 lít" -> 4.48)
+ */
+export function parseNumericValue(raw) {
+  if (raw === null || raw === undefined) return NaN;
+  const cleaned = String(raw)
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/,/g, '.')
+    .replace(/[^\d.+-]/g, '');
+  if (!cleaned || cleaned === '.' || cleaned === '-' || cleaned === '+') return NaN;
+  return Number(cleaned);
+}
+
+/**
+ * Chấm câu Trả lời ngắn (Phần III) — chấp nhận cả dấu phẩy/chấm & sai số làm tròn nhỏ
+ */
+export function gradeShortAnswer(userInput, expectedAnswer, tolerance = 0.02) {
+  const rawUser = String(userInput ?? '').trim();
+  const rawExpected = String(expectedAnswer ?? '').trim();
+  if (!rawUser || !rawExpected) return false;
+
+  const normUser = rawUser.toLowerCase().replace(/\s+/g, '').replace(/,/g, '.');
+  const normExpected = rawExpected.toLowerCase().replace(/\s+/g, '').replace(/,/g, '.');
+  if (normUser === normExpected) return true;
+
+  const numUser = parseNumericValue(rawUser);
+  const numExpected = parseNumericValue(rawExpected);
+  if (Number.isFinite(numUser) && Number.isFinite(numExpected)) {
+    const tol = Math.max(0.0001, Number(tolerance) || 0.02);
+    return Math.abs(numUser - numExpected) <= tol;
+  }
+  return false;
+}
+
+/**
+ * Chấm câu Đúng/Sai 4 ý (Phần II) theo thang điểm chuẩn Bộ GD&ĐT 2025:
+ *   • 1 ý đúng = 0.10 đ · 2 ý = 0.25 đ · 3 ý = 0.50 đ · 4 ý = 1.00 đ
+ */
+export function gradeTfQuestion(pickedMap = {}, statements = []) {
+  const total = statements.length;
+  let rightCount = 0;
+  statements.forEach((st, idx) => {
+    if (pickedMap[idx] === Boolean(st.correct)) rightCount += 1;
+  });
+
+  const scoreTable = total === 4
+    ? [0, 0.1, 0.25, 0.5, 1]
+    : Array.from({ length: total + 1 }, (_, k) => (total > 0 ? Number((k / total).toFixed(2)) : 0));
+
+  return {
+    rightCount,
+    total,
+    score: scoreTable[Math.min(rightCount, scoreTable.length - 1)] ?? 0,
+    isAllCorrect: total > 0 && rightCount === total,
+  };
+}
 
 /**
  * Phân tích và trích xuất Quiz từ văn bản AI phản hồi
@@ -67,7 +125,6 @@ export function parseQuizFromText(text) {
     const extractedQuestions = [];
     matches.forEach((m, idx) => {
       const fullBlock = m[3] || '';
-      // Nhận diện 4 phương án: A. B. C. D.
       const optA = fullBlock.match(/(?:^|\n)\s*[A][\s.:)\/]+([^\n]+)/i);
       const optB = fullBlock.match(/(?:^|\n)\s*[B][\s.:)\/]+([^\n]+)/i);
       const optC = fullBlock.match(/(?:^|\n)\s*[C][\s.:)\/]+([^\n]+)/i);
@@ -82,7 +139,6 @@ export function parseQuizFromText(text) {
         );
         const qStem = fullBlock.slice(0, firstOptIndex).trim();
 
-        // Nhận diện đáp án đúng
         let correctIdx = 0;
         const ansMatch = fullBlock.match(/(?:đáp án|chọn|kết quả)[\s:]*([A-D])/i);
         if (ansMatch) {
@@ -90,13 +146,12 @@ export function parseQuizFromText(text) {
           correctIdx = letter === 'A' ? 0 : letter === 'B' ? 1 : letter === 'C' ? 2 : 3;
         }
 
-        // Nhận diện lời giải
         const explMatch = fullBlock.match(/(?:giải thích|lời giải|hướng dẫn|chi tiết)[\s:]*([\s\S]*?)$/i);
-        // Nhận diện gợi ý
         const hintMatch = fullBlock.match(/(?:gợi ý|mẹo)[\s:]*([^\n]+)/i);
 
         extractedQuestions.push({
           id: idx + 1,
+          type: 'mcq',
           question: qStem || `Câu hỏi ${idx + 1}`,
           options: [
             optA[1].trim(),
@@ -132,9 +187,49 @@ export function parseQuizFromText(text) {
   return null;
 }
 
-/** Chuẩn hóa danh sách câu hỏi đảm bảo dữ liệu hợp lệ */
-function sanitizeQuestions(questions = []) {
+/** Chuẩn hóa danh sách câu hỏi (hỗ trợ mcq, tf, short) */
+export function sanitizeQuestions(questions = []) {
   return questions.map((q, idx) => {
+    const rawType = String(q.type || '').trim().toLowerCase();
+    const base = {
+      id: q.id || idx + 1,
+      question: q.question || q.q || q.content || `Câu hỏi ${idx + 1}`,
+      hint: q.hint || q.gợi_ý || '',
+      explanation: q.explanation || q.explain || q.lời_giải || '',
+    };
+
+    // Phần II: Đúng / Sai 4 ý
+    const hasStatements = Array.isArray(q.statements) && q.statements.length >= 2;
+    if (rawType === 'tf' || rawType === 'true_false' || rawType === 'dung_sai' || hasStatements) {
+      const stmts = (q.statements || []).slice(0, 4).map((st, sIdx) => ({
+        id: st.id || String.fromCharCode(97 + sIdx),
+        text: typeof st === 'string' ? st : (st.text || st.content || st.statement || `Ý ${String.fromCharCode(97 + sIdx)}`),
+        correct: Boolean(typeof st === 'object' ? (st.correct ?? st.isCorrect ?? st.answer) : false),
+      }));
+      return {
+        ...base,
+        type: 'tf',
+        statements: stmts,
+      };
+    }
+
+    // Phần III: Trả lời ngắn
+    if (
+      rawType === 'short' ||
+      rawType === 'short_answer' ||
+      rawType === 'tra_loi_ngan' ||
+      (q.answer !== undefined && !Array.isArray(q.options))
+    ) {
+      return {
+        ...base,
+        type: 'short',
+        answer: String(q.answer ?? q.correctAnswer ?? q.correct ?? '').trim(),
+        unit: String(q.unit || '').trim(),
+        tolerance: Number.isFinite(Number(q.tolerance)) ? Number(q.tolerance) : 0.02,
+      };
+    }
+
+    // Phần I: Trắc nghiệm A–D (mặc định)
     let correct = 0;
     if (typeof q.correct === 'number') {
       correct = q.correct;
@@ -148,12 +243,10 @@ function sanitizeQuestions(questions = []) {
     }
 
     return {
-      id: q.id || idx + 1,
-      question: q.question || q.q || q.content || `Câu hỏi ${idx + 1}`,
+      ...base,
+      type: 'mcq',
       options: Array.isArray(q.options) && q.options.length ? q.options : ['A', 'B', 'C', 'D'],
       correct,
-      hint: q.hint || q.gợi_ý || '',
-      explanation: q.explanation || q.explain || q.lời_giải || '',
     };
   });
 }

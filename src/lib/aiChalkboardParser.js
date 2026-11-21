@@ -12,7 +12,7 @@ export function detectDimensionAndAxes(allMvContent = '', fullText = '') {
   // 1. Kiểm tra tọa độ 3D trong câu lệnh (ví dụ: A = (-3.2, 0, 0) hoặc S = (0.2, 0.4, 5.0))
   const has3DCoords = /=\s*\(\s*[-+]?\d*\.?\d+\s*,\s*[-+]?\d*\.?\d+\s*,\s*[-+]?\d*\.?\d+\s*\)/.test(allMvContent);
   const has3DPrimitives = /\b(Pyramid|Prism|Sphere|Cone|Cylinder)\b/i.test(allMvContent);
-  const has3DKeywords = /(hình\s*chóp|chóp|tứ\s*diện|lăng\s*trụ|hình\s*hộp|lập\s*phương|khối|nón|trụ|cầu|thiết\s*diện|giao\s*tuyến|không\s*gian|mặt\s*phẳng|đồng\s*phẳng|S\.[A-Z]{3,4}|\([A-Z]{3,4}\)|đáy)/i.test(fullText);
+  const has3DKeywords = /(hình\s*chóp|chóp|tứ\s*diện|lăng\s*trụ|hình\s*hộp|lập\s*phương|khối|nón|trụ|cầu|thiết\s*diện|giao\s*tuyến|không\s*gian|mặt\s*phẳng|đồng\s*phẳng|phân\s*tử|mêtan|CH4|NH3|lai\s*hóa\s*sp3|S\.[A-Z]{3,4}|\([A-Z]{3,4}\)|đáy)/i.test(fullText);
 
   // Mặc định là 3D nếu có tọa độ (x,y,z), lệnh khối 3D hoặc từ khóa hình học không gian
   let baChieu = true;
@@ -196,22 +196,20 @@ function sanitizeLesson(lesson) {
     };
   });
 
-  // Nếu là hình học không gian 3D, đảm bảo Bước 1 luôn có các đỉnh và cạnh cơ bản của hình chóp nền tảng
-  if (baChieu && buoc.length > 0) {
+  // Nếu đúng là bài hình chóp S.ABC (không phải hình hộp/lập phương/phân tử/Oxyz), đảm bảo Bước 1 có hình chóp nền tảng
+  const isPyramidSABC = /(hình\s*chóp|S\.ABC|tứ\s*diện\s*S\.?ABC)/i.test(`${lesson.tieuDe || ''} ${lesson.deBai || ''}`);
+  if (baChieu && isPyramidSABC && buoc.length > 0) {
     const step1Commands = buoc[0].lenh || [];
     const hasBaseApex = step1Commands.some((c) => /\bS\s*=/.test(c)) && step1Commands.some((c) => /\bA\s*=/.test(c));
     if (!hasBaseApex) {
-      // Tìm xem các bước sau có khởi tạo hình chóp không
       const allLines = buoc.flatMap((b) => b.lenh || []);
       const baseVertices = allLines.filter((c) => /^[SABC]\s*=\s*\(/i.test(c.trim()));
       const baseEdges = allLines.filter((c) => /^Segment\s*\(\s*[SABC]\s*,\s*[SABC]\s*\)/i.test(c.trim()));
 
       if (baseVertices.length >= 3) {
-        // Gom các đỉnh và cạnh nền tảng đưa lên Bước 1
         const missingLines = [...baseVertices, ...baseEdges].filter((l) => !step1Commands.includes(l));
         buoc[0].lenh = [...missingLines, ...step1Commands];
       } else {
-        // Sử dụng tọa độ phối cảnh chuẩn SGK Hình 11 (khớp 100% Ảnh 2 SGK)
         const canonicalBase = [
           'A = (-3.2, 0, 0)',
           'C = (3.5, 0, 0)',

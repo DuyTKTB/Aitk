@@ -1,61 +1,107 @@
 import { describe, it, expect } from 'vitest';
-import { parseQuizFromText } from '../src/lib/aiQuizParser.js';
+import {
+  parseQuizFromText,
+  gradeShortAnswer,
+  gradeTfQuestion,
+  parseNumericValue,
+} from '../src/lib/aiQuizParser.js';
+import { calcMolarMass, KHTN_CONSTANTS } from '../src/components/ChatScienceQuickRef.jsx';
 
-describe('aiQuizParser', () => {
-  it('trích xuất quiz chuẩn từ khối ```quiz JSON', () => {
-    const aiResponse = `Tôi sẽ tạo một bộ câu hỏi trắc nghiệm chuyên đề Cấp số cộng dành cho chương trình Toán lớp 11 để giúp bạn củng cố và ôn tập kiến thức thật vững vàng.
-
+describe('ELEC AI Quiz Parser & Grading (Chuẩn 3 phần THPT 2025–2026)', () => {
+  it('bóc tách chuẩn đủ 3 phần: Trắc nghiệm A–D (mcq), Đúng/Sai 4 ý (tf), Trả lời ngắn (short)', () => {
+    const sample = `
+Đây là bộ câu hỏi luyện tập chuẩn THPT 2025:
 \`\`\`quiz
 {
-  "title": "Trắc nghiệm Chuyên đề Cấp số cộng - Toán 11",
-  "subject": "Toán học",
+  "title": "Đề tổng hợp Hóa 12 - THPT 2025",
+  "subject": "Hóa học",
+  "grade": "Lớp 12",
   "questions": [
     {
       "id": 1,
-      "question": "Cho cấp số cộng (u_n) có u_1 = 3 và d = -2. Số hạng thứ 5 là:",
-      "options": ["-5", "-3", "-7", "11"],
-      "correct": 0,
-      "hint": "Dùng công thức u_n = u_1 + (n - 1)d",
-      "explanation": "u_5 = 3 + 4*(-2) = -5"
+      "type": "mcq",
+      "question": "Kim loại bị thụ động hóa trong HNO3 đặc nguội là:",
+      "options": ["Cu", "Fe", "Ag", "Zn"],
+      "correct": "B",
+      "hint": "Bộ ba Fe, Al, Cr",
+      "explanation": "Fe, Al, Cr bị thụ động hóa trong HNO3 và H2SO4 đặc nguội."
+    },
+    {
+      "id": 2,
+      "type": "tf",
+      "question": "Xét các phát biểu về este etyl axetat:",
+      "statements": [
+        { "text": "Công thức phân tử là C4H8O2", "correct": true },
+        { "text": "Tan vô hạn trong nước", "correct": false },
+        { "text": "Thủy phân trong NaOH thu được CH3COONa", "correct": true },
+        { "text": "Có nhiệt độ sôi cao hơn axit axetic", "correct": false }
+      ],
+      "explanation": "a, c đúng; b, d sai."
+    },
+    {
+      "id": 3,
+      "type": "short",
+      "question": "Tính thể tích khí H2 (đkc) khi cho 0,1 mol Mg tác dụng với HCl dư.",
+      "answer": "2,479",
+      "unit": "lít",
+      "tolerance": 0.02
     }
   ]
 }
 \`\`\`
+> **BÉ ELEC MẸO NHỚ:** Nhớ điều kiện chuẩn đkc 24,79 L/mol!
+`;
 
-Chúc bạn ôn tập thật tốt!`;
-
-    const res = parseQuizFromText(aiResponse);
+    const res = parseQuizFromText(sample);
     expect(res).not.toBeNull();
-    expect(res.quiz.title).toBe('Trắc nghiệm Chuyên đề Cấp số cộng - Toán 11');
-    expect(res.quiz.questions.length).toBe(1);
-    expect(res.quiz.questions[0].options[0]).toBe('-5');
-    expect(res.quiz.questions[0].correct).toBe(0);
-    expect(res.introText).toContain('Tôi sẽ tạo một bộ câu hỏi');
+    expect(res.quiz.questions).toHaveLength(3);
+
+    expect(res.quiz.questions[0].type).toBe('mcq');
+    expect(res.quiz.questions[0].correct).toBe(1);
+
+    expect(res.quiz.questions[1].type).toBe('tf');
+    expect(res.quiz.questions[1].statements).toHaveLength(4);
+    expect(res.quiz.questions[1].statements[0].correct).toBe(true);
+    expect(res.quiz.questions[1].statements[1].correct).toBe(false);
+
+    expect(res.quiz.questions[2].type).toBe('short');
+    expect(res.quiz.questions[2].answer).toBe('2,479');
+    expect(res.quiz.questions[2].unit).toBe('lít');
   });
 
-  it('tự động nhận diện cấu trúc đề trắc nghiệm trong markdown thông thường', () => {
-    const rawMarkdown = `Dưới đây là 2 câu hỏi trắc nghiệm:
+  it('chấm điểm Phần II (Đúng/Sai 4 ý) đúng thang điểm Bộ GD&ĐT 2025 (0.1 / 0.25 / 0.5 / 1.0)', () => {
+    const stmts = [
+      { text: 'a', correct: true },
+      { text: 'b', correct: false },
+      { text: 'c', correct: true },
+      { text: 'd', correct: false },
+    ];
+    expect(gradeTfQuestion({ 0: false, 1: true, 2: false, 3: true }, stmts).score).toBe(0);
+    expect(gradeTfQuestion({ 0: true, 1: true, 2: false, 3: true }, stmts).score).toBe(0.1);
+    expect(gradeTfQuestion({ 0: true, 1: false, 2: false, 3: true }, stmts).score).toBe(0.25);
+    expect(gradeTfQuestion({ 0: true, 1: false, 2: true, 3: true }, stmts).score).toBe(0.5);
+    const full = gradeTfQuestion({ 0: true, 1: false, 2: true, 3: false }, stmts);
+    expect(full.score).toBe(1);
+    expect(full.isAllCorrect).toBe(true);
+  });
 
-Câu 1: Cho cấp số cộng có u1 = 1, d = 3. Số hạng thứ 2 là?
-A. 4
-B. 5
-C. 6
-D. 7
-Đáp án: A.
-Lời giải: u2 = u1 + d = 4.
+  it('chấm điểm Phần III (Trả lời ngắn) linh hoạt dấu phẩy/chấm và sai số làm tròn', () => {
+    expect(parseNumericValue('4,48 lít')).toBeCloseTo(4.48, 3);
+    expect(gradeShortAnswer('4,48', '4.48')).toBe(true);
+    expect(gradeShortAnswer('2.48', '2,479', 0.02)).toBe(true);
+    expect(gradeShortAnswer('2,48', '2,479', 0.02)).toBe(true);
+    expect(gradeShortAnswer('5,00', '2,479', 0.02)).toBe(false);
+    expect(gradeShortAnswer('', '2,479')).toBe(false);
+  });
 
-Câu 2: Công sai của cấp số cộng 2, 5, 8 là?
-A. 2
-B. 3
-C. 4
-D. 5
-Đáp án: B.
-Lời giải: d = 5 - 2 = 3.`;
-
-    const res = parseQuizFromText(rawMarkdown);
-    expect(res).not.toBeNull();
-    expect(res.quiz.questions.length).toBe(2);
-    expect(res.quiz.questions[0].correct).toBe(0);
-    expect(res.quiz.questions[1].correct).toBe(1);
+  it('tính chính xác khối lượng mol M (g/mol) theo SGK cho hợp chất, ngoặc và tinh thể ngậm nước', () => {
+    expect(calcMolarMass('H2SO4')?.molarMass).toBe(98);
+    expect(calcMolarMass('Fe2O3')?.molarMass).toBe(160);
+    expect(calcMolarMass('Ca(OH)2')?.molarMass).toBe(74);
+    expect(calcMolarMass('Al2(SO4)3')?.molarMass).toBe(342);
+    expect(calcMolarMass('CuSO4.5H2O')?.molarMass).toBe(250);
+    expect(calcMolarMass('C6H12O6')?.molarMass).toBe(180);
+    expect(calcMolarMass('invalid-text')).toBeNull();
+    expect(KHTN_CONSTANTS.length).toBeGreaterThanOrEqual(12);
   });
 });

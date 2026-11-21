@@ -10,12 +10,20 @@ import {
   IcoBulb, IcoStats, IcoFire, IcoTag, IcoEye, IcoInfo, IcoRefresh, 
 } from './NotebookIcons.jsx';
 import NotebookGuide from './NotebookGuide.jsx';
+import MathText from './MathText.jsx';
+import { askAI } from './HomePlus.jsx';
+import {
+  buildWrongCauseBreakdown,
+  loadWrongQuestionNotes,
+  saveWrongQuestionNote,
+} from '../lib/studentAnalytics.js';
 import { topicName, UNCLASSIFIED } from '../data/chemTopics.js';
 import { useCurrentSubject } from './SubjectSwitcher.jsx';
 
 // Import CSS chuan xac
 import './notebook-v2.css';
 import './notebook-guide.css';
+import '../styles/student-v9-upgrades.css';
 
 const SUBJECT_TABS = [
   { id: 'all', label: 'Tất cả KHTN', color: '#2563eb' },
@@ -89,6 +97,8 @@ export default function WrongNotebook() {
 
   // Modals
   const [detail, setDetail] = useState(null);
+  const [detailRevealAns, setDetailRevealAns] = useState(true);
+  const [personalNotes, setPersonalNotes] = useState(() => loadWrongQuestionNotes(user?.uid || user?.id || 'guest'));
   const [quizMode, setQuizMode] = useState(null);
   const [quizIdx, setQuizIdx] = useState(0);
   const [quizPicked, setQuizPicked] = useState(null);
@@ -229,6 +239,15 @@ export default function WrongNotebook() {
   };
 
   useEffect(() => {
+    setPersonalNotes(loadWrongQuestionNotes(uid || 'guest'));
+  }, [uid]);
+
+  const handleSavePersonalNote = (qid, text) => {
+    const next = saveWrongQuestionNote(uid || 'guest', qid, text);
+    setPersonalNotes(next);
+  };
+
+  useEffect(() => {
     load();
     const onWrongUpdate = () => load();
     window.addEventListener(WRONG_UPDATE_EVENT, onWrongUpdate);
@@ -247,6 +266,43 @@ export default function WrongNotebook() {
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   }, [items]);
+
+  const causeBreakdown = useMemo(
+    () => buildWrongCauseBreakdown(wrongQs, customCauses, inferTrapCause, TRAP_CAUSES),
+    [wrongQs, customCauses]
+  );
+
+  const askAiExplainQuestion = (item) => {
+    const q = item?.question || {};
+    const qid = q.id ?? item?.questionId ?? item?.id;
+    const causeId = customCauses[qid] || inferTrapCause(q);
+    const causeLabel = TRAP_CAUSES.find((c) => c.id === causeId)?.label || 'Hổng bản chất';
+    const opts = (q.answers || []).map((a) => `${a.label}. ${a.content}`).join('\n');
+    const correctAns = (q.answers || []).find((a) => a.is_correct);
+    askAI(
+      `Em làm sai câu này (nguyên nhân: ${causeLabel}). Hãy giải thích từng bước thật dễ hiểu, chỉ ra bẫy khiến em dễ sai và cho 1 mẹo nhớ nhanh:\n\nCâu hỏi: ${q.content || ''}\n${opts ? `\nCác đáp án:\n${opts}` : ''}${correctAns ? `\nĐáp án đúng: ${correctAns.label}. ${correctAns.content}` : ''}`
+    );
+  };
+
+  const startCauseSprint = (causeId) => {
+    const pool = wrongQs.filter((it) => {
+      const q = it.question || {};
+      const qid = q.id ?? it.questionId ?? it.id;
+      return (customCauses[qid] || inferTrapCause(q)) === causeId;
+    });
+    if (!pool.length) {
+      showToast('Chưa có câu nào thuộc nhóm lỗi này', 'err');
+      return;
+    }
+    const picked = [...pool]
+      .sort((a, b) => (b.wrong_count || 1) - (a.wrong_count || 1))
+      .slice(0, 5);
+    setQuizMode(picked);
+    setQuizIdx(0);
+    setQuizPicked(null);
+    setQuizScore(0);
+    setSprintSecLeft(300);
+  };
 
   const filtered = useMemo(() => {
     let arr = items;
@@ -569,6 +625,49 @@ export default function WrongNotebook() {
         </div>
       </div>
 
+      {/* ============ ROOT-CAUSE ANALYTICS PANEL (PHÂN TÍCH GỐC RỄ LỖI SAI) ============ */}
+      {tab === 'wrong' && wrongQs.length > 0 && causeBreakdown[0]?.count > 0 && (
+        <section className="s9-nb-cause-panel" aria-label="Phân tích nguyên nhân sai">
+          <div className="s9-nb-cause-head">
+            <div>
+              <strong>Bản đồ gốc rễ lỗi sai của bạn</strong>
+              <span>
+                Lỗi hay gặp nhất: <b style={{ color: causeBreakdown[0].color }}>{causeBreakdown[0].label}</b> ({causeBreakdown[0].pct}%)
+              </span>
+            </div>
+            <button
+              type="button"
+              className="s9-nb-cause-sprint-btn"
+              onClick={() => startCauseSprint(causeBreakdown[0].id)}
+            >
+              <IcoFire size={14} /> Vá ngay nhóm này (5p)
+            </button>
+          </div>
+          <div className="s9-nb-cause-bars">
+            {causeBreakdown.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`s9-nb-cause-item ${filterCause === c.id ? 'active' : ''}`}
+                onClick={() => setFilterCause((prev) => (prev === c.id ? 'all' : c.id))}
+                title={`Bấm để lọc riêng nhóm "${c.label}"`}
+              >
+                <div className="s9-nb-cause-item-top">
+                  <span>{c.label}</span>
+                  <b>{c.count} câu · {c.pct}%</b>
+                </div>
+                <div className="s9-nb-cause-track">
+                  <div
+                    className="s9-nb-cause-fill"
+                    style={{ width: `${Math.max(c.count ? 6 : 0, c.pct)}%`, background: c.color }}
+                  />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ============ TOOLBAR ============ */}
       <div className="nb-toolbar">
         <label className="nb-search">
@@ -756,6 +855,14 @@ export default function WrongNotebook() {
                       {q.topic_id && (<span className="nb-badge subject">{topicName(q.topic_id)}</span>)}
                     </div>
                     <div className="nb-card-actions">
+                      <button
+                        type="button"
+                        className="nb-icon s9-nb-ai-icon"
+                        onClick={() => askAiExplainQuestion(item)}
+                        title="Hỏi AI giải thích cặn kẽ bẫy câu này"
+                      >
+                        <IcoSparkle size={14} />
+                      </button>
                       <button type="button" className="nb-icon" onClick={() => setDetail(item)} title="Xem chi tiết"><IcoEye size={14} /></button>
                       <button type="button" className="nb-icon" onClick={() => copyItem(item)} title="Sao chép"><IcoCopy size={14} /></button>
                       {tab === 'wrong' && (<button type="button" className="nb-icon success" onClick={() => handleMastered(q.id)} title="Đã hiểu"><IcoCheckCircle size={14} /></button>)}
@@ -763,17 +870,17 @@ export default function WrongNotebook() {
                     </div>
                   </header>
                   <div className="nb-card-body" onClick={() => setDetail(item)}>
-                    <p className="nb-q">{q.content}</p>
+                    <MathText as="p" className="nb-q">{q.content}</MathText>
                     <div className="nb-answers">
                       {q.answers?.map((a) => (
                         <div key={a.id} className={'nb-answer' + (a.is_correct ? ' correct' : '')}>
-                          <b>{a.label}.</b><span>{a.content}</span>
+                          <b>{a.label}.</b><MathText as="span">{a.content}</MathText>
                           {a.is_correct && (<span className="nb-answer-check"><IcoCheck size={12} /></span>)}
                         </div>
                       ))}
                     </div>
                     {q.explanation && (
-                      <div className="nb-explain"><IcoBulb size={14} /><div><b>Lời giải</b><p>{q.explanation}</p></div></div>
+                      <div className="nb-explain"><IcoBulb size={14} /><div><b>Lời giải</b><MathText as="p">{q.explanation}</MathText></div></div>
                     )}
                     {q.exam?.title && (<div className="nb-source"><IcoTag size={13} />{q.exam.title}</div>)}
                   </div>
@@ -784,39 +891,105 @@ export default function WrongNotebook() {
         </>
       )}
 
-      {/* ============ DETAIL MODAL ============ */}
-      {detail && (
-        <div className="nb-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setDetail(null)}>
-          <div className="nb-detail">
-            <header className="nb-detail-head">
-              <div className="nb-detail-badges">
-                <span className="nb-badge diff" style={{ background: DIFF_COLORS[detail.question.difficulty] }}>{DIFF_LABELS[detail.question.difficulty] || 'TB'}</span>
-                {tab === 'wrong' && detail.wrong_count > 0 && (<span className="nb-badge wrong"><IcoX size={12} />Sai {detail.wrong_count} lần</span>)}
-                {tab === 'saved' && (<span className="nb-badge saved"><IcoStar size={12} filled />Đã lưu</span>)}
-              </div>
-              <button type="button" className="nb-icon" onClick={() => setDetail(null)} aria-label="Đóng"><IcoClose size={16} /></button>
-            </header>
-            <div className="nb-detail-body">
-              <h2 className="nb-detail-q">{detail.question.content}</h2>
-              <div className="nb-answers">
-                {detail.question.answers?.map((a) => (
-                  <div key={a.id} className={'nb-answer' + (a.is_correct ? ' correct' : '')}>
-                    <b>{a.label}.</b><span>{a.content}</span>
-                    {a.is_correct && (<span className="nb-answer-check"><IcoCheck size={12} /></span>)}
+      {/* ============ DETAIL MODAL (ẨN/HIỆN ĐÁP ÁN + GHI CHÚ 500 KÝ TỰ + CÂU TRƯỚC/SAU) ============ */}
+      {detail && (() => {
+        const detailQid = detail.question.id ?? detail.questionId ?? detail.id;
+        const curIdx = filtered.findIndex((x) => x.id === detail.id);
+        const hasPrev = curIdx > 0;
+        const hasNext = curIdx >= 0 && curIdx < filtered.length - 1;
+        const noteVal = personalNotes[detailQid] || '';
+        return (
+          <div className="nb-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setDetail(null)}>
+            <div className="nb-detail">
+              <header className="nb-detail-head">
+                <div className="nb-detail-badges">
+                  <span className="nb-badge diff" style={{ background: DIFF_COLORS[detail.question.difficulty] }}>{DIFF_LABELS[detail.question.difficulty] || 'TB'}</span>
+                  {tab === 'wrong' && detail.wrong_count > 0 && (<span className="nb-badge wrong"><IcoX size={12} />Sai {detail.wrong_count} lần</span>)}
+                  {tab === 'saved' && (<span className="nb-badge saved"><IcoStar size={12} filled />Đã lưu</span>)}
+                  {curIdx >= 0 && <span className="nb-badge subject">Câu {curIdx + 1}/{filtered.length}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    className={`s9-nb-reveal-btn ${detailRevealAns ? 'is-on' : ''}`}
+                    onClick={() => setDetailRevealAns((v) => !v)}
+                  >
+                    {detailRevealAns ? 'Ẩn đáp án để tự thử' : 'Hiện đáp án & lời giải'}
+                  </button>
+                  <button type="button" className="nb-icon" onClick={() => setDetail(null)} aria-label="Đóng"><IcoClose size={16} /></button>
+                </div>
+              </header>
+              <div className="nb-detail-body">
+                <MathText as="h2" className="nb-detail-q">{detail.question.content}</MathText>
+                <div className="nb-answers">
+                  {detail.question.answers?.map((a) => (
+                    <div key={a.id} className={'nb-answer' + (detailRevealAns && a.is_correct ? ' correct' : '')}>
+                      <b>{a.label}.</b><MathText as="span">{a.content}</MathText>
+                      {detailRevealAns && a.is_correct && (<span className="nb-answer-check"><IcoCheck size={12} /></span>)}
+                    </div>
+                  ))}
+                </div>
+                {detailRevealAns && detail.question.explanation && (
+                  <div className="nb-explain"><IcoBulb size={16} /><div><b>Lời giải</b><MathText as="p">{detail.question.explanation}</MathText></div></div>
+                )}
+                {detail.question.exam?.title && (<div className="nb-source"><IcoTag size={14} />{detail.question.exam.title}</div>)}
+
+                {/* Ghi chú cá nhân 500 ký tự (tự lưu ngay theo tài khoản) */}
+                <div className="s9-nb-note-box">
+                  <div className="s9-nb-note-head">
+                    <b>Ghi chú cá nhân của bạn</b>
+                    <span>{noteVal.length}/500</span>
                   </div>
-                ))}
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    className="s9-nb-note-input"
+                    value={noteVal}
+                    onChange={(e) => handleSavePersonalNote(detailQid, e.target.value)}
+                    placeholder="Ghi nhanh lý do mình sai hoặc mẹo nhớ riêng cho câu này (tự lưu)..."
+                  />
+                </div>
               </div>
-              {detail.question.explanation && (<div className="nb-explain"><IcoBulb size={16} /><div><b>Lời giải</b><p>{detail.question.explanation}</p></div></div>)}
-              {detail.question.exam?.title && (<div className="nb-source"><IcoTag size={14} />{detail.question.exam.title}</div>)}
+              <footer className="nb-detail-foot">
+                <div className="s9-nb-step-nav">
+                  <button
+                    type="button"
+                    className="nb-btn nb-btn-ghost"
+                    disabled={!hasPrev}
+                    onClick={() => hasPrev && setDetail(filtered[curIdx - 1])}
+                  >
+                    ← Trước
+                  </button>
+                  <button
+                    type="button"
+                    className="nb-btn nb-btn-ghost"
+                    disabled={!hasNext}
+                    onClick={() => hasNext && setDetail(filtered[curIdx + 1])}
+                  >
+                    Sau →
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="nb-btn nb-btn-ghost s9-nb-ai-btn"
+                    onClick={() => {
+                      const cur = detail;
+                      setDetail(null);
+                      askAiExplainQuestion(cur);
+                    }}
+                  >
+                    <IcoSparkle size={15} />Hỏi AI
+                  </button>
+                  <button type="button" className="nb-btn nb-btn-ghost" onClick={() => copyItem(detail)}><IcoCopy size={15} />Chép</button>
+                  {tab === 'wrong' && (<button type="button" className="nb-btn nb-btn-primary" onClick={() => { handleMastered(detail.question.id); setDetail(null); }}><IcoCheckCircle size={15} />Đã hiểu</button>)}
+                  {tab === 'saved' && (<button type="button" className="nb-btn nb-btn-danger" onClick={() => { handleUnsave(detail.question.id); setDetail(null); }}><IcoTrash size={15} />Bỏ lưu</button>)}
+                </div>
+              </footer>
             </div>
-            <footer className="nb-detail-foot">
-              <button type="button" className="nb-btn nb-btn-ghost" onClick={() => copyItem(detail)}><IcoCopy size={15} />Sao chép</button>
-              {tab === 'wrong' && (<button type="button" className="nb-btn nb-btn-primary" onClick={() => { handleMastered(detail.question.id); setDetail(null); }}><IcoCheckCircle size={15} />Đã hiểu</button>)}
-              {tab === 'saved' && (<button type="button" className="nb-btn nb-btn-danger" onClick={() => { handleUnsave(detail.question.id); setDetail(null); }}><IcoTrash size={15} />Bỏ lưu</button>)}
-            </footer>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ============ QUIZ MODE ============ */}
       {quizMode && (
@@ -858,7 +1031,7 @@ export default function WrongNotebook() {
                   <button type="button" className="nb-icon" onClick={closeQuiz} aria-label="Đóng"><IcoClose size={16} /></button>
                 </header>
                 <div className="nb-quiz-body">
-                  <p className="nb-quiz-q">{quizCurrent.question.content}</p>
+                  <MathText as="p" className="nb-quiz-q">{quizCurrent.question.content}</MathText>
                   <div className="nb-quiz-answers">
                     {quizCurrent.question.answers?.map((a) => {
                       const isCorrect = a.is_correct;
@@ -871,14 +1044,14 @@ export default function WrongNotebook() {
                       }
                       return (
                         <button key={a.id} type="button" className={cls} disabled={!!quizPicked} onClick={() => handleQuizPick(a.id)}>
-                          <b>{a.label}.</b><span>{a.content}</span>
+                          <b>{a.label}.</b><MathText as="span">{a.content}</MathText>
                           {quizPicked && isCorrect && (<span className="nb-quiz-answer-check"><IcoCheck size={14} /></span>)}
                           {quizPicked && isPicked && !isCorrect && (<span className="nb-quiz-answer-check wrong"><IcoX size={14} /></span>)}
                         </button>
                       );
                     })}
                   </div>
-                  {quizPicked && quizCurrent.question.explanation && (<div className="nb-explain"><IcoBulb size={16} /><div><b>Lời giải</b><p>{quizCurrent.question.explanation}</p></div></div>)}
+                  {quizPicked && quizCurrent.question.explanation && (<div className="nb-explain"><IcoBulb size={16} /><div><b>Lời giải</b><MathText as="p">{quizCurrent.question.explanation}</MathText></div></div>)}
                 </div>
                 {quizPicked && (
                   <footer className="nb-quiz-foot">

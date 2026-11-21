@@ -111,15 +111,20 @@ export const SvgNitro = ({ size = 20, color = '#f97316' }) => (
   </svg>
 );
 
-export const SvgRobot = ({ size = 20, color = '#38bdf8' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="10" rx="2" />
-    <circle cx="12" cy="5" r="2" />
-    <path d="M12 7v4" />
-    <line x1="8" y1="16" x2="8.01" y2="16" strokeWidth="3" />
-    <line x1="16" y1="16" x2="16.01" y2="16" strokeWidth="3" />
-  </svg>
-);
+export const SvgRobot = ({ size = 20 }) => {
+  const s = Math.max(18, Number(size) + 2);
+  return (
+    <img
+      src="/img/elec-emblem.png"
+      alt=""
+      width={s}
+      height={s}
+      draggable={false}
+      aria-hidden="true"
+      style={{ width: s, height: s, objectFit: 'contain', display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 }}
+    />
+  );
+};
 
 export const SvgAudience = ({ size = 20, color = '#10b981' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -18,8 +18,32 @@ import {
   IcoPencil, IcoGradCap, IcoEnvelope, IcoCake, IcoPlane, IcoRing,
   IcoBulb, IcoSave, IcoHeadphones,
 } from './ClockIcons2.jsx';
+import { focusAudio, FOCUS_SOUND_TRACKS } from '../lib/focusAudioEngine.js';
 import './clock-hub.css';
 import './clock-hub-aurora.css';
+import '../styles/student-v9-upgrades.css';
+
+const SWM_THEMES = [
+  { id: 'midnight', label: 'Thư viện đêm' },
+  { id: 'rain', label: 'Mưa bên cửa sổ' },
+  { id: 'dawn', label: 'Sáng tinh mơ' },
+];
+
+const SWM_MASCOTS = [
+  { id: 'default', label: 'Elec Tập trung', src: '/img/elec/elec-default.png' },
+  { id: 'happy', label: 'Elec Tươi vui', src: '/img/elec/elec-happy.png' },
+  { id: 'cool', label: 'Elec Học Bá', src: '/img/elec/elec-cool.png' },
+  { id: 'fighting', label: 'Elec Quyết tâm', src: '/img/elec/elec-fighting.png' },
+  { id: 'hello', label: 'Elec Thân thiện', src: '/img/elec/elec-hello.png' },
+  { id: 'celebrate', label: 'Elec Thủ khoa', src: '/img/elec/elec-celebrate.png' },
+];
+
+const SWM_PEERS = [
+  { name: 'Minh Khôi', uni: 'BKA', task: 'Đề Lý 2027', mins: 42 },
+  { name: 'Gia Hân', uni: 'YHA', task: 'Sổ lỗi sai Hóa', mins: 28 },
+  { name: 'Hoàng Nam', uni: 'NEU', task: 'Deep Work 50p', mins: 50 },
+  { name: 'Khánh Linh', uni: 'FTU', task: 'Luyện ĐGNL HSA', mins: 19 },
+];
 
 const TABS = [
   { id: 'focus',     label: 'Phiên tập trung',  Icon: IcoFocus,      color: '#4d86ff' },
@@ -98,7 +122,27 @@ function FocusTab({ soundPreset }) {
   const [noteModal, setNoteModal] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [notes, setNotes] = useLocalStorage('cs-ch-focus-notes', []);
+  const [deskTheme, setDeskTheme] = useLocalStorage('cs-pomo-desk-theme', 'midnight');
+  const [deskMascot, setDeskMascot] = useLocalStorage('cs-pomo-desk-mascot', 'fighting');
+  const [ambientTrack, setAmbientTrack] = useState('none');
+  const [ambientVol, setAmbientVol] = useLocalStorage('cs-pomo-ambient-vol', 0.35);
+  const activeMascotObj = SWM_MASCOTS.find((m) => m.id === deskMascot) || SWM_MASCOTS[0];
   const endAt = useRef(0);
+
+  useEffect(() => {
+    focusAudio.setVolume(ambientVol);
+  }, [ambientVol]);
+
+  useEffect(() => () => {
+    focusAudio.stop();
+  }, []);
+
+  const handleSelectTrack = (id) => {
+    setAmbientTrack(id);
+    focusAudio.setVolume(ambientVol);
+    if (id === 'none') focusAudio.stop();
+    else focusAudio.play(id);
+  };
 
   const modes = [
     { key: 'focus', label: 'Tập trung', color: '#4d86ff', Icon: IcoFocus },
@@ -226,7 +270,44 @@ function FocusTab({ soundPreset }) {
         })}
       </div>
 
-      <div className="ch-focus-main">
+      <div className={`ch-focus-main s9-swm-stage theme-${deskTheme} ${run ? 'is-running' : ''}`}>
+        {/* Wave 5: Study With Me Desk Theme + Mascot Companion Picker */}
+        <div className="s9-swm-topbar">
+          <div className="s9-swm-themes" role="group" aria-label="Không gian bàn học">
+            {SWM_THEMES.map((th) => (
+              <button
+                key={th.id}
+                type="button"
+                className={`s9-swm-pill ${deskTheme === th.id ? 'active' : ''}`}
+                onClick={() => setDeskTheme(th.id)}
+              >
+                {th.label}
+              </button>
+            ))}
+          </div>
+          <div className="s9-swm-mascot-picker" role="group" aria-label="Chọn Bé Elec học cùng">
+            {SWM_MASCOTS.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`s9-swm-mascot-btn ${deskMascot === m.id ? 'active' : ''}`}
+                onClick={() => setDeskMascot(m.id)}
+                title={m.label}
+              >
+                <img src={m.src} alt={m.label} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="s9-swm-buddy">
+          <img src={activeMascotObj.src} alt={activeMascotObj.label} className={run ? 'is-float' : ''} />
+          <span className="s9-swm-buddy-status">
+            <i className={run ? 'live' : ''} />
+            {run ? `${activeMascotObj.label} đang tập trung cùng bạn` : `${activeMascotObj.label} sẵn sàng vào phiên`}
+          </span>
+        </div>
+
         {/* Timer ring */}
         <div className="ch-focus-ring-wrap">
           <svg viewBox="0 0 300 300" className="ch-focus-ring-svg">
@@ -270,6 +351,72 @@ function FocusTab({ soundPreset }) {
           <button className="ch-btn-icon-lg" onClick={reset} title="Đặt lại">
             <IcoReset size={18} />
           </button>
+        </div>
+
+        {/* Inline Offline Web Audio Focus Tracks */}
+        <div className="s9-pomo-audio" aria-label="Âm thanh nền tập trung">
+          <div className="s9-pomo-audio-head">
+            <span className="s9-pomo-audio-title">
+              <IcoHeadphones size={15} />
+              Âm thanh tập trung (Web Audio Offline)
+            </span>
+            <div className="s9-pomo-vol">
+              {ambientTrack === 'none' ? <IcoVolumeOff size={14} /> : <IcoVolume size={14} />}
+              <input
+                type="range"
+                min={0.05}
+                max={0.85}
+                step={0.05}
+                value={ambientVol}
+                onChange={(e) => setAmbientVol(Number(e.target.value))}
+                aria-label="Âm lượng âm thanh tập trung"
+              />
+              <span>{Math.round(ambientVol * 100)}%</span>
+            </div>
+          </div>
+          <div className="s9-pomo-tracks">
+            {FOCUS_SOUND_TRACKS.map((t) => {
+              const active = ambientTrack === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`s9-pomo-track-pill ${active ? 'is-active' : ''}`}
+                  onClick={() => handleSelectTrack(t.id)}
+                >
+                  {active && t.id !== 'none' && <i className="s9-pomo-eq" aria-hidden="true" />}
+                  <span>{t.short}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Live Study With Me Peers */}
+        <div className="s9-swm-peers" aria-label="Bạn đang cùng tập trung">
+          <div className="s9-swm-peers-head">
+            <span className="s9-swm-live-dot" />
+            <b>Phòng học chung Study With Me</b>
+            <small>{SWM_PEERS.length + 1} bàn đang bật đèn</small>
+          </div>
+          <div className="s9-swm-peers-grid">
+            <div className="s9-swm-peer is-you">
+              <span className="s9-swm-peer-uni">BẠN</span>
+              <div>
+                <strong>{run ? 'Đang Focus' : 'Đang chuẩn bị'}</strong>
+                <small>{todayN} phiên hôm nay</small>
+              </div>
+            </div>
+            {SWM_PEERS.map((p) => (
+              <div key={p.name} className="s9-swm-peer">
+                <span className="s9-swm-peer-uni">{p.uni}</span>
+                <div>
+                  <strong>{p.name}</strong>
+                  <small>{p.task} · {p.mins}p</small>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1659,7 +1806,7 @@ export default function ClockHub() {
         </aside>
       )}
 
-      <main className="ch-main">
+      <section className="ch-main" aria-label="Clock Hub">
         <header className="ch-main-head">
           <div className="ch-main-head-l">
             <h1 className="ch-main-title">
@@ -1681,7 +1828,7 @@ export default function ClockHub() {
         <div className="ch-content">
           {renderTab()}
         </div>
-      </main>
+      </section>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   getClassById,
   submitExam,
   gradeAnswers,
+  gradePracticeExam,
   startAttempt,
   saveAttemptAnswers,
   appendAttemptEvents,
@@ -45,13 +46,16 @@ import RetryRequestModal from './RetryRequestModal.jsx';
 // [1.1] Import theo hướng dẫn
 import ExamPaperView, { PassageBox } from './ExamPaperView.jsx';
 import QuestionAnswer, { isChoiceType, QuestionImage } from './QuestionAnswer.jsx';
-import { isAnswered, countAnswered, packAnswers } from '../lib/examScoring.js';
+import HighlightableMathText from './exam/HighlightableMathText.jsx';
+import { isAnswered, countAnswered, packAnswers, qType } from '../lib/examScoring.js';
 import { buildLayout, resolveMode } from '../lib/examLayout.js';
+import { ElecFlaskBrandSvg } from './teacher/ElecBrandMark.jsx';
 import '../styles/classroom.css';
 import '../styles/exam-types.css';
 import '../styles/exam-pro.css';
 import '../styles/exam-join-v6.css';
 import '../styles/exam-paper.css'; // <-- File CSS mới
+import '../styles/exam-studio.css'; // <-- ELEC Exam Studio Pro (Flagship UI)
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
 import { recordActivity } from '../lib/progress.js';
 import { recordDailyStreak } from '../hooks.js';
@@ -114,61 +118,269 @@ const IcoPanel = ({ size = 18 }) => (
     <line x1="15" y1="4" x2="15" y2="20" />
   </svg>
 );
+const IcoChevronLeft = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const IcoChevronRight = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+const IcoChevronDown = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+const IcoChevronUp = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+const IcoSun = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </svg>
+);
+const IcoMoon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+const IcoBook = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+const IcoStrike = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <path d="M16 6.5C15.4 5 13.9 4 12 4c-2.2 0-4 1.3-4 3.2 0 1.4.8 2.3 2.4 2.8" />
+    <path d="M8.4 17.2C9.2 19 10.6 20 12.4 20c2.4 0 4.1-1.4 4.1-3.4 0-.7-.2-1.3-.6-1.8" />
+  </svg>
+);
+const IcoKeyboard = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <line x1="6" y1="10" x2="6.01" y2="10" />
+    <line x1="10" y1="10" x2="10.01" y2="10" />
+    <line x1="14" y1="10" x2="14.01" y2="10" />
+    <line x1="18" y1="10" x2="18.01" y2="10" />
+    <line x1="7" y1="15" x2="17" y2="15" />
+  </svg>
+);
+const IcoMic = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="9" y="2" width="6" height="12" rx="3" />
+    <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+  </svg>
+);
+const IcoListChecks = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10 6h11M10 12h11M10 18h11" />
+    <path d="M3 6l1.5 1.5L7 5" />
+    <path d="M3 12l1.5 1.5L7 11" />
+    <path d="M3 18l1.5 1.5L7 17" />
+  </svg>
+);
+const IcoAward = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="6" />
+    <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
+  </svg>
+);
+const IcoEye = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const IcoRefresh = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </svg>
+);
+const IcoHighlighter = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 11l-6 6v3h9l3-3" />
+    <path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
+  </svg>
+);
 
-const QuestionCard = memo(function QuestionCard({ q, qi, num, picked, flagged, paused, onPick, onFlag }) {
-  const longOpts = (q.options || []).some((o) => String(o ?? '').length > 48);
+const Q_TYPE_LABEL = {
+  single_choice: 'Trắc nghiệm 4 lựa chọn',
+  true_false: 'Đúng / Sai (4 ý)',
+  short_answer: 'Trả lời ngắn',
+};
+
+const QuestionCard = memo(function QuestionCard({
+  q, qi, num, total, picked, flagged, paused, eliminatedMap,
+  highlightActive, highlightedMap,
+  onPick, onFlag, onToggleEliminate, onToggleHighlightMode, onToggleHighlightWord, onClearHighlights, onZoom,
+}) {
+  const type = qType(q);
+  const longOpts = (q.options || []).some((o) => String(o ?? '').length > 34);
+  const hasAnswer = isAnswered(q, picked);
+  const pickedLetter = type === 'single_choice' && typeof picked === 'number'
+    ? String.fromCharCode(65 + picked)
+    : null;
+  const hasLit = highlightedMap && Object.values(highlightedMap).some(Boolean);
+
   return (
     <div className="ep-q-card">
       <div className="ep-q-head">
-        <span className="ep-q-num">Câu {num}</span>
-        <button
-          className={'ep-flag-btn' + (flagged ? ' on' : '')}
-          onClick={() => onFlag(qi)}
-          type="button"
-          aria-pressed={flagged}
-          disabled={paused}
-        >
-          <IcoFlag size={13} filled={flagged} />
-          {flagged ? 'Bỏ đánh dấu' : 'Đánh dấu'}
-        </button>
+        <div className="ep-q-meta-left">
+          <span className="ep-q-num">Câu {String(num).padStart(2, '0')} / {total}</span>
+          <span className="ep-q-chip">{Q_TYPE_LABEL[type] || 'Trắc nghiệm'}</span>
+          {q.points != null && Number(q.points) > 0 && (
+            <span className="ep-q-chip">{q.points} điểm</span>
+          )}
+          {hasAnswer && (
+            <span className="ep-q-chip answered">
+              <IcoCheck size={12} /> {pickedLetter ? `Đã chọn ${pickedLetter}` : 'Đã trả lời'}
+            </span>
+          )}
+        </div>
+        <div className="ep-q-actions">
+          <button
+            className={'ep-hl-btn' + (highlightActive ? ' on' : '')}
+            onClick={onToggleHighlightMode}
+            type="button"
+            aria-pressed={highlightActive}
+            disabled={paused}
+            title="Bật/tắt bút dạ quang tô từ khóa đề bài (phím H)"
+          >
+            <IcoHighlighter size={13} />
+            {highlightActive ? 'Đang tô' : 'Tô từ khóa'}
+          </button>
+          <button
+            className={'ep-flag-btn' + (flagged ? ' on' : '')}
+            onClick={() => onFlag(qi)}
+            type="button"
+            aria-pressed={flagged}
+            disabled={paused}
+            title="Đánh dấu câu cần xem lại (phím F)"
+          >
+            <IcoFlag size={13} filled={flagged} />
+            {flagged ? 'Đang đánh dấu' : 'Đánh dấu'}
+          </button>
+        </div>
       </div>
+
+      {highlightActive && (
+        <div className="ep-hl-banner" role="status">
+          <span className="ep-hl-banner-left">
+            <IcoHighlighter size={14} />
+            Nhấn vào từng từ trong câu hỏi để tô vàng từ khóa quan trọng (VD: không đúng, ở đkc).
+          </span>
+          <span className="ep-hl-banner-btns">
+            {hasLit && (
+              <button
+                type="button"
+                className="ep-hl-mini-btn"
+                onClick={() => onClearHighlights?.(qi)}
+              >
+                Xóa màu
+              </button>
+            )}
+            <button
+              type="button"
+              className="ep-hl-mini-btn done"
+              onClick={onToggleHighlightMode}
+            >
+              Xong
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* [1.3] Hiện bài đọc trong QuestionCard */}
       {(q.passage || q.instruction) && <PassageBox instruction={q.instruction} passage={q.passage} />}
 
-      <MathText as="p" className="ep-q-text">{q.q}</MathText>
-      <QuestionImage q={q} />
+      <HighlightableMathText
+        text={q.q}
+        className="ep-q-text"
+        active={highlightActive}
+        highlightedMap={highlightedMap}
+        onToggleWord={(wIdx) => onToggleHighlightWord?.(qi, wIdx)}
+      />
+      <QuestionImage q={q} onZoom={onZoom} />
 
       {!isChoiceType(q) && <QuestionAnswer q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />}
       {isChoiceType(q) && (
-      <div className={'ep-opts' + (longOpts ? ' one' : '')}>
-        {q.options.map((opt, i) => (
-          <button
-            key={i}
-            type="button"
-            className={'ep-opt' + (picked === i ? ' picked' : '')}
-            onClick={() => onPick(qi, i)}
-            aria-pressed={picked === i}
-            disabled={paused}
-          >
-            <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
-            <span className="ep-opt-text"><MathText>{opt}</MathText></span>
-            {picked === i && <span className="ep-opt-check"><IcoCheck /></span>}
-          </button>
-        ))}
-      </div>
+        <div className={'ep-opts' + (longOpts ? ' one' : '')}>
+          {q.options.map((opt, i) => {
+            const isPicked = picked === i;
+            const isElim = !!eliminatedMap?.[i] && !isPicked;
+            return (
+              <div key={i} className={'ep-opt-row' + (isElim ? ' eliminated' : '')}>
+                <button
+                  type="button"
+                  className={'ep-opt' + (isPicked ? ' picked' : '')}
+                  onClick={() => onPick(qi, i)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isPicked) onToggleEliminate?.(qi, i);
+                  }}
+                  aria-pressed={isPicked}
+                  disabled={paused}
+                >
+                  <span className="ep-opt-key">{String.fromCharCode(65 + i)}</span>
+                  <span className="ep-opt-text"><MathText>{opt}</MathText></span>
+                  {isPicked && <span className="ep-opt-check"><IcoCheck size={13} /></span>}
+                </button>
+                {!isPicked && (
+                  <button
+                    type="button"
+                    className="ep-opt-strike"
+                    disabled={paused}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleEliminate?.(qi, i);
+                    }}
+                    aria-label={isElim ? `Bỏ gạch đáp án ${String.fromCharCode(65 + i)}` : `Gạch loại trừ đáp án ${String.fromCharCode(65 + i)}`}
+                    title={isElim ? 'Bỏ gạch loại trừ' : 'Gạch bỏ đáp án loại trừ (hoặc chuột phải)'}
+                  >
+                    <IcoStrike size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
 });
 
-const QuestionGrid = memo(function QuestionGrid({ total, order, questions, answers, flags, currentQ, paused, onJump }) {
+const QuestionGrid = memo(function QuestionGrid({
+  total, order, questions, answers, flags, currentQ, paused, filter = 'all', onJump,
+}) {
+  const items = [];
+  for (let i = 0; i < total; i++) {
+    const oi = order[i] ?? i;
+    const done = isAnswered(questions?.[oi], answers[oi]);
+    const isFlagged = !!flags[oi];
+    if (filter === 'todo' && done) continue;
+    if (filter === 'flagged' && !isFlagged) continue;
+    items.push({ i, done, isFlagged });
+  }
+
   return (
     <div className="ep-sidebar-grid">
-      {Array.from({ length: total }, (_, i) => {
-        const oi = order[i] ?? i;
-        const done = isAnswered(questions?.[oi], answers[oi]);
-        const isFlagged = !!flags[oi];
+      {items.length === 0 ? (
+        <div className="ep-sidebar-empty">
+          {filter === 'flagged'
+            ? 'Chưa có câu nào được đánh dấu.'
+            : 'Tuyệt vời! Bạn đã làm hết tất cả câu hỏi.'}
+        </div>
+      ) : items.map(({ i, done, isFlagged }) => {
         const cls =
           'ep-sidebar-cell' +
           (done ? ' done' : '') +
@@ -192,11 +404,6 @@ const QuestionGrid = memo(function QuestionGrid({ total, order, questions, answe
   );
 });
 
-const IcoMinimize = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-);
 const IcoDrag = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
     <circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" />
@@ -246,7 +453,7 @@ function ConfirmSubmit({ open, total, answered, flagged, submitting, onCancel, o
   return (
     <dialog
       ref={dlgRef}
-      className="ep-dialog"
+      className="ep-dialog ep-studio-dialog"
       onClose={() => { if (!submitting) onCancel(); }}
       onClick={(e) => {
         const rect = dlgRef.current?.getBoundingClientRect();
@@ -259,21 +466,34 @@ function ConfirmSubmit({ open, total, answered, flagged, submitting, onCancel, o
         <>
           <div className="ep-dialog-head">
             <IcoSend size={22} />
-            <h3>Nộp bài?</h3>
+            <h3>Xác nhận nộp bài?</h3>
           </div>
-          <p className="ep-dialog-body">
-            Bạn đã trả lời <b>{answered}</b>/{total} câu.
-            {flagged > 0 && <> Có <b>{flagged}</b> câu đang đánh dấu.</>}
-            {unanswered > 0 && <> Còn <b>{unanswered}</b> câu chưa làm.</>}
+          <div className="ep-studio-dialog-grid">
+            <div className="ep-studio-dialog-stat ok">
+              <b>{answered}/{total}</b>
+              <span>Đã trả lời</span>
+            </div>
+            <div className={'ep-studio-dialog-stat' + (unanswered > 0 ? ' warn' : '')}>
+              <b>{unanswered}</b>
+              <span>Chưa làm</span>
+            </div>
+            <div className={'ep-studio-dialog-stat' + (flagged > 0 ? ' warn' : '')}>
+              <b>{flagged}</b>
+              <span>Đánh dấu</span>
+            </div>
+          </div>
+          <p className="ep-dialog-note">
+            {unanswered > 0
+              ? `Bạn vẫn còn ${unanswered} câu chưa trả lời. Sau khi nộp sẽ không thể sửa lại đáp án.`
+              : 'Bạn đã hoàn thành toàn bộ câu hỏi. Sau khi nộp sẽ không thể sửa lại đáp án.'}
           </p>
-          <p className="ep-dialog-note">Sau khi nộp, bạn không thể sửa lại đáp án.</p>
           <div className="ep-dialog-actions">
-            <button className="td-btn" onClick={onCancel} type="button" disabled={submitting}>Hủy</button>
+            <button className="td-btn" onClick={onCancel} type="button" disabled={submitting}>Kiểm tra lại</button>
             <button className="td-btn primary" onClick={onConfirm} type="button" disabled={submitting}>
               {submitting ? (
                 <>Đang nộp bài...</>
               ) : (
-                <><IcoCheck size={14} /> Nộp bài</>
+                <><IcoCheck size={14} /> Xác nhận nộp bài</>
               )}
             </button>
           </div>
@@ -460,6 +680,43 @@ export default function ExamJoin({ token, onExit }) {
   const [camMinimized, setCamMinimized] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const [camPos, setCamPos] = useState({ x: 16, y: null });
 
+  // ELEC Exam Studio Pro UI controls (local visual aids only — zero effect on scoring/anti-cheat)
+  const [examSurface, setExamSurface] = useState(() => {
+    try {
+      const saved = localStorage.getItem('elec_exam_surface');
+      if (saved === 'default' || saved === 'warm' || saved === 'dark') return saved;
+      return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default';
+    } catch {
+      return 'default';
+    }
+  });
+  const [fontScale, setFontScale] = useState(() => {
+    try {
+      const saved = localStorage.getItem('elec_exam_font');
+      return saved === 'sm' || saved === 'md' || saved === 'lg' ? saved : 'md';
+    } catch {
+      return 'md';
+    }
+  });
+  const [navFilter, setNavFilter] = useState('all');
+  const [eliminated, setEliminated] = useState({});
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [highlights, setHighlights] = useState({});
+  const [zoomImg, setZoomImg] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 1024
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(max-width: 1024px)');
+    const onChange = (e) => setIsCompactViewport(e.matches);
+    setIsCompactViewport(mq.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+
   const [session, setSession] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [joinError, setJoinError] = useState(null);
@@ -499,6 +756,7 @@ export default function ExamJoin({ token, onExit }) {
   const lastClosesAtRef = useRef(0);
   const pendingHydrateRef = useRef(null);
   const multiDeviceReportedRef = useRef(false);
+  const rapidPickWindowRef = useRef([]);
   const tabLockToken = useMemo(() => getOrCreateTabLockToken(exam?.id), [exam?.id]);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -638,18 +896,21 @@ export default function ExamJoin({ token, onExit }) {
 
     const arr = packAnswers(exam.questions, answersRef.current);
 
-    /* Luyện tập: chấm ngay trên máy, không gửi lên server */
+    /* Luyện tập: đề Mức 2 (secureAnswerKey) chấm trên server để không lộ đáp án; đề cũ chấm tại chỗ */
     if (practiceMode) {
       try {
-        const g = gradeAnswers(exam.questions, arr) || {};
-        /* scoreExam trả {detail, correctCount, score} — KHÔNG có `correct`/`total`,
-           trước đây đọc sai khoá nên màn luyện tập luôn hiện 0 câu đúng. */
+        const g = exam.secureAnswerKey
+          ? await gradePracticeExam({ examId: exam.id, answers: arr })
+          : (gradeAnswers(exam.questions, arr) || {});
+        if (exam.secureAnswerKey && !g?.ok) {
+          throw new Error(g?.error || 'Không chấm được bài luyện tập trên máy chủ.');
+        }
         const detail = g.detail || [];
         setResult({
           score: g.score ?? null,
-          totalPoints: exam.totalPoints,
-          correct: g.correctCount ?? detail.filter((d) => d.isCorrect).length,
-          total: detail.length || exam.questions.length,
+          totalPoints: g.totalPoints ?? exam.totalPoints,
+          correct: g.correct ?? g.correctCount ?? detail.filter((d) => d.isCorrect).length,
+          total: g.total ?? (detail.length || exam.questions.length),
           detail,
           answers: arr,
           practice: true,
@@ -673,13 +934,14 @@ export default function ExamJoin({ token, onExit }) {
       examId: exam.id,
       student: { id: user.uid, name: user.displayName || user.email },
       answers: arr,
-      timeSpent: Math.round((Date.now() - (startTimeRef.current || Date.now())) / 1000),
+      timeSpent: Math.round((serverNow() - (startTimeRef.current || serverNow())) / 1000),
       attemptMeta: {
         autoSubmitted: !!opts.auto,
         violationCount: opts.violationCount || 0,
         cameraStatus: opts.cameraStatus || 'off',
         isRetry: !!prevSubmission,
         permitId: retryPermit?.permit?.id || null,
+        sessionId: sessionId || session?.id || null,
       },
     };
 
@@ -1479,6 +1741,7 @@ export default function ExamJoin({ token, onExit }) {
         student: { id: user.uid, name: user.displayName || user.email },
         forceNew: !!(prevSubmission && retryPermit?.canRetry),
         lockToken: tabLockToken,
+        retryPermitId: retryPermit?.permit?.id || null,
       });
 
       if (att.submitted && !retryPermit?.canRetry) {
@@ -1518,18 +1781,88 @@ export default function ExamJoin({ token, onExit }) {
 
   const pickAnswer = useCallback((qIdx, optIdx) => {
     if (paused) return;
+    // Phát hiện bot / extension điền tự động (>= 8 câu khác nhau trong 3.5 giây)
+    if (!practiceMode) {
+      const now = Date.now();
+      const recent = rapidPickWindowRef.current.filter((x) => now - x.t <= 3500);
+      if (!recent.some((x) => x.q === qIdx)) {
+        recent.push({ q: qIdx, t: now });
+      }
+      rapidPickWindowRef.current = recent;
+      if (recent.length >= 8) {
+        rapidPickWindowRef.current = [];
+        guardRef.current?.pushEvent?.('rapid_answer_bot', 'hard', { burstCount: 8, windowMs: 3500 });
+      }
+    }
+    // Nếu đáp án đang bị gạch loại trừ mà học sinh chọn lại -> tự bỏ gạch
+    if (typeof optIdx === 'number') {
+      setEliminated((prev) => (prev[qIdx]?.[optIdx] ? { ...prev, [qIdx]: { ...prev[qIdx], [optIdx]: false } } : prev));
+    }
     setAnswers((a) => {
       if (a[qIdx] === optIdx) return a;
       const next = { ...a, [qIdx]: optIdx };
       persistAnswers(next);
       return next;
     });
-  }, [paused, persistAnswers]);
+  }, [paused, practiceMode, persistAnswers]);
 
   const toggleFlag = useCallback((qIdx) => {
     if (paused) return;
     setFlags((f) => ({ ...f, [qIdx]: !f[qIdx] }));
   }, [paused]);
+
+  const toggleEliminate = useCallback((qIdx, optIdx) => {
+    if (paused) return;
+    setEliminated((prev) => {
+      const cur = prev[qIdx] || {};
+      return { ...prev, [qIdx]: { ...cur, [optIdx]: !cur[optIdx] } };
+    });
+  }, [paused]);
+
+  const toggleHighlightMode = useCallback(() => {
+    if (paused) return;
+    setHighlightMode((v) => !v);
+  }, [paused]);
+
+  const toggleHighlightWord = useCallback((qIdx, wordIdx) => {
+    if (paused) return;
+    setHighlights((prev) => {
+      const cur = prev[qIdx] || {};
+      return { ...prev, [qIdx]: { ...cur, [wordIdx]: !cur[wordIdx] } };
+    });
+  }, [paused]);
+
+  const clearHighlights = useCallback((qIdx) => {
+    setHighlights((prev) => {
+      if (!prev[qIdx]) return prev;
+      const next = { ...prev };
+      delete next[qIdx];
+      return next;
+    });
+  }, []);
+
+  const cycleSurface = useCallback(() => {
+    setExamSurface((cur) => {
+      const next = cur === 'default' ? 'warm' : cur === 'warm' ? 'dark' : 'default';
+      try { localStorage.setItem('elec_exam_surface', next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const stepFont = useCallback((dir) => {
+    setFontScale((cur) => {
+      const orderScale = ['sm', 'md', 'lg'];
+      const idx = orderScale.indexOf(cur);
+      const next = orderScale[Math.max(0, Math.min(orderScale.length - 1, idx + dir))];
+      try { localStorage.setItem('elec_exam_font', next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const handleZoomImage = useCallback((src, alt) => {
+    if (!src) return;
+    setZoomImg({ src, alt: alt || 'Hình minh hoạ' });
+  }, []);
 
   const mainRef = useRef(null);
   const swipeRef = useRef(null);
@@ -1571,6 +1904,58 @@ export default function ExamJoin({ token, onExit }) {
     if (mode === 'paper') return;
     mainRef.current?.scrollTo?.({ top: 0 });
   }, [currentQ, mode]);
+
+  // Phím tắt phòng thi (Desktop): A–D / 1–4 chọn đáp án, ← → chuyển câu, F đánh dấu, Esc đóng phóng to
+  useEffect(() => {
+    if (stage !== 'exam' || paused || confirmOpen || submitting) return undefined;
+    const onKeyDown = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+
+      if (e.key === 'Escape') {
+        if (zoomImg) { e.preventDefault(); setZoomImg(null); return; }
+        if (helpOpen) { e.preventDefault(); setHelpOpen(false); return; }
+        return;
+      }
+      if (zoomImg || helpOpen) return;
+
+      const curQi = order[currentQ] ?? currentQ;
+      const curQ = exam?.questions?.[curQi];
+      if (!curQ) return;
+
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFlag(curQi);
+        return;
+      }
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        setHighlightMode((v) => !v);
+        return;
+      }
+      if (mode === 'paper') return;
+
+      if (e.key === 'ArrowLeft') {
+        if (currentQ > 0) { e.preventDefault(); setCurrentQ((i) => Math.max(0, i - 1)); }
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        if (currentQ < totalQ - 1) { e.preventDefault(); setCurrentQ((i) => Math.min(totalQ - 1, i + 1)); }
+        return;
+      }
+      if (isChoiceType(curQ)) {
+        const keyMap = { a: 0, b: 1, c: 2, d: 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+        const idx = keyMap[String(e.key || '').toLowerCase()];
+        if (idx != null && idx < (curQ.options?.length || 0)) {
+          e.preventDefault();
+          pickAnswer(curQi, idx);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [stage, paused, confirmOpen, submitting, zoomImg, helpOpen, mode, currentQ, totalQ, order, exam?.questions, pickAnswer, toggleFlag]);
 
   const openRetryModal = () => setRetryModalOpen(true);
 
@@ -1822,46 +2207,85 @@ export default function ExamJoin({ token, onExit }) {
     const isRetry = prevSubmission && retryPermit?.canRetry;
 
     return (
-      <div className="ej-confirm">
+      <div className="ej-confirm ej-studio-confirm">
         <div className="ej-confirm-card">
-          <div className="ej-warn-ico"><IcoShield size={56} /></div>
-          <h1>{isRetry ? 'Thi lại bài' : 'Bạn sắp vào chế độ thi'}</h1>
-          <p className="ej-confirm-sub">{exam.title}</p>
+          <div className="ej-studio-head">
+            <div>
+              <span className="ej-studio-brand-row">
+                <ElecFlaskBrandSvg size={20} />
+                ELEC AI · Phòng thi bảo mật
+              </span>
+              <h1>{isRetry ? 'Chuẩn bị thi lại' : exam.title}</h1>
+              <p className="ej-confirm-sub">
+                {isRetry
+                  ? exam.title
+                  : 'Kiểm tra thông tin đề thi và thiết bị trước khi bước vào chế độ làm bài tập trung.'}
+              </p>
+            </div>
+          </div>
 
           {isRetry && (
             <p className="ej-session-note" style={{ borderLeftColor: '#16a34a', background: 'color-mix(in srgb, #16a34a 10%, var(--bg))', borderColor: 'color-mix(in srgb, #16a34a 35%, var(--bg))' }}>
-              <IcoCheck size={14} /> Bạn đã được cô cho phép thi lại bài này.
+              <IcoCheck size={14} /> Bạn đã được giáo viên duyệt cho phép thi lại bài này.
             </p>
           )}
 
           {session && (
             <p className="ej-session-note">
-              <IcoBell size={14} /> Giáo viên đang mở phòng thi, bạn có thể vào bất cứ lúc nào.
+              <IcoBell size={14} /> Giáo viên đang mở phòng thi trực tuyến — hệ thống giám sát đang hoạt động.
             </p>
           )}
 
-          <ul className="ej-rules">
-            <li><b>Thời gian:</b> {exam.duration} phút</li>
-            <li><b>Số câu:</b> {exam.questions.length}</li>
-            <li><b>Tổng điểm:</b> {exam.totalPoints}</li>
-            {guard.fullscreenLock && <li>Không thoát màn hình thi</li>}
-            <li>Chuyển tab hoặc thoát toàn màn hình bị tính vi phạm</li>
-            <li><b>Chế độ nghiêm ngặt:</b> vi phạm 1 lần đã cảnh báo đỏ</li>
-            {proctorConfig?.audioMonitor && (
-              <li><b>Giám sát âm thanh cục bộ:</b> phát hiện tiếng nói trao đổi kéo dài (không ghi hay tải âm thanh)</li>
-            )}
-            <li>Vi phạm {proctorConfig?.tabSwitchLimit ?? 3} lần sẽ tự động nộp bài</li>
-          </ul>
+          <div className="ej-studio-metrics">
+            <div className="ej-studio-metric">
+              <span className="ej-studio-metric-ico"><IcoClock size={18} /></span>
+              <div>
+                <small>Thời gian làm bài</small>
+                <b>{exam.duration} phút</b>
+              </div>
+            </div>
+            <div className="ej-studio-metric">
+              <span className="ej-studio-metric-ico"><IcoListChecks size={18} /></span>
+              <div>
+                <small>Số lượng câu hỏi</small>
+                <b>{exam.questions.length} câu</b>
+              </div>
+            </div>
+            <div className="ej-studio-metric">
+              <span className="ej-studio-metric-ico"><IcoAward size={18} /></span>
+              <div>
+                <small>Thang điểm tối đa</small>
+                <b>{exam.totalPoints} điểm</b>
+              </div>
+            </div>
+          </div>
+
+          <div className="ej-studio-rules-box">
+            <h3 className="ej-studio-rules-title">
+              <IcoShield size={16} /> Quy định phòng thi
+            </h3>
+            <ul className="ej-studio-rules-list">
+              {guard.fullscreenLock && (
+                <li><IcoCheck size={14} /> Giữ chế độ toàn màn hình trong suốt quá trình làm bài.</li>
+              )}
+              <li><IcoCheck size={14} /> Không chuyển tab, mở cửa sổ khác hoặc chia đôi màn hình.</li>
+              <li><IcoCheck size={14} /> <span><b>Chế độ nghiêm ngặt:</b> vi phạm ngay từ lần đầu sẽ hiển thị cảnh báo đỏ.</span></li>
+              {proctorConfig?.audioMonitor && (
+                <li><IcoCheck size={14} /> <span><b>Giám sát âm thanh cục bộ:</b> phát hiện trao đổi kéo dài (không ghi âm hay tải lên máy chủ).</span></li>
+              )}
+              <li><IcoCheck size={14} /> <span>Vi phạm đủ <b>{proctorConfig?.tabSwitchLimit ?? 3} lần</b> hệ thống sẽ tự động thu bài.</span></li>
+            </ul>
+          </div>
 
           {wantCamera && (
             <div className="ej-privacy">
               <div className="ej-privacy-head">
                 <IcoCam size={18} />
-                <b>Camera giám sát</b>
+                <b>Camera giám sát AI</b>
               </div>
               <p>
-                Camera sẽ bật trong lúc làm bài để phát hiện khuôn mặt, hướng nhìn và cử chỉ bất thường.
-                <b> Không ghi video.</b> Giáo viên có thể thấy ảnh chụp nhỏ định kỳ để giám sát trực tiếp.
+                Camera dùng để phát hiện khuôn mặt, hướng nhìn và cử chỉ bất thường trên máy của bạn.
+                <b> Không ghi video.</b> Giáo viên có thể xem ảnh chụp nhỏ định kỳ trong phiên thi.
                 Ảnh tự động xóa sau {proctorConfig?.retentionDays ?? 30} ngày.
               </p>
               <label className="ec-check ej-consent">
@@ -1873,15 +2297,15 @@ export default function ExamJoin({ token, onExit }) {
                 Tôi đồng ý bật camera trong lúc làm bài
               </label>
               {cameraConsent && (
-                <div style={{ marginTop: '.7rem', display: 'grid', gap: '.5rem', justifyItems: 'center' }}>
-                  <div style={{ width: 'min(100%, 320px)', aspectRatio: '4 / 3', borderRadius: 12, overflow: 'hidden', background: '#000', border: '2px solid ' + (pre.ready ? '#16a34a' : '#f59e0b') }}>
+                <div style={{ marginTop: '.75rem', display: 'grid', gap: '.5rem', justifyItems: 'center' }}>
+                  <div style={{ width: 'min(100%, 320px)', aspectRatio: '4 / 3', borderRadius: 14, overflow: 'hidden', background: '#050918', border: '2px solid ' + (pre.ready ? '#16a34a' : '#f59e0b') }}>
                     <video ref={pre.videoRef} muted playsInline autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
                   </div>
-                  <p style={{ margin: 0, textAlign: 'center', fontWeight: 700, fontSize: '.88rem', color: pre.ready ? '#16a34a' : '#b45309' }}>
+                  <p style={{ margin: 0, textAlign: 'center', fontWeight: 700, fontSize: '.86rem', color: pre.ready ? '#16a34a' : '#b45309' }}>
                     {pre.message}
                   </p>
                   {['denied', 'unavailable', 'error'].includes(pre.status) && (
-                    <button className="td-btn" type="button" onClick={pre.retry}>Thử lại</button>
+                    <button className="td-btn" type="button" onClick={pre.retry}>Thử lại camera</button>
                   )}
                 </div>
               )}
@@ -1896,7 +2320,7 @@ export default function ExamJoin({ token, onExit }) {
           {error && <p className="ej-confirm-error">{error}</p>}
 
           {needCamera && !canStart && (
-            <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.95rem', borderRadius: 10, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', color: '#b45309', fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1.4 }}>
+            <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.95rem', borderRadius: 12, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', color: '#b45309', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1.4 }}>
               <IcoWarning size={18} />
               <span>
                 {!cameraConsent
@@ -1913,12 +2337,12 @@ export default function ExamJoin({ token, onExit }) {
                 onClick={() => { setResult(prevSubmission); setStage('result'); }}
                 type="button"
               >
-                👁 Xem lại bài trước
+                <IcoEye size={15} /> Xem lại bài trước
               </button>
             )}
-            <button className="td-btn" onClick={onExit} type="button">Hủy</button>
+            <button className="td-btn" onClick={onExit} type="button">Quay lại</button>
             <button className="td-btn primary big" onClick={startExam} type="button" disabled={!canStart}>
-              <IcoFullscreen /> {isRetry ? 'Bắt đầu thi lại' : 'Bắt đầu thi'}
+              <IcoFullscreen size={17} /> {isRetry ? 'Bắt đầu thi lại' : 'Bắt đầu làm bài'}
             </button>
           </div>
         </div>
@@ -1944,7 +2368,7 @@ export default function ExamJoin({ token, onExit }) {
               className="td-btn primary sm"
               onClick={() => { setStage('confirm'); }}
             >
-              🔄 Bắt đầu thi lại ngay
+              <IcoRefresh size={14} /> Bắt đầu thi lại ngay
             </button>
           </div>
         )}
@@ -2012,22 +2436,54 @@ export default function ExamJoin({ token, onExit }) {
     }
   }
 
-  const camStyle = camMinimized
-    ? { position: 'fixed', left: 16, bottom: 96, zIndex: 60 }
-    : camPos.y == null
-      ? { position: 'fixed', left: camPos.x, bottom: 96, zIndex: 60 }
-      : { position: 'fixed', left: camPos.x, top: camPos.y, zIndex: 60 };
+  const isMobileViewport = isCompactViewport;
+  const mobileCamDragStyle = isMobileViewport && !camMinimized && camPos.y != null
+    ? { left: camPos.x, top: camPos.y, bottom: 'auto' }
+    : undefined;
+
+  const proctorStatusText =
+    proctor.status === 'ok' && proctor.faces > 0 ? 'AI đang giám sát'
+      : proctor.status === 'ok' && proctor.faces === 0 ? 'Không thấy mặt'
+        : proctor.status === 'starting' ? 'Đang bật camera...'
+          : proctor.status === 'denied' ? 'Chưa cấp quyền'
+            : proctor.status === 'unavailable' ? 'Không có camera'
+              : proctor.status === 'lost' ? 'Mất tín hiệu'
+                : proctor.status === 'error' ? 'Lỗi camera'
+                  : 'Đang chờ';
+
+  const camOk = proctor.status === 'ok' && proctor.faces > 0;
+  const violRatio = guard.maxViolations > 0 ? guard.violations / guard.maxViolations : 0;
+  const proctorPillClass =
+    guard.violations >= Math.max(1, guard.maxViolations - 1) && guard.violations > 0
+      ? ' danger'
+      : violRatio > 0
+        ? ' warn'
+        : '';
+
+  const completionPct = exam.questions.length > 0
+    ? Math.round((answered / exam.questions.length) * 100)
+    : 0;
+  const unansweredCount = Math.max(0, exam.questions.length - answered);
+
+  const surfaceMeta =
+    examSurface === 'warm'
+      ? { label: 'Chế độ giấy ấm (bảo vệ mắt)', icon: <IcoBook size={15} /> }
+      : examSurface === 'dark'
+        ? { label: 'Chế độ nền tối tập trung', icon: <IcoMoon size={15} /> }
+        : { label: 'Chế độ nền sáng ELEC', icon: <IcoSun size={15} /> };
 
   return (
     <>
       <div
         className={
-          'ep-exam' +
+          'ep-exam ep-studio' +
           (typing ? ' kbd' : '') +
           (mode === 'paper' ? ' is-paper' : '') +
           (proctorConfig?.blockCopyPaste !== false ? ' no-select' : '') +
           (curtainTitle ? ' is-blurred' : '')
         }
+        data-surface={examSurface}
+        data-font={fontScale}
       >
         {proctorConfig?.watermark !== false && stage === 'exam' && (
           <WatermarkOverlay studentName={user?.displayName || user?.email} studentId={user?.uid} />
@@ -2058,15 +2514,15 @@ export default function ExamJoin({ token, onExit }) {
             position: 'sticky',
             top: 0,
             zIndex: 100,
-            padding: '.8rem 1.2rem',
+            padding: '.72rem 1.1rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '.8rem',
+            gap: '.75rem',
             fontWeight: 700,
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.35)',
+            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.38)',
           }}>
-            <IcoWarning size={22} />
-            <span style={{ flex: 1, fontSize: '.95rem' }}>
+            <IcoWarning size={20} />
+            <span style={{ flex: 1, fontSize: '.9rem' }}>
               Bạn đang KHÔNG ở chế độ toàn màn hình. Đây là vi phạm!
             </span>
             <button
@@ -2076,14 +2532,14 @@ export default function ExamJoin({ token, onExit }) {
                 background: '#fff',
                 color: '#dc2626',
                 border: 0,
-                padding: '.5rem 1rem',
+                padding: '.46rem .95rem',
                 borderRadius: '999px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '.4rem',
-                fontSize: '.85rem',
+                fontSize: '.82rem',
               }}
             >
               <IcoFullscreen size={14} /> Vào lại ngay
@@ -2097,65 +2553,122 @@ export default function ExamJoin({ token, onExit }) {
               className="ep-header-btn"
               onClick={() => setSidebarOpen((v) => !v)}
               type="button"
-              aria-label="Danh sách câu"
+              aria-label="Danh sách câu hỏi"
             >
               <IcoPanel size={18} />
             </button>
+            <div className="ep-brand-badge">
+              <ElecFlaskBrandSvg size={30} />
+            </div>
+            <span className="ep-brand-divider" aria-hidden="true" />
             <div className="ep-header-title">
-              <h2>{exam.title}</h2>
+              <h2 title={exam.title}>{exam.title}</h2>
               <span className="ep-header-sub">
-                Câu {currentQ + 1} / {exam.questions.length}
-                {showProctorChip && <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>}
+                Câu {currentQ + 1}/{exam.questions.length} · Đã làm {answered}/{exam.questions.length}
+                {practiceMode && <span className="ep-practice-tag">Luyện tập</span>}
+                {showProctorChip && (
+                  <span className="ep-mviol"> · Vi phạm {guard.violations}/{guard.maxViolations}</span>
+                )}
               </span>
             </div>
           </div>
 
-          <div className="ep-header-center">
-            <div className="ep-progress-mini" aria-hidden="true">
-              <div className="ep-progress-mini-bar" style={{ width: `${progress}%` }} />
-            </div>
-            {showProctorChip && (
-              <span className="ep-monitor-chip">
-                {showMonitor ? <IcoCam size={13} /> : <IcoShield size={13} />} Giám sát · Vi phạm {guard.violations}/{guard.maxViolations}
-              </span>
-            )}
-            {audioGuard.status === 'listening' && (
-              <span className="ep-monitor-chip" title="Đang giám sát âm thanh cục bộ">
-                Mic OK
-              </span>
-            )}
-            {session && joinReady && (
-              <span className="ep-monitor-chip live">
-                <IcoBell size={13} /> Cô đang xem
-              </span>
-            )}
-            {joinError && (
-              <span className="ep-monitor-chip" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>
-                Không kết nối được GV
-              </span>
-            )}
-            {paused && (
-              <span className="ep-monitor-chip" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>
-                <IcoPause size={13} /> Tạm dừng
-              </span>
-            )}
-          </div>
+          {/* Giữ trống tuyệt đối vùng giữa topbar để không bao giờ đụng nút (X) thoát Fullscreen của Chrome/Edge */}
+          <div className="ep-header-safe-center" aria-hidden="true" />
 
           <div className="ep-header-right">
+            <div className="ep-tools-group" role="group" aria-label="Tùy chỉnh giao diện đọc đề">
+              <button
+                type="button"
+                className="ep-tool-btn"
+                onClick={cycleSurface}
+                title={`Đổi giao diện đọc (${surfaceMeta.label})`}
+                aria-label={surfaceMeta.label}
+              >
+                {surfaceMeta.icon}
+              </button>
+              <button
+                type="button"
+                className={'ep-tool-btn' + (fontScale === 'sm' ? ' active' : '')}
+                onClick={() => stepFont(-1)}
+                disabled={fontScale === 'sm'}
+                title="Thu nhỏ cỡ chữ"
+                aria-label="Thu nhỏ cỡ chữ"
+              >
+                A-
+              </button>
+              <button
+                type="button"
+                className={'ep-tool-btn' + (fontScale === 'lg' ? ' active' : '')}
+                onClick={() => stepFont(1)}
+                disabled={fontScale === 'lg'}
+                title="Phóng to cỡ chữ"
+                aria-label="Phóng to cỡ chữ"
+              >
+                A+
+              </button>
+              <button
+                type="button"
+                className={'ep-tool-btn ep-tool-help' + (helpOpen ? ' active' : '')}
+                onClick={() => setHelpOpen((v) => !v)}
+                title="Phím tắt phòng thi"
+                aria-label="Phím tắt phòng thi"
+              >
+                <IcoKeyboard size={15} />
+              </button>
+            </div>
+
+            {showProctorChip && (
+              <div className={'ep-proctor-pill' + proctorPillClass}>
+                {showMonitor ? <IcoCam size={14} /> : <IcoShield size={14} />}
+                <span>Vi phạm {guard.violations}/{guard.maxViolations}</span>
+                {session && joinReady && (
+                  <span className="ep-live-tag">
+                    <span className="ep-live-dot" aria-hidden="true" /> GV đang xem
+                  </span>
+                )}
+                {joinError && (
+                  <span className="ep-live-tag err">
+                    <span className="ep-live-dot" aria-hidden="true" /> Mất kết nối GV
+                  </span>
+                )}
+                {audioGuard.status === 'listening' && (
+                  <span className="ep-mic-tag" title="Đang giám sát âm thanh cục bộ">
+                    <IcoMic size={11} /> Mic
+                  </span>
+                )}
+                {paused && (
+                  <span className="ep-practice-tag">
+                    <IcoPause size={11} /> Tạm dừng
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className={'ep-timer' + timerClass} role="timer" aria-live="polite">
-              <IcoClock size={16} />
+              <IcoClock size={15} />
               <b>{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}</b>
             </div>
-            <button className="ep-submit-btn" onClick={() => setConfirmOpen(true)} type="button" disabled={paused || submitting}>
+
+            <button
+              className="ep-submit-btn"
+              onClick={() => setConfirmOpen(true)}
+              type="button"
+              disabled={paused || submitting}
+            >
               <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
             </button>
+          </div>
+
+          <div className="ep-header-progress" aria-hidden="true">
+            <div className="ep-header-progress-fill" style={{ width: `${progress}%` }} />
           </div>
         </header>
 
         {guard.warning && guard.warning.type === 'warn-soft' && (
           <div className="ep-warning soft" role="alert">
             <IcoWarning size={18} />
-            <span>{guard.warning.text}</span>
+            <span style={{ flex: 1, fontSize: '.84rem', lineHeight: 1.4 }}>{guard.warning.text}</span>
             <button className="ep-warning-close" onClick={guard.clearWarning} type="button">
               Đóng
             </button>
@@ -2163,52 +2676,64 @@ export default function ExamJoin({ token, onExit }) {
         )}
 
         {joinError && (
-          <div className="ep-warning danger" role="alert">
+          <div className="ep-warning conn-err" role="alert">
             <IcoWarning size={18} />
-            <span>
-              Không kết nối được với giáo viên ({joinError.code}). Bài làm vẫn được lưu nhưng GV không thấy bạn trong phòng giám sát.
+            <span style={{ flex: 1, fontSize: '.8rem', lineHeight: 1.4 }}>
+              Không kết nối được với giáo viên ({joinError.code}). Bài làm vẫn được lưu cục bộ.
             </span>
           </div>
         )}
 
-        <div className="ep-mprog" aria-hidden="true">
-          <i style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="ep-body">
-          {/* [1.6] Thay thế nội dung thẻ main bằng logic chia mode */}
-          <main
-            className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
-            ref={mainRef}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-          >
-            {mode === 'paper' ? (
-              <ExamPaperView
-                layout={layout}
-                questions={exam.questions}
-                answers={answers}
-                flags={flags}
-                paused={paused}
-                onPick={pickAnswer}
-                onFlag={toggleFlag}
-                onVisible={setCurrentQ}
-                onSubmit={() => setConfirmOpen(true)}
-                rootRef={mainRef}
-              />
-            ) : (
-              <>
-                <QuestionCard
-                  q={q}
-                  qi={qi}
-                  num={currentQ + 1}
-                  picked={answers[qi]}
-                  flagged={!!flags[qi]}
+        <div className={'ep-body' + (cameraEnabled ? '' : ' no-cam')}>
+          <div className="ep-main-col">
+            <main
+              className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
+              ref={mainRef}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+            >
+              {mode === 'paper' ? (
+                <ExamPaperView
+                  layout={layout}
+                  questions={exam.questions}
+                  answers={answers}
+                  flags={flags}
                   paused={paused}
                   onPick={pickAnswer}
                   onFlag={toggleFlag}
+                  onVisible={setCurrentQ}
+                  onSubmit={() => setConfirmOpen(true)}
+                  onZoom={handleZoomImage}
+                  rootRef={mainRef}
                 />
+              ) : (
+                <>
+                  <QuestionCard
+                    q={q}
+                    qi={qi}
+                    num={currentQ + 1}
+                    total={exam.questions.length}
+                    picked={answers[qi]}
+                    flagged={!!flags[qi]}
+                    paused={paused}
+                    eliminatedMap={eliminated[qi]}
+                    highlightActive={highlightMode}
+                    highlightedMap={highlights[qi]}
+                    onPick={pickAnswer}
+                    onFlag={toggleFlag}
+                    onToggleEliminate={toggleEliminate}
+                    onToggleHighlightMode={toggleHighlightMode}
+                    onToggleHighlightWord={toggleHighlightWord}
+                    onClearHighlights={clearHighlights}
+                    onZoom={handleZoomImage}
+                  />
+                  <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
+                </>
+              )}
+            </main>
 
+            {mode !== 'paper' && (
+              <div className="ep-nav-dock">
                 <div className="ep-nav">
                   <button
                     className="ep-nav-btn"
@@ -2216,8 +2741,13 @@ export default function ExamJoin({ token, onExit }) {
                     onClick={() => setCurrentQ((i) => i - 1)}
                     type="button"
                   >
-                    Câu trước
+                    <IcoChevronLeft size={16} /> Câu trước
                   </button>
+
+                  <div className="ep-nav-center">
+                    <span>Đã làm <b>{answered}/{exam.questions.length}</b></span>
+                    {unansweredCount > 0 && <span>· Còn <b>{unansweredCount}</b> câu</span>}
+                  </div>
 
                   <button
                     className="ep-nav-list"
@@ -2235,7 +2765,7 @@ export default function ExamJoin({ token, onExit }) {
                       type="button"
                       disabled={paused}
                     >
-                      Câu tiếp
+                      Câu tiếp <IcoChevronRight size={16} />
                     </button>
                   ) : (
                     <button
@@ -2244,43 +2774,133 @@ export default function ExamJoin({ token, onExit }) {
                       type="button"
                       disabled={paused || submitting}
                     >
-                      <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
+                      <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Hoàn thành & Nộp bài'}
                     </button>
                   )}
                 </div>
-                <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
-              </>
+              </div>
             )}
-          </main>
 
-          {mode === 'paper' && (
-            <div className="ep-pbar">
-              <button type="button" className="ep-pbar-list" onClick={() => setSidebarOpen(true)} disabled={paused}>
-                <IcoPanel size={16} /> {answered}/{exam.questions.length} câu
-              </button>
-              <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)} disabled={paused || submitting}>
-                <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
-              </button>
+            {mode === 'paper' && (
+              <div className="ep-pbar">
+                <button type="button" className="ep-pbar-list" onClick={() => setSidebarOpen(true)} disabled={paused}>
+                  <IcoPanel size={16} /> {answered}/{exam.questions.length} câu
+                </button>
+                <button type="button" className="ep-pbar-submit" onClick={() => setConfirmOpen(true)} disabled={paused || submitting}>
+                  <IcoSend size={14} /> {submitting ? 'Đang nộp...' : 'Nộp bài'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {cameraEnabled && (
+            <div
+              className={'ep-cam-dock' + (camMinimized ? ' is-mini' : '')}
+              style={mobileCamDragStyle}
+            >
+              <div className={'ep-cam-card ' + (camOk ? 'ok' : 'warn')}>
+                <div
+                  className="ep-cam-bar"
+                  onPointerDown={isMobileViewport ? onCamDragStart : undefined}
+                  onPointerMove={isMobileViewport ? onCamDragMove : undefined}
+                  onPointerUp={isMobileViewport ? onCamDragEnd : undefined}
+                  onPointerCancel={isMobileViewport ? onCamDragEnd : undefined}
+                  onClick={camMinimized ? () => setCamMinimized(false) : undefined}
+                  role={isMobileViewport || camMinimized ? 'button' : undefined}
+                  tabIndex={isMobileViewport || camMinimized ? 0 : undefined}
+                  aria-label={camMinimized ? 'Mở khung camera giám sát' : 'Thanh trạng thái camera giám sát'}
+                >
+                  <span className="ep-cam-drag-ico"><IcoDrag size={12} /></span>
+                  <span className="ep-cam-status-dot" aria-hidden="true" />
+                  <span className="ep-cam-status-txt">{proctorStatusText}</span>
+                  {proctor.faces > 0 && (
+                    <span className="ep-cam-face-pill">{proctor.faces} mặt</span>
+                  )}
+                  <button
+                    className="ep-cam-toggle"
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setCamMinimized((v) => !v); }}
+                    aria-label={camMinimized ? 'Mở rộng camera' : 'Thu gọn camera'}
+                    title={camMinimized ? 'Hiện khung hình camera' : 'Thu gọn khung hình camera'}
+                  >
+                    {camMinimized ? <IcoChevronDown size={13} /> : <IcoChevronUp size={13} />}
+                  </button>
+                </div>
+
+                {/* Luôn giữ <video> mounted và kích thước không dùng display:none để MediaPipe luôn chạy mượt */}
+                <div className={'ep-cam-viewport' + (camMinimized ? ' collapsed' : '')}>
+                  <video
+                    ref={proctor.videoRef}
+                    className="ep-cam-video"
+                    muted
+                    playsInline
+                    autoPlay
+                  />
+                  <div className="ep-cam-hud" aria-hidden="true" />
+                </div>
+              </div>
             </div>
           )}
 
           <aside className={'ep-sidebar' + (sidebarOpen ? ' open' : '')}>
             <div className="ep-sidebar-head">
-              <b>Danh sách câu</b>
+              <div className="ep-sidebar-head-left">
+                <b>Danh sách câu hỏi</b>
+                <span className="ep-sidebar-pct">{completionPct}%</span>
+              </div>
               <button
                 className="ep-sidebar-close"
                 onClick={() => setSidebarOpen(false)}
                 type="button"
-                aria-label="Đóng"
+                aria-label="Đóng danh sách câu"
               >
                 <IcoX size={16} />
               </button>
             </div>
 
             <div className="ep-sidebar-stats">
-              <span><i className="dot done" /> Đã làm <b>{answered}</b></span>
-              <span><i className="dot flagged" /> Đánh dấu <b>{flaggedCount}</b></span>
-              <span><i className="dot todo" /> Chưa làm <b>{exam.questions.length - answered}</b></span>
+              <div className="ep-stat-tile done">
+                <b>{answered}</b>
+                <span><i /> Đã làm</span>
+              </div>
+              <div className="ep-stat-tile flagged">
+                <b>{flaggedCount}</b>
+                <span><i /> Đánh dấu</span>
+              </div>
+              <div className="ep-stat-tile todo">
+                <b>{unansweredCount}</b>
+                <span><i /> Chưa làm</span>
+              </div>
+            </div>
+
+            <div className="ep-sidebar-filters" role="tablist" aria-label="Lọc danh sách câu hỏi">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={navFilter === 'all'}
+                className={'ep-filter-btn' + (navFilter === 'all' ? ' on' : '')}
+                onClick={() => setNavFilter('all')}
+              >
+                Tất cả ({exam.questions.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={navFilter === 'todo'}
+                className={'ep-filter-btn' + (navFilter === 'todo' ? ' on' : '')}
+                onClick={() => setNavFilter('todo')}
+              >
+                Chưa làm ({unansweredCount})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={navFilter === 'flagged'}
+                className={'ep-filter-btn' + (navFilter === 'flagged' ? ' on' : '')}
+                onClick={() => setNavFilter('flagged')}
+              >
+                Đánh dấu ({flaggedCount})
+              </button>
             </div>
 
             <QuestionGrid
@@ -2291,76 +2911,101 @@ export default function ExamJoin({ token, onExit }) {
               flags={flags}
               currentQ={currentQ}
               paused={paused}
+              filter={navFilter}
               onJump={jumpTo}
             />
+
+            <div className="ep-sidebar-foot">
+              <div className="ep-mobile-tools">
+                <span className="ep-mobile-tools-label">Hiển thị</span>
+                <div className="ep-tools-group" role="group" aria-label="Tùy chỉnh giao diện đọc đề">
+                  <button
+                    type="button"
+                    className="ep-tool-btn"
+                    onClick={cycleSurface}
+                    title={surfaceMeta.label}
+                    aria-label={surfaceMeta.label}
+                  >
+                    {surfaceMeta.icon}
+                  </button>
+                  <button
+                    type="button"
+                    className={'ep-tool-btn' + (fontScale === 'sm' ? ' active' : '')}
+                    onClick={() => stepFont(-1)}
+                    disabled={fontScale === 'sm'}
+                    aria-label="Thu nhỏ cỡ chữ"
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    className={'ep-tool-btn' + (fontScale === 'lg' ? ' active' : '')}
+                    onClick={() => stepFont(1)}
+                    disabled={fontScale === 'lg'}
+                    aria-label="Phóng to cỡ chữ"
+                  >
+                    A+
+                  </button>
+                </div>
+              </div>
+              <div className="ep-kbd-hints">
+                <span><kbd>A-D</kbd> Chọn</span>
+                <span><kbd>←</kbd><kbd>→</kbd> Chuyển</span>
+                <span><kbd>F</kbd> Đánh dấu</span>
+              </div>
+            </div>
           </aside>
 
           {sidebarOpen && <div className="ep-sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
         </div>
 
-        {cameraEnabled && (
-          <>
-            {camMinimized && (
-              <button
-                className={'ep-cam-mini ' + (proctor.status === 'ok' && proctor.faces > 0 ? 'ok' : 'warn')}
-                onClick={() => setCamMinimized(false)}
-                type="button"
-                aria-label="Mở camera"
-                style={camStyle}
-              >
-                <IcoCam size={18} />
-                <span className="ep-cam-mini-dot" />
+        {zoomImg && (
+          <div
+            className="ep-lightbox"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Phóng to hình minh hoạ"
+            onClick={() => setZoomImg(null)}
+          >
+            <div className="ep-lightbox-bar" onClick={(e) => e.stopPropagation()}>
+              <span>{zoomImg.alt || 'Hình minh hoạ câu hỏi'}</span>
+              <button type="button" className="ep-lightbox-close" onClick={() => setZoomImg(null)}>
+                <IcoX size={15} /> Đóng (Esc)
               </button>
-            )}
-            <div
-              className={'ep-cam ' + (proctor.status === 'ok' && proctor.faces > 0 ? 'ok' : 'warn')}
-              style={camMinimized ? { ...camStyle, display: 'none' } : camStyle}
-            >
-              <div
-                className="ep-cam-head"
-                onPointerDown={onCamDragStart}
-                onPointerMove={onCamDragMove}
-                onPointerUp={onCamDragEnd}
-                onPointerCancel={onCamDragEnd}
-                role="button"
-                tabIndex={0}
-                aria-label="Kéo để di chuyển camera"
-              >
-                <IcoDrag size={14} />
-                <span className="ep-cam-dot" aria-hidden="true" />
-                <span className="ep-cam-status">
-                  {proctor.status === 'ok' && proctor.faces > 0 && 'Đang giám sát'}
-                  {proctor.status === 'ok' && proctor.faces === 0 && 'Không thấy mặt'}
-                  {proctor.status === 'starting' && 'Đang bật...'}
-                  {proctor.status === 'denied' && 'Chưa cho phép'}
-                  {proctor.status === 'unavailable' && 'Không có camera'}
-                  {proctor.status === 'lost' && 'Mất camera'}
-                  {proctor.status === 'error' && 'Lỗi camera'}
-                  {proctor.status === 'idle' && 'Đang chờ'}
-                </span>
-                <button
-                  className="ep-cam-btn"
-                  onClick={(e) => { e.stopPropagation(); setCamMinimized(true); }}
-                  type="button"
-                  aria-label="Thu gọn"
-                >
-                  <IcoMinimize size={12} />
-                </button>
-              </div>
-              <video
-                ref={proctor.videoRef}
-                className="ep-cam-video"
-                muted
-                playsInline
-                autoPlay
-              />
-              {proctor.faces > 0 && (
-                <div className="ep-cam-foot">
-                  <span>{proctor.faces} khuôn mặt</span>
-                </div>
-              )}
             </div>
-          </>
+            <img
+              src={zoomImg.src}
+              alt={zoomImg.alt}
+              className="ep-lightbox-img"
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
+        {helpOpen && (
+          <div className="ep-help-pop" role="dialog" aria-label="Phím tắt phòng thi">
+            <div className="ep-help-pop-head">
+              <span>Phím tắt & Mẹo làm bài</span>
+              <button
+                type="button"
+                className="ep-tool-btn"
+                onClick={() => setHelpOpen(false)}
+                aria-label="Đóng"
+              >
+                <IcoX size={14} />
+              </button>
+            </div>
+            <ul>
+              <li><span>Chọn đáp án A–D</span><span><kbd>A</kbd>–<kbd>D</kbd></span></li>
+              <li><span>Chuyển câu trước / sau</span><span><kbd>←</kbd> <kbd>→</kbd></span></li>
+              <li><span>Đánh dấu xem lại</span><span><kbd>F</kbd></span></li>
+              <li><span>Bật/tắt bút dạ quang</span><span><kbd>H</kbd></span></li>
+              <li><span>Gạch loại trừ đáp án sai</span><span>Chuột phải / Nút S</span></li>
+              <li><span>Phóng to hình đề thi</span><span>Nhấn vào hình</span></li>
+            </ul>
+          </div>
         )}
 
         {camBlocked && (
@@ -2397,28 +3042,28 @@ export default function ExamJoin({ token, onExit }) {
         {submitting && (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 10000,
-            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)',
+            background: 'rgba(3, 7, 24, 0.72)', backdropFilter: 'blur(4px)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             color: '#fff', gap: '1rem',
           }}>
             <div className="page-loader-spinner" style={{ width: 44, height: 44, borderWidth: 4 }} />
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Đang nộp bài và lưu kết quả...</h3>
-            <p style={{ margin: 0, opacity: 0.85, fontSize: '.9rem' }}>Vui lòng không tắt hoặc tải lại trang.</p>
+            <h3 style={{ margin: 0, fontSize: '1.18rem', color: '#fff' }}>Đang nộp bài và chấm điểm trên máy chủ...</h3>
+            <p style={{ margin: 0, opacity: 0.85, fontSize: '.88rem' }}>Vui lòng không tắt hoặc tải lại trang.</p>
           </div>
         )}
 
         <TeacherWarning warning={teacherWarning} onClose={() => setTeacherWarning(null)} />
       </div>
 
-      {/* Chế độ luyện tập: đề đang khoá chờ giáo viên bắt đầu */}
-      {practiceMode && (stage === 'exam' || stage === 'result') && (
+      {/* Chế độ luyện tập trên màn hình kết quả (trong lúc thi đã có badge trên topbar, tránh đụng nút X fullscreen) */}
+      {practiceMode && stage === 'result' && (
         <div
           style={{
-            position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)',
+            position: 'fixed', bottom: 14, left: '50%', transform: 'translateX(-50%)',
             zIndex: 9100, pointerEvents: 'none',
             background: 'rgba(245, 158, 11, 0.95)', color: '#3b2606',
             fontSize: '0.74rem', fontWeight: 700, lineHeight: 1.4,
-            padding: '0.35rem 0.8rem', borderRadius: 999, maxWidth: '92vw', textAlign: 'center',
+            padding: '0.35rem 0.85rem', borderRadius: 999, maxWidth: '92vw', textAlign: 'center',
           }}
         >
           Chế độ luyện tập — không tính điểm, giáo viên chưa bắt đầu giờ thi.
@@ -2430,10 +3075,10 @@ export default function ExamJoin({ token, onExit }) {
       {guard.noFullscreenFallback && stage === 'exam' && (
         <div
           style={{
-            position: 'fixed', bottom: 12, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 9000, pointerEvents: 'none',
-            background: 'rgba(15, 23, 42, 0.92)', color: '#fff',
-            fontSize: '0.72rem', lineHeight: 1.4, padding: '0.35rem 0.75rem',
+            position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 100020, pointerEvents: 'none',
+            background: 'rgba(10, 18, 48, 0.92)', color: '#fff',
+            fontSize: '0.72rem', lineHeight: 1.4, padding: '0.35rem 0.8rem',
             borderRadius: 999, maxWidth: '92vw', textAlign: 'center',
           }}
         >

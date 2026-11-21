@@ -32,7 +32,7 @@ export const PassageBox = memo(function PassageBox({ instruction, passage, pinna
   );
 });
 
-const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged, paused, onPick, onFlag }) {
+const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged, paused, onPick, onFlag, onZoom }) {
   const short = (q.options || []).every((o) => String(o ?? '').length <= 22);
   return (
     <article className="pp-q" id={`pq-${pos}`} data-pos={pos}>
@@ -50,7 +50,7 @@ const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged,
         </button>
       </div>
       <MathText as="p" className="pp-q-text">{q.q}</MathText>
-      <QuestionImage q={q} />
+      <QuestionImage q={q} onZoom={onZoom} />
       {!isChoiceType(q) && <QuestionAnswer q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />}
       {isChoiceType(q) && (
       <div className={'pp-opts' + (short ? ' row' : '')} role="radiogroup">
@@ -74,7 +74,7 @@ const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged,
   );
 });
 
-function PaperBlock({ block, questions, answers, flags, paused, onPick, onFlag }) {
+function PaperBlock({ block, questions, answers, flags, paused, onPick, onFlag, onZoom }) {
   const hasPassage = !!block.passage;
   const [pinned, setPinned] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 900);
 
@@ -101,6 +101,7 @@ function PaperBlock({ block, questions, answers, flags, paused, onPick, onFlag }
             paused={paused}
             onPick={onPick}
             onFlag={onFlag}
+            onZoom={onZoom}
           />
         ))}
       </div>
@@ -108,7 +109,7 @@ function PaperBlock({ block, questions, answers, flags, paused, onPick, onFlag }
   );
 }
 
-export default function ExamPaperView({ layout, questions, answers, flags, paused, onPick, onFlag, onVisible, onSubmit, rootRef }) {
+export default function ExamPaperView({ layout, questions, answers, flags, paused, onPick, onFlag, onVisible, onSubmit, onZoom, rootRef }) {
   /* Theo dõi câu đang ở đầu màn hình → cập nhật "Câu x/y" và heartbeat gửi cho giáo viên */
   useEffect(() => {
     const root = rootRef?.current;
@@ -135,6 +136,7 @@ export default function ExamPaperView({ layout, questions, answers, flags, pause
           paused={paused}
           onPick={onPick}
           onFlag={onFlag}
+          onZoom={onZoom}
         />
       ))}
       <div className="pp-end">

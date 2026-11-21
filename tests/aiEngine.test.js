@@ -118,7 +118,10 @@ describe('askAI — bài toán có công cụ (văn bản)', () => {
   });
 
   it('gắn cảnh báo khi AI bỏ qua kết quả công cụ', async () => {
-    stubProviders({ openai: openaiBody('', 'n(Fe) = 0,5 mol, V(H₂) = 99 lít.') });
+    stubProviders({
+      gemini: geminiBody('', 'n(Fe) = 0,5 mol, V(H₂) = 99 lít.'),
+      openai: openaiBody('', 'n(Fe) = 0,5 mol, V(H₂) = 99 lít.'),
+    });
     const res = await askAI([{ role: 'user', parts: [{ text: FE_HCL }] }], null, null, { uid: '', noCache: true });
     expect(res.verification.ok).toBe(false);
     expect(res.text).toContain('Tự kiểm tra: đáp án chưa khớp các giá trị đã tính bằng công cụ');
@@ -129,8 +132,10 @@ describe('askAI — bài toán có công cụ (văn bản)', () => {
     await askAI([{ role: 'user', parts: [{ text: HARD }] }], null, null, { uid: '', noCache: true });
 
     const call = fetchMock.calls[0];
-    expect(call.body.temperature).toBeLessThanOrEqual(0.1);
-    expect(call.body.max_tokens).toBeGreaterThanOrEqual(8192);
+    const temp = call.kind === 'gemini' ? call.body.generationConfig.temperature : call.body.temperature;
+    const maxTok = call.kind === 'gemini' ? call.body.generationConfig.maxOutputTokens : call.body.max_tokens;
+    expect(temp).toBeLessThanOrEqual(0.1);
+    expect(maxTok).toBeGreaterThanOrEqual(8192);
     expect(systemPromptOf(call)).toContain('CẤU TRÚC BẮT BUỘC');
   });
 });

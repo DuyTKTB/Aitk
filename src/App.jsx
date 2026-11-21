@@ -36,6 +36,8 @@ const CareerPath = lazy(() => import('./components/CareerPath.jsx'));
 const DocStudio = lazy(() => import('./components/DocStudio.jsx'));
 const ChalkboardView = lazy(() => import('./components/ChalkboardView.jsx'));
 const ScienceSimLab = lazy(() => import('./components/ScienceSimLab.jsx'));
+const PhysicsLabPage = lazy(() => import('./features/physics/PhysicsLabPage.jsx'));
+const Casio580Page = lazy(() => import('./components/Casio580Page.jsx'));
 
 /* ============ GAMES ============ */
 const GameHub = lazy(() => import('./components/games/GameHub.jsx'));
@@ -159,6 +161,7 @@ const NAV_TOOLS_GROUPS = [
     group: 'Học tập & Khảo thí',
     tools: [
       { id: 'roadmap', label: 'Lộ trình KHTN', desc: 'Tiến độ & mục tiêu 3 môn', Icon: IcoBook },
+      { id: 'casio', label: 'Máy tính fx-580VN X', desc: 'Mô phỏng Casio 50 phím · 8 chế độ', Icon: IconCalc },
       { id: 'formulas', label: 'Công thức KHTN', desc: 'Tra cứu công thức Lý — Hóa — Sinh', Icon: IconCalc },
       { id: 'analyze', label: 'Phân tích & Hợp chất', desc: 'Nhận diện chất, phản ứng & hiện tượng', Icon: IconMicroscope },
       { id: 'balance', label: 'Cân bằng PTHH', desc: 'Cân bằng bằng đại số tuyến tính', Icon: IconScale },
@@ -185,6 +188,7 @@ const NAV_TOOLS_GROUPS = [
   {
     group: 'Giải trí & Trực quan',
     tools: [
+      { id: 'physics-lab', label: 'Phòng Lab Vật lí Ảo', desc: 'Ném xiên, Mạch điện DC, Quang hình, Sóng 2D, Con lắc kép & Olympiad', Icon: IconMicroscope },
       { id: 'sim-lab', label: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN & Punnett', Icon: IconMicroscope },
       { id: 'games', label: 'Trò chơi Khoa học', desc: 'Game tương tác KHTN & lab ảo', Icon: IconGamepad },
       { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác chuẩn IUPAC', Icon: IconHome },
@@ -241,6 +245,8 @@ const CLEAN_PATH_MAP = {
   'bang-xep-hang': 'leaderboard',
   'quiz': 'quiz',
   'mo-phong-khtn': 'sim-lab',
+  'phong-thi-nghiem-vat-li': 'physics-lab',
+  'may-tinh-casio-580': 'casio',
   'auth-action': 'auth-action',
 };
 
@@ -367,9 +373,14 @@ export default function App() {
   /* ============ ONBOARDING SURVEY AUTO-OPEN ============ */
   useEffect(() => {
     const onManualOpen = () => setSurveyOpen(true);
+    const onToggleThemeEvt = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
     window.addEventListener('elec-open-onboarding-survey', onManualOpen);
-    return () => window.removeEventListener('elec-open-onboarding-survey', onManualOpen);
-  }, []);
+    window.addEventListener('elec-toggle-theme', onToggleThemeEvt);
+    return () => {
+      window.removeEventListener('elec-open-onboarding-survey', onManualOpen);
+      window.removeEventListener('elec-toggle-theme', onToggleThemeEvt);
+    };
+  }, [setTheme]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.uid || !profileReady) return;
@@ -655,7 +666,7 @@ export default function App() {
   }
 
   const PUBLIC_SEO_PAGES = [
-    'ai', 'table', 'balance', 'formulas', 'roadmap', 'study', 'grade',
+    'ai', 'table', 'balance', 'formulas', 'casio', 'roadmap', 'study', 'grade',
     'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
     'chalkboard', 'sim-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'schedule',
   ];
@@ -824,6 +835,8 @@ export default function App() {
     if (page === 'doc-studio') return <DocStudio />;
     if (page === 'chalkboard') return <ChalkboardView />;
     if (page === 'sim-lab') return <ScienceSimLab onNavigate={navigate} />;
+    if (page === 'physics-lab') return <PhysicsLabPage onNavigate={navigate} />;
+    if (page === 'casio') return <Casio580Page />;
 
     if (page === 'truong' || page.startsWith('truong/')) {
       const schoolId = page.startsWith('truong/') ? page.replace('truong/', '') : 'NEU';

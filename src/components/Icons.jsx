@@ -46,15 +46,47 @@ export const IconCalc = ({ className = '', ...p }) => (
   </Svg>
 );
 
-export const IconRobot = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-robot anim-ico-ai ${className}`} {...p}>
-    <rect x="4" y="8.5" width="16" height="11.5" rx="3.5" {...duo} />
-    <path d="M12 4.8v3.7M2 13v3M22 13v3M9.5 17.2h5" />
-    <circle cx="12" cy="3.6" r="1.3" {...dot} />
-    <circle cx="9" cy="13.5" r="1.2" {...dot} />
-    <circle cx="15" cy="13.5" r="1.2" {...dot} />
-  </Svg>
-);
+export const IconElecBrand = ({ size = 18, className = '', style, ...p }) => {
+  const px = Math.round(Number(size) || 18);
+  const visualSize = Math.max(16, px + 3);
+  return (
+    <span
+      className={`anim-ico-svg anim-ico-robot anim-ico-ai elec-brand-ico-wrap ${className}`.trim()}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: visualSize,
+        height: visualSize,
+        flexShrink: 0,
+        verticalAlign: 'middle',
+        lineHeight: 0,
+        ...style,
+      }}
+      aria-hidden="true"
+      {...p}
+    >
+      <img
+        src="/img/elec-emblem.png"
+        alt=""
+        width={visualSize}
+        height={visualSize}
+        draggable={false}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          display: 'block',
+          filter: 'drop-shadow(0 0 1.2px rgba(255, 255, 255, 0.85))',
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      />
+    </span>
+  );
+};
+
+export const IconRobot = IconElecBrand;
 
 export const IconMicroscope = ({ className = '', ...p }) => (
   <Svg className={`anim-ico-microscope ${className}`} {...p}>

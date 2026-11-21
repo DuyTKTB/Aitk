@@ -15,10 +15,10 @@
 /* ============ 1. PHÂN LOẠI TÁC VỤ ============ */
 const CHEM_CUES = /hóa|hoá|mol|nồng độ|\bph\b|dung dịch|chất|phương trình|phản ứng|oxi|axit|bazơ|este|muối|kim loại|nguyên tố|electron|liên kết|cân bằng|điện phân|hữu cơ|hidro|cacbon|%|gam|ml|lít/i;
 const PHYSICS_CUES = /vật lí|vật lý|dao động|con lắc|chu kì|chu kỳ|tần số|biên độ|vận tốc|gia tốc|lực|công suất|động năng|thế năng|cơ năng|sóng cơ|bước sóng|giao thoa|nhiễu xạ|dòng điện|xoay chiều|điện áp|hiệu điện thế|tụ điện|cuộn cảm|điện trở|tổng trở|quang|khúc xạ|thấu kính|hạt nhân|phóng xạ|năng lượng liên kết|chuyển động|hệ số công suất|quang điện/i;
-const BIOLOGY_CUES = /sinh học|di truyền|nhiễm sắc thể|\badn\b|\barn\b|gen|mã di truyền|axit amin|protein|phiên mã|dịch mã|nhân đôi|đột biến|alen|kiểu gen|kiểu hình|men-đen|menđen|lai một cặp|lai hai cặp|punnett|quần thể|hardy-weinberg|tần số tương đối|hệ sinh thái|chuỗi thức ăn|nuclêôtit|ribôxôm|tế bào/i;
-const MATH_CUES = /toán|hình học|hình chóp|tứ diện|lăng trụ|hình hộp|hình lập phương|mặt cầu|hình nón|hình trụ|khối đa diện|thiết diện|oxyz|vectơ|vecto|đạo hàm|tích phân|nguyên hàm|hàm số|đồ thị|cực trị|tiếp tuyến|khoảng cách|góc giữa|đồng phẳng|vuông góc|song song/i;
+const BIOLOGY_CUES = /sinh học|di truyền|nhiễm sắc thể|\bnst\b|\badn\b|\bdna\b|\barn\b|\brna\b|\bmrna\b|\btrna\b|\brrna\b|gen|gene|mã di truyền|codon|axit amin|amino acid|protein|polypeptide|phiên mã|dịch mã|nhân đôi|tái bản|operon|lacz|lacy|laca|laci|promoter|operator|đột biến|alen|allele|kiểu gen|kiểu gene|kiểu hình|men-đen|menđen|mendel|morgan|lai một cặp|lai hai cặp|lai phân tích|punnett|tương tác gen|tương tác gene|hoán vị|liên kết gen|liên kết gene|phả hệ|quần thể|hardy-weinberg|tự thụ phấn|ngẫu phối|tần số tương đối|hệ sinh thái|quần xã|chuỗi thức ăn|lưới thức ăn|bậc dinh dưỡng|hiệu suất sinh thái|diễn thế|ổ sinh thái|tiến hóa|hóa thạch|chọn lọc tự nhiên|phiêu bạt di truyền|nuclêôtit|nucleotide|ribôxôm|ribosome|chromatid|crômatit|nucleosome|histone|nguyên phân|giảm phân|lệch bội|đa bội|thể ba|thể một|hội chứng down|turner|klinefelter|tế bào|ti thể|lục lạp|quang hợp|hô hấp|chu trình krebs|calvin|thylakoid|mạch gỗ|mạch rây|khí khổng|tuần hoàn|huyết áp|nút xoang nhĩ|miễn dịch|kháng thể|vaccine|nội môi|insulin|glucagon|nephron|synapse|xináp|cung phản xạ|tập tính|hormone|auxin|gibberellin|cytokinin|ethylene|abscisic|thụ tinh kép|nội nhũ|enzyme|atp|vi sinh vật|virus|capsid|phage/i;
+const MATH_CUES = /toán|hình học|hình chóp|tứ diện|lăng trụ|hình hộp|hình lập phương|mặt cầu|hình nón|hình trụ|khối đa diện|thiết diện|oxyz|vectơ|vecto|đạo hàm|tích phân|nguyên hàm|hàm số|đồ thị|cực trị|cực đại|cực tiểu|tiếp tuyến|khoảng cách|góc giữa|đồng phẳng|vuông góc|song song|bất đẳng thức|hệ phương trình|bất phương trình|logarit|tổ hợp|xác suất|nhị thức|cấp số|giới hạn|số phức|lượng giác|tam giác|đường tròn|parabol|gtln|gtnn|biện luận/i;
 const SCIENCE_CUES = new RegExp(`${CHEM_CUES.source}|${PHYSICS_CUES.source}|${BIOLOGY_CUES.source}|${MATH_CUES.source}`, 'i');
-const HARD_CUES = /hỗn hợp|hiệu suất|dư|đồng thời|biết rằng|so sánh|điện phân|este|peptit|polymer|chuỗi|sơ đồ|đồ thị|xác định công thức|bảo toàn|tăng giảm|quy đổi|nhiều giai đoạn|mạch rlc|cộng hưởng|lệch pha|con lắc vướng đinh|va chạm|chu kỳ bán rã|hoán vị gen|liên kết gen|phả hệ|di truyền liên kết giới tính|cân bằng di truyền/i;
+const HARD_CUES = /hỗn hợp|hiệu suất|dư|đồng thời|biết rằng|so sánh|điện phân|este|peptit|polymer|chuỗi|sơ đồ|đồ thị|xác định công thức|bảo toàn|tăng giảm|quy đổi|nhiều giai đoạn|mạch rlc|cộng hưởng|lệch pha|con lắc vướng đinh|va chạm|chu kỳ bán rã|hoán vị gen|hoán vị gene|liên kết gen|liên kết gene|phả hệ|di truyền liên kết giới tính|cân bằng di truyền|operon lac|tự thụ phấn|tương tác gen|tương tác gene|không phân li|hiệu suất sinh thái|đúng sai/i;
 
 const countNumbers = (s) => (String(s).match(/\d+(?:[.,]\d+)?/g) || []).length;
 
@@ -128,14 +128,15 @@ export function classifyTask(history) {
 
   const hard = kind === 'problem' && hardScore >= 2;
 
-  const temperature = kind === 'problem' ? 0.1 : kind === 'compare' ? 0.5 : kind === 'generate' ? 0.4 : kind === 'theory' ? 0.2 : 0.3;
+  const temperature = hard ? 0.08 : kind === 'problem' ? 0.12 : kind === 'compare' ? 0.4 : kind === 'generate' ? 0.35 : kind === 'theory' ? 0.2 : 0.35;
   const maxTokens = kind === 'problem' ? 8192
     : kind === 'generate' ? 8192
-      : kind === 'theory' ? 4096
-        : kind === 'compare' ? 3072 : 2048;
+      : kind === 'theory' ? 6144
+        : kind === 'compare' ? 4096 : 4096;
 
-  const reasoningEffort = hard ? 'high' : kind === 'problem' ? 'medium' : 'low';
-  const thinkingBudget = hard ? 8192 : kind === 'problem' ? 3072 : kind === 'theory' ? 1024 : 0;
+  const isTrivialChat = kind === 'chat' && text.length < 24 && !isScience && nums === 0;
+  const reasoningEffort = hard ? 'high' : (kind === 'problem' || kind === 'theory') ? 'medium' : isTrivialChat ? null : 'low';
+  const thinkingBudget = hard ? 8192 : kind === 'problem' ? 4096 : kind === 'theory' ? 2048 : 0;
 
   const needTools = (kind === 'problem' || kind === 'theory' || image) && (isScience || nums >= 1);
   /* Chat thường và so sánh công cụ không cần dữ liệu KHTN của app */
@@ -160,19 +161,21 @@ const envList = (v) => String(v || '').split(/[\s,;]+/).map((s) => s.trim()).fil
 
 const DEFAULTS = {
   gemini: {
-    // Model Gemini chính thức hoạt động
-    fast: ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'],
-    smart: ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-pro'],
-    vision: ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'],
+    // Các model Gemini 3 đang hoạt động thực tế (200 OK, hỗ trợ thinkingConfig + Vision đa phương thức)
+    fast: ['gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'],
+    smart: ['gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'],
+    vision: ['gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'],
   },
   groq: {
-    fast: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
-    smart: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
+    // Các model Groq reasoning thực tế đang hoạt động (200 OK, <1s, hỗ trợ reasoning_effort)
+    fast: ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
+    smart: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'],
     vision: [],
   },
   agnes: {
+    // Chỉ dùng model Agnes miễn phí hoạt động 200 OK (tránh 403 pro $0 quota)
     fast: ['agnes-3.0-flash', 'agnes-2.5-flash'],
-    smart: ['agnes-3.0-flash', 'agnes-2.5-pro-beta'],
+    smart: ['agnes-3.0-flash', 'agnes-2.5-flash'],
     vision: [],
   },
 };
@@ -202,7 +205,7 @@ export function tierFor(task) {
 }
 
 /* ============ 3. DÒ MODEL GEMINI THẬT (tránh 404 do tên model sai) ============ */
-const DISCO_CACHE_KEY = 'cs-ai-gemini-models-v1';
+const DISCO_CACHE_KEY = 'cs-ai-gemini-models-v2';
 const DISCO_TTL_MS = 12 * 60 * 60 * 1000;
 const discovered = { gemini: null, at: 0 };
 
@@ -219,16 +222,18 @@ const readDiscoCache = () => {
 function rankGemini(names) {
   const score = (n) => {
     let s = 0;
-    if (/pro/.test(n)) s += 30;
-    if (/flash/.test(n)) s += 20;
-    if (/lite/.test(n)) s += 5;
-    if (/thinking|exp/.test(n)) s += 8;
-    if (/embedding|aqa|tts|image|veo|imagen|learnlm/.test(n)) s -= 100;
+    if (/gemini-3-flash-preview/i.test(n)) s += 60;
+    if (/flash/.test(n)) s += 25;
+    if (/lite/.test(n)) s += 10;
+    if (/pro/.test(n)) s += 5;
+    if (/embedding|aqa|tts|image|veo|imagen|learnlm|lyria|banana|transcribe|omni|deep-research|antigravity|gemma|gemini-2\.|gemini-4-/i.test(n)) s -= 200;
     const ver = /(\d+)\.(\d+)/.exec(n);
     if (ver) s += (Number(ver[1]) * 10 + Number(ver[2]));
     return s;
   };
-  return [...names].sort((a, b) => score(b) - score(a));
+  return [...names]
+    .filter((n) => !/embedding|aqa|tts|image|veo|imagen|learnlm|lyria|banana|transcribe|omni|deep-research|antigravity|gemma|gemini-2\.|gemini-4-/i.test(n))
+    .sort((a, b) => score(b) - score(a));
 }
 
 /**
@@ -379,10 +384,10 @@ export function buildProviderChain({ task, rings, keys }) {
     return chain;
   }
 
-  // Bài toán/lý thuyết/tạo đề: ưu tiên model mạnh.
-  push('agnes', modelsFor('agnes', tier === 'fast' ? 'fast' : 'smart'));
+  // Bài toán/lý thuyết/tạo đề/DeepThink: ưu tiên Gemini 2.5 Pro/Flash (suy luận thật + đa môn mạnh nhất) → Groq 120B/Qwen3 → Agnes dự phòng.
   push('gemini', [...modelsFor('gemini', 'smart'), ...discoveredGemini('text')]);
   push('groq', modelsFor('groq', 'smart'));
+  push('agnes', modelsFor('agnes', tier === 'fast' ? 'fast' : 'smart'));
   return chain;
 }
 

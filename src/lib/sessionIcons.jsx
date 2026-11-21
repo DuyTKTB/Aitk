@@ -424,6 +424,7 @@ export const VIOLATION_META = {
   page_hide:         { Icon: IcoEyeOff,     label: 'Ẩn trang / chuyển ứng dụng',      severity: 'hard' },
   app_switch:        { Icon: IcoEyeOff,     label: 'Chuyển sang ứng dụng khác',       severity: 'hard' },
   soft_escalation:   { Icon: IcoShieldAlert,label: 'Tích luỹ nhiều cảnh báo nhẹ',     severity: 'hard' },
+  rapid_answer_bot:  { Icon: IcoShieldAlert,label: 'Tốc độ chọn đáp án bất thường (Bot/Script)', severity: 'hard' },
   force_submit:      { Icon: IcoShieldAlert,label: 'Giáo viên thu bài ngay',          severity: 'hard' },
 };
 

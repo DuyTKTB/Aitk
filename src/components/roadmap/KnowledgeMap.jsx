@@ -1,79 +1,146 @@
 /* ============================================================
-   KnowledgeMap.jsx — BẢN ĐỒ KIẾN THỨC TƯƠNG TÁC
+   KnowledgeMap.jsx — BẢN ĐỒ ĐỒ THỊ KIẾN THỨC DAG PRO (GDPT 2018)
    ------------------------------------------------------------
-   Vẽ bằng SVG thuần (không thêm thư viện đồ hoạ mới).
-   Cùng một nguồn dữ liệu với chế độ Danh sách: mỗi node là một
-   chương thật trong data/roadmap.js, màu/trạng thái lấy từ
-   roadmapEngine (điểm thành thạo, lịch ôn, điều kiện tiên quyết).
-
-   • Node = <g role="button" tabIndex=0> → dùng được bàn phím.
-   • Trạng thái luôn có NHÃN CHỮ + icon, không chỉ dựa vào màu.
-   • Thu phóng bằng nút + − và nút "Vừa khung"; cuộn ngang khi hẹp.
+   • Phân tầng khoa học 3 cột: Lớp 10 → Lớp 11 → Lớp 12 (tự co theo bộ lọc).
+   • Đường nối Bezier có mũi tên thể hiện quan hệ tiên quyết (DAG thật).
+   • Rê chuột hoặc chọn 1 chuyên đề → Phát sáng toàn bộ nhánh Gốc tiên quyết
+     (Upstream) và nhánh Mở khóa phía sau (Downstream), làm mờ nút không liên quan.
+   • Đồng bộ trực tiếp với Bảng Thanh tra cố định (ChapterInspectorPanel).
    ============================================================ */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { STATE_META } from '../../lib/roadmapEngine.js';
+import {
+  getChapterMeta,
+  getDownstreamIds,
+  getUpstreamIds,
+} from '../../data/curriculumDag.js';
+import { formatMathAndChemSymbols } from '../../lib/chemFormulaFormatter.js';
 
-const NODE_W = 300;
-const NODE_H = 108;
-const GAP_X = 64;
-const GAP_Y = 46;
-const PAD = 24;
-const COLS = 2;
+const NODE_W = 248;
+const NODE_H = 88;
+const COL_GAP = 104;
+const ROW_GAP = 26;
+const PAD_X = 32;
+const PAD_TOP = 64;
+const PAD_BOTTOM = 36;
 
-function layout(chapters) {
-  const rows = Math.ceil(chapters.length / COLS);
-  const width = PAD * 2 + COLS * NODE_W + (COLS - 1) * GAP_X;
-  const height = PAD * 2 + rows * NODE_H + Math.max(0, rows - 1) * GAP_Y;
-  const pos = {};
-  chapters.forEach((c, i) => {
-    const row = Math.floor(i / COLS);
-    const col = i % COLS;
-    pos[c.chapter.id || `idx-${i}`] = {
-      x: PAD + col * (NODE_W + GAP_X),
-      y: PAD + row * (NODE_H + GAP_Y),
-      row,
-      col,
-    };
+const GRADES = [
+  { grade: 10, label: 'LỚP 10 · NỀN TẢNG', tone: 'g10' },
+  { grade: 11, label: 'LỚP 11 · XƯƠNG SỐNG', tone: 'g11' },
+  { grade: 12, label: 'LỚP 12 · TRỌNG TÂM THPT', tone: 'g12' },
+];
+
+function buildDagLayout(chapters) {
+  const byGrade = { 10: [], 11: [], 12: [] };
+  (chapters || []).forEach((c) => {
+    const meta = getChapterMeta(c.chapter?.id);
+    const g = meta?.grade || c.chapter?.grade || 12;
+    const bucket = byGrade[g] ? g : 12;
+    byGrade[bucket].push(c);
   });
-  return { width, height, pos };
+
+  const activeGrades = GRADES.filter((g) => byGrade[g.grade].length > 0);
+  const cols = activeGrades.length > 0 ? activeGrades : GRADES;
+
+  const pos = {};
+  let maxRows = 1;
+
+  cols.forEach((colInfo, colIdx) => {
+    const items = byGrade[colInfo.grade] || [];
+    if (items.length > maxRows) maxRows = items.length;
+    const x = PAD_X + colIdx * (NODE_W + COL_GAP);
+    items.forEach((c, rowIdx) => {
+      const y = PAD_TOP + rowIdx * (NODE_H + ROW_GAP);
+      pos[c.chapter.id] = { x, y, colIdx, rowIdx, grade: colInfo.grade };
+    });
+  });
+
+  const width = PAD_X * 2 + cols.length * NODE_W + Math.max(0, cols.length - 1) * COL_GAP;
+  const height = PAD_TOP + maxRows * NODE_H + Math.max(0, maxRows - 1) * ROW_GAP + PAD_BOTTOM;
+
+  const edges = [];
+  (chapters || []).forEach((c) => {
+    const toId = c.chapter.id;
+    const toPos = pos[toId];
+    if (!toPos) return;
+    const meta = getChapterMeta(toId);
+    const prereqs = meta?.prereq || c.chapter.prereq || [];
+    prereqs.forEach((fromId) => {
+      const fromPos = pos[fromId];
+      if (!fromPos) return;
+      edges.push({ id: `${fromId}->${toId}`, fromId, toId, from: fromPos, to: toPos });
+    });
+  });
+
+  return { width, height, pos, cols, edges };
 }
 
-function edgePath(a, b) {
-  /* Nối cạnh phải node trước → cạnh trái node sau (hoặc vòng xuống dòng mới) */
-  const x1 = a.x + NODE_W;
-  const y1 = a.y + NODE_H / 2;
-  const x2 = b.x;
-  const y2 = b.y + NODE_H / 2;
-  if (b.col === a.col) {
-    /* Cùng cột: đi vòng bên phải node để không đè lên node nằm giữa */
-    const sx = a.x + NODE_W;
-    const sy = a.y + NODE_H / 2;
-    const ty = b.y + NODE_H / 2;
-    const bulge = sx + GAP_X * 0.45;
-    return `M ${sx} ${sy} C ${bulge} ${sy}, ${bulge} ${ty}, ${sx} ${ty}`;
+function dagEdgePath(from, to) {
+  // Cùng cột (liên tiếp trong 1 lớp): nối cạnh đáy → cạnh đỉnh hoặc vòng mượt bên phải
+  if (from.colIdx === to.colIdx) {
+    if (to.rowIdx === from.rowIdx + 1) {
+      const x = from.x + NODE_W / 2;
+      const y1 = from.y + NODE_H;
+      const y2 = to.y;
+      return `M ${x} ${y1} L ${x} ${y2}`;
+    }
+    const sx = from.x + NODE_W;
+    const sy = from.y + NODE_H * 0.5;
+    const tx = to.x + NODE_W;
+    const ty = to.y + NODE_H * 0.5;
+    const bulge = sx + 26 + Math.min(34, Math.abs(to.rowIdx - from.rowIdx) * 8);
+    return `M ${sx} ${sy} C ${bulge} ${sy}, ${bulge} ${ty}, ${tx} ${ty}`;
   }
-  if (b.col > a.col) {
-    const mx = (x1 + x2) / 2;
-    return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
-  }
-  /* Sang dòng mới: đi xuống rồi vòng sang trái */
-  const drop = a.y + NODE_H + GAP_Y / 2;
-  const x2r = b.x + NODE_W;
-  return `M ${x1 - 20} ${y1} C ${x1 + 40} ${y1}, ${x1 + 40} ${drop}, ${x1 - 60} ${drop} `
-    + `L ${x2r + 60} ${drop} C ${x2r + 40} ${drop}, ${x2r + 40} ${y2}, ${x2r} ${y2}`;
+
+  // Khác cột (Lớp 10 → 11 hoặc 11 → 12 hoặc 10 → 12): nối cạnh phải → cạnh trái
+  const x1 = from.x + NODE_W;
+  const y1 = from.y + NODE_H * 0.5;
+  const x2 = to.x;
+  const y2 = to.y + NODE_H * 0.5;
+  const dx = Math.max(46, (x2 - x1) * 0.48);
+  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 }
 
-export default function KnowledgeMap({ chapters, onOpen, onPractice }) {
+function statusKindOf(c) {
+  const answers = c.answers ?? c.summary?.answers ?? 0;
+  const mastery = c.masteryPct ?? c.mastery?.score ?? 0;
+  if (c.review?.isDue) return 'decay';
+  if (answers >= 6 && mastery >= 78) return 'mastered';
+  if (answers > 0 && mastery < 55) return 'weak';
+  if (answers > 0) return 'active';
+  return 'ready';
+}
+
+export default function KnowledgeMap({
+  chapters = [],
+  selectedId = null,
+  onSelect,
+  onOpen,
+}) {
   const [scale, setScale] = useState(1);
+  const [hoverId, setHoverId] = useState(null);
   const wrapRef = useRef(null);
-  const { width, height, pos } = useMemo(() => layout(chapters), [chapters]);
+
+  const { width, height, pos, cols, edges } = useMemo(
+    () => buildDagLayout(chapters),
+    [chapters],
+  );
+
+  const focusId = hoverId || selectedId || null;
+
+  const { upstreamSet, downstreamSet } = useMemo(() => {
+    if (!focusId) return { upstreamSet: new Set(), downstreamSet: new Set() };
+    return {
+      upstreamSet: new Set(getUpstreamIds(focusId)),
+      downstreamSet: new Set(getDownstreamIds(focusId)),
+    };
+  }, [focusId]);
 
   const fit = useCallback(() => {
     const el = wrapRef.current;
-    if (!el) return;
-    const avail = el.clientWidth - 8;
-    const next = Math.min(1, Math.max(0.55, avail / width));
+    if (!el || !width) return;
+    const avail = Math.max(320, el.clientWidth - 20);
+    const next = Math.min(1, Math.max(0.58, avail / width));
     setScale(Number(next.toFixed(2)));
   }, [width]);
 
@@ -84,121 +151,154 @@ export default function KnowledgeMap({ chapters, onOpen, onPractice }) {
     return () => window.removeEventListener('resize', onResize);
   }, [fit]);
 
-  const zoom = (delta) => setScale((s) => Math.min(1.6, Math.max(0.5, Number((s + delta).toFixed(2)))));
+  const zoom = (delta) => setScale((s) => Math.min(1.35, Math.max(0.52, Number((s + delta).toFixed(2)))));
 
-  const onKey = (e, view) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onOpen(view.chapter.id);
-    }
+  const handleSelect = (id) => {
+    if (onSelect) onSelect(id);
+    else onOpen?.(id);
   };
 
   return (
-    <div className="rm-map">
-      <div className="rm-map-toolbar">
-        <span className="rm-map-hint">Bấm vào chương để xem chi tiết · đường nét đứt = kiến thức cần học trước</span>
-        <div className="rm-zoom" role="group" aria-label="Thu phóng bản đồ">
+    <div className="rm-pro-dag-wrap">
+      <div className="rm-pro-dag-toolbar">
+        <div className="rm-pro-dag-legend" aria-label="Chú giải đồ thị DAG">
+          <span className="lg-item"><i className="dot is-mastered" /> Thành thạo</span>
+          <span className="lg-item"><i className="dot is-active" /> Đang luyện</span>
+          <span className="lg-item"><i className="dot is-decay" /> Cần ôn</span>
+          <span className="lg-item"><i className="line is-up" /> Gốc tiên quyết</span>
+          <span className="lg-item"><i className="line is-down" /> Nhánh mở khóa</span>
+        </div>
+
+        <div className="rm-pro-dag-zoom" role="group" aria-label="Thu phóng đồ thị">
           <button type="button" onClick={() => zoom(-0.1)} aria-label="Thu nhỏ">−</button>
-          <span aria-live="polite">{Math.round(scale * 100)}%</span>
+          <span>{Math.round(scale * 100)}%</span>
           <button type="button" onClick={() => zoom(0.1)} aria-label="Phóng to">+</button>
-          <button type="button" className="rm-zoom-fit" onClick={fit}>Vừa khung</button>
+          <button type="button" className="fit-btn" onClick={fit}>Vừa khung</button>
         </div>
       </div>
 
-      <div className="rm-map-scroll" ref={wrapRef}>
+      <div className="rm-pro-dag-scroll" ref={wrapRef}>
         <svg
-          className="rm-map-svg"
-          width={width * scale}
-          height={height * scale}
+          className="rm-pro-dag-svg"
+          width={Math.round(width * scale)}
+          height={Math.round(height * scale)}
           viewBox={`0 0 ${width} ${height}`}
           role="group"
-          aria-label="Bản đồ kiến thức theo chương"
+          aria-label="Đồ thị phụ thuộc kiến thức GDPT 2018"
         >
           <defs>
-            <pattern id="rm-dots" width="22" height="22" patternUnits="userSpaceOnUse">
-              <circle cx="1.4" cy="1.4" r="1.2" className="rm-dot" />
+            <pattern id="rm-pro-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="1.5" cy="1.5" r="1.1" className="rm-pro-dag-dot" />
             </pattern>
+            <marker id="dag-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+              <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="currentColor" />
+            </marker>
           </defs>
-          <rect width={width} height={height} fill="url(#rm-dots)" aria-hidden="true" />
 
-          {/* Đường nối theo điều kiện tiên quyết */}
-          {chapters.map((view) => {
-            const key = view.chapter.id || `idx-${view.index}`;
-            const from = pos[key];
-            if (!from) return null;
-            return (view.chapter.prereq || []).map((pid) => {
-              const target = chapters.find((c) => c.chapter.id === pid);
-              if (!target) return null;
-              const to = pos[pid];
-              if (!to) return null;
-              const weak = view.missingPrereq.some((p) => p.id === pid);
-              return (
-                <path
-                  key={`${pid}-${key}`}
-                  d={edgePath(to, from)}
-                  className={'rm-edge' + (weak ? ' is-warning' : '')}
-                  fill="none"
-                  aria-hidden="true"
-                />
-              );
-            });
-          })}
+          <rect x="0" y="0" width={width} height={height} fill="url(#rm-pro-grid)" />
 
-          {/* Node chương */}
-          {chapters.map((view) => {
-            const key = view.chapter.id || `idx-${view.index}`;
-            const p = pos[key];
-            if (!p) return null;
-            const meta = STATE_META[view.state] || STATE_META.none;
-            const score = view.mastery.score;
-            const isDue = view.review.isDue && view.summary;
+          {/* Tiêu đề cột Lớp 10 / 11 / 12 */}
+          {cols.map((col, idx) => {
+            const x = PAD_X + idx * (NODE_W + COL_GAP);
             return (
-              <g
-                key={key}
-                className={`rm-node tone-${meta.tone}${isDue ? ' is-due' : ''}${view.chapter.bank === false ? ' is-ai' : ''}`}
-                transform={`translate(${p.x} ${p.y})`}
-                role="button"
-                tabIndex={0}
-                aria-label={`${view.chapter.name} — ${meta.label}${score !== null ? `, ${score}% thành thạo` : ''}`}
-                onClick={() => onOpen(view.chapter.id)}
-                onKeyDown={(e) => onKey(e, view)}
-              >
-                <rect className="rm-node-box" width={NODE_W} height={NODE_H} rx="16" />
-                <rect className="rm-node-accent" width="6" height={NODE_H} rx="3" />
-                <text className="rm-node-idx" x="22" y="30">{view.index + 1}</text>
-                <text className="rm-node-name" x="46" y="31">{clamp(view.chapter.name, 26)}</text>
-                <text className="rm-node-state" x="22" y="58">
-                  {meta.icon} {meta.label}{score !== null ? ` · ${score}%` : ''}
+              <g key={col.grade} className="rm-pro-dag-colhead">
+                <rect x={x} y="16" width={NODE_W} height="30" rx="15" className={`col-pill ${col.tone}`} />
+                <text x={x + NODE_W / 2} y="35" textAnchor="middle" className="col-txt">
+                  {col.label}
                 </text>
-                <text className="rm-node-meta" x="22" y="82">
-                  {view.summary
-                    ? `${view.summary.correct}/${view.summary.answers} câu đúng${isDue ? ' · cần ôn' : ''}`
-                    : view.chapter.bank === false ? 'Học bằng AI, chưa có ngân hàng câu hỏi' : 'Chưa có dữ liệu luyện tập'}
-                </text>
-                {view.chapter.bank === false && (
-                  <text className="rm-node-act" x={NODE_W - 20} y={NODE_H - 16} textAnchor="end">AI ✦</text>
-                )}
-                {view.chapter.bank !== false && (
-                  <text
-                    className="rm-node-act"
-                    x={NODE_W - 20}
-                    y={NODE_H - 16}
-                    textAnchor="end"
-                    onClick={(e) => { e.stopPropagation(); onPractice?.(view.chapter.id); }}
-                  >
-                    Luyện ›
-                  </text>
-                )}
               </g>
             );
           })}
+
+          {/* Các cạnh phụ thuộc DAG */}
+          <g className="rm-pro-dag-edges">
+            {edges.map((e) => {
+              const isUpstreamEdge = focusId && (e.toId === focusId || (upstreamSet.has(e.toId) && upstreamSet.has(e.fromId)));
+              const isDownstreamEdge = focusId && (e.fromId === focusId || (downstreamSet.has(e.fromId) && downstreamSet.has(e.toId)));
+              const isDim = Boolean(focusId) && !isUpstreamEdge && !isDownstreamEdge;
+              const cls = isUpstreamEdge
+                ? 'is-up'
+                : (isDownstreamEdge ? 'is-down' : (isDim ? 'is-dim' : ''));
+              return (
+                <path
+                  key={e.id}
+                  d={dagEdgePath(e.from, e.to)}
+                  className={`rm-pro-dag-edge ${cls}`}
+                  fill="none"
+                  markerEnd="url(#dag-arrow)"
+                />
+              );
+            })}
+          </g>
+
+          {/* Các Node Chuyên đề */}
+          <g className="rm-pro-dag-nodes">
+            {chapters.map((c) => {
+              const id = c.chapter.id;
+              const p = pos[id];
+              if (!p) return null;
+              const meta = getChapterMeta(id);
+              const kind = statusKindOf(c);
+              const answers = c.answers ?? c.summary?.answers ?? 0;
+              const mastery = c.masteryPct ?? c.mastery?.score ?? 0;
+
+              const isFocus = focusId === id;
+              const isSelected = selectedId === id;
+              const isUp = upstreamSet.has(id);
+              const isDown = downstreamSet.has(id);
+              const isDim = Boolean(focusId) && !isFocus && !isUp && !isDown;
+
+              const rawTitle = formatMathAndChemSymbols(c.chapter.name);
+              const titleLine = rawTitle.length > 27 ? `${rawTitle.slice(0, 26)}…` : rawTitle;
+              const subLine = `${meta?.code || ''} · ${meta?.questionsInExam || c.questionsInExam || '2 câu'}${answers > 0 ? ` · ${mastery}%` : ''}`;
+
+              return (
+                <g
+                  key={id}
+                  className={`rm-pro-dag-node st-${kind} ${isSelected ? 'is-selected' : ''} ${isUp ? 'is-up' : ''} ${isDown ? 'is-down' : ''} ${isDim ? 'is-dim' : ''}`}
+                  transform={`translate(${p.x}, ${p.y})`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${c.chapter.name}, lớp ${p.grade}, thành thạo ${answers > 0 ? `${mastery}%` : 'chưa học'}`}
+                  onMouseEnter={() => setHoverId(id)}
+                  onMouseLeave={() => setHoverId((cur) => (cur === id ? null : cur))}
+                  onFocus={() => setHoverId(id)}
+                  onBlur={() => setHoverId((cur) => (cur === id ? null : cur))}
+                  onClick={() => handleSelect(id)}
+                  onDoubleClick={() => onOpen?.(id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelect(id);
+                    }
+                  }}
+                >
+                  <rect width={NODE_W} height={NODE_H} rx="14" className="node-bg" />
+                  <rect x="0" y="14" width="4.5" height={NODE_H - 28} rx="2.25" className="node-accent" />
+
+                  <text x="16" y="24" className="node-meta">{subLine}</text>
+                  <text x="16" y="48" className="node-title">{titleLine}</text>
+
+                  {/* Thanh tiến độ mini trong node */}
+                  <rect x="16" y="64" width={NODE_W - 64} height="5" rx="2.5" className="node-bar-bg" />
+                  <rect
+                    x="16"
+                    y="64"
+                    width={answers > 0 ? Math.max(10, Math.round(((NODE_W - 64) * Math.min(100, mastery)) / 100)) : 0}
+                    height="5"
+                    rx="2.5"
+                    className="node-bar-fill"
+                  />
+
+                  <text x={NODE_W - 14} y="69" textAnchor="end" className="node-pct">
+                    {answers > 0 ? `${mastery}%` : 'Mới'}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
         </svg>
       </div>
     </div>
   );
-}
-
-function clamp(text, max) {
-  const s = String(text || '');
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }

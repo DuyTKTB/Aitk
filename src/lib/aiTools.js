@@ -53,6 +53,8 @@ export function extractFormulas(text) {
   const push = (raw) => {
     const clean = raw.trim();
     if (!clean || clean.length < 2) return;
+    // Loại bỏ ký hiệu Sinh học / Vật lí (thế hệ F1..F9, thực vật C3/C4, N0, U0, I0) không phải công thức hóa học
+    if (/^(F[1-9]|P[12]|C[34]|N0|U0|I0)$/i.test(clean)) return;
     try {
       const counts = parseFormula(clean);
       const syms = Object.keys(counts);

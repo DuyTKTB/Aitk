@@ -1,10 +1,13 @@
-import { useState, useMemo, useRef, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, createContext, useContext, lazy, Suspense } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { ELEMENTS, SGK_MASS } from '../data/elements.js';
+import { GDPT2026_CARDS } from '../data/formulasGdpt2026.js';
 import { IconStar, IconClock, IconAtom, IconFlask, IconMicroscope, IconCalc, IconRobot } from './Icons.jsx';
 import { useCurrentSubject } from './SubjectSwitcher.jsx';
 import { askAI } from './HomePlus.jsx';
 import './FormulaCalculator.css';
+
+const Casio580Widget = lazy(() => import('./Casio580Widget.jsx'));
 
 /* ========================================================================
    Tiện ích
@@ -89,26 +92,73 @@ function evalExpr(src) {
 }
 
 /* ========================================================================
-   Khung thẻ dùng chung
+   Khung thẻ dùng chung (Studio Pro 2026 — phân màu theo môn + copy nhanh)
    ==================================================================== */
+function getCardSubject(def) {
+  if (def.subject) return def.subject;
+  if (def.tab === 'ly') return 'ly';
+  if (def.tab === 'sinh') return 'sinh';
+  return 'hoa';
+}
+
+const SUBJ_META = {
+  hoa: { label: 'Hóa học', tone: 'hoa' },
+  ly: { label: 'Vật lí', tone: 'ly' },
+  sinh: { label: 'Sinh học', tone: 'sinh' },
+};
+
+const CopyIcon = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="9" y="9" width="13" height="13" rx="2.2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
 function CardShell({ def, fav, onFav, tag, wide, children, footer }) {
   const touch = useContext(TouchCtx);
+  const copy = useCopy();
+  const subj = getCardSubject(def);
+  const meta = SUBJ_META[subj] || SUBJ_META.hoa;
   return (
-    <article className={'fc-card' + (wide ? ' fc-wide' : '')} id={'fc-' + def.id} onFocusCapture={() => touch(def.id)}>
+    <article
+      className={`fc-card tone-${meta.tone}${wide ? ' fc-wide' : ''}`}
+      id={'fc-' + def.id}
+      onFocusCapture={() => touch(def.id)}
+    >
       <header className="fc-card-h">
-        <h3>
-          {tag && <small className="fc-tag">{tag}</small>}
-          {def.title}
-        </h3>
+        <div className="fc-card-title-wrap">
+          <div className="fc-card-title-line">
+            <i className="fc-subj-dot" aria-hidden="true" />
+            <h3>{def.title}</h3>
+          </div>
+          <div className="fc-card-meta-line">
+            <span>{tag || meta.label}</span>
+            {def.grade && <span>· Lớp {def.grade}</span>}
+            {def.is2026 && <em className="fc-2026-mark">· Chuẩn 2026</em>}
+          </div>
+        </div>
         <button
           type="button" className="fc-star" aria-pressed={fav}
-          aria-label={fav ? 'Bỏ ghim' : 'Ghim công thức'} title={fav ? 'Bỏ ghim' : 'Ghim lên đầu'}
+          aria-label={fav ? 'Bỏ ghim' : 'Ghim công thức'} title={fav ? 'Bỏ ghim' : 'Ghim công thức'}
           onClick={onFav}
         >
           <IconStar size={15} on={fav} />
         </button>
       </header>
-      {def.f && <p className="fc-formula">{def.f}</p>}
+      {def.f && (
+        <div className="fc-formula-box">
+          <p className="fc-formula">{def.f}</p>
+          <button
+            type="button"
+            className="fc-formula-copy"
+            onClick={() => copy(`${def.title}: ${def.f}`)}
+            title="Sao chép công thức"
+          >
+            <CopyIcon size={12} />
+            <span>Chép</span>
+          </button>
+        </div>
+      )}
       {def.hint && <p className="fc-hint">{def.hint}</p>}
       {children}
       {footer && <footer className="fc-foot">{footer}</footer>}
@@ -182,7 +232,7 @@ function CalcCard({ def, fav, onFav, tag }) {
               <span className="fc-inp">
                 <input
                   type="number" inputMode="decimal" step="any" value={raw[i.k]}
-                  placeholder={i.opt ? '0' : ''}
+                  placeholder={i.opt ? '0' : 'Nhập...'}
                   onChange={(e) => setRaw({ ...raw, [i.k]: e.target.value })}
                 />
                 {i.unit && <em>{i.unit}</em>}
@@ -200,7 +250,9 @@ function CalcCard({ def, fav, onFav, tag }) {
             ))}
           </div>
         ) : (
-          <p className="fc-empty">Nhập số liệu để xem kết quả</p>
+          <div className="fc-empty-pill">
+            <span>Nhập số liệu phía trên để tính tự động</span>
+          </div>
         )}
       </div>
     </CardShell>
@@ -263,9 +315,13 @@ const EXAMPLES = ['H2SO4', 'Ca(OH)2', 'Al2(SO4)3', 'CuSO4.5H2O', 'KMnO4', 'C6H12
 
 const MOL_DEF = {
   id: 'molcalc',
-  title: 'Khối lượng mol & thành phần %',
-  f: 'M = Σ (nguyên tử khối × số nguyên tử)   ·   n = m/M = V/22,4',
-  hint: 'Gõ công thức hóa học (hỗ trợ ngoặc và muối ngậm nước dùng dấu chấm).',
+  tab: 'mol',
+  subject: 'hoa',
+  grade: '10–12',
+  is2026: true,
+  title: 'Khối lượng mol & Thành phần % (Chuẩn đkc 2026)',
+  f: 'M = Σ (nguyên tử khối × số nguyên tử)   ·   n = m/M = V_đkc/24,79',
+  hint: 'Gõ công thức hóa học bất kỳ (hỗ trợ ngoặc và muối ngậm nước như CuSO4.5H2O). Mặc định dùng nguyên tử khối SGK & chuẩn đkc 24,79 L/mol.',
 };
 
 function MolCard({ fav, onFav, tag }) {
@@ -273,7 +329,7 @@ function MolCard({ fav, onFav, tag }) {
   const [f, setF] = useState('Ca(OH)2');
   const [v, setV] = useState('1');
   const [unit, setUnit] = useState('mol');
-  const [useSGK, setUseSGK] = useState(false);
+  const [useSGK, setUseSGK] = useState(true);
 
   const getMass = (sym) => (useSGK && SGK_MASS[sym] !== undefined ? SGK_MASS[sym] : MASS[sym]);
 
@@ -289,7 +345,15 @@ function MolCard({ fav, onFav, tag }) {
 
   const { ok, rows, M, err, empty } = result;
   const x = parseFloat(v);
-  const mol = !ok || isNaN(x) ? NaN : unit === 'mol' ? x : unit === 'g' ? x / M : unit === 'l' ? x / 22.4 : x / 6.022e23;
+  const mol = !ok || isNaN(x)
+    ? NaN
+    : unit === 'mol'
+      ? x
+      : unit === 'g'
+        ? x / M
+        : unit === 'dkc'
+          ? x / 24.79
+          : x / 6.022e23;
 
   return (
     <CardShell
@@ -350,7 +414,7 @@ function MolCard({ fav, onFav, tag }) {
                   <select value={unit} onChange={(e) => setUnit(e.target.value)}>
                     <option value="mol">mol</option>
                     <option value="g">gam</option>
-                    <option value="l">lít khí (đktc)</option>
+                    <option value="dkc">lít khí (đkc · 24,79)</option>
                     <option value="p">số phân tử</option>
                   </select>
                 </span>
@@ -359,7 +423,7 @@ function MolCard({ fav, onFav, tag }) {
             <dl>
               <div><dt>Số mol</dt><dd>{fmt(mol)} mol</dd></div>
               <div><dt>Khối lượng</dt><dd>{fmt(mol * M)} g</dd></div>
-              <div><dt>Thể tích khí (đktc)</dt><dd>{fmt(mol * 22.4)} lít</dd></div>
+              <div><dt>Thể tích khí (đkc 24,79)</dt><dd>{fmt(mol * 24.79)} lít</dd></div>
               <div><dt>Số phân tử</dt><dd>{fmt(mol * 6.022e23, 3)}</dd></div>
             </dl>
           </div>
@@ -668,28 +732,28 @@ const CARDS = [
     ],
   },
   {
-    id: 'be', tab: 'vc', title: 'Bảo toàn electron (kim loại → khí)', f: 'n e = (m/M)·hóa trị  ;  V(NO) = n e/3 · 22,4  ;  V(NO₂) = n e · 22,4', kw: 'bao toan e electron the tich khi no no2',
+    id: 'be', tab: 'vc', title: 'Bảo toàn electron (kim loại → khí)', f: 'n e = (m/M)·hóa trị  ;  V(NO) = n e/3 · 24,79  ;  V(NO₂) = n e · 24,79', kw: 'bao toan e electron the tich khi no no2 dkc 24.79',
     inputs: [I('m', 'm kim loại', 'g'), I('M', 'M kim loại', 'g/mol'), I('z', 'Hóa trị (số e nhường)', '', { def: '3' })],
     calc: (v) => {
       const ne = (v.m / v.M) * v.z;
       return [
         { l: 'n e nhường', v: ne, u: 'mol', main: true },
-        { l: 'V NO (đktc)', v: (ne / 3) * 22.4, u: 'lít' },
-        { l: 'V NO₂ (đktc)', v: ne * 22.4, u: 'lít' },
-        { l: 'V SO₂ (đktc)', v: (ne / 2) * 22.4, u: 'lít' },
-        { l: 'V H₂ (đktc)', v: (ne / 2) * 22.4, u: 'lít' },
+        { l: 'V NO (đkc 24,79)', v: (ne / 3) * 24.79, u: 'lít' },
+        { l: 'V NO₂ (đkc 24,79)', v: ne * 24.79, u: 'lít' },
+        { l: 'V SO₂ (đkc 24,79)', v: (ne / 2) * 24.79, u: 'lít' },
+        { l: 'V H₂ (đkc 24,79)', v: (ne / 2) * 24.79, u: 'lít' },
       ];
     },
   },
   {
-    id: 'klaxit', tab: 'vc', title: 'Kim loại + axit loãng (HCl, H₂SO₄) → H₂', kw: 'hcl h2so4 loang muoi clorua sunfat hidro',
+    id: 'klaxit', tab: 'vc', title: 'Kim loại + axit loãng (HCl, H₂SO₄) → H₂', kw: 'hcl h2so4 loang muoi clorua sunfat hidro dkc',
     f: 'm muối = m KL + 71·nH₂ (HCl)  |  + 96·nH₂ (H₂SO₄)',
     selects: [S('a', 'Axit', [['hcl', 'HCl'], ['h2so4', 'H₂SO₄ loãng']])],
     inputs: [I('m', 'm kim loại', 'g'), I('h2', 'n(H₂)', 'mol')],
     calc: (v, o) => [
       { l: 'm muối', v: v.m + (o.a === 'hcl' ? 71 : 96) * v.h2, u: 'g', main: true },
       { l: o.a === 'hcl' ? 'n HCl phản ứng' : 'n H₂SO₄ phản ứng', v: o.a === 'hcl' ? 2 * v.h2 : v.h2, u: 'mol' },
-      { l: 'V H₂ (đktc)', v: v.h2 * 22.4, u: 'lít' },
+      { l: 'V H₂ (đkc 24,79)', v: v.h2 * 24.79, u: 'lít' },
     ],
   },
   {
@@ -761,7 +825,7 @@ const CARDS = [
       const used = Math.min(v.h, v.co3), rem = v.h - used, co2 = Math.min(rem, v.co3 + v.hco3);
       return [
         { l: 'n CO₂ thoát ra', v: co2, u: 'mol', main: true },
-        { l: 'V CO₂ (đktc)', v: co2 * 22.4, u: 'lít' },
+        { l: 'V CO₂ (đkc 24,79)', v: co2 * 24.79, u: 'lít' },
         { l: 'H⁺ còn dư', v: rem - co2, u: 'mol' },
       ];
     },
@@ -850,7 +914,7 @@ const CARDS = [
     id: 'ancolna', tab: 'hc', title: 'Ancol / axit + Na', f: 'n(−OH hoặc −COOH) = 2·nH₂', kw: 'natri hidro ancol axit',
     hint: 'Ancol đơn chức: n ancol = 2nH₂.',
     inputs: [I('h2', 'n(H₂) sinh ra', 'mol')],
-    calc: (v) => [{ l: 'n nhóm −OH / −COOH', v: 2 * v.h2, u: 'mol', main: true }, { l: 'V H₂ (đktc)', v: v.h2 * 22.4, u: 'lít' }],
+    calc: (v) => [{ l: 'n nhóm −OH / −COOH', v: 2 * v.h2, u: 'mol', main: true }, { l: 'V H₂ (đkc 24,79)', v: v.h2 * 24.79, u: 'lít' }],
   },
   {
     id: 'dehy', tab: 'hc', title: 'Ancol tách nước', kw: 'ete anken h2so4 dac 140 170',
@@ -871,7 +935,7 @@ const CARDS = [
   {
     id: 'cooh', tab: 'hc', title: 'Axit cacboxylic + NaHCO₃', f: 'nCOOH = nNaHCO₃ = nCO₂', kw: 'nhom cooh khi co2',
     inputs: [I('n', 'n(NaHCO₃) phản ứng', 'mol')],
-    calc: (v) => [{ l: 'n nhóm −COOH', v: v.n, u: 'mol', main: true }, { l: 'V CO₂ (đktc)', v: v.n * 22.4, u: 'lít' }],
+    calc: (v) => [{ l: 'n nhóm −COOH', v: v.n, u: 'mol', main: true }, { l: 'V CO₂ (đkc 24,79)', v: v.n * 24.79, u: 'lít' }],
   },
   {
     id: 'iso', tab: 'hc', title: 'Số đồng phân (công thức nhanh)', f: 'Ankan 2ⁿ⁻⁴+1 · Ancol 2ⁿ⁻² · Anđehit/Axit 2ⁿ⁻³ · Este 2ⁿ⁻² · Ete (n−1)(n−2)/2', kw: 'dong phan ankan ancol andehit axit este ete',
@@ -919,7 +983,7 @@ const CARDS = [
       return [
         { l: 'm C₂H₅OH', v: n * 46, u: 'g', main: true },
         { l: 'n C₂H₅OH = n CO₂', v: n, u: 'mol' },
-        { l: 'V CO₂ (đktc)', v: n * 22.4, u: 'lít' },
+        { l: 'V CO₂ (đkc 24,79)', v: n * 24.79, u: 'lít' },
       ];
     },
   },
@@ -1089,7 +1153,7 @@ const CARDS = [
   { id: 'khu', tab: 'vc', title: 'Khử oxit kim loại bằng CO / H₂', f: 'm rắn = m oxit − 16·nO   (nO = nCO₂ = nH₂O)', kw: 'khu oxit co h2 khoi luong chat ran',
     hint: 'nO bị lấy đi bằng số mol CO₂ (hoặc H₂O) tạo thành.',
     inputs: [I('m', 'm oxit ban đầu', 'g'), I('n', 'n(CO₂) hoặc n(H₂O)', 'mol')],
-    calc: (v) => [{ l: 'm chất rắn sau', v: v.m - 16 * v.n, u: 'g', main: true, bad: v.m - 16 * v.n < 0 }, { l: 'n O bị lấy', v: v.n, u: 'mol' }, { l: 'V CO₂ / H₂O(k) (đktc)', v: v.n * 22.4, u: 'lít' }] },
+    calc: (v) => [{ l: 'm chất rắn sau', v: v.m - 16 * v.n, u: 'g', main: true, bad: v.m - 16 * v.n < 0 }, { l: 'n O bị lấy', v: v.n, u: 'mol' }, { l: 'V CO₂ / H₂O(k) (đkc 24,79)', v: v.n * 24.79, u: 'lít' }] },
   { id: 'alnaoh', tab: 'vc', title: 'Al + NaOH → H₂', f: '2Al + 2NaOH + 2H₂O → 2NaAlO₂ + 3H₂   ·   nAl = 2/3·nH₂', kw: 'nhom kiem hidro',
     inputs: [I('h2', 'n(H₂)', 'mol')],
     calc: (v) => [{ l: 'n Al', v: (2 / 3) * v.h2, u: 'mol', main: true }, { l: 'm Al', v: (2 / 3) * v.h2 * 27, u: 'g' }, { l: 'n NaOH tối thiểu', v: (2 / 3) * v.h2, u: 'mol' }] },
@@ -1315,51 +1379,90 @@ const CARDS = [
 ];
 
 /* ========================================================================
-   Máy tính nhanh + hằng số
+   HỢP NHẤT CÔNG THỨC CHUẨN GDPT 2018 / THPT 2026 + PHÂN TẦNG CHUYÊN ĐỀ
+   ==================================================================== */
+function resolveSubGroup(c) {
+  if (c.subGroup) return c.subGroup;
+  if (c.tab === 'ly') {
+    if (c.id === 'ly_photon') return 'ly_hn';
+    if (c.id === 'ly_rlc' || c.id === 'ly_om') return 'ly_tu';
+    return 'ly_song';
+  }
+  if (c.tab === 'sinh') {
+    if (c.id === 'sinh_adn' || c.id === 'sinh_nhandoi') return 'sinh_pt';
+    return 'sinh_qt';
+  }
+  return c.tab;
+}
+
+const ALL_CARDS = [...GDPT2026_CARDS, ...CARDS].map((c) => ({
+  ...c,
+  subject: getCardSubject(c),
+  subGroup: resolveSubGroup(c),
+}));
+
+/* ========================================================================
+   Máy tính nhanh + hằng số chuẩn GDPT 2018 / THPT 2026 + Đổi đơn vị SI
    ==================================================================== */
 const QUICK = [
-  ['R', '0,082', 'L·atm/mol·K', '0.082'], ['R', '8,314', 'J/mol·K', '8.314'], ['Vₘ', '22,4', 'L/mol (đktc)', '22.4'],
-  ['Vₘ', '24,79', 'L/mol (25°C, 1 bar)', '24.79'], ['F', '96500', 'C/mol', '96500'], ['Nₐ', '6,022×10²³', '', '6.022e23'],
-  ['g', '9,8', 'm/s² (Gia tốc rơi tự do)', '9.8'], ['c', '3×10⁸', 'm/s (Ánh sáng)', '3e8'],
-  ['h', '6,625×10⁻³⁴', 'J·s (Planck)', '6.625e-34'], ['Kw', '10⁻¹⁴', '25°C', '1e-14'],
-  ['c H₂O', '4,18', 'J/g·K', '4.18'], ['e', '1,602×10⁻¹⁹', 'C', '1.602e-19'],
+  ['Vₘ (đkc)', '24,79', 'L/mol (25°C, 1 bar — Chuẩn 2026)', '24.79', true],
+  ['R', '8,314', 'J/(mol·K)', '8.314'],
+  ['R', '0,082', 'L·atm/(mol·K)', '0.082'],
+  ['F', '96.500', 'C/mol (Faraday)', '96500'],
+  ['Nₐ', '6,022×10²³', 'mol⁻¹ (Avogadro)', '6.022e23'],
+  ['k_B', '1,38×10⁻²³', 'J/K (Boltzmann)', '1.38e-23'],
+  ['1 u·c²', '931,5', 'MeV (Hạt nhân 12)', '931.5', true],
+  ['c H₂O', '4180', 'J/(kg·K) (Nhiệt 12)', '4180', true],
+  ['λ đá', '3,34×10⁵', 'J/kg (Nóng chảy)', '334000'],
+  ['L H₂O', '2,26×10⁶', 'J/kg (Hóa hơi)', '2260000'],
+  ['c', '3×10⁸', 'm/s (Ánh sáng)', '3e8'],
+  ['h', '6,625×10⁻³⁴', 'J·s (Planck)', '6.625e-34'],
+  ['e', '1,6×10⁻¹⁹', 'C (Điện tích e)', '1.6e-19'],
 ];
 
 const UNITS = {
-  'Áp suất': { atm: 1, mmHg: 1 / 760, Pa: 1 / 101325, kPa: 1 / 101.325, bar: 1 / 1.01325 },
-  'Thể tích': { lít: 1, ml: 1e-3, 'm³': 1e3, 'cm³': 1e-3 },
-  'Năng lượng': { J: 1, kJ: 1e3, cal: 4.184, kcal: 4184 },
+  'Áp suất': { bar: 1, atm: 1.01325, kPa: 0.01, Pa: 1e-5, mmHg: 1.01325 / 760 },
+  'Thể tích': { lít: 1, mL: 1e-3, 'cm³': 1e-3, 'm³': 1e3 },
+  'Năng lượng': { J: 1, kJ: 1e3, cal: 4.184, eV: 1.6e-19, MeV: 1.6e-13 },
+  'Độ dài vi mô': { m: 1, cm: 1e-2, mm: 1e-3, 'µm': 1e-6, nm: 1e-9, 'Å': 1e-10 },
   'Khối lượng': { mg: 1e-3, g: 1, kg: 1e3, tấn: 1e6 },
 };
-const TEMP = { '°C': [(c) => c, (c) => c], K: [(k) => k - 273.15, (c) => c + 273.15], '°F': [(f) => ((f - 32) * 5) / 9, (c) => (c * 9) / 5 + 32] };
+const TEMP = {
+  '°C': [(c) => c, (c) => c],
+  K: [(k) => k - 273.15, (c) => c + 273.15],
+  '°F': [(f) => ((f - 32) * 5) / 9, (c) => (c * 9) / 5 + 32],
+};
 const CATS = [...Object.keys(UNITS), 'Nhiệt độ'];
 const unitsOf = (c) => (c === 'Nhiệt độ' ? Object.keys(TEMP) : Object.keys(UNITS[c]));
 
 function UnitConv() {
   const copy = useCopy();
   const [cat, setCat] = useState(CATS[0]);
-  const [from, setFrom] = useState('atm');
-  const [to, setTo] = useState('mmHg');
+  const [from, setFrom] = useState('bar');
+  const [to, setTo] = useState('Pa');
   const [x, setX] = useState('1');
   const list = unitsOf(cat);
   const changeCat = (c) => { const l = unitsOf(c); setCat(c); setFrom(l[0]); setTo(l[1]); };
+  const swapUnits = () => { const prev = from; setFrom(to); setTo(prev); };
   const n = parseFloat(x);
   const out = isNaN(n) ? NaN : cat === 'Nhiệt độ' ? TEMP[to][1](TEMP[from][0](n)) : (n * UNITS[cat][from]) / UNITS[cat][to];
   const text = isNaN(out) ? '' : String(fmt(out, 6));
   return (
     <section className="fc-panel">
-      <p className="fc-sub">Đổi đơn vị</p>
+      <div className="fc-panel-head">
+        <p className="fc-sub">Đổi đơn vị chuẩn SI &amp; Vi mô</p>
+        <button type="button" className="fc-swap-btn" onClick={swapUnits} title="Đảo chiều đơn vị">⇄ Đảo</button>
+      </div>
       <div className="fc-uc">
         <select value={cat} onChange={(e) => changeCat(e.target.value)} aria-label="Đại lượng">
           {CATS.map((c) => <option key={c}>{c}</option>)}
         </select>
         <input type="number" step="any" value={x} onChange={(e) => setX(e.target.value)} aria-label="Giá trị" />
         <select value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Từ">{list.map((u) => <option key={u}>{u}</option>)}</select>
-        <span aria-hidden="true">→</span>
         <select value={to} onChange={(e) => setTo(e.target.value)} aria-label="Sang">{list.map((u) => <option key={u}>{u}</option>)}</select>
       </div>
-      <button type="button" className={'fc-qc-res fc-uc-res' + (text ? '' : ' off')} disabled={!text} onClick={() => copy(text)} title="Nhấn để sao chép">
-        {text ? `${text} ${to}` : '='}
+      <button type="button" className={'fc-qc-res fc-uc-res' + (text ? '' : ' off')} disabled={!text} onClick={() => copy(`${text} ${to}`)} title="Nhấn để sao chép">
+        {text ? `= ${text} ${to}` : '='}
       </button>
     </section>
   );
@@ -1375,10 +1478,10 @@ function QuickCalc() {
   return (
     <div className="fc-tools">
       <section className="fc-panel">
-        <p className="fc-sub">Máy tính nhanh</p>
+        <p className="fc-sub">Máy tính biểu thức nhanh</p>
         <div className="fc-qc">
           <input
-            value={q} onChange={(e) => setQ(e.target.value)} placeholder="vd: 0.5*22.4 + sqrt(16)/2   ·   lg(2e-5)   ·   R*(273+25)"
+            value={q} onChange={(e) => setQ(e.target.value)} placeholder="vd: 0.5*24.79 + sqrt(16)/2 · lg(2e-5)"
             spellCheck="false" autoComplete="off" aria-label="Máy tính biểu thức"
             onKeyDown={(e) => { if (e.key === 'Enter' && text) { copy(text); setHist((h) => [{ q, text }, ...h.filter((x) => x.q !== q)].slice(0, 5)); } }}
           />
@@ -1394,10 +1497,10 @@ function QuickCalc() {
         )}
       </section>
       <section className="fc-panel">
-        <p className="fc-sub">Hằng số thường dùng (nhấn để sao chép)</p>
+        <p className="fc-sub">Hằng số chuẩn GDPT 2018 / 2026 (bấm để chép)</p>
         <div className="fc-consts">
-          {QUICK.map(([n, shown, u, raw]) => (
-            <button type="button" key={n + shown} className="fc-const" onClick={() => copy(raw)} title={u}>
+          {QUICK.map(([n, shown, u, raw, hi]) => (
+            <button type="button" key={n + shown} className={'fc-const' + (hi ? ' is-2026' : '')} onClick={() => copy(raw)} title={u}>
               {n} = <b>{shown}</b>
             </button>
           ))}
@@ -1409,61 +1512,113 @@ function QuickCalc() {
 }
 
 /* ========================================================================
-   Component chính
+   Component chính — BỐ CỤC WORKBENCH 2 CỘT GỌN SẠCH (MỤC LỤC TRÁI · BẢNG PHẢI)
    ==================================================================== */
-const TABS = [
-  ['fav', 'Đã ghim', IconStar],
-  ['recent', 'Gần đây', IconClock],
-  ['mol', 'Mol & Khí', IconFlask],
-  ['dd', 'Dung dịch & pH'],
-  ['vc', 'Vô cơ'],
-  ['hc', 'Hữu cơ'],
-  ['nhiet', 'Nhiệt · Điện'],
-  ['ly', 'Vật lí', IconAtom],
-  ['sinh', 'Sinh học', IconMicroscope],
+const SUBJECT_TREE = [
+  {
+    id: 'hoa',
+    label: 'Hóa học',
+    tone: 'hoa',
+    Icon: IconFlask,
+    groups: [
+      { id: 'mol',   label: 'Mol & Khí (đkc 24,79)' },
+      { id: 'dd',    label: 'Dung dịch · pH · Chuẩn độ' },
+      { id: 'nhiet', label: 'Enthalpy · Tốc độ · Điện hóa' },
+      { id: 'vc',    label: 'Hóa Vô cơ' },
+      { id: 'hc',    label: 'Hóa Hữu cơ' },
+    ],
+  },
+  {
+    id: 'ly',
+    label: 'Vật lí',
+    tone: 'ly',
+    Icon: IconAtom,
+    groups: [
+      { id: 'ly_nhiet', label: 'Vật lí Nhiệt 12' },
+      { id: 'ly_khi',   label: 'Khí lí tưởng 12' },
+      { id: 'ly_tu',    label: 'Từ trường & Điện 12' },
+      { id: 'ly_hn',    label: 'Hạt nhân & Lượng tử' },
+      { id: 'ly_song',  label: 'Dao động & Sóng 11' },
+    ],
+  },
+  {
+    id: 'sinh',
+    label: 'Sinh học',
+    tone: 'sinh',
+    Icon: IconMicroscope,
+    groups: [
+      { id: 'sinh_pt', label: 'DNA · Phiên mã · Dịch mã' },
+      { id: 'sinh_ql', label: 'Quy luật Di truyền' },
+      { id: 'sinh_qt', label: 'Phân bào · Quần thể · Sinh thái' },
+    ],
+  },
 ];
-const TAB_NAME = Object.fromEntries(TABS.map(([k, l]) => [k, l]));
+
+const SUB_LABEL = Object.fromEntries(
+  SUBJECT_TREE.flatMap((s) => s.groups.map((g) => [g.id, g.label]))
+);
 
 const FC_MASCOT = {
-  all: { img: '/img/elec/elec-cool.png', badge: 'KHTN · HÓA — LÝ — SINH' },
-  hoa: { img: '/img/elec/elec-think.png', badge: 'CHUYÊN ĐỀ HÓA HỌC' },
-  ly: { img: '/img/elec/elec-fighting.png', badge: 'CHUYÊN ĐỀ VẬT LÍ' },
-  sinh: { img: '/img/elec/elec-happy.png', badge: 'CHUYÊN ĐỀ SINH HỌC' },
+  hoa:    '/img/elec/elec-think.png',
+  ly:     '/img/elec/elec-fighting.png',
+  sinh:   '/img/elec/elec-happy.png',
+  fav:    '/img/elec/elec-love.png',
+  recent: '/img/elec/elec-wink.png',
 };
 
 export default function FormulaCalculator() {
   const { subject } = useCurrentSubject();
-  const [tabSaved, setTab] = useLocalStorage('cs-fc-tab', 'mol');
+  // Mặc định mở thẳng Hóa học → Mol & Khí (đkc) để gọn mắt, KHÔNG đổ 120 thẻ ra 1 màn hình!
+  const [navMode, setNavMode] = useLocalStorage('cs-fc-nav-v3', 'hoa'); // 'hoa' | 'ly' | 'sinh' | 'fav' | 'recent'
+  const [subGroup, setSubGroup] = useLocalStorage('cs-fc-sub-v3', 'mol');
+  const [viewMode, setViewMode] = useLocalStorage('cs-fc-view-v3', 'cards'); // 'cards' | 'compact'
+  const [only2026, setOnly2026] = useState(false);
+  const [showCalcPanel, setShowCalcPanel] = useState(false);
+  const [casioOpen, setCasioOpen] = useState(false);
   const [fav, setFav] = useLocalStorage('cs-fc-fav', []);
   const [q, setQ] = useState('');
   const [toast, setToast] = useState('');
-  const [showCalcPanel, setShowCalcPanel] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 768 : true));
   const searchRef = useRef(null);
   const timer = useRef(0);
   const prevSubjectRef = useRef(subject);
 
+  const pickSubject = useCallback((subjId, groupId = null) => {
+    setQ('');
+    setNavMode(subjId);
+    const tree = SUBJECT_TREE.find((s) => s.id === subjId);
+    if (tree) {
+      setSubGroup(groupId || tree.groups[0].id);
+    } else {
+      setSubGroup('all');
+    }
+  }, [setNavMode, setSubGroup]);
+
   useEffect(() => {
     if (prevSubjectRef.current === subject) return;
     prevSubjectRef.current = subject;
-    if (subject === 'ly') { setQ(''); setTab('ly'); }
-    else if (subject === 'sinh') { setQ(''); setTab('sinh'); }
-    else if (subject === 'hoa' && (tabSaved === 'ly' || tabSaved === 'sinh')) { setQ(''); setTab('mol'); }
-  }, [subject, tabSaved, setTab]);
+    if (subject === 'hoa' || subject === 'ly' || subject === 'sinh') {
+      pickSubject(subject);
+    }
+  }, [subject, pickSubject]);
 
-  const tab = TABS.some((t) => t[0] === tabSaved) ? tabSaved : 'mol';
-  const mascotInfo = FC_MASCOT[subject] || FC_MASCOT.all;
+  const activeNav = ['hoa', 'ly', 'sinh', 'fav', 'recent'].includes(navMode) ? navMode : 'hoa';
+  const activeTree = SUBJECT_TREE.find((s) => s.id === activeNav) || null;
+  const activeSub = activeTree
+    ? (subGroup === 'all' || activeTree.groups.some((g) => g.id === subGroup) ? subGroup : activeTree.groups[0].id)
+    : 'all';
+
   const favList = Array.isArray(fav) ? fav : [];
   const [recent, setRecent] = useLocalStorage('cs-fc-recent', []);
-  const recentList = (Array.isArray(recent) ? recent : []).filter((id) => CARDS.some((c) => c.id === id));
+  const recentList = (Array.isArray(recent) ? recent : []).filter((id) => ALL_CARDS.some((c) => c.id === id));
   const touch = (id) => {
-    if (tab === 'recent' || recentList[0] === id) return;
-    setRecent([id, ...recentList.filter((x) => x !== id)].slice(0, 8));
+    if (activeNav === 'recent' || recentList[0] === id) return;
+    setRecent([id, ...recentList.filter((x) => x !== id)].slice(0, 10));
   };
 
   const notify = useCallback((msg) => {
     setToast(msg);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(''), 1500);
+    timer.current = setTimeout(() => setToast(''), 1600);
   }, []);
 
   useEffect(() => {
@@ -1480,103 +1635,388 @@ export default function FormulaCalculator() {
 
   const toggleFav = (id) => setFav(favList.includes(id) ? favList.filter((x) => x !== id) : [...favList, id]);
 
-  const query = norm(q.trim());
-  const list = useMemo(() => {
-    if (query) {
-      const words = query.split(/\s+/);
-      return CARDS.filter((c) => {
-        const hay = norm([c.title, c.f, c.hint, c.kw].filter(Boolean).join(' '));
-        return words.every((w) => hay.includes(w));
-      });
-    }
-    if (tab === 'fav') return CARDS.filter((c) => favList.includes(c.id));
-    if (tab === 'recent') return recentList.map((id) => CARDS.find((c) => c.id === id));
-    return CARDS.filter((c) => c.tab === tab);
-  }, [query, tab, favList.join('|'), recentList.join('|')]);
-
   const counts = useMemo(() => {
-    const m = { fav: favList.filter((id) => CARDS.some((c) => c.id === id)).length, recent: recentList.length };
-    for (const c of CARDS) m[c.tab] = (m[c.tab] || 0) + 1;
+    const m = {
+      all: ALL_CARDS.length,
+      hoa: 0,
+      ly: 0,
+      sinh: 0,
+      fav: favList.filter((id) => ALL_CARDS.some((c) => c.id === id)).length,
+      recent: recentList.length,
+      c2026: 0,
+      sub: {},
+    };
+    for (const c of ALL_CARDS) {
+      m[c.subject] = (m[c.subject] || 0) + 1;
+      if (c.is2026) m.c2026 += 1;
+      m.sub[c.subGroup] = (m.sub[c.subGroup] || 0) + 1;
+    }
     return m;
   }, [favList.join('|'), recentList.join('|')]);
+
+  const query = norm(q.trim());
+  const list = useMemo(() => {
+    let base = ALL_CARDS;
+    if (query) {
+      const words = query.split(/\s+/);
+      base = ALL_CARDS.filter((c) => {
+        const hay = norm([c.title, c.f, c.hint, c.kw, SUB_LABEL[c.subGroup], c.subject].filter(Boolean).join(' '));
+        return words.every((w) => hay.includes(w));
+      });
+    } else if (activeNav === 'fav') {
+      base = ALL_CARDS.filter((c) => favList.includes(c.id));
+    } else if (activeNav === 'recent') {
+      base = recentList.map((id) => ALL_CARDS.find((c) => c.id === id)).filter(Boolean);
+    } else {
+      base = ALL_CARDS.filter((c) => c.subject === activeNav);
+      if (activeSub !== 'all') {
+        base = base.filter((c) => c.subGroup === activeSub);
+      }
+    }
+    if (only2026) {
+      base = base.filter((c) => c.is2026);
+    }
+    return base;
+  }, [query, activeNav, activeSub, only2026, favList.join('|'), recentList.join('|')]);
+
+  const headingTitle = query
+    ? `Kết quả tìm kiếm “${q.trim()}”`
+    : activeNav === 'fav'
+      ? 'Công thức đã ghim'
+      : activeNav === 'recent'
+        ? 'Công thức dùng gần đây'
+        : activeSub === 'all'
+          ? `Toàn bộ ${activeTree?.label || 'KHTN'}`
+          : SUB_LABEL[activeSub] || activeTree?.label;
+
+  const openCompactCard = (c) => {
+    setViewMode('cards');
+    setTimeout(() => {
+      document.getElementById(`fc-${c.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+  };
 
   return (
     <ToastCtx.Provider value={notify}>
       <TouchCtx.Provider value={touch}>
-      <section className="wrap fc">
-        <div className="ns9-tool-hero tone-blue">
-          <div className="ns9-th-left">
-            <span className="ns9-th-badge">{mascotInfo.badge}</span>
-            <h1>Sổ tay Công thức &amp; Máy tính KHTN</h1>
-            <p>
-              {CARDS.length} công thức Hóa — Lí — Sinh tương tác: nhập số liệu là ra kết quả tức thì, đổi đơn vị SI và hỏi thẳng Gia sư AI.
-            </p>
-            <div className="ns9-th-actions">
-              <button
-                type="button"
-                className={'ns9-th-pillbtn' + (showCalcPanel ? ' on' : '')}
-                onClick={() => setShowCalcPanel((v) => !v)}
-                aria-expanded={showCalcPanel}
-              >
-                <IconCalc size={14} />
-                {showCalcPanel ? 'Thu gọn Máy tính & Đổi đơn vị' : 'Mở Máy tính nhanh & Đổi đơn vị SI'}
-              </button>
-              <button
-                type="button"
-                className="ns9-th-pillbtn is-ghost"
-                onClick={() => askAI('Hãy tóm tắt cho em bảng công thức giải nhanh quan trọng nhất KHTN thi THPTQG')}
-              >
-                <IconRobot size={14} />
-                Hỏi AI tổng ôn công thức
-              </button>
+      <section className="wrap fc fc-workbench-page">
+        {/* TOP HEADER GỌN SẠCH — 1 DẢI DUY NHẤT, KHÔNG RỐI MẮT */}
+        <header className="fc-topbar">
+          <div className="fc-topbar-brand">
+            <img
+              src={FC_MASCOT[activeNav] || FC_MASCOT.hoa}
+              alt="ELEC AI"
+              className="fc-topbar-mascot"
+              width="48"
+              height="48"
+            />
+            <div>
+              <div className="fc-topbar-title-row">
+                <h1>Sổ tay Công thức KHTN</h1>
+                <span className="fc-topbar-2026">GDPT 2018 · 2026</span>
+              </div>
+              <p>{ALL_CARDS.length} công thức tương tác · Hóa ({counts.hoa}) · Lý ({counts.ly}) · Sinh ({counts.sinh})</p>
             </div>
           </div>
-          <img src={mascotInfo.img} alt="Bé Elec Sổ tay Công thức" className="ns9-th-mascot" loading="eager" />
-        </div>
 
-        <div className="fc-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-          </svg>
-          <input
-            ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} type="search"
-            placeholder="Tìm công thức: mol, pH, este, con lac, RLC, ADN, Hardy…" aria-label="Tìm công thức"
-          />
-          {!q && <kbd>/</kbd>}
-        </div>
+          <div className="fc-topbar-controls">
+            <label className="fc-topbar-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                ref={searchRef}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                type="search"
+                placeholder="Tìm nhanh (đkc, enthalpy, lực từ, hoán vị...)"
+                aria-label="Tìm công thức"
+              />
+              {q ? (
+                <button type="button" className="fc-search-clear" onClick={() => setQ('')} aria-label="Xóa">✕</button>
+              ) : (
+                <kbd>/</kbd>
+              )}
+            </label>
 
+            <button
+              type="button"
+              className={'fc-tool-btn' + (showCalcPanel ? ' is-on' : '')}
+              onClick={() => setShowCalcPanel((v) => !v)}
+              aria-expanded={showCalcPanel}
+            >
+              <IconCalc size={14} />
+              <span>Công cụ SI</span>
+            </button>
+
+            <button
+              type="button"
+              className={'fc-tool-btn' + (casioOpen ? ' is-on' : '')}
+              onClick={() => setCasioOpen((v) => !v)}
+            >
+              <IconCalc size={14} />
+              <span>Casio 580</span>
+            </button>
+          </div>
+        </header>
+
+        {/* BẢNG CÔNG CỤ MỞ RỘNG (MẶC ĐỊNH ĐÓNG CHO GỌN SẠCH) */}
         {showCalcPanel && <QuickCalc />}
 
-        <div className="fc-tabs" role="tablist">
-          {TABS.map(([k, l, Icon]) => (
+        {/* WORKBENCH 2 CỘT: MỤC LỤC TRÁI + KHÔNG GIAN CÔNG THỨC PHẢI */}
+        <div className="fc-workbench">
+          {/* CỘT TRÁI: MỤC LỤC CÂY KHOA HỌC */}
+          <aside className="fc-sidebar" aria-label="Mục lục môn học và chuyên đề">
+            <div className="fc-sb-section">
+              <span className="fc-sb-kicker">MÔN HỌC KHTN</span>
+              {SUBJECT_TREE.map((subj) => {
+                const SubjIcon = subj.Icon;
+                const isOpen = !query && activeNav === subj.id;
+                return (
+                  <div key={subj.id} className={`fc-sb-group tone-${subj.tone}${isOpen ? ' is-open' : ''}`}>
+                    <button
+                      type="button"
+                      className={`fc-sb-subj${isOpen ? ' is-active' : ''}`}
+                      onClick={() => pickSubject(subj.id, subj.groups[0].id)}
+                    >
+                      <span className="fc-sb-subj-l">
+                        <SubjIcon size={15} />
+                        <span>{subj.label}</span>
+                      </span>
+                      <span className="fc-sb-cnt">{counts[subj.id]}</span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="fc-sb-children">
+                        {subj.groups.map((g) => {
+                          const isG = activeSub === g.id;
+                          return (
+                            <button
+                              key={g.id}
+                              type="button"
+                              className={`fc-sb-item${isG ? ' is-active' : ''}`}
+                              onClick={() => { setQ(''); setSubGroup(g.id); }}
+                            >
+                              <span>{g.label}</span>
+                              <small>{counts.sub[g.id] || 0}</small>
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          className={`fc-sb-item${activeSub === 'all' ? ' is-active' : ''}`}
+                          onClick={() => { setQ(''); setSubGroup('all'); }}
+                        >
+                          <span>Xem tất cả {subj.label}</span>
+                          <small>{counts[subj.id]}</small>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="fc-sb-divider" />
+
+            <div className="fc-sb-section">
+              <span className="fc-sb-kicker">CÁ NHÂN &amp; LỌC NHANH</span>
+              <button
+                type="button"
+                className={`fc-sb-util${!query && activeNav === 'fav' ? ' is-active' : ''}`}
+                onClick={() => { setQ(''); setNavMode('fav'); }}
+              >
+                <span className="fc-sb-subj-l"><IconStar size={14} on={!query && activeNav === 'fav'} /><span>Đã ghim</span></span>
+                <span className="fc-sb-cnt">{counts.fav}</span>
+              </button>
+              <button
+                type="button"
+                className={`fc-sb-util${!query && activeNav === 'recent' ? ' is-active' : ''}`}
+                onClick={() => { setQ(''); setNavMode('recent'); }}
+              >
+                <span className="fc-sb-subj-l"><IconClock size={14} /><span>Vừa dùng gần đây</span></span>
+                <span className="fc-sb-cnt">{counts.recent}</span>
+              </button>
+
+              <label className="fc-sb-toggle-2026">
+                <input
+                  type="checkbox"
+                  checked={only2026}
+                  onChange={(e) => setOnly2026(e.target.checked)}
+                />
+                <span>Chỉ hiện công thức mới 2026</span>
+                <small>{counts.c2026}</small>
+              </label>
+            </div>
+
             <button
-              key={k} role="tab" aria-selected={!query && tab === k}
-              className={'chip' + (!query && tab === k ? ' on' : '')}
-              onClick={() => { setQ(''); setTab(k); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              type="button"
+              className="fc-sb-ai-cta"
+              onClick={() => askAI(`Hãy hệ thống ngắn gọn các công thức giải nhanh quan trọng nhất chuyên đề "${headingTitle}" chuẩn THPT Quốc gia 2026.`)}
             >
-              {Icon && <Icon size={13} />}
-              {l}<span className="fc-n">{counts[k] || 0}</span>
+              <IconRobot size={15} />
+              <span>Hỏi AI tổng ôn mục này</span>
             </button>
-          ))}
-        </div>
+          </aside>
 
-        {query && <p className="fc-count">{list.length} kết quả cho “{q.trim()}” — tìm trong tất cả các nhóm</p>}
+          {/* CỘT PHẢI: DANH SÁCH CÔNG THỨC GỌN SẠCH */}
+          <div className="fc-main">
+            {/* Thanh chọn chuyên đề gọn cho Mobile/Tablet */}
+            <div className="fc-mobile-bar">
+              <div className="fc-mobile-subjs">
+                {SUBJECT_TREE.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`fc-m-pill tone-${s.tone}${!query && activeNav === s.id ? ' is-active' : ''}`}
+                    onClick={() => pickSubject(s.id, s.groups[0].id)}
+                  >
+                    {s.label} ({counts[s.id]})
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`fc-m-pill${!query && activeNav === 'fav' ? ' is-active' : ''}`}
+                  onClick={() => { setQ(''); setNavMode('fav'); }}
+                >
+                  ★ Ghim ({counts.fav})
+                </button>
+              </div>
+              {activeTree && !query && (
+                <div className="fc-mobile-groups">
+                  {activeTree.groups.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={`fc-m-sub${activeSub === g.id ? ' is-active' : ''}`}
+                      onClick={() => setSubGroup(g.id)}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        {list.length === 0 ? (
-          <p className="fc-empty big">
-            {query ? 'Không tìm thấy công thức phù hợp. Thử từ khóa ngắn hơn (vd: “mol”, “ph”, “este”).'
-              : tab === 'recent' ? 'Chưa có công thức nào được dùng. Bấm vào ô nhập của một thẻ để lưu vào đây.' : 'Chưa có công thức nào được ghim. Nhấn biểu tượng ngôi sao trên thẻ để ghim.'}
-          </p>
-        ) : (
-          <div className="fc-grid">
-            {list.map((c) => {
-              const common = { fav: favList.includes(c.id), onFav: () => toggleFav(c.id), tag: query || tab === 'fav' || tab === 'recent' ? TAB_NAME[c.tab] : null };
-              return c.custom ? <MolCard key={c.id} {...common} /> : <CalcCard key={c.id} def={c} {...common} />;
-            })}
+            {/* Thanh tiêu đề chuyên đề + chuyển chế độ xem Thẻ / Bảng tra nhanh */}
+            <div className="fc-main-head">
+              <div className="fc-main-head-l">
+                <span className={`fc-main-badge tone-${activeTree?.tone || 'hoa'}`} aria-hidden="true">
+                  {activeTree ? <activeTree.Icon size={16} /> : activeNav === 'fav' ? <IconStar size={16} on /> : <IconClock size={16} />}
+                </span>
+                <div>
+                  <h2 className="fc-main-title">{headingTitle}</h2>
+                  <span className="fc-main-sub">{list.length} công thức tương tác · Chuẩn GDPT 2018</span>
+                </div>
+              </div>
+
+              <div className="fc-view-switch" role="tablist" aria-label="Chế độ hiển thị">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'cards'}
+                  className={viewMode === 'cards' ? 'is-active' : ''}
+                  onClick={() => setViewMode('cards')}
+                >
+                  Thẻ tính toán
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'compact'}
+                  className={viewMode === 'compact' ? 'is-active' : ''}
+                  onClick={() => setViewMode('compact')}
+                >
+                  Bảng tra nhanh
+                </button>
+              </div>
+            </div>
+
+            {list.length === 0 ? (
+              <div className="fc-empty-state">
+                <img src="/img/elec/elec-think.png" alt="" width="56" height="56" />
+                <p>
+                  {query
+                    ? 'Không tìm thấy công thức phù hợp. Thử từ khóa ngắn hơn (vd: “đkc”, “enthalpy”, “lực từ”, “hoán vị”).'
+                    : only2026
+                      ? 'Mục này chưa có công thức gắn nhãn mới 2026. Bỏ chọn bộ lọc ở cột trái để xem toàn bộ.'
+                      : activeNav === 'recent'
+                        ? 'Chưa có công thức nào được dùng gần đây.'
+                        : 'Chưa có công thức nào được ghim. Bấm ngôi sao trên thẻ để lưu lại.'}
+                </p>
+              </div>
+            ) : viewMode === 'compact' ? (
+              /* CHẾ ĐỘ BẢNG TRA NHANH SIÊU GỌN */
+              <div className="fc-compact-list">
+                {list.map((c) => (
+                  <div key={c.id} className={`fc-compact-row tone-${c.subject}`}>
+                    <div className="fc-compact-left">
+                      <div className="fc-compact-title">
+                        <b>{c.title}</b>
+                        {c.is2026 && <span className="fc-compact-2026">2026</span>}
+                      </div>
+                      <code className="fc-compact-formula">{c.f || MOL_DEF.f}</code>
+                    </div>
+                    <div className="fc-compact-actions">
+                      <button
+                        type="button"
+                        className="fc-mini"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(`${c.title}: ${c.f || MOL_DEF.f}`);
+                          notify('Đã sao chép công thức');
+                        }}
+                        title="Sao chép công thức"
+                      >
+                        <CopyIcon size={12} />
+                        <span>Chép</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="fc-mini is-ai"
+                        onClick={() => openCompactCard(c)}
+                      >
+                        Tính ngay →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* CHẾ ĐỘ LƯỚI 2 CỘT RỘNG RÃI, THOÁNG MẮT */
+              <div className="fc-grid">
+                {list.map((c) => {
+                  const common = {
+                    fav: favList.includes(c.id),
+                    onFav: () => toggleFav(c.id),
+                    tag: query || activeNav === 'fav' || activeNav === 'recent' ? SUB_LABEL[c.subGroup] : null,
+                  };
+                  return c.custom ? <MolCard key={c.id} {...common} /> : <CalcCard key={c.id} def={c} {...common} />;
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </section>
+
+      {/* CỬA SỔ NỔI CASIO fx-580VN X NGAY TRONG SỔ CÔNG THỨC */}
+      {casioOpen && (
+        <div className="fc-casio-dock" role="dialog" aria-label="Máy tính Casio fx-580VN X">
+          <div className="fc-casio-head">
+            <div className="fc-casio-title">
+              <IconCalc size={15} />
+              <span>Casio fx-580VN X</span>
+              <small>STUDIO PRO</small>
+            </div>
+            <button type="button" className="fc-casio-close" onClick={() => setCasioOpen(false)} aria-label="Đóng máy tính">✕</button>
+          </div>
+          <div className="fc-casio-body">
+            <Suspense fallback={<div className="fc-casio-loading">Đang khởi động Casio fx-580VN X…</div>}>
+              <Casio580Widget compact captureKeyboard={false} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
       <div className={'fc-toast' + (toast ? ' on' : '')} role="status">{toast}</div>
       </TouchCtx.Provider>
     </ToastCtx.Provider>

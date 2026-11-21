@@ -3007,10 +3007,6 @@ export default function TeacherDashboard({ onExit } = {}) {
                       </div>
                     </div>
                   </button>
-
-                  <div className="t-quad-seal" title="ELEC AI Logomark" aria-hidden="true" style={{ background: '#ffffff' }}>
-                    <ElecFlaskBrandSvg size={46} variant="gradient" />
-                  </div>
                 </div>
               </div>
             </div>

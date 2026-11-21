@@ -1154,6 +1154,59 @@ export async function exportLessonPlanDocx({
 }
 
 /* ============================================================
+   4B. EXPORT TÀI LIỆU / BÁO CÁO / LỜI GIẢI TỪ ELEC AI RA WORD
+   ============================================================ */
+export async function exportAiNoteDocx({
+  title = 'TÀI LIỆU SƯ PHẠM ELEC AI',
+  content = '',
+  teacherName = 'Giáo viên bộ môn',
+  schoolName = 'TRƯỜNG THPT',
+  subject = '',
+}) {
+  const today = new Date().toLocaleDateString('vi-VN');
+  const headerPars = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: schoolName.toUpperCase(), bold: true, size: 22 })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: String(title || 'TÀI LIỆU SƯ PHẠM ELEC AI').toUpperCase(), bold: true, size: 28 })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({
+          text: `${subject ? `Môn: ${subject} | ` : ''}Giáo viên: ${teacherName} | Ngày xuất: ${today}`,
+          italics: true,
+          size: 20,
+        }),
+      ],
+    }),
+    new Paragraph({ text: '' }),
+  ];
+
+  const bodyPars = markdownToDocxParagraphs(content);
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: 1134, right: 1134, bottom: 1134, left: 1417 },
+          },
+        },
+        children: [...headerPars, ...bodyPars],
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const filename = `${safeFilename(title || 'Tai-Lieu-ELEC-AI')}.docx`;
+  saveAs(blob, filename);
+  return filename;
+}
+
+/* ============================================================
    5. EXPORT KHUNG MA TRẬN & BẢN ĐẶC TẢ ĐỀ THI RA WORD
    ============================================================ */
 export async function buildMatrixDocBlob({

@@ -19,7 +19,22 @@ import MathText from './MathText.jsx';
 import { MarkdownLike } from './ChatMarkdown.jsx';
 import { findRelatedYouTubeVideos } from '../lib/youtubeService.js';
 import { YouTubeVideoSection } from './YouTubeVideoSection.jsx';
+import { CHALKBOARD_PRESETS } from '../lib/chalkboardPresets.js';
 import '../styles/interactive-chalkboard.css';
+
+const CAMERA_PRESETS = [
+  { id: 'iso', label: 'Phối cảnh', angles: [-1.22, 0.36, 1.0] },
+  { id: 'top', label: 'Từ trên', angles: [-1.57, 1.42, 1.02] },
+  { id: 'front', label: 'Mặt trước', angles: [-1.57, 0.04, 1.02] },
+  { id: 'side', label: 'Mặt bên', angles: [0.02, 0.08, 1.02] },
+];
+
+const SKETCH_COLORS = [
+  { id: 'pink', hex: '#f43f5e', label: 'Hồng đỏ' },
+  { id: 'blue', hex: '#3b82f6', label: 'Xanh lam' },
+  { id: 'amber', hex: '#f59e0b', label: 'Vàng cam' },
+  { id: 'emerald', hex: '#10b981', label: 'Xanh ngọc' },
+];
 
 /* ================= ICON VECTOR SVG 100% NÉT MẢNH CHUẨN ELEC AI ================= */
 const IconCompass = ({ size = 17 }) => (
@@ -109,16 +124,20 @@ const IconPalette = ({ size = 14 }) => (
   </svg>
 );
 
-const IconBot = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 8V4H8" />
-    <rect width="16" height="12" x="4" y="8" rx="2" />
-    <path d="M2 14h2" />
-    <path d="M20 14h2" />
-    <path d="M15 13v2" />
-    <path d="M9 13v2" />
-  </svg>
-);
+const IconBot = ({ size = 14 }) => {
+  const s = Math.max(15, size + 2);
+  return (
+    <img
+      src="/img/elec-emblem.png"
+      alt=""
+      width={s}
+      height={s}
+      draggable={false}
+      aria-hidden="true"
+      style={{ width: s, height: s, objectFit: 'contain', display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 }}
+    />
+  );
+};
 
 const IconSpeed = ({ size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -197,6 +216,8 @@ const AI_ENGINES = [
 export default function InteractiveChalkboardCanvas({
   lesson,
   onClose,
+  onSelectLesson,
+  onAskAi,
   initialAutoPlay = true,
 }) {
   const steps = useMemo(() => lesson?.buoc || [], [lesson]);
@@ -209,19 +230,37 @@ export default function InteractiveChalkboardCanvas({
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  // Nhận biết dark mode hiện tại của ELEC AI
+  // Nhận biết dark mode hiện tại & tự động đồng bộ khi người dùng chuyển Sáng/Tối live
   const isDarkMode = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark';
   const [useChalkTheme, setUseChalkTheme] = useState(isDarkMode);
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return undefined;
+    const syncTheme = () => {
+      setUseChalkTheme(document.documentElement.getAttribute('data-theme') === 'dark');
+    };
+    const obs = new MutationObserver(syncTheme);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
   const [showGrid, setShowGrid] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Tốc độ diễn hoạt (0.5x, 1x, 2x)
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [animProgress, setAnimProgress] = useState(1.0);
 
-  // Mô hình AI đang phụ trách vẽ
-  const [selectedAi, setSelectedAi] = useState('gemini-2.5-pro');
-  const [showAiPicker, setShowAiPicker] = useState(false);
+  // Thư viện mẫu & Trình soạn lệnh vẽ trực tiếp (Live Command Studio)
+  const [showPresets, setShowPresets] = useState(false);
+  const [showCodeEditor, setShowCodeEditor] = useState(false);
+  const [customExtraCmds, setCustomExtraCmds] = useState('');
+  const [appliedExtraCmds, setAppliedExtraCmds] = useState([]);
+
+  // Bút vẽ chú thích tự do (Freehand Pen Overlay)
+  const [sketchMode, setSketchMode] = useState(false);
+  const [sketchColor, setSketchColor] = useState('#f43f5e');
+  const [sketchStrokes, setSketchStrokes] = useState([]);
+  const activeStrokeRef = useRef(null);
 
   // Chế độ Thước đo tương tác (Interactive Measure Tool)
   const [measureMode, setMeasureMode] = useState(false);
@@ -231,6 +270,39 @@ export default function InteractiveChalkboardCanvas({
   // Chế độ Không gian 3D (ưu tiên nhận diện từ bài toán, hỗ trợ chuyển đổi thủ công)
   const [override3D, setOverride3D] = useState(null);
   const is3D = override3D !== null ? override3D : (lesson?.baChieu !== false);
+
+  // Thanh trượt tham số tương tác thời gian thực (Khanmigo × Claude STEM Sandbox)
+  const buildDefaultParams = useCallback((l) => {
+    const out = {};
+    (l?.params || []).forEach((p) => { out[p.key] = p.defaultVal; });
+    return out;
+  }, []);
+  const [paramValues, setParamValues] = useState(() => buildDefaultParams(lesson));
+  const [sandboxActive, setSandboxActive] = useState(false);
+
+  const dynamicModel = useMemo(() => {
+    if (!lesson?.buildDynamic || !Array.isArray(lesson?.params) || lesson.params.length === 0) return null;
+    try {
+      return lesson.buildDynamic(paramValues);
+    } catch {
+      return null;
+    }
+  }, [lesson, paramValues]);
+
+  // Reset trạng thái khi đổi bài / đổi mô hình mẫu
+  useEffect(() => {
+    setActiveStep(0);
+    setOverride3D(null);
+    setViewAngles(lesson?.gocNhin || (lesson?.baChieu !== false ? [-1.22, 0.36, 1.0] : [0, 0, 1.0]));
+    setMeasuredPoints([]);
+    setMeasureResult(null);
+    setSketchStrokes([]);
+    setCustomExtraCmds('');
+    setAppliedExtraCmds([]);
+    setParamValues(buildDefaultParams(lesson));
+    setSandboxActive(false);
+    setAutoPlay(initialAutoPlay);
+  }, [lesson?.id, lesson?.tieuDe, initialAutoPlay, buildDefaultParams, lesson]);
 
   // Chế độ Xoay 3D Tự Động (Auto-Orbit 360°) & Soi tọa độ điểm
   const [isAutoOrbit, setIsAutoOrbit] = useState(false);
@@ -251,7 +323,6 @@ export default function InteractiveChalkboardCanvas({
   const lastElementsRef = useRef([]);
 
   const curStep = steps[activeStep] || steps[0];
-  const curAi = AI_ENGINES.find((m) => m.id === selectedAi) || AI_ENGINES[0];
 
   // 1. Tải WASM engine
   useEffect(() => {
@@ -360,16 +431,37 @@ export default function InteractiveChalkboardCanvas({
 
     try {
       const [yaw, pitch, zoom] = viewAngles;
-      const res = session.ve(width, height, yaw, pitch, zoom, 1e6);
+      // Chừa vùng an toàn 54px phía đáy cho thanh công cụ nổi để đỉnh thấp nhất (như B, P) không bao giờ bị che
+      const drawHeight = Math.max(200, height - 54);
+      const res = session.ve(width, drawHeight, yaw, pitch, zoom, 1e6);
       if (res && res.m) {
         lastElementsRef.current = res.m;
         renderChalkboard(ctx, res.m, {
           chalkStyle: useChalkTheme,
           paperTheme: !useChalkTheme,
-          showLabels: true,
+          showLabels,
           showGrid,
           progress: animProgress,
         });
+
+        // Vẽ các nét chú thích tay tự do (Freehand Pen Sketch — xuất cùng PNG HD!)
+        if (sketchStrokes.length > 0) {
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = 2.6;
+          for (const st of sketchStrokes) {
+            if (!st.pts || st.pts.length < 2) continue;
+            ctx.strokeStyle = st.color || '#f43f5e';
+            ctx.beginPath();
+            ctx.moveTo(st.pts[0].x, st.pts[0].y);
+            for (let k = 1; k < st.pts.length; k++) {
+              ctx.lineTo(st.pts[k].x, st.pts[k].y);
+            }
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
 
         // Vẽ đường thước đo nếu đang trong chế độ đo đạc
         if (measureMode && measuredPoints.length > 0) {
@@ -395,7 +487,7 @@ export default function InteractiveChalkboardCanvas({
     } catch (e) {
       console.warn('[InteractiveChalkboardCanvas Render Error]:', e);
     }
-  }, [viewAngles, useChalkTheme, showGrid, isExpanded, animProgress, measureMode, measuredPoints]);
+  }, [viewAngles, useChalkTheme, showGrid, showLabels, isExpanded, animProgress, measureMode, measuredPoints, sketchStrokes]);
 
   // 5. Cập nhật câu lệnh vẽ tích luỹ từ bước 0 -> activeStep ("Giải đến đâu vẽ tới đó")
   useEffect(() => {
@@ -411,13 +503,20 @@ export default function InteractiveChalkboardCanvas({
       const session = new ChalkboardSession(engine, is3D, !!lesson.heTruc);
       sessionRef.current = session;
 
-      // Thu thập câu lệnh từ bước 0 đến activeStep ("Giải đến đâu vẽ tới đó")
+      // Nếu người dùng đang kéo Thanh trượt Sandbox → render trực tiếp câu lệnh động 60fps
       const rawStmts = [];
-      for (let i = 0; i <= activeStep && i < totalSteps; i++) {
-        const step = steps[i];
-        if (Array.isArray(step?.lenh)) {
-          rawStmts.push(...step.lenh);
+      if (sandboxActive && Array.isArray(dynamicModel?.lenh) && dynamicModel.lenh.length > 0) {
+        rawStmts.push(...dynamicModel.lenh);
+      } else {
+        for (let i = 0; i <= activeStep && i < totalSteps; i++) {
+          const step = steps[i];
+          if (Array.isArray(step?.lenh)) {
+            rawStmts.push(...step.lenh);
+          }
         }
+      }
+      if (appliedExtraCmds.length > 0) {
+        rawStmts.push(...appliedExtraCmds);
       }
 
       // Khử lặp định nghĩa điểm (đảm bảo mỗi điểm A, B, C, S, G, H, P, E, I, M, K... chỉ có 1 định nghĩa tọa độ mới nhất)
@@ -443,7 +542,7 @@ export default function InteractiveChalkboardCanvas({
     } catch (e) {
       console.error('[InteractiveChalkboardCanvas Session Error]:', e);
     }
-  }, [lesson, is3D, activeStep, totalSteps, steps, redraw]);
+  }, [lesson, is3D, activeStep, totalSteps, steps, appliedExtraCmds, sandboxActive, dynamicModel, redraw]);
 
   // Cập nhật khi kích thước cửa sổ đổi hoặc tiến trình animation đổi
   useEffect(() => {
@@ -456,19 +555,29 @@ export default function InteractiveChalkboardCanvas({
     return () => window.removeEventListener('resize', handleResize);
   }, [redraw]);
 
-  // 6. Xử lý chuột & Chế độ Thước đo tương tác
+  // 6. Xử lý chuột: Vẽ tay tự do (Sketch), Thước đo WASM chính xác & Xoay 3D
   const handlePointerDown = (e) => {
     if (e.button !== 0) return;
 
+    if (sketchMode) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const stroke = { color: sketchColor, pts: [pt] };
+      activeStrokeRef.current = stroke;
+      setSketchStrokes((prev) => [...prev, stroke]);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setAutoPlay(false);
+      return;
+    }
+
     if (measureMode) {
-      // Tìm điểm gần nhất được click
       const rect = e.currentTarget.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
       const pts = (lastElementsRef.current || []).filter((el) => el.t === 'p' && typeof el.x === 'number');
       let nearest = null;
-      let minDist = 24; // Bán kính bắt điểm
+      let minDist = 26;
 
       pts.forEach((p) => {
         const d = Math.hypot(p.x - clickX, p.y - clickY);
@@ -478,20 +587,49 @@ export default function InteractiveChalkboardCanvas({
         }
       });
 
-      const chosen = nearest || { x: clickX, y: clickY, s: `Điểm ${measuredPoints.length + 1}` };
+      const chosen = nearest || { x: clickX, y: clickY, s: `P${measuredPoints.length + 1}`, isFree: true };
       const next = [...measuredPoints, chosen].slice(-3);
       setMeasuredPoints(next);
 
       if (next.length === 2) {
-        const distPx = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y);
-        setMeasureResult(`Khoảng cách ước lượng: ~${(distPx / 35).toFixed(2)} đơn vị`);
+        let exactText = '';
+        if (!next[0].isFree && !next[1].isFree && next[0].s && next[1].s && sessionRef.current) {
+          try {
+            const res = sessionRef.current.do(`Distance(${next[0].s}, ${next[1].s})`);
+            const val = res?.giaTri ?? res?.v ?? res?.value;
+            if (typeof val === 'number' && Number.isFinite(val)) {
+              exactText = `Độ dài ${next[0].s}${next[1].s} = ${val.toFixed(2)} đv (chính xác 3D)`;
+            }
+          } catch (_) {}
+        }
+        if (exactText) {
+          setMeasureResult(exactText);
+        } else {
+          const distPx = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y);
+          setMeasureResult(`Khoảng cách ${next[0].s || ''}–${next[1].s || ''}: ~${(distPx / 35).toFixed(2)} đv`);
+        }
       } else if (next.length === 3) {
-        const a = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y);
-        const b = Math.hypot(next[2].x - next[1].x, next[2].y - next[1].y);
-        const c = Math.hypot(next[2].x - next[0].x, next[2].y - next[0].y);
-        const cosAngle = (a * a + b * b - c * c) / (2 * a * b || 1);
-        const deg = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
-        setMeasureResult(`Góc giữa 3 điểm: ~${deg.toFixed(1)}°`);
+        let exactAngle = '';
+        if (!next[0].isFree && !next[1].isFree && !next[2].isFree && sessionRef.current) {
+          try {
+            const res = sessionRef.current.do(`Angle(${next[0].s}, ${next[1].s}, ${next[2].s})`);
+            const val = res?.giaTri ?? res?.v ?? res?.value;
+            if (typeof val === 'number' && Number.isFinite(val)) {
+              const degVal = val <= Math.PI + 0.01 ? (val * 180) / Math.PI : val;
+              exactAngle = `Góc ∠${next[0].s}${next[1].s}${next[2].s} = ${degVal.toFixed(1)}° (chính xác 3D)`;
+            }
+          } catch (_) {}
+        }
+        if (exactAngle) {
+          setMeasureResult(exactAngle);
+        } else {
+          const a = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y);
+          const b = Math.hypot(next[2].x - next[1].x, next[2].y - next[1].y);
+          const c = Math.hypot(next[2].x - next[0].x, next[2].y - next[0].y);
+          const cosAngle = (a * a + b * b - c * c) / (2 * a * b || 1);
+          const deg = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
+          setMeasureResult(`Góc giữa 3 điểm: ~${deg.toFixed(1)}°`);
+        }
       }
       return;
     }
@@ -503,6 +641,14 @@ export default function InteractiveChalkboardCanvas({
   };
 
   const handlePointerMove = (e) => {
+    if (sketchMode && activeStrokeRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      activeStrokeRef.current.pts.push(pt);
+      setSketchStrokes((prev) => [...prev.slice(0, -1), { ...activeStrokeRef.current, pts: [...activeStrokeRef.current.pts] }]);
+      return;
+    }
+
     if (dragRef.current.isDragging) {
       if (measureMode) return;
       const dx = e.clientX - dragRef.current.startX;
@@ -540,6 +686,9 @@ export default function InteractiveChalkboardCanvas({
   };
 
   const handlePointerUp = (e) => {
+    if (activeStrokeRef.current) {
+      activeStrokeRef.current = null;
+    }
     dragRef.current.isDragging = false;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -583,7 +732,7 @@ export default function InteractiveChalkboardCanvas({
 
   return (
     <div className="ds-quiz-canvas ds-geo-canvas-wrap" role="region" aria-label="Bảng vẽ hình học tương tác">
-      {/* 1. HEADER CANVAS — CHUẨN ELEC AI GỌN GÀNG, KHÔNG RỐI MÁY MÓC */}
+      {/* 1. HEADER CANVAS — ELEC 3D & STEM STUDIO */}
       <div className="ds-qc-header">
         <div className="ds-geo-header-title-box">
           <span className="ds-geo-header-compass-icon" aria-hidden="true">
@@ -595,6 +744,29 @@ export default function InteractiveChalkboardCanvas({
         </div>
 
         <div className="ds-qc-actions">
+          {onSelectLesson && (
+            <button
+              type="button"
+              className={`ds-geo-pill-action ${showPresets ? 'is-active' : ''}`}
+              onClick={() => setShowPresets((v) => !v)}
+              title="Thư viện 6 mô hình mẫu 3D & 2D KHTN"
+            >
+              <IconSparkles size={13} />
+              <span>Mẫu KHTN</span>
+            </button>
+          )}
+
+          {onAskAi && lesson?.aiPrompt && (
+            <button
+              type="button"
+              className="ds-geo-pill-action primary"
+              onClick={() => onAskAi(lesson.aiPrompt)}
+              title="Gửi bài toán này cho ELEC AI giải chi tiết từng bước"
+            >
+              <span>AI giải bài này</span>
+            </button>
+          )}
+
           {/* Nút phóng to / thu gọn chiều cao khung vẽ */}
           <button
             type="button"
@@ -611,7 +783,7 @@ export default function InteractiveChalkboardCanvas({
             type="button"
             className="ds-qc-btn-icon"
             onClick={handleExportImage}
-            title="Tải ảnh hình vẽ HD về máy (PNG)"
+            title="Tải ảnh hình vẽ HD (kèm nét chú thích) về máy PNG"
             aria-label="Tải ảnh"
           >
             <IconDownload size={15} />
@@ -642,8 +814,47 @@ export default function InteractiveChalkboardCanvas({
         </div>
       </div>
 
-      {/* 2. THANH TIẾN TRÌNH THEO PHONG CÁCH TRẮC NGHIỆM ELEC AI (ẢNH 2 CỦA BẠN) */}
+      {/* THƯ VIỆN 6 MÔ HÌNH MẪU 3D & 2D KHTN (CHUYỂN TỨC THÌ 1-CLICK) */}
+      {showPresets && onSelectLesson && (
+        <div className="ds-geo-presets-drawer" role="list" aria-label="Thư viện hình vẽ mẫu KHTN">
+          {CHALKBOARD_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`ds-geo-preset-chip ${lesson?.id === p.id ? 'is-active' : ''}`}
+              onClick={() => {
+                onSelectLesson(p);
+                setShowPresets(false);
+              }}
+            >
+              <span className="ds-geo-preset-badge">{p.badge}</span>
+              <span className="ds-geo-preset-name">{p.shortTitle}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 2. THANH TIẾN TRÌNH & CHỌN NHANH TỪNG BƯỚC DỰNG HÌNH */}
       <div className="ds-qc-subbar">
+        <div className="ds-geo-step-pills" role="tablist" aria-label="Chọn bước dựng hình">
+          {steps.map((st, idx) => (
+            <button
+              key={idx}
+              type="button"
+              role="tab"
+              aria-selected={activeStep === idx}
+              className={`ds-geo-step-pill ${activeStep === idx ? 'is-active' : ''} ${idx < activeStep ? 'is-done' : ''}`}
+              onClick={() => {
+                setActiveStep(idx);
+                setAutoPlay(false);
+              }}
+              title={cleanStepTitle(st.tieuDe)}
+            >
+              B{idx + 1}
+            </button>
+          ))}
+        </div>
+
         <div className="ds-qc-progress-track">
           <div
             className="ds-qc-progress-fill"
@@ -664,7 +875,7 @@ export default function InteractiveChalkboardCanvas({
       <div className="ds-qc-body" ref={contentBodyRef}>
         <div key={activeStep} className="ds-qc-q-fade">
           {/* KHUNG CANVAS VẼ HÌNH BẰNG VE.WASM */}
-          <div className={`ds-geo-render-box ${useChalkTheme ? 'theme-chalk' : ''} ${isExpanded ? 'is-expanded' : ''} ${measureMode ? 'is-measuring' : ''}`}>
+          <div className={`ds-geo-render-box ${useChalkTheme ? 'theme-chalk' : ''} ${isExpanded ? 'is-expanded' : ''} ${measureMode ? 'is-measuring' : ''} ${sketchMode ? 'is-sketching' : ''}`}>
             {loadingWasm && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '13px' }}>
                 Đang nạp bộ dựng hình học ve.wasm...
@@ -683,19 +894,75 @@ export default function InteractiveChalkboardCanvas({
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
               onWheel={handleWheel}
-              title={measureMode ? 'Click 2 hoặc 3 điểm để đo khoảng cách và góc' : (lesson?.baChieu ? 'Kéo chuột để xoay 3D, cuộn để phóng to/thu nhỏ' : 'Hình vẽ tương tác')}
+              title={sketchMode ? 'Kéo chuột để vẽ chú thích trực tiếp lên hình' : measureMode ? 'Click 2 hoặc 3 điểm để đo khoảng cách và góc chuẩn 3D' : (is3D ? 'Kéo chuột để xoay 3D, cuộn để phóng to/thu nhỏ' : 'Hình vẽ tương tác')}
             />
 
-            {/* Tag bước nổi trên canvas */}
+            {/* Tag bước nổi góc trên trái */}
             <div className="ds-geo-step-tag">
               Bước {activeStep + 1}: {cleanStepTitle(curStep?.tieuDe) || 'Dựng hình'}
             </div>
+
+            {/* Góc nhìn Camera chuẩn 1-Click (chế độ 3D) */}
+            {is3D && (
+              <div className="ds-geo-cam-presets" role="group" aria-label="Góc nhìn 3D nhanh">
+                {CAMERA_PRESETS.map((cam) => (
+                  <button
+                    key={cam.id}
+                    type="button"
+                    className="ds-geo-cam-btn"
+                    onClick={() => {
+                      setIsAutoOrbit(false);
+                      setViewAngles(cam.angles);
+                    }}
+                    title={`Chuyển góc nhìn ${cam.label}`}
+                  >
+                    {cam.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Thanh chọn màu khi bật Bút vẽ chú thích tay */}
+            {sketchMode && (
+              <div className="ds-geo-sketch-hud">
+                <span>Bút vẽ tay:</span>
+                {SKETCH_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`ds-geo-swatch ${sketchColor === c.hex ? 'is-active' : ''}`}
+                    style={{ background: c.hex }}
+                    onClick={() => setSketchColor(c.hex)}
+                    title={c.label}
+                    aria-label={c.label}
+                  />
+                ))}
+                {sketchStrokes.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      className="ds-geo-sketch-act"
+                      onClick={() => setSketchStrokes((prev) => prev.slice(0, -1))}
+                    >
+                      Hoàn tác
+                    </button>
+                    <button
+                      type="button"
+                      className="ds-geo-sketch-act danger"
+                      onClick={() => setSketchStrokes([])}
+                    >
+                      Xóa nét
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Thông báo kết quả Thước đo trực tiếp */}
             {measureMode && (
               <div className="ds-geo-measure-hud">
                 <IconRuler size={14} />
-                <span>{measureResult || 'Click 2 điểm để đo khoảng cách, 3 điểm để đo góc'}</span>
+                <span>{measureResult || 'Click 2 điểm để đo khoảng cách 3D, 3 điểm để đo góc'}</span>
                 {measuredPoints.length > 0 && (
                   <button
                     type="button"
@@ -725,7 +992,7 @@ export default function InteractiveChalkboardCanvas({
               </div>
             )}
 
-            {/* Thanh điều khiển nổi góc dưới (100% SVG ICONS) */}
+            {/* Thanh điều khiển nổi góc dưới (BO TRÒN KÍNH MỜ ĐỒNG BỘ V4) */}
             <div className="ds-geo-floating-bar">
               {/* Cụm Phóng to / Thu nhỏ */}
               <div className="ds-geo-fbtn-group" title="Phóng to / Thu nhỏ">
@@ -753,19 +1020,48 @@ export default function InteractiveChalkboardCanvas({
                 </button>
               </div>
 
+              {/* Bút vẽ chú thích tay trực tiếp */}
+              <button
+                type="button"
+                className={`ds-geo-fbtn ${sketchMode ? 'is-active' : ''}`}
+                onClick={() => {
+                  setSketchMode((v) => !v);
+                  if (!sketchMode) setMeasureMode(false);
+                }}
+                title="Bật bút vẽ tay chú thích trực tiếp lên hình"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                <span>Vẽ tay</span>
+              </button>
+
               {/* Bật / Tắt Thước đo tương tác */}
               <button
                 type="button"
                 className={`ds-geo-fbtn ${measureMode ? 'is-active' : ''}`}
                 onClick={() => {
-                  setMeasureMode((v) => !v);
+                  const next = !measureMode;
+                  setMeasureMode(next);
+                  if (next) setSketchMode(false);
                   setMeasuredPoints([]);
                   setMeasureResult(null);
                 }}
-                title="Bật thước đo tương tác khoảng cách & góc giữa các điểm"
+                title="Bật thước đo khoảng cách & góc 3D chính xác"
               >
                 <IconRuler size={13} />
-                <span>Thước đo</span>
+                <span>Đo 3D</span>
+              </button>
+
+              {/* Bật / Tắt Nhãn điểm */}
+              <button
+                type="button"
+                className={`ds-geo-fbtn ${showLabels ? 'is-active' : ''}`}
+                onClick={() => setShowLabels((v) => !v)}
+                title="Ẩn/hiện tên các điểm trên hình"
+              >
+                <span>Nhãn</span>
               </button>
 
               {/* Bật / Tắt Lưới tọa độ */}
@@ -787,29 +1083,17 @@ export default function InteractiveChalkboardCanvas({
                 title="Đổi màu nền Giấy trắng / Bảng phấn"
               >
                 <IconPalette size={13} />
-                <span>{useChalkTheme ? 'Nền giấy' : 'Bảng phấn'}</span>
+                <span>{useChalkTheme ? 'Giấy' : 'Bảng'}</span>
               </button>
 
-              {/* Nút vẽ lại bước hiện tại */}
+              {/* Bật / Tắt Live Command Studio */}
               <button
                 type="button"
-                className="ds-geo-fbtn"
-                onClick={triggerStrokeAnimation}
-                title="Vẽ lại bước này từng nét"
+                className={`ds-geo-fbtn ${showCodeEditor ? 'is-active' : ''}`}
+                onClick={() => setShowCodeEditor((v) => !v)}
+                title="Tự thêm điểm, đoạn thẳng, véctơ hoặc đồ thị bằng lệnh vẽ trực tiếp"
               >
-                <IconRefresh size={13} />
-                <span>Vẽ lại</span>
-              </button>
-
-              {/* Đặt lại góc nhìn */}
-              <button
-                type="button"
-                className="ds-geo-fbtn"
-                onClick={resetView}
-                title="Đặt lại góc nhìn và tỉ lệ ban đầu"
-              >
-                <IconRotate size={13} />
-                <span>Góc nhìn</span>
+                <span>&lt;/&gt; Lệnh</span>
               </button>
 
               {/* Chế độ Tự động Xoay 360° (Auto-Orbit) cho Không gian 3D */}
@@ -821,7 +1105,7 @@ export default function InteractiveChalkboardCanvas({
                   title={isAutoOrbit ? 'Dừng xoay 360° tự động' : 'Bật xoay 360° tự động toàn cảnh'}
                 >
                   <IconOrbit size={13} />
-                  <span>{isAutoOrbit ? 'Dừng xoay' : 'Xoay 360°'}</span>
+                  <span>{isAutoOrbit ? 'Dừng' : '360°'}</span>
                 </button>
               )}
 
@@ -839,8 +1123,137 @@ export default function InteractiveChalkboardCanvas({
                 <Icon3D size={13} />
                 <span>{is3D ? '3D' : '2D'}</span>
               </button>
+
+              {/* Đặt lại góc nhìn */}
+              <button
+                type="button"
+                className="ds-geo-fbtn"
+                onClick={resetView}
+                title="Đặt lại góc nhìn ban đầu"
+              >
+                <IconRotate size={13} />
+              </button>
             </div>
           </div>
+
+          {/* THANH TRƯỢT THAM SỐ TƯƠNG TÁC THỜI GIAN THỰC (STEM SANDBOX — KHANMIGO × CLAUDE) */}
+          {Array.isArray(lesson?.params) && lesson.params.length > 0 && dynamicModel && (
+            <div className="ds-geo-sandbox-card">
+              <div className="ds-geo-sandbox-head">
+                <span className="ds-geo-sandbox-title">
+                  <IconSparkles size={13} />
+                  <span>Thanh trượt thí nghiệm tương tác</span>
+                  {sandboxActive && <em className="ds-geo-sandbox-live">LIVE</em>}
+                </span>
+                {sandboxActive && (
+                  <button
+                    type="button"
+                    className="ds-geo-sandbox-reset"
+                    onClick={() => {
+                      setParamValues(buildDefaultParams(lesson));
+                      setSandboxActive(false);
+                    }}
+                  >
+                    Đặt lại
+                  </button>
+                )}
+              </div>
+
+              <div className="ds-geo-sandbox-sliders">
+                {lesson.params.map((p) => {
+                  const val = paramValues[p.key] ?? p.defaultVal;
+                  return (
+                    <label key={p.key} className="ds-geo-slider-row">
+                      <span className="ds-geo-slider-lbl">
+                        <span>{p.label}</span>
+                        <b>{val}{p.unit ? ` ${p.unit}` : ''}</b>
+                      </span>
+                      <input
+                        type="range"
+                        min={p.min}
+                        max={p.max}
+                        step={p.step}
+                        value={val}
+                        onChange={(e) => {
+                          setAutoPlay(false);
+                          setAnimProgress(1.0);
+                          setSandboxActive(true);
+                          setParamValues((prev) => ({ ...prev, [p.key]: Number(e.target.value) }));
+                        }}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+
+              {Array.isArray(dynamicModel.readout) && dynamicModel.readout.length > 0 && (
+                <div className="ds-geo-sandbox-readouts">
+                  {dynamicModel.readout.map((r) => (
+                    <div key={r.label} className={`ds-geo-readout-pill ${r.highlight ? 'is-highlight' : ''}`}>
+                      <small>{r.label}</small>
+                      <b>{r.value}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TRÌNH SOẠN LỆNH VẼ TRỰC TIẾP (LIVE COMMAND STUDIO) */}
+          {showCodeEditor && (
+            <div className="ds-geo-code-studio">
+              <div className="ds-geo-code-head">
+                <b>Thêm nét vẽ trực tiếp (Real-time Studio)</b>
+                <div className="ds-geo-code-quick">
+                  <button
+                    type="button"
+                    onClick={() => setCustomExtraCmds((prev) => `${prev ? `${prev}\n` : ''}K = (0, 0, 2.5)\nSegment(A, K) | color=green`)}
+                  >
+                    + Điểm &amp; Đoạn
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomExtraCmds((prev) => `${prev ? `${prev}\n` : ''}V1 = (0, 0, 0)\nV2 = (2.5, 1.2, 2.5)\nVector(V1, V2) | color=pink`)}
+                  >
+                    + Véctơ 3D
+                  </button>
+                  {appliedExtraCmds.length > 0 && (
+                    <button
+                      type="button"
+                      className="danger"
+                      onClick={() => {
+                        setCustomExtraCmds('');
+                        setAppliedExtraCmds([]);
+                      }}
+                    >
+                      Xóa lệnh thêm
+                    </button>
+                  )}
+                </div>
+              </div>
+              <textarea
+                className="ds-geo-code-input"
+                rows={3}
+                value={customExtraCmds}
+                onChange={(e) => setCustomExtraCmds(e.target.value)}
+                placeholder="Ví dụ:&#10;H = (0.5, -0.5, 2.0)&#10;Segment(S, H) | style=dashed | color=green"
+              />
+              <div className="ds-geo-code-foot">
+                <span>Hỗ trợ: Point, Segment, Vector, Polygon, Plot · color=blue/pink/green/yellow</span>
+                <button
+                  type="button"
+                  className="ds-qc-btn solid-blue"
+                  style={{ padding: '5px 14px', fontSize: '12px' }}
+                  onClick={() => {
+                    const lines = customExtraCmds.split('\n').map((l) => l.trim()).filter(Boolean);
+                    setAppliedExtraCmds(lines);
+                  }}
+                >
+                  Vẽ ngay lên bảng
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* LỜI GIẢI TOÁN & HƯỚNG DẪN TỪNG BƯỚC VỚI KATEX */}
           <div className="ds-geo-step-content">

@@ -33,12 +33,14 @@ import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
 
 const STUDY_TOOLS = [
+  { id: 'casio', name: 'Máy tính fx-580VN X', desc: 'Mô phỏng Casio 50 phím · 8 chế độ', Icon: IconCalc, tag: 'hot' },
   { id: 'table', name: 'Bảng tuần hoàn', desc: 'Bảng tuần hoàn tương tác', Icon: IconAtom, tag: 'hot' },
   { id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
   { id: 'admission', name: 'Điểm chuẩn & Năng lực', desc: 'So sánh điểm thi thật với điểm chuẩn ĐH', Icon: IconTarget, tag: 'new' },
   { id: 'career', name: 'Hướng nghiệp AI', desc: 'Trắc nghiệm RIASEC & chọn ngành nghề', Icon: IconBook, tag: 'new' },
   { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Học và tạo quiz từ file tài liệu của bạn', Icon: IconNote, tag: 'new' },
   { id: 'chalkboard', name: 'Bảng phấn 3D', desc: 'Mô phỏng hình học & kiểm định cơ học', Icon: IconScale, tag: 'hot' },
+  { id: 'physics-lab', name: 'Phòng Lab Vật lí Ảo', desc: 'Ném xiên, Mạch điện DC, Quang hình, Sóng 2D, Con lắc kép & Olympiad', Icon: IconAtom, tag: 'new' },
   { id: 'sim-lab', name: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN & Punnett', Icon: IconMicroscope, tag: 'new' },
   { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Nhập phương trình, ra hệ số', Icon: IconScale, tag: 'hot' },

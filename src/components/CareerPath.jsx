@@ -10,7 +10,7 @@ import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
 import { askAI } from '../lib/ai.js';
 import { askAI as openChatWithAI } from './HomePlus.jsx';
-import { runWithCredit } from '../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../lib/creditService.js';
 import { useLocalStorage } from '../hooks.js';
 import { IconTarget, IconRobot, IconArrowUpRight } from './Icons.jsx';
 
@@ -98,7 +98,7 @@ export default function CareerPath() {
     let text = '';
     try {
       const res = await runWithCredit(
-        { userId: user?.uid, cost: 1, reason: 'Định hướng nghề nghiệp AI' },
+        { userId: user?.uid, cost: CREDIT_TARIFF.CAREER_REPORT, actionType: 'career_report', reason: 'Báo cáo định hướng ngành nghề AI' },
         () => askAI(
           [{ role: 'user', text: prompt }],
           (chunk) => { text = chunk || ''; setAiText(text); },

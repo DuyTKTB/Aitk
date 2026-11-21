@@ -21,8 +21,12 @@ import { supabase } from '../lib/supabase.js';
 import { useGamification } from '../hooks/useGamification.js';
 import { readStore } from '../lib/roadmapStore.js';
 import { getSubmissionsByStudent } from '../lib/classroom.js';
+import { getVirtualExamHistory } from '../data/virtualExamsBank.js';
+import { getStudentElo, computeEloUpdate, computeStudyDiagnosis } from '../lib/studentAnalytics.js';
+import { askAI as openAiWithPrompt } from './HomePlus.jsx';
 import { getAspirationProfile, getSchoolById, upsertAspiration, subscribeAspirationChanges } from '../lib/aspirationService.js';
 import './stats-aurora.css';
+import '../styles/student-v9-upgrades.css';
 
 /* ---------- Icon SVG ---------- */
 const P = {
@@ -362,7 +366,15 @@ export default function StatsPage() {
     return () => unsub?.();
   }, []);
 
-  /* Nạp dữ liệu ĐA NGUỒN (Supabase + Firestore Submissions + Roadmap Sessions) */
+  const eloInfo = useMemo(() => {
+    const st = getStudentElo(uid);
+    return {
+      elo: st.elo,
+      rank: computeEloUpdate({ currentElo: st.elo, pct: 60 }).rank,
+    };
+  }, [uid, tick]);
+
+  /* Nạp dữ liệu ĐA NGUỒN (Supabase + Firestore Submissions + Roadmap Sessions + Phòng Thi Ảo) */
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -442,6 +454,33 @@ export default function StatsPage() {
           }
         } catch (e) {
           console.warn('[StatsPage] Roadmap sessions fetch failed:', e);
+        }
+
+        // 4. Nguồn Phòng Thi Ảo ELEC AI (VirtualExamRoom history)
+        try {
+          const vHist = getVirtualExamHistory(uid) || [];
+          for (const vh of vHist) {
+            const total = vh.totalQuestions || vh.total || 28;
+            const totalPts = vh.totalPoints || 10;
+            const correct = vh.correctCount ?? vh.correct ?? Math.round(((vh.score || 0) / totalPts) * total);
+            combined.push({
+              id: `vex-${vh.id || vh.examId}_${vh.completedAt || vh.date || ''}`,
+              total_questions: total,
+              correct_count: correct,
+              wrong_count: Math.max(0, total - correct),
+              blank_count: 0,
+              time_spent: Number(vh.timeSpent) || 1800,
+              started_at: vh.completedAt || vh.date || new Date().toISOString(),
+              mode: 'exam',
+              exam: {
+                title: vh.title || vh.examTitle || 'Đề thi Phòng thi ảo',
+                subject: { name: vh.subject || 'Khoa học Tự nhiên', code: 'KHTN' },
+                grade: { name: vh.examType || 'Phòng thi ảo' },
+              },
+            });
+          }
+        } catch (e) {
+          console.warn('[StatsPage] Virtual exam history fetch failed:', e);
         }
 
         if (alive) setAttempts(combined);
@@ -559,6 +598,20 @@ export default function StatsPage() {
     return Math.round(sum.sec / sum.q);
   }, [sum]);
 
+  /* Wave 4: Chẩn đoán AI & Cảnh báo chống quên (Ebbinghaus) */
+  const studyDiagnosis = useMemo(() => {
+    let wrongCount = 0;
+    try {
+      const w = JSON.parse(localStorage.getItem('elec-wrong-questions') || '[]');
+      if (Array.isArray(w)) wrongCount = w.length;
+    } catch { /* ignore */ }
+    return computeStudyDiagnosis({
+      attempts: cur,
+      streakDays: gamif?.streak || 0,
+      wrongCount,
+    });
+  }, [cur, gamif?.streak]);
+
   const exportCsv = useCallback(() => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const head = ['Ngày', 'Giờ', 'Đề', 'Môn', 'Khối', 'Chế độ', 'Đúng', 'Sai', 'Bỏ trống', 'Tổng câu', 'Điểm %', 'Thời gian (giây)'];
@@ -639,6 +692,10 @@ export default function StatsPage() {
                 <small>Cấp độ · {xp} XP</small>
                 <i><u style={{ width: `${xp % 100}%` }} /></i>
               </div>
+            </div>
+            <div className="st-chip s9-st-elo-chip" title="Điểm năng lực ELO cập nhật sau mỗi bài thi">
+              <span className="st-ico sm s9-st-elo-ico"><Ic n="award" size={16} /></span>
+              <div><small>ELO · {eloInfo.rank.label}</small><b>{eloInfo.elo.toLocaleString('vi-VN')}</b></div>
             </div>
             <div className="st-chip">
               <span className="st-ico sm fire"><Ic n="fire" size={16} /></span>
@@ -777,6 +834,41 @@ export default function StatsPage() {
                 ))}
               </div>
             )}
+
+            {/* Wave 4: Trung tâm Chẩn đoán AI & Cảnh báo Chống Quên */}
+            <section className="s9-st-diag" aria-label="Chẩn đoán năng lực và cảnh báo chống quên">
+              <div className="s9-st-diag-top">
+                <div>
+                  <span className="s9-st-diag-eyebrow">CHẨN ĐOÁN HỌC TẬP AI · EBBINGHAUS</span>
+                  <h3>{studyDiagnosis.recommendation}</h3>
+                </div>
+                <button
+                  type="button"
+                  className="s9-st-diag-ai-btn"
+                  onClick={() =>
+                    openAiWithPrompt(
+                      `Hãy phân tích hồ sơ học tập và lập kế hoạch bứt tốc 7 ngày cho mình:\n- ELO: ${eloInfo.elo} (${eloInfo.rank.label})\n- Điểm trung bình gần đây: ${sum.avg ?? 0}% (${cur.length} lượt)\n- Chỉ số ổn định: ${studyDiagnosis.consistencyScore}/100 | Xu hướng: ${studyDiagnosis.trendLabel}\n- Cảnh báo quên: ${studyDiagnosis.forgettingRisk.label}\n- Tốc độ trung bình: ${avgPacingSec ? `${avgPacingSec} giây/câu` : 'chưa có'}\nHãy chỉ rõ 3 ưu tiên cao nhất và lịch ôn từng ngày trong tuần tới.`
+                    )
+                  }
+                >
+                  <Ic n="sparkles" size={14} /> Tạo lộ trình vá lỗi 7 ngày bằng AI
+                </button>
+              </div>
+              <div className="s9-st-diag-pills">
+                <div className="s9-st-diag-pill">
+                  <span>Chỉ số ổn định</span>
+                  <b>{studyDiagnosis.consistencyScore}/100</b>
+                </div>
+                <div className={`s9-st-diag-pill tone-${studyDiagnosis.trendTone}`}>
+                  <span>Xu hướng phong độ</span>
+                  <b>{studyDiagnosis.trendLabel}</b>
+                </div>
+                <div className={`s9-st-diag-pill tone-${studyDiagnosis.forgettingRisk.tone}`}>
+                  <span>Nhịp trí nhớ SRS</span>
+                  <b>{studyDiagnosis.forgettingRisk.label}</b>
+                </div>
+              </div>
+            </section>
 
             {!cur.length ? (
               <div className="st-card st-state">

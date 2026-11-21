@@ -190,7 +190,9 @@ export function formatMathAndChemSymbols(text) {
   // 8. Xử lý Sinh học: Alen liên kết giới tính và nhóm máu có số mũ: X^A, X^a, X^B, X^b, I^A, I^B, I^O
   s = s.replace(/\b([XI])\^([ABDEHIMNOPRTabcdefgklmoprstuvwxyzo])\b/g, (_, lead, sup) => lead + toSuperscript(sup));
 
-  // 9. Xử lý LaTeX superscript: ^{...} và ^(số/dấu)
+  // 9. Xử lý LaTeX superscript & subscript rỗng từ OCR/Word (_{}, ^{})
+  s = s.replace(/[_^]\{\s*\}/g, '').replace(/[ \t]{2,}/g, ' ');
+  // Xử lý LaTeX superscript: ^{...} và ^(số/dấu)
   s = s.replace(/\^\{([^{}]+)\}/g, (_, sup) => toSuperscript(sup));
   s = s.replace(/\^([0-9\+\-]+)/g, (_, sup) => toSuperscript(sup));
 

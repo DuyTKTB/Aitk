@@ -1,15 +1,14 @@
 /* ============================================================
-   RoadmapPage.jsx — TRANG "LỘ TRÌNH HỌC TẬP CÁ NHÂN HÓA" (CHUẨN ELEC AI)
+   RoadmapPage.jsx — ELEC ROADMAP STUDIO PRO (SIÊU VIP · GDPT 2018)
    ------------------------------------------------------------
-   Thiết kế tinh gọn, thực tế, dễ hiểu ngay từ cái nhìn đầu tiên:
-   1. Thẻ "Lộ trình của em" (AspirationRoadmapHub):
-      • Nguyện vọng đang chọn + 4 chỉ số (Điểm dự đoán, Mục tiêu, Tiến độ, Elo)
-      • Biểu đồ đường Điểm | Elo + 1 Nút hành động chính duy nhất "Luyện tập ngay"
-   2. Ba chế độ xem gọn gàng bằng Tab (không nhồi nhét quá 5 khối trên màn hình):
-      • Tab 1 — "Chuyên đề Hóa học" (Thẻ chương: thanh tiến độ,
-        độ chính xác %, trọng số đề thi thật, nút "Vào học" & "Lý thuyết")
-      • Tab 2 — "Kế hoạch theo tuần" (Lộ trình tự động Tháng -> Tuần -> Ngày kèm điểm kỳ vọng)
-      • Tab 3 — "Sổ lỗi sai & Ôn tập" (Gom câu sai theo chương, nút "Luyện lại 10 câu sai")
+   Kiến trúc 3 vùng gọn gàng ("3-Giây Hiểu Ngay"):
+     1. Command Deck (Bàn điều khiển Thủ khoa): Nguyện vọng 1 + Điểm dự đoán
+        có trọng số tách 3 phần (Phần I · II · III) + Nhiệm vụ hôm nay.
+     2. Unified Studio Toolbar: 1 thanh duy nhất chọn Môn (ưu tiên Tổ hợp
+        Nguyện vọng), Khối lớp, 4 chế độ xem (Lộ trình · Bản đồ DAG ·
+        Kế hoạch 4 tuần · Sổ lỗi sai), Tìm kiếm & Lọc trạng thái.
+     3. Workspace 2 cột: Trái (70%) Dây lộ trình 5 chặng / Bản đồ DAG
+        tương tác; Phải (30%) Cột Thanh tra chuyên đề cố định.
    ============================================================ */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -17,55 +16,66 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { askAI } from '../HomePlus.jsx';
 import {
-  ROADMAP_LEVELS, LEVEL_KEYS, DEFAULT_LEVEL, getLevel, findChapter,
-} from '../../data/roadmap.js';
+  CURRICULUM_NODES,
+  SUBJECT_META,
+  SUBJECT_ORDER,
+  getChapterMeta,
+  getCurriculumChapters,
+} from '../../data/curriculumDag.js';
 import {
-  loadEvidence, invalidateEvidence, loadBankCoverage, localAttemptsOf,
+  loadEvidence, invalidateEvidence, loadBankCoverage,
 } from '../../lib/roadmapEvidence.js';
 import {
-  readStore, subscribeRoadmap, sessionsToEvents,
+  readStore, readStageCheckpoints, subscribeRoadmap, sessionsToEvents,
 } from '../../lib/roadmapStore.js';
 import { cardStats, dueCards, subscribeCards } from '../../lib/flashcardStore.js';
 import { dueSummary } from '../../lib/reviewQueue.js';
 import {
-  summarizeEvents, buildChapterViews, buildAiContext,
-  weekProgress,
+  summarizeEvents, buildChapterViews, buildAiContext, weekProgress,
 } from '../../lib/roadmapEngine.js';
 import { buildAutoRoadmapData } from '../../lib/autoRoadmapEngine.js';
 import { subscribeAspirationChanges } from '../../lib/aspirationService.js';
 import KnowledgeMap from './KnowledgeMap.jsx';
 import ChapterSheet from './ChapterSheet.jsx';
 import DedicatedLessonView from './DedicatedLessonView.jsx';
-import { findLessonById, findLessonByChapterId, findLessonsByChapter, DEDICATED_LESSONS } from '../../data/dedicatedLessonsData.js';
+import { findLessonByChapterId } from '../../data/dedicatedLessonsData.js';
 import BankTagger from './BankTagger.jsx';
 import StudyPlanCard from './StudyPlanCard.jsx';
 import FlashcardSession from './FlashcardSession.jsx';
 import { IconZap } from '../Icons.jsx';
 import AspirationRoadmapHub from './AspirationRoadmapHub.jsx';
+import { SpacedRepetitionMilestones } from './AdaptiveRoadmapShowcase.jsx';
+import WindingRoadmapTrail from './WindingRoadmapTrail.jsx';
+import RoadmapCommandDeck from './RoadmapCommandDeck.jsx';
+import ChapterInspectorPanel from './ChapterInspectorPanel.jsx';
 import DiagnosticTestModal from './DiagnosticTestModal.jsx';
 import StudyMethodologyGuideModal from './StudyMethodologyGuideModal.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
 import { getUserRole } from '../../lib/userRole.js';
-import { formatMathAndChemSymbols } from '../../lib/chemFormulaFormatter.js';
 import { useCurrentSubject } from '../SubjectSwitcher.jsx';
 import '../../styles/roadmap-page.css';
 import '../../styles/roadmap-page-v2.css';
 import '../../styles/roadmap-upgrade.css';
+import '../../styles/roadmap-studio-pro.css';
 
-const LEVEL_KEY = 'cs-home-grade';
+const GRADE_KEY = 'cs-roadmap-grade-v2';
 
-const readLevel = () => {
+const readGradeFilter = () => {
   try {
-    const g = localStorage.getItem(LEVEL_KEY);
-    if (g === 'all') return 'all';
-    return LEVEL_KEYS.indexOf(g) >= 0 ? g : 'all';
-  } catch { return 'all'; }
+    const raw = localStorage.getItem(GRADE_KEY);
+    if (['all', '10', '11', '12'].includes(raw)) return raw;
+    return 'all';
+  } catch {
+    return 'all';
+  }
 };
 
 const hashParams = () => {
   try {
     return new URLSearchParams((window.location.hash.split('?')[1] || ''));
-  } catch { return new URLSearchParams(); }
+  } catch {
+    return new URLSearchParams();
+  }
 };
 
 const norm = (s) => String(s || '')
@@ -74,166 +84,145 @@ const norm = (s) => String(s || '')
   .replace(/[\u0300-\u036f]/g, '')
   .replace(/đ/g, 'd');
 
-/* Bộ biểu tượng SVG vector chuẩn nét — Không dùng Emoji */
-const IcoBook = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+/* Bộ SVG sắc nét — 0 emoji */
+const Svg = ({ size = 15, children }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {children}
   </svg>
 );
 
-const IcoBookOpen = ({ size = 14, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-  </svg>
-);
-
-const IcoGlobe = ({ size = 15, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" y1="12" x2="22" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-);
-
-const IcoFlask = ({ size = 15, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <path d="M10 2v7.31L4.35 18.2A2 2 0 0 0 6.07 21h11.86a2 2 0 0 0 1.72-2.8L14 9.31V2" />
+const IcoFlask = () => (
+  <Svg size={14}>
+    <path d="M10 2v7.3L4.4 18.2A2 2 0 0 0 6.1 21h11.8a2 2 0 0 0 1.7-2.8L14 9.3V2" />
     <line x1="8.5" y1="2" x2="15.5" y2="2" />
-    <line x1="6.8" y1="15" x2="17.2" y2="15" />
-  </svg>
+  </Svg>
 );
 
-const IcoZap = ({ size = 15, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+const IcoBolt = () => (
+  <Svg size={14}>
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </svg>
+  </Svg>
 );
 
-const IcoDna = ({ size = 15, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <path d="M2 15c6.667-6 13.333 0 20-6" />
-    <path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" />
-    <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" />
-    <path d="M17 6l-2.5-2.5" />
-    <path d="M14 8l-1-1" />
-    <path d="M7 18l2.5 2.5" />
-    <path d="M3.5 14.5l.5.5" />
-    <path d="M20 9.5l.5.5" />
-    <path d="M6.5 12.5l1 1" />
-    <path d="M16.5 10.5l1 1" />
-    <path d="M10 16l1.5 1.5" />
-    <path d="M2 9c6.667 6 13.333 0 20 6" />
-  </svg>
+const IcoDna = () => (
+  <Svg size={14}>
+    <path d="M2 15c6.7-6 13.3 0 20-6" />
+    <path d="M2 9c6.7 6 13.3 0 20 6" />
+    <path d="M9 22c1.8-2 2.5-4 2.8-6" />
+    <path d="M15 2c-1.8 2-2.5 4-2.8 6" />
+  </Svg>
 );
 
-const IcoSparkles = ({ size = 14, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-    <path d="M5 3v4" />
-    <path d="M19 17v4" />
-  </svg>
+const IcoRoute = () => (
+  <Svg size={14}>
+    <circle cx="6" cy="19" r="3" />
+    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+    <circle cx="18" cy="5" r="3" />
+  </Svg>
 );
 
-const IcoClock = ({ size = 12, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="12 6 12 12 16 14" />
-  </svg>
-);
-
-const IcoCheck = ({ size = 13, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-const IcoTarget = ({ size = 12, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <circle cx="12" cy="12" r="10" />
-    <circle cx="12" cy="12" r="6" />
-    <circle cx="12" cy="12" r="2" fill="currentColor" />
-  </svg>
-);
-
-const IcoAlertTriangle = ({ size = 12, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
+const IcoGraph = () => (
+  <Svg size={14}>
+    <circle cx="5" cy="6" r="2.5" />
+    <circle cx="19" cy="6" r="2.5" />
+    <circle cx="12" cy="18" r="2.5" />
+    <line x1="7.2" y1="7.3" x2="10.5" y2="15.7" />
+    <line x1="16.8" y1="7.3" x2="13.5" y2="15.7" />
+    <line x1="7.5" y1="6" x2="16.5" y2="6" />
+  </Svg>
 );
 
 const IcoCalendar = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+  <Svg size={14}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
     <line x1="16" y1="2" x2="16" y2="6" />
     <line x1="8" y1="2" x2="8" y2="6" />
     <line x1="3" y1="10" x2="21" y2="10" />
-  </svg>
+  </Svg>
 );
 
 const IcoAlertBook = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 9v4" />
-    <path d="M12 17h.01" />
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-  </svg>
+  <Svg size={14}>
+    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </Svg>
 );
 
 const IcoSearch = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
-
-const IcoArrowRight = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <line x1="5" y1="12" x2="19" y2="12" />
-    <polyline points="12 5 19 12 12 19" />
-  </svg>
-);
-
-const IcoStudy = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-  </svg>
+  <Svg size={14}>
+    <circle cx="11" cy="11" r="7.5" />
+    <line x1="20.5" y1="20.5" x2="16.4" y2="16.4" />
+  </Svg>
 );
 
 const IcoCompass = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="10" />
-    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-  </svg>
+  <Svg size={14}>
+    <circle cx="12" cy="12" r="9.5" />
+    <polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8" />
+  </Svg>
 );
+
+const IcoCheck = () => (
+  <Svg size={13}>
+    <polyline points="20 6 9 17 4 12" />
+  </Svg>
+);
+
+const IcoSparkles = () => (
+  <Svg size={13}>
+    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+  </Svg>
+);
+
+const IcoArrowRight = () => (
+  <Svg size={14}>
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </Svg>
+);
+
+const renderSubIcon = (sub) => {
+  if (sub === 'ly') return <IcoBolt />;
+  if (sub === 'sinh') return <IcoDna />;
+  return <IcoFlask />;
+};
 
 export default function RoadmapPage() {
   const { user } = useAuth();
   const uid = user?.uid || null;
   const { subject: globalSubject, setSubject: setGlobalSubject } = useCurrentSubject();
 
-  const [levelKey, setLevelKey] = useState(readLevel);
-  const [subjectFilter, setSubjectFilter] = useState(globalSubject || 'all'); // 'all' | 'hoa' | 'ly' | 'sinh'
+  const [subjectKey, setSubjectKey] = useState(() => (
+    SUBJECT_META[globalSubject] ? globalSubject : 'hoa'
+  ));
+  const [gradeFilter, setGradeFilter] = useState(readGradeFilter); // 'all' | '10' | '11' | '12'
+  const [activeTab, setActiveTab] = useState('trail'); // 'trail' | 'dag' | 'timeline' | 'wrong' | 'study'
+  const [selectedChapterId, setSelectedChapterId] = useState(null);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
 
-  useEffect(() => {
-    if (globalSubject && globalSubject !== subjectFilter) {
-      setSubjectFilter(globalSubject);
-    }
-  }, [globalSubject, subjectFilter]);
-  const [activeTab, setActiveTab] = useState('subjects'); // 'subjects' | 'timeline' | 'wrong' | 'study'
   const [dedicatedLessonId, setDedicatedLessonId] = useState(null);
-  const [dedicatedSubject, setDedicatedSubject] = useState('ly');
+  const [dedicatedSubject, setDedicatedSubject] = useState('hoa');
   const [dedicatedPractice, setDedicatedPractice] = useState(false);
-  const [displayMode, setDisplayMode] = useState('cards'); // 'cards' | 'map'
+
+  const [showHubOverview, setShowHubOverview] = useState(false);
   const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'priority' | 'learning' | 'mastered'
   const [query, setQuery] = useState('');
   const [data, setData] = useState({
     remoteEvents: [], remoteAttempts: [], sessions: [], goal: null, issues: [],
     bank: null, loading: true, error: null,
   });
+  const [checkpoints, setCheckpoints] = useState(() => readStageCheckpoints(uid));
   const [now, setNow] = useState(() => Date.now());
   const [cardTick, setCardTick] = useState(0);
   const [aspTick, setAspTick] = useState(0);
@@ -244,24 +233,25 @@ export default function RoadmapPage() {
   const [tick, setTick] = useState(0);
   const [taggerOpen, setTaggerOpen] = useState(false);
   const [diagOpen, setDiagOpen] = useState(false);
+  const [checkpointStage, setCheckpointStage] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
-  const [expandedChapters, setExpandedChapters] = useState(() => new Set());
   const alive = useRef(true);
-
-  const toggleExpandLessons = useCallback((chId) => {
-    setExpandedChapters((prev) => {
-      const next = new Set(prev);
-      if (next.has(chId)) next.delete(chId);
-      else next.add(chId);
-      return next;
-    });
-  }, []);
 
   const canCurate = isAdmin(user) || getUserRole(user) === 'teacher';
 
+  useEffect(() => {
+    if (SUBJECT_META[globalSubject] && globalSubject !== subjectKey) {
+      setSubjectKey(globalSubject);
+    }
+  }, [globalSubject, subjectKey]);
+
   const load = useCallback((force = false) => {
+    setCheckpoints(readStageCheckpoints(uid));
     if (!uid) {
-      setData({ remoteEvents: [], remoteAttempts: [], sessions: [], goal: null, issues: [], bank: null, loading: false, error: null });
+      setData({
+        remoteEvents: [], remoteAttempts: [], sessions: [], goal: null,
+        issues: [], bank: null, loading: false, error: null,
+      });
       return;
     }
     setData((d) => ({ ...d, loading: true, error: null }));
@@ -300,41 +290,52 @@ export default function RoadmapPage() {
   useEffect(() => subscribeAspirationChanges(() => setAspTick((n) => n + 1)), []);
 
   useEffect(() => subscribeRoadmap(() => {
+    setCheckpoints(readStageCheckpoints(uid));
     if (!uid) return;
     const store = readStore(uid);
     setData((d) => ({ ...d, sessions: store.sessions, goal: store.goal }));
   }), [uid]);
 
-  /* Deep link #roadmap?chapter=... | ?tab=wrong | ?tab=study | ?lesson=... | ?mode=diagnostic */
+  const resolveLessonForChapter = useCallback((id) => {
+    const meta = getChapterMeta(id);
+    const dedId = meta?.dedicatedChapterId || id;
+    const hit = findLessonByChapterId(dedId) || findLessonByChapterId(id);
+    if (hit) return hit;
+    const fallbackSub = meta?.subject || subjectKey || 'hoa';
+    const firstOfSub = getCurriculumChapters(fallbackSub, 'all')[0];
+    return findLessonByChapterId(firstOfSub?.dedicatedChapterId || 'c10-atom');
+  }, [subjectKey]);
+
+  /* Deep link #roadmap?chapter=... | ?tab=wrong | ?tab=dag | ?lesson=... | ?mode=diagnostic */
   useEffect(() => {
     const apply = () => {
       const p = hashParams();
       const id = p.get('chapter');
       const lesson = p.get('lesson');
       const sub = p.get('subject');
-      const lv = p.get('level');
       const tabParam = p.get('tab');
       const modeParam = p.get('mode');
-      if (lv && LEVEL_KEYS.indexOf(lv) >= 0) setLevelKey(lv);
-      if (tabParam && ['subjects', 'timeline', 'wrong', 'study'].includes(tabParam)) {
+      if (sub && SUBJECT_META[sub]) setSubjectKey(sub);
+      if (tabParam && ['trail', 'dag', 'timeline', 'wrong', 'study'].includes(tabParam)) {
         setActiveTab(tabParam);
+      } else if (tabParam === 'subjects') {
+        setActiveTab('trail');
       }
       if (modeParam === 'diagnostic') {
+        setCheckpointStage(null);
         setDiagOpen(true);
       }
       if (lesson) {
         setDedicatedLessonId(lesson);
-        if (sub) setDedicatedSubject(sub);
+        if (sub && SUBJECT_META[sub]) setDedicatedSubject(sub);
         setActiveTab('study');
       } else if (id) {
-        const hitLesson = findLessonByChapterId(id);
+        const meta = getChapterMeta(id);
+        if (meta?.subject) setSubjectKey(meta.subject);
+        const hitLesson = resolveLessonForChapter(id);
         if (hitLesson) {
           setDedicatedLessonId(hitLesson.id);
           setDedicatedSubject(hitLesson.subjectKey);
-          setActiveTab('study');
-        } else {
-          setDedicatedLessonId('ly-chuyen-dong-nem');
-          setDedicatedSubject('ly');
           setActiveTab('study');
         }
       }
@@ -342,128 +343,47 @@ export default function RoadmapPage() {
     apply();
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
-  }, []);
+  }, [resolveLessonForChapter]);
 
-  const allHoaChapters = useMemo(() => {
-    return ROADMAP_LEVELS.filter((l) => l.grade > 0).flatMap((l) => l.chapters.map((c) => ({ ...c, subjectKey: 'hoa' })));
-  }, []);
+  /* Danh sách chuyên đề chuẩn DAG cho môn đang chọn */
+  const subjectChaptersAll = useMemo(() => (
+    getCurriculumChapters(subjectKey, 'all').map((n) => ({
+      id: n.id,
+      name: n.name,
+      desc: n.desc,
+      prereq: n.prereq,
+      bank: true,
+      grade: n.grade,
+      subjectKey: n.subject,
+    }))
+  ), [subjectKey]);
 
-  const lyChapters = useMemo(() => {
-    return (DEDICATED_LESSONS.ly || []).map((ch, idx) => {
-      let g = ch.grade;
-      if (!g) {
-        if (ch.chapterId.includes('donghoc') || ch.chapterId.includes('dongluc')) g = 10;
-        else if (ch.chapterId.includes('daodong') || ch.chapterId.includes('song') || ch.chapterId.includes('dientruong') || ch.chapterId.includes('tutruong')) g = 11;
-        else g = 12;
-      }
-      return {
-        id: ch.chapterId,
-        name: ch.chapterName,
-        desc: ch.lessons[0]?.desc || 'Kiến thức cốt lõi, công thức và phương pháp giải Vật lí.',
-        prereq: idx > 0 ? [DEDICATED_LESSONS.ly[idx - 1].chapterId] : [],
-        bank: true,
-        grade: g,
-        subjectKey: 'ly',
-      };
-    });
-  }, []);
+  const subjectCounts = useMemo(() => ({
+    hoa: CURRICULUM_NODES.filter((n) => n.subject === 'hoa').length,
+    ly: CURRICULUM_NODES.filter((n) => n.subject === 'ly').length,
+    sinh: CURRICULUM_NODES.filter((n) => n.subject === 'sinh').length,
+  }), []);
 
-  const sinhChapters = useMemo(() => {
-    return (DEDICATED_LESSONS.sinh || []).map((ch, idx) => {
-      let g = ch.grade;
-      if (!g) {
-        if (ch.chapterId.includes('tebao')) g = 10;
-        else g = 12;
-      }
-      return {
-        id: ch.chapterId,
-        name: ch.chapterName,
-        desc: ch.lessons[0]?.desc || 'Lý thuyết di truyền, sinh thái, tế bào và bài tập trắc nghiệm Sinh học.',
-        prereq: idx > 0 ? [DEDICATED_LESSONS.sinh[idx - 1].chapterId] : [],
-        bank: true,
-        grade: g,
-        subjectKey: 'sinh',
-      };
-    });
-  }, []);
+  const levelKey = gradeFilter === 'all' ? 'Trọn bộ THPT' : `Lớp ${gradeFilter}`;
+  const subjectMeta = SUBJECT_META[subjectKey] || SUBJECT_META.hoa;
 
-  const subjectCounts = useMemo(() => {
-    const filterByLevel = (list) => {
-      if (levelKey === 'all') return list.length;
-      if (levelKey === 'Lớp 10') return list.filter((c) => c.grade === 10 || c.id?.startsWith('c10-') || c.id?.includes('10')).length;
-      if (levelKey === 'Lớp 11') return list.filter((c) => c.grade === 11 || c.id?.startsWith('c11-') || c.id?.includes('11')).length;
-      if (levelKey === 'Lớp 12') return list.filter((c) => c.grade === 12 || c.id?.startsWith('c12-') || c.id?.includes('12')).length;
-      return list.length;
-    };
-    const hoa = filterByLevel(allHoaChapters);
-    const ly = filterByLevel(lyChapters);
-    const sinh = filterByLevel(sinhChapters);
-    return {
-      all: hoa + ly + sinh,
-      hoa,
-      ly,
-      sinh,
-    };
-  }, [levelKey, allHoaChapters, lyChapters, sinhChapters]);
+  const levelAll = useMemo(() => ({
+    key: levelKey,
+    grade: gradeFilter === 'all' ? 0 : Number(gradeFilter),
+    goal: `Lộ trình ${subjectMeta.name} chuẩn GDPT 2018 (${subjectMeta.structureLabel}).`,
+    chapters: subjectChaptersAll,
+  }), [levelKey, gradeFilter, subjectMeta, subjectChaptersAll]);
 
-  const activeLevelChapters = useMemo(() => {
-    let pool = [];
-    if (subjectFilter === 'hoa') {
-      pool = allHoaChapters;
-    } else if (subjectFilter === 'ly') {
-      pool = lyChapters;
-    } else if (subjectFilter === 'sinh') {
-      pool = sinhChapters;
-    } else {
-      pool = [...allHoaChapters, ...lyChapters, ...sinhChapters];
-    }
-
-    if (levelKey === 'all') {
-      return pool;
-    }
-    if (levelKey === 'Lớp 10') {
-      return pool.filter((c) => c.grade === 10 || c.id?.startsWith('c10-') || c.id?.includes('10'));
-    }
-    if (levelKey === 'Lớp 11') {
-      return pool.filter((c) => c.grade === 11 || c.id?.startsWith('c11-') || c.id?.includes('11'));
-    }
-    if (levelKey === 'Lớp 12') {
-      return pool.filter((c) => c.grade === 12 || c.id?.startsWith('c12-') || c.id?.includes('12'));
-    }
-    if (levelKey === 'Đại học') {
-      const hit = ROADMAP_LEVELS.find((l) => l.key === 'Đại học');
-      return hit ? hit.chapters : [];
-    }
-    return pool;
-  }, [subjectFilter, levelKey, allHoaChapters, lyChapters, sinhChapters]);
-
-  const level = useMemo(() => {
-    return {
-      key: levelKey,
-      grade: levelKey === 'all' ? 0 : (levelKey === 'Lớp 10' ? 10 : (levelKey === 'Lớp 11' ? 11 : 12)),
-      goal: levelKey === 'all'
-        ? 'Luyện thi THPT Quốc gia & ĐGNL: Toàn diện kiến thức Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học).'
-        : `Lộ trình chinh phục mục tiêu kiến thức ${levelKey}.`,
-      chapters: activeLevelChapters,
-    };
-  }, [levelKey, activeLevelChapters]);
-
-  const localEvents = useMemo(
-    () => sessionsToEvents(data.sessions),
-    [data.sessions],
-  );
+  const localEvents = useMemo(() => sessionsToEvents(data.sessions), [data.sessions]);
   const events = useMemo(
     () => data.remoteEvents.concat(localEvents).slice(-3000),
     [data.remoteEvents, localEvents],
   );
-  const summaries = useMemo(
-    () => summarizeEvents(events),
-    [events],
-  );
+  const summaries = useMemo(() => summarizeEvents(events), [events]);
 
   const view = useMemo(
-    () => buildChapterViews(level, summaries, now),
-    [level, summaries, now],
+    () => buildChapterViews(levelAll, summaries, now),
+    [levelAll, summaries, now],
   );
 
   const weekCount = useMemo(() => weekProgress(events, now), [events, now]);
@@ -472,7 +392,6 @@ export default function RoadmapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [uid, cardTick, now],
   );
-
   const due = useMemo(() => dueSummary(uid, events), [uid, events]);
   const dueTotal = due.total;
   const dueByTopic = due.byTopic;
@@ -480,6 +399,7 @@ export default function RoadmapPage() {
   const autoRoadmap = useMemo(
     () => buildAutoRoadmapData({
       uid,
+      subjectKey,
       overview: view.overview,
       chapters: view.chapters,
       events,
@@ -489,24 +409,48 @@ export default function RoadmapPage() {
       now,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uid, view, events, dueByTopic, dueTotal, cards.due, now, aspTick],
+    [uid, subjectKey, view, events, dueByTopic, dueTotal, cards.due, now, aspTick],
   );
-
-  const sheetView = sheetId ? view.chapters.find((c) => c.chapter.id === sheetId) : null;
 
   const filteredChapters = useMemo(() => {
     const q = norm(query).trim();
     return autoRoadmap.enrichedChapters.filter((c) => {
+      if (gradeFilter !== 'all' && Number(c.chapter.grade) !== Number(gradeFilter)) return false;
       if (groupFilter !== 'all' && c.groupKey !== groupFilter) return false;
       if (!q) return true;
       return norm(c.chapter.name).includes(q) || norm(c.chapter.desc).includes(q);
     });
-  }, [autoRoadmap.enrichedChapters, groupFilter, query]);
+  }, [autoRoadmap.enrichedChapters, gradeFilter, groupFilter, query]);
 
-  const pickLevel = (k) => {
-    if (k !== 'all' && LEVEL_KEYS.indexOf(k) < 0) return;
-    setLevelKey(k);
-    try { localStorage.setItem(LEVEL_KEY, k); } catch { /* */ }
+  /* Tự động chọn 1 chuyên đề hợp lệ cho Sticky Inspector */
+  useEffect(() => {
+    const exists = filteredChapters.some((c) => c.chapter.id === selectedChapterId);
+    if (!exists) {
+      const preferred = autoRoadmap.primaryAction?.chapterId;
+      const inFiltered = filteredChapters.find((c) => c.chapter.id === preferred);
+      setSelectedChapterId(inFiltered?.chapter?.id || filteredChapters[0]?.chapter?.id || null);
+    }
+  }, [filteredChapters, selectedChapterId, autoRoadmap.primaryAction]);
+
+  const selectedChapterView = useMemo(
+    () => autoRoadmap.enrichedChapters.find((c) => c.chapter.id === selectedChapterId)
+      || filteredChapters[0]
+      || null,
+    [autoRoadmap.enrichedChapters, filteredChapters, selectedChapterId],
+  );
+
+  const sheetView = sheetId ? view.chapters.find((c) => c.chapter.id === sheetId) : null;
+
+  const pickSubject = (nextSub) => {
+    if (!SUBJECT_META[nextSub]) return;
+    setSubjectKey(nextSub);
+    setGlobalSubject(nextSub);
+    setMobileInspectorOpen(false);
+  };
+
+  const pickGrade = (g) => {
+    setGradeFilter(g);
+    try { localStorage.setItem(GRADE_KEY, g); } catch { /* ignore */ }
   };
 
   const syncChapterHash = (id) => {
@@ -521,41 +465,54 @@ export default function RoadmapPage() {
 
   const openChapter = (id) => {
     if (!id) return;
-    const hitLesson = findLessonByChapterId(id);
+    const hitLesson = resolveLessonForChapter(id);
     if (hitLesson) {
       setDedicatedLessonId(hitLesson.id);
       setDedicatedSubject(hitLesson.subjectKey);
-    } else {
-      setDedicatedLessonId('ly-chuyen-dong-nem');
-      setDedicatedSubject('ly');
     }
     setDedicatedPractice(false);
+    setMobileInspectorOpen(false);
     setActiveTab('study');
     syncChapterHash(id);
+  };
+
+  const practiceChapter = (id, practiceMode = 'fresh') => {
+    if (!id) return;
+    const hitLesson = resolveLessonForChapter(id);
+    if (hitLesson) {
+      setDedicatedLessonId(hitLesson.id);
+      setDedicatedSubject(hitLesson.subjectKey);
+    }
+    setDedicatedPractice(practiceMode === 'fresh' || practiceMode === 'review');
+    setMobileInspectorOpen(false);
+    setActiveTab('study');
+    syncChapterHash(id);
+  };
+
+  const selectChapterFromUi = (id) => {
+    if (!id) return;
+    const meta = getChapterMeta(id);
+    if (meta?.subject && meta.subject !== subjectKey) {
+      setSubjectKey(meta.subject);
+      setGlobalSubject(meta.subject);
+    }
+    setSelectedChapterId(id);
+    if (typeof window !== 'undefined' && window.innerWidth <= 1080) {
+      setMobileInspectorOpen(true);
+    }
+  };
+
+  const openCasioStudio = () => {
+    window.location.hash = '#casio';
   };
 
   const closeSheet = () => {
     setSheetId(null);
     setSheetMode(null);
-    setActiveTab('subjects');
+    setActiveTab('trail');
     setDedicatedLessonId(null);
     setDedicatedPractice(false);
     syncChapterHash(null);
-  };
-
-  const practiceChapter = (id, practiceMode = 'fresh') => {
-    if (!id) return;
-    const hitLesson = findLessonByChapterId(id);
-    if (hitLesson) {
-      setDedicatedLessonId(hitLesson.id);
-      setDedicatedSubject(hitLesson.subjectKey);
-    } else {
-      setDedicatedLessonId('ly-chuyen-dong-nem');
-      setDedicatedSubject('ly');
-    }
-    setDedicatedPractice(practiceMode === 'fresh' || practiceMode === 'review');
-    setActiveTab('study');
-    syncChapterHash(id);
   };
 
   const reviewCards = () => {
@@ -570,21 +527,21 @@ export default function RoadmapPage() {
       return;
     }
     const ctx = buildAiContext({
-      levelKey, level, chapterViews: view.chapters, overview: view.overview,
+      levelKey, level: levelAll, chapterViews: view.chapters, overview: view.overview,
       extra: { weekCount, weekGoal: data.goal },
     });
     const asp = rmData?.activeAsp;
     const nv1Line = asp
-      ? `Nguyện vọng đang chọn: ${asp.school.code} - ${asp.school.name} · Ngành ${asp.major.name} (Tổ hợp ${asp.block}, Điểm mục tiêu: ${asp.targetScore}/${rmData.examScale}, Môn KHTN cần đạt: ${rmData.targetChem10}/10).`
-      : 'Chưa chọn trường Nguyện vọng cụ thể.';
+      ? `Nguyện vọng: ${asp.school.code} - ${asp.school.name} · Ngành ${asp.major.name} (Tổ hợp ${asp.block}, Mục tiêu môn ${subjectMeta.name}: ${rmData.targetSubject10}/10).`
+      : `Môn đang ôn: ${subjectMeta.name} (Chuẩn đề 2025–2026: ${subjectMeta.structureLabel}).`;
     askAI(
-      'Đóng vai gia sư Khoa học Tự nhiên ELEC AI (xưng "mình – bạn"), dựa trên hồ sơ nguyện vọng và dữ liệu học tập dưới đây, hãy tư vấn ngắn gọn 5 bước:\n'
-      + '1) Nhận xét khoảng cách điểm hiện tại so với mục tiêu Nguyện vọng.\n'
-      + '2) Chỉ ra 2 chuyên đề KHTN trọng tâm (Vật lí, Hóa học hoặc Sinh học) cần ưu tiên cày ngay tuần này để tăng điểm nhanh nhất.\n'
+      `Đóng vai gia sư ${subjectMeta.name} ELEC AI (xưng "mình – bạn"), dựa trên dữ liệu học tập dưới đây, hãy tư vấn 5 bước ngắn gọn:\n`
+      + '1) Nhận xét dự báo điểm 3 phần (Phần I · Phần II Đúng/Sai · Phần III Điền số).\n'
+      + '2) Chọn 2 chuyên đề trọng số cao nhất cần cày tuần này để tăng điểm nhanh nhất.\n'
       + '3) Lịch học gợi ý mỗi ngày (30–40 phút).\n'
-      + '4) Cách khắc phục các câu hay sai.\n'
+      + '4) Cách vá các lỗ hổng kiến thức gốc.\n'
       + '5) Động viên ngắn gọn.\n\n'
-      + `=== HỒ SƠ MỤC TIÊU ===\n${nv1Line}\n\n=== DỮ LIỆU CHUYÊN ĐỀ ===\n${ctx}`,
+      + `=== HỒ SƠ ===\n${nv1Line}\n\n=== DỮ LIỆU CHUYÊN ĐỀ ===\n${ctx}`,
       levelKey,
     );
   };
@@ -594,11 +551,11 @@ export default function RoadmapPage() {
     if (kind === 'explain' && qItem) {
       const rightOpt = qItem.options?.[qItem.correct] || '';
       askAI(
-        `Giải thích từng bước câu hỏi trắc nghiệm chuyên đề "${chapter.name}" (${levelKey}), xưng "mình – bạn":\n`
+        `Giải thích từng bước câu hỏi trắc nghiệm chuyên đề "${chapter.name}" (${subjectMeta.name}), xưng "mình – bạn":\n`
         + `Câu hỏi: ${qItem.q}\n`
         + `Các lựa chọn: ${(qItem.options || []).map((o, i) => `${String.fromCharCode(65 + i)}) ${o}`).join(' · ')}\n`
         + `Đáp án đúng: ${rightOpt}\n`
-        + 'Hãy giải thích từng bước vì sao đáp án đó đúng, vì sao các phương án còn lại sai, và nêu mẹo nhớ nhanh.',
+        + 'Hãy giải thích vì sao đáp án đó đúng, vì sao các phương án còn lại sai, và nêu mẹo nhớ nhanh.',
         levelKey,
       );
       return;
@@ -608,8 +565,8 @@ export default function RoadmapPage() {
       ? `Mình đã làm ${stat.summary.correct}/${stat.summary.answers} câu đúng ở chương này (thành thạo ${stat.mastery.score}%).`
       : 'Mình mới bắt đầu học chương này.';
     askAI(
-      `Tóm tắt kiến thức trọng tâm chương "${chapter.name}" (${levelKey}) trong 8 gạch đầu dòng dễ nhớ nhất, `
-      + 'nêu 3 bẫy trắc nghiệm học sinh hay sai và 3 câu hỏi vận dụng kèm lời giải từng bước. '
+      `Tóm tắt kiến thức trọng tâm chuyên đề "${chapter.name}" (${subjectMeta.name} · chuẩn GDPT 2018) trong 8 gạch đầu dòng sắc nét, `
+      + 'chỉ ra 3 bẫy hay gặp ở Phần II Đúng/Sai và 2 bài mẫu Phần III Trả lời ngắn kèm lời giải từng bước. '
       + line,
       levelKey,
     );
@@ -624,15 +581,18 @@ export default function RoadmapPage() {
     || autoRoadmap.primaryAction?.chapterId
     || view.chapters[0]?.chapter?.id;
 
+  const trackSet = useMemo(() => new Set(autoRoadmap.trackSubjects || []), [autoRoadmap.trackSubjects]);
+
+  /* Phòng học lý thuyết & luyện tập chuyên sâu */
   if (activeTab === 'study') {
     return (
       <div className="ns9-dedicated-study-container">
         <DedicatedLessonView
-          initialLessonId={dedicatedLessonId || 'ly-chuyen-dong-nem'}
-          initialSubject={dedicatedSubject || 'ly'}
+          initialLessonId={dedicatedLessonId || 'c10-atom-1'}
+          initialSubject={dedicatedSubject || subjectKey}
           initialPractice={dedicatedPractice}
           onBack={() => {
-            setActiveTab('subjects');
+            setActiveTab('trail');
             setDedicatedLessonId(null);
             setDedicatedPractice(false);
             syncChapterHash(null);
@@ -645,107 +605,26 @@ export default function RoadmapPage() {
   }
 
   return (
-    <div className="rm ns9-page">
-      {/* ── KHỐI 1: THANH CHUYỂN ĐỔI 4 CHẾ ĐỘ XEM LỘ TRÌNH (LUÔN HIỆN NGAY ĐẦU TRÊN MOBILE & DESKTOP) ── */}
-      <div className="ns9-nav-strip">
-        <div className="ns9-main-tabs" role="tablist" aria-label="Chế độ xem lộ trình">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'subjects'}
-            className={`ns9-tab-btn ${activeTab === 'subjects' ? 'on' : ''}`}
-            onClick={() => setActiveTab('subjects')}
-          >
-            <img src="/img/elec/elec-cool.png" alt="" className="ns9-tab-mascot" />
-            <span>Lộ trình theo chuyên đề</span>
-            <small className="ns9-tab-badge">{autoRoadmap.enrichedChapters.length}</small>
-          </button>
+    <div className="rm rm-pro-page">
+      {/* ── VÙNG 1: COMMAND DECK (BÀN ĐIỀU KHIỂN THỦ KHOA — 3-GIÂY HIỂU NGAY) ── */}
+      <RoadmapCommandDeck
+        autoRoadmap={autoRoadmap}
+        subjectMeta={subjectMeta}
+        masteredCount={autoRoadmap.masteredChapters.length}
+        totalCount={autoRoadmap.enrichedChapters.length}
+        dueTotal={dueTotal}
+        showHubOverview={showHubOverview}
+        onToggleHubOverview={() => setShowHubOverview((v) => !v)}
+        onStartMission={(chId, mode) => practiceChapter(chId, mode)}
+        onJumpDetour={(rootId) => selectChapterFromUi(rootId)}
+        onOpenDiagnostic={() => {
+          setCheckpointStage(null);
+          setDiagOpen(true);
+        }}
+      />
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'timeline'}
-            className={`ns9-tab-btn ${activeTab === 'timeline' ? 'on' : ''}`}
-            onClick={() => setActiveTab('timeline')}
-          >
-            <img src="/img/elec/elec-think.png" alt="" className="ns9-tab-mascot" />
-            <span>Kế hoạch từng tuần</span>
-            <small className="ns9-tab-badge">4 tuần</small>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'wrong'}
-            className={`ns9-tab-btn ${activeTab === 'wrong' ? 'on' : ''}`}
-            onClick={() => setActiveTab('wrong')}
-          >
-            <img src="/img/elec/elec-fighting.png" alt="" className="ns9-tab-mascot" />
-            <span>Sổ lỗi sai &amp; Ôn tập</span>
-            {dueTotal > 0 && <small className="ns9-tab-badge warn">{dueTotal}</small>}
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'study'}
-            className={`ns9-tab-btn ${activeTab === 'study' ? 'on' : ''}`}
-            onClick={() => {
-              setDedicatedLessonId('ly-chuyen-dong-nem');
-              setDedicatedSubject('ly');
-              setDedicatedPractice(false);
-              setActiveTab('study');
-            }}
-          >
-            <img src="/img/elec/elec-happy.png" alt="" className="ns9-tab-mascot" />
-            <span>Phòng học lý thuyết &amp; Công thức</span>
-            <small className="ns9-tab-badge">Chuyên sâu</small>
-          </button>
-        </div>
-
-        {activeTab === 'subjects' && (
-          <>
-            <div className="ns9-grade-picker" role="tablist" aria-label="Chọn khối lớp Khoa học Tự nhiên">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={levelKey === 'all'}
-                className={levelKey === 'all' ? 'on' : ''}
-                onClick={() => pickLevel('all')}
-              >
-                <IcoSparkles size={14} />
-                <span>Trọn bộ THPT (Tất cả)</span>
-              </button>
-              {LEVEL_KEYS.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="tab"
-                  aria-selected={k === levelKey}
-                  className={k === levelKey ? 'on' : ''}
-                  onClick={() => pickLevel(k)}
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              className="ns9-asp-guide-trigger"
-              onClick={() => setGuideOpen(true)}
-              style={{ marginLeft: 8 }}
-              title="Xem cẩm nang hướng dẫn ôn thi đúng cách"
-            >
-              <IcoCompass />
-              <span>Hướng dẫn ôn đúng cách</span>
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* ── KHỐI 2: BANNER NGUYỆN VỌNG & THẺ "LỘ TRÌNH CỦA EM" (TRONG TAB CHUYÊN ĐỀ) ── */}
-      {activeTab === 'subjects' && (
+      {/* Biểu đồ tiến bộ Điểm / Elo & Quản lý Nguyện vọng (Mở khi bấm nút "Biểu đồ & NV") */}
+      {showHubOverview && (
         <AspirationRoadmapHub
           uid={uid}
           overview={view.overview}
@@ -759,14 +638,16 @@ export default function RoadmapPage() {
           onReviewChapter={(id) => practiceChapter(id, 'review')}
           onReviewCards={reviewCards}
           onAiStrategy={aiStrategy}
-          onOpenDiagnostic={() => setDiagOpen(true)}
+          onOpenDiagnostic={() => {
+            setCheckpointStage(null);
+            setDiagOpen(true);
+          }}
           onTabSelect={(tab) => {
             if (tab === 'study') {
-              setDedicatedLessonId('ly-chuyen-dong-nem');
-              setDedicatedSubject('ly');
-              setDedicatedPractice(false);
+              openChapter(autoRoadmap.primaryAction?.chapterId || view.chapters[0]?.chapter?.id);
+              return;
             }
-            setActiveTab(tab);
+            setActiveTab(tab === 'subjects' ? 'trail' : tab);
           }}
         />
       )}
@@ -779,293 +660,210 @@ export default function RoadmapPage() {
         </div>
       )}
 
-      {/* ============================================================
-         TAB 1: LỘ TRÌNH THEO CHUYÊN ĐỀ (CHUẨN ELEC AI)
-         ============================================================ */}
-      {activeTab === 'subjects' && (
-        <section className="ns9-subjects-section" aria-label="Lộ trình theo chuyên đề Khoa học Tự nhiên">
-          {/* Thanh chuyển đổi phân môn Khoa học Tự nhiên (KHTN: Vật lí — Hóa học — Sinh học) */}
-          <div className="ns9-subject-tabs" role="tablist" aria-label="Chọn môn học Khoa học Tự nhiên">
-            {[
-              { id: 'all', label: 'Toàn bộ KHTN', icon: <IcoGlobe size={15} />, badge: `${subjectCounts.all} chuyên đề` },
-              { id: 'hoa', label: 'Hóa học', icon: <IcoFlask size={15} />, badge: `${subjectCounts.hoa} chuyên đề` },
-              { id: 'ly', label: 'Vật lí', icon: <IcoZap size={15} />, badge: `${subjectCounts.ly} chuyên đề` },
-              { id: 'sinh', label: 'Sinh học', icon: <IcoDna size={15} />, badge: `${subjectCounts.sinh} chuyên đề` },
-            ].map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={subjectFilter === s.id}
-                className={`ns9-subject-tab ${subjectFilter === s.id ? 'is-active' : ''}`}
-                onClick={() => {
-                  setSubjectFilter(s.id);
-                  setGlobalSubject(s.id);
-                }}
-              >
-                <span className="ns9-subtab-icon">{s.icon}</span>
-                <span className="ns9-subtab-label">{s.label}</span>
-                <span className="ns9-subtab-badge">{s.badge}</span>
-              </button>
-            ))}
+      {/* ── VÙNG 2: UNIFIED STUDIO TOOLBAR (1 THANH ĐIỀU KHIỂN DUY NHẤT) ── */}
+      <div className="rm-pro-toolbar" role="region" aria-label="Thanh điều khiển lộ trình">
+        <div className="rm-pro-tb-group">
+          <div className="rm-pro-sub-tabs" role="tablist" aria-label="Chọn môn Khoa học Tự nhiên">
+            {SUBJECT_ORDER.map((sub) => {
+              const meta = SUBJECT_META[sub];
+              const inTrack = autoRoadmap.activeAsp && trackSet.has(sub);
+              return (
+                <button
+                  key={sub}
+                  type="button"
+                  role="tab"
+                  aria-selected={subjectKey === sub}
+                  className={`rm-pro-sub-btn ${subjectKey === sub ? 'is-active' : ''}`}
+                  onClick={() => pickSubject(sub)}
+                >
+                  {renderSubIcon(sub)}
+                  <span>{meta.name}</span>
+                  {inTrack && (
+                    <span className="rm-pro-track-tag" title={`Môn thuộc tổ hợp ${autoRoadmap.activeAsp.block}`}>
+                      {autoRoadmap.activeAsp.block}
+                    </span>
+                  )}
+                  <span className="rm-pro-sub-cnt">{subjectCounts[sub]}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="ns9-filter-bar">
-            <div className="ns9-group-pills" role="group" aria-label="Lọc theo mức độ ưu tiên">
+          {(activeTab === 'trail' || activeTab === 'dag') && (
+            <div className="rm-pro-grade-pills" role="group" aria-label="Lọc khối lớp">
               {[
-                ['all', `Tất cả (${autoRoadmap.enrichedChapters.length})`],
-                ['priority', `Cần ưu tiên (${autoRoadmap.priorityChapters.length})`],
-                ['learning', `Đang luyện (${autoRoadmap.learningChapters.length})`],
-                ['mastered', `Đã vững (${autoRoadmap.masteredChapters.length})`],
-              ].map(([key, label]) => (
+                ['all', 'Cả 3 lớp'],
+                ['10', 'Lớp 10'],
+                ['11', 'Lớp 11'],
+                ['12', 'Lớp 12'],
+              ].map(([val, label]) => (
                 <button
-                  key={key}
+                  key={val}
                   type="button"
-                  className={groupFilter === key ? 'on' : ''}
-                  onClick={() => setGroupFilter(key)}
+                  className={`rm-pro-grade-btn ${gradeFilter === val ? 'is-active' : ''}`}
+                  onClick={() => pickGrade(val)}
                 >
                   {label}
                 </button>
               ))}
             </div>
+          )}
+        </div>
 
-            <div className="ns9-filter-right">
-              <div className="ns9-search-input">
+        <div className="rm-pro-tb-group">
+          <div className="rm-pro-mode-tabs" role="tablist" aria-label="Chế độ xem lộ trình">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'trail'}
+              className={`rm-pro-mode-btn ${activeTab === 'trail' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('trail')}
+            >
+              <IcoRoute />
+              <span>Lộ trình</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'dag'}
+              className={`rm-pro-mode-btn ${activeTab === 'dag' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('dag')}
+            >
+              <IcoGraph />
+              <span>Bản đồ DAG</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'timeline'}
+              className={`rm-pro-mode-btn ${activeTab === 'timeline' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('timeline')}
+            >
+              <IcoCalendar />
+              <span>4 tuần</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'wrong'}
+              className={`rm-pro-mode-btn ${activeTab === 'wrong' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('wrong')}
+            >
+              <IcoAlertBook />
+              <span>Sổ sai</span>
+              {dueTotal > 0 && <span className="rm-pro-mode-badge">{dueTotal}</span>}
+            </button>
+          </div>
+
+          {(activeTab === 'trail' || activeTab === 'dag') && (
+            <>
+              <div className="rm-pro-search-box">
                 <IcoSearch />
                 <input
                   ref={searchRef}
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Tìm chuyên đề (VD: Ester, Điện hóa, Kim loại...)"
-                  aria-label="Tìm chuyên đề Hóa học"
+                  placeholder={`Tìm chuyên đề ${subjectMeta.name}...`}
+                  aria-label={`Tìm chuyên đề ${subjectMeta.name}`}
                 />
               </div>
 
-              <div className="ns9-view-toggle" role="group" aria-label="Kiểu hiển thị">
-                <button
-                  type="button"
-                  className={displayMode === 'cards' ? 'on' : ''}
-                  onClick={() => setDisplayMode('cards')}
-                >
-                  Thẻ chương
-                </button>
-                <button
-                  type="button"
-                  className={displayMode === 'map' ? 'on' : ''}
-                  onClick={() => setDisplayMode('map')}
-                >
-                  Sơ đồ cây
-                </button>
-              </div>
-            </div>
+              <select
+                className="rm-pro-filter-select"
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                aria-label="Lọc theo trạng thái học"
+              >
+                <option value="all">Tất cả ({autoRoadmap.enrichedChapters.length})</option>
+                <option value="priority">Cần ưu tiên ({autoRoadmap.priorityChapters.length})</option>
+                <option value="learning">Đang luyện ({autoRoadmap.learningChapters.length})</option>
+                <option value="mastered">Đã vững ({autoRoadmap.masteredChapters.length})</option>
+              </select>
+            </>
+          )}
+
+          <button
+            type="button"
+            className="rm-pro-ghost-btn"
+            onClick={() => setGuideOpen(true)}
+            title="Cẩm nang phương pháp ôn thi 2025–2026"
+          >
+            <IcoCompass />
+            <span>Cẩm nang</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── VÙNG 3: WORKSPACE 2 CỘT (LỘ TRÌNH / DAG + STICKY INSPECTOR) ── */}
+      {(activeTab === 'trail' || activeTab === 'dag') && (
+        <div className="rm-pro-workspace">
+          <div className="rm-pro-canvas">
+            {activeTab === 'trail' ? (
+              <WindingRoadmapTrail
+                chapters={filteredChapters}
+                subjectKey={subjectKey}
+                selectedId={selectedChapterView?.chapter?.id || null}
+                checkpoints={checkpoints}
+                onSelectChapter={selectChapterFromUi}
+                onOpenChapter={openChapter}
+                onStartCheckpoint={(stageObj) => {
+                  setCheckpointStage(stageObj);
+                  setDiagOpen(true);
+                }}
+              />
+            ) : (
+              <KnowledgeMap
+                chapters={filteredChapters}
+                selectedId={selectedChapterView?.chapter?.id || null}
+                onSelect={selectChapterFromUi}
+                onOpen={openChapter}
+              />
+            )}
           </div>
 
-          {displayMode === 'map' ? (
-            <KnowledgeMap chapters={filteredChapters} onOpen={openChapter} onPractice={practiceChapter} />
-          ) : filteredChapters.length === 0 ? (
-            <div className="ns9-empty-state">
-              <b>Không tìm thấy chuyên đề phù hợp</b>
-              <p>Hãy thử chuyển bộ lọc về &ldquo;Tất cả&rdquo; hoặc xóa từ khóa tìm kiếm.</p>
-              <button
-                type="button"
-                className="ns9-btn-outline"
-                onClick={() => { setGroupFilter('all'); setQuery(''); }}
-              >
-                Xem tất cả chuyên đề
-              </button>
-            </div>
-          ) : (
-            <div className="ns9-chapter-grid">
-              {filteredChapters.map((c) => {
-                const subLessons = findLessonsByChapter(c.chapter.id);
-                const isExpanded = expandedChapters.has(c.chapter.id);
-                const isLy = c.chapter.subjectKey === 'ly';
-                const isSinh = c.chapter.subjectKey === 'sinh';
-                const subjectClass = isLy ? 'sub-ly' : (isSinh ? 'sub-sinh' : 'sub-hoa');
-
-                return (
-                  <article
-                    key={c.chapter.id}
-                    className={`ns9-chapter-card tone-${c.studentTone} ${subjectClass}`}
-                  >
-                    <div className="ns9-ch-top">
-                      <div className="ns9-ch-badges">
-                        <span className={`ns9-ch-subject-tag ${subjectClass}`}>
-                          {isLy ? <IcoZap size={12} /> : (isSinh ? <IcoDna size={12} /> : <IcoFlask size={12} />)}
-                          <span>{isLy ? 'Vật lí' : (isSinh ? 'Sinh học' : 'Hóa học')}</span>
-                        </span>
-                        <span className="ns9-ch-index">Chương {c.orderIndex}</span>
-                      </div>
-                      <span className="ns9-ch-exam-tag" title="Số lượng câu hỏi trong đề thi THPT Quốc gia">
-                        <IcoTarget size={12} />
-                        <span>{c.questionsInExam} · {c.weightLabel}</span>
-                      </span>
-                    </div>
-
-                    <h3 className="ns9-ch-title" onClick={() => openChapter(c.chapter.id)} title="Bấm để vào học chuyên sâu">
-                      {formatMathAndChemSymbols(c.chapter.name)}
-                    </h3>
-                    <p className="ns9-ch-desc">{formatMathAndChemSymbols(c.chapter.desc)}</p>
-
-                    {/* Lộ trình ôn tập logic 4 bước chuẩn GDPT 2018 (Zero-overflow Grid) */}
-                    <div className="ns9-ch-pipeline" aria-label="Lộ trình ôn tập logic 4 bước">
-                      <div className="ns9-pipe-header">
-                        <span className="ns9-pipe-label">
-                          <IcoZap size={12} />
-                          <span>Lộ trình ôn tập 4 bước</span>
-                        </span>
-                        <span className="ns9-pipe-subhint">Bấm bước để học</span>
-                      </div>
-                      <div className="ns9-pipe-grid">
-                        <button
-                          type="button"
-                          className="ns9-pipe-step"
-                          onClick={() => openChapter(c.chapter.id)}
-                          title="Bước 1: Lý thuyết & Sơ đồ tư duy (Infographics / Mindmap)"
-                        >
-                          <span className="ns9-pipe-num">1</span>
-                          <span className="ns9-pipe-txt">Lý thuyết</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="ns9-pipe-step"
-                          onClick={() => practiceChapter(c.chapter.id, 'fresh')}
-                          title="Bước 2: Luyện trắc nghiệm 3 cấp độ (Nhận biết – Thông hiểu – Vận dụng)"
-                        >
-                          <span className="ns9-pipe-num">2</span>
-                          <span className="ns9-pipe-txt">Luyện tập</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="ns9-pipe-step"
-                          onClick={() => openChapter(c.chapter.id)}
-                          title="Bước 3: Flashcards phản xạ công thức & Bẫy trắc nghiệm"
-                        >
-                          <span className="ns9-pipe-num">3</span>
-                          <span className="ns9-pipe-txt">Flashcard</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={`ns9-pipe-step ${c.wrongDue > 0 ? 'step-warning' : ''}`}
-                          onClick={() => practiceChapter(c.chapter.id, c.wrongDue > 0 ? 'review' : 'fresh')}
-                          title={c.wrongDue > 0 ? `Bước 4: Ôn tập ${c.wrongDue} câu hay làm sai` : 'Bước 4: Đề kiểm tra năng lực'}
-                        >
-                          <span className="ns9-pipe-num">{c.wrongDue > 0 ? <IcoAlertTriangle size={11} /> : '4'}</span>
-                          <span className="ns9-pipe-txt">{c.wrongDue > 0 ? `Ôn sai (${c.wrongDue})` : 'Kiểm tra'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Danh sách bài học con chi tiết theo chương (Layout 2 dòng, không cắt chữ) */}
-                    {subLessons.length > 0 && (
-                      <div className="ns9-ch-lessons-box">
-                        <div className="ns9-ch-lessons-header">
-                          <span className="ns9-ch-lessons-title">
-                            <IcoBookOpen size={13} />
-                            <span>Bài học chi tiết ({subLessons.length} bài)</span>
-                          </span>
-                          {subLessons.length > 2 && (
-                            <button
-                              type="button"
-                              className="ns9-ch-lessons-toggle"
-                              onClick={() => toggleExpandLessons(c.chapter.id)}
-                              aria-expanded={isExpanded}
-                            >
-                              {isExpanded ? 'Thu gọn ▴' : `Xem thêm (${subLessons.length}) ▾`}
-                            </button>
-                          )}
-                        </div>
-                        <div className="ns9-ch-lessons-list">
-                          {(isExpanded ? subLessons : subLessons.slice(0, 2)).map((les) => (
-                            <button
-                              key={les.id}
-                              type="button"
-                              className="ns9-ch-lesson-pill"
-                              onClick={() => {
-                                setDedicatedLessonId(les.id);
-                                if (les.subjectKey) setDedicatedSubject(les.subjectKey);
-                                setDedicatedPractice(false);
-                                setActiveTab('study');
-                                syncChapterHash(c.chapter.id);
-                              }}
-                              title={`Học bài: ${les.title}`}
-                            >
-                              <div className="ns9-les-row-top">
-                                <span className="ns9-les-idx">Bài {les.lessonIndex}</span>
-                                <span className="ns9-les-title">{formatMathAndChemSymbols(les.title)}</span>
-                              </div>
-                              <div className="ns9-les-row-sub">
-                                <span className="ns9-les-meta">
-                                  <IcoClock size={11} />
-                                  <span>{les.duration || '25p'} · {les.practiceCount || 8} câu</span>
-                                </span>
-                                {les.tag && <span className="ns9-les-tag">{les.tag}</span>}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Thanh tiến độ & Độ chính xác % (Chuẩn ELEC AI) */}
-                    <div className="ns9-ch-progress-block">
-                      <div className="ns9-ch-stats-row">
-                        <span>
-                          Tiến độ: <b>{c.completionPct}%</b> ({c.answers}/20 câu)
-                        </span>
-                        <span>
-                          Chính xác: <b className={`acc-${c.studentTone}`}>{c.answers > 0 ? `${c.accuracyPct}%` : '—'}</b>
-                        </span>
-                      </div>
-                      <div className="ns9-ch-bar-track" aria-hidden="true">
-                        <i style={{ width: `${Math.max(c.answers > 0 ? 8 : 0, c.completionPct)}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="ns9-ch-footer">
-                      <span className={`ns9-ch-status tone-${c.studentTone}`}>
-                        {c.studentStatus}
-                      </span>
-
-                      <div className="ns9-ch-btns">
-                        <button
-                          type="button"
-                          className="ns9-ch-btn-ghost"
-                          onClick={() => openChapter(c.chapter.id)}
-                          title="Xem lý thuyết, công thức & sơ đồ tư duy"
-                        >
-                          <IcoBookOpen size={13} />
-                          <span>Lý thuyết</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="ns9-ch-btn-primary"
-                          onClick={() => practiceChapter(c.chapter.id, c.wrongDue > 0 ? 'review' : 'fresh')}
-                        >
-                          <span>{c.wrongDue > 0 ? `Ôn ${c.wrongDue} câu sai` : 'Vào học'}</span>
-                          <IcoArrowRight />
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+          <ChapterInspectorPanel
+            chapterView={selectedChapterView}
+            onSelectChapter={(id) => {
+              const meta = getChapterMeta(id);
+              if (meta?.subject && meta.subject !== subjectKey) {
+                setSubjectKey(meta.subject);
+                setGlobalSubject(meta.subject);
+              }
+              if (gradeFilter !== 'all' && meta?.grade && Number(gradeFilter) !== meta.grade) {
+                setGradeFilter('all');
+              }
+              setSelectedChapterId(id);
+            }}
+            onOpenChapter={openChapter}
+            onPracticeChapter={practiceChapter}
+            onOpenLesson={(lesId, subKey, chId) => {
+              setDedicatedLessonId(lesId);
+              if (subKey) setDedicatedSubject(subKey);
+              setDedicatedPractice(false);
+              setMobileInspectorOpen(false);
+              setActiveTab('study');
+              if (chId) syncChapterHash(chId);
+            }}
+            onAiChapter={aiChapter}
+            onOpenCasio={openCasioStudio}
+            mobileOpen={mobileInspectorOpen}
+            onCloseMobile={() => setMobileInspectorOpen(false)}
+          />
+        </div>
       )}
 
-      {/* ============================================================
-         TAB 2: LỘ TRÌNH TỰ ĐỘNG (THÁNG → TUẦN → NGÀY)
-         ============================================================ */}
+      {/* ── TAB KẾ HOẠCH 4 TUẦN ── */}
       {activeTab === 'timeline' && (
         <section className="ns9-timeline-section" aria-label="Lộ trình tự động theo tuần và ngày">
           <div className="ns9-timeline-intro">
             <div>
-              <h3>Lộ trình 4 tuần chinh phục mục tiêu ({autoRoadmap.targetChem10}/10 điểm Hóa)</h3>
+              <h3>Lộ trình 4 tuần môn {subjectMeta.name} (Mục tiêu {autoRoadmap.targetSubject10}/10đ)</h3>
               <p>
-                Tự động phân bổ dựa trên quỹ thời gian <b>{autoRoadmap.schedule.weeklyFreeHours} giờ/tuần</b> và ưu tiên các chuyên đề xuất hiện nhiều nhất trong đề thi <b>{autoRoadmap.activeExam.name}</b>.
+                Tự động phân bổ dựa trên quỹ thời gian <b>{autoRoadmap.schedule.weeklyFreeHours} giờ/tuần</b> và ưu tiên các chuyên đề trọng số cao nhất trong đề <b>{autoRoadmap.activeExam.name}</b>.
               </p>
             </div>
             <span className={`ns9-pace-pill tone-${autoRoadmap.paceTone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -1116,7 +914,6 @@ export default function RoadmapPage() {
             ))}
           </div>
 
-          {/* Công cụ xuất lịch Google Calendar (.ics) / Markdown */}
           <StudyPlanCard
             chapters={view.chapters}
             dueByTopic={dueByTopic}
@@ -1127,16 +924,14 @@ export default function RoadmapPage() {
         </section>
       )}
 
-      {/* ============================================================
-         TAB 3: SỔ LỖI SAI & ÔN NGẮT QUÃNG (SRS)
-         ============================================================ */}
+      {/* ── TAB SỔ LỖI SAI & ÔN NGẮT QUÃNG ── */}
       {activeTab === 'wrong' && (
         <section className="ns9-wrong-section" aria-label="Sổ lỗi sai theo chương và thẻ ghi nhớ">
           <div className="ns9-wrong-hero">
             <div>
-              <h3>Sổ lỗi sai &amp; Ôn tập chống quên</h3>
+              <h3>Sổ lỗi sai &amp; Ôn tập chống quên ({subjectMeta.name})</h3>
               <p>
-                Hệ thống tự động gom toàn bộ các câu bạn làm sai theo từng chương Hóa học để bạn luyện lại đúng chỗ hổng kiến thức.
+                Hệ thống tự động gom các câu trả lời sai theo từng chuyên đề {subjectMeta.name} để bạn vá đúng lỗ hổng trước kỳ thi.
               </p>
             </div>
             <div className="ns9-wrong-hero-btns">
@@ -1149,22 +944,25 @@ export default function RoadmapPage() {
                 <IcoArrowRight />
               </button>
               {cards.due > 0 && (
-                <button
-                  type="button"
-                  className="ns9-btn-outline"
-                  onClick={reviewCards}
-                >
+                <button type="button" className="ns9-btn-outline" onClick={reviewCards}>
                   Lật {cards.due} thẻ Flashcard đến hạn
                 </button>
               )}
             </div>
           </div>
 
+          <SpacedRepetitionMilestones
+            dueTotal={dueTotal}
+            cardsDue={cards.due}
+            wrongCount={autoRoadmap.wrongByChapter.length}
+            onTriggerReview={() => practiceChapter(topWrongChapterId, dueTotal > 0 ? 'review' : 'fresh')}
+          />
+
           {autoRoadmap.wrongByChapter.length === 0 ? (
             <div className="ns9-empty-state">
-              <b>Hiện chưa có câu trả lời sai nào tồn đọng!</b>
+              <b>Hiện chưa có câu trả lời sai tồn đọng ở môn {subjectMeta.name}!</b>
               <p>
-                Khi bạn làm bài luyện tập ở từng chương, những câu trả lời sai sẽ tự động được lưu vào đây kèm giải thích chi tiết.
+                Khi bạn luyện tập ở từng chuyên đề, mọi câu sai sẽ tự động được lưu kèm lời giải chi tiết và lịch nhắc ôn chống quên.
               </p>
               <button
                 type="button"
@@ -1205,12 +1003,11 @@ export default function RoadmapPage() {
                 </div>
               ))}
 
-              {/* CHI TIẾT TỪNG CÂU HỎI ĐÃ LÀM SAI + LỜI GIẢI TỪNG BƯỚC & HỎI AI */}
               {autoRoadmap.wrongQuestionsList && autoRoadmap.wrongQuestionsList.length > 0 && (
                 <div className="ns9-wrong-questions-block">
                   <div className="ns9-wq-head">
-                    <h4>Chi tiết từng câu hỏi bạn đã trả lời sai ({autoRoadmap.wrongQuestionsList.length} câu)</h4>
-                    <span>Xem lại đáp án đúng, giải thích bản chất hoặc nhờ AI giảng lại từng bước</span>
+                    <h4>Chi tiết từng câu đã làm sai ({autoRoadmap.wrongQuestionsList.length} câu)</h4>
+                    <span>Xem lại đáp án đúng hoặc nhờ AI giảng từng bước</span>
                   </div>
 
                   <div className="ns9-wq-cards">
@@ -1228,12 +1025,12 @@ export default function RoadmapPage() {
                         {wq.correctAnswer && (
                           <div className="ns9-wq-ans-box">
                             <span className="ns9-wq-right" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <IcoCheck size={13} />
+                              <IcoCheck />
                               <span>Đáp án đúng: <b>{wq.correctAnswer}</b></span>
                             </span>
                             {wq.distractors.length > 0 && (
                               <small className="ns9-wq-distractors">
-                                Các phương án gây nhiễu: {wq.distractors.join(' · ')}
+                                Phương án nhiễu: {wq.distractors.join(' · ')}
                               </small>
                             )}
                           </div>
@@ -1256,7 +1053,7 @@ export default function RoadmapPage() {
                             )}
                           >
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <IcoSparkles size={13} />
+                              <IcoSparkles />
                               <span>Nhờ AI giảng từng bước</span>
                             </span>
                           </button>
@@ -1280,7 +1077,7 @@ export default function RoadmapPage() {
         </section>
       )}
 
-      {/* Nút quản trị ngân hàng câu hỏi chỉ hiển thị cho Giáo viên / Admin */}
+      {/* Công cụ Giáo viên / Admin */}
       {canCurate && data.bank && data.bank.untagged > 0 && (
         <div className="ns9-teacher-bar">
           <span>Công cụ Giáo viên: Còn {data.bank.untagged}/{data.bank.total} câu hỏi trên máy chủ chưa gắn mã chương.</span>
@@ -1330,9 +1127,15 @@ export default function RoadmapPage() {
         open={diagOpen}
         uid={uid}
         levelKey={levelKey}
+        subjectKey={subjectKey}
         chapters={view.chapters}
-        onClose={() => setDiagOpen(false)}
+        checkpointStage={checkpointStage}
+        onClose={() => {
+          setDiagOpen(false);
+          setCheckpointStage(null);
+        }}
         onCompleted={() => {
+          setCheckpoints(readStageCheckpoints(uid));
           setCardTick((n) => n + 1);
           setAspTick((n) => n + 1);
         }}

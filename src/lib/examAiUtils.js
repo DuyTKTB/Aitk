@@ -12,7 +12,7 @@
    ============================================================ */
 import { buildSubjectGuide, getSubject, SUBJECTS, GENERIC_SUBJECT } from './subjects.js';
 import { buildFileContext } from './fileReader.js';
-import { useCredit, refundCredit } from './creditService.js';
+import { useCredit, refundCredit, calcExamGenCreditCost, calcChatCreditCost } from './creditService.js';
 import { collectEnvKeys } from './aiRouter.js';
 
 /* ============ HẰNG SỐ ============ */
@@ -350,7 +350,7 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
     const cr = await useCredit(_creditUserId, imgCount, creditCost);
     if (!cr.ok) {
       try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
-      const needed = cr.needed || (creditCost ?? (1 + imgCount));
+      const needed = cr.needed || (creditCost ?? calcChatCreditCost({ imageCount: imgCount }));
       throw new Error(`Hết điểm! Còn ${cr.balance} điểm, cần ${needed}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
     }
     chargedCredit = cr.cost || 0;
@@ -948,11 +948,7 @@ const slim = (q) => {
 };
 
 export function calcExamCreditCost(questionCount) {
-  const n = Math.max(1, Number(questionCount) || 10);
-  if (n <= 10) return 5;
-  if (n <= 20) return 10;
-  if (n <= 40) return 20;
-  return 30;
+  return calcExamGenCreditCost(questionCount);
 }
 
 /* ============================================================

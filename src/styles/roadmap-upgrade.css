@@ -7018,3 +7018,950 @@ body[data-virtual-exam-active='1'] #main,
   align-items: center;
   gap: 4px;
 }
+
+/* ============================================================================
+   ELEC AI × ADAPTIVE LEARNING ROADMAP SHOWCASE (LẤY CẢM HỨNG TỪ THE IELTS DICTIONARY)
+   01 Lộ trình 4 chặng mốc điểm · 02 Hôm nay học gì 60/20/20 · 03 Bản đồ 136 Micro-skill · 04 SRS 1-3-7-14
+   ============================================================================ */
+
+.tid-adaptive-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.tid-section-card {
+  background: #ffffff;
+  border: 1.5px solid rgba(15, 23, 42, 0.11);
+  border-radius: 22px;
+  padding: 22px 24px;
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.07);
+}
+
+[data-theme='dark'] .tid-section-card {
+  background: rgba(18, 25, 43, 0.92);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 14px 36px -14px rgba(0, 0, 0, 0.55);
+}
+
+.tid-sec-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.tid-eyebrow-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+[data-theme='dark'] .tid-eyebrow-badge {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.tid-sec-header h3 {
+  margin: 0 0 6px;
+  font-size: 1.22rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+[data-theme='dark'] .tid-sec-header h3 {
+  color: #f8fafc;
+}
+
+.tid-sec-header p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #475569;
+  max-width: 720px;
+}
+
+[data-theme='dark'] .tid-sec-header p {
+  color: #94a3b8;
+}
+
+.tid-current-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1.5px solid rgba(37, 99, 235, 0.24);
+  font-size: 0.82rem;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .tid-current-stage-pill {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+
+/* ── 01. LƯỚI 4 CHẶNG MỐC ĐIỂM ── */
+.tid-stages-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tid-stage-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--st-tint, rgba(37, 99, 235, 0.06)) 0%, rgba(255, 255, 255, 0.96) 55%);
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.tid-stage-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--st-accent, #2563eb);
+  box-shadow: 0 12px 26px -10px rgba(15, 23, 42, 0.14);
+}
+
+.tid-stage-card.is-current {
+  border: 2px solid var(--st-accent, #2563eb);
+  box-shadow: 0 10px 24px -10px rgba(37, 99, 235, 0.26);
+}
+
+[data-theme='dark'] .tid-stage-card {
+  background: linear-gradient(180deg, var(--st-tint, rgba(37, 99, 235, 0.12)) 0%, rgba(15, 23, 42, 0.92) 60%);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme='dark'] .tid-stage-card.is-current {
+  border-color: var(--st-accent, #3b82f6);
+}
+
+.tid-st-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.tid-st-num {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: var(--st-accent, #2563eb);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tid-st-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  white-space: nowrap;
+}
+
+.tid-st-status.current {
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+
+.tid-st-status.passed {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+[data-theme='dark'] .tid-st-status {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.tid-st-score-band {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
+}
+
+.tid-st-score-band strong {
+  font-size: 1.24rem;
+  font-weight: 850;
+  color: var(--st-accent, #2563eb);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.tid-st-score-band small {
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.tid-st-title {
+  margin: 0 0 6px;
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+[data-theme='dark'] .tid-st-title {
+  color: #f1f5f9;
+}
+
+.tid-st-desc {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  line-height: 1.48;
+  color: #475569;
+  flex: 1;
+}
+
+[data-theme='dark'] .tid-st-desc {
+  color: #94a3b8;
+}
+
+.tid-st-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.tid-st-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 9px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: var(--st-accent, #2563eb);
+}
+
+/* ── 02. HÔM NAY HỌC GÌ — THANH 60 / 20 / 20 ADAPTIVE MIX ── */
+.tid-mix-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mix-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.mix-pill.weak {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.mix-pill.review {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.mix-pill.stretch {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.tid-mix-bar {
+  display: flex;
+  height: 30px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1.5px solid rgba(15, 23, 42, 0.1);
+}
+
+.tid-mix-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tid-mix-seg.weak {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.tid-mix-seg.review {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.tid-mix-seg.stretch {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.tid-daily-tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tid-task-box {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(148, 163, 184, 0.24);
+  background: #f8fafc;
+}
+
+[data-theme='dark'] .tid-task-box {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.tid-task-box.weak {
+  border-color: rgba(239, 68, 68, 0.32);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.7) 0%, #ffffff 100%);
+}
+
+[data-theme='dark'] .tid-task-box.weak {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+}
+
+.tid-tb-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tid-tb-ratio {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.tid-tb-status {
+  font-size: 0.71rem;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tid-tb-status.bad {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+.tid-tb-status.ok {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.tid-tb-status.stretch {
+  background: rgba(37, 99, 235, 0.14);
+  color: #2563eb;
+}
+
+.tid-task-box h4 {
+  margin: 0 0 6px;
+  font-size: 0.96rem;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+[data-theme='dark'] .tid-task-box h4 {
+  color: #f1f5f9;
+}
+
+.tid-task-box p {
+  margin: 0 0 14px;
+  font-size: 0.81rem;
+  line-height: 1.5;
+  color: #475569;
+  flex: 1;
+}
+
+[data-theme='dark'] .tid-task-box p {
+  color: #94a3b8;
+}
+
+.tid-tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.tid-tb-btn.primary {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.tid-tb-btn:hover {
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .tid-tb-btn:not(.primary) {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #f8fafc;
+}
+
+/* ── 03. BẢN ĐỒ 136 MICRO-SKILL KHTN ── */
+.tid-skill-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tid-skill-filter-pills button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: transparent;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tid-skill-filter-pills button.on {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .tid-skill-filter-pills button {
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .tid-skill-filter-pills button.on {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.tid-micro-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tid-micro-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
+  background: #f8fafc;
+}
+
+[data-theme='dark'] .tid-micro-card {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.tid-mc-watermark {
+  position: absolute;
+  top: 6px;
+  right: 14px;
+  font-size: 3.4rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mc-accent, #2563eb);
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.tid-mc-head {
+  margin-bottom: 12px;
+}
+
+.tid-mc-count-tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--mc-accent, #2563eb);
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.tid-mc-head h4 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+[data-theme='dark'] .tid-mc-head h4 {
+  color: #f8fafc;
+}
+
+.tid-mc-head small {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.tid-mc-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tid-skill-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 0.79rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+
+.tid-skill-chip:hover {
+  transform: translateX(2px);
+  border-color: var(--mc-accent, #2563eb);
+}
+
+[data-theme='dark'] .tid-skill-chip {
+  background: rgba(15, 23, 42, 0.78);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.tid-sk-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.tid-skill-chip.st-mastered .tid-sk-ico,
+.tid-skill-chip.st-mastered .tid-sk-tag {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.tid-skill-chip.st-weak .tid-sk-ico,
+.tid-skill-chip.st-weak .tid-sk-tag {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+.tid-skill-chip.st-learning .tid-sk-ico,
+.tid-skill-chip.st-learning .tid-sk-tag {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.tid-sk-lbl {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tid-sk-tag {
+  font-size: 0.67rem;
+  font-weight: 750;
+  padding: 2px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* ── 04. SPACED REPETITION 1 - 3 - 7 - 14 NGÀY ── */
+.tid-srs-strip {
+  background: #ffffff;
+  border: 1.5px solid rgba(15, 23, 42, 0.11);
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+[data-theme='dark'] .tid-srs-strip {
+  background: rgba(18, 25, 43, 0.9);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.tid-srs-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.tid-srs-head h4 {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.tid-srs-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.tid-srs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tid-srs-card {
+  padding: 14px;
+  border-radius: 15px;
+  background: var(--srs-bg, rgba(37, 99, 235, 0.08));
+  border: 1.5px solid rgba(148, 163, 184, 0.22);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.tid-srs-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--srs-accent, #2563eb);
+}
+
+.tid-srs-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tid-srs-stage {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--srs-accent, #2563eb);
+  color: #ffffff;
+}
+
+.tid-srs-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--srs-accent, #2563eb);
+}
+
+.tid-srs-day {
+  display: block;
+  font-size: 1.02rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: #0f172a;
+}
+
+[data-theme='dark'] .tid-srs-day {
+  color: #f8fafc;
+}
+
+.tid-srs-desc {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+[data-theme='dark'] .tid-srs-desc {
+  color: #94a3b8;
+}
+
+/* ── MODAL CHI TIẾT CHẶNG LỘ TRÌNH ── */
+.tid-stage-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.tid-stage-modal {
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  background: #ffffff;
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 24px 60px -15px rgba(15, 23, 42, 0.35);
+}
+
+[data-theme='dark'] .tid-stage-modal {
+  background: #131c31;
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #f8fafc;
+}
+
+.tid-sm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 22px;
+  background: var(--st-accent, #2563eb);
+  color: #ffffff;
+}
+
+.tid-sm-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tid-sm-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.26);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.tid-sm-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.tid-sm-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tid-sm-body {
+  padding: 20px 22px;
+}
+
+.tid-sm-body h3 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.tid-sm-lead {
+  margin: 0 0 16px;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+[data-theme='dark'] .tid-sm-lead {
+  color: #94a3b8;
+}
+
+.tid-sm-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.tid-sm-col {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.tid-sm-col.before {
+  background: rgba(254, 242, 242, 0.6);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.tid-sm-col.after {
+  background: rgba(236, 253, 245, 0.65);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+[data-theme='dark'] .tid-sm-col.before {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+[data-theme='dark'] .tid-sm-col.after {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.tid-sm-col-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.tid-sm-col.before .tid-sm-col-tag {
+  color: #dc2626;
+}
+
+.tid-sm-col.after .tid-sm-col-tag {
+  color: #059669;
+}
+
+.tid-sm-col ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.81rem;
+  line-height: 1.52;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tid-sm-strategy-box {
+  padding: 12px 15px;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  margin-bottom: 14px;
+  font-size: 0.83rem;
+}
+
+.tid-sm-strategy-box p {
+  margin: 4px 0 0;
+}
+
+.tid-sm-topic-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tid-sm-topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.07);
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .tid-sm-topic-chip {
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd;
+}
+
+.tid-sm-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+@media (max-width: 1024px) {
+  .tid-stages-grid,
+  .tid-srs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tid-daily-tasks-grid,
+  .tid-micro-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .tid-section-card {
+    padding: 16px 14px;
+    border-radius: 18px;
+  }
+  .tid-stages-grid,
+  .tid-srs-grid,
+  .tid-sm-compare-grid {
+    grid-template-columns: 1fr;
+  }
+  .tid-sm-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

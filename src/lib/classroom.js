@@ -15,7 +15,13 @@ import {
 import { scoreExam, scoreQuestion, isAnswered, qType } from './examScoring.js';
 import { stripUndefined } from './examSubmit.js';
 import { serverNow } from './serverClock.js';
-import { db } from './firebase.js';
+import {
+  stripAnswerKeys,
+  extractAnswerKey,
+  mergeAnswerKeyIntoQuestions,
+  hasEmbeddedAnswers,
+} from './examSecurity.js';
+import { auth, db } from './firebase.js';
 
 /* ============ HELPERS ============ */
 /* Mã ngẫu nhiên an toàn (crypto), bỏ ký tự dễ nhầm: 0/O, 1/I */
@@ -555,6 +561,10 @@ export async function createExam({
   const effectiveIsDraft = !cleanClassId ? true : Boolean(isDraft);
   const totalPoints = Math.round((questions || []).reduce((s, q) => s + (Number(q.points) || 1), 0) * 100) / 100;
 
+  const rawQuestions = questions || [];
+  const publicQuestions = stripAnswerKeys(rawQuestions);
+  const privateAnswerKey = extractAnswerKey(rawQuestions);
+
   const data = {
     token: generateExamToken(),
     teacherId,
@@ -566,7 +576,8 @@ export async function createExam({
     title: title || 'Đề kiểm tra',
     description: description || '',
     duration: Number(duration) || 15,
-    questions: questions || [],
+    questions: publicQuestions,
+    secureAnswerKey: true,
     totalPoints,
     showAnswerAfter: showAnswerAfter ?? true,
     allowRetry: allowRetry ?? false,
@@ -594,8 +605,15 @@ export async function createExam({
 
   try {
     const newDocRef = doc(collection(db, 'exams'));
-    const examData = { id: newDocRef.id, ...data };
+    const examData = { id: newDocRef.id, ...data, questions: rawQuestions };
     await setDoc(newDocRef, cleanData);
+    await setDoc(
+      doc(db, 'exams', newDocRef.id, 'private', 'answerKey'),
+      stripUndefined({
+        questionsKey: privateAnswerKey,
+        updatedAt: serverTimestamp(),
+      }),
+    );
     upsertLocalTeacherItem('exams', teacherId, { ...examData, createdAt: Date.now() });
     return examData;
   } catch (e) {
@@ -637,18 +655,54 @@ export function defaultProctor() {
   };
 }
 
-/* ❗ MỚI: GV sửa đề đã tạo (thông tin + câu hỏi + cấu hình giám sát camera...) */
+/* ❗ MỚI: GV sửa đề đã tạo (thông tin + câu hỏi + cấu hình giám sát camera...)
+   Tự tách đáp án vào `exams/{examId}/private/answerKey` để học sinh không bao giờ thấy đáp án. */
 export async function updateTeacherExam(examId, patch) {
   if (!examId) throw new Error('Thiếu examId.');
   try {
+    const nextPatch = { ...(patch || {}) };
+    let privateKey = null;
+    if (Array.isArray(nextPatch.questions)) {
+      privateKey = extractAnswerKey(nextPatch.questions);
+      nextPatch.questions = stripAnswerKeys(nextPatch.questions);
+      nextPatch.secureAnswerKey = true;
+    }
+
     await updateDoc(doc(db, 'exams', examId), stripUndefined({
-      ...patch,
+      ...nextPatch,
       updatedAt: serverTimestamp(),
     }));
+
+    if (privateKey) {
+      await setDoc(
+        doc(db, 'exams', examId, 'private', 'answerKey'),
+        stripUndefined({
+          questionsKey: privateKey,
+          updatedAt: serverTimestamp(),
+        }),
+      );
+    }
     return true;
   } catch (e) {
     console.error('[updateTeacherExam] Lỗi:', e.code, e.message);
     throw new Error(friendlyFirestoreError(e, 'lưu đề'));
+  }
+}
+
+/** Gộp đáp án bí mật cho giáo viên (khi sửa/xem/nhân bản/chấm lại). Học sinh gọi sẽ bị rules chặn và nhận nguyên bản không đáp án. */
+export async function hydrateExamAnswerKey(exam) {
+  if (!exam?.id || !exam.secureAnswerKey) return exam;
+  try {
+    const snap = await getDoc(doc(db, 'exams', exam.id, 'private', 'answerKey'));
+    if (!snap.exists()) return exam;
+    const keyEntries = snap.data()?.questionsKey;
+    if (!Array.isArray(keyEntries) || keyEntries.length === 0) return exam;
+    return {
+      ...exam,
+      questions: mergeAnswerKeyIntoQuestions(exam.questions || [], keyEntries),
+    };
+  } catch {
+    return exam;
   }
 }
 
@@ -657,7 +711,8 @@ export async function getExamsByTeacher(teacherId) {
   try {
     const q = query(collection(db, 'exams'), where('teacherId', '==', teacherId));
     const snap = await getDocs(q);
-    const cloudList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const rawCloud = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const cloudList = await Promise.all(rawCloud.map((ex) => hydrateExamAnswerKey(ex)));
     const localList = readLocalTeacherList('exams', teacherId);
     const map = new Map(cloudList.map((e) => [e.id, e]));
     localList.forEach((e) => { if (e?.id && !map.has(e.id)) map.set(e.id, e); });
@@ -747,6 +802,7 @@ export async function deleteExam(examId) {
     await kill(query(collection(db, 'examRetryPermits'), where('examId', '==', examId)));
     await kill(query(collection(db, 'examSessions'), where('examId', '==', examId)));
     await kill(collection(db, 'exams', examId, 'attempts'));
+    await kill(collection(db, 'exams', examId, 'private'));
     await Promise.race([
       deleteDoc(doc(db, 'exams', examId)),
       new Promise((resolve) => setTimeout(resolve, 2000)),
@@ -760,7 +816,7 @@ export async function deleteExam(examId) {
 /* ============================================================
    ATTEMPTS
    ============================================================ */
-export async function startAttempt({ examId, student, forceNew = false, lockToken = null }) {
+export async function startAttempt({ examId, student, forceNew = false, lockToken = null, retryPermitId = null }) {
   if (!examId || !student?.id) throw new Error('Thiếu thông tin attempt');
   const attemptId = `${examId}_${student.id}`;
   const ref = doc(db, 'exams', examId, 'attempts', attemptId);
@@ -813,6 +869,7 @@ export async function startAttempt({ examId, student, forceNew = false, lockToke
       startedAt: now,
       activeLockToken: lockToken || null,
       lockUpdatedAt: now,
+      ...(retryPermitId ? { retryPermitId } : {}),
       answers: {},
       submittedAt: null,
       timeSpent: 0,
@@ -915,11 +972,90 @@ export function submitExam(args) {
   return p;
 }
 
+/** Chấm bài luyện tập qua server khi đề đã tách đáp án bí mật (`secureAnswerKey: true`) */
+export async function gradePracticeExam({ examId, answers }) {
+  if (!examId) return { ok: false, error: 'Thiếu mã đề.' };
+  const idToken = await auth?.currentUser?.getIdToken?.().catch(() => '');
+  if (!idToken) return { ok: false, error: 'Vui lòng đăng nhập lại.' };
+  const resp = await fetch('/api/submit-exam', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ examId, answers, mode: 'practice' }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data?.ok) {
+    return { ok: false, error: data?.error || 'Không chấm được bài luyện tập trên máy chủ.' };
+  }
+  return data;
+}
+
 async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMeta = {} }) {
   if (!examId || !student?.id) {
     return { ok: false, error: 'Thiếu thông tin nộp bài.' };
   }
 
+  // ── LUỒNG CHÍNH MỨC 2: CHẤM ĐIỂM & XÁC THỰC 100% TRÊN SERVER (/api/submit-exam) ──
+  let serverUnavailableFallback = false;
+  try {
+    const idToken = await auth?.currentUser?.getIdToken?.().catch(() => '');
+    if (idToken && typeof fetch === 'function') {
+      const resp = await fetch('/api/submit-exam', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          examId,
+          student: { id: student.id, name: student.name || student.email || 'Học sinh' },
+          answers,
+          timeSpent: timeSpent || 0,
+          attemptMeta,
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.ok) {
+        return data;
+      }
+      // Lỗi nghiệp vụ thật từ server (400/401/403/404): KHÔNG cho client bypass
+      if (resp.status >= 400 && resp.status < 500) {
+        return {
+          ok: false,
+          error: data?.error || 'Không được phép nộp bài.',
+          saveError: data?.error || 'Không được phép nộp bài.',
+        };
+      }
+      // 503 admin_not_configured (môi trường local dev không có service account): chỉ fallback cho đề cũ chưa tách đáp án
+      if (resp.status === 503 && data?.code === 'admin_not_configured') {
+        serverUnavailableFallback = true;
+      } else {
+        return {
+          ok: false,
+          error: data?.error || 'Lỗi máy chủ khi chấm bài. Đang thử lại...',
+          saveError: data?.error || 'Lỗi máy chủ khi chấm bài.',
+        };
+      }
+    } else {
+      serverUnavailableFallback = true;
+    }
+  } catch (netErr) {
+    // Mất mạng / offline → trả lỗi mạng để submitQueue đưa vào hàng đợi tự nộp khi có mạng lại
+    const msg = netErr?.message || 'Failed to fetch (offline / network error)';
+    return {
+      ok: false,
+      error: msg,
+      saveError: msg,
+    };
+  }
+
+  if (!serverUnavailableFallback) {
+    return { ok: false, error: 'Không thể xác thực bài nộp trên máy chủ.' };
+  }
+
+  // ── FALLBACK TƯƠNG THÍCH NGƯỢC (CHỈ KHI LOCAL DEV CHƯA CÓ ADMIN KEY VÀ ĐỀ CŨ CÓ ĐÁP ÁN NHÚNG) ──
   let exam;
   try {
     exam = await getExamById(examId);
@@ -928,8 +1064,15 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
   }
 
   if (!exam) return { ok: false, error: 'Đề không tồn tại.' };
+  if (exam.secureAnswerKey || !hasEmbeddedAnswers(exam.questions)) {
+    return {
+      ok: false,
+      error: 'Đề thi được bảo vệ ở chế độ chống gian lận Mức 2 (cần máy chủ chấm thi /api/submit-exam).',
+      saveError: 'Chưa kết nối được máy chủ chấm thi.',
+    };
+  }
 
-  const now = Date.now();
+  const now = serverNow();
   const opensMs = tsMs(exam.opensAt);
   const closesMs = tsMs(exam.closesAt);
   if (opensMs && now < opensMs) {
@@ -1554,8 +1697,9 @@ export async function setExamVisibility(examId, visibility) {
 
 /** Nhân bản đề (sang lớp khác nếu truyền classId). Token mới, không chép bài nộp. */
 export async function duplicateExam(examId, { classId = null, titleSuffix = ' (bản sao)' } = {}) {
-  const src = await getExamById(examId);
-  if (!src) throw new Error('Đề gốc không tồn tại');
+  const rawSrc = await getExamById(examId);
+  if (!rawSrc) throw new Error('Đề gốc không tồn tại');
+  const src = await hydrateExamAnswerKey(rawSrc);
   return createExam({
     teacherId: src.teacherId,
     teacherName: src.teacherName,
@@ -1600,8 +1744,9 @@ export function gradeAnswers(questions, answers = {}) {
  * Trả về { ok, changed, total, avg }
  */
 export async function regradeExam(examId, changes = {}) {
-  const exam = await getExamById(examId);
-  if (!exam) throw new Error('Đề không tồn tại');
+  const rawExam = await getExamById(examId);
+  if (!rawExam) throw new Error('Đề không tồn tại');
+  const exam = await hydrateExamAnswerKey(rawExam);
 
   const questions = (exam.questions || []).map((q, i) => {
     const c = changes[i];
@@ -1642,9 +1787,19 @@ export async function regradeExam(examId, changes = {}) {
   }
 
   await updateDoc(doc(db, 'exams', examId), stripUndefined({
-    questions, totalPoints, regradedAt: serverTimestamp(),
+    questions: stripAnswerKeys(questions),
+    secureAnswerKey: true,
+    totalPoints,
+    regradedAt: serverTimestamp(),
     stats: { submitted: subs.length, avg: subs.length ? +(sum / subs.length).toFixed(2) : 0 },
   }));
+  await setDoc(
+    doc(db, 'exams', examId, 'private', 'answerKey'),
+    stripUndefined({
+      questionsKey: extractAnswerKey(questions),
+      updatedAt: serverTimestamp(),
+    }),
+  );
   return { ok: true, changed, total: subs.length, avg: subs.length ? sum / subs.length : 0 };
 }
 

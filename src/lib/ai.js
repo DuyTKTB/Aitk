@@ -71,7 +71,7 @@ const SAFETY_LEVEL = ENV.VITE_AI_SAFETY || 'educational';
 const CACHE_ENABLED = ENV.VITE_AI_CACHE !== '0';
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const CACHE_MAX = 60;
-const CACHE_STORE = 'cs-ai-cache-v1';
+const CACHE_STORE = 'cs-ai-cache-v4';
 const responseCache = new Map(); // key → { text, model, timestamp }
 
 (function loadCache() {
@@ -545,8 +545,11 @@ async function streamOpenAICompat({
   let reader;
   const arm = (ms) => { clearTimeout(stall); stall = setTimeout(() => ctrl.abort(), ms); };
 
-  const body = { model, messages, stream: true, temperature, max_tokens: maxTokens, top_p: 0.9 };
   const reasoningParam = reasoningParamFor(model, reasoningEffort);
+  // Với các model reasoning OpenAI-compat (gpt-oss-120b, qwen3.8-27b), max_tokens bao gồm cả token suy luận!
+  // Nếu max_tokens quá thấp (<=4096), model sẽ dùng hết token cho reasoning rồi trả content rỗng.
+  const effectiveMaxTokens = reasoningParam ? Math.max(maxTokens || 4096, 12288) : maxTokens;
+  const body = { model, messages, stream: true, temperature, max_tokens: effectiveMaxTokens, top_p: 0.9 };
   if (reasoningParam) Object.assign(body, reasoningParam);
 
   try {
@@ -566,10 +569,12 @@ async function streamOpenAICompat({
       console.warn(`[ELEC AI] ✗ ${providerId}/${model} → ${status}`, bodyText.slice(0, 200));
       if (status === 429 || status === 503 || status === 500) trackRequest(providerId, true);
 
-      if (status === 429) {
+      // Kiểm tra hết quota của model/tài khoản TRƯỚC isAuth (vd Agnes trả 403 "Insufficient user quota" cho bản Pro nhưng Flash vẫn 200 OK!)
+      if (status === 429 || (status === 403 && /insufficient.*quota|remaining.*0\.0+|quota/i.test(bodyText))) {
         const err = new OutOfQuotaError(MSG_RATE_LIMIT);
         err.rawBody = bodyText;
-        err.perKey = /rate.?limit|tokens per|quota/i.test(bodyText);
+        err.perModel = status === 403;
+        err.perKey = status === 429 && /rate.?limit|tokens per|quota/i.test(bodyText);
         throw err;
       }
       if (status === 503 || status === 502 || status === 504 || status === 500) {
@@ -594,6 +599,7 @@ async function streamOpenAICompat({
     reader = res.body.getReader();
     const dec = new TextDecoder('utf-8');
     let buf = '';
+    let rawContent = '';
     let text = '';
     let reasoning = '';
 
@@ -627,9 +633,27 @@ async function streamOpenAICompat({
         if (!chunk) continue;
         if (!claim()) return null;
 
-        text += chunk;
+        rawContent += chunk;
+        // Nếu model nhúng <think>...</think> trực tiếp trong content → tách sang reasoning để không làm bẩn câu trả lời
+        if (rawContent.includes('<think>')) {
+          const closeIdx = rawContent.indexOf('</think>');
+          if (closeIdx === -1) {
+            const inner = rawContent.replace(/^[\s\S]*?<think>/, '');
+            if (inner && onReasoning) {
+              arm(STREAM_IDLE_MS);
+              onReasoning(normalizeChemistryText(reasoning + inner));
+            }
+            continue;
+          }
+          const inner = rawContent.slice(rawContent.indexOf('<think>') + 7, closeIdx);
+          const visible = rawContent.slice(closeIdx + 8).trimStart();
+          if (inner && onReasoning) onReasoning(normalizeChemistryText(reasoning + inner));
+          text = visible;
+        } else {
+          text = rawContent;
+        }
         arm(STREAM_IDLE_MS);
-        onChunk(normalizeChemistryText(text));
+        if (text) onChunk(normalizeChemistryText(text));
       }
     }
 
@@ -690,12 +714,25 @@ export function buildRequestPlan(history, opts = {}) {
   const { recent, olderSummary } = compressHistory(historyArr, { keep });
   const memoryBlock = buildMemoryBlock({ profile, olderSummary });
 
+  const isDeepThink = Boolean(opts.deepThink);
+  if (isDeepThink && task) {
+    task.hard = true;
+    if (task.kind === 'chat') task.kind = 'problem';
+    task.thinkingBudget = Math.max(task.thinkingBudget || 0, 10240);
+    task.reasoningEffort = 'high';
+    task.maxTokens = Math.max(task.maxTokens || 0, 8192);
+    task.temperature = 0.15;
+  }
+
   const systemPrompt = customSystemPrompt
     ? [customSystemPrompt, memoryBlock].filter(Boolean).join('\n\n')
     : buildSystemPrompt({
       mode: opts.mode || 'auto',
-      grade: opts.grade || profile?.grade || '',
-      hard: task.hard,
+      grade: opts.grade ?? '',
+      hard: task.hard || isDeepThink,
+      subject: opts.subject || 'all',
+      deepThink: isDeepThink,
+      query: contextText,
       knowledge,
       toolResults: toolBlock,
       hasImage: task.kind === 'vision',
@@ -818,8 +855,8 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
     }
   }
 
-  /* ---- Cache tức thời (không tốn request) ---- */
-  if (CACHE_ENABLED && !hasImg && options.noCache !== true) {
+  /* ---- Cache tức thời (bỏ qua cache khi bật DeepThink để luôn suy luận sâu mới nhất) ---- */
+  if (CACHE_ENABLED && !hasImg && !options.deepThink && options.noCache !== true) {
     const cached = getCached(plan.recentHistory, systemPrompt, task.kind);
     if (cached) {
       console.log(`[ELEC AI] ✓ Cache hit (${cached.model})`);
@@ -901,7 +938,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
       }
       triedServerProxy = true;
       const proxyCandidates = [
-        { provider: 'gemini', model: GEMINI_TEXT_MODELS[0] || 'gemini-2.5-flash', isGemini: true },
+        { provider: 'gemini', model: GEMINI_TEXT_MODELS[0] || 'gemini-3-flash-preview', isGemini: true },
         { provider: 'groq', model: GROQ_STRONG_MODELS[0] || 'openai/gpt-oss-120b', isGemini: false },
         { provider: 'agnes', model: AGNES_MODELS[0] || 'agnes-3.0-flash', isGemini: false },
       ];
@@ -1130,6 +1167,12 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
           if (err?.isQuota) {
             const retryAfter = parseRetryAfterMs(err.rawBody || err.message);
             const tries = keyTries.get(id) || 0;
+            // Nếu là lỗi hết hạn mức theo từng model (vd Pro quota = 0 nhưng Flash vẫn chạy) → chỉ cooldown model đó, KHÔNG giết cả provider!
+            if (err.perModel) {
+              markModelExhausted(id, model, retryAfter || 60 * 60 * 1000);
+              if (winner === null) { lastError = err; setTimeout(launchNext, 80); }
+              return;
+            }
             // Nếu provider này vẫn còn key khác chưa bị cooldown → xoay ngay sang key kế tiếp
             if (ring.size > 1 && tries < ring.size && ring.hasUsable()) {
               ring.reportBad(key, retryAfter || 5 * 60 * 1000, 'hết quota');
@@ -1144,7 +1187,8 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
             }
             if (/quota|exceeded|exhaust/i.test(err.rawBody || '') || !err.isRateLimit) {
               markModelExhausted(id, model, retryAfter || 60 * 60 * 1000);
-              dropProviderModels();
+              // Chỉ drop toàn bộ provider nếu KHÔNG phải lỗi quota riêng theo từng model Gemini
+              if (id !== 'gemini') dropProviderModels();
             }
             if (winner === null) { lastError = err; setTimeout(launchNext, 120); }
             return;
@@ -1270,7 +1314,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
       }
     }
 
-    if (options.deepVerify) {
+    if (options.deepVerify && (task.kind === 'problem' || task.kind === 'vision')) {
       try {
         const chain = buildProviderChain({ task, rings: RINGS });
         const verdict = await runVerifierPass({

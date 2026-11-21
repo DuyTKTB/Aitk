@@ -15,7 +15,8 @@ const ELEC_MOOD_FILES = {
   'super-saiyan': '/img/elec/elec-super-saiyan.png',
 };
 
-export const ELEC_BRAND_LOGOMARK_SRC = '/img/logo.png';
+export const ELEC_BRAND_LOGOMARK_SRC = '/img/elec-emblem.png';
+export const ELEC_BRAND_FULL_LOGO_SRC = '/img/logo.png';
 
 /**
  * Signature ELEC AI Logomark (/img/logo.png) framed in a crisp circular white
@@ -99,11 +100,10 @@ export function ElecFlaskBrandSvg({
         draggable={false}
         onError={() => setImgErr(true)}
         style={{
-          width: '90%',
-          height: '90%',
+          width: '92%',
+          height: '92%',
           objectFit: 'contain',
           display: 'block',
-          transform: 'translateY(1.5%)',
           userSelect: 'none',
           pointerEvents: 'none',
         }}

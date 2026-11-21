@@ -2852,14 +2852,13 @@
 .ns9-uh-chips-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding-bottom: 2px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  scrollbar-width: none;
 }
 .ns9-uh-chips-bar::-webkit-scrollbar {
   display: none;
@@ -3076,7 +3075,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
 }
 
 .ns9-uh-unsel-badge {
@@ -3087,10 +3087,11 @@
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.1);
   color: #2563eb;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 [data-theme='dark'] .ns9-uh-unsel-badge {
@@ -3099,9 +3100,10 @@
 }
 
 .ns9-uh-unsel-tag {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--mut);
+  white-space: nowrap;
 }
 
 .ns9-uh-unsel-title {
@@ -4050,9 +4052,28 @@
   }
 }
 
+@media (max-width: 480px) {
+  .ns9-uh-ai-badge {
+    display: none !important;
+  }
+  .ns9-uh-greeting {
+    font-size: 1.18rem !important;
+    white-space: nowrap;
+  }
+  .ns9-uh-unsel-title {
+    font-size: 1.18rem !important;
+    text-wrap: balance;
+  }
+  .ns9-uh-choose-btn {
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    padding: 10px 16px !important;
+  }
+}
+
 @media (max-width: 400px) {
   .ns9-uh-greeting {
-    font-size: 1.15rem !important;
+    font-size: 1.12rem !important;
   }
   .ns9-uh-pill-name {
     max-width: 125px !important;

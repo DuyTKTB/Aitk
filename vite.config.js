@@ -154,6 +154,41 @@ function devEmailOtpApiPlugin() {
           res.end(JSON.stringify({ ok: false, error: err?.message || 'Lỗi server dev AI Chat' }));
         }
       });
+      server.middlewares.use('/api/submit-exam', async (req, res, next) => {
+        if (req.method !== 'POST' && req.method !== 'OPTIONS') return next();
+        try {
+          loadServerEnv();
+          const chunks = [];
+          for await (const chunk of req) chunks.push(chunk);
+          req.body = Buffer.concat(chunks).toString('utf8');
+
+          let statusCode = 200;
+          const wrappedRes = {
+            setHeader(k, v) {
+              res.setHeader(k, v);
+              return wrappedRes;
+            },
+            status(code) {
+              statusCode = code;
+              return wrappedRes;
+            },
+            json(payload) {
+              res.statusCode = statusCode;
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(payload));
+              return wrappedRes;
+            },
+          };
+
+          const apiFileUrl = `${pathToFileURL(path.resolve(process.cwd(), 'api/submit-exam.js')).href}?t=${Date.now()}`;
+          const mod = await import(/* @vite-ignore */ apiFileUrl);
+          return await mod.default(req, wrappedRes);
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ ok: false, error: err?.message || 'Lỗi server dev chấm thi' }));
+        }
+      });
     },
   };
 }
@@ -182,7 +217,7 @@ export default defineConfig({
   },
   server: {
     watch: {
-      ignored: ['**/báo cáo/**', '**/*.docx', '**/*.pdf'],
+      ignored: ['**/báo cáo/**', '**/Tài liệu Sinh học Elec AI/**', '**/*.docx', '**/*.doc', '**/*.pdf', '**/*.rar', '**/*.zip'],
     },
   },
   build: {

@@ -23,6 +23,55 @@ const MAX_SESSIONS = 300;
 const EVT = 'cs-roadmap';
 
 const keyOf = (uid) => `cs-roadmap-v${VERSION}:${uid || 'guest'}`;
+const checkpointKeyOf = (uid) => `cs-roadmap-checkpoints-v1:${uid || 'guest'}`;
+
+export function readStageCheckpoints(uid) {
+  try {
+    const raw = localStorage.getItem(checkpointKeyOf(uid));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStageCheckpoint(uid, { stageId, subjectKey, scorePct, passed, chapterIds = [] } = {}) {
+  if (!stageId) return null;
+  const cur = readStageCheckpoints(uid);
+  const rec = {
+    stageId,
+    subjectKey: subjectKey || 'hoa',
+    scorePct: Math.round(Number(scorePct) || 0),
+    passed: Boolean(passed),
+    at: Date.now(),
+    chapterIds: Array.isArray(chapterIds) ? chapterIds : [],
+  };
+  const next = { ...cur, [stageId]: rec };
+  try {
+    localStorage.setItem(checkpointKeyOf(uid), JSON.stringify(next));
+  } catch { /* ignore quota */ }
+
+  // Nếu vượt Checkpoint >= 85%, ghi bằng chứng kiểm chứng cho các chương trong chặng
+  if (rec.passed && uid && rec.chapterIds.length > 0) {
+    rec.chapterIds.forEach((cid) => {
+      saveSession(uid, {
+        topicId: cid,
+        total: 6,
+        correct: 6,
+        durationMs: 45000,
+        source: 'checkpoint',
+        answers: Array.from({ length: 6 }, (_, i) => ({
+          qid: `cp-${stageId}-${cid}-${i + 1}`,
+          ok: true,
+        })),
+      });
+    });
+  } else {
+    try { window.dispatchEvent(new Event(EVT)); } catch { /* SSR/test */ }
+  }
+  return rec;
+}
 
 const empty = () => ({ version: VERSION, sessions: [], goal: null });
 

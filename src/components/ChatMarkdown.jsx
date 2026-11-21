@@ -11,12 +11,57 @@ import ChatChalkboardBlock from './ChatChalkboardBlock.jsx';
    ============================================================ */
 
 /**
- * Render một dòng phương trình hóa học hoặc công thức khoa học
+ * Render một dòng phương trình hóa học hoặc công thức khoa học + nút chép 1 chạm
  */
 function EquationBlock({ line }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    try {
+      navigator.clipboard.writeText(String(line || '').trim());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch { /* ignore */ }
+  };
   return (
-    <div className="ds-eq-card">
+    <div className="ds-eq-card elec-copyable-block">
       <MathText text={line} />
+      <button
+        type="button"
+        className={`elec-block-copy-btn ${copied ? 'is-copied' : ''}`}
+        onClick={handleCopy}
+        title="Sao chép phương trình / công thức"
+        aria-label="Sao chép phương trình"
+      >
+        {copied ? 'Đã chép' : 'Chép'}
+      </button>
+    </div>
+  );
+}
+
+function CodeBlockWithCopy({ code, lang }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    try {
+      navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch { /* ignore */ }
+  };
+  return (
+    <div className="elec-code-wrap elec-copyable-block">
+      <div className="elec-code-bar">
+        <span>{lang || 'CODE'}</span>
+        <button
+          type="button"
+          className={`elec-block-copy-btn ${copied ? 'is-copied' : ''}`}
+          onClick={handleCopy}
+        >
+          {copied ? 'Đã chép' : 'Sao chép'}
+        </button>
+      </div>
+      <pre className="ds-code-block" data-lang={lang}>
+        <code>{code}</code>
+      </pre>
     </div>
   );
 }
@@ -40,6 +85,7 @@ function renderInline(text) {
   const inlineMathRegex = /\$(?:\\\$|[^$\n])+\$/;
   const parenMathRegex = /\\\([\s\S]+?\\\)/;
   const linkRegex = /\[([^\]]+)\]\((#[^)]+|https?:\/\/[^)]+)\)/;
+  const citeRegex = /\[(Trang\s*\d+|Tài\s*liệu:[^\]]+)\]/i;
   const boldRegex = /\*\*(.+?)\*\*/;
   const italicRegex = /\*(.+?)\*/;
   const codeRegex = /`(.+?)`/;
@@ -49,6 +95,7 @@ function renderInline(text) {
     const inlineMatch = rest.match(inlineMathRegex);
     const parenMatch = rest.match(parenMathRegex);
     const linkMatch = rest.match(linkRegex);
+    const citeMatch = rest.match(citeRegex);
     const boldMatch = rest.match(boldRegex);
     const italicMatch = rest.match(italicRegex);
     const codeMatch = rest.match(codeRegex);
@@ -71,6 +118,10 @@ function renderInline(text) {
     if (linkMatch && (!earliest || linkMatch.index < earliest.index)) {
       earliest = linkMatch;
       type = 'link';
+    }
+    if (citeMatch && (!earliest || citeMatch.index < earliest.index)) {
+      earliest = citeMatch;
+      type = 'cite';
     }
     if (boldMatch && (!earliest || boldMatch.index < earliest.index)) {
       earliest = boldMatch;
@@ -99,6 +150,12 @@ function renderInline(text) {
 
     if (type === 'math') {
       parts.push(<MathText key={key++} as="span">{fullMatched}</MathText>);
+    } else if (type === 'cite') {
+      parts.push(
+        <span key={key++} className="elec-cite-tag" title="Trích dẫn từ tài liệu đính kèm">
+          {innerContent}
+        </span>
+      );
     } else if (type === 'link') {
       const label = earliest[1];
       const url = earliest[2];
@@ -223,9 +280,7 @@ export const MarkdownLike = memo(function MarkdownLike({ text }) {
       }
 
       elements.push(
-        <pre key={key++} className="ds-code-block" data-lang={lang}>
-          <code>{codeLines.join('\n')}</code>
-        </pre>
+        <CodeBlockWithCopy key={key++} code={codeLines.join('\n')} lang={lang} />
       );
       continue;
     }
@@ -273,19 +328,34 @@ export const MarkdownLike = memo(function MarkdownLike({ text }) {
       flushList();
       const quoteContent = trimmed.replace(/^>\s*/, '');
 
-      // Nếu là Mẹo nhớ hoặc Ghi chú trọng tâm (Pro Tip Card)
-      if (/(💡|mẹo|tip|ghi\s*chú|lưu\s*ý)/i.test(quoteContent)) {
+      // Nếu là Bẫy đề thi / Cảnh báo sai lầm
+      if (/(⚠️|bẫy\s*(?:đề|thường|kinh\s*điển)|cảnh\s*báo\s*sai|tránh\s*nhầm)/i.test(quoteContent)) {
+        const cleanTrap = quoteContent
+          .replace(/^[⚠️🚨\s*]*(?:BẪY\s*(?:ĐỀ\s*THI|THƯỜNG\s*GẶP|KINH\s*ĐIỂN)|CẢNH\s*BÁO\s*BẪY|LƯU\s*Ý\s*BẪY)[:\s*\-]*/i, '')
+          .replace(/^\*+\s*/, '');
         elements.push(
-          <div key={key++} className="ds-pro-tip-box">
-            <div className="ds-pro-tip-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
-                <path d="M9 18h6" />
-                <path d="M10 22h4" />
-              </svg>
+          <div key={key++} className="elec-callout-card is-trap">
+            <img src="/img/elec/elec-plead.png" alt="" aria-hidden="true" className="elec-callout-mascot" width="36" height="36" />
+            <div className="elec-callout-body">
+              <span className="elec-callout-badge">BẪY ĐỀ THI CẦN TRÁNH</span>
+              <div className="elec-callout-text">{renderInline(cleanTrap || quoteContent)}</div>
             </div>
-            <div className="ds-pro-tip-content">
-              {renderInline(quoteContent.replace(/^[💡\s*]*(?:BÉ\s*ELEC\s*MẸO\s*NHỚ|MẸO\s*NHỚ|MẸO|TIP|LƯU\s*Ý)[:\s\-]*/i, ''))}
+          </div>
+        );
+        continue;
+      }
+
+      // Nếu là Mẹo nhớ hoặc Ghi chú trọng tâm (ELEC Mascot Pro Tip Card)
+      if (/(💡|bé\s*elec\s*mẹo|mẹo\s*nhớ|mẹo|tip|ghi\s*chú|lưu\s*ý)/i.test(quoteContent)) {
+        const cleanTip = quoteContent
+          .replace(/^[💡✨\s*]*(?:BÉ\s*ELEC\s*MẸO\s*NHỚ|MẸO\s*NHỚ|MẸO|TIP|GHI\s*CHÚ|LƯU\s*Ý)[:\s*\-]*/i, '')
+          .replace(/^\*+\s*/, '');
+        elements.push(
+          <div key={key++} className="elec-callout-card is-tip">
+            <img src="/img/elec/elec-wink.png" alt="" aria-hidden="true" className="elec-callout-mascot" width="36" height="36" />
+            <div className="elec-callout-body">
+              <span className="elec-callout-badge">BÉ ELEC MẸO NHỚ</span>
+              <div className="elec-callout-text">{renderInline(cleanTip || quoteContent)}</div>
             </div>
           </div>
         );
@@ -294,7 +364,66 @@ export const MarkdownLike = memo(function MarkdownLike({ text }) {
 
       elements.push(
         <div key={key++} className="ds-callout-box">
-          {renderInline(quoteContent)}
+          {renderInline(quoteContent.replace(/^[📺💡]\s*/, ''))}
+        </div>
+      );
+      continue;
+    }
+
+    // Nhận diện tiêu đề / dòng độc lập "### 💡 BÉ ELEC MẸO NHỚ:" hoặc "💡 **BÉ ELEC MẸO NHỚ:**"
+    if (/^[#*\s💡✨🔥📌👉•\-]*(?:BÉ\s*ELEC\s*MẸO\s*NHỚ|MẸO\s*NHỚ\s*NHANH|MẸO\s*GIẢI\s*NHANH|BẪY\s*ĐỀ\s*THI\s*CẦN\s*TRÁNH)(?=$|[\s:*\-—–])/i.test(trimmed)) {
+      flushList();
+      const isTrap = /BẪY\s*ĐỀ\s*THI/i.test(trimmed);
+      const restOfLine = trimmed
+        .replace(/^[#*\s💡✨🔥📌👉•\-]*(?:BÉ\s*ELEC\s*MẸO\s*NHỚ|MẸO\s*NHỚ\s*NHANH|MẸO\s*GIẢI\s*NHANH|BẪY\s*ĐỀ\s*THI\s*CẦN\s*TRÁNH)[\s:*\-—–]*/i, '')
+        .replace(/^\*+\s*/, '')
+        .replace(/\*+$/, '')
+        .trim();
+
+      // Gom các dòng danh sách ngay sau tiêu đề Mẹo nhớ vào cùng 1 thẻ đẹp (bỏ qua tối đa 1 dòng trống giữa tiêu đề và list)
+      const tipItems = [];
+      let blankSkipped = false;
+      while (i + 1 < lines.length) {
+        const peek = lines[i + 1].trim();
+        if (!peek) {
+          if (!blankSkipped && i + 2 < lines.length && /^(?:\d+\.\s+|[-*•]\s+)/.test(lines[i + 2].trim())) {
+            i++;
+            blankSkipped = true;
+            continue;
+          }
+          break;
+        }
+        const itemMatch = peek.match(/^(?:\d+\.\s+|[-*•]\s+)(.+)$/);
+        if (itemMatch) {
+          i++;
+          blankSkipped = false;
+          tipItems.push(itemMatch[1]);
+        } else {
+          break;
+        }
+      }
+
+      elements.push(
+        <div key={key++} className={`elec-callout-card ${isTrap ? 'is-trap' : 'is-tip'}`}>
+          <img
+            src={isTrap ? '/img/elec/elec-plead.png' : '/img/elec/elec-wink.png'}
+            alt=""
+            aria-hidden="true"
+            className="elec-callout-mascot"
+            width="38"
+            height="38"
+          />
+          <div className="elec-callout-body">
+            <span className="elec-callout-badge">{isTrap ? 'BẪY ĐỀ THI CẦN TRÁNH' : 'BÉ ELEC MẸO NHỚ'}</span>
+            {restOfLine && <div className="elec-callout-text">{renderInline(restOfLine)}</div>}
+            {tipItems.length > 0 && (
+              <ul className="elec-callout-list">
+                {tipItems.map((it, tIdx) => (
+                  <li key={tIdx}>{renderInline(it)}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       );
       continue;

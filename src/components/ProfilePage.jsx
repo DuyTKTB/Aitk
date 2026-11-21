@@ -6,6 +6,8 @@ import VerifiedBadge from './VerifiedBadge.jsx';
 import Glyph, { pwStrength, STRENGTH_LABELS } from './AuthKit.jsx';
 import ProfileStats from './ProfileStats.jsx';
 import ProfileAchievements from './ProfileAchievements.jsx';
+import ActivityHeatmap365 from './ActivityHeatmap365.jsx';
+import StudentAbilityHub from './StudentAbilityHub.jsx';
 import TeacherProPanel from './TeacherProPanel.jsx';
 import PaymentPanel from './PaymentPanel.jsx';
 import CreditTopUp from './CreditTopUp.jsx';
@@ -1259,6 +1261,18 @@ export default function ProfilePage({ credits: propCredits }) {
             </form>
           </article>
 
+          {/* Thẻ 5 (Full-span): Hồ sơ Năng lực 6 trục + Thẻ Học Bá (.png) + Bản đồ nhiệt 26 tuần */}
+          <div className="s9-hm365-fullspan">
+            <StudentAbilityHub
+              uid={uid || 'guest'}
+              displayName={user?.displayName || name || 'Học sinh ELEC AI'}
+              streakDays={currentStreak}
+            />
+          </div>
+          <div className="s9-hm365-fullspan">
+            <ActivityHeatmap365 uid={uid || 'guest'} streakDays={currentStreak} />
+          </div>
+
           </div>
       )}
 
@@ -1288,8 +1302,14 @@ export default function ProfilePage({ credits: propCredits }) {
          ============================================================ */}
       {tab === 'achievements' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <StudentAbilityHub
+            uid={uid || 'guest'}
+            displayName={user?.displayName || name || 'Học sinh ELEC AI'}
+            streakDays={currentStreak}
+          />
           <ProfileAchievements />
           <ProfileStats />
+          <ActivityHeatmap365 uid={uid || 'guest'} streakDays={currentStreak} />
         </div>
       )}
 

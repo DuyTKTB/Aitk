@@ -7,7 +7,7 @@
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { askAI } from '../lib/ai.js';
-import { runWithCredit } from '../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../lib/creditService.js';
 import { useLocalStorage } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
@@ -95,7 +95,7 @@ async function extractText(file, onProgress) {
 }
 
 /* Gọi AI — chịu được cả chunk dạng "tích lũy" lẫn "delta" + trừ Credit */
-async function callAI(prompt, system, onText, userId = null, cost = 1, reason = 'AI Studio Tài liệu') {
+async function callAI(prompt, system, onText, userId = null, cost = CREDIT_TARIFF.ERROR_ANALYSIS, reason = 'AI Studio Tài liệu') {
   return runWithCredit({ userId, cost, reason }, async () => {
     let raw = '';
     const msg = { role: 'user', parts: [{ text: prompt }], text: prompt };

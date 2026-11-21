@@ -1,0 +1,276 @@
+/* ============================================================
+   nav-redesign-v2.css — Thiết kế lại Thanh Điều Hướng (DesktopNav)
+   Chuẩn Apple / Linear:
+   - Responsive 3 nấc chuẩn (1440px / 1180px / 860px): 0 tràn ngang!
+   - Mega menu "Công cụ" lưới 2 cột rộng rãi + ô tìm nhanh (0 cắt chữ ...)
+   - Nhãn HOT gọn inline trong pill "Phòng thi ảo" (không nhô mép trên)
+   - Badge điểm 26/30, 100/150 trong StudyGoalNavDropdown không rớt 2 dòng
+   ============================================================ */
+
+/* ── 1. INLINE HOT PILL (KHÔNG NHÔ LỆCH KHỎI MÉP TRÊN NAVBAR) ── */
+.ns9-nav-virtual-exam .ns9-nav-hot-badge {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: 4px !important;
+  padding: 1px 5px !important;
+  border-radius: 999px !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em !important;
+  line-height: 1.35 !important;
+  box-shadow: none !important;
+  animation: none !important;
+  vertical-align: middle;
+}
+
+/* ── 2. FIX BADGE ĐIỂM 26/30, 100/150 RỚT 2 DÒNG TRONG STUDY GOAL DROPDOWN ── */
+.sg-exam-score,
+.sg-score-pill,
+.sg-ring-txt,
+.sg-exam-row-score {
+  white-space: nowrap !important;
+}
+
+/* ── 3. MEGA MENU "CÔNG CỤ": RỘNG RÃI 2 CỘT, 0 CẮT CHỮ "...", CÓ TÌM NHANH ── */
+.nav-drop-tools {
+  width: min(820px, calc(100vw - 28px)) !important;
+  max-width: calc(100vw - 28px) !important;
+  padding: 18px 20px !important;
+  border-radius: 22px !important;
+}
+
+.nav-tools-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(248, 250, 252, 0.9);
+  margin: 0 0 12px;
+}
+
+.nav-tools-search-row input {
+  flex: 1;
+  min-width: 0;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-family: inherit;
+  font-size: 0.83rem;
+  color: #0f172a;
+}
+
+.nav-tools-search-clear {
+  border: none;
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.nav-tools-folder-content {
+  max-height: min(56vh, 460px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.nav-tools-grid-2col,
+.nav-tools-grid-3col {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.nav-tool-item-bento {
+  height: auto !important;
+  min-height: 66px !important;
+  padding: 11px 13px !important;
+  align-items: flex-start !important;
+}
+
+.nav-tool-bento-info {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.nav-tool-bento-title {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.28 !important;
+  font-size: 0.85rem !important;
+}
+
+.nav-tool-bento-desc {
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  line-height: 1.38 !important;
+  font-size: 0.74rem !important;
+  margin-top: 2px !important;
+}
+
+[data-theme='dark'] .nav-tools-search-row {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+[data-theme='dark'] .nav-tools-search-row input {
+  color: #f8fafc;
+}
+
+/* ── 4. RESPONSIVE NAVBAR 3 NẤC CHUẨN (1440PX / 1180PX / 860PX — 0 TRÀN NGANG!) ── */
+.nav-wrap .nav-apple {
+  max-width: calc(100vw - 20px) !important;
+  overflow: visible !important;
+}
+
+/* Menu "Thêm ⌄" chỉ hiện ở khoảng tablet 768px–1040px để gộp gọn link phụ */
+.nav-more-tablet {
+  display: none;
+  position: relative;
+}
+
+.nav-more-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 95;
+  width: 210px;
+  padding: 6px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-more-popover a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  color: #0f172a;
+  font-size: 0.83rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.nav-more-popover a:hover,
+.nav-more-popover a.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+[data-theme='dark'] .nav-more-popover {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+[data-theme='dark'] .nav-more-popover a {
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .nav-more-popover a:hover,
+[data-theme='dark'] .nav-more-popover a.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+/* Nấc 2: Laptop 13" / 1180px (961px – 1260px) — Gom Lộ trình & Lớp học vào "Thêm ⌄", giữ 100% Avatar & cụm phải! */
+@media (max-width: 1260px) {
+  .nav-item-collapsible {
+    display: none !important;
+  }
+
+  .nav-more-tablet {
+    display: inline-flex;
+  }
+
+  .nav-apple {
+    padding: 5px 9px !important;
+    gap: 5px !important;
+  }
+
+  .nav-left-cluster {
+    gap: 6px !important;
+  }
+
+  .nav-links {
+    gap: 2px !important;
+  }
+
+  .nav-item {
+    padding: 0 9px !important;
+    font-size: 0.78rem !important;
+    gap: 5px !important;
+  }
+
+  .ns9-nav-virtual-exam .ns9-nav-hot-badge {
+    display: none !important;
+  }
+
+  .nav-actions {
+    gap: 4px !important;
+  }
+
+  .nav-actions-icons-cluster {
+    gap: 4px !important;
+  }
+
+  .nav-action-icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .ns9-nav-streak-pill,
+  .nav-credit-pill {
+    height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Nấc 3: Tablet / 860px (768px – 960px) — Thu gọn pill mục tiêu & ẩn icon thừa, đảm bảo 100% Chat + Avatar trong khung! */
+@media (max-width: 960px) {
+  .sg-trigger-school {
+    display: none !important;
+  }
+
+  .sg-nav-trigger {
+    padding: 3px 8px !important;
+  }
+
+  .nav-item {
+    padding: 0 7px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .nav-item .nav-ico {
+    display: none !important;
+  }
+
+  .nav-credit-pill,
+  .ns9-nav-streak-pill {
+    display: none !important;
+  }
+
+  .nav-apple {
+    padding: 4px 8px !important;
+    gap: 4px !important;
+  }
+}

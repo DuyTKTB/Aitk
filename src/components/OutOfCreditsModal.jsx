@@ -1,18 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
   CREDIT_PACKAGES,
   BANK_INFO,
   createPaymentOrder,
   onOrderPaid,
+  formatCredits,
 } from '../lib/creditService.js';
 import { activateProKey } from '../lib/proKeyApi.js';
 import './out-of-credits-modal.css';
 
 /* ============================================================
-   ICONS SVG SẮC NÉT
+   VECTOR ICONS SẮC NÉT (ZERO EMOJI)
    ============================================================ */
-const SvgZap = ({ size = 20 }) => (
+const SvgZap = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
@@ -55,15 +56,28 @@ const SvgQr = ({ size = 15 }) => (
   </svg>
 );
 
+const SvgShieldCheck = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <polyline points="9 12 11 14 15 10" />
+  </svg>
+);
+
+function getCompactBadge(pkg) {
+  if (!pkg?.badge) return null;
+  if (pkg.popular) return 'PHỔ BIẾN';
+  return pkg.badge;
+}
+
 export default function OutOfCreditsModal() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [balance, setBalance] = useState(0);
-  const [needed, setNeeded] = useState(1);
+  const [needed, setNeeded] = useState(100);
   const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'key'
 
-  // QR state
-  const [selectedPkg, setSelectedPkg] = useState(CREDIT_PACKAGES[1] || CREDIT_PACKAGES[0]); // default 25k (275 pts)
+  // QR state — mặc định gói PRO 2 (30.000đ = 30.000 Credit)
+  const [selectedPkg, setSelectedPkg] = useState(CREDIT_PACKAGES[1] || CREDIT_PACKAGES[0]);
   const [orderInfo, setOrderInfo] = useState(null);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -77,8 +91,14 @@ export default function OutOfCreditsModal() {
   // Lắng nghe sự kiện toàn cục 'elec-out-of-credits'
   useEffect(() => {
     const handleOutOfCredits = (e) => {
-      const b = Number(e.detail?.balance) || 0;
-      const n = Number(e.detail?.needed) || 1;
+      const b = Math.max(0, Number(e.detail?.balance) || 0);
+      const n = Math.max(1, Number(e.detail?.needed) || 100);
+      const forceOpen = Boolean(e.detail?.forceOpen);
+      const needLogin = Boolean(e.detail?.needLogin);
+
+      // Chặn mở nhầm popup hết credit nếu số dư thực tế vẫn đủ
+      if (!forceOpen && !needLogin && b >= n) return;
+
       setBalance(b);
       setNeeded(n);
       setIsOpen(true);
@@ -135,12 +155,13 @@ export default function OutOfCreditsModal() {
       } catch { /* */ }
       setTimeout(() => {
         setIsOpen(false);
-      }, 2500);
+      }, 2600);
     });
     return cleanup;
   }, [orderInfo, balance]);
 
   const copyToClipboard = async (text, field) => {
+    if (!text) return;
     try {
       await navigator.clipboard.writeText(String(text));
       setCopiedField(field);
@@ -166,7 +187,7 @@ export default function OutOfCreditsModal() {
       if (res.ok) {
         setKeyFeedback({
           ok: true,
-          msg: res.message || 'Kích hoạt thành công! Điểm đã được cộng vào tài khoản.',
+          msg: res.message || 'Kích hoạt thành công! Credit đã được cộng vào tài khoản.',
         });
         setKeyCode('');
         setTimeout(() => {
@@ -184,6 +205,13 @@ export default function OutOfCreditsModal() {
 
   if (!isOpen) return null;
 
+  const missing = Math.max(0, needed - balance);
+  const heroMascot = orderSuccess
+    ? { src: '/img/elec/elec-celebrate.png', alt: 'Linh vật ELEC ăn mừng nạp thành công', mood: 'Đã tiếp năng lượng thành công!' }
+    : activeTab === 'key'
+      ? { src: '/img/elec/elec-cool.png', alt: 'Linh vật ELEC VIP', mood: 'Nhập mã thẻ / Key kích hoạt ngay!' }
+      : { src: '/img/elec/elec-plead.png', alt: 'Linh vật ELEC hết năng lượng', mood: 'Tiếp thêm năng lượng cho ELEC nhé!' };
+
   return (
     <div className="ooc-backdrop" onClick={() => setIsOpen(false)}>
       <div
@@ -193,210 +221,274 @@ export default function OutOfCreditsModal() {
         aria-labelledby="ooc-title"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Nút đóng góc phải */}
-        <button
-          type="button"
-          className="ooc-close-btn"
-          onClick={() => setIsOpen(false)}
-          aria-label="Đóng bảng thông báo"
-        >
-          <SvgClose size={16} />
-        </button>
+        {/* HERO BANNER ELEC AI + LINH VẬT */}
+        <div className="ooc-hero">
+          <button
+            type="button"
+            className="ooc-close-btn"
+            onClick={() => setIsOpen(false)}
+            aria-label="Đóng bảng thông báo"
+          >
+            <SvgClose size={16} />
+          </button>
 
-        {/* Header nổi bật */}
-        <div className="ooc-head">
-          <div className="ooc-icon-glow">
-            <SvgZap size={24} />
+          <div className="ooc-hero-top">
+            <div className="ooc-mascot-stage">
+              <div className="ooc-mascot-halo" aria-hidden="true" />
+              <img
+                src={heroMascot.src}
+                alt={heroMascot.alt}
+                className={`ooc-mascot-img ${orderSuccess ? 'is-celebrate' : ''}`}
+                width="86"
+                height="86"
+              />
+            </div>
+
+            <div className="ooc-hero-copy">
+              <span className="ooc-badge">
+                <SvgZap size={11} />
+                ELEC AI CREDIT · 1 CREDIT = 1 Đ
+              </span>
+              <h2 id="ooc-title" className="ooc-title">
+                {orderSuccess ? 'Nạp năng lượng thành công!' : 'ELEC AI cần thêm Credit'}
+              </h2>
+              <p className="ooc-desc">{heroMascot.mood}</p>
+            </div>
           </div>
-          <span className="ooc-badge">CẢNH BÁO TÍN DỤNG AI</span>
-          <h2 id="ooc-title" className="ooc-title">
-            Bạn đã hết credit
-          </h2>
-          <p className="ooc-desc">
-            Vui lòng nạp để có thể tiếp tục sử dụng tất cả tính năng AI trong web.
-          </p>
 
           <div className="ooc-balance-strip">
             <div className="ooc-balance-box">
               <span>Số dư hiện tại</span>
-              <strong className="text-danger">{balance.toLocaleString('vi-VN')} ⚡</strong>
+              <strong className="ooc-val-current">
+                <SvgZap size={13} />
+                {formatCredits(balance)}
+              </strong>
             </div>
             <div className="ooc-divider" />
             <div className="ooc-balance-box">
-              <span>Yêu cầu tối thiểu</span>
-              <strong>{needed.toLocaleString('vi-VN')} ⚡</strong>
+              <span>Cần cho lượt này</span>
+              <strong className="ooc-val-needed">
+                <SvgZap size={13} />
+                {formatCredits(needed)}
+              </strong>
             </div>
-          </div>
-        </div>
-
-        {/* Tabs chuyển đổi giữa VietQR & Mã Key */}
-        <div className="ooc-tabs">
-          <button
-            type="button"
-            className={`ooc-tab ${activeTab === 'qr' ? 'active' : ''}`}
-            onClick={() => setActiveTab('qr')}
-          >
-            <SvgQr size={15} />
-            <span>Nạp siêu tốc (VietQR)</span>
-          </button>
-          <button
-            type="button"
-            className={`ooc-tab ${activeTab === 'key' ? 'active' : ''}`}
-            onClick={() => setActiveTab('key')}
-          >
-            <SvgKey size={15} />
-            <span>Nhập mã thẻ nạp / Key</span>
-          </button>
-        </div>
-
-        {/* Nội dung Tab 1: VietQR */}
-        {activeTab === 'qr' && (
-          <div className="ooc-tab-body">
-            {orderSuccess ? (
-              <div className="ooc-success-box">
-                <div className="ooc-success-ico">
-                  <SvgCheck size={28} />
-                </div>
-                <h3>Nạp điểm thành công!</h3>
-                <p>Hệ thống đã tự động cộng +{orderInfo?.credits?.toLocaleString('vi-VN')} điểm AI vào tài khoản của bạn.</p>
-              </div>
-            ) : (
+            {missing > 0 && (
               <>
-                <div className="ooc-packages-grid">
-                  {CREDIT_PACKAGES.slice(0, 4).map((pkg) => {
-                    const isSelected = selectedPkg.amount === pkg.amount;
-                    return (
-                      <button
-                        key={pkg.amount}
-                        type="button"
-                        className={`ooc-pkg-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => setSelectedPkg(pkg)}
-                      >
-                        <div className="ooc-pkg-pts">
-                          <b>+{pkg.total.toLocaleString('vi-VN')}</b>
-                          <small>credit</small>
-                        </div>
-                        <div className="ooc-pkg-price">{pkg.label}</div>
-                        {pkg.badge && <span className="ooc-pkg-tag">{pkg.badge}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="ooc-qr-area">
-                  <div className="ooc-qr-image-wrap">
-                    {creatingOrder ? (
-                      <div className="ooc-qr-loader">Đang tạo mã QR…</div>
-                    ) : orderInfo?.qrUrl ? (
-                      <img src={orderInfo.qrUrl} alt="Mã thanh toán VietQR" className="ooc-qr-img" />
-                    ) : (
-                      <div className="ooc-qr-loader">Chưa thể tải mã QR</div>
-                    )}
-                  </div>
-
-                  <div className="ooc-bank-details">
-                    <div className="ooc-bank-row">
-                      <span>Ngân hàng:</span>
-                      <strong>{BANK_INFO.bankName}</strong>
-                    </div>
-                    <div className="ooc-bank-row">
-                      <span>Số tài khoản:</span>
-                      <div className="ooc-copy-inline">
-                        <code>{BANK_INFO.accountNo}</code>
-                        <button
-                          type="button"
-                          className="ooc-copy-btn"
-                          onClick={() => copyToClipboard(BANK_INFO.accountNo, 'acc')}
-                          title="Sao chép số tài khoản"
-                        >
-                          {copiedField === 'acc' ? <SvgCheck size={12} /> : <SvgCopy size={12} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="ooc-bank-row">
-                      <span>Chủ tài khoản:</span>
-                      <strong>{BANK_INFO.accountName}</strong>
-                    </div>
-                    <div className="ooc-bank-row ooc-highlight-row">
-                      <span>Nội dung CK:</span>
-                      <div className="ooc-copy-inline">
-                        <code className="text-highlight">{orderInfo?.transferContent || 'Đang tạo…'}</code>
-                        <button
-                          type="button"
-                          className="ooc-copy-btn"
-                          onClick={() => copyToClipboard(orderInfo?.transferContent, 'content')}
-                          title="Sao chép nội dung chuyển tiền"
-                        >
-                          {copiedField === 'content' ? <SvgCheck size={12} /> : <SvgCopy size={12} />}
-                        </button>
-                      </div>
-                    </div>
-                    <p className="ooc-auto-note">
-                      ⚡ Quét QR bằng app ngân hàng để điền sẵn số tiền và nội dung. Tiền vào là hệ thống tự động cộng điểm ngay.
-                    </p>
-                  </div>
+                <div className="ooc-divider" />
+                <div className="ooc-balance-box">
+                  <span>Còn thiếu</span>
+                  <strong className="ooc-val-missing">-{formatCredits(missing)}</strong>
                 </div>
               </>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Nội dung Tab 2: Nhập Key Nạp */}
-        {activeTab === 'key' && (
-          <div className="ooc-tab-body">
-            <form onSubmit={handleActivateKey} className="ooc-key-form">
-              <label className="ooc-field-label">
-                <span>Nhập mã thẻ nạp / Key (Ví dụ: CREDIT-xxxx, PRO-xxxx, VIP-xxxx)</span>
-                <input
-                  type="text"
-                  value={keyCode}
-                  onChange={(e) => setKeyCode(e.target.value.toUpperCase())}
-                  placeholder="CREDIT-XXXX-XXXX"
-                  className="ooc-key-input"
-                  autoFocus
-                />
-              </label>
-
-              {keyFeedback && (
-                <div className={`ooc-feedback ${keyFeedback.ok ? 'success' : 'error'}`}>
-                  {keyFeedback.msg}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={keyActivating || !keyCode.trim()}
-                className="ooc-submit-key-btn"
-              >
-                {keyActivating ? 'Đang kích hoạt…' : 'Kích hoạt mã nạp'}
-              </button>
-            </form>
-
-            <div className="ooc-key-tips">
-              <b>💡 Làm thế nào để có mã thẻ nạp?</b>
-              <p>
-                Mã nạp điểm Credit do Quản trị viên (Admin) hoặc Thầy/Cô giáo phát hành qua sự kiện thi đua, hoặc được tặng thưởng khi đạt thứ hạng cao trên Bảng xếp hạng.
-              </p>
-            </div>
+        {/* BODY */}
+        <div className="ooc-body">
+          {/* Tabs chuyển đổi giữa VietQR & Mã Key */}
+          <div className="ooc-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'qr'}
+              className={`ooc-tab ${activeTab === 'qr' ? 'active' : ''}`}
+              onClick={() => setActiveTab('qr')}
+            >
+              <SvgQr size={15} />
+              <span>Nạp siêu tốc (VietQR)</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'key'}
+              className={`ooc-tab ${activeTab === 'key' ? 'active' : ''}`}
+              onClick={() => setActiveTab('key')}
+            >
+              <SvgKey size={15} />
+              <span>Nhập mã thẻ nạp / Key</span>
+            </button>
           </div>
-        )}
 
-        {/* Footer */}
-        <div className="ooc-footer">
-          <a
-            href="#profile?tab=upgrade"
-            className="ooc-full-page-link"
-            onClick={() => setIsOpen(false)}
-          >
-            Xem chi tiết bảng giá &amp; lịch sử giao dịch →
-          </a>
-          <button
-            type="button"
-            className="ooc-close-action-btn"
-            onClick={() => setIsOpen(false)}
-          >
-            Để sau
-          </button>
+          {/* Nội dung Tab 1: VietQR */}
+          {activeTab === 'qr' && (
+            <div className="ooc-tab-body">
+              {orderSuccess ? (
+                <div className="ooc-success-box">
+                  <img
+                    src="/img/elec/elec-celebrate.png"
+                    alt="ELEC chúc mừng"
+                    className="ooc-success-mascot"
+                    width="82"
+                    height="82"
+                  />
+                  <h3>Nạp Credit thành công!</h3>
+                  <p>
+                    Hệ thống đã tự động cộng{' '}
+                    <b>+{formatCredits(orderInfo?.credits)} Credit</b> vào tài khoản của bạn.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="ooc-packages-grid">
+                    {CREDIT_PACKAGES.slice(0, 4).map((pkg) => {
+                      const isSelected = selectedPkg.amount === pkg.amount;
+                      const badge = getCompactBadge(pkg);
+                      return (
+                        <button
+                          key={pkg.amount}
+                          type="button"
+                          className={`ooc-pkg-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'is-popular' : ''}`}
+                          onClick={() => setSelectedPkg(pkg)}
+                        >
+                          {badge && <span className="ooc-pkg-tag">{badge}</span>}
+                          <span className="ooc-pkg-tier">{pkg.name}</span>
+                          <div className="ooc-pkg-pts">
+                            <b>+{formatCredits(pkg.total)}</b>
+                            <small>credit</small>
+                          </div>
+                          <div className="ooc-pkg-price">{pkg.label}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="ooc-qr-area">
+                    <div className="ooc-qr-image-wrap">
+                      {creatingOrder ? (
+                        <div className="ooc-qr-loader">Đang tạo mã QR…</div>
+                      ) : orderInfo?.qrUrl ? (
+                        <img src={orderInfo.qrUrl} alt="Mã thanh toán VietQR" className="ooc-qr-img" />
+                      ) : (
+                        <div className="ooc-qr-loader">Chưa thể tải mã QR</div>
+                      )}
+                    </div>
+
+                    <div className="ooc-bank-details">
+                      <div className="ooc-bank-row">
+                        <span>Ngân hàng</span>
+                        <strong>{BANK_INFO.bankName}</strong>
+                      </div>
+                      <div className="ooc-bank-row">
+                        <span>Số tài khoản</span>
+                        <div className="ooc-copy-inline">
+                          <code>{BANK_INFO.accountNo}</code>
+                          <button
+                            type="button"
+                            className={`ooc-copy-btn ${copiedField === 'acc' ? 'is-copied' : ''}`}
+                            onClick={() => copyToClipboard(BANK_INFO.accountNo, 'acc')}
+                            title="Sao chép số tài khoản"
+                          >
+                            {copiedField === 'acc' ? <SvgCheck size={12} /> : <SvgCopy size={12} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="ooc-bank-row">
+                        <span>Chủ tài khoản</span>
+                        <strong>{BANK_INFO.accountName}</strong>
+                      </div>
+                      <div className="ooc-bank-row ooc-highlight-row">
+                        <span>Nội dung CK</span>
+                        <div className="ooc-copy-inline">
+                          <code className="text-highlight">{orderInfo?.transferContent || 'Đang tạo…'}</code>
+                          <button
+                            type="button"
+                            className={`ooc-copy-btn ${copiedField === 'content' ? 'is-copied' : ''}`}
+                            onClick={() => copyToClipboard(orderInfo?.transferContent, 'content')}
+                            title="Sao chép nội dung chuyển tiền"
+                          >
+                            {copiedField === 'content' ? <SvgCheck size={12} /> : <SvgCopy size={12} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="ooc-auto-note">
+                        <img
+                          src="/img/elec/elec-super-saiyan.png"
+                          alt=""
+                          aria-hidden="true"
+                          className="ooc-note-mascot"
+                          width="28"
+                          height="28"
+                        />
+                        <span>
+                          <SvgShieldCheck size={13} />
+                          Quét QR bằng app ngân hàng để tự điền số tiền &amp; nội dung — cộng Credit tự động trong 5 giây.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Nội dung Tab 2: Nhập Key Nạp */}
+          {activeTab === 'key' && (
+            <div className="ooc-tab-body">
+              <form onSubmit={handleActivateKey} className="ooc-key-form">
+                <label className="ooc-field-label">
+                  <span>Nhập mã thẻ nạp / Key (CREDIT-xxxx, PRO-xxxx, VIP-xxxx)</span>
+                  <input
+                    type="text"
+                    value={keyCode}
+                    onChange={(e) => setKeyCode(e.target.value.toUpperCase())}
+                    placeholder="CREDIT-XXXX-XXXX"
+                    className="ooc-key-input"
+                    autoFocus
+                  />
+                </label>
+
+                {keyFeedback && (
+                  <div className={`ooc-feedback ${keyFeedback.ok ? 'success' : 'error'}`}>
+                    {keyFeedback.msg}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={keyActivating || !keyCode.trim()}
+                  className="ooc-submit-key-btn"
+                >
+                  {keyActivating ? 'Đang kích hoạt…' : 'Kích hoạt mã nạp ngay'}
+                </button>
+              </form>
+
+              <div className="ooc-key-tips">
+                <img
+                  src="/img/elec/elec-wink.png"
+                  alt="Linh vật ELEC gợi ý"
+                  className="ooc-tips-mascot"
+                  width="42"
+                  height="42"
+                />
+                <div>
+                  <b>Làm thế nào để nhận mã thẻ nạp ELEC?</b>
+                  <p>
+                    Mã nạp Credit được phát hành bởi Admin hoặc Thầy/Cô qua sự kiện thi đua, hoặc tặng thưởng khi bạn đạt thứ hạng cao trên Bảng xếp hạng.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="ooc-footer">
+            <a
+              href="#profile?tab=upgrade"
+              className="ooc-full-page-link"
+              onClick={() => setIsOpen(false)}
+            >
+              Xem bảng giá &amp; lịch sử giao dịch →
+            </a>
+            <button
+              type="button"
+              className="ooc-close-action-btn"
+              onClick={() => setIsOpen(false)}
+            >
+              Để sau
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -7,8 +7,10 @@ import {
   IcoClose, IcoPlus, IcoTrash, IcoNote, IcoSparkle, IcoBulb, IcoInfo,
   IcoHeadphones, IcoSettings,
 } from './PomodoroIcons.jsx';
+import { focusAudio, FOCUS_SOUND_TRACKS } from '../lib/focusAudioEngine.js';
 import './pomodoro-v2.css';
 import './pomodoro-aurora.css';
+import '../styles/student-v9-upgrades.css';
 
 /* ============================================================
    CONSTANTS
@@ -26,12 +28,43 @@ const PRESETS = [
   { name: 'Sprint', focus: 90, short: 15, long: 30, desc: '90/15/30 · Cho dự án lớn' },
 ];
 
-const AMBIENT_SOUNDS = [
-  { id: 'none', label: 'Không', emoji: '🔇' },
-  { id: 'rain', label: 'Mưa rơi', emoji: '🌧️' },
-  { id: 'cafe', label: 'Quán cafe', emoji: '☕' },
-  { id: 'forest', label: 'Rừng xanh', emoji: '🌲' },
-  { id: 'waves', label: 'Sóng biển', emoji: '🌊' },
+const COACH_TIPS = {
+  focus: [
+    'Đặt điện thoại ra khỏi tầm mắt trong 25 phút tới — não mất tới 15 phút để lấy lại mạch tập trung sau 1 thông báo.',
+    'Thử bật sóng 40Hz Binaural hoặc Mưa rơi ở mức 30-40% để khóa tạp âm và giữ nhịp giải đề ổn định.',
+    'Nếu gặp câu khó, đánh dấu lại rồi giải tiếp — giữ đà tư duy quan trọng hơn đứng hình quá 3 phút ở 1 câu.',
+    'Viết sẵn 1 mục tiêu cụ thể trước khi bấm Bắt đầu (VD: hoàn thành 15 câu Phần I + 2 câu Phần II).',
+  ],
+  short: [
+    'Đứng dậy vươn vai, uống một ngụm nước và nhìn xa 6 mét trong 20 giây để mắt được xả căng thẳng.',
+    'Hạn chế lướt mạng xã hội trong 5 phút nghỉ ngắn — dopamine nhanh sẽ làm phiên Focus kế tiếp khó vào guồng hơn.',
+  ],
+  long: [
+    'Bạn vừa hoàn thành một chặng dài rất xuất sắc! Hãy đi bộ nhẹ quanh phòng và ghi nhanh 1 điều tâm đắc vừa học được.',
+    'Thả lỏng vai gáy, hít sâu 4 giây – giữ 4 giây – thở chậm 6 giây để nạp lại năng lượng trước chặng mới.',
+  ],
+};
+
+const DESK_THEMES = [
+  { id: 'midnight', label: 'Thư viện đêm', desc: 'Ánh đèn bàn ấm · Chống mỏi mắt' },
+  { id: 'rain', label: 'Mưa bên cửa sổ', desc: 'Sắc xanh dịu · Tĩnh tâm sâu' },
+  { id: 'dawn', label: 'Sáng tinh mơ', desc: 'Nắng sớm nhẹ · Bắt đầu ngày mới' },
+];
+
+const DESK_MASCOTS = [
+  { id: 'default', label: 'Elec Tập trung', src: '/img/elec/elec-default.png' },
+  { id: 'happy', label: 'Elec Tươi vui', src: '/img/elec/elec-happy.png' },
+  { id: 'cool', label: 'Elec Học Bá', src: '/img/elec/elec-cool.png' },
+  { id: 'fighting', label: 'Elec Quyết tâm', src: '/img/elec/elec-fighting.png' },
+  { id: 'hello', label: 'Elec Thân thiện', src: '/img/elec/elec-hello.png' },
+  { id: 'celebrate', label: 'Elec Thủ khoa', src: '/img/elec/elec-celebrate.png' },
+];
+
+const LIVE_STUDY_PEERS = [
+  { name: 'Minh Khôi', uni: 'BKA', task: 'Đề Lý 2027', mins: 42 },
+  { name: 'Gia Hân', uni: 'YHA', task: 'Sổ lỗi sai Hóa', mins: 28 },
+  { name: 'Hoàng Nam', uni: 'NEU', task: 'Deep Work 50p', mins: 50 },
+  { name: 'Khánh Linh', uni: 'FTU', task: 'Luyện ĐGNL HSA', mins: 19 },
 ];
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -87,6 +120,35 @@ export default function Pomodoro() {
   const [noteModal, setNoteModal] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
   const [savedNotes, setSavedNotes] = useLocalStorage('cs-pomo-notes', []);
+
+  // Wave 3 & 5: Real Web Audio Focus Engine + Bé Elec Focus Coach + Study With Me Stage
+  const [ambientTrack, setAmbientTrack] = useState('none');
+  const [ambientVol, setAmbientVol] = useLocalStorage('cs-pomo-ambient-vol', 0.35);
+  const [coachIdx, setCoachIdx] = useState(0);
+  const [deskTheme, setDeskTheme] = useLocalStorage('cs-pomo-desk-theme', 'midnight');
+  const [deskMascot, setDeskMascot] = useLocalStorage('cs-pomo-desk-mascot', 'fighting');
+  const activeMascotObj = DESK_MASCOTS.find((m) => m.id === deskMascot) || DESK_MASCOTS[0];
+
+  useEffect(() => {
+    focusAudio.setVolume(ambientVol);
+  }, [ambientVol]);
+
+  useEffect(() => () => {
+    focusAudio.stop();
+  }, []);
+
+  const handleSelectAmbient = (trackId) => {
+    setAmbientTrack(trackId);
+    focusAudio.setVolume(ambientVol);
+    if (trackId === 'none') {
+      focusAudio.stop();
+    } else {
+      focusAudio.play(trackId);
+    }
+  };
+
+  const activeCoachList = COACH_TIPS[mode] || COACH_TIPS.focus;
+  const activeCoachTip = activeCoachList[coachIdx % activeCoachList.length];
 
   const endAt = useRef(0);
   const modeRef = useRef(mode);
@@ -354,8 +416,46 @@ export default function Pomodoro() {
           </div>
         )}
 
-        {/* ============ MAIN TIMER ============ */}
-        <div className="pomo-main">
+        {/* ============ MAIN TIMER + STUDY WITH ME STAGE ============ */}
+        <div className={`pomo-main s9-swm-stage theme-${deskTheme} ${run ? 'is-running' : ''}`}>
+          {/* Top bar: Desk Theme & Companion Mascot Picker */}
+          <div className="s9-swm-topbar">
+            <div className="s9-swm-themes" role="group" aria-label="Không gian bàn học">
+              {DESK_THEMES.map((th) => (
+                <button
+                  key={th.id}
+                  type="button"
+                  className={`s9-swm-pill ${deskTheme === th.id ? 'active' : ''}`}
+                  onClick={() => setDeskTheme(th.id)}
+                  title={th.desc}
+                >
+                  {th.label}
+                </button>
+              ))}
+            </div>
+            <div className="s9-swm-mascot-picker" role="group" aria-label="Chọn Bé Elec học cùng">
+              {DESK_MASCOTS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`s9-swm-mascot-btn ${deskMascot === m.id ? 'active' : ''}`}
+                  onClick={() => setDeskMascot(m.id)}
+                  title={m.label}
+                >
+                  <img src={m.src} alt={m.label} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Companion Mascot Desk Buddy */}
+          <div className="s9-swm-buddy">
+            <img src={activeMascotObj.src} alt={activeMascotObj.label} className={run ? 'is-float' : ''} />
+            <span className="s9-swm-buddy-status">
+              <i className={run ? 'live' : ''} />
+              {run ? `${activeMascotObj.label} đang tập trung cùng bạn` : `${activeMascotObj.label} sẵn sàng vào phiên`}
+            </span>
+          </div>
           <div className="pomo-ring-wrap">
             <svg viewBox="0 0 280 280" className="pomo-ring" aria-hidden="true">
               <defs>
@@ -424,6 +524,94 @@ export default function Pomodoro() {
             <div className="pomo-done-msg">
               <IcoSparkle size={16} />
               {doneMsg}
+            </div>
+          )}
+
+          {/* Wave 3: Real Web Audio Focus Sound Engine */}
+          <div className="s9-pomo-audio" aria-label="Âm thanh nền tập trung">
+            <div className="s9-pomo-audio-head">
+              <span className="s9-pomo-audio-title">
+                <IcoHeadphones size={15} />
+                Âm thanh tập trung (Web Audio Offline)
+              </span>
+              <div className="s9-pomo-vol">
+                {ambientTrack === 'none' ? <IcoVolumeOff size={14} /> : <IcoVolume size={14} />}
+                <input
+                  type="range"
+                  min={0.05}
+                  max={0.85}
+                  step={0.05}
+                  value={ambientVol}
+                  onChange={(e) => setAmbientVol(Number(e.target.value))}
+                  aria-label="Âm lượng âm thanh tập trung"
+                />
+                <span>{Math.round(ambientVol * 100)}%</span>
+              </div>
+            </div>
+            <div className="s9-pomo-tracks">
+              {FOCUS_SOUND_TRACKS.map((t) => {
+                const active = ambientTrack === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`s9-pomo-track-pill ${active ? 'is-active' : ''}`}
+                    onClick={() => handleSelectAmbient(t.id)}
+                  >
+                    {active && t.id !== 'none' && <i className="s9-pomo-eq" aria-hidden="true" />}
+                    <span>{t.short}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Wave 3: Bé Elec Focus Coach */}
+          {!zen && (
+            <div className="s9-pomo-coach">
+              <img src="/img/elec/elec-happy.png" alt="Bé Elec Focus Coach" />
+              <div className="s9-pomo-coach-body">
+                <div className="s9-pomo-coach-top">
+                  <strong>Bé Elec Focus Coach</strong>
+                  <button
+                    type="button"
+                    className="s9-pomo-coach-next"
+                    onClick={() => setCoachIdx((i) => i + 1)}
+                  >
+                    Đổi mẹo
+                  </button>
+                </div>
+                <p>{activeCoachTip}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Wave 5: Live Study With Me Desk Strip */}
+          {!zen && (
+            <div className="s9-swm-peers" aria-label="Bạn đang cùng tập trung">
+              <div className="s9-swm-peers-head">
+                <span className="s9-swm-live-dot" />
+                <b>Phòng học chung Study With Me</b>
+                <small>{LIVE_STUDY_PEERS.length + 1} bàn đang bật đèn</small>
+              </div>
+              <div className="s9-swm-peers-grid">
+                <div className="s9-swm-peer is-you">
+                  <span className="s9-swm-peer-uni">BẠN</span>
+                  <div>
+                    <strong>{run ? 'Đang Focus' : 'Đang chuẩn bị'}</strong>
+                    <small>{todayN} phiên hôm nay</small>
+                  </div>
+                </div>
+                {LIVE_STUDY_PEERS.map((p) => (
+                  <div key={p.name} className="s9-swm-peer">
+                    <span className="s9-swm-peer-uni">{p.uni}</span>
+                    <div>
+                      <strong>{p.name}</strong>
+                      <small>{p.task} · {p.mins}p</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

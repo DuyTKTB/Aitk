@@ -83,6 +83,14 @@ export const ROUTE_SEO = {
     faqQ: 'AI Doc Studio hỗ trợ định dạng tài liệu nào?',
     faqA: 'Hỗ trợ tải lên tài liệu PDF hoặc dán trực tiếp nội dung văn bản bài học để AI xử lý và tạo bộ Flashcard, Quiz ôn tập.',
   },
+  'physics-lab': {
+    title: 'Phòng Thí Nghiệm Vật Lí Ảo Lớp 8–12 & Olympiad · ELEC AI',
+    description: '7 mô phỏng Vật lí tương tác thời gian thực: Chuyển động ném xiên, Mạch điện DC, Quang hình học & Thấu kính, Sóng 2D giao thoa, Cơ học 2D, Con lắc kép RK4 và Phân tích số liệu Olympiad.',
+    path: '/phong-thi-nghiem-vat-li',
+    label: 'Phòng thí nghiệm Vật lí ảo',
+    faqQ: 'Phòng thí nghiệm Vật lí ảo trên ELEC AI có những mô phỏng nào?',
+    faqA: 'Gồm 7 mô phỏng trực quan: Ném xiên, Mạch điện DC, Quang hình (Thấu kính & Khúc xạ Snell), Giao thoa sóng 2D, Cơ học 2D bảo toàn động lượng, Con lắc kép hỗn loạn RK4 và Thí nghiệm đo g / Ôm / Archimedes phân tích số liệu OLS.',
+  },
   chalkboard: {
     title: 'Bảng Phấn Tương Tác KHTN Trực Tuyến · ELEC AI',
     description: 'Bảng phấn tương tác trực tuyến hỗ trợ vẽ sơ đồ tư duy, mô phỏng bài giảng và giải thích trực quan các bài tập Vật lí, Hóa học, Sinh học.',

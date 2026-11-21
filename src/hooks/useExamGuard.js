@@ -271,11 +271,14 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     // Thoát fullscreen do chính app yêu cầu (nộp bài / bị mời ra) → không phải gian lận
     if (type === 'exit_fullscreen' && now - intentionalExitRef.current < INTENTIONAL_EXIT_MS) return;
 
-    // Đang chờ quyền camera / vừa vào fullscreen: cửa sổ mất tiêu điểm tạm thời — KHÔNG phải gian lận.
+    // Đang chờ quyền camera / vừa vào fullscreen: cửa sổ có thể mất focus tạm thời,
+    // NHƯNG hộp thoại quyền trình duyệt KHÔNG BAO GIỜ gây ẩn tab (tab_hidden) hay rời trang (page_hide).
     const camWait =
       (cameraPendingRef.current && now - cameraPendingSinceRef.current < CAMERA_PENDING_MAX_MS) ||
       now < cameraSettleUntilRef.current;
-    if (camWait && (CAMERA_TYPES.has(type) || FOCUS_TYPES.has(type))) return;
+    const isCameraPromptSafeType =
+      CAMERA_TYPES.has(type) || type === 'window_blur' || type === 'long_blur' || type === 'exit_fullscreen';
+    if (camWait && isCameraPromptSafeType) return;
     if (now < fsSettleUntilRef.current && (type === 'window_blur' || type === 'long_blur')) return;
 
     const inGrace = now - activeSinceRef.current < STARTUP_GRACE_MS;
@@ -502,15 +505,35 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     };
   }, [active, blockLongBlur, recordEvent]);
 
-  /* ---- DevTools detection (kiểm tra chênh lệch dock, loại trừ zoom trình duyệt) ---- */
+  /* ---- DevTools detection (cả dock theo kích thước lẫn undocked qua console getter probe không gây đơ) ---- */
   useEffect(() => {
     if (!active || !blockDevTools || isTouch()) {
       setDevtoolsOpen(false);
       return undefined;
     }
+    const checkUndockedConsole = () => {
+      try {
+        let triggered = false;
+        const probe = new Error('');
+        Object.defineProperty(probe, 'stack', {
+          get() {
+            triggered = true;
+            return '';
+          },
+        });
+        // Khi DevTools mở ở chế độ undocked và tab Console hoạt động, console.debug sẽ đọc getter
+        // eslint-disable-next-line no-console
+        console.debug(probe);
+        return triggered;
+      } catch {
+        return false;
+      }
+    };
     const id = setInterval(() => {
       if (!activeRef.current) return;
-      const isOpen = isDevtoolsViewportSuspect(window);
+      const isDockOpen = isDevtoolsViewportSuspect(window);
+      const isUndockedOpen = !isDockOpen && checkUndockedConsole();
+      const isOpen = isDockOpen || isUndockedOpen;
       if (isOpen) {
         devtoolsStreakRef.current += 1;
         if (devtoolsStreakRef.current >= 2 && !devtoolsOpenRef.current) {
@@ -518,6 +541,7 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
           setDevtoolsOpen(true);
           const sev = (cfgRef.current.strictMode || cfgRef.current.lockdown) ? 'hard' : 'soft';
           recordEvent('devtools_open', sev, {
+            mode: isUndockedOpen ? 'undocked' : 'docked',
             dw: Math.max(0, (window.outerWidth || 0) - (window.innerWidth || 0)),
             dh: Math.max(0, (window.outerHeight || 0) - (window.innerHeight || 0)),
           });
@@ -653,7 +677,12 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
         recordEvent('screenshot_attempt', 'hard');
       }
     };
-    const onCtx = (e) => { e.preventDefault(); recordEvent('contextmenu', 'soft'); };
+    const onCtx = (e) => {
+      e.preventDefault();
+      // Cho phép chuột phải lên nút phương án (.ep-opt) để gạch bỏ loại trừ đáp án sai mà không báo lỗi giả
+      if (e.target?.closest?.('.ep-opt')) return;
+      recordEvent('contextmenu', 'soft');
+    };
     const onCopy = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('copy', 'soft'); } };
     const onCut = (e) => { if (blockCopyPaste) { e.preventDefault(); recordEvent('cut', 'soft'); } };
     const onPaste = (e) => {
@@ -687,6 +716,14 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
       }
     };
     const onPrint = () => { if (blockPrintScreen) recordEvent('print_attempt', 'hard'); };
+    const origPrint = window.print;
+    if (blockPrintScreen) {
+      try {
+        window.print = () => {
+          recordEvent('print_attempt', 'hard', { source: 'window_print_call' });
+        };
+      } catch { /* ignore readonly print */ }
+    }
 
     document.addEventListener('keydown', onKey, true);
     document.addEventListener('keyup', onKeyUp, true);
@@ -699,6 +736,9 @@ export function useExamGuard({ active, onAutoSubmit, config, onEvent }) {
     document.addEventListener('input', onInput, true);
     window.addEventListener('beforeprint', onPrint);
     return () => {
+      if (blockPrintScreen) {
+        try { window.print = origPrint; } catch { /* */ }
+      }
       document.removeEventListener('keydown', onKey, true);
       document.removeEventListener('keyup', onKeyUp, true);
       document.removeEventListener('contextmenu', onCtx);
@@ -827,6 +867,7 @@ function humanReason(type) {
     case 'context_menu': return 'Không giữ-chạm để mở menu trong giờ thi';
     case 'copy_attempt': return 'Không chọn, kéo hoặc sao chép nội dung trong giờ thi';
     case 'soft_escalation': return 'Bạn đã có quá nhiều hành vi bất thường liên tiếp';
+    case 'rapid_answer_bot': return 'Phát hiện tốc độ chọn đáp án bất thường (nghi vấn tự động hóa)';
     case 'force_submit': return 'Giáo viên đã kích hoạt thu bài ngay';
     default: return 'Phát hiện hành vi bất thường';
   }

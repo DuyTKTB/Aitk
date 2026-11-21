@@ -435,15 +435,26 @@ export default function ScienceSimLab({ onNavigate }) {
           </p>
           <div className="simlab-hero-actions">
             {onNavigate && (
-              <button
-                type="button"
-                className="simlab-btn simlab-btn-primary"
-                onClick={() => onNavigate('ai')}
-              >
-                <SvgSparkle size={14} />
-                <span>Hỏi Gia Sư AI về Thí Nghiệm</span>
-                <SvgArrowRight size={14} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="simlab-btn simlab-btn-primary"
+                  onClick={() => onNavigate('physics-lab')}
+                >
+                  <SvgBolt size={14} />
+                  <span>Mở Phòng Lab Vật Lí Ảo (7 Mô phỏng mới)</span>
+                  <SvgArrowRight size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="simlab-btn"
+                  style={{ color: '#e2e8f0', borderColor: 'rgba(148,163,184,0.36)' }}
+                  onClick={() => onNavigate('ai')}
+                >
+                  <SvgSparkle size={14} />
+                  <span>Hỏi Gia Sư AI về Thí Nghiệm</span>
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -17,7 +17,7 @@ import { digitizeExam } from '../../lib/examAiUtils.js';
 import { readFile } from '../../lib/fileReader.js';
 import { readExamPdfFile } from '../../lib/pdfExamReader.js';
 import { ocrImages } from '../../lib/aiOcr.js';
-import { runWithCredit } from '../../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useTeacherPro } from '../../hooks/useTeacherPro.js';
 import {
@@ -1540,7 +1540,7 @@ export default function ExamImporter({
       const gr = String(detectedGrade || defaultGrade || classInfo?.grade || '12');
 
       const aiRes = await runWithCredit(
-        { userId: user?.uid, cost: 2, reason: 'Quét chuẩn PDF/Đề bằng AI' },
+        { userId: user?.uid, cost: CREDIT_TARIFF.ERROR_ANALYSIS, actionType: 'pdf_scan', reason: 'Quét chuẩn PDF/Đề bằng AI' },
         () => digitizeExam({
           files: filesForAi,
           subject: subj,
@@ -1810,7 +1810,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
 }`;
 
       const aiRes = await runWithCredit(
-        { userId: user?.uid, cost: 2, reason: 'AI bổ sung câu hỏi đề nhập' },
+        { userId: user?.uid, cost: CREDIT_TARIFF.ERROR_ANALYSIS, actionType: 'exam_gen', reason: 'AI bổ sung câu hỏi đề nhập' },
         () => askAI(prompt)
       );
       const text = typeof aiRes === 'string' ? aiRes : aiRes?.text || '';

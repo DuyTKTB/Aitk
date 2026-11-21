@@ -8,7 +8,7 @@ import { useMemo } from 'react';
 /* ---------- ICON SVG (thay emoji) ---------- */
 const ICONS = {
   bulb: (<><path className="d" d="M12 3a6 6 0 0 0-3.6 10.8c.6.5.9 1.1.9 1.8V17h5.4v-1.4c0-.7.3-1.3.9-1.8A6 6 0 0 0 12 3z" /><path d="M9.7 20.2h4.6M10.6 22.4h2.8" /></>),
-  bot: (<><rect className="d" x="4" y="8" width="16" height="12" rx="3.5" /><path d="M12 8V5" /><circle cx="12" cy="3.8" r="1.2" /><circle cx="9" cy="14" r="1.1" /><circle cx="15" cy="14" r="1.1" /><path d="M2 13.5v3M22 13.5v3" /></>),
+  bot: (<><path className="d" d="M10 3.5h4M10.7 3.5v4.3l-3.4 6.6c-.5 1 .1 2.1 1.2 2.1h7c1.1 0 1.7-1.1 1.2-2.1l-3.4-6.6V3.5" /><ellipse cx="12" cy="9.8" rx="9" ry="3.2" transform="rotate(-28 12 9.8)" /><ellipse cx="12" cy="9.8" rx="9" ry="3.2" transform="rotate(28 12 9.8)" /><circle cx="5.2" cy="6.8" r="1.2" /><circle cx="19" cy="11.5" r="1.1" /><path d="M11.6 19.6C9.2 18.2 6.2 17.4 3 17.3M12.4 19.6c2.4-1.4 5.4-2.2 8.6-2.3M11.6 21.5c-2.2-1.1-4.8-1.8-7.6-2M12.4 21.5c2.2-1.1 4.8-1.8 7.6-2" /></>),
   target: (<><circle className="d" cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" /><path d="M12 12l6.5-6.5M16.5 4.5v3h3" /></>),
   book: (<><path className="d" d="M4 20.5V5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M8.5 7.5h6M4 20.5A2.5 2.5 0 0 0 6.5 23H19v-5" /></>),
   game: (<><rect className="d" x="2" y="7.5" width="20" height="10" rx="5" /><path d="M7 10.5v4M5 12.5h4" /><circle cx="15.5" cy="11.5" r=".9" /><circle cx="18" cy="13.5" r=".9" /></>),

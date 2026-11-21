@@ -17,7 +17,7 @@
    ============================================================ */
 
 import { askAI as callAiEngine } from './ai.js';
-import { spendCredit } from './creditService.js';
+import { spendCredit, CREDIT_TARIFF } from './creditService.js';
 
 export const ELEC_TUTOR_SYSTEM_PROMPT = `Bạn là ELEC Tutor — gia sư 3 môn Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) THPT của nền tảng ELEC AI.
 Quy tắc bắt buộc:
@@ -149,7 +149,7 @@ export async function executeWithSchemaRetry({
   userId = null,
 }) {
   if (userId) {
-    const cr = await spendCredit(userId, 0, 1);
+    const cr = await spendCredit(userId, 0, CREDIT_TARIFF.CHAT_FAST, { actionType: 'ai_hint', reason: 'Nhận xét tiến độ AI' });
     if (!cr.ok) {
       const localData = fallbackFn();
       return { ...localData, source: 'local-fallback', reason: 'out-of-credits' };

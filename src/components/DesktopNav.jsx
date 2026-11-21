@@ -4,8 +4,11 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { useLiveStreak } from '../hooks.js';
 import UserProfileNavDropdown from './UserProfileNavDropdown.jsx';
 import StudyGoalNavDropdown from './aspiration/StudyGoalNavDropdown.jsx';
+import NavCreditPopover from './NavCreditPopover.jsx';
+import NavStreakPopover from './NavStreakPopover.jsx';
 import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
 import '../styles/nav-dropdowns.css';
+import '../styles/nav-redesign-v2.css';
 import {
   IconHome, IconRobot, IconTools,
   IconCalc, IconMicroscope, IconScale, IconTimer,
@@ -80,6 +83,45 @@ const IconPhysics = ({ size = 16, className = '' }) => (
     <circle cx="12" cy="12" r="2.4" fill="currentColor" />
     <ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(30 12 12)" />
     <ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(-30 12 12)" />
+  </svg>
+);
+
+const IconProjectile = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`anim-ico-svg ${className}`} aria-hidden="true">
+    <path d="M3 19c3.5-11 11.5-11 16 0" />
+    <circle cx="19" cy="19" r="2" fill="currentColor" />
+    <path d="M3 19h18" opacity="0.45" />
+  </svg>
+);
+
+const IconCircuit = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`anim-ico-svg ${className}`} aria-hidden="true">
+    <rect x="2" y="8" width="6" height="8" rx="1.5" />
+    <path d="M8 12h3l1.5-3 2 6 1.5-3H22" />
+  </svg>
+);
+
+const IconOptics = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`anim-ico-svg ${className}`} aria-hidden="true">
+    <path d="M12 3c3 4 3 14 0 18-3-4-3-14 0-18Z" />
+    <path d="M2 8h10l9 8" />
+    <path d="M2 16h10l9-8" opacity="0.55" />
+  </svg>
+);
+
+const IconWaveSim = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`anim-ico-svg ${className}`} aria-hidden="true">
+    <path d="M2 12c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 5 0" />
+    <path d="M2 17c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 5 0" opacity="0.5" />
+  </svg>
+);
+
+const IconPendulum = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`anim-ico-svg ${className}`} aria-hidden="true">
+    <path d="M6 4h12" />
+    <path d="M12 4l4 7-5 7" />
+    <circle cx="16" cy="11" r="2" fill="currentColor" />
+    <circle cx="11" cy="18" r="2.3" fill="currentColor" />
   </svg>
 );
 
@@ -174,28 +216,77 @@ export const SUBJECT_TOOL_GROUPS = [
     tintBg: 'rgba(124, 58, 237, 0.1)',
     tintText: '#7c3aed',
     Icon: IconPhysics,
-    description: 'Công thức Cơ - Sóng - Điện, Lab ảo 3D & Máy tính chu kỳ dao động cùng AI',
+    description: 'Phòng thí nghiệm Vật lí ảo 7 mô phỏng (Ném xiên, Mạch điện, Quang hình, Sóng 2D, Con lắc kép, Olympiad) & Sổ công thức GDPT 2018',
     tools: [
       {
-        id: 'formulas',
-        name: 'Sổ tay công thức Vật lí',
-        desc: 'Dao động điều hòa, Sóng cơ, Dòng điện xoay chiều, Hạt nhân',
-        Icon: IconCalc,
-        href: '#formulas',
+        id: 'physics-lab',
+        sim: 'projectile',
+        name: 'Mô phỏng Chuyển động Ném xiên',
+        desc: 'Quỹ đạo parabol, vectơ (vx, vy), so sánh góc 30°–60° & lực cản',
+        Icon: IconProjectile,
+        href: '#physics-lab?sim=projectile',
+      },
+      {
+        id: 'physics-lab',
+        sim: 'circuit',
+        name: 'Lắp ráp & Tính toán Mạch điện DC',
+        desc: 'Nối tiếp, song song, hỗn hợp, Định luật Ôm toàn mạch & khóa K',
+        Icon: IconCircuit,
+        href: '#physics-lab?sim=circuit',
+      },
+      {
+        id: 'physics-lab',
+        sim: 'optics',
+        name: 'Quang hình: Khúc xạ & Thấu kính',
+        desc: 'Vẽ 3 tia qua thấu kính hội tụ/phân kì, Snell & Phản xạ toàn phần',
+        Icon: IconOptics,
+        href: '#physics-lab?sim=optics',
+      },
+      {
+        id: 'physics-lab',
+        sim: 'wave',
+        name: 'Mô phỏng Sóng 2D & Giao thoa',
+        desc: 'Bể sóng 2 chiều thời gian thực, cùng pha/ngược pha & đếm cực đại',
+        Icon: IconWaveSim,
+        href: '#physics-lab?sim=wave',
+      },
+      {
+        id: 'physics-lab',
+        sim: 'mechanics',
+        name: 'Cơ học 2D & Bảo toàn Động lượng',
+        desc: 'Kéo thả bắn bi, va chạm đàn hồi Newton, va chạm mềm & không trọng lực',
+        Icon: IconPhysics,
+        href: '#physics-lab?sim=mechanics',
+      },
+      {
+        id: 'physics-lab',
+        sim: 'pendulum',
+        name: 'Con lắc kép & Hỗn loạn (RK4)',
+        desc: 'Tích phân Runge-Kutta bậc 4 & chế độ Hiệu ứng Cánh bướm lệch 0,1°',
+        Icon: IconPendulum,
+        href: '#physics-lab?sim=pendulum',
+      },
+      {
+        id: 'physics-lab',
+        sim: 'olympiad',
+        name: 'Thí nghiệm Lớp 8–12 & Olympiad',
+        desc: 'Đo g con lắc đơn, đặc tuyến U–I hồi quy R² & Lực đẩy Archimedes',
+        Icon: IconChart,
+        href: '#physics-lab?sim=olympiad',
       },
       {
         id: 'sim-lab',
         name: 'Mô phỏng Mạch RLC & Sóng Y-âng',
         desc: 'Kéo thanh trượt R-L-C-f, xem giản đồ Fresnel & vân giao thoa trực tiếp',
-        Icon: IconPhysics,
+        Icon: IconMicroscope,
         href: '#sim-lab',
       },
       {
-        id: 'games/lab-3d',
-        name: 'Phòng Lab ảo & Mô phỏng 3D',
-        desc: 'Thí nghiệm con lắc lò xo, khúc xạ ánh sáng & mạch LC',
-        Icon: IconMicroscope,
-        href: '#games/lab-3d',
+        id: 'formulas',
+        name: 'Sổ tay công thức Vật lí',
+        desc: 'Vật lí Nhiệt 12, Khí lí tưởng, Từ trường, Hạt nhân & Dao động sóng',
+        Icon: IconCalc,
+        href: '#formulas',
       },
       {
         id: 'ai',
@@ -255,7 +346,7 @@ export const SUBJECT_TOOL_GROUPS = [
     tintText: '#2563eb',
     Icon: IconSparkles,
     description: 'Bộ công cụ học tập thông minh: Bảng phấn 3D, AI Doc Studio, Sổ tay lỗi sai & Định hướng đại học',
-    gridCols: 3,
+    gridCols: 2,
     tools: [
       {
         id: 'chalkboard',
@@ -350,6 +441,8 @@ export default function DesktopNav({
 }) {
   const [localToolOpen, setLocalToolOpen] = useState(false);
   const [toolFolder, setToolFolder] = useState('suite');
+  const [toolSearch, setToolSearch] = useState('');
+  const [moreOpen, setMoreOpen] = useState(false);
   const localRef = useRef(null);
   const toolOpen = toolOpenProp !== undefined ? toolOpenProp : localToolOpen;
   const setToolOpen = onToolOpen || setLocalToolOpen;
@@ -363,18 +456,59 @@ export default function DesktopNav({
     const onClick = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) {
         setToolOpen(false);
+        setMoreOpen(false);
       }
     };
     const onKey = (e) => {
-      if (e.key === 'Escape') setToolOpen(false);
+      if (e.key === 'Escape') {
+        setToolOpen(false);
+        setMoreOpen(false);
+      }
+    };
+    const onCloseOthers = (e) => {
+      if (e.detail?.except !== 'tools') setToolOpen(false);
+      if (e.detail?.except !== 'more') setMoreOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('elec-close-nav-dropdowns', onCloseOthers);
     return () => {
       document.removeEventListener('mousedown', onClick);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('elec-close-nav-dropdowns', onCloseOthers);
     };
   }, []);
+
+  const toggleToolsMenu = () => {
+    const next = !toolOpen;
+    if (next) {
+      window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns', { detail: { except: 'tools' } }));
+      setToolSearch('');
+    }
+    setToolOpen(next);
+  };
+
+  const toggleMoreMenu = () => {
+    const next = !moreOpen;
+    if (next) {
+      window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns', { detail: { except: 'more' } }));
+    }
+    setMoreOpen(next);
+  };
+
+  const normalizedToolSearch = toolSearch.trim().toLowerCase();
+  const matchedToolsAcrossFolders = normalizedToolSearch
+    ? SUBJECT_TOOL_GROUPS.flatMap((g) =>
+        g.tools
+          .filter(
+            (t) =>
+              t.name.toLowerCase().includes(normalizedToolSearch) ||
+              t.desc.toLowerCase().includes(normalizedToolSearch) ||
+              g.title.toLowerCase().includes(normalizedToolSearch)
+          )
+          .map((t) => ({ ...t, tintBg: g.tintBg, tintText: g.tintText }))
+      )
+    : null;
 
   const isTeacher = Boolean(isPro || userRole === 'teacher');
   const isStudent = userRole === 'student';
@@ -415,14 +549,14 @@ export default function DesktopNav({
             <span className="nav-label">Trang chủ</span>
           </a>
 
-          {/* 2. Phòng thi ảo (có nhãn HOT) */}
+          {/* 2. Phòng thi ảo (nhãn HOT gọn inline) */}
           <a
             href="#virtual-exams"
             className={'nav-item ns9-nav-virtual-exam' + (page === 'quiz' || page === 'virtual-exams' ? ' active' : '')}
           >
-            <span className="ns9-nav-hot-badge" aria-hidden="true">HOT</span>
             <span className="nav-ico"><IconQuiz size={15} className="anim-ico-svg anim-ico-quiz anim-ico-cap" /></span>
             <span className="nav-label">Phòng thi ảo</span>
+            <span className="ns9-nav-hot-badge" aria-hidden="true">HOT</span>
           </a>
 
           {/* 3. Trợ lý AI KHTN (mở nhanh 1 chạm) */}
@@ -438,17 +572,17 @@ export default function DesktopNav({
           {/* 4. Lộ trình */}
           <a
             href="#roadmap"
-            className={'nav-item' + (page === 'roadmap' ? ' active' : '')}
+            className={'nav-item nav-item-collapsible' + (page === 'roadmap' ? ' active' : '')}
           >
             <span className="nav-ico"><IcoBook size={15} className="anim-ico-svg anim-ico-book anim-ico-roadmap" /></span>
             <span className="nav-label">Lộ trình</span>
           </a>
 
-          {/* 4. Lớp học */}
+          {/* 5. Lớp học */}
           {isTeacher ? (
             <a
               href="#classroom"
-              className={'nav-item' + (page === 'classroom' ? ' active' : '')}
+              className={'nav-item nav-item-collapsible' + (page === 'classroom' ? ' active' : '')}
             >
               <span className="nav-ico"><IconClass size={15} className="anim-ico-svg anim-ico-class" /></span>
               <span className="nav-label">Quản lý lớp</span>
@@ -456,12 +590,45 @@ export default function DesktopNav({
           ) : (
             <a
               href="#my-classes"
-              className={'nav-item' + (page === 'my-classes' || page === 'classroom' ? ' active' : '')}
+              className={'nav-item nav-item-collapsible' + (page === 'my-classes' || page === 'classroom' ? ' active' : '')}
             >
               <span className="nav-ico"><IconClass size={15} className="anim-ico-svg anim-ico-class" /></span>
               <span className="nav-label">Lớp học</span>
             </a>
           )}
+
+          {/* Menu gộp Tablet (768px–1080px): chống tràn ngang 100% */}
+          <div className="nav-more-tablet">
+            <button
+              type="button"
+              className={'nav-item has-drop' + (moreOpen || page === 'roadmap' || page === 'classroom' || page === 'my-classes' ? ' active' : '')}
+              onClick={toggleMoreMenu}
+              aria-expanded={moreOpen}
+              aria-label="Thêm mục điều hướng"
+            >
+              <span className="nav-label">Thêm</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <div className="nav-more-popover" role="menu">
+                <a href="#roadmap" className={page === 'roadmap' ? 'active' : ''} onClick={() => setMoreOpen(false)}>
+                  <IcoBook size={15} /><span>Lộ trình ôn thi</span>
+                </a>
+                <a
+                  href={isTeacher ? '#classroom' : '#my-classes'}
+                  className={page === 'classroom' || page === 'my-classes' ? 'active' : ''}
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <IconClass size={15} /><span>{isTeacher ? 'Quản lý lớp' : 'Lớp học'}</span>
+                </a>
+                <a href="#leaderboard" className={page === 'leaderboard' ? 'active' : ''} onClick={() => setMoreOpen(false)}>
+                  <IconChart size={15} /><span>Bảng xếp hạng &amp; Quân đoàn</span>
+                </a>
+              </div>
+            )}
+          </div>
 
           {/* Menu phụ: Gom toàn bộ Công cụ theo từng tệp môn học KHTN */}
           <div className="nav-drop">
@@ -471,7 +638,7 @@ export default function DesktopNav({
                 'nav-item has-drop' +
                 (ALL_TOOL_IDS.includes(page) ? ' active' : '')
               }
-              onClick={() => setToolOpen((s) => !s)}
+              onClick={toggleToolsMenu}
               aria-expanded={toolOpen}
               aria-label="Mở menu Công cụ theo môn Khoa học Tự nhiên"
             >
@@ -511,68 +678,125 @@ export default function DesktopNav({
                   </a>
                 </div>
 
-                {/* Thanh tab chọn tệp môn học */}
-                <div className="nav-tools-folder-tabs" role="tablist" aria-label="Chọn tệp môn học">
-                  {FOLDER_TABS.map((tab) => {
-                    const TabIcon = tab.Icon;
-                    const isActive = toolFolder === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        className={`nav-tools-folder-tab ${isActive ? 'is-active' : ''}`}
-                        style={{ '--tab-color': tab.color }}
-                        onClick={() => setToolFolder(tab.id)}
-                      >
-                        {tab.mascot ? (
-                          <img src={tab.mascot} alt="" className="nav-tools-folder-mascot" />
-                        ) : (
-                          <TabIcon size={14} />
-                        )}
-                        <span>{tab.label}</span>
-                      </button>
-                    );
-                  })}
+                {/* Ô tìm nhanh công cụ xuyên suốt 4 phân môn */}
+                <div className="nav-tools-search-row">
+                  <IconSearch size={14} />
+                  <input
+                    type="text"
+                    value={toolSearch}
+                    onChange={(e) => setToolSearch(e.target.value)}
+                    placeholder="Tìm nhanh công cụ (VD: Pomodoro, Sổ lỗi sai, Bảng tuần hoàn, Điểm chuẩn...)"
+                    aria-label="Tìm nhanh công cụ"
+                  />
+                  {toolSearch && (
+                    <button
+                      type="button"
+                      className="nav-tools-search-clear"
+                      onClick={() => setToolSearch('')}
+                      aria-label="Xóa tìm kiếm"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
 
-                {/* Danh sách công cụ theo tab đang chọn (Gọn gàng, không cuộn dọc rườm rà) */}
+                {/* Thanh tab chọn tệp môn học */}
+                {!matchedToolsAcrossFolders && (
+                  <div className="nav-tools-folder-tabs" role="tablist" aria-label="Chọn tệp môn học">
+                    {FOLDER_TABS.map((tab) => {
+                      const TabIcon = tab.Icon;
+                      const isActive = toolFolder === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          className={`nav-tools-folder-tab ${isActive ? 'is-active' : ''}`}
+                          style={{ '--tab-color': tab.color }}
+                          onClick={() => setToolFolder(tab.id)}
+                        >
+                          {tab.mascot ? (
+                            <img src={tab.mascot} alt="" className="nav-tools-folder-mascot" />
+                          ) : (
+                            <TabIcon size={14} />
+                          )}
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Danh sách công cụ theo tab hoặc theo tìm kiếm */}
                 <div className="nav-tools-folder-content">
-                  {SUBJECT_TOOL_GROUPS.filter((g) => toolFolder === g.id).map((group) => (
-                    <div key={group.id} className="nav-tools-folder-section">
-                      <div className={group.gridCols === 3 ? 'nav-tools-grid-3col' : 'nav-tools-grid-2col'}>
-                        {group.tools.map((tool) => {
+                  {matchedToolsAcrossFolders ? (
+                    matchedToolsAcrossFolders.length > 0 ? (
+                      <div className="nav-tools-grid-2col">
+                        {matchedToolsAcrossFolders.map((tool) => {
                           const ToolIcon = tool.Icon;
-                          const isToolActive = page === tool.id;
                           return (
                             <a
-                              key={tool.name}
+                              key={`${tool.href}-${tool.name}`}
                               href={tool.href}
-                              className={`nav-tool-item-bento ${isToolActive ? 'active' : ''}`}
+                              className={`nav-tool-item-bento ${page === tool.id ? 'active' : ''}`}
                               onClick={() => setToolOpen(false)}
                             >
-                              <span
-                                className="nav-tool-bento-icon"
-                                style={{ background: group.tintBg, color: group.tintText }}
-                              >
+                              <span className="nav-tool-bento-icon" style={{ background: tool.tintBg, color: tool.tintText }}>
                                 <ToolIcon size={18} />
                               </span>
                               <span className="nav-tool-bento-info">
                                 <span className="nav-tool-bento-title">{tool.name}</span>
                                 <span className="nav-tool-bento-desc">{tool.desc}</span>
                               </span>
-                              <span className="nav-tool-bento-arrow" aria-hidden="true">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                              </span>
                             </a>
                           );
                         })}
                       </div>
-                    </div>
-                  ))}
+                    ) : (
+                      <p style={{ padding: '16px 6px', margin: 0, fontSize: '0.82rem', opacity: 0.7 }}>
+                        Không tìm thấy công cụ nào khớp với &ldquo;{toolSearch}&rdquo;.
+                      </p>
+                    )
+                  ) : (
+                    SUBJECT_TOOL_GROUPS.filter((g) => toolFolder === g.id).map((group) => (
+                      <div key={group.id} className="nav-tools-folder-section">
+                        <div className="nav-tools-grid-2col">
+                          {group.tools.map((tool) => {
+                            const ToolIcon = tool.Icon;
+                            const currentHash = typeof window !== 'undefined' ? window.location.hash : '';
+                            const isToolActive = tool.sim
+                              ? page === tool.id && currentHash.includes(`sim=${tool.sim}`)
+                              : page === tool.id;
+                            return (
+                              <a
+                                key={tool.name}
+                                href={tool.href}
+                                className={`nav-tool-item-bento ${isToolActive ? 'active' : ''}`}
+                                onClick={() => setToolOpen(false)}
+                              >
+                                <span
+                                  className="nav-tool-bento-icon"
+                                  style={{ background: group.tintBg, color: group.tintText }}
+                                >
+                                  <ToolIcon size={18} />
+                                </span>
+                                <span className="nav-tool-bento-info">
+                                  <span className="nav-tool-bento-title">{tool.name}</span>
+                                  <span className="nav-tool-bento-desc">{tool.desc}</span>
+                                </span>
+                                <span className="nav-tool-bento-arrow" aria-hidden="true">
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="9 18 15 12 9 6" />
+                                  </svg>
+                                </span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 {isAdmin && (
@@ -589,45 +813,14 @@ export default function DesktopNav({
 
         {/* ============ CỤM PHẢI: STREAK + ĐIỂM AI + BỘ 4 ICON TIỆN ÍCH (SEARCH, THEME, BELL, AVATAR) ============ */}
         <div className="nav-actions">
-          <button
-            type="button"
-            className={`ns9-nav-streak-pill ${hasStreakToday ? 'is-active' : 'is-idle'}`}
-            title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay) — Bấm xem Bảo vệ chuỗi & Nhận thưởng` : `Chuỗi ${streakCount} ngày (Chưa học hôm nay) — Bấm xem Bảo vệ chuỗi & Nhận thưởng`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
-              window.dispatchEvent(new CustomEvent('elec-open-streak-modal'));
-            }}
-            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill={hasStreakToday ? '#ea580c' : '#f97316'}
-              style={{ opacity: hasStreakToday ? 1 : 0.75, pointerEvents: 'none' }}
-              className={`ns9-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`}
-              aria-hidden="true"
-            >
-              <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
-            </svg>
-            <span style={{ pointerEvents: 'none' }}>{streakCount}</span>
-          </button>
+          <NavStreakPopover
+            userId={user?.uid}
+            streakCount={streakCount}
+            hasStreakToday={hasStreakToday}
+          />
 
           {credits != null && (
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
-              className="nav-credit-pill"
-              title={`Điểm AI: ${credits.toLocaleString('vi-VN')} điểm — Bấm để nạp ELEC AI Credit`}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-              <span>{credits >= 1_000_000 ? `${(credits / 1_000_000).toFixed(1).replace(/\.0$/, '')}M` : credits >= 10_000 ? `${Math.round(credits / 1_000)}k` : credits.toLocaleString('vi-VN')}</span>
-            </button>
+            <NavCreditPopover userId={user?.uid} credits={credits} />
           )}
 
           {/* Cụm 4 nút tiện ích gọn đẹp: Tìm kiếm (SVG) • Đổi giao diện • Thông báo • Avatar */}

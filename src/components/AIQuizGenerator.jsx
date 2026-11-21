@@ -4,7 +4,7 @@ import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
 import { askAI, fetchPlan } from '../services/api.js';
 import { compressImage } from '../lib/ai.js';
-import { spendCredit, refundCredit } from '../lib/creditService.js';
+import { spendCredit, refundCredit, calcExamGenCreditCost, formatCredits } from '../lib/creditService.js';
 import VipGate from './VipGate.jsx';
 import AIMark from './AIMark.jsx';
 import { sanitizeTopicId, topicPromptList } from '../data/chemTopics.js';
@@ -37,8 +37,8 @@ const STEP = {
   RESULT: 'result',
 };
 
-/* Giá theo số câu: 1 điểm cho 5 câu, làm tròn lên */
-const quizCost = (questionCount) => Math.max(1, Math.ceil(questionCount / 5));
+/* Giá theo số câu chuẩn 1 VNĐ = 1 Credit (1.000 – 3.000 Credit) */
+const quizCost = (questionCount) => calcExamGenCreditCost(questionCount);
 
 /* ============================================================
    Đọc file → text hoặc ảnh base64

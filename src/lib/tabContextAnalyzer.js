@@ -16,10 +16,10 @@ export const TAB_DEFINITIONS = {
       'Truy cập nhanh vào Lớp học hoặc Kho đề thi để điều phối bài giảng tiếp theo.',
     ],
     quickChips: [
+      { label: 'Sức khỏe lớp & câu sai nhiều', action: 'class_health' },
       { label: 'Học sinh điểm dưới 5.0?', query: 'Lớp nào đang có học sinh điểm dưới 5.0?' },
-      { label: 'Báo cáo phổ điểm toàn trường', query: 'Báo cáo phổ điểm và phân tích điểm số các lớp' },
-      { label: 'Kê đơn phục hồi học sinh yếu', query: 'Kê đơn học tập cho học sinh yếu' },
-      { label: 'Hướng dẫn sử dụng hệ thống', query: 'Hướng dẫn quy trình tạo lớp học và cho học sinh kiểm tra' },
+      { label: 'Soạn tin Zalo phụ huynh', action: 'parent_report' },
+      { label: 'Báo cáo phổ điểm', query: 'Báo cáo phổ điểm và phân tích điểm số các lớp' },
     ],
   },
 
@@ -34,10 +34,10 @@ export const TAB_DEFINITIONS = {
       'Bấm vào từng lớp để xem danh sách học sinh, lịch sử làm bài và tiến độ bồi dưỡng.',
     ],
     quickChips: [
+      { label: 'Sức khỏe lớp học', action: 'class_health' },
+      { label: 'Soạn tin Zalo phụ huynh', action: 'parent_report' },
       { label: '+ Tạo lớp mới bằng AI', query: 'Tạo lớp mới cho tôi' },
       { label: 'Xem mã vào các lớp', query: 'Danh sách các lớp và mã vào lớp' },
-      { label: 'Học sinh cần bồi dưỡng', query: 'Học sinh nào trong các lớp đang có điểm dưới trung bình?' },
-      { label: 'Giao đề cho lớp này', query: 'Soạn đề kiểm tra giao cho lớp' },
     ],
   },
 
@@ -104,10 +104,10 @@ export const TAB_DEFINITIONS = {
       'Bấm "Giao đề cho lớp" hoặc "Đảo 4 mã đề" để phát hành bài kiểm tra cho học sinh.',
     ],
     quickChips: [
-      { label: '⚡ Đồng bộ Word vào Bài thi', query: 'Đồng bộ câu hỏi từ Word vào hệ thống làm bài online' },
-      { label: '🎯 Giao bài cho lớp học', query: 'Hướng dẫn giao đề cho lớp từ Word' },
-      { label: '🔀 Đảo 4 mã đề (101 - 104)', query: 'Hướng dẫn đảo 4 mã đề tự động' },
-      { label: '🩺 AI Thẩm định ma trận', query: 'Khám bệnh và thẩm định đề thi này' },
+      { label: 'Đồng bộ Word vào Bài thi', query: 'Đồng bộ câu hỏi từ Word vào hệ thống làm bài online' },
+      { label: 'Giao bài cho lớp học', query: 'Hướng dẫn giao đề cho lớp từ Word' },
+      { label: 'Đảo 4 mã đề (101 - 104)', query: 'Hướng dẫn đảo 4 mã đề tự động' },
+      { label: 'AI Thẩm định ma trận', query: 'Khám bệnh và thẩm định đề thi này' },
     ],
   },
 
@@ -199,7 +199,7 @@ export function getCurrentTabInfo({
     const qCount = wordEditorExam?.questions?.length || exams?.[0]?.questions?.length || 0;
     contextBadge = `${qCount} câu • Môn ${wordEditorExam?.subject || 'Vật lí / Hóa / Sinh'}`;
   } else {
-    contextBadge = `${classCount} lớp • ${totalSubs} bài nộp`;
+    contextBadge = `${classCount} lớp • ${examCount} đề • ${totalSubs} bài nộp`;
   }
 
   return {

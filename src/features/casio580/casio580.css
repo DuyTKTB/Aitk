@@ -1,0 +1,1006 @@
+/* ==========================================================================
+   casio580.css — ELEC Casio fx-580VN X ClassWiz Studio Pro
+   --------------------------------------------------------------------------
+   100% scoped under .elec-casio-host, .elec-casio-page & .elec-cpro
+   3 Hardware Skins: Carbon Black · ELEC Cobalt Edition · Pearl Silver
+   ========================================================================== */
+
+.elec-casio-host {
+  --casio-case-bg:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #272e3a 0%, #161b23 100%);
+  --casio-case-border: #3d4657;
+  --casio-case-shadow: 0 26px 56px -18px rgba(3, 7, 24, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --casio-bezel-bg: linear-gradient(180deg, #131820 0%, #0b0e14 100%);
+  --casio-bezel-border: #323c4e;
+  --casio-logo-ink: #f8fafc;
+  --casio-model-ink: #94a3b8;
+  --casio-sub-ink: #6cc4ff;
+  --casio-lcd-bg: #c7d6c5;
+  --casio-btn-num: linear-gradient(180deg, #ffffff 0%, #e7ecf3 100%);
+  --casio-btn-num-text: #0f172a;
+  --casio-btn-op: linear-gradient(180deg, #434d5e 0%, #2d3544 100%);
+  --casio-btn-op-text: #f8fafc;
+  --casio-btn-sci: linear-gradient(180deg, #2b3443 0%, #1b222e 100%);
+  --casio-btn-sci-text: #f1f5f9;
+  --casio-btn-top: linear-gradient(180deg, #3e4a5e 0%, #293242 100%);
+  --casio-dpad-bg: radial-gradient(circle at 35% 30%, #cbd5e1 0%, #64748b 55%, #334155 100%);
+  --casio-dpad-border: #94a3b8;
+  --casio-dpad-ink: #0f172a;
+  --casio-label-shift: #fbbf24;
+  --casio-label-alpha: #f87171;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--sans, system-ui, -apple-system, sans-serif);
+}
+
+/* Skin 2: ELEC Cobalt Edition (Proprietary ELEC AI signature) */
+.elec-casio-host[data-skin='cobalt'] {
+  --casio-case-bg:
+    radial-gradient(85% 45% at 50% 0%, rgba(77, 134, 255, 0.24), transparent 65%),
+    repeating-linear-gradient(135deg, rgba(108, 196, 255, 0.025) 0 2px, transparent 2px 7px),
+    linear-gradient(180deg, #101d4d 0%, #070e2b 100%);
+  --casio-case-border: rgba(108, 196, 255, 0.36);
+  --casio-case-shadow:
+    0 28px 60px -18px rgba(10, 26, 92, 0.72),
+    0 0 0 1px rgba(77, 134, 255, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --casio-bezel-bg: linear-gradient(180deg, #091233 0%, #050a1e 100%);
+  --casio-bezel-border: rgba(108, 196, 255, 0.32);
+  --casio-lcd-bg: #d8e9fa;
+  --casio-btn-sci: linear-gradient(180deg, #1b2c68 0%, #101c49 100%);
+  --casio-btn-op: linear-gradient(180deg, #273e8c 0%, #192a66 100%);
+  --casio-btn-top: linear-gradient(180deg, #243980 0%, #162559 100%);
+  --casio-dpad-bg: radial-gradient(circle at 35% 30%, #93c5fd 0%, #3b82f6 55%, #1d4ed8 100%);
+  --casio-dpad-border: rgba(191, 219, 254, 0.65);
+  --casio-dpad-ink: #ffffff;
+}
+
+/* Skin 3: Pearl Silver White Edition */
+.elec-casio-host[data-skin='pearl'] {
+  --casio-case-bg: linear-gradient(180deg, #f7f9fe 0%, #dfe6f2 100%);
+  --casio-case-border: #c5d0e4;
+  --casio-case-shadow:
+    0 24px 50px -18px rgba(15, 32, 88, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --casio-bezel-bg: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  --casio-bezel-border: #94a3b8;
+  --casio-logo-ink: #0f172a;
+  --casio-model-ink: #475569;
+  --casio-sub-ink: #2563eb;
+  --casio-lcd-bg: #d4dfd2;
+  --casio-btn-num: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  --casio-btn-num-text: #0f172a;
+  --casio-btn-sci: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  --casio-btn-op: linear-gradient(180deg, #475569 0%, #334155 100%);
+  --casio-btn-top: linear-gradient(180deg, #475569 0%, #334155 100%);
+  --casio-dpad-bg: radial-gradient(circle at 35% 30%, #f8fafc 0%, #cbd5e1 60%, #94a3b8 100%);
+  --casio-dpad-border: #94a3b8;
+  --casio-dpad-ink: #0f172a;
+  --casio-label-shift: #b45309;
+  --casio-label-alpha: #dc2626;
+}
+
+.elec-casio-host *,
+.elec-casio-host *::before,
+.elec-casio-host *::after {
+  box-sizing: border-box;
+}
+
+/* ── Hardware Control Strip (DEG/RAD/GRA · Skin · Sound · Copy) ── */
+.elec-casio-hw-bar {
+  width: 100%;
+  max-width: 424px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.elec-casio-hw-left,
+.elec-casio-hw-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.elec-casio-hw-pill,
+.elec-casio-hw-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px !important;
+  border: 1px solid var(--line, rgba(15, 29, 74, 0.14));
+  background: var(--panel, #ffffff);
+  color: var(--ink, #0a1230);
+  font: 700 0.72rem var(--sans);
+  cursor: pointer;
+  transition: border-color 0.14s, background-color 0.14s, color 0.14s;
+}
+.elec-casio-hw-ico {
+  width: 30px;
+  padding: 0;
+}
+.elec-casio-hw-pill.angle {
+  font-family: var(--mono);
+  background: color-mix(in srgb, #2f6bff 12%, var(--panel, #ffffff));
+  border-color: rgba(47, 107, 255, 0.34);
+  color: #2f6bff;
+}
+.elec-casio-hw-pill:hover:not(:disabled),
+.elec-casio-hw-ico:hover,
+.elec-casio-hw-ico.on {
+  border-color: #2f6bff;
+  color: #2f6bff;
+}
+.elec-casio-hw-pill.copied {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+.elec-casio-hw-pill:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* Quick Mode Ribbon above Calculator */
+.elec-casio-mode-bar {
+  width: 100%;
+  max-width: 424px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+.elec-casio-mode-chip {
+  padding: 4px 8px;
+  border-radius: 999px !important;
+  border: 1px solid var(--line, rgba(15, 29, 74, 0.14));
+  background: var(--panel, #ffffff);
+  color: var(--mut, #5d6a94);
+  font: 700 0.68rem var(--mono, monospace);
+  cursor: pointer;
+  transition: border-color 0.14s, background-color 0.14s, color 0.14s;
+}
+.elec-casio-mode-chip:hover {
+  border-color: #2f6bff;
+  color: #2f6bff;
+}
+.elec-casio-mode-chip.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 3px 10px -3px rgba(47, 107, 255, 0.55);
+}
+
+.elec-casio-mount {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Sculpted Physical Casio fx-580VN X Hardware Body ── */
+.elec-casio-host .casio-case {
+  width: 100%;
+  max-width: 424px;
+  background: var(--casio-case-bg);
+  border: 2px solid var(--casio-case-border);
+  border-radius: 28px;
+  padding: 18px 16px 14px;
+  box-shadow: var(--casio-case-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.elec-casio-host .casio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+.elec-casio-host .casio-branding {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.elec-casio-host .casio-logo {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+  color: var(--casio-logo-ink);
+}
+.elec-casio-host .casio-model {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--casio-model-ink);
+}
+.elec-casio-host .casio-subtext {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  color: var(--casio-sub-ink);
+}
+.elec-casio-host .solar-panel {
+  width: 78px;
+  height: 22px;
+  background: #231414;
+  border: 1.5px solid #4e3535;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+.elec-casio-host .solar-grid {
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    #382121,
+    #382121 18px,
+    #634040 19px,
+    #634040 20px
+  );
+}
+
+/* Màn hình LCD Canvas 2D có hiệu ứng kính phản sáng nhẹ */
+.elec-casio-host .casio-screen-frame {
+  position: relative;
+  background: var(--casio-bezel-bg);
+  border: 2px solid var(--casio-bezel-border);
+  border-radius: 14px;
+  padding: 9px;
+  box-shadow: inset 0 5px 12px rgba(0, 0, 0, 0.78);
+}
+.elec-casio-host .casio-lcd-container {
+  position: relative;
+  width: 100%;
+  border-radius: 7px;
+  overflow: hidden;
+  background-color: var(--casio-lcd-bg);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.34);
+}
+.elec-casio-host .casio-lcd-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 38%, transparent 40%);
+  pointer-events: none;
+}
+.elec-casio-host .casio-lcd-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/* Bố cục bàn phím 50 phím */
+.elec-casio-host .casio-keypad-container {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding-top: 6px;
+}
+.elec-casio-host .keypad-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+}
+.elec-casio-host .keypad-row-top {
+  grid-template-columns: 1fr 1fr 1.48fr 1fr 1fr;
+}
+.elec-casio-host .keypad-row-sci-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.elec-casio-host .keypad-row-sci-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+.elec-casio-host .keypad-row-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+.elec-casio-host .keypad-numpad {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 4px;
+}
+
+/* D-Pad kim loại phay xước 4 chiều */
+.elec-casio-host .dpad-cluster {
+  display: grid;
+  grid-template-areas:
+    '. up .'
+    'left . right'
+    '. down .';
+  width: 84px;
+  height: 64px;
+  margin: 0 auto;
+  background: var(--casio-dpad-bg);
+  border-radius: 50%;
+  border: 2px solid var(--casio-dpad-border);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.42), inset 0 1px 2px rgba(255, 255, 255, 0.45);
+  padding: 2px;
+}
+.elec-casio-host .dpad-btn {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--casio-dpad-ink) !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  min-width: 0;
+  min-height: 0;
+}
+.elec-casio-host .dpad-up { grid-area: up; }
+.elec-casio-host .dpad-down { grid-area: down; }
+.elec-casio-host .dpad-left { grid-area: left; }
+.elec-casio-host .dpad-right { grid-area: right; }
+
+/* Nhãn Shift / Alpha phía trên phím */
+.elec-casio-host .casio-btn-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  touch-action: manipulation;
+}
+.elec-casio-host .key-shift-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: var(--casio-label-shift);
+  position: absolute;
+  top: -12px;
+  left: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1;
+}
+.elec-casio-host .key-alpha-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: var(--casio-label-alpha);
+  position: absolute;
+  top: -12px;
+  right: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* Phím bấm 3D ClassWiz */
+.elec-casio-host .casio-btn {
+  width: 100%;
+  height: 36px;
+  padding: 0 2px;
+  margin: 0;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.05s ease-out, box-shadow 0.05s ease-out, filter 0.12s;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  touch-action: manipulation;
+}
+.elec-casio-host .casio-btn:hover {
+  filter: brightness(1.09);
+}
+.elec-casio-host .casio-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.58);
+}
+
+.elec-casio-host .btn-shift {
+  background: var(--casio-btn-top);
+  color: #fbbf24;
+  font-weight: 800;
+  font-size: 10.5px;
+  border-radius: 999px !important;
+}
+.elec-casio-host .btn-alpha {
+  background: var(--casio-btn-top);
+  color: #f87171;
+  font-weight: 800;
+  font-size: 10.5px;
+  border-radius: 999px !important;
+}
+.elec-casio-host .btn-menu,
+.elec-casio-host .btn-on {
+  background: var(--casio-btn-top);
+  color: #f8fafc;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 999px !important;
+}
+.elec-casio-host .btn-sci {
+  background: var(--casio-btn-sci);
+  color: var(--casio-btn-sci-text);
+  font-size: 10.5px;
+  height: 31px;
+  border-radius: 7px !important;
+}
+.elec-casio-host .btn-num {
+  background: var(--casio-btn-num);
+  color: var(--casio-btn-num-text);
+  font-size: 15.5px;
+  font-weight: 800;
+  height: 39px;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+.elec-casio-host .btn-op {
+  background: var(--casio-btn-op);
+  color: var(--casio-btn-op-text);
+  font-size: 15.5px;
+  height: 39px;
+}
+.elec-casio-host .btn-del {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 800;
+  height: 39px;
+}
+.elec-casio-host .btn-ac {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 800;
+  height: 39px;
+}
+.elec-casio-host .btn-equals {
+  background: linear-gradient(180deg, #4d86ff 0%, #1f4fe6 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 3px 0 #15339c, inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+.elec-casio-host .casio-footer {
+  text-align: center;
+  padding-top: 2px;
+}
+.elec-casio-host .casio-edition {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--casio-model-ink);
+  opacity: 0.78;
+}
+
+/* ── Compact Mode (cho bảng nổi trong Phòng Thi Ảo) ── */
+.elec-casio-host.is-compact {
+  gap: 6px;
+}
+.elec-casio-host.is-compact .elec-casio-hw-bar {
+  max-width: 344px;
+}
+.elec-casio-host.is-compact .elec-casio-hw-pill,
+.elec-casio-host.is-compact .elec-casio-hw-ico {
+  height: 26px;
+  font-size: 0.67rem;
+  padding: 0 7px;
+}
+.elec-casio-host.is-compact .elec-casio-hw-ico {
+  width: 26px;
+  padding: 0;
+}
+.elec-casio-host.is-compact .casio-case {
+  max-width: 344px;
+  border-radius: 18px;
+  padding: 11px 10px 9px;
+  gap: 8px;
+  box-shadow: none;
+}
+.elec-casio-host.is-compact .casio-screen-frame {
+  padding: 6px;
+  border-radius: 9px;
+}
+.elec-casio-host.is-compact .casio-keypad-container {
+  gap: 10px;
+}
+.elec-casio-host.is-compact .keypad-row {
+  gap: 4px;
+}
+.elec-casio-host.is-compact .keypad-numpad {
+  gap: 8px;
+}
+.elec-casio-host.is-compact .dpad-cluster {
+  width: 68px;
+  height: 50px;
+}
+.elec-casio-host.is-compact .casio-btn {
+  height: 29px;
+  font-size: 11px;
+}
+.elec-casio-host.is-compact .btn-sci {
+  height: 25px;
+  font-size: 9.5px;
+}
+.elec-casio-host.is-compact .btn-num,
+.elec-casio-host.is-compact .btn-op,
+.elec-casio-host.is-compact .btn-del,
+.elec-casio-host.is-compact .btn-ac {
+  height: 31px;
+  font-size: 13px;
+}
+.elec-casio-host.is-compact .key-shift-label,
+.elec-casio-host.is-compact .key-alpha-label {
+  font-size: 7.5px;
+  top: -9px;
+}
+.elec-casio-host.is-compact .casio-footer {
+  display: none;
+}
+
+/* ==========================================================================
+   STANDALONE PAGE — Casio580Page.jsx (#casio)
+   ========================================================================== */
+.elec-casio-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(5.2rem, 8vw, 6.2rem) clamp(1rem, 3vw, 1.8rem) 4rem;
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.elec-casio-hero {
+  margin-bottom: 1.5rem;
+}
+.elec-casio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.75rem 0.28rem 0.36rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--acc) 11%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 24%, transparent);
+  color: var(--acc);
+  font: 700 0.74rem var(--sans);
+  margin-bottom: 0.5rem;
+}
+.elec-casio-hero h1 {
+  margin: 0 0 0.25rem;
+  font: 800 clamp(1.5rem, 3.2vw, 2.15rem)/1.18 var(--sans);
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  -webkit-text-fill-color: currentColor;
+  background: none;
+}
+.elec-casio-hero p {
+  margin: 0;
+  color: var(--mut);
+  font: 500 0.92rem/1.55 var(--sans);
+  max-width: 72ch;
+}
+
+.elec-casio-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 434px) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.elec-casio-sticky-col {
+  position: sticky;
+  top: 84px;
+}
+
+/* ==========================================================================
+   PRO MODE STUDIO PANEL (.elec-cpro)
+   ========================================================================== */
+.elec-cpro {
+  border-radius: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 44px -24px rgba(15, 32, 88, 0.26);
+  overflow: hidden;
+}
+
+.elec-cpro-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0.75rem 0.85rem;
+  background: color-mix(in srgb, var(--acc) 5%, var(--bg));
+  border-bottom: 1px solid var(--line);
+}
+.elec-cpro-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 34px;
+  padding: 0 0.78rem;
+  border-radius: 999px !important;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--mut);
+  font: 700 0.76rem var(--sans);
+  cursor: pointer;
+  transition: border-color 0.14s, background-color 0.14s, color 0.14s;
+}
+.elec-cpro-tab em {
+  font-style: normal;
+  font: 800 0.66rem var(--mono);
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+.elec-cpro-tab:hover {
+  border-color: var(--acc);
+  color: var(--ink);
+}
+.elec-cpro-tab.on {
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -4px rgba(47, 107, 255, 0.55);
+}
+.elec-cpro-tab.on em {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.elec-cpro-body {
+  padding: 1.15rem 1.25rem 1.35rem;
+}
+.elec-cpro-pane {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.elec-cpro-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.elec-cpro-seg button {
+  flex: 1 1 auto;
+  height: 32px;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 9px !important;
+  background: transparent;
+  color: var(--mut);
+  font: 700 0.76rem var(--sans);
+  cursor: pointer;
+  transition: background-color 0.14s, color 0.14s;
+}
+.elec-cpro-seg button.on {
+  background: var(--panel);
+  color: var(--acc);
+  box-shadow: 0 2px 8px -4px rgba(10, 18, 48, 0.22);
+}
+
+.elec-cpro-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.42rem;
+}
+.elec-cpro-lbl {
+  font: 700 0.76rem var(--sans);
+  color: var(--mut);
+}
+.elec-cpro-pill {
+  height: 30px;
+  padding: 0 0.75rem;
+  border-radius: 999px !important;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: 700 0.74rem var(--sans);
+  cursor: pointer;
+}
+.elec-cpro-pill.on {
+  background: var(--acc);
+  border-color: transparent;
+  color: #ffffff;
+}
+.elec-cpro-pill.ghost {
+  margin-left: auto;
+  border-style: dashed;
+  color: var(--acc);
+  border-color: color-mix(in srgb, var(--acc) 40%, transparent);
+}
+
+.elec-cpro-matrix {
+  display: grid;
+  gap: 0.5rem;
+}
+.elec-cpro-eq-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+}
+.elec-cpro-cell,
+.elec-cpro-field {
+  display: grid;
+  gap: 0.24rem;
+}
+.elec-cpro-cell span,
+.elec-cpro-field span {
+  font: 700 0.72rem var(--mono);
+  color: var(--mut);
+}
+.elec-cpro-cell input,
+.elec-cpro-field input,
+.elec-cpro-mini-in {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 0.7rem !important;
+  border-radius: 10px !important;
+  border: 1.5px solid var(--line) !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  font: 700 0.88rem var(--mono) !important;
+}
+.elec-cpro-cell input:focus,
+.elec-cpro-field input:focus,
+.elec-cpro-mini-in:focus {
+  outline: none;
+  border-color: var(--acc) !important;
+}
+
+.elec-cpro-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+.elec-cpro-three {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+}
+
+.elec-cpro-run {
+  height: 42px;
+  padding: 0 1.25rem;
+  border: 1px solid rgba(125, 165, 255, 0.45);
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, #4d86ff, #1f4fe6);
+  color: #ffffff;
+  font: 700 0.88rem var(--sans);
+  cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(47, 107, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  transition: filter 0.14s, transform 0.12s;
+}
+.elec-cpro-run:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.elec-cpro-err {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.10);
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  color: #dc2626;
+  font: 600 0.8rem var(--sans);
+}
+[data-theme='dark'] .elec-cpro-err {
+  color: #f87171;
+}
+
+.elec-cpro-result {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--acc) 7%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--acc) 26%, transparent);
+  display: grid;
+  gap: 0.55rem;
+}
+.elec-cpro-res-title {
+  font: 700 0.74rem var(--sans);
+  color: var(--mut);
+}
+.elec-cpro-res-big {
+  font: 800 1.45rem/1.2 var(--mono);
+  color: var(--acc);
+  word-break: break-all;
+}
+.elec-cpro-res-sub {
+  font: 600 0.72rem var(--mono);
+  color: var(--mut);
+}
+
+.elec-cpro-sol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 0.5rem;
+}
+.elec-cpro-sol-chip {
+  padding: 0.6rem 0.75rem;
+  border-radius: 11px !important;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.elec-cpro-sol-chip span {
+  font: 700 0.7rem var(--mono);
+  color: var(--mut);
+}
+.elec-cpro-sol-chip b {
+  font: 800 0.96rem var(--mono);
+  color: var(--ink);
+  word-break: break-all;
+}
+.elec-cpro-sol-chip small {
+  font: 600 0.7rem var(--mono);
+  color: var(--acc);
+}
+
+.elec-cpro-extrema {
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--line);
+  font: 600 0.8rem/1.5 var(--sans);
+  color: var(--ink);
+}
+
+.elec-cpro-table-wrap {
+  max-height: 290px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.elec-cpro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 600 0.82rem var(--mono);
+}
+.elec-cpro-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  color: var(--mut);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.elec-cpro-table td {
+  padding: 0.42rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.elec-cpro-table tr.is-ext td {
+  background: color-mix(in srgb, var(--acc) 9%, transparent);
+  font-weight: 800;
+}
+.elec-cpro-ext-tag {
+  margin-left: 0.4rem;
+  padding: 0.08rem 0.36rem;
+  border-radius: 999px;
+  background: var(--acc);
+  color: #ffffff;
+  font: 800 0.62rem var(--sans);
+}
+
+.elec-cpro-mat-out {
+  display: grid;
+  gap: 0.35rem;
+}
+.elec-cpro-mat-out-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0.35rem;
+}
+.elec-cpro-mat-out-row span {
+  padding: 0.42rem;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  text-align: center;
+  font: 700 0.84rem var(--mono);
+  color: var(--ink);
+}
+
+.elec-cpro-hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 0.25rem 0;
+}
+
+.elec-cpro-const-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+.elec-cpro-const-btn {
+  padding: 0.62rem 0.75rem;
+  border-radius: 12px !important;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: border-color 0.14s, background-color 0.14s;
+}
+.elec-cpro-const-btn:hover {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 8%, var(--bg));
+}
+.elec-cpro-const-btn b {
+  font: 700 0.76rem var(--sans);
+  color: var(--ink);
+}
+.elec-cpro-const-btn span {
+  font: 800 0.86rem var(--mono);
+  color: var(--acc);
+}
+.elec-cpro-const-btn small {
+  font: 500 0.68rem var(--sans);
+  color: var(--mut);
+}
+
+.elec-cpro-hist-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.elec-cpro-hist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px !important;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: 600 0.82rem var(--mono);
+  cursor: pointer;
+}
+.elec-cpro-hist-item:hover {
+  border-color: var(--acc);
+}
+.elec-cpro-hist-item b {
+  color: var(--acc);
+}
+.elec-cpro-empty {
+  margin: 0;
+  font: 500 0.82rem var(--sans);
+  color: var(--mut);
+}
+
+@media (max-width: 960px) {
+  .elec-casio-grid {
+    grid-template-columns: 1fr;
+  }
+  .elec-casio-sticky-col {
+    position: static;
+  }
+}
+@media (max-width: 560px) {
+  .elec-cpro-two,
+  .elec-cpro-three {
+    grid-template-columns: 1fr;
+  }
+}

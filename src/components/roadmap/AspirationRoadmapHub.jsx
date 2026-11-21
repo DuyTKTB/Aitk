@@ -31,6 +31,7 @@ import ElecTutorOnboardingModal from '../aspiration/ElecTutorOnboardingModal.jsx
 import AspirationAiStrategyModal from '../aspiration/AspirationAiStrategyModal.jsx';
 import AspirationPortfolioModal from '../aspiration/AspirationPortfolioModal.jsx';
 import CompetencyRadarCard from './CompetencyRadarCard.jsx';
+import AdaptiveRoadmapShowcase from './AdaptiveRoadmapShowcase.jsx';
 import UserAvatar from '../UserAvatar.jsx';
 import { useCurrentSubject } from '../SubjectSwitcher.jsx';
 import { getUniversityCover } from '../../data/universityCovers.js';
@@ -854,70 +855,21 @@ export default function AspirationRoadmapHub({
         )}
       </div>
 
-      {/* ── 3. BA KHỐI ĐIỀU HƯỚNG NHANH + LINH VẬT ELEC AI (CHUẨN DASHBOARD) ── */}
+      {/* ── 3. HỆ THỐNG LỘ TRÌNH ADAPTIVE 4 CHẶNG + HÔM NAY HỌC GÌ (60/20/20) + BẢN ĐỒ 136 MICRO-SKILLS ── */}
       {!hideQuickNavTrio && (
-        <div className="ns9-quick-nav-trio" role="region" aria-label="Lối tắt tính năng lộ trình">
-          <div
-            className="ns9-qn-card"
-            onClick={() => (onTabSelect ? onTabSelect('subjects') : onOpenChapter?.(chapters[0]?.chapter?.id))}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="ns9-qn-icon target">
-              <IcoTarget />
-            </div>
-            <div className="ns9-qn-body">
-              <h4>Lộ trình mục tiêu</h4>
-              <p>Xem chi tiết các mốc, phân tích khoảng cách tới mục tiêu {activeAsp?.school?.code || 'Đại học'}.</p>
-            </div>
-            <span className="ns9-qn-link">Xem ngay &rarr;</span>
-          </div>
-
-          <div
-            className="ns9-qn-card"
-            onClick={() => (onTabSelect ? onTabSelect('timeline') : setScheduleEditorOpen(true))}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="ns9-qn-icon calendar">
-              <IcoCalendar />
-            </div>
-            <div className="ns9-qn-body">
-              <h4>Lộ trình cá nhân hóa</h4>
-              <p>Kế hoạch cá nhân hóa theo ngày, tuần, tháng bám sát quỹ thời gian {schedule.weeklyFreeHours}h/tuần.</p>
-            </div>
-            <span className="ns9-qn-link">Xem ngay &rarr;</span>
-          </div>
-
-          <div
-            className="ns9-qn-card"
-            onClick={() => (onTabSelect ? onTabSelect('study') : handlePrimaryAction())}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="ns9-qn-icon ai">
-              <IcoSparkle />
-            </div>
-            <div className="ns9-qn-body">
-              <h4>Luyện tập ELEC AI</h4>
-              <p>Phân tích điểm mạnh, điểm yếu và gợi ý cải thiện kiến thức chuyên sâu.</p>
-            </div>
-            <span className="ns9-qn-link">Luyện tập ngay &rarr;</span>
-          </div>
-
-          {/* Linh vật ELEC AI đứng trang trí thân thiện góc dưới */}
-          <div className="ns9-mascot-companion" title="ELEC AI luôn sẵn sàng đồng hành cùng bạn!">
-            <img
-              src="/img/elec/elec-wink.png"
-              alt="Linh vật ELEC AI"
-              className="ns9-mascot-img"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = '/img/elec/elec-hello.png';
-              }}
-            />
-          </div>
-        </div>
+        <AdaptiveRoadmapShowcase
+          predictedScore10={predictedChem10}
+          targetScore10={targetChem10}
+          elo={elo}
+          chapters={chapters}
+          dueTotal={dueTotal}
+          cardsDue={cardsDue}
+          primaryAction={primaryAction}
+          onOpenChapter={onOpenChapter}
+          onPracticeChapter={onPracticeChapter}
+          onReviewChapter={onReviewChapter}
+          onTabSelect={onTabSelect}
+        />
       )}
 
       <ElecTutorOnboardingModal

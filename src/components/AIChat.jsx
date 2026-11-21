@@ -1,7 +1,13 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocalStorage } from '../hooks.js';
 import { askAI, compressImage, AI_READY } from '../lib/ai.js';
 import { MODE_LIST } from '../lib/aiPrompts.js';
+import NavCreditPopover from './NavCreditPopover.jsx';
+
+const Casio580Widget = lazy(() => import('./Casio580Widget.jsx'));
+const ChatScienceQuickRef = lazy(() => import('./ChatScienceQuickRef.jsx'));
+const GRADE_OPTIONS = ['Tự động', 'Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
+const KHTN_SYMBOLS = ['→', '⇌', 'Δ', 'π', 'ω', 'λ', 'Ω', 'μ', 'α', 'β', 'γ', '°', '²', '³', '√', '±', '≥', '≤', 'đkc', 'mol'];
 import {
   fetchChats as fetchChatsServer,
   createChat as createChatServer,
@@ -15,7 +21,7 @@ import {
 import AIMark from './AIMark.jsx';
 import UserAvatarLogo from './UserAvatar.jsx';
 import { getQuota, canSend, consumeQuota } from '../lib/quota.js';
-import { spendCredit, refundCredit, getCredits } from '../lib/creditService.js';
+import { spendCredit, refundCredit, getCredits, calcChatCreditCost, formatCredits } from '../lib/creditService.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { recordWrongAnswers } from '../lib/wrongQuestionService.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
@@ -24,6 +30,9 @@ import InteractiveQuizCanvas from './InteractiveQuizCanvas.jsx';
 import { parseQuizFromText } from '../lib/aiQuizParser.js';
 import InteractiveChalkboardCanvas from './InteractiveChalkboardCanvas.jsx';
 import { parseChalkboardFromText } from '../lib/aiChalkboardParser.js';
+import { getDefaultPresetForSubject } from '../lib/chalkboardPresets.js';
+import SocraticCheckpointCard, { parseCheckpointFromText } from './SocraticCheckpointCard.jsx';
+import { readChatDocument, isDocumentFile, formatDocsPromptBlock } from '../lib/docChatReader.js';
 import { findRelatedYouTubeVideos } from '../lib/youtubeService.js';
 import { YouTubeVideoSection } from './YouTubeVideoSection.jsx';
 import * as tts from '../lib/tts.js';
@@ -48,6 +57,107 @@ import '../styles/aichat.css';
 import '../styles/ai-intelligence.css';
 import '../styles/ai-fullscreen.css';
 import '../styles/styles/ai-chatgpt.css';
+import '../styles/ai-redesign-v2.css';
+import '../styles/ai-chat-studio-pro.css';
+
+const fmtCreditsShort = (n) => {
+  if (n == null) return '...';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (n >= 10_000) return `${Math.round(n / 1_000)}k`;
+  return n.toLocaleString('vi-VN');
+};
+
+const SUBJECT_LENSES = [
+  { id: 'all', label: 'Tổng hợp', tone: 'elec' },
+  { id: 'ly', label: 'Vật lí', tone: 'ly' },
+  { id: 'hoa', label: 'Hóa học', tone: 'hoa' },
+  { id: 'sinh', label: 'Sinh học', tone: 'sinh' },
+];
+
+const SUBJECT_CARDS = {
+  all: [
+    { kind: 'hoa', title: 'Cân bằng phương trình oxi hóa – khử', sub: 'Thăng bằng electron & bảo toàn e', prompt: 'Hướng dẫn cách cân bằng phương trình oxi hóa - khử bằng phương pháp thăng bằng electron kèm ví dụ mẫu chuẩn GDPT 2025.' },
+    { kind: 'ly', title: 'Giao thoa sóng Y-âng & mạch RLC', sub: 'Công thức lõi và bẫy thường gặp', prompt: 'Tóm tắt công thức cốt lõi và giải mẫu bài toán giao thoa ánh sáng qua khe Y-âng kèm bẫy hay sai.' },
+    { kind: 'sinh', title: 'Cấu trúc ADN & quy luật Men-đen', sub: 'Liên kết hiđrô và tỉ lệ kiểu hình', prompt: 'Tóm tắt các công thức tính chiều dài gen, số nucleotit, liên kết hiđrô của ADN và bài tập mẫu.' },
+    { kind: 'quiz', title: 'Đề phản xạ 5 câu KHTN tương tác', sub: 'Mở trực tiếp trên Canvas tự chấm', prompt: 'Tạo cho mình 5 câu trắc nghiệm tương tác tổng hợp Lý - Hóa - Sinh mức độ Vận dụng có giải thích bẫy chi tiết.' },
+  ],
+  ly: [
+    { kind: 'ly', title: 'Phương trình dao động điều hòa', sub: 'Xác định nhanh A, ω và pha ban đầu φ', prompt: 'Hướng dẫn từng bước cách xác định A, ω, φ khi viết phương trình dao động điều hòa x = Acos(ωt + φ).' },
+    { kind: 'ly', title: 'Cộng hưởng điện mạch xoay chiều RLC', sub: 'Điều kiện cực trị công suất & điện áp', prompt: 'Giải chi tiết hiện tượng cộng hưởng điện và các công thức cực trị trong mạch xoay chiều RLC.' },
+    { kind: 'ly', title: 'Vân trùng giao thoa ánh sáng Y-âng', sub: 'Tìm vị trí vân sáng trùng 2 bức xạ', prompt: 'Phương pháp giải nhanh bài toán vân trùng nhau trong giao thoa ánh sáng hai bức xạ đơn sắc.' },
+    { kind: 'quiz', title: 'Bảng phấn 3D dao động con lắc lò xo', sub: 'Minh họa vectơ quay trực quan từng bước', prompt: 'Hãy giải một bài mẫu về dao động điều hòa và minh họa bằng bảng phấn 3D tương tác từng bước.' },
+  ],
+  hoa: [
+    { kind: 'hoa', title: 'Thủy phân Este trong môi trường kiềm', sub: 'Quy đổi hỗn hợp & bẫy este của phenol', prompt: 'Trình bày phương pháp giải bài toán thủy phân este trong NaOH/KOH và mẹo tránh bẫy este của phenol.' },
+    { kind: 'hoa', title: 'Pin Galvani & điện phân dung dịch', sub: 'Thế điện cực chuẩn, quy tắc alpha', prompt: 'Tóm tắt trọng tâm Pin điện hóa, quy tắc alpha và thứ tự điện phân dung dịch lớp 12 GDPT 2025.' },
+    { kind: 'hoa', title: 'Tính pH dung dịch & chuẩn độ axit – bazơ', sub: 'Chuẩn chương trình Hóa GDPT 2025', prompt: 'Hướng dẫn cách tính pH dung dịch axit mạnh, bazơ mạnh và bài toán chuẩn độ dung dịch theo GDPT 2025.' },
+    { kind: 'quiz', title: '5 câu Đúng/Sai Hóa học dễ mất điểm', sub: 'Luyện phản xạ soi bẫy trên Canvas', prompt: 'Tạo cho mình 5 câu trắc nghiệm tương tác Hóa học GDPT 2025 tập trung vào các bẫy lý thuyết hay sai nhất.' },
+  ],
+  sinh: [
+    { kind: 'sinh', title: 'Nhân đôi ADN, phiên mã & dịch mã', sub: 'So sánh cơ chế và công thức tính nhanh', prompt: 'So sánh nhanh cơ chế nhân đôi ADN, phiên mã và dịch mã kèm các công thức tính toán thường thi.' },
+    { kind: 'sinh', title: 'Quy luật Men-đen & khung Punnett', sub: 'Tách cặp xác định nhanh kiểu gen F2', prompt: 'Hướng dẫn cách giải nhanh bài toán lai hai tính trạng Men-đen và tương tác gen bằng phương pháp tách cặp.' },
+    { kind: 'sinh', title: 'Định luật Hardy – Weinberg quần thể', sub: 'Điều kiện cân bằng & tần số alen', prompt: 'Trình bày điều kiện nghiệm đúng và cách giải bài toán định luật Hardy – Weinberg trong quần thể ngẫu phối.' },
+    { kind: 'quiz', title: '5 câu Sinh học vận dụng trên Canvas', sub: 'Tương tác trắc nghiệm & giải chi tiết', prompt: 'Tạo cho mình 5 câu trắc nghiệm tương tác Sinh học mức độ Thông hiểu – Vận dụng kèm giải thích chi tiết.' },
+  ],
+};
+
+function SubjectGlyph({ kind }) {
+  if (kind === 'ly') {
+    return (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="2" />
+        <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(30 12 12)" />
+        <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-30 12 12)" />
+      </svg>
+    );
+  }
+  if (kind === 'hoa') {
+    return (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 3h6" />
+        <path d="M10 3v6.2L4.7 18.6A2 2 0 0 0 6.4 21h11.2a2 2 0 0 0 1.7-2.4L14 9.2V3" />
+        <path d="M7.5 15h9" />
+      </svg>
+    );
+  }
+  if (kind === 'sinh') {
+    return (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2 15c6.667-6 13.333 0 20-6" />
+        <path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" />
+        <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" />
+        <path d="m17 6-2.5-2.5" />
+        <path d="m14 8-1-1" />
+        <path d="m7 18 2.5 2.5" />
+        <path d="m3.5 14.5.5.5" />
+        <path d="m20 9 .5.5" />
+        <path d="m6.5 12.5 1 1" />
+        <path d="m16.5 10.5 1 1" />
+        <path d="m10 16 1.5 1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <path d="M14 17.5h7" />
+      <path d="M17.5 14v7" />
+    </svg>
+  );
+}
+
+const SLASH_COMMANDS = [
+  { cmd: '/giai', label: 'Giải chi tiết từng bước + công thức', prompt: 'Giải bài này chi tiết từng bước, nêu rõ công thức, đơn vị và kiểm tra lại kết quả: ' },
+  { cmd: '/hoc', label: 'Học chủ động Study Mode (tự kiểm tra)', prompt: 'Hãy hướng dẫn mình từng bước kiểu Study Mode (chưa cho đáp án cuối ngay) kèm thẻ tự kiểm tra cho bài: ' },
+  { cmd: '/casio', label: 'Hướng dẫn bấm máy Casio fx-580VN X', prompt: 'Hướng dẫn cách bấm máy tính Casio fx-580VN X / 880BTG nhanh nhất (ghi rõ từng phím bấm) cho bài: ' },
+  { cmd: '/chamnhap', label: 'Chấm nháp viết tay, bắt lỗi dấu', prompt: 'Hãy chấm từng dòng bài làm này, chỉ ra dòng nào bắt đầu sai dấu/sai đơn vị và sửa lại từ đó: ' },
+  { cmd: '/quiz5', label: 'Tạo đề phản xạ 5 câu Canvas', prompt: 'Tạo cho mình 5 câu trắc nghiệm tương tác tổng hợp KHTN mức độ Vận dụng kèm lời giải bẫy chi tiết về chủ đề: ' },
+  { cmd: '/3d', label: 'Vẽ bảng phấn 3D minh họa', prompt: 'Giải và minh họa bằng bảng phấn 3D sử dụng cú pháp ```chalkboard-mv cho bài toán: ' },
+  { cmd: '/tomtat', label: 'Tóm tắt trọng tâm & công thức lõi', prompt: 'Tóm tắt ngắn gọn công thức cốt lõi và các dạng bài hay thi nhất về: ' },
+  { cmd: '/bayde', label: 'Soi bẫy đề thi GDPT 2025', prompt: 'Liệt kê 5 bẫy đề thi học sinh hay mất điểm nhất (đặc biệt Phần II Đúng/Sai) trong chuyên đề: ' },
+];
 
 /* ============================================================
    BỘ NHỚ ĐỆM SIÊU TỐC (CACHE) — CHỐNG LAG GIẬT KHI CHAT HOẶC GÕ PHÍM
@@ -498,7 +608,16 @@ export default function AIChat({ onExit }) {
   const [input, setInput] = useState(readDraft);
   const [sugSeed, setSugSeed] = useState(() => Date.now() % 100000);
   const [images, setImages] = useState([]);
-  const [grade, setGrade] = useState('Lớp 11');
+  const [grade, setGrade] = useLocalStorage('cs-ai-grade', 'Tự động');
+  const [casioOpen, setCasioOpen] = useState(false);
+  const [quickRefOpen, setQuickRefOpen] = useState(false);
+  const [symbolBarOpen, setSymbolBarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState('chats'); // 'chats' | 'bookmarks'
+  const [bookmarks, setBookmarks] = useLocalStorage('cs-ai-bookmarks', []);
+  const [canvasWidthPct, setCanvasWidthPct] = useLocalStorage('cs-ai-canvas-w', 50);
+  const [isResizingCanvas, setIsResizingCanvas] = useState(false);
+  const [sidebarManualExpand, setSidebarManualExpand] = useState(false);
+  const stageSplitRef = useRef(null);
   /* Chế độ học: điều khiển cách AI trả lời (giải chi tiết / gợi ý từng bước / kiểm tra đáp án...) */
   const [mode, setMode] = useLocalStorage('cs-ai-mode', 'auto');
   const [activeInteractiveQuiz, setActiveInteractiveQuiz] = useState(null);
@@ -508,9 +627,142 @@ export default function AIChat({ onExit }) {
   const [busyId, setBusyId] = useState(null);
   const [streaming, setStreaming] = useState('');
   const [reasoning, setReasoning] = useState('');
-  const [showReasoning, setShowReasoning] = useState(true);
+  const [openReasoningIds, setOpenReasoningIds] = useState(() => new Set());
+  const toggleReasoningFor = (idx) => setOpenReasoningIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(idx)) next.delete(idx); else next.add(idx);
+    return next;
+  });
   const [err, setErr] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage('cs-ai-sidebar-collapsed', false);
+  const [deepThink, setDeepThink] = useLocalStorage('cs-ai-deepthink', false);
+  const [subjectLens, setSubjectLens] = useLocalStorage('cs-ai-subject-lens', 'all');
+  const [tempMode, setTempMode] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(null);
+
+  useEffect(() => {
+    if (!uid) {
+      setCreditBalance(null);
+      return undefined;
+    }
+    let alive = true;
+    getCredits(uid).then((c) => {
+      if (alive && c && Number.isFinite(Number(c.balance))) setCreditBalance(Number(c.balance));
+    }).catch(() => {});
+    const onCreditEvt = (e) => {
+      const b = e?.detail?.balance;
+      if (Number.isFinite(Number(b))) setCreditBalance(Number(b));
+    };
+    window.addEventListener('cs-credit-update', onCreditEvt);
+    return () => {
+      alive = false;
+      window.removeEventListener('cs-credit-update', onCreditEvt);
+    };
+  }, [uid]);
+  const [liveElapsedSec, setLiveElapsedSec] = useState(0);
+  const [exportingDocxIdx, setExportingDocxIdx] = useState(null);
+  const tempChatIdsRef = useRef(new Set());
+  const [aiTheme, setAiTheme] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement?.dataset?.theme === 'dark' ? 'dark' : 'light'
+  );
+
+  // Live thinking timer (DeepSeek / Claude style "Đang suy luận 2.4s")
+  useEffect(() => {
+    if (busyId === null) {
+      setLiveElapsedSec(0);
+      return undefined;
+    }
+    const start = Date.now();
+    const id = setInterval(() => {
+      setLiveElapsedSec(Number(((Date.now() - start) / 1000).toFixed(1)));
+    }, 100);
+    return () => clearInterval(id);
+  }, [busyId]);
+
+  // Keyboard Shortcuts kiểu ChatGPT & Claude: Ctrl+K tìm hội thoại, Ctrl+Shift+O chat mới
+  useEffect(() => {
+    const onGlobalKey = (e) => {
+      if (!visibleRef.current) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSidebarCollapsed(false);
+        setSidebarOpen(true);
+        setTimeout(() => document.getElementById('gm-sidebar-search-input')?.focus(), 120);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        newChatRef.current?.();
+      }
+    };
+    window.addEventListener('keydown', onGlobalKey);
+    return () => window.removeEventListener('keydown', onGlobalKey);
+  }, []);
+
+  // Tự dọn các đoạn chat tạm thời khi tắt chế độ hoặc rời trang
+  useEffect(() => () => {
+    if (tempChatIdsRef.current.size > 0) {
+      const ids = Array.from(tempChatIdsRef.current);
+      setChats((prev) => prev.filter((c) => !ids.includes(c.id)));
+      tempChatIdsRef.current.clear();
+    }
+  }, []);
+
+  const toggleTempMode = () => {
+    setTempMode((prev) => {
+      const next = !prev;
+      if (!next && tempChatIdsRef.current.size > 0) {
+        const ids = Array.from(tempChatIdsRef.current);
+        setChats((list) => list.filter((c) => !ids.includes(c.id)));
+        tempChatIdsRef.current.clear();
+        setActiveId(null);
+      } else if (next) {
+        setActiveId(null);
+      }
+      return next;
+    });
+  };
+
+  const handleExportMsgDocx = async (text, idx) => {
+    if (!text || exportingDocxIdx !== null) return;
+    setExportingDocxIdx(idx);
+    try {
+      const { exportAiNoteDocx } = await import('../lib/examExport.js');
+      await exportAiNoteDocx({
+        title: activeChat?.title || 'LỜI GIẢI & TÓM TẮT ELEC AI',
+        content: text,
+        teacherName: userName || 'Học sinh ELEC AI',
+        schoolName: 'ELEC AI · TÀI LIỆU TỰ HỌC KHTN',
+      });
+    } catch (e) {
+      console.warn('Export Word failed:', e);
+    } finally {
+      setExportingDocxIdx(null);
+    }
+  };
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setAiTheme(document.documentElement?.dataset?.theme === 'dark' ? 'dark' : 'light');
+    };
+    const obs = new MutationObserver(syncTheme);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    const onResize = () => {
+      if (window.innerWidth <= 960) setSidebarOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      obs.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  const toggleAiTheme = () => {
+    const next = aiTheme === 'dark' ? 'light' : 'dark';
+    window.dispatchEvent(new CustomEvent('elec-toggle-theme'));
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('cs-theme-v2', JSON.stringify(next)); } catch { /* ignore */ }
+    setAiTheme(next);
+  };
   const [expandedId, setExpandedId] = useState(null);
   const [copied, setCopied] = useState(null);
   const [quota, setQuota] = useState(() => getQuota(uid, tier));
@@ -537,18 +789,23 @@ export default function AIChat({ onExit }) {
   const [sidebarView, setSidebarView] = useState('folders');
   const [selectedFolderKey, setSelectedFolderKey] = useState(null);
   const [attachOpen, setAttachOpen] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [selBar, setSelBar] = useState(null); // { text, x, y } — Highlight-to-Ask kiểu Claude/ChatGPT Canvas
   /* Menu header trên điện thoại: 'study' = trình độ + chế độ, 'more' = tùy chọn, null = đóng */
   const [hmenu, setHmenu] = useState(null);
   const [moreMenuId, setMoreMenuId] = useState(null);
   const [rowMenuId, setRowMenuId] = useState(null);   // menu ⋯ của dòng lịch sử (sidebar)
 
   const lastSeenLenRef = useRef(0);
+  const mainRef = useRef(null);
   const end = useRef(null);
   const imagesRef = useRef([]);
+  const docsRef = useRef([]);
   const dragDepth = useRef(0);
   const recRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
+  const docRef = useRef(null);
   const cameraRef = useRef(null);
   const sendRef = useRef(null);
   const stopRef = useRef(null);
@@ -562,6 +819,7 @@ export default function AIChat({ onExit }) {
   visibleRef.current = visible;
   chatsRef.current = chats;
   imagesRef.current = images;
+  docsRef.current = docs;
 
   const loading = busyId !== null;
   const activeChat = useMemo(() => {
@@ -802,28 +1060,62 @@ export default function AIChat({ onExit }) {
     return () => { clearTimeout(t); document.removeEventListener('click', close); };
   }, [moreMenuId]);
 
-  /* CUỘN */
+  /* CUỘN — theo dõi trực tiếp scrollTop của container .ds-main thay vì IntersectionObserver không có root */
   const hasMessages = messages.length > 0;
+  const syncJumpVisibility = useCallback(() => {
+    const scroller = mainRef.current;
+    if (!scroller || !hasMessages) {
+      stickRef.current = true;
+      setShowJump(false);
+      return;
+    }
+    const distFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    const canScroll = scroller.scrollHeight > scroller.clientHeight + 90;
+    const isNearBottom = distFromBottom <= 90;
+    stickRef.current = isNearBottom;
+    setShowJump(canScroll && distFromBottom > 110);
+    if (isNearBottom) {
+      setUnreadCount(0);
+      lastSeenLenRef.current = messages.length;
+    }
+  }, [hasMessages, messages.length]);
+
   useEffect(() => {
-    const el = end.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
-    const io = new IntersectionObserver(([e]) => {
-      stickRef.current = e.isIntersecting;
-      setShowJump(!e.isIntersecting);
-    }, { rootMargin: '0px 0px 180px 0px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMessages]);
+    const scroller = mainRef.current;
+    if (!scroller) return undefined;
+    const onScroll = () => syncJumpVisibility();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => syncJumpVisibility());
+      ro.observe(scroller);
+    }
+    const raf = requestAnimationFrame(syncJumpVisibility);
+    return () => {
+      cancelAnimationFrame(raf);
+      scroller.removeEventListener('scroll', onScroll);
+      ro?.disconnect();
+    };
+  }, [syncJumpVisibility, activeId]);
 
   useEffect(() => {
     stickRef.current = true;
-    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, activeId]);
+    const scroller = mainRef.current;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' });
+    } else {
+      end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    const t = setTimeout(syncJumpVisibility, 240);
+    return () => clearTimeout(t);
+  }, [messages.length, activeId, syncJumpVisibility]);
 
   useEffect(() => {
     if (!stickRef.current) return;
     if (busyId !== activeId) return;
-    end.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+    const scroller = mainRef.current;
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    else end.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
   }, [streaming, reasoning, busyId, activeId]);
 
   useEffect(() => {
@@ -836,8 +1128,14 @@ export default function AIChat({ onExit }) {
   }, [messages.length]);
 
   const scrollToBottom = useCallback(() => {
-    end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const scroller = mainRef.current;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' });
+    } else {
+      end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
     stickRef.current = true;
+    setShowJump(false);
     setUnreadCount(0);
     lastSeenLenRef.current = messages.length;
   }, [messages.length]);
@@ -923,16 +1221,94 @@ export default function AIChat({ onExit }) {
     return () => removeEventListener('keydown', onKey);
   }, []);
 
-  /* ẢNH */
+  /* BÔI ĐEN ĐỂ HỎI TẠI CHỖ (CLAUDE ARTIFACTS × CHATGPT CANVAS HIGHLIGHT-TO-ASK) */
+  useEffect(() => {
+    const onSelUp = () => {
+      try {
+        const sel = window.getSelection?.();
+        if (!sel || sel.isCollapsed) {
+          setSelBar(null);
+          return;
+        }
+        const txt = sel.toString().trim();
+        if (txt.length < 4 || txt.length > 340) {
+          setSelBar(null);
+          return;
+        }
+        const anchorEl = sel.anchorNode?.nodeType === 1 ? sel.anchorNode : sel.anchorNode?.parentElement;
+        if (!anchorEl?.closest?.('.ds-msg-model .ds-msg-content')) {
+          setSelBar(null);
+          return;
+        }
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
+        if (!rect || (rect.width === 0 && rect.height === 0)) {
+          setSelBar(null);
+          return;
+        }
+        const cx = Math.max(150, Math.min(window.innerWidth - 150, rect.left + rect.width / 2));
+        const cy = Math.max(66, rect.top - 10);
+        setSelBar({ text: txt, x: cx, y: cy });
+      } catch {
+        setSelBar(null);
+      }
+    };
+    const onDismiss = (e) => {
+      if (e.target?.closest?.('.elec-sel-bar')) return;
+      if (e.type === 'keydown' && e.key !== 'Escape') return;
+      setSelBar(null);
+    };
+    document.addEventListener('mouseup', onSelUp);
+    document.addEventListener('touchend', onSelUp);
+    document.addEventListener('keydown', onDismiss);
+    window.addEventListener('scroll', onDismiss, true);
+    return () => {
+      document.removeEventListener('mouseup', onSelUp);
+      document.removeEventListener('touchend', onSelUp);
+      document.removeEventListener('keydown', onDismiss);
+      window.removeEventListener('scroll', onDismiss, true);
+    };
+  }, []);
+
+  /* ẢNH & TÀI LIỆU PDF / DOCX / TXT */
   const handleFiles = useCallback(async (files) => {
     const fileArr = Array.from(files || []);
     if (fileArr.length === 0) return;
 
     const imgs = fileArr.filter(isImageFile);
-    if (imgs.length === 0) {
-      setErr('Chỉ chấp nhận file ảnh (JPG, PNG, WebP, HEIC…).');
+    const docFiles = fileArr.filter((f) => !isImageFile(f) && isDocumentFile(f));
+
+    if (imgs.length === 0 && docFiles.length === 0) {
+      setErr('Chỉ hỗ trợ ảnh (JPG, PNG, WebP, HEIC) hoặc tài liệu (PDF, DOCX, XLSX, TXT).');
       return;
     }
+
+    if (docFiles.length > 0) {
+      const docRoom = 3 - docsRef.current.length;
+      if (docRoom <= 0) {
+        setErr('Chỉ đính kèm tối đa 3 tài liệu mỗi lượt hỏi.');
+      } else {
+        const takeDocs = docFiles.slice(0, docRoom);
+        setProcessing((p) => p + takeDocs.length);
+        const parsedDocs = [];
+        let docErr = '';
+        for (const df of takeDocs) {
+          try {
+            const parsed = await readChatDocument(df);
+            parsedDocs.push(parsed);
+          } catch (e) {
+            docErr = e?.message || `Không đọc được tệp ${df.name}`;
+          } finally {
+            setProcessing((p) => Math.max(0, p - 1));
+          }
+        }
+        if (parsedDocs.length > 0) {
+          setDocs((prev) => [...prev, ...parsedDocs].slice(0, 3));
+        }
+        if (docErr) setErr(docErr);
+      }
+    }
+
+    if (imgs.length === 0) return;
 
     const room = MAX_IMAGES - imagesRef.current.length;
     if (room <= 0) {
@@ -979,6 +1355,8 @@ export default function AIChat({ onExit }) {
 
   const removeImage = (id) => setImages((prev) => prev.filter((img) => img.id !== id));
   const clearImages = () => setImages([]);
+  const removeDoc = (id) => setDocs((prev) => prev.filter((d) => d.id !== id));
+  const clearDocs = () => setDocs([]);
 
   useEffect(() => {
     const onPaste = (e) => {
@@ -1221,9 +1599,11 @@ export default function AIChat({ onExit }) {
     tts.stop();
     setSpeakingId(null);
 
+    const reqStartedAt = Date.now();
     let finalText = '';
     let finalReasoning = '';
     let finalMeta = null;   // citations / toolHits / verification do động cơ AI trả về
+    if (tempMode && chatId) tempChatIdsRef.current.add(chatId);
     let timedOut = false;
     let stopped = false;
 
@@ -1285,11 +1665,13 @@ export default function AIChat({ onExit }) {
             finalReasoning = part;
           },
           {
-            grade,
-            mode,
+            grade: grade && grade !== 'Tự động' ? grade : '',
+            mode: (deepThink && mode === 'auto') ? 'detail' : mode,
+            subject: subjectLens,
+            deepThink,
             uid,
-            /* VIP không giới hạn lượt → bật thêm lượt thẩm định bằng model khác */
-            deepVerify: tier?.key === 'vip',
+            /* Chỉ kích hoạt thẩm định chéo sâu khi người dùng chủ động bật DeepThink (tránh gọi model phụ làm chậm/nhiễu câu trả lời thường) */
+            deepVerify: deepThink,
           }
         );
         aiPromiseRef.current = aiPromise;
@@ -1308,6 +1690,7 @@ export default function AIChat({ onExit }) {
         throw new Error('AI trả về rỗng. Thử gửi lại câu hỏi.');
       }
 
+      const thinkSec = Number(Math.max(0.4, (Date.now() - reqStartedAt) / 1000).toFixed(1));
       updateChat(chatId, (c) => ({
         ...c,
         messages: [...slim(baseMessages), {
@@ -1315,6 +1698,8 @@ export default function AIChat({ onExit }) {
           parts: [{ text: finalText }],
           text: finalText,
           reasoning: finalReasoning,
+          thinkSec,
+          usedDeepThink: deepThink,
           citations: finalMeta?.citations || undefined,
           toolHits: finalMeta?.toolHits || undefined,
           verification: finalMeta?.verification || undefined,
@@ -1383,16 +1768,21 @@ export default function AIChat({ onExit }) {
 
     try {
       const text = (typeof overrideText === 'string' ? overrideText : input).trim();
-      if ((!text && images.length === 0) || loading || processing > 0) return;
+      const attachedDocs = docsRef.current || [];
+      if ((!text && images.length === 0 && attachedDocs.length === 0) || loading || processing > 0) return;
 
-      const imgCount = images.length;
+      const imgCount = images.length + attachedDocs.filter((d) => d.base64).length;
+      const textDocCount = attachedDocs.filter((d) => !d.base64).length;
 
       let charged = 0;
       if (uid) {
-        const cr = await spendCredit(uid, imgCount);
+        const cr = await spendCredit(uid, imgCount, null, { deepThink, docCount: textDocCount });
         if (!cr.ok) {
+          setCreditBalance(cr.balance);
           setQuotaError(
-            `Bạn đã hết điểm! Còn ${cr.balance} điểm, cần ${cr.needed} điểm. Vào Trang cá nhân → Gói dùng để nạp thêm.`
+            cr.isSystemError
+              ? `Lỗi trừ ELEC Credit tạm thời: ${cr.error || 'Vui lòng thử lại sau vài giây.'}`
+              : `Không đủ ELEC Credit! Số dư ${formatCredits(cr.balance)}, cần ${formatCredits(cr.needed)} Credit. Bấm "Mua ELEC Credit" để nạp thêm.`
           );
           clearTimeout(qTimer.current);
           qTimer.current = setTimeout(() => setQuotaError(''), 8000);
@@ -1400,6 +1790,7 @@ export default function AIChat({ onExit }) {
           return;
         }
         charged = cr.cost;
+        setCreditBalance(cr.balance);
         try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
       } else {
         if (denyQuota(imgCount > 0)) return;
@@ -1408,11 +1799,14 @@ export default function AIChat({ onExit }) {
         if (nq) setQuota(nq);
       }
 
+      const fallbackTitle = attachedDocs.length > 0
+        ? `Tài liệu: ${attachedDocs[0].name.slice(0, 28)}`
+        : (images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh');
+
       let chatId = activeId;
       let current = activeChat;
       if (!chatId || !current) {
         const newId = rid();
-        const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
         current = {
           id: newId,
           title: text ? text.slice(0, 40) : fallbackTitle,
@@ -1431,30 +1825,42 @@ export default function AIChat({ onExit }) {
       }
 
       const parts = [];
-      const defaultText = images.length > 1 ? 'Phân tích các ảnh này.' : 'Phân tích ảnh này.';
-      const userText = (text || (images.length > 0 ? defaultText : ''))
-        + `\n\nTrình độ: ${grade}. KHÔNG dùng LaTeX.`;
+      const defaultText = attachedDocs.length > 0
+        ? 'Hãy phân tích, tóm tắt các ý trọng tâm và công thức cốt lõi trong tài liệu đính kèm (kèm trích dẫn [Trang X] nếu là PDF).'
+        : (images.length > 1 ? 'Phân tích các ảnh này.' : 'Phân tích ảnh này.');
+      const docPromptBlock = formatDocsPromptBlock(attachedDocs);
+      const userText = [text || defaultText, docPromptBlock].filter(Boolean).join('\n\n');
       parts.push({ text: userText });
 
       for (const img of images) {
         parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+      }
+      for (const d of attachedDocs) {
+        if (d.base64 && d.mimeType) {
+          parts.push({ inlineData: { mimeType: d.mimeType, data: d.base64 } });
+        }
       }
 
       const userMsg = {
         role: 'user',
         parts,
         preview: {
-          text,
+          text: text || (attachedDocs.length > 0 ? `Phân tích tài liệu: ${attachedDocs.map((d) => d.name).join(', ')}` : ''),
           images: images.map((img) => ({
             dataUrl: img.thumb || img.dataUrl,
             width: img.width,
             height: img.height,
           })),
+          docs: attachedDocs.map((d) => ({
+            id: d.id,
+            name: d.name,
+            kind: d.kind,
+            metaLabel: d.metaLabel,
+          })),
         },
       };
 
       const baseMessages = [...current.messages, userMsg];
-      const fallbackTitle = images.length > 1 ? `${images.length} ảnh` : 'Phân tích ảnh';
 
       updateChat(chatId, (c) => ({
         ...c,
@@ -1465,6 +1871,8 @@ export default function AIChat({ onExit }) {
       recRef.current?.stop?.();
       setInput('');
       setImages([]);
+      setDocs([]);
+      setSelBar(null);
       setShowQuickPrompts(false);
       setAttachOpen(false);
       stickRef.current = true;
@@ -1498,15 +1906,21 @@ export default function AIChat({ onExit }) {
 
     let charged = 0;
     if (!free && uid) {
-      const cr = await spendCredit(uid, imgCount);
+      const cr = await spendCredit(uid, imgCount, null, { deepThink });
       if (!cr.ok) {
-        setQuotaError(`Hết điểm! Còn ${cr.balance}, cần ${cr.needed}. Nạp thêm tại Gói dùng.`);
+        setCreditBalance(cr.balance);
+        setQuotaError(
+          cr.isSystemError
+            ? `Lỗi trừ ELEC Credit tạm thời: ${cr.error || 'Vui lòng thử lại sau vài giây.'}`
+            : `Không đủ ELEC Credit! Còn ${formatCredits(cr.balance)}, cần ${formatCredits(cr.needed)} Credit.`
+        );
         clearTimeout(qTimer.current);
         qTimer.current = setTimeout(() => setQuotaError(''), 8000);
         try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
         return;
       }
       charged = cr.cost;
+      setCreditBalance(cr.balance);
       try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
     } else if (!free && !uid) {
       if (denyQuota(hasImg)) return;
@@ -1610,7 +2024,16 @@ export default function AIChat({ onExit }) {
   const suggestions = useMemo(() => pickSuggestions(sugSeed), [sugSeed]);
 
   const userName = user?.displayName || 'Ẩn danh';
-  const firstName = (user?.displayName || '').trim().split(/\s+/).pop() || '';
+  const firstName = useMemo(() => {
+    const raw = (user?.displayName || '').trim();
+    if (!raw) return '';
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const fillers = new Set(['nè', 'ne', 'ơi', 'oi', 'nhé', 'nhe', 'nha', 'ạ', 'a', 'pro', 'vip', 'tk', 'official']);
+    if (parts.length > 1 && fillers.has(parts[parts.length - 1].toLowerCase())) {
+      return parts[0];
+    }
+    return parts.length <= 2 ? raw : parts[parts.length - 1];
+  }, [user?.displayName]);
   const exitChat = () => {
     setSidebarOpen(false);
     if (onExit) onExit(); else location.hash = 'home';
@@ -1621,12 +2044,12 @@ export default function AIChat({ onExit }) {
     : 'sẵn sàng';
   const markMode = loading ? 'orbit' : 'idle';
 
-  const hasInput = (Boolean(input.trim()) || images.length > 0) && processing === 0;
-  const placeholder = images.length > 0
-    ? `Đã chọn ${images.length} ảnh — thêm mô tả (không bắt buộc)…`
-    : (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px)').matches
-      ? 'Hỏi bài Lý, Hóa, Sinh hoặc chụp ảnh đề…'
-      : 'Hỏi bài Vật lí, Hóa học, Sinh học hoặc dán ảnh đề bài…');
+  const hasInput = (Boolean(input.trim()) || images.length > 0 || docs.length > 0) && processing === 0;
+  const placeholder = docs.length > 0
+    ? `Đã đính kèm ${docs.length} tài liệu — hỏi về đề cương hoặc bấm Gửi…`
+    : images.length > 0
+      ? `Đã chọn ${images.length} ảnh — thêm mô tả (không bắt buộc)…`
+      : 'Hỏi bài Lý, Hóa, Sinh, dán ảnh hoặc thả PDF…';
 
   /* ============================================================
      RENDER SIDEBAR
@@ -1808,10 +2231,96 @@ export default function AIChat({ onExit }) {
     );
   };
 
+  /* Tự động thu gọn Sidebar sang Slim Rail khi mở Canvas để Chat & Canvas rộng rãi */
+  const hasCanvas = Boolean(activeInteractiveQuiz || activeChalkboardLesson);
+  useEffect(() => {
+    if (hasCanvas) setSidebarManualExpand(false);
+  }, [hasCanvas]);
+
+  const startCanvasResize = useCallback((e) => {
+    e.preventDefault();
+    const container = stageSplitRef.current;
+    if (!container) return;
+    setIsResizingCanvas(true);
+    const rect = container.getBoundingClientRect();
+
+    const onMove = (ev) => {
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const rightPx = rect.right - clientX;
+      const pct = Math.min(66, Math.max(36, Math.round((rightPx / rect.width) * 100)));
+      setCanvasWidthPct(pct);
+    };
+    const onUp = () => {
+      setIsResizingCanvas(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onUp);
+  }, [setCanvasWidthPct]);
+
+  /* Chèn ký hiệu/công thức đúng vị trí con trỏ trong ô nhập Chat */
+  const insertAtCursor = useCallback((snippet) => {
+    const el = inputRef.current;
+    if (!el) {
+      setInput((prev) => `${prev}${prev && !prev.endsWith(' ') ? ' ' : ''}${snippet}`);
+      return;
+    }
+    const start = el.selectionStart ?? input.length;
+    const end = el.selectionEnd ?? input.length;
+    setInput((prev) => prev.slice(0, start) + snippet + prev.slice(end));
+    requestAnimationFrame(() => {
+      try {
+        el.focus();
+        const pos = start + snippet.length;
+        el.setSelectionRange(pos, pos);
+      } catch { /* ignore */ }
+    });
+  }, [input.length]);
+
+  const toggleBookmarkMsg = useCallback((text, msgIdx) => {
+    const bmId = `${activeId || 'temp'}_${msgIdx}`;
+    setBookmarks((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      if (list.some((b) => b.id === bmId)) {
+        return list.filter((b) => b.id !== bmId);
+      }
+      const cleanLine = String(text || '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/[#>*_`]/g, '')
+        .split('\n')
+        .map((s) => s.trim())
+        .find((s) => s.length > 8) || 'Ghi chú ELEC AI';
+      return [
+        {
+          id: bmId,
+          chatId: activeId || null,
+          title: cleanLine.slice(0, 68),
+          text: String(text || '').slice(0, 2400),
+          savedAt: Date.now(),
+        },
+        ...list,
+      ].slice(0, 60);
+    });
+  }, [activeId, setBookmarks]);
+
+  const quizFromMessage = useCallback((text) => {
+    const snippet = String(text || '').replace(/```[\s\S]*?```/g, '').trim().slice(0, 650);
+    send(
+      `Từ nội dung kiến thức sau, hãy tạo ngay 5 câu luyện tập chuẩn đề thi THPT Quốc gia 2025 trên Canvas tương tác (gồm cả Phần I Trắc nghiệm A-D, Phần II Đúng/Sai 4 ý và Phần III Trả lời ngắn) kèm lời giải soi bẫy chi tiết:\n\n${snippet}`
+    );
+  }, [send]);
+
   /* RENDER */
+  const effectiveCollapsed = (sidebarCollapsed || (hasCanvas && !sidebarManualExpand)) && !sidebarOpen;
+
   return (
     <div
-      className="ds-page"
+      className={'ds-page elec-studio' + (effectiveCollapsed ? ' is-sidebar-collapsed' : '') + ` lens-${subjectLens}`}
       onDragEnter={(e) => {
         if (!visible || !e.dataTransfer?.types?.includes('Files')) return;
         dragDepth.current += 1;
@@ -1840,41 +2349,171 @@ export default function AIChat({ onExit }) {
         <div className="ds-dropzone" aria-hidden="true">
           <div className="ds-dropzone-card">
             <IcoUploadCloud size={44} />
-            <b>Thả ảnh vào đây</b>
-            <span>Tối đa {MAX_IMAGES} ảnh · JPG, PNG, WebP, HEIC</span>
+            <b>Thả ảnh hoặc tài liệu vào đây</b>
+            <span>Ảnh (JPG, PNG, WebP, HEIC) · Tài liệu (PDF, DOCX, XLSX, TXT)</span>
           </div>
         </div>
       )}
 
-      {/* ============ SIDEBAR ============ */}
-      <aside className={'ds-sidebar' + (sidebarOpen ? ' open' : '')}>
-        <div className="cg-head">
-          <AIMark size={32} animate={false} className="cg-brand" />
+      {/* ============ SIDEBAR (GEMINI SLIM-RAIL COLLAPSIBLE 68px ↔ 258px) ============ */}
+      <aside className={'ds-sidebar' + (sidebarOpen ? ' open' : '') + (effectiveCollapsed ? ' is-rail' : '')}>
+        <div className="cg-head gm-sb-head">
+          <button
+            className="gm-rail-btn gm-sb-toggle"
+            onClick={() => {
+              if (hasCanvas) {
+                setSidebarManualExpand((v) => !v);
+                setSidebarCollapsed(false);
+              } else {
+                setSidebarCollapsed((v) => !v);
+              }
+            }}
+            type="button"
+            aria-label={effectiveCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+            data-tip={effectiveCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          {!effectiveCollapsed && (
+            <div className="elec-sb-brand">
+              <AIMark size={28} animate={false} className="elec-brand-mark" />
+              <span className="gm-sb-title">ELEC <em>AI</em></span>
+            </div>
+          )}
           <span className="cg-spacer" />
+          {!effectiveCollapsed && chats.length > 0 && (
+            <button
+              className="gm-rail-btn gm-sb-search-ico"
+              type="button"
+              onClick={() => document.getElementById('gm-sidebar-search-input')?.focus()}
+              aria-label="Tìm cuộc trò chuyện"
+              title="Tìm cuộc trò chuyện"
+            >
+              <IcoSearch size={17} />
+            </button>
+          )}
           <button className="cg-icon-btn ds-sidebar-close" onClick={() => setSidebarOpen(false)} type="button" aria-label="Đóng">
             <CgClose size={20} />
           </button>
         </div>
 
-        <nav className="cg-nav" aria-label="Điều hướng">
-          <button type="button" className="cg-nav-item primary" onClick={newChat}>
-            <CgCompose size={20} /><span>Đoạn chat mới</span>
+        <nav className="cg-nav gm-sb-nav" aria-label="Điều hướng">
+          <button
+            type="button"
+            className="cg-nav-item primary gm-new-pill"
+            onClick={newChat}
+            data-tip="Đoạn chat mới (Ctrl+Shift+O)"
+            aria-label="Đoạn chat mới"
+          >
+            <CgCompose size={17} />
+            <span className="gm-sb-lbl">Đoạn chat mới</span>
+            {!effectiveCollapsed && <kbd className="elec-sb-kbd">Ctrl+K</kbd>}
           </button>
-          <button type="button" className="cg-nav-item" onClick={exitChat}>
-            <CgHome size={20} /><span>Về trang chủ</span>
+          <button
+            type="button"
+            className="cg-nav-item gm-nav-pill"
+            onClick={exitChat}
+            data-tip="Về trang chủ"
+            aria-label="Về trang chủ"
+          >
+            <CgHome size={19} />
+            <span className="gm-sb-lbl">Về trang chủ</span>
           </button>
+          {effectiveCollapsed && (
+            <button
+              type="button"
+              className="cg-nav-item gm-nav-pill"
+              onClick={() => {
+                setSidebarCollapsed(false);
+                setTimeout(() => document.getElementById('gm-sidebar-search-input')?.focus(), 180);
+              }}
+              data-tip="Tìm hội thoại (Ctrl+K)"
+              aria-label="Tìm cuộc trò chuyện"
+            >
+              <IcoSearch size={18} />
+            </button>
+          )}
         </nav>
 
-        {chats.length > 4 && (
-          <label className="ds-search">
+        {!effectiveCollapsed && (
+          <div className="elec-sb-tabs" role="tablist" aria-label="Danh mục thanh bên">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarTab === 'chats'}
+              className={sidebarTab === 'chats' ? 'is-active' : ''}
+              onClick={() => setSidebarTab('chats')}
+            >
+              Hội thoại
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarTab === 'bookmarks'}
+              className={sidebarTab === 'bookmarks' ? 'is-active' : ''}
+              onClick={() => setSidebarTab('bookmarks')}
+            >
+              Đã lưu ({Array.isArray(bookmarks) ? bookmarks.length : 0})
+            </button>
+          </div>
+        )}
+
+        {!effectiveCollapsed && sidebarTab === 'chats' && chats.length > 0 && (
+          <label className="ds-search gm-sb-search">
             <IcoSearch size={14} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm cuộc trò chuyện" aria-label="Tìm cuộc trò chuyện" />
+            <input
+              id="gm-sidebar-search-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm cuộc trò chuyện..."
+              aria-label="Tìm cuộc trò chuyện"
+            />
             {query && <button type="button" onClick={() => setQuery('')} aria-label="Xóa tìm kiếm"><IcoClose size={12} /></button>}
           </label>
         )}
 
-        <div className="ds-sidebar-view">
-          {renderSidebarContent()}
+        <div className="ds-sidebar-view gm-sb-list">
+          {!effectiveCollapsed && (
+            sidebarTab === 'bookmarks' ? (
+              <div className="elec-bm-list">
+                {(!Array.isArray(bookmarks) || bookmarks.length === 0) ? (
+                  <p className="ds-sidebar-empty">
+                    Chưa có ghi chú nào. Bấm nút <b>Lưu ghi chú</b> dưới câu trả lời AI để lưu nhanh công thức &amp; lời giải hay!
+                  </p>
+                ) : (
+                  bookmarks.map((bm) => (
+                    <div key={bm.id} className="elec-bm-card">
+                      <div className="elec-bm-title">{bm.title}</div>
+                      <p className="elec-bm-preview">{bm.text.replace(/[#>*_`]/g, '').slice(0, 120)}</p>
+                      <div className="elec-bm-actions">
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button type="button" onClick={() => copyMsg(bm.text, `bm-${bm.id}`)}>
+                            {copied === `bm-${bm.id}` ? 'Đã chép' : 'Chép'}
+                          </button>
+                          <button type="button" onClick={() => quizFromMessage(bm.text)}>
+                            Tạo Quiz
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="is-del"
+                          onClick={() => setBookmarks((prev) => prev.filter((x) => x.id !== bm.id))}
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              renderSidebarContent()
+            )
+          )}
         </div>
 
         {/* USER MENU */}
@@ -1896,7 +2535,7 @@ export default function AIChat({ onExit }) {
                 </span>
                 {credits != null && (
                   <span className="ds-tier-badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)', fontWeight: 700 }}>
-                    {credits.toLocaleString('vi-VN')} credit
+                    {fmtCreditsShort(credits)} credit
                   </span>
                 )}
                 {tier.key === 'free' && (
@@ -1923,21 +2562,24 @@ export default function AIChat({ onExit }) {
             <div className="ds-user-info">
               <b>{userName}{(tier.key === 'vip' || tier.key === 'pro') && <VerifiedBadge isVip size={12} />}</b>
               <span className="ds-user-tier-name">
-                {(tier.key === 'vip' || tier.key === 'pro') ? <IcoCrown size={10} /> : <IcoSparkle size={10} />}
-                {tier.name}{credits != null ? ` · ${credits.toLocaleString('vi-VN')} credit` : ''}
+                {(tier.key === 'vip' || tier.key === 'pro') ? 'VIP' : tier.name}
+                {credits != null ? ` · ${fmtCreditsShort(credits)} credit` : ''}
               </span>
             </div>
-            <IcoSettings size={14} />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="elec-user-chev" aria-hidden="true">
+              <path d="m7 15 5 5 5-5" />
+              <path d="m7 9 5-5 5 5" />
+            </svg>
           </button>
         </div>
 
-        {tier?.key !== 'vip' && tier?.key !== 'pro' && (
+        {!effectiveCollapsed && tier?.key !== 'vip' && tier?.key !== 'pro' && (
           <button type="button" className="cg-pill" onClick={goUpgrade}>
             <CgGift size={18} /><span>Nâng cấp VIP</span>
           </button>
         )}
 
-        {chats.length > 0 && (
+        {!effectiveCollapsed && chats.length > 0 && (
           <div className="ds-sidebar-foot">
             <button className="ds-delete-all" onClick={deleteAll} type="button">
               <IcoTrash size={13} />
@@ -1951,211 +2593,256 @@ export default function AIChat({ onExit }) {
 
       {/* ============ CONTENT ============ */}
       <div className="ds-content">
-        <header className="ds-header">
+        <header className="ds-header gm-header">
           <div className="ds-header-inner">
-            <button className="ds-hbtn ds-exit-btn" onClick={exitChat} type="button" aria-label="Về trang chủ" title="Về trang chủ">
-              <IcoChevL size={18} />
-            </button>
-            <button className="ds-menu-btn" onClick={() => setSidebarOpen(true)} type="button" aria-label="Mở lịch sử">
-              <IcoChat size={18} />
-            </button>
+            <div className="ai2-head-left">
+              <button className="ds-menu-btn" onClick={() => setSidebarOpen(true)} type="button" aria-label="Mở lịch sử">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
 
-            <div className="ds-title-block">
-              <AIMark size={44} mode={markMode} look animate={visible} />
-              <div>
-                <h2 className="ds-page-title">Trợ lý KHTN (Lý - Hóa - Sinh)</h2>
-                <span className="ds-status" data-s={loading ? 'busy' : 'idle'} aria-live="polite">{statusText}</span>
+              <div className={'ai2-brand-group' + (!sidebarCollapsed ? ' is-hide-when-expanded' : '')}>
+                <AIMark size={28} animate={false} className="elec-brand-mark" />
+                <span className="ai2-brand-name">
+                  ELEC <em className="elec-ai-tag">AI</em>
+                </span>
+              </div>
+
+              {/* Pill chọn Chế độ trả lời tùy biến */}
+              <div className="ai2-mode-wrap">
+                <button
+                  type="button"
+                  className={`ai2-mode-trigger ${hmenu === 'mode' ? 'open' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHmenu((v) => (v === 'mode' ? null : 'mode'));
+                  }}
+                  aria-haspopup="menu"
+                  aria-expanded={hmenu === 'mode'}
+                  title="Chọn phong cách trả lời của AI"
+                >
+                  <span className={`ai2-status-dot ${loading ? 'busy' : ''}`} aria-hidden="true" />
+                  <span>{MODE_LIST.find((m) => m.id === mode)?.label || 'Tự động'}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+
+                {hmenu === 'mode' && (
+                  <div className="ai2-popover" role="menu" onClick={(e) => e.stopPropagation()}>
+                    <div className="ai2-pop-head">Chế độ trả lời</div>
+                    {MODE_LIST.map((mo) => (
+                      <button
+                        key={mo.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={mode === mo.id}
+                        className={`ai2-pop-item ${mode === mo.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setMode(mo.id);
+                          setHmenu(null);
+                        }}
+                      >
+                        <span className="ai2-pop-item-txt">
+                          <b>{mo.label}</b>
+                          <small>{mo.hint}</small>
+                        </span>
+                        {mode === mo.id && <IcoCheck size={15} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Pill chọn nhanh Khối lớp (Lớp 10 / 11 / 12 / Đại học) */}
+              <div className="ai2-mode-wrap">
+                <button
+                  type="button"
+                  className={`elec-grade-trigger ${hmenu === 'grade' ? 'open' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHmenu((v) => (v === 'grade' ? null : 'grade'));
+                  }}
+                  aria-haspopup="menu"
+                  aria-expanded={hmenu === 'grade'}
+                  title="Chọn khối lớp để AI bám sát đúng chương trình SGK GDPT 2018"
+                >
+                  <span>{grade === 'Tự động' ? 'Lớp: Tự động' : grade}</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {hmenu === 'grade' && (
+                  <div className="ai2-popover" role="menu" onClick={(e) => e.stopPropagation()}>
+                    <div className="ai2-pop-head">Khối lớp trọng tâm</div>
+                    {GRADE_OPTIONS.map((gr) => (
+                      <button
+                        key={gr}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={grade === gr}
+                        className={`ai2-pop-item ${grade === gr ? 'active' : ''}`}
+                        onClick={() => {
+                          setGrade(gr);
+                          setHmenu(null);
+                        }}
+                      >
+                        <span className="ai2-pop-item-txt">
+                          <b>{gr}</b>
+                          <small>
+                            {gr === 'Tự động'
+                              ? 'AI tự nhận diện khối lớp theo đề bài'
+                              : `Ưu tiên công thức & giới hạn kiến thức ${gr}`}
+                          </small>
+                        </span>
+                        {grade === gr && <IcoCheck size={15} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            <button
-              type="button"
-              className="ds-m-only ds-m-title"
-              onClick={() => setHmenu((v) => (v === 'study' ? null : 'study'))}
-              aria-haspopup="menu"
-              aria-expanded={hmenu === 'study'}
-            >
-              <span className="ds-m-title-main">
-                <span>Trợ lý KHTN (Lý - Hóa - Sinh)</span>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-              </span>
-              <span className="ds-m-title-sub">
-                {loading ? statusText : `${grade} · ${MODE_LIST.find((m) => m.id === mode)?.label || 'Tự động'}`}
-              </span>
-            </button>
+            <div className="ai2-head-right">
+              <button
+                type="button"
+                className={`elec-casio-toggle-btn ${quickRefOpen ? 'is-open' : ''}`}
+                onClick={() => {
+                  setQuickRefOpen((v) => !v);
+                  setCasioOpen(false);
+                }}
+                aria-pressed={quickRefOpen}
+                title="Tra cứu nhanh Bảng tuần hoàn 118 nguyên tố, Tính M và Hằng số Lý - Hóa - Sinh"
+              >
+                <IcoSparkle size={14} />
+                <span>Tra cứu</span>
+              </button>
 
-            <div className="ds-quota">
-              {(tier.key === 'vip' || tier.key === 'pro') && (
-                <span className="ds-quota-item vip" title="Gói ELECAI VIP — Mở khóa toàn bộ đề thi & tính năng VIP">
-                  <IcoCrown size={13} /><span>{tier.key === 'pro' ? 'GV VIP' : 'VIP'}</span>
-                </span>
-              )}
+              <button
+                type="button"
+                className={`elec-casio-toggle-btn ${casioOpen ? 'is-open' : ''}`}
+                onClick={() => {
+                  setCasioOpen((v) => !v);
+                  setQuickRefOpen(false);
+                }}
+                aria-pressed={casioOpen}
+                title="Mở máy tính Casio fx-580VN X ngay trong phòng Chat AI"
+              >
+                <IcoCalc size={14} />
+                <span>Casio 580</span>
+              </button>
+
               {uid ? (
+                <NavCreditPopover userId={uid} credits={creditBalance ?? credits ?? 0} />
+              ) : (
+                <QuotaRing left={quota.textLeft} total={quota.quotaText} label="lượt chat" />
+              )}
+
+              <button
+                type="button"
+                className={`ai2-icon-btn gm-temp-btn ${tempMode ? 'is-temp' : ''}`}
+                onClick={toggleTempMode}
+                title={tempMode ? 'Tắt chế độ Chat tạm thời (đang ẩn danh)' : 'Bật Chat tạm thời (không lưu lịch sử)'}
+                aria-label="Chat tạm thời"
+                aria-pressed={tempMode}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={tempMode ? 'none' : '3 2.5'} aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                className="ai2-icon-btn"
+                onClick={toggleAiTheme}
+                title={aiTheme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+                aria-label={aiTheme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+              >
+                {aiTheme === 'dark' ? <IcoSunSm size={16} /> : <IcoMoonSm size={16} />}
+              </button>
+
+              {/* Popover Tùy chọn gom gọn (không dàn trải nút lặp trên header) */}
+              <div className="ai2-mode-wrap">
                 <button
                   type="button"
-                  className="ds-credit-pill"
-                  onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
-                  title={`Số dư: ${credits != null ? credits.toLocaleString('vi-VN') : '...'} Credit (Bấm để nạp thêm)`}
+                  className={`ai2-icon-btn ${hmenu === 'more' ? 'on' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHmenu((v) => (v === 'more' ? null : 'more'));
+                  }}
+                  aria-label="Tùy chọn"
+                  aria-haspopup="menu"
+                  aria-expanded={hmenu === 'more'}
+                  title="Tùy chọn khác"
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v12M15 9.5a3.5 3.5 0 0 0-5 0c0 2 3 2.5 3 4.5a3.5 3.5 0 0 1-5 0" />
-                  </svg>
-                  <span>{credits != null ? credits.toLocaleString('vi-VN') : '...'}</span>
-                  <span className="ds-credit-unit">credit</span>
+                  <IcoMore size={17} />
                 </button>
-              ) : (
-                <>
-                  <QuotaRing left={quota.textLeft} total={quota.quotaText} label="lượt chat" />
-                  <QuotaRing left={quota.imageLeft} total={quota.quotaImage} label="lượt ảnh" />
-                </>
-              )}
+
+                {hmenu === 'more' && (
+                  <div className="ai2-popover align-right" role="menu" onClick={(e) => e.stopPropagation()}>
+                    {ttsSupported && (
+                      <button
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={autoSpeak}
+                        className={`ai2-pop-item ${autoSpeak ? 'active' : ''}`}
+                        onClick={() => setAutoSpeak((v) => !v)}
+                      >
+                        <span className="ai2-pop-item-txt">
+                          <b>Đọc tự động câu trả lời</b>
+                          <small>{autoSpeak ? 'Đang bật giọng đọc AI' : 'Đang tắt'}</small>
+                        </span>
+                        {autoSpeak ? <IcoSpeaker size={15} /> : <IcoSpeakerOff size={15} />}
+                      </button>
+                    )}
+                    <button type="button" role="menuitem" className="ai2-pop-item" onClick={() => { setHmenu(null); exitChat(); }}>
+                      <span className="ai2-pop-item-txt"><b>Về trang chủ</b></span>
+                      <IcoChevL size={15} />
+                    </button>
+                    {messages.length > 0 && (
+                      <button type="button" role="menuitem" className="ai2-pop-item" onClick={() => { setHmenu(null); exportChat(); }}>
+                        <span className="ai2-pop-item-txt"><b>Tải cuộc trò chuyện (.md)</b></span>
+                        <IcoDownload size={15} />
+                      </button>
+                    )}
+                    {activeId && messages.length > 0 && (
+                      <>
+                        <div className="ai2-pop-sep" />
+                        <button type="button" role="menuitem" className="ai2-pop-item" onClick={() => { setHmenu(null); togglePin(activeId); }}>
+                          <span className="ai2-pop-item-txt"><b>{pinnedIds.includes(activeId) ? 'Bỏ ghim đoạn chat' : 'Ghim đoạn chat'}</b></span>
+                          <IcoPin size={15} filled={pinnedIds.includes(activeId)} />
+                        </button>
+                        <button type="button" role="menuitem" className="ai2-pop-item danger" onClick={() => { setHmenu(null); deleteChat(activeId); }}>
+                          <span className="ai2-pop-item-txt"><b>Xóa đoạn chat</b></span>
+                          <IcoTrash size={15} />
+                        </button>
+                      </>
+                    )}
+                    <div className="ai2-pop-sep" />
+                    <p className="ai2-pop-foot">
+                      Lượt ảnh: {quota.quotaImage === Infinity || !Number.isFinite(quota.imageLeft)
+                        ? 'Không giới hạn'
+                        : `${quota.imageLeft}/${quota.quotaImage}`}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-
-            <div className="ds-grade" role="radiogroup" aria-label="Trình độ">
-              {CLASSES.map((c) => (
-                <button key={c} type="button" role="radio" aria-checked={grade === c}
-                  className={'ds-grade-btn' + (grade === c ? ' on' : '')} onClick={() => setGrade(c)}>
-                  {c}
-                </button>
-              ))}
-            </div>
-            <select
-              className="ds-grade-select"
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              aria-label="Trình độ"
-            >
-              {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-
-            <select
-              className="ds-mode-select"
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-              aria-label="Chế độ trả lời"
-              title={MODE_LIST.find((m) => m.id === mode)?.hint || ''}
-            >
-              {MODE_LIST.map((mo) => (
-                <option key={mo.id} value={mo.id}>{mo.label}</option>
-              ))}
-            </select>
-
-            {ttsSupported && (
-              <button
-                className={'ds-hbtn' + (autoSpeak ? ' on' : '')}
-                type="button"
-                onClick={() => setAutoSpeak((v) => !v)}
-                title={autoSpeak ? 'Tắt đọc tự động' : 'Tự động đọc câu trả lời'}
-                aria-label="Toggle đọc tự động"
-                aria-pressed={autoSpeak}
-              >
-                {autoSpeak ? <IcoSpeaker size={17} /> : <IcoSpeakerOff size={17} />}
-              </button>
-            )}
-
-            <button className="ds-hbtn ds-newchat-btn" type="button" onClick={newChat} title="Trò chuyện mới" aria-label="Trò chuyện mới">
-              <IcoEdit size={17} />
-            </button>
-
-            {messages.length > 0 && (
-              <button className="ds-hbtn" type="button" onClick={exportChat} title="Tải cuộc trò chuyện (.md)" aria-label="Tải cuộc trò chuyện">
-                <IcoDownload size={17} />
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="ds-hbtn ds-m-only ds-m-more"
-              onClick={() => setHmenu((v) => (v === 'more' ? null : 'more'))}
-              aria-label="Tùy chọn"
-              aria-haspopup="menu"
-              aria-expanded={hmenu === 'more'}
-            >
-              <IcoMore size={18} />
-            </button>
           </div>
 
           {hmenu && <div className="ds-m-backdrop" onClick={() => setHmenu(null)} />}
-
-          {hmenu === 'study' && (
-            <div className="ds-m-pop ds-m-pop-study" role="menu">
-              <p className="ds-m-pop-label">Trình độ</p>
-              <div className="ds-m-seg" role="radiogroup" aria-label="Trình độ">
-                {CLASSES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    role="radio"
-                    aria-checked={grade === c}
-                    className={'ds-m-seg-btn' + (grade === c ? ' on' : '')}
-                    onClick={() => setGrade(c)}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-              <p className="ds-m-pop-label">Chế độ trả lời</p>
-              {MODE_LIST.map((mo) => (
-                <button
-                  key={mo.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={mode === mo.id}
-                  className={'ds-m-item' + (mode === mo.id ? ' on' : '')}
-                  onClick={() => { setMode(mo.id); setHmenu(null); }}
-                >
-                  <span className="ds-m-item-text">
-                    <b>{mo.label}</b>
-                    <small>{mo.hint}</small>
-                  </span>
-                  {mode === mo.id && <IcoCheck size={16} />}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {hmenu === 'more' && (
-            <div className="ds-m-pop ds-m-pop-more" role="menu">
-              <button type="button" role="menuitem" className="ds-m-item" onClick={() => { setHmenu(null); exitChat(); }}>
-                <IcoChevL size={18} /><span className="ds-m-item-text"><b>Về trang chủ</b></span>
-              </button>
-              {messages.length > 0 && (
-                <button type="button" role="menuitem" className="ds-m-item" onClick={() => { setHmenu(null); exportChat(); }}>
-                  <IcoDownload size={18} /><span className="ds-m-item-text"><b>Tải cuộc trò chuyện</b></span>
-                </button>
-              )}
-              {ttsSupported && (
-                <button type="button" role="menuitemcheckbox" aria-checked={autoSpeak} className="ds-m-item" onClick={() => setAutoSpeak((v) => !v)}>
-                  {autoSpeak ? <IcoSpeaker size={18} /> : <IcoSpeakerOff size={18} />}
-                  <span className="ds-m-item-text">
-                    <b>Tự động đọc câu trả lời</b>
-                    <small>{autoSpeak ? 'Đang bật' : 'Đang tắt'}</small>
-                  </span>
-                </button>
-              )}
-              {activeId && messages.length > 0 && (
-                <>
-                  <div className="ds-m-sep" />
-                  <button type="button" role="menuitem" className="ds-m-item" onClick={() => { setHmenu(null); togglePin(activeId); }}>
-                    <IcoPin size={18} filled={pinnedIds.includes(activeId)} />
-                    <span className="ds-m-item-text"><b>{pinnedIds.includes(activeId) ? 'Bỏ ghim đoạn chat' : 'Ghim đoạn chat'}</b></span>
-                  </button>
-                  <button type="button" role="menuitem" className="ds-m-item danger" onClick={() => { setHmenu(null); deleteChat(activeId); }}>
-                    <IcoTrash size={18} /><span className="ds-m-item-text"><b>Xóa đoạn chat</b></span>
-                  </button>
-                </>
-              )}
-              <p className="ds-m-pop-foot">
-                Lượt ảnh còn {quota.imageLeft}/{quota.quotaImage === Infinity ? '∞' : quota.quotaImage}
-              </p>
-            </div>
-          )}
         </header>
 
-        <div className={`ds-stage-split ${(activeInteractiveQuiz || activeChalkboardLesson) ? 'has-canvas' : ''}`}>
-          <div className="ds-stage-chat">
-            <main className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
+        <div
+          ref={stageSplitRef}
+          className={`ds-stage-split ${hasCanvas ? 'has-canvas' : ''}`}
+          style={hasCanvas ? { '--elec-canvas-w': `${canvasWidthPct}%` } : undefined}
+        >
+          <div className={'ds-stage-chat' + (messages.length === 0 && !(showLive && (streaming || reasoning)) ? ' is-gm-empty' : '')}>
+            <main ref={mainRef} className={'ds-main' + (messages.length === 0 ? ' ds-main-empty' : '')}>
           {!AI_READY && (
             <div className="ds-warning">
               <b>Chưa cấu hình API</b>
@@ -2168,97 +2855,33 @@ export default function AIChat({ onExit }) {
           )}
 
           {messages.length === 0 && !(showLive && (streaming || reasoning)) ? (
-            <div className="ds-empty">
-              <AIMark size={132} look mode={markMode} animate={visible} />
-              <h1 className="ds-empty-title">
-                {firstName
-                  ? (<><span className="ds-hello">Chào {firstName},</span>{' '}<span>hôm nay bạn muốn giải bài KHTN nào?</span></>)
-                  : <span>Hôm nay bạn muốn giải bài Lý · Hóa · Sinh nào?</span>}
+            <div className="ds-empty gm-hero elec-hero">
+              {tempMode && (
+                <div className="gm-temp-banner">
+                  <span className="gm-temp-dot" />
+                  <span>Chat tạm thời đang bật — Đoạn hội thoại này sẽ tự xóa khi bạn rời đi.</span>
+                </div>
+              )}
+
+              <div className={'elec-emblem-lockup' + (deepThink ? ' is-deep' : '')}>
+                <div className="elec-hero-anim-wrap" title="Bấm vào bình thí nghiệm ELEC AI để tạo hiệu ứng">
+                  <AIMark
+                    size={112}
+                    mode={deepThink ? 'think' : subjectLens === 'hoa' ? 'talk' : subjectLens === 'sinh' ? 'success' : 'idle'}
+                    look
+                    animate={visible}
+                    effects="full"
+                    className="elec-hero-aimark"
+                  />
+                </div>
+                <span className="elec-hero-kicker">
+                  {firstName ? `Chào ${firstName}` : 'Xin chào'} · ELEC AI Studio
+                </span>
+              </div>
+
+              <h1 className="ds-empty-title gm-hero-title elec-hero-title">
+                Chinh phục Lý · Hóa · Sinh cùng <span>ELEC</span>
               </h1>
-              <p className="ds-empty-sub">
-                Gõ câu hỏi, chụp đề bài OCR, chấm nháp viết tay hoặc dựng hình không gian 3D.
-              </p>
-
-              {/* 4 Ô HÀNH ĐỘNG NHANH CHUẨN NATIVE APP (CHATGPT / PHOTOMATH STYLE) */}
-              <div className="ds-native-action-grid">
-                <button
-                  type="button"
-                  className="ds-na-card tone-blue"
-                  onClick={() => camRef.current?.click()}
-                >
-                  <span className="ds-na-ico"><IcoCamera size={18} /></span>
-                  <div className="ds-na-text">
-                    <b>Chụp ảnh giải đề</b>
-                    <small>Nhận diện OCR tức thì</small>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className="ds-na-card tone-amber"
-                  onClick={() => {
-                    setInput('Hãy chấm từng dòng trong ảnh nháp/bài giải viết tay này của mình, chỉ rõ dòng nào bắt đầu biến đổi sai dấu, sai đơn vị hay sai công thức và sửa lại từ dòng đó.');
-                    fileRef.current?.click();
-                  }}
-                >
-                  <span className="ds-na-ico"><IcoShieldCheck size={18} /></span>
-                  <div className="ds-na-text">
-                    <b>Chấm nháp viết tay</b>
-                    <small>Bắt lỗi sai dấu &amp; đơn vị</small>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className="ds-na-card tone-purple"
-                  onClick={() => send('Hãy giải một bài mẫu về giao thoa sóng cơ hoặc hình chóp và minh họa bằng bảng phấn 3D tương tác từng bước.')}
-                >
-                  <span className="ds-na-ico"><IcoWand size={18} /></span>
-                  <div className="ds-na-text">
-                    <b>Bảng phấn 3D</b>
-                    <small>Minh họa hình &amp; đồ thị</small>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className="ds-na-card tone-emerald"
-                  onClick={() => send('Tạo cho mình 5 câu trắc nghiệm tương tác tổng hợp Lý - Hóa - Sinh mức độ Vận dụng có giải thích bẫy chi tiết.')}
-                >
-                  <span className="ds-na-ico"><IcoPractice size={18} /></span>
-                  <div className="ds-na-text">
-                    <b>Đề phản xạ 5 câu</b>
-                    <small>Làm trực tiếp trên Canvas</small>
-                  </div>
-                </button>
-              </div>
-
-              <TodayCard onAsk={send} />
-
-              {/* Gợi ý câu hỏi mẫu — trước đây dữ liệu này có sẵn trong code nhưng chưa từng hiển thị */}
-              <div className="ds-suggest">
-                {suggestions.map((s) => (
-                  <button
-                    key={s.text}
-                    type="button"
-                    className="ds-suggest-chip"
-                    onClick={() => send(s.text)}
-                    title={s.text}
-                  >
-                    <PromptIcon name={s.icon} size={15} />
-                    <span>{s.text}</span>
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="ds-suggest-refresh"
-                  onClick={() => setSugSeed(Date.now() % 100000)}
-                  aria-label="Gợi ý khác"
-                  title="Gợi ý khác"
-                >
-                  <IcoRefresh size={15} />
-                </button>
-              </div>
             </div>
           ) : (
             <div className="ds-chat">
@@ -2285,6 +2908,17 @@ export default function AIChat({ onExit }) {
                         {m.preview?.img && !m.preview?.images && (
                           <img src={m.preview.img} alt="Ảnh đã gửi" className="ds-msg-img" onClick={() => setLightbox({ list: [m.preview.img], index: 0 })} />
                         )}
+                        {m.preview?.docs?.length > 0 && (
+                          <div className="elec-msg-docs">
+                            {m.preview.docs.map((d) => (
+                              <span key={d.id || d.name} className="elec-msg-doc-pill">
+                                <span className="elec-doc-ext">{(d.kind || 'FILE').toUpperCase()}</span>
+                                <span className="elec-doc-name">{d.name}</span>
+                                {d.metaLabel && <small>{d.metaLabel}</small>}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {m.preview?.text && <div className="ds-msg-user-text">{m.preview.text}</div>}
                         {!loading && (
                           <div className="ds-umsg-actions">
@@ -2301,24 +2935,34 @@ export default function AIChat({ onExit }) {
                       </>
                     ) : (
                       <>
-                        <AIMark size={40} animate={false} className="ds-avatar" />
+                        <AIMark size={36} animate={false} className="ds-avatar" />
                         <div className="ds-msg-body">
-                          {m.reasoning && (
-                            <div className="ds-reasoning-box">
-                              <button className="ds-reasoning-toggle" onClick={() => setShowReasoning((v) => !v)} type="button" aria-expanded={showReasoning}>
-                                <IcoBrain size={13} />
-                                <span>Phân tích của AI</span>
-                                <span className={'ds-reasoning-arrow' + (showReasoning ? ' open' : '')}><IcoChevron size={11} /></span>
-                              </button>
-                              {showReasoning && (
-                                <div className="ds-reasoning-content"><ReasoningSteps text={m.reasoning} /></div>
-                              )}
-                            </div>
-                          )}
+                          {m.reasoning && String(m.reasoning).trim().length >= 55 && (() => {
+                            const isThinkOpen = openReasoningIds.has(i);
+                            return (
+                              <div className={'ds-reasoning-box gm-think-box' + (isThinkOpen ? ' is-open' : ' is-collapsed')}>
+                                <button className="ds-reasoning-toggle" onClick={() => toggleReasoningFor(i)} type="button" aria-expanded={isThinkOpen}>
+                                  <IcoBrain size={13} />
+                                  <span>
+                                    {m.thinkSec
+                                      ? `Đã suy luận trong ${m.thinkSec}s${m.usedDeepThink ? ' · DeepThink' : ''}`
+                                      : 'Quá trình suy luận của AI'}
+                                  </span>
+                                  <span className={'ds-reasoning-arrow' + (isThinkOpen ? ' open' : '')}><IcoChevron size={11} /></span>
+                                </button>
+                                {isThinkOpen && (
+                                  <div className="ds-reasoning-content"><ReasoningSteps text={m.reasoning} /></div>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {(() => {
-                            const quizData = !m.isQuotaError && m.text ? getCachedQuiz(m.text) : null;
-                            const cbData = !m.isQuotaError && m.text ? getCachedChalkboard(m.text) : null;
+                            const { cleanText: msgCleanText, checkpoint: socraticCheckpoint } = !m.isQuotaError && m.text
+                              ? parseCheckpointFromText(m.text)
+                              : { cleanText: m.text || '', checkpoint: null };
+                            const quizData = !m.isQuotaError && msgCleanText ? getCachedQuiz(msgCleanText) : null;
+                            const cbData = !m.isQuotaError && msgCleanText ? getCachedChalkboard(msgCleanText) : null;
                             return (
                               <div className={'ds-msg-content' + (m.isQuotaError ? ' quota-error' : '')}>
                                 {m.isQuotaError ? (
@@ -2332,35 +2976,64 @@ export default function AIChat({ onExit }) {
                                     )}
 
                                     <div
-                                      className={`ds-gemini-card ${activeInteractiveQuiz === quizData.quiz ? 'is-active' : ''}`}
-                                      onClick={() => setActiveInteractiveQuiz(quizData.quiz)}
+                                      className={`elec-quiz-launch-card ${activeInteractiveQuiz === quizData.quiz ? 'is-active' : ''}`}
+                                      onClick={() => {
+                                        setActiveChalkboardLesson(null);
+                                        setActiveInteractiveQuiz(quizData.quiz);
+                                      }}
                                       role="button"
                                       tabIndex={0}
-                                      title="Bấm để mở bài tập trên Canvas tương tác"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          setActiveChalkboardLesson(null);
+                                          setActiveInteractiveQuiz(quizData.quiz);
+                                        }
+                                      }}
+                                      title="Bấm để mở bộ đề trên Bảng Canvas tương tác"
                                     >
-                                      <div className="ds-gemini-card-body">
-                                        <h4 className="ds-gemini-card-title">{quizData.quiz.title}</h4>
-                                        <p className="ds-gemini-card-sub">
-                                          {activeInteractiveQuiz === quizData.quiz ? 'Đang mở trên Canvas tương tác' : 'Bắt đầu làm bài tương tác'}
-                                        </p>
+                                      <div className="elec-qlc-left">
+                                        <img
+                                          src="/img/elec/elec-fighting.png"
+                                          alt=""
+                                          aria-hidden="true"
+                                          className="elec-qlc-mascot"
+                                          width="48"
+                                          height="48"
+                                        />
+                                        <div className="elec-qlc-info">
+                                          <div className="elec-qlc-tags">
+                                            <span className="elec-qlc-tag">ELEC QUIZ CANVAS</span>
+                                            <span className="elec-qlc-tag">{quizData.quiz.questions?.length || 0} câu hỏi</span>
+                                          </div>
+                                          <h4 className="elec-qlc-title">{quizData.quiz.title}</h4>
+                                          <p className="elec-qlc-sub">
+                                            {activeInteractiveQuiz === quizData.quiz
+                                              ? 'Đang mở trên bảng bên phải · Tự chấm & tích +10 XP/câu'
+                                              : 'Làm bài trực tiếp, tự chấm điểm & lưu câu sai vào Sổ tay'}
+                                          </p>
+                                        </div>
                                       </div>
+                                      <span className="elec-qlc-cta">
+                                        {activeInteractiveQuiz === quizData.quiz ? 'Đang mở' : 'Làm bài ngay →'}
+                                      </span>
                                     </div>
 
                                     <button
                                       type="button"
-                                      className="ds-gemini-plain-toggle"
+                                      className="elec-qlc-plain-btn"
                                       onClick={() => setPlainViewMsgIds((prev) => {
                                         const next = new Set(prev);
                                         if (next.has(i)) next.delete(i); else next.add(i);
                                         return next;
                                       })}
                                     >
-                                      {plainViewMsgIds.has(i) ? 'Ẩn dạng câu hỏi văn bản' : 'Thử lại mà không dùng câu đố tương tác'}
+                                      {plainViewMsgIds.has(i) ? 'Ẩn dạng văn bản' : 'Xem dạng văn bản'}
                                     </button>
 
                                     {plainViewMsgIds.has(i) && (
                                       <div className="ds-gemini-plain-box">
-                                        <MarkdownLike text={m.text || ''} />
+                                        <MarkdownLike text={msgCleanText || ''} />
                                       </div>
                                     )}
                                   </div>
@@ -2395,10 +3068,17 @@ export default function AIChat({ onExit }) {
                                         </div>
                                       </div>
                                     )}
-                                    <MarkdownLike text={m.text || ''} />
+                                    <MarkdownLike text={msgCleanText || ''} />
+
+                                    {socraticCheckpoint && (
+                                      <SocraticCheckpointCard
+                                        checkpoint={socraticCheckpoint}
+                                        onContinue={(nextText) => send(nextText)}
+                                      />
+                                    )}
 
                                     {/* GỢI Ý BÀI GIẢNG VIDEO YOUTUBE LIÊN QUAN */}
-                                    {(cbData?.lesson || /(video|bài giảng|clip|youtube|thầy chí|vted|vietjack)/i.test(m.text || '')) && (
+                                    {(cbData?.lesson || /(video|bài giảng|clip|youtube|thầy chí|vted|vietjack)/i.test(msgCleanText || '')) && (
                                       <div className="ds-yt-chat-cta-wrap">
                                         <button
                                           type="button"
@@ -2415,14 +3095,14 @@ export default function AIChat({ onExit }) {
                                           <span>
                                             {openVideoMsgIds.has(i)
                                               ? 'Thu gọn bài giảng video YouTube'
-                                              : '📺 Video bài giảng liên quan trên YouTube'}
+                                              : 'Xem video bài giảng liên quan trên YouTube'}
                                           </span>
                                         </button>
                                         {openVideoMsgIds.has(i) && (
                                           <div style={{ marginTop: '8px' }}>
                                             <YouTubeVideoSection
                                               videos={getCachedRelatedVideos(
-                                                (cbData?.lesson?.tieuDe || '') + ' ' + (m.text || ''),
+                                                (cbData?.lesson?.tieuDe || '') + ' ' + (msgCleanText || ''),
                                                 2
                                               )}
                                             />
@@ -2453,110 +3133,202 @@ export default function AIChat({ onExit }) {
                                   <IcoShieldCheck size={13} /> Đã thẩm định lại
                                 </span>
                               )}
-                              {m.citations?.map((c) => (
-                                <span key={c.n} className="ds-ai-cite" title={`Nguồn nội bộ: ${c.kind}`}>
-                                  [{c.n}] {c.label}
-                                </span>
-                              ))}
+                              {m.citations
+                                ?.filter((c) => !/hướng dẫn sử dụng elec ai/i.test(c.label || ''))
+                                .map((c) => {
+                                  const cleanLabel = String(c.label || '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
+                                  return (
+                                    <span key={c.n} className="ds-ai-cite" title={`Nguồn nội bộ: ${cleanLabel}`}>
+                                      [{c.n}] {cleanLabel}
+                                    </span>
+                                  );
+                                })}
                             </div>
                           )}
 
-                          {!m.isQuotaError && m.text && (
-                            <div className="ds-msg-actions">
-                              <button
-                                className={'ds-action-btn accent' + (copied === 'm' + i ? ' on' : '')}
-                                onClick={() => copyMsg(m.text || '', 'm' + i)}
-                                type="button"
-                                aria-label={copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
-                                title={copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
-                              >
-                                {copied === 'm' + i ? <IcoCheck size={15} /> : <IcoCopy size={15} />}
-                                <span className="ds-btn-text">{copied === 'm' + i ? 'Đã chép' : 'Sao chép'}</span>
-                              </button>
+                          {!m.isQuotaError && m.text && (() => {
+                            const txtLen = (m.text || '').trim().length;
+                            const isSubstantial = txtLen >= 150;
+                            const isSolve = isSubstantial && /(bước\s*\d|đáp\s*số|đáp\s*án|công\s*thức|phương\s*trình|tính\s|mol|kết\s*quả|\$|\\frac|=)/i.test(m.text || '');
+                            return (
+                              <>
+                                <div className="ds-msg-actions">
+                                  <button
+                                    className={'ds-action-btn' + (copied === 'm' + i ? ' on' : '')}
+                                    onClick={() => copyMsg(m.text || '', 'm' + i)}
+                                    type="button"
+                                    aria-label={copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
+                                    title={copied === 'm' + i ? 'Đã chép' : 'Sao chép'}
+                                  >
+                                    {copied === 'm' + i ? <IcoCheck size={14} /> : <IcoCopy size={14} />}
+                                    <span className="ds-btn-text">{copied === 'm' + i ? 'Đã chép' : 'Sao chép'}</span>
+                                  </button>
 
-                              {ttsSupported && (
-                                <button
-                                  className={'ds-action-icon-btn' + (speakingId === 'msg-' + i ? ' on' : '')}
-                                  onClick={() => speakMsg(m.text, 'msg-' + i)}
-                                  type="button"
-                                  title={speakingId === 'msg-' + i ? 'Dừng đọc' : 'Đọc câu trả lời'}
-                                  aria-label={speakingId === 'msg-' + i ? 'Dừng đọc' : 'Đọc'}
-                                >
-                                  {speakingId === 'msg-' + i ? <IcoSpeakerOff size={16} /> : <IcoSpeaker size={16} />}
-                                </button>
-                              )}
-
-                              <button
-                                className={'ds-action-icon-btn' + (copied === 'saved-' + i ? ' on' : '')}
-                                onClick={() => saveToNotebook(m.text, i)}
-                                type="button"
-                                title="Lưu vào sổ tay lỗi"
-                                aria-label="Lưu vào sổ tay lỗi"
-                              >
-                                <IcoNote size={16} />
-                              </button>
-
-                              <button
-                                className="ds-action-btn ds-action-desktop-only"
-                                onClick={() => practiceSimilar(m.text)}
-                                type="button"
-                                title="Tạo bài tập tương tự"
-                              >
-                                <IcoPractice size={15} />
-                                <span className="ds-btn-text">Bài tương tự</span>
-                              </button>
-
-                              {isLast && !loading && (
-                                <button
-                                  className="ds-action-btn ds-action-desktop-only"
-                                  onClick={() => regenerate(false)}
-                                  type="button"
-                                  title="Tạo lại câu trả lời"
-                                >
-                                  <IcoRefresh size={15} />
-                                  <span className="ds-btn-text">Tạo lại</span>
-                                </button>
-                              )}
-
-                              <div className="ds-more-wrap ds-action-mobile-only">
-                                <button
-                                  className="ds-action-icon-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMoreMenuId(moreMenuId === 'msg-' + i ? null : 'msg-' + i);
-                                  }}
-                                  type="button"
-                                  aria-label="Thêm hành động"
-                                  aria-expanded={moreMenuId === 'msg-' + i}
-                                >
-                                  <IcoMore size={16} />
-                                </button>
-
-                                {moreMenuId === 'msg-' + i && (
-                                  <div className="ds-more-menu" onClick={(e) => e.stopPropagation()}>
+                                  {ttsSupported && (
                                     <button
-                                      className="ds-more-item"
-                                      onClick={() => { practiceSimilar(m.text); setMoreMenuId(null); }}
+                                      className={'ds-action-icon-btn' + (speakingId === 'msg-' + i ? ' on' : '')}
+                                      onClick={() => speakMsg(m.text, 'msg-' + i)}
                                       type="button"
+                                      title={speakingId === 'msg-' + i ? 'Dừng đọc' : 'Đọc câu trả lời'}
+                                      aria-label={speakingId === 'msg-' + i ? 'Dừng đọc' : 'Đọc'}
                                     >
-                                      <IcoPractice size={16} />
-                                      <span>Tạo bài tương tự</span>
+                                      {speakingId === 'msg-' + i ? <IcoSpeakerOff size={15} /> : <IcoSpeaker size={15} />}
                                     </button>
-                                    {isLast && !loading && (
+                                  )}
+
+                                  {isSubstantial && (
+                                    <button
+                                      className={'ds-action-icon-btn' + (copied === 'saved-' + i ? ' on' : '')}
+                                      onClick={() => saveToNotebook(m.text, i)}
+                                      type="button"
+                                      title="Lưu vào sổ tay lỗi"
+                                      aria-label="Lưu vào sổ tay lỗi"
+                                    >
+                                      <IcoNote size={15} />
+                                    </button>
+                                  )}
+
+                                  {isSubstantial && (
+                                    <button
+                                      className={'ds-action-btn ds-action-desktop-only' + (Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`) ? ' on' : '')}
+                                      onClick={() => toggleBookmarkMsg(m.text, i)}
+                                      type="button"
+                                      title="Lưu công thức / lời giải vào mục Đã lưu ở thanh bên"
+                                    >
+                                      <IcoPin size={14} filled={Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`)} />
+                                      <span className="ds-btn-text">
+                                        {Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`) ? 'Đã lưu' : 'Lưu ghi chú'}
+                                      </span>
+                                    </button>
+                                  )}
+
+                                  {isSubstantial && (
+                                    <button
+                                      className="ds-action-btn ds-action-desktop-only"
+                                      onClick={() => quizFromMessage(m.text)}
+                                      type="button"
+                                      title="Tạo ngay 5 câu luyện tập chuẩn THPT 2025 trên Canvas từ lời giải này"
+                                    >
+                                      <IcoPractice size={14} />
+                                      <span className="ds-btn-text">Quiz 2025</span>
+                                    </button>
+                                  )}
+
+                                  {isSubstantial && (
+                                    <button
+                                      className="ds-action-btn ds-action-desktop-only"
+                                      onClick={() => handleExportMsgDocx(m.text, i)}
+                                      disabled={exportingDocxIdx === i}
+                                      type="button"
+                                      title="Xuất câu trả lời ra tệp Word (.docx) chuẩn đẹp"
+                                    >
+                                      <IcoDownload size={14} />
+                                      <span className="ds-btn-text">{exportingDocxIdx === i ? 'Đang xuất...' : 'Tải Word'}</span>
+                                    </button>
+                                  )}
+
+                                  {isLast && !loading && (
+                                    <button
+                                      className="ds-action-btn ds-action-desktop-only"
+                                      onClick={() => regenerate(false)}
+                                      type="button"
+                                      title="Tạo lại câu trả lời"
+                                    >
+                                      <IcoRefresh size={14} />
+                                      <span className="ds-btn-text">Tạo lại</span>
+                                    </button>
+                                  )}
+
+                                  {isSubstantial && (
+                                    <div className="ds-more-wrap ds-action-mobile-only">
                                       <button
-                                        className="ds-more-item"
-                                        onClick={() => { regenerate(false); setMoreMenuId(null); }}
+                                        className="ds-action-icon-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setMoreMenuId(moreMenuId === 'msg-' + i ? null : 'msg-' + i);
+                                        }}
                                         type="button"
+                                        aria-label="Thêm hành động"
+                                        aria-expanded={moreMenuId === 'msg-' + i}
                                       >
-                                        <IcoRefresh size={16} />
-                                        <span>Tạo lại câu trả lời</span>
+                                        <IcoMore size={15} />
                                       </button>
+
+                                      {moreMenuId === 'msg-' + i && (
+                                        <div className="ds-more-menu" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            className="ds-more-item"
+                                            onClick={() => { practiceSimilar(m.text); setMoreMenuId(null); }}
+                                            type="button"
+                                          >
+                                            <IcoPractice size={15} />
+                                            <span>Tạo bài tương tự</span>
+                                          </button>
+                                          {isLast && !loading && (
+                                            <button
+                                              className="ds-more-item"
+                                              onClick={() => { regenerate(false); setMoreMenuId(null); }}
+                                              type="button"
+                                            >
+                                              <IcoRefresh size={15} />
+                                              <span>Tạo lại câu trả lời</span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Đa phương pháp giải 1 chạm (Photomath) + Smart Follow-up Chips — chỉ hiện với câu trả lời học thuật thực sự */}
+                                {isLast && !loading && isSubstantial && (
+                                  <div className="elec-post-actions">
+                                    {isSolve && (
+                                      <div className="elec-method-strip" aria-label="Đổi phương pháp giải nhanh">
+                                        <span className="elec-method-lbl">Cách khác:</span>
+                                        {[
+                                          { label: 'Tự luận SGK', prompt: 'Hãy trình bày lại bài vừa rồi theo chuẩn tự luận SGK chi tiết nhất (đủ dữ kiện, công thức, đơn vị chuẩn chấm điểm).' },
+                                          { label: 'Giải nhanh 15s', prompt: 'Hãy chỉ cách giải siêu tốc trắc nghiệm trong 15 giây (dùng bảo toàn, đường tròn lượng giác hoặc mẹo loại trừ) cho bài vừa rồi.' },
+                                          { label: 'Bấm máy Casio', prompt: 'Hướng dẫn từng phím bấm máy tính Casio fx-580VN X / 880BTG để ra nhanh đáp số bài vừa rồi (nếu áp dụng được).' },
+                                        ].map((mm) => (
+                                          <button
+                                            key={mm.label}
+                                            type="button"
+                                            className="elec-method-pill"
+                                            onClick={() => send(mm.prompt)}
+                                          >
+                                            {mm.label}
+                                          </button>
+                                        ))}
+                                      </div>
                                     )}
+
+                                    <div className="gm-followups" aria-label="Gợi ý hỏi tiếp">
+                                      {[
+                                        {
+                                          label: 'Luyện 5 câu Canvas (THPT 2025)',
+                                          prompt: 'Từ kiến thức vừa trao đổi, hãy tạo ngay 5 câu luyện tập chuẩn đề thi THPT Quốc gia 2025 trên Canvas tương tác (phối hợp cả Phần I Trắc nghiệm A-D, Phần II Đúng/Sai 4 ý và Phần III Trả lời ngắn) kèm lời giải soi bẫy chi tiết.',
+                                          isQuizCta: true,
+                                        },
+                                        { label: 'Tóm tắt công thức lõi', prompt: 'Tóm tắt ngắn gọn các công thức cốt lõi và kết luận quan trọng nhất từ lời giải trên.' },
+                                        { label: 'Soi bẫy hay sai nhất', prompt: 'Chỉ ra 3 lỗi sai và bẫy đề thi học sinh dễ mắc nhất ở dạng bài này.' },
+                                      ].map((fu) => (
+                                        <button
+                                          key={fu.label}
+                                          type="button"
+                                          className={`gm-followup-chip ${fu.isQuizCta ? 'is-quiz-cta' : ''}`}
+                                          onClick={() => send(fu.prompt)}
+                                        >
+                                          <span>{fu.label}</span>
+                                          <span aria-hidden="true">→</span>
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
-                              </div>
-                            </div>
-                          )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </>
                     )}
@@ -2569,11 +3341,10 @@ export default function AIChat({ onExit }) {
                   <AIMark size={40} mode="talk" animate={visible} className="ds-avatar" />
                   <div className="ds-msg-body">
                     {reasoning && (
-                      <div className="ds-reasoning-box streaming">
+                      <div className="ds-reasoning-box streaming gm-think-box">
                         <div className="ds-reasoning-toggle">
                           <IcoBrain size={13} />
-                          <span>Đang phân tích…</span>
-                          <span className="ds-typing"><i /><i /><i /></span>
+                          <span className="gm-shimmer-txt">Đang suy luận ({liveElapsedSec.toFixed(1)}s)…</span>
                         </div>
                         <div className="ds-reasoning-content"><ReasoningSteps text={reasoning} /></div>
                       </div>
@@ -2588,16 +3359,24 @@ export default function AIChat({ onExit }) {
                   <AIMark size={40} mode="orbit" animate={visible} className="ds-avatar" />
                   <div className="ds-msg-body">
                     {reasoning ? (
-                      <div className="ds-reasoning-box streaming">
+                      <div className="ds-reasoning-box streaming gm-think-box">
                         <div className="ds-reasoning-toggle">
                           <IcoBrain size={13} />
-                          <span>Đang phân tích…</span>
-                          <span className="ds-typing"><i /><i /><i /></span>
+                          <span className="gm-shimmer-txt">Đang suy luận sâu ({liveElapsedSec.toFixed(1)}s)…</span>
                         </div>
                         <div className="ds-reasoning-content"><ReasoningSteps text={reasoning} /></div>
                       </div>
                     ) : (
-                      <span className="ds-thinking">Đang suy nghĩ…</span>
+                      <div className="gm-skeleton-wrap" aria-live="polite">
+                        <span className="gm-shimmer-txt">
+                          {deepThink ? `DeepThink đang suy luận (${liveElapsedSec.toFixed(1)}s)…` : `Đang phân tích (${liveElapsedSec.toFixed(1)}s)…`}
+                        </span>
+                        <div className="gm-shimmer-bars" aria-hidden="true">
+                          <i style={{ width: '92%' }} />
+                          <i style={{ width: '76%' }} />
+                          <i style={{ width: '54%' }} />
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2606,6 +3385,32 @@ export default function AIChat({ onExit }) {
               <div ref={end} />
             </div>
           )}
+
+          {/* Conversation Minimap Rail kiểu Claude/ChatGPT khi có >= 2 câu hỏi */}
+          {(() => {
+            const userTurns = messages
+              .map((m, idx) => (m.role === 'user' ? { idx, text: m.preview?.text || 'Ảnh bài tập' } : null))
+              .filter(Boolean);
+            if (userTurns.length < 2) return null;
+            return (
+              <nav className="gm-minimap" aria-label="Mục lục câu hỏi trong đoạn chat">
+                {userTurns.map((t, n) => (
+                  <button
+                    key={t.idx}
+                    type="button"
+                    className="gm-minimap-tick"
+                    data-preview={`#${n + 1} ${t.text.slice(0, 44)}`}
+                    onClick={() => {
+                      document
+                        .querySelector(`[data-msg-idx="${t.idx}"]`)
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }}
+                    aria-label={`Tới câu hỏi ${n + 1}`}
+                  />
+                ))}
+              </nav>
+            );
+          })()}
         </main>
 
         {/* ============ INPUT ============ */}
@@ -2646,12 +3451,61 @@ export default function AIChat({ onExit }) {
               </button>
               <button
                 type="button"
+                className="ds-attach-btn"
+                onClick={() => { docRef.current?.click(); setAttachOpen(false); }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                <span>Tải tài liệu (PDF, Word, TXT)</span>
+              </button>
+              <button
+                type="button"
                 className="ds-attach-btn ds-m-only"
                 onClick={() => { setShowQuickPrompts(true); setAttachOpen(false); }}
               >
                 <IcoWand size={16} />
                 <span>Prompt mẫu nhanh</span>
               </button>
+            </div>
+          )}
+
+          {docs.length > 0 && (
+            <div className="elec-doc-tray" aria-label="Tài liệu đã đính kèm">
+              <div className="elec-doc-pills">
+                {docs.map((d) => (
+                  <div key={d.id} className="elec-doc-pill">
+                    <span className="elec-doc-ext">{(d.kind || 'DOC').toUpperCase()}</span>
+                    <span className="elec-doc-name" title={d.name}>{d.name}</span>
+                    {d.metaLabel && <small>{d.metaLabel}</small>}
+                    <button
+                      type="button"
+                      className="elec-doc-x"
+                      onClick={() => removeDoc(d.id)}
+                      aria-label={`Gỡ tài liệu ${d.name}`}
+                    >
+                      <IcoClose size={11} />
+                    </button>
+                  </div>
+                ))}
+                {docs.length > 1 && (
+                  <button type="button" className="elec-doc-clear" onClick={clearDocs}>Xóa hết</button>
+                )}
+              </div>
+              <div className="elec-doc-quick">
+                <button type="button" onClick={() => send('Tóm tắt ngắn gọn trọng tâm tài liệu đính kèm và gắn trích dẫn [Trang X].')}>
+                  Tóm tắt + [Trang X]
+                </button>
+                <button type="button" onClick={() => send('Từ nội dung tài liệu đính kèm, hãy tạo cho mình 5 câu trắc nghiệm tương tác trên Canvas kèm giải thích chi tiết (trích dẫn [Trang X]).')}>
+                  Tạo đề 5 câu Canvas
+                </button>
+                <button type="button" onClick={() => send('Trích xuất toàn bộ công thức, phương trình và định luật quan trọng trong tài liệu đính kèm.')}>
+                  Trích công thức lõi
+                </button>
+              </div>
             </div>
           )}
 
@@ -2713,66 +3567,280 @@ export default function AIChat({ onExit }) {
             </div>
           )}
 
-          <div className="ds-input-bar">
-            <button
-              className={'ds-input-icon ds-icon-attach' + (attachOpen ? ' on' : '')}
-              onClick={(e) => { e.stopPropagation(); setAttachOpen((v) => !v); }}
-              title="Đính kèm ảnh"
-              aria-label="Đính kèm"
-              aria-expanded={attachOpen}
-              type="button"
-            >
-              <IcoPlus size={20} />
-            </button>
-            <input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple className="ds-file-hidden" tabIndex={-1} aria-label="Tải ảnh bài tập lên để AI giải" onChange={pickImages} />
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="ds-file-hidden" tabIndex={-1} aria-label="Chụp ảnh bài tập bằng camera" onChange={pickImages} />
+          {/* Menu lệnh nhanh Slash Command "/" */}
+          {input.startsWith('/') && input.length <= 18 && !input.includes(' ') && (() => {
+            const qCmd = input.toLowerCase();
+            const hits = SLASH_COMMANDS.filter((c) => c.cmd.startsWith(qCmd));
+            if (!hits.length) return null;
+            return (
+              <div className="ai2-slash-menu" role="listbox" aria-label="Lệnh nhanh AI">
+                {hits.map((c) => (
+                  <button
+                    key={c.cmd}
+                    type="button"
+                    className="ai2-slash-item"
+                    onClick={() => {
+                      setInput(c.prompt);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <code className="ai2-slash-cmd">{c.cmd}</code>
+                    <span>{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
-            <button
-              className={'ds-input-icon ds-icon-wand' + (showQuickPrompts ? ' on' : '')}
-              onClick={() => setShowQuickPrompts((v) => !v)}
-              title="Prompt mẫu nhanh"
-              aria-label="Prompt mẫu"
-              type="button"
-            >
-              <IcoWand size={18} />
-            </button>
+          {/* Soft Paywall chuẩn 9Study khi hết Credit: vẫn cho soạn câu hỏi và xem lịch sử */}
+          {uid && creditBalance !== null && (() => {
+            const liveCost = calcChatCreditCost({
+              imageCount: images.length + docs.filter((d) => d.base64).length,
+              deepThink,
+              docCount: docs.filter((d) => !d.base64).length,
+            });
+            if (creditBalance >= liveCost) return null;
+            return (
+              <div className="elec-chat-soft-paywall" role="status">
+                <div className="elec-chat-sp-lead">
+                  <img
+                    src="/img/elec/elec-plead.png"
+                    alt="Linh vật ELEC AI"
+                    className="elec-chat-sp-mascot"
+                    width="44"
+                    height="44"
+                  />
+                  <div className="elec-chat-sp-copy">
+                    <b>Số dư ELEC Credit không đủ ({formatCredits(creditBalance)} / {formatCredits(liveCost)} Credit)</b>
+                    <span>Bạn vẫn có thể soạn sẵn câu hỏi và xem toàn bộ lịch sử trò chuyện.</span>
+                  </div>
+                </div>
+                <div className="elec-chat-sp-actions">
+                  <button
+                    type="button"
+                    className="elec-chat-sp-btn"
+                    onClick={() => window.dispatchEvent(new CustomEvent('elec-open-credit-topup'))}
+                  >
+                    Mua ELEC Credit
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
-            <textarea
-              ref={inputRef}
-              className="ds-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder={placeholder}
-              aria-label="Nhập câu hỏi"
-              maxLength={4000}
-              rows={1}
-            />
+          {symbolBarOpen && (
+            <div className="elec-symbol-bar" role="toolbar" aria-label="Chèn nhanh ký hiệu Khoa học Tự nhiên">
+              {KHTN_SYMBOLS.map((sym) => (
+                <button
+                  key={sym}
+                  type="button"
+                  className="elec-symbol-btn"
+                  onClick={() => insertAtCursor(sym)}
+                  title={`Chèn ký hiệu ${sym}`}
+                >
+                  {sym}
+                </button>
+              ))}
+            </div>
+          )}
 
-            <button
-              className={'ds-input-icon ds-icon-mic' + (listening ? ' rec' : '')}
-              onClick={toggleVoice}
-              title={listening ? 'Dừng ghi âm' : 'Nhập bằng giọng nói'}
-              aria-label={listening ? 'Dừng ghi âm' : 'Nhập bằng giọng nói'}
-              aria-pressed={listening}
-              type="button"
-            >
-              <IcoMic size={18} />
-            </button>
+          <div className={'ds-input-bar gm-composer' + (deepThink ? ' is-deepthink' : '') + (tempMode ? ' is-temp' : '') + (loading ? ' is-streaming' : '')}>
+            <div className="gm-composer-top">
+              <textarea
+                ref={inputRef}
+                className="ds-input gm-textarea"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder={tempMode ? 'Hỏi ẩn danh (không lưu lịch sử)...' : placeholder}
+                aria-label="Nhập câu hỏi"
+                maxLength={4000}
+                rows={1}
+              />
+            </div>
 
-            {loading ? (
-              <button className="ds-send stop" onClick={stop} type="button" aria-label="Dừng trả lời" title="Dừng">
-                <IcoStop size={18} />
-              </button>
-            ) : (
-              <button className="ds-send" onClick={() => send()} disabled={!hasInput} type="button" aria-label="Gửi">
-                <IcoSend size={18} />
-              </button>
-            )}
+            <div className="gm-composer-bar">
+              <div className="gm-composer-left">
+                <button
+                  className={'gm-tool-circle' + (attachOpen ? ' on' : '')}
+                  onClick={(e) => { e.stopPropagation(); setAttachOpen((v) => !v); }}
+                  title="Đính kèm ảnh hoặc chụp đề"
+                  aria-label="Đính kèm"
+                  aria-expanded={attachOpen}
+                  type="button"
+                >
+                  <IcoPlus size={19} />
+                </button>
+                <input ref={fileRef} type="file" accept="image/*,.heic,.heif,.pdf,.docx,.xlsx,.xls,.txt,.md,.csv" multiple className="ds-file-hidden" tabIndex={-1} aria-label="Tải ảnh hoặc tài liệu lên để AI phân tích" onChange={pickImages} />
+                <input ref={docRef} type="file" accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv" multiple className="ds-file-hidden" tabIndex={-1} aria-label="Tải tài liệu PDF, Word, Excel hoặc TXT" onChange={pickImages} />
+                <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="ds-file-hidden" tabIndex={-1} aria-label="Chụp ảnh bài tập bằng camera" onChange={pickImages} />
+
+                {/* Nút DeepThink kiểu DeepSeek R1 */}
+                <button
+                  type="button"
+                  className={'gm-tool-pill gm-deepthink-pill' + (deepThink ? ' active' : '')}
+                  onClick={() => setDeepThink((v) => !v)}
+                  aria-pressed={deepThink}
+                  title="Bật suy luận sâu & thẩm định chéo kết quả (kiểu DeepSeek R1)"
+                >
+                  <IcoBrain size={15} />
+                  <span>DeepThink</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="gm-tool-pill"
+                  onClick={() => cameraRef.current?.click()}
+                  title="Chụp ảnh đề bài nhận diện OCR tức thì"
+                >
+                  <IcoCamera size={15} />
+                  <span>Chụp đề</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="gm-tool-pill"
+                  onClick={() => {
+                    setInput('Hãy chấm từng dòng trong ảnh nháp/bài giải viết tay này của mình, chỉ rõ dòng nào bắt đầu biến đổi sai dấu, sai đơn vị hay sai công thức và sửa lại từ dòng đó.');
+                    fileRef.current?.click();
+                  }}
+                  title="Tải ảnh nháp viết tay để AI bắt lỗi từng dòng"
+                >
+                  <IcoShieldCheck size={15} />
+                  <span>Chấm nháp</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={'gm-tool-pill' + (activeChalkboardLesson ? ' active-studio' : '')}
+                  onClick={() => {
+                    if (activeChalkboardLesson) {
+                      setActiveChalkboardLesson(null);
+                    } else {
+                      setActiveInteractiveQuiz(null);
+                      setActiveChalkboardLesson(getDefaultPresetForSubject(subjectLens));
+                    }
+                  }}
+                  title="Mở ngay Studio vẽ hình 3D & 2D KHTN tương tác (6 mô hình mẫu + Vẽ tay + Lệnh trực tiếp)"
+                >
+                  <IcoWand size={15} />
+                  <span>Bảng 3D</span>
+                </button>
+
+                <button
+                  className={'gm-tool-circle elec-slash-btn' + (symbolBarOpen ? ' on' : '')}
+                  onClick={() => setSymbolBarOpen((v) => !v)}
+                  title="Thanh chèn nhanh ký hiệu KHTN (→, ⇌, Δ, ω, λ, Ω, ², ³, √...)"
+                  aria-label="Ký hiệu KHTN"
+                  aria-pressed={symbolBarOpen}
+                  type="button"
+                >
+                  <span className="elec-slash-mark" aria-hidden="true">Σ</span>
+                </button>
+
+                <button
+                  className={'gm-tool-circle elec-slash-btn' + (showQuickPrompts ? ' on' : '')}
+                  onClick={() => setShowQuickPrompts((v) => !v)}
+                  title="Prompt mẫu & lệnh nhanh (/)"
+                  aria-label="Prompt mẫu"
+                  type="button"
+                >
+                  <span className="elec-slash-mark" aria-hidden="true">/</span>
+                </button>
+              </div>
+
+              <div className="gm-composer-right">
+                <button
+                  className={'gm-tool-circle' + (listening ? ' rec' : '')}
+                  onClick={toggleVoice}
+                  title={listening ? 'Dừng ghi âm' : 'Nhập bằng giọng nói'}
+                  aria-label={listening ? 'Dừng ghi âm' : 'Nhập bằng giọng nói'}
+                  aria-pressed={listening}
+                  type="button"
+                >
+                  <IcoMic size={17} />
+                </button>
+
+                {uid && (() => {
+                  const liveCost = calcChatCreditCost({
+                    imageCount: images.length + docs.filter((d) => d.base64).length,
+                    deepThink,
+                    docCount: docs.filter((d) => !d.base64).length,
+                  });
+                  const low = creditBalance !== null && creditBalance < liveCost;
+                  return (
+                    <span
+                      className={`elec-chat-cost-chip ${low ? 'is-insufficient' : ''}`}
+                      title={`Lượt gửi này trừ đúng ${formatCredits(liveCost)} Credit (${deepThink ? 'DeepThink' : 'Chat nhanh'}${images.length > 0 ? ` + ${images.length} ảnh` : ''}). Lượt lỗi được hoàn 100%.`}
+                    >
+                      −{formatCredits(liveCost)}
+                    </span>
+                  );
+                })()}
+
+                {loading ? (
+                  <button className="ds-send stop gm-send-btn" onClick={stop} type="button" aria-label="Dừng trả lời" title="Dừng">
+                    <IcoStop size={15} />
+                  </button>
+                ) : (
+                  <button className="ds-send gm-send-btn" onClick={() => send()} disabled={!hasInput} type="button" aria-label="Gửi">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 19V5" />
+                      <path d="m5 12 7-7 7 7" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
+          {/* Thanh chọn Môn học tối giản + 4 thẻ gợi ý Editorial 2×2 */}
+          {messages.length === 0 && !(showLive && (streaming || reasoning)) && (
+            <div className="elec-discover">
+              <div className="elec-lens-tabs" role="tablist" aria-label="Chọn môn trọng tâm">
+                {SUBJECT_LENSES.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={subjectLens === l.id}
+                    className={`elec-lens-tab tone-${l.tone} ${subjectLens === l.id ? 'active' : ''}`}
+                    onClick={() => setSubjectLens(l.id)}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="elec-prompt-grid">
+                {(SUBJECT_CARDS[subjectLens] || SUBJECT_CARDS.all).map((card) => (
+                  <button
+                    key={card.title}
+                    type="button"
+                    className={`elec-prompt-card kind-${card.kind}`}
+                    onClick={() => send(card.prompt)}
+                  >
+                    <span className="elec-prompt-ico" aria-hidden="true">
+                      <SubjectGlyph kind={card.kind} />
+                    </span>
+                    <span className="elec-prompt-copy">
+                      <span className="elec-prompt-title">{card.title}</span>
+                      <span className="elec-prompt-sub">{card.sub}</span>
+                    </span>
+                    <span className="elec-prompt-arrow" aria-hidden="true">↗</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {input.length > 3200 && <p className={'ds-counter' + (input.length >= 3900 ? ' max' : '')}>{input.length}/4000</p>}
-          {listening && <p className="ds-listening"><i /><i /><i /> Đang nghe… bấm micro để dừng</p>}
+          {listening && (
+            <div className="gm-voice-wave" aria-live="polite">
+              <span className="gm-wave-bars" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+              <span>Đang nghe giọng nói của bạn… bấm Micro để dừng</span>
+            </div>
+          )}
           {quotaError && <p className="ds-quota-error">{quotaError}</p>}
           {err && (
             <p className="ds-error">
@@ -2780,33 +3848,130 @@ export default function AIChat({ onExit }) {
               {canRetry && <button type="button" className="ds-retry" onClick={() => regenerate(true)}>Thử lại</button>}
             </p>
           )}
-          <p className="ds-disclaimer">AI có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.</p>
+          <p className="ds-disclaimer elec-disclaimer">
+            <b>ELEC AI</b> · Trợ lý Khoa học Tự nhiên Việt Nam · AI có thể mắc lỗi, hãy kiểm tra lại công thức &amp; đơn vị quan trọng.
+          </p>
         </div>
       </div>
           </div>
 
-          {(activeInteractiveQuiz || activeChalkboardLesson) && (
-            <aside
-              className="ds-stage-canvas-panel"
-              aria-label={activeInteractiveQuiz ? 'Bảng tương tác trắc nghiệm AI' : 'Bảng vẽ hình học tương tác'}
-            >
-              {activeInteractiveQuiz && (
-                <InteractiveQuizCanvas
-                  quiz={activeInteractiveQuiz}
-                  uid={uid}
-                  onClose={() => setActiveInteractiveQuiz(null)}
-                />
-              )}
-              {activeChalkboardLesson && !activeInteractiveQuiz && (
-                <InteractiveChalkboardCanvas
-                  lesson={activeChalkboardLesson}
-                  onClose={() => setActiveChalkboardLesson(null)}
-                />
-              )}
-            </aside>
+          {hasCanvas && (
+            <>
+              <div
+                className={`elec-split-resizer ${isResizingCanvas ? 'is-dragging' : ''}`}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Kéo để chỉnh độ rộng giữa Chat AI và Bảng tương tác"
+                title="Kéo sang trái/phải để chỉnh độ rộng bảng"
+                onMouseDown={startCanvasResize}
+                onTouchStart={startCanvasResize}
+              />
+              <aside
+                className="ds-stage-canvas-panel"
+                aria-label={activeInteractiveQuiz ? 'Bảng tương tác trắc nghiệm AI' : 'Bảng vẽ hình học tương tác'}
+              >
+                {activeInteractiveQuiz && (
+                  <InteractiveQuizCanvas
+                    quiz={activeInteractiveQuiz}
+                    uid={uid}
+                    onAskAi={(prompt) => send(prompt)}
+                    onClose={() => setActiveInteractiveQuiz(null)}
+                  />
+                )}
+                {activeChalkboardLesson && !activeInteractiveQuiz && (
+                  <InteractiveChalkboardCanvas
+                    lesson={activeChalkboardLesson}
+                    onSelectLesson={(preset) => setActiveChalkboardLesson(preset)}
+                    onAskAi={(prompt) => send(prompt)}
+                    onClose={() => setActiveChalkboardLesson(null)}
+                  />
+                )}
+              </aside>
+            </>
           )}
         </div>
       </div>
+
+      {/* Máy tính Casio fx-580VN X nổi ngay trong phòng Chat AI */}
+      {casioOpen && (
+        <div className="elec-chat-casio-dock" role="dialog" aria-label="Máy tính Casio fx-580VN X">
+          <div className="elec-chat-casio-head">
+            <div className="elec-chat-casio-title">
+              <IcoCalc size={15} />
+              <span>Casio fx-580VN X</span>
+              <small>STUDIO PRO</small>
+            </div>
+            <button
+              type="button"
+              className="elec-chat-casio-close"
+              onClick={() => setCasioOpen(false)}
+              aria-label="Đóng máy tính Casio"
+            >
+              <IcoClose size={14} />
+            </button>
+          </div>
+          <div className="elec-chat-casio-body">
+            <Suspense fallback={<div className="elec-chat-casio-loading">Đang khởi động Casio fx-580VN X…</div>}>
+              <Casio580Widget compact captureKeyboard={false} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
+      {/* Bảng Tra cứu nhanh KHTN (Bảng tuần hoàn + Tính M + Hằng số GDPT 2025) */}
+      {quickRefOpen && (
+        <Suspense fallback={null}>
+          <ChatScienceQuickRef
+            onInsert={(txt) => insertAtCursor(txt)}
+            onClose={() => setQuickRefOpen(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Thanh bôi đen hỏi tại chỗ (Claude Artifacts × ChatGPT Canvas Highlight-to-Ask) */}
+      {selBar && (
+        <div
+          className="elec-sel-bar"
+          style={{ left: `${selBar.x}px`, top: `${selBar.y}px` }}
+          role="toolbar"
+          aria-label="Hỏi nhanh về đoạn vừa bôi đen"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const snippet = selBar.text;
+              setSelBar(null);
+              window.getSelection?.()?.removeAllRanges?.();
+              send(`Giải thích thật dễ hiểu và chi tiết hơn đoạn này: «${snippet}»`);
+            }}
+          >
+            Giải thích kỹ
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const snippet = selBar.text;
+              setSelBar(null);
+              window.getSelection?.()?.removeAllRanges?.();
+              send(`Tại sao có công thức / kết luận này? Hãy chứng minh ngắn gọn bản chất của: «${snippet}»`);
+            }}
+          >
+            Chứng minh
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const snippet = selBar.text;
+              setSelBar(null);
+              window.getSelection?.()?.removeAllRanges?.();
+              send(`Giữ nguyên dạng bài nhưng đổi số liệu mới để mình tự luyện dựa trên phần: «${snippet}»`);
+            }}
+          >
+            Đổi số luyện thêm
+          </button>
+        </div>
+      )}
 
       <ConfirmDialog state={confirmState} onClose={closeConfirm} />
       {lightbox && <Lightbox state={lightbox} onChange={setLightbox} onClose={() => setLightbox(null)} />}

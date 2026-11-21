@@ -4,13 +4,25 @@
    • Vòng điểm, thống kê đúng / sai / bỏ qua, lọc theo trạng thái
    • Báo rõ khi bài đang chờ nộp (rớt mạng) thay vì "chưa lưu được"
    ============================================================ */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import MathText from './MathText.jsx';
 import ExamAiDiagnostic from './ExamAiDiagnostic.jsx';
 import ScoreDistributionChart from './exam/ScoreDistributionChart.jsx';
+import { QuestionImage } from './QuestionAnswer.jsx';
+import { ElecFlaskBrandSvg, ElecMascot } from './teacher/ElecBrandMark.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
+import { askAI } from './HomePlus.jsx';
+import {
+  buildPostExamAnalytics,
+  buildScoreDistributionHistogram,
+  buildTopicPerformanceBreakdown,
+  recordStudentEloOnce,
+  recordCombatPowerOnce,
+} from '../lib/studentAnalytics.js';
 import '../styles/classroom.css';
-import '../styles/exam-result-v2.css';
 import '../styles/exam-mode-upgrade.css';
+import '../styles/student-v9-upgrades.css';
+import '../styles/exam-result-v2.css';
 
 const IcoCheck = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
@@ -23,6 +35,21 @@ const IcoMinus = ({ size = 16 }) => (
 );
 const IcoCloud = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 10a6 6 0 0 0-11.5-1.5A4.5 4.5 0 0 0 7 17h11a3.5 3.5 0 0 0 0-7z" /></svg>
+);
+const IcoRefresh = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+);
+const IcoHome = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5" /><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" /></svg>
+);
+const IcoBolt = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+);
+const IcoChart = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
+);
+const IcoCompass = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>
 );
 
 const gradeOf = (pct) =>
@@ -55,7 +82,17 @@ function ScoreRing({ pct, color, children }) {
 }
 
 export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySubmit }) {
+  const { user } = useAuth();
+  const uid = user?.uid || user?.id || 'guest';
   const [filter, setFilter] = useState('all');
+  const [breakdownTab, setBreakdownTab] = useState('parts'); // 'parts' | 'topics'
+  const [eloInfo, setEloInfo] = useState(null);
+  const [powerInfo, setPowerInfo] = useState(null);
+  const [drillItems, setDrillItems] = useState(null);
+  const [drillIdx, setDrillIdx] = useState(0);
+  const [drillPicked, setDrillPicked] = useState(null);
+  const [drillScore, setDrillScore] = useState(0);
+
   const queued = !!result.queued;
   const hasSaveError = !result.practice && (!!result.saveError || (!result.id && !queued));
   const noScore = result.score == null;
@@ -83,69 +120,365 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
   const totalCount = result.total ?? result.totalQuestions ?? exam?.questions?.length ?? rows.length;
   const wrongCount = Math.max(0, totalCount - correctCount - counts.skip);
 
+  const postAnalytics = useMemo(() => buildPostExamAnalytics({ exam, result }), [exam, result]);
+  const histogram = useMemo(() => buildScoreDistributionHistogram(pct), [pct]);
+  const topicBreakdown = useMemo(() => buildTopicPerformanceBreakdown(rows), [rows]);
+
+  useEffect(() => {
+    if (queued || noScore) return;
+    const attemptKey = result.id || `${exam?.id || exam?.title || 'exam'}_${result.score}_${result.timeSpent || 0}_${totalCount}`;
+    setEloInfo(recordStudentEloOnce({ uid, attemptKey, pct, totalQuestions: totalCount }));
+    setPowerInfo(recordCombatPowerOnce({ uid, attemptKey, correctCount, wrongCount }));
+  }, [uid, queued, noScore, result.id, result.score, result.timeSpent, exam?.id, exam?.title, pct, totalCount, correctCount, wrongCount]);
+
+  const wrongChoiceRows = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (r.status === 'no' || r.status === 'skip') &&
+          !(r.q.type === 'true_false' || Array.isArray(r.q.statements)) &&
+          r.q.type !== 'short_answer' &&
+          Array.isArray(r.q.options) &&
+          r.q.options.length >= 2
+      ),
+    [rows]
+  );
+
+  const startWrongDrill = () => {
+    if (!wrongChoiceRows.length) return;
+    setDrillItems(wrongChoiceRows);
+    setDrillIdx(0);
+    setDrillPicked(null);
+    setDrillScore(0);
+  };
+
+  const jumpToQuestion = (qIndex) => {
+    setFilter('all');
+    setTimeout(() => {
+      document.getElementById(`erx-q-${qIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 30);
+  };
+
+  const askAiForQuestion = (q, d) => {
+    const opts = (q.options || []).map((o, idx) => `${String.fromCharCode(65 + idx)}. ${o}`).join('\n');
+    const pickedStr =
+      typeof d.picked === 'number' && d.picked >= 0
+        ? String.fromCharCode(65 + d.picked)
+        : Array.isArray(d.picked)
+          ? d.picked.map((v, i) => `${String.fromCharCode(97 + i)}:${v === true ? 'Đ' : v === false ? 'S' : '?'}`).join(', ')
+          : String(d.picked || 'Chưa trả lời');
+    askAI(
+      `Em vừa làm sai/bỏ qua câu này trong đề "${exam?.title || 'luyện thi'}". Hãy giải thích cặn kẽ từng bước vì sao đáp án đúng là như vậy và chỉ giúp em lỗi sai của em (em chọn: ${pickedStr}):\n\nCâu hỏi: ${q.q || ''}${opts ? `\n\nCác phương án:\n${opts}` : ''}`
+    );
+  };
+
   const visible = filter === 'all' ? rows : rows.filter((r) => r.status === filter);
+  const mascotMood =
+    noScore ? 'think'
+      : pct >= 85 ? 'celebrate'
+        : pct >= 65 ? 'happy'
+          : pct >= 45 ? 'fighting'
+            : 'think';
 
   return (
-    <div className="er-page erx">
+    <div className="er-page erx er-studio">
+      <header className="erx-topbar">
+        <div className="erx-topbar-left">
+          <ElecFlaskBrandSvg size={30} />
+          <span className="erx-topbar-div" aria-hidden="true" />
+          <div className="erx-topbar-title">
+            <b title={exam?.title}>{exam?.title || 'Kết quả bài thi'}</b>
+            <small>
+              {result.practice
+                ? 'Chế độ luyện tập'
+                : result.autoSubmitted
+                  ? 'Nộp tự động · ELEC Exam Studio'
+                  : 'Báo cáo kết quả · ELEC Exam Studio'}
+            </small>
+          </div>
+        </div>
+        <div className="erx-topbar-right">
+          {!noScore && (
+            <span className="erx-top-score">
+              {result.score} / {result.totalPoints} điểm ({pct}%)
+            </span>
+          )}
+          <button type="button" className="erx-top-exit" onClick={onExit}>
+            <IcoHome size={14} /> Về trang chủ
+          </button>
+        </div>
+      </header>
+
       <div className="er-card erx-card">
         <div className="erx-hero" style={{ '--grade-color': grade.color }}>
-          <span className="erx-tag">{result.autoSubmitted ? 'TỰ ĐỘNG NỘP' : 'KẾT QUẢ'}</span>
-          <p className="erx-exam">{exam?.title}</p>
+          <div className="erx-hero-left">
+            {noScore ? (
+              <ScoreRing pct={0} color="#94a3b8"><b className="erx-score">—</b></ScoreRing>
+            ) : (
+              <>
+                <ScoreRing pct={pct} color={grade.color}>
+                  <b className="erx-score">{result.score}</b>
+                  <span className="erx-of">/ {result.totalPoints}</span>
+                </ScoreRing>
+                <div className="erx-grade" style={{ background: grade.color }}>{grade.label} · {pct}%</div>
+              </>
+            )}
+          </div>
 
-          {queued ? (
-            <div className="erx-notice warn" role="status">
-              <IcoCloud />
+          <div className="erx-hero-right">
+            <div className="erx-hero-head">
               <div>
-                <b>Bài đã được lưu trên máy</b>
-                <span>Mất kết nối mạng. Bài sẽ tự động nộp khi có mạng — đừng xóa dữ liệu trình duyệt.</span>
+                <span className="erx-tag">
+                  {result.practice ? 'LUYỆN TẬP' : result.autoSubmitted ? 'TỰ ĐỘNG NỘP' : 'KẾT QUẢ CHÍNH THỨC'}
+                </span>
+                <p className="erx-exam">{exam?.title}</p>
               </div>
+              <ElecMascot mood={mascotMood} size={68} className="erx-hero-mascot" />
             </div>
-          ) : hasSaveError ? (
-            <div className="erx-notice warn" role="alert" style={{ background: '#fef2f2', borderColor: '#ef4444', color: '#991b1b', width: '100%', maxWidth: '520px', padding: '0.9rem 1.1rem', borderRadius: '12px', margin: '0 auto 1rem', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                <IcoCloud size={20} />
-                <b style={{ fontSize: '.95rem' }}>Chưa lưu được bài nộp lên hệ thống!</b>
+
+            {queued ? (
+              <div className="erx-notice warn" role="status">
+                <IcoCloud />
+                <div>
+                  <b>Bài đã được lưu trên máy</b>
+                  <span>Mất kết nối mạng. Bài sẽ tự động nộp khi có mạng — đừng xóa dữ liệu trình duyệt.</span>
+                </div>
               </div>
-              <p style={{ margin: '0 0 .6rem 0', fontSize: '.84rem', opacity: 0.9 }}>
-                {result.saveError ? `Lỗi: ${result.saveError}` : 'Bài thi đã chấm điểm nhưng chưa thể đồng bộ lên máy chủ.'}
-              </p>
-              {onRetrySubmit && (
+            ) : hasSaveError ? (
+              <div className="erx-notice err" role="alert">
+                <IcoCloud size={20} />
+                <div>
+                  <b>Chưa lưu được bài nộp lên hệ thống</b>
+                  <span>
+                    {result.saveError ? `Lỗi: ${result.saveError}` : 'Bài thi đã chấm điểm nhưng chưa thể đồng bộ lên máy chủ.'}
+                  </span>
+                  {onRetrySubmit && (
+                    <button
+                      type="button"
+                      className="erx-retry-btn"
+                      onClick={onRetrySubmit}
+                    >
+                      <IcoRefresh size={14} /> Thử nộp lại bài ngay
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {noScore && (
+              <p className="erx-sub">Chưa chấm được điểm bài của bạn. Hãy chụp màn hình và báo giáo viên.</p>
+            )}
+
+            {!queued && !noScore && (
+              <ul className="erx-stats" aria-label="Thống kê bài làm">
+                <li className="ok"><b>{correctCount}</b><span>Câu đúng</span></li>
+                <li className="no"><b>{wrongCount}</b><span>Câu sai</span></li>
+                <li className="skip"><b>{counts.skip}</b><span>Bỏ qua</span></li>
+                <li><b>{result.timeSpent ? fmtDur(result.timeSpent) : '—'}</b><span>Thời gian</span></li>
+              </ul>
+            )}
+
+            {!queued && !noScore && (
+              <div className="erx-hero-actions">
+                {wrongChoiceRows.length > 0 && (
+                  <button type="button" className="erx-act-btn drill" onClick={startWrongDrill}>
+                    <IcoBolt size={14} /> Luyện lại {wrongChoiceRows.length} câu sai
+                  </button>
+                )}
+                {counts.no > 0 && (
+                  <button
+                    type="button"
+                    className="erx-act-btn err"
+                    onClick={() => { window.location.hash = 'notebook'; }}
+                  >
+                    <IcoX size={13} /> Sổ tay lỗi ({counts.no})
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="td-btn primary"
-                  onClick={onRetrySubmit}
-                  style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '.45rem 1rem', fontSize: '.85rem', borderRadius: '8px', cursor: 'pointer' }}
+                  className="erx-act-btn"
+                  onClick={() => { window.location.hash = 'stats'; }}
                 >
-                  🔄 Thử nộp lại bài ngay
+                  <IcoChart size={14} /> Thống kê
                 </button>
-              )}
-            </div>
-          ) : null}
-
-          {noScore ? (
-            <>
-              <ScoreRing pct={0} color="#94a3b8"><b className="erx-score">—</b></ScoreRing>
-              <p className="erx-sub">Chưa chấm được điểm bài của bạn. Hãy chụp màn hình và báo giáo viên.</p>
-            </>
-          ) : (
-            <>
-              <ScoreRing pct={pct} color={grade.color}>
-                <b className="erx-score">{result.score}</b>
-                <span className="erx-of">/ {result.totalPoints}</span>
-              </ScoreRing>
-              <div className="erx-grade" style={{ background: grade.color }}>{grade.label} · {pct}%</div>
-            </>
-          )}
-
-          {!queued && !noScore && (
-            <ul className="erx-stats" aria-label="Thống kê bài làm">
-              <li className="ok"><b>{correctCount}</b><span>Đúng</span></li>
-              <li className="no"><b>{wrongCount}</b><span>Sai</span></li>
-              {rows.length > 0 && <li className="skip"><b>{counts.skip}</b><span>Bỏ qua</span></li>}
-              {result.timeSpent ? <li><b>{fmtDur(result.timeSpent)}</b><span>Thời gian</span></li> : null}
-            </ul>
-          )}
+                <button
+                  type="button"
+                  className="erx-act-btn"
+                  onClick={() => { window.location.hash = 'roadmap'; }}
+                >
+                  <IcoCompass size={14} /> Lộ trình AI
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Bảng ELO Năng lực, Tốc độ làm bài & Độ chính xác 3 phần GDPT 2025 */}
+        {!queued && !noScore && (
+          <section className="s9-er-insights" aria-label="Phân tích ELO và tốc độ làm bài">
+            <div className="s9-er-kpi-row">
+              {eloInfo && (
+                <div className="s9-er-kpi">
+                  <span className="s9-er-kpi-lbl">ĐIỂM ELO NĂNG LỰC</span>
+                  <div className="s9-er-kpi-val">
+                    <b>{eloInfo.nextElo.toLocaleString('vi-VN')}</b>
+                    <em className={`s9-er-elo-delta ${eloInfo.delta >= 0 ? 'up' : 'down'}`}>
+                      {eloInfo.delta >= 0 ? `+${eloInfo.delta}` : eloInfo.delta}
+                    </em>
+                  </div>
+                  <small>Hạng hiện tại: <b>{eloInfo.rank.label}</b></small>
+                </div>
+              )}
+
+              <div className="s9-er-kpi">
+                <span className="s9-er-kpi-lbl">TỐC ĐỘ LÀM BÀI</span>
+                <div className="s9-er-kpi-val">
+                  <b>{postAnalytics.secPerQuestion != null ? `${postAnalytics.secPerQuestion}s/câu` : '—'}</b>
+                  <em className={`s9-er-pace-pill is-${postAnalytics.paceStatus.tone}`}>
+                    {postAnalytics.paceStatus.label.split('·')[1]?.trim() || 'Chuẩn'}
+                  </em>
+                </div>
+                <small>{postAnalytics.paceStatus.hint || `Nhịp mục tiêu ~${postAnalytics.targetSecPerQuestion}s/câu`}</small>
+              </div>
+            </div>
+
+            {/* Thanh Lực chiến & Móc giữ chân ôn câu sai (kiểu 9Study) */}
+            {powerInfo && (
+              <div className="s9-er-power-bar">
+                <div className="s9-er-power-top">
+                  <div>
+                    <span className="s9-er-kpi-lbl">LỰC CHIẾN HỌC TẬP</span>
+                    <div className="s9-er-power-val">
+                      <b>{powerInfo.totalPower.toLocaleString('vi-VN')}</b>
+                      <em className="s9-er-elo-delta up">+{powerInfo.earned} Lực chiến</em>
+                      <span className="s9-er-power-tier">{powerInfo.tier.label} → {powerInfo.tier.next.toLocaleString('vi-VN')}</span>
+                    </div>
+                  </div>
+                  {powerInfo.waitingFromMistakes > 0 && wrongChoiceRows.length > 0 && (
+                    <button type="button" className="s9-er-power-cta" onClick={startWrongDrill}>
+                      Gom +{powerInfo.waitingFromMistakes} lực chiến từ câu sai →
+                    </button>
+                  )}
+                </div>
+                <div className="s9-er-part-track">
+                  <div className="s9-er-part-fill ok" style={{ width: `${Math.max(5, powerInfo.tier.pct)}%` }} />
+                </div>
+                {powerInfo.waitingFromMistakes > 0 && (
+                  <small className="s9-er-power-hook">
+                    Đề này còn <b>+{powerInfo.waitingFromMistakes} Lực chiến</b> đang chờ ở những câu bạn chưa làm đúng. Ôn câu sai ngay để lấy trọn điểm!
+                  </small>
+                )}
+              </div>
+            )}
+
+            {/* Wave 5: Biểu đồ Phổ điểm & Percentile ("Cao hơn X% thí sinh") */}
+            <div className="s9-er-hist-card">
+              <div className="s9-er-hist-head">
+                <div>
+                  <span className="s9-er-kpi-lbl">VỊ THẾ PHỔ ĐIỂM TOÀN QUỐC</span>
+                  <h4>
+                    Điểm của bạn cao hơn <b>{histogram.percentile}%</b> thí sinh
+                  </h4>
+                </div>
+                <span className="s9-er-top-pill">Top {histogram.topPct}%</span>
+              </div>
+              <div className="s9-er-hist-bars" role="img" aria-label={`Biểu đồ phổ điểm, bạn đạt ${histogram.score10} điểm, cao hơn ${histogram.percentile}% thí sinh`}>
+                {histogram.bins.map((b) => (
+                  <div key={b.idx} className={`s9-er-hist-col ${b.isUser ? 'is-user' : ''}`}>
+                    {b.isUser && <span className="s9-er-you-tag">Bạn</span>}
+                    <div className="s9-er-hist-bar-wrap">
+                      <i style={{ height: `${Math.max(12, b.heightPct)}%` }} />
+                    </div>
+                    <small>{b.label}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {(postAnalytics.partBreakdown.length > 0 || topicBreakdown.length > 0) && (
+              <div className="s9-er-parts">
+                <div className="s9-er-seg-row" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={breakdownTab === 'parts'}
+                    className={`s9-er-seg-btn ${breakdownTab === 'parts' ? 'active' : ''}`}
+                    onClick={() => setBreakdownTab('parts')}
+                  >
+                    Theo 3 Phần GDPT 2025
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={breakdownTab === 'topics'}
+                    className={`s9-er-seg-btn ${breakdownTab === 'topics' ? 'active' : ''}`}
+                    onClick={() => setBreakdownTab('topics')}
+                  >
+                    Theo chủ đề &amp; dạng câu ({topicBreakdown.length})
+                  </button>
+                </div>
+
+                {breakdownTab === 'parts' ? (
+                  postAnalytics.partBreakdown.map((p) => (
+                    <div key={p.part} className="s9-er-part-row">
+                      <div className="s9-er-part-top">
+                        <span>{p.label}</span>
+                        <b>{p.correct}/{p.total} câu ({p.pct}%)</b>
+                      </div>
+                      <div className="s9-er-part-track">
+                        <div
+                          className={`s9-er-part-fill ${p.pct >= 75 ? 'ok' : p.pct >= 50 ? 'warn' : 'bad'}`}
+                          style={{ width: `${Math.max(4, p.pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  topicBreakdown.map((tp) => (
+                    <div key={tp.topic} className="s9-er-part-row">
+                      <div className="s9-er-part-top">
+                        <span>{tp.topic}</span>
+                        <b>{tp.correct}/{tp.total} đúng ({tp.pct}%)</b>
+                      </div>
+                      <div className="s9-er-part-track">
+                        <div
+                          className={`s9-er-part-fill ${tp.pct >= 75 ? 'ok' : tp.pct >= 50 ? 'warn' : 'bad'}`}
+                          style={{ width: `${Math.max(4, tp.pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {showAnswer && rows.length > 0 && (
+              <div className="s9-er-heatmap-wrap">
+                <div className="s9-er-heatmap-head">
+                  <span>Bản đồ kết quả từng câu (bấm số câu để nhảy nhanh)</span>
+                  <span className="s9-er-legend">
+                    <i><b className="ok" />Đúng</i>
+                    <i><b className="no" />Sai</i>
+                    <i><b className="skip" />Bỏ qua</i>
+                  </span>
+                </div>
+                <div className="s9-er-heatmap">
+                  {rows.map((r) => (
+                    <button
+                      key={r.i}
+                      type="button"
+                      className={`s9-er-cell is-${r.status}`}
+                      onClick={() => jumpToQuestion(r.i)}
+                      title={`Câu ${r.i + 1}: ${r.status === 'ok' ? 'Đúng' : r.status === 'no' ? 'Sai' : 'Bỏ qua'}`}
+                    >
+                      {r.i + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Biểu đồ Phổ điểm chuẩn hình chuông (Gaussian Bell Curve) so sánh cả nước */}
         {!queued && !noScore && (
@@ -180,44 +513,55 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
 
             <ol className="er-list erx-list">
               {visible.map(({ q, d, i, status }) => (
-                <li key={i} className={'erx-item ' + status}>
+                <li key={i} id={`erx-q-${i}`} className={'erx-item ' + status}>
                   <div className="er-list-head">
                     <span className={'erx-mark ' + status}>
                       {status === 'ok' ? <IcoCheck /> : status === 'no' ? <IcoX /> : <IcoMinus />}
                     </span>
                     <b>Câu {i + 1}</b>
                     <span className="er-points">+{typeof d.earned === 'number' ? d.earned : (d.isCorrect ? (q.points || 1) : 0)} điểm</span>
+                    {status !== 'ok' && (
+                      <button
+                        type="button"
+                        className="s9-er-ask-ai"
+                        onClick={() => askAiForQuestion(q, d)}
+                        title="Hỏi ELEC AI giải thích chi tiết bẫy câu này"
+                      >
+                        Hỏi AI giải thích
+                      </button>
+                    )}
                   </div>
 
                   <MathText as="p" className="er-q">{q.q}</MathText>
+                  <QuestionImage q={q} />
 
                   {/* 1. Dạng True / False (Đúng/Sai) */}
                   {(q.type === 'true_false' || Array.isArray(q.statements)) ? (
                     <div className="er-tf-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.6rem' }}>
                       {(q.statements || []).map((st, si) => {
                         const userVal = Array.isArray(d.picked) ? d.picked[si] : (d.picked && typeof d.picked === 'object' ? d.picked[si] : null);
-                        const correctVal = st.answer ?? st.correct;
-                        const isMatch = userVal !== null && userVal === correctVal;
+                        const correctVal = st.answer ?? st.correct ?? (Array.isArray(d.correct) ? d.correct[si] : undefined);
+                        const isMatch = userVal !== null && correctVal !== undefined && userVal === correctVal;
                         return (
                           <div
                             key={si}
                             style={{
                               padding: '0.5rem 0.75rem',
-                              borderRadius: '8px',
+                              borderRadius: '10px',
                               background: isMatch ? 'rgba(16, 185, 129, 0.08)' : (userVal !== null ? 'rgba(239, 68, 68, 0.08)' : 'rgba(148, 163, 184, 0.08)'),
                               border: `1px solid ${isMatch ? 'rgba(16, 185, 129, 0.25)' : (userVal !== null ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)')}`,
                               fontSize: '0.86rem',
                               lineHeight: 1.5,
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
                               <span><b>{String.fromCharCode(97 + si)})</b> <MathText as="span">{st.text}</MathText></span>
                               <span style={{ fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
                                 Bạn chọn: <b style={{ color: userVal === true ? '#10b981' : userVal === false ? '#ef4444' : '#64748b' }}>
                                   {userVal === true ? 'Đúng' : userVal === false ? 'Sai' : 'Chưa chọn'}
                                 </b>
                                 {' · '}
-                                Đáp án: <b style={{ color: '#10b981' }}>{correctVal === true ? 'Đúng' : 'Sai'}</b>
+                                Đáp án: <b style={{ color: '#10b981' }}>{correctVal === true ? 'Đúng' : correctVal === false ? 'Sai' : '—'}</b>
                               </span>
                             </div>
                           </div>
@@ -226,7 +570,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                     </div>
                   ) : q.type === 'short_answer' ? (
                     /* 2. Dạng Trả lời ngắn */
-                    <div className="er-sa-box" style={{ marginTop: '0.6rem', padding: '0.6rem 0.8rem', borderRadius: '8px', background: d.isCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)', border: `1px solid ${d.isCorrect ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`, fontSize: '0.86rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div className="er-sa-box" style={{ marginTop: '0.6rem', padding: '0.65rem 0.85rem', borderRadius: '10px', background: d.isCorrect ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)', border: `1px solid ${d.isCorrect ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`, fontSize: '0.86rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                       <div>
                         <span>Bạn trả lời: </span>
                         <b style={{ color: d.isCorrect ? '#10b981' : '#ef4444' }}>
@@ -235,7 +579,9 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                       </div>
                       <div>
                         <span>Đáp án đúng: </span>
-                        <b style={{ color: '#10b981' }}>{String(q.answer ?? (q.accepted || [])[0] ?? d.correct ?? '')}</b>
+                        <b style={{ color: '#10b981' }}>
+                          {String(q.answer ?? (q.accepted || [])[0] ?? (Array.isArray(d.correct) ? d.correct[0] : d.correct) ?? '')}
+                        </b>
                       </div>
                     </div>
                   ) : (
@@ -248,7 +594,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                           <div key={oi}
                             className={'er-opt' + (isCorrect ? ' correct' : '') + (isPicked && !isCorrect ? ' wrong' : '')}>
                             <span className="er-opt-key">{String.fromCharCode(65 + oi)}</span>
-                            <MathText>{opt}</MathText>
+                            <span className="er-opt-body"><MathText>{opt}</MathText></span>
                             {isPicked && <em>Bạn chọn</em>}
                             {isCorrect && !isPicked && <em className="erx-right">Đáp án đúng</em>}
                           </div>
@@ -258,10 +604,10 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                     </div>
                   )}
 
-                  {q.explain && (
+                  {(q.explain || q.explanation) && (
                     <div className="erx-explain">
-                      <b>Lời giải</b>
-                      <MathText as="div">{q.explain}</MathText>
+                      <b>Lời giải chi tiết</b>
+                      <MathText as="div">{q.explain || q.explanation}</MathText>
                     </div>
                   )}
                 </li>
@@ -271,6 +617,16 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
         )}
 
         <div className="er-actions" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1.5rem' }}>
+          {wrongChoiceRows.length > 0 && (
+            <button
+              className="td-btn"
+              style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              onClick={startWrongDrill}
+              type="button"
+            >
+              Luyện lại ngay {wrongChoiceRows.length} câu sai
+            </button>
+          )}
           {counts.no > 0 && (
             <button
               className="td-btn"
@@ -302,6 +658,102 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
           </button>
         </div>
       </div>
+
+      {/* Modal Luyện lại nhanh các câu vừa sai ngay trên màn hình kết quả */}
+      {drillItems && (
+        <div
+          className="s9-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Luyện lại các câu vừa sai"
+          onClick={(e) => { if (e.target === e.currentTarget) setDrillItems(null); }}
+        >
+          <div className="s9-drill-modal">
+            {drillIdx >= drillItems.length ? (
+              <div className="s9-drill-done">
+                <h3>Đã hoàn tất vòng sửa sai!</h3>
+                <p>
+                  Bạn làm đúng lại <b>{drillScore}</b> / <b>{drillItems.length}</b> câu vừa sai.
+                </p>
+                <div className="s9-drill-foot">
+                  <button type="button" className="s9-pm-btn is-ghost" onClick={() => setDrillItems(null)}>
+                    Đóng
+                  </button>
+                  <button type="button" className="s9-pm-btn is-primary" onClick={startWrongDrill}>
+                    Luyện thêm lần nữa
+                  </button>
+                </div>
+              </div>
+            ) : (() => {
+              const cur = drillItems[drillIdx];
+              const correctIdx = cur.d?.correct;
+              return (
+                <>
+                  <header className="s9-pm-head">
+                    <div>
+                      <span className="s9-pm-badge is-type">Sửa sai tức thì · Câu {drillIdx + 1}/{drillItems.length}</span>
+                      <h3>Câu {cur.i + 1} trong đề</h3>
+                    </div>
+                    <button type="button" className="s9-pm-close" onClick={() => setDrillItems(null)} aria-label="Đóng">
+                      <IcoX size={15} />
+                    </button>
+                  </header>
+                  <div className="s9-drill-body">
+                    <MathText as="div" className="s9-pm-qtext">{cur.q.q}</MathText>
+                    <QuestionImage q={cur.q} />
+                    <div className="s9-drill-opts">
+                      {(cur.q.options || []).map((opt, oi) => {
+                        const isPicked = drillPicked === oi;
+                        const isRight = oi === correctIdx;
+                        let cls = 's9-drill-opt';
+                        if (drillPicked !== null) {
+                          if (isRight) cls += ' is-right';
+                          else if (isPicked) cls += ' is-wrong';
+                        }
+                        return (
+                          <button
+                            key={oi}
+                            type="button"
+                            className={cls}
+                            disabled={drillPicked !== null}
+                            onClick={() => {
+                              setDrillPicked(oi);
+                              if (oi === correctIdx) setDrillScore((s) => s + 1);
+                            }}
+                          >
+                            <b>{String.fromCharCode(65 + oi)}.</b>
+                            <MathText as="span">{String(opt).replace(/^[A-D]\.\s*/i, '')}</MathText>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {drillPicked !== null && (cur.q.explain || cur.q.explanation) && (
+                      <div className="s9-pm-explain">
+                        <b>Lời giải</b>
+                        <MathText as="div">{cur.q.explain || cur.q.explanation}</MathText>
+                      </div>
+                    )}
+                  </div>
+                  {drillPicked !== null && (
+                    <footer className="s9-pm-foot">
+                      <button
+                        type="button"
+                        className="s9-pm-btn is-primary"
+                        onClick={() => {
+                          setDrillIdx((x) => x + 1);
+                          setDrillPicked(null);
+                        }}
+                      >
+                        {drillIdx === drillItems.length - 1 ? 'Xem kết quả sửa sai' : 'Câu sai tiếp theo →'}
+                      </button>
+                    </footer>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,8 @@
 
 import { getInfographicsForTopic } from './knowledgeManifest.js';
 
+import { GDPT2018_EXPANSION_LESSONS } from './gdpt2018ExpansionLessons.js';
+
 export const DEDICATED_LESSONS = {
   "ly": [
     {
@@ -17331,9 +17333,266 @@ export const DEDICATED_LESSONS = {
           "grade": 12
         }
       ]
+    },
+    {
+      "chapterId": "sinh-c6-ditruyen-nguoi",
+      "chapterName": "Di truyền học Người, Phả hệ & Y học tư vấn",
+      "grade": 12,
+      "lessons": [
+        {
+          "id": "sinh-pha-he-benh-di-truyen",
+          "title": "Phương pháp giải bài toán Phả hệ & Các hội chứng di truyền ở người",
+          "desc": "Quy trình 3 bước xác định quy luật phả hệ (trội/lặn, NST thường/X), xác suất sinh con (bẫy 1/3 AA : 2/3 Aa) và các bệnh/hội chứng di truyền trích từ Chuyên đề 5 Tài liệu Sinh học ELEC AI.",
+          "duration": "30 phút",
+          "tag": "Vận dụng cao",
+          "practiceCount": 12,
+          "concepts": [
+            {
+              "title": "Quy trình 3 bước giải bài toán Phả hệ",
+              "desc": "Bước 1: Bố mẹ bình thường sinh con bị bệnh => Bệnh do allele LẶN quy định. Bước 2: Bố mẹ bình thường sinh CON GÁI bị bệnh (hoặc mẹ bệnh sinh con trai bình thường) => Gene bệnh lặn nằm trên NST THƯỜNG. Bước 3: Cá thể bình thường có bố mẹ đều dị hợp $Aa \\times Aa$ có xác suất kiểu gene là $\\frac{1}{3}AA : \\frac{2}{3}Aa$."
+            },
+            {
+              "title": "Các bệnh & hội chứng di truyền ở người",
+              "desc": "Đột biến gene NST thường: Bạch tạng (lặn), Phenylketon niệu PKU (lặn), Hồng cầu hình liềm HbS. Đột biến gene trên X: Máu khó đông, Mù màu. Đột biến NST: Down (3 NST 21), Edwards (3 NST 18), Patau (3 NST 13), Turner ($XO$), Klinefelter ($XXY$), Tiếng mèo kêu (mất đoạn NST 5)."
+            }
+          ],
+          "algorithms": [
+            {
+              "step": 1,
+              "title": "Xác định trội/lặn và vị trí gene (NST thường hay X)",
+              "instruction": "Tìm cặp vợ chồng cùng kiểu hình nhưng sinh con khác kiểu hình. Nếu sinh con gái khác bố mẹ => gene trên NST thường."
+            },
+            {
+              "step": 2,
+              "title": "Tách riêng từng tính trạng/bệnh rồi nhân xác suất",
+              "instruction": "Xác định tỉ lệ giao tử của vợ và chồng ở từng bệnh độc lập, sau đó nhân xác suất với 1/2 nếu đề hỏi giới tính con."
+            }
+          ],
+          "formulas": [
+            {
+              "label": "Xác suất kiểu gene cá thể bình thường từ bố mẹ Aa × Aa",
+              "formula": "P(AA \\mid A-) = \\frac{1}{3}, \\quad P(Aa \\mid A-) = \\frac{2}{3}",
+              "displayLatex": "P(AA \\mid A-) = \\frac{1}{3}, \\quad P(Aa \\mid A-) = \\frac{2}{3}",
+              "notes": "Đã loại trừ 1/4 aa (bị bệnh) nên mẫu số còn 3 phần."
+            }
+          ],
+          "traps": [
+            {
+              "trap": "Lấy xác suất kiểu gene người bình thường con của Aa × Aa là 1/2 Aa hoặc 2/4 Aa",
+              "avoid": "Vì người đó đã biết là bình thường (A-) nên phải chia cho 3/4: xác suất mang kiểu gene dị hợp Aa là 2/3!"
+            }
+          ],
+          "flashcards": [
+            {
+              "id": "fc-b7-1",
+              "front": "Bố mẹ bình thường sinh con gái bị bệnh thì gene bệnh quy định như thế nào?",
+              "back": "Gene lặn nằm trên nhiễm sắc thể thường."
+            },
+            {
+              "id": "fc-b7-2",
+              "front": "Biện pháp chẩn đoán trước sinh giúp phát hiện sớm hội chứng Down ở thai nhi?",
+              "back": "Chọc dò dịch ối hoặc sinh thiết tua nhau thai để phân tích bộ NST (karyotype)."
+            }
+          ],
+          "sampleQuestions": [
+            {
+              "id": "q-b7-mcq",
+              "type": "mcq",
+              "level": "Vận dụng",
+              "targetExam": "Tài liệu Sinh học ELEC AI 12",
+              "prompt": "Ở người, bệnh bạch tạng do allele lặn $a$ trên NST thường quy định, allele $A$ quy định da bình thường. Một cặp vợ chồng đều có da bình thường nhưng cả bên vợ và bên chồng đều có em gái bị bạch tạng (bố mẹ của vợ và chồng đều bình thường). Xác suất cặp vợ chồng này sinh con đầu lòng là con gái bị bạch tạng bằng bao nhiêu?",
+              "options": [
+                "1/18",
+                "1/9",
+                "1/36",
+                "1/8"
+              ],
+              "correct": 0,
+              "solution": "Bố mẹ hai bên đều là $Aa \\times Aa$ nên vợ và chồng (bình thường) đều có xác suất kiểu gene $\\frac{1}{3}AA : \\frac{2}{3}Aa$. Xác suất sinh con bị bệnh ($aa$) = $\\frac{2}{3} \\times \\frac{2}{3} \\times \\frac{1}{4} = \\frac{1}{9}$. Xác suất là con gái bị bạch tạng = $\\frac{1}{2} \\times \\frac{1}{9} = \\frac{1}{18}$.",
+              "trapAlert": "Quên nhân 1/2 (con gái) hoặc lấy xác suất dị hợp là 1/2 thay vì 2/3.",
+              "fastTip": "(2/3 × 2/3 × 1/4) × 1/2 = 1/18."
+            }
+          ],
+          "practiceQuestions": [],
+          "exam2026Questions": [],
+          "subjectKey": "sinh",
+          "grade": 12
+        }
+      ]
+    },
+    {
+      "chapterId": "sinh-c7-sinh11-cothe",
+      "chapterName": "Sinh học 11: Trao đổi chất, Tuần hoàn, Cảm ứng & Nội môi",
+      "grade": 11,
+      "lessons": [
+        {
+          "id": "sinh11-quang-hop-tuan-hoan-noi-moi",
+          "title": "Quang hợp C3-C4-CAM, Hệ tuần hoàn, Synapse & Cân bằng nội môi",
+          "desc": "Trọng tâm Sinh học 11 trong đề thi Tốt nghiệp THPT: Thực vật C3/C4/CAM, hệ dẫn truyền tim, huyết áp - vận tốc máu, truyền tin qua synapse, điều hòa glucose máu (Insulin - Glucagon) & thụ tinh kép.",
+          "duration": "30 phút",
+          "tag": "Trọng tâm 11 & THPT",
+          "practiceCount": 12,
+          "concepts": [
+            {
+              "title": "Hệ dẫn truyền tim, Huyết áp & Vận tốc máu",
+              "desc": "Nút xoang nhĩ (tự phát xung) -> Nút nhĩ thất -> Bó His -> Mạng Purkinje. Chu kì tim $0,8\\text{ s} = 0,1\\text{ s (nhĩ co)} + 0,3\\text{ s (thất co)} + 0,4\\text{ s (giãn chung)}$. Huyết áp giảm dần từ Động mạch -> Mao mạch -> Tĩnh mạch; Vận tốc máu chậm nhất tại MAO MẠCH (do tổng tiết diện lớn nhất)."
+            },
+            {
+              "title": "Điều hòa Glucose máu & Truyền tin qua Synapse",
+              "desc": "Khi đường huyết tăng (sau ăn) -> tế bào $\\beta$ đảo tụy tiết Insulin chuyển glucose thành glycogen. Khi đói đường huyết giảm -> tế bào $\\alpha$ tiết Glucagon phân giải glycogen thành glucose. Truyền tin qua synapse hóa học (Acetylcholine) chỉ đi theo 1 chiều từ màng trước sang màng sau."
+            }
+          ],
+          "algorithms": [
+            {
+              "step": 1,
+              "title": "Phân biệt thực vật C3, C4 và CAM",
+              "instruction": "C3: chất nhận RuBP (5C), sản phẩm đầu PGA (3C), có hô hấp sáng. C4 (ngô, mía): chất nhận PEP (3C), sản phẩm đầu OAA (4C), 2 loại lục lạp, không hô hấp sáng. CAM (xương rồng, dứa): mở khí khổng ban đêm."
+            }
+          ],
+          "formulas": [
+            {
+              "label": "Chu kì tim và nhịp tim người trưởng thành",
+              "formula": "T = 0,1 + 0,3 + 0,4 = 0,8\\text{ s} \\implies f = \\frac{60}{0,8} = 75\\text{ nhịp/phút}",
+              "displayLatex": "T = 0,8\\text{ s}, \\quad f = 75\\text{ nhịp/phút}",
+              "notes": "Mỗi phần của tim đều có thời gian nghỉ nhiều hơn thời gian co."
+            }
+          ],
+          "traps": [
+            {
+              "trap": "Nghĩ rằng vận tốc máu nhỏ nhất ở tĩnh mạch giống như huyết áp",
+              "avoid": "Huyết áp nhỏ nhất ở tĩnh mạch chủ, nhưng VẬN TỐC MÁU nhỏ nhất ở MAO MẠCH vì tổng tiết diện mao mạch lớn nhất!"
+            }
+          ],
+          "flashcards": [
+            {
+              "id": "fc-b8-1",
+              "front": "Vận tốc máu trong hệ mạch chậm nhất ở đâu và vì sao?",
+              "back": "Ở mao mạch, vì tổng tiết diện của hệ mao mạch lớn nhất, giúp máu có đủ thời gian trao đổi chất với tế bào."
+            }
+          ],
+          "sampleQuestions": [
+            {
+              "id": "q-b8-mcq",
+              "type": "mcq",
+              "level": "Thông hiểu",
+              "targetExam": "Tài liệu Sinh học ELEC AI 11",
+              "prompt": "Trong hệ mạch máu của người, vận tốc máu đạt giá trị nhỏ nhất tại:",
+              "options": [
+                "Hệ thống mao mạch",
+                "Tĩnh mạch chủ",
+                "Động mạch chủ",
+                "Tiểu tĩnh mạch"
+              ],
+              "correct": 0,
+              "solution": "Vận tốc máu tỉ lệ nghịch với tổng tiết diện mạch. Mao mạch có tổng tiết diện lớn nhất nên vận tốc máu chậm nhất (~0,5 mm/s).",
+              "trapAlert": "Nhầm với huyết áp thấp nhất ở tĩnh mạch chủ.",
+              "fastTip": "Huyết áp giảm dần tới tĩnh mạch; vận tốc thấp nhất ở mao mạch."
+            }
+          ],
+          "practiceQuestions": [],
+          "exam2026Questions": [],
+          "subjectKey": "sinh",
+          "grade": 11
+        }
+      ]
+    },
+    {
+      "chapterId": "sinh-c8-sinh10-tebao-virus",
+      "chapterName": "Sinh học 10: Tế bào học, Enzyme, Hô hấp tế bào, VSV & Virus",
+      "grade": 10,
+      "lessons": [
+        {
+          "id": "sinh10-te-bao-ho-hap-vsv-virus",
+          "title": "Bào quan tế bào, Enzyme, Hô hấp tế bào (Krebs), Sinh trưởng VSV & Virus",
+          "desc": "Trọng tâm Sinh học 10 từ bộ 31 bài Tài liệu Sinh học ELEC AI: Cấu trúc tế bào nhân sơ/nhân thực, vận chuyển qua màng, ATP & Enzyme, 3 giai đoạn hô hấp tế bào, 4 pha sinh trưởng VSV và chu trình nhân lên của Virus.",
+          "duration": "30 phút",
+          "tag": "Nền tảng 10 & ĐGNL",
+          "practiceCount": 12,
+          "concepts": [
+            {
+              "title": "3 giai đoạn Hô hấp tế bào hiếu khí",
+              "desc": "(1) Đường phân tại BÀO TƯƠNG (1 Glucose -> 2 Pyruvate + 2 ATP + 2 NADH); (2) Chu trình Krebs tại CHẤT NỀN TI THỂ (tạo 2 ATP + 6 CO2 + NADH + FADH2); (3) Chuỗi truyền electron hô hấp tại MÀNG TRONG TI THỂ (tạo nhiều ATP nhất ~26-28 ATP)."
+            },
+            {
+              "title": "Sinh trưởng Vi sinh vật & Chu trình nhân lên của Virus",
+              "desc": "Nuôi cấy không liên tục có 4 pha: Tiềm phát (Lag) -> Lũy thừa (Log) -> Cân bằng -> Suy vong; công thức $N_t = N_0 \\cdot 2^{t/g}$. Virus chưa có cấu tạo tế bào, nhân lên qua 5 giai đoạn: Hấp phụ -> Xâm nhập -> Sinh tổng hợp -> Lắp ráp -> Phóng thích."
+            }
+          ],
+          "algorithms": [
+            {
+              "step": 1,
+              "title": "Tính số lượng tế bào vi khuẩn sau thời gian nuôi cấy t",
+              "instruction": "Tính số lần phân chia n = t / g (đổi cùng đơn vị phút), sau đó thay vào N_t = N_0 × 2^n."
+            }
+          ],
+          "formulas": [
+            {
+              "label": "Công thức sinh trưởng quần thể vi sinh vật",
+              "formula": "N_t = N_0 \\cdot 2^n, \\quad n = \\frac{t}{g}",
+              "displayLatex": "N_t = N_0 \\cdot 2^{t/g}",
+              "notes": "Ở pha tiềm phát số lượng tế bào chưa tăng (N = N₀)."
+            }
+          ],
+          "traps": [
+            {
+              "trap": "Nhầm chu trình Krebs xảy ra ở màng trong ti thể",
+              "avoid": "Chu trình Krebs xảy ra ở CHẤT NỀN ti thể (Đề chính thức THPT 2026 MĐ 0435 Câu 6!), còn chuỗi truyền electron mới ở màng trong ti thể."
+            }
+          ],
+          "flashcards": [
+            {
+              "id": "fc-b9-1",
+              "front": "Ở tế bào nhân thực, chu trình Krebs của hô hấp tế bào diễn ra ở đâu?",
+              "back": "Chất nền của ti thể (Mitochondrial matrix)."
+            }
+          ],
+          "sampleQuestions": [
+            {
+              "id": "q-b9-mcq",
+              "type": "mcq",
+              "level": "Nhận biết",
+              "targetExam": "Đề chính thức THPT 2026 MĐ 0435",
+              "prompt": "Ở tế bào nhân thực, chu trình Krebs của quá trình hô hấp tế bào (phân giải hiếu khí) xảy ra ở bào quan nào sau đây?",
+              "options": [
+                "Ti thể",
+                "Ribosome",
+                "Lysosome",
+                "Lục lạp"
+              ],
+              "correct": 0,
+              "solution": "Trong hô hấp hiếu khí ở tế bào nhân thực, đường phân xảy ra ở bào tương, còn chu trình Krebs xảy ra tại chất nền của ti thể.",
+              "trapAlert": "Nhầm với lục lạp (quang hợp) hoặc ribosome (dịch mã).",
+              "fastTip": "Hô hấp tế bào / Chu trình Krebs -> Ti thể."
+            }
+          ],
+          "practiceQuestions": [],
+          "exam2026Questions": [],
+          "subjectKey": "sinh",
+          "grade": 10
+        }
+      ]
     }
   ]
 };
+
+/* Chuẩn hóa GDPT 2018: sửa Từ trường về đúng Lớp 12 và ghép 10 chuyên đề mở rộng (đủ 49/49) */
+(() => {
+  const fixTuTruong = (DEDICATED_LESSONS.ly || []).find((c) => c.chapterId === 'ly-c4-tutruong');
+  if (fixTuTruong) {
+    fixTuTruong.grade = 12;
+    (fixTuTruong.lessons || []).forEach((l) => { l.grade = 12; });
+  }
+  ['ly', 'sinh'].forEach((sub) => {
+    const existing = DEDICATED_LESSONS[sub] || [];
+    const seen = new Set(existing.map((c) => c.chapterId));
+    (GDPT2018_EXPANSION_LESSONS[sub] || []).forEach((ch) => {
+      if (!seen.has(ch.chapterId)) {
+        existing.push(ch);
+        seen.add(ch.chapterId);
+      }
+    });
+  });
+})();
 
 /**
  * Tra cứu bài học theo mã ID duy nhất

@@ -182,7 +182,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
                   <div className="elec-step-body">
                     <h4>Quét từ khóa &amp; Gán đại lượng chuẩn hệ SI</h4>
                     <p>Đọc lướt đề bài, khoanh tròn các thông số cho trước (<MathText text={'$v_0, h, \\alpha, m, t$'} />). Đổi ngay tất cả đơn vị về chuẩn: mét (m), giây (s), kg, Kelvin (K), mol.</p>
-                    <div className="elec-step-tip">💡 Mẹo: Viết tắt đại lượng ngay bên lề đề thi: <MathText text={'$v_0 = 10\\text{ m/s}, h = 20\\text{ m}, g = 10\\text{ m/s}^2$'} />.</div>
+                    <div className="elec-step-tip"><IcoSpark /> Mẹo: Viết tắt đại lượng ngay bên lề đề thi: <MathText text={'$v_0 = 10\\text{ m/s}, h = 20\\text{ m}, g = 10\\text{ m/s}^2$'} />.</div>
                   </div>
                 </div>
 
@@ -191,7 +191,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
                   <div className="elec-step-body">
                     <h4>Nhận diện mô hình &amp; Viết phương trình gốc</h4>
                     <p>Xác định bài toán thuộc mô hình nào: ném ngang (độc lập 2 phương), rơi tự do, bảo toàn cơ năng, hay cân bằng hóa học Le Chatelier. Viết phương trình tổng quát trước khi thay số.</p>
-                    <div className="elec-step-tip">💡 Mẹo: Không bấm máy tính quá sớm khi chưa rút gọn ẩn số!</div>
+                    <div className="elec-step-tip"><IcoSpark /> Mẹo: Không bấm máy tính quá sớm khi chưa rút gọn ẩn số!</div>
                   </div>
                 </div>
 
@@ -200,7 +200,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
                   <div className="elec-step-body">
                     <h4>Triệt tiêu ẩn &amp; Thế số tính toán</h4>
                     <p>Ghép nối các phương trình để triệt tiêu các đại lượng đề bài không hỏi (ví dụ khối lượng <MathText text="$m$" />, thời gian <MathText text="$t$" />). Tính ra đáp số và gán đơn vị.</p>
-                    <div className="elec-step-tip">💡 Mẹo: Kiểm tra tính khả thi của kết quả: thời gian rơi vật lý không thể âm, tầm xa <MathText text="$L > 0$" />.</div>
+                    <div className="elec-step-tip"><IcoSpark /> Mẹo: Kiểm tra tính khả thi của kết quả: thời gian rơi vật lý không thể âm, tầm xa <MathText text="$L > 0$" />.</div>
                   </div>
                 </div>
 
@@ -209,7 +209,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
                   <div className="elec-step-body">
                     <h4>Rà soát bẫy câu hỏi &amp; Khóa đáp án</h4>
                     <p>Đọc lại câu hỏi chốt: Đề bài hỏi vận tốc chạm đất <MathText text="$v$" /> hay chỉ hỏi thành phần vận tốc phương ngang <MathText text="$v_x$" />? Đề bài hỏi khoảng cách hay độ cao? Khóa đáp án chính xác.</p>
-                    <div className="elec-step-tip">💡 Mẹo: 15 giây đọc lại câu hỏi giúp bạn cứu được ít nhất 0.25 - 0.5 điểm mỗi đề.</div>
+                    <div className="elec-step-tip"><IcoSpark /> Mẹo: 15 giây đọc lại câu hỏi giúp bạn cứu được ít nhất 0.25 - 0.5 điểm mỗi đề.</div>
                   </div>
                 </div>
               </div>

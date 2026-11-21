@@ -8,8 +8,10 @@
      • Tích hợp: Hướng dẫn ôn thi đúng cách, Audio Podcast tóm tắt, Sổ tay ghim công thức
    ============================================================ */
 
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { DEDICATED_LESSONS, findLessonById } from '../../data/dedicatedLessonsData.js';
+import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
+import { DEDICATED_LESSONS, findLessonById, findLessonByChapterId } from '../../data/dedicatedLessonsData.js';
+import { getChapterMeta, getDirectDependents } from '../../data/curriculumDag.js';
+import { saveSession } from '../../lib/roadmapStore.js';
 import { getInfographicsForTopic } from '../../data/knowledgeManifest.js';
 import { readAspirations } from '../../lib/aspirationStore.js';
 import { getUserAspirationsState } from '../../lib/aspirationService.js';
@@ -19,6 +21,14 @@ import PracticeRunner from './PracticeRunner.jsx';
 import ChalkboardView from '../ChalkboardView.jsx';
 import { formatMathAndChemSymbols } from '../../lib/chemFormulaFormatter.js';
 import '../../styles/dedicated-lesson.css';
+
+const Casio580Widget = lazy(() => import('../Casio580Widget.jsx'));
+
+const normalizeNumAnswer = (val) => String(val ?? '')
+  .trim()
+  .replace(/,/g, '.')
+  .replace(/\s+/g, '')
+  .toLowerCase();
 
 const IcoCheck = ({ size = 14, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -290,6 +300,8 @@ export default function DedicatedLessonView({
   });
   const [noteSavedBadge, setNoteSavedBadge] = useState(false);
   const [selectedModalImage, setSelectedModalImage] = useState(null);
+  const [casioOpen, setCasioOpen] = useState(false);
+  const recordedQidsRef = useRef(new Set());
 
   const canvasRef = useRef(null);
 
@@ -433,12 +445,65 @@ export default function DedicatedLessonView({
 
   const handleCompleteLesson = () => {
     if (!currentLesson?.id) return;
+    const wasDone = completedLessonIds.includes(currentLesson.id);
     const nextList = [...new Set([...completedLessonIds, currentLesson.id])];
     setCompletedLessonIds(nextList);
     try {
       localStorage.setItem('elec-completed-lessons', JSON.stringify(nextList));
     } catch {}
+    const chId = currentLesson?.chapter?.chapterId;
+    if (uid && chId && !wasDone) {
+      saveSession(uid, {
+        topicId: chId,
+        total: 2,
+        correct: 2,
+        durationMs: (currentLesson.durationMinutes || 15) * 60 * 1000,
+        source: 'lesson_complete',
+        answers: [
+          { qid: `lc-${currentLesson.id}-1`, ok: true },
+          { qid: `lc-${currentLesson.id}-2`, ok: true },
+        ],
+      });
+    }
     handleNextLesson();
+  };
+
+  /* Đồng bộ tức thời kết quả trả lời Bộ đề 2026 về roadmapStore (cập nhật tiến độ Lộ trình) */
+  const recordQuestionEvidence = (qid, isOk) => {
+    const chId = currentLesson?.chapter?.chapterId;
+    if (!uid || !chId || !qid) return;
+    const key = `${chId}::${qid}`;
+    if (recordedQidsRef.current.has(key)) return;
+    recordedQidsRef.current.add(key);
+    saveSession(uid, {
+      topicId: chId,
+      total: 1,
+      correct: isOk ? 1 : 0,
+      durationMs: 30000,
+      source: 'lesson_2026',
+      answers: [{ qid, ok: Boolean(isOk) }],
+    });
+  };
+
+  /* Mạch liên kết DAG của chương hiện tại (Gốc tiên quyết ← Hiện tại → Mở đường cho) */
+  const dagLineage = useMemo(() => {
+    const chId = currentLesson?.chapter?.chapterId;
+    if (!chId) return { prereqs: [], nexts: [], meta: null };
+    const meta = getChapterMeta(chId);
+    const prereqs = (meta?.prereq || []).map((id) => getChapterMeta(id)).filter(Boolean);
+    const nexts = getDirectDependents(chId).map((id) => getChapterMeta(id)).filter(Boolean);
+    return { prereqs, nexts, meta };
+  }, [currentLesson?.chapter?.chapterId]);
+
+  const jumpToDagChapter = (targetChapterId) => {
+    const meta = getChapterMeta(targetChapterId);
+    const hit = findLessonByChapterId(meta?.dedicatedChapterId || targetChapterId);
+    if (!hit) return;
+    if (hit.subjectKey && hit.subjectKey !== currentSubject) {
+      setCurrentSubject(hit.subjectKey);
+    }
+    setCurrentLessonId(hit.id);
+    setViewMode('theory');
   };
 
   const handleNextLesson = () => {
@@ -628,6 +693,22 @@ export default function DedicatedLessonView({
             </button>
           </div>
 
+          {/* Nút mở nhanh máy tính Casio fx-580VN X ngay trong phòng học */}
+          <button
+            type="button"
+            className={`ns9-asp-guide-trigger rm-pro-casio-toggle ${casioOpen ? 'is-on' : ''}`}
+            onClick={() => setCasioOpen((v) => !v)}
+            title="Mở máy tính Casio fx-580VN X ngay trong phòng học"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="4" y="2" width="16" height="20" rx="2" />
+              <line x1="8" y1="6" x2="16" y2="6" />
+              <line x1="8" y1="11" x2="16" y2="11" />
+              <line x1="8" y1="16" x2="12" y2="16" />
+            </svg>
+            <span>{casioOpen ? 'Ẩn Casio 580' : 'Casio 580'}</span>
+          </button>
+
           {/* Nút mở cẩm nang Hướng dẫn ôn đúng cách */}
           <button
             type="button"
@@ -743,6 +824,42 @@ export default function DedicatedLessonView({
 
         {/* ── CỘT PHẢI: KHUNG NỘI DUNG CHÍNH (CHUẨN 100% GIAO DIỆN HỌC THỰC TẾ) ── */}
         <main className="ns9-study-canvas" ref={canvasRef}>
+          {/* Thanh định hướng mạch kiến thức DAG (Gốc tiên quyết ↔ Chuyên đề tiếp theo) */}
+          {(dagLineage.prereqs.length > 0 || dagLineage.nexts.length > 0) && (
+            <div className="rm-pro-lesson-dag-bar" aria-label="Mạch liên kết kiến thức DAG">
+              {dagLineage.prereqs.length > 0 && (
+                <div className="ldag-group">
+                  <span className="ldag-label">Gốc tiên quyết:</span>
+                  {dagLineage.prereqs.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="ldag-chip is-up"
+                      onClick={() => jumpToDagChapter(p.id)}
+                    >
+                      <span>{p.code}</span> {formatMathAndChemSymbols(p.name)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {dagLineage.nexts.length > 0 && (
+                <div className="ldag-group">
+                  <span className="ldag-label">Mở đường cho:</span>
+                  {dagLineage.nexts.slice(0, 3).map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      className="ldag-chip is-down"
+                      onClick={() => jumpToDagChapter(n.id)}
+                    >
+                      <span>{n.code}</span> {formatMathAndChemSymbols(n.name)} &rarr;
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {viewMode === 'chalkboard' && (
             <div className="ns9-canvas-practice-wrap" style={{ padding: '1rem' }}>
               <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1297,7 +1414,10 @@ export default function DedicatedLessonView({
                                   key={oIdx}
                                   type="button"
                                   className={`ns9-q-option-btn ${isPicked ? 'is-selected' : ''} ${isRight ? 'is-correct' : ''} ${isWrong ? 'is-wrong' : ''}`}
-                                  onClick={() => setMcqSelected({ ...mcqSelected, [qItem.id]: oIdx })}
+                                  onClick={() => {
+                                    setMcqSelected({ ...mcqSelected, [qItem.id]: oIdx });
+                                    recordQuestionEvidence(qItem.id, oIdx === qItem.correct);
+                                  }}
                                 >
                                   <b>{String.fromCharCode(65 + oIdx)}.</b>
                                   <span><MathText text={opt} /></span>
@@ -1327,14 +1447,20 @@ export default function DedicatedLessonView({
                                     <button
                                       type="button"
                                       className={`ns9-tf-btn pick-true ${userPick === true ? 'on' : ''}`}
-                                      onClick={() => setTfAnswers({ ...tfAnswers, [sub.id]: true })}
+                                      onClick={() => {
+                                        setTfAnswers({ ...tfAnswers, [sub.id]: true });
+                                        recordQuestionEvidence(sub.id, sub.isTrue === true);
+                                      }}
                                     >
                                       Đúng
                                     </button>
                                     <button
                                       type="button"
                                       className={`ns9-tf-btn pick-false ${userPick === false ? 'on' : ''}`}
-                                      onClick={() => setTfAnswers({ ...tfAnswers, [sub.id]: false })}
+                                      onClick={() => {
+                                        setTfAnswers({ ...tfAnswers, [sub.id]: false });
+                                        recordQuestionEvidence(sub.id, sub.isTrue === false);
+                                      }}
                                     >
                                       Sai
                                     </button>
@@ -1358,25 +1484,32 @@ export default function DedicatedLessonView({
                             <button
                               type="button"
                               className="ns9-sa-check-btn"
-                              onClick={() => setSaSubmitted({ ...saSubmitted, [qItem.id]: true })}
+                              onClick={() => {
+                                setSaSubmitted({ ...saSubmitted, [qItem.id]: true });
+                                const isMatch = normalizeNumAnswer(saInputs[qItem.id]) === normalizeNumAnswer(qItem.correctAnswer);
+                                recordQuestionEvidence(qItem.id, isMatch);
+                              }}
                             >
                               Kiểm tra
                             </button>
-                            {saSubmitted[qItem.id] && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: String(saInputs[qItem.id] || '').trim() === qItem.correctAnswer ? '#16a34a' : '#dc2626' }}>
-                                {String(saInputs[qItem.id] || '').trim() === qItem.correctAnswer ? (
-                                  <>
-                                    <IcoCheck size={13} />
-                                    <span>Chính xác!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <IcoClose size={13} />
-                                    <span>Đáp số chuẩn: {qItem.correctAnswer} {qItem.unit || ''}</span>
-                                  </>
-                                )}
-                              </span>
-                            )}
+                            {saSubmitted[qItem.id] && (() => {
+                              const isMatch = normalizeNumAnswer(saInputs[qItem.id]) === normalizeNumAnswer(qItem.correctAnswer);
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: isMatch ? '#16a34a' : '#dc2626' }}>
+                                  {isMatch ? (
+                                    <>
+                                      <IcoCheck size={13} />
+                                      <span>Chính xác!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <IcoClose size={13} />
+                                      <span>Đáp số chuẩn: {qItem.correctAnswer} {qItem.unit || ''}</span>
+                                    </>
+                                  )}
+                                </span>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -1417,6 +1550,28 @@ export default function DedicatedLessonView({
           )}
         </main>
       </div>
+
+      {/* ── NGĂN KÉO MÁY TÍNH CASIO FX-580VN X NỔI NGAY TRONG PHÒNG HỌC ── */}
+      {casioOpen && (
+        <aside className="rm-pro-casio-float" aria-label="Máy tính Casio fx-580VN X">
+          <div className="rm-pro-casio-float-head">
+            <span>Casio fx-580VN X ClassWiz</span>
+            <button
+              type="button"
+              className="rm-pro-casio-float-close"
+              onClick={() => setCasioOpen(false)}
+              aria-label="Đóng máy tính Casio"
+            >
+              <IcoClose size={14} />
+            </button>
+          </div>
+          <div className="rm-pro-casio-float-body">
+            <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', fontSize: 12.5, color: '#64748b' }}>Đang nạp Casio fx-580VN X...</div>}>
+              <Casio580Widget compact />
+            </Suspense>
+          </div>
+        </aside>
+      )}
 
       {/* ── NÚT TRÒN GIAO TIẾP VỚI GIA SƯ AI NỔI GÓC DƯỚI (CHẠM AI) ── */}
       <button

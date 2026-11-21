@@ -6,7 +6,7 @@
    ============================================================ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { askAI } from '../lib/ai.js';
-import { runWithCredit } from '../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../lib/creditService.js';
 import { useAuth } from './useAuth.jsx';
 
 export default function useAsk() {
@@ -52,7 +52,7 @@ export default function useAsk() {
 
     try {
       const result = await runWithCredit(
-        { userId: user?.uid, cost: 1, reason: 'AI Phân tích nguyên tố / Quiz' },
+        { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'ai_tutor', reason: 'AI Phân tích nguyên tố / Quiz' },
         async () => {
           const promise = askAI(
             h,

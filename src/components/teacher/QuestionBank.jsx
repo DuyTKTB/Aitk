@@ -39,7 +39,7 @@ import {
 import { createExam } from '../../lib/classroom.js';
 import { exportToWord, exportToPDF } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
-import { runWithCredit } from '../../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { parseJsonLoose } from '../../lib/examAiUtils.js';
 import {
   TOPICS_BY_SUBJECT,
@@ -1485,7 +1485,7 @@ ${optsText}
 
 Chỉ trả về DUY NHẤT JSON hợp lệ (không thêm chữ thừa):
 ${jsonSchemaHint}`;
-      const raw = await callBankAI({ prompt, cost: 1, reason: 'AI sinh câu tương tự' });
+      const raw = await callBankAI({ prompt, cost: CREDIT_TARIFF.TUTOR_CONTEXT, reason: 'AI sinh câu tương tự' });
       const parsed = parseJsonLoose(raw);
       if (!parsed?.q) {
         throw new Error('AI trả về định dạng câu hỏi chưa đầy đủ, vui lòng thử lại.');
@@ -1597,7 +1597,7 @@ Yêu cầu:
 - Nếu phát hiện đáp án quy ước sai khoa học, hãy cảnh báo nhẹ và nêu đáp án chính xác.
 - ${endRequirement}`;
 
-      const text = await callBankAI({ prompt, cost: 1, reason: 'AI viết lời giải chi tiết' });
+      const text = await callBankAI({ prompt, cost: CREDIT_TARIFF.TUTOR_CONTEXT, reason: 'AI viết lời giải chi tiết' });
       setAiResult({
         kind: 'explain',
         title: 'Lời giải chi tiết từ ELEC AI',
@@ -1632,7 +1632,7 @@ Trả về DUY NHẤT JSON:
   "topicId": "id chính xác từ danh sách trên (hoặc rỗng nếu không có)",
   "reason": "Giải thích ngắn 1 câu lý do phân loại"
 }`;
-      const raw = await callBankAI({ prompt, cost: 1, reason: 'AI phân loại độ khó & chuyên đề' });
+      const raw = await callBankAI({ prompt, cost: CREDIT_TARIFF.CHAT_FAST, reason: 'AI phân loại độ khó & chuyên đề' });
       const parsed = parseJsonLoose(raw);
       const suggestedLevel = normalizeLevel(parsed?.level) || 'thông hiểu';
       const matchedTopic = subjTopics.find((t) => t.id === parsed?.topicId) || subjTopics[0] || { id: '', name: 'Tổng hợp' };
@@ -1728,7 +1728,7 @@ Trả về DUY NHẤT JSON:
     { "type": "ok" | "warn" | "error", "text": "Nhận xét chi tiết về tính đúng sai khoa học, số liệu, đáp án đúng thật sự là gì, hay bẫy câu chữ" }
   ]
 }`;
-      const raw = await callBankAI({ prompt, cost: 1, reason: 'AI thẩm định đáp án câu hỏi' });
+      const raw = await callBankAI({ prompt, cost: CREDIT_TARIFF.TUTOR_CONTEXT, reason: 'AI thẩm định đáp án câu hỏi' });
       const parsed = parseJsonLoose(raw);
       const aiFindings = Array.isArray(parsed?.findings) && parsed.findings.length > 0
         ? parsed.findings.filter((f) => f && f.text)

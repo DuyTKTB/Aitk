@@ -1,0 +1,1148 @@
+/* ============================================================================
+   ai-chat-studio-pro.css — ELEC AI CHAT STUDIO PRO UPGRADES
+   ----------------------------------------------------------------------------
+   1. Callout Cards "BÉ ELEC MẸO NHỚ" & "BẪY ĐỀ THI" (kèm linh vật ELEC)
+   2. Resizable Split Handle kéo giãn Chat ↔ Canvas mượt mà
+   3. Thẻ mở Quiz Canvas VIP trong luồng chat (thay thẻ trơn cũ)
+   4. Nút cuộn xuống ↓ neo mép phải kính mờ (không đè chữ tin nhắn)
+   5. Floating Casio fx-580VN X Studio Drawer ngay trong phòng Chat AI
+   6. Grade Context Selector Pill trên Header Chat
+   ============================================================================ */
+
+/* ============================================================================
+   1. ELEC CALLOUT CARDS (MẸO NHỚ & BẪY ĐỀ THI TRONG CHAT MARKDOWN)
+   ============================================================================ */
+.elec-callout-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 13px 16px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(47, 107, 255, 0.22);
+  background: linear-gradient(135deg, #f5f8ff 0%, #fffbeb 100%);
+  box-shadow: 0 10px 24px -18px rgba(15, 35, 105, 0.32);
+}
+
+[data-theme='dark'] .elec-callout-card {
+  background: linear-gradient(135deg, rgba(23, 42, 102, 0.72) 0%, rgba(120, 53, 15, 0.28) 100%);
+  border-color: rgba(125, 179, 255, 0.28);
+}
+
+.elec-callout-card.is-trap {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: linear-gradient(135deg, #fff5f5 0%, #fffbeb 100%);
+}
+
+[data-theme='dark'] .elec-callout-card.is-trap {
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.34) 0%, rgba(120, 53, 15, 0.24) 100%);
+  border-color: rgba(248, 113, 113, 0.32);
+}
+
+.elec-callout-mascot {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 5px 10px rgba(15, 35, 105, 0.22));
+}
+
+.elec-callout-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.elec-callout-badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.12);
+  color: #1f4fe6;
+}
+
+.elec-callout-card.is-trap .elec-callout-badge {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+[data-theme='dark'] .elec-callout-badge {
+  background: rgba(96, 165, 250, 0.22);
+  color: #93c5fd;
+}
+
+[data-theme='dark'] .elec-callout-card.is-trap .elec-callout-badge {
+  background: rgba(248, 113, 113, 0.22);
+  color: #fca5a5;
+}
+
+.elec-callout-text {
+  font-size: 13.8px;
+  line-height: 1.58;
+  color: #1e293b;
+}
+
+[data-theme='dark'] .elec-callout-text {
+  color: #e6eeff;
+}
+
+.elec-callout-list {
+  margin: 2px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #1e293b;
+}
+
+[data-theme='dark'] .elec-callout-list {
+  color: #e6eeff;
+}
+
+/* ============================================================================
+   2. RESIZABLE SPLIT STAGE (GHI ĐÈ GRID 2 CỘT CỦA ai-redesign-v2.css -> FLEX 3 PHẦN)
+   ============================================================================ */
+@media (min-width: 961px) {
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    height: calc(100% - 58px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    gap: 0 !important;
+    background: transparent !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas > .ds-stage-chat {
+    flex: 1 1 0% !important;
+    min-width: 340px !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    border-right: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas > .ds-stage-canvas-panel {
+    flex: 0 0 var(--elec-canvas-w, 52%) !important;
+    width: var(--elec-canvas-w, 52%) !important;
+    min-width: 380px !important;
+    max-width: 68% !important;
+    height: calc(100% - 20px) !important;
+    margin: 10px 14px 10px 0 !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(47, 107, 255, 0.18) !important;
+    box-shadow: 0 18px 44px -20px rgba(15, 35, 105, 0.28) !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-stage-split.has-canvas > .ds-stage-canvas-panel {
+    border-color: rgba(125, 179, 255, 0.22) !important;
+    box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.72) !important;
+  }
+}
+
+.elec-split-resizer {
+  position: relative;
+  width: 12px;
+  flex: 0 0 12px;
+  align-self: stretch;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  z-index: 15;
+  background: transparent;
+}
+
+.elec-split-resizer::after {
+  content: '';
+  width: 3px;
+  height: 48px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.24);
+  transition: all 0.16s ease;
+}
+
+.elec-split-resizer:hover::after,
+.elec-split-resizer.is-dragging::after {
+  width: 4px;
+  height: 76px;
+  background: #2f6bff;
+  box-shadow: 0 0 12px rgba(47, 107, 255, 0.55);
+}
+
+[data-theme='dark'] .elec-split-resizer::after {
+  background: rgba(125, 179, 255, 0.26);
+}
+
+@media (max-width: 960px) {
+  .elec-split-resizer {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   3. THẺ MỞ QUIZ CANVAS VIP TRONG LUỒNG CHAT
+   ============================================================================ */
+.elec-quiz-launch-card {
+  margin: 12px 0 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f6ff 100%);
+  border: 1.5px solid rgba(47, 107, 255, 0.24);
+  box-shadow: 0 12px 28px -18px rgba(15, 35, 105, 0.36);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] .elec-quiz-launch-card {
+  background: linear-gradient(135deg, #0d1738 0%, #14245a 100%);
+  border-color: rgba(125, 179, 255, 0.28);
+}
+
+.elec-quiz-launch-card:hover {
+  border-color: #2f6bff;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -16px rgba(47, 107, 255, 0.45);
+}
+
+.elec-quiz-launch-card.is-active {
+  border-color: #2f6bff;
+  box-shadow: 0 0 0 2px rgba(47, 107, 255, 0.2), 0 14px 28px -16px rgba(47, 107, 255, 0.45);
+}
+
+.elec-qlc-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.elec-qlc-mascot {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 12px rgba(47, 107, 255, 0.26));
+}
+
+.elec-qlc-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.elec-qlc-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.elec-qlc-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.12);
+  color: #1f4fe6;
+}
+
+[data-theme='dark'] .elec-qlc-tag {
+  background: rgba(96, 165, 250, 0.22);
+  color: #93c5fd;
+}
+
+.elec-qlc-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0a1230;
+  line-height: 1.32;
+}
+
+[data-theme='dark'] .elec-qlc-title {
+  color: #f1f5ff;
+}
+
+.elec-qlc-sub {
+  margin: 0;
+  font-size: 12px;
+  color: #5b6992;
+}
+
+[data-theme='dark'] .elec-qlc-sub {
+  color: #9bb1e6;
+}
+
+.elec-qlc-cta {
+  padding: 8px 14px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #4d86ff 0%, #2f6bff 54%, #1f4fe6 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 8px 18px -10px rgba(47, 107, 255, 0.72);
+}
+
+.elec-qlc-plain-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(47, 107, 255, 0.16);
+  background: transparent;
+  color: #5b6992;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.elec-qlc-plain-btn:hover {
+  background: rgba(47, 107, 255, 0.08);
+  color: #1f4fe6;
+}
+
+[data-theme='dark'] .elec-qlc-plain-btn {
+  color: #9bb1e6;
+  border-color: rgba(125, 179, 255, 0.2);
+}
+
+/* ============================================================================
+   4. SỬA NÚT CUỘN XUỐNG ↓ (NEO GÓC PHẢI KÍNH MỜ — GHI ĐÈ left:50% CỦA v2)
+   ============================================================================ */
+body.on-ai-page .ds-page.elec-studio .ds-input-inner .ds-jump {
+  left: auto !important;
+  right: 10px !important;
+  transform: none !important;
+  top: -46px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(47, 107, 255, 0.24) !important;
+  color: #1f4fe6 !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 8px 20px -8px rgba(15, 35, 105, 0.35) !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .ds-input-inner .ds-jump:hover {
+  transform: translateY(-2px) !important;
+}
+
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-inner .ds-jump {
+  background: rgba(15, 26, 61, 0.94) !important;
+  border-color: rgba(125, 179, 255, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+/* ============================================================================
+   5. GRADE CONTEXT PILL & CASIO BUTTON TRÊN HEADER CHAT
+   ============================================================================ */
+.elec-grade-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 107, 255, 0.2);
+  background: rgba(47, 107, 255, 0.06);
+  color: #1f4fe6;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.elec-grade-trigger:hover,
+.elec-grade-trigger.open {
+  background: rgba(47, 107, 255, 0.13);
+  border-color: rgba(47, 107, 255, 0.38);
+}
+
+[data-theme='dark'] .elec-grade-trigger {
+  background: rgba(77, 134, 255, 0.14);
+  border-color: rgba(125, 179, 255, 0.26);
+  color: #93c5fd;
+}
+
+.elec-casio-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(47, 107, 255, 0.22);
+  background: rgba(47, 107, 255, 0.08);
+  color: #1f4fe6;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.elec-casio-toggle-btn:hover,
+.elec-casio-toggle-btn.is-open {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .elec-casio-toggle-btn {
+  background: rgba(77, 134, 255, 0.16);
+  border-color: rgba(125, 179, 255, 0.28);
+  color: #93c5fd;
+}
+
+[data-theme='dark'] .elec-casio-toggle-btn.is-open {
+  background: #2f6bff;
+  color: #ffffff;
+}
+
+/* ============================================================================
+   6. FLOATING CASIO fx-580VN X STUDIO DRAWER TRONG PHÒNG CHAT AI
+   ============================================================================ */
+.elec-chat-casio-dock {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1400;
+  width: 392px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 90px);
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1.5px solid rgba(47, 107, 255, 0.28);
+  box-shadow:
+    0 28px 70px -16px rgba(10, 25, 80, 0.45),
+    0 8px 24px -10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: elecPopoverIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] .elec-chat-casio-dock {
+  background: #08112a;
+  border-color: rgba(125, 179, 255, 0.3);
+  box-shadow: 0 32px 80px -16px rgba(0, 0, 0, 0.85);
+}
+
+.elec-chat-casio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, #0c2168 0%, #1d4ed8 56%, #2f6bff 100%);
+  color: #ffffff;
+}
+
+.elec-chat-casio-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.elec-chat-casio-title small {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #e0ecff;
+}
+
+.elec-chat-casio-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.elec-chat-casio-close:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.elec-chat-casio-body {
+  overflow-y: auto;
+  padding: 10px;
+  background: #f4f7ff;
+}
+
+[data-theme='dark'] .elec-chat-casio-body {
+  background: #060d22;
+}
+
+.elec-chat-casio-loading {
+  padding: 36px 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #5b6992;
+}
+
+/* Follow-up Quiz CTA highlight */
+.gm-followup-chip.is-quiz-cta {
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.11), rgba(14, 165, 233, 0.12));
+  border-color: rgba(47, 107, 255, 0.34);
+  color: #1f4fe6;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .gm-followup-chip.is-quiz-cta {
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.24), rgba(14, 165, 233, 0.2));
+  border-color: rgba(125, 179, 255, 0.38);
+  color: #93c5fd;
+}
+
+
+/* ============================================================================
+   7. TRA CỨU KHTN TỨC THÌ (BẢNG TUẦN HOÀN + TÍNH M + HẰNG SỐ GDPT 2025)
+   ============================================================================ */
+.elec-qref-dock {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1400;
+  width: 408px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 96px);
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1.5px solid rgba(47, 107, 255, 0.26);
+  box-shadow:
+    0 28px 70px -16px rgba(10, 25, 80, 0.42),
+    0 8px 24px -10px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: elecPopoverIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] .elec-qref-dock {
+  background: #08112a;
+  border-color: rgba(125, 179, 255, 0.28);
+  box-shadow: 0 32px 80px -16px rgba(0, 0, 0, 0.85);
+}
+
+.elec-qref-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #0c2168 0%, #1d4ed8 56%, #2f6bff 100%);
+  color: #ffffff;
+}
+
+.elec-qref-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.2px;
+  font-weight: 800;
+}
+
+.elec-qref-title small {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #e0ecff;
+}
+
+.elec-qref-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.elec-qref-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 8px 12px 0;
+}
+
+.elec-qref-tabs button {
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(47, 107, 255, 0.14);
+  background: #f4f7ff;
+  color: #5b6992;
+  font-size: 11.8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .elec-qref-tabs button {
+  background: rgba(18, 32, 78, 0.72);
+  border-color: rgba(125, 179, 255, 0.16);
+  color: #9bb1e6;
+}
+
+.elec-qref-tabs button.is-active {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+.elec-qref-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 8px;
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: #f4f7ff;
+  border: 1.5px solid rgba(47, 107, 255, 0.18);
+  color: #5b6992;
+}
+
+[data-theme='dark'] .elec-qref-search {
+  background: #0d1738;
+  border-color: rgba(125, 179, 255, 0.22);
+  color: #9bb1e6;
+}
+
+.elec-qref-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #0a1230;
+  font-size: 12.6px;
+  font-weight: 600;
+  outline: none;
+}
+
+[data-theme='dark'] .elec-qref-search input {
+  color: #f1f5ff;
+}
+
+.elec-qref-clear {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.elec-qref-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.elec-qref-molar-card {
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.1), rgba(16, 185, 129, 0.09));
+  border: 1.5px solid rgba(47, 107, 255, 0.28);
+}
+
+.elec-qref-molar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.elec-qref-molar-kicker {
+  display: block;
+  font-size: 9.8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #1f4fe6;
+}
+
+[data-theme='dark'] .elec-qref-molar-kicker {
+  color: #93c5fd;
+}
+
+.elec-qref-molar-val {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.elec-qref-molar-val b {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0a1230;
+  font-family: var(--mono, monospace);
+}
+
+[data-theme='dark'] .elec-qref-molar-val b {
+  color: #ffffff;
+}
+
+.elec-qref-molar-val span {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #5b6992;
+}
+
+.elec-qref-molar-break {
+  margin-top: 5px;
+  font-size: 11.4px;
+  font-family: var(--mono, monospace);
+  color: #4b5a84;
+}
+
+[data-theme='dark'] .elec-qref-molar-break {
+  color: #a8bbed;
+}
+
+.elec-qref-insert-btn {
+  padding: 5px 10px;
+  border-radius: 9px;
+  border: none;
+  background: #2f6bff;
+  color: #ffffff;
+  font-size: 11.4px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.elec-qref-el-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+
+.elec-qref-el-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 8px 8px 7px;
+  border-radius: 12px;
+  border: 1px solid rgba(47, 107, 255, 0.16);
+  background: #f8faff;
+  color: #0a1230;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+[data-theme='dark'] .elec-qref-el-card {
+  background: #0d1738;
+  border-color: rgba(125, 179, 255, 0.18);
+  color: #f1f5ff;
+}
+
+.elec-qref-el-card:hover {
+  border-color: #2f6bff;
+  transform: translateY(-1px);
+}
+
+.elec-qref-el-z {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #6b78a2;
+}
+
+.elec-qref-el-sym {
+  font-size: 16px;
+  font-weight: 900;
+  color: #1f4fe6;
+  line-height: 1.15;
+}
+
+[data-theme='dark'] .elec-qref-el-sym {
+  color: #93c5fd;
+}
+
+.elec-qref-el-mass {
+  font-size: 10.6px;
+  font-weight: 700;
+}
+
+.elec-qref-el-cfg {
+  font-size: 9.5px;
+  color: #6b78a2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.elec-qref-filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.elec-qref-filter-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 107, 255, 0.18);
+  background: #f4f7ff;
+  color: #4b5a84;
+  font-size: 11.2px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .elec-qref-filter-pill {
+  background: rgba(20, 36, 92, 0.65);
+  color: #a8bbed;
+}
+
+.elec-qref-filter-pill.is-active {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+.elec-qref-const-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.elec-qref-const-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f8faff;
+  border: 1px solid rgba(47, 107, 255, 0.12);
+}
+
+[data-theme='dark'] .elec-qref-const-row {
+  background: #0d1738;
+  border-color: rgba(125, 179, 255, 0.16);
+}
+
+.elec-qref-const-info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.elec-qref-subj {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 3px 6px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.elec-qref-subj.tone-hoa { background: rgba(47, 107, 255, 0.14); color: #1f4fe6; }
+.elec-qref-subj.tone-ly { background: rgba(124, 58, 237, 0.14); color: #7c3aed; }
+.elec-qref-subj.tone-sinh { background: rgba(16, 185, 129, 0.14); color: #059669; }
+
+.elec-qref-const-info b {
+  display: block;
+  font-size: 12.6px;
+  color: #0a1230;
+}
+
+[data-theme='dark'] .elec-qref-const-info b {
+  color: #f1f5ff;
+}
+
+.elec-qref-const-info small {
+  display: block;
+  font-size: 10.8px;
+  color: #5b6992;
+}
+
+[data-theme='dark'] .elec-qref-const-info small {
+  color: #9bb1e6;
+}
+
+.elec-qref-empty {
+  text-align: center;
+  font-size: 12px;
+  color: #6b78a2;
+  padding: 16px 8px;
+  margin: 0;
+}
+
+/* ============================================================================
+   8. THANH KÝ HIỆU KHTN NHANH (Σ) TRONG COMPOSER + COPY BLOCK + BOOKMARKS
+   ============================================================================ */
+.elec-symbol-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  border-radius: 13px;
+  background: #ffffff;
+  border: 1px solid rgba(47, 107, 255, 0.2);
+  box-shadow: 0 8px 20px -14px rgba(15, 35, 105, 0.3);
+}
+
+[data-theme='dark'] .elec-symbol-bar {
+  background: #0d1738;
+  border-color: rgba(125, 179, 255, 0.24);
+}
+
+.elec-symbol-btn {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(47, 107, 255, 0.16);
+  background: #f4f7ff;
+  color: #0f1b42;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+[data-theme='dark'] .elec-symbol-btn {
+  background: rgba(24, 40, 96, 0.72);
+  border-color: rgba(125, 179, 255, 0.2);
+  color: #e6eeff;
+}
+
+.elec-symbol-btn:hover {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* 1-click Copy on Equation & Code blocks */
+.elec-copyable-block {
+  position: relative;
+}
+
+.elec-block-copy-btn {
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(47, 107, 255, 0.22);
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f4fe6;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ds-eq-card.elec-copyable-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.elec-block-copy-btn.is-copied {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .elec-block-copy-btn {
+  background: rgba(20, 36, 92, 0.88);
+  border-color: rgba(125, 179, 255, 0.28);
+  color: #93c5fd;
+}
+
+.elec-code-wrap {
+  margin: 10px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(47, 107, 255, 0.18);
+}
+
+.elec-code-wrap .ds-code-block {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.elec-code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #edf2ff;
+  border-bottom: 1px solid rgba(47, 107, 255, 0.14);
+  font-size: 10.8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #4b5a84;
+}
+
+[data-theme='dark'] .elec-code-bar {
+  background: #0d1738;
+  border-bottom-color: rgba(125, 179, 255, 0.18);
+  color: #9bb1e6;
+}
+
+/* Sidebar Bookmarks Switcher */
+.elec-sb-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 4px 10px 8px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(47, 107, 255, 0.08);
+}
+
+[data-theme='dark'] .elec-sb-tabs {
+  background: rgba(24, 40, 96, 0.65);
+}
+
+.elec-sb-tabs button {
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #5b6992;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .elec-sb-tabs button {
+  color: #9bb1e6;
+}
+
+.elec-sb-tabs button.is-active {
+  background: #ffffff;
+  color: #1f4fe6;
+  box-shadow: 0 2px 8px -4px rgba(15, 35, 105, 0.25);
+}
+
+[data-theme='dark'] .elec-sb-tabs button.is-active {
+  background: #172b6b;
+  color: #ffffff;
+}
+
+.elec-bm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 10px 14px;
+}
+
+.elec-bm-card {
+  padding: 10px 11px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(47, 107, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+[data-theme='dark'] .elec-bm-card {
+  background: rgba(16, 28, 72, 0.72);
+  border-color: rgba(125, 179, 255, 0.18);
+}
+
+.elec-bm-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0a1230;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .elec-bm-title {
+  color: #eef4ff;
+}
+
+.elec-bm-preview {
+  font-size: 11.2px;
+  color: #5b6992;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+[data-theme='dark'] .elec-bm-preview {
+  color: #9bb1e6;
+}
+
+.elec-bm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.elec-bm-actions button {
+  padding: 3px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(47, 107, 255, 0.18);
+  background: rgba(47, 107, 255, 0.08);
+  color: #1f4fe6;
+  font-size: 10.8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.elec-bm-actions button.is-del {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.22);
+  color: #dc2626;
+}
