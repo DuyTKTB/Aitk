@@ -755,6 +755,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
   const [activeTab, setActiveTab] = useState('missions'); // missions | inqits | cer
   const [missionInputs, setMissionInputs] = useState({});
   const [missionResults, setMissionResults] = useState({});
+  const [openHints, setOpenHints] = useState({});
   const [trials, setTrials] = useState(config.defaultTrials);
   const [claim, setClaim] = useState('');
   const [evidence, setEvidence] = useState('');
@@ -764,6 +765,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
   useEffect(() => {
     const nextCfg = INQUIRY_LAB_CONFIGS[simId] || INQUIRY_LAB_CONFIGS.projectile;
     setTrials(nextCfg.defaultTrials);
+    setOpenHints({});
     setClaim('');
     setEvidence('');
     setReasoning('');
@@ -777,25 +779,71 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
     [config.missions, missionResults]
   );
 
-  const checkMission = (mission) => {
-    const raw = String(missionInputs[mission.id] ?? '').replace(',', '.').trim();
+  // Tính tọa độ đồ thị SVG thực nghiệm Y theo X từ bảng trials
+  const svgPlot = useMemo(() => {
+    const valid = trials.filter(
+      (t) => Number.isFinite(Number(t.indep)) && Number.isFinite(Number(t.dep))
+    );
+    if (valid.length < 2) return null;
+    const xs = valid.map((t) => Number(t.indep));
+    const ys = valid.map((t) => Number(t.dep));
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const spanX = Math.max(1e-6, maxX - minX);
+    const spanY = Math.max(1e-6, maxY - minY);
+    const baseCtrl = Number(valid[0].ctrl);
+
+    const pts = valid.map((t, idx) => {
+      const px = 36 + ((Number(t.indep) - minX) / spanX) * 204;
+      const py = 104 - ((Number(t.dep) - minY) / spanY) * 74;
+      const ctrlViolated = Number(t.ctrl) !== baseCtrl;
+      return {
+        idx: idx + 1,
+        px: Number(px.toFixed(1)),
+        py: Number(py.toFixed(1)),
+        xVal: t.indep,
+        yVal: t.dep,
+        ctrlVal: t.ctrl,
+        ctrlViolated,
+      };
+    });
+    const polyline = pts.map((p) => `${p.px},${p.py}`).join(' ');
+    return { pts, polyline, minX, maxX, minY, maxY };
+  }, [trials]);
+
+  const checkMission = (mission, overrideValue) => {
+    const raw = String(overrideValue ?? missionInputs[mission.id] ?? '')
+      .replace(',', '.')
+      .trim();
     const val = Number(raw);
     if (!raw || Number.isNaN(val)) {
       setMissionResults((prev) => ({
         ...prev,
-        [mission.id]: { passed: false, msg: 'Vui lòng nhập số liệu đo được trước khi kiểm tra.' },
+        [mission.id]: {
+          passed: false,
+          msg: 'Vui lòng nhập số liệu đo được trước khi kiểm tra.',
+        },
       }));
       return;
     }
     const diff = Math.abs(val - mission.target);
+    const relErrPct =
+      Math.abs(mission.target) > 1e-9
+        ? ((diff / Math.abs(mission.target)) * 100).toFixed(2)
+        : '0.00';
     const passed = diff <= mission.tolerance;
     setMissionResults((prev) => ({
       ...prev,
       [mission.id]: {
         passed,
+        measured: val,
+        diff: diff.toFixed(2),
+        relErrPct,
         msg: passed
-          ? `Chính xác! Giá trị chuẩn: ${mission.target} ${mission.unit} (${mission.formulaHint}).`
-          : `Chưa khớp (sai lệch ${diff.toFixed(2)} ${mission.unit}). Gợi ý: ${mission.formulaHint}`,
+          ? `Đạt chuẩn thực nghiệm! Giá trị chuẩn: ${mission.target} ${mission.unit} (Sai số tuyệt đối Δ = ${diff.toFixed(2)} ${mission.unit} · Sai số tỉ đối δ = ${relErrPct}%).`
+          : `Sai số vượt ngưỡng cho phép (±${mission.tolerance} ${mission.unit}): lệch Δ = ${diff.toFixed(2)} ${mission.unit} (${relErrPct}%). Xem công thức gợi ý để đo lại!`,
       },
     }));
   };
@@ -804,6 +852,21 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
     setTrials((prev) =>
       prev.map((row, i) => (i === idx ? { ...row, [field]: value === '' ? '' : Number(value) } : row))
     );
+  };
+
+  const addTrialRow = () => {
+    setTrials((prev) => {
+      const last = prev[prev.length - 1] || { indep: 1, ctrl: 1, dep: 1 };
+      return [
+        ...prev,
+        {
+          id: Date.now(),
+          indep: Number((Number(last.indep) + 10).toFixed(2)),
+          ctrl: last.ctrl,
+          dep: last.dep,
+        },
+      ];
+    });
   };
 
   const fillEvidenceFromTrials = () => {
@@ -820,6 +883,20 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
     setClaim(config.cerPresets.claim);
     fillEvidenceFromTrials();
     setReasoning(config.cerPresets.reasoning);
+    const sampleEvidence = `Số liệu thực nghiệm đo được trên hệ thống: ${trials
+      .map(
+        (t, idx) =>
+          `Lần ${idx + 1}: ${config.indepVar.label} = ${t.indep}, ${config.ctrlVar.label} = ${t.ctrl} → ${config.depVar.label} = ${t.dep}`
+      )
+      .join('; ')}.`;
+    setCerGrade(
+      gradeCerReport({
+        claim: config.cerPresets.claim,
+        evidence: sampleEvidence,
+        reasoning: config.cerPresets.reasoning,
+        config,
+      })
+    );
   };
 
   const handleGradeCer = () => {
@@ -831,7 +908,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
     <section className="pl-inquiry-deck" aria-label="Phòng Đánh giá Năng lực Thực hành Khoa học Inq-ITS & CER">
       <div className="pl-inq-header">
         <div className="pl-inq-brand">
-          <span className="pl-inq-kicker">INQ-ITS TELEMETRY · GIZMOS EXPLORATION · CER RUBRIC</span>
+          <span className="pl-inq-kicker">QUY TRÌNH THỰC NGHIỆM 3 BƯỚC · INQ-ITS TELEMETRY · GIZMOS · CER RUBRIC</span>
           <h3>Đánh Giá Năng Lực Thực Hành: {config.title}</h3>
         </div>
 
@@ -844,7 +921,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
             onClick={() => setActiveTab('missions')}
           >
             <IcoTarget />
-            <span>Nhiệm vụ Thực nghiệm ({completedMissionCount}/3)</span>
+            <span>Bước 1 · Nhiệm vụ Đo đạc ({completedMissionCount}/3)</span>
           </button>
           <button
             type="button"
@@ -854,7 +931,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
             onClick={() => setActiveTab('inqits')}
           >
             <IcoShieldCheck />
-            <span>Giám sát Kiểm soát biến</span>
+            <span>Bước 2 · Kiểm soát biến &amp; Đồ thị</span>
             <em className={`pl-inq-dot is-${inquiryEval.status}`} />
           </button>
           <button
@@ -865,7 +942,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
             onClick={() => setActiveTab('cer')}
           >
             <IcoClipboard />
-            <span>Báo cáo Khoa học CER</span>
+            <span>Bước 3 · Báo cáo CER (10đ)</span>
             {cerGrade && <strong className="pl-inq-score-pill">{cerGrade.total}/10đ</strong>}
           </button>
         </div>
@@ -876,6 +953,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
         <div className="pl-inq-missions-grid">
           {config.missions.map((m, idx) => {
             const res = missionResults[m.id];
+            const hintOpen = Boolean(openHints[m.id]);
             return (
               <article
                 key={m.id}
@@ -887,6 +965,44 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
                 </div>
                 <h4>{m.title}</h4>
                 <p>{m.prompt}</p>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="pl-btn-ghost"
+                    style={{ fontSize: '11.2px', padding: '3px 8px' }}
+                    onClick={() => setOpenHints((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
+                  >
+                    {hintOpen ? 'Ẩn công thức gốc' : 'Xem công thức & ngưỡng sai số'}
+                  </button>
+                  <button
+                    type="button"
+                    className="pl-btn-ghost"
+                    style={{ fontSize: '11.2px', padding: '3px 8px' }}
+                    onClick={() => {
+                      setMissionInputs((prev) => ({ ...prev, [m.id]: String(m.target) }));
+                      checkMission(m, m.target);
+                    }}
+                    title="Điền nhanh kết quả đo chuẩn để kiểm thử"
+                  >
+                    Điền số đo chuẩn ({m.target})
+                  </button>
+                </div>
+
+                {hintOpen && (
+                  <div
+                    style={{
+                      padding: '7px 10px',
+                      borderRadius: 9,
+                      background: 'rgba(47, 107, 255, 0.08)',
+                      borderLeft: '3px solid #2f6bff',
+                      fontSize: '11.6px',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <strong>Cơ sở tính:</strong> {m.formulaHint} (Ngưỡng sai số cho phép: ±{m.tolerance} {m.unit}).
+                  </div>
+                )}
 
                 <div className="pl-mission-input-row">
                   <div className="pl-mission-field">
@@ -910,7 +1026,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
                     onClick={() => checkMission(m)}
                   >
                     <IcoCheck />
-                    <span>Kiểm tra</span>
+                    <span>Chấm sai số</span>
                   </button>
                 </div>
 
@@ -925,14 +1041,14 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
         </div>
       )}
 
-      {/* TAB 2: INQ-ITS REX TELEMETRY — KIỂM ĐỊNH PHƯƠNG PHÁP KIỂM SOÁT BIẾN */}
+      {/* TAB 2: INQ-ITS REX TELEMETRY — KIỂM ĐỊNH PHƯƠNG PHÁP KIỂM SOÁT BIẾN & ĐỒ THỊ XU HƯỚNG */}
       {activeTab === 'inqits' && (
         <div className="pl-inq-telemetry-layout">
           <div className="pl-inq-table-card">
             <div className="pl-inq-card-head">
               <div>
                 <h4>Bảng Kiểm Định Biến Số Thực Nghiệm (Fair Test Matrix)</h4>
-                <p>Nhập hoặc chỉnh sửa các lần đo để Bé Elec kiểm tra xem phương pháp khảo sát có vi phạm nguyên tắc Kiểm soát biến không.</p>
+                <p>Nguyên tắc Khoa học: Chỉ biến thiên <strong>1 Biến độc lập (X)</strong> và giữ cố định tuyệt đối <strong>Biến kiểm soát (C)</strong> qua các lần đo.</p>
               </div>
               <div className="pl-inq-preset-btns">
                 <button
@@ -949,6 +1065,13 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
                 >
                   Thử mẫu Lỗi (Đổi 2 biến cùng lúc)
                 </button>
+                <button
+                  type="button"
+                  className="pl-btn-ghost"
+                  onClick={addTrialRow}
+                >
+                  + Thêm lần đo
+                </button>
               </div>
             </div>
 
@@ -957,44 +1080,52 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
                 <thead>
                   <tr>
                     <th>Lần đo</th>
-                    <th>Biến độc lập: {config.indepVar.label}</th>
-                    <th>Biến kiểm soát: {config.ctrlVar.label}</th>
-                    <th>Kết quả đo: {config.depVar.label}</th>
+                    <th>Biến độc lập (X): {config.indepVar.label}</th>
+                    <th>Biến kiểm soát (C): {config.ctrlVar.label}</th>
+                    <th>Kết quả đo (Y): {config.depVar.label}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {trials.map((row, idx) => (
-                    <tr key={row.id}>
-                      <td><strong>#{idx + 1}</strong></td>
-                      <td>
-                        <input
-                          type="number"
-                          step="any"
-                          className="pl-trial-input"
-                          value={row.indep}
-                          onChange={(e) => updateTrialCell(idx, 'indep', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="any"
-                          className="pl-trial-input"
-                          value={row.ctrl}
-                          onChange={(e) => updateTrialCell(idx, 'ctrl', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="any"
-                          className="pl-trial-input"
-                          value={row.dep}
-                          onChange={(e) => updateTrialCell(idx, 'dep', e.target.value)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {trials.map((row, idx) => {
+                    const ctrlChanged = idx > 0 && Number(row.ctrl) !== Number(trials[0].ctrl);
+                    return (
+                      <tr key={row.id || idx}>
+                        <td><strong>#{idx + 1}</strong></td>
+                        <td>
+                          <input
+                            type="number"
+                            step="any"
+                            className="pl-trial-input"
+                            value={row.indep}
+                            onChange={(e) => updateTrialCell(idx, 'indep', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="any"
+                            className="pl-trial-input"
+                            style={
+                              ctrlChanged
+                                ? { borderColor: '#ef4444', background: 'rgba(239,68,68,0.08)', color: '#b91c1c' }
+                                : undefined
+                            }
+                            value={row.ctrl}
+                            onChange={(e) => updateTrialCell(idx, 'ctrl', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="any"
+                            className="pl-trial-input"
+                            value={row.dep}
+                            onChange={(e) => updateTrialCell(idx, 'dep', e.target.value)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1008,7 +1139,58 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
               </span>
               <strong className="pl-inq-coach-score">{inquiryEval.score}/100</strong>
             </div>
+
             <p className="pl-inq-coach-msg">{inquiryEval.message}</p>
+
+            {/* Đồ thị SVG trực quan hóa dữ liệu đo Y theo X ngay trong thẻ Inq-ITS */}
+            {svgPlot && (
+              <div
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  background: 'var(--pl-surface, #fff)',
+                  border: '1px solid var(--pl-border, rgba(47,107,255,0.2))',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#2f6bff', marginBottom: 4 }}>
+                  <span>Đồ thị thực nghiệm Y theo X ({trials.length} điểm đo)</span>
+                  <span>{inquiryEval.status === 'verified' ? 'Đường cong chuẩn' : 'Dữ liệu bị nhiễu biến'}</span>
+                </div>
+                <svg viewBox="0 0 260 122" style={{ width: '100%', height: 108, display: 'block' }}>
+                  <line x1="32" y1="18" x2="32" y2="108" stroke="#94a3b8" strokeWidth="1.2" />
+                  <line x1="32" y1="108" x2="248" y2="108" stroke="#94a3b8" strokeWidth="1.2" />
+                  <polyline
+                    fill="none"
+                    stroke={inquiryEval.status === 'confounded' ? '#ef4444' : '#2f6bff'}
+                    strokeWidth="2.4"
+                    points={svgPlot.polyline}
+                  />
+                  {svgPlot.pts.map((p) => (
+                    <g key={p.idx}>
+                      <circle
+                        cx={p.px}
+                        cy={p.py}
+                        r="4.5"
+                        fill={p.ctrlViolated ? '#ef4444' : '#2f6bff'}
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={p.px}
+                        y={Math.max(14, p.py - 7)}
+                        textAnchor="middle"
+                        fontSize="9.5"
+                        fontWeight="800"
+                        fill={p.ctrlViolated ? '#dc2626' : '#1d4ed8'}
+                      >
+                        #{p.idx} ({p.yVal})
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            )}
+
             <div className="pl-inq-coach-actions">
               <button
                 type="button"
@@ -1018,7 +1200,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
                   setActiveTab('cer');
                 }}
               >
-                Chuyển số liệu sang Báo cáo CER →
+                Chuyển số liệu sang Bước 3 (Báo cáo CER) →
               </button>
             </div>
           </div>
@@ -1030,19 +1212,19 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
         <div className="pl-cer-layout">
           <div className="pl-cer-form">
             <div className="pl-cer-toolbar">
-              <span>Khung báo cáo chuẩn NGSS / GDPT 2018 (10 điểm)</span>
+              <span>Khung báo cáo thực hành chuẩn NGSS / GDPT 2018 (Thang 10 điểm)</span>
               <div className="pl-cer-toolbar-btns">
                 <button type="button" className="pl-btn-ghost" onClick={fillEvidenceFromTrials}>
-                  Chèn số liệu từ Bảng đo
+                  1. Chèn số liệu từ Bảng đo
                 </button>
                 <button type="button" className="pl-btn-ghost" onClick={fillSampleCer}>
-                  Điền mẫu CER chuẩn
+                  2. Điền mẫu CER chuẩn &amp; Chấm thử
                 </button>
               </div>
             </div>
 
             <label className="pl-cer-field">
-              <span><strong>C — Claim (Luận điểm · 3,0đ):</strong> Kết luận quy luật Vật lí em rút ra từ thí nghiệm là gì?</span>
+              <span><strong>C — Claim (Luận điểm · 3,0đ):</strong> Kết luận quy luật định lượng giữa biến độc lập và biến phụ thuộc.</span>
               <textarea
                 rows={2}
                 placeholder="VD: Khi giữ cố định vận tốc đầu v₀, tầm xa L đạt cực đại tại góc bắn 45°..."
@@ -1052,7 +1234,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
             </label>
 
             <label className="pl-cer-field">
-              <span><strong>E — Evidence (Bằng chứng số liệu · 4,0đ):</strong> Dẫn chứng các cặp số liệu thực đo minh họa cho kết luận trên.</span>
+              <span><strong>E — Evidence (Bằng chứng số liệu · 4,0đ):</strong> Trích dẫn ít nhất 3 cặp số liệu thực đo có đơn vị từ Bước 2.</span>
               <textarea
                 rows={2}
                 placeholder="Bấm 'Chèn số liệu từ Bảng đo' hoặc nhập các mốc số liệu thực tế..."
@@ -1062,7 +1244,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
             </label>
 
             <label className="pl-cer-field">
-              <span><strong>R — Reasoning (Lập luận định luật · 3,0đ):</strong> Dùng công thức/định luật Vật lí nào để giải thích số liệu?</span>
+              <span><strong>R — Reasoning (Lập luận định luật · 3,0đ):</strong> Trích dẫn công thức hoặc định luật giải thích tại sao số liệu tuân theo quy luật đó.</span>
               <textarea
                 rows={2}
                 placeholder="VD: Theo công thức L = (v₀² · sin 2α)/g..."
@@ -1082,7 +1264,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
                   className="pl-btn-ai"
                   onClick={() =>
                     onAskAI(
-                      `Chấm điểm và nhận xét báo cáo thí nghiệm CER môn Vật lí (${config.title}):\n- Claim: ${claim || '(chưa nhập)'}\n- Evidence: ${evidence || '(chưa nhập)'}\n- Reasoning: ${reasoning || '(chưa nhập)'}`
+                      `Chấm điểm và nhận xét báo cáo thí nghiệm CER (${config.title}):\n- Claim: ${claim || '(chưa nhập)'}\n- Evidence: ${evidence || '(chưa nhập)'}\n- Reasoning: ${reasoning || '(chưa nhập)'}`
                     )
                   }
                 >
@@ -1094,7 +1276,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
           </div>
 
           <div className="pl-cer-result-card">
-            <h4>Kết Quả Chấm Rubric CER</h4>
+            <h4>Bảng Điểm Thành Phần Rubric CER</h4>
             {cerGrade ? (
               <>
                 <div className="pl-cer-total-box">
@@ -1110,15 +1292,15 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
 
                 <div className="pl-cer-bars">
                   <div className="pl-cer-bar-row">
-                    <span>Claim (Luận điểm)</span>
+                    <span>C · Claim (Luận điểm khoa học)</span>
                     <b>{cerGrade.claimScore} / 3,0đ</b>
                   </div>
                   <div className="pl-cer-bar-row">
-                    <span>Evidence (Số liệu đo)</span>
+                    <span>E · Evidence (Dẫn chứng số liệu đo)</span>
                     <b>{cerGrade.evidenceScore} / 4,0đ</b>
                   </div>
                   <div className="pl-cer-bar-row">
-                    <span>Reasoning (Định luật)</span>
+                    <span>R · Reasoning (Giải thích bằng định luật)</span>
                     <b>{cerGrade.reasoningScore} / 3,0đ</b>
                   </div>
                 </div>
@@ -1131,7 +1313,7 @@ export default function PhysicsInquiryWorkbench({ simId = 'projectile', onAskAI 
               </>
             ) : (
               <p className="pl-cer-empty">
-                Hoàn thành 3 mục <strong>Claim · Evidence · Reasoning</strong> bên trái rồi bấm <strong>Chấm điểm Báo cáo CER</strong> để nhận điểm thành phần ngay lập tức.
+                Hoàn thành 3 mục <strong>Claim · Evidence · Reasoning</strong> bên trái (hoặc bấm <strong>Điền mẫu CER chuẩn &amp; Chấm thử</strong>) để nhận bảng chấm điểm thành phần ngay lập tức.
               </p>
             )}
           </div>

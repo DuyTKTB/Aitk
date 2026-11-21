@@ -1,20 +1,27 @@
 /* ============================================================================
-   DiagnosticTestModal.jsx — PHÒNG ĐÁNH GIÁ NĂNG LỰC THÍCH ỨNG (STUDIO PRO 2026)
+   DiagnosticTestModal.jsx — PHÒNG ĐÁNH GIÁ NĂNG LỰC THÍCH ỨNG (STUDIO PRO v3)
    ----------------------------------------------------------------------------
-   • Khắc phục triệt để lỗi rút câu hỏi tuần tự 1 chương & lỗi trộn nhầm môn Hóa:
-     - Rút phân tầng xoay vòng (Stratified Round-Robin) qua 100% chuyên đề của môn
-     - Trộn ngẫu nhiên 4 đáp án (shuffleOptions) cho cả câu hỏi SGK & DEDICATED_LESSONS
-     - Cho phép chọn quy mô đề: 15 câu (Nhanh) · 25 câu (Chuẩn ĐH) · 40 câu (Toàn diện)
-     - Cho phép chọn trọng tâm: Cân bằng (NB→TH→VD) · Nền tảng (NB–TH) · Thực chiến 8+ (TH–VD)
-   • Giao diện Phòng thi số hiện đại:
-     - Bản đồ câu hỏi 1..N nhảy câu tự do, xem lại câu trước, đồng hồ bấm giờ, chuỗi đúng
-     - Render công thức LaTeX/KaTeX chuẩn qua <MathText />
-     - Báo cáo chẩn đoán đa chiều: Điểm hệ 10, Thống kê 3 cấp độ NB/TH/VD & Bản đồ lỗ hổng từng chương
+   Kiến trúc Khảo thí 3 Giai đoạn chuẩn Quốc tế (Bluebook / Grade.vn / Azota Pro):
+     • Giai đoạn 1 (BRIEFING): Thiết lập Quy mô đề (15/25/40 câu), Trọng tâm phân hóa
+       (Chuẩn ĐH / Củng cố gốc / Thực chiến 8.5+), Chế độ làm bài (Gia sư tức thì
+       hoặc Phòng thi thực chiến) & Xem trước Bảng Ma trận phân bổ chuyên đề.
+     • Giai đoạn 2 (TESTING — 2 Cột Split-Workbench):
+       - Cột trái: Mã câu hỏi [ELEC-ID], Khối lớp, Chuyên đề, Mức độ nhận thức,
+         Nút "Gợi ý hướng giải", Nút "Đánh dấu xem lại", Đề bài & 4 phương án KaTeX,
+         Phân tích sư phạm 3 tầng + Nút "Hỏi sâu Bé Elec AI".
+       - Cột phải: Đồng hồ, Thống kê tiến độ, Bản đồ câu hỏi 1..N có chú giải trạng thái,
+         Nút nhảy nhanh tới câu chưa làm & Nút Nộp bài.
+     • Giai đoạn 3 (REPORT — Báo cáo Chẩn đoán Đa chiều):
+       - 4 Thẻ KPI (Điểm hệ 10, Độ chính xác, Tốc độ trung bình/câu, Số chương đạt chuẩn).
+       - Phân tích 3 cấp độ Nhận biết · Thông hiểu · Vận dụng kèm thanh tiến độ.
+       - Bản đồ lỗ hổng từng chuyên đề xếp theo thứ tự ưu tiên cần bù đắp.
+       - Rà soát chi tiết từng câu (hiện đủ 4 phương án A/B/C/D + lời giải + hỏi AI).
    ============================================================================ */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   builtinQuestions,
+  chapterGuide,
   LEVEL_META,
   shuffleOptions,
 } from '../../data/roadmapExercises.js';
@@ -26,6 +33,7 @@ import {
 } from '../../data/curriculumDag.js';
 import { findLessonsByChapter } from '../../data/dedicatedLessonsData.js';
 import { saveSession, saveStageCheckpoint } from '../../lib/roadmapStore.js';
+import { askAI } from '../HomePlus.jsx';
 import { IconClose, IconPin, IconBulb } from '../Icons.jsx';
 import MathText from '../MathText.jsx';
 import {
@@ -59,20 +67,20 @@ export function buildStratifiedDiagnosticQuestions(
   const subjectNodes = CURRICULUM_NODES.filter((n) => n.subject === subjectKey);
   const subjectIdSet = new Set(subjectNodes.map((n) => n.id));
 
-  // Chỉ giữ lại các topicId thuộc đúng môn học; nếu rỗng thì lấy toàn bộ chuyên đề của môn đó
   let validTopics = (topicIds || []).filter((id) => subjectIdSet.has(id));
   if (validTopics.length === 0) {
     validTopics = subjectNodes.map((n) => n.id);
   }
 
-  // Gom kho câu hỏi theo từng chương (kết hợp builtinQuestions + DEDICATED_LESSONS đã trộn đáp án)
   const buckets = new Map();
   validTopics.forEach((tid) => {
     const meta = getChapterMeta(tid);
+    const guide = chapterGuide(tid);
+    const defaultTip = guide?.mistakes?.[0] || guide?.points?.[0] || '';
     const pool = [];
     const seenTexts = new Set();
 
-    // 1. Nguồn chuẩn biên soạn trong roadmapExercises (đã có đủ 49/49 chương)
+    // 1. Nguồn chuẩn biên soạn trong roadmapExercises (đủ 49/49 chương)
     const builtinList = builtinQuestions(tid, { level: 'all' });
     builtinList.forEach((q) => {
       const stem = cleanStem(q.q);
@@ -82,6 +90,8 @@ export function buildStratifiedDiagnosticQuestions(
         ...q,
         q: stem,
         topicId: tid,
+        grade: meta?.grade || 12,
+        tip: q.tip || defaultTip,
       });
     });
 
@@ -108,12 +118,13 @@ export function buildStratifiedDiagnosticQuestions(
         const normalized = shuffleOptions({
           id: `dl-${tid}-${q.id || idx}`,
           topicId: tid,
+          grade: meta?.grade || 12,
           level,
           q: stem,
           options: q.options.slice(0, 4),
           correct: correctIdx,
           explain: q.solution || q.explain || '',
-          tip: q.fastTip || q.trapAlert || '',
+          tip: q.fastTip || q.trapAlert || defaultTip,
           tag: q.targetExam || meta?.title || '',
         });
         pool.push(normalized);
@@ -146,7 +157,6 @@ export function buildStratifiedDiagnosticQuestions(
     for (let i = 0; i < activeTopics.length && picked.length < desiredCount; i += 1) {
       const tid = activeTopics[i];
       const pool = buckets.get(tid) || [];
-      // Ưu tiên đúng cấp độ ở các vòng đầu; từ vòng 6 trở đi lấy bất kỳ câu chưa dùng của chương đó
       const candidate =
         pool.find((q) => !usedIds.has(q.id) && q.level === targetLv) ||
         (pass >= 5 ? pool.find((q) => !usedIds.has(q.id)) : null);
@@ -171,6 +181,61 @@ const MASCOT_BY_SUBJ = {
   sinh: '/img/elec/elec-happy.png',
 };
 
+const SCALE_OPTIONS = [
+  {
+    count: 15,
+    title: '15 câu · Khảo sát nhanh',
+    durationText: '~12 phút',
+    desc: 'Phù hợp kiểm tra nhanh các chuyên đề cốt lõi trước giờ học.',
+  },
+  {
+    count: 25,
+    title: '25 câu · Chuẩn Đánh giá ĐH',
+    durationText: '~20 phút',
+    desc: 'Độ phủ rộng khắp các chương, đo chính xác điểm dự đoán thang 10.',
+  },
+  {
+    count: 40,
+    title: '40 câu · Toàn diện THPT',
+    durationText: '~35 phút',
+    desc: 'Quét sâu toàn bộ lỗ hổng kiến thức 3 khối Lớp 10 · 11 · 12.',
+  },
+];
+
+const FOCUS_OPTIONS = [
+  {
+    key: 'balanced',
+    title: 'Ma trận Phân tầng chuẩn',
+    ratioText: '40% NB · 35% TH · 25% VD',
+    desc: 'Cân bằng 3 mức độ nhận thức theo đúng ma trận đề thi THPT Quốc gia.',
+  },
+  {
+    key: 'foundation',
+    title: 'Củng cố Nền tảng SGK',
+    ratioText: '65% NB · 35% TH',
+    desc: 'Tập trung rà soát khái niệm, công thức gốc và tránh mất điểm câu dễ.',
+  },
+  {
+    key: 'advanced',
+    title: 'Thực chiến Mục tiêu 8.5+',
+    ratioText: '35% TH · 65% VD',
+    desc: 'Tăng cường câu hỏi vận dụng, bài toán thực nghiệm và bẫy lý thuyết sâu.',
+  },
+];
+
+const MODE_OPTIONS = [
+  {
+    key: 'tutor',
+    title: 'Chế độ Gia sư (Chấm & Giải ngay)',
+    desc: 'Chọn đáp án xong sẽ chấm ngay lập tức, mở lời giải từng bước và mẹo tránh bẫy.',
+  },
+  {
+    key: 'exam',
+    title: 'Chế độ Phòng thi (Nộp bài mới chấm)',
+    desc: 'Cho phép đổi phương án tự do, đánh dấu câu phân vân; chỉ chấm khi bấm Nộp bài.',
+  },
+];
+
 export default function DiagnosticTestModal({
   open,
   uid,
@@ -185,15 +250,19 @@ export default function DiagnosticTestModal({
   const effSubject = checkpointStage?.subjectKey || subjectKey || 'hoa';
   const subMeta = SUBJECT_META[effSubject] || SUBJECT_META.hoa;
 
+  // 3 giai đoạn logic: 'briefing' (Cấu hình & Ma trận) -> 'testing' (Làm bài) -> 'report' (Báo cáo)
+  const [phase, setPhase] = useState(isCheckpoint ? 'testing' : 'briefing');
   const [desiredCount, setDesiredCount] = useState(isCheckpoint ? 12 : 25);
-  const [focusMode, setFocusMode] = useState('balanced'); // 'balanced' | 'foundation' | 'advanced'
+  const [focusMode, setFocusMode] = useState('balanced');
+  const [examMode, setExamMode] = useState('tutor'); // 'tutor' | 'exam'
   const [stepIdx, setStepIdx] = useState(0);
-  // Map lưu đáp án đã chọn theo index câu: { [idx]: chosenOptionIdx }
   const [pickedMap, setPickedMap] = useState({});
-  const [finished, setFinished] = useState(false);
-  const [reviewFilter, setReviewFilter] = useState('all'); // 'all' | 'wrong'
+  const [flaggedMap, setFlaggedMap] = useState({});
+  const [showHintMap, setShowHintMap] = useState({});
+  const [reviewFilter, setReviewFilter] = useState('all'); // 'all' | 'wrong' | 'flagged'
   const [elapsedSec, setElapsedSec] = useState(0);
   const [quizSeed, setQuizSeed] = useState(0);
+  const [copiedId, setCopiedId] = useState('');
   const startedAtRef = useRef(Date.now());
 
   const topicIds = useMemo(() => {
@@ -203,23 +272,25 @@ export default function DiagnosticTestModal({
 
   useEffect(() => {
     if (!open) return;
+    setPhase(isCheckpoint ? 'testing' : 'briefing');
     setDesiredCount(isCheckpoint ? 12 : 25);
     setStepIdx(0);
     setPickedMap({});
-    setFinished(false);
+    setFlaggedMap({});
+    setShowHintMap({});
     setReviewFilter('all');
     setElapsedSec(0);
     startedAtRef.current = Date.now();
   }, [open, isCheckpoint, checkpointStage?.id, effSubject]);
 
-  // Đồng hồ bấm giờ thời gian thực
+  // Đồng hồ bấm giờ chỉ chạy khi đang ở giai đoạn 'testing'
   useEffect(() => {
-    if (!open || finished) return undefined;
+    if (!open || phase !== 'testing') return undefined;
     const t = setInterval(() => {
       setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000));
     }, 1000);
     return () => clearInterval(t);
-  }, [open, finished]);
+  }, [open, phase]);
 
   const questions = useMemo(() => {
     if (!open) return [];
@@ -234,9 +305,35 @@ export default function DiagnosticTestModal({
   const currentQ = questions[stepIdx] || null;
   const currentPicked = pickedMap[stepIdx] !== undefined ? pickedMap[stepIdx] : null;
   const answeredCount = Object.keys(pickedMap).length;
+  const flaggedCount = Object.keys(flaggedMap).filter((k) => flaggedMap[k]).length;
 
-  // Chuỗi trả lời đúng liên tiếp
+  // Phân tích cấu trúc Ma trận đề hiện tại (hiển thị ngay ở màn hình Briefing)
+  const blueprintSummary = useMemo(() => {
+    const lvCounts = { nb: 0, th: 0, vd: 0 };
+    const chMap = new Map();
+    questions.forEach((q) => {
+      lvCounts[q.level] = (lvCounts[q.level] || 0) + 1;
+      const tid = q.topicId;
+      if (!chMap.has(tid)) {
+        const meta = getChapterMeta(tid);
+        chMap.set(tid, {
+          tid,
+          title: chapterName(tid) || meta?.title || tid,
+          grade: meta?.grade || q.grade || 12,
+          count: 0,
+        });
+      }
+      chMap.get(tid).count += 1;
+    });
+    return {
+      lvCounts,
+      chapters: Array.from(chMap.values()),
+    };
+  }, [questions]);
+
+  // Chuỗi trả lời đúng liên tiếp (chỉ hiển thị ở chế độ Gia sư)
   const currentStreak = useMemo(() => {
+    if (examMode === 'exam') return 0;
     let s = 0;
     for (let i = stepIdx; i >= 0; i -= 1) {
       if (pickedMap[i] === undefined) continue;
@@ -244,21 +341,42 @@ export default function DiagnosticTestModal({
       else break;
     }
     return s;
-  }, [pickedMap, questions, stepIdx]);
+  }, [pickedMap, questions, stepIdx, examMode]);
 
-  const changeScaleOrMode = (nextCount, nextMode) => {
-    setDesiredCount(nextCount);
-    setFocusMode(nextMode);
+  const startTestingPhase = () => {
     setStepIdx(0);
     setPickedMap({});
-    setFinished(false);
+    setFlaggedMap({});
+    setShowHintMap({});
+    setElapsedSec(0);
     startedAtRef.current = Date.now();
+    setPhase('testing');
+  };
+
+  const regenerateAndReset = (nextCount = desiredCount, nextFocus = focusMode) => {
+    setDesiredCount(nextCount);
+    setFocusMode(nextFocus);
+    setStepIdx(0);
+    setPickedMap({});
+    setFlaggedMap({});
+    setShowHintMap({});
     setQuizSeed((s) => s + 1);
   };
 
   const handlePickOption = (optIdx) => {
-    if (currentPicked !== null || !currentQ) return;
+    if (!currentQ) return;
+    // Ở chế độ Gia sư: chọn rồi thì khóa câu đó để hiển thị lời giải ngay
+    // Ở chế độ Phòng thi: cho phép đổi phương án tự do trước khi nộp
+    if (examMode === 'tutor' && currentPicked !== null) return;
     setPickedMap((prev) => ({ ...prev, [stepIdx]: optIdx }));
+  };
+
+  const toggleFlagCurrent = () => {
+    setFlaggedMap((prev) => ({ ...prev, [stepIdx]: !prev[stepIdx] }));
+  };
+
+  const toggleHintCurrent = () => {
+    setShowHintMap((prev) => ({ ...prev, [stepIdx]: !prev[stepIdx] }));
   };
 
   const finishAssessment = (finalMap = pickedMap) => {
@@ -307,7 +425,7 @@ export default function DiagnosticTestModal({
       });
     }
 
-    setFinished(true);
+    setPhase('report');
     onCompleted?.();
   };
 
@@ -319,22 +437,45 @@ export default function DiagnosticTestModal({
     finishAssessment(pickedMap);
   };
 
+  const jumpToFirstUnanswered = () => {
+    const idx = questions.findIndex((_, i) => pickedMap[i] === undefined);
+    if (idx >= 0) setStepIdx(idx);
+  };
+
+  const handleAskAiAboutQuestion = (qObj, chosenIdx) => {
+    if (!qObj) return;
+    const code = String(qObj.id || 'ELEC-Q').toUpperCase();
+    const optsText = (qObj.options || [])
+      .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
+      .join(' | ');
+    const userChoiceText =
+      chosenIdx !== null && chosenIdx >= 0
+        ? `Mình đã chọn đáp án ${String.fromCharCode(65 + chosenIdx)} (${qObj.options[chosenIdx]}).`
+        : 'Mình đang phân vân câu này.';
+    onClose?.();
+    askAI(
+      `Giải thích thật chi tiết bản chất câu hỏi [${code}] thuộc chuyên đề "${chapterName(qObj.topicId) || subMeta.name}":\n"${qObj.q}"\nCác phương án: ${optsText}.\n${userChoiceText} Hãy phân tích tại sao đáp án đúng là ${String.fromCharCode(65 + qObj.correct)} và tại sao các phương án còn lại là bẫy.`
+    );
+  };
+
   useEffect(() => {
-    if (!open || finished) return undefined;
+    if (!open || phase !== 'testing') return undefined;
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose?.();
         return;
       }
       if (!currentQ) return;
-      if (currentPicked === null) {
-        const map = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3 };
-        const k = map[String(e.key).toLowerCase()];
-        if (k !== undefined && k < currentQ.options.length) {
+      const map = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3 };
+      const k = map[String(e.key).toLowerCase()];
+      if (k !== undefined && k < currentQ.options.length) {
+        if (examMode === 'exam' || currentPicked === null) {
           e.preventDefault();
           handlePickOption(k);
+          return;
         }
-      } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      }
+      if ((e.key === 'Enter' || e.key === 'ArrowRight') && currentPicked !== null) {
         e.preventDefault();
         handleNext();
       } else if (e.key === 'ArrowLeft' && stepIdx > 0) {
@@ -354,46 +495,93 @@ export default function DiagnosticTestModal({
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  // Tổng hợp số liệu báo cáo khi hoàn thành
   const answersList = questions.map((q, idx) => ({
     q,
+    idx,
     chosen: pickedMap[idx] ?? -1,
     ok: pickedMap[idx] === q.correct,
+    flagged: Boolean(flaggedMap[idx]),
   }));
   const correctTotal = answersList.filter((a) => a.ok).length;
   const scorePct = Math.round((correctTotal / Math.max(1, totalQ)) * 100);
   const checkpointPassed = isCheckpoint && scorePct >= 85;
   const estimatedScore10 = (Math.round((correctTotal / Math.max(1, totalQ)) * 10 * 20) / 20).toFixed(2);
+  const avgSecPerQ = Math.max(1, Math.round(elapsedSec / Math.max(1, answeredCount || totalQ)));
 
-  // Thống kê theo 3 cấp độ nhận thức
   const tierStats = ['nb', 'th', 'vd'].map((lv) => {
     const items = answersList.filter((a) => a.q.level === lv);
     const ok = items.filter((a) => a.ok).length;
+    const pct = items.length ? Math.round((ok / items.length) * 100) : 0;
+    let advice = 'Đạt yêu cầu, tiếp tục duy trì phản xạ.';
+    if (pct < 50) {
+      advice = lv === 'nb'
+        ? 'Cần đọc lại khái niệm & công thức gốc trong SGK GDPT 2018.'
+        : lv === 'th'
+          ? 'Cần luyện thêm bài tập biến đổi công thức và đọc đồ thị/bảng biểu.'
+          : 'Tập trung nắm chắc phần Nhận biết – Thông hiểu trước khi giải câu Vận dụng.';
+    } else if (pct >= 80) {
+      advice = 'Nền tảng rất vững ở nhóm câu hỏi này!';
+    }
     return {
       lv,
       label: LEVEL_META[lv]?.label || lv,
       total: items.length,
       ok,
-      pct: items.length ? Math.round((ok / items.length) * 100) : 0,
+      pct,
+      advice,
     };
   });
 
-  // Thống kê theo từng chương (sắp xếp từ yếu nhất → mạnh nhất để học sinh biết lỗ hổng cần vá)
   const chapterBreakdown = (() => {
     const map = new Map();
     answersList.forEach((a) => {
       const tid = a.q.topicId;
-      if (!map.has(tid)) map.set(tid, { tid, name: chapterName(tid) || getChapterMeta(tid)?.title || tid, total: 0, ok: 0 });
+      const meta = getChapterMeta(tid);
+      if (!map.has(tid)) {
+        map.set(tid, {
+          tid,
+          name: chapterName(tid) || meta?.title || tid,
+          grade: meta?.grade || a.q.grade || 12,
+          total: 0,
+          ok: 0,
+        });
+      }
       const rec = map.get(tid);
       rec.total += 1;
       if (a.ok) rec.ok += 1;
     });
     return Array.from(map.values())
-      .map((r) => ({ ...r, pct: Math.round((r.ok / Math.max(1, r.total)) * 100) }))
+      .map((r) => {
+        const pct = Math.round((r.ok / Math.max(1, r.total)) * 100);
+        const status =
+          pct >= 75
+            ? { label: 'Đã nắm vững', tone: 'good' }
+            : pct >= 50
+              ? { label: 'Cần củng cố thêm', tone: 'mid' }
+              : { label: 'Lỗ hổng ưu tiên bù gấp', tone: 'weak' };
+        return { ...r, pct, status };
+      })
       .sort((a, b) => a.pct - b.pct);
   })();
 
-  const filteredReview = reviewFilter === 'wrong' ? answersList.filter((a) => !a.ok) : answersList;
+  const masteredChaptersCount = chapterBreakdown.filter((c) => c.pct >= 75).length;
+
+  const filteredReview =
+    reviewFilter === 'wrong'
+      ? answersList.filter((a) => !a.ok)
+      : reviewFilter === 'flagged'
+        ? answersList.filter((a) => a.flagged)
+        : answersList;
+
+  const currentCode = currentQ
+    ? String(currentQ.id || `${effSubject}-${stepIdx + 1}`).toUpperCase()
+    : '';
+  const currentMeta = currentQ ? getChapterMeta(currentQ.topicId) : null;
+  const currentGuide = currentQ ? chapterGuide(currentQ.topicId) : null;
+  const currentHintText =
+    currentQ?.tip ||
+    currentGuide?.points?.[0] ||
+    'Áp dụng định luật bảo toàn hoặc công thức cơ bản của chuyên đề này, chú ý đổi đơn vị chuẩn GDPT 2018.';
 
   return (
     <DialogRoot open={open} onOpenChange={onClose}>
@@ -406,7 +594,9 @@ export default function DiagnosticTestModal({
           aria-label={isCheckpoint ? `Checkpoint ${checkpointStage.title}` : `Đánh giá năng lực môn ${subMeta.name}`}
         >
           <div className={`dsp-modal tone-${effSubject}`}>
-            {/* HEADER STUDIO PRO */}
+            {/* ============================================================
+                HEADER STUDIO PRO — THANH TIẾN TRÌNH 3 BƯỚC RÕ RÀNG & LOGIC
+               ============================================================ */}
             <header className="dsp-head">
               <div className="dsp-head-top">
                 <div className="dsp-brand-row">
@@ -414,209 +604,470 @@ export default function DiagnosticTestModal({
                     src={MASCOT_BY_SUBJ[effSubject] || MASCOT_BY_SUBJ.hoa}
                     alt="Bé Elec Khảo Thí"
                     className="dsp-mascot"
-                    width="46"
-                    height="46"
+                    width="48"
+                    height="48"
                   />
                   <div>
                     <div className="dsp-eyebrow">
                       <span className="dsp-pill-subj">
                         {isCheckpoint
                           ? `CHECKPOINT ${checkpointStage.code || ''} · ${subMeta.name} (ĐẠT ≥ 85%)`
-                          : `ĐÁNH GIÁ NĂNG LỰC · ${subMeta.name.toUpperCase()} · ${String(levelKey).toUpperCase()}`}
+                          : `PHÒNG KHẢO THÍ & CHẨN ĐOÁN NĂNG LỰC · ${subMeta.name.toUpperCase()}`}
                       </span>
-                      <span className="dsp-pill-stat">⏱ {formatTimer(elapsedSec)}</span>
-                      <span className="dsp-pill-stat">Đã làm {answeredCount}/{totalQ}</span>
-                      {currentStreak >= 2 && !finished && (
-                        <span className="dsp-pill-streak">Chuỗi đúng {currentStreak}x</span>
+                      {phase === 'testing' && (
+                        <>
+                          <span className="dsp-pill-stat">⏱ {formatTimer(elapsedSec)}</span>
+                          <span className="dsp-pill-stat">
+                            Tiến độ: {answeredCount}/{totalQ} câu
+                          </span>
+                          {flaggedCount > 0 && (
+                            <span className="dsp-pill-stat">★ Đánh dấu: {flaggedCount}</span>
+                          )}
+                          {currentStreak >= 2 && (
+                            <span className="dsp-pill-streak">Chuỗi đúng {currentStreak}x</span>
+                          )}
+                        </>
                       )}
                     </div>
                     <h2 className="dsp-title">
-                      {finished
-                        ? isCheckpoint
-                          ? checkpointPassed
-                            ? `Vượt Checkpoint thành công (${scorePct}% · Mở khóa chặng!)`
-                            : `Đạt ${scorePct}% (${correctTotal}/${totalQ} câu) — Cần ≥ 85% để nhảy cóc`
-                          : `Báo cáo Năng lực ${subMeta.name}: ${correctTotal}/${totalQ} câu đúng (${estimatedScore10}/10 điểm)`
-                        : `Câu ${stepIdx + 1}/${totalQ} · ${chapterName(currentQ?.topicId) || getChapterMeta(currentQ?.topicId)?.title || subMeta.name}`}
+                      {phase === 'briefing'
+                        ? `Thiết lập Ma trận Đánh giá Năng lực ${subMeta.name} (${levelKey})`
+                        : phase === 'report'
+                          ? `Báo cáo Chẩn đoán Năng lực ${subMeta.name}: ${estimatedScore10}/10 điểm (${correctTotal}/${totalQ} câu)`
+                          : `Câu ${stepIdx + 1}/${totalQ} · ${chapterName(currentQ?.topicId) || currentMeta?.title || subMeta.name}`}
                     </h2>
                   </div>
                 </div>
 
-                <button type="button" className="dsp-close" onClick={onClose} aria-label="Đóng">
-                  <IconClose size={18} />
-                </button>
+                {/* Thanh Quy trình 3 bước logic + Nút đóng */}
+                <div className="dsp-head-right">
+                  {!isCheckpoint && (
+                    <div className="dsp-stepper" aria-label="Quy trình khảo thí 3 bước">
+                      <span className={`dsp-step-chip ${phase === 'briefing' ? 'is-active' : 'is-done'}`}>
+                        1. Ma trận đề
+                      </span>
+                      <span className={`dsp-step-chip ${phase === 'testing' ? 'is-active' : phase === 'report' ? 'is-done' : ''}`}>
+                        2. Làm bài ({totalQ} câu)
+                      </span>
+                      <span className={`dsp-step-chip ${phase === 'report' ? 'is-active' : ''}`}>
+                        3. Báo cáo &amp; Lộ trình
+                      </span>
+                    </div>
+                  )}
+                  <button type="button" className="dsp-close" onClick={onClose} aria-label="Đóng">
+                    <IconClose size={18} />
+                  </button>
+                </div>
               </div>
-
-              {/* Thanh chọn quy mô đề (15 / 25 / 40 câu) & Trọng tâm phân hóa */}
-              {!finished && !isCheckpoint && (
-                <div className="dsp-toolbar">
-                  <div className="dsp-seg-group" role="group" aria-label="Chọn số lượng câu hỏi">
-                    <span className="dsp-seg-lbl">QUY MÔ ĐỀ:</span>
-                    {[
-                      [15, '15 câu (Nhanh)'],
-                      [25, '25 câu (Chuẩn ĐH)'],
-                      [40, '40 câu (Toàn diện)'],
-                    ].map(([cnt, lbl]) => (
-                      <button
-                        key={cnt}
-                        type="button"
-                        className={`dsp-seg-btn${desiredCount === cnt ? ' is-on' : ''}`}
-                        onClick={() => changeScaleOrMode(cnt, focusMode)}
-                      >
-                        {lbl}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="dsp-seg-group" role="group" aria-label="Chọn chế độ phân hóa">
-                    <span className="dsp-seg-lbl">MỨC ĐỘ:</span>
-                    {[
-                      ['balanced', 'Phân tầng chuẩn'],
-                      ['foundation', 'Củng cố gốc'],
-                      ['advanced', 'Thực chiến 8+'],
-                    ].map(([mKey, mLbl]) => (
-                      <button
-                        key={mKey}
-                        type="button"
-                        className={`dsp-seg-btn${focusMode === mKey ? ' is-on' : ''}`}
-                        onClick={() => changeScaleOrMode(desiredCount, mKey)}
-                      >
-                        {mLbl}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Bản đồ câu hỏi tương tác 1..N (Nhảy câu tự do) */}
-              {!finished && totalQ > 0 && (
-                <div className="dsp-palette" role="navigation" aria-label="Bản đồ câu hỏi">
-                  {questions.map((q, idx) => {
-                    const ans = pickedMap[idx];
-                    const isCur = idx === stepIdx;
-                    let cls = 'dsp-qdot';
-                    if (isCur) cls += ' is-current';
-                    else if (ans !== undefined) cls += ans === q.correct ? ' is-ok' : ' is-bad';
-                    return (
-                      <button
-                        key={q.id || idx}
-                        type="button"
-                        className={cls}
-                        onClick={() => setStepIdx(idx)}
-                        title={`Câu ${idx + 1}: ${chapterName(q.topicId) || subMeta.name}`}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
             </header>
 
-            {/* KHÔNG GIAN LÀM BÀI */}
-            {!finished && currentQ && (
-              <div className="dsp-body">
-                <div className="dsp-qmeta-bar">
-                  <div className="dsp-qmeta-left">
-                    <span
-                      className="dsp-ch-badge"
-                      style={{
-                        background: 'rgba(47, 107, 255, 0.12)',
-                        color: '#1d4ed8',
-                        fontFamily: 'var(--mono, monospace)',
-                        fontWeight: 800,
-                      }}
-                      title="Mã định danh câu hỏi toàn cục ELEC ID (Bấm để sao chép mã tra cứu)"
-                    >
-                      ID: {String(currentQ.id || `${effSubject}-${stepIdx + 1}`).toUpperCase()}
-                    </span>
-                    <span className="dsp-ch-badge">
-                      {chapterName(currentQ.topicId) || getChapterMeta(currentQ.topicId)?.title || subMeta.name}
-                    </span>
-                    {currentQ.level && LEVEL_META[currentQ.level] && (
-                      <span className={`dsp-lv-badge lv-${currentQ.level}`}>
-                        Mức độ: {LEVEL_META[currentQ.level].label}
-                      </span>
-                    )}
-                    {currentQ.tag && (
-                      <span className="dsp-skill-tag">
-                        <IconPin size={12} /> {currentQ.tag}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Khung câu hỏi hỗ trợ đầy đủ công thức KaTeX */}
-                <div className="dsp-qbox">
-                  <div className="dsp-qtext">
-                    <MathText>{currentQ.q}</MathText>
-                  </div>
-                </div>
-
-                {/* 4 Phương án A/B/C/D */}
-                <div className="dsp-options">
-                  {currentQ.options.map((opt, idx) => {
-                    const isPicked = currentPicked === idx;
-                    const isRight = idx === currentQ.correct;
-                    let cls = 'dsp-opt';
-                    if (currentPicked !== null) {
-                      if (isRight) cls += ' is-correct';
-                      else if (isPicked) cls += ' is-wrong';
-                    }
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        className={cls}
-                        disabled={currentPicked !== null}
-                        onClick={() => handlePickOption(idx)}
-                      >
-                        <span className="dsp-opt-key">{String.fromCharCode(65 + idx)}</span>
-                        <span className="dsp-opt-txt">
-                          <MathText>{opt}</MathText>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Lời giải sư phạm & Mẹo tránh bẫy tức thì */}
-                {currentPicked !== null && (
-                  <div className={`dsp-solution ${currentPicked === currentQ.correct ? 'is-ok' : 'is-bad'}`}>
-                    <div className="dsp-sol-head">
-                      <b>
-                        {currentPicked === currentQ.correct
-                          ? '✓ Chính xác! Bạn nắm rất chắc bản chất phần này'
-                          : `✕ Chưa đúng — Đáp án đúng là ${String.fromCharCode(65 + currentQ.correct)}`}
-                      </b>
+            {/* ============================================================
+                GIAI ĐOẠN 1 (BRIEFING): CẤU HÌNH ĐỀ & XEM TRƯỚC BẢNG MA TRẬN
+               ============================================================ */}
+            {phase === 'briefing' && (
+              <div className="dsp-body dsp-briefing-body">
+                <div className="dsp-brief-grid">
+                  {/* Cột trái: 3 Bước cấu hình đề thi */}
+                  <div className="dsp-brief-config">
+                    <div className="dsp-config-block">
+                      <div className="dsp-config-head">
+                        <span className="dsp-config-step">BƯỚC 1</span>
+                        <h4>Chọn quy mô đề đánh giá</h4>
+                      </div>
+                      <div className="dsp-choice-cards">
+                        {SCALE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.count}
+                            type="button"
+                            className={`dsp-choice-card ${desiredCount === opt.count ? 'is-selected' : ''}`}
+                            onClick={() => regenerateAndReset(opt.count, focusMode)}
+                          >
+                            <div className="dsp-choice-top">
+                              <strong>{opt.title}</strong>
+                              <span className="dsp-choice-badge">{opt.durationText}</span>
+                            </div>
+                            <p>{opt.desc}</p>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    {currentQ.explain && (
-                      <div className="dsp-sol-steps">
-                        {String(currentQ.explain)
-                          .split(/\n|(?=• )/)
-                          .map((line) => line.trim())
-                          .filter(Boolean)
-                          .map((step, sIdx) => (
-                            <p key={sIdx}>
-                              <MathText>{step}</MathText>
-                            </p>
-                          ))}
+
+                    <div className="dsp-config-block">
+                      <div className="dsp-config-head">
+                        <span className="dsp-config-step">BƯỚC 2</span>
+                        <h4>Chọn cấu trúc phân hóa nhận thức</h4>
                       </div>
-                    )}
-                    {currentQ.tip && (
-                      <div className="dsp-sol-tip">
-                        <b style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <IconBulb size={14} /> Mẹo giải nhanh &amp; Bẫy cần tránh:
-                        </b>{' '}
-                        <MathText>{currentQ.tip}</MathText>
+                      <div className="dsp-choice-cards">
+                        {FOCUS_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            className={`dsp-choice-card ${focusMode === opt.key ? 'is-selected' : ''}`}
+                            onClick={() => regenerateAndReset(desiredCount, opt.key)}
+                          >
+                            <div className="dsp-choice-top">
+                              <strong>{opt.title}</strong>
+                              <span className="dsp-choice-badge">{opt.ratioText}</span>
+                            </div>
+                            <p>{opt.desc}</p>
+                          </button>
+                        ))}
                       </div>
-                    )}
+                    </div>
+
+                    <div className="dsp-config-block">
+                      <div className="dsp-config-head">
+                        <span className="dsp-config-step">BƯỚC 3</span>
+                        <h4>Chọn chế độ phản hồi khi làm bài</h4>
+                      </div>
+                      <div className="dsp-choice-cards dsp-choice-2col">
+                        {MODE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            className={`dsp-choice-card ${examMode === opt.key ? 'is-selected' : ''}`}
+                            onClick={() => setExamMode(opt.key)}
+                          >
+                            <div className="dsp-choice-top">
+                              <strong>{opt.title}</strong>
+                            </div>
+                            <p>{opt.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  {/* Cột phải: Bảng Ma trận Đề được rút phân tầng trực tiếp */}
+                  <aside className="dsp-blueprint-card">
+                    <div className="dsp-bp-head">
+                      <div>
+                        <span className="dsp-bp-kicker">MA TRẬN ĐỀ ĐƯỢC SINH TỰ ĐỘNG</span>
+                        <h4>Phân bổ {totalQ} câu hỏi · Môn {subMeta.name}</h4>
+                      </div>
+                      <button
+                        type="button"
+                        className="dsp-btn-sm"
+                        onClick={() => setQuizSeed((s) => s + 1)}
+                        title="Đổi bộ câu hỏi ngẫu nhiên khác theo đúng ma trận này"
+                      >
+                        Đổi mã đề khác ↻
+                      </button>
+                    </div>
+
+                    {/* 3 hộp tỷ lệ Nhận biết / Thông hiểu / Vận dụng */}
+                    <div className="dsp-bp-tiers">
+                      <div className="dsp-bp-tier">
+                        <span>Nhận biết (NB)</span>
+                        <strong>{blueprintSummary.lvCounts.nb} câu</strong>
+                        <small>{Math.round((blueprintSummary.lvCounts.nb / Math.max(1, totalQ)) * 100)}%</small>
+                      </div>
+                      <div className="dsp-bp-tier">
+                        <span>Thông hiểu (TH)</span>
+                        <strong>{blueprintSummary.lvCounts.th} câu</strong>
+                        <small>{Math.round((blueprintSummary.lvCounts.th / Math.max(1, totalQ)) * 100)}%</small>
+                      </div>
+                      <div className="dsp-bp-tier">
+                        <span>Vận dụng (VD)</span>
+                        <strong>{blueprintSummary.lvCounts.vd} câu</strong>
+                        <small>{Math.round((blueprintSummary.lvCounts.vd / Math.max(1, totalQ)) * 100)}%</small>
+                      </div>
+                    </div>
+
+                    <div className="dsp-bp-ch-head">
+                      <span>Danh sách {blueprintSummary.chapters.length} chuyên đề được khảo sát</span>
+                      <span>Số câu</span>
+                    </div>
+                    <div className="dsp-bp-ch-list">
+                      {blueprintSummary.chapters.map((ch) => (
+                        <div key={ch.tid} className="dsp-bp-ch-row">
+                          <div className="dsp-bp-ch-name">
+                            <span className="dsp-bp-grade">Lớp {ch.grade}</span>
+                            <span>{ch.title}</span>
+                          </div>
+                          <b>{ch.count} câu</b>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="dsp-bp-note">
+                      Thuật toán <strong>Stratified Round-Robin</strong> đảm bảo rải đều câu hỏi qua tất cả các chương và tự động đảo vị trí đáp án A/B/C/D ở mỗi lượt thi.
+                    </div>
+                  </aside>
+                </div>
 
                 <footer className="dsp-foot">
                   <span className="dsp-foot-hint">
-                    Phím tắt: A/B/C/D để chọn đáp án · ← / → hoặc Enter để chuyển câu
+                    Sau khi hoàn thành, hệ thống sẽ tự động cập nhật Điểm dự đoán &amp; sắp xếp lại thứ tự chương ưu tiên trên Lộ trình.
+                  </span>
+                  <div className="dsp-foot-actions">
+                    <button type="button" className="dsp-btn" onClick={onClose}>
+                      Để sau
+                    </button>
+                    <button
+                      type="button"
+                      className="dsp-btn dsp-btn-primary"
+                      onClick={startTestingPhase}
+                    >
+                      Bắt đầu làm bài đánh giá ({totalQ} câu) →
+                    </button>
+                  </div>
+                </footer>
+              </div>
+            )}
+
+            {/* ============================================================
+                GIAI ĐOẠN 2 (TESTING): PHÒNG THI 2 CỘT CHUYÊN NGHIỆP
+               ============================================================ */}
+            {phase === 'testing' && currentQ && (
+              <div className="dsp-body dsp-testing-body">
+                <div className="dsp-workbench-2col">
+                  {/* CỘT TRÁI: CÂU HỎI, GỢI Ý, 4 ĐÁP ÁN & PHÂN TÍCH SƯ PHẠM */}
+                  <div className="dsp-question-col">
+                    <div className="dsp-qmeta-bar">
+                      <div className="dsp-qmeta-left">
+                        <button
+                          type="button"
+                          className="dsp-id-badge"
+                          onClick={() => {
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(currentCode);
+                              setCopiedId(currentCode);
+                              setTimeout(() => setCopiedId(''), 1800);
+                            }
+                          }}
+                          title="Bấm để sao chép Mã định danh câu hỏi [ELEC-ID]"
+                        >
+                          {copiedId === currentCode ? `✓ Đã chép ${currentCode}` : `ID: ${currentCode}`}
+                        </button>
+                        <span className="dsp-grade-badge">
+                          Lớp {currentMeta?.grade || currentQ.grade || 12}
+                        </span>
+                        <span className="dsp-ch-badge">
+                          {chapterName(currentQ.topicId) || currentMeta?.title || subMeta.name}
+                        </span>
+                        {currentQ.level && LEVEL_META[currentQ.level] && (
+                          <span className={`dsp-lv-badge lv-${currentQ.level}`}>
+                            {LEVEL_META[currentQ.level].label}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="dsp-qmeta-tools">
+                        <button
+                          type="button"
+                          className={`dsp-tool-chip ${showHintMap[stepIdx] ? 'is-on' : ''}`}
+                          onClick={toggleHintCurrent}
+                        >
+                          <IconBulb size={13} />
+                          <span>{showHintMap[stepIdx] ? 'Ẩn gợi ý' : 'Gợi ý công thức'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`dsp-tool-chip ${flaggedMap[stepIdx] ? 'is-flagged' : ''}`}
+                          onClick={toggleFlagCurrent}
+                        >
+                          <IconPin size={12} />
+                          <span>{flaggedMap[stepIdx] ? 'Đã đánh dấu' : 'Đánh dấu xem lại'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Khung Gợi ý hướng giải khi học sinh bấm mở */}
+                    {showHintMap[stepIdx] && (
+                      <div className="dsp-hint-banner">
+                        <strong>Gợi ý kiến thức cốt lõi ({chapterName(currentQ.topicId) || subMeta.name}):</strong>{' '}
+                        <MathText>{currentHintText}</MathText>
+                      </div>
+                    )}
+
+                    {/* Khung đề bài */}
+                    <div className="dsp-qbox">
+                      <div className="dsp-qnumber-row">
+                        <span>CÂU HỎI SỐ {stepIdx + 1} / {totalQ}</span>
+                        {currentQ.tag && <small>Trọng tâm: {currentQ.tag}</small>}
+                      </div>
+                      <div className="dsp-qtext">
+                        <MathText>{currentQ.q}</MathText>
+                      </div>
+                    </div>
+
+                    {/* 4 Phương án A/B/C/D */}
+                    <div className="dsp-options">
+                      {currentQ.options.map((opt, idx) => {
+                        const isPicked = currentPicked === idx;
+                        const isRight = idx === currentQ.correct;
+                        let cls = 'dsp-opt';
+                        if (examMode === 'exam') {
+                          if (isPicked) cls += ' is-selected';
+                        } else if (currentPicked !== null) {
+                          if (isRight) cls += ' is-correct';
+                          else if (isPicked) cls += ' is-wrong';
+                        }
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            className={cls}
+                            disabled={examMode === 'tutor' && currentPicked !== null}
+                            onClick={() => handlePickOption(idx)}
+                          >
+                            <span className="dsp-opt-key">{String.fromCharCode(65 + idx)}</span>
+                            <span className="dsp-opt-txt">
+                              <MathText>{opt}</MathText>
+                            </span>
+                            {examMode === 'tutor' && currentPicked !== null && isRight && (
+                              <span className="dsp-opt-tag is-ok">Đáp án đúng</span>
+                            )}
+                            {examMode === 'tutor' && currentPicked !== null && isPicked && !isRight && (
+                              <span className="dsp-opt-tag is-bad">Bạn chọn</span>
+                            )}
+                            {examMode === 'exam' && isPicked && (
+                              <span className="dsp-opt-tag is-picked">Đã chọn</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Lời giải sư phạm 3 tầng (Chỉ hiện ngay khi ở Chế độ Gia sư) */}
+                    {examMode === 'tutor' && currentPicked !== null && (
+                      <div className={`dsp-solution ${currentPicked === currentQ.correct ? 'is-ok' : 'is-bad'}`}>
+                        <div className="dsp-sol-head">
+                          <b>
+                            {currentPicked === currentQ.correct
+                              ? `✓ Chính xác! Đáp án chuẩn là ${String.fromCharCode(65 + currentQ.correct)}`
+                              : `✕ Chưa chính xác — Đáp án đúng phải là ${String.fromCharCode(65 + currentQ.correct)}`}
+                          </b>
+                          <button
+                            type="button"
+                            className="dsp-ask-ai-btn"
+                            onClick={() => handleAskAiAboutQuestion(currentQ, currentPicked)}
+                          >
+                            Hỏi sâu Bé Elec AI về câu này ↗
+                          </button>
+                        </div>
+
+                        {currentQ.explain ? (
+                          <div className="dsp-sol-steps">
+                            {String(currentQ.explain)
+                              .split(/\n|(?=• )/)
+                              .map((line) => line.trim())
+                              .filter(Boolean)
+                              .map((step, sIdx) => (
+                                <p key={sIdx}>
+                                  <MathText>{step}</MathText>
+                                </p>
+                              ))}
+                          </div>
+                        ) : (
+                          <p className="dsp-sol-fallback">
+                            Đáp án đúng là <strong>{String.fromCharCode(65 + currentQ.correct)}</strong> (<MathText>{currentQ.options[currentQ.correct]}</MathText>).
+                          </p>
+                        )}
+
+                        {currentHintText && (
+                          <div className="dsp-sol-tip">
+                            <b style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <IconBulb size={14} /> Ghi nhớ &amp; Bẫy cần tránh:
+                            </b>{' '}
+                            <MathText>{currentHintText}</MathText>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CỘT PHẢI: BẢNG ĐIỀU HƯỚNG CÂU HỎI 1..N & TIẾN ĐỘ LÀM BÀI */}
+                  <aside className="dsp-nav-sidebar" aria-label="Bảng điều khiển và bản đồ câu hỏi">
+                    <div className="dsp-nav-card">
+                      <div className="dsp-nav-head">
+                        <span>BẢN ĐỒ CÂU HỎI (1..{totalQ})</span>
+                        <strong>{Math.round((answeredCount / Math.max(1, totalQ)) * 100)}%</strong>
+                      </div>
+
+                      <div className="dsp-nav-progress-bar">
+                        <div
+                          className="dsp-nav-progress-fill"
+                          style={{ width: `${Math.round((answeredCount / Math.max(1, totalQ)) * 100)}%` }}
+                        />
+                      </div>
+
+                      <div className="dsp-palette-grid" role="navigation" aria-label="Chọn câu hỏi">
+                        {questions.map((q, idx) => {
+                          const ans = pickedMap[idx];
+                          const isCur = idx === stepIdx;
+                          const isFlagged = Boolean(flaggedMap[idx]);
+                          let cls = 'dsp-qdot';
+                          if (isCur) cls += ' is-current';
+                          else if (ans !== undefined) {
+                            if (examMode === 'exam') cls += ' is-answered';
+                            else cls += ans === q.correct ? ' is-ok' : ' is-bad';
+                          }
+                          if (isFlagged) cls += ' is-flagged';
+                          return (
+                            <button
+                              key={q.id || idx}
+                              type="button"
+                              className={cls}
+                              onClick={() => setStepIdx(idx)}
+                              title={`Câu ${idx + 1}: ${chapterName(q.topicId) || subMeta.name}`}
+                            >
+                              {idx + 1}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Chú giải trạng thái rõ ràng */}
+                      <div className="dsp-palette-legend">
+                        <span><i className="dot-cur" /> Đang xem</span>
+                        {examMode === 'exam' ? (
+                          <span><i className="dot-ans" /> Đã chọn ({answeredCount})</span>
+                        ) : (
+                          <>
+                            <span><i className="dot-ok" /> Đúng</span>
+                            <span><i className="dot-bad" /> Sai</span>
+                          </>
+                        )}
+                        <span><i className="dot-flag" /> Đánh dấu ({flaggedCount})</span>
+                      </div>
+
+                      <div className="dsp-nav-actions">
+                        {answeredCount < totalQ && (
+                          <button
+                            type="button"
+                            className="dsp-btn-sm dsp-w-full"
+                            onClick={jumpToFirstUnanswered}
+                          >
+                            Đi tới câu chưa làm ({totalQ - answeredCount} câu) →
+                          </button>
+                        )}
+                        {!isCheckpoint && (
+                          <button
+                            type="button"
+                            className="dsp-btn-sm dsp-w-full"
+                            onClick={() => setPhase('briefing')}
+                          >
+                            ⚙ Đổi quy mô / cấu hình đề
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="dsp-btn dsp-btn-primary dsp-w-full"
+                          disabled={answeredCount === 0}
+                          onClick={() => finishAssessment(pickedMap)}
+                        >
+                          Nộp bài &amp; Xem Báo cáo ({answeredCount}/{totalQ})
+                        </button>
+                      </div>
+                    </div>
+                  </aside>
+                </div>
+
+                <footer className="dsp-foot">
+                  <span className="dsp-foot-hint">
+                    Phím tắt: A/B/C/D (hoặc 1/2/3/4) chọn đáp án · ← / → hoặc Enter để chuyển câu
                   </span>
                   <div className="dsp-foot-actions">
                     <button
@@ -627,83 +1078,101 @@ export default function DiagnosticTestModal({
                     >
                       ← Câu trước
                     </button>
-                    {answeredCount >= Math.min(5, totalQ) && stepIdx + 1 < totalQ && (
-                      <button
-                        type="button"
-                        className="dsp-btn"
-                        onClick={() => finishAssessment(pickedMap)}
-                        title="Nộp bài sớm với các câu đã làm"
-                      >
-                        Nộp bài ({answeredCount}/{totalQ})
-                      </button>
-                    )}
                     <button
                       type="button"
                       className="dsp-btn dsp-btn-primary"
-                      disabled={currentPicked === null}
+                      disabled={currentPicked === null && examMode === 'tutor'}
                       onClick={handleNext}
                     >
-                      {stepIdx + 1 < totalQ ? 'Câu tiếp theo →' : 'Hoàn thành & Xem Báo cáo →'}
+                      {stepIdx + 1 < totalQ ? 'Câu tiếp theo →' : 'Hoàn thành & Chấm điểm →'}
                     </button>
                   </div>
                 </footer>
               </div>
             )}
 
-            {/* BÁO CÁO CHẨN ĐOÁN ĐA CHIỀU KHI HOÀN THÀNH */}
-            {finished && (
-              <div className="dsp-body">
-                <div className="dsp-report-hero">
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--dsp-muted)', textTransform: 'uppercase' }}>
-                      {isCheckpoint ? `Kết quả Checkpoint ${checkpointStage.code}` : `Điểm năng lực ${subMeta.name} quy đổi`}
-                    </div>
-                    <div className="dsp-score-big">
-                      {isCheckpoint ? `${scorePct}% (${correctTotal}/${totalQ})` : `${estimatedScore10} / 10 điểm`}
-                    </div>
-                    <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--dsp-muted)', maxWidth: 560 }}>
-                      {isCheckpoint
-                        ? checkpointPassed
-                          ? `Xuất sắc! Hệ thống đã mở khóa toàn bộ chặng "${checkpointStage.title}".`
-                          : `Hệ thống đã lưu kết quả và đánh dấu các chuyên đề cần ôn thêm trong "${checkpointStage.title}".`
-                        : `Đã khảo sát ${chapterBreakdown.length} chuyên đề trong ${formatTimer(elapsedSec)} — hệ thống đã tự động cập nhật Điểm dự đoán & đẩy các chương còn yếu lên đầu Lộ trình!`}
-                    </p>
+            {/* ============================================================
+                GIAI ĐOẠN 3 (REPORT): BÁO CÁO CHẨN ĐOÁN ĐA CHIỀU & HÀNH ĐỘNG
+               ============================================================ */}
+            {phase === 'report' && (
+              <div className="dsp-body dsp-report-body">
+                {/* 4 Thẻ KPI Tổng quan */}
+                <div className="dsp-kpi-grid">
+                  <div className="dsp-kpi-card is-primary">
+                    <span>ĐIỂM NĂNG LỰC QUY ĐỔI</span>
+                    <strong>{isCheckpoint ? `${scorePct}%` : `${estimatedScore10} / 10`}</strong>
+                    <small>
+                      {scorePct >= 85
+                        ? 'Xếp loại: Vững vàng (Đạt mục tiêu 8.5+)'
+                        : scorePct >= 65
+                          ? 'Xếp loại: Khá — Cần lấp lỗ hổng vận dụng'
+                          : 'Xếp loại: Cần ưu tiên củng cố kiến thức gốc'}
+                    </small>
                   </div>
-                  <button
-                    type="button"
-                    className="dsp-btn"
-                    onClick={() => changeScaleOrMode(desiredCount, focusMode)}
-                  >
-                    Làm đề mới ({desiredCount} câu)
-                  </button>
+                  <div className="dsp-kpi-card">
+                    <span>ĐỘ CHÍNH XÁC TOÀN ĐỀ</span>
+                    <strong>{correctTotal} / {totalQ} câu</strong>
+                    <small>Tỷ lệ đúng: {scorePct}% ({totalQ - correctTotal} câu cần ôn lại)</small>
+                  </div>
+                  <div className="dsp-kpi-card">
+                    <span>TỐC ĐỘ PHẢN XẠ TRUNG BÌNH</span>
+                    <strong>{avgSecPerQ} giây/câu</strong>
+                    <small>Tổng thời gian: {formatTimer(elapsedSec)} (Chuẩn thi: 45s/câu)</small>
+                  </div>
+                  <div className="dsp-kpi-card">
+                    <span>ĐỘ PHỦ CHUYÊN ĐỀ SGK</span>
+                    <strong>{masteredChaptersCount} / {chapterBreakdown.length} chương</strong>
+                    <small>Đã đạt chuẩn ≥ 75% ở {masteredChaptersCount} chuyên đề</small>
+                  </div>
                 </div>
 
-                {/* Thống kê theo 3 cấp độ Nhận biết / Thông hiểu / Vận dụng */}
-                <div className="dsp-tier-grid">
-                  {tierStats.map((t) => (
-                    <div key={t.lv} className="dsp-tier-card">
-                      <span>Cấp độ {t.label}</span>
-                      <b>
-                        {t.ok}/{t.total} câu ({t.pct}%)
-                      </b>
-                    </div>
-                  ))}
+                {/* Bảng Phân tích 3 tầng Nhận thức (NB / TH / VD) */}
+                <div className="dsp-section-card">
+                  <div className="dsp-section-head">
+                    <h4>1. Phân tích Năng lực theo 3 Cấp độ Nhận thức (Chuẩn Bộ GD&amp;ĐT)</h4>
+                  </div>
+                  <div className="dsp-tier-grid">
+                    {tierStats.map((t) => (
+                      <div key={t.lv} className="dsp-tier-card">
+                        <div className="dsp-tier-top">
+                          <span>Cấp độ {t.label}</span>
+                          <b>{t.ok}/{t.total} câu ({t.pct}%)</b>
+                        </div>
+                        <div className="dsp-ch-track">
+                          <div
+                            className="dsp-ch-fill"
+                            style={{
+                              width: `${t.pct}%`,
+                              background: t.pct >= 75 ? '#10b981' : t.pct >= 50 ? '#f59e0b' : '#ef4444',
+                            }}
+                          />
+                        </div>
+                        <p className="dsp-tier-advice">{t.advice}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Bản đồ độ vững theo từng Chuyên đề (từ yếu nhất -> vững nhất) */}
-                <div>
-                  <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 800 }}>
-                    Chẩn đoán độ vững theo từng chuyên đề ({chapterBreakdown.length} chuyên đề)
-                  </h4>
+                {/* Bản đồ Chẩn đoán theo từng Chuyên đề (Xếp từ Yếu nhất -> Vững nhất) */}
+                <div className="dsp-section-card">
+                  <div className="dsp-section-head">
+                    <h4>2. Bản đồ Chẩn đoán &amp; Thứ tự Chuyên đề Ưu tiên Cần Bù Đắp ({chapterBreakdown.length} chuyên đề)</h4>
+                  </div>
                   <div className="dsp-ch-bars">
-                    {chapterBreakdown.map((ch) => {
+                    {chapterBreakdown.map((ch, idx) => {
                       const barColor = ch.pct >= 75 ? '#10b981' : ch.pct >= 50 ? '#f59e0b' : '#ef4444';
                       return (
                         <div key={ch.tid} className="dsp-ch-bar-item">
                           <div className="dsp-ch-bar-top">
-                            <span>{ch.name}</span>
-                            <span style={{ color: barColor }}>
-                              {ch.ok}/{ch.total} ({ch.pct}%)
+                            <div className="dsp-ch-title-wrap">
+                              <span className="dsp-bp-grade">Lớp {ch.grade}</span>
+                              <strong>#{idx + 1}. {ch.name}</strong>
+                              <span className={`dsp-status-tag tone-${ch.status.tone}`}>
+                                {ch.status.label}
+                              </span>
+                            </div>
+                            <span style={{ color: barColor, fontWeight: 800 }}>
+                              Đúng {ch.ok}/{ch.total} ({ch.pct}%)
                             </span>
                           </div>
                           <div className="dsp-ch-track">
@@ -715,12 +1184,10 @@ export default function DiagnosticTestModal({
                   </div>
                 </div>
 
-                {/* Danh sách rà soát câu hỏi */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-                    <h4 style={{ margin: 0, fontSize: 13, fontWeight: 800 }}>
-                      Chi tiết đáp án &amp; lời giải ({filteredReview.length} câu)
-                    </h4>
+                {/* Chi tiết đáp án & lời giải từng câu (Hiển thị đầy đủ 4 phương án A/B/C/D) */}
+                <div className="dsp-section-card">
+                  <div className="dsp-section-head">
+                    <h4>3. Rà soát Chi tiết Đáp án &amp; Phân tích Bẫy từng câu ({filteredReview.length} câu)</h4>
                     <div className="dsp-seg-group">
                       <button
                         type="button"
@@ -734,53 +1201,99 @@ export default function DiagnosticTestModal({
                         className={`dsp-seg-btn${reviewFilter === 'wrong' ? ' is-on' : ''}`}
                         onClick={() => setReviewFilter('wrong')}
                       >
-                        Câu cần ôn lại ({answersList.filter((a) => !a.ok).length})
+                        Câu làm sai ({answersList.filter((a) => !a.ok).length})
                       </button>
+                      {flaggedCount > 0 && (
+                        <button
+                          type="button"
+                          className={`dsp-seg-btn${reviewFilter === 'flagged' ? ' is-on' : ''}`}
+                          onClick={() => setReviewFilter('flagged')}
+                        >
+                          Câu đánh dấu ({flaggedCount})
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <ul className="rm-done-list">
-                    {filteredReview.map((item, i) => (
-                      <li key={item.q.id || i} className={item.ok ? 'ok' : 'bad'}>
-                        <div className="rm-done-q">
-                          <b>
-                            Câu ({chapterName(item.q.topicId) || getChapterMeta(item.q.topicId)?.title || subMeta.name}):
-                          </b>{' '}
-                          <MathText>{item.q.q}</MathText>
-                        </div>
-                        <div className="rm-done-ans">
-                          <span className={item.ok ? 'correct' : 'picked'}>
-                            Bạn chọn:{' '}
-                            {item.chosen >= 0 ? (
-                              <MathText>{item.q.options[item.chosen]}</MathText>
-                            ) : (
-                              'Chưa chọn'
-                            )}
-                          </span>
-                          {!item.ok && (
-                            <span className="correct">
-                              {' '}
-                              · Đáp án đúng: <MathText>{item.q.options[item.q.correct]}</MathText>
-                            </span>
-                          )}
-                        </div>
-                        {item.q.explain && (
-                          <div className="rm-done-expl" style={{ marginTop: 4 }}>
-                            <IconBulb size={13} /> <MathText>{item.q.explain}</MathText>
+                  <div className="dsp-review-list">
+                    {filteredReview.map((item) => {
+                      const qCode = String(item.q.id || `Q-${item.idx + 1}`).toUpperCase();
+                      return (
+                        <article
+                          key={item.q.id || item.idx}
+                          className={`dsp-review-item ${item.ok ? 'is-ok' : 'is-bad'}`}
+                        >
+                          <div className="dsp-review-top">
+                            <div className="dsp-review-badges">
+                              <span className="dsp-review-num">Câu {item.idx + 1}</span>
+                              <span className="dsp-id-badge">ID: {qCode}</span>
+                              <span className="dsp-ch-badge">
+                                {chapterName(item.q.topicId) || getChapterMeta(item.q.topicId)?.title || subMeta.name}
+                              </span>
+                              {item.q.level && LEVEL_META[item.q.level] && (
+                                <span className={`dsp-lv-badge lv-${item.q.level}`}>
+                                  {LEVEL_META[item.q.level].label}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="dsp-ask-ai-btn"
+                              onClick={() => handleAskAiAboutQuestion(item.q, item.chosen)}
+                            >
+                              Nhờ Bé Elec AI giảng sâu ↗
+                            </button>
                           </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+
+                          <div className="dsp-review-stem">
+                            <MathText>{item.q.q}</MathText>
+                          </div>
+
+                          <div className="dsp-review-opts-grid">
+                            {item.q.options.map((opt, oIdx) => {
+                              const isRight = oIdx === item.q.correct;
+                              const isChosen = oIdx === item.chosen;
+                              let optCls = 'dsp-review-opt';
+                              if (isRight) optCls += ' is-right';
+                              else if (isChosen) optCls += ' is-chosen-wrong';
+                              return (
+                                <div key={oIdx} className={optCls}>
+                                  <span className="dsp-opt-key">{String.fromCharCode(65 + oIdx)}</span>
+                                  <span className="dsp-opt-txt"><MathText>{opt}</MathText></span>
+                                  {isRight && <em className="dsp-rv-tag ok">Đáp án đúng</em>}
+                                  {isChosen && !isRight && <em className="dsp-rv-tag bad">Bạn chọn</em>}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {item.q.explain && (
+                            <div className="dsp-review-explain">
+                              <strong>Giải thích chi tiết:</strong> <MathText>{item.q.explain}</MathText>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <footer className="dsp-foot">
                   <span className="dsp-foot-hint">
-                    Toàn bộ câu làm sai đã được đồng bộ vào lộ trình ưu tiên của bạn.
+                    Kết quả chẩn đoán đã được đồng bộ vào Hồ sơ Năng lực &amp; Lộ trình cá nhân hóa.
                   </span>
-                  <button type="button" className="dsp-btn dsp-btn-primary" onClick={onClose}>
-                    Vào Lộ trình học cá nhân hóa ngay →
-                  </button>
+                  <div className="dsp-foot-actions">
+                    <button
+                      type="button"
+                      className="dsp-btn"
+                      onClick={() => setPhase('briefing')}
+                    >
+                      Làm đề đánh giá khác
+                    </button>
+                    <button type="button" className="dsp-btn dsp-btn-primary" onClick={onClose}>
+                      Áp dụng vào Lộ trình học ngay →
+                    </button>
+                  </div>
                 </footer>
               </div>
             )}
