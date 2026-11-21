@@ -517,12 +517,28 @@ body.on-ai-page .ds-page.elec-studio .ds-input-inner .ds-jump:hover {
   color: #5b6992;
 }
 
-/* Follow-up Quiz CTA highlight */
+/* Follow-up Quiz CTA highlight & Compact single-row followups */
+.gm-followups.gm-followups-compact {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px !important;
+}
+
+.gm-followups.gm-followups-compact .gm-followup-chip {
+  padding: 4px 10px !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+  border-radius: 999px !important;
+  line-height: 1.3 !important;
+}
+
 .gm-followup-chip.is-quiz-cta {
   background: linear-gradient(135deg, rgba(47, 107, 255, 0.11), rgba(14, 165, 233, 0.12));
   border-color: rgba(47, 107, 255, 0.34);
   color: #1f4fe6;
-  font-weight: 700;
+  font-weight: 700 !important;
 }
 
 [data-theme='dark'] .gm-followup-chip.is-quiz-cta {

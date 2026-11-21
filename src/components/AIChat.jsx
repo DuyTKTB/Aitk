@@ -3190,52 +3190,38 @@ export default function AIChat({ onExit }) {
 
                                   {isSubstantial && (
                                     <button
-                                      className={'ds-action-btn ds-action-desktop-only' + (Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`) ? ' on' : '')}
+                                      className={'ds-action-icon-btn' + (Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`) ? ' on' : '')}
                                       onClick={() => toggleBookmarkMsg(m.text, i)}
                                       type="button"
-                                      title="Lưu công thức / lời giải vào mục Đã lưu ở thanh bên"
+                                      title={Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`) ? 'Đã lưu ghi chú' : 'Lưu vào ghi chú đã ghim'}
+                                      aria-label="Lưu ghi chú"
                                     >
                                       <IcoPin size={14} filled={Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`)} />
-                                      <span className="ds-btn-text">
-                                        {Array.isArray(bookmarks) && bookmarks.some((b) => b.id === `${activeId || 'temp'}_${i}`) ? 'Đã lưu' : 'Lưu ghi chú'}
-                                      </span>
                                     </button>
                                   )}
 
                                   {isSubstantial && (
                                     <button
-                                      className="ds-action-btn ds-action-desktop-only"
-                                      onClick={() => quizFromMessage(m.text)}
-                                      type="button"
-                                      title="Tạo ngay 5 câu luyện tập chuẩn THPT 2025 trên Canvas từ lời giải này"
-                                    >
-                                      <IcoPractice size={14} />
-                                      <span className="ds-btn-text">Quiz 2025</span>
-                                    </button>
-                                  )}
-
-                                  {isSubstantial && (
-                                    <button
-                                      className="ds-action-btn ds-action-desktop-only"
+                                      className="ds-action-icon-btn"
                                       onClick={() => handleExportMsgDocx(m.text, i)}
                                       disabled={exportingDocxIdx === i}
                                       type="button"
-                                      title="Xuất câu trả lời ra tệp Word (.docx) chuẩn đẹp"
+                                      title="Tải tệp Word (.docx)"
+                                      aria-label="Tải tệp Word"
                                     >
                                       <IcoDownload size={14} />
-                                      <span className="ds-btn-text">{exportingDocxIdx === i ? 'Đang xuất...' : 'Tải Word'}</span>
                                     </button>
                                   )}
 
                                   {isLast && !loading && (
                                     <button
-                                      className="ds-action-btn ds-action-desktop-only"
+                                      className="ds-action-icon-btn"
                                       onClick={() => regenerate(false)}
                                       type="button"
                                       title="Tạo lại câu trả lời"
+                                      aria-label="Tạo lại câu trả lời"
                                     >
                                       <IcoRefresh size={14} />
-                                      <span className="ds-btn-text">Tạo lại</span>
                                     </button>
                                   )}
 
@@ -3280,50 +3266,33 @@ export default function AIChat({ onExit }) {
                                   )}
                                 </div>
 
-                                {/* Đa phương pháp giải 1 chạm (Photomath) + Smart Follow-up Chips — chỉ hiện với câu trả lời học thuật thực sự */}
+                                {/* Gộp toàn bộ gợi ý & đổi phương pháp thành 1 hàng chip siêu gọn duy nhất */}
                                 {isLast && !loading && isSubstantial && (
-                                  <div className="elec-post-actions">
-                                    {isSolve && (
-                                      <div className="elec-method-strip" aria-label="Đổi phương pháp giải nhanh">
-                                        <span className="elec-method-lbl">Cách khác:</span>
-                                        {[
-                                          { label: 'Tự luận SGK', prompt: 'Hãy trình bày lại bài vừa rồi theo chuẩn tự luận SGK chi tiết nhất (đủ dữ kiện, công thức, đơn vị chuẩn chấm điểm).' },
-                                          { label: 'Giải nhanh 15s', prompt: 'Hãy chỉ cách giải siêu tốc trắc nghiệm trong 15 giây (dùng bảo toàn, đường tròn lượng giác hoặc mẹo loại trừ) cho bài vừa rồi.' },
-                                          { label: 'Bấm máy Casio', prompt: 'Hướng dẫn từng phím bấm máy tính Casio fx-580VN X / 880BTG để ra nhanh đáp số bài vừa rồi (nếu áp dụng được).' },
-                                        ].map((mm) => (
-                                          <button
-                                            key={mm.label}
-                                            type="button"
-                                            className="elec-method-pill"
-                                            onClick={() => send(mm.prompt)}
-                                          >
-                                            {mm.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                    <div className="gm-followups" aria-label="Gợi ý hỏi tiếp">
-                                      {[
-                                        {
-                                          label: 'Luyện 5 câu Canvas (THPT 2025)',
-                                          prompt: 'Từ kiến thức vừa trao đổi, hãy tạo ngay 5 câu luyện tập chuẩn đề thi THPT Quốc gia 2025 trên Canvas tương tác (phối hợp cả Phần I Trắc nghiệm A-D, Phần II Đúng/Sai 4 ý và Phần III Trả lời ngắn) kèm lời giải soi bẫy chi tiết.',
-                                          isQuizCta: true,
-                                        },
-                                        { label: 'Tóm tắt công thức lõi', prompt: 'Tóm tắt ngắn gọn các công thức cốt lõi và kết luận quan trọng nhất từ lời giải trên.' },
-                                        { label: 'Soi bẫy hay sai nhất', prompt: 'Chỉ ra 3 lỗi sai và bẫy đề thi học sinh dễ mắc nhất ở dạng bài này.' },
-                                      ].map((fu) => (
-                                        <button
-                                          key={fu.label}
-                                          type="button"
-                                          className={`gm-followup-chip ${fu.isQuizCta ? 'is-quiz-cta' : ''}`}
-                                          onClick={() => send(fu.prompt)}
-                                        >
-                                          <span>{fu.label}</span>
-                                          <span aria-hidden="true">→</span>
-                                        </button>
-                                      ))}
-                                    </div>
+                                  <div className="gm-followups gm-followups-compact" aria-label="Hành động nhanh và gợi ý hỏi tiếp">
+                                    {[
+                                      {
+                                        label: '+ Quiz 5 câu',
+                                        prompt: 'Từ kiến thức vừa trao đổi, hãy tạo ngay 5 câu luyện tập chuẩn đề thi THPT Quốc gia 2025 trên Canvas tương tác (phối hợp cả Phần I Trắc nghiệm A-D, Phần II Đúng/Sai 4 ý và Phần III Trả lời ngắn) kèm lời giải soi bẫy chi tiết.',
+                                        isQuizCta: true,
+                                      },
+                                      ...(isSolve
+                                        ? [
+                                            { label: 'Giải nhanh 15s', prompt: 'Hãy chỉ cách giải siêu tốc trắc nghiệm trong 15 giây (dùng bảo toàn, đường tròn lượng giác hoặc mẹo loại trừ) cho bài vừa rồi.' },
+                                            { label: 'Bấm Casio', prompt: 'Hướng dẫn từng phím bấm máy tính Casio fx-580VN X / 880BTG để ra nhanh đáp số bài vừa rồi (nếu áp dụng được).' },
+                                          ]
+                                        : []),
+                                      { label: 'Công thức lõi', prompt: 'Tóm tắt ngắn gọn các công thức cốt lõi và kết luận quan trọng nhất từ lời giải trên.' },
+                                      { label: 'Soi bẫy đề', prompt: 'Chỉ ra 3 lỗi sai và bẫy đề thi học sinh dễ mắc nhất ở dạng bài này.' },
+                                    ].map((fu) => (
+                                      <button
+                                        key={fu.label}
+                                        type="button"
+                                        className={`gm-followup-chip ${fu.isQuizCta ? 'is-quiz-cta' : ''}`}
+                                        onClick={() => send(fu.prompt)}
+                                      >
+                                        <span>{fu.label}</span>
+                                      </button>
+                                    ))}
                                   </div>
                                 )}
                               </>
