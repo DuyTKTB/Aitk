@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CHEM_TOPICS } from '../src/data/chemTopics.js';
+import { CURRICULUM_NODES } from '../src/data/curriculumDag.js';
 import {
   BUILTIN_TOPICS,
   builtinRaw,
@@ -11,14 +12,30 @@ import {
   shuffleOptions,
   isBuiltinId,
 } from '../src/data/roadmapExercises.js';
+import { buildStratifiedDiagnosticQuestions } from '../src/components/roadmap/DiagnosticTestModal.jsx';
 import { loadPracticeQuestions, loadQuestionsByIds, loadReviewQuestions } from '../src/lib/roadmapEvidence.js';
 
 describe('roadmapExercises — ngân hàng câu hỏi biên soạn sẵn', () => {
-  it('bao phủ đủ 100% chuyên đề trong CHEM_TOPICS (22 chuyên đề) và toàn bộ KHTN (36 chuyên đề)', () => {
+  it('bao phủ đủ 100% chuyên đề trong CHEM_TOPICS (22) và toàn bộ 49 chuyên đề KHTN (Hóa 22 · Lý 14 · Sinh 13)', () => {
     const topicIds = CHEM_TOPICS.map((t) => t.id);
     expect(topicIds.every((id) => BUILTIN_TOPICS.includes(id))).toBe(true);
-    expect(BUILTIN_TOPICS.length).toBeGreaterThanOrEqual(36);
-    expect(builtinCount()).toBeGreaterThanOrEqual(36 * 8);
+    const allDagIds = CURRICULUM_NODES.map((n) => n.id);
+    expect(allDagIds.every((id) => BUILTIN_TOPICS.includes(id))).toBe(true);
+    expect(BUILTIN_TOPICS.length).toBeGreaterThanOrEqual(49);
+    expect(builtinCount()).toBeGreaterThanOrEqual(49 * 8);
+  });
+
+  it('buildStratifiedDiagnosticQuestions rải đều qua tất cả các chương và không bao giờ trộn nhầm môn học', () => {
+    const bioIds = CURRICULUM_NODES.filter((n) => n.subject === 'sinh').map((n) => n.id);
+    const bioQs = buildStratifiedDiagnosticQuestions(bioIds, 25, { subjectKey: 'sinh', focusMode: 'balanced' });
+    expect(bioQs).toHaveLength(25);
+    // Tất cả câu đều thuộc môn Sinh (không có câu Hóa c10/c11/c12)
+    expect(bioQs.every((q) => bioIds.includes(q.topicId))).toBe(true);
+    // Phủ qua đủ cả 13 chương Sinh học (không bị dồn 12 câu vào Chương 1)
+    const coveredTopics = new Set(bioQs.map((q) => q.topicId));
+    expect(coveredTopics.size).toBe(bioIds.length);
+    // Không còn tiền tố [Trọng tâm SGK mới] thô kệch ở đầu câu hỏi
+    expect(bioQs.every((q) => !q.q.startsWith('['))).toBe(true);
   });
 
   it('mỗi chuyên đề có trọng tâm, lỗi hay gặp và đủ 3 mức độ NB/TH/VD', () => {

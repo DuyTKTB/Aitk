@@ -14,6 +14,8 @@
    Thể tích khí ở điều kiện chuẩn (đkc, 25 °C, 1 bar): 24,79 L/mol.
    ============================================================ */
 
+import { EXPANSION_BANK, EXPANSION_SKILL_TAGS } from './roadmapExercisesExpansion.js';
+
 export const LEVEL_META = {
   nb: { label: 'Nhận biết', short: 'NB', tone: 'ok' },
   th: { label: 'Thông hiểu', short: 'TH', tone: 'acc' },
@@ -982,7 +984,7 @@ const BANK = {
       ['vd', 'Nếu một bậc dinh dưỡng tích lũy được $2 \\cdot 10^6\\text{ kcal}$, theo quy luật hiệu suất sinh thái khoảng 10%, năng lượng chuyển lên bậc dinh dưỡng kế tiếp là', ['$2 \\cdot 10^5\\text{ kcal}$', '$2 \\cdot 10^4\\text{ kcal}$', '$10^6\\text{ kcal}$', '$2 \\cdot 10^3\\text{ kcal}$'], 'Hiệu suất sinh thái $\\approx 10\\% \\implies 2 \\cdot 10^6 \\times 0{,}10 = 2 \\cdot 10^5\\text{ kcal}$.'],
     ],
   },
-
+  ...EXPANSION_BANK,
 };
 
 /* ============================================================
@@ -1036,17 +1038,14 @@ const TOPIC_SKILL_TAGS = {
   'c12-metal-main': 'Kim loại Kiềm, Kiềm thổ, Nhôm & Nước cứng',
   'c12-transition': 'Kim loại chuyển tiếp dãy 1 & Phức chất',
   'c12-sustain': 'Hoá học xanh & Phát triển bền vững',
+  ...EXPANSION_SKILL_TAGS,
 };
 
-function enrichQuestionText(qText, level, idx) {
-  if (!qText || qText.startsWith('[')) return qText;
-  const prefix =
-    level === 'vd'
-      ? '[Vận dụng – Đề chuẩn THPTQG]'
-      : level === 'th'
-      ? (idx % 2 === 0 ? '[Thông hiểu – ĐGNL]' : '[Phân tích bản chất]')
-      : '[Trọng tâm SGK mới]';
-  return `${prefix} ${qText}`;
+function enrichQuestionText(qText) {
+  if (!qText) return '';
+  return String(qText)
+    .replace(/^\[(?:Trọng tâm SGK mới|Thông hiểu\s*[–-]\s*ĐGNL|Phân tích bản chất|Vận dụng\s*[–-]\s*Đề chuẩn THPTQG)\]\s*/i, '')
+    .trim();
 }
 
 function enrichExplanation(rawExplain, rightAnswer, topicId) {
