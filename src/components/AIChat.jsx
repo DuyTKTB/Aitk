@@ -2935,7 +2935,7 @@ export default function AIChat({ onExit }) {
                 <div className="elec-hero-anim-wrap" title="Bấm vào bình thí nghiệm ELEC AI để tạo hiệu ứng">
                   <AIMark
                     size={112}
-                    mode={deepThink ? 'think' : subjectLens === 'hoa' ? 'talk' : subjectLens === 'sinh' ? 'success' : 'idle'}
+                    mode={deepThink ? 'think' : 'idle'}
                     look
                     animate={visible}
                     effects="full"
@@ -3742,13 +3742,13 @@ export default function AIChat({ onExit }) {
                 {/* Nút Gia sư Socratic kiểu Khanmigo (Gợi mở từng bước, không giải hộ thụ động) */}
                 <button
                   type="button"
-                  className={'gm-tool-pill gm-socratic-pill' + (mode === 'steps' ? ' active' : '')}
+                  className={'gm-tool-pill gm-socratic-pill' + (mode === 'steps' ? ' active-studio' : '')}
                   onClick={() => setMode((m) => (m === 'steps' ? 'auto' : 'steps'))}
                   aria-pressed={mode === 'steps'}
                   title="Chế độ Gia sư Socratic (kiểu Khanmigo): Gợi mở từng bước tư duy kèm thẻ tự kiểm tra thay vì đưa đáp án cuối ngay"
                 >
                   <IcoSparkle size={14} />
-                  <span>Gia sư Socratic</span>
+                  <span>Socratic</span>
                 </button>
 
                 <button

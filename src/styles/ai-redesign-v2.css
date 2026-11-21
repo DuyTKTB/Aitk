@@ -1221,25 +1221,13 @@ body.on-ai-page .ds-page.elec-studio {
   color: var(--elec-ink) !important;
 }
 
-body.on-ai-page .ds-page.elec-studio.lens-ly {
-  --elec-accent: #4f46e5;
-  --elec-accent-2: #6366f1;
-  --elec-accent-soft: rgba(79, 70, 229, 0.11);
-  --elec-ambient: rgba(99, 102, 241, 0.16);
-}
-
-body.on-ai-page .ds-page.elec-studio.lens-hoa {
-  --elec-accent: #0284c7;
-  --elec-accent-2: #06b6d4;
-  --elec-accent-soft: rgba(2, 132, 199, 0.11);
-  --elec-ambient: rgba(6, 182, 212, 0.16);
-}
-
+body.on-ai-page .ds-page.elec-studio.lens-ly,
+body.on-ai-page .ds-page.elec-studio.lens-hoa,
 body.on-ai-page .ds-page.elec-studio.lens-sinh {
-  --elec-accent: #059669;
-  --elec-accent-2: #10b981;
-  --elec-accent-soft: rgba(5, 150, 105, 0.11);
-  --elec-ambient: rgba(16, 185, 129, 0.15);
+  --elec-accent: #2563eb;
+  --elec-accent-2: #3b82f6;
+  --elec-accent-soft: rgba(37, 99, 235, 0.11);
+  --elec-ambient: rgba(59, 130, 246, 0.16);
 }
 
 [data-theme='dark'] body.on-ai-page .ds-page.elec-studio {
@@ -1261,22 +1249,12 @@ body.on-ai-page .ds-page.elec-studio.lens-sinh {
   color: var(--elec-ink) !important;
 }
 
-[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-ly {
-  --elec-accent: #818cf8;
-  --elec-accent-soft: rgba(129, 140, 248, 0.15);
-  --elec-ambient: rgba(99, 102, 241, 0.18);
-}
-
-[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-hoa {
-  --elec-accent: #38bdf8;
-  --elec-accent-soft: rgba(56, 189, 248, 0.15);
-  --elec-ambient: rgba(14, 165, 233, 0.18);
-}
-
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-ly,
+[data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-hoa,
 [data-theme='dark'] body.on-ai-page .ds-page.elec-studio.lens-sinh {
-  --elec-accent: #34d399;
-  --elec-accent-soft: rgba(52, 211, 153, 0.15);
-  --elec-ambient: rgba(16, 185, 129, 0.16);
+  --elec-accent: #60a5fa;
+  --elec-accent-soft: rgba(96, 165, 250, 0.15);
+  --elec-ambient: rgba(56, 189, 248, 0.18);
 }
 
 /* 2. FLOATING ROUNDED SIDEBAR & MAIN SHEET (BO TRÒN MỀM MẠI KIỂU KÍNH MÂY) */
@@ -1740,10 +1718,43 @@ body.on-ai-page .ds-page.elec-studio textarea.gm-textarea::placeholder {
   opacity: 0.78;
 }
 
-/* Toolbar bên trong Composer: Toàn bộ nút bo tròn 999px êm ái */
+/* Toolbar bên trong Composer: Toàn bộ nút bo tròn 999px êm ái, 100% nằm gọn trong khung */
+body.on-ai-page .ds-page.elec-studio .gm-composer-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-composer-left {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+}
+body.on-ai-page .ds-page.elec-studio .gm-composer-left::-webkit-scrollbar {
+  display: none !important;
+}
+
+body.on-ai-page .ds-page.elec-studio .gm-composer-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+}
+
 body.on-ai-page .ds-page.elec-studio .gm-tool-circle {
-  width: 34px !important;
-  height: 34px !important;
+  width: 31px !important;
+  height: 31px !important;
+  flex-shrink: 0 !important;
   border-radius: 999px !important;
   color: var(--elec-muted) !important;
 }
@@ -1759,13 +1770,14 @@ body.on-ai-page .ds-page.elec-studio .gm-tool-circle:hover {
 }
 
 body.on-ai-page .ds-page.elec-studio .gm-tool-pill {
-  height: 32px !important;
-  padding: 0 12px !important;
+  height: 31px !important;
+  padding: 0 9px !important;
   border-radius: 999px !important;
-  font-size: 0.77rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   color: var(--elec-muted) !important;
-  gap: 5px !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
 }
 
 body.on-ai-page .ds-page.elec-studio .gm-tool-pill:hover {
