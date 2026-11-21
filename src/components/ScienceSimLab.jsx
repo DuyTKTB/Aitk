@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import PhysicsInquiryWorkbench from '../features/physics/PhysicsInquiryWorkbench.jsx';
+import '../features/physics/physics-lab.css';
 import '../styles/science-sim-lab.css';
 
 /* ============================================================
@@ -929,6 +931,9 @@ export default function ScienceSimLab({ onNavigate }) {
           </div>
         </div>
       )}
+
+      {/* INQ-ITS TELEMETRY · GIZMOS EXPLORATION · CER RUBRIC STUDIO */}
+      <PhysicsInquiryWorkbench simId={activeTab} />
     </div>
   );
 }

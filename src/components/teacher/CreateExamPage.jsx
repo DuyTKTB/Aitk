@@ -13,6 +13,8 @@ import ExamCreateForm from './ExamCreateForm.jsx';
 import AutoExamStudio from './AutoExamStudio.jsx';
 import ExamImporter from './ExamImporter.jsx';
 import TeacherVipLock from './TeacherVipLock.jsx';
+import TeacherPedagogyWorkbench from './TeacherPedagogyWorkbench.jsx';
+import EssayRubricGrader from './EssayRubricGrader.jsx';
 import { createExam } from '../../lib/classroom.js';
 import { clearDraft } from '../../lib/examAiUtils.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -329,6 +331,24 @@ export default function CreateExamPage({
             </span>
           ) : ''}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'pedagogy'}
+          className={'cep-tab' + (tab === 'pedagogy' ? ' on' : '')}
+          onClick={() => setTab('pedagogy')}
+        >
+          <IcoDoc size={15} /> Giáo án CV 5512 &amp; Ma trận 7991
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'rubric'}
+          className={'cep-tab' + (tab === 'rubric' ? ' on' : '')}
+          onClick={() => setTab('rubric')}
+        >
+          <IcoSparkle size={15} /> Chấm Tự luận Rubric AI
+        </button>
       </div>
 
       {/* ===== BẢN NHÁP CHƯA LƯU ===== */}
@@ -469,6 +489,14 @@ export default function CreateExamPage({
             onUpgrade={onRequestUpgrade}
           />
         )}
+      </div>
+
+      <div hidden={tab !== 'pedagogy'}>
+        <TeacherPedagogyWorkbench />
+      </div>
+
+      <div hidden={tab !== 'rubric'}>
+        <EssayRubricGrader />
       </div>
     </div>
   );

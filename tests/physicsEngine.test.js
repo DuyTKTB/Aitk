@@ -107,7 +107,7 @@ describe('ELEC Physics Studio Engine — Kiểm thử chính xác 7 phân hệ V
 
   it('7. Inq-ITS Rex Telemetry & CER Rubric Grader: kiểm định Kiểm soát biến & chấm báo cáo CER 10đ', () => {
     const simIds = Object.keys(INQUIRY_LAB_CONFIGS);
-    expect(simIds).toHaveLength(7);
+    expect(simIds).toHaveLength(11);
 
     const projCfg = INQUIRY_LAB_CONFIGS.projectile;
     expect(projCfg.missions).toHaveLength(3);

@@ -5,6 +5,8 @@ import {
   IconNote, IconTarget, IconQuiz, IconChart, IconGamepad,
   IconSun, IconMoon,
 } from './Icons.jsx';
+import { ROADMAP_EXERCISES } from '../data/roadmapExercises.js';
+import { askAI } from './HomePlus.jsx';
 import './CommandPalette.css';
 
 /* ============================================================
@@ -129,7 +131,15 @@ const COMMANDS = [
   { id: 'tools',         group: 'Điều hướng', label: 'Bộ công cụ Khoa học Tự nhiên', Icon: IconTools, keywords: 'tools cong cu khtn' },
   { id: 'profile',       group: 'Điều hướng', label: 'Trang cá nhân & Tiến độ', Icon: IconUser,      keywords: 'profile ca nhan' },
 
-  // ── Môn Vật lí ──
+  // ── Môn Vật lí & Phòng Thí Nghiệm Ảo 60fps (Inq-ITS & CER) ──
+  { id: 'physics-lab?sim=projectile', group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 01: Chuyển động Ném xiên & Lực cản (Inq-ITS)', Icon: IcoPhysics, keywords: 'physics lab nem xien quy dao parabol tam xa inq-its cer' },
+  { id: 'physics-lab?sim=circuit',    group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 02: Lắp ráp Mạch điện DC & Định luật Ohm', Icon: IcoPhysics, keywords: 'physics lab mach dien dc dinh luat ohm cong suat cuc dai' },
+  { id: 'physics-lab?sim=optics',     group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 03: Quang hình học, Thấu kính & Khúc xạ Snell', Icon: IcoPhysics, keywords: 'physics lab quang hinh thau kinh hoi tu phan ky khuc xa' },
+  { id: 'physics-lab?sim=wave',       group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 04: Sóng cơ 2D & Giao thoa hai nguồn kết hợp', Icon: IcoPhysics, keywords: 'physics lab song co giao thoa hai nguon cuc dai cuc tieu' },
+  { id: 'physics-lab?sim=mechanics',  group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 05: Cơ học 2D, Động lượng & Va chạm đàn hồi', Icon: IcoPhysics, keywords: 'physics lab va cham dan hoi mem bao toan dong luong' },
+  { id: 'physics-lab?sim=pendulum',   group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 06: Con lắc kép Hỗn loạn (Chaos RK4)', Icon: IcoPhysics, keywords: 'physics lab con lac kep chaos rk4 hieu ung canh buom' },
+  { id: 'physics-lab?sim=olympiad',   group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng 07: Thí nghiệm Vật lí 8–12 & Hồi quy OLS Olympiad', Icon: IcoPhysics, keywords: 'physics lab olympiad hoi quy tuyen tinh ols archimedes' },
+  { id: 'sim-lab',                    group: 'Phòng Lab Vật lí 60fps', label: 'Mô phỏng Mạch xoay chiều RLC, Khe Y-âng, ADN & Menđen', Icon: IcoFlask, keywords: 'sim lab mach rlc giao thoa yang adn phien ma dich ma punnett menden' },
   { id: 'formulas?subject=ly', group: 'Môn Vật lí', label: 'Sổ tay công thức Vật lí (Cơ, Sóng, Điện, Quang)', Icon: IcoPhysics, keywords: 'vat ly cong thuc dao dong song dien xoay chieu quang hoc hat nhan' },
   { id: 'tools?subject=ly',    group: 'Môn Vật lí', label: 'Máy tính Vật lí: Dao động điều hòa & Mạch RLC', Icon: IconCalc, keywords: 'may tinh vat ly con lac lo xo don mach rlc tong tro tan so' },
   { id: 'virtual-exams?subject=ly', group: 'Môn Vật lí', label: 'Đề thi thử THPT Quốc Gia môn Vật lí', Icon: IconQuiz, keywords: 'de thi vat ly thptqg 2026 2027 trac nghiem' },
@@ -182,6 +192,31 @@ const COMMANDS = [
 /* Bỏ dấu + hạ chữ thường: gõ "lo trinh" hay "lộ trình" đều ra, gõ "elecai" khớp "ELECAI" */
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+/* Chỉ mục Kho câu hỏi [ELEC-ID] toàn cục (49 chương KHTN) — Tra cứu kiểu Moon.vn */
+const QUESTION_INDEX = (() => {
+  const list = [];
+  if (!ROADMAP_EXERCISES || typeof ROADMAP_EXERCISES !== 'object') return list;
+  for (const [topicId, data] of Object.entries(ROADMAP_EXERCISES)) {
+    const qs = data?.questions || [];
+    qs.forEach((item, idx) => {
+      const code = String(item.id || `${topicId}-q${idx + 1}`).toUpperCase();
+      const qClean = String(item.q || '').replace(/\$+/g, '');
+      const correctOpt = Array.isArray(item.options) ? item.options[item.correct] : '';
+      list.push({
+        id: `elecid:${code}`,
+        code,
+        topicId,
+        group: 'Kho câu hỏi [ELEC-ID]',
+        label: `[ID: ${code}] ${qClean.slice(0, 78)}${qClean.length > 78 ? '…' : ''}`,
+        keywords: `${code} ${topicId} ${qClean} ${item.tag || ''}`,
+        Icon: IconQuiz,
+        prompt: `Giải chi tiết và phân tích bẫy câu hỏi [ID: ${code}] (${item.tag || topicId}):\n"${item.q}"\nCác phương án: ${(item.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join(' | ')}\n(Đáp án chuẩn hệ thống: ${correctOpt || ''})`,
+      });
+    });
+  }
+  return list;
+})();
 
 /* Điểm khớp: nhãn bắt đầu bằng từ khoá > nhãn chứa > từ khoá phụ > tên nhóm */
 function scoreOf(cmd, q) {
@@ -241,15 +276,26 @@ export default function CommandPalette() {
     return undefined;
   }, [open]);
 
-  /* ---------- Lọc commands ---------- */
+  /* ---------- Lọc commands + Tra cứu Mã câu hỏi [ELEC-ID] ---------- */
   const filtered = useMemo(() => {
     const q = norm(query).trim();
     if (!q) return COMMANDS;
-    return COMMANDS
+    const cmdMatches = COMMANDS
       .map((c, i) => ({ c, i, s: scoreOf(c, q) }))
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s || a.i - b.i)
       .map((x) => x.c);
+
+    if (q.length < 2) return cmdMatches;
+
+    const qMatches = QUESTION_INDEX
+      .map((item, i) => ({ c: item, i, s: scoreOf(item, q) }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s || a.i - b.i)
+      .slice(0, 5)
+      .map((x) => x.c);
+
+    return [...cmdMatches, ...qMatches];
   }, [query]);
 
   /* ---------- Nhóm theo group; danh sách phẳng khớp ĐÚNG thứ tự hiển thị
@@ -300,6 +346,11 @@ export default function CommandPalette() {
       const pool = COMMANDS.filter((c) => !c.id.startsWith('action:'));
       const rand = pool[Math.floor(Math.random() * pool.length)];
       window.location.hash = rand.id;
+      return;
+    }
+
+    if (cmd.id.startsWith('elecid:') && cmd.prompt) {
+      askAI(cmd.prompt);
       return;
     }
 
