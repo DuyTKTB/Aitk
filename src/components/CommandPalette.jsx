@@ -5,7 +5,7 @@ import {
   IconNote, IconTarget, IconQuiz, IconChart, IconGamepad,
   IconSun, IconMoon,
 } from './Icons.jsx';
-import { ROADMAP_EXERCISES } from '../data/roadmapExercises.js';
+import { BUILTIN_TOPICS, builtinRaw, ROADMAP_EXERCISES } from '../data/roadmapExercises.js';
 import { askAI } from './HomePlus.jsx';
 import './CommandPalette.css';
 

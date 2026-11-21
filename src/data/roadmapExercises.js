@@ -1157,3 +1157,14 @@ export function chapterGuide(topicId) {
 }
 
 export const BUILTIN_TOPICS = Object.keys(BANK);
+
+export const ROADMAP_EXERCISES = Object.fromEntries(
+  Object.keys(ALL).map((topicId) => [
+    topicId,
+    {
+      points: BANK[topicId]?.points || [],
+      mistakes: BANK[topicId]?.mistakes || [],
+      questions: ALL[topicId] || [],
+    },
+  ])
+);
