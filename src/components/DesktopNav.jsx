@@ -15,13 +15,82 @@ import {
   IconCalendar, IconTarget, IconQuiz, IconGamepad, IcoBook,
 } from './Icons.jsx';
 
-/* ============ CUSTOM SVG ICONS (100% SVG THUẦN, ZERO EMOJI) ============ */
+/* ============ APPLE SF-SYMBOLS × LINEAR DUOTONE SVG ICONS (100% VECTOR, ZERO BLUR) ============ */
+const NavIconHome = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+    <path
+      d="M4.5 10.6 12 4.2l7.5 6.4V19a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-8.4Z"
+      fill="currentColor"
+      fillOpacity="0.14"
+    />
+    <path
+      d="M3.5 11.2 12 4l8.5 7.2M5.5 9.8V19a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V9.8M9.75 21v-5.2a1.25 1.25 0 0 1 1.25-1.25h2a1.25 1.25 0 0 1 1.25 1.25V21"
+      stroke="currentColor"
+      strokeWidth="1.85"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const NavIconExam = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+    <rect x="4.5" y="3.5" width="15" height="17" rx="3.2" fill="currentColor" fillOpacity="0.14" />
+    <rect x="4.5" y="3.5" width="15" height="17" rx="3.2" stroke="currentColor" strokeWidth="1.85" />
+    <path
+      d="m9 11.8 2.1 2.1 4.2-4.3M8.5 7.5h7M8.5 16.8h4.5"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const NavIconAi = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+    <path
+      d="M12 2.8 14.3 8.5 20 10.8 14.3 13.1 12 18.8 9.7 13.1 4 10.8 9.7 8.5 12 2.8Z"
+      fill="currentColor"
+      fillOpacity="0.18"
+      stroke="currentColor"
+      strokeWidth="1.85"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M18.8 16.2 19.7 18.3 21.8 19.2 19.7 20.1 18.8 22.2 17.9 20.1 15.8 19.2 17.9 18.3 18.8 16.2Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const NavIconRoadmap = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+    <circle cx="6.5" cy="6.5" r="2.8" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.85" />
+    <circle cx="17.5" cy="17.5" r="2.8" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.85" />
+    <path
+      d="M9.3 6.5h4.2a3.5 3.5 0 0 1 0 7h-3a3.5 3.5 0 0 0 0 4h4.2"
+      stroke="currentColor"
+      strokeWidth="1.85"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const IconClass = ({ size = 16, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-    className={`anim-ico-svg anim-ico-class ${className}`} aria-hidden="true">
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={`nav-svg-pro ${className}`}>
+    <path d="M12 4.5 2.8 9.2 12 13.9l9.2-4.7L12 4.5Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.85" strokeLinejoin="round" />
+    <path d="M6.2 11.5v4.8c0 1.8 2.6 3.3 5.8 3.3s5.8-1.5 5.8-3.3v-4.8M21.2 9.4v5.8" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const NavIconGridTools = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+    <rect x="3.5" y="3.5" width="7.2" height="7.2" rx="2.2" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.85" />
+    <rect x="13.3" y="3.5" width="7.2" height="7.2" rx="2.2" stroke="currentColor" strokeWidth="1.85" />
+    <rect x="3.5" y="13.3" width="7.2" height="7.2" rx="2.2" stroke="currentColor" strokeWidth="1.85" />
+    <rect x="13.3" y="13.3" width="7.2" height="7.2" rx="2.2" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.85" />
   </svg>
 );
 
@@ -212,9 +281,9 @@ export const SUBJECT_TOOL_GROUPS = [
     id: 'ly',
     title: 'Môn Vật lí',
     badge: 'Tệp Vật lí',
-    color: '#7c3aed',
-    tintBg: 'rgba(124, 58, 237, 0.1)',
-    tintText: '#7c3aed',
+    color: '#2f6bff',
+    tintBg: 'rgba(47, 107, 255, 0.1)',
+    tintText: '#1d4ed8',
     Icon: IconPhysics,
     description: 'Phòng thí nghiệm Vật lí ảo 7 mô phỏng (Ném xiên, Mạch điện, Quang hình, Sóng 2D, Con lắc kép, Olympiad) & Sổ công thức GDPT 2018',
     tools: [
@@ -301,9 +370,9 @@ export const SUBJECT_TOOL_GROUPS = [
     id: 'sinh',
     title: 'Môn Sinh học',
     badge: 'Tệp Sinh học',
-    color: '#059669',
-    tintBg: 'rgba(5, 150, 105, 0.1)',
-    tintText: '#059669',
+    color: '#2f6bff',
+    tintBg: 'rgba(47, 107, 255, 0.1)',
+    tintText: '#1d4ed8',
     Icon: IconDna,
     description: 'Di truyền Men-đen, Cấu trúc ADN & Cân bằng định luật Hardy - Weinberg',
     tools: [
@@ -416,10 +485,10 @@ export const SUBJECT_TOOL_GROUPS = [
 ];
 
 const FOLDER_TABS = [
-  { id: 'suite', label: 'Tiện ích Học tập', Icon: IconSparkles, color: '#2563eb', mascot: '/img/elec/elec-celebrate.png' },
-  { id: 'hoa', label: 'Môn Hóa học', Icon: IconFlask, color: '#0284c7', mascot: '/img/elec/elec-think.png' },
-  { id: 'ly', label: 'Môn Vật lí', Icon: IconPhysics, color: '#7c3aed', mascot: '/img/elec/elec-fighting.png' },
-  { id: 'sinh', label: 'Môn Sinh học', Icon: IconDna, color: '#059669', mascot: '/img/elec/elec-happy.png' },
+  { id: 'suite', label: 'Tiện ích Học tập', Icon: IconSparkles, color: '#2f6bff', mascot: '/img/elec/elec-celebrate.png' },
+  { id: 'hoa', label: 'Môn Hóa học', Icon: IconFlask, color: '#2f6bff', mascot: '/img/elec/elec-think.png' },
+  { id: 'ly', label: 'Môn Vật lí', Icon: IconPhysics, color: '#2f6bff', mascot: '/img/elec/elec-fighting.png' },
+  { id: 'sinh', label: 'Môn Sinh học', Icon: IconDna, color: '#2f6bff', mascot: '/img/elec/elec-happy.png' },
 ];
 
 const ALL_TOOL_IDS = SUBJECT_TOOL_GROUPS.flatMap((g) => g.tools.map((t) => t.id));
@@ -545,7 +614,7 @@ export default function DesktopNav({
             href="#home"
             className={'nav-item' + (page === 'home' ? ' active' : '')}
           >
-            <span className="nav-ico"><IconHome size={15} className="anim-ico-svg anim-ico-home" /></span>
+            <span className="nav-ico"><NavIconHome size={15} /></span>
             <span className="nav-label">Trang chủ</span>
           </a>
 
@@ -554,18 +623,18 @@ export default function DesktopNav({
             href="#virtual-exams"
             className={'nav-item ns9-nav-virtual-exam' + (page === 'quiz' || page === 'virtual-exams' ? ' active' : '')}
           >
-            <span className="nav-ico"><IconQuiz size={15} className="anim-ico-svg anim-ico-quiz anim-ico-cap" /></span>
+            <span className="nav-ico"><NavIconExam size={15} /></span>
             <span className="nav-label">Phòng thi ảo</span>
             <span className="ns9-nav-hot-badge" aria-hidden="true">HOT</span>
           </a>
 
-          {/* 3. Trợ lý AI KHTN (mở nhanh 1 chạm) */}
+          {/* 3. Trợ lý AI KHTN (mở nhanh 1 chạm — Vector Duotone sắc nét chuẩn Apple Intelligence) */}
           <a
             href="#ai"
             className={'nav-item' + (page === 'ai' ? ' active' : '')}
             title="Trợ lý AI giải bài tập Lý - Hóa - Sinh & Chấm nháp viết tay"
           >
-            <span className="nav-ico"><IconRobot size={15} className="anim-ico-svg anim-ico-robot" /></span>
+            <span className="nav-ico"><NavIconAi size={15} /></span>
             <span className="nav-label">ELEC AI</span>
           </a>
 
@@ -574,7 +643,7 @@ export default function DesktopNav({
             href="#roadmap"
             className={'nav-item nav-item-collapsible' + (page === 'roadmap' ? ' active' : '')}
           >
-            <span className="nav-ico"><IcoBook size={15} className="anim-ico-svg anim-ico-book anim-ico-roadmap" /></span>
+            <span className="nav-ico"><NavIconRoadmap size={15} /></span>
             <span className="nav-label">Lộ trình</span>
           </a>
 
@@ -584,7 +653,7 @@ export default function DesktopNav({
               href="#classroom"
               className={'nav-item nav-item-collapsible' + (page === 'classroom' ? ' active' : '')}
             >
-              <span className="nav-ico"><IconClass size={15} className="anim-ico-svg anim-ico-class" /></span>
+              <span className="nav-ico"><IconClass size={15} /></span>
               <span className="nav-label">Quản lý lớp</span>
             </a>
           ) : (
@@ -592,7 +661,7 @@ export default function DesktopNav({
               href="#my-classes"
               className={'nav-item nav-item-collapsible' + (page === 'my-classes' || page === 'classroom' ? ' active' : '')}
             >
-              <span className="nav-ico"><IconClass size={15} className="anim-ico-svg anim-ico-class" /></span>
+              <span className="nav-ico"><IconClass size={15} /></span>
               <span className="nav-label">Lớp học</span>
             </a>
           )}
@@ -642,7 +711,7 @@ export default function DesktopNav({
               aria-expanded={toolOpen}
               aria-label="Mở menu Công cụ theo môn Khoa học Tự nhiên"
             >
-              <span className="nav-ico"><IconTools size={15} className="anim-ico-svg anim-ico-tools" /></span>
+              <span className="nav-ico"><NavIconGridTools size={15} /></span>
               <span className="nav-label">Công cụ</span>
               <svg
                 width="11"
@@ -811,32 +880,40 @@ export default function DesktopNav({
           </div>
         </div>
 
-        {/* ============ CỤM PHẢI: STREAK + ĐIỂM AI + BỘ 4 ICON TIỆN ÍCH (SEARCH, THEME, BELL, AVATAR) ============ */}
+        {/* ============ CỤM PHẢI: STREAK + CREDIT + CAPSULE TIỆN ÍCH APPLE GLASS + AVATAR ============ */}
         <div className="nav-actions">
-          <NavStreakPopover
-            userId={user?.uid}
-            streakCount={streakCount}
-            hasStreakToday={hasStreakToday}
-          />
+          <div className="nav-status-hud">
+            <NavStreakPopover
+              userId={user?.uid}
+              streakCount={streakCount}
+              hasStreakToday={hasStreakToday}
+            />
 
-          {credits != null && (
-            <NavCreditPopover userId={user?.uid} credits={credits} />
-          )}
+            {credits != null && (
+              <NavCreditPopover userId={user?.uid} credits={credits} />
+            )}
+          </div>
 
-          {/* Cụm 4 nút tiện ích gọn đẹp: Tìm kiếm (SVG) • Đổi giao diện • Thông báo • Avatar */}
-          <div className="nav-actions-icons-cluster">
-            {/* 1. Nút Tìm kiếm nhanh dạng icon tròn SVG (bấm mở Command Palette / Ctrl K) */}
+          {/* Capsule Tiện ích Hợp nhất chuẩn Apple / Linear (Tìm kiếm Ctrl K · Sáng/Tối · Chat) */}
+          <div className="nav-actions-icons-cluster nav-utility-capsule">
+            {/* 1. Nút Tìm kiếm nhanh kèm phím tắt Ctrl K */}
             <button
               type="button"
-              className="nav-action-icon-btn nav-search-btn"
+              className="nav-action-icon-btn nav-search-btn nav-cmd-pill"
               onClick={onSearch}
               aria-label="Tìm nhanh toàn hệ thống (Ctrl K)"
-              title="Tìm nhanh toàn hệ thống (Ctrl K)"
+              title="Tìm nhanh câu hỏi [ELEC-ID], công thức, phòng lab (Ctrl K)"
             >
-              <IconSearch size={16} className="anim-ico-svg anim-ico-search" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+                <circle cx="11" cy="11" r="6.8" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="2" />
+                <path d="m20 20-3.8-3.8" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+              </svg>
+              <kbd className="nav-cmd-kbd">Ctrl K</kbd>
             </button>
 
-            {/* 2. Nút Đổi giao diện Sáng / Tối */}
+            <span className="nav-capsule-sep" aria-hidden="true" />
+
+            {/* 2. Nút Đổi giao diện Sáng / Tối (Duotone Apple SF-Symbols) */}
             <button
               type="button"
               className="nav-action-icon-btn nav-theme-btn"
@@ -845,20 +922,20 @@ export default function DesktopNav({
               title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
             >
               {theme === 'dark' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-sun" aria-hidden="true">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+                  <circle cx="12" cy="12" r="4.2" fill="currentColor" fillOpacity="0.22" stroke="currentColor" strokeWidth="1.9" />
+                  <path d="M12 2.5v2.2M12 19.3v2.2M4.93 4.93l1.55 1.55M17.52 17.52l1.55 1.55M2.5 12h2.2M19.3 12h2.2M4.93 19.07l1.55-1.55M17.52 6.48l1.55-1.55" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-moon" aria-hidden="true">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+                  <path d="M20.4 14.2A8.2 8.2 0 0 1 9.8 3.6a8.2 8.2 0 1 0 10.6 10.6Z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
                 </svg>
               )}
             </button>
 
-            {/* 3. Nút Chat cộng đồng học tập ELEC AI (Hỏi bài, thảo luận, giao lưu) */}
+            <span className="nav-capsule-sep" aria-hidden="true" />
+
+            {/* 3. Nút Chat cộng đồng học tập ELEC AI (Duotone iMessage Bubble) */}
             <button
               type="button"
               className="nav-action-icon-btn nav-companion-msg-btn"
@@ -866,22 +943,22 @@ export default function DesktopNav({
               aria-label="Chat cộng đồng học tập ELEC AI"
               title="Chat cộng đồng học tập ELEC AI (Hỏi bài, giao lưu & học nhóm)"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                <circle cx="8" cy="10" r="1.2" fill="currentColor" />
-                <circle cx="12" cy="10" r="1.2" fill="currentColor" />
-                <circle cx="16" cy="10" r="1.2" fill="currentColor" />
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="nav-svg-pro">
+                <path d="M20 14.5a2.5 2.5 0 0 1-2.5 2.5H7.2L3.5 20.5V6.5A2.5 2.5 0 0 1 6 4h11.5A2.5 2.5 0 0 1 20 6.5v8Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+                <circle cx="8.5" cy="10.5" r="1.1" fill="currentColor" />
+                <circle cx="12" cy="10.5" r="1.1" fill="currentColor" />
+                <circle cx="15.5" cy="10.5" r="1.1" fill="currentColor" />
               </svg>
             </button>
-
-            {/* 4. Menu Avatar cá nhân dạng Dropdown */}
-            <UserProfileNavDropdown
-              user={user}
-              page={page}
-              isTeacher={isTeacher}
-              onLogout={onLogout}
-            />
           </div>
+
+          {/* 4. Menu Avatar cá nhân dạng Dropdown */}
+          <UserProfileNavDropdown
+            user={user}
+            page={page}
+            isTeacher={isTeacher}
+            onLogout={onLogout}
+          />
         </div>
       </nav>
 
