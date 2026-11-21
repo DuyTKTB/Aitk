@@ -518,6 +518,18 @@ export default function DiagnosticTestModal({
               <div className="dsp-body">
                 <div className="dsp-qmeta-bar">
                   <div className="dsp-qmeta-left">
+                    <span
+                      className="dsp-ch-badge"
+                      style={{
+                        background: 'rgba(47, 107, 255, 0.12)',
+                        color: '#1d4ed8',
+                        fontFamily: 'var(--mono, monospace)',
+                        fontWeight: 800,
+                      }}
+                      title="Mã định danh câu hỏi toàn cục ELEC ID (Bấm để sao chép mã tra cứu)"
+                    >
+                      ID: {String(currentQ.id || `${effSubject}-${stepIdx + 1}`).toUpperCase()}
+                    </span>
                     <span className="dsp-ch-badge">
                       {chapterName(currentQ.topicId) || getChapterMeta(currentQ.topicId)?.title || subMeta.name}
                     </span>

@@ -693,6 +693,25 @@ export default function DedicatedLessonView({
             </button>
           </div>
 
+          {/* Nút mở nhanh Phòng thí nghiệm ảo tương tác 60fps của phân môn (Chuẩn CK-12 & PhET) */}
+          <button
+            type="button"
+            className="ns9-asp-guide-trigger"
+            onClick={() => {
+              if (currentSubject === 'ly') {
+                window.location.hash = '#physics-lab?sim=projectile';
+              } else if (currentSubject === 'sinh') {
+                window.location.hash = '#sim-lab';
+              } else {
+                window.location.hash = '#virtual-lab';
+              }
+            }}
+            title="Mở Phòng thí nghiệm ảo tương tác 60fps gắn với môn học này"
+          >
+            <IcoFlask size={14} />
+            <span>Phòng Lab Ảo ↗</span>
+          </button>
+
           {/* Nút mở nhanh máy tính Casio fx-580VN X ngay trong phòng học */}
           <button
             type="button"

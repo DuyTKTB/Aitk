@@ -160,6 +160,74 @@ const SLASH_COMMANDS = [
 ];
 
 /* ============================================================
+   DEEPEDU SGK GDPT 2018 & CK-12 VIRTUAL LAB SMART BRIDGE
+   ============================================================ */
+const SGK_LAB_BRIDGES = [
+  {
+    re: /(ném\s*xiên|ném\s*ngang|tầm\s*xa|quỹ\s*đạo\s*parabol|góc\s*ném)/i,
+    sgk: 'SGK Vật lí 10 · Chuyển động ném',
+    labLabel: 'Lab Ném xiên 60fps ↗',
+    labHash: '#physics-lab?sim=projectile',
+  },
+  {
+    re: /(định\s*luật\s*ohm|mạch\s*điện\s*một\s*chiều|suất\s*điện\s*động|điện\s*trở\s*trong|ghép\s*điện\s*trở)/i,
+    sgk: 'SGK Vật lí 11 · Dòng điện không đổi',
+    labLabel: 'Lab Mạch điện DC ↗',
+    labHash: '#physics-lab?sim=circuit',
+  },
+  {
+    re: /(thấu\s*kính|khúc\s*xạ|phản\s*xạ\s*toàn\s*phần|tiêu\s*cự|định\s*luật\s*snell|ảnh\s*thật|ảnh\s*ảo)/i,
+    sgk: 'SGK Vật lí 11 · Quang hình học',
+    labLabel: 'Lab Quang hình ↗',
+    labHash: '#physics-lab?sim=optics',
+  },
+  {
+    re: /(giao\s*thoa\s*sóng|sóng\s*cơ|bước\s*sóng|cực\s*đại\s*giao\s*thoa|hai\s*nguồn\s*kết\s*hợp)/i,
+    sgk: 'SGK Vật lí 11 · Sóng & Giao thoa',
+    labLabel: 'Lab Sóng 2D ↗',
+    labHash: '#physics-lab?sim=wave',
+  },
+  {
+    re: /(động\s*lượng|va\s*chạm\s*đàn\s*hồi|va\s*chạm\s*mềm|bảo\s*toàn\s*động\s*lượng)/i,
+    sgk: 'SGK Vật lí 10 · Động lượng & Va chạm',
+    labLabel: 'Lab Va chạm 2D ↗',
+    labHash: '#physics-lab?sim=mechanics',
+  },
+  {
+    re: /(con\s*lắc\s*đơn|con\s*lắc\s*kép|chu\s*kì\s*con\s*lắc|dao\s*động\s*điều\s*hòa)/i,
+    sgk: 'SGK Vật lí 11 · Dao động điều hòa',
+    labLabel: 'Lab Con lắc RK4 ↗',
+    labHash: '#physics-lab?sim=pendulum',
+  },
+  {
+    re: /(mạch\s*rlc|cộng\s*hưởng\s*điện|giản\s*đồ\s*fresnel|khe\s*y-âng|giao\s*thoa\s*ánh\s*sáng)/i,
+    sgk: 'SGK Vật lí 11–12 · Mạch RLC & Giao thoa Y-âng',
+    labLabel: 'Lab RLC & Y-âng ↗',
+    labHash: '#sim-lab',
+  },
+  {
+    re: /(phiên\s*mã|dịch\s*mã|đột\s*biến\s*gen|khung\s*punnett|quy\s*luật\s*men-?đen|di\s*truyền)/i,
+    sgk: 'SGK Sinh học 12 · Di truyền phân tử & Menđen',
+    labLabel: 'Lab ADN & Menđen ↗',
+    labHash: '#sim-lab',
+  },
+  {
+    re: /(este|xà\s*phòng\s*hóa|chuẩn\s*độ|điện\s*phân|pin\s*galvani|oxi\s*hóa\s*-\s*khử|24[.,]79)/i,
+    sgk: 'SGK Hóa học GDPT 2018 · Chuẩn đkc 24,79 L/mol',
+    labLabel: 'Phòng Lab Hóa 2D/3D ↗',
+    labHash: '#virtual-lab',
+  },
+];
+
+function detectRelatedLabAndTextbook(text) {
+  if (!text || text.length < 80) return null;
+  for (const item of SGK_LAB_BRIDGES) {
+    if (item.re.test(text)) return item;
+  }
+  return null;
+}
+
+/* ============================================================
    BỘ NHỚ ĐỆM SIÊU TỐC (CACHE) — CHỐNG LAG GIẬT KHI CHAT HOẶC GÕ PHÍM
    ============================================================ */
 const QUIZ_CACHE = new Map();
@@ -3267,34 +3335,49 @@ export default function AIChat({ onExit }) {
                                 </div>
 
                                 {/* Gộp toàn bộ gợi ý & đổi phương pháp thành 1 hàng chip siêu gọn duy nhất */}
-                                {isLast && !loading && isSubstantial && (
-                                  <div className="gm-followups gm-followups-compact" aria-label="Hành động nhanh và gợi ý hỏi tiếp">
-                                    {[
-                                      {
-                                        label: '+ Quiz 5 câu',
-                                        prompt: 'Từ kiến thức vừa trao đổi, hãy tạo ngay 5 câu luyện tập chuẩn đề thi THPT Quốc gia 2025 trên Canvas tương tác (phối hợp cả Phần I Trắc nghiệm A-D, Phần II Đúng/Sai 4 ý và Phần III Trả lời ngắn) kèm lời giải soi bẫy chi tiết.',
-                                        isQuizCta: true,
-                                      },
-                                      ...(isSolve
-                                        ? [
-                                            { label: 'Giải nhanh 15s', prompt: 'Hãy chỉ cách giải siêu tốc trắc nghiệm trong 15 giây (dùng bảo toàn, đường tròn lượng giác hoặc mẹo loại trừ) cho bài vừa rồi.' },
-                                            { label: 'Bấm Casio', prompt: 'Hướng dẫn từng phím bấm máy tính Casio fx-580VN X / 880BTG để ra nhanh đáp số bài vừa rồi (nếu áp dụng được).' },
-                                          ]
-                                        : []),
-                                      { label: 'Công thức lõi', prompt: 'Tóm tắt ngắn gọn các công thức cốt lõi và kết luận quan trọng nhất từ lời giải trên.' },
-                                      { label: 'Soi bẫy đề', prompt: 'Chỉ ra 3 lỗi sai và bẫy đề thi học sinh dễ mắc nhất ở dạng bài này.' },
-                                    ].map((fu) => (
-                                      <button
-                                        key={fu.label}
-                                        type="button"
-                                        className={`gm-followup-chip ${fu.isQuizCta ? 'is-quiz-cta' : ''}`}
-                                        onClick={() => send(fu.prompt)}
-                                      >
-                                        <span>{fu.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
+                                {isLast && !loading && isSubstantial && (() => {
+                                  const labBridge = detectRelatedLabAndTextbook(m.text);
+                                  return (
+                                    <div className="gm-followups gm-followups-compact" aria-label="Hành động nhanh và gợi ý hỏi tiếp">
+                                      {labBridge && (
+                                        <button
+                                          type="button"
+                                          className="gm-followup-chip is-quiz-cta"
+                                          onClick={() => {
+                                            window.location.hash = labBridge.labHash;
+                                          }}
+                                          title={`Đối chiếu ${labBridge.sgk} và mở phòng thí nghiệm ảo tương tác`}
+                                        >
+                                          <span>{labBridge.labLabel}</span>
+                                        </button>
+                                      )}
+                                      {[
+                                        {
+                                          label: '+ Quiz 5 câu',
+                                          prompt: 'Từ kiến thức vừa trao đổi, hãy tạo ngay 5 câu luyện tập chuẩn đề thi THPT Quốc gia 2025 trên Canvas tương tác (phối hợp cả Phần I Trắc nghiệm A-D, Phần II Đúng/Sai 4 ý và Phần III Trả lời ngắn) kèm lời giải soi bẫy chi tiết.',
+                                          isQuizCta: !labBridge,
+                                        },
+                                        ...(isSolve
+                                          ? [
+                                              { label: 'Giải nhanh 15s', prompt: 'Hãy chỉ cách giải siêu tốc trắc nghiệm trong 15 giây (dùng bảo toàn, đường tròn lượng giác hoặc mẹo loại trừ) cho bài vừa rồi.' },
+                                              { label: 'Bấm Casio', prompt: 'Hướng dẫn từng phím bấm máy tính Casio fx-580VN X / 880BTG để ra nhanh đáp số bài vừa rồi (nếu áp dụng được).' },
+                                            ]
+                                          : []),
+                                        { label: 'Công thức lõi', prompt: 'Tóm tắt ngắn gọn các công thức cốt lõi và kết luận quan trọng nhất từ lời giải trên.' },
+                                        { label: 'Soi bẫy đề', prompt: 'Chỉ ra 3 lỗi sai và bẫy đề thi học sinh dễ mắc nhất ở dạng bài này.' },
+                                      ].map((fu) => (
+                                        <button
+                                          key={fu.label}
+                                          type="button"
+                                          className={`gm-followup-chip ${fu.isQuizCta ? 'is-quiz-cta' : ''}`}
+                                          onClick={() => send(fu.prompt)}
+                                        >
+                                          <span>{fu.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
                               </>
                             );
                           })()}
@@ -3654,6 +3737,18 @@ export default function AIChat({ onExit }) {
                 >
                   <IcoBrain size={15} />
                   <span>DeepThink</span>
+                </button>
+
+                {/* Nút Gia sư Socratic kiểu Khanmigo (Gợi mở từng bước, không giải hộ thụ động) */}
+                <button
+                  type="button"
+                  className={'gm-tool-pill gm-socratic-pill' + (mode === 'steps' ? ' active' : '')}
+                  onClick={() => setMode((m) => (m === 'steps' ? 'auto' : 'steps'))}
+                  aria-pressed={mode === 'steps'}
+                  title="Chế độ Gia sư Socratic (kiểu Khanmigo): Gợi mở từng bước tư duy kèm thẻ tự kiểm tra thay vì đưa đáp án cuối ngay"
+                >
+                  <IcoSparkle size={14} />
+                  <span>Gia sư Socratic</span>
                 </button>
 
                 <button

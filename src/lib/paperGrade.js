@@ -286,7 +286,16 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
     else if (s >= 10) bins[bins.length - 1].count++;
   });
 
-  // Phân tích câu hỏi khó nhất Phần I
+  // Phân tích chất lượng câu hỏi Phần I theo Lý thuyết Khảo thí Cổ điển (CTT / IRT):
+  // - Độ khó p = Tỷ lệ làm đúng (0..1)
+  // - Độ phân cách D = P_nhóm_cao(27%) - P_nhóm_thấp(27%)
+  const rankedResults = [...results]
+    .filter((r) => typeof r.grade?.total10 === 'number')
+    .sort((a, b) => (b.grade.total10 || 0) - (a.grade.total10 || 0));
+  const groupSize = Math.max(1, Math.round(rankedResults.length * 0.27));
+  const upperGroup = rankedResults.slice(0, groupSize);
+  const lowerGroup = rankedResults.slice(Math.max(0, rankedResults.length - groupSize));
+
   const p1Questions = [];
   for (let q = 1; q <= counts.p1; q++) {
     let correctCount = 0;
@@ -299,7 +308,45 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
       }
     });
     const correctRate = totalAnswered ? Math.round((correctCount / totalAnswered) * 100) : 0;
-    p1Questions.push({ q, correctRate, correctCount, totalAnswered });
+    const pIndex = totalAnswered ? round2(correctCount / totalAnswered) : 0;
+
+    let upperCorrect = 0;
+    upperGroup.forEach((r) => {
+      const d = r.grade?.detail?.p1?.find((x) => x.q === q);
+      if (d?.ok) upperCorrect++;
+    });
+    let lowerCorrect = 0;
+    lowerGroup.forEach((r) => {
+      const d = r.grade?.detail?.p1?.find((x) => x.q === q);
+      if (d?.ok) lowerCorrect++;
+    });
+    const dIndex = rankedResults.length >= 2
+      ? round2(upperCorrect / groupSize - lowerCorrect / groupSize)
+      : 0.35;
+
+    let qualityLabel = 'Phân hóa tốt';
+    let qualityTone = 'good';
+    if (dIndex < 0.15) {
+      qualityLabel = 'Cần rà soát mồi nhử';
+      qualityTone = 'warn';
+    } else if (pIndex > 0.88) {
+      qualityLabel = 'Câu nhận biết dễ';
+      qualityTone = 'neutral';
+    } else if (pIndex < 0.25 && dIndex >= 0.25) {
+      qualityLabel = 'Câu vận dụng cao (8.5+)';
+      qualityTone = 'high';
+    }
+
+    p1Questions.push({
+      q,
+      correctRate,
+      correctCount,
+      totalAnswered,
+      pIndex,
+      dIndex,
+      qualityLabel,
+      qualityTone,
+    });
   }
 
   // Top 5 câu học sinh sai nhiều nhất
@@ -316,6 +363,7 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
     goodRate,
     bins,
     hardestP1,
+    itemQualityList: p1Questions.slice(0, Math.min(counts.p1 || 18, 18)),
   };
 }
 

@@ -33,7 +33,8 @@ const SCOPE = `PHẠM VI KIẾN THỨC — CHUYÊN SÂU KHOA HỌC TỰ NHIÊN (
 - MỞ RỘNG: câu hỏi ứng dụng đời sống, công nghệ, phương pháp nghiên cứu khoa học, kỹ năng học tập, định hướng nghề nghiệp khối ngành STEM — trả lời đầy đủ, chính xác.
 - KHÔNG từ chối với lý do chỉ hỗ trợ một môn đơn lẻ. Luôn hỗ trợ toàn diện cả Vật lí, Hóa học và Sinh học.
 - Nếu thực sự không biết: nói "Mình chưa chắc phần này" thay vì bịa.
-- Thuật ngữ và đơn vị dùng chuẩn theo SGK và GDPT Việt Nam (đktc = 0°C, 1 atm hoặc đkc = 25°C, 1 bar).`;
+- Thuật ngữ, danh pháp IUPAC và đơn vị dùng chuẩn theo Chương trình GDPT 2018 Việt Nam (điều kiện chuẩn đkc = 25°C, 1 bar với thể tích mol khí V = n × 24,79 L/mol; tuyệt đối không dùng số cũ 22,4).
+- Khi giải bài tập hoặc giải thích lý thuyết Vật lí - Hóa học - Sinh học, luôn ghi rõ bài toán thuộc Chương / Chuyên đề nào của SGK GDPT 2018 (Kết nối tri thức / Cánh diều / Chân trời sáng tạo) để học sinh dễ đối chiếu.`;
 
 /* ============ 3. NGUYÊN TẮC ĐỌC ẢNH ============ */
 const VISION_RULES = `NGUYÊN TẮC VÀNG — LUÔN LÀM TRƯỚC, HỎI SAU

@@ -7,6 +7,7 @@ import WaveInterferenceSim from './sims/WaveInterferenceSim.jsx';
 import Mechanics2DSim from './sims/Mechanics2DSim.jsx';
 import DoublePendulumSim from './sims/DoublePendulumSim.jsx';
 import OlympiadLabSim from './sims/OlympiadLabSim.jsx';
+import PhysicsInquiryWorkbench from './PhysicsInquiryWorkbench.jsx';
 import './physics-lab.css';
 
 const Casio580Widget = lazy(() => import('../../components/Casio580Widget.jsx'));
@@ -311,6 +312,7 @@ export default function PhysicsLabPage({ onNavigate }) {
           {activeId === 'mechanics' && <Mechanics2DSim onAskAI={handleAskAI} />}
           {activeId === 'pendulum' && <DoublePendulumSim onAskAI={handleAskAI} />}
           {activeId === 'olympiad' && <OlympiadLabSim onAskAI={handleAskAI} />}
+          <PhysicsInquiryWorkbench simId={activeId} onAskAI={handleAskAI} />
         </main>
       </div>
 

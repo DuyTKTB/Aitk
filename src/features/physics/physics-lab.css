@@ -866,3 +866,477 @@
   .pl-metrics-grid { grid-template-columns: 1fr; }
   .pl-metric.pl-span-2 { grid-column: span 1; }
 }
+
+
+/* ============================================================
+   INQ-ITS TELEMETRY · GIZMOS EXPLORATION · CER RUBRIC STUDIO
+   ============================================================ */
+.pl-inquiry-deck {
+  margin-top: 16px;
+  padding: 20px;
+  border-radius: 22px;
+  background: var(--pl-surface);
+  border: 1.5px solid var(--pl-border-strong);
+  box-shadow: var(--pl-shadow-sm);
+}
+
+.pl-inq-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--pl-border);
+}
+
+.pl-inq-kicker {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #2f6bff;
+  background: rgba(47, 107, 255, 0.1);
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 5px;
+}
+
+.pl-inq-brand h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 850;
+  color: #0b1938;
+  letter-spacing: -0.015em;
+}
+[data-theme='dark'] .pl-inq-brand h3 { color: #f0f5ff; }
+
+.pl-inq-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pl-inq-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8.5px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--pl-border-strong);
+  background: var(--pl-surface-alt);
+  color: #364572;
+  font-size: 12.4px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+[data-theme='dark'] .pl-inq-tab { color: #c7d7ff; }
+.pl-inq-tab:hover {
+  border-color: #2f6bff;
+  color: #1d4ed8;
+}
+.pl-inq-tab.is-active {
+  background: linear-gradient(135deg, #2f6bff, #1d4ed8);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 6px 18px -6px rgba(47, 107, 255, 0.5);
+}
+
+.pl-inq-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+}
+.pl-inq-dot.is-confounded { background: #ef4444; }
+.pl-inq-dot.is-insufficient,
+.pl-inq-dot.is-stagnant { background: #f59e0b; }
+
+.pl-inq-score-pill {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+}
+
+/* Tab 1: Missions Grid */
+.pl-inq-missions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pl-mission-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 15px;
+  border-radius: 16px;
+  background: var(--pl-surface-alt);
+  border: 1.5px solid var(--pl-border);
+  transition: all 0.16s ease;
+}
+.pl-mission-card.is-passed {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.pl-mission-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pl-mission-step {
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  color: #2f6bff;
+}
+
+.pl-mission-tier {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.11);
+  color: #1d4ed8;
+}
+.pl-mission-tier.tier-2 {
+  background: rgba(14, 165, 233, 0.13);
+  color: #0369a1;
+}
+.pl-mission-tier.tier-3 {
+  background: rgba(37, 99, 235, 0.16);
+  color: #1e40af;
+}
+
+.pl-mission-card h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0b1938;
+}
+[data-theme='dark'] .pl-mission-card h4 { color: #eef4ff; }
+
+.pl-mission-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #4a5a85;
+  flex: 1;
+}
+[data-theme='dark'] .pl-mission-card p { color: #b7c8f0; }
+
+.pl-mission-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pl-mission-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--pl-surface);
+  border: 1.5px solid var(--pl-border-strong);
+  border-radius: 10px;
+  padding: 0 10px;
+}
+.pl-mission-field input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 7px 0;
+  font-size: 12.8px;
+  font-weight: 700;
+  color: inherit;
+  outline: none;
+}
+.pl-mission-field span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.pl-mission-check-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #2f6bff, #1d4ed8);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pl-mission-feedback {
+  font-size: 11.8px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.pl-mission-feedback.is-ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+}
+[data-theme='dark'] .pl-mission-feedback.is-ok { color: #6ee7b7; }
+.pl-mission-feedback.is-err {
+  background: rgba(245, 158, 11, 0.13);
+  color: #92400e;
+}
+[data-theme='dark'] .pl-mission-feedback.is-err { color: #fcd34d; }
+
+/* Tab 2: Inq-ITS Telemetry */
+.pl-inq-telemetry-layout {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 14px;
+}
+
+.pl-inq-table-card {
+  padding: 15px;
+  border-radius: 16px;
+  background: var(--pl-surface-alt);
+  border: 1.5px solid var(--pl-border);
+}
+
+.pl-inq-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pl-inq-card-head h4 {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.pl-inq-card-head p {
+  margin: 0;
+  font-size: 12px;
+  color: #5b6b94;
+}
+.pl-inq-preset-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pl-trial-input {
+  width: 92px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--pl-border-strong);
+  background: var(--pl-surface);
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.pl-inq-coach-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(47, 107, 255, 0.28);
+  background: linear-gradient(145deg, rgba(47, 107, 255, 0.07), rgba(29, 78, 216, 0.03));
+}
+.pl-inq-coach-card.status-confounded {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.pl-inq-coach-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pl-inq-coach-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  background: rgba(47, 107, 255, 0.14);
+  color: #1d4ed8;
+}
+.status-confounded .pl-inq-coach-badge {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.pl-inq-coach-score {
+  font-size: 20px;
+  font-weight: 900;
+  color: #2f6bff;
+}
+.status-confounded .pl-inq-coach-score { color: #dc2626; }
+
+.pl-inq-coach-msg {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+/* Tab 3: CER Report Layout */
+.pl-cer-layout {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+}
+
+.pl-cer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 15px;
+  border-radius: 16px;
+  background: var(--pl-surface-alt);
+  border: 1.5px solid var(--pl-border);
+}
+
+.pl-cer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #2f6bff;
+}
+
+.pl-cer-toolbar-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.pl-cer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.4px;
+}
+.pl-cer-field textarea {
+  width: 100%;
+  border-radius: 11px;
+  border: 1.5px solid var(--pl-border-strong);
+  background: var(--pl-surface);
+  color: inherit;
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 12.8px;
+  resize: vertical;
+  outline: none;
+}
+.pl-cer-field textarea:focus {
+  border-color: #2f6bff;
+  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.14);
+}
+
+.pl-cer-submit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pl-cer-result-card {
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--pl-surface-alt);
+  border: 1.5px solid rgba(47, 107, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pl-cer-result-card h4 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 850;
+  color: #1d4ed8;
+}
+
+.pl-cer-total-box {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: rgba(47, 107, 255, 0.1);
+}
+.pl-cer-total-box strong {
+  font-size: 28px;
+  font-weight: 900;
+  color: #2f6bff;
+}
+.pl-cer-total-box strong span {
+  font-size: 15px;
+  opacity: 0.75;
+}
+.pl-cer-total-box small {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+
+.pl-cer-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.pl-cer-bar-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: var(--pl-surface);
+  border: 1px solid var(--pl-border);
+}
+
+.pl-cer-feedback-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.2px;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pl-cer-empty {
+  margin: 0;
+  font-size: 12.8px;
+  line-height: 1.6;
+  color: #5b6b94;
+}
+
+@media (max-width: 1024px) {
+  .pl-inq-missions-grid,
+  .pl-inq-telemetry-layout,
+  .pl-cer-layout {
+    grid-template-columns: 1fr;
+  }
+}

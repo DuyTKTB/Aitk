@@ -11,6 +11,11 @@ import {
   calcLinearRegression,
   PHYSICS_OPEN_REPOS,
 } from '../src/features/physics/physicsEngine.js';
+import {
+  INQUIRY_LAB_CONFIGS,
+  evaluateInquiryTrials,
+  gradeCerReport,
+} from '../src/features/physics/PhysicsInquiryWorkbench.jsx';
 
 describe('ELEC Physics Studio Engine — Kiểm thử chính xác 7 phân hệ Vật lí', () => {
   it('1. Chuyển động ném xiên: nghiệm giải tích chuẩn & góc 30°/60° cùng tầm xa khi h0=0', () => {
@@ -98,5 +103,29 @@ describe('ELEC Physics Studio Engine — Kiểm thử chính xác 7 phân hệ V
     expect(reg.slope).toBeCloseTo(4.025, 3);
     expect(reg.r2).toBeCloseTo(1, 5);
     expect(PHYSICS_OPEN_REPOS).toHaveLength(10);
+  });
+
+  it('7. Inq-ITS Rex Telemetry & CER Rubric Grader: kiểm định Kiểm soát biến & chấm báo cáo CER 10đ', () => {
+    const simIds = Object.keys(INQUIRY_LAB_CONFIGS);
+    expect(simIds).toHaveLength(7);
+
+    const projCfg = INQUIRY_LAB_CONFIGS.projectile;
+    expect(projCfg.missions).toHaveLength(3);
+
+    const fairEval = evaluateInquiryTrials(projCfg.defaultTrials);
+    expect(fairEval.status).toBe('verified');
+    expect(fairEval.score).toBe(100);
+
+    const confoundedEval = evaluateInquiryTrials(projCfg.flawedTrials);
+    expect(confoundedEval.status).toBe('confounded');
+    expect(confoundedEval.score).toBeLessThan(60);
+
+    const cerRes = gradeCerReport({
+      claim: projCfg.cerPresets.claim,
+      evidence: 'Lần 1: góc 30° -> L = 35,35 m; Lần 2: góc 45° -> L = 40,82 m; Lần 3: góc 60° -> L = 35,35 m.',
+      reasoning: projCfg.cerPresets.reasoning,
+      config: projCfg,
+    });
+    expect(cerRes.total).toBeGreaterThanOrEqual(9.0);
   });
 });

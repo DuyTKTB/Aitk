@@ -40,6 +40,8 @@ import sound from '../../lib/gameSound.js';
 import { exportStyledWorkbook } from '../../lib/excelExport.js';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
+import EssayRubricGrader from './EssayRubricGrader.jsx';
+import TeacherPedagogyWorkbench from './TeacherPedagogyWorkbench.jsx';
 import '../../styles/paper-grading.css';
 
 /* ============ ICONS ============ */
@@ -266,6 +268,22 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
               <button
                 type="button"
                 className="vt-btn sm"
+                onClick={() => setView('rubric')}
+                title="AI Chấm tự luận & bài giải viết tay theo Rubric thành phần (Gradescope / EduGrader)"
+              >
+                <IcoEdit size={14} /> Chấm Tự luận Rubric
+              </button>
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={() => setView('pedagogy')}
+                title="Soạn Giáo án CV 5512, Ma trận Đặc tả CV 7991 & Nhận xét Thông tư 22 xuất Word"
+              >
+                <IcoSpark size={14} /> Giáo án 5512 &amp; Ma trận 7991
+              </button>
+              <button
+                type="button"
+                className="vt-btn sm"
                 onClick={handlePrintSheet}
                 title="Tải / In mẫu phiếu A4 chuẩn Bộ GD&ĐT 2025"
               >
@@ -410,6 +428,21 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
           onSave={handleSavePaper}
           onCancel={() => setView(current?.id ? 'grade' : 'list')}
           say={say}
+        />
+      )}
+
+      {/* 2B. VIEW CHẤM TỰ LUẬN & NHÁP VIẾT TAY THEO RUBRIC */}
+      {view === 'rubric' && (
+        <EssayRubricGrader
+          onBack={() => setView('list')}
+          say={say}
+        />
+      )}
+
+      {/* 2C. VIEW HỒ SƠ CHUYÊN MÔN GIÁO VIÊN (CV 5512 · CV 7991 · TT 22) */}
+      {view === 'pedagogy' && (
+        <TeacherPedagogyWorkbench
+          onClose={() => setView('list')}
         />
       )}
 
@@ -1911,6 +1944,56 @@ function PaperAnalyticsView({ exam, onBack, say }) {
                 <span style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.88rem' }}>
                   Tỷ lệ làm đúng chỉ: {q.correctRate}% ({q.correctCount}/{q.totalAnswered} học sinh)
                 </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bảng Phân Tích Chất Lượng Câu Hỏi Chuẩn IRT / CTT (Độ khó p · Độ phân cách D) */}
+      {stats.itemQualityList && stats.itemQualityList.length > 0 && (
+        <div className="pg-block">
+          <h3>Phân Tích Chất Lượng Câu Hỏi Chuẩn Khảo Thí (Độ khó p &amp; Độ phân cách D)</h3>
+          <p style={{ margin: '0 0 0.65rem', fontSize: '0.82rem', color: 'var(--mut, #64748b)' }}>
+            Độ khó <strong>p ∈ [0; 1]</strong> (tỷ lệ làm đúng) · Độ phân cách <strong>D = P_nhóm_cao(27%) − P_nhóm_thấp(27%)</strong> (D ≥ 0,30 là câu hỏi phân hóa tốt chuẩn thi Đại học).
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '0.6rem' }}>
+            {stats.itemQualityList.map((item) => (
+              <div
+                key={item.q}
+                style={{
+                  padding: '0.7rem 0.85rem',
+                  borderRadius: 12,
+                  border: item.qualityTone === 'warn'
+                    ? '1.5px solid rgba(245, 158, 11, 0.4)'
+                    : '1.5px solid rgba(47, 107, 255, 0.2)',
+                  background: 'var(--surface-2, #f8fafc)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong>Câu {item.q}</strong>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      background: item.qualityTone === 'warn'
+                        ? 'rgba(245, 158, 11, 0.14)'
+                        : 'rgba(47, 107, 255, 0.12)',
+                      color: item.qualityTone === 'warn' ? '#b45309' : '#1d4ed8',
+                    }}
+                  >
+                    {item.qualityLabel}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700 }}>
+                  <span>Độ khó p = {item.pIndex}</span>
+                  <span style={{ color: '#2f6bff' }}>Phân cách D = {item.dIndex}</span>
+                </div>
               </div>
             ))}
           </div>
