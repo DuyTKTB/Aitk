@@ -18,6 +18,22 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('[ErrorBoundary]', error, errorInfo);
     this.setState({ errorInfo });
+    // Tự động dọn bộ nhớ đệm localStorage nếu gặp lỗi tràn bộ nhớ hoặc Firestore b815
+    const msg = String(error?.message || '');
+    if (/QuotaExceededError|INTERNAL ASSERTION FAILED|b815|firestore_targets_/i.test(msg)) {
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i) || '';
+          if (
+            k.startsWith('firestore_') ||
+            k.startsWith('cs-local-exams:') ||
+            k.startsWith('cs-local-submissions:')
+          ) {
+            localStorage.removeItem(k);
+          }
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   handleReset = () => {

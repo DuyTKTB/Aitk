@@ -103,7 +103,28 @@ function readLocalTeacherList(prefix, teacherId) {
 function writeLocalTeacherList(prefix, teacherId, list) {
   try {
     if (typeof localStorage === 'undefined' || !teacherId) return;
-    localStorage.setItem(localTeacherKey(prefix, teacherId), JSON.stringify((list || []).slice(0, 80)));
+    const maxItems = prefix === 'exams' ? 12 : 35;
+    const slimList = (list || []).slice(0, maxItems).map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      if (prefix === 'exams' && Array.isArray(item.questions)) {
+        // Không lưu chuỗi ảnh base64 nặng vào localStorage fallback để tránh đầy 5MB làm sập Firestore
+        return {
+          ...item,
+          questions: item.questions.map((q) => {
+            if (!q || typeof q !== 'object') return q;
+            const copy = { ...q };
+            if (typeof copy.imageUrl === 'string' && copy.imageUrl.length > 500) delete copy.imageUrl;
+            if (typeof copy.image === 'string' && copy.image.length > 500) delete copy.image;
+            if (typeof copy.svgDiagram === 'string' && copy.svgDiagram.length > 1200) delete copy.svgDiagram;
+            return copy;
+          }),
+        };
+      }
+      return item;
+    });
+    const raw = JSON.stringify(slimList);
+    if (raw.length > 150000) return; // Bảo vệ hạn mức localStorage cho Firestore tab sync
+    localStorage.setItem(localTeacherKey(prefix, teacherId), raw);
   } catch { /* ignore quota */ }
 }
 

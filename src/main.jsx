@@ -69,6 +69,16 @@ class ErrorBoundary extends Component {
 
   handleReload = () => {
     try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i) || '';
+        if (
+          k.startsWith('firestore_') ||
+          k.startsWith('cs-local-exams:') ||
+          k.startsWith('cs-local-submissions:')
+        ) {
+          localStorage.removeItem(k);
+        }
+      }
       if ('caches' in window) {
         caches.keys().then((keys) => {
           keys.forEach((key) => caches.delete(key));

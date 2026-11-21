@@ -21,7 +21,7 @@ vi.mock('firebase/storage', () => ({
   getStorage: vi.fn(() => ({})),
 }));
 
-import { translateAuthError } from '../src/lib/firebase.js';
+import { translateAuthError, reclaimLocalStorageSpace } from '../src/lib/firebase.js';
 
 function parseCspDirectives(cspValue) {
   const map = new Map();
@@ -76,5 +76,35 @@ describe('Google Auth CSP, Service Worker và thông báo lỗi', () => {
     expect(translateAuthError('auth/unauthorized-domain')).toMatch(/quyền/i);
     expect(translateAuthError('auth/web-storage-unsupported')).toMatch(/cookie|bộ nhớ/i);
     expect(translateAuthError('auth/operation-not-supported-in-this-environment')).toMatch(/môi trường|trình duyệt/i);
+  });
+
+  it('reclaimLocalStorageSpace dọn sạch firestore_targets_* & cs-local-exams:* nhưng giữ nguyên khóa auth/user bảo vệ', () => {
+    const store = new Map([
+      ['firestore_targets_firestore/[DEFAULT]/duyheheh-2a269/_2', 'x'.repeat(5000)],
+      ['firestore_clients_firestore/[DEFAULT]/duyheheh-2a269', 'client_data'],
+      ['cs-local-exams:teacher_1', 'y'.repeat(12000)],
+      ['cs-user-meta', '{"u1":{"role":"teacher"}}'],
+      ['firebase:authUser:key:[DEFAULT]', '{"uid":"u1"}'],
+    ]);
+    const mockLs = {
+      get length() { return store.size; },
+      key: (i) => Array.from(store.keys())[i] || null,
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+    };
+    const prevWindow = globalThis.window;
+    globalThis.window = { ...(prevWindow || {}), localStorage: mockLs };
+    try {
+      const freed = reclaimLocalStorageSpace(true);
+      expect(freed).toBeGreaterThan(0);
+      expect(store.has('firestore_targets_firestore/[DEFAULT]/duyheheh-2a269/_2')).toBe(false);
+      expect(store.has('firestore_clients_firestore/[DEFAULT]/duyheheh-2a269')).toBe(false);
+      expect(store.has('cs-local-exams:teacher_1')).toBe(false);
+      expect(store.get('cs-user-meta')).toBe('{"u1":{"role":"teacher"}}');
+      expect(store.get('firebase:authUser:key:[DEFAULT]')).toBe('{"uid":"u1"}');
+    } finally {
+      globalThis.window = prevWindow;
+    }
   });
 });
