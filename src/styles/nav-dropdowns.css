@@ -26,76 +26,73 @@
   min-width: 0;
 }
 
-/* Trigger Pill trên Navbar — Viền trắng nổi bật sang chảnh */
+/* Trigger Mục tiêu trên Navbar — Gọn phẳng chuẩn Linear Workspace Switcher */
 .sg-nav-trigger {
   display: inline-flex;
   align-items: center;
-  padding: 3px 6px;
-  background: #ffffff !important;
-  border: 1.5px solid #ffffff !important;
+  height: 32px;
+  padding: 0 9px;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 999px;
   color: var(--ink, #0f172a);
   font-family: var(--sg-font);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.79rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all .18s ease;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
   -webkit-tap-highlight-color: transparent;
   gap: 5px;
   max-width: 100%;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.9) !important;
 }
 
 [data-theme="dark"] .sg-nav-trigger {
-  background: rgba(30, 41, 59, 0.88) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
-  color: #f8fafc;
+  background: transparent;
+  border-color: transparent;
+  color: #e2e8f0;
 }
 
 .sg-nav-trigger:hover,
 .sg-nav-trigger.is-open {
-  background: #ffffff !important;
-  border-color: #ffffff !important;
-  box-shadow: 0 4px 16px rgba(47, 107, 255, 0.22), 0 0 0 2px #ffffff !important;
-  transform: translateY(-1px);
+  background: rgba(47, 107, 255, 0.08);
+  border-color: rgba(47, 107, 255, 0.16);
 }
 
 [data-theme="dark"] .sg-nav-trigger:hover,
 [data-theme="dark"] .sg-nav-trigger.is-open {
-  background: rgba(30, 41, 59, 0.98) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+  background: rgba(96, 165, 250, 0.14);
+  border-color: rgba(96, 165, 250, 0.24);
 }
 
 .sg-trigger-exam {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3.5px 8px;
-  border-radius: 999px;
-  background: rgba(47, 107, 255, 0.11);
-  border: 1px solid rgba(47, 107, 255, 0.24);
+  gap: 5px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
   color: #1d4ed8;
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: 0.77rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 [data-theme="dark"] .sg-trigger-exam {
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(96, 165, 250, 0.32);
-  color: #93c5fd;
+  background: transparent;
+  border: none;
+  color: #60a5fa;
 }
 
 .sg-trigger-school {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 6px;
+  padding: 0 0 0 6px;
+  border-left: 1px solid rgba(148, 163, 184, 0.28);
   color: var(--ink, #0f172a);
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.77rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1822,296 +1819,7 @@
 /* ============================================================
    4. DESKTOP NAV TỐI ƯU CÂN ĐỐI (>= 769px)
    ============================================================ */
-@media (min-width: 769px) {
-  .nav-apple {
-    max-width: min(1280px, 98vw) !important;
-    padding: 0 12px 0 14px !important;
-    gap: 8px !important;
-    overflow: visible !important;
-  }
-
-  .nav-left-cluster {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    flex-shrink: 0 !important;
-    height: 100% !important;
-  }
-
-  .nav-left-cluster .nav-logo {
-    margin-right: 0 !important;
-  }
-
-  .nav-actions {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    padding-left: 8px !important;
-    margin-left: 4px !important;
-    border-left: 1px solid rgba(148, 163, 184, 0.2) !important;
-    flex-shrink: 0 !important;
-  }
-
-  .nav-actions-icons-cluster {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 5px !important;
-    flex-shrink: 0 !important;
-    margin-left: 2px !important;
-  }
-
-  /* 3 nút icon tròn: Tìm kiếm SVG • Đổi giao diện • Thông báo */
-  .nav-action-icon-btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 50% !important;
-    border: 1px solid rgba(148, 163, 184, 0.24) !important;
-    background: rgba(255, 255, 255, 0.85) !important;
-    color: var(--ink, #0f172a) !important;
-    cursor: pointer !important;
-    flex-shrink: 0 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-    transition: transform 0.15s ease, background 0.2s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease !important;
-    -webkit-tap-highlight-color: transparent !important;
-  }
-
-  .nav-action-icon-btn:hover {
-    transform: translateY(-1px) !important;
-    background: #ffffff !important;
-    border-color: #2f6bff !important;
-    color: #2f6bff !important;
-    box-shadow: 0 3px 10px rgba(47, 107, 255, 0.18) !important;
-  }
-
-  .nav-action-icon-btn:active {
-    transform: scale(0.92) !important;
-  }
-
-  [data-theme="dark"] .nav-action-icon-btn {
-    background: rgba(30, 41, 59, 0.8) !important;
-    border-color: rgba(255, 255, 255, 0.16) !important;
-    color: #f8fafc !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
-  }
-
-  [data-theme="dark"] .nav-action-icon-btn:hover {
-    background: rgba(47, 107, 255, 0.25) !important;
-    border-color: #60a5fa !important;
-    color: #60a5fa !important;
-    box-shadow: 0 3px 12px rgba(47, 107, 255, 0.35) !important;
-  }
-
-  /* Nút Avatar cá nhân góc phải (Pill 34px bo tròn khớp với 3 icon) */
-  .ns9-uprof-trigger {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 3px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    padding: 2px 6px 2px 3px !important;
-    border-radius: 999px !important;
-    border: 1px solid rgba(148, 163, 184, 0.24) !important;
-    background: rgba(255, 255, 255, 0.85) !important;
-    cursor: pointer !important;
-    flex-shrink: 0 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-    transition: transform 0.15s ease, background 0.2s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
-    -webkit-tap-highlight-color: transparent !important;
-  }
-
-  .ns9-uprof-trigger:hover,
-  .ns9-uprof-trigger.is-open {
-    transform: translateY(-1px) !important;
-    background: #ffffff !important;
-    border-color: #2f6bff !important;
-    box-shadow: 0 3px 10px rgba(47, 107, 255, 0.18) !important;
-  }
-
-  [data-theme="dark"] .ns9-uprof-trigger {
-    background: rgba(30, 41, 59, 0.8) !important;
-    border-color: rgba(255, 255, 255, 0.16) !important;
-  }
-
-  [data-theme="dark"] .ns9-uprof-trigger:hover,
-  [data-theme="dark"] .ns9-uprof-trigger.is-open {
-    background: rgba(47, 107, 255, 0.25) !important;
-    border-color: #60a5fa !important;
-    box-shadow: 0 3px 12px rgba(47, 107, 255, 0.35) !important;
-  }
-
-  .ns9-uprof-avatar {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    min-height: 28px !important;
-    border-radius: 50% !important;
-    background: #2f6bff !important;
-    color: #ffffff !important;
-    display: grid !important;
-    place-items: center !important;
-    font: 800 0.8rem var(--sg-font) !important;
-    overflow: hidden !important;
-  }
-
-  .ns9-uprof-avatar img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-  }
-
-  .ns9-uprof-chev {
-    color: var(--mut, #64748b) !important;
-    width: 13px !important;
-    height: 13px !important;
-    transition: transform .2s ease !important;
-  }
-
-  .nav-credit-pill {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    height: 34px !important;
-    padding: 0 11px !important;
-    border-radius: 999px !important;
-    background: rgba(47, 107, 255, 0.1) !important;
-    border: 1px solid rgba(47, 107, 255, 0.28) !important;
-    color: #2f6bff !important;
-    font: 800 13px var(--sg-font) !important;
-    text-decoration: none !important;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
-    transition: transform 0.15s ease, border-color 0.15s ease, background 0.2s ease !important;
-  }
-
-  .nav-credit-pill:hover {
-    transform: translateY(-1px) !important;
-    border-color: #2f6bff !important;
-    background: rgba(47, 107, 255, 0.16) !important;
-  }
-
-  [data-theme="dark"] .nav-credit-pill {
-    background: rgba(47, 107, 255, 0.16) !important;
-    border-color: rgba(47, 107, 255, 0.35) !important;
-    color: #60a5fa !important;
-  }
-}
-
-/* ============================================================
-   BỘ 4 ICON TIỆN ÍCH GỌN ĐẸP TRÊN NAV: TÌM KIẾM • THEME • CHUÔNG • AVATAR
-   Đảm bảo nằm 100% bên trong viên thuốc navbar, không bị lòi viền, đồng bộ chiều cao 34px
-   ============================================================ */
-.nav-apple {
-  width: max-content !important;
-  max-width: calc(100vw - 24px) !important;
-  box-sizing: border-box !important;
-  padding: 0 10px !important;
-  gap: 8px !important;
-  overflow: visible !important;
-}
-
-.nav-actions {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-shrink: 0 !important;
-  margin-left: auto !important;
-}
-
-.nav-actions-icons-cluster {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  flex-shrink: 0 !important;
-}
-
-.nav-action-icon-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 34px !important;
-  height: 34px !important;
-  padding: 0 !important;
-  border-radius: 50% !important;
-  border: 1px solid rgba(148, 163, 184, 0.28) !important;
-  background: rgba(255, 255, 255, 0.85) !important;
-  color: var(--ink, #0f172a) !important;
-  cursor: pointer !important;
-  transition: all 0.16s ease !important;
-  flex-shrink: 0 !important;
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent !important;
-}
-
-[data-theme="dark"] .nav-action-icon-btn {
-  background: rgba(30, 41, 59, 0.82) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  color: #f1f5f9 !important;
-}
-
-.nav-action-icon-btn:hover {
-  background: #ffffff !important;
-  border-color: #2f6bff !important;
-  color: #2f6bff !important;
-  box-shadow: 0 3px 12px rgba(47, 107, 255, 0.2) !important;
-  transform: translateY(-1px) !important;
-}
-
-[data-theme="dark"] .nav-action-icon-btn:hover {
-  background: rgba(30, 41, 59, 0.98) !important;
-  border-color: rgba(96, 165, 250, 0.6) !important;
-  color: #60a5fa !important;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5) !important;
-}
-
-.nav-action-icon-btn:active {
-  transform: scale(0.92) !important;
-}
-
-.ns9-uprof-wrap {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
-}
-
-.ns9-uprof-trigger {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 2px 6px 2px 2px !important;
-  height: 34px !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(148, 163, 184, 0.28) !important;
-  background: rgba(255, 255, 255, 0.85) !important;
-  cursor: pointer !important;
-  transition: all 0.16s ease !important;
-  flex-shrink: 0 !important;
-}
-
-[data-theme="dark"] .ns9-uprof-trigger {
-  background: rgba(30, 41, 59, 0.82) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-}
-
-.ns9-uprof-trigger:hover,
-.ns9-uprof-trigger.is-open {
-  background: #ffffff !important;
-  border-color: #2f6bff !important;
-  box-shadow: 0 3px 12px rgba(47, 107, 255, 0.2) !important;
-}
-
-[data-theme="dark"] .ns9-uprof-trigger:hover,
-[data-theme="dark"] .ns9-uprof-trigger.is-open {
-  background: rgba(30, 41, 59, 0.98) !important;
-  border-color: rgba(96, 165, 250, 0.6) !important;
-}
+/* Desktop Nav shell styles consolidated into nav-redesign-v2.css */
 
 /* ============================================================
    MEGA MENU CÔNG CỤ PHÂN CHIA THEO TỆP MÔN KHTN (HÓA HỌC • VẬT LÍ • SINH HỌC • KHTN)
@@ -2586,162 +2294,7 @@
   text-decoration: none !important;
 }
 
-/* ============================================================
-   NÂNG CẤP THANH NAV CHÍNH (.nav-apple & .nav-item)
-   - Đảm bảo 100% KHÔNG CÓ DẤU GẠCH CHÂN / GẠCH NGANG / GẠCH DỌC
-   - Hiệu ứng Liquid Glass / Floating Dynamic Island
-   - Hiệu ứng Hover & Active bắt mắt chuẩn quốc tế
-   ============================================================ */
-.nav-apple {
-  border-bottom: none !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-}
-
-[data-theme='dark'] .nav-apple {
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(255, 255, 255, 0.06) !important;
-}
-
-/* Bỏ hoàn toàn gạch chân trên tất cả các link của nav */
-.nav-item,
-.nav-item:hover,
-.nav-item:focus,
-.nav-item:active,
-.nav-item.active {
-  text-decoration: none !important;
-  border-bottom: none !important;
-  outline: none !important;
-}
-
-/* Tinh chỉnh nút nav-item: Hiệu ứng Hover & Active */
-.nav-item {
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-  font-weight: 600 !important;
-  border-radius: 999px !important;
-  position: relative !important;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.85) !important;
-  color: var(--ink, #0f172a) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05) !important;
-}
-
-[data-theme='dark'] .nav-item:hover {
-  background: rgba(255, 255, 255, 0.09) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-}
-
-.nav-item:active {
-  transform: scale(0.96) !important;
-}
-
-/* Trạng thái Active: Glowing Blue Pill */
-.nav-item.active {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-  color: #ffffff !important;
-  font-weight: 750 !important;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.38) !important;
-  transform: translateY(-0.5px) !important;
-}
-
-.nav-item.active .nav-ico svg,
-.nav-item.active .nav-ico {
-  color: #ffffff !important;
-}
-
-/* Bỏ mũi tên CSS cũ dạng pseudo để dùng SVG mượt mà */
-.nav-item.has-drop::after {
-  display: none !important;
-}
-
-/* Hiệu ứng thở / nhấp nháy cho nhãn HOT */
-.ns9-nav-hot-badge {
-  background: linear-gradient(135deg, #f97316, #ef4444) !important;
-  animation: navHotPulse 2s infinite ease-in-out !important;
-}
-
-@keyframes navHotPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 3px 8px rgba(249, 115, 22, 0.5);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow: 0 5px 14px rgba(239, 68, 68, 0.7);
-  }
-}
-
-/* Cụm Action bên phải: Bỏ đường kẻ gạch phân cách thô */
-.nav-actions {
-  border-left: none !important; /* XÓA GẠCH ĐỨNG */
-  gap: 6px !important;
-  padding-left: 4px !important;
-}
-
-/* Cụm 4 nút icon tròn (Search, Theme, Chat, Avatar) */
-.nav-actions-icons-cluster {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-}
-
-.nav-action-icon-btn {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 50% !important;
-  border: 1px solid rgba(148, 163, 184, 0.22) !important;
-  background: rgba(255, 255, 255, 0.6) !important;
-  color: var(--ink, #0f172a) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-  text-decoration: none !important;
-}
-
-[data-theme='dark'] .nav-action-icon-btn {
-  background: rgba(30, 41, 59, 0.7) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #f8fafc !important;
-}
-
-.nav-action-icon-btn:hover {
-  transform: translateY(-1.5px) scale(1.05) !important;
-  background: #ffffff !important;
-  border-color: rgba(37, 99, 235, 0.35) !important;
-  color: #2563eb !important;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18) !important;
-  text-decoration: none !important;
-}
-
-[data-theme='dark'] .nav-action-icon-btn:hover {
-  background: #1e293b !important;
-  border-color: rgba(96, 165, 250, 0.45) !important;
-  color: #60a5fa !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
-}
-
-.nav-action-icon-btn:active {
-  transform: scale(0.93) !important;
-}
-
-/* Nút Credit Pill trên Nav */
-.nav-credit-pill {
-  text-decoration: none !important;
-  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-}
-
-.nav-credit-pill:hover {
-  transform: translateY(-1px) scale(1.03) !important;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
-  text-decoration: none !important;
-}
-
+/* Nav bar visual shell overrides consolidated cleanly in nav-redesign-v2.css */
 @media (max-width: 768px) {
   .nav-tools-grid-2col {
     grid-template-columns: 1fr !important;
