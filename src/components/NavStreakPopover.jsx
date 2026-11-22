@@ -292,6 +292,7 @@ export default function NavStreakPopover({ userId, streakCount = 0, hasStreakTod
                   : 'Xem toàn bộ mốc thưởng & bảo vệ chuỗi →'}
               </span>
             </button>
+            <div className="elec-pop-copy">© 2026 ELEC Science AI · Nguyễn Thế Duy (Duy TK)</div>
           </div>
         </div>
       )}

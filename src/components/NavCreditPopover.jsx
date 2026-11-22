@@ -289,6 +289,7 @@ export default function NavCreditPopover({ userId, credits = 0 }) {
                 <SvgPlus size={14} />
                 <span>Mua thêm ELEC Credit (VietQR tự động)</span>
               </button>
+              <div className="elec-pop-copy">© 2026 ELEC Science AI · Nguyễn Thế Duy (Duy TK)</div>
             </div>
           </div>
         </div>

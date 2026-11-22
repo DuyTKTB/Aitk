@@ -25,33 +25,35 @@
    ============================================================================ */
 .elec-cp-popover {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   right: 0;
-  width: 376px;
+  width: 326px;
   max-width: calc(100vw - 24px);
   z-index: 1250;
-  background: #ffffff;
-  border: 1px solid rgba(47, 107, 255, 0.2);
-  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
   overflow: hidden;
   box-shadow:
-    0 28px 64px -18px rgba(13, 35, 112, 0.32),
-    0 8px 24px -10px rgba(15, 23, 42, 0.14);
+    0 22px 54px -14px rgba(15, 23, 42, 0.16),
+    0 4px 12px rgba(15, 23, 42, 0.04);
   color: #0a1230;
-  animation: elecPopoverIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: elecPopoverIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='dark'] .elec-cp-popover {
-  background: #08112a;
-  border-color: rgba(125, 179, 255, 0.24);
+  background: rgba(13, 19, 34, 0.96);
+  border-color: rgba(255, 255, 255, 0.1);
   color: #f1f5ff;
-  box-shadow: 0 30px 70px -16px rgba(0, 0, 0, 0.82);
+  box-shadow: 0 26px 64px -16px rgba(0, 0, 0, 0.8);
 }
 
 @keyframes elecPopoverIn {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.97);
+    transform: translateY(-5px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -61,8 +63,8 @@
 
 .elec-cp-hero {
   position: relative;
-  padding: 16px 16px 13px;
-  background: linear-gradient(135deg, #0b1f66 0%, #1d4ed8 55%, #2f6bff 100%);
+  padding: 13px 15px 11px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2f6bff 100%);
   color: #ffffff;
   overflow: hidden;
 }
@@ -72,8 +74,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 14% 20%, rgba(147, 197, 253, 0.34), transparent 52%),
-    radial-gradient(circle at 92% 85%, rgba(56, 189, 248, 0.24), transparent 48%);
+    radial-gradient(circle at 14% 20%, rgba(147, 197, 253, 0.28), transparent 52%),
+    radial-gradient(circle at 92% 85%, rgba(56, 189, 248, 0.2), transparent 48%);
   pointer-events: none;
 }
 
@@ -82,27 +84,27 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 11px;
 }
 
 .elec-cp-mascot-ring {
-  width: 60px;
-  height: 60px;
-  border-radius: 18px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.26);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 8px 18px -6px rgba(5, 16, 62, 0.45);
+  box-shadow: none;
 }
 
 .elec-cp-mascot {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 12px rgba(4, 15, 58, 0.38));
-  animation: elecMascotHover 3s ease-in-out infinite;
+  filter: none;
+  animation: none;
 }
 
 @keyframes elecMascotHover {
@@ -434,33 +436,35 @@
    ============================================================================ */
 .elec-sp-popover {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   right: 0;
-  width: 376px;
+  width: 326px;
   max-width: calc(100vw - 24px);
   z-index: 1250;
-  background: #ffffff;
-  border: 1px solid rgba(249, 115, 22, 0.26);
-  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
   overflow: hidden;
   box-shadow:
-    0 28px 64px -18px rgba(154, 52, 18, 0.28),
-    0 8px 24px -10px rgba(15, 23, 42, 0.14);
+    0 22px 54px -14px rgba(15, 23, 42, 0.16),
+    0 4px 12px rgba(15, 23, 42, 0.04);
   color: #0a1230;
-  animation: elecPopoverIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: elecPopoverIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='dark'] .elec-sp-popover {
-  background: #0b1126;
-  border-color: rgba(251, 146, 60, 0.28);
+  background: rgba(13, 19, 34, 0.96);
+  border-color: rgba(255, 255, 255, 0.1);
   color: #f1f5ff;
-  box-shadow: 0 30px 70px -16px rgba(0, 0, 0, 0.82);
+  box-shadow: 0 26px 64px -16px rgba(0, 0, 0, 0.8);
 }
 
 .elec-sp-hero {
   position: relative;
-  padding: 16px 16px 14px;
-  background: linear-gradient(135deg, #c2410c 0%, #ea580c 46%, #f97316 100%);
+  padding: 13px 15px 12px;
+  background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%);
   color: #ffffff;
   overflow: hidden;
 }
@@ -470,8 +474,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 14% 22%, rgba(254, 240, 138, 0.36), transparent 52%),
-    radial-gradient(circle at 90% 82%, rgba(251, 191, 36, 0.26), transparent 46%);
+    radial-gradient(circle at 14% 22%, rgba(254, 240, 138, 0.28), transparent 52%),
+    radial-gradient(circle at 90% 82%, rgba(251, 191, 36, 0.2), transparent 46%);
   pointer-events: none;
 }
 
@@ -480,27 +484,42 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 11px;
 }
 
 .elec-sp-mascot-ring {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 8px 18px -6px rgba(124, 45, 18, 0.45);
+  box-shadow: none;
 }
 
 .elec-sp-mascot {
-  width: 60px;
-  height: 60px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 12px rgba(124, 45, 18, 0.38));
-  animation: elecMascotHover 2.8s ease-in-out infinite;
+  filter: none;
+  animation: none;
+}
+
+.elec-pop-copy {
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  font-size: 10.5px;
+  color: #64748b;
+  text-align: center;
+  font-weight: 500;
+}
+
+[data-theme='dark'] .elec-pop-copy {
+  border-top-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
 }
 
 .elec-sp-hero-info {

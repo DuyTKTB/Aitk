@@ -209,14 +209,6 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
     ];
   });
 
-  const [mascotQuoteIdx, setMascotQuoteIdx] = useState(0);
-  const MASCOT_QUOTES = [
-    'Cần giải bài nào cứ dán vào đây nha!',
-    'Chụp ảnh đề bài là mình giải từng bước!',
-    'Luyện tập mỗi ngày, đỗ nguyện vọng 1!',
-    'Có gì khó, cứ hỏi Gia sư ELEC AI nhé!'
-  ];
-
   const submit = (e) => {
     e?.preventDefault();
     if (!val.trim()) return;
@@ -263,7 +255,7 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
         {/* Hàng 1: User Profile & Trạng thái Trợ lý */}
         <div className="ns9-uh-user-row">
           <div className="ns9-uh-avatar" title={displayName}>
-            <UserAvatar user={user} photoURL={profile?.avatarUrl || profile?.avatar || user?.photoURL} size={56} title={displayName} />
+            <UserAvatar user={user} photoURL={profile?.avatarUrl || profile?.avatar || user?.photoURL} size={44} title={displayName} />
           </div>
           <div className="ns9-uh-meta">
             <div className="ns9-uh-hello-line">
@@ -296,16 +288,16 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
           </div>
         </div>
 
-        {/* Hàng giữa: Lịch sử đã hỏi gần đây & Linh vật trang trí sinh động */}
+        {/* Hàng giữa: Lịch sử đã hỏi gần đây (full-width gọn gàng chuẩn Linear) */}
         <div className="ns9-uh-mid-area">
           <div className="ns9-uh-recent-chats">
             <div className="ns9-uh-recent-head">
               <span className="ns9-uh-recent-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7.5" />
+                  <path d="M10 6v4l2.8 1.5" />
                 </svg>
-                <span>Lịch sử đã hỏi gần đây</span>
+                <span>Gần đây</span>
               </span>
               <button
                 type="button"
@@ -314,8 +306,8 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
                 title="Mở toàn bộ sổ tay trò chuyện & kế hoạch tuần"
               >
                 <span>Sổ tay AI</span>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6" />
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m7.5 5 5 5-5 5" />
                 </svg>
               </button>
             </div>
@@ -337,23 +329,6 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
                 </button>
               ))}
             </div>
-          </div>
-
-          <div
-            className="ns9-uh-mascot-deco"
-            onClick={() => setMascotQuoteIdx((prev) => (prev + 1) % MASCOT_QUOTES.length)}
-            title="Bấm vào linh vật ELEC AI để đổi lời nhắc học tập!"
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="ns9-uh-mascot-speech">
-              <span>{MASCOT_QUOTES[mascotQuoteIdx]}</span>
-            </div>
-            <img
-              src="/img/elec/elec-cool.png"
-              alt="Linh vật ELEC AI"
-              className="ns9-uh-mascot-sticker"
-              loading="lazy"
-            />
           </div>
         </div>
 
@@ -432,16 +407,9 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
             <div className="ns9-uh-cover-foot">
               <span className="ns9-uh-cf-pill">
                 <IcoSpark size={13} />
-                <span>Chiến lược AI đỗ {schoolCode} · Xem ngay</span>
+                <span>Chiến lược AI đỗ {schoolCode}</span>
                 <IcoArrow size={12} />
               </span>
-            </div>
-            <div className="ns9-uh-cover-mascot">
-              <img
-                src="/img/elec/elec-hello.png"
-                alt="Linh vật ELEC AI"
-                className="ns9-uh-mascot-img"
-              />
             </div>
           </div>
         ) : (
@@ -1370,16 +1338,12 @@ function ClassroomAndJoinBar() {
 
   return (
     <section className="ns9-classroom-hub-card" aria-label="Phòng thi và lớp học trực tuyến">
-      <div className="ns9-ch-mascot-box">
-        <img src="/img/elec/elec-hello.png" alt="Elec Waving" className="ns9-ch-mascot-img" />
-        <div className="ns9-ch-speech-bubble">Nhập mã vào thi cùng lớp nè!</div>
+      <div className="ns9-ch-icon-badge" aria-hidden="true">
+        <IcoUsers size={22} />
       </div>
 
       <div className="ns9-ch-left">
-        <h3>
-          <IcoUsers size={20} />
-          <span>Vào phòng thi &amp; Lớp học của giáo viên</span>
-        </h3>
+        <h3>Vào phòng thi &amp; Lớp học của giáo viên</h3>
         <p>
           Dán đường link đề thi hoặc nhập mã phòng thi do thầy cô giao để vào làm bài có bấm giờ ngay lập tức.
         </p>
