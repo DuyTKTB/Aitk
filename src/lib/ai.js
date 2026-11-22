@@ -679,7 +679,7 @@ const clip = (s, n) => {
  */
 export function buildRequestPlan(history, opts = {}) {
   const historyArr = Array.isArray(history) ? history : [];
-  const task = opts.task || classifyTask(historyArr);
+  const task = opts.task || classifyTask(historyArr, { hasDoc: opts.hasDoc });
 
   const lastText = coreText(lastUserText(historyArr));
   const prevUserText = (() => {
@@ -827,13 +827,17 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
   const { task } = plan;
   let { systemPrompt, toolBlock, toolHits, citations } = plan;
 
-  /* ---- Gom ảnh để kiểm tra khả năng vision ---- */
+  /* ---- Gom ảnh / file scan để kiểm tra khả năng vision ---- */
   const lastUser = [...historyArr].reverse().find((m) => m.role === 'user');
   const imageParts = (lastUser?.parts || []).filter((p) => p.inlineData);
   const hasImg = imageParts.length > 0;
+  const rawLastUser = lastUserText(historyArr);
+  const hasDoc = Boolean(options.hasDoc)
+    || Boolean(lastUser?.preview?.docs?.length)
+    || /TÀI LIỆU ĐÍNH KÈM CỦA NGƯỜI HỌC|---\s*TÀI LIỆU\s*#\d+/i.test(rawLastUser);
 
   /* ---- Hướng dẫn sử dụng & Điều hướng website ELEC AI tức thì ---- */
-  if (!hasImg && options.noGuide !== true) {
+  if (!hasImg && !hasDoc && options.noGuide !== true && String(plan.contextText || '').length <= 220) {
     const guideAnswer = findAppGuideAnswer(plan.contextText);
     if (guideAnswer) {
       console.log('[ELEC AI] ✓ App guide instant match');
@@ -1236,11 +1240,17 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
     function chainHasGemini() {
       return chain.some((p) => p.id === 'gemini');
     }
+    const ocrableImages = imageParts.filter((p) => String(p.inlineData?.mimeType || '').startsWith('image/'));
     const needsOcr = hasImg && !chainHasGemini();
+
+    if (needsOcr && ocrableImages.length === 0) {
+      finish(reject, new Error('Tài liệu PDF dạng ảnh scan cần Gemini Vision để đọc. Hiện key/quota Gemini chưa sẵn sàng — vui lòng thử lại sau ít phút hoặc trích đoạn văn bản để phân tích ngay.'));
+      return p;
+    }
 
     if (needsOcr && ENV.VITE_AI_OCR !== '0') {
       onReasoning?.('Đang đọc chữ trong ảnh (OCR ngay trên thiết bị)…');
-      const urls = imageParts.map((p) => `data:${p.inlineData.mimeType};base64,${p.inlineData.data}`);
+      const urls = ocrableImages.map((p) => `data:${p.inlineData.mimeType};base64,${p.inlineData.data}`);
       ocrImages(urls, {
         onProgress: (pc) => onReasoning?.(`Đang đọc ảnh… ${pc}%`),
       }).then((ocr) => {

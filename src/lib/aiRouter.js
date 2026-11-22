@@ -77,8 +77,9 @@ export function reasoningParamFor(model, effort) {
  *   thinkingBudget, needTools, needKnowledge, label
  * }
  */
-export function classifyTask(history) {
+export function classifyTask(history, opts = {}) {
   const rawText = lastUserText(history);
+  const hasDoc = Boolean(opts.hasDoc) || /TÀI LIỆU ĐÍNH KÈM CỦA NGƯỜI HỌC|---\s*TÀI LIỆU\s*#\d+/i.test(rawText);
   const text = coreText(rawText) || rawText;
   const v = text.toLowerCase();
   const image = hasImage(history);
@@ -121,24 +122,25 @@ export function classifyTask(history) {
     : (wantsSolve && !isTheory && (isScience || nums >= 2)) || (isScience && nums >= 3);
 
   let kind = 'chat';
-  if (isCompare) kind = 'compare';
+  if (isCompare && !hasDoc) kind = 'compare';
   else if (isQuizGen) kind = 'generate';
   else if (isProblem) kind = 'problem';
-  else if (isTheory) kind = 'theory';
+  else if (isTheory || hasDoc) kind = 'theory';
 
-  const hard = kind === 'problem' && hardScore >= 2;
+  const hard = (kind === 'problem' && hardScore >= 2) || (hasDoc && hardScore >= 3);
 
   const temperature = hard ? 0.08 : kind === 'problem' ? 0.12 : kind === 'compare' ? 0.4 : kind === 'generate' ? 0.35 : kind === 'theory' ? 0.2 : 0.35;
-  const maxTokens = kind === 'problem' ? 8192
-    : kind === 'generate' ? 8192
-      : kind === 'theory' ? 6144
-        : kind === 'compare' ? 4096 : 4096;
+  const maxTokens = hasDoc ? 8192
+    : kind === 'problem' ? 8192
+      : kind === 'generate' ? 8192
+        : kind === 'theory' ? 6144
+          : kind === 'compare' ? 4096 : 4096;
 
-  const isTrivialChat = kind === 'chat' && text.length < 24 && !isScience && nums === 0;
+  const isTrivialChat = kind === 'chat' && !hasDoc && text.length < 24 && !isScience && nums === 0;
   const reasoningEffort = hard ? 'high' : (kind === 'problem' || kind === 'theory') ? 'medium' : isTrivialChat ? null : 'low';
   const thinkingBudget = hard ? 8192 : kind === 'problem' ? 4096 : kind === 'theory' ? 2048 : 0;
 
-  const needTools = (kind === 'problem' || kind === 'theory' || image) && (isScience || nums >= 1);
+  const needTools = !hasDoc && (kind === 'problem' || kind === 'theory' || image) && (isScience || nums >= 1);
   /* Chat thường và so sánh công cụ không cần dữ liệu KHTN của app */
   const needKnowledge = kind !== 'chat' && kind !== 'compare';
 

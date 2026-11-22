@@ -1739,6 +1739,11 @@ export default function AIChat({ onExit }) {
             subject: subjectLens,
             deepThink,
             uid,
+            hasDoc: Boolean([...(baseMessages || [])].reverse().find((m) => m.role === 'user')?.preview?.docs?.length),
+            noGuide: Boolean(
+              [...(baseMessages || [])].reverse().find((m) => m.role === 'user')?.preview?.docs?.length
+              || [...(baseMessages || [])].reverse().find((m) => m.role === 'user')?.preview?.images?.length
+            ),
             /* Chỉ kích hoạt thẩm định chéo sâu khi người dùng chủ động bật DeepThink (tránh gọi model phụ làm chậm/nhiễu câu trả lời thường) */
             deepVerify: deepThink,
           }

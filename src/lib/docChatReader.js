@@ -7,8 +7,8 @@
    ============================================================ */
 import { readFile as readGenericFile, detectKind, FILE_KIND } from './fileReader.js';
 
-const MAX_DOC_CHARS = 18000;
-const MAX_PDF_PAGES = 25;
+const MAX_DOC_CHARS = 45000;
+const MAX_PDF_PAGES = 35;
 
 export const DOC_EXT_RE = /\.(pdf|docx|xlsx|xls|txt|md|csv)$/i;
 
@@ -93,7 +93,9 @@ export async function readChatDocument(file) {
   }
 
   const parsed = await readGenericFile(file);
-  const cleanText = String(parsed.text || '').slice(0, MAX_DOC_CHARS);
+  const fullText = String(parsed.text || '');
+  const truncated = fullText.length > MAX_DOC_CHARS;
+  const cleanText = fullText.slice(0, MAX_DOC_CHARS);
   const words = cleanText ? cleanText.split(/\s+/).length : 0;
   return {
     id: parsed.id,
@@ -101,6 +103,8 @@ export async function readChatDocument(file) {
     name: parsed.name,
     size: parsed.size,
     text: cleanText,
+    truncated,
+    totalChars: fullText.length,
     metaLabel: words > 0 ? `~${words.toLocaleString('vi-VN')} từ` : parsed.kind.toUpperCase(),
   };
 }
@@ -109,10 +113,15 @@ export function formatDocsPromptBlock(docs = []) {
   const textDocs = docs.filter((d) => d.text);
   if (textDocs.length === 0) return '';
   const body = textDocs
-    .map((d, idx) => `--- TÀI LIỆU #${idx + 1}: "${d.name}" (${d.metaLabel}) ---\n${d.text}`)
+    .map((d, idx) => {
+      const note = d.truncated
+        ? `\n\n[Lưu ý hệ thống: Đã trích xuất ${d.text.length.toLocaleString('vi-VN')}/${(d.totalChars || d.text.length).toLocaleString('vi-VN')} ký tự đầu của tài liệu này để đảm bảo giới hạn ngữ cảnh.]`
+        : '';
+      return `--- TÀI LIỆU #${idx + 1}: "${d.name}" (${d.metaLabel}) ---\n${d.text}${note}`;
+    })
     .join('\n\n');
   return [
-    'TÀI LIỆU ĐÍNH KÈM CỦA NGƯỜI HỌC (CHỈ DÙNG LÀM NGUỒN THAM KHẢO & TRÍCH DẪN):',
+    'TÀI LIỆU ĐÍNH KÈM CỦA NGƯỜI HỌC (HÃY ĐỌC KỸ VÀ PHÂN TÍCH TRỰC TIẾP NỘI DUNG DƯỚI ĐÂY):',
     body,
     'QUY TẮC TRÍCH DẪN: Khi trả lời dựa trên tài liệu trên, hãy gắn thẻ nguồn gọn dạng `[Trang X]` (nếu là PDF) hoặc `[Tài liệu: tên file]` ngay sau ý quan trọng.',
   ].join('\n\n');

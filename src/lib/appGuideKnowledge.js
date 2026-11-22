@@ -75,7 +75,7 @@ export const APP_FEATURES = [
     name: 'Cân bằng PTHH thông minh',
     route: '#balance',
     menuLocation: 'Mega menu Công cụ -> Học tập & Khảo thí -> "Cân bằng PTHH"',
-    keywords: ['can bang', 'phuong trinh hoa hoc', 'papi', 'hoa hoc', 'balance', 'he so'],
+    keywords: ['can bang', 'can bang pthh', 'phuong trinh hoa hoc', 'balance equation', 'he so can bang'],
     summary: 'Công cụ cân bằng phương trình hóa học bằng thuật toán ma trận đại số tuyến tính chính xác 100%, hỗ trợ phản ứng oxi hóa - khử phức tạp.',
     howToUse: [
       '1. Truy cập [Cân bằng PTHH](#balance).',
@@ -90,7 +90,7 @@ export const APP_FEATURES = [
     name: 'Bảng tuần hoàn 118 nguyên tố',
     route: '#table',
     menuLocation: 'Mega menu Công cụ -> Giải trí & Trực quan -> "Bảng tuần hoàn"',
-    keywords: ['bang tuan hoan', 'nguyen to', 'periodic table', '118 nguyen to', 'iupac', 'hoa hoc'],
+    keywords: ['bang tuan hoan', 'periodic table', '118 nguyen to', 'iupac', 'nguyen to hoa hoc'],
     summary: 'Bảng tuần hoàn tương tác chuẩn IUPAC với đầy đủ 118 nguyên tố hóa học, độ âm điện, cấu hình electron, trạng thái và màu sắc trực quan.',
     howToUse: [
       '1. Mở [Bảng tuần hoàn](#table).',
@@ -105,7 +105,7 @@ export const APP_FEATURES = [
     route: '#formulas',
     aliases: ['#study'],
     menuLocation: 'Mega menu Công cụ -> Học tập & Khảo thí -> "Công thức KHTN"',
-    keywords: ['cong thuc', 'tra cuu cong thuc', 'ly hoa sinh', 'formulas', 'study'],
+    keywords: ['so tay cong thuc', 'tra cuu cong thuc', 'cong thuc ly hoa sinh', 'formulas'],
     summary: 'Kho công thức chuẩn ma trận THPT Quốc gia cho 3 môn Vật lí, Hóa học và Sinh học, kèm ví dụ mẫu và đơn vị chuẩn.',
     howToUse: [
       '1. Bấm vào [Công thức KHTN](#formulas).',
@@ -121,7 +121,7 @@ export const APP_FEATURES = [
     route: '#games',
     aliases: ['#lab', '#virtual-lab'],
     menuLocation: 'Mega menu Công cụ -> Giải trí & Trực quan -> "Trò chơi Khoa học" -> Tab Lab 3D',
-    keywords: ['3d lab', 'phong thi nghiem', 'ao', 'lab', 'virtual lab', 'thi nghiem hoa hoc'],
+    keywords: ['3d lab', 'lab 3d', 'phong thi nghiem', 'phong thi nghiem 3d', 'phong thi nghiem ao', 'thi nghiem ao', 'virtual lab', 'thi nghiem hoa hoc'],
     summary: 'Mô phỏng thí nghiệm thực hành 3D tương tác sống động, cho phép học sinh tự tay phối trộn hóa chất, quan sát ngọn lửa, kết tủa và đo đạc an toàn.',
     howToUse: [
       '1. Truy cập [Phòng thí nghiệm 3D Lab](#games).',
@@ -136,7 +136,7 @@ export const APP_FEATURES = [
     name: 'Tra cứu Điểm chuẩn & Nguyện vọng',
     route: '#admission',
     menuLocation: 'Mega menu Công cụ -> Tiện ích & Hướng nghiệp -> "Tra cứu điểm chuẩn"',
-    keywords: ['diem chuan', 'nguyen vong', 'tra cuu', 'xet tuyen', 'dai hoc', 'bach khoa', 'kinh te'],
+    keywords: ['diem chuan', 'nguyen vong', 'tra cuu diem chuan', 'xet tuyen dai hoc'],
     summary: 'Cơ sở dữ liệu điểm chuẩn các trường đại học toàn quốc (khối A00, A01, B00, D07...), so sánh với điểm dự đoán của bạn.',
     howToUse: [
       '1. Mở [Tra cứu điểm chuẩn](#admission).',
@@ -151,7 +151,7 @@ export const APP_FEATURES = [
     name: 'Bảng xếp hạng & Vinh danh',
     route: '#leaderboard',
     menuLocation: 'Mega menu Công cụ -> Tiện ích & Hướng nghiệp -> "Bảng xếp hạng"',
-    keywords: ['bang xep hang', 'leaderboard', 'top', 'vinh danh', 'elo', 'streak', 'chuoi ngay'],
+    keywords: ['bang xep hang', 'leaderboard', 'vinh danh', 'xep hang elo'],
     summary: 'Vinh danh các học sinh có điểm Elo cao nhất, chuỗi ngày học bền bỉ nhất và thành tích xuất sắc theo lớp, trường.',
     howToUse: [
       '1. Bấm vào [Bảng xếp hạng](#leaderboard).',
@@ -181,7 +181,7 @@ export const APP_FEATURES = [
     route: '#classroom',
     aliases: ['#my-classes'],
     menuLocation: 'Thanh điều hướng -> Nút "Quản lý lớp" hoặc Mega menu',
-    keywords: ['lop hoc', 'giao vien', 'teacher', 'classroom', 'tao de', 'word', 'docx', 'cham bai'],
+    keywords: ['lop hoc', 'giao vien', 'teacher', 'classroom', 'quan ly lop', 'xuat de word', 'cham bai'],
     summary: 'Nền tảng dành cho thầy cô: Tạo đề thi trắc nghiệm theo ma trận chuẩn Bộ GD&ĐT, xuất file Word .docx chuyên nghiệp, giao bài và chấm điểm tự động.',
     howToUse: [
       '1. Truy cập [Quản lý lớp học](#classroom) hoặc [Lớp của tôi](#my-classes).',
@@ -247,45 +247,57 @@ DANH SÁCH CÁC TRANG & ROUTE CHÍNH:
 - Phím tắt hữu ích: Nhấn Ctrl + K để mở Command Palette tìm kiếm nhanh mọi bài học và công cụ.`;
 
 /** Nhận diện truy vấn hỏi về hướng dẫn sử dụng hoặc tìm chức năng của website */
-export function detectAppGuideQuery(query) {
-  if (!query) return null;
-  const q = String(query).toLowerCase().trim();
-  
-  // Các từ khóa chỉ hành vi hỏi vị trí hoặc cách dùng
-  const isNavQuery =
-    q.includes('ở đâu') ||
-    q.includes('o dau') ||
-    q.includes('cho nao') ||
-    q.includes('chỗ nào') ||
-    q.includes('tìm ở') ||
-    q.includes('tim o') ||
-    q.includes('sử dụng như nào') ||
-    q.includes('su dung nhu nao') ||
-    q.includes('dùng như thế nào') ||
-    q.includes('dung nhu the nao') ||
-    q.includes('cách dùng') ||
-    q.includes('cach dung') ||
-    q.includes('hướng dẫn') ||
-    q.includes('huong dan') ||
-    q.includes('chức năng') ||
-    q.includes('tính năng') ||
-    q.includes('làm sao để') ||
-    q.includes('lam sao de') ||
-    q.includes('web có') ||
-    q.includes('website có') ||
-    q.includes('web nay co');
+const stripGuideAccents = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  // Tìm feature khớp nhất
+const escapeGuideRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const hasWholeGuidePhrase = (normText, phrase) => {
+  const kw = stripGuideAccents(phrase);
+  if (!kw || kw.length < 3) return false;
+  const re = new RegExp(`(?:^|[^a-z0-9])${escapeGuideRe(kw)}(?:$|[^a-z0-9])`);
+  return re.test(normText);
+};
+
+export function detectAppGuideQuery(query) {
+  if (!query || typeof query !== 'string') return null;
+  const raw = query.trim();
+  // Tài liệu đính kèm, đề thi dài hoặc prompt nhắc tới file không bao giờ là câu hỏi điều hướng UI
+  if (!raw || raw.length > 220) return null;
+  if (/TÀI LIỆU ĐÍNH KÈM|Phân tích tài liệu|Nội dung file|---\s*TÀI LIỆU|\.(docx?|pdf|xlsx?|xls|csv|txt|md)\b/i.test(raw)) {
+    return null;
+  }
+
+  const normQ = stripGuideAccents(raw);
+
+  // Hỏi vị trí/điều hướng website rõ ràng (tránh từ mơ hồ như "chức năng" trong câu hỏi Sinh/Vật lí)
+  const isStrictLocQuery = [
+    'o dau', 'cho nao', 'nam o', 'tim o', 'mo o dau', 'vao muc nao', 'menu nao',
+    'tren web', 'trong web', 'cua web', 'web co', 'website co', 'web nay co', 'elec ai co',
+  ].some((p) => hasWholeGuidePhrase(normQ, p));
+
+  const isUsageQuery = [
+    'su dung nhu nao', 'dung nhu the nao', 'cach dung', 'huong dan', 'lam sao de mo', 'lam sao de vao',
+  ].some((p) => hasWholeGuidePhrase(normQ, p));
+
+  if (!isStrictLocQuery && !isUsageQuery) return null;
+
+  // Tìm feature khớp nhất theo ranh giới từ (tránh khớp chuỗi con như 'ao' trong 'tieu hao')
   let matchedFeature = null;
   let highestScore = 0;
 
   for (const feat of APP_FEATURES) {
     let score = 0;
-    // Khớp tên
-    if (q.includes(feat.name.toLowerCase())) score += 10;
-    // Khớp từ khóa
+    const normName = stripGuideAccents(feat.name);
+    if (normName && normQ.includes(normName)) score += 10;
     for (const kw of feat.keywords) {
-      if (q.includes(kw)) score += 5;
+      if (hasWholeGuidePhrase(normQ, kw)) score += 5;
     }
     if (score > highestScore) {
       highestScore = score;
@@ -293,20 +305,23 @@ export function detectAppGuideQuery(query) {
     }
   }
 
-  if (isNavQuery && matchedFeature && highestScore >= 5) {
+  if (isStrictLocQuery && matchedFeature && highestScore >= 5) {
+    return { type: 'specific', feature: matchedFeature };
+  }
+  if (isUsageQuery && normQ.length <= 120 && matchedFeature && highestScore >= 10) {
     return { type: 'specific', feature: matchedFeature };
   }
 
-  // Nếu người dùng chỉ hỏi chung chung "hướng dẫn dùng web", "web có những gì"
+  // Nếu người dùng hỏi chung chung "hướng dẫn dùng web", "web có những chức năng gì"
   if (
-    q.includes('hướng dẫn sử dụng web') ||
-    q.includes('huong dan su dung web') ||
-    q.includes('hướng dẫn dùng web') ||
-    q.includes('web có những chức năng gì') ||
-    q.includes('web co nhung chuc nang gi') ||
-    q.includes('các chức năng của web') ||
-    q.includes('gioi thieu web') ||
-    q.includes('giới thiệu web')
+    [
+      'huong dan su dung web',
+      'huong dan dung web',
+      'web co nhung chuc nang gi',
+      'cac chuc nang cua web',
+      'gioi thieu web',
+      'elec ai co gi',
+    ].some((p) => hasWholeGuidePhrase(normQ, p))
   ) {
     return { type: 'general' };
   }
