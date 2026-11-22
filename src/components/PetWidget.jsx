@@ -780,38 +780,39 @@ export default function PetWidget() {
       // Gọi askAI với full options để grounding và tools được kích hoạt chuẩn xác + trừ Credit
       await runWithCredit(
         {
-          userId: uid && uid !== 'guest' ? uid : null,
+          userId: user?.uid || (uid && uid !== 'guest' ? uid : null),
           imageCount: currentImg ? 1 : 0,
           reason: currentImg ? 'Elec đồng hành giải đề ảnh' : 'Hỏi Elec đồng hành AI',
         },
-        () => askAI(
-          historyForApi,
-          (chunk) => {
-            accumulated = chunk;
-            setChatLog((prev) =>
-              prev.map((msg) =>
-                msg.id === aiMsgId
-                  ? {
-                      ...msg,
-                      text: accumulated,
-                      actions: [
-                        { id: `act_add_${Date.now()}`, label: 'Thêm vào Kế hoạch tuần', action: 'add_to_plan', payload: text ? text.slice(0, 35) : 'Bài tập giải theo ảnh' },
-                        { id: `act_pomo_${Date.now()}`, label: 'Bật 25p Pomodoro', action: 'start_pomodoro' },
-                      ],
-                    }
-                  : msg
-              )
-            );
-          },
-          null,
-          {
-            uid,
-            grade: userProfile?.grade || 'Lớp 12',
-            useContext: true,
-            useTools: true,
-            useKnowledge: true,
-            verify: true,
-            extra: `Học sinh: ${studentName}.
+        async () => {
+          const res = await askAI(
+            historyForApi,
+            (chunk) => {
+              accumulated = chunk;
+              setChatLog((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMsgId
+                    ? {
+                        ...msg,
+                        text: accumulated,
+                        actions: [
+                          { id: `act_add_${Date.now()}`, label: 'Thêm vào Kế hoạch tuần', action: 'add_to_plan', payload: text ? text.slice(0, 35) : 'Bài tập giải theo ảnh' },
+                          { id: `act_pomo_${Date.now()}`, label: 'Bật 25p Pomodoro', action: 'start_pomodoro' },
+                        ],
+                      }
+                    : msg
+                )
+              );
+            },
+            null,
+            {
+              uid,
+              grade: userProfile?.grade || 'Lớp 12',
+              useContext: true,
+              useTools: true,
+              useKnowledge: true,
+              verify: true,
+              extra: `Học sinh: ${studentName}.
 Mục tiêu trường thi: ${targetAspiration}.
 Thời gian thi: THPT 2027 (~234 ngày).
 Phong cách giảng giải: ${activeP.label} (${activeP.desc}).${wrongContext}${sciContext}
@@ -830,14 +831,24 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
   • SINH HỌC: Dùng ký hiệu di truyền học chuẩn, ví dụ: $P: \\text{AaBb} \\times \\text{AaBb} \\rightarrow F_1: 9\\text{A-B-} : 3\\text{A-bb} : 3\\text{aaB-} : 1\\text{aabb}$, phép lai dùng dấu ×, alen liên kết giới tính $X^A X^a \\times X^A Y$, nhóm máu $I^A, I^B, I^O$, liên kết gen $\\frac{AB}{ab}$, bộ NST 2n, 2n+1, 2n-1, định luật Hardy-Weinberg $p^2\\text{AA} + 2pq\\text{Aa} + q^2\\text{aa} = 1$, chiều sợi phân tử 5' → 3', 2A + 3G = H, $L = \\frac{N}{2} \\times 3{,}4\\text{ \\AA}$.
 - Trả lời súc tích, sư phạm, đồng hành thân thiện, truyền cảm hứng.
 - 0 EMOJI trong toàn bộ câu trả lời.`,
+            }
+          );
+          const replyText = String(accumulated || res?.text || '').trim();
+          if (!replyText) {
+            throw new Error('AI không trả về nội dung (ELEC Credit đã được hoàn trả).');
           }
-        )
+          return res;
+        }
       );
     } catch (err) {
       console.warn('[ELEC AI] Companion chat error:', err);
-      const fallbackText = err?.code === 'OUT_OF_CREDITS'
+      const isCreditOrAuthErr =
+        err?.code === 'OUT_OF_CREDITS' ||
+        err?.code === 'CREDIT_SYSTEM_ERROR' ||
+        err?.code === 'LOGIN_REQUIRED';
+      const fallbackText = isCreditOrAuthErr
         ? err.message
-        : `ELEC AI đã ghi nhận câu hỏi của ${studentName}! Hãy xem mục Kế hoạch tuần hoặc Phòng luyện tập để hoàn thành mục tiêu ngày hôm nay nhé!`;
+        : `ELEC AI tạm gián đoạn (${err?.message || 'lỗi kết nối'}) — nếu đã trừ Credit, hệ thống đã hoàn 100% vào ví của bạn.`;
       setChatLog((prev) =>
         prev.map((msg) =>
           msg.id === aiMsgId

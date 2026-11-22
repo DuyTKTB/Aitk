@@ -580,17 +580,21 @@ Số câu hiện tại: ${questions.length} câu.
 Mẫu 3 câu đầu tiên:
 ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
-      const aiReply = await runWithCredit(
+      const replyText = await runWithCredit(
         { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'word_copilot', reason: 'Word AI Copilot' },
-        () => askAI(
-          `Ngữ cảnh đề thi đang soạn:\n${examContext}\n\nYêu cầu của giáo viên: ${qText}\n\nHãy trả lời chuẩn sư phạm theo chương trình GDPT 2025, văn phong chuyên nghiệp, không sử dụng emoji.`,
-          null,
-          null,
-          { systemPrompt: `Bạn là chuyên gia khảo thí THPT môn ${subject} của Bộ Giáo dục & Đào tạo. Hãy cung cấp câu hỏi, lời giải hoặc gợi ý sư phạm chuẩn mực.` }
-        )
+        async () => {
+          const aiReply = await askAI(
+            `Ngữ cảnh đề thi đang soạn:\n${examContext}\n\nYêu cầu của giáo viên: ${qText}\n\nHãy trả lời chuẩn sư phạm theo chương trình GDPT 2025, văn phong chuyên nghiệp, không sử dụng emoji.`,
+            null,
+            null,
+            { systemPrompt: `Bạn là chuyên gia khảo thí THPT môn ${subject} của Bộ Giáo dục & Đào tạo. Hãy cung cấp câu hỏi, lời giải hoặc gợi ý sư phạm chuẩn mực.` }
+          );
+          const textOut = String(typeof aiReply === 'string' ? aiReply : (aiReply?.text || '')).trim();
+          if (!textOut) throw new Error('AI chưa trả về phản hồi (ELEC Credit đã được hoàn trả).');
+          return textOut;
+        }
       );
 
-      const replyText = typeof aiReply === 'string' ? aiReply : (aiReply?.text || 'Đã hoàn tất.');
       setCopilotMessages((prev) => [...prev, { role: 'assistant', text: replyText }]);
     } catch (err) {
       setCopilotMessages((prev) => [...prev, { role: 'assistant', text: 'Lỗi phản hồi từ AI: ' + err.message }]);
@@ -1151,41 +1155,46 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
     try {
       const sliceCount = Math.min(questions.length, 10);
       const sample = questions.slice(0, sliceCount).map((q, i) => `${i + 1}. ${q.q}`).join('\n');
-      const res = await runWithCredit(
+      const updated = await runWithCredit(
         { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'word_copilot', reason: 'AI rà soát chính tả đề' },
-        () => askAI(
-          `Hãy kiểm tra và hiệu đính lỗi chính tả, dấu câu, danh pháp SGK GDPT 2018 mới cho đề thi môn ${subject}:
+        async () => {
+          const res = await askAI(
+            `Hãy kiểm tra và hiệu đính lỗi chính tả, dấu câu, danh pháp SGK GDPT 2018 mới cho đề thi môn ${subject}:
 ${sample}
 Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng thứ tự (không kèm số thứ tự ở đầu câu): {"fixed": ["...", "..."]}`,
-          null,
-          null,
-          { systemPrompt: 'Bạn là chuyên gia rà soát văn bản đề thi THPT của Bộ GD&ĐT.' }
-        )
-      );
-      const rawText = typeof res === 'string' ? res : (res?.text || '');
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      let fixedCount = 0;
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed?.fixed) && parsed.fixed.length > 0) {
-          const updated = questions.map((q, idx) => {
+            null,
+            null,
+            { systemPrompt: 'Bạn là chuyên gia rà soát văn bản đề thi THPT của Bộ GD&ĐT.' }
+          );
+          const rawText = typeof res === 'string' ? res : (res?.text || '');
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('AI chưa trả về JSON hợp lệ (ELEC Credit đã được hoàn trả).');
+          }
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (!Array.isArray(parsed?.fixed)) {
+            throw new Error('AI trả về thiếu danh sách câu hiệu đính (ELEC Credit đã được hoàn trả).');
+          }
+          let countFixed = 0;
+          const nextQs = questions.map((q, idx) => {
             if (idx < parsed.fixed.length && typeof parsed.fixed[idx] === 'string' && parsed.fixed[idx].trim()) {
               const clean = parsed.fixed[idx].trim().replace(/^\d+\.\s*/, '');
               if (clean && clean !== q.q) {
-                fixedCount++;
+                countFixed++;
                 return { ...q, q: clean };
               }
             }
             return q;
           });
-          if (fixedCount > 0) {
-            setQuestions(updated);
-            pushHistory(updated);
-          }
+          return { nextQs, countFixed };
         }
+      );
+      if (updated.countFixed > 0) {
+        setQuestions(updated.nextQs);
+        pushHistory(updated.nextQs);
       }
-      setMsg(fixedCount > 0 ? `Đã rà soát & hiệu đính xong ${fixedCount} câu hỏi!` : 'Nội dung câu hỏi đã chuẩn, không phát hiện lỗi chính tả!');
-      onSay?.(fixedCount > 0 ? `Đã hiệu đính ${fixedCount} câu hỏi chuẩn SGK mới!` : 'Đề thi đã chuẩn xác.', 'success');
+      setMsg(updated.countFixed > 0 ? `Đã rà soát & hiệu đính xong ${updated.countFixed} câu hỏi!` : 'Nội dung câu hỏi đã chuẩn, không phát hiện lỗi chính tả!');
+      onSay?.(updated.countFixed > 0 ? `Đã hiệu đính ${updated.countFixed} câu hỏi chuẩn SGK mới!` : 'Đề thi đã chuẩn xác.', 'success');
       setTimeout(() => setMsg(''), 3500);
     } catch (err) {
       setMsg(err?.message || 'Lỗi khi rà soát chính tả!');

@@ -10,6 +10,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import MathText from './MathText.jsx';
 import { callModel, parseJsonLoose } from '../lib/examAiUtils.js';
+import { runWithCredit, CREDIT_TARIFF, formatCredits } from '../lib/creditService.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
@@ -160,7 +161,7 @@ Chỉ trả về JSON hợp lệ:
   ]
 }`;
 
-      const user = `ĐỀ THI: ${exam?.title || 'Đề kiểm tra Hóa học'}
+      const userPrompt = `ĐỀ THI: ${exam?.title || 'Đề kiểm tra Hóa học'}
 Điểm số: ${result?.score}/${result?.totalPoints} (${Math.round(((result?.score || 0) / (result?.totalPoints || 10)) * 100)}%)
 Số câu làm sai: ${wrongQuestions.length}/${exam?.questions?.length || 0}
 
@@ -180,14 +181,27 @@ Học sinh chọn: ${JSON.stringify(w.detail.picked)}
 Đáp án đúng: ${w.question.answer ?? w.question.correct}
 Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
 
-      const raw = await callModel({
-        system,
-        parts: [{ text: user }],
-        temperature: 0.3,
-      });
-
-      const parsed = parseJsonLoose(raw);
-      if (!parsed) throw new Error('AI không trả về cấu trúc phân tích hợp lệ.');
+      const parsed = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.ERROR_ANALYSIS,
+          actionType: 'error_analysis',
+          reason: 'AI Chẩn đoán điểm yếu & Đơn thuốc học tập',
+        },
+        async () => {
+          const raw = await callModel({
+            system,
+            parts: [{ text: userPrompt }],
+            temperature: 0.3,
+            skipCredit: true,
+          });
+          const data = parseJsonLoose(raw);
+          if (!data || (!data.verdict && !Array.isArray(data.prescriptions))) {
+            throw new Error('AI không trả về cấu trúc phân tích hợp lệ (ELEC Credit đã được hoàn trả).');
+          }
+          return data;
+        }
+      );
       setAiReport(parsed);
     } catch (err) {
       console.warn('[ExamAiDiagnostic] Lỗi gọi AI:', err);
@@ -242,7 +256,7 @@ Giải thích: ${w.question.explain || 'Không có'}`).join('\n\n')}`;
               boxShadow: '0 4px 12px rgba(47, 107, 255, 0.25)',
             }}
           >
-            <IcoSpark size={13} /> {!isVip ? 'Chẩn đoán với AI (VIP)' : aiReport ? 'Phân tích lại (1 credit)' : 'Chẩn đoán với AI (1 credit)'}
+            <IcoSpark size={13} /> {!isVip ? 'Chẩn đoán với AI (VIP)' : aiReport ? `Phân tích lại (${formatCredits(CREDIT_TARIFF.ERROR_ANALYSIS)} Credit)` : `Chẩn đoán với AI (${formatCredits(CREDIT_TARIFF.ERROR_ANALYSIS)} Credit)`}
           </button>
         )}
       </div>

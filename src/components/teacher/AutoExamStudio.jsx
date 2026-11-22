@@ -14,6 +14,7 @@ import React, { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import MathText from '../MathText.jsx';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { createExam, defaultProctor } from '../../lib/classroom.js';
+import { runWithCredit, refundCredit, calcExamGenCreditCost, CREDIT_TARIFF } from '../../lib/creditService.js';
 import {
   planMatrixWithAI,
   parseTeacherCustomMatrixWithAI,
@@ -1118,19 +1119,34 @@ export default function AutoExamStudio({
     ]);
 
     try {
-      const planned = await planMatrixWithAI({
-        topic: cleanTopic,
-        grade,
-        subject,
-        count,
-        duration,
-        format,
-        intent: activeHubTab === 'sheet' ? 'sheet' : activeHubTab === 'lecture' ? 'lecture' : 'exam',
-        customPrompt,
-        classInsights: insightText,
-        files: attachedFiles,
-        signal: abortControllerRef.current.signal,
-      });
+      const planned = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'exam_matrix',
+          reason: 'AI Lập ma trận đề thi',
+        },
+        async () => {
+          const out = await planMatrixWithAI({
+            topic: cleanTopic,
+            grade,
+            subject,
+            count,
+            duration,
+            format,
+            intent: activeHubTab === 'sheet' ? 'sheet' : activeHubTab === 'lecture' ? 'lecture' : 'exam',
+            customPrompt,
+            classInsights: insightText,
+            files: attachedFiles,
+            signal: abortControllerRef.current.signal,
+            skipCredit: true,
+          });
+          if (out?.source === 'fallback' && user?.uid) {
+            await refundCredit(user.uid, CREDIT_TARIFF.CHAT_FAST, 'Hoàn Credit: dùng khung ma trận dự phòng').catch(() => {});
+          }
+          return out;
+        }
+      );
 
       setMatrixData(planned);
       setWorkspaceTab('matrix');
@@ -1197,13 +1213,22 @@ export default function AutoExamStudio({
     ]);
 
     try {
-      const parsed = await parseTeacherCustomMatrixWithAI({
-        text,
-        files,
-        subject: targetSubject,
-        grade: targetGrade,
-        signal: abortControllerRef.current.signal,
-      });
+      const parsed = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.TUTOR_CONTEXT,
+          actionType: 'exam_matrix',
+          reason: 'AI Dựng ma trận đề riêng từ tài liệu',
+        },
+        () => parseTeacherCustomMatrixWithAI({
+          text,
+          files,
+          subject: targetSubject,
+          grade: targetGrade,
+          signal: abortControllerRef.current.signal,
+          skipCredit: true,
+        })
+      );
 
       setMatrixData(parsed);
       setTopic(parsed.title);
@@ -1261,12 +1286,21 @@ export default function AutoExamStudio({
     ]);
 
     try {
-      const updated = await refineMatrixWithAI({
-        matrix: matrixData,
-        instruction,
-        classInsights: insightText,
-        signal: abortControllerRef.current.signal,
-      });
+      const updated = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'exam_matrix',
+          reason: 'AI Chỉnh sửa ma trận đề thi',
+        },
+        () => refineMatrixWithAI({
+          matrix: matrixData,
+          instruction,
+          classInsights: insightText,
+          signal: abortControllerRef.current.signal,
+          skipCredit: true,
+        })
+      );
       setMatrixData(updated);
       sound.cheer();
       showToast('Đã cập nhật ma trận', 'success');
@@ -1304,24 +1338,34 @@ export default function AutoExamStudio({
     ]);
 
     try {
-      const qList = await generateQuestionsFromApprovedMatrix({
-        matrix: matrixData,
-        files: attachedFiles,
-        classInsights: insightText,
-        onProgress: (done, total) => setGenProgress({ done, total }),
-        onPartial: (part) => {
-          setQuestions(part);
-          setWorkspaceTab('questions');
+      const qCount = matrixData.totalQuestions || selectedCount || 10;
+      const qList = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: calcExamGenCreditCost(qCount),
+          actionType: 'exam_gen',
+          reason: `AI Sinh đề ${qCount} câu từ ma trận`,
         },
-        signal: abortControllerRef.current.signal,
-      });
+        () => generateQuestionsFromApprovedMatrix({
+          matrix: matrixData,
+          files: attachedFiles,
+          classInsights: insightText,
+          onProgress: (done, total) => setGenProgress({ done, total }),
+          onPartial: (part) => {
+            setQuestions(part);
+            setWorkspaceTab('questions');
+          },
+          signal: abortControllerRef.current.signal,
+          skipCredit: true,
+        })
+      );
 
       setQuestions(qList);
       setStep(5);
       setWorkspaceTab('questions');
       sound.cheer();
       showToast(`Đã hoàn thành biên soạn ${qList.length} câu hỏi!`, 'success');
-      runVerify(qList, { silent: true });
+      runVerify(qList, { silent: true, chargeCredit: false });
 
       setChatMessages((prev) => [
         ...prev.filter((m) => m.role !== 'trace_loading'),
@@ -1345,11 +1389,23 @@ export default function AutoExamStudio({
   };
 
   /* ============ SOÁT ĐÁP ÁN BẰNG AI (chạy nền) ============ */
-  const runVerify = async (list = questions, { silent = false } = {}) => {
+  const runVerify = async (list = questions, { silent = false, chargeCredit = true } = {}) => {
     if (!list.length || verifying) return;
     setVerifying(true);
     try {
-      const res = await verifyQuestionsWithAI({ questions: list, grade: selectedGrade, subject: selectedSubject });
+      const execVerify = async () => {
+        const out = await verifyQuestionsWithAI({ questions: list, grade: selectedGrade, subject: selectedSubject, skipCredit: true });
+        if (chargeCredit && out.checked === 0) {
+          throw new Error('AI chưa đối chiếu được đáp án nào (ELEC Credit đã được hoàn trả).');
+        }
+        return out;
+      };
+      const res = chargeCredit
+        ? await runWithCredit(
+            { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'exam_verify', reason: 'AI Thẩm định đáp án đề thi' },
+            execVerify
+          )
+        : await execVerify();
       const byId = new Map(res.questions.map((q) => [q.id, q.verify]));
       setQuestions((prev) => prev.map((q) => (byId.has(q.id) ? { ...q, verify: byId.get(q.id) } : q)));
       const n = res.mismatches.length;
@@ -1382,7 +1438,7 @@ export default function AutoExamStudio({
       say(`Đã đặt đáp án đúng Câu ${cmd.index + 1} là ${'ABCD'[cmd.option]}.`);
     } else if (cmd.type === 'verify') {
       say('Đang cho AI giải lại từng câu để đối chiếu đáp án...');
-      const res = await runVerify(questions);
+      const res = await runVerify(questions, { chargeCredit: true });
       if (res) say(res.mismatches.length ? `AI không đồng ý đáp án ở: ${res.mismatches.map((i) => `Câu ${i + 1}`).join(', ')}. Mở tab Câu hỏi để xem và bấm "Theo AI" nếu thấy AI đúng.` : 'Tất cả đáp án đã khớp với lời giải độc lập của AI.');
     } else if (cmd.type === 'bank') {
       handleSaveAllToBank();
@@ -1405,9 +1461,17 @@ export default function AutoExamStudio({
       { role: 'trace_loading', text: cmd.kind === 'distractors' ? `Đang tạo lại phương án nhiễu Câu ${idx + 1}...` : `Đang viết lại Câu ${idx + 1}...` },
     ]);
     try {
-      const updated = cmd.kind === 'distractors'
-        ? await regenerateDistractorsWithAI({ question: targetQ, grade: selectedGrade, subject: selectedSubject })
-        : await rewriteQuestionWithAI({ question: targetQ, instruction: text, grade: selectedGrade, subject: selectedSubject });
+      const updated = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'exam_edit',
+          reason: cmd.kind === 'distractors' ? 'AI Tạo lại phương án nhiễu' : 'AI Viết lại câu hỏi',
+        },
+        () => (cmd.kind === 'distractors'
+          ? regenerateDistractorsWithAI({ question: targetQ, grade: selectedGrade, subject: selectedSubject, skipCredit: true })
+          : rewriteQuestionWithAI({ question: targetQ, instruction: text, grade: selectedGrade, subject: selectedSubject, skipCredit: true }))
+      );
       setQuestions((prev) => prev.map((it, i) => (i === idx ? updated : it)));
       setWorkspaceTab('questions');
       sound.cheer();
@@ -1440,16 +1504,31 @@ export default function AutoExamStudio({
     ]);
 
     try {
-      const res = await askTeacherCopilotWithAI({
-        query: queryText,
-        subject: selectedSubject,
-        grade: selectedGrade,
-        matrix: matrixData,
-        questions,
-        files,
-        classInsights: insightText,
-        signal: abortControllerRef.current.signal,
-      });
+      const inlineImgCount = (files || []).filter((f) => f?.kind === 'image' || f?.kind === 'pdf').length;
+      const docCount = Math.max(0, (files || []).length - inlineImgCount);
+      const copilotCost = CREDIT_TARIFF.TUTOR_CONTEXT
+        + inlineImgCount * CREDIT_TARIFF.CHAT_IMAGE_ADDON
+        + docCount * CREDIT_TARIFF.CHAT_DOC_ADDON;
+      const res = await runWithCredit(
+        {
+          userId: user?.uid,
+          imageCount: inlineImgCount,
+          cost: copilotCost,
+          actionType: inlineImgCount > 0 ? 'ai_image' : 'word_copilot',
+          reason: 'AutoExam Studio AI Copilot',
+        },
+        () => askTeacherCopilotWithAI({
+          query: queryText,
+          subject: selectedSubject,
+          grade: selectedGrade,
+          matrix: matrixData,
+          questions,
+          files,
+          classInsights: insightText,
+          signal: abortControllerRef.current.signal,
+          skipCredit: true,
+        })
+      );
       sound.cheer();
       setChatMessages((prev) => [
         ...prev.filter((m) => m.role !== 'trace_loading'),
@@ -1637,12 +1716,21 @@ export default function AutoExamStudio({
     const targetQ = questions[rewriteModalIdx];
     setIsRewriting(true);
     try {
-      const rewritten = await rewriteQuestionWithAI({
-        question: targetQ,
-        instruction: rewritePrompt,
-        grade: selectedGrade,
-        subject: selectedSubject,
-      });
+      const rewritten = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'exam_edit',
+          reason: 'AI Viết lại câu hỏi',
+        },
+        () => rewriteQuestionWithAI({
+          question: targetQ,
+          instruction: rewritePrompt,
+          grade: selectedGrade,
+          subject: selectedSubject,
+          skipCredit: true,
+        })
+      );
       setQuestions((prev) => prev.map((item, idx) => (idx === rewriteModalIdx ? rewritten : item)));
       sound.cheer();
       showToast(`Đã viết lại Câu ${rewriteModalIdx + 1} thành công`, 'success');
@@ -1659,11 +1747,20 @@ export default function AutoExamStudio({
     if (!questions[idx] || regeneratingDistractorsIdx !== null) return;
     setRegeneratingDistractorsIdx(idx);
     try {
-      const updated = await regenerateDistractorsWithAI({
-        question: questions[idx],
-        grade: selectedGrade,
-        subject: selectedSubject,
-      });
+      const updated = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'exam_edit',
+          reason: 'AI Tạo lại phương án nhiễu',
+        },
+        () => regenerateDistractorsWithAI({
+          question: questions[idx],
+          grade: selectedGrade,
+          subject: selectedSubject,
+          skipCredit: true,
+        })
+      );
       setQuestions((prev) => prev.map((item, i) => (i === idx ? updated : item)));
       sound.cheer();
       showToast(`Đã tái tạo 3 phương án nhiễu theo bẫy học sinh (Câu ${idx + 1})`, 'success');
@@ -1699,23 +1796,41 @@ export default function AutoExamStudio({
     }));
 
     try {
-      const insight = await getPedagogicalInsightForQuestion({
-        question: q,
-        subject: selectedSubject,
-      });
+      const insight = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'ai_hint',
+          reason: 'AI Phân tích bẫy nhận thức câu hỏi',
+        },
+        () => getPedagogicalInsightForQuestion({
+          question: q,
+          subject: selectedSubject,
+          skipCredit: true,
+        })
+      );
       setPedagogyInsights((prev) => ({
         ...prev,
         [idx]: { ...insight, loading: false, open: true },
       }));
-    } catch {
+    } catch (err) {
+      const isCreditOrAuthErr =
+        err?.code === 'OUT_OF_CREDITS' ||
+        err?.code === 'CREDIT_SYSTEM_ERROR' ||
+        err?.code === 'LOGIN_REQUIRED';
+      if (isCreditOrAuthErr) {
+        showToast(err.message, 'error');
+      }
       setPedagogyInsights((prev) => ({
         ...prev,
-        [idx]: {
-          trap: 'Học sinh hay nhầm lẫn kiến thức trọng tâm và các trường hợp ngoại lệ.',
-          teachingTip: 'Nhắc học sinh đọc kỹ các từ khóa phủ định và dữ kiện bài toán.',
-          loading: false,
-          open: true,
-        },
+        [idx]: isCreditOrAuthErr
+          ? { open: false, loading: false }
+          : {
+              trap: 'Học sinh hay nhầm lẫn kiến thức trọng tâm và các trường hợp ngoại lệ.',
+              teachingTip: 'Nhắc học sinh đọc kỹ các từ khóa phủ định và dữ kiện bài toán.',
+              loading: false,
+              open: true,
+            },
       }));
     }
   };

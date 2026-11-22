@@ -4,7 +4,7 @@ import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
 import { askAI, fetchPlan } from '../services/api.js';
 import { compressImage } from '../lib/ai.js';
-import { spendCredit, refundCredit, calcExamGenCreditCost, formatCredits } from '../lib/creditService.js';
+import { runWithCredit, calcExamGenCreditCost } from '../lib/creditService.js';
 import VipGate from './VipGate.jsx';
 import AIMark from './AIMark.jsx';
 import { sanitizeTopicId, topicPromptList } from '../data/chemTopics.js';
@@ -215,22 +215,8 @@ export default function AIQuizGenerator({ onClose }) {
     setError(null);
 
     const cost = quizCost(questionCount);
-    let charged = 0;
 
     try {
-      // Trừ credits trước khi gọi AI — theo số câu (hỗ trợ tham số creditCost)
-      if (user?.uid) {
-        const cr = await spendCredit(user.uid, 0, cost);
-        if (!cr.ok) {
-          setError(`Hết điểm! Còn ${cr.balance} điểm, cần ${cost} điểm. Nạp thêm tại Trang cá nhân → Gói dùng.`);
-          setStep(STEP.TARGET);
-          try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
-          return;
-        }
-        charged = cr.cost || cost;
-        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
-      }
-
       const textParts = files.filter((f) => f.kind === 'text').map((f) => f.text).join('\n\n---\n\n');
       const imageFiles = files.filter((f) => f.kind === 'image');
 
@@ -251,29 +237,41 @@ export default function AIQuizGenerator({ onClose }) {
 
       const history = [{ role: 'user', parts }];
 
-      let fullText = '';
-      const res = await new Promise((resolve, reject) => {
-        const p = askAI(history, (chunk) => { fullText = chunk; });
-        p.then(resolve).catch(reject);
-        p.abort = p.abort || (() => {});
-      });
-      if (!fullText && res?.text) fullText = res.text;
+      const valid = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost,
+          imageCount: imageFiles.length,
+          actionType: imageFiles.length > 0 ? 'ai_image' : 'exam_gen',
+          reason: `AI tạo ${questionCount} câu hỏi từ tài liệu`,
+        },
+        async () => {
+          let fullText = '';
+          const res = await new Promise((resolve, reject) => {
+            const p = askAI(history, (chunk) => { fullText = chunk; });
+            p.then(resolve).catch(reject);
+            p.abort = p.abort || (() => {});
+          });
+          if (!fullText && res?.text) fullText = res.text;
 
-      const cleaned = fullText
-        .replace(/```json\s*/gi, '')
-        .replace(/```\s*/g, '')
-        .trim();
+          const cleaned = fullText
+            .replace(/```json\s*/gi, '')
+            .replace(/```\s*/g, '')
+            .trim();
 
-      const start = cleaned.search(/\[/);
-      const end = cleaned.lastIndexOf(']');
-      if (start < 0 || end < 0) throw new Error('AI trả về không đúng định dạng. Thử lại.');
+          const start = cleaned.search(/\[/);
+          const end = cleaned.lastIndexOf(']');
+          if (start < 0 || end < 0) throw new Error('AI trả về không đúng định dạng (ELEC Credit đã được hoàn trả).');
 
-      const parsed = JSON.parse(cleaned.slice(start, end + 1));
-      const valid = parsed.filter((q) =>
-        q.q && Array.isArray(q.options) && q.options.length >= 2 && Number.isInteger(q.answer)
+          const parsed = JSON.parse(cleaned.slice(start, end + 1));
+          const list = Array.isArray(parsed)
+            ? parsed.filter((q) => q.q && Array.isArray(q.options) && q.options.length >= 2 && Number.isInteger(q.answer))
+            : [];
+
+          if (!list.length) throw new Error('AI không tạo được câu hỏi hợp lệ (ELEC Credit đã được hoàn trả).');
+          return list;
+        }
       );
-
-      if (!valid.length) throw new Error('AI không tạo được câu hỏi hợp lệ. Thử lại.');
 
       setQuestions(valid.slice(0, questionCount).map((q) => ({ ...q, topic_id: sanitizeTopicId(q.topic_id) })));
       setQIndex(0);
@@ -283,15 +281,7 @@ export default function AIQuizGenerator({ onClose }) {
     } catch (e) {
       console.error('[AIQuizGen] generate lỗi:', e);
       setError(e.message || 'Không tạo được đề. Thử lại.');
-      setStep(STEP.TARGET);   // ← FIX: đổi từ STEP.INPUT (không tồn tại) thành STEP.TARGET
-      // Hoàn điểm nếu AI lỗi hoàn toàn
-      if (charged > 0 && user?.uid) {
-        try {
-          await refundCredit(user.uid, charged, 'Hoàn điểm: AI tạo đề lỗi');
-        } catch (err) {
-          console.warn('[AIQuizGen] refund fail:', err);
-        }
-      }
+      setStep(STEP.TARGET);
     }
   };
 

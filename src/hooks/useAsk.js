@@ -65,7 +65,15 @@ export default function useAsk() {
             opts.systemPrompt || null
           );
           promiseRef.current = promise;
-          return await promise;
+          const res = await promise;
+          const replyText = typeof res === 'string' ? res : (res?.text || '');
+          if (!String(replyText).trim()) {
+            throw new Error('AI không trả về nội dung (ELEC Credit đã được hoàn trả).');
+          }
+          if (typeof opts.validate === 'function') {
+            opts.validate(replyText);
+          }
+          return typeof res === 'object' && res !== null ? res : { text: replyText };
         }
       );
       if (mountedRef.current) {

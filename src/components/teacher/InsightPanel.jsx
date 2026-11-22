@@ -5,6 +5,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { generatePedagogicalInsights } from '../../lib/insightAi.js';
+import { CREDIT_TARIFF, formatCredits } from '../../lib/creditService.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import {
   BentoCard,
@@ -78,6 +80,7 @@ export default function InsightPanel({
   subject = 'Hóa học',
   onOpenAiStudio,
 }) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [copiedActionIdx, setCopiedActionIdx] = useState(null);
@@ -91,6 +94,7 @@ export default function InsightPanel({
         subject,
         forceRefresh: force,
         useAi,
+        userId: user?.uid || null,
       });
       setData(res);
     } catch (e) {
@@ -220,8 +224,8 @@ export default function InsightPanel({
               {loading
                 ? 'Đang phân tích…'
                 : data?.isAiGenerated
-                  ? 'Phân tích lại cùng AI (1 credit)'
-                  : 'Phân tích chuyên sâu AI (1 credit)'}
+                  ? `Phân tích lại cùng AI (${formatCredits(CREDIT_TARIFF.TUTOR_CONTEXT)} Credit)`
+                  : `Phân tích chuyên sâu AI (${formatCredits(CREDIT_TARIFF.TUTOR_CONTEXT)} Credit)`}
             </button>
           </div>
         </div>

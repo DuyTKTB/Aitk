@@ -637,6 +637,7 @@ export async function planMatrixWithAI({
   classInsights = '',
   files = [],
   signal,
+  skipCredit = false,
 } = {}) {
   const g = String(grade || '12');
   if (!THPT_GRADES.includes(g)) {
@@ -692,6 +693,7 @@ Chỉ trả JSON: {"title":"Tên đề ngắn gọn","topics":["..."],"aiPedagog
       temperature: 0.3,
       signal,
       schema: PLAN_SCHEMA,
+      skipCredit,
     });
     const data = parseJsonLoose(raw);
     const names = (Array.isArray(data?.topics) ? data.topics : [])
@@ -723,6 +725,7 @@ export async function parseTeacherCustomMatrixWithAI({
   subject = 'Hóa học',
   grade = '12',
   signal,
+  skipCredit = false,
 } = {}) {
   const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
   const g = String(grade || '12');
@@ -779,6 +782,7 @@ Chỉ trả về DUY NHẤT mã JSON hợp lệ.`;
     parts: [...imageParts, ...pdfParts, { text: user }],
     temperature: 0.2,
     signal,
+    skipCredit,
   });
 
   const data = parseJsonLoose(raw);
@@ -912,7 +916,7 @@ function repairMatrix(data, base, targets) {
   return normalizePoints(out);
 }
 
-export async function refineMatrixWithAI({ matrix, instruction, classInsights = '', signal } = {}) {
+export async function refineMatrixWithAI({ matrix, instruction, classInsights = '', signal, skipCredit = false } = {}) {
   if (!matrix) throw new Error('Chưa có ma trận để chỉnh.');
   const curTargets = {};
   (matrix.parts || []).forEach((p) => {
@@ -950,6 +954,7 @@ Chỉ trả JSON: {"title":"...","parts":[{"format":"multiple_choice|true_false|
     parts: [{ text: `Yêu cầu: ${instruction}\n${classInsights ? `Dữ liệu lớp:\n${String(classInsights).slice(0, 800)}\n` : ''}Ma trận hiện tại:\n${JSON.stringify({ title: matrix.title, parts: compact })}` }],
     temperature: 0.3,
     signal,
+    skipCredit,
   });
   const data = parseJsonLoose(raw);
   if (!data?.parts) throw new Error('AI không trả về ma trận hợp lệ.');
@@ -1381,6 +1386,7 @@ export async function generateQuestionsFromApprovedMatrix({
   onProgress,
   onPartial,
   signal,
+  skipCredit = false,
 } = {}) {
   const subject = matrix.subject || 'Hóa học';
   const grade = String(matrix.grade || '12');
@@ -1398,6 +1404,7 @@ export async function generateQuestionsFromApprovedMatrix({
   const results = new Array(specs.length).fill(null);
   const seen = new Set();
   let firstErr = null;
+  let aiGeneratedCount = 0;
   const emit = () => {
     const got = results.filter(Boolean);
     onProgress?.(got.length, specs.length);
@@ -1430,6 +1437,7 @@ export async function generateQuestionsFromApprovedMatrix({
         temperature: 0.4,
         signal,
         schema: GEN_SCHEMA,
+        skipCredit,
       });
       const list = listFromPayload(parseJsonLoose(raw)).slice(0, idxs.length);
       list.forEach((item, j) => {
@@ -1441,6 +1449,7 @@ export async function generateQuestionsFromApprovedMatrix({
         if (key && seen.has(key)) return;
         if (key) seen.add(key);
         results[gi] = q;
+        aiGeneratedCount += 1;
       });
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
@@ -1462,6 +1471,11 @@ export async function generateQuestionsFromApprovedMatrix({
     await new Promise((r) => setTimeout(r, 600 * attempt));
     const batches = chunkByType(specs, missing, () => 2);
     await pool(batches.map((b) => () => runBatch(b)), Math.min(GEN_CONCURRENCY, 2));
+  }
+
+  // Nếu toàn bộ các lượt gọi AI đều thất bại (0 câu AI sinh được) -> ném lỗi để hoàn 100% Credit thay vì trả toàn câu mẫu cứng
+  if (aiGeneratedCount === 0) {
+    throw firstErr || new Error('AI không sinh được câu hỏi nào lúc này (ELEC Credit đã được hoàn trả).');
   }
 
   // Đợt 3: Thử lại đơn lẻ (1-by-1) cho các câu còn sót
@@ -1547,7 +1561,7 @@ function isMatch(q, got) {
   return got === q.correct;
 }
 
-export async function verifyQuestionsWithAI({ questions = [], subject = 'Hóa học', grade = '12', onProgress, signal } = {}) {
+export async function verifyQuestionsWithAI({ questions = [], subject = 'Hóa học', grade = '12', onProgress, signal, skipCredit = false } = {}) {
   const system = `Bạn là giáo viên ${subject} THPT giải đề độc lập. Với mỗi câu hãy TỰ GIẢI từng bước rồi đưa đáp án.
 ${CHEM_RULES}
 Trả JSON {"results":[{"i":số thứ tự,"work":"giải ngắn ≤ 200 ký tự","answer":"..."}]}.
@@ -1568,6 +1582,7 @@ Chỉ trả đúng JSON, mỗi câu một phần tử.`;
         temperature: 0.1,
         signal,
         schema: VERIFY_SCHEMA,
+        skipCredit,
       });
       const list = parseJsonLoose(raw)?.results || [];
       list.forEach((r) => {
@@ -1633,7 +1648,7 @@ function specOf(question) {
   };
 }
 
-export async function askPedagogyAI({ question, matrix, subject = '', classInsights = '', signal } = {}) {
+export async function askPedagogyAI({ question, matrix, subject = '', classInsights = '', signal, skipCredit = false } = {}) {
   const subj = subject || matrix?.subject || 'KHTN & Toán học';
   const raw = await callModel({
     system: `Bạn là trợ lý sư phạm môn ${subj} THPT Việt Nam (lớp 10–12, GDPT 2018).
@@ -1648,6 +1663,7 @@ Chỉ trả JSON: {"answer":"..."}.`,
     }],
     temperature: 0.5,
     signal,
+    skipCredit,
   });
   try {
     const p = parseJsonLoose(raw);
@@ -1705,6 +1721,7 @@ export async function askTeacherCopilotWithAI({
   files = [],
   classInsights = '',
   signal,
+  skipCredit = false,
 } = {}) {
   const subj = subject || matrix?.subject || 'Hóa học';
   const g = String(grade || matrix?.grade || '12');
@@ -1755,6 +1772,7 @@ Cấu trúc trả về ĐÚNG JSON:
     parts: [...imageParts, ...pdfParts, { text: user }],
     temperature: 0.3,
     signal,
+    skipCredit,
   });
 
   try {
@@ -1770,8 +1788,12 @@ Cấu trúc trả về ĐÚNG JSON:
     }
   } catch { /* fallback raw text */ }
 
+  const plainAnswer = String(raw || '').trim();
+  if (!plainAnswer) {
+    throw new Error('AI chưa phân tích được nội dung tài liệu (ELEC Credit đã được hoàn trả).');
+  }
   return {
-    answer: String(raw || '').trim() || 'Đã tiếp nhận yêu cầu nhưng chưa phân tích được nội dung.',
+    answer: plainAnswer,
     canBuildExam: Boolean(textParts.length || files?.length),
     suggestedTopic: query.slice(0, 60),
     suggestedCount: 10,
@@ -1785,6 +1807,7 @@ export async function rewriteQuestionWithAI({
   subject = 'Hóa học',
   grade = '12',
   signal,
+  skipCredit = false,
 } = {}) {
   const sp = specOf(question);
   const raw = await callModel({
@@ -1800,6 +1823,7 @@ NHIỆM VỤ: viết lại/hoàn thiện CÂU HỎI GỐC theo yêu cầu giáo 
     temperature: 0.4,
     signal,
     schema: GEN_SCHEMA,
+    skipCredit,
   });
   const item = listFromPayload(parseJsonLoose(raw))[0];
   const built = buildByType(item, sp, { shuffle: false });
@@ -1812,6 +1836,7 @@ export async function regenerateDistractorsWithAI({
   subject = 'Hóa học',
   grade = '12',
   signal,
+  skipCredit = false,
 } = {}) {
   if ((question.type || 'single_choice') !== 'single_choice') {
     throw new Error('Chỉ đổi phương án nhiễu cho câu trắc nghiệm 4 lựa chọn.');
@@ -1824,6 +1849,7 @@ Trả JSON: {"distractors":["...","...","..."],"explain":"Lời giải, chỉ ra
     parts: [{ text: `CÂU HỎI: ${question.q}\nĐÁP ÁN ĐÚNG: ${correctText}\nLời giải hiện tại: ${question.explain || ''}` }],
     temperature: 0.4,
     signal,
+    skipCredit,
   });
   const p = parseJsonLoose(raw);
   const d = (Array.isArray(p?.distractors) ? p.distractors : []).map(clean).filter(Boolean);
@@ -1834,18 +1860,22 @@ Trả JSON: {"distractors":["...","...","..."],"explain":"Lời giải, chỉ ra
   return { ...question, options: fixed.options, correct: fixed.correct, explain: p.explain || question.explain, verify: { status: 'unchecked' } };
 }
 
-export async function getPedagogicalInsightForQuestion({ question, subject = 'Hóa học', signal } = {}) {
+export async function getPedagogicalInsightForQuestion({ question, subject = 'Hóa học', signal, skipCredit = false } = {}) {
   const raw = await callModel({
     system: `Bạn là cố vấn sư phạm môn ${subject} THPT.
 Phân tích câu hỏi và trả JSON {"trap":"bẫy nhận thức/sai lầm dễ mắc nhất (1–2 câu)","teachingTip":"mẹo hoặc câu hỏi gợi mở nên hỏi trên lớp (1–2 câu)"}`,
     parts: [{ text: `${questionToPlainText(question)}\nLời giải: ${question.explain || ''}` }],
     temperature: 0.3,
     signal,
+    skipCredit,
   });
   const parsed = parseJsonLoose(raw);
+  if (!parsed?.trap && !parsed?.teachingTip) {
+    throw new Error('AI chưa phân tích được bẫy nhận thức câu hỏi (ELEC Credit đã được hoàn trả).');
+  }
   return {
-    trap: parsed?.trap || 'Học sinh dễ nhầm lẫn công thức và điều kiện phản ứng.',
-    teachingTip: parsed?.teachingTip || 'Yêu cầu học sinh viết nhẩm phương trình ion thu gọn trước khi bấm máy tính.',
+    trap: parsed.trap || 'Học sinh dễ nhầm lẫn công thức và điều kiện phản ứng.',
+    teachingTip: parsed.teachingTip || 'Yêu cầu học sinh viết nhẩm phương trình ion thu gọn trước khi bấm máy tính.',
   };
 }
 

@@ -12,7 +12,7 @@
    ============================================================ */
 import { buildSubjectGuide, getSubject, SUBJECTS, GENERIC_SUBJECT } from './subjects.js';
 import { buildFileContext } from './fileReader.js';
-import { useCredit, refundCredit, calcExamGenCreditCost, calcChatCreditCost } from './creditService.js';
+import { useCredit, refundCredit, runWithCredit, calcExamGenCreditCost, calcChatCreditCost } from './creditService.js';
 import { collectEnvKeys } from './aiRouter.js';
 
 /* ============ HẰNG SỐ ============ */
@@ -343,15 +343,24 @@ async function callAgnesRaw({ system, userContent, temperature, signal, schema }
   throw lastErr || new Error('Không gọi được Agnes API (toàn bộ key đều thất bại)');
 }
 
-export async function callModel({ system, parts, temperature = 0.7, signal, creditCost = null, schema = null }) {
+export async function callModel({ system, parts, temperature = 0.7, signal, creditCost = null, schema = null, skipCredit = false }) {
   let chargedCredit = 0;
-  if (_creditUserId) {
+  if (_creditUserId && !skipCredit) {
     const imgCount = parts?.filter((p) => p.inlineData)?.length || 0;
     const cr = await useCredit(_creditUserId, imgCount, creditCost);
     if (!cr.ok) {
       try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
+      if (cr.isSystemError) {
+        const sysErr = new Error(
+          `Lỗi kết nối hệ thống Credit tạm thời (${cr.error || 'vui lòng thử lại'}). Số dư không bị trừ.`
+        );
+        sysErr.code = 'CREDIT_SYSTEM_ERROR';
+        throw sysErr;
+      }
       const needed = cr.needed || (creditCost ?? calcChatCreditCost({ imageCount: imgCount }));
-      throw new Error(`Hết điểm! Còn ${cr.balance} điểm, cần ${needed}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
+      const creditErr = new Error(`Hết ELEC Credit! Còn ${cr.balance} Credit, cần ${needed}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
+      creditErr.code = 'OUT_OF_CREDITS';
+      throw creditErr;
     }
     chargedCredit = cr.cost || 0;
     try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
@@ -510,23 +519,42 @@ export function parseJsonLoose(text) {
 }
 
 async function callAndParse(args) {
-  let lastErr = null;
-  for (let attempt = 0; attempt <= RETRY_JSON; attempt++) {
-    try {
-      const raw = await callModel({
-        ...args,
-        temperature: (args.temperature ?? 0.7) + attempt * 0.05,
-      });
-      return parseJsonLoose(raw);
-    } catch (e) {
-      if (e?.name === 'AbortError') throw e;
-      lastErr = e;
-      const isJsonErr = /Không đọc được phản hồi/.test(e.message || '');
-      if (!isJsonErr || attempt === RETRY_JSON) throw e;
-      console.warn(`[examAiUtils] JSON lỗi lần ${attempt + 1}, retry...`);
+  const { skipCredit = false, creditCost = null, reason = 'Xử lý đề thi AI', ...rest } = args || {};
+  const runAttempts = async () => {
+    let lastErr = null;
+    for (let attempt = 0; attempt <= RETRY_JSON; attempt++) {
+      try {
+        const raw = await callModel({
+          ...rest,
+          skipCredit: true,
+          temperature: (rest.temperature ?? 0.7) + attempt * 0.05,
+        });
+        return parseJsonLoose(raw);
+      } catch (e) {
+        if (e?.name === 'AbortError') throw e;
+        lastErr = e;
+        const isJsonErr = /Không đọc được phản hồi/.test(e.message || '');
+        if (!isJsonErr || attempt === RETRY_JSON) throw e;
+        console.warn(`[examAiUtils] JSON lỗi lần ${attempt + 1}, retry...`);
+      }
     }
+    throw lastErr || new Error('Không gọi được AI.');
+  };
+
+  if (_creditUserId && !skipCredit) {
+    const imgCount = rest.parts?.filter((p) => p.inlineData)?.length || 0;
+    return runWithCredit(
+      {
+        userId: _creditUserId,
+        imageCount: imgCount,
+        cost: creditCost,
+        actionType: imgCount > 0 ? 'ai_image' : 'ai_text',
+        reason,
+      },
+      runAttempts
+    );
   }
-  throw lastErr || new Error('Không gọi được AI.');
+  return runAttempts();
 }
 
 /* ============================================================
@@ -1040,7 +1068,7 @@ export async function generateExam({
    2) SỐ HÓA ĐỀ CÓ SẴN
    ============================================================ */
 export async function digitizeExam({
-  files, subject, grade, optionsCount = 4, duration = 45, explain = true, note = '', signal,
+  files, subject, grade, optionsCount = 4, duration = 45, explain = true, note = '', signal, skipCredit = false,
 }) {
   if (!files?.length) throw new Error('Chưa có file để số hóa.');
   const { textParts, imageParts, pdfParts } = buildFileContext(files);
@@ -1066,6 +1094,7 @@ export async function digitizeExam({
     temperature: 0.2,
     signal,
     schema: QUESTION_SCHEMA,
+    skipCredit,
   });
   const list = listOf(p);
   if (!list.length) throw new Error('Không tìm thấy câu nào trong file. Hãy thử file rõ nét hơn.');

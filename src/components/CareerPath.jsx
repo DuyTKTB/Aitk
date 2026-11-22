@@ -96,42 +96,48 @@ export default function CareerPath() {
       'Yêu cầu: đúng 3 nhóm ngành, match là số 0-100 giảm dần, nội dung tiếng Việt, sát thực tế Việt Nam.\n\n' + profile;
 
     let text = '';
+    let aiFailureMsg = '';
     try {
-      const res = await runWithCredit(
+      const parsed = await runWithCredit(
         { userId: user?.uid, cost: CREDIT_TARIFF.CAREER_REPORT, actionType: 'career_report', reason: 'Báo cáo định hướng ngành nghề AI' },
-        () => askAI(
-          [{ role: 'user', text: prompt }],
-          (chunk) => { text = chunk || ''; setAiText(text); },
-          null,
-          'Bạn là chuyên gia tư vấn hướng nghiệp cho học sinh Việt Nam. Trả lời đúng format JSON được yêu cầu, không thêm gì khác.'
-        )
+        async () => {
+          const res = await askAI(
+            [{ role: 'user', text: prompt }],
+            (chunk) => { text = chunk || ''; setAiText(text); },
+            null,
+            'Bạn là chuyên gia tư vấn hướng nghiệp cho học sinh Việt Nam. Trả lời đúng format JSON được yêu cầu, không thêm gì khác.'
+          );
+          if (res?.text) text = res.text;
+          const m = String(text || '').match(/\{[\s\S]*\}/);
+          const candidate = m ? JSON.parse(m[0]) : null;
+          if (!candidate?.groups?.length) {
+            throw new Error('AI chưa tạo được báo cáo định hướng hợp lệ (ELEC Credit đã được hoàn trả).');
+          }
+          return candidate;
+        }
       );
-      if (res?.text) text = res.text;
-    } catch { /* fallback bên dưới */ }
-
-    let data = null;
-    try {
-      const m = text.match(/\{[\s\S]*\}/);
-      if (m) data = JSON.parse(m[0]);
-    } catch { /* fallback */ }
-
-    if (!data?.groups?.length) {
-      /* FALLBACK: ma trận RIASEC */
-      data = {
-        summary: `Hồ sơ nổi bật của bạn ở nhóm ${RIASEC.find((g) => g.k === top3[0])?.name} kết hợp ${RIASEC.find((g) => g.k === top3[1])?.name}.`,
-        groups: top3.slice(0, 3).map((k, i) => ({
-          name: FALLBACK[k].name,
-          match: [88, 76, 65][i],
-          why: `Bạn có xu hướng mạnh ở nhóm ${k} — phù hợp môi trường dạng này.`,
-          majors: FALLBACK[k].majors,
-          unis: FALLBACK[k].unis,
-          outlook: 'Nhu cầu tuyển dụng ổn định trong 5-10 năm tới.',
-        })),
-        advice: 'Chọn 1 ngành trong nhóm phù hợp nhất, tìm hiểu đề thi tuyển sinh của 2-3 trường gợi ý ngay tuần này.',
-      };
-      setAiText('');
+      setReport({ ...parsed, at: Date.now(), profile: { scores, subjects, goal } });
+      setStep('report');
+      return;
+    } catch (e) {
+      aiFailureMsg = e?.message || 'AI tạm bận, hệ thống hiển thị báo cáo tham chiếu RIASEC (số dư Credit không bị trừ).';
     }
-    setReport({ ...data, at: Date.now(), profile: { scores, subjects, goal } });
+
+    const fallbackData = {
+      summary: `Hồ sơ nổi bật của bạn ở nhóm ${RIASEC.find((g) => g.k === top3[0])?.name} kết hợp ${RIASEC.find((g) => g.k === top3[1])?.name}.`,
+      groups: top3.slice(0, 3).map((k, i) => ({
+        name: FALLBACK[k].name,
+        match: [88, 76, 65][i],
+        why: `Bạn có xu hướng mạnh ở nhóm ${k} — phù hợp môi trường dạng này.`,
+        majors: FALLBACK[k].majors,
+        unis: FALLBACK[k].unis,
+        outlook: 'Nhu cầu tuyển dụng ổn định trong 5-10 năm tới.',
+      })),
+      advice: 'Chọn 1 ngành trong nhóm phù hợp nhất, tìm hiểu đề thi tuyển sinh của 2-3 trường gợi ý ngay tuần này.',
+      creditNotice: aiFailureMsg,
+    };
+    setAiText('');
+    setReport({ ...fallbackData, at: Date.now(), profile: { scores, subjects, goal } });
     setStep('report');
   };
 
@@ -267,6 +273,11 @@ export default function CareerPath() {
         {step === 'report' && report && (
           <div>
             <div style={{ ...A.card, padding: '1.2rem 1.3rem', marginBottom: '.8rem' }}>
+              {report.creditNotice && (
+                <div style={{ marginBottom: '.65rem', padding: '.6rem .85rem', borderRadius: 12, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', color: 'var(--ink)', font: '600 .8rem/1.45 var(--sans)' }}>
+                  {report.creditNotice}
+                </div>
+              )}
               <b style={{ font: '800 .95rem var(--sans)', color: 'var(--ink)' }}>Tổng quan</b>
               <p style={{ color: 'var(--ink)', opacity: 0.88, font: '500 .88rem/1.6 var(--sans)', margin: '.4rem 0 0' }}>{report.summary}</p>
             </div>

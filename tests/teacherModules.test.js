@@ -23,7 +23,16 @@ const {
 
 vi.mock('../src/lib/firebase.js', () => ({
   db: {},
+  auth: { currentUser: { uid: 'gvbm_1', emailVerified: true } },
 }));
+
+vi.mock('../src/lib/creditService.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runWithCredit: async (_opts, taskFn) => taskFn(),
+  };
+});
 
 vi.mock('../src/hooks/useAuth.jsx', () => ({
   useAuth: () => ({ user: { uid: 'gvbm_1', displayName: 'Cô Lan', email: 'lan@example.com' } }),

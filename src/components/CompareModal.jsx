@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { askAI, COMPARE_SYSTEM_PROMPT } from '../lib/ai.js';
-import { useCredit } from '../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF } from '../lib/creditService.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { MarkdownLike } from './ChatMarkdown.jsx';
 import { HOT_AI } from './hotData.js';
@@ -67,24 +67,27 @@ YÊU CẦU:
     setErr('');
     setResult('');
     try {
-      // ⚡ Trừ credits
-      if (user?.uid) {
-        const cr = await useCredit(user.uid, false);
-        if (!cr.ok) {
-          setErr(`Hết điểm! Còn ${cr.balance}. Nạp thêm tại Trang cá nhân → Gói dùng.`);
-          setLoading(false);
-          try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
-          return;
-        }
-        try { window.dispatchEvent(new CustomEvent('cs-credit-update', { detail: { balance: cr.balance } })); } catch {}
-      }
-
       const history = [{ role: 'user', parts: [{ text: buildPrompt() }] }];
-      await askAI(
-        history,
-        (partial) => setResult(partial),
-        null,
-        COMPARE_SYSTEM_PROMPT
+      await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'ai_text',
+          reason: 'AI so sánh công cụ',
+        },
+        async () => {
+          const res = await askAI(
+            history,
+            (partial) => setResult(partial),
+            null,
+            COMPARE_SYSTEM_PROMPT
+          );
+          const replyText = typeof res === 'string' ? res : (res?.text || '');
+          if (!String(replyText).trim()) {
+            throw new Error('AI không trả về nội dung so sánh (ELEC Credit đã được hoàn trả).');
+          }
+          return res;
+        }
       );
     } catch (e) {
       setErr(e?.message || 'Không gọi được AI. Kiểm tra mạng hoặc API.');

@@ -17,7 +17,7 @@ import { digitizeExam } from '../../lib/examAiUtils.js';
 import { readFile } from '../../lib/fileReader.js';
 import { readExamPdfFile } from '../../lib/pdfExamReader.js';
 import { ocrImages } from '../../lib/aiOcr.js';
-import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
+import { runWithCredit, CREDIT_TARIFF, formatCredits } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useTeacherPro } from '../../hooks/useTeacherPro.js';
 import {
@@ -1547,6 +1547,7 @@ export default function ExamImporter({
           grade: gr,
           duration: Number(duration) || 45,
           explain: true,
+          skipCredit: true,
         })
       );
 
@@ -1809,21 +1810,24 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
   "part3": [{ "q": "...", "answer": "12,5", "level": "vd", "explain": "..." }]
 }`;
 
-      const aiRes = await runWithCredit(
+      const { newP2, newP3 } = await runWithCredit(
         { userId: user?.uid, cost: CREDIT_TARIFF.ERROR_ANALYSIS, actionType: 'exam_gen', reason: 'AI bổ sung câu hỏi đề nhập' },
-        () => askAI(prompt)
+        async () => {
+          const aiRes = await askAI(prompt);
+          const text = typeof aiRes === 'string' ? aiRes : aiRes?.text || '';
+          const parsed = parseExamJsonSafe(text);
+          const p2 = (parsed?.part2 || []).map((q, idx) =>
+            toUiQuestion({ ...q, id: `ai_p2_${Date.now()}_${idx}`, num: stats.p2 + idx + 1, type: 'true_false', points: 1 })
+          );
+          const p3 = (parsed?.part3 || []).map((q, idx) =>
+            toUiQuestion({ ...q, id: `ai_p3_${Date.now()}_${idx}`, num: stats.p3 + idx + 1, type: 'short_answer', points: 0.25 })
+          );
+          if (!p2.length && !p3.length) {
+            throw new Error('AI chưa trả về JSON đúng cấu trúc. Credit đã được hoàn trả — vui lòng thử lại.');
+          }
+          return { newP2: p2, newP3: p3 };
+        }
       );
-      const text = typeof aiRes === 'string' ? aiRes : aiRes?.text || '';
-      const parsed = parseExamJsonSafe(text);
-      const newP2 = (parsed?.part2 || []).map((q, idx) =>
-        toUiQuestion({ ...q, id: `ai_p2_${Date.now()}_${idx}`, num: stats.p2 + idx + 1, type: 'true_false', points: 1 })
-      );
-      const newP3 = (parsed?.part3 || []).map((q, idx) =>
-        toUiQuestion({ ...q, id: `ai_p3_${Date.now()}_${idx}`, num: stats.p3 + idx + 1, type: 'short_answer', points: 0.25 })
-      );
-      if (!newP2.length && !newP3.length) {
-        throw new Error('AI chưa trả về JSON đúng cấu trúc. Vui lòng thử lại.');
-      }
       setItems((prev) => [...prev, ...newP2, ...newP3]);
       setMsg(`AI đã bổ sung ${newP2.length} câu Phần II và ${newP3.length} câu Phần III!`);
     } catch (err) {
@@ -2357,7 +2361,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                         className="wimp-btn wimp-btn-xs wimp-btn-soft"
                         onClick={handleAiDeepScan}
                         disabled={busy}
-                        title="Dùng AI Vision rà soát lại toàn bộ câu hỏi, công thức và 3 phần GDPT 2025 (2 credit)"
+                        title={`Dùng AI Vision rà soát lại toàn bộ câu hỏi, công thức và 3 phần GDPT 2025 (${formatCredits(CREDIT_TARIFF.ERROR_ANALYSIS)} Credit)`}
                       >
                         Quét AI
                       </button>

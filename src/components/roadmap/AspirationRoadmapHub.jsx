@@ -443,8 +443,20 @@ export default function AspirationRoadmapHub({
   const handleRefreshAiComment = async () => {
     setAiLoading(true);
     try {
-      const res = await getProgressCommentaryWithAI(data);
-      setAiComment(res);
+      const res = await getProgressCommentaryWithAI({ ...data, userId: user?.uid || uid });
+      if (res?.reason === 'out-of-credits' || res?.reason === 'credit-system-error' || res?.reason === 'login-required') {
+        setAiComment({
+          ...res,
+          weakPoints: [
+            res.creditError || (res.reason === 'out-of-credits'
+              ? 'Số dư ELEC Credit không đủ để gọi Gia sư AI, đang hiển thị nhận xét tự động.'
+              : 'Không thể kết nối ví ELEC Credit tạm thời, đang hiển thị nhận xét tự động.'),
+            ...(res.weakPoints || []),
+          ],
+        });
+      } else {
+        setAiComment(res);
+      }
     } finally {
       setAiLoading(false);
     }

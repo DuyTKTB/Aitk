@@ -236,7 +236,7 @@ Hãy trả lời sắc nét, dễ đọc, có gạch đầu dòng rõ ràng, KH�
     try {
       const res = await runWithCredit(
         { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'ai_tutor', reason: 'Gia sư AI ngữ cảnh học sinh' },
-        () => {
+        async () => {
           const req = callAiEngine(
             recentHistory,
             (partial) => {
@@ -247,20 +247,33 @@ Hãy trả lời sắc nét, dễ đọc, có gạch đầu dòng rõ ràng, KH�
             { systemPrompt: sysPrompt }
           );
           reqRef.current = req;
-          return req.finally(() => {
+          try {
+            const out = await req;
+            const outText = String(typeof out === 'string' ? out : (out?.text || '')).trim();
+            if (!outText) {
+              throw new Error('AI chưa trả về phản hồi (ELEC Credit đã được hoàn trả).');
+            }
+            return out;
+          } finally {
             if (reqRef.current === req) reqRef.current = null;
-          });
+          }
         }
       );
       const finalText = typeof res === 'string' ? res : (res?.text || '');
       setMsgs((prev) =>
         prev.map((m) =>
-          m.id === botId ? { ...m, text: finalText || 'Mình sẵn sàng hỗ trợ tiếp cho bạn nhé!', streaming: false } : m
+          m.id === botId ? { ...m, text: finalText, streaming: false } : m
         )
       );
     } catch (err) {
       if (err?.isAbort || err?.name === 'AbortError') {
-        setMsgs((prev) => prev.map((m) => (m.id === botId ? { ...m, streaming: false } : m)));
+        setMsgs((prev) =>
+          prev.map((m) =>
+            m.id === botId
+              ? { ...m, text: m.text?.trim() ? m.text : 'Đã dừng phản hồi (ELEC Credit đã được hoàn trả).', streaming: false }
+              : m
+          )
+        );
       } else {
         setMsgs((prev) =>
           prev.map((m) =>

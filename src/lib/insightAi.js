@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { callModel, parseJsonLoose } from './examAiUtils.js';
+import { runWithCredit, CREDIT_TARIFF } from './creditService.js';
 
 const cacheMap = new Map();
 
@@ -110,6 +111,7 @@ export async function generatePedagogicalInsights({
   subject = 'Hóa học',
   forceRefresh = false,
   useAi = true,
+  userId = null,
   signal,
 } = {}) {
   if (!insightsData || !insightsData.submissionCount) {
@@ -188,29 +190,40 @@ Xuất kết quả duy nhất ở định dạng JSON hợp lệ (không kèm ma
 }`;
 
   try {
-    const raw = await callModel({
-      system: `Bạn là trợ lý AI sư phạm cao cấp cho giáo viên ELEC AI. Phân tích sư phạm phải chuẩn GDPT 2018, ngôn ngữ chuẩn mực giáo dục Việt Nam, đi thẳng vào giải pháp thực hành trên lớp. Luôn trả về JSON hợp lệ.`,
-      parts: [{ text: prompt }],
-      temperature: 0.4,
-      signal,
-    });
+    return await runWithCredit(
+      {
+        userId: userId || null,
+        cost: CREDIT_TARIFF.TUTOR_CONTEXT,
+        actionType: 'pedagogy_insight',
+        reason: 'AI Phân tích sư phạm lớp học',
+      },
+      async () => {
+        const raw = await callModel({
+          system: `Bạn là trợ lý AI sư phạm cao cấp cho giáo viên ELEC AI. Phân tích sư phạm phải chuẩn GDPT 2018, ngôn ngữ chuẩn mực giáo dục Việt Nam, đi thẳng vào giải pháp thực hành trên lớp. Luôn trả về JSON hợp lệ.`,
+          parts: [{ text: prompt }],
+          temperature: 0.4,
+          signal,
+          skipCredit: true,
+        });
 
-    const parsed = parseJsonLoose(raw);
-    if (
-      !parsed ||
-      typeof parsed !== 'object' ||
-      (!parsed.headline && !parsed.summary && !(Array.isArray(parsed.actions) && parsed.actions.length > 0))
-    ) {
-      throw new Error('AI trả về định dạng phân tích chưa đầy đủ.');
-    }
-    const result = {
-      ...parsed,
-      isAiGenerated: true,
-      generatedAt: Date.now(),
-    };
+        const parsed = parseJsonLoose(raw);
+        if (
+          !parsed ||
+          typeof parsed !== 'object' ||
+          (!parsed.headline && !parsed.summary && !(Array.isArray(parsed.actions) && parsed.actions.length > 0))
+        ) {
+          throw new Error('AI trả về định dạng phân tích chưa đầy đủ.');
+        }
+        const result = {
+          ...parsed,
+          isAiGenerated: true,
+          generatedAt: Date.now(),
+        };
 
-    cacheMap.set(cacheKey, result);
-    return result;
+        cacheMap.set(cacheKey, result);
+        return result;
+      }
+    );
   } catch (err) {
     console.warn('[insightAi] Không gọi được AI, dùng fallback thuật toán:', err.message);
     const fallback = buildAlgorithmicFallback(insightsData, className);

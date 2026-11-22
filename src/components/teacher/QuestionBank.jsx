@@ -39,7 +39,7 @@ import {
 import { createExam } from '../../lib/classroom.js';
 import { exportToWord, exportToPDF } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
-import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
+import { runWithCredit, calcExamGenCreditCost, CREDIT_TARIFF, formatCredits } from '../../lib/creditService.js';
 import { parseJsonLoose } from '../../lib/examAiUtils.js';
 import {
   TOPICS_BY_SUBJECT,
@@ -1441,21 +1441,27 @@ export default function QuestionBank({
 
   const stripOptPrefix = (s) => String(s || '').trim().replace(/^[A-Da-d][.):\s]+/, '').trim();
 
-  const callBankAI = async ({ prompt, system, cost = 1, reason = 'AI Ngân hàng câu hỏi' }) => {
+  const callBankAI = async ({ prompt, system, cost = CREDIT_TARIFF.TUTOR_CONTEXT, actionType = 'ai_text', reason = 'AI Ngân hàng câu hỏi', validate = null }) => {
     if (!vipUnlocked) {
       const msg = `Công cụ AI trong Ngân hàng câu hỏi dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
       onRequestUpgrade?.(msg);
       throw new Error(msg);
     }
-    const res = await runWithCredit(
-      { userId: user?.uid, cost, reason },
-      () => askAI(prompt, null, null, {
-        systemPrompt: system || 'Bạn là Chuyên gia Khảo thí THPT chuẩn Chương trình GDPT 2018 của Bộ Giáo dục & Đào tạo Việt Nam.',
-        noGuide: true,
-        noCache: true,
-      })
+    return runWithCredit(
+      { userId: user?.uid, cost, actionType, reason },
+      async () => {
+        const res = await askAI(prompt, null, null, {
+          systemPrompt: system || 'Bạn là Chuyên gia Khảo thí THPT chuẩn Chương trình GDPT 2018 của Bộ Giáo dục & Đào tạo Việt Nam.',
+          noGuide: true,
+          noCache: true,
+        });
+        const txt = String(typeof res === 'string' ? res : (res?.text || '')).trim();
+        if (!txt) {
+          throw new Error('AI chưa trả về nội dung (ELEC Credit đã được hoàn trả).');
+        }
+        return typeof validate === 'function' ? validate(txt) : txt;
+      }
     );
-    return typeof res === 'string' ? res : (res?.text || '');
   };
 
   /* 1. AI THẬT: Sinh câu tương tự cùng chuyên đề */
@@ -1485,11 +1491,16 @@ ${optsText}
 
 Chỉ trả về DUY NHẤT JSON hợp lệ (không thêm chữ thừa):
 ${jsonSchemaHint}`;
-      const raw = await callBankAI({ prompt, cost: CREDIT_TARIFF.TUTOR_CONTEXT, reason: 'AI sinh câu tương tự' });
-      const parsed = parseJsonLoose(raw);
-      if (!parsed?.q) {
-        throw new Error('AI trả về định dạng câu hỏi chưa đầy đủ, vui lòng thử lại.');
-      }
+      const parsed = await callBankAI({
+        prompt,
+        cost: CREDIT_TARIFF.TUTOR_CONTEXT,
+        reason: 'AI sinh câu tương tự',
+        validate: (raw) => {
+          const p = parseJsonLoose(raw);
+          if (!p?.q) throw new Error('AI trả về định dạng câu hỏi chưa đầy đủ (ELEC Credit đã được hoàn trả).');
+          return p;
+        },
+      });
       if (qType === 'true_false' && Array.isArray(parsed.statements) && parsed.statements.length >= 2) {
         setAiResult({
           kind: 'similar',
@@ -1632,8 +1643,18 @@ Trả về DUY NHẤT JSON:
   "topicId": "id chính xác từ danh sách trên (hoặc rỗng nếu không có)",
   "reason": "Giải thích ngắn 1 câu lý do phân loại"
 }`;
-      const raw = await callBankAI({ prompt, cost: CREDIT_TARIFF.CHAT_FAST, reason: 'AI phân loại độ khó & chuyên đề' });
-      const parsed = parseJsonLoose(raw);
+      const parsed = await callBankAI({
+        prompt,
+        cost: CREDIT_TARIFF.CHAT_FAST,
+        reason: 'AI phân loại độ khó & chuyên đề',
+        validate: (raw) => {
+          const p = parseJsonLoose(raw);
+          if (!p || (!p.level && !p.topicId && !p.reason)) {
+            throw new Error('AI trả về phân loại chưa hợp lệ (ELEC Credit đã được hoàn trả).');
+          }
+          return p;
+        },
+      });
       const suggestedLevel = normalizeLevel(parsed?.level) || 'thông hiểu';
       const matchedTopic = subjTopics.find((t) => t.id === parsed?.topicId) || subjTopics[0] || { id: '', name: 'Tổng hợp' };
 
@@ -1728,11 +1749,19 @@ Trả về DUY NHẤT JSON:
     { "type": "ok" | "warn" | "error", "text": "Nhận xét chi tiết về tính đúng sai khoa học, số liệu, đáp án đúng thật sự là gì, hay bẫy câu chữ" }
   ]
 }`;
-      const raw = await callBankAI({ prompt, cost: CREDIT_TARIFF.TUTOR_CONTEXT, reason: 'AI thẩm định đáp án câu hỏi' });
-      const parsed = parseJsonLoose(raw);
-      const aiFindings = Array.isArray(parsed?.findings) && parsed.findings.length > 0
-        ? parsed.findings.filter((f) => f && f.text)
-        : [{ type: 'ok', text: `AI đã đối chiếu nội dung khoa học cho đáp án ${answerDesc}.` }];
+      const aiFindings = await callBankAI({
+        prompt,
+        cost: CREDIT_TARIFF.TUTOR_CONTEXT,
+        reason: 'AI thẩm định đáp án câu hỏi',
+        validate: (raw) => {
+          const p = parseJsonLoose(raw);
+          const list = Array.isArray(p?.findings) ? p.findings.filter((f) => f && f.text) : [];
+          if (!list.length) {
+            throw new Error('AI chưa trả về kết quả thẩm định hợp lệ (ELEC Credit đã được hoàn trả).');
+          }
+          return list;
+        },
+      });
 
       setAiResult({
         kind: 'audit',
@@ -1752,7 +1781,7 @@ Trả về DUY NHẤT JSON:
     const tpName = getTopicName(aiGenTopic, aiGenSubject) || `Tổng hợp kiến thức ${aiGenSubject}`;
     const count = Math.max(1, Math.min(10, Number(aiGenCount) || 3));
     const lvLabel = LEVEL_META[aiGenLevel]?.short || 'Vừa';
-    const cost = count > 5 ? 2 : 1;
+    const cost = calcExamGenCreditCost(count);
 
     setAiGenBusy(true);
     setAiGenError('');
@@ -1778,30 +1807,36 @@ Trả về DUY NHẤT JSON:
     }
   ]
 }`;
-      const raw = await callBankAI({ prompt, cost, reason: `AI sinh ${count} câu ${aiGenSubject} Lớp ${aiGenGrade}` });
-      const parsed = parseJsonLoose(raw);
-      const arr = Array.isArray(parsed?.questions) ? parsed.questions : Array.isArray(parsed) ? parsed : [];
-      if (!arr.length) {
-        throw new Error('AI chưa trả về đúng danh sách câu hỏi, vui lòng bấm Sinh lại.');
-      }
-
-      const generated = arr.slice(0, count).map((item, idx) => ({
-        id: `ai-gen-${Date.now()}-${idx + 1}`,
-        subject: aiGenSubject,
-        grade: Number(aiGenGrade) || 12,
-        topicId: aiGenTopic,
-        level: aiGenLevel,
-        points: 1,
-        tags: ['AI-sinh', lvLabel],
-        q: String(item.q || '').trim(),
-        options: (Array.isArray(item.options) ? item.options : []).slice(0, 4).map(stripOptPrefix),
-        correct: Math.min(3, Math.max(0, Number(item.correct) || 0)),
-        explain: String(item.explain || '').trim(),
-      })).filter((it) => it.q && it.options.length >= 2);
-
-      if (!generated.length) {
-        throw new Error('Không phân tích được câu hỏi từ phản hồi AI.');
-      }
+      const generated = await callBankAI({
+        prompt,
+        cost,
+        actionType: 'exam_gen',
+        reason: `AI sinh ${count} câu ${aiGenSubject} Lớp ${aiGenGrade}`,
+        validate: (raw) => {
+          const parsed = parseJsonLoose(raw);
+          const arr = Array.isArray(parsed?.questions) ? parsed.questions : Array.isArray(parsed) ? parsed : [];
+          if (!arr.length) {
+            throw new Error('AI chưa trả về đúng danh sách câu hỏi (ELEC Credit đã được hoàn trả), vui lòng bấm Sinh lại.');
+          }
+          const list = arr.slice(0, count).map((item, idx) => ({
+            id: `ai-gen-${Date.now()}-${idx + 1}`,
+            subject: aiGenSubject,
+            grade: Number(aiGenGrade) || 12,
+            topicId: aiGenTopic,
+            level: aiGenLevel,
+            points: 1,
+            tags: ['AI-sinh', lvLabel],
+            q: String(item.q || '').trim(),
+            options: (Array.isArray(item.options) ? item.options : []).slice(0, 4).map(stripOptPrefix),
+            correct: Math.min(3, Math.max(0, Number(item.correct) || 0)),
+            explain: String(item.explain || '').trim(),
+          })).filter((it) => it.q && it.options.length >= 2);
+          if (!list.length) {
+            throw new Error('Không phân tích được câu hỏi từ phản hồi AI (ELEC Credit đã được hoàn trả).');
+          }
+          return list;
+        },
+      });
       setAiGeneratedList(generated);
     } catch (err) {
       setAiGenError(err?.message || 'Lỗi khi sinh câu hỏi từ AI.');
@@ -3452,7 +3487,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoSparkles size={18} />
                         <div>
-                          <b>Sinh câu tương tự {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
+                          <b>Sinh câu tương tự {!vipUnlocked ? '(VIP)' : `(${formatCredits(CREDIT_TARIFF.TUTOR_CONTEXT)} Credit)`}</b>
                           <small>Tạo biến thể mới cùng chuyên đề &amp; đảo phương án</small>
                         </div>
                       </button>
@@ -3465,7 +3500,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoFileText size={18} />
                         <div>
-                          <b>Viết lời giải chi tiết {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
+                          <b>Viết lời giải chi tiết {!vipUnlocked ? '(VIP)' : `(${formatCredits(CREDIT_TARIFF.TUTOR_CONTEXT)} Credit)`}</b>
                           <small>Tự động phân tích từng bước cho đáp án đúng</small>
                         </div>
                       </button>
@@ -3478,7 +3513,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoTag size={18} />
                         <div>
-                          <b>Gợi ý độ khó &amp; chuyên đề {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
+                          <b>Gợi ý độ khó &amp; chuyên đề {!vipUnlocked ? '(VIP)' : `(${formatCredits(CREDIT_TARIFF.CHAT_FAST)} Credit)`}</b>
                           <small>Nhận diện mức độ nhận thức &amp; chủ đề kiến thức</small>
                         </div>
                       </button>
@@ -3491,7 +3526,7 @@ Trả về DUY NHẤT JSON:
                       >
                         <IcoCheck size={18} />
                         <div>
-                          <b>Kiểm tra đáp án sai {!vipUnlocked ? '(VIP)' : '(1 credit)'}</b>
+                          <b>Kiểm tra đáp án sai {!vipUnlocked ? '(VIP)' : `(${formatCredits(CREDIT_TARIFF.TUTOR_CONTEXT)} Credit)`}</b>
                           <small>Rà soát phương án trùng, thiếu hoặc sai khoa học</small>
                         </div>
                       </button>
@@ -3897,7 +3932,7 @@ Trả về DUY NHẤT JSON:
                       disabled={aiGenBusy}
                       onClick={handleGenerateAiQuestionsBatch}
                     >
-                      <IcoSparkles size={14} /> {aiGenBusy ? 'Đang sinh AI...' : `Sinh bằng AI (${(Number(aiGenCount) || 3) > 5 ? 2 : 1} credit)`}
+                      <IcoSparkles size={14} /> {aiGenBusy ? 'Đang sinh AI...' : `Sinh bằng AI (${formatCredits(calcExamGenCreditCost(Math.max(1, Math.min(10, Number(aiGenCount) || 3))))} Credit)`}
                     </button>
                   </div>
                 </label>

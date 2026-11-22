@@ -28,6 +28,7 @@ import { updateClass } from '../../lib/classroom.js';
 import { buildLeaderboard, rankLabel } from '../../lib/leaderboard.js';
 import { publishClassLeaderboard } from '../../lib/classLeaderboardDoc.js';
 import { generateLearningReport } from '../../lib/learningAnalyticsAi.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import {
   saveAnalyticsReport, getAnalyticsReport, savedReportStaleness,
 } from '../../lib/analyticsReports.js';
@@ -115,9 +116,10 @@ function Badge({ tone = 'na', children }) {
 export default function LearningAnalytics({
   classInfo = {}, exams = [], submissionsMap = {}, loadingSubmissions = false,
 }) {
+  const { user } = useAuth();
   const classId = classInfo?.id || '';
   const members = classInfo?.members || [];
-  const ownerId = classInfo?.teacherId || '';
+  const ownerId = user?.uid || classInfo?.teacherId || '';
 
   const [rangeKey, setRangeKey] = useState('30');
   const [fromInput, setFromInput] = useState('');
@@ -399,6 +401,7 @@ export default function LearningAnalytics({
       const result = await generateLearningReport({
         analytics,
         focusSubject,
+        userId: user?.uid || ownerId || null,
         signal: ctrl.signal,
       });
 

@@ -23,18 +23,28 @@ export default function AiQuiz({ vip, onClose }) {
 
   const start = async () => {
     setBad(false);
+    let parsedQuestions = null;
     const raw = await ask(
       `Tạo ${n} câu trắc nghiệm Hóa học lớp 10-12 về chủ đề "${topic}" liên quan bảng tuần hoàn. ` +
       `CHỈ trả về JSON thuần, không markdown, dạng: [{"q":"...","options":["A","B","C","D"],"answer":0,"explain":"..."}] ` +
-      `(answer là chỉ số 0-3 của đáp án đúng).`
+      `(answer là chỉ số 0-3 của đáp án đúng).`,
+      {
+        validate: (ansText) => {
+          const j = JSON.parse(String(ansText || '').replace(/```json|```/g, '').trim());
+          const ok = Array.isArray(j)
+            ? j.filter((x) => x.q && Array.isArray(x.options) && x.options.length >= 2 && Number.isInteger(x.answer))
+            : [];
+          if (!ok.length) throw new Error('AI trả về định dạng câu hỏi chưa hợp lệ (ELEC Credit đã được hoàn trả).');
+          parsedQuestions = ok.slice(0, n);
+        },
+      }
     );
     if (!raw) return;
-    try {
-      const j = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      const ok = j.filter((x) => x.q && Array.isArray(x.options) && x.options.length >= 2 && Number.isInteger(x.answer));
-      if (!ok.length) throw new Error();
-      setQs(ok.slice(0, n)); setI(0); setPick(null); setScore(0);
-    } catch { setBad(true); }
+    if (parsedQuestions) {
+      setQs(parsedQuestions); setI(0); setPick(null); setScore(0);
+    } else {
+      setBad(true);
+    }
   };
 
   const q = qs?.[i];

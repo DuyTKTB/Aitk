@@ -94,8 +94,8 @@ async function extractText(file, onProgress) {
   return { text: null, pages: 0 };
 }
 
-/* Gọi AI — chịu được cả chunk dạng "tích lũy" lẫn "delta" + trừ Credit */
-async function callAI(prompt, system, onText, userId = null, cost = CREDIT_TARIFF.ERROR_ANALYSIS, reason = 'AI Studio Tài liệu') {
+/* Gọi AI — chịu được cả chunk dạng "tích lũy" lẫn "delta" + trừ Credit + tự hoàn nếu rỗng/sai định dạng */
+async function callAI(prompt, system, onText, userId = null, cost = CREDIT_TARIFF.ERROR_ANALYSIS, reason = 'AI Studio Tài liệu', validate = null) {
   return runWithCredit({ userId, cost, reason }, async () => {
     let raw = '';
     const msg = { role: 'user', parts: [{ text: prompt }], text: prompt };
@@ -105,8 +105,10 @@ async function callAI(prompt, system, onText, userId = null, cost = CREDIT_TARIF
       raw = c.length >= raw.length && c.startsWith(head) ? c : raw + c;
       onText?.(raw);
     }, null, system);
-    const t = (res && typeof res === 'object' ? res.text : typeof res === 'string' ? res : '') || raw;
-    return String(t || '');
+    const t = String((res && typeof res === 'object' ? res.text : typeof res === 'string' ? res : '') || raw || '').trim();
+    if (!t) throw new Error('AI không trả về nội dung (ELEC Credit đã được hoàn trả).');
+    if (typeof validate === 'function') return validate(t);
+    return t;
   });
 }
 
@@ -395,7 +397,7 @@ function AskDoc({ doc }) {
         'Bạn là trợ lý học tập, trả lời chính xác dựa trên tài liệu được cung cấp. Không dùng LaTeX.',
         (t) => setMsgs((m) => m.map((x, i) => (i === m.length - 1 ? { ...x, text: t } : x))),
         uid,
-        1,
+        CREDIT_TARIFF.CHAT_FAST,
         'Hỏi đáp AI Studio Tài liệu'
       );
       setMsgs((m) => m.map((x, i) => (i === m.length - 1 ? { ...x, text: out || 'Mình chưa trả lời được, thử hỏi lại nhé.' } : x)));
@@ -512,15 +514,22 @@ export default function DocStudio() {
       `Yêu cầu: ${nCards} flashcard, ${nQuiz} câu quiz (4 đáp án, "correct" là chỉ số 0-3, không ghi A/B/C/D trong opts), 5-7 ý chính, ` +
       'tiếng Việt, bám sát tài liệu, không bịa thêm, không dùng LaTeX (viết công thức bằng Unicode).\n\nTÀI LIỆU:\n' +
       sampleText(text, PROMPT_CHARS);
-    let raw = '';
+    let data = null;
     try {
-      raw = await callAI(
+      data = await callAI(
         prompt,
         'Bạn là giáo viên soạn nội dung ôn tập. Chỉ trả về JSON hợp lệ, không thêm chữ nào ngoài JSON.',
         null,
         uid,
-        2,
-        'Tóm tắt & Sinh câu hỏi tài liệu AI'
+        CREDIT_TARIFF.ERROR_ANALYSIS,
+        'Tóm tắt & Sinh câu hỏi tài liệu AI',
+        (rawText) => {
+          const normalized = normalize(parseJSON(rawText), nCards, nQuiz);
+          if (!normalized.flashcards.length || !normalized.quiz.length) {
+            throw new Error('AI trả về nội dung chưa đúng định dạng (ELEC Credit đã được hoàn trả) — bấm tạo lại, hoặc dùng tài liệu ngắn/rõ chữ hơn.');
+          }
+          return normalized;
+        }
       );
     } catch (e) {
       if (stale()) return;
@@ -528,13 +537,7 @@ export default function DocStudio() {
       setErr(e?.isQuota ? 'Bạn đã hết lượt AI hôm nay — thử lại vào ngày mai.' : (e?.message || 'Không gọi được AI, kiểm tra mạng rồi thử lại.'));
       return;
     }
-    if (stale()) return;
-    const data = normalize(parseJSON(raw), nCards, nQuiz);
-    if (!data.flashcards.length || !data.quiz.length) {
-      setBusy(null);
-      setErr('AI trả về nội dung chưa đúng định dạng — bấm tạo lại, hoặc dùng tài liệu ngắn/rõ chữ hơn.');
-      return;
-    }
+    if (stale() || !data) return;
     const doc = {
       id: 'D' + Date.now().toString(36), name, at: Date.now(), pages,
       chars: text.length, text: text.slice(0, KEEP_CHARS), ...data,

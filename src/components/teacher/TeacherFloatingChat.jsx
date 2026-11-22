@@ -812,10 +812,16 @@ export default function TeacherFloatingChat({
     );
   }, []);
 
-  const callCopilotAI = (promptOrHistory, opts = {}, cost = CREDIT_TARIFF.TUTOR_CONTEXT, reason = 'AI Trợ lý Lớp học', onChunk = null) =>
+  const callCopilotAI = (promptOrHistory, opts = {}, cost = CREDIT_TARIFF.TUTOR_CONTEXT, reason = 'AI Trợ lý Lớp học', onChunk = null, creditMeta = {}) =>
     runWithCredit(
-      { userId: user?.uid, cost, reason },
-      () => {
+      {
+        userId: user?.uid,
+        cost,
+        imageCount: creditMeta.imageCount || 0,
+        actionType: creditMeta.actionType || (creditMeta.imageCount ? 'ai_image' : 'ai_tutor'),
+        reason,
+      },
+      async () => {
         const modeDirective = getAiModeDirective(aiMode);
         const mergedSystemPrompt = modeDirective
           ? `${TEACHER_COPILOT_SYSTEM_PROMPT}\n\n${modeDirective}`
@@ -825,14 +831,26 @@ export default function TeacherFloatingChat({
           ...opts,
         });
         activeRequestRef.current = req;
-        return req.finally(() => {
+        try {
+          const res = await req;
+          const outText = String(typeof res === 'string' ? res : (res?.text || '')).trim();
+          if (!outText) {
+            throw new Error('AI chưa trả về nội dung (ELEC Credit đã được hoàn trả).');
+          }
+          if (typeof creditMeta.validate === 'function') {
+            return creditMeta.validate(outText, res);
+          }
+          return res;
+        } finally {
           if (activeRequestRef.current === req) activeRequestRef.current = null;
-        });
+        }
       }
     );
 
   const aiErrMsg = (err, fallback) =>
-    err?.code === 'OUT_OF_CREDITS' ? err.message : (fallback || err?.message || 'Kết nối AI tạm thời gián đoạn.');
+    err?.code === 'OUT_OF_CREDITS' || err?.code === 'CREDIT_SYSTEM_ERROR' || err?.code === 'LOGIN_REQUIRED'
+      ? err.message
+      : (fallback || err?.message || 'Kết nối AI tạm thời gián đoạn.');
 
   const handleCreateClassDirectly = async (className) => {
     if (!className) return;
@@ -1173,9 +1191,23 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
 }`;
 
     try {
-      const aiRes = await callCopilotAI(prompt, {}, 2, 'Bổ sung Phần II & III đề thi');
-      const text = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
-      const parsed = parseExamJsonSafe(text);
+      const parsed = await callCopilotAI(
+        prompt,
+        {},
+        CREDIT_TARIFF.EXAM_GEN_SMALL,
+        'Bổ sung Phần II & III đề thi',
+        null,
+        {
+          actionType: 'exam_gen',
+          validate: (rawText) => {
+            const p = parseExamJsonSafe(rawText);
+            if (!(p?.part2?.length || p?.part3?.length)) {
+              throw new Error('AI chưa trả về được câu hỏi Phần II/III hợp lệ (ELEC Credit đã được hoàn trả).');
+            }
+            return p;
+          },
+        }
+      );
 
       let newP2List = (parsed?.part2 || []).map((q, idx) => ({
         id: `q_p2_comp_${Date.now()}_${idx}`,
@@ -1527,15 +1559,24 @@ MẪU JSON:
 }`;
 
     try {
-      const res = await callCopilotAI(solvePrompt, { noGuide: true, noCache: true }, 2, 'AI giải & điền đáp án thiếu');
-      const rawText = typeof res === 'string' ? res : (res?.text || '');
-      const parsed = parseExamJsonSafe(rawText);
-      const ansList = Array.isArray(parsed?.answers) ? parsed.answers : [];
-      if (!ansList.length) {
-        throw new Error('AI chưa trích xuất được bảng đáp án JSON hợp lệ. Thầy/Cô vui lòng thử lại.');
-      }
-
-      const byIndex = new Map(ansList.map((a) => [Number(a.index), a]));
+      const { byIndex } = await callCopilotAI(
+        solvePrompt,
+        { noGuide: true, noCache: true },
+        CREDIT_TARIFF.ERROR_ANALYSIS,
+        'AI giải & điền đáp án thiếu',
+        null,
+        {
+          actionType: 'exam_solve',
+          validate: (rawText) => {
+            const parsed = parseExamJsonSafe(rawText);
+            const ansList = Array.isArray(parsed?.answers) ? parsed.answers : [];
+            if (!ansList.length) {
+              throw new Error('AI chưa trích xuất được bảng đáp án JSON hợp lệ (ELEC Credit đã được hoàn trả). Thầy/Cô vui lòng thử lại.');
+            }
+            return { byIndex: new Map(ansList.map((a) => [Number(a.index), a])) };
+          },
+        }
+      );
       let filledCount = 0;
       const updatedQuestions = exam.questions.map((q, idx) => {
         const hit = byIndex.get(idx);
@@ -1691,50 +1732,60 @@ TRẢ VỀ DUY NHẤT ĐỐI TƯỢNG JSON HỢP LỆ THEO MẪU:
   ]
 }`;
 
-        const res = await callCopilotAI(prompt15, {}, 2, 'Tạo đề kiểm tra 15 phút AI');
-        const text = typeof res === 'string' ? res : (res?.text || '');
-        const parsed = parseExamJsonSafe(text);
-
-        const p1 = (parsed?.part1 || []).map((q, idx) => ({
-          id: `q_15_p1_${idx + 1}`,
-          q: q.q,
-          options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
-            'A. ' + (q.options?.[0] || 'Phương án đúng'),
-            'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
-            'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
-            'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
-          ],
-          correct: q.correct ?? 0,
-          level: q.level || 'NB',
-          explain: q.explain || '',
-          part: 1,
-          type: 'single_choice',
-          points: 0.25,
-        }));
-
-        const p2 = (parsed?.part2 || []).map((q, idx) => ({
-          id: `q_15_p2_${idx + 1}`,
-          q: q.q,
-          statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
-          level: q.level || 'VD',
-          explain: q.explain || '',
-          part: 2,
-          type: 'true_false',
-          points: 1.0,
-        }));
-
-        const p3 = (parsed?.part3 || []).map((q, idx) => ({
-          id: `q_15_p3_${idx + 1}`,
-          q: q.q,
-          answer: String(q.answer || '0').replace('.', ','),
-          level: q.level || 'VDC',
-          explain: q.explain || '',
-          part: 3,
-          type: 'short_answer',
-          points: 0.25,
-        }));
-
-        finalQuestions = [...p1, ...p2, ...p3];
+        finalQuestions = await callCopilotAI(
+          prompt15,
+          {},
+          CREDIT_TARIFF.EXAM_GEN_SMALL,
+          'Tạo đề kiểm tra 15 phút AI',
+          null,
+          {
+            actionType: 'exam_gen',
+            validate: (text) => {
+              const parsed = parseExamJsonSafe(text);
+              const q1 = (parsed?.part1 || []).map((q, idx) => ({
+                id: `q_15_p1_${idx + 1}`,
+                q: q.q,
+                options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
+                  'A. ' + (q.options?.[0] || 'Phương án đúng'),
+                  'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
+                  'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
+                  'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
+                ],
+                correct: q.correct ?? 0,
+                level: q.level || 'NB',
+                explain: q.explain || '',
+                part: 1,
+                type: 'single_choice',
+                points: 0.25,
+              }));
+              const q2 = (parsed?.part2 || []).map((q, idx) => ({
+                id: `q_15_p2_${idx + 1}`,
+                q: q.q,
+                statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
+                level: q.level || 'VD',
+                explain: q.explain || '',
+                part: 2,
+                type: 'true_false',
+                points: 1.0,
+              }));
+              const q3 = (parsed?.part3 || []).map((q, idx) => ({
+                id: `q_15_p3_${idx + 1}`,
+                q: q.q,
+                answer: String(q.answer || '0').replace('.', ','),
+                level: q.level || 'VDC',
+                explain: q.explain || '',
+                part: 3,
+                type: 'short_answer',
+                points: 0.25,
+              }));
+              const list = [...q1, ...q2, ...q3];
+              if (!list.length) {
+                throw new Error('AI chưa kịp hoàn tất định dạng JSON câu hỏi (ELEC Credit đã được hoàn trả).');
+              }
+              return list;
+            },
+          }
+        );
       } else {
         // Đề chuẩn GDPT 2025: 18 Phần I + 4 Phần II + 6 Phần III = 28 câu
         const promptP1 = `Bạn là chuyên gia ra đề ${subject} lớp ${grade} GDPT 2025. Hãy soạn 18 câu trắc nghiệm 4 lựa chọn (Phần I) chuyên đề "${targetTopic}".
@@ -1761,7 +1812,7 @@ Trả về duy nhất JSON:
   ]
 }`;
 
-        const [resP1, resP2P3] = await runWithCredit(
+        finalQuestions = await runWithCredit(
           { userId: user?.uid, cost: CREDIT_TARIFF.EXAM_GEN_LARGE, actionType: 'exam_gen', reason: 'Tạo đề kiểm tra 45-90 phút AI' },
           async () => {
             let p1Err = null;
@@ -1773,56 +1824,53 @@ Trả về duy nhất JSON:
             if (!pair[0] && !pair[1]) {
               throw new Error(p1Err?.message || p2Err?.message || 'Không kết nối được AI để sinh đề.');
             }
-            return pair;
+            const textP1 = typeof pair[0] === 'string' ? pair[0] : (pair[0]?.text || '');
+            const textP2P3 = typeof pair[1] === 'string' ? pair[1] : (pair[1]?.text || '');
+            const parsedP1 = parseExamJsonSafe(textP1);
+            const parsedP2P3 = parseExamJsonSafe(textP2P3);
+            const p1 = (parsedP1?.part1 || []).map((q, idx) => ({
+              id: `q_gdpt_p1_${idx + 1}`,
+              q: q.q,
+              options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
+                'A. ' + (q.options?.[0] || 'Phương án đúng'),
+                'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
+                'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
+                'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
+              ],
+              correct: q.correct ?? 0,
+              level: q.level || (idx < 6 ? 'NB' : idx < 14 ? 'TH' : 'VD'),
+              explain: q.explain || '',
+              part: 1,
+              type: 'single_choice',
+              points: 0.25,
+            }));
+            const p2 = (parsedP2P3?.part2 || []).map((q, idx) => ({
+              id: `q_gdpt_p2_${idx + 1}`,
+              q: q.q,
+              statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
+              level: q.level || 'VD',
+              explain: q.explain || '',
+              part: 2,
+              type: 'true_false',
+              points: 1.0,
+            }));
+            const p3 = (parsedP2P3?.part3 || []).map((q, idx) => ({
+              id: `q_gdpt_p3_${idx + 1}`,
+              q: q.q,
+              answer: String(q.answer || '0').replace('.', ','),
+              level: q.level || 'VDC',
+              explain: q.explain || '',
+              part: 3,
+              type: 'short_answer',
+              points: 0.25,
+            }));
+            const list = [...p1, ...p2, ...p3];
+            if (!list.length) {
+              throw new Error('AI chưa kịp hoàn tất định dạng JSON câu hỏi (ELEC Credit đã được hoàn trả).');
+            }
+            return list;
           }
         );
-
-        const textP1 = typeof resP1 === 'string' ? resP1 : (resP1?.text || '');
-        const textP2P3 = typeof resP2P3 === 'string' ? resP2P3 : (resP2P3?.text || '');
-
-        const parsedP1 = parseExamJsonSafe(textP1);
-        const parsedP2P3 = parseExamJsonSafe(textP2P3);
-
-        const p1 = (parsedP1?.part1 || []).map((q, idx) => ({
-          id: `q_gdpt_p1_${idx + 1}`,
-          q: q.q,
-          options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
-            'A. ' + (q.options?.[0] || 'Phương án đúng'),
-            'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
-            'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
-            'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
-          ],
-          correct: q.correct ?? 0,
-          level: q.level || (idx < 6 ? 'NB' : idx < 14 ? 'TH' : 'VD'),
-          explain: q.explain || '',
-          part: 1,
-          type: 'single_choice',
-          points: 0.25,
-        }));
-
-        const p2 = (parsedP2P3?.part2 || []).map((q, idx) => ({
-          id: `q_gdpt_p2_${idx + 1}`,
-          q: q.q,
-          statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
-          level: q.level || 'VD',
-          explain: q.explain || '',
-          part: 2,
-          type: 'true_false',
-          points: 1.0,
-        }));
-
-        const p3 = (parsedP2P3?.part3 || []).map((q, idx) => ({
-          id: `q_gdpt_p3_${idx + 1}`,
-          q: q.q,
-          answer: String(q.answer || '0').replace('.', ','),
-          level: q.level || 'VDC',
-          explain: q.explain || '',
-          part: 3,
-          type: 'short_answer',
-          points: 0.25,
-        }));
-
-        finalQuestions = [...p1, ...p2, ...p3];
       }
 
       // Không bao giờ chèn câu hỏi Hóa học giả khi sinh đề môn khác bị ngắt quãng
@@ -2068,13 +2116,22 @@ Trả về duy nhất đối tượng JSON hợp lệ:
     }
   ]
 }`;
-      const rxRes = await callCopilotAI(rxPrompt, {}, 1, 'Kê đơn ôn tập AI cho học sinh');
-      const genText = typeof rxRes === 'string' ? rxRes : (rxRes?.text || '');
-      const parsed = parseExamJsonSafe(genText);
-
-      if (!parsed?.layers?.length || !parsed?.remedialQuestions?.length) {
-        throw new Error(`AI chưa trả về được đơn bài tập môn ${rxSubject} hợp lệ. Thầy/Cô vui lòng thử lại.`);
-      }
+      const parsed = await callCopilotAI(
+        rxPrompt,
+        {},
+        CREDIT_TARIFF.TUTOR_CONTEXT,
+        'Kê đơn ôn tập AI cho học sinh',
+        null,
+        {
+          validate: (genText) => {
+            const p = parseExamJsonSafe(genText);
+            if (!p?.layers?.length || !p?.remedialQuestions?.length) {
+              throw new Error(`AI chưa trả về được đơn bài tập môn ${rxSubject} hợp lệ (ELEC Credit đã được hoàn trả). Thầy/Cô vui lòng thử lại.`);
+            }
+            return p;
+          },
+        }
+      );
 
       const rxData = {
         student: targetStudent,
@@ -2154,7 +2211,7 @@ HÃY THỰC HIỆN CHÍNH XÁC:
         const res = await callCopilotAI(
           visionHistory,
           { noGuide: true, noCache: true },
-          1,
+          CREDIT_TARIFF.CHAT_FAST + CREDIT_TARIFF.CHAT_IMAGE_ADDON,
           'Phân tích ảnh đề bài (AI Vision)',
           (partialText) => {
             if (!partialText) return;
@@ -2167,7 +2224,8 @@ HÃY THỰC HIỆN CHÍNH XÁC:
             } else {
               setMessages((prev) => prev.map((m) => (m.id === streamMsgId ? { ...m, text: partialText } : m)));
             }
-          }
+          },
+          { imageCount: 1 }
         );
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
@@ -2725,7 +2783,7 @@ d) Tổ chức thực hiện: ...
 
 YÊU CẦU: Trình bày học thuật chuẩn mực, sư phạm, KHÔNG dùng emoji.`;
 
-        const res = await callCopilotAI(lessonPlanPrompt, {}, 1, 'Soạn kế hoạch bài dạy AI');
+        const res = await callCopilotAI(lessonPlanPrompt, {}, CREDIT_TARIFF.TUTOR_CONTEXT, 'Soạn kế hoạch bài dạy AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
 
@@ -2806,7 +2864,7 @@ HÃY LẬP BẢNG MA TRẬN VÀ BẢN ĐẶC TẢ ĐẦY ĐỦ THEO CHUẨN Đ�
 
 YÊU CẦU: Trình bày chuẩn mực, rõ ràng, định dạng Markdown bảng và danh sách đẹp mắt, KHÔNG dùng emoji.`;
 
-        const res = await callCopilotAI(matrixPrompt, {}, 1, 'Lập khung ma trận & đặc tả đề AI');
+        const res = await callCopilotAI(matrixPrompt, {}, CREDIT_TARIFF.TUTOR_CONTEXT, 'Lập khung ma trận & đặc tả đề AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
 
@@ -2885,7 +2943,7 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
 ### 5. BẢN HIỆU ĐÍNH CHUẨN MỰC (NẾU CẦN)
 - Đưa ra bản viết lại hoàn chỉnh của câu hỏi đạt 10/10 chuẩn GDPT 2025 sẵn sàng đưa vào đề thi chính thức.`;
 
-        const res = await callCopilotAI(auditPrompt, {}, 1, 'Thẩm định câu hỏi đề thi AI');
+        const res = await callCopilotAI(auditPrompt, {}, CREDIT_TARIFF.TUTOR_CONTEXT, 'Thẩm định câu hỏi đề thi AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
 
         let verdict = 'ĐẠT CHUẨN 10/10';
@@ -2917,18 +2975,16 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
         return;
       } catch (err) {
         setIsTyping(false);
-        if (err?.code === 'OUT_OF_CREDITS') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: 'bot_audit_err_' + Date.now(),
-              sender: 'bot',
-              text: err.message,
-              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            },
-          ]);
-          return;
-        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'bot_audit_err_' + Date.now(),
+            sender: 'bot',
+            text: aiErrMsg(err, 'Không thể thẩm định câu hỏi lúc này (ELEC Credit đã được hoàn trả nếu lỗi). Thầy/Cô vui lòng thử lại.'),
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        return;
       }
     }
 
@@ -3010,7 +3066,7 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
       const subject = detectedInfo.subject || targetClass.subject || 'Toán học';
 
       try {
-        const aiRes = await callCopilotAI(
+        const finalQuestions = await callCopilotAI(
           `Bạn là chuyên gia ra đề môn ${subject} GDPT 2025. Hãy soạn 10 câu hỏi chuẩn cấu trúc 3 phần theo yêu cầu: "${query}".
 Gồm:
 - 6 câu trắc nghiệm 4 lựa chọn (Phần I: A, B, C, D độc lập, 1 đáp án đúng).
@@ -3051,66 +3107,68 @@ Trả về duy nhất đối tượng JSON:
   ]
 }`,
           {},
-          2,
-          'Tạo đề kiểm tra giao nhanh cho lớp'
+          CREDIT_TARIFF.EXAM_GEN_SMALL,
+          'Tạo đề kiểm tra giao nhanh cho lớp',
+          null,
+          {
+            actionType: 'exam_gen',
+            validate: (genText) => {
+              const parsed = parseExamJsonSafe(genText);
+              const q1 = (parsed?.part1 || []).map((q, idx) => ({
+                id: `q_agent_p1_${Date.now()}_${idx + 1}`,
+                q: q.q,
+                options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
+                  'A. ' + (q.options?.[0] || 'Phương án đúng'),
+                  'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
+                  'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
+                  'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
+                ],
+                correct: q.correct ?? 0,
+                level: q.level || 'TH',
+                explain: q.explain || '',
+                part: 1,
+                type: 'single_choice',
+                points: 0.25,
+              }));
+              const q2 = (parsed?.part2 || []).map((q, idx) => ({
+                id: `q_agent_p2_${Date.now()}_${idx + 1}`,
+                q: q.q,
+                statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
+                level: q.level || 'VD',
+                explain: q.explain || '',
+                part: 2,
+                type: 'true_false',
+                points: 1.0,
+              }));
+              const q3 = (parsed?.part3 || []).map((q, idx) => ({
+                id: `q_agent_p3_${Date.now()}_${idx + 1}`,
+                q: q.q,
+                answer: String(q.answer || '0').replace('.', ','),
+                level: q.level || 'VDC',
+                explain: q.explain || '',
+                part: 3,
+                type: 'short_answer',
+                points: 0.25,
+              }));
+              const list = [...q1, ...q2, ...q3];
+              if (!list.length) {
+                throw new Error('AI chưa sinh được câu hỏi hợp lệ cho đề kiểm tra này (ELEC Credit đã được hoàn trả). Thầy/Cô vui lòng thử lại.');
+              }
+              return { list, title: parsed?.title };
+            },
+          }
         );
-
-        const genText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || '');
-        const parsed = parseExamJsonSafe(genText);
-
-        const p1 = (parsed?.part1 || []).map((q, idx) => ({
-          id: `q_agent_p1_${Date.now()}_${idx + 1}`,
-          q: q.q,
-          options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
-            'A. ' + (q.options?.[0] || 'Phương án đúng'),
-            'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
-            'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
-            'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
-          ],
-          correct: q.correct ?? 0,
-          level: q.level || 'TH',
-          explain: q.explain || '',
-          part: 1,
-          type: 'single_choice',
-          points: 0.25,
-        }));
-
-        const p2 = (parsed?.part2 || []).map((q, idx) => ({
-          id: `q_agent_p2_${Date.now()}_${idx + 1}`,
-          q: q.q,
-          statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
-          level: q.level || 'VD',
-          explain: q.explain || '',
-          part: 2,
-          type: 'true_false',
-          points: 1.0,
-        }));
-
-        const p3 = (parsed?.part3 || []).map((q, idx) => ({
-          id: `q_agent_p3_${Date.now()}_${idx + 1}`,
-          q: q.q,
-          answer: String(q.answer || '0').replace('.', ','),
-          level: q.level || 'VDC',
-          explain: q.explain || '',
-          part: 3,
-          type: 'short_answer',
-          points: 0.25,
-        }));
-
-        const finalQuestions = [...p1, ...p2, ...p3];
-        if (!finalQuestions.length) {
-          throw new Error('AI chưa sinh được câu hỏi hợp lệ cho đề kiểm tra này. Thầy/Cô vui lòng thử lại hoặc diễn đạt rõ hơn chủ đề.');
-        }
+        const agentQuestions = finalQuestions.list;
 
         const agentExam = {
           id: 'exam_agent_' + Date.now(),
-          title: parsed?.title || `Đề giao tự động: ${query.slice(0, 28)}...`,
+          title: finalQuestions.title || `Đề giao tự động: ${query.slice(0, 28)}...`,
           subject: subject,
           grade: grade,
           classId: targetClass.id === 'c_auto' ? '' : targetClass.id,
           duration: 15,
-          totalQuestions: finalQuestions.length,
-          questions: finalQuestions,
+          totalQuestions: agentQuestions.length,
+          questions: agentQuestions,
         };
 
         await onCreateExam?.(agentExam);
@@ -3598,7 +3656,7 @@ Câu hỏi của giáo viên: "${query}"
 
 Hãy trả lời chính xác, bám sát các số liệu thực tế trên của lớp ${targetClass.name}, ngắn gọn, sư phạm, KHÔNG dùng emoji.`;
 
-        const res = await callCopilotAI(classContextPrompt, {}, 1, 'Phân tích số liệu lớp học AI');
+        const res = await callCopilotAI(classContextPrompt, {}, CREDIT_TARIFF.TUTOR_CONTEXT, 'Phân tích số liệu lớp học AI');
         const aiReply = typeof res === 'string' ? res : (res?.text || '');
         setIsTyping(false);
         setMessages((prev) => [
@@ -3613,18 +3671,16 @@ Hãy trả lời chính xác, bám sát các số liệu thực tế trên của
         return;
       } catch (clsErr) {
         setIsTyping(false);
-        if (clsErr?.code === 'OUT_OF_CREDITS') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: 'bot_cls_err_' + Date.now(),
-              sender: 'bot',
-              text: clsErr.message,
-              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            },
-          ]);
-          return;
-        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'bot_cls_err_' + Date.now(),
+            sender: 'bot',
+            text: aiErrMsg(clsErr, 'Chưa thể phân tích số liệu lớp lúc này (ELEC Credit đã được hoàn trả nếu lỗi).'),
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        return;
       }
     }
 
@@ -3842,7 +3898,7 @@ HƯỚNG DẪN TRẢ LỜI:
       const res = await callCopilotAI(
         multiTurnHistory,
         sendOpts.noCache ? { noCache: true } : {},
-        1,
+        CREDIT_TARIFF.CHAT_FAST,
         'Hỏi đáp sư phạm AI Copilot',
         (partialText) => {
           if (!partialText) return;

@@ -7,7 +7,9 @@
    • Quà đăng ký mới (email đã xác thực): 1.000 Credit miễn phí.
    ============================================================ */
 import { supabase } from './supabase.js';
-import { auth } from './firebase.js';
+import * as firebaseMod from './firebase.js';
+
+const getFirebaseAuth = () => firebaseMod?.auth || null;
 
 const CACHE_KEY = 'elec_user_credits_cache';
 
@@ -137,8 +139,8 @@ export async function getCredits(userId) {
   }
 
   if (!data) {
-    // Chống tạo nick Gmail giả farm 50 Credit miễn phí: chỉ cấp khi email đã xác thực (Google luôn verified)
-    const currentUser = auth?.currentUser;
+    // Chống tạo nick Gmail giả farm Credit miễn phí: chỉ cấp khi email đã xác thực (Google luôn verified)
+    const currentUser = getFirebaseAuth()?.currentUser;
     if (currentUser && currentUser.uid === userId && !currentUser.emailVerified) {
       return { balance: 0, total_earned: 0, total_spent: 0, unverifiedBlocked: true };
     }
@@ -310,14 +312,38 @@ export async function refundCredit(userId, amount, reason = 'Hoàn điểm do AI
 /* ============================================================
    HELPER: Chạy tác vụ AI có trừ Credit & tự động hoàn điểm khi lỗi
    ============================================================ */
+export function resolveCreditUserId(explicitUserId = null) {
+  return explicitUserId || getFirebaseAuth()?.currentUser?.uid || null;
+}
+
 export async function runWithCredit(
-  { userId = null, imageCount = 0, cost = null, deepThink = false, docCount = 0, actionType = null, reason = 'Dùng AI' } = {},
+  {
+    userId = null,
+    imageCount = 0,
+    cost = null,
+    deepThink = false,
+    docCount = 0,
+    actionType = null,
+    reason = 'Dùng AI',
+    allowGuest = false,
+  } = {},
   taskFn
 ) {
+  const effectiveUserId = resolveCreditUserId(userId);
   let charged = 0;
-  if (userId) {
-    const cr = await spendCredit(userId, imageCount, cost, { deepThink, docCount, actionType, reason });
+  if (effectiveUserId || !allowGuest) {
+    const cr = await spendCredit(effectiveUserId, imageCount, cost, { deepThink, docCount, actionType, reason });
     if (!cr.ok) {
+      if (cr.needLogin) {
+        const loginErr = new Error(
+          'Vui lòng đăng nhập tài khoản để dùng tính năng ELEC AI (nhận ngay 1.000 Credit miễn phí khi đăng ký).'
+        );
+        loginErr.code = 'LOGIN_REQUIRED';
+        loginErr.needLogin = true;
+        loginErr.balance = 0;
+        loginErr.needed = cr.needed;
+        throw loginErr;
+      }
       if (cr.isSystemError) {
         const sysErr = new Error(
           `Lỗi kết nối hệ thống Credit tạm thời (${cr.error || 'vui lòng thử lại'}). Số dư của bạn không bị trừ.`
@@ -341,8 +367,8 @@ export async function runWithCredit(
   try {
     return await taskFn();
   } catch (err) {
-    if (charged > 0 && userId) {
-      await refundCredit(userId, charged, `Hoàn Credit (${reason}): ${err?.message || 'AI lỗi'}`).catch(() => {});
+    if (charged > 0 && effectiveUserId) {
+      await refundCredit(effectiveUserId, charged, `Hoàn Credit (${reason}): ${err?.message || 'AI lỗi'}`).catch(() => {});
     }
     throw err;
   }
@@ -551,13 +577,8 @@ export async function claimWelcomeBonus(userId) {
    ============================================================ */
 export async function grantActivationCredits(userId, amount = CREDIT_TARIFF.REFERRAL_BONUS, code = '') {
   const pts = Number(amount) || CREDIT_TARIFF.REFERRAL_BONUS;
-  if (!userId) {
-    try {
-      window.dispatchEvent(new CustomEvent('cs-credit-update', {
-        detail: { delta: pts, added: pts },
-      }));
-    } catch { /* */ }
-    return { ok: true, added: pts, balance: null };
+  if (!userId || pts <= 0) {
+    return { ok: false, reason: 'missing_user', added: 0, balance: null };
   }
 
   try {
@@ -565,9 +586,12 @@ export async function grantActivationCredits(userId, amount = CREDIT_TARIFF.REFE
       p_user_id: userId,
       p_amount: pts,
       p_type: 'referral',
-      p_description: `Nhập mã kích hoạt ${code} (+${pts} điểm)`,
+      p_description: `Nhập mã kích hoạt ${code} (+${formatCredits(pts)} Credit)`,
     });
     if (error) throw error;
+
+    const cached = getCachedCredits(userId);
+    if (cached) setCachedCredits(userId, { ...cached, balance: newBal });
 
     try {
       window.dispatchEvent(new CustomEvent('cs-credit-update', {
@@ -577,22 +601,8 @@ export async function grantActivationCredits(userId, amount = CREDIT_TARIFF.REFE
 
     return { ok: true, added: pts, balance: newBal };
   } catch (e) {
-    console.warn('[credits] grantActivationCredits fallback:', e?.message || e);
-    let fallbackBal = null;
-    try {
-      const cur = await getCredits(userId);
-      fallbackBal = (Number(cur?.balance) || 0) + pts;
-      window.dispatchEvent(new CustomEvent('cs-credit-update', {
-        detail: { balance: fallbackBal, added: pts },
-      }));
-    } catch {
-      try {
-        window.dispatchEvent(new CustomEvent('cs-credit-update', {
-          detail: { delta: pts, added: pts },
-        }));
-      } catch { /* */ }
-    }
-    return { ok: true, added: pts, balance: fallbackBal };
+    console.warn('[credits] grantActivationCredits error:', e?.message || e);
+    return { ok: false, added: 0, balance: null, error: e?.message || 'rpc_fail' };
   }
 }
 

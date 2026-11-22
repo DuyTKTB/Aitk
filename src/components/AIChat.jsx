@@ -1869,7 +1869,7 @@ export default function AIChat({ onExit }) {
       }
 
       if (!finalText && !finalReasoning) {
-        if (stopped) return { ok: true, reason: 'user_stopped' };
+        if (stopped) return { ok: false, reason: 'Đã dừng trước khi AI phản hồi' };
         throw new Error('AI trả về rỗng. Thử gửi lại câu hỏi.');
       }
 
@@ -2039,7 +2039,9 @@ export default function AIChat({ onExit }) {
             name: d.name,
             kind: d.kind,
             metaLabel: d.metaLabel,
+            isInline: Boolean(d.base64),
           })),
+          creditMeta: { imgCount, textDocCount },
         },
       };
 
@@ -2083,13 +2085,23 @@ export default function AIChat({ onExit }) {
     while (i >= 0 && msgs[i].role !== 'user') i--;
     if (i < 0) return;
 
-    const imgList = msgs[i].preview?.images || [];
-    const hasImg = msgs[i].parts?.some((p) => p.inlineData) || imgList.length > 0;
-    const imgCount = imgList.length || (hasImg ? 1 : 0);
+    const prevImages = msgs[i].preview?.images || [];
+    const prevDocs = msgs[i].preview?.docs || [];
+    const storedMeta = msgs[i].preview?.creditMeta;
+    const inlineDocsCount = storedMeta
+      ? 0
+      : prevDocs.filter((d) => d.isInline).length;
+    const textDocCount = storedMeta
+      ? Number(storedMeta.textDocCount || 0)
+      : prevDocs.filter((d) => !d.isInline).length;
+    const hasImg = msgs[i].parts?.some((p) => p.inlineData) || prevImages.length > 0 || inlineDocsCount > 0;
+    const imgCount = storedMeta
+      ? Number(storedMeta.imgCount || 0)
+      : (prevImages.length + inlineDocsCount || (hasImg ? 1 : 0));
 
     let charged = 0;
     if (!free && uid) {
-      const cr = await spendCredit(uid, imgCount, null, { deepThink });
+      const cr = await spendCredit(uid, imgCount, null, { deepThink, docCount: textDocCount });
       if (!cr.ok) {
         setCreditBalance(cr.balance);
         setQuotaError(
@@ -4043,16 +4055,18 @@ export default function AIChat({ onExit }) {
                 </button>
 
                 {uid && (() => {
+                  const inlineCount = images.length + docs.filter((d) => d.base64).length;
+                  const textDocCount = docs.filter((d) => !d.base64).length;
                   const liveCost = calcChatCreditCost({
-                    imageCount: images.length + docs.filter((d) => d.base64).length,
+                    imageCount: inlineCount,
                     deepThink,
-                    docCount: docs.filter((d) => !d.base64).length,
+                    docCount: textDocCount,
                   });
                   const low = creditBalance !== null && creditBalance < liveCost;
                   return (
                     <span
                       className={`elec-chat-cost-chip ${low ? 'is-insufficient' : ''}`}
-                      title={`Lượt gửi này trừ đúng ${formatCredits(liveCost)} Credit (${deepThink ? 'DeepThink' : 'Chat nhanh'}${images.length > 0 ? ` + ${images.length} ảnh` : ''}). Lượt lỗi được hoàn 100%.`}
+                      title={`Lượt gửi này trừ đúng ${formatCredits(liveCost)} Credit (${deepThink ? 'DeepThink' : 'Chat nhanh'}${inlineCount > 0 ? ` + ${inlineCount} ảnh/PDF` : ''}${textDocCount > 0 ? ` + ${textDocCount} tài liệu` : ''}). Lượt lỗi được hoàn 100%.`}
                     >
                       −{formatCredits(liveCost)}
                     </span>

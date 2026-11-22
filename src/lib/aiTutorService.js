@@ -17,7 +17,7 @@
    ============================================================ */
 
 import { askAI as callAiEngine } from './ai.js';
-import { spendCredit, CREDIT_TARIFF } from './creditService.js';
+import { spendCredit, refundCredit, resolveCreditUserId, CREDIT_TARIFF } from './creditService.js';
 
 export const ELEC_TUTOR_SYSTEM_PROMPT = `Bạn là ELEC Tutor — gia sư 3 môn Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) THPT của nền tảng ELEC AI.
 Quy tắc bắt buộc:
@@ -139,7 +139,7 @@ async function callSingleTurnJson(promptText) {
 
 /**
  * Thực thi gọi AI có kiểm tra schema, tự retry 1 lần nếu sai định dạng,
- * nếu vẫn lỗi thì trả về kết quả tính toán cục bộ (fallbackFn).
+ * nếu vẫn lỗi thì hoàn 100% Credit và trả về kết quả tính toán cục bộ (fallbackFn).
  */
 export async function executeWithSchemaRetry({
   prompt,
@@ -147,14 +147,33 @@ export async function executeWithSchemaRetry({
   fallbackFn,
   customCaller = null,
   userId = null,
+  reason = 'Nhận xét tiến độ AI',
 }) {
-  if (userId) {
-    const cr = await spendCredit(userId, 0, CREDIT_TARIFF.CHAT_FAST, { actionType: 'ai_hint', reason: 'Nhận xét tiến độ AI' });
+  const effectiveUid = resolveCreditUserId(userId);
+  let charged = 0;
+
+  if (!customCaller) {
+    const cr = await spendCredit(effectiveUid, 0, CREDIT_TARIFF.CHAT_FAST, {
+      actionType: 'ai_hint',
+      reason,
+    });
     if (!cr.ok) {
       const localData = fallbackFn();
-      return { ...localData, source: 'local-fallback', reason: 'out-of-credits' };
+      const errReason = cr.needLogin
+        ? 'login-required'
+        : cr.isSystemError
+          ? 'credit-system-error'
+          : 'out-of-credits';
+      return {
+        ...localData,
+        source: 'local-fallback',
+        reason: errReason,
+        creditError: cr.error || null,
+      };
     }
+    charged = cr.cost || 0;
   }
+
   const caller = customCaller || callSingleTurnJson;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -171,8 +190,12 @@ export async function executeWithSchemaRetry({
       /* tiếp tục thử lần 2 hoặc chuyển sang fallback */
     }
   }
+
+  if (charged > 0 && effectiveUid) {
+    await refundCredit(effectiveUid, charged, `Hoàn Credit (${reason}): AI phản hồi chưa đúng định dạng`).catch(() => {});
+  }
   const localData = fallbackFn();
-  return { ...localData, source: 'local-fallback', attempts: 2 };
+  return { ...localData, source: 'local-fallback', attempts: 2, refunded: charged > 0 };
 }
 
 /* ============================================================
@@ -208,6 +231,8 @@ Hãy trả về JSON:
     validator: Schemas.targetSuggestion,
     fallbackFn: () => localTargetSuggestion(params),
     customCaller,
+    userId: params.userId || params.uid || null,
+    reason: 'Gợi ý điểm mục tiêu AI',
   });
 }
 
@@ -285,5 +310,7 @@ Trả về đúng JSON:
     validator: Schemas.progressComment,
     fallbackFn: fallback,
     customCaller,
+    userId: autoRoadmap.userId || autoRoadmap.uid || null,
+    reason: 'Nhận xét tiến độ AI',
   });
 }

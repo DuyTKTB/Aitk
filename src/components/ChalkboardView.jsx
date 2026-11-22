@@ -10,6 +10,7 @@ import * as tts from '../lib/tts.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
+import { runWithCredit, CREDIT_TARIFF } from '../lib/creditService.js';
 import MathText from './MathText.jsx';
 import '../styles/chalkboard.css';
 
@@ -444,16 +445,30 @@ export default function ChalkboardView({
         `Hãy trả lời ngắn gọn (3-5 câu), trực quan, giải thích đúng trọng tâm bước đang vẽ trên bảng phấn để học sinh hiểu ngay.`,
       ].join('\n');
 
-      const res = await askAI(
-        [{ role: 'user', parts: [{ text: prompt }] }],
-        (partial) => {
-          if (aliveRef.current) setQaAnswer(partial);
+      const finalAns = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.CHAT_FAST,
+          actionType: 'ai_tutor',
+          reason: 'Vấn đáp AI Bảng phấn 3D',
         },
-        null,
-        { mode: 'auto', verify: false }
+        async () => {
+          const res = await askAI(
+            [{ role: 'user', parts: [{ text: prompt }] }],
+            (partial) => {
+              if (aliveRef.current) setQaAnswer(partial);
+            },
+            null,
+            { mode: 'auto', verify: false }
+          );
+          const ans = String(res?.text || (typeof res === 'string' ? res : '') || '').trim();
+          if (!ans) {
+            throw new Error('AI chưa trả về câu trả lời (ELEC Credit đã được hoàn trả).');
+          }
+          return ans;
+        }
       );
       if (!aliveRef.current) return;
-      const finalAns = res?.text || String(res || '');
       setQaAnswer(finalAns);
       if (finalAns) {
         const speakToken = ++lectureTokenRef.current;
